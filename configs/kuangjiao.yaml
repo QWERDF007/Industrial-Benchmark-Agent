@@ -1,0 +1,61 @@
+dataset:
+  id: kuangjiao_dataset
+  description: "生产线框胶外观缺陷检测历史数据"
+
+root: /data1/wt/data/框胶数据集
+
+task:
+  task_id: kuangjiao_inspection_01
+  product: kuangjiao
+  station: station_01
+  camera: cam_01
+  inspection_target: glue_defect
+  description: "框胶10x连线蓝色背面厚外观缺陷检测"
+
+images:
+  glob:
+    - "**/*.png"
+    - "**/*.jpg"
+  exclude: []
+
+quality:
+  source: folder
+  default: UNCERTAIN
+  mapping:
+    "漏检": FAIL
+    "良品": PASS
+    "good": PASS
+    "bad": FAIL
+    "ng": FAIL
+
+annotations:
+  format: labelme
+  labels:
+    "1": scratch
+    "11": bubble
+    "12": contamination
+    "13": foreign_object
+    "14": deformation
+    "15": breakage
+    "16": displacement
+    "17": stain
+    "18": glue_overflow
+    "19": missing
+  source: imported
+  location_mode: auto
+  folder_replace:
+    "ExportImage_": "ExportLabel_"
+
+metadata:
+  batch_id:
+    source: filename_regex
+    pattern: "(?P<batch_id>\\d{4}[-_]\\d{2}[-_]\\d{2}|\\d{2}-\\d{6})"
+  physical_sample_id:
+    source: filename_regex
+    pattern: "(?P<physical_sample_id>ch_\\d+|TrackImg-\\d+|sample_\\d+|\\(\\d+\\))"
+  station:
+    source: fixed
+    value: station_01
+  camera:
+    source: fixed
+    value: cam_01

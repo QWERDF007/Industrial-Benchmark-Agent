@@ -1,0 +1,53 @@
+dataset:
+  id: example_surface
+  description: "Example industrial surface defect inspection dataset"
+
+root: /tmp/example_dataset
+
+task:
+  task_id: example_surface_01
+  product: metal_plate
+  station: station_01
+  camera: cam_01
+  inspection_target: surface_scratch
+  description: "Inspection of metal plate surface scratches"
+
+images:
+  glob:
+    - "**/*.png"
+    - "**/*.jpg"
+  exclude: []
+
+quality:
+  source: folder
+  default: UNCERTAIN
+  mapping:
+    good: PASS
+    ok: PASS
+    bad: FAIL
+    ng: FAIL
+    defect: FAIL
+
+annotations:
+  format: labelme
+  labels:
+    scratch: scratch
+    stain: stain
+    bubble: bubble
+    contamination: contamination
+  source: imported
+  location_mode: auto
+
+metadata:
+  batch_id:
+    source: regex
+    pattern: "batch_(?P<batch_id>[^/]+)"
+  physical_sample_id:
+    source: filename_regex
+    pattern: "(?P<physical_sample_id>sample_\\d+)"
+  station:
+    source: fixed
+    value: station_01
+  camera:
+    source: fixed
+    value: cam_01
