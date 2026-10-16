@@ -28,6 +28,10 @@ class DatasetAudit(BaseModel):
         ...,
         description="Annotation statistics: total, bbox, polygon, mask, image, annotated_samples, unannotated_samples",
     )
+    geometry: Dict[str, int] = Field(
+        default_factory=dict,
+        description="BBox geometry stats: bbox_total, bbox_valid, bbox_clipped, bbox_scaled, bbox_invalid, bbox_usable",
+    )
     metadata: Dict[str, float] = Field(
         ...,
         description="Metadata missing rates (0.0 - 1.0)",
@@ -47,4 +51,8 @@ class DatasetAudit(BaseModel):
     phenomenon_distribution: Optional[Dict[str, int]] = Field(
         default_factory=dict,
         description="Phenomenon distribution (phenomenon: count)",
+    )
+    data_origin_distribution: Optional[Dict[str, int]] = Field(
+        default_factory=dict,
+        description="Sample distribution across data origins (LEGACY_TRAIN, LEGACY_TEST, AUGMENTED, etc.)",
     )

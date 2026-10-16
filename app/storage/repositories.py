@@ -3,8 +3,8 @@ import sqlite3
 from typing import Optional, List, Dict, Any
 from app.storage.database import Database
 from app.schemas.task import InspectionTask
-from app.schemas.sample import Sample, QualityStatus
-from app.schemas.annotation import Annotation, AnnotationType, AnnotationSource
+from app.schemas.sample import Sample, QualityStatus, DataOrigin
+from app.schemas.annotation import Annotation, AnnotationType, AnnotationSource, GeometryStatus
 from app.schemas.issue import ImportIssue, IssueType, Severity
 
 
@@ -88,6 +88,7 @@ class SampleRepository:
                 s.dataset_id,
                 s.image_path,
                 s.relative_path,
+                s.data_origin.value if isinstance(s.data_origin, DataOrigin) else str(s.data_origin),
                 s.physical_sample_id,
                 s.capture_sequence_id,
                 s.batch_id,
@@ -104,14 +105,15 @@ class SampleRepository:
             conn.executemany(
                 """
                 INSERT INTO samples (
-                    sample_id, task_id, dataset_id, image_path, relative_path,
+                    sample_id, task_id, dataset_id, image_path, relative_path, data_origin,
                     physical_sample_id, capture_sequence_id, batch_id, station, camera,
                     width, height, quality_status, quality_source, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT(task_id, relative_path) DO UPDATE SET
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(dataset_id, relative_path) DO UPDATE SET
                     sample_id = excluded.sample_id,
-                    dataset_id = excluded.dataset_id,
+                    task_id = excluded.task_id,
                     image_path = excluded.image_path,
+                    data_origin = excluded.data_origin,
                     physical_sample_id = excluded.physical_sample_id,
                     capture_sequence_id = excluded.capture_sequence_id,
                     batch_id = excluded.batch_id,
@@ -135,17 +137,29 @@ class SampleRepository:
                 return None
             return self._row_to_sample(row)
 
-    def get_by_task_and_relative_path(self, task_id: str, relative_path: str) -> Optional[Sample]:
+    def get_by_dataset_and_relative_path(self, dataset_id: str, relative_path: str) -> Optional[Sample]:
         with self.db.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT * FROM samples WHERE task_id = ? AND relative_path = ?",
-                (task_id, relative_path),
+                "SELECT * FROM samples WHERE dataset_id = ? AND relative_path = ?",
+                (dataset_id, relative_path),
             )
             row = cursor.fetchone()
             if not row:
                 return None
             return self._row_to_sample(row)
+
+    def get_many(self, sample_ids: List[str]) -> List[Sample]:
+        if not sample_ids:
+            return []
+        with self.db.connection() as conn:
+            cursor = conn.cursor()
+            placeholders = ",".join("?" for _ in sample_ids)
+            cursor.execute(
+                f"SELECT * FROM samples WHERE sample_id IN ({placeholders})",
+                sample_ids,
+            )
+            return [self._row_to_sample(r) for r in cursor.fetchall()]
 
     def count_by_task(self, task_id: str) -> int:
         with self.db.connection() as conn:
@@ -183,6 +197,7 @@ class SampleRepository:
             dataset_id=row["dataset_id"],
             image_path=row["image_path"],
             relative_path=row["relative_path"],
+            data_origin=DataOrigin(row["data_origin"]) if "data_origin" in row.keys() and row["data_origin"] else DataOrigin.UNKNOWN,
             physical_sample_id=row["physical_sample_id"],
             capture_sequence_id=row["capture_sequence_id"],
             batch_id=row["batch_id"],
@@ -215,6 +230,9 @@ class AnnotationRepository:
                 json.dumps(a.bbox) if a.bbox is not None else None,
                 json.dumps(a.polygon) if a.polygon is not None else None,
                 a.mask_path,
+                a.geometry_status.value if isinstance(a.geometry_status, GeometryStatus) else str(a.geometry_status),
+                a.source_width,
+                a.source_height,
                 a.source.value if isinstance(a.source, AnnotationSource) else str(a.source),
             )
             for a in annotations
@@ -224,8 +242,9 @@ class AnnotationRepository:
                 """
                 INSERT INTO annotations (
                     annotation_id, sample_id, annotation_type, raw_label, phenomenon,
-                    bbox_json, polygon_json, mask_path, source, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    bbox_json, polygon_json, mask_path, geometry_status, source_width, source_height,
+                    source, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(annotation_id) DO UPDATE SET
                     annotation_type = excluded.annotation_type,
                     raw_label = excluded.raw_label,
@@ -233,6 +252,9 @@ class AnnotationRepository:
                     bbox_json = excluded.bbox_json,
                     polygon_json = excluded.polygon_json,
                     mask_path = excluded.mask_path,
+                    geometry_status = excluded.geometry_status,
+                    source_width = excluded.source_width,
+                    source_height = excluded.source_height,
                     source = excluded.source,
                     updated_at = CURRENT_TIMESTAMP
                 """,
@@ -247,7 +269,6 @@ class AnnotationRepository:
         if not sample_ids:
             return
         with self.db.connection() as conn:
-            # Delete in chunks of 500 to stay under SQLite variable limits
             chunk_size = 500
             for i in range(0, len(sample_ids), chunk_size):
                 chunk = sample_ids[i : i + chunk_size]
@@ -303,6 +324,9 @@ class AnnotationRepository:
             bbox=json.loads(row["bbox_json"]) if row["bbox_json"] else None,
             polygon=json.loads(row["polygon_json"]) if row["polygon_json"] else None,
             mask_path=row["mask_path"],
+            geometry_status=GeometryStatus(row["geometry_status"]) if "geometry_status" in row.keys() and row["geometry_status"] else GeometryStatus.VALID,
+            source_width=row["source_width"] if "source_width" in row.keys() else None,
+            source_height=row["source_height"] if "source_height" in row.keys() else None,
             source=AnnotationSource(row["source"]),
         )
 
@@ -365,3 +389,134 @@ class IssueRepository:
     def clear_by_task(self, task_id: str):
         with self.db.connection() as conn:
             conn.execute("DELETE FROM import_issues WHERE task_id = ?", (task_id,))
+
+
+class FeatureRecord:
+    def __init__(
+        self,
+        sample_id: str,
+        model_id: str,
+        preprocess_key: str,
+        dim: int,
+        dtype: str,
+        embedding_blob: bytes,
+        source_file_size: Optional[int] = None,
+        source_mtime_ns: Optional[int] = None,
+    ):
+        self.sample_id = sample_id
+        self.model_id = model_id
+        self.preprocess_key = preprocess_key
+        self.dim = dim
+        self.dtype = dtype
+        self.embedding_blob = embedding_blob
+        self.source_file_size = source_file_size
+        self.source_mtime_ns = source_mtime_ns
+
+
+class FeatureRepository:
+    def __init__(self, db: Database):
+        self.db = db
+
+    def upsert_batch(self, records: List[FeatureRecord]):
+        if not records:
+            return
+        data = [
+            (
+                r.sample_id,
+                r.model_id,
+                r.preprocess_key,
+                r.dim,
+                r.dtype,
+                r.embedding_blob,
+                r.source_file_size,
+                r.source_mtime_ns,
+            )
+            for r in records
+        ]
+        with self.db.connection() as conn:
+            conn.executemany(
+                """
+                INSERT INTO feature_records (
+                    sample_id, model_id, preprocess_key, dim, dtype,
+                    embedding_blob, source_file_size, source_mtime_ns, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(sample_id, model_id, preprocess_key) DO UPDATE SET
+                    dim = excluded.dim,
+                    dtype = excluded.dtype,
+                    embedding_blob = excluded.embedding_blob,
+                    source_file_size = excluded.source_file_size,
+                    source_mtime_ns = excluded.source_mtime_ns,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                data,
+            )
+
+    def get(
+        self, sample_id: str, model_id: str, preprocess_key: str
+    ) -> Optional[FeatureRecord]:
+        with self.db.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT * FROM feature_records 
+                WHERE sample_id = ? AND model_id = ? AND preprocess_key = ?
+                """,
+                (sample_id, model_id, preprocess_key),
+            )
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return FeatureRecord(
+                sample_id=row["sample_id"],
+                model_id=row["model_id"],
+                preprocess_key=row["preprocess_key"],
+                dim=row["dim"],
+                dtype=row["dtype"],
+                embedding_blob=row["embedding_blob"],
+                source_file_size=row["source_file_size"],
+                source_mtime_ns=row["source_mtime_ns"],
+            )
+
+    def list_by_task(
+        self, task_id: str, model_id: str, preprocess_key: str
+    ) -> List[FeatureRecord]:
+        with self.db.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT f.* FROM feature_records f
+                JOIN samples s ON f.sample_id = s.sample_id
+                WHERE s.task_id = ? AND f.model_id = ? AND f.preprocess_key = ?
+                ORDER BY s.id ASC
+                """,
+                (task_id, model_id, preprocess_key),
+            )
+            rows = cursor.fetchall()
+            return [
+                FeatureRecord(
+                    sample_id=r["sample_id"],
+                    model_id=r["model_id"],
+                    preprocess_key=r["preprocess_key"],
+                    dim=r["dim"],
+                    dtype=r["dtype"],
+                    embedding_blob=r["embedding_blob"],
+                    source_file_size=r["source_file_size"],
+                    source_mtime_ns=r["source_mtime_ns"],
+                )
+                for r in rows
+            ]
+
+    def count_by_task(
+        self, task_id: str, model_id: str, preprocess_key: str
+    ) -> int:
+        with self.db.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT COUNT(*) FROM feature_records f
+                JOIN samples s ON f.sample_id = s.sample_id
+                WHERE s.task_id = ? AND f.model_id = ? AND f.preprocess_key = ?
+                """,
+                (task_id, model_id, preprocess_key),
+            )
+            return cursor.fetchone()[0]

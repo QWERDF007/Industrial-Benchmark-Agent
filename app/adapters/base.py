@@ -5,8 +5,8 @@ from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any, Generator, Iterator
 from pydantic import BaseModel, Field
 
-from app.schemas.sample import QualityStatus
-from app.schemas.annotation import AnnotationType, AnnotationSource
+from app.schemas.sample import QualityStatus, DataOrigin
+from app.schemas.annotation import AnnotationType, AnnotationSource, GeometryStatus
 from app.schemas.config import DatasetConfig, MetadataRule
 
 
@@ -28,6 +28,9 @@ class RawAnnotation(BaseModel):
     bbox: Optional[List[float]] = None
     polygon: Optional[List[List[float]]] = None
     mask_path: Optional[str] = None
+    geometry_status: GeometryStatus = GeometryStatus.VALID
+    source_width: Optional[int] = None
+    source_height: Optional[int] = None
     source: AnnotationSource = AnnotationSource.IMPORTED
 
 
@@ -50,13 +53,25 @@ class DatasetAdapter(ABC):
                 full_path = os.path.join(dirpath, filename)
                 rel_path = os.path.relpath(full_path, root)
 
-                # Check inclusion globs
-                matched = any(fnmatch.fnmatch(rel_path, pat) or fnmatch.fnmatch(filename, pat) for pat in globs)
+                # Check inclusion globs (support both root and nested paths)
+                matched = any(
+                    fnmatch.fnmatch(rel_path, pat)
+                    or fnmatch.fnmatch(filename, pat)
+                    or fnmatch.fnmatch(rel_path, pat.replace("**/", ""))
+                    or fnmatch.fnmatch(filename, pat.replace("**/", ""))
+                    for pat in globs
+                )
                 if not matched:
                     continue
 
                 # Check exclusion globs
-                excluded = any(fnmatch.fnmatch(rel_path, pat) or fnmatch.fnmatch(filename, pat) for pat in exclude_globs)
+                excluded = any(
+                    fnmatch.fnmatch(rel_path, pat)
+                    or fnmatch.fnmatch(filename, pat)
+                    or fnmatch.fnmatch(rel_path, pat.replace("**/", ""))
+                    or fnmatch.fnmatch(filename, pat.replace("**/", ""))
+                    for pat in exclude_globs
+                )
                 if excluded:
                     continue
 
@@ -66,19 +81,65 @@ class DatasetAdapter(ABC):
                     dataset_id=self.config.dataset.id,
                 )
 
+    def load_origin(self, image: RawImage) -> DataOrigin:
+        """Resolve data origin (e.g. LEGACY_TRAIN, LEGACY_TEST, AUGMENTED, MISSED_CASE, PRODUCTION_RAW)."""
+        o_cfg = self.config.origin
+        rel_path = image.relative_path
+        if o_cfg.source == "folder":
+            rel_parts = rel_path.split(os.sep)
+            for part in rel_parts[:-1]:
+                for key, val in o_cfg.mapping.items():
+                    if key.lower() == part.lower() or key in part:
+                        try:
+                            return DataOrigin(val.upper())
+                        except ValueError:
+                            return DataOrigin.UNKNOWN
+
+            stem = os.path.splitext(os.path.basename(rel_path))[0]
+            for key, val in o_cfg.mapping.items():
+                if key in stem:
+                    try:
+                        return DataOrigin(val.upper())
+                    except ValueError:
+                        return DataOrigin.UNKNOWN
+
+            try:
+                return DataOrigin(o_cfg.default.upper())
+            except ValueError:
+                return DataOrigin.UNKNOWN
+
+        elif o_cfg.source == "fixed":
+            try:
+                return DataOrigin(o_cfg.default.upper())
+            except ValueError:
+                return DataOrigin.UNKNOWN
+
+        return DataOrigin.UNKNOWN
+
     def load_quality(self, image: RawImage) -> RawQuality:
-        """Resolve quality status (PASS, FAIL, UNCERTAIN) based on config."""
+        """Resolve quality status (PASS, FAIL, UNCERTAIN) based on config and match_mode."""
         q_cfg = self.config.quality
+        match_mode = getattr(q_cfg, "match_mode", "exact")
+
         if q_cfg.source == "folder":
             rel_parts = image.relative_path.split(os.sep)
             # Check parent folder names against mapping
             for part in rel_parts[:-1]:
                 for key, val in q_cfg.mapping.items():
                     matched = False
-                    if key.isascii() and len(key) <= 3:
-                        matched = bool(re.search(r"(?:^|[_\-\s])" + re.escape(key) + r"(?:[_\-\s]|$)", part, re.IGNORECASE))
-                    else:
-                        matched = (key.lower() == part.lower()) or (key.lower() in part.lower())
+                    if match_mode == "exact":
+                        matched = (key.lower() == part.lower())
+                        if not matched and (key in part):
+                            # Token/boundary match in segment (e.g. ExportImage_漏检 matches 漏检)
+                            pattern = r"(?:^|[_\-\s])" + re.escape(key) + r"(?:[_\-\s]|$)"
+                            matched = bool(re.search(pattern, part, re.IGNORECASE))
+                    elif match_mode == "token":
+                        pattern = r"(?:^|[_\-\s])" + re.escape(key) + r"(?:[_\-\s]|$)"
+                        matched = bool(re.search(pattern, part, re.IGNORECASE))
+                    elif match_mode == "contains":
+                        matched = key.lower() in part.lower()
+                    elif match_mode == "regex":
+                        matched = bool(re.search(key, part))
 
                     if matched:
                         status = QualityStatus(val.upper())
@@ -88,10 +149,16 @@ class DatasetAdapter(ABC):
             stem = os.path.splitext(os.path.basename(image.relative_path))[0]
             for key, val in q_cfg.mapping.items():
                 matched = False
-                if key.isascii() and len(key) <= 3:
-                    matched = bool(re.search(r"(?:^|[_\-\s])" + re.escape(key) + r"(?:[_\-\s]|$)", stem, re.IGNORECASE))
-                else:
-                    matched = (key.lower() == stem.lower()) or (key.lower() in stem.lower())
+                if match_mode in ("exact", "token"):
+                    if key.lower() == stem.lower():
+                        matched = True
+                    else:
+                        pattern = r"(?:^|[_\-\s])" + re.escape(key) + r"(?:[_\-\s]|$)"
+                        matched = bool(re.search(pattern, stem, re.IGNORECASE))
+                elif match_mode == "contains":
+                    matched = key.lower() in stem.lower()
+                elif match_mode == "regex":
+                    matched = bool(re.search(key, stem))
 
                 if matched:
                     status = QualityStatus(val.upper())
@@ -124,7 +191,6 @@ class DatasetAdapter(ABC):
         for field in ["batch_id", "physical_sample_id", "capture_sequence_id", "station", "camera"]:
             rule: Optional[MetadataRule] = getattr(meta_cfg, field, None)
             if rule is None or rule.source == "none":
-                # Check task default for station/camera
                 if field == "station" and self.config.task.station:
                     result[field] = self.config.task.station
                 elif field == "camera" and self.config.task.camera:

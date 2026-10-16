@@ -15,6 +15,14 @@
     "annotated_samples": 3641,
     "unannotated_samples": 1433
   },
+  "geometry": {
+    "bbox_total": 6754,
+    "bbox_valid": 6377,
+    "bbox_clipped": 377,
+    "bbox_scaled": 0,
+    "bbox_invalid": 0,
+    "bbox_usable": 6754
+  },
   "metadata": {
     "missing_batch_id": 0.0026,
     "missing_physical_sample_id": 0.1797,
@@ -26,7 +34,7 @@
     "invalid_bbox": 377
   },
   "track_readiness": {
-    "Standard AD": "READY",
+    "Standard AD": "PARTIAL",
     "Open Normal": "NOT_EVALUATED",
     "Domain Shift": "PARTIAL",
     "Small / Weak": "PARTIAL",
@@ -760,5 +768,11 @@
     "scratch": 107,
     "missing": 64,
     "bubble": 34
+  },
+  "data_origin_distribution": {
+    "LEGACY_TRAIN": 4508,
+    "LEGACY_TEST": 505,
+    "AUGMENTED": 57,
+    "MISSED_CASE": 4
   }
 }

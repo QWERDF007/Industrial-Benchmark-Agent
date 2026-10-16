@@ -20,6 +20,7 @@ images:
 
 quality:
   source: folder
+  match_mode: exact
   default: UNCERTAIN
   mapping:
     "漏检": FAIL
@@ -27,6 +28,15 @@ quality:
     "good": PASS
     "bad": FAIL
     "ng": FAIL
+
+origin:
+  source: folder
+  mapping:
+    "Train": LEGACY_TRAIN
+    "Test": LEGACY_TEST
+    "数据增强": AUGMENTED
+    "漏检": MISSED_CASE
+  default: UNKNOWN
 
 annotations:
   format: labelme
@@ -45,6 +55,9 @@ annotations:
   location_mode: auto
   folder_replace:
     "ExportImage_": "ExportLabel_"
+  bbox_policy:
+    out_of_bounds: clip
+    source_size_mismatch: reject
 
 metadata:
   batch_id:
@@ -59,3 +72,12 @@ metadata:
   camera:
     source: fixed
     value: cam_01
+
+metadata_semantics:
+  batch_id: production_date
+
+readiness_policy:
+  standard_ad:
+    min_pass: 50
+    min_fail: 50
+    max_uncertain_ratio: 0.2

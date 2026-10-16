@@ -129,10 +129,10 @@ def test_audit_dataset(mock_audit_db):
     # Metadata check: missing batch_id = 2 / 15 = 0.1333
     assert abs(audit.metadata["missing_batch_id"] - (2 / 15)) < 1e-3
 
-    # Track readiness check
-    assert audit.track_readiness["Standard AD"] == "READY"
+    # Track readiness check (C05: without readiness policy, Standard AD is PARTIAL; without confirmed semantics, Domain Shift is NOT_EVALUATED)
+    assert audit.track_readiness["Standard AD"] == "PARTIAL"
     assert audit.track_readiness["Open Normal"] == "NOT_EVALUATED"
-    assert audit.track_readiness["Domain Shift"] == "PARTIAL"
+    assert audit.track_readiness["Domain Shift"] == "NOT_EVALUATED"
     assert audit.track_readiness["Small / Weak"] == "PARTIAL"
     assert audit.track_readiness["Global / Logical"] == "NOT_EVALUATED"
 
@@ -150,4 +150,4 @@ def test_audit_dataset(mock_audit_db):
     with open(md_path, "r", encoding="utf-8") as f:
         md = f.read()
     assert "Standard AD" in md
-    assert "READY" in md
+    assert "PARTIAL" in md

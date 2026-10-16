@@ -4,6 +4,8 @@ from app.storage.repositories import (
     SampleRepository,
     AnnotationRepository,
     IssueRepository,
+    FeatureRecord,
+    FeatureRepository,
 )
 
 __all__ = [
@@ -12,4 +14,6 @@ __all__ = [
     "SampleRepository",
     "AnnotationRepository",
     "IssueRepository",
+    "FeatureRecord",
+    "FeatureRepository",
 ]

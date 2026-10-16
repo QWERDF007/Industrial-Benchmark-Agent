@@ -18,11 +18,19 @@ def main():
     parser.add_argument(
         "--output-dir", "-o", default=None, help="Directory to save audit reports"
     )
+    parser.add_argument(
+        "--config", "-c", default=None, help="Path to dataset YAML config (optional)"
+    )
     args = parser.parse_args()
 
     try:
+        config = None
+        if args.config:
+            from app.schemas.config import load_config
+            config = load_config(args.config)
+
         audit = audit_dataset(
-            task_id=args.task, db_path=args.db, output_dir=args.output_dir
+            task_id=args.task, db_path=args.db, output_dir=args.output_dir, config=config
         )
         s = audit.samples
         m = audit.metadata

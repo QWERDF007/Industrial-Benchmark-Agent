@@ -48,15 +48,16 @@ class Database:
             )
             """)
 
-            # 2. samples
+            # 2. samples (C01: UNIQUE(dataset_id, relative_path); C06: data_origin)
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS samples (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 sample_id TEXT UNIQUE NOT NULL,
                 task_id TEXT NOT NULL,
-                dataset_id TEXT,
+                dataset_id TEXT NOT NULL,
                 image_path TEXT NOT NULL,
                 relative_path TEXT NOT NULL,
+                data_origin TEXT DEFAULT 'UNKNOWN',
                 physical_sample_id TEXT,
                 capture_sequence_id TEXT,
                 batch_id TEXT,
@@ -68,14 +69,16 @@ class Database:
                 quality_source TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(task_id, relative_path)
+                UNIQUE(dataset_id, relative_path)
             )
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_task_id ON samples(task_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_dataset_id ON samples(dataset_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_quality_status ON samples(quality_status)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_batch_id ON samples(batch_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_origin ON samples(data_origin)")
 
-            # 3. annotations
+            # 3. annotations (C03: geometry_status, source_width, source_height)
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS annotations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,6 +90,9 @@ class Database:
                 bbox_json TEXT,
                 polygon_json TEXT,
                 mask_path TEXT,
+                geometry_status TEXT DEFAULT 'VALID',
+                source_width INTEGER,
+                source_height INTEGER,
                 source TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -94,6 +100,7 @@ class Database:
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_annotations_sample_id ON annotations(sample_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_annotations_phenomenon ON annotations(phenomenon)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_annotations_geometry_status ON annotations(geometry_status)")
 
             # 4. import_issues
             cursor.execute("""
@@ -109,3 +116,23 @@ class Database:
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_issues_task_id ON import_issues(task_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_issues_type ON import_issues(issue_type)")
+
+            # 5. feature_records (Step 2 Feature Cache)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS feature_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sample_id TEXT NOT NULL,
+                model_id TEXT NOT NULL,
+                preprocess_key TEXT NOT NULL,
+                dim INTEGER NOT NULL,
+                dtype TEXT NOT NULL,
+                embedding_blob BLOB NOT NULL,
+                source_file_size INTEGER,
+                source_mtime_ns INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(sample_id, model_id, preprocess_key)
+            )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_features_sample_id ON feature_records(sample_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_features_lookup ON feature_records(sample_id, model_id, preprocess_key)")

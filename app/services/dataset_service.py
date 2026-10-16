@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field
 
 from app.schemas.config import DatasetConfig, load_config
 from app.schemas.task import InspectionTask
-from app.schemas.sample import Sample, QualityStatus
-from app.schemas.annotation import Annotation, AnnotationType, AnnotationSource
+from app.schemas.sample import Sample, QualityStatus, DataOrigin
+from app.schemas.annotation import Annotation, AnnotationType, AnnotationSource, GeometryStatus
 from app.schemas.issue import ImportIssue, IssueType, Severity
 from app.storage.database import Database
 from app.storage.repositories import (
@@ -72,6 +72,8 @@ def scan_dataset(
     total_annotations = 0
     total_issues = 0
 
+    bbox_policy = config.annotations.bbox_policy
+
     def flush_batch():
         nonlocal sample_batch, ann_batch, issue_batch, sample_ids_batch
         if not sample_batch and not issue_batch:
@@ -118,8 +120,9 @@ def scan_dataset(
                 flush_batch()
             continue
 
-        # B. Resolve quality status
+        # B. Resolve quality status and origin
         quality_info = adapter.load_quality(raw_img)
+        data_origin = adapter.load_origin(raw_img)
 
         # C. Resolve metadata
         meta = adapter.load_metadata(raw_img)
@@ -129,16 +132,13 @@ def scan_dataset(
         station = meta.get("station") or config.task.station
         camera = meta.get("camera") or config.task.camera
 
-        # Check for missing critical metadata (recorded as info/warning)
-        if not batch_id:
-            logger.debug(f"missing batch_id: {raw_img.relative_path}")
-
         sample = Sample(
             sample_id=sample_id,
             task_id=task.task_id,
             dataset_id=config.dataset.id,
             image_path=raw_img.image_path,
             relative_path=raw_img.relative_path,
+            data_origin=data_origin,
             physical_sample_id=physical_sample_id,
             capture_sequence_id=capture_sequence_id,
             batch_id=batch_id,
@@ -172,6 +172,9 @@ def scan_dataset(
             ann_id = f"{sample_id}:ann_{ann_idx}"
             raw_label = raw_ann.raw_label
             phenomenon = raw_ann.phenomenon
+            source_w = raw_ann.source_width
+            source_h = raw_ann.source_height
+            geometry_status = GeometryStatus.VALID
 
             # Unknown label handling
             if phenomenon is None and raw_label not in config.annotations.labels:
@@ -188,12 +191,57 @@ def scan_dataset(
                 )
                 total_issues += 1
 
-            # Validate bbox bounds
+            # Source size mismatch check (C03)
+            if source_w is not None and source_h is not None and (source_w != width or source_h != height):
+                if bbox_policy.source_size_mismatch == "scale" and source_w > 0 and source_h > 0:
+                    scale_x = width / float(source_w)
+                    scale_y = height / float(source_h)
+                    if raw_ann.bbox:
+                        raw_ann.bbox = [
+                            round(raw_ann.bbox[0] * scale_x, 2),
+                            round(raw_ann.bbox[1] * scale_y, 2),
+                            round(raw_ann.bbox[2] * scale_x, 2),
+                            round(raw_ann.bbox[3] * scale_y, 2),
+                        ]
+                    if raw_ann.polygon:
+                        raw_ann.polygon = [
+                            [round(p[0] * scale_x, 2), round(p[1] * scale_y, 2)]
+                            for p in raw_ann.polygon
+                        ]
+                    geometry_status = GeometryStatus.SCALED
+                else:
+                    geometry_status = GeometryStatus.INVALID
+                    issue_batch.append(
+                        ImportIssue(
+                            task_id=task.task_id,
+                            sample_id=sample_id,
+                            issue_type=IssueType.ANNOTATION_PARSE_ERROR,
+                            severity=Severity.WARNING,
+                            message=f"Source image size {source_w}x{source_h} mismatches actual {width}x{height}",
+                        )
+                    )
+                    total_issues += 1
+
+            # BBox geometry bounds check
             bbox = raw_ann.bbox
-            if bbox is not None:
+            if bbox is not None and geometry_status != GeometryStatus.INVALID:
                 xmin, ymin, xmax, ymax = bbox
-                if xmin >= xmax or ymin >= ymax or xmin < 0 or ymin < 0 or xmax > width or ymax > height:
-                    logger.warning(f"Invalid bbox {bbox} on image {width}x{height} in {raw_img.relative_path}")
+                inverted = (xmin >= xmax or ymin >= ymax)
+                out_of_bounds = (xmin < 0 or ymin < 0 or xmax > width or ymax > height)
+
+                if inverted:
+                    geometry_status = GeometryStatus.INVALID
+                    issue_batch.append(
+                        ImportIssue(
+                            task_id=task.task_id,
+                            sample_id=sample_id,
+                            issue_type=IssueType.INVALID_BBOX,
+                            severity=Severity.WARNING,
+                            message=f"Inverted bbox coordinates {bbox}",
+                        )
+                    )
+                    total_issues += 1
+                elif out_of_bounds:
                     issue_batch.append(
                         ImportIssue(
                             task_id=task.task_id,
@@ -204,15 +252,19 @@ def scan_dataset(
                         )
                     )
                     total_issues += 1
-                    # Clamp coordinates
-                    xmin = max(0.0, min(float(width), xmin))
-                    ymin = max(0.0, min(float(height), ymin))
-                    xmax = max(0.0, min(float(width), xmax))
-                    ymax = max(0.0, min(float(height), ymax))
-                    if xmin < xmax and ymin < ymax:
-                        bbox = [round(xmin, 2), round(ymin, 2), round(xmax, 2), round(ymax, 2)]
+                    if bbox_policy.out_of_bounds == "clip":
+                        c_xmin = max(0.0, min(float(width), xmin))
+                        c_ymin = max(0.0, min(float(height), ymin))
+                        c_xmax = max(0.0, min(float(width), xmax))
+                        c_ymax = max(0.0, min(float(height), ymax))
+                        if c_xmin < c_xmax and c_ymin < c_ymax:
+                            bbox = [round(c_xmin, 2), round(c_ymin, 2), round(c_xmax, 2), round(c_ymax, 2)]
+                            geometry_status = GeometryStatus.CLIPPED
+                        else:
+                            geometry_status = GeometryStatus.INVALID
                     else:
-                        bbox = None
+                        # Default "reject"
+                        geometry_status = GeometryStatus.INVALID
 
             ann = Annotation(
                 annotation_id=ann_id,
@@ -223,6 +275,9 @@ def scan_dataset(
                 bbox=bbox,
                 polygon=raw_ann.polygon,
                 mask_path=raw_ann.mask_path,
+                geometry_status=geometry_status,
+                source_width=source_w,
+                source_height=source_h,
                 source=raw_ann.source,
             )
             ann_batch.append(ann)

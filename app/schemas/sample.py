@@ -9,12 +9,22 @@ class QualityStatus(str, Enum):
     UNCERTAIN = "UNCERTAIN"
 
 
+class DataOrigin(str, Enum):
+    PRODUCTION_RAW = "PRODUCTION_RAW"
+    LEGACY_TRAIN = "LEGACY_TRAIN"
+    LEGACY_TEST = "LEGACY_TEST"
+    AUGMENTED = "AUGMENTED"
+    MISSED_CASE = "MISSED_CASE"
+    UNKNOWN = "UNKNOWN"
+
+
 class Sample(BaseModel):
-    sample_id: str = Field(..., description="Unique sample identifier (e.g. image record)")
+    sample_id: str = Field(..., description="Unique sample identifier (e.g. dataset_id:relative_path)")
     task_id: str = Field(..., description="Inspection task ID")
-    dataset_id: Optional[str] = Field(None, description="Dataset identifier")
+    dataset_id: str = Field("default", description="Dataset identifier")
     image_path: str = Field(..., description="Absolute path to image file")
     relative_path: str = Field(..., description="Path relative to dataset root")
+    data_origin: DataOrigin = Field(DataOrigin.UNKNOWN, description="Data origin/split lineage")
 
     physical_sample_id: Optional[str] = Field(None, description="Physical workpiece / object ID")
     capture_sequence_id: Optional[str] = Field(None, description="Capture timestamp or sequence ID")
@@ -36,4 +46,14 @@ class Sample(BaseModel):
             if v_upper in ("PASS", "FAIL", "UNCERTAIN"):
                 return QualityStatus(v_upper)
             raise ValueError(f"Invalid quality_status '{v}'. Must be PASS, FAIL, or UNCERTAIN.")
+        return v
+
+    @field_validator("data_origin", mode="before")
+    def validate_data_origin(cls, v):
+        if isinstance(v, str):
+            v_upper = v.upper()
+            try:
+                return DataOrigin(v_upper)
+            except ValueError:
+                return DataOrigin.UNKNOWN
         return v

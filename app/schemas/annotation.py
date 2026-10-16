@@ -18,6 +18,13 @@ class AnnotationSource(str, Enum):
     UNKNOWN = "unknown"
 
 
+class GeometryStatus(str, Enum):
+    VALID = "VALID"
+    CLIPPED = "CLIPPED"
+    SCALED = "SCALED"
+    INVALID = "INVALID"
+
+
 class Annotation(BaseModel):
     annotation_id: str = Field(..., description="Unique annotation identifier")
     sample_id: str = Field(..., description="Sample ID this annotation belongs to")
@@ -29,5 +36,9 @@ class Annotation(BaseModel):
     bbox: Optional[List[float]] = Field(None, description="[xmin, ymin, xmax, ymax] in pixels")
     polygon: Optional[List[List[float]]] = Field(None, description="List of [x, y] vertices")
     mask_path: Optional[str] = Field(None, description="Path to binary segmentation mask file")
+
+    geometry_status: GeometryStatus = Field(GeometryStatus.VALID, description="Geometry validity status")
+    source_width: Optional[int] = Field(None, description="Annotated source image width")
+    source_height: Optional[int] = Field(None, description="Annotated source image height")
 
     source: AnnotationSource = Field(AnnotationSource.IMPORTED, description="Annotation source")

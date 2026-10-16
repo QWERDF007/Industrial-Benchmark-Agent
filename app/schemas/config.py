@@ -1,9 +1,10 @@
 import os
+import re
 from typing import Optional, List, Dict, Any
 import yaml
 from pydantic import BaseModel, Field
 
-from app.schemas.sample import QualityStatus
+from app.schemas.sample import QualityStatus, DataOrigin
 from app.schemas.annotation import AnnotationSource
 
 
@@ -37,6 +38,10 @@ class QualityConfig(BaseModel):
         "folder",
         description="Quality source strategy: 'folder', 'filename_regex', 'fixed', or 'default'",
     )
+    match_mode: str = Field(
+        "exact",
+        description="Folder quality match mode: 'exact', 'token', 'contains', 'regex'",
+    )
     default: QualityStatus = Field(
         QualityStatus.UNCERTAIN,
         description="Default quality status when not resolvable",
@@ -48,6 +53,32 @@ class QualityConfig(BaseModel):
     pattern: Optional[str] = Field(
         None,
         description="Regex pattern if source is 'filename_regex'",
+    )
+
+
+class OriginConfig(BaseModel):
+    source: str = Field(
+        "folder",
+        description="Origin source strategy: 'folder', 'fixed', 'regex'",
+    )
+    mapping: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Mapping from folder name / pattern to DataOrigin enum string",
+    )
+    default: str = Field(
+        "UNKNOWN",
+        description="Default DataOrigin if not matched",
+    )
+
+
+class BBoxPolicyConfig(BaseModel):
+    out_of_bounds: str = Field(
+        "reject",
+        description="Policy for out-of-bounds bbox coordinates: 'reject', 'clip'",
+    )
+    source_size_mismatch: str = Field(
+        "reject",
+        description="Policy when label file image size mismatches decoded image size: 'reject', 'scale'",
     )
 
 
@@ -64,20 +95,21 @@ class AnnotationsConfig(BaseModel):
         AnnotationSource.IMPORTED,
         description="Annotation source",
     )
-    # Strategy for locating annotation file corresponding to an image:
-    # 'sidecar': image_stem + '.json' in same folder
-    # 'folder_replace': replace image folder name with label folder name (e.g. ExportImage_ -> ExportLabel_)
     location_mode: str = Field(
         "auto",
         description="How to locate label files: 'auto', 'sidecar', 'folder_replace'",
     )
     folder_replace: Optional[Dict[str, str]] = Field(
         None,
-        description="String replacement dict for image folder to label folder, e.g. {'ExportImage_': 'ExportLabel_'}",
+        description="String replacement dict for image folder to label folder",
     )
     extension: Optional[str] = Field(
         None,
         description="Label file extension, e.g. '.json' or '.txt'",
+    )
+    bbox_policy: BBoxPolicyConfig = Field(
+        default_factory=BBoxPolicyConfig,
+        description="Policy for handling bbox bounding errors",
     )
 
 
@@ -99,14 +131,27 @@ class MetadataConfig(BaseModel):
     camera: Optional[MetadataRule] = None
 
 
+class StandardADReadinessPolicy(BaseModel):
+    min_pass: Optional[int] = Field(None, description="Minimum PASS count required for READY")
+    min_fail: Optional[int] = Field(None, description="Minimum FAIL count required for READY")
+    max_uncertain_ratio: Optional[float] = Field(None, description="Maximum uncertain sample ratio")
+
+
+class ReadinessPolicyConfig(BaseModel):
+    standard_ad: Optional[StandardADReadinessPolicy] = None
+
+
 class DatasetConfig(BaseModel):
     dataset: DatasetInfo
     root: str = Field(..., description="Root directory of the dataset")
     task: TaskConfig
     images: ImagesConfig = Field(default_factory=ImagesConfig)
     quality: QualityConfig = Field(default_factory=QualityConfig)
+    origin: OriginConfig = Field(default_factory=OriginConfig)
     annotations: AnnotationsConfig = Field(default_factory=AnnotationsConfig)
     metadata: MetadataConfig = Field(default_factory=MetadataConfig)
+    readiness_policy: Optional[ReadinessPolicyConfig] = None
+    metadata_semantics: Dict[str, str] = Field(default_factory=dict)
 
 
 def load_config(config_path: str) -> DatasetConfig:

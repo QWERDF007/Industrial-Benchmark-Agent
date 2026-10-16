@@ -67,6 +67,13 @@ class LabelmeAdapter(DatasetAdapter):
             # Re-raise to let scanner record ANNOTATION_PARSE_ERROR issue
             raise ValueError(f"Failed to parse Labelme JSON '{label_file}': {e}")
 
+        source_width = data.get("imageWidth")
+        source_height = data.get("imageHeight")
+        if source_width is not None:
+            source_width = int(source_width)
+        if source_height is not None:
+            source_height = int(source_height)
+
         shapes = data.get("shapes", [])
         annotations: List[RawAnnotation] = []
 
@@ -86,6 +93,8 @@ class LabelmeAdapter(DatasetAdapter):
                         raw_label=raw_label,
                         phenomenon=phenomenon,
                         bbox=bbox,
+                        source_width=source_width,
+                        source_height=source_height,
                         source=self.config.annotations.source,
                     )
                 )
@@ -101,11 +110,12 @@ class LabelmeAdapter(DatasetAdapter):
                         phenomenon=phenomenon,
                         bbox=bbox,
                         polygon=polygon,
+                        source_width=source_width,
+                        source_height=source_height,
                         source=self.config.annotations.source,
                     )
                 )
             else:
-                # Other shape types (circle, point, line) or invalid points
                 if len(points) >= 2:
                     xs = [float(p[0]) for p in points]
                     ys = [float(p[1]) for p in points]
@@ -118,6 +128,8 @@ class LabelmeAdapter(DatasetAdapter):
                         raw_label=raw_label,
                         phenomenon=phenomenon,
                         bbox=bbox,
+                        source_width=source_width,
+                        source_height=source_height,
                         source=self.config.annotations.source,
                     )
                 )

@@ -1,0 +1,9 @@
+{
+  "task_id": "kuangjiao_inspection_01",
+  "model_id": "dinov2_vitb14_reg",
+  "preprocess_key": "dinov2_224_norm",
+  "num_vectors": 5074,
+  "dim": 768,
+  "metric": "cosine",
+  "created_at": "2026-10-16T10:46:53Z"
+}

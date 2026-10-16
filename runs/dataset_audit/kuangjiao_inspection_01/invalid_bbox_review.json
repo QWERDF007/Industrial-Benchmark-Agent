@@ -1,0 +1,2815 @@
+{
+  "total_bboxes": 6754,
+  "total_invalid": 377,
+  "summary": {
+    "minor_out_of_bounds": 370,
+    "source_size_mismatch": 0,
+    "invalid_order": 0,
+    "fully_outside": 0,
+    "degenerate_after_clip": 0,
+    "severe_out_of_bounds": 7,
+    "unknown": 0
+  },
+  "samples": [
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2022_08_19_13_15_15_853269.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2022_08_19_13_15_15_853269.json",
+      "label": "18",
+      "raw_bbox": [
+        544.99,
+        978.68,
+        631.65,
+        1009.84
+      ],
+      "image_size": [
+        1178,
+        1008
+      ],
+      "source_size": [
+        1178,
+        1008
+      ],
+      "overflow_pixels": 1.84,
+      "clipped_bbox": [
+        544.99,
+        978.68,
+        631.65,
+        1008.0
+      ],
+      "clipped_area": 2540.87,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-08-19_00.53.54.477_1_(9352)_ch_9353_2738198749561313281_3_copy_0_250912.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2023-08-19_00.53.54.477_1_(9352)_ch_9353_2738198749561313281_3_copy_0_250912.json",
+      "label": "13",
+      "raw_bbox": [
+        -1.28,
+        616.2,
+        225.05,
+        630.93
+      ],
+      "image_size": [
+        895,
+        641
+      ],
+      "source_size": [
+        895,
+        641
+      ],
+      "overflow_pixels": 1.28,
+      "clipped_bbox": [
+        0.0,
+        616.2,
+        225.05,
+        630.93
+      ],
+      "clipped_area": 3314.99,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-08-19_06.31.42.633_2_(4832)_ch_4833_864701314952483329_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2023-08-19_06.31.42.633_2_(4832)_ch_4833_864701314952483329_1.json",
+      "label": "17",
+      "raw_bbox": [
+        722.35,
+        456.08,
+        871.59,
+        718.0
+      ],
+      "image_size": [
+        942,
+        717
+      ],
+      "source_size": [
+        942,
+        717
+      ],
+      "overflow_pixels": 1.0,
+      "clipped_bbox": [
+        722.35,
+        456.08,
+        871.59,
+        717.0
+      ],
+      "clipped_area": 38939.7,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-09-05_14.52.19.085_2_(88)_ch_90_1224990052546386436_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2023-09-05_14.52.19.085_2_(88)_ch_90_1224990052546386436_0.json",
+      "label": "19",
+      "raw_bbox": [
+        460.93,
+        673.78,
+        530.91,
+        707.13
+      ],
+      "image_size": [
+        916,
+        705
+      ],
+      "source_size": [
+        916,
+        705
+      ],
+      "overflow_pixels": 2.13,
+      "clipped_bbox": [
+        460.93,
+        673.78,
+        530.91,
+        705.0
+      ],
+      "clipped_area": 2184.78,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023_07_03_17_33_31_040909.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2023_07_03_17_33_31_040909.json",
+      "label": "15",
+      "raw_bbox": [
+        -0.29,
+        574.75,
+        157.34,
+        584.52
+      ],
+      "image_size": [
+        849,
+        634
+      ],
+      "source_size": [
+        849,
+        634
+      ],
+      "overflow_pixels": 0.29,
+      "clipped_bbox": [
+        0.0,
+        574.75,
+        157.34,
+        584.52
+      ],
+      "clipped_area": 1537.21,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023_07_29_15_24_01_813205.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2023_07_29_15_24_01_813205.json",
+      "label": "19",
+      "raw_bbox": [
+        406.55,
+        -1.91,
+        476.03,
+        89.22
+      ],
+      "image_size": [
+        900,
+        634
+      ],
+      "source_size": [
+        900,
+        634
+      ],
+      "overflow_pixels": 1.91,
+      "clipped_bbox": [
+        406.55,
+        0.0,
+        476.03,
+        89.22
+      ],
+      "clipped_area": 6199.01,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023_07_29_15_24_01_813205.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2023_07_29_15_24_01_813205.json",
+      "label": "15",
+      "raw_bbox": [
+        -0.68,
+        594.54,
+        36.14,
+        605.3
+      ],
+      "image_size": [
+        900,
+        634
+      ],
+      "source_size": [
+        900,
+        634
+      ],
+      "overflow_pixels": 0.68,
+      "clipped_bbox": [
+        0.0,
+        594.54,
+        36.14,
+        605.3
+      ],
+      "clipped_area": 388.87,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023_11_11_14_06_57_161013.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2023_11_11_14_06_57_161013.json",
+      "label": "13",
+      "raw_bbox": [
+        804.79,
+        394.47,
+        818.52,
+        631.5
+      ],
+      "image_size": [
+        842,
+        631
+      ],
+      "source_size": [
+        842,
+        631
+      ],
+      "overflow_pixels": 0.5,
+      "clipped_bbox": [
+        804.79,
+        394.47,
+        818.52,
+        631.0
+      ],
+      "clipped_area": 3247.56,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023_12_02_18_51_11_475475.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2023_12_02_18_51_11_475475.json",
+      "label": "15",
+      "raw_bbox": [
+        822.3,
+        44.88,
+        900.33,
+        52.77
+      ],
+      "image_size": [
+        900,
+        758
+      ],
+      "source_size": [
+        900,
+        758
+      ],
+      "overflow_pixels": 0.33,
+      "clipped_bbox": [
+        822.3,
+        44.88,
+        900.0,
+        52.77
+      ],
+      "clipped_area": 613.05,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023_12_15_13_51_20_233093.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2023_12_15_13_51_20_233093.json",
+      "label": "15",
+      "raw_bbox": [
+        -1.05,
+        12.59,
+        16.41,
+        19.17
+      ],
+      "image_size": [
+        883,
+        639
+      ],
+      "source_size": [
+        883,
+        639
+      ],
+      "overflow_pixels": 1.05,
+      "clipped_bbox": [
+        0.0,
+        12.59,
+        16.41,
+        19.17
+      ],
+      "clipped_area": 107.98,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024-01-08_23.03.15.973_1_(3624)_ch_3625_4468150278888491521_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2024-01-08_23.03.15.973_1_(3624)_ch_3625_4468150278888491521_0.json",
+      "label": "17",
+      "raw_bbox": [
+        245.39,
+        -2.02,
+        267.04,
+        37.4
+      ],
+      "image_size": [
+        910,
+        635
+      ],
+      "source_size": [
+        910,
+        635
+      ],
+      "overflow_pixels": 2.02,
+      "clipped_bbox": [
+        245.39,
+        0.0,
+        267.04,
+        37.4
+      ],
+      "clipped_area": 809.71,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024-06-29_13.40.05.991_2_(145)_ch_146_6774563873721536001_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2024-06-29_13.40.05.991_2_(145)_ch_146_6774563873721536001_0.json",
+      "label": "15",
+      "raw_bbox": [
+        -1.14,
+        39.11,
+        172.04,
+        51.21
+      ],
+      "image_size": [
+        1007,
+        770
+      ],
+      "source_size": [
+        1007,
+        770
+      ],
+      "overflow_pixels": 1.14,
+      "clipped_bbox": [
+        0.0,
+        39.11,
+        172.04,
+        51.21
+      ],
+      "clipped_area": 2081.68,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024-06-29_13.40.05.991_2_(145)_ch_146_6774563873721536001_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2024-06-29_13.40.05.991_2_(145)_ch_146_6774563873721536001_0.json",
+      "label": "15",
+      "raw_bbox": [
+        891.76,
+        46.55,
+        1007.21,
+        56.79
+      ],
+      "image_size": [
+        1007,
+        770
+      ],
+      "source_size": [
+        1007,
+        770
+      ],
+      "overflow_pixels": 0.21,
+      "clipped_bbox": [
+        891.76,
+        46.55,
+        1007.0,
+        56.79
+      ],
+      "clipped_area": 1180.06,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024-07-05_09.36.49.957_1_(784)_ch_785_8935729002853583361_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2024-07-05_09.36.49.957_1_(784)_ch_785_8935729002853583361_0.json",
+      "label": "17",
+      "raw_bbox": [
+        62.24,
+        429.21,
+        232.45,
+        789.97
+      ],
+      "image_size": [
+        920,
+        765
+      ],
+      "source_size": [
+        920,
+        765
+      ],
+      "overflow_pixels": 24.97,
+      "clipped_bbox": [
+        62.24,
+        429.21,
+        232.45,
+        765.0
+      ],
+      "clipped_area": 57154.82,
+      "category": "severe_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024-07-18_00.07.42.667_2_(4054)_ch_4055_3243742581405685249_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2024-07-18_00.07.42.667_2_(4054)_ch_4055_3243742581405685249_3.json",
+      "label": "17",
+      "raw_bbox": [
+        644.81,
+        -3.11,
+        784.54,
+        282.57
+      ],
+      "image_size": [
+        858,
+        642
+      ],
+      "source_size": [
+        858,
+        642
+      ],
+      "overflow_pixels": 3.11,
+      "clipped_bbox": [
+        644.81,
+        0.0,
+        784.54,
+        282.57
+      ],
+      "clipped_area": 39483.51,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024-09-07_23.03.55.692_2_(6596)_ch_6597_1514362622849603585_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2024-09-07_23.03.55.692_2_(6596)_ch_6597_1514362622849603585_0.json",
+      "label": "13",
+      "raw_bbox": [
+        679.35,
+        30.11,
+        1016.47,
+        47.2
+      ],
+      "image_size": [
+        1015,
+        770
+      ],
+      "source_size": [
+        1015,
+        770
+      ],
+      "overflow_pixels": 1.47,
+      "clipped_bbox": [
+        679.35,
+        30.11,
+        1015.0,
+        47.2
+      ],
+      "clipped_area": 5736.26,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024_06_14_17_34_46_729080.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2024_06_14_17_34_46_729080.json",
+      "label": "13",
+      "raw_bbox": [
+        777.03,
+        634.02,
+        826.17,
+        661.51
+      ],
+      "image_size": [
+        826,
+        703
+      ],
+      "source_size": [
+        826,
+        703
+      ],
+      "overflow_pixels": 0.17,
+      "clipped_bbox": [
+        777.03,
+        634.02,
+        826.0,
+        661.51
+      ],
+      "clipped_area": 1346.19,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024_07_29_15_26_23_207435.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2024_07_29_15_26_23_207435.json",
+      "label": "13",
+      "raw_bbox": [
+        839.93,
+        489.8,
+        865.72,
+        679.69
+      ],
+      "image_size": [
+        868,
+        678
+      ],
+      "source_size": [
+        868,
+        678
+      ],
+      "overflow_pixels": 1.69,
+      "clipped_bbox": [
+        839.93,
+        489.8,
+        865.72,
+        678.0
+      ],
+      "clipped_area": 4853.68,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024_08_19_19_10_11_831489.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2024_08_19_19_10_11_831489.json",
+      "label": "13",
+      "raw_bbox": [
+        839.01,
+        514.12,
+        869.22,
+        631.67
+      ],
+      "image_size": [
+        904,
+        631
+      ],
+      "source_size": [
+        904,
+        631
+      ],
+      "overflow_pixels": 0.67,
+      "clipped_bbox": [
+        839.01,
+        514.12,
+        869.22,
+        631.0
+      ],
+      "clipped_area": 3530.94,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-06-18_09.12.43.933_(4563)_1_-1_2_ch_4562_19_1_.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2025-06-18_09.12.43.933_(4563)_1_-1_2_ch_4562_19_1_.json",
+      "label": "13",
+      "raw_bbox": [
+        819.92,
+        583.27,
+        839.98,
+        641.37
+      ],
+      "image_size": [
+        865,
+        640
+      ],
+      "source_size": [
+        865,
+        640
+      ],
+      "overflow_pixels": 1.37,
+      "clipped_bbox": [
+        819.92,
+        583.27,
+        839.98,
+        640.0
+      ],
+      "clipped_area": 1138.0,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-09-17_15.42.32.771_(739)_1_-1_1_ch_738_19_0_.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2025-09-17_15.42.32.771_(739)_1_-1_1_ch_738_19_0_.json",
+      "label": "17",
+      "raw_bbox": [
+        383.31,
+        -0.15,
+        443.91,
+        17.69
+      ],
+      "image_size": [
+        899,
+        675
+      ],
+      "source_size": [
+        899,
+        675
+      ],
+      "overflow_pixels": 0.15,
+      "clipped_bbox": [
+        383.31,
+        0.0,
+        443.91,
+        17.69
+      ],
+      "clipped_area": 1072.01,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-10-22_05.07.45.235_(17817)_1_-1_2_ch_17816_14_1_.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/2025-10-22_05.07.45.235_(17817)_1_-1_2_ch_17816_14_1_.json",
+      "label": "13",
+      "raw_bbox": [
+        -1.01,
+        7.97,
+        237.99,
+        27.97
+      ],
+      "image_size": [
+        945,
+        755
+      ],
+      "source_size": [
+        945,
+        755
+      ],
+      "overflow_pixels": 1.01,
+      "clipped_bbox": [
+        0.0,
+        7.97,
+        237.99,
+        27.97
+      ],
+      "clipped_area": 4759.8,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0323151527418__vec_image_747_7407_746_zoom_rois-64_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0323151527418__vec_image_747_7407_746_zoom_rois-64_0.json",
+      "label": "13",
+      "raw_bbox": [
+        -3.51,
+        45.73,
+        397.36,
+        208.55
+      ],
+      "image_size": [
+        2057,
+        1845
+      ],
+      "source_size": [
+        2057,
+        1845
+      ],
+      "overflow_pixels": 3.51,
+      "clipped_bbox": [
+        0.0,
+        45.73,
+        397.36,
+        208.55
+      ],
+      "clipped_area": 64698.16,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0414105941998__vec_image_583_783_582_ImageClipping-152_2.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0414105941998__vec_image_583_783_582_ImageClipping-152_2.json",
+      "label": "15",
+      "raw_bbox": [
+        2097.18,
+        1691.98,
+        2279.17,
+        1717.02
+      ],
+      "image_size": [
+        2275,
+        1850
+      ],
+      "source_size": [
+        2275,
+        1850
+      ],
+      "overflow_pixels": 4.17,
+      "clipped_bbox": [
+        2097.18,
+        1691.98,
+        2275.0,
+        1717.02
+      ],
+      "clipped_area": 4452.61,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0414105941998__vec_image_583_783_582_ImageClipping-152_2.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0414105941998__vec_image_583_783_582_ImageClipping-152_2.json",
+      "label": "15",
+      "raw_bbox": [
+        -7.88,
+        1706.91,
+        515.9,
+        1734.08
+      ],
+      "image_size": [
+        2275,
+        1850
+      ],
+      "source_size": [
+        2275,
+        1850
+      ],
+      "overflow_pixels": 7.88,
+      "clipped_bbox": [
+        0.0,
+        1706.91,
+        515.9,
+        1734.08
+      ],
+      "clipped_area": 14017.0,
+      "category": "severe_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0414111014112__vec_image_1053_2209_1052_ImageClipping-152_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0414111014112__vec_image_1053_2209_1052_ImageClipping-152_1.json",
+      "label": "15",
+      "raw_bbox": [
+        -2.23,
+        167.5,
+        327.19,
+        185.44
+      ],
+      "image_size": [
+        2277,
+        1850
+      ],
+      "source_size": [
+        2277,
+        1850
+      ],
+      "overflow_pixels": 2.23,
+      "clipped_bbox": [
+        0.0,
+        167.5,
+        327.19,
+        185.44
+      ],
+      "clipped_area": 5869.79,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0521125010012__vec_image_566_1209_565_ImageClipping-152_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0521125010012__vec_image_566_1209_565_ImageClipping-152_1.json",
+      "label": "15",
+      "raw_bbox": [
+        2087.61,
+        139.98,
+        2175.16,
+        153.67
+      ],
+      "image_size": [
+        2175,
+        1672
+      ],
+      "source_size": [
+        2175,
+        1672
+      ],
+      "overflow_pixels": 0.16,
+      "clipped_bbox": [
+        2087.61,
+        139.98,
+        2175.0,
+        153.67
+      ],
+      "clipped_area": 1196.37,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0524100552507__vec_image_578_705_577_ImageClipping-19_0_copy_0_250909.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0524100552507__vec_image_578_705_577_ImageClipping-19_0_copy_0_250909.json",
+      "label": "16",
+      "raw_bbox": [
+        2099.94,
+        254.49,
+        2152.43,
+        354.57
+      ],
+      "image_size": [
+        2152,
+        1682
+      ],
+      "source_size": [
+        2152,
+        1682
+      ],
+      "overflow_pixels": 0.43,
+      "clipped_bbox": [
+        2099.94,
+        254.49,
+        2152.0,
+        354.57
+      ],
+      "clipped_area": 5210.16,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0806104646814__vec_image_30760_14519_2974_TrackImg-219_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0806104646814__vec_image_30760_14519_2974_TrackImg-219_1.json",
+      "label": "13",
+      "raw_bbox": [
+        -1.72,
+        36.33,
+        245.99,
+        80.3
+      ],
+      "image_size": [
+        1206,
+        1006
+      ],
+      "source_size": [
+        1206,
+        1006
+      ],
+      "overflow_pixels": 1.72,
+      "clipped_bbox": [
+        0.0,
+        36.33,
+        245.99,
+        80.3
+      ],
+      "clipped_area": 10816.18,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0806104657087__vec_image_30950_14661_2998_TrackImg-219_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0806104657087__vec_image_30950_14661_2998_TrackImg-219_0.json",
+      "label": "13",
+      "raw_bbox": [
+        672.72,
+        25.71,
+        1206.55,
+        80.47
+      ],
+      "image_size": [
+        1206,
+        1007
+      ],
+      "source_size": [
+        1206,
+        1007
+      ],
+      "overflow_pixels": 0.55,
+      "clipped_bbox": [
+        672.72,
+        25.71,
+        1206.0,
+        80.47
+      ],
+      "clipped_area": 29202.41,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0806104658088__vec_image_30968_14675_3000_TrackImg-219_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0806104658088__vec_image_30968_14675_3000_TrackImg-219_1.json",
+      "label": "13",
+      "raw_bbox": [
+        -0.81,
+        37.33,
+        247.93,
+        82.65
+      ],
+      "image_size": [
+        1206,
+        1007
+      ],
+      "source_size": [
+        1206,
+        1007
+      ],
+      "overflow_pixels": 0.81,
+      "clipped_bbox": [
+        0.0,
+        37.33,
+        247.93,
+        82.65
+      ],
+      "clipped_area": 11236.19,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0806104722771__vec_image_31263_14706_3017_TrackImg-219_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0806104722771__vec_image_31263_14706_3017_TrackImg-219_0.json",
+      "label": "13",
+      "raw_bbox": [
+        526.46,
+        22.71,
+        1207.47,
+        82.12
+      ],
+      "image_size": [
+        1206,
+        1007
+      ],
+      "source_size": [
+        1206,
+        1007
+      ],
+      "overflow_pixels": 1.47,
+      "clipped_bbox": [
+        526.46,
+        22.71,
+        1206.0,
+        82.12
+      ],
+      "clipped_area": 40371.47,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0806104723678__vec_image_31280_14716_3019_TrackImg-219_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0806104723678__vec_image_31280_14716_3019_TrackImg-219_1.json",
+      "label": "13",
+      "raw_bbox": [
+        -0.28,
+        38.54,
+        247.95,
+        83.27
+      ],
+      "image_size": [
+        1206,
+        1007
+      ],
+      "source_size": [
+        1206,
+        1007
+      ],
+      "overflow_pixels": 0.28,
+      "clipped_bbox": [
+        0.0,
+        38.54,
+        247.95,
+        83.27
+      ],
+      "clipped_area": 11090.8,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0806104843515__vec_image_32351_15045_3102_TrackImg-219_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0806104843515__vec_image_32351_15045_3102_TrackImg-219_3.json",
+      "label": "13",
+      "raw_bbox": [
+        -0.72,
+        932.51,
+        54.86,
+        978.05
+      ],
+      "image_size": [
+        1206,
+        1010
+      ],
+      "source_size": [
+        1206,
+        1010
+      ],
+      "overflow_pixels": 0.72,
+      "clipped_bbox": [
+        0.0,
+        932.51,
+        54.86,
+        978.05
+      ],
+      "clipped_area": 2498.32,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0806104853701__vec_image_32530_15183_3123_TrackImg-219_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0806104853701__vec_image_32530_15183_3123_TrackImg-219_1.json",
+      "label": "13",
+      "raw_bbox": [
+        -0.83,
+        39.17,
+        247.09,
+        81.84
+      ],
+      "image_size": [
+        1205,
+        1007
+      ],
+      "source_size": [
+        1205,
+        1007
+      ],
+      "overflow_pixels": 0.83,
+      "clipped_bbox": [
+        0.0,
+        39.17,
+        247.09,
+        81.84
+      ],
+      "clipped_area": 10543.33,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0806104905809__vec_image_32757_15350_3152_TrackImg-219_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0806104905809__vec_image_32757_15350_3152_TrackImg-219_3.json",
+      "label": "13",
+      "raw_bbox": [
+        -0.45,
+        948.38,
+        47.14,
+        976.96
+      ],
+      "image_size": [
+        1206,
+        1010
+      ],
+      "source_size": [
+        1206,
+        1010
+      ],
+      "overflow_pixels": 0.45,
+      "clipped_bbox": [
+        0.0,
+        948.38,
+        47.14,
+        976.96
+      ],
+      "clipped_area": 1347.26,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0806105010056__vec_image_33805_15936_3271_TrackImg-219_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0806105010056__vec_image_33805_15936_3271_TrackImg-219_3.json",
+      "label": "13",
+      "raw_bbox": [
+        -0.84,
+        932.43,
+        49.13,
+        977.53
+      ],
+      "image_size": [
+        1205,
+        1008
+      ],
+      "source_size": [
+        1205,
+        1008
+      ],
+      "overflow_pixels": 0.84,
+      "clipped_bbox": [
+        0.0,
+        932.43,
+        49.13,
+        977.53
+      ],
+      "clipped_area": 2215.76,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0806105235077__vec_image_830_392_77_TrackImg-219_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0806105235077__vec_image_830_392_77_TrackImg-219_3.json",
+      "label": "13",
+      "raw_bbox": [
+        -2.31,
+        931.82,
+        51.11,
+        981.68
+      ],
+      "image_size": [
+        1205,
+        1010
+      ],
+      "source_size": [
+        1205,
+        1010
+      ],
+      "overflow_pixels": 2.31,
+      "clipped_bbox": [
+        0.0,
+        931.82,
+        51.11,
+        981.68
+      ],
+      "clipped_area": 2548.34,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0806105303372__vec_image_1357_799_144_TrackImg-219_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0806105303372__vec_image_1357_799_144_TrackImg-219_1.json",
+      "label": "13",
+      "raw_bbox": [
+        -1.12,
+        38.86,
+        247.42,
+        82.63
+      ],
+      "image_size": [
+        1205,
+        1007
+      ],
+      "source_size": [
+        1205,
+        1007
+      ],
+      "overflow_pixels": 1.12,
+      "clipped_bbox": [
+        0.0,
+        38.86,
+        247.42,
+        82.63
+      ],
+      "clipped_area": 10829.57,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0809130026704__vec_image_29458_11483_2546_TrackImg-219_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0809130026704__vec_image_29458_11483_2546_TrackImg-219_0.json",
+      "label": "15",
+      "raw_bbox": [
+        999.59,
+        69.16,
+        1121.25,
+        80.64
+      ],
+      "image_size": [
+        1121,
+        893
+      ],
+      "source_size": [
+        1121,
+        893
+      ],
+      "overflow_pixels": 0.25,
+      "clipped_bbox": [
+        999.59,
+        69.16,
+        1121.0,
+        80.64
+      ],
+      "clipped_area": 1393.79,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0919181158949__vec_image_3372_517_88_TrackImg-174_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0919181158949__vec_image_3372_517_88_TrackImg-174_3.json",
+      "label": "15",
+      "raw_bbox": [
+        -0.23,
+        626.54,
+        157.17,
+        631.83
+      ],
+      "image_size": [
+        947,
+        678
+      ],
+      "source_size": [
+        947,
+        678
+      ],
+      "overflow_pixels": 0.23,
+      "clipped_bbox": [
+        0.0,
+        626.54,
+        157.17,
+        631.83
+      ],
+      "clipped_area": 831.43,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0921085214256__vec_image_1973_286_50_TrackImg-174_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0921085214256__vec_image_1973_286_50_TrackImg-174_1.json",
+      "label": "15",
+      "raw_bbox": [
+        874.16,
+        53.31,
+        946.23,
+        61.44
+      ],
+      "image_size": [
+        946,
+        678
+      ],
+      "source_size": [
+        946,
+        678
+      ],
+      "overflow_pixels": 0.23,
+      "clipped_bbox": [
+        874.16,
+        53.31,
+        946.0,
+        61.44
+      ],
+      "clipped_area": 584.06,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0921085214256__vec_image_1973_286_50_TrackImg-174_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Test/22-0921085214256__vec_image_1973_286_50_TrackImg-174_1.json",
+      "label": "15",
+      "raw_bbox": [
+        -0.54,
+        45.98,
+        41.58,
+        51.42
+      ],
+      "image_size": [
+        946,
+        678
+      ],
+      "source_size": [
+        946,
+        678
+      ],
+      "overflow_pixels": 0.54,
+      "clipped_bbox": [
+        0.0,
+        45.98,
+        41.58,
+        51.42
+      ],
+      "clipped_area": 226.2,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_数据增强/picture_25_2026_09_08_11_48_24_312.png",
+      "label_path": "ExportLabel_数据增强/picture_25_2026_09_08_11_48_24_312.json",
+      "label": "13",
+      "raw_bbox": [
+        672.5,
+        -0.85,
+        736.2,
+        12.06
+      ],
+      "image_size": [
+        949,
+        705
+      ],
+      "source_size": [
+        949,
+        705
+      ],
+      "overflow_pixels": 0.85,
+      "clipped_bbox": [
+        672.5,
+        0.0,
+        736.2,
+        12.06
+      ],
+      "clipped_area": 768.22,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/(4979)_ch_2_2023-07-05_01.26.14.352_4980_7998401124667269122_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/(4979)_ch_2_2023-07-05_01.26.14.352_4980_7998401124667269122_3.json",
+      "label": "19",
+      "raw_bbox": [
+        -1.01,
+        236.73,
+        25.26,
+        403.06
+      ],
+      "image_size": [
+        848,
+        633
+      ],
+      "source_size": [
+        848,
+        633
+      ],
+      "overflow_pixels": 1.01,
+      "clipped_bbox": [
+        0.0,
+        236.73,
+        25.26,
+        403.06
+      ],
+      "clipped_area": 4201.5,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/(5913)_ch_1_2023-06-21_21.32.33.852_5914_529500254_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/(5913)_ch_1_2023-06-21_21.32.33.852_5914_529500254_0.json",
+      "label": "13",
+      "raw_bbox": [
+        51.39,
+        591.85,
+        69.56,
+        634.12
+      ],
+      "image_size": [
+        892,
+        633
+      ],
+      "source_size": [
+        892,
+        633
+      ],
+      "overflow_pixels": 1.12,
+      "clipped_bbox": [
+        51.39,
+        591.85,
+        69.56,
+        633.0
+      ],
+      "clipped_area": 747.7,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/(7827)_ch_2_2023-06-21_21.55.45.432_7828_532351037_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/(7827)_ch_2_2023-06-21_21.55.45.432_7828_532351037_3.json",
+      "label": "17",
+      "raw_bbox": [
+        747.88,
+        -2.12,
+        794.87,
+        17.9
+      ],
+      "image_size": [
+        856,
+        633
+      ],
+      "source_size": [
+        856,
+        633
+      ],
+      "overflow_pixels": 2.12,
+      "clipped_bbox": [
+        747.88,
+        0.0,
+        794.87,
+        17.9
+      ],
+      "clipped_area": 841.12,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/(981)_ch_1_2023-07-03_15.40.28.905_983_1945563163250053633_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/(981)_ch_1_2023-07-03_15.40.28.905_983_1945563163250053633_0.json",
+      "label": "13",
+      "raw_bbox": [
+        52.68,
+        609.32,
+        73.93,
+        663.61
+      ],
+      "image_size": [
+        945,
+        663
+      ],
+      "source_size": [
+        945,
+        663
+      ],
+      "overflow_pixels": 0.61,
+      "clipped_bbox": [
+        52.68,
+        609.32,
+        73.93,
+        663.0
+      ],
+      "clipped_area": 1140.7,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2022_10_18_15_23_34_132092.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2022_10_18_15_23_34_132092.json",
+      "label": "13",
+      "raw_bbox": [
+        535.03,
+        48.23,
+        889.25,
+        75.7
+      ],
+      "image_size": [
+        885,
+        695
+      ],
+      "source_size": [
+        885,
+        695
+      ],
+      "overflow_pixels": 4.25,
+      "clipped_bbox": [
+        535.03,
+        48.23,
+        885.0,
+        75.7
+      ],
+      "clipped_area": 9613.68,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-07-25_14.05.52.514_1_6300_ch_6302_3963176766615323649_2.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-07-25_14.05.52.514_1_6300_ch_6302_3963176766615323649_2.json",
+      "label": "14",
+      "raw_bbox": [
+        26.53,
+        -0.3,
+        42.42,
+        45.59
+      ],
+      "image_size": [
+        895,
+        637
+      ],
+      "source_size": [
+        895,
+        637
+      ],
+      "overflow_pixels": 0.3,
+      "clipped_bbox": [
+        26.53,
+        0.0,
+        42.42,
+        45.59
+      ],
+      "clipped_area": 724.43,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-07-28_20.55.24.658_2_(2897)_ch_2899_7493999019765129731_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-07-28_20.55.24.658_2_(2897)_ch_2899_7493999019765129731_3.json",
+      "label": "15",
+      "raw_bbox": [
+        -1.48,
+        577.28,
+        121.06,
+        583.16
+      ],
+      "image_size": [
+        848,
+        633
+      ],
+      "source_size": [
+        848,
+        633
+      ],
+      "overflow_pixels": 1.48,
+      "clipped_bbox": [
+        0.0,
+        577.28,
+        121.06,
+        583.16
+      ],
+      "clipped_area": 711.83,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-07-28_20.58.17.057_1_(2947)_ch_2949_2882313001426009608_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-07-28_20.58.17.057_1_(2947)_ch_2949_2882313001426009608_0.json",
+      "label": "15",
+      "raw_bbox": [
+        841.03,
+        46.35,
+        897.32,
+        52.78
+      ],
+      "image_size": [
+        897,
+        633
+      ],
+      "source_size": [
+        897,
+        633
+      ],
+      "overflow_pixels": 0.32,
+      "clipped_bbox": [
+        841.03,
+        46.35,
+        897.0,
+        52.78
+      ],
+      "clipped_area": 359.89,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-08-04_14.08.13.077_2_(1295)_ch_1296_8070460069217184260_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-08-04_14.08.13.077_2_(1295)_ch_1296_8070460069217184260_0.json",
+      "label": "13",
+      "raw_bbox": [
+        833.12,
+        31.49,
+        1003.45,
+        56.85
+      ],
+      "image_size": [
+        1003,
+        760
+      ],
+      "source_size": [
+        1003,
+        760
+      ],
+      "overflow_pixels": 0.45,
+      "clipped_bbox": [
+        833.12,
+        31.49,
+        1003.0,
+        56.85
+      ],
+      "clipped_area": 4308.16,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_00.53.54.477_1_(9352)_ch_9353_2738198749561313281_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_00.53.54.477_1_(9352)_ch_9353_2738198749561313281_3.json",
+      "label": "13",
+      "raw_bbox": [
+        -1.28,
+        616.2,
+        225.05,
+        630.93
+      ],
+      "image_size": [
+        895,
+        641
+      ],
+      "source_size": [
+        895,
+        641
+      ],
+      "overflow_pixels": 1.28,
+      "clipped_bbox": [
+        0.0,
+        616.2,
+        225.05,
+        630.93
+      ],
+      "clipped_area": 3314.99,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_04.27.21.650_2_(2801)_ch_2802_7349884774545974276_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_04.27.21.650_2_(2801)_ch_2802_7349884774545974276_1.json",
+      "label": "17",
+      "raw_bbox": [
+        719.61,
+        464.14,
+        868.2,
+        717.67
+      ],
+      "image_size": [
+        945,
+        717
+      ],
+      "source_size": [
+        945,
+        717
+      ],
+      "overflow_pixels": 0.67,
+      "clipped_bbox": [
+        719.61,
+        464.14,
+        868.2,
+        717.0
+      ],
+      "clipped_area": 37572.47,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_06.26.10.979_2_(4439)_ch_4440_144125374403397122_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_06.26.10.979_2_(4439)_ch_4440_144125374403397122_1.json",
+      "label": "17",
+      "raw_bbox": [
+        722.81,
+        452.19,
+        869.02,
+        720.61
+      ],
+      "image_size": [
+        942,
+        717
+      ],
+      "source_size": [
+        942,
+        717
+      ],
+      "overflow_pixels": 3.61,
+      "clipped_bbox": [
+        722.81,
+        452.19,
+        869.02,
+        717.0
+      ],
+      "clipped_area": 38717.87,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_06.26.12.454_2_(4443)_ch_4444_216182968442080260_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_06.26.12.454_2_(4443)_ch_4444_216182968442080260_1.json",
+      "label": "17",
+      "raw_bbox": [
+        725.22,
+        448.67,
+        868.05,
+        717.74
+      ],
+      "image_size": [
+        942,
+        717
+      ],
+      "source_size": [
+        942,
+        717
+      ],
+      "overflow_pixels": 0.74,
+      "clipped_bbox": [
+        725.22,
+        448.67,
+        868.05,
+        717.0
+      ],
+      "clipped_area": 38325.57,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_06.26.33.959_2_(4491)_ch_4492_7710172748397596164_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_06.26.33.959_2_(4491)_ch_4492_7710172748397596164_1.json",
+      "label": "17",
+      "raw_bbox": [
+        722.65,
+        454.57,
+        872.73,
+        718.14
+      ],
+      "image_size": [
+        942,
+        717
+      ],
+      "source_size": [
+        942,
+        717
+      ],
+      "overflow_pixels": 1.14,
+      "clipped_bbox": [
+        722.65,
+        454.57,
+        872.73,
+        717.0
+      ],
+      "clipped_area": 39385.49,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_06.31.40.383_2_(4829)_ch_4830_504413344761691652_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_06.31.40.383_2_(4829)_ch_4830_504413344761691652_1.json",
+      "label": "17",
+      "raw_bbox": [
+        721.25,
+        452.57,
+        870.24,
+        717.76
+      ],
+      "image_size": [
+        942,
+        717
+      ],
+      "source_size": [
+        942,
+        717
+      ],
+      "overflow_pixels": 0.76,
+      "clipped_bbox": [
+        721.25,
+        452.57,
+        870.24,
+        717.0
+      ],
+      "clipped_area": 39397.43,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-08-23_02.20.34.590_1_(11981)_ch_11983_7494000135674214913_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-08-23_02.20.34.590_1_(11981)_ch_11983_7494000135674214913_0.json",
+      "label": "18",
+      "raw_bbox": [
+        436.41,
+        -2.26,
+        498.86,
+        40.59
+      ],
+      "image_size": [
+        920,
+        695
+      ],
+      "source_size": [
+        920,
+        695
+      ],
+      "overflow_pixels": 2.26,
+      "clipped_bbox": [
+        436.41,
+        0.0,
+        498.86,
+        40.59
+      ],
+      "clipped_area": 2534.85,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-05_14.52.19.085_1_(88)_ch_90_216183736015395329_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-05_14.52.19.085_1_(88)_ch_90_216183736015395329_1.json",
+      "label": "19",
+      "raw_bbox": [
+        622.57,
+        658.39,
+        692.07,
+        699.46
+      ],
+      "image_size": [
+        920,
+        695
+      ],
+      "source_size": [
+        920,
+        695
+      ],
+      "overflow_pixels": 4.46,
+      "clipped_bbox": [
+        622.57,
+        658.39,
+        692.07,
+        695.0
+      ],
+      "clipped_area": 2544.4,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.05.526_2_(3366)_ch_3367_2882315469219146753_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.05.526_2_(3366)_ch_3367_2882315469219146753_0.json",
+      "label": "13",
+      "raw_bbox": [
+        54.35,
+        584.42,
+        73.45,
+        648.94
+      ],
+      "image_size": [
+        877,
+        648
+      ],
+      "source_size": [
+        877,
+        648
+      ],
+      "overflow_pixels": 0.94,
+      "clipped_bbox": [
+        54.35,
+        584.42,
+        73.45,
+        648.0
+      ],
+      "clipped_area": 1214.38,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.05.820_2_(3367)_ch_3368_6485195171115694084_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.05.820_2_(3367)_ch_3368_6485195171115694084_0.json",
+      "label": "13",
+      "raw_bbox": [
+        46.98,
+        438.75,
+        67.7,
+        649.82
+      ],
+      "image_size": [
+        875,
+        648
+      ],
+      "source_size": [
+        875,
+        648
+      ],
+      "overflow_pixels": 1.82,
+      "clipped_bbox": [
+        46.98,
+        438.75,
+        67.7,
+        648.0
+      ],
+      "clipped_area": 4335.66,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.06.210_2_(3368)_ch_3369_3386718627484992514_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.06.210_2_(3368)_ch_3369_3386718627484992514_0.json",
+      "label": "13",
+      "raw_bbox": [
+        54.59,
+        586.55,
+        74.13,
+        648.41
+      ],
+      "image_size": [
+        877,
+        648
+      ],
+      "source_size": [
+        877,
+        648
+      ],
+      "overflow_pixels": 0.41,
+      "clipped_bbox": [
+        54.59,
+        586.55,
+        74.13,
+        648.0
+      ],
+      "clipped_area": 1200.73,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.06.596_2_(3369)_ch_3370_3674949003636901892_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.06.596_2_(3369)_ch_3370_3674949003636901892_0.json",
+      "label": "13",
+      "raw_bbox": [
+        54.11,
+        589.46,
+        72.78,
+        648.85
+      ],
+      "image_size": [
+        877,
+        648
+      ],
+      "source_size": [
+        877,
+        648
+      ],
+      "overflow_pixels": 0.85,
+      "clipped_bbox": [
+        54.11,
+        589.46,
+        72.78,
+        648.0
+      ],
+      "clipped_area": 1092.94,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.06.596_2_(3369)_ch_3370_3674949003636901892_2.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.06.596_2_(3369)_ch_3370_3674949003636901892_2.json",
+      "label": "13",
+      "raw_bbox": [
+        45.89,
+        -1.03,
+        72.11,
+        224.39
+      ],
+      "image_size": [
+        877,
+        648
+      ],
+      "source_size": [
+        877,
+        648
+      ],
+      "overflow_pixels": 1.03,
+      "clipped_bbox": [
+        45.89,
+        0.0,
+        72.11,
+        224.39
+      ],
+      "clipped_area": 5883.51,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.08.651_2_(3374)_ch_3375_4179352161903449603_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.08.651_2_(3374)_ch_3375_4179352161903449603_0.json",
+      "label": "13",
+      "raw_bbox": [
+        51.33,
+        588.3,
+        69.07,
+        648.86
+      ],
+      "image_size": [
+        875,
+        648
+      ],
+      "source_size": [
+        875,
+        648
+      ],
+      "overflow_pixels": 0.86,
+      "clipped_bbox": [
+        51.33,
+        588.3,
+        69.07,
+        648.0
+      ],
+      "clipped_area": 1059.08,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.11.060_2_(3380)_ch_3381_8574865398218287111_2.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.11.060_2_(3380)_ch_3381_8574865398218287111_2.json",
+      "label": "13",
+      "raw_bbox": [
+        23.41,
+        -0.57,
+        65.83,
+        543.36
+      ],
+      "image_size": [
+        875,
+        648
+      ],
+      "source_size": [
+        875,
+        648
+      ],
+      "overflow_pixels": 0.57,
+      "clipped_bbox": [
+        23.41,
+        0.0,
+        65.83,
+        543.36
+      ],
+      "clipped_area": 23049.33,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.12.131_2_(3383)_ch_3384_8214577428029195783_2.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.12.131_2_(3383)_ch_3384_8214577428029195783_2.json",
+      "label": "13",
+      "raw_bbox": [
+        42.19,
+        -1.06,
+        62.27,
+        46.94
+      ],
+      "image_size": [
+        875,
+        648
+      ],
+      "source_size": [
+        875,
+        648
+      ],
+      "overflow_pixels": 1.06,
+      "clipped_bbox": [
+        42.19,
+        0.0,
+        62.27,
+        46.94
+      ],
+      "clipped_area": 942.56,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.18.712_1_(3385)_ch_3386_8070462239956708865_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.18.712_1_(3385)_ch_3386_8070462239956708865_1.json",
+      "label": "13",
+      "raw_bbox": [
+        863.24,
+        586.18,
+        872.21,
+        641.4
+      ],
+      "image_size": [
+        895,
+        641
+      ],
+      "source_size": [
+        895,
+        641
+      ],
+      "overflow_pixels": 0.4,
+      "clipped_bbox": [
+        863.24,
+        586.18,
+        872.21,
+        641.0
+      ],
+      "clipped_area": 491.74,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.18.712_1_(3385)_ch_3386_8070462239956708865_1_copy_0_250909.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.18.712_1_(3385)_ch_3386_8070462239956708865_1_copy_0_250909.json",
+      "label": "14",
+      "raw_bbox": [
+        863.24,
+        586.18,
+        872.21,
+        641.4
+      ],
+      "image_size": [
+        895,
+        641
+      ],
+      "source_size": [
+        895,
+        641
+      ],
+      "overflow_pixels": 0.4,
+      "clipped_bbox": [
+        863.24,
+        586.18,
+        872.21,
+        641.0
+      ],
+      "clipped_area": 491.74,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.21.085_1_(3392)_ch_3393_2233797122885761537_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.21.085_1_(3392)_ch_3393_2233797122885761537_3.json",
+      "label": "15",
+      "raw_bbox": [
+        866.57,
+        -0.87,
+        873.36,
+        159.08
+      ],
+      "image_size": [
+        892,
+        641
+      ],
+      "source_size": [
+        892,
+        641
+      ],
+      "overflow_pixels": 0.87,
+      "clipped_bbox": [
+        866.57,
+        0.0,
+        873.36,
+        159.08
+      ],
+      "clipped_area": 1080.15,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.21.740_1_(3394)_ch_3395_3674949003644655616_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.21.740_1_(3394)_ch_3395_3674949003644655616_1.json",
+      "label": "13",
+      "raw_bbox": [
+        855.76,
+        602.59,
+        874.16,
+        641.25
+      ],
+      "image_size": [
+        892,
+        641
+      ],
+      "source_size": [
+        892,
+        641
+      ],
+      "overflow_pixels": 0.25,
+      "clipped_bbox": [
+        855.76,
+        602.59,
+        874.16,
+        641.0
+      ],
+      "clipped_area": 706.74,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.21.740_1_(3394)_ch_3395_3674949003644655616_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.21.740_1_(3394)_ch_3395_3674949003644655616_3.json",
+      "label": "13",
+      "raw_bbox": [
+        854.13,
+        -0.77,
+        873.47,
+        50.45
+      ],
+      "image_size": [
+        892,
+        641
+      ],
+      "source_size": [
+        892,
+        641
+      ],
+      "overflow_pixels": 0.77,
+      "clipped_bbox": [
+        854.13,
+        0.0,
+        873.47,
+        50.45
+      ],
+      "clipped_area": 975.7,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.23.888_1_(3398)_ch_3399_7494001487655935492_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.23.888_1_(3398)_ch_3399_7494001487655935492_3.json",
+      "label": "13",
+      "raw_bbox": [
+        849.36,
+        -0.21,
+        877.29,
+        482.96
+      ],
+      "image_size": [
+        892,
+        641
+      ],
+      "source_size": [
+        892,
+        641
+      ],
+      "overflow_pixels": 0.21,
+      "clipped_bbox": [
+        849.36,
+        0.0,
+        877.29,
+        482.96
+      ],
+      "clipped_area": 13489.07,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-10-10_12.46.07.578_1_(14745)_ch_14746_6485195961726513668_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-10-10_12.46.07.578_1_(14745)_ch_14746_6485195961726513668_0.json",
+      "label": "18",
+      "raw_bbox": [
+        252.13,
+        577.13,
+        262.14,
+        638.52
+      ],
+      "image_size": [
+        890,
+        637
+      ],
+      "source_size": [
+        890,
+        637
+      ],
+      "overflow_pixels": 1.52,
+      "clipped_bbox": [
+        252.13,
+        577.13,
+        262.14,
+        637.0
+      ],
+      "clipped_area": 599.3,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_15.47.13.650_2_(24057)_ch_24058_4683756381762544644_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_15.47.13.650_2_(24057)_ch_24058_4683756381762544644_0.json",
+      "label": "18",
+      "raw_bbox": [
+        839.6,
+        321.12,
+        933.75,
+        363.21
+      ],
+      "image_size": [
+        931,
+        705
+      ],
+      "source_size": [
+        931,
+        705
+      ],
+      "overflow_pixels": 2.75,
+      "clipped_bbox": [
+        839.6,
+        321.12,
+        931.0,
+        363.21
+      ],
+      "clipped_area": 3847.03,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.273_1_(25626)_ch_25627_6989599391453740545_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.273_1_(25626)_ch_25627_6989599391453740545_0.json",
+      "label": "18",
+      "raw_bbox": [
+        884.19,
+        604.68,
+        959.25,
+        698.68
+      ],
+      "image_size": [
+        960,
+        698
+      ],
+      "source_size": [
+        960,
+        698
+      ],
+      "overflow_pixels": 0.68,
+      "clipped_bbox": [
+        884.19,
+        604.68,
+        959.25,
+        698.0
+      ],
+      "clipped_area": 7004.6,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.273_1_(25626)_ch_25627_6989599391453740545_0_copy_0_250904.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.273_1_(25626)_ch_25627_6989599391453740545_0_copy_0_250904.json",
+      "label": "18",
+      "raw_bbox": [
+        884.19,
+        604.68,
+        959.25,
+        698.68
+      ],
+      "image_size": [
+        960,
+        698
+      ],
+      "source_size": [
+        960,
+        698
+      ],
+      "overflow_pixels": 0.68,
+      "clipped_bbox": [
+        884.19,
+        604.68,
+        959.25,
+        698.0
+      ],
+      "clipped_area": 7004.6,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.273_1_(25626)_ch_25627_6989599391453740545_2.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.273_1_(25626)_ch_25627_6989599391453740545_2.json",
+      "label": "18",
+      "raw_bbox": [
+        882.3,
+        106.43,
+        960.86,
+        257.24
+      ],
+      "image_size": [
+        960,
+        698
+      ],
+      "source_size": [
+        960,
+        698
+      ],
+      "overflow_pixels": 0.86,
+      "clipped_bbox": [
+        882.3,
+        106.43,
+        960.0,
+        257.24
+      ],
+      "clipped_area": 11717.94,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.613_1_(25627)_ch_25628_4035238035898869761_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.613_1_(25627)_ch_25628_4035238035898869761_3.json",
+      "label": "18",
+      "raw_bbox": [
+        329.06,
+        -3.36,
+        365.26,
+        169.15
+      ],
+      "image_size": [
+        960,
+        698
+      ],
+      "source_size": [
+        960,
+        698
+      ],
+      "overflow_pixels": 3.36,
+      "clipped_bbox": [
+        329.06,
+        0.0,
+        365.26,
+        169.15
+      ],
+      "clipped_area": 6123.23,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.613_2_(25627)_ch_25628_8646924054326257668_2.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.613_2_(25627)_ch_25628_8646924054326257668_2.json",
+      "label": "18",
+      "raw_bbox": [
+        206.03,
+        -1.27,
+        241.9,
+        172.75
+      ],
+      "image_size": [
+        928,
+        705
+      ],
+      "source_size": [
+        928,
+        705
+      ],
+      "overflow_pixels": 1.27,
+      "clipped_bbox": [
+        206.03,
+        0.0,
+        241.9,
+        172.75
+      ],
+      "clipped_area": 6196.54,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.812_1_(25628)_ch_25629_1152934274381854721_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.812_1_(25628)_ch_25629_1152934274381854721_3.json",
+      "label": "17",
+      "raw_bbox": [
+        -0.16,
+        104.47,
+        50.36,
+        150.26
+      ],
+      "image_size": [
+        960,
+        698
+      ],
+      "source_size": [
+        960,
+        698
+      ],
+      "overflow_pixels": 0.16,
+      "clipped_bbox": [
+        0.0,
+        104.47,
+        50.36,
+        150.26
+      ],
+      "clipped_area": 2305.98,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-10_01.55.54.232_2_(8194)_ch_8196_7927475093757882369_3.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-11-10_01.55.54.232_2_(8194)_ch_8196_7927475093757882369_3.json",
+      "label": "17",
+      "raw_bbox": [
+        597.95,
+        -0.84,
+        658.17,
+        27.22
+      ],
+      "image_size": [
+        980,
+        610
+      ],
+      "source_size": [
+        980,
+        610
+      ],
+      "overflow_pixels": 0.84,
+      "clipped_bbox": [
+        597.95,
+        0.0,
+        658.17,
+        27.22
+      ],
+      "clipped_area": 1639.19,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-24_10.52.03.815_1_(6524)_ch_6525_3963745107504451073_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-11-24_10.52.03.815_1_(6524)_ch_6525_3963745107504451073_0.json",
+      "label": "15",
+      "raw_bbox": [
+        860.91,
+        39.62,
+        897.02,
+        47.19
+      ],
+      "image_size": [
+        897,
+        760
+      ],
+      "source_size": [
+        897,
+        760
+      ],
+      "overflow_pixels": 0.02,
+      "clipped_bbox": [
+        860.91,
+        39.62,
+        897.0,
+        47.19
+      ],
+      "clipped_area": 273.2,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.16.15.984_1_(18251)_ch_18253_6629876214832095233_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.16.15.984_1_(18251)_ch_18253_6629876214832095233_1.json",
+      "label": "19",
+      "raw_bbox": [
+        411.75,
+        613.1,
+        474.47,
+        633.56
+      ],
+      "image_size": [
+        902,
+        633
+      ],
+      "source_size": [
+        902,
+        633
+      ],
+      "overflow_pixels": 0.56,
+      "clipped_bbox": [
+        411.75,
+        613.1,
+        474.47,
+        633.0
+      ],
+      "clipped_area": 1248.13,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.16.27.477_1_(18277)_ch_18279_4107860423510501889_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.16.27.477_1_(18277)_ch_18279_4107860423510501889_1.json",
+      "label": "19",
+      "raw_bbox": [
+        408.15,
+        615.42,
+        470.95,
+        633.8
+      ],
+      "image_size": [
+        902,
+        633
+      ],
+      "source_size": [
+        902,
+        633
+      ],
+      "overflow_pixels": 0.8,
+      "clipped_bbox": [
+        408.15,
+        615.42,
+        470.95,
+        633.0
+      ],
+      "clipped_area": 1104.02,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.16.31.216_1_(18287)_ch_18289_360865533540163585_1.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.16.31.216_1_(18287)_ch_18289_360865533540163585_1.json",
+      "label": "19",
+      "raw_bbox": [
+        403.05,
+        617.77,
+        468.05,
+        633.81
+      ],
+      "image_size": [
+        902,
+        633
+      ],
+      "source_size": [
+        902,
+        633
+      ],
+      "overflow_pixels": 0.81,
+      "clipped_bbox": [
+        403.05,
+        617.77,
+        468.05,
+        633.0
+      ],
+      "clipped_area": 989.95,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.20.39.003_2_(18721)_ch_18723_4756941719934055937_0.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.20.39.003_2_(18721)_ch_18723_4756941719934055937_0.json",
+      "label": "16",
+      "raw_bbox": [
+        84.18,
+        528.4,
+        203.83,
+        633.57
+      ],
+      "image_size": [
+        846,
+        633
+      ],
+      "source_size": [
+        846,
+        633
+      ],
+      "overflow_pixels": 0.57,
+      "clipped_bbox": [
+        84.18,
+        528.4,
+        203.83,
+        633.0
+      ],
+      "clipped_area": 12515.39,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-12-28_12.53.58.030_1_(126)_ch_127_1946133982238546945_2.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-12-28_12.53.58.030_1_(126)_ch_127_1946133982238546945_2.json",
+      "label": "16",
+      "raw_bbox": [
+        461.56,
+        -2.19,
+        578.13,
+        41.17
+      ],
+      "image_size": [
+        910,
+        635
+      ],
+      "source_size": [
+        910,
+        635
+      ],
+      "overflow_pixels": 2.19,
+      "clipped_bbox": [
+        461.56,
+        0.0,
+        578.13,
+        41.17
+      ],
+      "clipped_area": 4799.19,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-12-28_12.53.58.030_1_(126)_ch_127_1946133982238546945_2_copy_0_250912.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023-12-28_12.53.58.030_1_(126)_ch_127_1946133982238546945_2_copy_0_250912.json",
+      "label": "16",
+      "raw_bbox": [
+        461.56,
+        -2.19,
+        578.13,
+        41.17
+      ],
+      "image_size": [
+        910,
+        635
+      ],
+      "source_size": [
+        910,
+        635
+      ],
+      "overflow_pixels": 2.19,
+      "clipped_bbox": [
+        461.56,
+        0.0,
+        578.13,
+        41.17
+      ],
+      "clipped_area": 4799.19,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023_07_03_17_33_23_875559.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023_07_03_17_33_23_875559.json",
+      "label": "15",
+      "raw_bbox": [
+        789.17,
+        51.26,
+        848.21,
+        61.88
+      ],
+      "image_size": [
+        848,
+        633
+      ],
+      "source_size": [
+        848,
+        633
+      ],
+      "overflow_pixels": 0.21,
+      "clipped_bbox": [
+        789.17,
+        51.26,
+        848.0,
+        61.88
+      ],
+      "clipped_area": 624.77,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023_07_03_17_33_23_875559.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023_07_03_17_33_23_875559.json",
+      "label": "15",
+      "raw_bbox": [
+        -0.49,
+        51.41,
+        17.34,
+        67.3
+      ],
+      "image_size": [
+        848,
+        633
+      ],
+      "source_size": [
+        848,
+        633
+      ],
+      "overflow_pixels": 0.49,
+      "clipped_bbox": [
+        0.0,
+        51.41,
+        17.34,
+        67.3
+      ],
+      "clipped_area": 275.53,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023_07_03_17_33_23_914951.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023_07_03_17_33_23_914951.json",
+      "label": "15",
+      "raw_bbox": [
+        -2.24,
+        53.02,
+        93.76,
+        65.39
+      ],
+      "image_size": [
+        849,
+        633
+      ],
+      "source_size": [
+        849,
+        633
+      ],
+      "overflow_pixels": 2.24,
+      "clipped_bbox": [
+        0.0,
+        53.02,
+        93.76,
+        65.39
+      ],
+      "clipped_area": 1159.81,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023_07_03_17_33_31_081877.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023_07_03_17_33_31_081877.json",
+      "label": "15",
+      "raw_bbox": [
+        811.39,
+        567.88,
+        848.31,
+        577.86
+      ],
+      "image_size": [
+        848,
+        634
+      ],
+      "source_size": [
+        848,
+        634
+      ],
+      "overflow_pixels": 0.31,
+      "clipped_bbox": [
+        811.39,
+        567.88,
+        848.0,
+        577.86
+      ],
+      "clipped_area": 365.37,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023_07_03_17_33_37_672889.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023_07_03_17_33_37_672889.json",
+      "label": "19",
+      "raw_bbox": [
+        -1.2,
+        247.63,
+        32.73,
+        420.37
+      ],
+      "image_size": [
+        849,
+        634
+      ],
+      "source_size": [
+        849,
+        634
+      ],
+      "overflow_pixels": 1.2,
+      "clipped_bbox": [
+        0.0,
+        247.63,
+        32.73,
+        420.37
+      ],
+      "clipped_area": 5653.78,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023_07_03_17_33_37_672889.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023_07_03_17_33_37_672889.json",
+      "label": "15",
+      "raw_bbox": [
+        -0.05,
+        566.98,
+        30.02,
+        574.32
+      ],
+      "image_size": [
+        849,
+        634
+      ],
+      "source_size": [
+        849,
+        634
+      ],
+      "overflow_pixels": 0.05,
+      "clipped_bbox": [
+        0.0,
+        566.98,
+        30.02,
+        574.32
+      ],
+      "clipped_area": 220.35,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023_07_05_17_41_29_709318.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023_07_05_17_41_29_709318.json",
+      "label": "15",
+      "raw_bbox": [
+        862.96,
+        581.38,
+        900.25,
+        587.49
+      ],
+      "image_size": [
+        900,
+        634
+      ],
+      "source_size": [
+        900,
+        634
+      ],
+      "overflow_pixels": 0.25,
+      "clipped_bbox": [
+        862.96,
+        581.38,
+        900.0,
+        587.49
+      ],
+      "clipped_area": 226.31,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023_07_05_17_41_30_116390.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023_07_05_17_41_30_116390.json",
+      "label": "13",
+      "raw_bbox": [
+        -0.75,
+        580.65,
+        103.59,
+        598.11
+      ],
+      "image_size": [
+        900,
+        634
+      ],
+      "source_size": [
+        900,
+        634
+      ],
+      "overflow_pixels": 0.75,
+      "clipped_bbox": [
+        0.0,
+        580.65,
+        103.59,
+        598.11
+      ],
+      "clipped_area": 1808.68,
+      "category": "minor_out_of_bounds"
+    },
+    {
+      "sample_path": "ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023_07_05_17_41_30_163991.png",
+      "label_path": "ExportLabel_框胶10x连线蓝色背面厚_0904-Train/2023_07_05_17_41_30_163991.json",
+      "label": "13",
+      "raw_bbox": [
+        806.28,
+        579.25,
+        900.87,
+        597.58
+      ],
+      "image_size": [
+        900,
+        634
+      ],
+      "source_size": [
+        900,
+        634
+      ],
+      "overflow_pixels": 0.87,
+      "clipped_bbox": [
+        806.28,
+        579.25,
+        900.0,
+        597.58
+      ],
+      "clipped_area": 1717.89,
+      "category": "minor_out_of_bounds"
+    }
+  ]
+}
