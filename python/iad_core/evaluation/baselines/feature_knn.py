@@ -21,9 +21,13 @@ class FeatureMemoryBankRunner(BaselineRunner):
     Zero-training, high-speed, 100% reproducible.
     """
 
+    implementation_name: str = "feature_knn_dinov2"
+    implementation_source: str = "facebookresearch/dinov2"
+    implementation_revision: Optional[str] = "dinov2_vitb14_reg"
+
     def __init__(
         self,
-        name: str = "feature_knn",
+        name: str = "feature_knn_dinov2",
         model_id: str = "dinov2_vitb14_reg",
         preprocess_key: str = "dinov2_224_norm",
         db_path: str = "data/benchmark.db",
@@ -32,6 +36,12 @@ class FeatureMemoryBankRunner(BaselineRunner):
         super().__init__(name=name, **kwargs)
         self.model_id = model_id
         self.preprocess_key = preprocess_key
+        self.implementation_name = name
+        self.runtime_config = {
+            "model_id": model_id,
+            "preprocess_key": preprocess_key,
+            **kwargs,
+        }
         self.db = Database(db_path)
         self.feat_repo = FeatureRepository(self.db)
         self.extractor: Optional[DINOFeatureExtractor] = None
@@ -57,27 +67,22 @@ class FeatureMemoryBankRunner(BaselineRunner):
                 missing_indices.append(idx)
 
         if missing_samples:
-            # Try to extract missing features with DINO extractor
+            if self.extractor is None:
+                self.extractor = DINOFeatureExtractor(
+                    model_id=self.model_id,
+                    preprocess_key=self.preprocess_key,
+                )
+            paths = [s.image_path for s in missing_samples]
             try:
-                if self.extractor is None:
-                    self.extractor = DINOFeatureExtractor(
-                        model_id=self.model_id,
-                        preprocess_key=self.preprocess_key,
-                    )
-                paths = [s.image_path for s in missing_samples]
-                extracted = self.extractor.extract_batch(paths)
+                extracted = self.extractor.encode_batch(paths)
                 for i, arr in enumerate(extracted):
                     orig_idx = missing_indices[i]
                     features[orig_idx] = arr.astype(np.float32)
             except Exception as e:
-                logger.warning(f"Could not extract DINO features for {len(missing_samples)} samples: {e}")
-                # Fallback to deterministic pseudo-features for synthetic tests
-                for i, s in enumerate(missing_samples):
-                    orig_idx = missing_indices[i]
-                    rng = np.random.RandomState(abs(hash(s.sample_id)) % (2**31))
-                    dummy = rng.randn(768).astype(np.float32)
-                    dummy /= np.linalg.norm(dummy) + 1e-8
-                    features[orig_idx] = dummy
+                logger.error(f"Could not extract DINO features for {len(missing_samples)} samples: {e}")
+                raise RuntimeError(
+                    f"DINO visual feature extraction failed for {len(missing_samples)} samples: {e}"
+                )
 
         matrix = np.stack(features, axis=0)
         # Normalize rows to unit vectors
@@ -108,19 +113,13 @@ class FeatureMemoryBankRunner(BaselineRunner):
         if not samples:
             return []
 
-        query_feats = self._get_features(samples)
-
         if self.normal_bank is None or len(self.normal_bank) == 0:
-            return [
-                PredictionRecord(
-                    sample_id=s.sample_id,
-                    image_score=0.5,
-                    pixel_score_path=None,
-                    latency_ms=1.0,
-                    split_name=split_name,
-                )
-                for s in samples
-            ]
+            raise ValueError(
+                f"FeatureMemoryBankRunner '{self.name}' has no fitted normal feature bank. "
+                f"prepare() must be called with training normal samples prior to predict()."
+            )
+
+        query_feats = self._get_features(samples)
 
         sims = np.matmul(query_feats, self.normal_bank.T)  # (M, N)
         max_sims = np.max(sims, axis=1)  # (M,)

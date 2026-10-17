@@ -1,8 +1,7 @@
 import logging
 from typing import Optional, List, Dict, Any, Tuple
-from datetime import datetime
 
-from iad_core.storage.models import Sample, QualityStatus
+from iad_core.storage.models import Sample
 from iad_core.storage.models import ReviewDecisionRecord
 from iad_core.task.config import GoldPolicyConfig
 from iad_core.gold.schemas import (
@@ -13,8 +12,21 @@ from iad_core.gold.schemas import (
     GoldStatus,
     GoldSource,
 )
+from iad_core.gold.provider import (
+    GoldSourceProvider,
+    GoldEvidence,
+    HumanReviewSource,
+    ProductionQASource,
+    ExistingQualitySource,
+)
 
 logger = logging.getLogger("iad_core.gold.resolver")
+
+PROVIDERS: Dict[str, GoldSourceProvider] = {
+    "HUMAN_REVIEW": HumanReviewSource(),
+    "PRODUCTION_QA": ProductionQASource(),
+    "EXISTING_QUALITY": ExistingQualitySource(),
+}
 
 
 def resolve_gold_for_sample(
@@ -23,150 +35,115 @@ def resolve_gold_for_sample(
     policy: GoldPolicyConfig,
 ) -> Tuple[GoldRecord, Optional[GoldConflictRecord]]:
     """
-    Resolve ground truth (Gold) for a single sample according to GoldPolicyConfig.
-    Enforces strict hierarchy:
-    1. Trusted Human Review overrides lower-priority sources.
-    2. Conflicting trusted reviews produce CONFLICT.
-    3. Confirmed Existing Quality (PASS/FAIL) if trusted quality source.
-    4. UNCERTAIN samples or untrusted sources without review are marked EXCLUDED.
+    Resolve ground truth (Gold) for a single sample according to GoldPolicyConfig (D001~D006).
+    Enforces strict source_priority ordering and conflict_policy.
     Never mutates the original sample.
     """
     task_id = sample.task_id
     sample_id = sample.sample_id
     policy_name = policy.policy_name
 
-    # 1. Filter trusted human review decisions
-    trusted_reviews = [
-        r for r in review_decisions
-        if r.reviewer in policy.trusted_reviewers and r.decision in policy.include_decisions
-    ]
+    # Validate conflict_policy (D006)
+    if policy.conflict_policy != "MARK_CONFLICT":
+        raise ValueError(
+            f"Unsupported conflict_policy: '{policy.conflict_policy}'. Expected 'MARK_CONFLICT'."
+        )
 
-    # Check for conflicts among trusted reviewers
-    if len(trusted_reviews) > 1:
-        unique_decisions = {r.decision for r in trusted_reviews}
-        if len(unique_decisions) > 1:
-            conflict_info = {r.reviewer: r.decision for r in trusted_reviews}
-            conflict_record = GoldConflictRecord(
-                sample_id=sample_id,
-                task_id=task_id,
-                policy_name=policy_name,
-                conflicting_sources={"human_reviews": conflict_info},
-                reason=f"Multiple trusted reviewers disagree: {conflict_info}",
+    # Resolve according to source_priority (D005)
+    for source_name in policy.source_priority:
+        provider = PROVIDERS.get(source_name)
+        if provider is None:
+            raise ValueError(f"Unknown source in source_priority: '{source_name}'")
+
+        evidence = provider.get_evidence(sample, review_decisions, policy)
+        if evidence is not None:
+            if evidence.quality == "CONFLICT":
+                conflict_info = evidence.provenance.get("conflicting_sources", {})
+                conflict_record = GoldConflictRecord(
+                    sample_id=sample_id,
+                    task_id=task_id,
+                    policy_name=policy_name,
+                    conflicting_sources=conflict_info,
+                    reason=evidence.provenance.get("reason", "Conflict in ground truth source"),
+                )
+                provenance = {
+                    "policy_name": policy_name,
+                    "source_type": evidence.source_type,
+                    "conflict": True,
+                    "conflicting_sources": conflict_info,
+                }
+                rec = GoldRecord(
+                    sample_id=sample_id,
+                    task_id=task_id,
+                    policy_name=policy_name,
+                    gold_quality=GoldQuality.CONFLICT.value,
+                    binary_label=None,
+                    hard_normal=False,
+                    gold_source=evidence.source_type,
+                    gold_source_ref=evidence.source_ref,
+                    gold_status=GoldStatus.CONFLICT.value,
+                    provenance=provenance,
+                    physical_sample_id=sample.physical_sample_id,
+                    capture_sequence_id=sample.capture_sequence_id,
+                    batch_id=sample.batch_id,
+                    data_origin=(
+                        sample.data_origin.value
+                        if hasattr(sample.data_origin, "value")
+                        else str(sample.data_origin)
+                    ),
+                    image_path=sample.image_path,
+                    relative_path=sample.relative_path,
+                )
+                return rec, conflict_record
+
+            # Confirmed evidence
+            is_hard_normal = (evidence.quality == "HARD_NORMAL")
+            binary_label = (
+                BinaryLabel.NORMAL.value
+                if evidence.quality in ("PASS", "HARD_NORMAL")
+                else BinaryLabel.ANOMALY.value
             )
             provenance = {
                 "policy_name": policy_name,
-                "source_type": GoldSource.HUMAN_REVIEW.value,
-                "conflict": True,
-                "conflicting_sources": conflict_info,
+                "source_type": evidence.source_type,
+                "confidence": evidence.confidence,
+                **evidence.provenance,
             }
             rec = GoldRecord(
                 sample_id=sample_id,
                 task_id=task_id,
                 policy_name=policy_name,
-                gold_quality=GoldQuality.CONFLICT.value,
-                binary_label=None,
-                hard_normal=False,
-                gold_source=GoldSource.HUMAN_REVIEW.value,
-                gold_source_ref="multiple_reviewers",
-                gold_status=GoldStatus.CONFLICT.value,
+                gold_quality=evidence.quality,
+                binary_label=binary_label,
+                hard_normal=is_hard_normal,
+                gold_source=evidence.source_type,
+                gold_source_ref=evidence.source_ref,
+                gold_status=GoldStatus.CONFIRMED.value,
                 provenance=provenance,
                 physical_sample_id=sample.physical_sample_id,
                 capture_sequence_id=sample.capture_sequence_id,
                 batch_id=sample.batch_id,
-                data_origin=sample.data_origin.value if hasattr(sample.data_origin, "value") else str(sample.data_origin),
+                data_origin=(
+                    sample.data_origin.value
+                    if hasattr(sample.data_origin, "value")
+                    else str(sample.data_origin)
+                ),
                 image_path=sample.image_path,
                 relative_path=sample.relative_path,
             )
-            return rec, conflict_record
+            return rec, None
 
-    # 2. Trusted review decision resolved
-    if len(trusted_reviews) == 1:
-        rev = trusted_reviews[0]
-        decision = rev.decision
-        is_hard_normal = (decision == "HARD_NORMAL")
-        binary_label = (
-            BinaryLabel.NORMAL.value
-            if decision in ("PASS", "HARD_NORMAL")
-            else BinaryLabel.ANOMALY.value
-        )
-        provenance = {
-            "policy_name": policy_name,
-            "source_type": GoldSource.HUMAN_REVIEW.value,
-            "reviewer": rev.reviewer,
-            "reason_code": rev.reason_code,
-            "comment": rev.comment,
-            "review_session_id": rev.review_session_id,
-            "started_at": rev.started_at,
-            "submitted_at": rev.submitted_at,
-            "review_duration_ms": rev.review_duration_ms,
-            "raw_quality_status": sample.quality_status.value if hasattr(sample.quality_status, "value") else str(sample.quality_status),
-        }
-        rec = GoldRecord(
-            sample_id=sample_id,
-            task_id=task_id,
-            policy_name=policy_name,
-            gold_quality=decision,
-            binary_label=binary_label,
-            hard_normal=is_hard_normal,
-            gold_source=GoldSource.HUMAN_REVIEW.value,
-            gold_source_ref=rev.reviewer,
-            gold_status=GoldStatus.CONFIRMED.value,
-            provenance=provenance,
-            physical_sample_id=sample.physical_sample_id,
-            capture_sequence_id=sample.capture_sequence_id,
-            batch_id=sample.batch_id,
-            data_origin=sample.data_origin.value if hasattr(sample.data_origin, "value") else str(sample.data_origin),
-            image_path=sample.image_path,
-            relative_path=sample.relative_path,
-        )
-        return rec, None
-
-    # 3. Existing Quality Label fallback (if trusted)
-    raw_status = sample.quality_status.value if hasattr(sample.quality_status, "value") else str(sample.quality_status)
-    q_source = sample.quality_source or "imported"
-    is_trusted_quality = (
-        not policy.trusted_quality_sources
-        or q_source in policy.trusted_quality_sources
+    # No source provided evidence -> EXCLUDED
+    raw_status = (
+        sample.quality_status.value
+        if hasattr(sample.quality_status, "value")
+        else str(sample.quality_status)
     )
-
-    if is_trusted_quality and raw_status in ("PASS", "FAIL"):
-        binary_label = (
-            BinaryLabel.NORMAL.value
-            if raw_status == "PASS"
-            else BinaryLabel.ANOMALY.value
-        )
-        provenance = {
-            "policy_name": policy_name,
-            "source_type": GoldSource.EXISTING_QUALITY.value,
-            "quality_source": q_source,
-            "raw_quality_status": raw_status,
-        }
-        rec = GoldRecord(
-            sample_id=sample_id,
-            task_id=task_id,
-            policy_name=policy_name,
-            gold_quality=raw_status,
-            binary_label=binary_label,
-            hard_normal=False,
-            gold_source=GoldSource.EXISTING_QUALITY.value,
-            gold_source_ref=q_source,
-            gold_status=GoldStatus.CONFIRMED.value,
-            provenance=provenance,
-            physical_sample_id=sample.physical_sample_id,
-            capture_sequence_id=sample.capture_sequence_id,
-            batch_id=sample.batch_id,
-            data_origin=sample.data_origin.value if hasattr(sample.data_origin, "value") else str(sample.data_origin),
-            image_path=sample.image_path,
-            relative_path=sample.relative_path,
-        )
-        return rec, None
-
-    # 4. Otherwise UNCERTAIN or untrusted source -> EXCLUDED
     provenance = {
         "policy_name": policy_name,
         "source_type": GoldSource.UNCERTAIN.value,
         "raw_quality_status": raw_status,
-        "excluded_reason": "Uncertain quality or untrusted source without trusted human review",
+        "excluded_reason": "No evidence from prioritized sources satisfied policy",
     }
     rec = GoldRecord(
         sample_id=sample_id,
@@ -182,7 +159,11 @@ def resolve_gold_for_sample(
         physical_sample_id=sample.physical_sample_id,
         capture_sequence_id=sample.capture_sequence_id,
         batch_id=sample.batch_id,
-        data_origin=sample.data_origin.value if hasattr(sample.data_origin, "value") else str(sample.data_origin),
+        data_origin=(
+            sample.data_origin.value
+            if hasattr(sample.data_origin, "value")
+            else str(sample.data_origin)
+        ),
         image_path=sample.image_path,
         relative_path=sample.relative_path,
     )

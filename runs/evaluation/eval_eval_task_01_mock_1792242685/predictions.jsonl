@@ -1,0 +1,5 @@
+{"sample_id":"v_norm","image_score":0.19591401976868256,"pixel_score_path":null,"latency_ms":10.375161328340004,"split_name":"val"}
+{"sample_id":"v_anom","image_score":0.8412543977553679,"pixel_score_path":null,"latency_ms":13.34816107223234,"split_name":"val"}
+{"sample_id":"t_norm","image_score":0.18738826590747665,"pixel_score_path":null,"latency_ms":20.202852037525766,"split_name":"test"}
+{"sample_id":"t_hn","image_score":0.17305809203387587,"pixel_score_path":null,"latency_ms":17.290507102630563,"split_name":"test"}
+{"sample_id":"t_anom","image_score":0.8517994568026022,"pixel_score_path":null,"latency_ms":22.50526172589469,"split_name":"test"}

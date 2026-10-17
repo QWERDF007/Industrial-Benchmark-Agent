@@ -265,48 +265,16 @@
                 <th>Augmented Prohibited</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td><strong class="text-info">Train</strong></td>
-                <td>68</td>
-                <td>8</td>
-                <td>60</td>
-                <td>Allowed (Filtered)</td>
-              </tr>
-              <tr>
-                <td><strong class="text-warning">Validation</strong></td>
-                <td>23</td>
-                <td>0</td>
-                <td>23</td>
-                <td>PROHIBITED (0)</td>
-              </tr>
-              <tr>
-                <td><strong class="text-danger">Test</strong></td>
-                <td>23</td>
-                <td>0</td>
-                <td>23</td>
-                <td>PROHIBITED (0)</td>
-              </tr>
-              <tr class="fw-bold">
-                <td>Total Confirmed Gold</td>
-                <td>114</td>
-                <td>8</td>
-                <td>106</td>
-                <td>0 Violations</td>
-              </tr>
+            <tbody id="split-table-body">
+              <tr class="text-muted"><td colspan="5">No benchmark builds available. Build a benchmark via agent or CLI first.</td></tr>
             </tbody>
           </table>
         </div>
 
         <div class="card p-4">
           <h5 class="fw-bold mb-3">5-Point Leakage Gate Verification</h5>
-          <div class="row g-2">
-            <div class="col-md-4"><div class="p-2 border rounded border-success text-success">✓ Physical Sample Leakage: 0</div></div>
-            <div class="col-md-4"><div class="p-2 border rounded border-success text-success">✓ Capture Sequence Leakage: 0</div></div>
-            <div class="col-md-4"><div class="p-2 border rounded border-success text-success">✓ Verified Duplicate Pairs: 0</div></div>
-            <div class="col-md-4"><div class="p-2 border rounded border-success text-success">✓ Connected Components: 0</div></div>
-            <div class="col-md-4"><div class="p-2 border rounded border-success text-success">✓ Augmented Test Violation: 0</div></div>
-            <div class="col-md-4"><div class="p-2 border rounded border-success text-success">✓ Gate Decision: 100% PASS</div></div>
+          <div class="row g-2" id="leakage-gate-container">
+            <div class="col-12 text-muted">No benchmark build inspected.</div>
           </div>
         </div>
       </div>
@@ -329,36 +297,7 @@
               </tr>
             </thead>
             <tbody id="eval-table-body">
-              <tr>
-                <td><code>feature_knn</code></td>
-                <td>0.9950</td>
-                <td>0.9980</td>
-                <td>0.9600</td>
-                <td>0.9850</td>
-                <td><strong class="text-success">0.0000</strong></td>
-                <td>0.2794</td>
-                <td>5.0ms</td>
-              </tr>
-              <tr>
-                <td><code>patchcore</code></td>
-                <td>0.9920</td>
-                <td>0.9960</td>
-                <td>0.9500</td>
-                <td>0.9810</td>
-                <td><strong class="text-success">0.0000</strong></td>
-                <td>0.2650</td>
-                <td>25.0ms</td>
-              </tr>
-              <tr>
-                <td><code>dinomaly2</code></td>
-                <td>0.9940</td>
-                <td>0.9970</td>
-                <td>0.9550</td>
-                <td>0.9830</td>
-                <td><strong class="text-success">0.0000</strong></td>
-                <td>0.2720</td>
-                <td>32.0ms</td>
-              </tr>
+              <tr class="text-muted"><td colspan="8">No baseline evaluation runs found. Run baseline evaluations via agent or CLI.</td></tr>
             </tbody>
           </table>
         </div>
@@ -367,7 +306,7 @@
           <h5 class="fw-bold mb-2">Hard Normal & Domain Robustness Findings</h5>
           <p class="text-muted small">
             Threshold was fitted strictly on the <strong>Validation Split</strong>. Test split was strictly evaluated at the fixed threshold.
-            All three models achieve 0.0000 Hard Normal FPR on test set without false alarms on verified challenging normal samples.
+            Metrics and false alarm rates are computed dynamically from official evaluation runs without hardcoded proxies.
           </p>
         </div>
       </div>
@@ -378,6 +317,7 @@
     const TASK_ID = "kuangjiao_inspection_01";
     let currentSampleId = "sample_001";
     let reviewStartTime = Date.now();
+    let activeReviewSessionId = null;
 
     function formatTime(seconds) {
       const mins = Math.floor(seconds / 60);
@@ -391,6 +331,24 @@
       if (timerEl) timerEl.textContent = formatTime(elapsed);
     }, 1000);
 
+    async function ensureReviewSession() {
+      if (activeReviewSessionId) return activeReviewSessionId;
+      try {
+        const res = await fetch(`/api/review/session/start`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({reviewer: "human_operator", task_id: TASK_ID, session_type: "HARD_NORMAL_AUDIT"})
+        });
+        if (res.ok) {
+          const d = await res.json();
+          activeReviewSessionId = d.session_id;
+        }
+      } catch (e) {
+        console.warn("Could not start session:", e);
+      }
+      return activeReviewSessionId;
+    }
+
     async function loadReviewQueue() {
       try {
         const res = await fetch(`/api/review/${TASK_ID}/queue?page=1&page_size=1`);
@@ -400,7 +358,7 @@
           const item = data.items[0];
           currentSampleId = item.sample_id;
           document.getElementById("rev-sample-id").textContent = item.sample_id;
-          document.getElementById("img-query").src = `/api/file?path=${encodeURIComponent(item.image_path)}`;
+          document.getElementById("img-query").src = `/api/sample/${encodeURIComponent(item.sample_id)}/image`;
           document.getElementById("sig-distance").textContent = item.signals?.normal_distance?.toFixed(3) || "N/A";
           document.getElementById("sig-density").textContent = item.signals?.density_outlier?.toFixed(3) || "N/A";
           document.getElementById("sig-domain").textContent = item.signals?.domain_novelty?.toFixed(3) || "N/A";
@@ -412,18 +370,18 @@
     }
 
     async function submitDecision(decision) {
+      const sId = await ensureReviewSession();
       const now = new Date().toISOString();
       const payload = {
         sample_id: currentSampleId,
         decision: decision,
-        reviewer: "human_operator",
-        session_id: "revsess_active",
+        session_id: sId || "revsess_default",
         duration_ms: Date.now() - reviewStartTime,
         started_at: new Date(reviewStartTime).toISOString(),
         submitted_at: now
       };
       try {
-        await fetch(`/api/review/${TASK_ID}/decision`, {
+        await fetch(`/api/review/${sId || TASK_ID}/decision`, {
           method: "POST",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify(payload)
@@ -432,6 +390,69 @@
         loadReviewQueue();
       } catch (e) {
         alert("Failed to submit decision: " + e);
+      }
+    }
+
+    async function loadBenchmarkBuilds() {
+      try {
+        const res = await fetch(`/api/benchmark/${TASK_ID}/builds`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const builds = data.builds || [];
+        const tbody = document.getElementById("split-table-body");
+        if (builds.length === 0) {
+          tbody.innerHTML = '<tr class="text-muted"><td colspan="5">No benchmark builds available. Build a benchmark via agent or CLI first.</td></tr>';
+          return;
+        }
+        const latest = builds[0];
+        const bRes = await fetch(`/api/benchmark/build/${latest.build_id}`);
+        if (!bRes.ok) return;
+        const bData = await bRes.json();
+        const b = bData.build;
+        const counts = b.split_counts || {};
+        tbody.innerHTML = `
+          <tr><td><strong class="text-info">Train</strong></td><td>${counts.train || 0}</td><td>${b.track_readiness?.train_normal || "-"}</td><td>${(counts.train || 0) - (b.track_readiness?.train_normal || 0)}</td><td>Allowed (Filtered)</td></tr>
+          <tr><td><strong class="text-warning">Validation</strong></td><td>${counts.val || 0}</td><td>${b.track_readiness?.val_normal || "-"}</td><td>${(counts.val || 0) - (b.track_readiness?.val_normal || 0)}</td><td>PROHIBITED (0)</td></tr>
+          <tr><td><strong class="text-danger">Test</strong></td><td>${counts.test || 0}</td><td>${b.track_readiness?.test_normal || "-"}</td><td>${(counts.test || 0) - (b.track_readiness?.test_normal || 0)}</td><td>PROHIBITED (0)</td></tr>
+          <tr class="fw-bold"><td>Total Split Assignments</td><td>${bData.assignments_count || 0}</td><td>-</td><td>-</td><td>${b.leakage_passed ? "0 Violations (PASS)" : "FAILED"}</td></tr>
+        `;
+        const leakCont = document.getElementById("leakage-gate-container");
+        const passClass = b.leakage_passed ? "border-success text-success" : "border-danger text-danger";
+        leakCont.innerHTML = `
+          <div class="col-md-4"><div class="p-2 border rounded ${passClass}">✓ Leakage Tolerance: ${b.leakage_passed ? "0 Violations" : "VIOLATIONS DETECTED"}</div></div>
+          <div class="col-md-4"><div class="p-2 border rounded ${passClass}">✓ Gate Decision: ${b.leakage_passed ? "100% PASS" : "BLOCKED"}</div></div>
+          <div class="col-md-4"><div class="p-2 border rounded border-info text-info">Build ID: ${b.build_id}</div></div>
+        `;
+      } catch (e) {
+        console.warn("Failed to load benchmark build data:", e);
+      }
+    }
+
+    async function loadEvaluationRuns() {
+      try {
+        const res = await fetch(`/api/evaluation/${TASK_ID}/runs`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const runs = data.runs || [];
+        const tbody = document.getElementById("eval-table-body");
+        if (runs.length === 0) {
+          tbody.innerHTML = '<tr class="text-muted"><td colspan="8">No baseline evaluation runs found. Run baseline evaluations via agent or CLI.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = runs.map(r => `
+          <tr>
+            <td><code>${r.model_id}</code></td>
+            <td>${r.image_metrics?.i_auroc != null ? r.image_metrics.i_auroc.toFixed(4) : "N/A"}</td>
+            <td>${r.image_metrics?.i_ap != null ? r.image_metrics.i_ap.toFixed(4) : "N/A"}</td>
+            <td>${r.image_metrics?.recall_at_fpr_01 != null ? r.image_metrics.recall_at_fpr_01.toFixed(4) : "N/A"}</td>
+            <td>${r.image_metrics?.f1 != null ? r.image_metrics.f1.toFixed(4) : "N/A"}</td>
+            <td><strong class="${r.hard_normal_metrics?.hard_normal_fpr <= 0.05 ? 'text-success' : 'text-danger'}">${r.hard_normal_metrics?.hard_normal_fpr != null ? r.hard_normal_metrics.hard_normal_fpr.toFixed(4) : "N/A"}</strong></td>
+            <td>${r.threshold?.threshold != null ? r.threshold.threshold.toFixed(4) : "N/A"}</td>
+            <td>${r.elapsed_seconds ? (r.elapsed_seconds).toFixed(1) + 's' : '-'}</td>
+          </tr>
+        `).join("");
+      } catch (e) {
+        console.warn("Failed to load evaluation runs:", e);
       }
     }
 
@@ -446,8 +467,13 @@
       }
     });
 
+    document.getElementById("benchmark-tab")?.addEventListener("click", loadBenchmarkBuilds);
+    document.getElementById("evaluation-tab")?.addEventListener("click", loadEvaluationRuns);
+
     document.addEventListener("DOMContentLoaded", () => {
       loadReviewQueue();
+      loadBenchmarkBuilds();
+      loadEvaluationRuns();
     });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

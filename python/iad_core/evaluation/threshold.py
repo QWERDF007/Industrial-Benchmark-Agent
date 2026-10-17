@@ -56,55 +56,52 @@ class ThresholdSelector:
 
         elif strategy == ThresholdStrategy.F1_MAX:
             if np.all(y_true == 0) or np.all(y_true == 1):
-                # Only single class in Val set, use median or 95th percentile
-                th = float(np.percentile(scores, 95))
-                best_f1 = 0.0
-                fpr_at_th = float(np.mean(scores >= th))
-            else:
-                # Calculate precision, recall, thresholds
-                precisions, recalls, thresholds = precision_recall_curve(y_true, scores)
-                # Compute F1 scores
-                f1_scores = np.zeros_like(thresholds)
-                for i in range(len(thresholds)):
-                    p_val = precisions[i]
-                    r_val = recalls[i]
-                    if p_val + r_val > 0:
-                        f1_scores[i] = 2 * p_val * r_val / (p_val + r_val)
-                    else:
-                        f1_scores[i] = 0.0
+                raise ValueError(
+                    "ThresholdStrategy.F1_MAX requires both Normal (0) and Anomaly (1) classes in Validation split."
+                )
+            # Calculate precision, recall, thresholds
+            precisions, recalls, thresholds = precision_recall_curve(y_true, scores)
+            # Compute F1 scores
+            f1_scores = np.zeros_like(thresholds)
+            for i in range(len(thresholds)):
+                p_val = precisions[i]
+                r_val = recalls[i]
+                if p_val + r_val > 0:
+                    f1_scores[i] = 2 * p_val * r_val / (p_val + r_val)
+                else:
+                    f1_scores[i] = 0.0
 
-                best_idx = int(np.argmax(f1_scores))
-                th = float(thresholds[best_idx])
-                best_f1 = float(f1_scores[best_idx])
-                y_pred = (scores >= th).astype(int)
-                fp = np.sum((y_pred == 1) & (y_true == 0))
-                tn = np.sum((y_pred == 0) & (y_true == 0))
-                fpr_at_th = float(fp / (fp + tn)) if (fp + tn) > 0 else 0.0
+            best_idx = int(np.argmax(f1_scores))
+            th = float(thresholds[best_idx])
+            best_f1 = float(f1_scores[best_idx])
+            y_pred = (scores >= th).astype(int)
+            fp = np.sum((y_pred == 1) & (y_true == 0))
+            tn = np.sum((y_pred == 0) & (y_true == 0))
+            fpr_at_th = float(fp / (fp + tn)) if (fp + tn) > 0 else 0.0
 
         elif strategy == ThresholdStrategy.RECALL_AT_FPR:
-            if not np.any(y_true == 0):
-                th = float(np.min(scores))
-                fpr_at_th = 0.0
-                best_f1 = 1.0
+            if np.all(y_true == 0) or np.all(y_true == 1):
+                raise ValueError(
+                    "ThresholdStrategy.RECALL_AT_FPR requires both Normal (0) and Anomaly (1) classes in Validation split."
+                )
+            fpr, tpr, thresholds = roc_curve(y_true, scores)
+            # Find max threshold where FPR <= target_fpr
+            valid_indices = np.where(fpr <= target_fpr)[0]
+            if len(valid_indices) > 0:
+                best_idx = valid_indices[-1]
+                th = float(thresholds[best_idx])
+                fpr_at_th = float(fpr[best_idx])
             else:
-                fpr, tpr, thresholds = roc_curve(y_true, scores)
-                # Find max threshold where FPR <= target_fpr
-                valid_indices = np.where(fpr <= target_fpr)[0]
-                if len(valid_indices) > 0:
-                    best_idx = valid_indices[-1]
-                    th = float(thresholds[best_idx])
-                    fpr_at_th = float(fpr[best_idx])
-                else:
-                    th = float(np.max(scores))
-                    fpr_at_th = 0.0
+                th = float(np.max(scores))
+                fpr_at_th = 0.0
 
-                y_pred = (scores >= th).astype(int)
-                tp = np.sum((y_pred == 1) & (y_true == 1))
-                fp = np.sum((y_pred == 1) & (y_true == 0))
-                fn = np.sum((y_pred == 0) & (y_true == 1))
-                prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-                rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-                best_f1 = float(2 * prec * rec / (prec + rec)) if (prec + rec) > 0 else 0.0
+            y_pred = (scores >= th).astype(int)
+            tp = np.sum((y_pred == 1) & (y_true == 1))
+            fp = np.sum((y_pred == 1) & (y_true == 0))
+            fn = np.sum((y_pred == 0) & (y_true == 1))
+            prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+            rec = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+            best_f1 = float(2 * prec * rec / (prec + rec)) if (prec + rec) > 0 else 0.0
 
         elif strategy == ThresholdStrategy.PERCENTILE:
             normal_scores = scores[y_true == 0]

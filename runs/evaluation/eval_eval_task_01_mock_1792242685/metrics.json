@@ -1,0 +1,78 @@
+{
+  "run_id": "eval_eval_task_01_mock_1792242685",
+  "task_id": "eval_task_01",
+  "build_id": "eval_build_01",
+  "model_id": "mock",
+  "threshold": {
+    "threshold": 0.841254,
+    "strategy": "f1_max",
+    "fit_split": "val",
+    "fit_samples_count": 2,
+    "best_f1": 1.0,
+    "fpr_at_threshold": 0.0
+  },
+  "image_metrics": {
+    "i_auroc": 1.0,
+    "i_ap": 1.0,
+    "recall_at_fpr_01": 1.0,
+    "recall_at_fpr_05": 1.0,
+    "threshold": 0.841254,
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "true_positive": 1,
+    "false_positive": 0,
+    "true_negative": 2,
+    "false_negative": 0
+  },
+  "pixel_metrics": {
+    "p_auroc": null,
+    "p_ap": null,
+    "p_aupro": null,
+    "status": "NOT_EVALUATED"
+  },
+  "hard_normal_metrics": {
+    "hard_normal_count": 1,
+    "hard_normal_fpr": 0.0,
+    "hard_normal_score_mean": 0.17305809259414673,
+    "hard_normal_score_median": 0.17305809259414673,
+    "normal_score_mean": 0.18738827109336853,
+    "normal_score_median": 0.18738827109336853,
+    "separation_margin": -0.014330178499221802
+  },
+  "domain_metrics": {
+    "metrics_by_domain": {
+      "UNKNOWN": {
+        "sample_count": 3,
+        "anomaly_count": 1,
+        "normal_count": 2,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": 1.0,
+        "false_positive": 0,
+        "false_negative": 0
+      }
+    }
+  },
+  "val_class_counts": {
+    "NORMAL": 1,
+    "ANOMALY": 1
+  },
+  "test_class_counts": {
+    "NORMAL": 2,
+    "HARD_NORMAL": 1,
+    "ANOMALY": 1
+  },
+  "implementation_name": "baseline",
+  "implementation_source": "internal",
+  "implementation_revision": null,
+  "runtime_config": {},
+  "predictions_path": "runs/evaluation/eval_eval_task_01_mock_1792242685/predictions.jsonl",
+  "metrics_json_path": "runs/evaluation/eval_eval_task_01_mock_1792242685/metrics.json",
+  "report_md_path": "runs/evaluation/eval_eval_task_01_mock_1792242685/metrics.md",
+  "error_analysis_md_path": "runs/evaluation/eval_eval_task_01_mock_1792242685/error_analysis.md",
+  "elapsed_seconds": 0.00992672998108901
+}

@@ -1,16 +1,15 @@
 /**
  * Industrial Benchmark Agent - DeepSeek Harness Server Plugin
- * Implements Cordis plugin lifecycle, MCP connection, system policy injection,
- * and REVIEW_REQUIRED session gating.
+ * Implements Cordis plugin lifecycle, policy injection via systemPrompt.section(),
+ * and tool restriction via tools.restrict().
  */
 
 export interface IADHarnessConfig {
   domainServerUrl?: string;
-  enforceReviewGate?: boolean;
-  enforceValTestIsolation?: boolean;
 }
 
 export const name = "iad-harness";
+export const inject = ["tools", "systemPrompt"];
 
 export const SYSTEM_POLICIES = [
   "INDUSTRIAL BENCHMARK SYSTEM POLICY RULES (MANDATORY):",
@@ -42,36 +41,33 @@ export const ALLOWED_TOOL_SURFACE = [
 ];
 
 export function apply(ctx: any, config: IADHarnessConfig = {}) {
-  const domainUrl = config.domainServerUrl || "http://127.0.0.1:8000";
-
-  // Invariant Policy Injection (R404)
-  if (ctx.systemPrompt) {
-    ctx.systemPrompt.addHook((prompt: string) => {
-      return `${prompt}\n\n${SYSTEM_POLICIES}`;
+  // Invariant Policy Injection via official systemPrompt.section (Ticket B003)
+  if (ctx.systemPrompt && typeof ctx.systemPrompt.section === "function") {
+    ctx.systemPrompt.section({
+      name: "industrial_benchmark_policies",
+      order: 500,
+      text: SYSTEM_POLICIES,
     });
   }
 
-  // Tool Surface Restriction (R409)
-  if (ctx.tools) {
-    ctx.tools.filter((tool: any) => {
-      return ALLOWED_TOOL_SURFACE.includes(tool.name);
-    });
-  }
-
-  // REVIEW_REQUIRED Gate Listener (R407, R408)
-  if (ctx.on) {
-    ctx.on("tool-call-finish", (event: any) => {
-      const result = event.result?.structuredContent;
-      if (result && result.status === "REVIEW_REQUIRED") {
-        ctx.logger?.warn("REVIEW_REQUIRED encountered. Halting autonomous agent execution for human review.");
-        event.session?.pause({
-          reason: "REVIEW_REQUIRED",
-          sessionId: event.session?.id,
-          summary: result.summary,
-        });
+  // Tool Surface Restriction via official tools.restrict (Ticket B004)
+  const applyRestriction = (toolsCtx: any) => {
+    if (toolsCtx && typeof toolsCtx.restrict === "function") {
+      try {
+        toolsCtx.restrict({ allow: ALLOWED_TOOL_SURFACE });
+      } catch (err: any) {
+        // If toolsCtx is not a scoped context, restrict must be applied on agent.ctx instead
       }
+    }
+  };
+
+  applyRestriction(ctx.tools);
+
+  if (typeof ctx.on === "function") {
+    ctx.on("agent/created", ({ agent }: any) => {
+      applyRestriction(agent?.ctx?.tools);
     });
   }
 
-  ctx.logger?.info(`Industrial Benchmark Harness Plugin initialized. Domain Server at ${domainUrl}`);
+  ctx.logger?.info("Industrial Benchmark Harness Plugin initialized.");
 }

@@ -50,93 +50,75 @@ def run_web(
 @agent_app.command("run")
 def agent_run(
     prompt: str = typer.Argument(..., help="Natural language instruction for the agent"),
-    task_id: str = typer.Option("kuangjiao_inspection_01", "--task", "-t", help="Inspection task ID"),
-    config_path: Optional[str] = typer.Option(None, "--config", "-c", help="Task config path"),
+    session_id: Optional[str] = typer.Option(None, "--session-id", "-s", help="Optional Harness session ID to adopt"),
 ):
     """
-    Run headless autonomous agent workflow for benchmark construction or evaluation (R411, R701).
-    Dispatches tools based on prompt intent and respects REVIEW_REQUIRED pause gate.
+    Run autonomous agent goal via DeepSeek Harness Runtime (Tickets A001~A004, Specs S1).
     """
-    console.print(f"[bold cyan]Agent received goal:[/bold cyan] {prompt}")
-    console.print(f"[dim]Task: {task_id}[/dim]")
+    console.print(f"[bold cyan]Harness Agent received goal:[/bold cyan] {prompt}")
+    from iad_agent import run as harness_run
 
-    lower = prompt.lower()
+    res = harness_run(goal=prompt, session_id=session_id)
+    console.print(f"[dim]Harness Session ID: {res.session_id}[/dim]")
+    console.print(f"[bold {'green' if res.status == 'SUCCESS' else 'yellow' if res.status in ('REVIEW_REQUIRED', 'AUTH_REQUIRED') else 'red'}]Status: {res.status}[/]")
 
-    if "eval" in lower or "compare" in lower or "baseline" in lower or "dinomaly" in lower or "patchcore" in lower:
-        console.print("[yellow]Executing Benchmark Evaluation Workflow...[/yellow]")
-        # 1. task_inspect
-        t_res = domain_tools.task_inspect(task_id=task_id)
-        latest_build = t_res.metrics.get("latest_build_id")
-        if not latest_build:
-            console.print("[bold red]Error: No benchmark build found. Please run benchmark build first.[/bold red]")
-            raise typer.Exit(1)
-
-        # 2. baseline_run for dinomaly2
-        console.print(f"[dim]Evaluating baseline dinomaly2 on build {latest_build}...[/dim]")
-        r1 = domain_tools.baseline_run(task_id=task_id, build_id=latest_build, model_id="dinomaly2")
-        console.print(f"[green]✓ dinomaly2 evaluated:[/green] {r1.summary}")
-
-        # 3. baseline_run for patchcore
-        console.print(f"[dim]Evaluating baseline patchcore on build {latest_build}...[/dim]")
-        r2 = domain_tools.baseline_run(task_id=task_id, build_id=latest_build, model_id="patchcore")
-        console.print(f"[green]✓ patchcore evaluated:[/green] {r2.summary}")
-
-        # 4. evaluation_compare
-        console.print("[dim]Comparing evaluated baselines...[/dim]")
-        cmp_res = domain_tools.evaluation_compare(task_id=task_id, build_id=latest_build)
-        console.print(f"[bold green]✓ Multi-model comparison completed:[/bold green] {cmp_res.summary}")
-        return
-
-    # Default: Benchmark Build Workflow (R701)
-    console.print("[yellow]Step 1/6: Inspecting Task...[/yellow]")
-    t_res = domain_tools.task_inspect(task_id=task_id)
-    console.print(f"[green]✓ Task inspected:[/green] {t_res.summary}")
-
-    console.print("[yellow]Step 2/6: Auditing Dataset...[/yellow]")
-    a_res = domain_tools.dataset_audit(task_id=task_id, config_path=config_path)
-    console.print(f"[green]✓ Dataset audited:[/green] {a_res.summary}")
-
-    console.print("[yellow]Step 3/6: Preparing Features...[/yellow]")
-    f_res = domain_tools.feature_prepare(task_id=task_id)
-    console.print(f"[green]✓ Features ready:[/green] {f_res.summary}")
-
-    console.print("[yellow]Step 4/6: Auditing Near-Duplicates...[/yellow]")
-    d_res = domain_tools.duplicate_audit(task_id=task_id)
-    console.print(f"[green]✓ Duplicates clustered:[/green] {d_res.summary}")
-
-    console.print("[yellow]Step 5/6: Checking Review Status...[/yellow]")
-    r_res = domain_tools.review_status(task_id=task_id)
-    console.print(f"[green]✓ Review status:[/green] {r_res.summary}")
-
-    if r_res.metrics.get("total_decisions", 0) == 0:
-        console.print("[yellow]Mining hard normal candidates...[/yellow]")
-        c_res = domain_tools.candidate_mine(task_id=task_id, config_path=config_path)
-        console.print(f"[bold red]HALTED (REVIEW_REQUIRED):[/bold red] {c_res.summary}")
-        console.print("[bold yellow]Human operator must review candidates in Web UI before building benchmark.[/bold yellow]")
-        raise typer.Exit(0)
-
-    console.print("[yellow]Step 6/6: Formally Building Benchmark...[/yellow]")
-    b_res = domain_tools.benchmark_build(task_id=task_id, config_path=config_path)
-    if b_res.status == ToolStatus.OK:
-        console.print(f"[bold green]✓ Benchmark build SUCCESS:[/bold green] {b_res.summary}")
-    else:
-        console.print(f"[bold red]Benchmark build {b_res.status.value}:[/bold red] {b_res.summary}")
+    if res.final_text:
+        console.print(f"[white]{res.final_text}[/white]")
+    if res.error_message:
+        console.print(f"[red]Notice / Error: {res.error_message}[/red]")
 
 
 @agent_app.command("resume")
 def agent_resume(
     session_id: str = typer.Argument(..., help="Harness session ID to resume"),
-    task_id: str = typer.Option("kuangjiao_inspection_01", "--task", "-t", help="Task ID"),
-    config_path: Optional[str] = typer.Option(None, "--config", "-c", help="Config path"),
+    prompt: Optional[str] = typer.Option(None, "--prompt", "-p", help="Optional instruction for the resumed turn"),
 ):
-    """Resume execution of a paused session after human review decisions are submitted (R408)."""
-    console.print(f"[bold cyan]Resuming Session:[/bold cyan] {session_id}")
-    r_res = domain_tools.review_status(task_id=task_id)
-    console.print(f"[dim]Current Review Status: {r_res.summary}[/dim]")
+    """
+    Resume an existing DeepSeek Harness session (Tickets A001, A005, Spec S1.3).
+    Strictly reuses the same session_id across turns.
+    """
+    console.print(f"[bold cyan]Resuming Harness Session:[/bold cyan] {session_id}")
+    from iad_agent import resume as harness_resume
 
-    # Proceed to build benchmark
-    b_res = domain_tools.benchmark_build(task_id=task_id, config_path=config_path)
-    console.print(f"[bold green]✓ Post-Review Benchmark Build Result:[/bold green] {b_res.summary}")
+    res = harness_resume(session_id=session_id, prompt=prompt)
+    console.print(f"[dim]Harness Session ID: {res.session_id}[/dim]")
+    console.print(f"[bold {'green' if res.status == 'SUCCESS' else 'yellow' if res.status in ('REVIEW_REQUIRED', 'AUTH_REQUIRED') else 'red'}]Status: {res.status}[/]")
+
+    if res.final_text:
+        console.print(f"[white]{res.final_text}[/white]")
+    if res.error_message:
+        console.print(f"[red]Notice / Error: {res.error_message}[/red]")
+
+
+@app.command("web")
+def web_supervisor(
+    port: int = typer.Option(8000, "--port", "-p", help="Domain server port"),
+    dsh_port: int = typer.Option(8080, "--dsh-port", help="DeepSeek Harness Web port"),
+    no_open: bool = typer.Option(False, "--no-open", help="Do not automatically open browser"),
+):
+    """
+    Supervise Industrial Domain Server sidecar and DeepSeek Harness Web UI (Ticket I001, Spec S13.1).
+    """
+    console.print(f"[bold green]Starting Industrial Domain Server on http://127.0.0.1:{port}...[/bold green]")
+    import subprocess
+    import sys
+
+    domain_proc = subprocess.Popen(
+        [sys.executable, "-m", "iad_domain_server.main", "--port", str(port)],
+        cwd=os.getcwd(),
+    )
+
+    dsh_bin = os.path.join(os.getcwd(), "node_modules", ".bin", "dsh")
+    dsh_cmd = [dsh_bin, "web", "--port", str(dsh_port)]
+    if no_open:
+        dsh_cmd.append("--no-open")
+
+    console.print(f"[bold cyan]Starting DeepSeek Harness Web UI on http://127.0.0.1:{dsh_port}...[/bold cyan]")
+    try:
+        subprocess.run(dsh_cmd, cwd=os.getcwd())
+    finally:
+        domain_proc.terminate()
+        domain_proc.wait()
 
 
 # -----------------------------------------------------------------------------

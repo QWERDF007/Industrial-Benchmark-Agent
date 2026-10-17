@@ -23,6 +23,7 @@ from iad_core.evaluation.contracts import (
     DomainMetrics,
     EvaluationRun,
     EvaluationPlan,
+    EvaluationInvariantError,
 )
 from iad_core.evaluation.threshold import ThresholdSelector
 from iad_core.evaluation.metrics import (
@@ -51,13 +52,13 @@ def resolve_runner(model_id_or_runner: Union[str, BaselineRunner]) -> BaselineRu
         return PatchCoreRunner(name=model_id_or_runner)
     elif "dinomaly" in m:
         return Dinomaly2Runner(name=model_id_or_runner)
-    elif "efficientad" in m:
-        return EfficientADRunner(name=model_id_or_runner)
     elif "feature" in m or "knn" in m or "bank" in m:
         return FeatureMemoryBankRunner(name=model_id_or_runner)
     else:
-        # Default to high-speed FeatureMemoryBankRunner
-        return FeatureMemoryBankRunner(name=model_id_or_runner)
+        raise ValueError(
+            f"Unknown baseline runner '{model_id_or_runner}'. "
+            f"Expected one of: feature_knn_dinov2, patchcore, dinomaly2, mock."
+        )
 
 
 class EvaluationService:
@@ -124,12 +125,29 @@ class EvaluationService:
 
         # Binary labels: 0 for Normal/HardNormal, 1 for Anomaly
         val_labels: Dict[str, int] = {}
+        val_normal_count = 0
+        val_anomaly_count = 0
         for s in val_samples:
             g = gold_dict.get(s.sample_id)
-            if g:
-                val_labels[s.sample_id] = 1 if g.gold_quality == "ANOMALY" else 0
+            if not g or g.gold_status != "CONFIRMED":
+                raise EvaluationInvariantError(
+                    f"Sample {s.sample_id} in Validation split lacks CONFIRMED Gold record!"
+                )
+            if g.binary_label == "ANOMALY":
+                val_labels[s.sample_id] = 1
+                val_anomaly_count += 1
+            elif g.binary_label == "NORMAL":
+                val_labels[s.sample_id] = 0
+                val_normal_count += 1
             else:
-                val_labels[s.sample_id] = 1 if "FAIL" in (s.quality_status or "").upper() else 0
+                raise EvaluationInvariantError(
+                    f"Sample {s.sample_id} has invalid binary_label: '{g.binary_label}'"
+                )
+
+        val_class_counts = {
+            "NORMAL": val_normal_count,
+            "ANOMALY": val_anomaly_count,
+        }
 
         # 5. STRICT SECURITY INVARIANT (R608): Select threshold using Val set ONLY!
         th_res = ThresholdSelector.select_threshold(
@@ -151,29 +169,51 @@ class EvaluationService:
         hard_normal_scores = []
         gold_labels_str = {}
         sample_domains = {}
+        test_normal_count = 0
+        test_hn_count = 0
+        test_anomaly_count = 0
 
         for p in test_preds:
             sid = p.sample_id
             g = gold_dict.get(sid)
             s_obj = sample_dict.get(sid)
-            domain = s_obj.batch_id if s_obj and s_obj.batch_id else "UNKNOWN"
+            if not g or g.gold_status != "CONFIRMED":
+                raise EvaluationInvariantError(
+                    f"Sample {sid} in Test split lacks CONFIRMED Gold record!"
+                )
+            domain = s_obj.batch_id if s_obj and s_obj.batch_id else (g.batch_id or "UNKNOWN")
             sample_domains[sid] = domain
 
-            if g:
-                g_qual = g.gold_quality
+            if g.binary_label == "ANOMALY":
+                is_anomaly = 1
+                test_anomaly_count += 1
+            elif g.binary_label == "NORMAL":
+                is_anomaly = 0
+                test_normal_count += 1
             else:
-                g_qual = "ANOMALY" if "FAIL" in (s_obj.quality_status or "").upper() else "NORMAL"
+                raise EvaluationInvariantError(
+                    f"Sample {sid} has invalid binary_label: '{g.binary_label}'"
+                )
 
-            gold_labels_str[sid] = g_qual
-            is_anomaly = 1 if g_qual == "ANOMALY" else 0
+            is_hn = bool(g.hard_normal)
+            if is_hn:
+                test_hn_count += 1
 
+            gold_labels_str[sid] = "ANOMALY" if is_anomaly == 1 else ("HARD_NORMAL" if is_hn else "NORMAL")
             test_scores.append(p.image_score)
             test_binary_labels.append(is_anomaly)
 
-            if g_qual == "HARD_NORMAL":
-                hard_normal_scores.append(p.image_score)
-            elif g_qual == "NORMAL":
-                normal_scores.append(p.image_score)
+            if is_anomaly == 0:
+                if is_hn:
+                    hard_normal_scores.append(p.image_score)
+                else:
+                    normal_scores.append(p.image_score)
+
+        test_class_counts = {
+            "NORMAL": test_normal_count,
+            "HARD_NORMAL": test_hn_count,
+            "ANOMALY": test_anomaly_count,
+        }
 
         image_metrics = compute_image_metrics(
             scores=np.array(test_scores, dtype=np.float32),
@@ -220,6 +260,12 @@ class EvaluationService:
             pixel_metrics=pixel_metrics,
             hard_normal_metrics=hard_normal_metrics,
             domain_metrics=domain_metrics,
+            val_class_counts=val_class_counts,
+            test_class_counts=test_class_counts,
+            implementation_name=getattr(runner, "implementation_name", model_id),
+            implementation_source=getattr(runner, "implementation_source", "unknown"),
+            implementation_revision=getattr(runner, "implementation_revision", None),
+            runtime_config=getattr(runner, "runtime_config", {}),
             predictions_path=preds_path,
             metrics_json_path=os.path.join(out_dir, "metrics.json"),
             report_md_path=os.path.join(out_dir, "metrics.md"),
@@ -278,14 +324,19 @@ class EvaluationService:
             f"- **Run ID**: `{run.run_id}`",
             f"- **Elapsed**: `{run.elapsed_seconds:.2f}s`",
             "",
-            "## 1. Threshold Configuration (Val-Fitted)",
+            "## 1. Split & Class Counts",
+            "",
+            f"- **Val Samples**: `{th.fit_samples_count}` (Normal: `{run.val_class_counts.get('NORMAL', 0)}`, Anomaly: `{run.val_class_counts.get('ANOMALY', 0)}`)",
+            f"- **Test Samples**: `{im.true_positive + im.false_positive + im.true_negative + im.false_negative}` (Normal: `{run.test_class_counts.get('NORMAL', 0)}`, Hard Normal: `{run.test_class_counts.get('HARD_NORMAL', 0)}`, Anomaly: `{run.test_class_counts.get('ANOMALY', 0)}`)",
+            "",
+            "## 2. Threshold Configuration (Val-Fitted)",
             "",
             f"- **Strategy**: `{th.strategy.value}`",
             f"- **Fitted Split**: `{th.fit_split}` ({th.fit_samples_count} samples)",
             f"- **Selected Threshold**: `{th.threshold:.4f}`",
             f"- **Val Best F1**: `{th.best_f1 if th.best_f1 is not None else 'N/A'}`",
             "",
-            "## 2. Test Image Metrics",
+            "## 3. Test Image Metrics",
             "",
             "| Metric | Value |",
             "|---|---|",
@@ -299,7 +350,7 @@ class EvaluationService:
             f"| F1 Score | `{im.f1:.4f}` |",
             f"| Confusion (TP / FP / TN / FN) | `{im.true_positive} / {im.false_positive} / {im.true_negative} / {im.false_negative}` |",
             "",
-            "## 3. Hard Normal Robustness",
+            "## 4. Hard Normal Robustness",
             "",
             "| Metric | Value |",
             "|---|---|",
@@ -309,7 +360,7 @@ class EvaluationService:
             f"| Normal Mean Score | `{hn.normal_score_mean:.4f}` |",
             f"| Separation Margin | `{hn.separation_margin:.4f}` |",
             "",
-            "## 4. Domain Stratified Breakdown",
+            "## 5. Domain Stratified Breakdown",
             "",
             "| Domain | Samples | Anomaly / Normal | Accuracy | F1 | I-AUROC | FP |",
             "|---|---|---|---|---|---|---|",

@@ -1,0 +1,285 @@
+{
+  "run_id": "eval_kuangjiao_inspection_01_feature_knn_dinov2_1792242766",
+  "task_id": "kuangjiao_inspection_01",
+  "build_id": "kuangjiao_inspection_01_20261017_003",
+  "model_id": "feature_knn_dinov2",
+  "threshold": {
+    "threshold": 0.081702,
+    "strategy": "f1_max",
+    "fit_split": "val",
+    "fit_samples_count": 23,
+    "best_f1": 0.9545,
+    "fpr_at_threshold": 1.0
+  },
+  "image_metrics": {
+    "i_auroc": 0.5909090909090909,
+    "i_ap": 0.948132660896905,
+    "recall_at_fpr_01": 0.3181818181818182,
+    "recall_at_fpr_05": 0.3181818181818182,
+    "threshold": 0.081702,
+    "accuracy": 0.8333333333333334,
+    "precision": 0.9090909090909091,
+    "recall": 0.9090909090909091,
+    "f1": 0.9090909090909091,
+    "true_positive": 20,
+    "false_positive": 2,
+    "true_negative": 0,
+    "false_negative": 2
+  },
+  "pixel_metrics": {
+    "p_auroc": null,
+    "p_ap": null,
+    "p_aupro": null,
+    "status": "NOT_EVALUATED"
+  },
+  "hard_normal_metrics": {
+    "hard_normal_count": 1,
+    "hard_normal_fpr": 1.0,
+    "hard_normal_score_mean": 0.2570447325706482,
+    "hard_normal_score_median": 0.2570447325706482,
+    "normal_score_mean": 0.11931490898132324,
+    "normal_score_median": 0.11931490898132324,
+    "separation_margin": 0.13772982358932495
+  },
+  "domain_metrics": {
+    "metrics_by_domain": {
+      "2023-11-27": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2025-09-04": {
+        "sample_count": 2,
+        "anomaly_count": 2,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "22-032315": {
+        "sample_count": 2,
+        "anomaly_count": 2,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "22-080913": {
+        "sample_count": 4,
+        "anomaly_count": 4,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2023-07-03": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2022_10_18": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2024-06-13": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2024-07-05": {
+        "sample_count": 2,
+        "anomaly_count": 2,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2024-07-26": {
+        "sample_count": 1,
+        "anomaly_count": 0,
+        "normal_count": 1,
+        "accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "i_auroc": null,
+        "false_positive": 1,
+        "false_negative": 0
+      },
+      "2025-03-02": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2025-05-17": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2025-06-04": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2025-08-28": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2025-09-10": {
+        "sample_count": 1,
+        "anomaly_count": 0,
+        "normal_count": 1,
+        "accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "i_auroc": null,
+        "false_positive": 1,
+        "false_negative": 0
+      },
+      "2026-06-29": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 1
+      },
+      "2026-08-06": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "22-052410": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "UNKNOWN": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 1
+      }
+    }
+  },
+  "val_class_counts": {
+    "NORMAL": 2,
+    "ANOMALY": 21
+  },
+  "test_class_counts": {
+    "NORMAL": 2,
+    "HARD_NORMAL": 1,
+    "ANOMALY": 22
+  },
+  "implementation_name": "feature_knn_dinov2",
+  "implementation_source": "facebookresearch/dinov2",
+  "implementation_revision": "dinov2_vitb14_reg",
+  "runtime_config": {
+    "model_id": "dinov2_vitb14_reg",
+    "preprocess_key": "dinov2_224_norm"
+  },
+  "predictions_path": "runs/evaluation/eval_kuangjiao_inspection_01_feature_knn_dinov2_1792242766/predictions.jsonl",
+  "metrics_json_path": "runs/evaluation/eval_kuangjiao_inspection_01_feature_knn_dinov2_1792242766/metrics.json",
+  "report_md_path": "runs/evaluation/eval_kuangjiao_inspection_01_feature_knn_dinov2_1792242766/metrics.md",
+  "error_analysis_md_path": "runs/evaluation/eval_kuangjiao_inspection_01_feature_knn_dinov2_1792242766/error_analysis.md",
+  "elapsed_seconds": 0.43539529701229185
+}

@@ -132,6 +132,34 @@ def benchmark_build(
     """
     Formally build benchmark assets, enforce leakage gate, and persist to SQLite (R307).
     """
+    # Domain Hard Gate: Review Gate check before build (Ticket C001, Spec S3.2)
+    from iad_core.review.service import ReviewQueueService
+    from iad_domain_server.tools.candidate_tools import candidate_mine
+
+    review_svc = ReviewQueueService(task_id=task_id, db_path=db_path)
+    if len(review_svc.candidates) == 0:
+        stats = review_svc.repo.get_stats(task_id)
+        if stats.get("total_decisions", 0) == 0:
+            mine_res = candidate_mine(task_id=task_id, config_path=config_path, db_path=db_path)
+            review_svc = ReviewQueueService(task_id=task_id, db_path=db_path)
+
+    if len(review_svc.candidates) > 0 and review_svc.pending_count > 0:
+        return ToolResult(
+            status=ToolStatus.REVIEW_REQUIRED,
+            summary=(
+                f"Benchmark build halted for task '{task_id}': {review_svc.pending_count}/{len(review_svc.candidates)} "
+                f"hard normal candidates require human review before benchmark construction."
+            ),
+            metrics={
+                "total_candidates": len(review_svc.candidates),
+                "reviewed_count": review_svc.reviewed_count,
+                "pending_count": review_svc.pending_count,
+            },
+            warnings=["Unreviewed hard normal candidates exist. Human review is strictly required."],
+            next_actions=["Human operator must submit review decisions in Web UI before building benchmark."],
+            mutation=MutationType.NONE,
+        )
+
     try:
         res = run_benchmark_pipeline(
             task_id=task_id,

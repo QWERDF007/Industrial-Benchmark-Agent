@@ -9,7 +9,7 @@
 - **Preprocess Key**: `mock_224`
 - **Embedding Dimension**: `768`
 - **Embedding Storage Dtype**: `fp16`
-- **Database**: `/tmp/tmp8gyonjtj/test_benchmark.db`
+- **Database**: `/tmp/tmp1dkd5kiw/test_benchmark.db`
 
 ## 2. 推理与缓存统计 (Inference & Cache)
 
@@ -25,8 +25,8 @@
 
 | 指标 | 测量值 | 说明 |
 |---|---:|---|
-| 运行耗时 (Elapsed Time) | 0.05 s | 批推理及数据库入库全流程耗时 |
-| 吞吐速度 (Throughput) | 1147.8 samples/s | 平均每秒处理样本数 |
+| 运行耗时 (Elapsed Time) | 0.04 s | 批推理及数据库入库全流程耗时 |
+| 吞吐速度 (Throughput) | 1553.7 samples/s | 平均每秒处理样本数 |
 | 存储占用 (Storage Bytes) | 0.08 MB (86,016 B) | SQLite `feature_records` BLOB 字节总大小 |
 
 ---

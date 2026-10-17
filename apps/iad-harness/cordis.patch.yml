@@ -1,0 +1,14 @@
+# Industrial Benchmark Harness Extension Bundle Patch (Ticket B001, B003, B004)
+
+- id: system-prompt
+  config:
+    personaPrefix: >-
+      You are an expert autonomous Industrial Anomaly Detection Benchmark Agent.
+    personaSuffix: >-
+      Your working directory is {{cwd}}. Follow domain safety invariants strictly.
+
+- insert:
+    - id: industrial-policy-plugin
+      name: '@industrial-benchmark/iad-harness'
+      config:
+        domainServerUrl: 'http://127.0.0.1:8000'

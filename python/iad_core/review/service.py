@@ -96,6 +96,14 @@ class ReviewQueueService:
     def candidates(self) -> List[CandidateRecord]:
         return self._candidates
 
+    @property
+    def reviewed_count(self) -> int:
+        return self.get_stats().reviewed_count
+
+    @property
+    def pending_count(self) -> int:
+        return self.get_stats().pending_count
+
     def get_candidate(self, sample_id: str) -> Optional[CandidateRecord]:
         for c in self._candidates:
             if c.sample_id == sample_id:

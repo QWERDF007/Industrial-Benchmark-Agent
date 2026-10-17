@@ -1,11 +1,27 @@
 {
   "name": "@industrial-benchmark/iad-harness",
   "version": "0.5.0",
-  "private": true,
   "description": "Industrial Benchmark Agent DeepSeek Harness Bundle and Extension",
-  "main": "src/server/index.ts",
+  "type": "module",
+  "main": "lib/server/index.js",
+  "types": "lib/server/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/server/index.d.ts",
+      "default": "./lib/server/index.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
   "scripts": {
-    "build": "echo 'Harness extension bundle ready'"
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "test": "node --test test/*.test.js"
   },
   "dependencies": {
     "@deepseek-ai/cordis": "~4.0.4",

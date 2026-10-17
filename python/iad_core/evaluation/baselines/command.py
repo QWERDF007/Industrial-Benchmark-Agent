@@ -18,16 +18,30 @@ class ExternalCommandBaselineRunner(BaselineRunner):
     Passes train/val/test manifests via temporary files and reads standard predictions JSONL.
     """
 
+    implementation_name: str = "external_command"
+    implementation_source: str = "external_process"
+
     def __init__(
         self,
         name: str,
         command_template: str,
         env: Optional[Dict[str, str]] = None,
         working_dir: Optional[str] = None,
+        implementation_source: Optional[str] = None,
+        implementation_revision: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(name=name, **kwargs)
         self.command_template = command_template
+        self.implementation_name = name
+        if implementation_source:
+            self.implementation_source = implementation_source
+        self.implementation_revision = implementation_revision
+        self.runtime_config = {
+            "command_template": command_template,
+            "working_dir": working_dir,
+            **kwargs,
+        }
         self.env = env or dict(os.environ)
         self.working_dir = working_dir
         self.temp_dir: Optional[tempfile.TemporaryDirectory] = None
@@ -75,20 +89,18 @@ class ExternalCommandBaselineRunner(BaselineRunner):
             )
 
             if res.returncode != 0:
-                logger.warning(f"External baseline command exited with code {res.returncode}: {res.stderr}")
-                # Fallback to default score if command failed
-                return [
-                    PredictionRecord(
-                        sample_id=s.sample_id,
-                        image_score=0.5,
-                        split_name=split_name,
-                    )
-                    for s in samples
-                ]
+                logger.error(f"External baseline command exited with code {res.returncode}: {res.stderr}")
+                raise RuntimeError(
+                    f"External baseline '{self.name}' command failed with exit code {res.returncode}:\n{res.stderr}"
+                )
+
+            if not os.path.exists(preds_out_path):
+                raise RuntimeError(
+                    f"External baseline '{self.name}' did not produce expected predictions output at: {preds_out_path}"
+                )
 
             preds = []
-            if os.path.exists(preds_out_path):
-                with open(preds_out_path, "r", encoding="utf-8") as f:
+            with open(preds_out_path, "r", encoding="utf-8") as f:
                     for line in f:
                         if not line.strip():
                             continue

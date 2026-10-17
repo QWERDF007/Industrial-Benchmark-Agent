@@ -38,8 +38,7 @@ DB_PATH = "data/benchmark.db"
 class ReviewDecisionRequest(BaseModel):
     sample_id: str
     decision: str = Field(..., description="PASS, HARD_NORMAL, FAIL, UNCERTAIN, SKIP")
-    reviewer: str = "human_operator"
-    session_id: Optional[str] = None
+    session_id: str = Field(..., description="Active Review session ID")
     reason_code: Optional[str] = None
     comment: Optional[str] = None
     duration_ms: Optional[int] = None
@@ -48,8 +47,9 @@ class ReviewDecisionRequest(BaseModel):
 
 
 class SessionStartRequest(BaseModel):
-    reviewer: str = "human_operator"
+    reviewer: str = Field("human_operator", description="Human reviewer identifier")
     session_type: str = "HARD_NORMAL_AUDIT"
+    task_id: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
 
@@ -147,35 +147,10 @@ def get_sample_evidence(task_id: str, sample_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/review/{task_id}/decision")
-def submit_review_decision(task_id: str, req: ReviewDecisionRequest):
-    """
-    Human Review Write RPC (R504, R505).
-    Strictly accepts decisions from human operator UI.
-    """
-    db = Database(DB_PATH)
-    repo = ReviewRepository(db)
-    now = datetime.utcnow().isoformat() + "Z"
-
-    record = ReviewDecisionRecord(
-        sample_id=req.sample_id,
-        task_id=task_id,
-        reviewer=req.reviewer,
-        decision=req.decision,
-        reason_code=req.reason_code,
-        comment=req.comment,
-        reviewed_at=req.submitted_at or now,
-        session_id=req.session_id,
-        review_duration_ms=req.duration_ms,
-        started_at=req.started_at,
-        submitted_at=req.submitted_at or now,
-    )
-    repo.save_decision(record)
-    return {"status": "success", "sample_id": req.sample_id, "decision": req.decision}
-
-
+@app.post("/api/review/session/start")
 @app.post("/api/review/{task_id}/session/start")
-def start_review_session(task_id: str, req: SessionStartRequest):
+def start_review_session(req: SessionStartRequest, task_id: Optional[str] = None):
+    target_task = task_id or req.task_id or "kuangjiao_inspection_01"
     db = Database(DB_PATH)
     repo = ReviewRepository(db)
     now = datetime.utcnow().isoformat() + "Z"
@@ -183,31 +158,76 @@ def start_review_session(task_id: str, req: SessionStartRequest):
 
     sess = ReviewSession(
         session_id=s_id,
-        task_id=task_id,
+        task_id=target_task,
         reviewer=req.reviewer,
-        session_type=req.session_type,
         started_at=now,
-        finished_at=None,
-        samples_reviewed_count=0,
-        metadata=req.metadata or {},
+        submitted_at=None,
+        total_reviewed=0,
     )
     repo.save_session(sess)
-    return {"session_id": s_id, "started_at": now}
+    return {"session_id": s_id, "task_id": target_task, "reviewer": req.reviewer, "started_at": now}
 
 
-@app.post("/api/review/{task_id}/session/finish")
-def finish_review_session(task_id: str, session_id: str = Body(..., embed=True)):
+@app.post("/api/review/{session_id}/decision")
+@app.post("/api/review/{task_id}/decision")
+def submit_review_decision(req: ReviewDecisionRequest, session_id: Optional[str] = None, task_id: Optional[str] = None):
+    """
+    Human Review Write RPC (Tickets C003, R504, R505).
+    Reviewer identity is strictly bound to the authenticated ReviewSession.
+    """
     db = Database(DB_PATH)
     repo = ReviewRepository(db)
-    sess = repo.get_session(session_id)
-    if not sess:
-        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found.")
 
-    decisions = repo.list_decisions_by_session(session_id)
-    sess.finished_at = datetime.utcnow().isoformat() + "Z"
-    sess.samples_reviewed_count = len(decisions)
+    target_session_id = session_id if (session_id and session_id.startswith("revsess_")) else req.session_id
+    if not target_session_id:
+        raise HTTPException(status_code=400, detail="Active session_id is required to submit review decisions.")
+
+    sess = repo.get_session(target_session_id)
+    if not sess:
+        raise HTTPException(status_code=404, detail=f"Review session '{target_session_id}' not found.")
+
+    now = datetime.utcnow().isoformat() + "Z"
+
+    record = ReviewDecisionRecord(
+        sample_id=req.sample_id,
+        reviewer=sess.reviewer,
+        decision=req.decision,
+        reason_code=req.reason_code,
+        comment=req.comment,
+        evidence_version="v2",
+        review_session_id=target_session_id,
+        review_duration_ms=req.duration_ms or 0,
+        started_at=req.started_at,
+        submitted_at=req.submitted_at or now,
+    )
+    repo.save_decision(record)
+    return {
+        "status": "success",
+        "sample_id": req.sample_id,
+        "decision": req.decision,
+        "session_id": target_session_id,
+        "reviewer": sess.reviewer,
+    }
+
+
+@app.post("/api/review/{session_id}/finish")
+@app.post("/api/review/{task_id}/session/finish")
+def finish_review_session(session_id: Optional[str] = None, task_id: Optional[str] = None, body_session_id: Optional[str] = Body(None, alias="session_id")):
+    target_session_id = session_id if (session_id and session_id.startswith("revsess_")) else body_session_id
+    if not target_session_id:
+        raise HTTPException(status_code=400, detail="session_id is required to finish session.")
+
+    db = Database(DB_PATH)
+    repo = ReviewRepository(db)
+    sess = repo.get_session(target_session_id)
+    if not sess:
+        raise HTTPException(status_code=404, detail=f"Session '{target_session_id}' not found.")
+
+    decisions = repo.list_decisions_by_session(target_session_id)
+    sess.submitted_at = datetime.utcnow().isoformat() + "Z"
+    sess.total_reviewed = len(decisions)
     repo.save_session(sess)
-    return {"session_id": session_id, "samples_reviewed_count": len(decisions)}
+    return {"session_id": target_session_id, "status": "finished", "reviewed_count": len(decisions), "finished_at": sess.submitted_at}
 
 
 @app.get("/api/review/{task_id}/stats")
@@ -278,14 +298,22 @@ def get_job(job_id: str):
 
 
 # -------------------------------------------------------------------------
-# Image / File Serving (for Harness Web UI Review Queue)
+# Image Serving (Safe sample_id resolver, Tickets C004, S14)
 # -------------------------------------------------------------------------
 
-@app.get("/api/file")
-def serve_file(path: str = Query(...)):
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(path)
+@app.get("/api/sample/{sample_id}/image")
+def get_sample_image(sample_id: str):
+    db = Database(DB_PATH)
+    repo = SampleRepository(db)
+    sample = repo.get(sample_id)
+    if not sample:
+        raise HTTPException(status_code=404, detail=f"Sample '{sample_id}' not found in database.")
+    if not sample.image_path or not os.path.exists(sample.image_path):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Image file for sample '{sample_id}' not found on disk: {sample.image_path if sample else 'None'}"
+        )
+    return FileResponse(sample.image_path)
 
 
 # -------------------------------------------------------------------------

@@ -3,6 +3,11 @@ from typing import Optional, List, Dict, Any, Tuple
 from pydantic import BaseModel, Field
 
 
+class EvaluationInvariantError(RuntimeError):
+    """Raised when an evaluation invariant (e.g. missing CONFIRMED gold) is violated."""
+    pass
+
+
 class PredictionRecord(BaseModel):
     """
     Standard Prediction Contract (R602).
@@ -80,6 +85,12 @@ class EvaluationRun(BaseModel):
     pixel_metrics: PixelMetrics
     hard_normal_metrics: HardNormalMetrics
     domain_metrics: DomainMetrics
+    val_class_counts: Dict[str, int] = Field(default_factory=dict)
+    test_class_counts: Dict[str, int] = Field(default_factory=dict)
+    implementation_name: Optional[str] = None
+    implementation_source: Optional[str] = None
+    implementation_revision: Optional[str] = None
+    runtime_config: Dict[str, Any] = Field(default_factory=dict)
     predictions_path: str
     metrics_json_path: str
     report_md_path: str
