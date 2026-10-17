@@ -13,24 +13,28 @@ def compute_density_outlier_scores(
     Compute local density outlier scores using KNN over embeddings.
     Outlier score = normalized mean cosine distance to K nearest neighbors.
     Higher score indicates lower local density (isolated/rare visual features).
+    Explicitly filters self via indices[i] != i to handle duplicate embeddings safely.
     """
     n_samples, dim = embeddings.shape
     if n_samples <= 1:
         return np.zeros((n_samples,), dtype=np.float32)
 
-    actual_k = min(k + 1, n_samples)
+    actual_k = min(k + 2, n_samples)
     index = faiss.IndexFlatIP(dim)
     index.add(embeddings)
 
-    # Search top k+1 (includes self at distance ~ 1.0)
+    # Search top k+2 to ensure k valid neighbors after excluding self
     scores, indices = index.search(embeddings, actual_k)
 
-    # Distances to neighbors (excluding self at index 0)
-    # Cosine distance = 1.0 - cosine similarity
-    neighbor_sims = scores[:, 1:]
-    cosine_dists = np.clip(1.0 - neighbor_sims, 0.0, 2.0)
-
-    mean_dists = np.mean(cosine_dists, axis=1)
+    mean_dists = np.zeros(n_samples, dtype=np.float32)
+    for i in range(n_samples):
+        mask = (indices[i] != i) & (indices[i] >= 0)
+        sims = scores[i][mask][:k]
+        if len(sims) == 0:
+            mean_dists[i] = 0.0
+        else:
+            cosine_dists = np.clip(1.0 - sims, 0.0, 2.0)
+            mean_dists[i] = float(np.mean(cosine_dists))
 
     min_d = np.min(mean_dists)
     max_d = np.max(mean_dists)

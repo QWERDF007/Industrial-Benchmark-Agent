@@ -146,13 +146,85 @@ class Database:
                 reviewer TEXT NOT NULL DEFAULT 'default',
                 reason_code TEXT,
                 comment TEXT,
-                evidence_version TEXT DEFAULT 'v1',
+                evidence_version TEXT DEFAULT 'v2',
+                review_session_id TEXT,
+                started_at TIMESTAMP,
+                submitted_at TIMESTAMP,
                 review_duration_ms INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(sample_id, reviewer)
             )
             """)
+            # Auto-migrate columns for existing databases
+            cursor.execute("PRAGMA table_info(review_decisions)")
+            existing_cols = {row["name"] for row in cursor.fetchall()}
+            if existing_cols:
+                if "review_session_id" not in existing_cols:
+                    cursor.execute("ALTER TABLE review_decisions ADD COLUMN review_session_id TEXT")
+                if "started_at" not in existing_cols:
+                    cursor.execute("ALTER TABLE review_decisions ADD COLUMN started_at TIMESTAMP")
+                if "submitted_at" not in existing_cols:
+                    cursor.execute("ALTER TABLE review_decisions ADD COLUMN submitted_at TIMESTAMP")
+
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_review_sample_id ON review_decisions(sample_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_review_decision ON review_decisions(decision)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_review_reviewer ON review_decisions(reviewer)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_review_session ON review_decisions(review_session_id)")
+
+            # 7. gold_records (Step 4 Gold Ground Truth)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS gold_records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sample_id TEXT NOT NULL,
+                task_id TEXT NOT NULL,
+                policy_name TEXT NOT NULL,
+                gold_quality TEXT NOT NULL,
+                binary_label TEXT,
+                hard_normal BOOLEAN DEFAULT 0,
+                gold_source TEXT NOT NULL,
+                gold_source_ref TEXT,
+                gold_status TEXT NOT NULL,
+                provenance_json TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(sample_id, policy_name)
+            )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_gold_sample_id ON gold_records(sample_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_gold_task_id ON gold_records(task_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_gold_quality ON gold_records(gold_quality)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_gold_policy ON gold_records(policy_name)")
+
+            # 8. split_assignments (Step 4 Group-safe Train/Val/Test Split)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS split_assignments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                build_id TEXT NOT NULL,
+                sample_id TEXT NOT NULL,
+                split_group_id TEXT NOT NULL,
+                split_name TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(build_id, sample_id)
+            )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_split_build_id ON split_assignments(build_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_split_sample_id ON split_assignments(sample_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_split_group_id ON split_assignments(split_group_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_split_name ON split_assignments(split_name)")
+
+            # 9. benchmark_builds (Step 4 Benchmark Builds)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS benchmark_builds (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                build_id TEXT NOT NULL UNIQUE,
+                task_id TEXT NOT NULL,
+                gold_policy TEXT NOT NULL,
+                split_policy TEXT NOT NULL,
+                seed INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                output_dir TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_builds_task_id ON benchmark_builds(task_id)")

@@ -1,0 +1,706 @@
+{
+  "same_pairs": [
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_00.53.54.477_1_(9352)_ch_9353_2738198749561313281_3.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-08-19_00.53.54.477_1_(9352)_ch_9353_2738198749561313281_3_copy_0_250912.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.21.365_1_(3393)_ch_3394_432357271937705985_1.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-09-22_15.50.21.365_1_(3393)_ch_3394_432357271937705985_1_copy_0_250909.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_22.09.52.070_1_(13763)_ch_13765_8070463313299868678_2.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-10-16_22.09.52.070_1_(13763)_ch_13765_8070463313299868678_2_copy_0_250904.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.27.37.340_2_(19210)_ch_19212_4973114502262027777_0.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-11-27_08.27.37.340_2_(19210)_ch_19212_4973114502262027777_0_copy_0_250912.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.27.52.078_2_(19254)_ch_19256_1586407582486961153_0.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-11-27_08.27.52.078_2_(19254)_ch_19256_1586407582486961153_0_copy_0_250904.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023_09_19_16_59_33_832031.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023_09_19_16_59_33_832031_copy_0_250904.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2024-07-06_23.06.50.048_1_(9901)_ch_9903_4179927865470386177_2.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024-07-06_23.06.50.048_1_(9901)_ch_9903_4179927865470386177_2_copy_0_250904.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2024-07-26_22.20.39.645_1_(1838)_ch_1839_7854866044722264577_2.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024-07-26_22.20.39.645_1_(1838)_ch_1839_7854866044722264577_2_copy_0_250912.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2024-08-05_17.21.18.938_2_(4948)_ch_4949_8143659803999515649_3.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024-08-05_17.21.18.938_2_(4948)_ch_4949_8143659803999515649_3_copy_0_250909.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024-09-07_23.03.55.692_2_(6596)_ch_6597_1514362622849603585_0.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024-09-07_23.03.55.692_2_(6596)_ch_6597_1514362622849603585_0_copy_0_250909.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2024_06_13_16_30_03_120796.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2024_06_13_16_30_03_120796_copy_0_250904.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-03-03_09.27.19.450_(1006)_1_-1_2_ch_1005_19_1_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-03-03_09.27.19.450_(1006)_1_-1_2_ch_1005_19_1__copy_0_250904.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-04-08_15.44.11.483_(2383)_1_-1_2_ch_2382_19_3_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-04-08_15.44.11.483_(2383)_1_-1_2_ch_2382_19_3__copy_0_250909.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-05-06_02.49.22.396_(565)_1_-1_1_ch_564_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-05-06_02.49.22.396_(565)_1_-1_1_ch_564_1_2__copy_0_250904.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-05-17_16.30.24.695_(10152)_1_-1_2_ch_10151_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-05-17_16.30.24.695_(10152)_1_-1_2_ch_10151_1_2__copy_0_250909.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-06-18_05.49.22.872_(1760)_1_-1_1_ch_1759_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-06-18_05.49.22.872_(1760)_1_-1_1_ch_1759_18_0__copy_0_250904.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-07-20_02.22.18.371_(1293)_1_-1_2_ch_1292_1_3_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-07-20_02.22.18.371_(1293)_1_-1_2_ch_1292_1_3__copy_0_250912.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-08-21_17.26.32.035_(29202)_1_-1_1_ch_29201_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-08-21_17.26.32.035_(29202)_1_-1_1_ch_29201_1_2__copy_0_250904.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-08-22_14.23.54.691_(14088)_1_-1_1_ch_14087_1_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-08-22_14.23.54.691_(14088)_1_-1_1_ch_14087_1_0__copy_0_250904.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-08-22_14.23.58.205_(14096)_1_-1_2_ch_14095_1_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-08-22_14.23.58.205_(14096)_1_-1_2_ch_14095_1_0__copy_0_250912.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-08-22_14.23.58.205_(14096)_1_-1_2_ch_14095_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-08-22_14.23.58.205_(14096)_1_-1_2_ch_14095_1_2__copy_0_250912.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-08-22_14.24.00.329_(14101)_1_-1_2_ch_14100_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-08-22_14.24.00.329_(14101)_1_-1_2_ch_14100_1_2__copy_0_250904.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-08-22_14.24.00.329_(14101)_1_-1_2_ch_14100_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-08-22_14.24.00.329_(14101)_1_-1_2_ch_14100_1_2__copy_0_250912.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-09-03_23.41.09.767_(634)_1_-1_1_ch_633_14_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-09-03_23.41.09.767_(634)_1_-1_1_ch_633_14_2__copy_0_250912.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-09-04_04.04.23.039_(22311)_1_-1_2_ch_22310_19_3_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-09-04_04.04.23.039_(22311)_1_-1_2_ch_22310_19_3__copy_0_250912.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-10_09.14.00.909_(687)_1_-1_1_ch_686_1_1_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-10_09.14.00.909_(687)_1_-1_1_ch_686_1_1__copy_0_251018.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-13_03.43.04.837_(18688)_1_-1_1_ch_18687_2_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-13_03.43.04.837_(18688)_1_-1_1_ch_18687_2_0__copy_1_251018.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-24_21.13.20.320_(2971)_1_-1_1_ch_2970_19_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-24_21.13.20.320_(2971)_1_-1_1_ch_2970_19_0__copy_0_251018.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/22-0524100552507__vec_image_578_705_577_ImageClipping-19_0.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0524100552507__vec_image_578_705_577_ImageClipping-19_0_copy_0_250909.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/22-0609143253688__vec_image_2096_1330_698_TrackImg-15_3.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/22-0609143253688__vec_image_2096_1330_698_TrackImg-15_3_copy_0_250909.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "AUGMENTED_COPY",
+      "description": "Bit-level identical image copy across train/test folders"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/(27)_ch_1_2023-06-15_09.32.24.040_28_1526808587_3.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/(27)_ch_1_2023-06-15_09.32.24.040_28_1526808587_1.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (27) in batch 2023-06-15 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/(29)_ch_1_2023-06-15_09.32.25.023_30_1526810625_1.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/(29)_ch_1_2023-06-15_09.32.25.023_30_1526810625_0.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (29) in batch 2023-06-15 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/(33)_ch_1_2023-06-15_09.32.31.057_34_1526822925_1.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/(33)_ch_1_2023-06-15_09.32.31.057_34_1526822925_3.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (33) in batch 2023-06-15 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-08-19_04.31.01.268_1_(16822)_ch_16824_936758905282832386_2.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_04.31.01.268_1_(16822)_ch_16824_936758905282832386_0.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (16822) in batch 2023-08-19 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-08-19_06.31.42.633_2_(4832)_ch_4833_864701314952483329_1.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_06.31.42.633_2_(4832)_ch_4833_864701314952483329_3.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (4832) in batch 2023-08-19 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-08-19_22.30.46.429_2_(2696)_ch_2698_7566057589942204930_3.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-08-19_22.30.46.429_2_(2696)_ch_2698_7566057589942204930_2.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (2696) in batch 2023-08-19 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-09-05_14.52.19.085_2_(88)_ch_90_1224990052546386436_0.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-05_14.52.19.085_1_(88)_ch_90_216183736015395329_1.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (88) in batch 2023-09-05 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-09-22_15.50.11.781_2_(3382)_ch_3383_3530833815563700740_0.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.11.781_2_(3382)_ch_3383_3530833815563700740_2.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (3382) in batch 2023-09-22 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-09-22_15.50.19.227_1_(3387)_ch_3388_7494001487653549057_3.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-09-22_15.50.19.227_1_(3387)_ch_3388_7494001487653549057_1.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (3387) in batch 2023-09-22 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-10-16_16.02.46.812_1_(25628)_ch_25629_1152934274381854721_1.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.812_1_(25628)_ch_25629_1152934274381854721_0.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (25628) in batch 2023-10-16 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.812_1_(25628)_ch_25629_1152934274381854721_0.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.812_1_(25628)_ch_25629_1152934274381854721_2.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (25628) in batch 2023-10-16 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.812_1_(25628)_ch_25629_1152934274381854721_2.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-10-16_16.02.46.812_1_(25628)_ch_25629_1152934274381854721_3.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (25628) in batch 2023-10-16 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-11-27_08.14.50.423_1_(18110)_ch_18112_4179918017498738177_3.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.14.50.423_1_(18110)_ch_18112_4179918017498738177_0.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (18110) in batch 2023-11-27 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.14.50.423_1_(18110)_ch_18112_4179918017498738177_0.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.14.50.423_1_(18110)_ch_18112_4179918017498738177_1.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (18110) in batch 2023-11-27 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.14.50.423_1_(18110)_ch_18112_4179918017498738177_1.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.14.50.462_2_(18110)_ch_18112_361428483441998337_0.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (18110) in batch 2023-11-27 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.14.50.462_2_(18110)_ch_18112_361428483441998337_0.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.14.50.462_2_(18110)_ch_18112_361428483441998337_2.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (18110) in batch 2023-11-27 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-11-27_08.14.59.898_1_(18136)_ch_18138_4396090799617373185_1.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.14.59.898_1_(18136)_ch_18138_4396090799617373185_0.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (18136) in batch 2023-11-27 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.14.59.898_1_(18136)_ch_18138_4396090799617373185_0.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.14.59.898_1_(18136)_ch_18138_4396090799617373185_3.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (18136) in batch 2023-11-27 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2023-11-27_08.16.07.584_1_(18235)_ch_18237_7998970501548425217_1.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.16.07.584_1_(18235)_ch_18237_7998970501548425217_0.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (18235) in batch 2023-11-27 consecutive capture"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.16.07.584_1_(18235)_ch_18237_7998970501548425217_0.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.16.07.584_1_(18235)_ch_18237_7998970501548425217_3.png",
+      "type": "CONFIRMED_SAME_DERIVED",
+      "category": "BURST_SAME_PHYSICAL",
+      "description": "Same physical workpiece (18235) in batch 2023-11-27 consecutive capture"
+    }
+  ],
+  "diff_pairs": [
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-10-25_12.57.57.968_(5222)_1_-1_1_ch_5221_1_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (5222) (batch 2025-10-25) vs (17550) (batch 2025-10-22)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_12.57.27.899_(5160)_1_-1_1_ch_5159_12_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (5160) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_12.57.28.787_(5162)_1_-1_1_ch_5161_1_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (5162) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_12.57.32.117_(5169)_1_-1_1_ch_5168_1_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (5169) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_12.57.33.915_(5173)_1_-1_1_ch_5172_1_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (5173) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_12.57.35.315_(5176)_1_-1_1_ch_5175_1_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (5176) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_12.57.36.714_(5179)_1_-1_1_ch_5178_1_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (5179) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_12.57.40.459_(5187)_1_-1_1_ch_5186_1_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (5187) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_12.57.41.368_(5189)_1_-1_1_ch_5188_1_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (5189) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_12.57.41.824_(5190)_1_-1_1_ch_5189_1_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (5190) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_12.57.58.381_(5223)_1_-1_1_ch_5222_1_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (5223) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_12.58.34.175_(5232)_1_-1_1_ch_5231_1_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (5232) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_12.59.45.180_(5274)_1_-1_1_ch_5273_1_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (5274) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_13.04.17.096_(5525)_1_-1_1_ch_5524_1_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (5525) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_13.04.24.517_(5543)_1_-1_1_ch_5542_1_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (5543) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-22_05.05.31.583_(17550)_1_-1_1_ch_17549_18_0_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_16.27.04.900_(1366)_1_-1_1_ch_1365_12_0_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (17550) (batch 2025-10-22) vs (1366) (batch 2025-10-25)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-10-28_12.01.40.662_(5925)_1_-1_1_ch_5924_14_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-27_12.30.52.543_(16217)_1_-1_1_ch_16216_19_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (5925) (batch 2025-10-28) vs (16217) (batch 2025-10-27)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-10-28_12.03.44.335_(6155)_1_-1_1_ch_6154_14_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-27_12.30.52.543_(16217)_1_-1_1_ch_16216_19_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (6155) (batch 2025-10-28) vs (16217) (batch 2025-10-27)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-27_12.30.52.543_(16217)_1_-1_1_ch_16216_19_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-28_12.00.40.128_(5787)_1_-1_1_ch_5786_14_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (16217) (batch 2025-10-27) vs (5787) (batch 2025-10-28)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-27_12.30.52.543_(16217)_1_-1_1_ch_16216_19_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-28_12.00.44.485_(5797)_1_-1_1_ch_5796_14_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (16217) (batch 2025-10-27) vs (5797) (batch 2025-10-28)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-27_12.30.52.543_(16217)_1_-1_1_ch_16216_19_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-28_12.00.47.125_(5803)_1_-1_1_ch_5802_14_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (16217) (batch 2025-10-27) vs (5803) (batch 2025-10-28)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-27_12.30.52.543_(16217)_1_-1_1_ch_16216_19_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-28_12.01.03.798_(5841)_1_-1_1_ch_5840_14_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (16217) (batch 2025-10-27) vs (5841) (batch 2025-10-28)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-27_12.30.52.543_(16217)_1_-1_1_ch_16216_19_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-28_12.01.16.069_(5869)_1_-1_1_ch_5868_14_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (16217) (batch 2025-10-27) vs (5869) (batch 2025-10-28)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-27_12.30.52.543_(16217)_1_-1_1_ch_16216_19_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-28_12.01.16.959_(5871)_1_-1_1_ch_5870_14_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (16217) (batch 2025-10-27) vs (5871) (batch 2025-10-28)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-27_12.30.52.543_(16217)_1_-1_1_ch_16216_19_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-28_12.01.36.282_(5915)_1_-1_1_ch_5914_14_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "CROSS_BATCH_CANDIDATE",
+      "description": "Different physical workpiece (16217) (batch 2025-10-27) vs (5915) (batch 2025-10-28)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_12.54.27.451_(5855)_1_-1_1_ch_5854_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_13.03.56.443_(5895)_1_-1_1_ch_5894_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5855) vs (5895)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_12.54.27.451_(5855)_1_-1_1_ch_5854_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.22.338_(5843)_1_-1_1_ch_5842_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5855) vs (5843)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_12.54.27.451_(5855)_1_-1_1_ch_5854_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.23.384_(5845)_1_-1_1_ch_5844_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5855) vs (5845)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_12.54.27.451_(5855)_1_-1_1_ch_5854_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.24.225_(5847)_1_-1_1_ch_5846_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5855) vs (5847)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_12.54.27.451_(5855)_1_-1_1_ch_5854_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.24.622_(5848)_1_-1_1_ch_5847_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5855) vs (5848)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_12.54.27.451_(5855)_1_-1_1_ch_5854_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.25.828_(5851)_1_-1_1_ch_5850_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5855) vs (5851)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_12.54.27.451_(5855)_1_-1_1_ch_5854_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.26.255_(5852)_1_-1_1_ch_5851_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5855) vs (5852)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_12.54.27.451_(5855)_1_-1_1_ch_5854_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.26.641_(5853)_1_-1_1_ch_5852_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5855) vs (5853)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_12.54.27.451_(5855)_1_-1_1_ch_5854_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.27.053_(5854)_1_-1_1_ch_5853_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5855) vs (5854)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_12.54.27.451_(5855)_1_-1_1_ch_5854_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.28.285_(5857)_1_-1_1_ch_5856_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5855) vs (5857)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_12.54.27.451_(5855)_1_-1_1_ch_5854_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.58.08.554_(5865)_1_-1_1_ch_5864_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5855) vs (5865)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_12.54.27.451_(5855)_1_-1_1_ch_5854_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_13.03.57.269_(5897)_1_-1_1_ch_5896_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5855) vs (5897)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_13.03.56.443_(5895)_1_-1_1_ch_5894_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.22.338_(5843)_1_-1_1_ch_5842_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5895) vs (5843)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_13.03.56.443_(5895)_1_-1_1_ch_5894_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.23.384_(5845)_1_-1_1_ch_5844_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5895) vs (5845)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_13.03.56.443_(5895)_1_-1_1_ch_5894_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.24.225_(5847)_1_-1_1_ch_5846_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5895) vs (5847)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_13.03.56.443_(5895)_1_-1_1_ch_5894_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.24.622_(5848)_1_-1_1_ch_5847_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5895) vs (5848)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_13.03.56.443_(5895)_1_-1_1_ch_5894_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.25.828_(5851)_1_-1_1_ch_5850_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5895) vs (5851)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_13.03.56.443_(5895)_1_-1_1_ch_5894_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.26.255_(5852)_1_-1_1_ch_5851_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5895) vs (5852)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_13.03.56.443_(5895)_1_-1_1_ch_5894_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.26.641_(5853)_1_-1_1_ch_5852_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5895) vs (5853)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_13.03.56.443_(5895)_1_-1_1_ch_5894_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.27.053_(5854)_1_-1_1_ch_5853_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5895) vs (5854)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_13.03.56.443_(5895)_1_-1_1_ch_5894_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.28.285_(5857)_1_-1_1_ch_5856_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5895) vs (5857)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_13.03.56.443_(5895)_1_-1_1_ch_5894_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.58.08.554_(5865)_1_-1_1_ch_5864_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5895) vs (5865)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2025-11-08_13.03.56.443_(5895)_1_-1_1_ch_5894_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_13.03.57.269_(5897)_1_-1_1_ch_5896_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5895) vs (5897)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.22.338_(5843)_1_-1_1_ch_5842_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.23.384_(5845)_1_-1_1_ch_5844_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5843) vs (5845)"
+    },
+    {
+      "sample_a": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.22.338_(5843)_1_-1_1_ch_5842_1_2_.png",
+      "sample_b": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-11-08_12.54.24.225_(5847)_1_-1_1_ch_5846_1_2_.png",
+      "type": "CONFIRMED_DIFFERENT_PHYSICAL",
+      "category": "SAME_BATCH_DIFFERENT_WORKPIECE",
+      "description": "Different physical workpiece (5843) vs (5847)"
+    }
+  ]
+}

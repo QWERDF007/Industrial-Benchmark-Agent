@@ -32,14 +32,24 @@ def generate_candidate_mining_markdown(
 ## 1. 挖掘与排序概览 (Mining Overview)
 
 - **Task ID**: `{task_id}`
+- **策略名称 (Policy Name)**: `{result.policy_name}`
 - **候选样本池 (Candidate Pool)**: {result.pool_size:,} 个样本
 - **选取 Top-K**: {result.top_k:,} 个样本
 - **多样性抑制后实际入选 (Diverse Selected)**: {result.selected_count:,} 个样本
 - **多样性抑制阈值 (Diversity Threshold)**: `{result.diversity_threshold}`
-- **基准良品数 (Reference Normal Count)**: {result.reference_count:,} 个
+- **基准良品总数 (Reference Normal Count)**: {result.reference_count:,} 个
 - **运算耗时 (Elapsed Time)**: {result.elapsed_seconds:.2f} s (100% 复用特征缓存，0 次重新推理)
 
-### 1.1 评分权重配置 (Scoring Weights)
+### 1.1 基准良品构成 (Reference Normal Breakdown)
+
+| 良品参考来源 | 样本数 | 占比 |
+|---|---:|---:|
+| 原始确定良品 (Raw Confirmed PASS) | {result.reference_breakdown.get('raw_pass', 0):,} | {result.reference_breakdown.get('raw_pass', 0) / max(1, result.reference_count):.2%} |
+| 人工审核良品 (Review Confirmed PASS) | {result.reference_breakdown.get('review_pass', 0):,} | {result.reference_breakdown.get('review_pass', 0) / max(1, result.reference_count):.2%} |
+| 审核高难良品 (Review HARD_NORMAL) | {result.reference_breakdown.get('hard_normal', 0):,} | {result.reference_breakdown.get('hard_normal', 0) / max(1, result.reference_count):.2%} |
+| **总计有效基准 (Total Reference)** | **{result.reference_count:,}** | 100.0% |
+
+### 1.2 评分权重配置 (Scoring Weights)
 
 - `normal_distance` (良品法向距离权重): **{result.weights.normal_distance:.2f}**
 - `density_outlier` (局部密度离群权重): **{result.weights.density_outlier:.2f}**

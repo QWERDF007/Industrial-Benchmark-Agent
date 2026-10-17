@@ -31,7 +31,10 @@ class ReviewDecisionRecord(BaseModel):
     reviewer: str = "default"
     reason_code: Optional[str] = None
     comment: Optional[str] = None
-    evidence_version: str = "v1"
+    evidence_version: str = "v2"
+    review_session_id: Optional[str] = None
+    started_at: Optional[str] = None
+    submitted_at: Optional[str] = None
     review_duration_ms: int = 0
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -43,6 +46,9 @@ class ReviewDecisionCreate(BaseModel):
     reviewer: str = "default"
     reason_code: Optional[ReasonCode] = None
     comment: Optional[str] = None
+    review_session_id: Optional[str] = None
+    started_at: Optional[str] = None
+    submitted_at: Optional[str] = None
     review_duration_ms: int = 0
 
 

@@ -44,6 +44,7 @@ class CandidateScoringWeights(BaseModel):
 
 class CandidateMiningResult(BaseModel):
     task_id: str
+    policy_name: str = "default"
     pool_size: int
     top_k: int
     weights: CandidateScoringWeights
@@ -51,6 +52,7 @@ class CandidateMiningResult(BaseModel):
     selected_count: int
     low_reference_warning: bool
     reference_count: int
+    reference_breakdown: Dict[str, int] = Field(default_factory=dict)
     candidates_json_path: str
     report_md_path: str
     elapsed_seconds: float

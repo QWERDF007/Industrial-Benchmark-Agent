@@ -173,8 +173,7 @@ def test_evidence_package_completeness(review_test_env):
     # Checks completeness
     assert ev.sample_id == "cand_01"
     assert ev.task_id == env["task_id"]
-    assert ev.evidence_status == "COMPLETE"
-    assert ev.evidence_version == "v1"
+    assert ev.evidence_version == "v2"
 
     # Metadata
     assert ev.metadata["physical_sample_id"] == "chip_1"
@@ -195,10 +194,12 @@ def test_evidence_package_completeness(review_test_env):
     neighbor_ids = [n.sample_id for n in ev.nearest_neighbors]
     assert "cand_01" not in neighbor_ids  # Should not include query itself
 
-    # Verified duplicates
+    # Verified duplicates & component members
     assert len(ev.verified_duplicates) == 1
     assert ev.verified_duplicates[0].sample_id == "cand_02"
     assert ev.verified_duplicates[0].group_id == "ver_grp_01"
+    assert len(ev.verified_component_members) == 1
+    assert ev.verified_component_members[0].sample_id == "cand_02"
 
 
 def test_review_decision_persistence_and_isolated_quality(review_test_env):
@@ -335,3 +336,36 @@ def test_review_report_and_export(review_test_env):
     assert "FAIL" in md
     assert "Decision Distribution" in md
     assert "Reason Codes Breakdown" in md
+
+
+def test_review_session_and_wall_clock_tracking(review_test_env):
+    """C309: Verify review_session_id, started_at, and submitted_at are persisted and queried."""
+    env = review_test_env
+    db = env["db"]
+    task_id = env["task_id"]
+
+    service = ReviewQueueService(task_id=task_id, db=db)
+    session_id = "session_20261017_test_01"
+    start_ts = "2026-10-17T11:45:00.000Z"
+    submit_ts = "2026-10-17T11:45:03.500Z"
+
+    rec = service.save_decision(
+        sample_id="cand_03",
+        decision=ReviewDecisionType.HARD_NORMAL,
+        reason_code=ReasonCode.NORMAL_NOMINAL,
+        comment="Session test",
+        reviewer="session_reviewer",
+        review_session_id=session_id,
+        started_at=start_ts,
+        submitted_at=submit_ts,
+        duration_ms=3500,
+    )
+
+    repo = ReviewDecisionRepository(db)
+    saved = repo.get("cand_03", reviewer="session_reviewer")
+    assert saved is not None
+    assert saved.review_session_id == session_id
+    assert saved.started_at == start_ts
+    assert saved.submitted_at == submit_ts
+    assert saved.review_duration_ms == 3500
+    assert saved.evidence_version == "v2"

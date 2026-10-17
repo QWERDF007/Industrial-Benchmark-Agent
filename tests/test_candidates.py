@@ -299,3 +299,91 @@ def test_candidate_miner_cached_features_reuse(candidate_test_env):
         content = f.read()
     assert "# Hard Normal Candidate Mining Report" in content
     assert "Scoring Weights" in content
+    assert "基准良品构成" in content
+
+
+def test_density_outlier_exact_duplicate_embeddings():
+    """C307: Verify KNN density outlier calculation correctly removes self even with identical duplicate embeddings."""
+    dim = 32
+    rng = np.random.default_rng(123)
+    vec1 = rng.standard_normal(dim).astype(np.float32)
+    vec1 /= np.linalg.norm(vec1)
+    vec2 = rng.standard_normal(dim).astype(np.float32)
+    vec2 /= np.linalg.norm(vec2)
+
+    # 4 samples: sample 0, 1, 2 are bit-for-bit identical; sample 3 is distinct
+    embeddings = np.stack([vec1, vec1.copy(), vec1.copy(), vec2], axis=0)
+    scores = compute_density_outlier_scores(embeddings, k=2)
+
+    assert len(scores) == 4
+    # The duplicate copies should have low outlier score (high local density)
+    assert scores[0] <= scores[3]
+    assert 0.0 <= scores[0] <= 1.0
+    assert 0.0 <= scores[3] <= 1.0
+
+
+def test_annotation_signal_invalid_geometry_filter(candidate_test_env):
+    """C308: Verify annotations with geometry_status == 'INVALID' do not increase candidate signal."""
+    env = candidate_test_env
+    db = env["db"]
+    sample_repo = SampleRepository(db)
+    anno_repo = AnnotationRepository(db)
+
+    # Insert sample with only INVALID annotation
+    sample_repo.upsert(
+        Sample(
+            sample_id="test_invalid_sample",
+            task_id=env["task_id"],
+            dataset_id="ds_test",
+            image_path="/fake/test_invalid.png",
+            relative_path="test_invalid.png",
+            data_origin=DataOrigin.LEGACY_TRAIN,
+            quality_status=QualityStatus.UNCERTAIN,
+            width=100,
+            height=100,
+        )
+    )
+    anno_repo.upsert(
+        Annotation(
+            annotation_id="anno_invalid_01",
+            sample_id="test_invalid_sample",
+            raw_label="1",
+            phenomenon="scratch",
+            annotation_type=AnnotationType.BBOX,
+            bbox=[150, 150, 200, 200],  # Out-of-bounds rejected
+            geometry_status=GeometryStatus.INVALID,
+            source=AnnotationSource.IMPORTED,
+        )
+    )
+
+    # Insert sample with VALID annotation
+    sample_repo.upsert(
+        Sample(
+            sample_id="test_valid_sample",
+            task_id=env["task_id"],
+            dataset_id="ds_test",
+            image_path="/fake/test_valid.png",
+            relative_path="test_valid.png",
+            data_origin=DataOrigin.LEGACY_TRAIN,
+            quality_status=QualityStatus.UNCERTAIN,
+            width=100,
+            height=100,
+        )
+    )
+    anno_repo.upsert(
+        Annotation(
+            annotation_id="anno_valid_01",
+            sample_id="test_valid_sample",
+            raw_label="1",
+            phenomenon="scratch",
+            annotation_type=AnnotationType.BBOX,
+            bbox=[10, 10, 50, 50],
+            geometry_status=GeometryStatus.VALID,
+            source=AnnotationSource.IMPORTED,
+        )
+    )
+
+    signals = compute_annotation_signals(["test_invalid_sample", "test_valid_sample"], db)
+    assert signals[0] == 0.0, "INVALID annotation must not increase signal (expected 0.0)"
+    assert signals[1] > 0.0, "VALID annotation must increase signal"
+

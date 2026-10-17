@@ -48,6 +48,7 @@ def compute_annotation_signals(
                 SELECT sample_id, bbox_json 
                 FROM annotations 
                 WHERE sample_id IN ({placeholders})
+                  AND geometry_status IN ('VALID', 'CLIPPED', 'SCALED')
                 """,
                 b_ids,
             )

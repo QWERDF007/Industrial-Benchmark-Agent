@@ -81,3 +81,47 @@ readiness_policy:
     min_pass: 50
     min_fail: 50
     max_uncertain_ratio: 0.2
+
+candidate_mining:
+  policy_name: default
+  weights:
+    normal_distance: 0.35
+    density_outlier: 0.25
+    domain_novelty: 0.20
+    annotation_signal: 0.20
+  diversity_threshold: 0.92
+
+reference_normal:
+  include_raw_pass: true
+  include_review_pass: true
+  include_hard_normal: false
+
+gold:
+  policy_name: kuangjiao_gold_v1
+  trusted_reviewers:
+    - reviewer_1
+    - expert_reviewer_1
+    - default
+  source_priority:
+    - HUMAN_REVIEW
+    - PRODUCTION_QA
+    - EXISTING_QUALITY
+  conflict_policy: MARK_CONFLICT
+  include_decisions:
+    - PASS
+    - HARD_NORMAL
+    - FAIL
+
+split:
+  policy_name: group_stratified_v1
+  seed: 42
+  ratios:
+    train: 0.6
+    val: 0.2
+    test: 0.2
+  group_keys:
+    - physical_sample_id
+    - capture_sequence_id
+    - verified_duplicate
+  exclude_origins_from_test:
+    - AUGMENTED

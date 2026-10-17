@@ -160,8 +160,11 @@ class ReviewQueueService:
         reason_code: Optional[ReasonCode] = None,
         comment: Optional[str] = None,
         reviewer: str = "default",
+        review_session_id: Optional[str] = None,
+        started_at: Optional[str] = None,
+        submitted_at: Optional[str] = None,
         duration_ms: int = 0,
-        evidence_version: str = "v1",
+        evidence_version: str = "v2",
     ) -> ReviewDecisionRecord:
         """
         Save review decision in review_decisions table.
@@ -174,6 +177,9 @@ class ReviewQueueService:
             reason_code=reason_code.value if isinstance(reason_code, ReasonCode) else (str(reason_code) if reason_code else None),
             comment=comment,
             evidence_version=evidence_version,
+            review_session_id=review_session_id,
+            started_at=started_at,
+            submitted_at=submitted_at,
             review_duration_ms=duration_ms,
         )
         self.repo.upsert(rec)
@@ -184,6 +190,9 @@ class ReviewQueueService:
         sample_id: str,
         reason: Optional[str] = None,
         reviewer: str = "default",
+        review_session_id: Optional[str] = None,
+        started_at: Optional[str] = None,
+        submitted_at: Optional[str] = None,
         duration_ms: int = 0,
     ) -> ReviewDecisionRecord:
         """
@@ -195,6 +204,9 @@ class ReviewQueueService:
             reason_code=ReasonCode.DATA_ISSUE if not reason else None,
             comment=reason or "Skipped by reviewer",
             reviewer=reviewer,
+            review_session_id=review_session_id,
+            started_at=started_at,
+            submitted_at=submitted_at,
             duration_ms=duration_ms,
         )
 

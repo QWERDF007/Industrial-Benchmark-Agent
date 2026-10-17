@@ -1,0 +1,48 @@
+{
+  "task_id": "task_no_policy",
+  "samples": {
+    "total": 9,
+    "pass": 5,
+    "fail": 4,
+    "uncertain": 0
+  },
+  "annotations": {
+    "total": 0,
+    "bbox": 0,
+    "polygon": 0,
+    "mask": 0,
+    "image": 0,
+    "annotated_samples": 0,
+    "unannotated_samples": 9
+  },
+  "geometry": {
+    "bbox_total": 0,
+    "bbox_valid": 0,
+    "bbox_clipped": 0,
+    "bbox_scaled": 0,
+    "bbox_invalid": 0,
+    "bbox_usable": 0
+  },
+  "metadata": {
+    "missing_batch_id": 1.0,
+    "missing_physical_sample_id": 1.0,
+    "missing_capture_sequence_id": 1.0,
+    "missing_station": 1.0,
+    "missing_camera": 1.0
+  },
+  "issues": {},
+  "track_readiness": {
+    "Standard AD": "PARTIAL",
+    "Open Normal": "NOT_EVALUATED",
+    "Domain Shift": "NOT_EVALUATED",
+    "Small / Weak": "NOT_EVALUATED",
+    "Global / Logical": "NOT_EVALUATED"
+  },
+  "resolution_distribution": {
+    "100x100": 9
+  },
+  "phenomenon_distribution": {},
+  "data_origin_distribution": {
+    "UNKNOWN": 9
+  }
+}

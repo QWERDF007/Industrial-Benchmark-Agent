@@ -15,44 +15,65 @@ def get_normal_reference_set(
     db: Database,
     model_id: str = "dinov2_vitb14_reg",
     preprocess_key: str = "dinov2_224_norm",
+    include_raw_pass: bool = True,
+    include_review_pass: bool = True,
     include_hard_normal: bool = False,
-) -> Tuple[List[str], np.ndarray, bool]:
+    return_breakdown: bool = False,
+):
     """
     Retrieve reference normal samples and their feature embeddings.
     Derived dynamically from confirmed PASS samples and review decisions.
     
     Returns:
         (reference_sample_ids, reference_embeddings [M, D], is_low_reference)
+        or if return_breakdown=True:
+        (reference_sample_ids, reference_embeddings [M, D], is_low_reference, breakdown_dict)
     """
-    normal_sample_ids: Set[str] = set()
+    raw_pass_ids: Set[str] = set()
+    review_pass_ids: Set[str] = set()
+    hard_normal_ids: Set[str] = set()
 
     with db.connection() as conn:
         cursor = conn.cursor()
         # 1. Samples with quality_status == 'PASS'
-        cursor.execute(
-            "SELECT sample_id FROM samples WHERE task_id = ? AND quality_status = 'PASS'",
-            (task_id,),
-        )
-        for row in cursor.fetchall():
-            normal_sample_ids.add(row[0])
+        if include_raw_pass:
+            cursor.execute(
+                "SELECT sample_id FROM samples WHERE task_id = ? AND quality_status = 'PASS'",
+                (task_id,),
+            )
+            for row in cursor.fetchall():
+                raw_pass_ids.add(row[0])
 
         # 2. Check review_decisions table if it exists
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='review_decisions'")
         if cursor.fetchone():
-            decisions = ("PASS", "HARD_NORMAL") if include_hard_normal else ("PASS",)
-            placeholders = ",".join("?" for _ in decisions)
-            cursor.execute(
-                f"""
-                SELECT r.sample_id 
-                FROM review_decisions r
-                JOIN samples s ON r.sample_id = s.sample_id
-                WHERE s.task_id = ? AND r.decision IN ({placeholders})
-                """,
-                (task_id, *decisions),
-            )
-            for row in cursor.fetchall():
-                normal_sample_ids.add(row[0])
+            if include_review_pass:
+                cursor.execute(
+                    """
+                    SELECT r.sample_id 
+                    FROM review_decisions r
+                    JOIN samples s ON r.sample_id = s.sample_id
+                    WHERE s.task_id = ? AND r.decision = 'PASS'
+                    """,
+                    (task_id,),
+                )
+                for row in cursor.fetchall():
+                    review_pass_ids.add(row[0])
 
+            if include_hard_normal:
+                cursor.execute(
+                    """
+                    SELECT r.sample_id 
+                    FROM review_decisions r
+                    JOIN samples s ON r.sample_id = s.sample_id
+                    WHERE s.task_id = ? AND r.decision = 'HARD_NORMAL'
+                    """,
+                    (task_id,),
+                )
+                for row in cursor.fetchall():
+                    hard_normal_ids.add(row[0])
+
+    normal_sample_ids = raw_pass_ids | review_pass_ids | hard_normal_ids
     ref_ids = sorted(normal_sample_ids)
     is_low_reference = len(ref_ids) < MIN_RECOMMENDED_REFERENCES
 
@@ -61,7 +82,10 @@ def get_normal_reference_set(
             f"Low reference coverage for task {task_id}: only {len(ref_ids)} confirmed normal references available (recommended >= {MIN_RECOMMENDED_REFERENCES})."
         )
 
+    empty_breakdown = {"raw_pass": 0, "review_pass": 0, "hard_normal": 0, "total": 0}
     if not ref_ids:
+        if return_breakdown:
+            return [], np.empty((0, 768), dtype=np.float32), True, empty_breakdown
         return [], np.empty((0, 768), dtype=np.float32), True
 
     feat_repo = FeatureRepository(db)
@@ -79,10 +103,22 @@ def get_normal_reference_set(
             vectors.append(v)
             valid_ids.append(s_id)
 
+    valid_id_set = set(valid_ids)
+    breakdown = {
+        "raw_pass": len(raw_pass_ids & valid_id_set),
+        "review_pass": len(review_pass_ids & valid_id_set),
+        "hard_normal": len(hard_normal_ids & valid_id_set),
+        "total": len(valid_ids),
+    }
+
     if not vectors:
+        if return_breakdown:
+            return [], np.empty((0, 768), dtype=np.float32), True, breakdown
         return [], np.empty((0, 768), dtype=np.float32), True
 
     ref_embeddings = np.stack(vectors, axis=0)
+    if return_breakdown:
+        return valid_ids, ref_embeddings, is_low_reference, breakdown
     return valid_ids, ref_embeddings, is_low_reference
 
 

@@ -14,6 +14,8 @@ from app.evidence.schemas import (
     NeighborEvidence,
     DuplicateEvidence,
     AnnotationEvidence,
+    DirectVerifiedPairEvidence,
+    VerifiedComponentMemberEvidence,
 )
 
 logger = logging.getLogger("iad_benchmark.evidence.builder")
@@ -27,7 +29,8 @@ class EvidenceBuilder:
     - Mining score and signal breakdown
     - Nearest Normal references
     - Top similar historical neighbors
-    - Verified duplicate group information
+    - Direct verified duplicate pairs
+    - Verified component members
     - Annotations and geometric details
     """
 
@@ -39,6 +42,7 @@ class EvidenceBuilder:
         model_id: str = "dinov2_vitb14_reg",
         preprocess_key: str = "dinov2_224_norm",
         verified_groups_path: Optional[str] = None,
+        verified_pairs_path: Optional[str] = None,
         candidates_json_path: Optional[str] = None,
     ):
         self.task_id = task_id
@@ -47,6 +51,9 @@ class EvidenceBuilder:
         self.preprocess_key = preprocess_key
         self.verified_groups_path = verified_groups_path or os.path.join(
             "runs", "near_duplicate", task_id, "verified_groups.json"
+        )
+        self.verified_pairs_path = verified_pairs_path or os.path.join(
+            "runs", "near_duplicate", task_id, "verified_pairs.json"
         )
         self.candidates_json_path = candidates_json_path or os.path.join(
             "runs", "candidate_mining", task_id, "candidates.json"
@@ -63,6 +70,8 @@ class EvidenceBuilder:
         self._feat_sample_ids: Optional[List[str]] = None
         self._normal_ref_ids: Optional[List[str]] = None
         self._normal_ref_embeds: Optional[np.ndarray] = None
+        self._direct_verified_pairs_map: Optional[Dict[str, List[DirectVerifiedPairEvidence]]] = None
+        self._verified_component_members_map: Optional[Dict[str, List[VerifiedComponentMemberEvidence]]] = None
         self._verified_duplicates_map: Optional[Dict[str, List[DuplicateEvidence]]] = None
         self._candidates_score_map: Optional[Dict[str, Tuple[float, CandidateSignals]]] = None
 
@@ -120,10 +129,73 @@ class EvidenceBuilder:
         self._normal_ref_ids = ref_ids
         self._normal_ref_embeds = ref_embeds
 
+    def _ensure_direct_verified_pairs_loaded(self):
+        if self._direct_verified_pairs_map is not None:
+            return
+        self._direct_verified_pairs_map = {}
+        if not os.path.exists(self.verified_pairs_path):
+            return
+
+        try:
+            with open(self.verified_pairs_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            pairs = data.get("pairs", [])
+            for p in pairs:
+                s1 = p.get("sample_id_a")
+                s2 = p.get("sample_id_b")
+                if not s1 or not s2:
+                    continue
+                dino_cos = float(p.get("dino_cosine", 0.0))
+                pix_cos = float(p.get("pixel_cosine", 0.0))
+                ncc = float(p.get("ncc", 0.0))
+                mad = float(p.get("mean_abs_diff", 0.0))
+                hdr = float(p.get("high_diff_ratio", 0.0))
+                shift = tuple(p.get("best_shift", (0, 0)))
+                ver = bool(p.get("verified", True))
+
+                meta1 = self._get_sample_meta(s1)
+                meta2 = self._get_sample_meta(s2)
+
+                ev_for_s1 = DirectVerifiedPairEvidence(
+                    sample_id=s2,
+                    image_path=meta2.get("image_path", ""),
+                    dino_cosine=dino_cos,
+                    pixel_cosine=pix_cos,
+                    ncc=ncc,
+                    mean_abs_diff=mad,
+                    high_diff_ratio=hdr,
+                    best_shift=shift,
+                    verified=ver,
+                    data_origin=meta2.get("data_origin", "UNKNOWN"),
+                )
+                ev_for_s2 = DirectVerifiedPairEvidence(
+                    sample_id=s1,
+                    image_path=meta1.get("image_path", ""),
+                    dino_cosine=dino_cos,
+                    pixel_cosine=pix_cos,
+                    ncc=ncc,
+                    mean_abs_diff=mad,
+                    high_diff_ratio=hdr,
+                    best_shift=shift,
+                    verified=ver,
+                    data_origin=meta1.get("data_origin", "UNKNOWN"),
+                )
+
+                if s1 not in self._direct_verified_pairs_map:
+                    self._direct_verified_pairs_map[s1] = []
+                self._direct_verified_pairs_map[s1].append(ev_for_s1)
+
+                if s2 not in self._direct_verified_pairs_map:
+                    self._direct_verified_pairs_map[s2] = []
+                self._direct_verified_pairs_map[s2].append(ev_for_s2)
+        except Exception as e:
+            logger.warning(f"Failed to load direct verified pairs from {self.verified_pairs_path}: {e}")
+
     def _ensure_verified_duplicates_loaded(self):
-        if self._verified_duplicates_map is not None:
+        if self._verified_duplicates_map is not None and self._verified_component_members_map is not None:
             return
         self._verified_duplicates_map = {}
+        self._verified_component_members_map = {}
         if not os.path.exists(self.verified_groups_path):
             return
 
@@ -140,6 +212,7 @@ class EvidenceBuilder:
 
                 for s_id in sample_ids:
                     dups_for_s = []
+                    comps_for_s = []
                     for other_id in sample_ids:
                         if other_id == s_id:
                             continue
@@ -156,9 +229,23 @@ class EvidenceBuilder:
                                 data_origin=other_meta.get("data_origin", "UNKNOWN"),
                             )
                         )
+                        comps_for_s.append(
+                            VerifiedComponentMemberEvidence(
+                                group_id=gid,
+                                sample_id=other_id,
+                                image_path=other_meta.get("image_path", ""),
+                                data_origin=other_meta.get("data_origin", "UNKNOWN"),
+                                is_cross_origin=is_cross,
+                                group_size=len(sample_ids),
+                            )
+                        )
                     if s_id not in self._verified_duplicates_map:
                         self._verified_duplicates_map[s_id] = []
                     self._verified_duplicates_map[s_id].extend(dups_for_s)
+
+                    if s_id not in self._verified_component_members_map:
+                        self._verified_component_members_map[s_id] = []
+                    self._verified_component_members_map[s_id].extend(comps_for_s)
         except Exception as e:
             logger.warning(f"Failed to load verified duplicates from {self.verified_groups_path}: {e}")
 
@@ -300,7 +387,12 @@ class EvidenceBuilder:
                 if count >= top_k_neighbors:
                     break
 
-        # Verified Duplicates
+        # Direct Verified Pairs (C303 / C304)
+        self._ensure_direct_verified_pairs_loaded()
+        direct_pairs = self._direct_verified_pairs_map.get(sample_id, []) if self._direct_verified_pairs_map else []
+
+        # Verified Component Members & Groups
+        component_members = self._verified_component_members_map.get(sample_id, []) if self._verified_component_members_map else []
         duplicates = self._verified_duplicates_map.get(sample_id, []) if self._verified_duplicates_map else []
 
         # Check evidence completeness
@@ -334,11 +426,13 @@ class EvidenceBuilder:
             signals=cand_signals,
             nearest_normal=nearest_normal,
             nearest_neighbors=nearest_neighbors,
+            direct_verified_pairs=direct_pairs,
+            verified_component_members=component_members,
             verified_duplicates=duplicates,
             metadata=metadata_dict,
             annotations=anno_evidence,
             evidence_status=status_str,
-            evidence_version="v1",
+            evidence_version="v2",
         )
 
 
@@ -352,6 +446,7 @@ def build_evidence(
     top_k_normal: int = 4,
     top_k_neighbors: int = 8,
     verified_groups_path: Optional[str] = None,
+    verified_pairs_path: Optional[str] = None,
 ) -> EvidencePackage:
     """
     Convenience function to build an EvidencePackage for a single candidate.
@@ -361,6 +456,7 @@ def build_evidence(
         db=db,
         db_path=db_path,
         verified_groups_path=verified_groups_path,
+        verified_pairs_path=verified_pairs_path,
     )
     return builder.build_evidence(
         sample_id=sample_id,

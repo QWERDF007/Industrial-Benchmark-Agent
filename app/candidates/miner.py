@@ -7,6 +7,7 @@ import numpy as np
 
 from app.storage.database import Database
 from app.storage.repositories import FeatureRepository, SampleRepository
+from app.schemas.config import load_config
 from app.candidates.schemas import (
     CandidateSignals,
     CandidateRecord,
@@ -27,9 +28,14 @@ logger = logging.getLogger("iad_benchmark.candidates.miner")
 def mine_candidates(
     task_id: str,
     top_k: int = 500,
+    policy_name: Optional[str] = None,
     weights: Optional[CandidateScoringWeights] = None,
-    diversity_threshold: float = 0.95,
+    diversity_threshold: Optional[float] = None,
     target_pool: str = "UNCERTAIN",
+    include_raw_pass: bool = True,
+    include_review_pass: bool = True,
+    include_hard_normal: Optional[bool] = None,
+    config_path: Optional[str] = None,
     db_path: str = "data/benchmark.db",
     output_dir: Optional[str] = None,
     model_id: str = "dinov2_vitb14_reg",
@@ -44,8 +50,42 @@ def mine_candidates(
     sample_repo = SampleRepository(db)
     feat_repo = FeatureRepository(db)
 
-    active_weights = weights or CandidateScoringWeights()
+    # Load config if available
+    cfg = None
+    if config_path and os.path.exists(config_path):
+        cfg = load_config(config_path)
+    else:
+        for possible_cfg in [f"configs/{task_id}.yaml", "configs/kuangjiao.yaml"]:
+            if os.path.exists(possible_cfg):
+                try:
+                    loaded = load_config(possible_cfg)
+                    if loaded.task.task_id == task_id:
+                        cfg = loaded
+                        break
+                except Exception:
+                    pass
+
+    active_policy_name = policy_name or (cfg.candidate_mining.policy_name if cfg else "default")
+    if weights is None and cfg and cfg.candidate_mining and cfg.candidate_mining.weights:
+        active_weights = CandidateScoringWeights(
+            normal_distance=cfg.candidate_mining.weights.normal_distance,
+            density_outlier=cfg.candidate_mining.weights.density_outlier,
+            domain_novelty=cfg.candidate_mining.weights.domain_novelty,
+            annotation_signal=cfg.candidate_mining.weights.annotation_signal,
+        )
+    else:
+        active_weights = weights or CandidateScoringWeights()
     active_weights = active_weights.normalized()
+
+    if diversity_threshold is None:
+        active_diversity_threshold = cfg.candidate_mining.diversity_threshold if cfg else 0.92
+    else:
+        active_diversity_threshold = diversity_threshold
+
+    if include_hard_normal is None:
+        active_include_hard_normal = cfg.reference_normal.include_hard_normal if cfg else False
+    else:
+        active_include_hard_normal = include_hard_normal
 
     # 1. Fetch Candidate Pool
     with db.connection() as conn:
@@ -154,12 +194,15 @@ def mine_candidates(
 
     # 3. Compute 4 signals
     # 3.1 Normal Distance
-    ref_ids, ref_embeddings, is_low_ref = get_normal_reference_set(
+    ref_ids, ref_embeddings, is_low_ref, ref_breakdown = get_normal_reference_set(
         task_id=task_id,
         db=db,
         model_id=model_id,
         preprocess_key=preprocess_key,
-        include_hard_normal=False,
+        include_raw_pass=include_raw_pass,
+        include_review_pass=include_review_pass,
+        include_hard_normal=active_include_hard_normal,
+        return_breakdown=True,
     )
     normal_dists = compute_normal_distance(embeddings, ref_embeddings)
 
@@ -187,7 +230,7 @@ def mine_candidates(
         sorted_candidate_indices=sorted_order,
         embeddings=embeddings,
         top_k=top_k,
-        diversity_threshold=diversity_threshold,
+        diversity_threshold=active_diversity_threshold,
     )
 
     # 6. Build Candidate Records
@@ -223,13 +266,15 @@ def mine_candidates(
 
     mining_res = CandidateMiningResult(
         task_id=task_id,
+        policy_name=active_policy_name,
         pool_size=pool_size,
         top_k=top_k,
         weights=active_weights,
-        diversity_threshold=diversity_threshold,
+        diversity_threshold=active_diversity_threshold,
         selected_count=len(candidate_records),
         low_reference_warning=is_low_ref,
         reference_count=len(ref_ids),
+        reference_breakdown=ref_breakdown,
         candidates_json_path=json_path,
         report_md_path=md_path,
         elapsed_seconds=round(elapsed, 2),

@@ -43,6 +43,7 @@ class DuplicateMiningResult(BaseModel):
     verified_cross_origin_pairs: Dict[str, int]
     candidate_groups_json_path: str
     verified_groups_json_path: str
+    verified_pairs_json_path: str
     groups_json_path: str
     report_md_path: str
     elapsed_seconds: float
@@ -256,11 +257,13 @@ def mine_near_duplicates(
     )
 
     # 2. Pairwise verification (F02/F03)
+    # 2. Pairwise verification (F02/F03/C302/C303)
     if verifier is None:
-        verifier = PairVerifier(pixel_cosine_threshold=0.95, ncc_threshold=0.90)
+        verifier = PairVerifier()
 
     logger.info(f"Verifying {len(candidate_pairs)} candidate pairs using PairVerifier...")
     verified_pairs: List[Tuple[str, str, float, Optional[Dict[str, Any]]]] = []
+    saved_verified_pair_records: List[Dict[str, Any]] = []
 
     for s1, s2, cos_score, _ in candidate_pairs:
         obj_a = samples_map.get(s1)
@@ -268,13 +271,28 @@ def mine_near_duplicates(
         if not obj_a or not obj_b:
             continue
 
-        v_res = verifier.verify(obj_a.image_path, obj_b.image_path)
+        v_res = verifier.verify(obj_a.image_path, obj_b.image_path, dino_cosine=cos_score)
         if v_res.verified:
             extra = {
+                "dino_cosine": cos_score,
                 "pixel_cosine": v_res.pixel_cosine,
                 "ncc": v_res.ncc,
+                "mean_abs_diff": v_res.mean_abs_diff,
+                "high_diff_ratio": v_res.high_diff_ratio,
+                "best_shift": list(v_res.best_shift),
             }
             verified_pairs.append((s1, s2, cos_score, extra))
+            saved_verified_pair_records.append({
+                "sample_id_a": min(s1, s2),
+                "sample_id_b": max(s1, s2),
+                "dino_cosine": round(float(cos_score), 4),
+                "pixel_cosine": v_res.pixel_cosine,
+                "ncc": v_res.ncc,
+                "mean_abs_diff": v_res.mean_abs_diff,
+                "high_diff_ratio": v_res.high_diff_ratio,
+                "best_shift": list(v_res.best_shift),
+                "verified": True,
+            })
 
     logger.info(f"Verified {len(verified_pairs)} / {len(candidate_pairs)} pairs as true near-duplicates")
 
@@ -292,6 +310,7 @@ def mine_near_duplicates(
     os.makedirs(out_dir, exist_ok=True)
     candidate_json_path = os.path.join(out_dir, "candidate_groups.json")
     verified_json_path = os.path.join(out_dir, "verified_groups.json")
+    verified_pairs_json_path = os.path.join(out_dir, "verified_pairs.json")
     groups_json_path = os.path.join(out_dir, "groups.json")
     report_md_path = os.path.join(out_dir, "duplicate_report.md")
 
@@ -328,6 +347,18 @@ def mine_near_duplicates(
     }
     with open(verified_json_path, "w", encoding="utf-8") as f:
         json.dump(ver_data, f, indent=2, ensure_ascii=False)
+
+    # Save verified_pairs.json (C303)
+    ver_pairs_data = {
+        "task_id": task_id,
+        "type": "DIRECT_VERIFIED_PAIRS",
+        "similarity_threshold": similarity_threshold,
+        "total_samples": total_samples,
+        "total_verified_pairs": len(saved_verified_pair_records),
+        "pairs": saved_verified_pair_records,
+    }
+    with open(verified_pairs_json_path, "w", encoding="utf-8") as f:
+        json.dump(ver_pairs_data, f, indent=2, ensure_ascii=False)
 
     elapsed = time.time() - start_time
 
@@ -366,6 +397,7 @@ def mine_near_duplicates(
         verified_cross_origin_pairs=dict(ver_cross_pairs),
         candidate_groups_json_path=candidate_json_path,
         verified_groups_json_path=verified_json_path,
+        verified_pairs_json_path=verified_pairs_json_path,
         groups_json_path=groups_json_path,
         report_md_path=report_md_path,
         elapsed_seconds=round(elapsed, 2),

@@ -141,6 +141,47 @@ class ReadinessPolicyConfig(BaseModel):
     standard_ad: Optional[StandardADReadinessPolicy] = None
 
 
+class CandidateMiningWeightsConfig(BaseModel):
+    normal_distance: float = 0.35
+    density_outlier: float = 0.25
+    domain_novelty: float = 0.20
+    annotation_signal: float = 0.20
+
+
+class CandidateMiningConfig(BaseModel):
+    policy_name: str = "default"
+    weights: CandidateMiningWeightsConfig = Field(default_factory=CandidateMiningWeightsConfig)
+    diversity_threshold: float = 0.92
+
+
+class ReferenceNormalPolicyConfig(BaseModel):
+    include_raw_pass: bool = True
+    include_review_pass: bool = True
+    include_hard_normal: bool = False
+
+
+class GoldPolicyConfig(BaseModel):
+    policy_name: str = "default_gold_v1"
+    trusted_reviewers: List[str] = Field(default_factory=lambda: ["reviewer_1", "expert_reviewer_1", "default"])
+    source_priority: List[str] = Field(default_factory=lambda: ["HUMAN_REVIEW", "PRODUCTION_QA", "EXISTING_QUALITY"])
+    conflict_policy: str = "MARK_CONFLICT"
+    include_decisions: List[str] = Field(default_factory=lambda: ["PASS", "HARD_NORMAL", "FAIL"])
+
+
+class SplitRatiosConfig(BaseModel):
+    train: float = 0.6
+    val: float = 0.2
+    test: float = 0.2
+
+
+class SplitPolicyConfig(BaseModel):
+    policy_name: str = "group_stratified_v1"
+    seed: int = 42
+    ratios: SplitRatiosConfig = Field(default_factory=SplitRatiosConfig)
+    group_keys: List[str] = Field(default_factory=lambda: ["physical_sample_id", "capture_sequence_id", "verified_duplicate"])
+    exclude_origins_from_test: List[str] = Field(default_factory=lambda: ["AUGMENTED"])
+
+
 class DatasetConfig(BaseModel):
     dataset: DatasetInfo
     root: str = Field(..., description="Root directory of the dataset")
@@ -152,6 +193,10 @@ class DatasetConfig(BaseModel):
     metadata: MetadataConfig = Field(default_factory=MetadataConfig)
     readiness_policy: Optional[ReadinessPolicyConfig] = None
     metadata_semantics: Dict[str, str] = Field(default_factory=dict)
+    candidate_mining: CandidateMiningConfig = Field(default_factory=CandidateMiningConfig)
+    reference_normal: ReferenceNormalPolicyConfig = Field(default_factory=ReferenceNormalPolicyConfig)
+    gold: GoldPolicyConfig = Field(default_factory=GoldPolicyConfig)
+    split: SplitPolicyConfig = Field(default_factory=SplitPolicyConfig)
 
 
 def load_config(config_path: str) -> DatasetConfig:

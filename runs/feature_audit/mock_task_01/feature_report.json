@@ -1,0 +1,16 @@
+{
+  "task_id": "mock_task_01",
+  "model_id": "mock_vit_768",
+  "preprocess_key": "mock_224",
+  "total_samples": 56,
+  "cached_count": 0,
+  "computed_count": 56,
+  "failed_count": 0,
+  "coverage": 1.0,
+  "dim": 768,
+  "dtype": "fp16",
+  "storage_bytes": 86016,
+  "elapsed_seconds": 0.04,
+  "throughput": 1529.17,
+  "timestamp": "2026-10-17T04:08:34Z"
+}

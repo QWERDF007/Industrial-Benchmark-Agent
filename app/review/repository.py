@@ -19,13 +19,17 @@ class ReviewDecisionRepository:
                 """
                 INSERT INTO review_decisions (
                     sample_id, decision, reviewer, reason_code, comment,
-                    evidence_version, review_duration_ms, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    evidence_version, review_session_id, started_at, submitted_at,
+                    review_duration_ms, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(sample_id, reviewer) DO UPDATE SET
                     decision = excluded.decision,
                     reason_code = excluded.reason_code,
                     comment = excluded.comment,
                     evidence_version = excluded.evidence_version,
+                    review_session_id = excluded.review_session_id,
+                    started_at = excluded.started_at,
+                    submitted_at = excluded.submitted_at,
                     review_duration_ms = excluded.review_duration_ms,
                     updated_at = CURRENT_TIMESTAMP
                 """,
@@ -36,6 +40,9 @@ class ReviewDecisionRepository:
                     rec.reason_code,
                     rec.comment,
                     rec.evidence_version,
+                    rec.review_session_id,
+                    rec.started_at,
+                    rec.submitted_at,
                     rec.review_duration_ms,
                 ),
             )
@@ -46,7 +53,8 @@ class ReviewDecisionRepository:
             cursor.execute(
                 """
                 SELECT id, sample_id, decision, reviewer, reason_code, comment,
-                       evidence_version, review_duration_ms, created_at, updated_at
+                       evidence_version, review_session_id, started_at, submitted_at,
+                       review_duration_ms, created_at, updated_at
                 FROM review_decisions
                 WHERE sample_id = ? AND reviewer = ?
                 """,
@@ -63,6 +71,9 @@ class ReviewDecisionRepository:
                 reason_code=row["reason_code"],
                 comment=row["comment"],
                 evidence_version=row["evidence_version"],
+                review_session_id=row["review_session_id"] if "review_session_id" in row.keys() else None,
+                started_at=str(row["started_at"]) if ("started_at" in row.keys() and row["started_at"]) else None,
+                submitted_at=str(row["submitted_at"]) if ("submitted_at" in row.keys() and row["submitted_at"]) else None,
                 review_duration_ms=row["review_duration_ms"],
                 created_at=str(row["created_at"]) if row["created_at"] else None,
                 updated_at=str(row["updated_at"]) if row["updated_at"] else None,
@@ -101,6 +112,9 @@ class ReviewDecisionRepository:
                     reason_code=r["reason_code"],
                     comment=r["comment"],
                     evidence_version=r["evidence_version"],
+                    review_session_id=r["review_session_id"] if "review_session_id" in r.keys() else None,
+                    started_at=str(r["started_at"]) if ("started_at" in r.keys() and r["started_at"]) else None,
+                    submitted_at=str(r["submitted_at"]) if ("submitted_at" in r.keys() and r["submitted_at"]) else None,
                     review_duration_ms=r["review_duration_ms"],
                     created_at=str(r["created_at"]) if r["created_at"] else None,
                     updated_at=str(r["updated_at"]) if r["updated_at"] else None,

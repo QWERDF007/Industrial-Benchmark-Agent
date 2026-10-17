@@ -393,6 +393,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     let currentEvidence = null;
     let startTime = Date.now();
     let timerInterval = null;
+    const reviewSessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
 
     function formatTime(ms) {
       return (ms / 1000).toFixed(1);
@@ -579,6 +580,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     async function submitDecision(decision) {
       if (!currentEvidence) return;
       const durationMs = Date.now() - startTime;
+      const startedAt = new Date(startTime).toISOString();
+      const submittedAt = new Date().toISOString();
       const reasonCode = document.getElementById('reason-code').value;
       const comment = document.getElementById('review-comment').value.trim();
 
@@ -588,6 +591,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         reason_code: reasonCode,
         comment: comment || null,
         reviewer: 'reviewer_1',
+        review_session_id: reviewSessionId,
+        started_at: startedAt,
+        submitted_at: submittedAt,
         duration_ms: durationMs
       };
 
@@ -686,7 +692,8 @@ class ReviewRequestHandler(BaseHTTPRequestHandler):
 
         # 2. Stats
         if path == "/api/queue/stats":
-            stats = self.service.get_stats()
+            reviewer = query.get("reviewer", [None])[0]
+            stats = self.service.get_stats(reviewer=reviewer)
             self._send_json(stats.model_dump())
             return
 
@@ -765,6 +772,9 @@ class ReviewRequestHandler(BaseHTTPRequestHandler):
                 reason_code = ReasonCode(data["reason_code"]) if data.get("reason_code") else None
                 comment = data.get("comment")
                 reviewer = data.get("reviewer", "default")
+                review_session_id = data.get("review_session_id")
+                started_at = data.get("started_at")
+                submitted_at = data.get("submitted_at")
                 duration_ms = int(data.get("duration_ms", 0))
 
                 rec = self.service.save_decision(
@@ -773,6 +783,9 @@ class ReviewRequestHandler(BaseHTTPRequestHandler):
                     reason_code=reason_code,
                     comment=comment,
                     reviewer=reviewer,
+                    review_session_id=review_session_id,
+                    started_at=started_at,
+                    submitted_at=submitted_at,
                     duration_ms=duration_ms,
                 )
                 self._send_json(rec.model_dump())
@@ -789,12 +802,18 @@ class ReviewRequestHandler(BaseHTTPRequestHandler):
                 sample_id = data["sample_id"]
                 reason = data.get("reason")
                 reviewer = data.get("reviewer", "default")
+                review_session_id = data.get("review_session_id")
+                started_at = data.get("started_at")
+                submitted_at = data.get("submitted_at")
                 duration_ms = int(data.get("duration_ms", 0))
 
                 rec = self.service.skip_sample(
                     sample_id=sample_id,
                     reason=reason,
                     reviewer=reviewer,
+                    review_session_id=review_session_id,
+                    started_at=started_at,
+                    submitted_at=submitted_at,
                     duration_ms=duration_ms,
                 )
                 self._send_json(rec.model_dump())
