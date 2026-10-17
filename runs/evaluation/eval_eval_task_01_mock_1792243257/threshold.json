@@ -1,0 +1,8 @@
+{
+  "threshold": 0.841254,
+  "strategy": "f1_max",
+  "fit_split": "val",
+  "fit_samples_count": 2,
+  "best_f1": 1.0,
+  "fpr_at_threshold": 0.0
+}
