@@ -11,6 +11,10 @@ from app.features.builder import build_features, get_feature_stats
 from app.features.index import build_faiss_index
 from app.features.search import search_by_sample
 from app.features.duplicate import mine_near_duplicates
+from app.candidates.miner import mine_candidates
+from app.candidates.schemas import CandidateScoringWeights
+from app.review.web import create_review_server
+from app.review.report import export_review_decisions, generate_review_report
 
 app = typer.Typer(
     name="iad-benchmark",
@@ -20,10 +24,14 @@ app = typer.Typer(
 features_app = typer.Typer(help="Manage image feature extraction and caching")
 index_app = typer.Typer(help="Manage FAISS vector indexing")
 duplicates_app = typer.Typer(help="Manage near-duplicate mining and reports")
+candidates_app = typer.Typer(help="Manage hard normal candidate mining and reports")
+review_app = typer.Typer(help="Manage human review queue, web UI, and reports")
 
 app.add_typer(features_app, name="features")
 app.add_typer(index_app, name="index")
 app.add_typer(duplicates_app, name="duplicates")
+app.add_typer(candidates_app, name="candidates")
+app.add_typer(review_app, name="review")
 
 console = Console()
 
@@ -319,6 +327,142 @@ def duplicates_report_cmd(
     console.print(f"\n[bold green]✓ Duplicate Report for {task}:[/bold green]")
     console.print(f"Markdown: {md_file}")
     console.print(f"JSON:     {json_file}\n")
+
+
+# ----------------------------------------------------
+# Step 3: Hard Normal Candidate Mining Commands
+# ----------------------------------------------------
+
+
+@candidates_app.command("mine")
+def candidates_mine_cmd(
+    task: str = typer.Option(..., "--task", "-t", help="Task ID to mine candidates for"),
+    top_k: int = typer.Option(500, "--top-k", help="Top-K candidates to select"),
+    diversity_threshold: float = typer.Option(0.95, "--diversity-threshold", help="Greedy diversity suppression threshold"),
+    pool: str = typer.Option("UNCERTAIN", "--pool", help="Candidate pool filter ('UNCERTAIN', 'ALL', 'PASS')"),
+    db: str = typer.Option("data/benchmark.db", "--db", help="Path to SQLite benchmark database"),
+    output_dir: Optional[str] = typer.Option(None, "--output-dir", "-o", help="Custom output directory"),
+):
+    """Mine hard normal candidates from cached features using composite scoring and diversity suppression."""
+    try:
+        console.print(f"[bold cyan]Mining hard normal candidates for task:[/bold cyan] {task} (pool: {pool}, top-k: {top_k})")
+        res = mine_candidates(
+            task_id=task,
+            top_k=top_k,
+            diversity_threshold=diversity_threshold,
+            target_pool=pool,
+            db_path=db,
+            output_dir=output_dir,
+        )
+
+        console.print("\n[bold green]✓ Candidate Mining Complete[/bold green]\n")
+        console.print(f"Candidate Pool Size:   {res.pool_size:>10,}")
+        console.print(f"Top-K Requested:       {res.top_k:>10,}")
+        console.print(f"Selected Diverse:      {res.selected_count:>10,}")
+        console.print(f"Normal Reference Set:  {res.reference_count:>10,}")
+        if res.low_reference_warning:
+            console.print("  [bold yellow]⚠ Warning: Low normal reference coverage[/bold yellow]")
+        console.print(f"Elapsed Time:          {res.elapsed_seconds:>10.2f} s")
+        console.print(f"\nCandidates JSON: {res.candidates_json_path}")
+        console.print(f"Mining Report:   {res.report_md_path}\n")
+    except Exception as e:
+        console.print(f"[bold red]Candidate mining failed:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@candidates_app.command("report")
+def candidates_report_cmd(
+    task: str = typer.Option(..., "--task", "-t", help="Task ID"),
+    report_dir: Optional[str] = typer.Option(None, "--report-dir", "-d", help="Directory containing candidate mining report"),
+):
+    """Display candidate mining report location."""
+    r_dir = report_dir or os.path.join("runs", "candidate_mining", task)
+    md_file = os.path.join(r_dir, "mining_report.md")
+    json_file = os.path.join(r_dir, "candidates.json")
+
+    if not os.path.exists(md_file):
+        console.print(f"[bold red]Candidate mining report not found at:[/bold red] {md_file}")
+        raise typer.Exit(code=1)
+
+    console.print(f"\n[bold green]✓ Candidate Mining Report for {task}:[/bold green]")
+    console.print(f"Markdown: {md_file}")
+    console.print(f"JSON:     {json_file}\n")
+
+
+# ----------------------------------------------------
+# Step 3: Human Review Queue Commands
+# ----------------------------------------------------
+
+
+@review_app.command("serve")
+def review_serve_cmd(
+    task: str = typer.Option(..., "--task", "-t", help="Task ID to review"),
+    host: str = typer.Option("127.0.0.1", "--host", help="Server bind host"),
+    port: int = typer.Option(8000, "--port", "-p", help="Server bind port"),
+    db: str = typer.Option("data/benchmark.db", "--db", help="Path to SQLite benchmark database"),
+    candidates_json: Optional[str] = typer.Option(None, "--candidates", help="Path to candidates.json"),
+):
+    """Start lightweight local web review UI server."""
+    try:
+        console.print(f"[bold cyan]Starting Review Web UI server for task:[/bold cyan] {task}")
+        server = create_review_server(
+            task_id=task,
+            host=host,
+            port=port,
+            db_path=db,
+            candidates_json_path=candidates_json,
+        )
+        console.print(f"\n[bold green]✓ Review Server running at:[/bold green] http://{host}:{port}/")
+        console.print("[dim]Press Ctrl+C to stop server[/dim]\n")
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Shutting down review server...[/yellow]")
+            server.shutdown()
+            server.server_close()
+    except Exception as e:
+        console.print(f"[bold red]Failed to start review server:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@review_app.command("export")
+def review_export_cmd(
+    task: str = typer.Option(..., "--task", "-t", help="Task ID to export decisions for"),
+    output_dir: Optional[str] = typer.Option(None, "--output-dir", "-o", help="Custom export directory"),
+    db: str = typer.Option("data/benchmark.db", "--db", help="Path to SQLite benchmark database"),
+):
+    """Export all review decisions to review_export.json."""
+    try:
+        console.print(f"[bold cyan]Exporting review decisions for task:[/bold cyan] {task}")
+        export_path = export_review_decisions(
+            task_id=task,
+            db_path=db,
+            output_dir=output_dir,
+        )
+        console.print(f"\n[bold green]✓ Review decisions exported to:[/bold green] {export_path}\n")
+    except Exception as e:
+        console.print(f"[bold red]Export failed:[/bold red] {e}")
+        raise typer.Exit(code=1)
+
+
+@review_app.command("report")
+def review_report_cmd(
+    task: str = typer.Option(..., "--task", "-t", help="Task ID to generate report for"),
+    output_dir: Optional[str] = typer.Option(None, "--output-dir", "-o", help="Custom report directory"),
+    db: str = typer.Option("data/benchmark.db", "--db", help="Path to SQLite benchmark database"),
+):
+    """Generate markdown audit report from human review decisions."""
+    try:
+        console.print(f"[bold cyan]Generating review report for task:[/bold cyan] {task}")
+        report_path = generate_review_report(
+            task_id=task,
+            db_path=db,
+            output_dir=output_dir,
+        )
+        console.print(f"\n[bold green]✓ Review report generated at:[/bold green] {report_path}\n")
+    except Exception as e:
+        console.print(f"[bold red]Report generation failed:[/bold red] {e}")
+        raise typer.Exit(code=1)
 
 
 def main():

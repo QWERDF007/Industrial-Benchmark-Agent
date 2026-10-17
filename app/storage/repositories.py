@@ -417,6 +417,9 @@ class FeatureRepository:
     def __init__(self, db: Database):
         self.db = db
 
+    def upsert(self, record: FeatureRecord):
+        self.upsert_batch([record])
+
     def upsert_batch(self, records: List[FeatureRecord]):
         if not records:
             return

@@ -136,3 +136,23 @@ class Database:
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_features_sample_id ON feature_records(sample_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_features_lookup ON feature_records(sample_id, model_id, preprocess_key)")
+
+            # 6. review_decisions (Step 3 Human Review Decisions)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS review_decisions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sample_id TEXT NOT NULL,
+                decision TEXT NOT NULL,
+                reviewer TEXT NOT NULL DEFAULT 'default',
+                reason_code TEXT,
+                comment TEXT,
+                evidence_version TEXT DEFAULT 'v1',
+                review_duration_ms INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(sample_id, reviewer)
+            )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_review_sample_id ON review_decisions(sample_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_review_decision ON review_decisions(decision)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_review_reviewer ON review_decisions(reviewer)")

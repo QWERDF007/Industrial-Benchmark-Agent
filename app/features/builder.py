@@ -252,10 +252,33 @@ def build_features(
         "storage_bytes": storage_bytes,
         "elapsed_seconds": round(elapsed, 2),
         "throughput": round(throughput, 2),
+        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
 
+    # Write JSON reports (both feature_report.json and feature_report_latest.json)
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(result_dict, f, indent=2, ensure_ascii=False)
+    latest_json_path = os.path.join(run_dir, "feature_report_latest.json")
+    with open(latest_json_path, "w", encoding="utf-8") as f:
+        json.dump(result_dict, f, indent=2, ensure_ascii=False)
+
+    # Append to feature_runs.jsonl
+    history_jsonl_path = os.path.join(run_dir, "feature_runs.jsonl")
+    run_entry = {
+        "timestamp": result_dict["timestamp"],
+        "task_id": task_id,
+        "model_id": model_id,
+        "preprocess_key": preprocess_key,
+        "total": total_samples,
+        "computed": computed_count,
+        "cached": cached_count,
+        "failed": failed_count,
+        "elapsed": round(elapsed, 2),
+        "throughput": round(throughput, 2),
+        "storage_bytes": storage_bytes,
+    }
+    with open(history_jsonl_path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(run_entry, ensure_ascii=False) + "\n")
 
     md_content = f"""# Feature Foundation Report: {task_id}
 
@@ -292,6 +315,9 @@ def build_features(
 **说明**: Step 2 遵循幂等与无损设计。源文件未改变时二次运行 `computed == 0`，且不自动修改质量标签、不自动删除文件。
 """
     with open(md_path, "w", encoding="utf-8") as f:
+        f.write(md_content)
+    latest_md_path = os.path.join(run_dir, "feature_report_latest.md")
+    with open(latest_md_path, "w", encoding="utf-8") as f:
         f.write(md_content)
 
     logger.info(

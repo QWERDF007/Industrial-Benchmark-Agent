@@ -8,6 +8,7 @@ from app.features.duplicate import (
     DuplicateGroup,
     DuplicateMiningResult,
 )
+from app.features.verify import PairVerifier, verify_pair, VerificationResult
 
 __all__ = [
     "FeatureExtractor",
@@ -24,4 +25,7 @@ __all__ = [
     "mine_near_duplicates",
     "DuplicateGroup",
     "DuplicateMiningResult",
+    "PairVerifier",
+    "verify_pair",
+    "VerificationResult",
 ]

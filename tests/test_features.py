@@ -386,3 +386,141 @@ def test_duplicate_copy_candidate(test_env):
             break
 
     assert found_pair, "Identical copy pair was not grouped together"
+
+
+def test_dino_missing_weights_fail():
+    """F01: Missing DINO weights must fail fast with RuntimeError."""
+    from app.features.dino import DINOFeatureExtractor
+    extractor = DINOFeatureExtractor(weights_path="/non/existent/model_weights.pth")
+    with pytest.raises(RuntimeError, match="DINOv2 weights file not found"):
+        extractor.encode_batch(["dummy.png"])
+
+
+def test_verified_duplicate_identical_and_different(test_env):
+    """F02: PairVerifier correctly verifies identical copy and rejects unrelated image."""
+    from app.features.verify import verify_pair
+    # Identical copy
+    v1 = verify_pair(test_env["img0_path"], test_env["img1_path"])
+    assert v1.verified is True
+    assert v1.pixel_cosine >= 0.99
+    assert v1.ncc >= 0.99
+
+    # Unrelated image (green vs red)
+    v2 = verify_pair(test_env["img0_path"], test_env["img3_path"])
+    assert v2.verified is False
+
+
+def test_filtered_search_sparse_class_progressive_overfetch(test_env):
+    """F04: Progressive over-fetch successfully retrieves sparse class items."""
+    extractor = MockFeatureExtractor(model_id="mock_vit_768", preprocess_key="mock_224")
+    db = Database(test_env["db_path"])
+    sample_repo = SampleRepository(db)
+
+    # Add 100 UNCERTAIN samples and 2 rare PASS samples
+    images_dir = os.path.join(test_env["temp_dir"], "sparse_images")
+    os.makedirs(images_dir, exist_ok=True)
+    extra_samples = []
+
+    for i in range(50):
+        p = os.path.join(images_dir, f"sparse_unc_{i}.png")
+        Image.new("RGB", (50, 50), color=(100, 100, i * 4)).save(p)
+        extra_samples.append(
+            Sample(
+                sample_id=f"sparse:unc_{i}.png",
+                task_id=test_env["task_id"],
+                dataset_id="sparse",
+                image_path=p,
+                relative_path=f"unc_{i}.png",
+                data_origin=DataOrigin.LEGACY_TRAIN,
+                width=50,
+                height=50,
+                quality_status=QualityStatus.UNCERTAIN,
+            )
+        )
+
+    # Rare PASS sample at the end
+    rare_pass_path = os.path.join(images_dir, "rare_pass.png")
+    Image.new("RGB", (50, 50), color=(0, 255, 0)).save(rare_pass_path)
+    extra_samples.append(
+        Sample(
+            sample_id="sparse:rare_pass.png",
+            task_id=test_env["task_id"],
+            dataset_id="sparse",
+            image_path=rare_pass_path,
+            relative_path="rare_pass.png",
+            data_origin=DataOrigin.LEGACY_TEST,
+            width=50,
+            height=50,
+            quality_status=QualityStatus.PASS,
+        )
+    )
+    sample_repo.upsert_batch(extra_samples)
+
+    # Rebuild features and index
+    build_features(
+        task_id=test_env["task_id"],
+        model_id=extractor.model_id,
+        preprocess_key=extractor.preprocess_key,
+        db_path=test_env["db_path"],
+        extractor=extractor,
+    )
+    idx_dir = os.path.join(test_env["temp_dir"], "sparse_features_idx")
+    build_faiss_index(
+        task_id=test_env["task_id"],
+        model_id=extractor.model_id,
+        preprocess_key=extractor.preprocess_key,
+        db_path=test_env["db_path"],
+        output_dir=idx_dir,
+    )
+
+    # Search query from an UNCERTAIN image, asking for quality PASS
+    results = search_by_sample(
+        sample_id="sparse:unc_0.png",
+        task_id=test_env["task_id"],
+        top_k=2,
+        exclude_self=True,
+        index_dir=idx_dir,
+        db_path=test_env["db_path"],
+        filter_quality_status="PASS",
+    )
+    # Must retrieve PASS samples even though 50 UNCERTAIN images ranked ahead in proximity
+    assert len(results) >= 1
+    assert all(r.quality_status == "PASS" for r in results)
+
+
+def test_feature_run_history_append(test_env):
+    """F06: Feature build records history in feature_runs.jsonl and updates latest report."""
+    extractor = MockFeatureExtractor(model_id="mock_vit_768", preprocess_key="mock_224")
+    out_dir = os.path.join(test_env["temp_dir"], "audit_history")
+
+    # Run 1
+    build_features(
+        task_id=test_env["task_id"],
+        model_id=extractor.model_id,
+        preprocess_key=extractor.preprocess_key,
+        db_path=test_env["db_path"],
+        output_dir=out_dir,
+        extractor=extractor,
+    )
+
+    # Run 2
+    build_features(
+        task_id=test_env["task_id"],
+        model_id=extractor.model_id,
+        preprocess_key=extractor.preprocess_key,
+        db_path=test_env["db_path"],
+        output_dir=out_dir,
+        extractor=extractor,
+    )
+
+    history_file = os.path.join(out_dir, "feature_runs.jsonl")
+    assert os.path.exists(history_file)
+    with open(history_file, "r", encoding="utf-8") as f:
+        lines = [line.strip() for line in f if line.strip()]
+    assert len(lines) == 2
+
+    latest_json = os.path.join(out_dir, "feature_report_latest.json")
+    latest_md = os.path.join(out_dir, "feature_report_latest.md")
+    assert os.path.exists(latest_json)
+    assert os.path.exists(latest_md)
+

@@ -62,16 +62,15 @@ class DINOFeatureExtractor(FeatureExtractor):
         try:
             from dinov2.hub.backbones import dinov2_vitb14_reg
             model = dinov2_vitb14_reg(pretrained=False)
-            if self.weights_path and os.path.exists(self.weights_path):
-                logger.info(f"Loading DINOv2 weights from {self.weights_path}")
-                state_dict = torch.load(self.weights_path, map_location="cpu")
-                model.load_state_dict(state_dict, strict=True)
-            else:
-                logger.warning(
-                    f"Weights path {self.weights_path} not found. Initialized with uncalibrated weights."
+            if not self.weights_path or not os.path.exists(self.weights_path):
+                raise RuntimeError(
+                    f"DINOv2 weights file not found at: {self.weights_path}. Fail-fast required: random uncalibrated weights are prohibited."
                 )
+            logger.info(f"Loading DINOv2 weights from {self.weights_path}")
+            state_dict = torch.load(self.weights_path, map_location="cpu")
+            model.load_state_dict(state_dict, strict=True)
         except Exception as e:
-            logger.error(f"Failed to import/load dinov2 from {DINOMALY_REPO_PATH}: {e}")
+            logger.error(f"Failed to initialize DINOv2 backbone: {e}")
             raise RuntimeError(f"Could not initialize DINOFeatureExtractor: {e}")
 
         model = model.to(device=self.device, dtype=self.torch_dtype)
