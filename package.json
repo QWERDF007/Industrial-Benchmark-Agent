@@ -4,9 +4,9 @@
   "private": true,
   "description": "Industrial AD Benchmark Agent - DeepSeek Harness Platform",
   "scripts": {
-    "test": "pytest tests/",
-    "iad": "python3.10 -m iad_cli.main",
-    "web": "python3.10 -m iad_cli.main web"
+    "test": "PYTHONPATH=python python3.10 -m pytest tests/",
+    "iad": "PYTHONPATH=python python3.10 -m iad_cli.main",
+    "web": "PYTHONPATH=python python3.10 -m iad_cli.main web"
   },
   "packageManager": "pnpm@10.4.1",
   "engines": {
