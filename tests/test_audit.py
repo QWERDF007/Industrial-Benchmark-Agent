@@ -2,18 +2,24 @@ import os
 import json
 import pytest
 
-from app.storage.database import Database
-from app.storage.repositories import (
+from iad_core.storage.database import Database
+from iad_core.storage.repositories import (
     TaskRepository,
     SampleRepository,
     AnnotationRepository,
     IssueRepository,
 )
-from app.schemas.task import InspectionTask
-from app.schemas.sample import Sample, QualityStatus
-from app.schemas.annotation import Annotation, AnnotationType
-from app.schemas.issue import ImportIssue, IssueType, Severity
-from app.services.audit_service import audit_dataset
+from iad_core.storage.models import (
+    InspectionTask,
+    Sample,
+    QualityStatus,
+    Annotation,
+    AnnotationType,
+    ImportIssue,
+    IssueType,
+    Severity,
+)
+from iad_core.dataset.audit import audit_dataset
 
 
 @pytest.fixture

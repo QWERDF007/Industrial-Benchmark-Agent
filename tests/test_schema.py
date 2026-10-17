@@ -1,12 +1,20 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.task import InspectionTask
-from app.schemas.sample import Sample, QualityStatus
-from app.schemas.annotation import Annotation, AnnotationType, AnnotationSource
-from app.schemas.issue import ImportIssue, IssueType, Severity
-from app.schemas.audit import DatasetAudit, TrackReadiness, TrackReadinessStatus
-from app.schemas.config import DatasetConfig, load_config
+from iad_core.storage.models import (
+    InspectionTask,
+    Sample,
+    QualityStatus,
+    Annotation,
+    AnnotationType,
+    AnnotationSource,
+    ImportIssue,
+    IssueType,
+    Severity,
+)
+from iad_core.dataset.audit import DatasetAudit, TrackReadiness, TrackReadinessStatus
+from iad_core.task.config import DatasetConfig, load_config
+
 
 
 def test_inspection_task():

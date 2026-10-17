@@ -4,22 +4,29 @@ import tempfile
 import numpy as np
 import pytest
 
-from app.storage.database import Database
-from app.storage.repositories import (
+from iad_core.storage.database import Database
+from iad_core.storage.repositories import (
     TaskRepository,
     SampleRepository,
     FeatureRepository,
-    FeatureRecord,
     AnnotationRepository,
+    ReviewDecisionRepository,
 )
-from app.schemas.task import InspectionTask
-from app.schemas.sample import Sample, QualityStatus, DataOrigin
-from app.schemas.annotation import Annotation, AnnotationType, AnnotationSource, GeometryStatus
-from app.evidence.builder import EvidenceBuilder, build_evidence
-from app.review.schemas import ReviewDecisionType, ReasonCode, ReviewDecisionRecord
-from app.review.repository import ReviewDecisionRepository
-from app.review.service import ReviewQueueService
-from app.review.report import export_review_decisions, generate_review_report
+from iad_core.storage.models import (
+    FeatureRecord,
+    InspectionTask,
+    Sample,
+    QualityStatus,
+    DataOrigin,
+    Annotation,
+    AnnotationType,
+    AnnotationSource,
+    GeometryStatus,
+)
+from iad_core.evidence.builder import EvidenceBuilder, build_evidence
+from iad_core.review.schemas import ReviewDecisionType, ReasonCode, ReviewDecisionRecord
+from iad_core.review.service import ReviewQueueService
+from iad_core.review.report import export_review_decisions, generate_review_report
 
 
 @pytest.fixture

@@ -1,0 +1,16 @@
+{
+  "task_id": "kuangjiao_inspection_01",
+  "model_id": "dinov2_vitb14_reg",
+  "preprocess_key": "dinov2_224_norm",
+  "total_samples": 5074,
+  "cached_count": 5074,
+  "computed_count": 0,
+  "failed_count": 0,
+  "coverage": 1.0,
+  "dim": 768,
+  "dtype": "fp16",
+  "storage_bytes": 7793664,
+  "elapsed_seconds": 0.34,
+  "throughput": 14772.75,
+  "timestamp": "2026-10-17T07:11:33Z"
+}

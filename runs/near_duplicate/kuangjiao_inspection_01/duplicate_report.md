@@ -1,6 +1,6 @@
 # Visual Near-Duplicate Audit Report: kuangjiao_inspection_01
 
-> 本报告由 Industrial AD Benchmark Agent (Step 2 Closeout & Verified Duplicate) 自动生成。  
+> 本报告由 Industrial AD Benchmark Core v2 自动生成。  
 > ⚠️ **核心原则**: 本报告产出分层为 **Candidate（高召回候选）** 与 **Verified（高置信二次验证）**。系统**未自动修改任何图像的质检标签**，亦**未自动删除任何样本**。
 
 ## 1. 挖掘与验证双层摘要 (Two-Tier Summary)
@@ -13,7 +13,7 @@
 | **样本覆盖率 (Coverage)** | **43.14%** | **27.18%** | 占数据集总样本 (5,074) 比例 |
 | **跨来源群组 (Cross-Origin)** | 186 | 146 | 跨历史 Train/Test/Augmented 碰撞群组 |
 
-- **总耗时**: 143.05 s
+- **总耗时**: 101.69 s
 
 ## 2. 跨数据来源交叉碰撞对比 (Cross-Origin Comparison)
 
@@ -141,7 +141,7 @@
   - `kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-09-03_10.22.18.101_(1811)_1_-1_1_ch_1810_1_2_.png` | 路径: `ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-09-03_10.22.18.101_(1811)_1_-1_1_ch_1810_1_2_.png` | 状态: `UNCERTAIN` | 来源: `LEGACY_TRAIN` | 批次: `2025-09-03`
   - *(其余 4 个样本略，详见 verified_groups.json)*
 
-### 群组 `ver_group_0014` (🚨 **[跨来源泄漏]**)
+### 群组 `ver_group_0016` (🚨 **[跨来源泄漏]**)
 
 - **成员数量**: 7 张图片
 - **来源分布**: LEGACY_TEST: 1, LEGACY_TRAIN: 6
@@ -155,7 +155,7 @@
   - `kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2026-05-07_10.58.04.649_(5443)_1_-1_2_ch_5442__copy_2_260324.png` | 路径: `ExportImage_框胶10x连线蓝色背面厚_0904-Train/2026-05-07_10.58.04.649_(5443)_1_-1_2_ch_5442__copy_2_260324.png` | 状态: `UNCERTAIN` | 来源: `LEGACY_TRAIN` | 批次: `2026-05-07`
   - *(其余 2 个样本略，详见 verified_groups.json)*
 
-### 群组 `ver_group_0018` (🚨 **[跨来源泄漏]**)
+### 群组 `ver_group_0013` (🚨 **[跨来源泄漏]**)
 
 - **成员数量**: 7 张图片
 - **来源分布**: LEGACY_TEST: 1, LEGACY_TRAIN: 6
@@ -169,7 +169,7 @@
   - `kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-28_12.01.16.959_(5871)_1_-1_1_ch_5870_14_2_.png` | 路径: `ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-28_12.01.16.959_(5871)_1_-1_1_ch_5870_14_2_.png` | 状态: `UNCERTAIN` | 来源: `LEGACY_TRAIN` | 批次: `2025-10-28`
   - *(其余 2 个样本略，详见 verified_groups.json)*
 
-### 群组 `ver_group_0013` (🚨 **[跨来源泄漏]**)
+### 群组 `ver_group_0012` (🚨 **[跨来源泄漏]**)
 
 - **成员数量**: 7 张图片
 - **来源分布**: LEGACY_TEST: 1, LEGACY_TRAIN: 6
@@ -183,7 +183,7 @@
   - `kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_12.57.41.368_(5189)_1_-1_1_ch_5188_1_0_.png` | 路径: `ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-25_12.57.41.368_(5189)_1_-1_1_ch_5188_1_0_.png` | 状态: `UNCERTAIN` | 来源: `LEGACY_TRAIN` | 批次: `2025-10-25`
   - *(其余 2 个样本略，详见 verified_groups.json)*
 
-### 群组 `ver_group_0015` (🚨 **[跨来源泄漏]**)
+### 群组 `ver_group_0014` (🚨 **[跨来源泄漏]**)
 
 - **成员数量**: 7 张图片
 - **来源分布**: LEGACY_TEST: 1, LEGACY_TRAIN: 6
@@ -197,7 +197,7 @@
   - `kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-10_11.04.57.082_(1943)_1_-1_1_ch_1942_14_2_.png` | 路径: `ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-10-10_11.04.57.082_(1943)_1_-1_1_ch_1942_14_2_.png` | 状态: `UNCERTAIN` | 来源: `LEGACY_TRAIN` | 批次: `2025-10-10`
   - *(其余 2 个样本略，详见 verified_groups.json)*
 
-### 群组 `ver_group_0012` (🚨 **[跨来源泄漏]**)
+### 群组 `ver_group_0017` (🚨 **[跨来源泄漏]**)
 
 - **成员数量**: 7 张图片
 - **来源分布**: LEGACY_TEST: 2, LEGACY_TRAIN: 5
@@ -211,7 +211,7 @@
   - `kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-09-10_09.12.55.625_(8490)_1_-1_2_ch_8489_1_0_.png` | 路径: `ExportImage_框胶10x连线蓝色背面厚_0904-Train/2025-09-10_09.12.55.625_(8490)_1_-1_2_ch_8489_1_0_.png` | 状态: `UNCERTAIN` | 来源: `LEGACY_TRAIN` | 批次: `2025-09-10`
   - *(其余 2 个样本略，详见 verified_groups.json)*
 
-### 群组 `ver_group_0017` (🚨 **[跨来源泄漏]**)
+### 群组 `ver_group_0018` (🚨 **[跨来源泄漏]**)
 
 - **成员数量**: 7 张图片
 - **来源分布**: LEGACY_TEST: 1, LEGACY_TRAIN: 6
@@ -225,7 +225,7 @@
   - `kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.20.41.765_1_(18727)_ch_18729_1874075008464931329_0.png` | 路径: `ExportImage_框胶10x连线蓝色背面厚_0904-Train/2023-11-27_08.20.41.765_1_(18727)_ch_18729_1874075008464931329_0.png` | 状态: `UNCERTAIN` | 来源: `LEGACY_TRAIN` | 批次: `2023-11-27`
   - *(其余 2 个样本略，详见 verified_groups.json)*
 
-### 群组 `ver_group_0016` (🚨 **[跨来源泄漏]**)
+### 群组 `ver_group_0015` (🚨 **[跨来源泄漏]**)
 
 - **成员数量**: 7 张图片
 - **来源分布**: LEGACY_TEST: 2, LEGACY_TRAIN: 5

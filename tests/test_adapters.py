@@ -3,10 +3,9 @@ import json
 import pytest
 from PIL import Image
 
-from app.schemas.config import DatasetConfig, DatasetInfo, TaskConfig, QualityConfig, AnnotationsConfig, ImagesConfig
-from app.schemas.sample import QualityStatus
-from app.schemas.annotation import AnnotationType
-from app.adapters import GenericFolderAdapter, LabelmeAdapter, YOLOAdapter, get_adapter
+from iad_core.task.config import DatasetConfig, DatasetInfo, TaskConfig, QualityConfig, AnnotationsConfig, ImagesConfig
+from iad_core.storage.models import QualityStatus, AnnotationType
+from iad_core.dataset.adapters import GenericFolderAdapter, LabelmeAdapter, YOLOAdapter, get_adapter
 
 
 def create_dummy_image(path, width=100, height=100):

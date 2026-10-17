@@ -1,6 +1,6 @@
 # Dataset Audit Report: task_no_policy
 
-> 本报告由 Industrial AD Benchmark Agent (Step 1 Closeout Audit) 自动生成。
+> 本报告由 Industrial AD Benchmark Core v2 自动生成。
 
 ## 1. Inspection Task 基本信息
 
@@ -17,8 +17,8 @@
 |---|---:|---:|---|
 | **总样本数 (Total Samples)** | 9 | 100.0% | 资产目录内有效图像全集 |
 | PASS (良品) | 5 | 55.6% | 经显式规则确认为良品 |
-| FAIL (缺陷/不良) | 4 | 44.4% | 经显式规则确认为不良 (如漏检案例) |
-| UNCERTAIN (未定/无明确质检标签) | 0 | 0.0% | 缺少明确可信标签，依法依规保留 UNCERTAIN |
+| FAIL (缺陷/不良) | 4 | 44.4% | 经显式规则确认为不良 |
+| UNCERTAIN (未定/无明确质检标签) | 0 | 0.0% | 缺少明确可信标签，保留 UNCERTAIN |
 
 ### 2.1 数据来源谱系分布 (Data Origin Distribution)
 
@@ -35,8 +35,8 @@
 | - 合法未修改 (BBox Valid) | 0 | 坐标位于图像尺寸边界内 |
 | - 安全截断修复 (BBox Clipped) | 0 | 依据 Policy 安全裁剪至有效范围 |
 | - 比例缩放 (BBox Scaled) | 0 | 依据源图尺寸失配 Policy 缩放 |
-| - 无效/不可用 (BBox Invalid) | 0 | 越界被 Policy 拒绝或坐标倒置，不参与评测 |
-| **可用 BBox 数 (BBox Usable)** | **0** | **Valid + Clipped + Scaled (真正可用于 Benchmark)** |
+| - 无效/不可用 (BBox Invalid) | 0 | 越界被 Policy 拒绝，不参与评测 |
+| **可用 BBox 数 (BBox Usable)** | **0** | **Valid + Clipped + Scaled** |
 | 多边形 (Polygon) | 0 | - |
 | 掩膜 (Mask) | 0 | - |
 | 图像级标注 (Image-level) | 0 | - |
@@ -62,7 +62,7 @@
 | 评测赛道 (Track) | 就绪状态 | 判定依据 (Readiness Basis) |
 |---|:---:|---|
 | **Standard AD** | `PARTIAL` | PASS=5, FAIL=4 present; no readiness policy configured (PARTIAL by default) |
-| **Open Normal** | `NOT_EVALUATED` | Hard Normal Mining not executed in Step 1 |
+| **Open Normal** | `NOT_EVALUATED` | Hard Normal Mining not evaluated at dataset audit stage |
 | **Domain Shift** | `NOT_EVALUATED` | Insufficient domain diversity |
 | **Small / Weak** | `NOT_EVALUATED` | No usable local geometry annotations |
 | **Global / Logical** | `NOT_EVALUATED` | No logical/sequence anomaly labels |
@@ -78,6 +78,3 @@
 | 分辨率 (WxH) | 样本数 |
 |---|---:|
 | `100x100` | 9 |
-
----
-**说明**: 本报告依据 Step 1 Closeout Specs 设计规则生成。已关闭数据唯一性、几何质量状态及赛道就绪性边界。

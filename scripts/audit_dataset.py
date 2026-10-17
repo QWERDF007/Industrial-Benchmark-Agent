@@ -1,7 +1,8 @@
 import argparse
 import sys
 import logging
-from app.services.audit_service import audit_dataset
+from iad_core.dataset.audit import audit_dataset
+from iad_core.task.config import load_config
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,7 +27,6 @@ def main():
     try:
         config = None
         if args.config:
-            from app.schemas.config import load_config
             config = load_config(args.config)
 
         audit = audit_dataset(

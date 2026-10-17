@@ -6,20 +6,18 @@ import numpy as np
 from PIL import Image
 import pytest
 
-from app.storage.database import Database
-from app.storage.repositories import (
+from iad_core.storage.database import Database
+from iad_core.storage.repositories import (
     TaskRepository,
     SampleRepository,
     FeatureRepository,
-    FeatureRecord,
 )
-from app.schemas.task import InspectionTask
-from app.schemas.sample import Sample, QualityStatus, DataOrigin
-from app.features.dino import MockFeatureExtractor
-from app.features.builder import build_features, get_feature_stats
-from app.features.index import build_faiss_index, load_faiss_index
-from app.features.search import search_by_sample
-from app.features.duplicate import mine_near_duplicates
+from iad_core.storage.models import FeatureRecord, InspectionTask, Sample, QualityStatus, DataOrigin
+from iad_core.feature.dino import MockFeatureExtractor
+from iad_core.feature.builder import build_features, get_feature_stats
+from iad_core.feature.index import build_faiss_index, load_faiss_index
+from iad_core.feature.search import search_by_sample
+from iad_core.duplicate.miner import mine_near_duplicates
 
 
 @pytest.fixture
@@ -390,7 +388,7 @@ def test_duplicate_copy_candidate(test_env):
 
 def test_dino_missing_weights_fail():
     """F01: Missing DINO weights must fail fast with RuntimeError."""
-    from app.features.dino import DINOFeatureExtractor
+    from iad_core.feature.dino import DINOFeatureExtractor
     extractor = DINOFeatureExtractor(weights_path="/non/existent/model_weights.pth")
     with pytest.raises(RuntimeError, match="DINOv2 weights file not found"):
         extractor.encode_batch(["dummy.png"])
@@ -398,7 +396,7 @@ def test_dino_missing_weights_fail():
 
 def test_verified_duplicate_identical_and_different(test_env):
     """F02: PairVerifier correctly verifies identical copy and rejects unrelated image."""
-    from app.features.verify import verify_pair
+    from iad_core.duplicate.verify import verify_pair
     # Identical copy
     v1 = verify_pair(test_env["img0_path"], test_env["img1_path"])
     assert v1.verified is True

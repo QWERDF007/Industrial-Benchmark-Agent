@@ -4,11 +4,11 @@ import json
 import sqlite3
 from typing import List, Dict
 
-from app.schemas.sample import Sample, QualityStatus, DataOrigin
-from app.schemas.config import SplitPolicyConfig, SplitRatiosConfig
-from app.split.group import build_split_groups, SplitGroup
-from app.split.builder import build_group_split, SplitResult
-from app.split.leakage import check_leakage, LeakageReport
+from iad_core.storage.models import Sample, QualityStatus, DataOrigin
+from iad_core.task.config import SplitPolicyConfig, SplitRatiosConfig
+from iad_core.split.group import build_split_groups, SplitGroup
+from iad_core.split.builder import build_group_split, SplitResult
+from iad_core.split.leakage import check_leakage, LeakageReport
 
 
 def create_sample(

@@ -1,6 +1,6 @@
 # Feature Foundation Report: mock_task_01
 
-> 本报告由 Industrial AD Benchmark Agent (Step 2 Feature Foundation) 自动生成。
+> 本报告由 Industrial AD Benchmark Core v2 自动生成。
 
 ## 1. 基础配置 (Configuration)
 
@@ -9,7 +9,7 @@
 - **Preprocess Key**: `mock_224`
 - **Embedding Dimension**: `768`
 - **Embedding Storage Dtype**: `fp16`
-- **Database**: `/tmp/tmptbjnaceb/test_benchmark.db`
+- **Database**: `/tmp/tmp8gyonjtj/test_benchmark.db`
 
 ## 2. 推理与缓存统计 (Inference & Cache)
 
@@ -25,9 +25,9 @@
 
 | 指标 | 测量值 | 说明 |
 |---|---:|---|
-| 运行耗时 (Elapsed Time) | 0.04 s | 批推理及数据库入库全流程耗时 |
-| 吞吐速度 (Throughput) | 1529.2 samples/s | 平均每秒处理样本数 |
+| 运行耗时 (Elapsed Time) | 0.05 s | 批推理及数据库入库全流程耗时 |
+| 吞吐速度 (Throughput) | 1147.8 samples/s | 平均每秒处理样本数 |
 | 存储占用 (Storage Bytes) | 0.08 MB (86,016 B) | SQLite `feature_records` BLOB 字节总大小 |
 
 ---
-**说明**: Step 2 遵循幂等与无损设计。源文件未改变时二次运行 `computed == 0`，且不自动修改质量标签、不自动删除文件。
+**说明**: Step 2 遵循幂等与无损设计。源文件未改变时二次运行 `computed == 0`，不修改质量标签、不删除文件。

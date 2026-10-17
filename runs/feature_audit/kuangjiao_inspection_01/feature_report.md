@@ -1,6 +1,6 @@
 # Feature Foundation Report: kuangjiao_inspection_01
 
-> 本报告由 Industrial AD Benchmark Agent (Step 2 Feature Foundation) 自动生成。
+> 本报告由 Industrial AD Benchmark Core v2 自动生成。
 
 ## 1. 基础配置 (Configuration)
 
@@ -25,9 +25,9 @@
 
 | 指标 | 测量值 | 说明 |
 |---|---:|---|
-| 运行耗时 (Elapsed Time) | 0.29 s | 批推理及数据库入库全流程耗时 |
-| 吞吐速度 (Throughput) | 17396.0 samples/s | 平均每秒处理样本数 |
+| 运行耗时 (Elapsed Time) | 0.34 s | 批推理及数据库入库全流程耗时 |
+| 吞吐速度 (Throughput) | 14772.7 samples/s | 平均每秒处理样本数 |
 | 存储占用 (Storage Bytes) | 7.43 MB (7,793,664 B) | SQLite `feature_records` BLOB 字节总大小 |
 
 ---
-**说明**: Step 2 遵循幂等与无损设计。源文件未改变时二次运行 `computed == 0`，且不自动修改质量标签、不自动删除文件。
+**说明**: Step 2 遵循幂等与无损设计。源文件未改变时二次运行 `computed == 0`，不修改质量标签、不删除文件。

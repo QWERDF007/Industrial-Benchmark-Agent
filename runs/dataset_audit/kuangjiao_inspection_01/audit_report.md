@@ -1,6 +1,6 @@
 # Dataset Audit Report: kuangjiao_inspection_01
 
-> 本报告由 Industrial AD Benchmark Agent (Step 1 Closeout Audit) 自动生成。
+> 本报告由 Industrial AD Benchmark Core v2 自动生成。
 
 ## 1. Inspection Task 基本信息
 
@@ -17,8 +17,8 @@
 |---|---:|---:|---|
 | **总样本数 (Total Samples)** | 5074 | 100.0% | 资产目录内有效图像全集 |
 | PASS (良品) | 5 | 0.1% | 经显式规则确认为良品 |
-| FAIL (缺陷/不良) | 4 | 0.1% | 经显式规则确认为不良 (如漏检案例) |
-| UNCERTAIN (未定/无明确质检标签) | 5065 | 99.8% | 缺少明确可信标签，依法依规保留 UNCERTAIN |
+| FAIL (缺陷/不良) | 4 | 0.1% | 经显式规则确认为不良 |
+| UNCERTAIN (未定/无明确质检标签) | 5065 | 99.8% | 缺少明确可信标签，保留 UNCERTAIN |
 
 ### 2.1 数据来源谱系分布 (Data Origin Distribution)
 
@@ -38,8 +38,8 @@
 | - 合法未修改 (BBox Valid) | 6377 | 坐标位于图像尺寸边界内 |
 | - 安全截断修复 (BBox Clipped) | 377 | 依据 Policy 安全裁剪至有效范围 |
 | - 比例缩放 (BBox Scaled) | 0 | 依据源图尺寸失配 Policy 缩放 |
-| - 无效/不可用 (BBox Invalid) | 0 | 越界被 Policy 拒绝或坐标倒置，不参与评测 |
-| **可用 BBox 数 (BBox Usable)** | **6754** | **Valid + Clipped + Scaled (真正可用于 Benchmark)** |
+| - 无效/不可用 (BBox Invalid) | 0 | 越界被 Policy 拒绝，不参与评测 |
+| **可用 BBox 数 (BBox Usable)** | **6754** | **Valid + Clipped + Scaled** |
 | 多边形 (Polygon) | 0 | - |
 | 掩膜 (Mask) | 0 | - |
 | 图像级标注 (Image-level) | 0 | - |
@@ -66,9 +66,9 @@
 
 | 评测赛道 (Track) | 就绪状态 | 判定依据 (Readiness Basis) |
 |---|:---:|---|
-| **Standard AD** | `PARTIAL` | Classes exist but unmet policy: pass 5 < min_pass 50, fail 4 < min_fail 50, uncertain 99.8% > max 20.0% |
-| **Open Normal** | `NOT_EVALUATED` | Hard Normal Mining not executed in Step 1 |
-| **Domain Shift** | `PARTIAL` | Confirmed semantic 'production_date' with 425 distinct batches |
+| **Standard AD** | `PARTIAL` | PASS=5, FAIL=4 present; no readiness policy configured (PARTIAL by default) |
+| **Open Normal** | `NOT_EVALUATED` | Hard Normal Mining not evaluated at dataset audit stage |
+| **Domain Shift** | `NOT_EVALUATED` | Distinct batches=425 but metadata semantic unconfirmed |
 | **Small / Weak** | `PARTIAL` | Usable BBox=6754 (valid=6377, clipped=377, scaled=0) |
 | **Global / Logical** | `NOT_EVALUATED` | No logical/sequence anomaly labels |
 
@@ -108,6 +108,3 @@
 | `819x630` | 44 |
 | `1205x1010` | 44 |
 | `999x755` | 43 |
-
----
-**说明**: 本报告依据 Step 1 Closeout Specs 设计规则生成。已关闭数据唯一性、几何质量状态及赛道就绪性边界。

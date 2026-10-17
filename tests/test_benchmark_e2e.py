@@ -3,9 +3,9 @@ import json
 import sqlite3
 import pytest
 
-from app.schemas.sample import QualityStatus, DataOrigin
-from app.storage.database import Database
-from app.benchmark.builder import run_benchmark_pipeline
+from iad_core.storage.models import QualityStatus, DataOrigin
+from iad_core.storage.database import Database
+from iad_core.benchmark.builder import run_benchmark_pipeline
 
 
 def test_benchmark_e2e_synthetic(tmp_path):

@@ -1,0 +1,32 @@
+{
+  "task_id": "kuangjiao_inspection_01",
+  "build_id": "kuangjiao_inspection_01_20261017_001",
+  "models": [
+    {
+      "model_id": "feature_knn",
+      "run_id": "eval_kuangjiao_inspection_01_feature_knn_1792220687",
+      "i_auroc": null,
+      "i_ap": null,
+      "recall_at_fpr_01": null,
+      "f1": 0.0,
+      "accuracy": 0.8695652173913043,
+      "hard_normal_fpr": 0.0,
+      "threshold": 0.279353,
+      "elapsed_seconds": 0.38155062598525546
+    },
+    {
+      "model_id": "mock_model",
+      "run_id": "eval_kuangjiao_inspection_01_mock_model_1792220673",
+      "i_auroc": null,
+      "i_ap": null,
+      "recall_at_fpr_01": null,
+      "f1": 0.0,
+      "accuracy": 0.9565217391304348,
+      "hard_normal_fpr": 0.0,
+      "threshold": 0.242606,
+      "elapsed_seconds": 0.3356591930205468
+    }
+  ],
+  "best_hard_normal_model": "feature_knn",
+  "report_markdown": "# Model Benchmark Comparison Report\n\n- **Task ID**: `kuangjiao_inspection_01`\n- **Build ID**: `kuangjiao_inspection_01_20261017_001`\n- **Evaluated Models**: feature_knn, mock_model\n\n## 1. Overall Image Metrics Comparison\n\n| Model ID | I-AUROC | I-AP | Recall@1%FPR | F1 Score | Hard Normal FPR | Threshold | Latency (s) |\n|---|---|---|---|---|---|---|---|\n| `feature_knn` | `N/A` | `N/A` | `N/A` | `0.0000` | `0.0000` | `0.2794` | `0.38` |\n| `mock_model` | `N/A` | `N/A` | `N/A` | `0.0000` | `0.0000` | `0.2426` | `0.34` |\n\n## 2. Hard Normal Robustness Diagnosis\n\n- **Most Robust Model on Hard Normals**: `feature_knn` (Hard Normal FPR: `0.0000`)\n- **Hard Normal Separation Margins**:\n  - `feature_knn`: `0.2757`\n  - `mock_model`: `0.1188`\n\n## 3. Domain Shift Diagnosis\n\n### Model: `feature_knn` Domain Breakdown\n| Domain | Accuracy | F1 | I-AUROC | FP Count |\n|---|---|---|---|---|\n| `22-051215` | 1.0000 | 0.0000 | N/A | 0 |\n| `2023-07-03` | 1.0000 | 0.0000 | N/A | 0 |\n| `2023-10-16` | 0.0000 | 0.0000 | N/A | 1 |\n| `2023-11-27` | 1.0000 | 0.0000 | N/A | 0 |\n| `2023_09_28` | 1.0000 | 0.0000 | N/A | 0 |\n| `2024-07-26` | 1.0000 | 0.0000 | N/A | 0 |\n| `2024-08-13` | 1.0000 | 0.0000 | N/A | 0 |\n| `2024_06_13` | 0.0000 | 0.0000 | N/A | 1 |\n| `2025-03-02` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-03-03` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-09-03` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-09-04` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-10-27` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-11-04` | 0.0000 | 0.0000 | N/A | 1 |\n| `22-041411` | 1.0000 | 0.0000 | N/A | 0 |\n| `UNKNOWN` | 1.0000 | 0.0000 | N/A | 0 |\n| `2026_09_08` | 1.0000 | 0.0000 | N/A | 0 |\n| `2026_09_07` | 1.0000 | 0.0000 | N/A | 0 |\n\n> **Challenging Domain for feature_knn**: `22-051215` (F1: `0.0000`)\n\n### Model: `mock_model` Domain Breakdown\n| Domain | Accuracy | F1 | I-AUROC | FP Count |\n|---|---|---|---|---|\n| `22-051215` | 1.0000 | 0.0000 | N/A | 0 |\n| `2023-07-03` | 1.0000 | 0.0000 | N/A | 0 |\n| `2023-10-16` | 1.0000 | 0.0000 | N/A | 0 |\n| `2023-11-27` | 1.0000 | 0.0000 | N/A | 0 |\n| `2023_09_28` | 1.0000 | 0.0000 | N/A | 0 |\n| `2024-07-26` | 1.0000 | 0.0000 | N/A | 0 |\n| `2024-08-13` | 1.0000 | 0.0000 | N/A | 0 |\n| `2024_06_13` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-03-02` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-03-03` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-09-03` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-09-04` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-10-27` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-11-04` | 1.0000 | 0.0000 | N/A | 0 |\n| `22-041411` | 1.0000 | 0.0000 | N/A | 0 |\n| `UNKNOWN` | 1.0000 | 0.0000 | N/A | 0 |\n| `2026_09_08` | 1.0000 | 0.0000 | N/A | 0 |\n| `2026_09_07` | 0.0000 | 0.0000 | N/A | 1 |\n\n> **Challenging Domain for mock_model**: `22-051215` (F1: `0.0000`)\n\n"
+}

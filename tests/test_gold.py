@@ -4,15 +4,14 @@ import json
 import sqlite3
 from typing import List
 
-from app.schemas.sample import Sample, QualityStatus, DataOrigin
-from app.schemas.annotation import Annotation, GeometryStatus, AnnotationSource, AnnotationType
-from app.schemas.config import GoldPolicyConfig
-from app.review.schemas import ReviewDecisionRecord
-from app.gold.schemas import GoldRecord, GoldConflictRecord, GoldQuality, BinaryLabel, GoldStatus
-from app.gold.resolver import resolve_gold_for_sample
-from app.gold.annotation import filter_and_convert_gold_annotations
-from app.gold.builder import build_gold
-from app.storage.database import Database
+from iad_core.storage.models import Sample, QualityStatus, DataOrigin, Annotation, GeometryStatus, AnnotationSource, AnnotationType
+from iad_core.task.config import GoldPolicyConfig
+from iad_core.review.schemas import ReviewDecisionRecord
+from iad_core.gold.schemas import GoldRecord, GoldConflictRecord, GoldQuality, BinaryLabel, GoldStatus
+from iad_core.gold.resolver import resolve_gold_for_sample
+from iad_core.gold.annotation import filter_and_convert_gold_annotations
+from iad_core.gold.builder import build_gold
+from iad_core.storage.database import Database
 
 
 def test_gold_review_priority_overrides_existing():

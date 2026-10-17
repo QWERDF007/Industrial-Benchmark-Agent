@@ -252,10 +252,10 @@ Step 1 仅根据数据底层结构进行严谨初判，绝不伪造结果：
 
 ## 9. 如何新增 Dataset Adapter
 
-实现自定义数据集适配器只需继承 `app.adapters.base.DatasetAdapter` 并重写核心方法：
+实现自定义数据集适配器只需继承 `iad_core.dataset.adapters.base.DatasetAdapter` 并重写核心方法：
 
 ```python
-from app.adapters.base import DatasetAdapter, RawImage, RawAnnotation
+from iad_core.dataset.adapters.base import DatasetAdapter, RawImage, RawAnnotation
 
 class CustomDetectorAdapter(DatasetAdapter):
     def load_annotations(self, image: RawImage, width: int, height: int) -> list[RawAnnotation]:
@@ -265,7 +265,7 @@ class CustomDetectorAdapter(DatasetAdapter):
         return annotations
 ```
 
-然后在 `app/adapters/__init__.py` 的 `get_adapter` 工厂方法中注册即可。
+然后在 `python/iad_core/dataset/adapters/__init__.py` 的 `get_adapter` 工厂方法中注册即可。
 
 ---
 

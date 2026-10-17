@@ -3,25 +3,32 @@ import tempfile
 import numpy as np
 import pytest
 
-from app.storage.database import Database
-from app.storage.repositories import (
+from iad_core.storage.database import Database
+from iad_core.storage.repositories import (
     TaskRepository,
     SampleRepository,
     FeatureRepository,
-    FeatureRecord,
     AnnotationRepository,
 )
-from app.schemas.task import InspectionTask
-from app.schemas.sample import Sample, QualityStatus, DataOrigin
-from app.schemas.annotation import Annotation, AnnotationType, AnnotationSource, GeometryStatus
-from app.candidates.schemas import CandidateScoringWeights
-from app.candidates.reference import get_normal_reference_set, compute_normal_distance
-from app.candidates.density import compute_density_outlier_scores
-from app.candidates.domain import compute_domain_novelty_scores
-from app.candidates.annotation_signal import compute_annotation_signals
-from app.candidates.scorer import aggregate_candidate_scores
-from app.candidates.diversity import apply_diversity_suppression
-from app.candidates.miner import mine_candidates
+from iad_core.storage.models import (
+    FeatureRecord,
+    InspectionTask,
+    Sample,
+    QualityStatus,
+    DataOrigin,
+    Annotation,
+    AnnotationType,
+    AnnotationSource,
+    GeometryStatus,
+)
+from iad_core.candidate.schemas import CandidateScoringWeights
+from iad_core.candidate.reference import get_normal_reference_set, compute_normal_distance
+from iad_core.candidate.density import compute_density_outlier_scores
+from iad_core.candidate.domain import compute_domain_novelty_scores
+from iad_core.candidate.annotation import compute_annotation_signals
+from iad_core.candidate.scorer import aggregate_candidate_scores
+from iad_core.candidate.diversity import apply_diversity_suppression
+from iad_core.candidate.miner import mine_candidates
 
 
 @pytest.fixture

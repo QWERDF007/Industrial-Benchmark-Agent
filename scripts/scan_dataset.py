@@ -1,7 +1,7 @@
 import argparse
 import sys
 import logging
-from app.services.dataset_service import scan_dataset
+from iad_core.dataset.scanner import scan_dataset
 
 logging.basicConfig(
     level=logging.INFO,

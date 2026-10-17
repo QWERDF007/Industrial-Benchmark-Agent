@@ -4,9 +4,9 @@ import logging
 from collections import Counter
 from PIL import Image
 
-from app.schemas.config import load_config
-from app.adapters.labelme import LabelmeAdapter
-from app.adapters.base import RawImage
+from iad_core.task.config import load_config
+from iad_core.dataset.adapters.labelme import LabelmeAdapter
+from iad_core.dataset.adapters.base import RawImage
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("invalid_bbox_reviewer")

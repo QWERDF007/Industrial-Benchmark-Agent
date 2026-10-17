@@ -3,12 +3,10 @@ import json
 import pytest
 from PIL import Image
 
-from app.storage.database import Database
-from app.storage.repositories import TaskRepository, SampleRepository, AnnotationRepository
-from app.schemas.task import InspectionTask
-from app.schemas.sample import Sample, QualityStatus, DataOrigin
-from app.schemas.annotation import Annotation, AnnotationType, GeometryStatus
-from app.schemas.config import (
+from iad_core.storage.database import Database
+from iad_core.storage.repositories import TaskRepository, SampleRepository, AnnotationRepository
+from iad_core.storage.models import InspectionTask, Sample, QualityStatus, DataOrigin, Annotation, AnnotationType, GeometryStatus
+from iad_core.task.config import (
     DatasetConfig,
     DatasetInfo,
     TaskConfig,
@@ -18,11 +16,11 @@ from app.schemas.config import (
     ReadinessPolicyConfig,
     StandardADReadinessPolicy,
 )
-from app.adapters.folder import GenericFolderAdapter
-from app.adapters.labelme import LabelmeAdapter
-from app.adapters.base import RawImage
-from app.services.dataset_service import scan_dataset
-from app.services.audit_service import audit_dataset
+from iad_core.dataset.adapters.folder import GenericFolderAdapter
+from iad_core.dataset.adapters.labelme import LabelmeAdapter
+from iad_core.dataset.adapters.base import RawImage
+from iad_core.dataset.scanner import scan_dataset
+from iad_core.dataset.audit import audit_dataset
 
 
 def create_dummy_image(path, width=100, height=100):

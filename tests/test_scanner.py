@@ -3,10 +3,11 @@ import json
 import pytest
 from PIL import Image
 
-from app.schemas.config import DatasetConfig, DatasetInfo, TaskConfig, QualityConfig, AnnotationsConfig, MetadataConfig, MetadataRule
-from app.services.dataset_service import scan_dataset
-from app.storage.database import Database
-from app.storage.repositories import SampleRepository, AnnotationRepository, IssueRepository
+from iad_core.task.config import DatasetConfig, DatasetInfo, TaskConfig, QualityConfig, AnnotationsConfig, MetadataConfig, MetadataRule
+from iad_core.dataset.scanner import scan_dataset
+from iad_core.storage.database import Database
+from iad_core.storage.repositories import SampleRepository, AnnotationRepository, IssueRepository
+
 
 
 @pytest.fixture
@@ -147,7 +148,10 @@ def test_scanner_integration(test_dataset):
 
     # Check issues logged
     issues = issue_repo.list_by_task("synth_task_01")
-    issue_types = [i.issue_type.value for i in issues]
+    issue_types = [str(i.issue_type).lower() for i in issues]
+    assert "invalid_image" in issue_types or "INVALID_IMAGE".lower() in issue_types
+
+
     assert "invalid_image" in issue_types
     assert "unknown_label" in issue_types
     assert "invalid_bbox" in issue_types

@@ -1,0 +1,1 @@
+{"timestamp": "2026-10-17T07:11:33Z", "task_id": "kuangjiao_inspection_01", "model_id": "dinov2_vitb14_reg", "preprocess_key": "dinov2_224_norm", "total": 5074, "computed": 0, "cached": 5074, "failed": 0, "elapsed": 0.34, "throughput": 14772.75, "storage_bytes": 7793664}

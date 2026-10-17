@@ -1,0 +1,7 @@
+kuangjiao_inspection_01:
+  batch_id: production_date
+  physical_sample_id: physical_unit_id
+  capture_sequence_id: capture_sequence_id
+  physical_sample_scope: batch
+  description: 'Kuangjiao inspection task metadata semantics: batch_id represents
+    physical production date.'
