@@ -15,13 +15,32 @@ from iad_core.storage.models import ReviewDecisionRecord, ReviewSession
 from iad_core.storage.repositories import (
     TaskRepository,
     SampleRepository,
+    AnnotationRepository,
     ReviewRepository,
     BenchmarkRepository,
     EvaluationRepository,
     JobRepository,
 )
+from iad_core.advisory.repository import AuditSuggestionRepository
 from iad_core.review.service import ReviewQueueService
 from iad_core.evidence.builder import EvidenceBuilder
+from iad_core.evidence.views import generate_sample_view, generate_region_view
+
+from iad_domain_server.tools.task_tools import task_inspect
+from iad_domain_server.tools.dataset_tools import dataset_audit
+from iad_domain_server.tools.audit_tools import audit_issue_query, audit_recheck, audit_suggestion_save
+from iad_domain_server.tools.image_tools import sample_view, region_view, samples_compare
+from iad_domain_server.tools.feature_tools import feature_prepare, visual_search
+from iad_domain_server.tools.duplicate_tools import duplicate_audit
+from iad_domain_server.tools.candidate_tools import candidate_mine, candidate_merge, evidence_get
+from iad_domain_server.tools.review_tools import review_status
+from iad_domain_server.tools.benchmark_tools import (
+    benchmark_preview,
+    benchmark_build,
+    benchmark_status,
+    leakage_check,
+)
+from iad_domain_server.tools.evaluation_tools import evaluation_plan, baseline_run, evaluation_compare
 
 app = FastAPI(title="Industrial Benchmark Agent Domain Server", version="1.0.0")
 
@@ -114,7 +133,7 @@ def get_task_overview(task_id: str):
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT count(*) FROM features f
+            SELECT count(*) FROM feature_records f
             JOIN samples s ON f.sample_id = s.sample_id
             WHERE s.task_id = ?
             """,
@@ -124,15 +143,18 @@ def get_task_overview(task_id: str):
 
     feature_coverage = (feature_count / total_samples * 100.0) if total_samples > 0 else 0.0
     review_stats = review_repo.get_stats(task_id)
+    sug_repo = AuditSuggestionRepository(db)
+    sugs = sug_repo.list_by_task(task_id)
     builds = bench_repo.list_builds_by_task(task_id)
     latest_build = builds[0].build_id if builds else "None"
 
     return {
         "task_id": task_id,
-        "task_name": task.task_name,
+        "task_name": getattr(task, "task_name", None) or task.product or task.task_id,
         "total_samples": total_samples,
         "feature_coverage_pct": feature_coverage,
         "total_decisions": review_stats.get("total_decisions", 0),
+        "total_suggestions": len(sugs),
         "latest_build_id": latest_build,
     }
 
@@ -379,11 +401,120 @@ def get_sample_image(sample_id: str):
 
 
 # -------------------------------------------------------------------------
-# MCP JSON-RPC 2.0 Transport (R301, Specs Section 26)
+# Internal Tool API for Native Cordis Plugins (S03, RP-04)
 # -------------------------------------------------------------------------
 
-@app.post("/mcp")
-async def mcp_transport(request: Dict[str, Any] = Body(...)):
-    from iad_domain_server.mcp import handle_mcp_request
-    return handle_mcp_request(request)
+INTERNAL_TOOL_MAP = {
+    # Audit & Images
+    "dataset_audit": dataset_audit,
+    "audit_issue_query": audit_issue_query,
+    "audit_recheck": audit_recheck,
+    "audit_suggestion_save": audit_suggestion_save,
+    "sample_view": sample_view,
+    "region_view": region_view,
+    "samples_compare": samples_compare,
+    # Vision & Feature
+    "task_inspect": task_inspect,
+    "feature_prepare": feature_prepare,
+    "visual_search": visual_search,
+    "duplicate_audit": duplicate_audit,
+    "candidate_mine": candidate_mine,
+    "candidate_merge": candidate_merge,
+    "evidence_get": evidence_get,
+    # Benchmark
+    "review_status": review_status,
+    "benchmark_preview": benchmark_preview,
+    "benchmark_build": benchmark_build,
+    "benchmark_status": benchmark_status,
+    "leakage_check": leakage_check,
+    # Evaluation
+    "evaluation_plan": evaluation_plan,
+    "baseline_run": baseline_run,
+    "evaluation_compare": evaluation_compare,
+}
+
+
+@app.post("/internal/tool/{tool_name}")
+def execute_internal_tool(tool_name: str, arguments: Dict[str, Any] = Body(default={})):
+    """
+    Lightweight internal JSON RPC for Native Cordis plugins (S03, RP-04).
+    Dispatches strictly to registered domain tools without MCP envelope.
+    """
+    handler = INTERNAL_TOOL_MAP.get(tool_name)
+    if not handler:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Tool '{tool_name}' is not registered or not permitted.",
+        )
+    try:
+        import inspect
+        call_args = dict(arguments)
+        sig = inspect.signature(handler)
+        if "db_path" in sig.parameters and "db_path" not in call_args and DB_PATH:
+            call_args["db_path"] = DB_PATH
+        res = handler(**call_args)
+        return res.model_dump()
+    except Exception as e:
+        import logging
+        logging.getLogger("iad_domain_server.api").error(f"Error in internal tool '{tool_name}': {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/internal/sample/{sample_id}/image")
+def get_internal_sample_image(
+    sample_id: str,
+    view: Optional[str] = Query("raw"),
+    bbox: Optional[str] = Query(None),
+    padding: Optional[float] = Query(0.1),
+):
+    """
+    Internal image service delivering raw, overlay, or high-res cropped views (S05, RP-08~11).
+    Used by DSH Attachment Store adapter to populate ContentBlock.
+    """
+    db = Database(DB_PATH)
+    sample_repo = SampleRepository(db)
+    anno_repo = AnnotationRepository(db)
+    sample = sample_repo.get(sample_id)
+    if not sample:
+        raise HTTPException(status_code=404, detail=f"Sample '{sample_id}' not found.")
+    if not sample.image_path or not os.path.exists(sample.image_path):
+        raise HTTPException(status_code=404, detail=f"Image file for sample '{sample_id}' not found.")
+
+    real_path = os.path.realpath(sample.image_path)
+    allowed_roots = [
+        os.path.realpath("data"),
+        os.path.realpath("."),
+        "/data1",
+        os.path.realpath(tempfile.gettempdir()),
+        "/tmp",
+    ]
+    if not any(real_path.startswith(root) for root in allowed_roots):
+        raise HTTPException(status_code=403, detail="Forbidden: Image path is outside authorized dataset root.")
+
+    if bbox:
+        try:
+            bbox_coords = [int(v.strip()) for v in bbox.split(",")]
+            region_info = generate_region_view(sample, bbox_coords, padding_ratio=padding or 0.1)
+            return FileResponse(region_info["view_path"], media_type="image/png")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid region crop request: {e}")
+
+    if view == "annotation_overlay":
+        annotations = anno_repo.list_by_sample(sample_id)
+        view_info = generate_sample_view(sample, annotations, view="annotation_overlay")
+        return FileResponse(view_info["view_path"], media_type="image/png")
+
+    return FileResponse(real_path)
+
+
+@app.get("/api/suggestions/{task_id}")
+def list_task_suggestions(task_id: str):
+    """
+    Query multimodal LLM suggestions for a task to render in Human Review UI (S08, RP-19).
+    """
+    db = Database(DB_PATH)
+    repo = AuditSuggestionRepository(db)
+    suggestions = repo.list_by_task(task_id)
+    return {"suggestions": [s.model_dump() for s in suggestions]}
+
 

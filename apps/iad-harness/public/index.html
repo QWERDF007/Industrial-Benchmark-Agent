@@ -240,9 +240,13 @@
               <div class="small text-muted mb-2">Operator: <strong class="text-white">human_operator</strong></div>
               <div class="small text-muted mb-2">Elapsed Timer: <strong id="audit-timer" class="text-success">00:00</strong></div>
             </div>
-            <div class="card p-3">
+            <div class="card p-3 mb-3">
               <h6 class="fw-bold mb-2">Verified Duplicate Warning</h6>
               <div id="dup-warning" class="small text-muted">No duplicate components detected for this sample.</div>
+            </div>
+            <div class="card p-3">
+              <h6 class="fw-bold mb-2">Multimodal Agent Suggestion</h6>
+              <div id="llm-suggestion" class="small text-muted">No agent suggestions recorded for this sample.</div>
             </div>
           </div>
         </div>
@@ -363,6 +367,24 @@
           document.getElementById("sig-density").textContent = item.signals?.density_outlier?.toFixed(3) || "N/A";
           document.getElementById("sig-domain").textContent = item.signals?.domain_novelty?.toFixed(3) || "N/A";
           document.getElementById("sig-anno").textContent = item.signals?.annotation_signal ? "Yes" : "None";
+
+          try {
+            const sugRes = await fetch(`/api/suggestions/${TASK_ID}`);
+            if (sugRes.ok) {
+              const sugData = await sugRes.json();
+              const sampleSug = (sugData.suggestions || []).find(s => s.sample_id === item.sample_id);
+              const el = document.getElementById("llm-suggestion");
+              if (el) {
+                if (sampleSug) {
+                  el.innerHTML = `<span class="badge bg-info text-dark">${sampleSug.recommended_action}</span> <span class="badge bg-secondary">${sampleSug.conclusion_status}</span><div class="mt-2 text-white small">${sampleSug.observations?.[0]?.description || sampleSug.observations?.[0]?.phenomenon || "Agent provided visual inspection advice."}</div>`;
+                } else {
+                  el.textContent = "No agent suggestions recorded for this sample.";
+                }
+              }
+            }
+          } catch (e) {
+            console.warn("Could not load suggestion:", e);
+          }
         }
       } catch (e) {
         console.warn("Could not load queue item:", e);

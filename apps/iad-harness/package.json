@@ -10,6 +10,30 @@
       "types": "./lib/server/index.d.ts",
       "default": "./lib/server/index.js"
     },
+    "./core-client": {
+      "types": "./lib/server/core-client/index.d.ts",
+      "default": "./lib/server/core-client/index.js"
+    },
+    "./policy": {
+      "types": "./lib/server/policy/index.d.ts",
+      "default": "./lib/server/policy/index.js"
+    },
+    "./audit": {
+      "types": "./lib/server/audit/index.d.ts",
+      "default": "./lib/server/audit/index.js"
+    },
+    "./vision": {
+      "types": "./lib/server/vision/index.d.ts",
+      "default": "./lib/server/vision/index.js"
+    },
+    "./benchmark": {
+      "types": "./lib/server/benchmark/index.d.ts",
+      "default": "./lib/server/benchmark/index.js"
+    },
+    "./evaluation": {
+      "types": "./lib/server/evaluation/index.d.ts",
+      "default": "./lib/server/evaluation/index.js"
+    },
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
@@ -26,9 +50,11 @@
   "dependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
     "@deepseek-ai/dsh": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-attachment": "0.2.0-rc.2",
     "@deepseek-ai/dsh-base": "0.2.0-rc.2",
-    "@deepseek-ai/dsh-mcp-client": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
     "@deepseek-ai/dsh-skill": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.2",
     "@deepseek-ai/dsh-web-app": "0.2.0-rc.2"
   }
 }

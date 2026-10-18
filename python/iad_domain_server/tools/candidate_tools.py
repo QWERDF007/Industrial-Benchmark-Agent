@@ -121,3 +121,78 @@ def evidence_get(
         next_actions=[],
         mutation=MutationType.NONE,
     )
+
+
+def candidate_merge(
+    task_id: str,
+    output_dir: Optional[str] = None,
+    include_dino: bool = True,
+    include_llm: bool = True,
+    include_audit: bool = True,
+    db_path: str = "data/benchmark.db",
+) -> ToolResult:
+    """
+    Merge candidate samples from DINO, multimodal LLM suggestions, and data audit issues (S09, Ticket RP-17).
+    Strictly preserves provenance, deduplicates by sample_id, and produces unified candidate queues.
+    """
+    try:
+        from iad_core.candidate.merger import merge_candidates
+        res = merge_candidates(
+            task_id=task_id,
+            db_path=db_path,
+            output_dir=output_dir,
+            include_dino=include_dino,
+            include_llm=include_llm,
+            include_audit=include_audit,
+        )
+    except Exception as e:
+        logger.error(f"Candidate merge failed: {e}", exc_info=True)
+        return ToolResult(
+            status=ToolStatus.ERROR,
+            summary=f"Candidate merge failed: {str(e)}",
+            warnings=[str(e)],
+            mutation=MutationType.NONE,
+        )
+
+    artifacts = []
+    if os.path.exists(res["json_path"]):
+        artifacts.append(
+            ArtifactRef(
+                artifact_id=f"merged_candidates_json_{task_id}",
+                artifact_type="merged_candidates_json",
+                uri=f"iad://task/{task_id}/candidates/merged.json",
+                path=os.path.abspath(res["json_path"]),
+                summary="Multi-source merged candidate list in JSON format",
+            )
+        )
+    if os.path.exists(res["md_path"]):
+        artifacts.append(
+            ArtifactRef(
+                artifact_id=f"merged_candidates_md_{task_id}",
+                artifact_type="merged_candidates_markdown",
+                uri=f"iad://task/{task_id}/candidates/merged.md",
+                path=os.path.abspath(res["md_path"]),
+                summary="Multi-source candidate merge audit report in Markdown",
+            )
+        )
+
+    status = ToolStatus.REVIEW_REQUIRED if res["total_unique_candidates"] > 0 else ToolStatus.OK
+    return ToolResult(
+        status=status,
+        summary=(
+            f"Merged {res['total_unique_candidates']} candidates for task '{task_id}' "
+            f"(DINO-only: {res['breakdown']['dino_only']}, LLM-only: {res['breakdown']['llm_only']}, "
+            f"Both: {res['breakdown']['both_dino_llm']}, Audit-only: {res['breakdown']['audit_only']})."
+        ),
+        metrics={
+            "task_id": task_id,
+            "total_unique_candidates": res["total_unique_candidates"],
+            "breakdown": res["breakdown"],
+            "top_candidates": res["candidates"][:20],
+        },
+        artifacts=artifacts,
+        warnings=["Human review required on multi-source candidate queue."],
+        next_actions=["Review merged candidate queue in Web Review panel."],
+        mutation=MutationType.DERIVED_ARTIFACT,
+    )
+

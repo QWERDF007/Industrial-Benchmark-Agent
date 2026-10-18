@@ -1,0 +1,173 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { createAuditTools } from "../lib/server/audit/index.js";
+import { createVisionTools } from "../lib/server/vision/index.js";
+import { createBenchmarkTools } from "../lib/server/benchmark/index.js";
+import { createEvaluationTools } from "../lib/server/evaluation/index.js";
+
+test("Audit Tools: sample_view with attachments returns ImageBlock", async () => {
+  const savedImages = [];
+  const mockAttachments = {
+    async saveImage(input) {
+      savedImages.push(input);
+      return {
+        attachmentId: "att_123",
+        mediaType: input.mediaType,
+        bytes: input.data.byteLength,
+        width: 100,
+        height: 100,
+        name: input.name,
+      };
+    },
+  };
+
+  const mockCoreClient = {
+    async call(toolName, args, signal) {
+      if (toolName === "sample_view") {
+        return {
+          status: "OK",
+          summary: `Sample view for ${args.sample_id}`,
+          metrics: {
+            image_endpoint: `/internal/sample/${args.sample_id}/image?view=${args.view || "raw"}`,
+          },
+        };
+      }
+      throw new Error(`Unexpected tool: ${toolName}`);
+    },
+    async fetchImageBytes(params, signal) {
+      return new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+    },
+  };
+
+  const mockCtx = {
+    attachments: mockAttachments,
+    iadCoreClient: mockCoreClient,
+    tools: { register() {} },
+  };
+
+  const tools = createAuditTools(mockCtx);
+  const sampleViewTool = tools.find((t) => t.name === "sample_view");
+  assert.ok(sampleViewTool);
+
+  const result = await sampleViewTool.execute(
+    { task_id: "task_01", sample_id: "s_01", view: "raw" },
+    { signal: new AbortController().signal }
+  );
+
+  assert.equal(result.status, "OK");
+  assert.ok(result._attachment);
+  assert.equal(savedImages.length, 1);
+  assert.equal(savedImages[0].name, "s_01_raw.png");
+
+  // Verify render outputs ImageBlock
+  const rendered = sampleViewTool.output.render(
+    { task_id: "task_01", sample_id: "s_01" },
+    result
+  );
+  assert.equal(rendered.length, 2);
+  assert.equal(rendered[0].type, "text");
+  assert.equal(rendered[1].type, "image");
+  assert.equal(rendered[1].attachment.attachmentId, "att_123");
+});
+
+test("Audit Tools: sample_view without attachments returns text-only and warning", async () => {
+  const mockCoreClient = {
+    async call(toolName, args) {
+      return {
+        status: "OK",
+        summary: `Sample view for ${args.sample_id}`,
+        metrics: {
+          image_endpoint: `/internal/sample/${args.sample_id}/image?view=raw`,
+        },
+      };
+    },
+  };
+
+  // No ctx.attachments
+  const mockCtx = {
+    iadCoreClient: mockCoreClient,
+    tools: { register() {} },
+  };
+
+  const tools = createAuditTools(mockCtx);
+  const sampleViewTool = tools.find((t) => t.name === "sample_view");
+
+  const result = await sampleViewTool.execute(
+    { task_id: "task_01", sample_id: "s_02" },
+    { signal: new AbortController().signal }
+  );
+
+  assert.equal(result.status, "OK");
+  assert.equal(result._attachment, undefined);
+  assert.ok(result.warnings.some((w) => w.includes("不具有图片视觉观察结论")));
+
+  const rendered = sampleViewTool.output.render(
+    { task_id: "task_01", sample_id: "s_02" },
+    result
+  );
+  assert.equal(rendered.length, 1);
+  assert.equal(rendered[0].type, "text");
+  assert.match(rendered[0].text, /不具有图片视觉观察结论/);
+});
+
+test("Vision Tools: candidate_merge executes and formats correctly", async () => {
+  const mockCoreClient = {
+    async call(toolName, args) {
+      assert.equal(toolName, "candidate_merge");
+      return {
+        status: "OK",
+        summary: "Merged 5 candidates across 3 sources",
+        metrics: {
+          total_merged: 5,
+          source_breakdown: { DINO: 2, LLM: 2, AUDIT: 1 },
+        },
+        mutation: "DERIVED_ARTIFACT",
+      };
+    },
+  };
+
+  const mockCtx = {
+    iadCoreClient: mockCoreClient,
+    tools: { register() {} },
+  };
+
+  const tools = createVisionTools(mockCtx);
+  const mergeTool = tools.find((t) => t.name === "candidate_merge");
+  assert.ok(mergeTool);
+
+  const result = await mergeTool.execute(
+    { task_id: "task_01" },
+    { signal: new AbortController().signal }
+  );
+  assert.equal(result.status, "OK");
+  assert.equal(result.metrics.total_merged, 5);
+
+  const rendered = mergeTool.output.render({ task_id: "task_01" }, result);
+  assert.equal(rendered.length, 1);
+  assert.match(rendered[0].text, /Merged 5 candidates/);
+  assert.match(rendered[0].text, /total_merged/);
+});
+
+test("Benchmark Tools: verify tool names", async () => {
+  const mockCtx = { tools: { register() {} } };
+  const tools = createBenchmarkTools(mockCtx);
+  const names = tools.map((t) => t.name);
+  assert.deepEqual(names.sort(), [
+    "benchmark_build",
+    "benchmark_preview",
+    "benchmark_status",
+    "leakage_check",
+    "review_status",
+  ].sort());
+});
+
+test("Evaluation Tools: verify tool names", async () => {
+  const mockCtx = { tools: { register() {} } };
+  const tools = createEvaluationTools(mockCtx);
+  const names = tools.map((t) => t.name);
+  assert.deepEqual(names.sort(), [
+    "baseline_run",
+    "evaluation_compare",
+    "evaluation_plan",
+  ].sort());
+});

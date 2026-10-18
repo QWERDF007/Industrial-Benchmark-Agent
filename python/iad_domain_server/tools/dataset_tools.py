@@ -26,9 +26,8 @@ def dataset_audit(
 
     out_dir = output_dir or os.path.join("runs", "audit", task_id)
     os.makedirs(out_dir, exist_ok=True)
-    report_json_path = os.path.join(out_dir, "dataset_audit.json")
-    report_md_path = os.path.join(out_dir, "dataset_audit.md")
-
+    report_json_path = os.path.join(out_dir, "audit_report.json")
+    report_md_path = os.path.join(out_dir, "audit_report.md")
 
     audit_res = audit_service.audit(
         task_id,
@@ -37,9 +36,8 @@ def dataset_audit(
         config=config,
     )
 
-
     # Determine status
-    std_ad = audit_res.track_readiness.get("standard_ad", "NOT_READY")
+    std_ad = audit_res.track_readiness.get("Standard AD") or audit_res.track_readiness.get("standard_ad", "NOT_READY")
     if std_ad == "READY":
         status = ToolStatus.OK
     elif std_ad == "PARTIAL":

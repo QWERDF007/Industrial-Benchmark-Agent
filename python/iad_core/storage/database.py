@@ -293,3 +293,25 @@ class Database:
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_agent_runs_task ON agent_runs(task_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_agent_runs_session ON agent_runs(session_id)")
+
+            # 14. audit_suggestions (Non-authoritative multimodal LLM advice, Tickets RP-14, S08)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS audit_suggestions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                suggestion_id TEXT UNIQUE NOT NULL,
+                task_id TEXT NOT NULL,
+                sample_id TEXT,
+                session_id TEXT,
+                model_route TEXT,
+                observations_json TEXT,
+                hypotheses_json TEXT,
+                evidence_refs_json TEXT,
+                conclusion_status TEXT NOT NULL,
+                recommended_action TEXT NOT NULL,
+                input_modalities_json TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_suggestions_task ON audit_suggestions(task_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_suggestions_sample ON audit_suggestions(sample_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_suggestions_session ON audit_suggestions(session_id)")

@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 from iad_agent.config import AgentConfig
 from iad_agent.result import AgentRunResult
 from iad_agent.runtime import run, resume
-from iad_domain_server.mcp import TOOL_HANDLER_MAP
+from iad_domain_server.api import INTERNAL_TOOL_MAP
 
 
 def test_agent_config_defaults():
@@ -123,17 +123,24 @@ def test_agent_runtime_missing_session_id_fails():
 
 
 def test_allowed_tool_surface_consistency():
-    """Verify the 15 MCP domain tools match between Python server and Harness bundle definition."""
-    domain_tools = set(TOOL_HANDLER_MAP.keys())
-    assert len(domain_tools) == 15
+    """Verify the 22 domain tools match between Python server and Harness bundle definition."""
+    domain_tools = set(INTERNAL_TOOL_MAP.keys())
+    assert len(domain_tools) == 22
 
     expected_tools = {
         "task_inspect",
         "dataset_audit",
+        "audit_issue_query",
+        "audit_recheck",
+        "audit_suggestion_save",
+        "sample_view",
+        "region_view",
+        "samples_compare",
         "feature_prepare",
         "visual_search",
         "duplicate_audit",
         "candidate_mine",
+        "candidate_merge",
         "evidence_get",
         "review_status",
         "benchmark_preview",
@@ -145,3 +152,5 @@ def test_allowed_tool_surface_consistency():
         "evaluation_compare",
     }
     assert domain_tools == expected_tools
+    assert "review_write" not in domain_tools
+    assert "review_submit" not in domain_tools

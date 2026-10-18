@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../src/server/benchmark/index.ts"],"names":[],"mappings":"AAAA;;GAEG;AAEH,OAAO,EAAc,KAAK,cAAc,EAAE,MAAM,wBAAwB,CAAC;AA0BzE,wBAAgB,oBAAoB,CAAC,GAAG,EAAE,GAAG,GAAG,cAAc,EAAE,CAsG/D;AAED,eAAO,MAAM,IAAI,kBAAkB,CAAC;AACpC,eAAO,MAAM,MAAM,UAAY,CAAC;AAEhC,wBAAgB,KAAK,CAAC,GAAG,EAAE,GAAG,QAO7B"}
