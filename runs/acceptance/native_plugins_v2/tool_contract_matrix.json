@@ -1,0 +1,511 @@
+{
+  "total_tools": 22,
+  "tools": [
+    {
+      "index": 1,
+      "tool_name": "dataset_audit",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "NOT_READY"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "NOT_READY"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 2,
+      "tool_name": "audit_issue_query",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 3,
+      "tool_name": "audit_recheck",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 4,
+      "tool_name": "audit_suggestion_save",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 5,
+      "tool_name": "sample_view",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 6,
+      "tool_name": "region_view",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 7,
+      "tool_name": "samples_compare",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 8,
+      "tool_name": "task_inspect",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 9,
+      "tool_name": "feature_prepare",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 10,
+      "tool_name": "visual_search",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "ERROR"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "ERROR"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 11,
+      "tool_name": "duplicate_audit",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "NOT_READY"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "NOT_READY"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 12,
+      "tool_name": "candidate_mine",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 13,
+      "tool_name": "candidate_merge",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "REVIEW_REQUIRED"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "REVIEW_REQUIRED"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 14,
+      "tool_name": "evidence_get",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "ERROR"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "ERROR"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 15,
+      "tool_name": "review_status",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 16,
+      "tool_name": "benchmark_preview",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "ERROR"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 17,
+      "tool_name": "benchmark_build",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "ERROR"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 18,
+      "tool_name": "benchmark_status",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "PARTIAL"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "PARTIAL"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 19,
+      "tool_name": "leakage_check",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "NOT_READY"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "NOT_READY"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 20,
+      "tool_name": "evaluation_plan",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "OK"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 21,
+      "tool_name": "baseline_run",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "ERROR"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "ERROR"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    },
+    {
+      "index": 22,
+      "tool_name": "evaluation_compare",
+      "minimal_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "NOT_READY"
+      },
+      "full_test": {
+        "status_code": 200,
+        "passed": true,
+        "response_status": "NOT_READY"
+      },
+      "unknown_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "missing_arg_test": {
+        "status_code": 422,
+        "passed": true
+      },
+      "overall_status": "PASS"
+    }
+  ]
+}

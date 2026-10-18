@@ -36,24 +36,25 @@ def merge_candidates(
 
     dino_candidates: Dict[str, float] = {}
     if include_dino:
-        cand_json = os.path.join(out_dir, "candidates.json")
-        if os.path.exists(cand_json):
+        primary_dino_path = os.path.join("runs", "candidate_mining", task_id, "candidates.json")
+        fallback_dino_path = os.path.join(out_dir, "candidates.json")
+        cand_json = primary_dino_path if os.path.exists(primary_dino_path) else (fallback_dino_path if os.path.exists(fallback_dino_path) else None)
+
+        if cand_json:
             try:
                 with open(cand_json, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    for item in data.get("candidates", []):
+                    c_list = data.get("candidates", []) if isinstance(data, dict) else data
+                    for item in c_list:
                         s_id = item.get("sample_id")
                         if s_id:
-                            dino_candidates[s_id] = item.get("final_score", 0.0)
+                            score = item.get("candidate_score") or item.get("final_score") or 0.0
+                            dino_candidates[s_id] = float(score)
+                logger.info(f"Loaded {len(dino_candidates)} existing DINO candidates from {cand_json}")
             except Exception as e:
-                logger.warning(f"Failed to read existing candidates.json: {e}")
+                logger.warning(f"Failed to read existing DINO candidates from {cand_json}: {e}")
         else:
-            try:
-                mine_res = mine_candidates(task_id, top_k=200, db_path=db_path, output_dir=out_dir)
-                for item in mine_res.candidates:
-                    dino_candidates[item.sample_id] = item.final_score
-            except Exception as e:
-                logger.warning(f"mine_candidates invocation in merger skipped: {e}")
+            logger.info(f"No existing DINO candidates found for task '{task_id}'. Proceeding without DINO re-mining.")
 
     llm_suggestions: Dict[str, List[Dict[str, Any]]] = {}
     if include_llm:

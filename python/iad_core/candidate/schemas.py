@@ -21,6 +21,9 @@ class CandidateRecord(BaseModel):
     image_path: str
     relative_path: str
     is_required: bool = True
+    sources: Optional[List[str]] = Field(default_factory=list, description="Discovery channels e.g. DINO, LLM, AUDIT")
+    priority_reason: Optional[str] = Field(None, description="Detailed reason for review prioritization")
+    source_scores: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Per-source score breakdown")
 
 
 class CandidateScoringWeights(BaseModel):

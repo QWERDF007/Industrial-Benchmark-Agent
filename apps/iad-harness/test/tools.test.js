@@ -34,6 +34,12 @@ test("Audit Tools: sample_view with attachments returns ImageBlock", async () =>
       }
       throw new Error(`Unexpected tool: ${toolName}`);
     },
+    async fetchImage(params, signal) {
+      return {
+        data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+        mediaType: "image/png",
+      };
+    },
     async fetchImageBytes(params, signal) {
       return new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
     },
@@ -64,13 +70,15 @@ test("Audit Tools: sample_view with attachments returns ImageBlock", async () =>
     { task_id: "task_01", sample_id: "s_01" },
     result
   );
-  assert.equal(rendered.length, 2);
+  assert.equal(rendered.length, 3);
   assert.equal(rendered[0].type, "text");
-  assert.equal(rendered[1].type, "image");
-  assert.equal(rendered[1].attachment.attachmentId, "att_123");
+  assert.equal(rendered[1].type, "text");
+  assert.match(rendered[1].text, /Image Observation/);
+  assert.equal(rendered[2].type, "image");
+  assert.equal(rendered[2].attachment.attachmentId, "att_123");
 });
 
-test("Audit Tools: sample_view without attachments returns text-only and warning", async () => {
+test("Audit Tools: sample_view without attachments returns NOT_READY (F-02, V2-08)", async () => {
   const mockCoreClient = {
     async call(toolName, args) {
       return {
@@ -97,9 +105,9 @@ test("Audit Tools: sample_view without attachments returns text-only and warning
     { signal: new AbortController().signal }
   );
 
-  assert.equal(result.status, "OK");
+  assert.equal(result.status, "NOT_READY");
   assert.equal(result._attachment, undefined);
-  assert.ok(result.warnings.some((w) => w.includes("不具有图片视觉观察结论")));
+  assert.ok(result.warnings.some((w) => w.includes("拒绝生成视觉观察")));
 
   const rendered = sampleViewTool.output.render(
     { task_id: "task_01", sample_id: "s_02" },
@@ -107,7 +115,33 @@ test("Audit Tools: sample_view without attachments returns text-only and warning
   );
   assert.equal(rendered.length, 1);
   assert.equal(rendered[0].type, "text");
-  assert.match(rendered[0].text, /不具有图片视觉观察结论/);
+  assert.match(rendered[0].text, /拒绝生成视觉观察/);
+});
+
+test("Audit Tools: sample_view with text-only model returns NOT_READY (F-02, V2-08)", async () => {
+  const mockAttachments = { async saveImage() {} };
+  const mockCoreClient = { async call() {}, async fetchImage() {} };
+  const mockCtx = {
+    attachments: mockAttachments,
+    iadCoreClient: mockCoreClient,
+    tools: { register() {} },
+  };
+  const tools = createAuditTools(mockCtx);
+  const sampleViewTool = tools.find((t) => t.name === "sample_view");
+
+  const result = await sampleViewTool.execute(
+    { task_id: "task_01", sample_id: "s_03" },
+    {
+      signal: new AbortController().signal,
+      session: {
+        model: {
+          inputModalities: ["text"],
+        },
+      },
+    }
+  );
+  assert.equal(result.status, "NOT_READY");
+  assert.ok(result.warnings.some((w) => w.includes("拒绝生成视觉观察")));
 });
 
 test("Vision Tools: candidate_merge executes and formats correctly", async () => {
@@ -148,8 +182,9 @@ test("Vision Tools: candidate_merge executes and formats correctly", async () =>
   assert.match(rendered[0].text, /total_merged/);
 });
 
-test("Benchmark Tools: verify tool names", async () => {
-  const mockCtx = { tools: { register() {} } };
+test("Benchmark Tools: verify tool names and fail-fast", async () => {
+  assert.throws(() => createBenchmarkTools({ tools: { register() {} } }), /iadCoreClient/);
+  const mockCtx = { iadCoreClient: { async call() {} }, tools: { register() {} } };
   const tools = createBenchmarkTools(mockCtx);
   const names = tools.map((t) => t.name);
   assert.deepEqual(names.sort(), [
@@ -161,8 +196,9 @@ test("Benchmark Tools: verify tool names", async () => {
   ].sort());
 });
 
-test("Evaluation Tools: verify tool names", async () => {
-  const mockCtx = { tools: { register() {} } };
+test("Evaluation Tools: verify tool names and fail-fast", async () => {
+  assert.throws(() => createEvaluationTools({ tools: { register() {} } }), /iadCoreClient/);
+  const mockCtx = { iadCoreClient: { async call() {} }, tools: { register() {} } };
   const tools = createEvaluationTools(mockCtx);
   const names = tools.map((t) => t.name);
   assert.deepEqual(names.sort(), [

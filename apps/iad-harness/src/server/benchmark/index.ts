@@ -1,5 +1,5 @@
 /**
- * Industrial Benchmark Agent - Benchmark & Split Tools Plugin (S02, S10, S11, RP-05, RP-20, RP-21, RP-22)
+ * Industrial Benchmark Agent - Benchmark & Split Tools Plugin (S02, S10, S11, RP-05, RP-20, RP-21, RP-22, V2-S01).
  */
 
 import { defineTool, type ToolDefinition } from "@deepseek-ai/dsh-tools";
@@ -7,7 +7,12 @@ import type { ContentBlock } from "@deepseek-ai/dsh-llm";
 import { CoreClient } from "../core-client/index.js";
 
 function getClient(ctx: any): CoreClient {
-  return ctx.iadCoreClient || new CoreClient();
+  if (!ctx.iadCoreClient) {
+    throw new Error(
+      "iadCoreClient is not initialized in Cordis context. Plugin initialization failed."
+    );
+  }
+  return ctx.iadCoreClient;
 }
 
 function formatToolResultText(val: any): string {
@@ -33,7 +38,8 @@ export function createBenchmarkTools(ctx: any): ToolDefinition[] {
 
   const reviewStatusTool = defineTool({
     name: "review_status",
-    description: "Read-only inspection of human review queue progress, required decisions, and pending review counts (S10, RP-05).",
+    description:
+      "Read-only inspection of human review queue progress, required decisions, and pending review counts (S10, RP-05, V2-S01).",
     parameters: {
       task_id: { type: "string", required: true, description: "Inspection task identifier" },
     },
@@ -50,11 +56,11 @@ export function createBenchmarkTools(ctx: any): ToolDefinition[] {
 
   const benchmarkPreviewTool = defineTool({
     name: "benchmark_preview",
-    description: "Dry-run preview of dataset splits (Train/Val/Test), class balances, and atomic group assignments without writing to database (S11, RP-21).",
+    description:
+      "Dry-run preview of dataset splits (Train/Val/Test), class balances, and atomic group assignments without database side-effects (S11, RP-21, V2-S01).",
     parameters: {
       task_id: { type: "string", required: true, description: "Inspection task identifier" },
-      test_ratio: { type: "number", description: "Proportion for test split (default 0.2)" },
-      val_ratio: { type: "number", description: "Proportion for validation split (default 0.1)" },
+      config_path: { type: "string", description: "Optional configuration file path" },
       seed: { type: "integer", description: "Random seed for reproducible split (default 42)" },
     },
     output: {
@@ -70,13 +76,14 @@ export function createBenchmarkTools(ctx: any): ToolDefinition[] {
 
   const benchmarkBuildTool = defineTool({
     name: "benchmark_build",
-    description: "Execute authoritative benchmark build pipeline: resolves Gold, enforces review completion, group splits, and leakage checks (S11, RP-21).",
+    description:
+      "Execute authoritative benchmark build pipeline: resolves Gold, enforces review completion, group splits, and leakage checks (S11, RP-21, V2-S01).",
     parameters: {
       task_id: { type: "string", required: true, description: "Inspection task identifier" },
-      test_ratio: { type: "number", description: "Proportion for test split (default 0.2)" },
-      val_ratio: { type: "number", description: "Proportion for validation split (default 0.1)" },
+      build_id: { type: "string", description: "Explicit build identifier (defaults to deterministic auto-generated ID)" },
+      config_path: { type: "string", description: "Optional configuration file path" },
       seed: { type: "integer", description: "Random seed for split reproducibility" },
-      force_rebuild: { type: "boolean", description: "Force rebuild even if previous build exists" },
+      output_dir: { type: "string", description: "Optional custom output directory" },
     },
     output: {
       schema: { type: "json" },
@@ -91,9 +98,10 @@ export function createBenchmarkTools(ctx: any): ToolDefinition[] {
 
   const benchmarkStatusTool = defineTool({
     name: "benchmark_status",
-    description: "Inspect active benchmark status, readiness flags, split distributions, and build artifact paths (S11, RP-05).",
+    description:
+      "Inspect active benchmark build status, readiness flags, split distributions, and build artifact paths (S11, RP-05, V2-S01).",
     parameters: {
-      task_id: { type: "string", required: true, description: "Inspection task identifier" },
+      build_id: { type: "string", required: true, description: "Target benchmark build identifier (build_id)" },
     },
     output: {
       schema: { type: "json" },
@@ -108,9 +116,10 @@ export function createBenchmarkTools(ctx: any): ToolDefinition[] {
 
   const leakageCheckTool = defineTool({
     name: "leakage_check",
-    description: "Validate strict isolation between Train, Val, and Test splits. Verifies no duplicate or part-overlap leakage (S11, RP-22).",
+    description:
+      "Validate strict isolation between Train, Val, and Test splits. Verifies no duplicate or part-overlap leakage (S11, RP-22, V2-S01).",
     parameters: {
-      task_id: { type: "string", required: true, description: "Inspection task identifier" },
+      build_id: { type: "string", required: true, description: "Target benchmark build identifier (build_id)" },
     },
     output: {
       schema: { type: "json" },

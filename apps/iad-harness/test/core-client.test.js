@@ -56,13 +56,32 @@ test("CoreClient: successful tool dispatch and error handling", async () => {
     assert.equal(lastRequest.url, "/internal/tool/task_inspect");
     assert.deepEqual(lastRequest.body, { task_id: "demo_task" });
 
-    // 2. Image bytes fetch
+    // 2. Image bytes fetch and fetchImage with MIME detection
+    const fetched = await client.fetchImage({ sampleId: "sample_001", view: "raw" });
+    assert.equal(fetched.mediaType, "image/png");
+    assert.equal(fetched.data[0], 0x89);
+
     const bytes = await client.fetchImageBytes({ sampleId: "sample_001", view: "raw" });
     assert.ok(bytes instanceof Uint8Array);
     assert.equal(bytes[0], 0x89);
     assert.equal(bytes[1], 0x50);
 
-    // 3. 404 error handling
+    // 3. Security boundary checks (F-05, V2-06)
+    await assert.rejects(
+      async () => {
+        await client.fetchImage({ endpoint: "http://malicious.com/exploit.png" });
+      },
+      /Security violation.*external or unauthorized/
+    );
+
+    await assert.rejects(
+      async () => {
+        await client.fetchImage({ endpoint: "/internal/sample/../../etc/passwd" });
+      },
+      /Security violation.*path traversal/
+    );
+
+    // 4. 404 and error handling
     await assert.rejects(
       async () => {
         await client.call("unknown_tool", {});

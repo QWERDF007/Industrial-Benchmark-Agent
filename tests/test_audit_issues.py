@@ -142,10 +142,12 @@ def test_audit_recheck_hypotheses(audit_test_db):
 def test_audit_suggestion_save(audit_test_db):
     res = audit_suggestion_save(
         task_id="t_audit",
-        sample_id="t_audit:s2",
-        observations=[{"phenomenon": "dimension mismatch", "description": "Annotated for 500x500 instead of 100x100"}],
-        conclusion_status="EVIDENCE_SUPPORTED",
-        recommended_action="RECHECK",
+        suggestion={
+            "sample_id": "t_audit:s2",
+            "observations": [{"phenomenon": "dimension mismatch", "description": "Annotated for 500x500 instead of 100x100"}],
+            "conclusion_status": "EVIDENCE_SUPPORTED",
+            "recommended_action": "RECHECK",
+        },
         db_path=audit_test_db,
     )
     assert res.status == ToolStatus.OK

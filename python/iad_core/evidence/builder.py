@@ -256,18 +256,25 @@ class EvidenceBuilder:
             return
         try:
             with open(self.candidates_json_path, "r", encoding="utf-8") as f:
-                cands = json.load(f)
+                raw = json.load(f)
+            cands = (
+                raw.get("items", [])
+                if (isinstance(raw, dict) and "items" in raw)
+                else (raw.get("candidates", []) if isinstance(raw, dict) else raw)
+            )
             for c in cands:
                 sid = c.get("sample_id")
-                score = c.get("candidate_score", 0.0)
-                sig = c.get("signals", {})
+                if not sid:
+                    continue
+                score = c.get("candidate_score") or c.get("dino_score") or 0.0
+                sig = c.get("signals") or {}
                 signals_obj = CandidateSignals(
                     normal_distance=sig.get("normal_distance", 0.0),
                     density_outlier=sig.get("density_outlier", 0.0),
                     domain_novelty=sig.get("domain_novelty", 0.0),
                     annotation_signal=sig.get("annotation_signal", 0.0),
                 )
-                self._candidates_score_map[sid] = (score, signals_obj)
+                self._candidates_score_map[sid] = (float(score), signals_obj)
         except Exception as e:
             logger.warning(f"Failed to load candidates score from {self.candidates_json_path}: {e}")
 

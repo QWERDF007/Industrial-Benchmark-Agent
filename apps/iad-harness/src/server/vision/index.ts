@@ -1,5 +1,5 @@
 /**
- * Industrial Benchmark Agent - Vision & Mining Tools Plugin (S02, S09, RP-05, RP-17)
+ * Industrial Benchmark Agent - Vision & Mining Tools Plugin (S02, S09, RP-05, RP-17, V2-S01).
  */
 
 import { defineTool, type ToolDefinition } from "@deepseek-ai/dsh-tools";
@@ -7,7 +7,12 @@ import type { ContentBlock } from "@deepseek-ai/dsh-llm";
 import { CoreClient } from "../core-client/index.js";
 
 function getClient(ctx: any): CoreClient {
-  return ctx.iadCoreClient || new CoreClient();
+  if (!ctx.iadCoreClient) {
+    throw new Error(
+      "iadCoreClient is not initialized in Cordis context. Plugin initialization failed."
+    );
+  }
+  return ctx.iadCoreClient;
 }
 
 function formatToolResultText(val: any): string {
@@ -33,7 +38,8 @@ export function createVisionTools(ctx: any): ToolDefinition[] {
 
   const taskInspectTool = defineTool({
     name: "task_inspect",
-    description: "Inspect target inspection task configuration, station settings, and sample counts (S02, RP-05).",
+    description:
+      "Inspect target inspection task configuration, station settings, and sample counts (S02, RP-05, V2-S01).",
     parameters: {
       task_id: { type: "string", required: true, description: "Inspection task identifier" },
     },
@@ -50,10 +56,14 @@ export function createVisionTools(ctx: any): ToolDefinition[] {
 
   const featurePrepareTool = defineTool({
     name: "feature_prepare",
-    description: "Extract and cache visual foundation model embeddings (e.g. DINOv2) for inspection samples (S02, RP-05).",
+    description:
+      "Extract and cache visual foundation model embeddings (e.g. DINOv2) for inspection samples (S02, RP-05, V2-S01).",
     parameters: {
       task_id: { type: "string", required: true, description: "Inspection task identifier" },
-      force_recompute: { type: "boolean", description: "Whether to invalidate existing cache and recompute" },
+      model_id: { type: "string", description: "Vision backbone model identifier (default dinov2_vits14)" },
+      preprocess_key: { type: "string", description: "Preprocessing recipe key (default standard_224)" },
+      batch_size: { type: "integer", description: "Inference batch size (default 32)" },
+      device: { type: "string", description: "Target compute device: 'cuda', 'cpu', or 'auto'" },
     },
     output: {
       schema: { type: "json" },
@@ -68,11 +78,15 @@ export function createVisionTools(ctx: any): ToolDefinition[] {
 
   const visualSearchTool = defineTool({
     name: "visual_search",
-    description: "Perform visual similarity search using FAISS index across sample feature embeddings (S02, RP-05).",
+    description:
+      "Perform visual similarity search using FAISS index across sample feature embeddings (S02, RP-05, V2-S01).",
     parameters: {
       task_id: { type: "string", required: true, description: "Inspection task identifier" },
       sample_id: { type: "string", required: true, description: "Query sample identifier" },
       top_k: { type: "integer", description: "Number of nearest neighbors to retrieve (default 10)" },
+      exclude_self: { type: "boolean", description: "Whether to exclude query sample itself from results" },
+      filter_data_origin: { type: "string", description: "Filter results by data origin (e.g. REAL, SYNTHETIC)" },
+      filter_quality_status: { type: "string", description: "Filter results by quality status (e.g. PASS, FAIL, UNCERTAIN)" },
     },
     output: {
       schema: { type: "json" },
@@ -87,10 +101,18 @@ export function createVisionTools(ctx: any): ToolDefinition[] {
 
   const duplicateAuditTool = defineTool({
     name: "duplicate_audit",
-    description: "Audit pairwise visual duplicates and connected components to prevent leakage (S02, RP-05).",
+    description:
+      "Audit pairwise visual duplicates and connected components to prevent leakage (S02, RP-05, V2-S01).",
     parameters: {
       task_id: { type: "string", required: true, description: "Inspection task identifier" },
-      threshold: { type: "number", description: "Cosine similarity threshold for near-duplicate detection" },
+      similarity_threshold: {
+        type: "number",
+        description: "Cosine similarity threshold for near-duplicate detection (default 0.98)",
+      },
+      verify_duplicates: {
+        type: "boolean",
+        description: "Whether to run multi-metric deterministic geometric verification (default true)",
+      },
     },
     output: {
       schema: { type: "json" },
@@ -105,11 +127,13 @@ export function createVisionTools(ctx: any): ToolDefinition[] {
 
   const candidateMineTool = defineTool({
     name: "candidate_mine",
-    description: "Mine high-uncertainty review candidates using 4 signals: density, boundary distance, domain shift, and annotation complexity (S02, RP-05).",
+    description:
+      "Mine high-uncertainty review candidates using 4 signals: density, boundary distance, domain shift, and annotation complexity (S02, RP-05, V2-S01).",
     parameters: {
       task_id: { type: "string", required: true, description: "Inspection task identifier" },
       top_k: { type: "integer", description: "Number of candidates to mine (default 50)" },
-      policy: { type: "string", description: "Mining policy name" },
+      config_path: { type: "string", description: "Optional configuration file path for custom weights" },
+      output_dir: { type: "string", description: "Optional output directory" },
     },
     output: {
       schema: { type: "json" },
@@ -124,11 +148,14 @@ export function createVisionTools(ctx: any): ToolDefinition[] {
 
   const candidateMergeTool = defineTool({
     name: "candidate_merge",
-    description: "Merge multiple candidate pools (DINO, LLM Direct, Audit, Stratified) with deduplication and source attribution (S09, RP-17).",
+    description:
+      "Merge multiple candidate pools (DINO, LLM Direct, Audit) with deduplication and source attribution (S09, RP-17, V2-S01, V2-S07).",
     parameters: {
       task_id: { type: "string", required: true, description: "Inspection task identifier" },
-      source_sets: { type: "json", description: "Optional explicit candidate lists by source" },
-      policy: { type: "json", description: "Merging and deduplication policy" },
+      include_dino: { type: "boolean", description: "Whether to include existing DINO mined candidates (default true)" },
+      include_llm: { type: "boolean", description: "Whether to include multimodal LLM audit suggestions (default true)" },
+      include_audit: { type: "boolean", description: "Whether to include deterministic dataset audit issues (default true)" },
+      output_dir: { type: "string", description: "Optional output directory for merged_candidates.json" },
     },
     output: {
       schema: { type: "json" },
@@ -143,10 +170,11 @@ export function createVisionTools(ctx: any): ToolDefinition[] {
 
   const evidenceGetTool = defineTool({
     name: "evidence_get",
-    description: "Retrieve comprehensive evidence package for a specific review candidate (S02, RP-05).",
+    description:
+      "Retrieve comprehensive evidence package for a specific review candidate (S02, RP-05, V2-S01).",
     parameters: {
       task_id: { type: "string", required: true, description: "Inspection task identifier" },
-      candidate_id: { type: "string", required: true, description: "Sample ID of candidate" },
+      sample_id: { type: "string", required: true, description: "Target sample identifier (sample_id)" },
     },
     output: {
       schema: { type: "json" },

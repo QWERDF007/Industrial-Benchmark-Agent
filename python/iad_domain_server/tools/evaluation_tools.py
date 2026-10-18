@@ -16,31 +16,30 @@ logger = logging.getLogger("iad_domain_server.tools.evaluation")
 
 def evaluation_plan(
     task_id: str,
-    build_id: Optional[str] = None,
+    build_id: str,
     model_ids: Optional[List[str]] = None,
     threshold_strategy: str = "f1_max",
     target_fpr: float = 0.01,
     db_path: str = "data/benchmark.db",
 ) -> ToolResult:
     """
-    Plan baseline model evaluations on a specific benchmark build (R308).
+    Plan baseline model evaluations on a specific benchmark build (R308, V2-S01).
     """
+    if not build_id:
+        raise ValueError("build_id is required for evaluation_plan")
+
     models = model_ids or ["patchcore", "dinomaly2"]
     db = Database(db_path)
     bench_repo = BenchmarkRepository(db)
-    if build_id:
-        build = bench_repo.get_build(build_id)
-    else:
-        build = bench_repo.get_latest_build(task_id)
+    build = bench_repo.get_build(build_id)
 
     if not build:
         return ToolResult(
             status=ToolStatus.NOT_READY,
-            summary=f"Benchmark build '{build_id or 'latest'}' not found. Cannot formulate evaluation plan.",
-            warnings=[f"Build '{build_id or 'latest'}' does not exist."],
+            summary=f"Benchmark build '{build_id}' not found. Cannot formulate evaluation plan.",
+            warnings=[f"Build '{build_id}' does not exist."],
             next_actions=["Run benchmark_build to construct a benchmark build first."],
         )
-    build_id = build.build_id
 
     return ToolResult(
         status=ToolStatus.OK,
@@ -59,7 +58,7 @@ def evaluation_plan(
 
 def baseline_run(
     task_id: str,
-    build_id: Optional[str] = None,
+    build_id: str,
     model_id: str = "dinomaly2",
     threshold_strategy: str = "f1_max",
     target_fpr: float = 0.01,
@@ -67,26 +66,25 @@ def baseline_run(
     db_path: str = "data/benchmark.db",
 ) -> ToolResult:
     """
-    Execute baseline training and evaluation on a benchmark build (R308).
+    Execute baseline training and evaluation on a benchmark build (R308, V2-S01).
     STRICT SECURITY INVARIANT (R608):
     Threshold selection algorithms can ONLY consume Validation split predictions!
     Test predictions are evaluated strictly at the Val-fitted threshold.
     """
+    if not build_id:
+        raise ValueError("build_id is required for baseline_run")
+
     db = Database(db_path)
     bench_repo = BenchmarkRepository(db)
-    if build_id:
-        target_build = bench_repo.get_build(build_id)
-    else:
-        target_build = bench_repo.get_latest_build(task_id)
+    target_build = bench_repo.get_build(build_id)
 
     if not target_build:
         return ToolResult(
             status=ToolStatus.NOT_READY,
-            summary=f"No valid benchmark build found for task '{task_id}'. Cannot execute baseline.",
-            warnings=[f"Build '{build_id or 'latest'}' not found."],
+            summary=f"No valid benchmark build found for build '{build_id}'. Cannot execute baseline.",
+            warnings=[f"Build '{build_id}' not found."],
             next_actions=["Run benchmark_build first."],
         )
-    build_id = target_build.build_id
 
     try:
         strat = ThresholdStrategy(threshold_strategy)
@@ -172,35 +170,21 @@ def baseline_run(
 
 def evaluation_compare(
     task_id: str,
-    build_id: Optional[str] = None,
+    build_id: str,
     run_ids: Optional[List[str]] = None,
     output_dir: Optional[str] = None,
     db_path: str = "data/benchmark.db",
 ) -> ToolResult:
     """
-    Compare multiple baseline evaluation runs on a benchmark build (R308).
+    Compare multiple baseline evaluation runs on a benchmark build (R308, V2-S01).
     Analyzes overall metrics, Hard Normal robustness, and Domain Shift generalization.
     """
+    if not build_id:
+        raise ValueError("build_id is required for evaluation_compare")
+
     db = Database(db_path)
     eval_repo = EvaluationRepository(db)
-
-    if not build_id:
-        bench_repo = BenchmarkRepository(db)
-        target_build = bench_repo.get_latest_build(task_id)
-        if target_build:
-            build_id = target_build.build_id
-        else:
-            all_records = eval_repo.list_by_task(task_id)
-            if all_records:
-                build_id = all_records[0].build_id
-            else:
-                return ToolResult(
-                    status=ToolStatus.NOT_READY,
-                    summary=f"No valid benchmark build or evaluation runs found for task '{task_id}'. Cannot compare evaluations.",
-                    warnings=["No runs found."],
-                    next_actions=["Run benchmark_build and baseline_run first."],
-                )
-
+    bench_repo = BenchmarkRepository(db)
     all_records = eval_repo.list_by_task(task_id)
     # Filter by build_id and optional run_ids
     filtered = [r for r in all_records if r.build_id == build_id]
@@ -233,6 +217,14 @@ def evaluation_compare(
         filtered = list(latest_by_model.values())
 
     if not filtered:
+        target_build = bench_repo.get_build(build_id)
+        if not target_build:
+            return ToolResult(
+                status=ToolStatus.NOT_READY,
+                summary=f"Benchmark build '{build_id}' not found. Cannot compare evaluations.",
+                warnings=[f"Build '{build_id}' not found."],
+                next_actions=["Run benchmark_build first."],
+            )
         return ToolResult(
             status=ToolStatus.NOT_READY,
             summary=f"No valid completed evaluation runs found for build '{build_id}'.",

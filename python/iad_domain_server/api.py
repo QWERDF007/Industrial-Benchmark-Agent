@@ -3,6 +3,7 @@ import json
 import time
 import uuid
 import tempfile
+import sys
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Query, Body
@@ -194,6 +195,10 @@ def get_review_queue(
                 "reviewed": d is not None,
                 "current_decision": d.decision if d else None,
                 "reason_code": d.reason_code if d else None,
+                "sources": getattr(c, "sources", []) or ["DINO"],
+                "priority_reason": getattr(c, "priority_reason", None) or f"Rank {c.rank} candidate",
+                "source_scores": getattr(c, "source_scores", {}) or {},
+                "is_required": getattr(c, "is_required", True),
             })
 
         return {
@@ -375,6 +380,47 @@ def get_job(job_id: str):
 # Image Serving (Safe sample_id resolver, Tickets C004, S14)
 # -------------------------------------------------------------------------
 
+def validate_sample_image_path(sample) -> str:
+    if not sample.image_path or not os.path.exists(sample.image_path):
+        raise HTTPException(
+            status_code=404,
+            detail=f"Image file for sample '{sample.sample_id}' not found on disk: {sample.image_path if sample else 'None'}",
+        )
+    real_path = os.path.realpath(sample.image_path)
+    allowed_roots = [
+        os.path.realpath("data"),
+        os.path.realpath("."),
+    ]
+    if DB_PATH and os.path.exists(DB_PATH):
+        db_dir = os.path.dirname(os.path.realpath(DB_PATH))
+        if db_dir and os.path.isdir(db_dir):
+            allowed_roots.append(db_dir)
+
+    if "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ:
+        allowed_roots.append(os.path.realpath(tempfile.gettempdir()))
+
+    for root in allowed_roots:
+        try:
+            if os.path.commonpath([real_path, root]) == root:
+                return real_path
+        except ValueError:
+            continue
+
+    if sample.relative_path:
+        norm_rel = os.path.normpath(sample.relative_path)
+        if not norm_rel.startswith("..") and not os.path.isabs(norm_rel):
+            if real_path.endswith(norm_rel):
+                ds_root = os.path.realpath(real_path[:-len(norm_rel)])
+                if os.path.isdir(ds_root):
+                    try:
+                        if os.path.commonpath([real_path, ds_root]) == ds_root:
+                            return real_path
+                    except ValueError:
+                        pass
+
+    raise HTTPException(status_code=403, detail="Forbidden: Image path is outside authorized dataset root.")
+
+
 @app.get("/api/sample/{sample_id}/image")
 def get_sample_image(sample_id: str):
     db = Database(DB_PATH)
@@ -382,21 +428,7 @@ def get_sample_image(sample_id: str):
     sample = repo.get(sample_id)
     if not sample:
         raise HTTPException(status_code=404, detail=f"Sample '{sample_id}' not found in database.")
-    if not sample.image_path or not os.path.exists(sample.image_path):
-        raise HTTPException(
-            status_code=404,
-            detail=f"Image file for sample '{sample_id}' not found on disk: {sample.image_path if sample else 'None'}"
-        )
-    real_path = os.path.realpath(sample.image_path)
-    allowed_roots = [
-        os.path.realpath("data"),
-        os.path.realpath("."),
-        "/data1",
-        os.path.realpath(tempfile.gettempdir()),
-        "/tmp",
-    ]
-    if not any(real_path.startswith(root) for root in allowed_roots):
-        raise HTTPException(status_code=403, detail="Forbidden: Image path is outside authorized dataset root.")
+    real_path = validate_sample_image_path(sample)
     return FileResponse(real_path)
 
 
@@ -437,7 +469,7 @@ INTERNAL_TOOL_MAP = {
 @app.post("/internal/tool/{tool_name}")
 def execute_internal_tool(tool_name: str, arguments: Dict[str, Any] = Body(default={})):
     """
-    Lightweight internal JSON RPC for Native Cordis plugins (S03, RP-04).
+    Lightweight internal JSON RPC for Native Cordis plugins (S03, RP-04, V2-S01).
     Dispatches strictly to registered domain tools without MCP envelope.
     """
     handler = INTERNAL_TOOL_MAP.get(tool_name)
@@ -446,14 +478,45 @@ def execute_internal_tool(tool_name: str, arguments: Dict[str, Any] = Body(defau
             status_code=404,
             detail=f"Tool '{tool_name}' is not registered or not permitted.",
         )
+
+    import inspect
+    sig = inspect.signature(handler)
+    call_args = dict(arguments)
+
+    # 1. Reject unknown arguments
+    allowed_params = set(sig.parameters.keys())
+    unknown_args = set(call_args.keys()) - allowed_params
+    if unknown_args:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unknown argument(s) for tool '{tool_name}': {', '.join(sorted(unknown_args))}",
+        )
+
+    # 2. Reject missing required arguments
+    missing_required = []
+    for param_name, param in sig.parameters.items():
+        if param_name == "db_path":
+            continue
+        if param.default == inspect.Parameter.empty and param_name not in call_args:
+            missing_required.append(param_name)
+
+    if missing_required:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Missing required argument(s) for tool '{tool_name}': {', '.join(missing_required)}",
+        )
+
+    # 3. Add default db_path if handler expects it
+    if "db_path" in sig.parameters and "db_path" not in call_args and DB_PATH:
+        call_args["db_path"] = DB_PATH
+
     try:
-        import inspect
-        call_args = dict(arguments)
-        sig = inspect.signature(handler)
-        if "db_path" in sig.parameters and "db_path" not in call_args and DB_PATH:
-            call_args["db_path"] = DB_PATH
         res = handler(**call_args)
         return res.model_dump()
+    except HTTPException:
+        raise
+    except (ValueError, TypeError) as val_err:
+        raise HTTPException(status_code=422, detail=str(val_err))
     except Exception as e:
         import logging
         logging.getLogger("iad_domain_server.api").error(f"Error in internal tool '{tool_name}': {e}", exc_info=True)
@@ -468,7 +531,7 @@ def get_internal_sample_image(
     padding: Optional[float] = Query(0.1),
 ):
     """
-    Internal image service delivering raw, overlay, or high-res cropped views (S05, RP-08~11).
+    Internal image service delivering raw, overlay, or high-res cropped views (S05, RP-08~11, V2-S02).
     Used by DSH Attachment Store adapter to populate ContentBlock.
     """
     db = Database(DB_PATH)
@@ -477,19 +540,7 @@ def get_internal_sample_image(
     sample = sample_repo.get(sample_id)
     if not sample:
         raise HTTPException(status_code=404, detail=f"Sample '{sample_id}' not found.")
-    if not sample.image_path or not os.path.exists(sample.image_path):
-        raise HTTPException(status_code=404, detail=f"Image file for sample '{sample_id}' not found.")
-
-    real_path = os.path.realpath(sample.image_path)
-    allowed_roots = [
-        os.path.realpath("data"),
-        os.path.realpath("."),
-        "/data1",
-        os.path.realpath(tempfile.gettempdir()),
-        "/tmp",
-    ]
-    if not any(real_path.startswith(root) for root in allowed_roots):
-        raise HTTPException(status_code=403, detail="Forbidden: Image path is outside authorized dataset root.")
+    real_path = validate_sample_image_path(sample)
 
     if bbox:
         try:

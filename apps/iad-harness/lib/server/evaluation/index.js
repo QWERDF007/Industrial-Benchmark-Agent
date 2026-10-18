@@ -2,9 +2,11 @@
  * Industrial Benchmark Agent - Evaluation & Baseline Tools Plugin (S02, S12, RP-05, RP-23)
  */
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { CoreClient } from "../core-client/index.js";
 function getClient(ctx) {
-    return ctx.iadCoreClient || new CoreClient();
+    if (!ctx.iadCoreClient) {
+        throw new Error("iadCoreClient is not initialized in Cordis context. Plugin initialization failed.");
+    }
+    return ctx.iadCoreClient;
 }
 function formatToolResultText(val) {
     const parts = [];
@@ -27,15 +29,17 @@ export function createEvaluationTools(ctx) {
     const client = getClient(ctx);
     const evaluationPlanTool = defineTool({
         name: "evaluation_plan",
-        description: "Generate evaluation matrix and execution plan across baseline models and training protocols (S12, RP-23).",
+        description: "Generate evaluation matrix and execution plan across baseline models and training protocols (S12, RP-23, V2-S01).",
         parameters: {
             task_id: { type: "string", required: true, description: "Inspection task identifier" },
-            protocol: { type: "string", description: "Protocol name (e.g. UNSUPERVISED_NORMAL, FEW_SHOT)" },
+            build_id: { type: "string", required: true, description: "Benchmark build identifier (R308, V2-S01)" },
             model_ids: {
                 type: "array",
                 items: { type: "string" },
                 description: "List of model IDs to include in evaluation plan",
             },
+            threshold_strategy: { type: "string", description: "Threshold selection strategy (e.g. f1_max, target_fpr)" },
+            target_fpr: { type: "number", description: "Target false positive rate (default 0.01)" },
         },
         output: {
             schema: { type: "json" },
@@ -49,11 +53,14 @@ export function createEvaluationTools(ctx) {
     });
     const baselineRunTool = defineTool({
         name: "baseline_run",
-        description: "Train and evaluate an anomaly detection baseline model under strict validation threshold calibration (S12, RP-23).",
+        description: "Train and evaluate an anomaly detection baseline model under strict validation threshold calibration (S12, RP-23, V2-S01).",
         parameters: {
             task_id: { type: "string", required: true, description: "Inspection task identifier" },
-            model_id: { type: "string", required: true, description: "Baseline model ID (e.g. patchcore, padim)" },
-            protocol: { type: "string", description: "Protocol name (default UNSUPERVISED_NORMAL)" },
+            build_id: { type: "string", required: true, description: "Benchmark build identifier (R308, V2-S01)" },
+            model_id: { type: "string", required: true, description: "Baseline model ID (e.g. patchcore, dinomaly2)" },
+            threshold_strategy: { type: "string", description: "Threshold selection strategy (e.g. f1_max, target_fpr)" },
+            target_fpr: { type: "number", description: "Target false positive rate (default 0.01)" },
+            output_dir: { type: "string", description: "Optional output directory" },
         },
         output: {
             schema: { type: "json" },
@@ -67,10 +74,16 @@ export function createEvaluationTools(ctx) {
     });
     const evaluationCompareTool = defineTool({
         name: "evaluation_compare",
-        description: "Compare benchmark evaluation results across executed baseline runs, metrics, and protocols (S12, RP-23).",
+        description: "Compare benchmark evaluation results across executed baseline runs, metrics, and protocols (S12, RP-23, V2-S01).",
         parameters: {
             task_id: { type: "string", required: true, description: "Inspection task identifier" },
-            protocol: { type: "string", description: "Optional filter by protocol" },
+            build_id: { type: "string", required: true, description: "Benchmark build identifier (R308, V2-S01)" },
+            run_ids: {
+                type: "array",
+                items: { type: "string" },
+                description: "Optional list of run IDs to compare",
+            },
+            output_dir: { type: "string", description: "Optional output directory" },
         },
         output: {
             schema: { type: "json" },

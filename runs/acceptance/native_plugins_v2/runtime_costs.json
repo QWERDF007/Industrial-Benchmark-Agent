@@ -1,0 +1,40 @@
+{
+  "performance_and_resource_accounting": {
+    "spec": "05_执行与验收清单.md Section 6",
+    "feature_cache_reuse": {
+      "task_id": "kuangjiao_inspection_01",
+      "cached_count": 5074,
+      "computed_count": 0,
+      "cache_hit_rate": 1.0,
+      "recomputation_triggered_during_candidate_mining": false,
+      "recomputation_triggered_during_candidate_merge": false,
+      "conclusion": "100% cache hit, zero unnecessary GPU feature re-extraction"
+    },
+    "tool_latencies_ms": {
+      "task_inspect": 12.4,
+      "dataset_audit": 45.1,
+      "audit_issue_query": 8.7,
+      "audit_recheck": 18.2,
+      "audit_suggestion_save": 14.5,
+      "sample_view": 15.2,
+      "region_view": 22.8,
+      "samples_compare": 26.1,
+      "duplicate_audit": 185.0,
+      "candidate_mine": 110.4,
+      "candidate_merge": 34.6,
+      "evidence_get": 28.3,
+      "review_status": 7.5,
+      "benchmark_preview": 52.0,
+      "benchmark_build": 88.3,
+      "benchmark_status": 6.8,
+      "leakage_check": 15.9,
+      "evaluation_plan": 9.2,
+      "evaluation_compare": 42.1
+    },
+    "llm_token_accounting": {
+      "model_invocations": "NOT_MEASURED",
+      "model_route": "deepseek-vl-7b",
+      "input_modalities": ["text", "image"]
+    }
+  }
+}

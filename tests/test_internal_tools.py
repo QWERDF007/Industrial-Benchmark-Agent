@@ -70,7 +70,30 @@ def test_evaluation_plan_call():
     """Verify evaluation_plan tool returns dry-run plan without side-effects."""
     result = execute_internal_tool("evaluation_plan", {
         "task_id": "kuangjiao_inspection_01",
+        "build_id": "kuangjiao_inspection_01_20261017_003",
         "model_ids": ["mock", "patchcore"],
     })
     assert result["status"] in (ToolStatus.OK.value, ToolStatus.NOT_READY.value)
     assert result["mutation"] == MutationType.NONE.value
+
+
+def test_missing_required_parameter_raises_422():
+    """Verify missing required parameter raises HTTP 422 (F-01, V2-04)."""
+    with pytest.raises(HTTPException) as exc_info:
+        execute_internal_tool("evaluation_plan", {
+            "task_id": "kuangjiao_inspection_01",
+        })
+    assert exc_info.value.status_code == 422
+    assert "Missing required argument" in exc_info.value.detail
+    assert "build_id" in exc_info.value.detail
+
+
+def test_unknown_parameter_raises_422():
+    """Verify unknown parameter raises HTTP 422 (F-01, V2-04)."""
+    with pytest.raises(HTTPException) as exc_info:
+        execute_internal_tool("task_inspect", {
+            "task_id": "kuangjiao_inspection_01",
+            "unknown_extra_arg": 123,
+        })
+    assert exc_info.value.status_code == 422
+    assert "Unknown argument" in exc_info.value.detail

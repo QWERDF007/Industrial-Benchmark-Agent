@@ -179,10 +179,17 @@
       <div class="tab-pane fade" id="review">
         <div class="row g-3">
           <div class="col-md-8">
-            <div class="card p-3 mb-3">
               <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="fw-bold mb-0">Candidate Review: <span id="rev-sample-id" class="text-info">Loading...</span></h5>
-                <span class="badge bg-secondary" id="rev-progress">Queue: 105 / 500</span>
+                <div>
+                  <h5 class="fw-bold mb-0 d-inline">Candidate Review: <span id="rev-sample-id" class="text-info">Loading...</span></h5>
+                  <span id="rev-sources" class="ms-2"></span>
+                </div>
+                <div>
+                  <span class="badge bg-secondary" id="rev-progress">Queue: 105 / 500</span>
+                </div>
+              </div>
+              <div id="rev-priority-reason-box" class="text-muted small mb-2" style="display:none;">
+                Priority Reason: <span id="rev-priority-reason" class="text-warning"></span>
               </div>
               <div class="row g-2">
                 <div class="col-md-6">
@@ -362,6 +369,19 @@
           const item = data.items[0];
           currentSampleId = item.sample_id;
           document.getElementById("rev-sample-id").textContent = item.sample_id;
+          const sources = item.sources || ['DINO'];
+          const sourcesHtml = sources.map(s => {
+            const badgeClass = s === 'LLM' ? 'bg-info text-dark' : (s === 'AUDIT' ? 'bg-warning text-dark' : 'bg-primary');
+            return `<span class="badge ${badgeClass} me-1">${s}</span>`;
+          }).join('');
+          document.getElementById("rev-sources").innerHTML = sourcesHtml;
+          const reasonBox = document.getElementById("rev-priority-reason-box");
+          if (item.priority_reason) {
+            reasonBox.style.display = "block";
+            document.getElementById("rev-priority-reason").textContent = item.priority_reason;
+          } else {
+            reasonBox.style.display = "none";
+          }
           document.getElementById("img-query").src = `/api/sample/${encodeURIComponent(item.sample_id)}/image`;
           document.getElementById("sig-distance").textContent = item.signals?.normal_distance?.toFixed(3) || "N/A";
           document.getElementById("sig-density").textContent = item.signals?.density_outlier?.toFixed(3) || "N/A";

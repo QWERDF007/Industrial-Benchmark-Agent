@@ -30,6 +30,10 @@ class AuditSuggestionRepository:
         refs_json = json.dumps([r.model_dump() for r in suggestion.evidence_refs], ensure_ascii=False)
         mods_json = json.dumps(suggestion.input_modalities_used, ensure_ascii=False)
 
+        existing = self.get(suggestion.suggestion_id)
+        if existing:
+            raise ValueError(f"Audit suggestion '{suggestion.suggestion_id}' already exists and cannot be overwritten.")
+
         with self.db.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -39,14 +43,6 @@ class AuditSuggestionRepository:
                     observations_json, hypotheses_json, evidence_refs_json,
                     conclusion_status, recommended_action, input_modalities_json, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(suggestion_id) DO UPDATE SET
-                    observations_json = excluded.observations_json,
-                    hypotheses_json = excluded.hypotheses_json,
-                    evidence_refs_json = excluded.evidence_refs_json,
-                    conclusion_status = excluded.conclusion_status,
-                    recommended_action = excluded.recommended_action,
-                    input_modalities_json = excluded.input_modalities_json,
-                    created_at = excluded.created_at
                 """,
                 (
                     suggestion.suggestion_id,

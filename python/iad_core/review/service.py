@@ -5,7 +5,7 @@ from typing import Optional, List, Dict, Any, Set
 
 from iad_core.storage.database import Database
 from iad_core.storage.models import ReviewDecisionRecord
-from iad_core.storage.repositories import ReviewRepository
+from iad_core.storage.repositories import ReviewRepository, SampleRepository
 from iad_core.candidate.schemas import CandidateRecord, CandidateSignals
 from iad_core.evidence.schemas import EvidencePackage
 from iad_core.evidence.builder import EvidenceBuilder
@@ -35,9 +35,20 @@ class ReviewQueueService:
         self.task_id = task_id
         self.db = db or Database(db_path)
         self.repo = ReviewRepository(self.db)
-        self.candidates_json_path = candidates_json_path or os.path.join(
-            "runs", "candidate_mining", task_id, "candidates.json"
-        )
+        self.sample_repo = SampleRepository(self.db)
+
+        if candidates_json_path:
+            self.candidates_json_path = candidates_json_path
+        else:
+            merged_path = os.path.join("runs", "candidates", task_id, "merged_candidates.json")
+            mining_path = os.path.join("runs", "candidate_mining", task_id, "candidates.json")
+            if os.path.exists(merged_path):
+                self.candidates_json_path = merged_path
+            elif os.path.exists(mining_path):
+                self.candidates_json_path = mining_path
+            else:
+                self.candidates_json_path = merged_path
+
         self.evidence_builder = EvidenceBuilder(
             task_id=task_id,
             db=self.db,
@@ -51,7 +62,61 @@ class ReviewQueueService:
         if os.path.exists(self.candidates_json_path):
             try:
                 with open(self.candidates_json_path, "r", encoding="utf-8") as f:
-                    raw_cands = json.load(f)
+                    raw_data = json.load(f)
+
+                # Case 1: merged_candidates.json with items list
+                if isinstance(raw_data, dict) and "items" in raw_data:
+                    cands = []
+                    for idx, item in enumerate(raw_data["items"]):
+                        s_id = item.get("sample_id")
+                        sample_obj = self.sample_repo.get(s_id)
+                        data_origin = (
+                            sample_obj.data_origin.value
+                            if (sample_obj and hasattr(sample_obj.data_origin, "value"))
+                            else "REAL"
+                        )
+                        quality_status = (
+                            sample_obj.quality_status.value
+                            if (sample_obj and hasattr(sample_obj.quality_status, "value"))
+                            else (item.get("quality_status") or "UNCERTAIN")
+                        )
+                        sources = item.get("sources", [])
+                        # Only DINO candidates or explicit required IDs are required by default (V2-14)
+                        is_req = "DINO" in sources
+
+                        cands.append(
+                            CandidateRecord(
+                                sample_id=s_id,
+                                rank=idx + 1,
+                                candidate_score=float(item.get("dino_score") if item.get("dino_score") is not None else 0.5),
+                                signals=CandidateSignals(
+                                    normal_distance=0.5,
+                                    density_outlier=0.5,
+                                    domain_novelty=0.5,
+                                    annotation_signal=0.0,
+                                ),
+                                data_origin=data_origin,
+                                quality_status=quality_status,
+                                batch_id=sample_obj.batch_id if sample_obj else None,
+                                physical_sample_id=sample_obj.physical_sample_id if sample_obj else None,
+                                image_path=sample_obj.image_path if sample_obj else "",
+                                relative_path=sample_obj.relative_path if sample_obj else (item.get("relative_path") or ""),
+                                is_required=is_req,
+                                sources=sources,
+                                priority_reason=item.get("priority_reason"),
+                                source_scores={
+                                    "dino": item.get("dino_score"),
+                                    "llm": item.get("llm_suggestions"),
+                                    "audit": item.get("audit_issues"),
+                                },
+                            )
+                        )
+                    self._candidates = cands
+                    logger.info(f"Loaded {len(self._candidates)} merged candidates from {self.candidates_json_path}")
+                    return
+
+                # Case 2: Standard candidates.json list or dict
+                raw_cands = raw_data.get("candidates", []) if isinstance(raw_data, dict) else raw_data
                 self._candidates = [CandidateRecord(**c) for c in raw_cands]
                 logger.info(f"Loaded {len(self._candidates)} candidates from {self.candidates_json_path}")
                 return

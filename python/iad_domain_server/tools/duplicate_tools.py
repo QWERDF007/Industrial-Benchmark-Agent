@@ -21,13 +21,22 @@ def duplicate_audit(
     Uses FAISS candidate search followed by Pixel PairVerifier V2.
     """
     verifier = PairVerifier() if verify_duplicates else None
-    res = mine_near_duplicates(
-        task_id=task_id,
-        similarity_threshold=similarity_threshold,
-        output_dir=output_dir,
-        db_path=db_path,
-        verifier=verifier,
-    )
+    try:
+        res = mine_near_duplicates(
+            task_id=task_id,
+            similarity_threshold=similarity_threshold,
+            output_dir=output_dir,
+            db_path=db_path,
+            verifier=verifier,
+        )
+    except FileNotFoundError as fnf:
+        return ToolResult(
+            status=ToolStatus.NOT_READY,
+            summary=f"Near-duplicate mining cannot run for task '{task_id}': {str(fnf)}",
+            warnings=[str(fnf)],
+            next_actions=["Call feature_prepare first to generate visual features and index."],
+            mutation=MutationType.NONE,
+        )
 
     artifacts = []
     if res.candidate_groups_json_path and os.path.exists(res.candidate_groups_json_path):

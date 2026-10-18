@@ -1,0 +1,86 @@
+{
+  "multimodal_capability_gating": {
+    "spec": "V2-S03, V2-S04, Ticket V2-08, F-02",
+    "rule": "Only sessions declaring 'image' in inputModalities and possessing valid attachment storage are permitted to observe images. Text-only models receive explicit NOT_READY and cannot claim visual observations.",
+    "verifications": [
+      {
+        "test_case": "multimodal_model_png_sample_view",
+        "model": "deepseek-vl-7b",
+        "input_modalities": ["text", "image"],
+        "has_attachment_storage": true,
+        "sample_id": "kuangjiao:001_raw",
+        "mime_detected": "image/png",
+        "magic_bytes": "89 50 4E 47",
+        "attachment_id": "att_png_001_raw",
+        "status": "OK",
+        "image_block_rendered": true
+      },
+      {
+        "test_case": "multimodal_model_jpeg_sample_view",
+        "model": "deepseek-vl-7b",
+        "input_modalities": ["text", "image"],
+        "has_attachment_storage": true,
+        "sample_id": "kuangjiao:002_photo",
+        "mime_detected": "image/jpeg",
+        "magic_bytes": "FF D8 FF",
+        "attachment_id": "att_jpeg_002_photo",
+        "status": "OK",
+        "image_block_rendered": true
+      },
+      {
+        "test_case": "region_view_crop_roi",
+        "model": "deepseek-vl-7b",
+        "input_modalities": ["text", "image"],
+        "has_attachment_storage": true,
+        "sample_id": "kuangjiao:001_raw",
+        "bbox_xyxy": [120, 80, 240, 200],
+        "padding_ratio": 0.1,
+        "attachment_id": "att_crop_001_raw",
+        "status": "OK",
+        "image_block_rendered": true
+      },
+      {
+        "test_case": "samples_compare_multiview",
+        "model": "deepseek-vl-7b",
+        "input_modalities": ["text", "image"],
+        "sample_ids": ["kuangjiao:001", "kuangjiao:002"],
+        "roles": ["candidate", "reference"],
+        "status": "OK",
+        "image_blocks_rendered": 2
+      },
+      {
+        "test_case": "text_only_model_rejection",
+        "model": "deepseek-chat-v2",
+        "input_modalities": ["text"],
+        "has_attachment_storage": true,
+        "sample_id": "kuangjiao:003_raw",
+        "status": "NOT_READY",
+        "reason": "Model or session declares inputModalities without 'image': [text]",
+        "image_block_rendered": false,
+        "visual_claim_allowed": false
+      },
+      {
+        "test_case": "missing_attachment_store_rejection",
+        "model": "deepseek-vl-7b",
+        "input_modalities": ["text", "image"],
+        "has_attachment_storage": false,
+        "sample_id": "kuangjiao:004_raw",
+        "status": "NOT_READY",
+        "reason": "Attachment storage service is not available in current runtime context",
+        "image_block_rendered": false
+      },
+      {
+        "test_case": "external_url_security_rejection",
+        "endpoint": "http://evil.com/image.png",
+        "result": "Security violation: external or unauthorized image endpoint rejected",
+        "http_status": 403
+      },
+      {
+        "test_case": "path_traversal_security_rejection",
+        "endpoint": "/internal/sample/../../etc/passwd",
+        "result": "Security violation: path traversal rejected in endpoint",
+        "http_status": 403
+      }
+    ]
+  }
+}

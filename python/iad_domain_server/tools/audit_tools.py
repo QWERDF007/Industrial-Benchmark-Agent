@@ -7,6 +7,8 @@ from typing import Optional, List, Dict, Any
 
 from iad_core.storage.database import Database
 from iad_core.storage.models import Sample, Annotation
+from iad_core.storage.repositories import SampleRepository
+from iad_core.benchmark.builder import load_verified_duplicates
 from iad_core.advisory.schemas import (
     AuditSuggestion,
     ConclusionStatus,
@@ -188,12 +190,31 @@ def audit_recheck(
             elif kind == "bbox_bounds":
                 oobs = []
                 w, h = s_row["width"], s_row["height"]
+                # 1. Check for import issues recorded at dataset scan
+                c.execute(
+                    "SELECT issue_type, message FROM import_issues WHERE sample_id = ? AND (issue_type LIKE 'bbox%' OR severity = 'ERROR')",
+                    (s_id,),
+                )
+                import_issues = c.fetchall()
+                if import_issues:
+                    oobs.extend([f"Import issue: {iss['message']}" for iss in import_issues])
+
+                # 2. Check for clipped or invalid geometry status
+                clipped_annos = [
+                    f"Annotation {ann['annotation_id']} was {ann['geometry_status']} at import"
+                    for ann in ann_rows
+                    if ann["geometry_status"] in ("CLIPPED", "INVALID")
+                ]
+                oobs.extend(clipped_annos)
+
+                # 3. Check bounding box coordinates against image boundary
                 for ann in ann_rows:
                     if ann["bbox_json"]:
                         bbox = json.loads(ann["bbox_json"])
                         x1, y1, x2, y2 = bbox
                         if x1 < 0 or y1 < 0 or x2 > w or y2 > h:
                             oobs.append(f"Box {bbox} exceeds boundaries [0, 0, {w}, {h}]")
+
                 if oobs:
                     discrepancy_count += 1
                     findings.append({
@@ -205,7 +226,7 @@ def audit_recheck(
                     findings.append({
                         "sample_id": s_id,
                         "status": "CONFIRMED_MATCH",
-                        "evidence": "All bounding boxes are within bounds.",
+                        "evidence": "All bounding boxes are within bounds and geometry status is VALID.",
                     })
 
             elif kind == "quality_path_mapping":
@@ -236,38 +257,68 @@ def audit_recheck(
                     })
 
             elif kind == "label_mapping":
-                labels = [a["raw_label"] for a in ann_rows]
-                findings.append({
-                    "sample_id": s_id,
-                    "status": "CONFIRMED_MATCH",
-                    "evidence": f"Found {len(labels)} labels: {labels}",
-                })
+                if not ann_rows:
+                    findings.append({
+                        "sample_id": s_id,
+                        "status": "INSUFFICIENT_EVIDENCE",
+                        "evidence": "No annotations present on sample to verify label mapping.",
+                    })
+                else:
+                    valid_labels = [a["raw_label"] for a in ann_rows if a.get("raw_label")]
+                    empty_labels = [a["annotation_id"] for a in ann_rows if not a.get("raw_label")]
+                    if empty_labels:
+                        discrepancy_count += 1
+                        findings.append({
+                            "sample_id": s_id,
+                            "status": "DISCREPANCY_FOUND",
+                            "evidence": f"Annotations {empty_labels} lack raw_label",
+                        })
+                    else:
+                        findings.append({
+                            "sample_id": s_id,
+                            "status": "CONFIRMED_MATCH",
+                            "evidence": f"Found {len(valid_labels)} valid labels: {valid_labels}",
+                        })
 
             elif kind == "metadata_semantics":
-                findings.append({
-                    "sample_id": s_id,
-                    "status": "CONFIRMED_MATCH",
-                    "evidence": f"batch_id={s_row['batch_id']}, camera={s_row['camera']}, station={s_row['station']}",
-                })
+                meta_present = [k for k in ["batch_id", "camera", "station"] if k in s_row.keys() and s_row[k]]
+                if not meta_present:
+                    findings.append({
+                        "sample_id": s_id,
+                        "status": "INSUFFICIENT_EVIDENCE",
+                        "evidence": "Metadata fields (batch_id, camera, station) are missing or empty on this sample.",
+                    })
+                else:
+                    findings.append({
+                        "sample_id": s_id,
+                        "status": "CONFIRMED_MATCH",
+                        "evidence": f"batch_id={s_row['batch_id']}, camera={s_row['camera']}, station={s_row['station']}",
+                    })
 
             elif kind == "verified_duplicate_scope":
-                c.execute(
-                    """
-                    SELECT p.sample_b_id, p.pair_status, s2.batch_id as batch_b
-                    FROM duplicate_pairs p
-                    JOIN samples s2 ON p.sample_b_id = s2.sample_id
-                    WHERE p.sample_a_id = ?
-                    UNION
-                    SELECT p.sample_a_id, p.pair_status, s1.batch_id as batch_b
-                    FROM duplicate_pairs p
-                    JOIN samples s1 ON p.sample_a_id = s1.sample_id
-                    WHERE p.sample_b_id = ?
-                    """,
-                    (s_id, s_id),
-                )
-                dup_rows = c.fetchall()
-                if dup_rows:
-                    cross_batch = [f"{d[0]} (batch={d[2]})" for d in dup_rows if d[2] != s_row["batch_id"]]
+                verified_pairs, verified_groups = load_verified_duplicates(task_id)
+                connected_ids = set()
+                for a, b in verified_pairs:
+                    if a == s_id:
+                        connected_ids.add(b)
+                    elif b == s_id:
+                        connected_ids.add(a)
+                for grp in verified_groups:
+                    if s_id in grp:
+                        connected_ids.update(x for x in grp if x != s_id)
+
+                if connected_ids:
+                    placeholders = ",".join("?" for _ in connected_ids)
+                    c.execute(
+                        f"SELECT sample_id, batch_id FROM samples WHERE sample_id IN ({placeholders})",
+                        list(connected_ids),
+                    )
+                    batch_map = {r["sample_id"]: r["batch_id"] for r in c.fetchall()}
+                    cross_batch = [
+                        f"{sid} (batch={batch_map.get(sid, 'unknown')})"
+                        for sid in connected_ids
+                        if batch_map.get(sid) != s_row["batch_id"]
+                    ]
                     if cross_batch:
                         discrepancy_count += 1
                         findings.append({
@@ -279,13 +330,13 @@ def audit_recheck(
                         findings.append({
                             "sample_id": s_id,
                             "status": "CONFIRMED_MATCH",
-                            "evidence": f"Duplicates stay within batch {s_row['batch_id']}",
+                            "evidence": f"All {len(connected_ids)} duplicate neighbors stay within batch {s_row['batch_id']}",
                         })
                 else:
                     findings.append({
                         "sample_id": s_id,
                         "status": "CONFIRMED_MATCH",
-                        "evidence": "No duplicate pairs found.",
+                        "evidence": "No duplicate pairs or groups found in verified near-duplicate store.",
                     })
 
     return ToolResult(
@@ -304,24 +355,39 @@ def audit_recheck(
 
 def audit_suggestion_save(
     task_id: str,
-    suggestion_id: Optional[str] = None,
-    sample_id: Optional[str] = None,
-    session_id: Optional[str] = None,
-    model_route: Optional[str] = None,
-    observations: Optional[List[Dict[str, Any]]] = None,
-    hypotheses: Optional[List[Dict[str, Any]]] = None,
-    conclusion_status: str = "INSUFFICIENT_EVIDENCE",
-    recommended_action: str = "REVIEW",
-    evidence_refs: Optional[List[Dict[str, Any]]] = None,
-    input_modalities_used: Optional[List[str]] = None,
+    suggestion: Dict[str, Any],
     db_path: str = "data/benchmark.db",
 ) -> ToolResult:
     """
-    Save non-authoritative audit suggestion from multimodal LLM (S08, Ticket RP-14).
+    Save non-authoritative audit suggestion from multimodal LLM (S08, Ticket RP-14, V2-12).
+    Accepts nested suggestion dict from TypeScript plugin (V2-S01).
     Only mutates audit_suggestions table; never alters ground truth or GoldRecords.
     """
+    if not suggestion or not isinstance(suggestion, dict):
+        raise ValueError("suggestion must be a non-empty dictionary")
+
     db = Database(db_path)
     repo = AuditSuggestionRepository(db)
+
+    suggestion_id = suggestion.get("suggestion_id")
+    sample_id = suggestion.get("sample_id")
+    session_id = suggestion.get("session_id")
+    model_route = suggestion.get("model_route")
+    observations = suggestion.get("observations")
+    hypotheses = suggestion.get("hypotheses")
+    conclusion_status = suggestion.get("conclusion_status", "INSUFFICIENT_EVIDENCE")
+    recommended_action = suggestion.get("recommended_action", "REVIEW")
+    evidence_refs = suggestion.get("evidence_refs")
+    input_modalities_used = suggestion.get("input_modalities_used")
+
+    # Validate task and sample consistency
+    if sample_id:
+        sample_repo = SampleRepository(db)
+        sample_obj = sample_repo.get(sample_id)
+        if not sample_obj:
+            raise ValueError(f"Sample '{sample_id}' not found in database.")
+        if sample_obj.task_id != task_id:
+            raise ValueError(f"Sample '{sample_id}' belongs to task '{sample_obj.task_id}', not '{task_id}'.")
 
     sug_id = suggestion_id or f"sug_{int(time.time())}_{uuid.uuid4().hex[:6]}"
 
@@ -339,7 +405,7 @@ def audit_suggestion_save(
     except ValueError:
         r_action = RecommendedAction.REVIEW
 
-    suggestion = AuditSuggestion(
+    suggestion_obj = AuditSuggestion(
         suggestion_id=sug_id,
         task_id=task_id,
         sample_id=sample_id,
@@ -353,7 +419,7 @@ def audit_suggestion_save(
         input_modalities_used=input_modalities_used or ["text"],
     )
 
-    repo.save(suggestion)
+    repo.save(suggestion_obj)
 
     return ToolResult(
         status=ToolStatus.OK,

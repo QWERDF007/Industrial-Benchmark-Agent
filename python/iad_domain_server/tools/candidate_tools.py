@@ -51,20 +51,25 @@ def candidate_mine(
         )
 
     # Note: Returning REVIEW_REQUIRED pauses agent so human review can take place (Specs Section 27, Ticket R407)
-    status = ToolStatus.REVIEW_REQUIRED if res.selected_candidate_count > 0 else ToolStatus.OK
+    selected_count = getattr(res, "selected_count", getattr(res, "selected_candidate_count", 0))
+    pool_size = getattr(res, "pool_size", getattr(res, "total_pool_size", 0))
+    ref_count = getattr(res, "reference_count", getattr(res, "reference_normal_count", 0))
+    elapsed = getattr(res, "elapsed_seconds", 0.0)
+
+    status = ToolStatus.REVIEW_REQUIRED if selected_count > 0 else ToolStatus.OK
 
     return ToolResult(
         status=status,
         summary=(
-            f"Mined {res.selected_candidate_count} diverse candidates (from {res.total_pool_size} pool samples) "
+            f"Mined {selected_count} diverse candidates (from {pool_size} pool samples) "
             f"for task '{task_id}'. Human review is required before building benchmark gold."
         ),
         metrics={
-            "total_pool_size": res.total_pool_size,
-            "selected_candidates_count": res.selected_candidate_count,
-            "reference_normal_count": res.reference_normal_count,
+            "total_pool_size": pool_size,
+            "selected_candidates_count": selected_count,
+            "reference_normal_count": ref_count,
             "mining_policy": res.policy_name,
-            "elapsed_seconds": res.elapsed_seconds,
+            "elapsed_seconds": elapsed,
         },
         artifacts=artifacts,
         warnings=["Human review required on mined candidates to confirm hard normals."],
