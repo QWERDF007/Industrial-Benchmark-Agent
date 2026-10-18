@@ -32,28 +32,38 @@ from iad_core.evaluation.metrics import (
     compute_domain_metrics,
     compute_pixel_metrics,
 )
-from iad_core.evaluation.baselines.base import BaselineRunner
+from iad_core.evaluation.baselines.base import (
+    BaselineRunner,
+    BaselineProtocol,
+    validate_predictions,
+)
 from iad_core.evaluation.baselines.mock import MockBaselineRunner
 from iad_core.evaluation.baselines.feature_knn import FeatureMemoryBankRunner
 from iad_core.evaluation.baselines.patchcore import PatchCoreRunner
 from iad_core.evaluation.baselines.dinomaly import Dinomaly2Runner
 from iad_core.evaluation.baselines.efficientad import EfficientADRunner
+from iad_core.evaluation.training import select_training_samples, TrainSelectionResult
 
 logger = logging.getLogger("iad_core.evaluation.evaluator")
 
 
-def resolve_runner(model_id_or_runner: Union[str, BaselineRunner]) -> BaselineRunner:
+def resolve_runner(
+    model_id_or_runner: Union[str, BaselineRunner],
+    config: Optional[Dict[str, Any]] = None,
+) -> BaselineRunner:
     if isinstance(model_id_or_runner, BaselineRunner):
         return model_id_or_runner
     m = model_id_or_runner.lower()
+    cfg = dict(config or {})
     if "mock" in m:
-        return MockBaselineRunner(name=model_id_or_runner)
+        return MockBaselineRunner(name=model_id_or_runner, **cfg)
     elif "patchcore" in m:
-        return PatchCoreRunner(name=model_id_or_runner)
+        backbone = cfg.pop("backbone", "wideresnet50")
+        return PatchCoreRunner(name=model_id_or_runner, backbone=backbone, **cfg)
     elif "dinomaly" in m:
-        return Dinomaly2Runner(name=model_id_or_runner)
+        return Dinomaly2Runner(name=model_id_or_runner, **cfg)
     elif "feature" in m or "knn" in m or "bank" in m:
-        return FeatureMemoryBankRunner(name=model_id_or_runner)
+        return FeatureMemoryBankRunner(name=model_id_or_runner, **cfg)
     else:
         raise ValueError(
             f"Unknown baseline runner '{model_id_or_runner}'. "
@@ -83,8 +93,10 @@ class EvaluationService:
         threshold_strategy: ThresholdStrategy = ThresholdStrategy.F1_MAX,
         target_fpr: float = 0.01,
         output_dir: Optional[str] = None,
+        model_config: Optional[Dict[str, Any]] = None,
+        include_hard_normal_in_train: bool = True,
     ) -> EvaluationRun:
-        runner = resolve_runner(model)
+        runner = resolve_runner(model, config=model_config)
         model_id = runner.name
         t0 = time.perf_counter()
 
@@ -115,13 +127,43 @@ class EvaluationService:
         if not test_samples:
             raise ValueError(f"Test set is empty for build {build_id}. Cannot evaluate test metrics!")
 
-        # 3. Baseline training / preparation
-        logger.info(f"Preparing baseline {model_id} on {len(train_samples)} training samples...")
-        runner.prepare(task_id, build_id, train_samples)
+        # Enforce CONFIRMED Gold invariant across all assigned samples (R604, NS-07, Ticket E003)
+        for sid, sp in split_map.items():
+            g = gold_dict.get(sid)
+            if not g or g.gold_status != "CONFIRMED":
+                raise EvaluationInvariantError(
+                    f"Sample {sid} in {sp.capitalize()} split lacks CONFIRMED Gold record!"
+                )
 
-        # 4. Predict on Val set
+        if not train_samples:
+            raise ValueError(f"Train set is empty for build {build_id}.")
+
+        # 3. Gold-aware training sample selection (NV-05, NS-05)
+        train_selection = select_training_samples(
+            train_samples=train_samples,
+            gold_map=gold_dict,
+            include_hard_normal_in_train=include_hard_normal_in_train,
+        )
+
+        runner_protocol = getattr(runner, "protocol", BaselineProtocol.UNSUPERVISED_NORMAL)
+        if runner_protocol == BaselineProtocol.UNSUPERVISED_NORMAL:
+            training_input = train_selection.train_normal
+            logger.info(
+                f"Preparing unsupervised baseline {model_id} on {len(training_input)} normal samples "
+                f"(strictly excluded {train_selection.anomaly_count} train anomalies)..."
+            )
+        else:
+            training_input = train_selection.train_normal
+            logger.info(
+                f"Preparing baseline {model_id} under protocol '{runner_protocol}' on {len(training_input)} samples..."
+            )
+
+        runner.prepare(task_id, build_id, training_input)
+
+        # 4. Predict on Val set & Validate
         logger.info(f"Predicting on {len(val_samples)} validation samples...")
         val_preds = runner.predict(val_samples, split_name="val")
+        validate_predictions(val_preds, val_samples, split_name="val")
 
         # Binary labels: 0 for Normal/HardNormal, 1 for Anomaly
         val_labels: Dict[str, int] = {}
@@ -158,9 +200,10 @@ class EvaluationService:
         )
         selected_threshold = th_res.threshold
 
-        # 6. Predict on Test set
+        # 6. Predict on Test set & Validate
         logger.info(f"Predicting on {len(test_samples)} test samples...")
         test_preds = runner.predict(test_samples, split_name="test")
+        validate_predictions(test_preds, test_samples, split_name="test")
 
         # 7. Compute Test Metrics
         test_scores = []
@@ -241,6 +284,20 @@ class EvaluationService:
         out_dir = output_dir or os.path.join("runs", "evaluation", run_id)
         os.makedirs(out_dir, exist_ok=True)
 
+        train_sel_path = os.path.join(out_dir, "train_selection.json")
+        train_sel_dict = train_selection.to_dict()
+        train_sel_dict.update({
+            "task_id": task_id,
+            "build_id": build_id,
+            "model_id": model_id,
+            "protocol": runner_protocol,
+            "training_origin": getattr(runner, "training_origin", None),
+            "runner_actual_training_sample_count": len(training_input),
+            "runner_actual_training_sample_ids": [s.sample_id for s in training_input],
+        })
+        with open(train_sel_path, "w", encoding="utf-8") as f:
+            json.dump(train_sel_dict, f, indent=2)
+
         preds_path = os.path.join(out_dir, "predictions.jsonl")
         with open(preds_path, "w", encoding="utf-8") as f:
             for p in val_preds + test_preds:
@@ -249,6 +306,11 @@ class EvaluationService:
         th_path = os.path.join(out_dir, "threshold.json")
         with open(th_path, "w", encoding="utf-8") as f:
             f.write(th_res.model_dump_json(indent=2))
+
+        runtime_cfg = dict(getattr(runner, "runtime_config", {}))
+        runtime_cfg["protocol"] = runner_protocol
+        if hasattr(runner, "training_origin"):
+            runtime_cfg["training_origin"] = runner.training_origin
 
         eval_run = EvaluationRun(
             run_id=run_id,
@@ -265,7 +327,10 @@ class EvaluationService:
             implementation_name=getattr(runner, "implementation_name", model_id),
             implementation_source=getattr(runner, "implementation_source", "unknown"),
             implementation_revision=getattr(runner, "implementation_revision", None),
-            runtime_config=getattr(runner, "runtime_config", {}),
+            protocol=runner_protocol,
+            training_origin=getattr(runner, "training_origin", None),
+            train_selection_path=train_sel_path,
+            runtime_config=runtime_cfg,
             predictions_path=preds_path,
             metrics_json_path=os.path.join(out_dir, "metrics.json"),
             report_md_path=os.path.join(out_dir, "metrics.md"),

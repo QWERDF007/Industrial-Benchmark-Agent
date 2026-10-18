@@ -51,8 +51,9 @@ def run(
     detected_session_id = session_id or ""
     final_text = ""
     raw_events: List[Dict[str, Any]] = []
+    tool_calls: List[Dict[str, Any]] = []
     error_message: Optional[str] = None
-    status = "SUCCESS"
+    status = "COMPLETED"
 
     try:
         stdout, stderr = proc.communicate(timeout=cfg.timeout_seconds)
@@ -78,6 +79,14 @@ def run(
                 detected_session_id = evt.get("sessionId", detected_session_id)
             elif evt_type == "final":
                 final_text = evt.get("text", "")
+            elif evt_type in ("tool_call", "tool_result", "tool", "message"):
+                tool_calls.append(evt)
+                # Structured check for REVIEW_REQUIRED in tool results (NV-04, NS-01)
+                res_obj = evt.get("result") or evt.get("data") or {}
+                if isinstance(res_obj, dict) and res_obj.get("status") == "REVIEW_REQUIRED":
+                    status = "REVIEW_REQUIRED"
+                elif evt.get("status") == "REVIEW_REQUIRED":
+                    status = "REVIEW_REQUIRED"
             elif evt_type == "status":
                 reason = evt.get("reason", {})
                 if isinstance(reason, dict) and reason.get("kind") == "error":
@@ -92,15 +101,17 @@ def run(
         except json.JSONDecodeError:
             continue
 
+    # Strict Session ID requirement; never invent fallback session IDs (NV-01, NS-01)
     if not detected_session_id:
-        detected_session_id = f"session-fallback-{os.getpid()}"
+        if exit_code != 0:
+            status = "ERROR"
+            error_message = error_message or stderr.strip() or f"Process exited with non-zero code {exit_code}"
+        else:
+            status = "ERROR"
+            error_message = "Missing session ID from Harness runtime events."
+        detected_session_id = ""
 
-    # Check for REVIEW_REQUIRED in events or stdout
-    full_str = stdout + " " + stderr
-    if "REVIEW_REQUIRED" in full_str:
-        status = "REVIEW_REQUIRED"
-
-    if exit_code != 0 and status == "SUCCESS":
+    if exit_code != 0 and status not in ("ERROR", "AUTH_REQUIRED"):
         status = "ERROR"
         if not error_message:
             error_message = stderr.strip() or f"Process exited with non-zero code {exit_code}"
@@ -109,6 +120,7 @@ def run(
         session_id=detected_session_id,
         status=status,
         final_text=final_text,
+        tool_calls=tool_calls,
         raw_events=raw_events,
         error_message=error_message,
         exit_code=exit_code,

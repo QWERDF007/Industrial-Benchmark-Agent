@@ -217,3 +217,132 @@ def run_benchmark_pipeline(
     )
 
     return result
+
+
+from dataclasses import dataclass
+
+
+@dataclass
+class BenchmarkPreviewResult:
+    """Result of lightweight benchmark preview sharing exact Core domain logic (NV-12, NS-09)."""
+    task_id: str
+    normal: int
+    anomaly: int
+    hard_normal: int
+    conflicts: int
+    groups_count: int
+    projected_train: int
+    projected_val: int
+    projected_test: int
+    train_sample_ids: List[str]
+    val_sample_ids: List[str]
+    test_sample_ids: List[str]
+    status: str
+    warnings: List[str]
+
+
+def preview_benchmark_pipeline(
+    task_id: str,
+    config_path: Optional[str] = None,
+    seed: Optional[int] = None,
+    db_path: str = "data/benchmark.db",
+) -> BenchmarkPreviewResult:
+    """
+    Lightweight in-memory benchmark preview using unified Gold, Group, and Split domain logic (NV-12, NS-09).
+    Does NOT persist to SQLite or write formal build assets to disk.
+    """
+    if not config_path:
+        for candidate_path in [f"configs/{task_id}.yaml", "configs/kuangjiao.yaml"]:
+            if os.path.exists(candidate_path):
+                config_path = candidate_path
+                break
+    if not config_path or not os.path.exists(config_path):
+        raise ValueError(f"Config path required for preview. None found for '{task_id}'.")
+
+    cfg = load_config(config_path)
+    if seed is not None:
+        cfg.split.seed = seed
+
+    # 1. In-memory gold preview without writing to disk / DB
+    gold_res = build_gold(
+        task_id=task_id,
+        policy=cfg.gold,
+        db_path=db_path,
+        persist_to_db=False,
+    )
+    gold_records = gold_res.records
+    conflicts = gold_res.conflicts
+
+    confirmed_golds = [g for g in gold_records if g.gold_status == "CONFIRMED"]
+    normal_golds = [g for g in confirmed_golds if g.binary_label == "NORMAL"]
+    anomaly_golds = [g for g in confirmed_golds if g.binary_label == "ANOMALY"]
+    hn_golds = [g for g in confirmed_golds if g.hard_normal]
+
+    warnings = []
+    if len(normal_golds) == 0:
+        return BenchmarkPreviewResult(
+            task_id=task_id,
+            normal=0,
+            anomaly=len(anomaly_golds),
+            hard_normal=len(hn_golds),
+            conflicts=len(conflicts),
+            groups_count=0,
+            projected_train=0,
+            projected_val=0,
+            projected_test=0,
+            train_sample_ids=[],
+            val_sample_ids=[],
+            test_sample_ids=[],
+            status="REVIEW_REQUIRED",
+            warnings=["No confirmed normal samples found. Benchmark cannot be created without normal samples."],
+        )
+
+    db = Database(db_path)
+    sample_repo = SampleRepository(db)
+    samples = sample_repo.list_by_task(task_id)
+    samples_map = {s.sample_id: s for s in samples}
+
+    confirmed_samples = [
+        samples_map[r.sample_id]
+        for r in confirmed_golds
+        if r.sample_id in samples_map
+    ]
+
+    verified_pairs, verified_groups = load_verified_duplicates(task_id)
+
+    physical_scope = "batch"
+    if cfg.metadata_semantics:
+        physical_scope = cfg.metadata_semantics.get("physical_sample_scope", "batch")
+
+    gold_dict = {g.sample_id: g for g in confirmed_golds}
+    groups, sample_to_group = build_split_groups(
+        samples=confirmed_samples,
+        verified_pairs=verified_pairs,
+        verified_groups=verified_groups,
+        gold_records=gold_dict,
+        physical_sample_scope=physical_scope,
+    )
+
+    split_result = build_group_split(
+        samples=confirmed_samples,
+        groups=groups,
+        sample_to_group=sample_to_group,
+        policy=cfg.split,
+    )
+
+    return BenchmarkPreviewResult(
+        task_id=task_id,
+        normal=len(normal_golds),
+        anomaly=len(anomaly_golds),
+        hard_normal=len(hn_golds),
+        conflicts=len(conflicts),
+        groups_count=len(groups),
+        projected_train=len(split_result.train_ids),
+        projected_val=len(split_result.val_ids),
+        projected_test=len(split_result.test_ids),
+        train_sample_ids=split_result.train_ids,
+        val_sample_ids=split_result.val_ids,
+        test_sample_ids=split_result.test_ids,
+        status="OK",
+        warnings=warnings,
+    )

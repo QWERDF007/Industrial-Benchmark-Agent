@@ -1,0 +1,293 @@
+{
+  "run_id": "eval_kuangjiao_inspection_01_patchcore_1792296216",
+  "task_id": "kuangjiao_inspection_01",
+  "build_id": "kuangjiao_inspection_01_20261017_003",
+  "model_id": "patchcore",
+  "status": "COMPLETED",
+  "threshold": {
+    "threshold": 1546.925781,
+    "strategy": "f1_max",
+    "fit_split": "val",
+    "fit_samples_count": 23,
+    "best_f1": 0.9767,
+    "fpr_at_threshold": 0.5
+  },
+  "image_metrics": {
+    "i_auroc": 0.5454545454545454,
+    "i_ap": 0.9135928101021134,
+    "recall_at_fpr_01": 0.09090909090909091,
+    "recall_at_fpr_05": 0.09090909090909091,
+    "threshold": 1546.925781,
+    "accuracy": 0.9583333333333334,
+    "precision": 0.9565217391304348,
+    "recall": 1.0,
+    "f1": 0.9777777777777777,
+    "true_positive": 22,
+    "false_positive": 1,
+    "true_negative": 1,
+    "false_negative": 0
+  },
+  "pixel_metrics": {
+    "p_auroc": null,
+    "p_ap": null,
+    "p_aupro": null,
+    "status": "NOT_EVALUATED"
+  },
+  "hard_normal_metrics": {
+    "hard_normal_count": 1,
+    "hard_normal_fpr": 1.0,
+    "hard_normal_score_mean": 2594.434814453125,
+    "hard_normal_score_median": 2594.434814453125,
+    "normal_score_mean": 1497.579345703125,
+    "normal_score_median": 1497.579345703125,
+    "separation_margin": 1096.85546875
+  },
+  "domain_metrics": {
+    "metrics_by_domain": {
+      "2023-11-27": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2025-09-04": {
+        "sample_count": 2,
+        "anomaly_count": 2,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "22-032315": {
+        "sample_count": 2,
+        "anomaly_count": 2,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "22-080913": {
+        "sample_count": 4,
+        "anomaly_count": 4,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2023-07-03": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2022_10_18": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2024-06-13": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2024-07-05": {
+        "sample_count": 2,
+        "anomaly_count": 2,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2024-07-26": {
+        "sample_count": 1,
+        "anomaly_count": 0,
+        "normal_count": 1,
+        "accuracy": 1.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2025-03-02": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2025-05-17": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2025-06-04": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2025-08-28": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2025-09-10": {
+        "sample_count": 1,
+        "anomaly_count": 0,
+        "normal_count": 1,
+        "accuracy": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "i_auroc": null,
+        "false_positive": 1,
+        "false_negative": 0
+      },
+      "2026-06-29": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "2026-08-06": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "22-052410": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      },
+      "UNKNOWN": {
+        "sample_count": 1,
+        "anomaly_count": 1,
+        "normal_count": 0,
+        "accuracy": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "i_auroc": null,
+        "false_positive": 0,
+        "false_negative": 0
+      }
+    }
+  },
+  "val_class_counts": {
+    "NORMAL": 2,
+    "ANOMALY": 21
+  },
+  "test_class_counts": {
+    "NORMAL": 2,
+    "HARD_NORMAL": 1,
+    "ANOMALY": 22
+  },
+  "implementation_name": "patchcore",
+  "implementation_source": "amazon-science/patchcore-inspection",
+  "implementation_revision": "main",
+  "protocol": "UNSUPERVISED_NORMAL",
+  "training_origin": null,
+  "train_selection_path": "runs/evaluation/eval_kuangjiao_inspection_01_patchcore_1792296216/train_selection.json",
+  "runtime_config": {
+    "repo_path": "/data1/yuneng/patchcore-inspection-main",
+    "backbone": "wideresnet50",
+    "image_size": 448,
+    "coreset_percentage": 0.1,
+    "batch_size": 8,
+    "protocol": "UNSUPERVISED_NORMAL"
+  },
+  "predictions_path": "runs/evaluation/eval_kuangjiao_inspection_01_patchcore_1792296216/predictions.jsonl",
+  "metrics_json_path": "runs/evaluation/eval_kuangjiao_inspection_01_patchcore_1792296216/metrics.json",
+  "report_md_path": "runs/evaluation/eval_kuangjiao_inspection_01_patchcore_1792296216/metrics.md",
+  "error_analysis_md_path": "runs/evaluation/eval_kuangjiao_inspection_01_patchcore_1792296216/error_analysis.md",
+  "elapsed_seconds": 7.187971562962048
+}

@@ -27,20 +27,6 @@ core_app.add_typer(benchmark_app, name="benchmark")
 console = Console()
 
 
-# -----------------------------------------------------------------------------
-# 1. iad web
-# -----------------------------------------------------------------------------
-
-@app.command("web")
-def run_web(
-    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host address to bind"),
-    port: int = typer.Option(8000, "--port", "-p", help="Port to bind"),
-    reload: bool = typer.Option(False, "--reload", help="Enable uvicorn auto-reload"),
-):
-    """Start the Industrial Benchmark Domain Server and Web UI."""
-    from iad_domain_server.main import main as start_server
-    console.print(f"[bold green]Starting Industrial Benchmark Server at http://{host}:{port}[/bold green]")
-    start_server(host=host, port=port, reload=reload)
 
 
 # -----------------------------------------------------------------------------
@@ -60,7 +46,7 @@ def agent_run(
 
     res = harness_run(goal=prompt, session_id=session_id)
     console.print(f"[dim]Harness Session ID: {res.session_id}[/dim]")
-    console.print(f"[bold {'green' if res.status == 'SUCCESS' else 'yellow' if res.status in ('REVIEW_REQUIRED', 'AUTH_REQUIRED') else 'red'}]Status: {res.status}[/]")
+    console.print(f"[bold {'green' if res.status in ('SUCCESS', 'COMPLETED') else 'yellow' if res.status in ('REVIEW_REQUIRED', 'AUTH_REQUIRED') else 'red'}]Status: {res.status}[/]")
 
     if res.final_text:
         console.print(f"[white]{res.final_text}[/white]")
@@ -82,7 +68,7 @@ def agent_resume(
 
     res = harness_resume(session_id=session_id, prompt=prompt)
     console.print(f"[dim]Harness Session ID: {res.session_id}[/dim]")
-    console.print(f"[bold {'green' if res.status == 'SUCCESS' else 'yellow' if res.status in ('REVIEW_REQUIRED', 'AUTH_REQUIRED') else 'red'}]Status: {res.status}[/]")
+    console.print(f"[bold {'green' if res.status in ('SUCCESS', 'COMPLETED') else 'yellow' if res.status in ('REVIEW_REQUIRED', 'AUTH_REQUIRED') else 'red'}]Status: {res.status}[/]")
 
     if res.final_text:
         console.print(f"[white]{res.final_text}[/white]")

@@ -79,6 +79,9 @@ class GoldBuildResult(BaseModel):
     fail_count: int
     conflict_count: int
     excluded_count: int
-    gold_jsonl_path: str
-    conflicts_json_path: str
+    gold_jsonl_path: Optional[str] = None
+    conflicts_json_path: Optional[str] = None
     elapsed_seconds: float
+    records: List[GoldRecord] = Field(default_factory=list)
+    conflicts: List[GoldConflictRecord] = Field(default_factory=list)
+

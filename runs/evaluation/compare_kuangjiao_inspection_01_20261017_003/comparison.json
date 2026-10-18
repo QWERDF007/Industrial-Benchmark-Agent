@@ -1,68 +1,72 @@
 {
   "task_id": "kuangjiao_inspection_01",
   "build_id": "kuangjiao_inspection_01_20261017_003",
+  "track_readiness": "PARTIAL (Provisional - statistical power limited by test normal count n=2)",
+  "selected_eval_run_ids": {
+    "dinomaly2": "eval_kuangjiao_inspection_01_dinomaly2_1792296251",
+    "feature_knn_dinov2": "eval_kuangjiao_inspection_01_feature_knn_dinov2_1792296184",
+    "patchcore": "eval_kuangjiao_inspection_01_patchcore_1792296216"
+  },
+  "test_counts": {
+    "normal": 2,
+    "hard_normal": 1,
+    "anomaly": 22,
+    "total": 24
+  },
+  "fpr_resolution": 0.5,
   "models": [
     {
       "model_id": "dinomaly2",
-      "run_id": "eval_kuangjiao_inspection_01_dinomaly2_1792242819",
+      "run_id": "eval_kuangjiao_inspection_01_dinomaly2_1792296251",
+      "protocol": "PRETRAINED_INFERENCE",
+      "training_origin": "TRAIN_ORIGIN_UNVERIFIED",
       "i_auroc": 0.8409090909090908,
       "i_ap": 0.983928976461007,
       "recall_at_fpr_01": 0.6818181818181818,
+      "recall_at_fpr_01_status": "NOT_EVALUATED",
       "f1": 0.9302325581395349,
       "accuracy": 0.875,
       "hard_normal_fpr": 0.0,
+      "hard_normal_fp_count": 0,
+      "hard_normal_count": 1,
       "threshold": 0.125584,
-      "elapsed_seconds": 18.749201525992248
-    },
-    {
-      "model_id": "patchcore",
-      "run_id": "eval_kuangjiao_inspection_01_patchcore_1792242788",
-      "i_auroc": 0.2272727272727273,
-      "i_ap": 0.8663122763763373,
-      "recall_at_fpr_01": 0.045454545454545456,
-      "f1": 0.9565217391304348,
-      "accuracy": 0.9166666666666666,
-      "hard_normal_fpr": 1.0,
-      "threshold": 825.861084,
-      "elapsed_seconds": 12.84477369801607
+      "elapsed_seconds": 18.858621947991196
     },
     {
       "model_id": "feature_knn_dinov2",
-      "run_id": "eval_kuangjiao_inspection_01_feature_knn_dinov2_1792242766",
-      "i_auroc": 0.5909090909090909,
-      "i_ap": 0.948132660896905,
-      "recall_at_fpr_01": 0.3181818181818182,
-      "f1": 0.9090909090909091,
-      "accuracy": 0.8333333333333334,
+      "run_id": "eval_kuangjiao_inspection_01_feature_knn_dinov2_1792296184",
+      "protocol": "UNSUPERVISED_NORMAL",
+      "training_origin": null,
+      "i_auroc": 0.5,
+      "i_ap": 0.8757140222233255,
+      "recall_at_fpr_01": 0.0,
+      "recall_at_fpr_01_status": "NOT_EVALUATED",
+      "f1": 0.9545454545454546,
+      "accuracy": 0.9166666666666666,
       "hard_normal_fpr": 1.0,
-      "threshold": 0.081702,
-      "elapsed_seconds": 0.43539529701229185
+      "hard_normal_fp_count": 1,
+      "hard_normal_count": 1,
+      "threshold": 0.298289,
+      "elapsed_seconds": 0.3785607249592431
     },
     {
       "model_id": "patchcore",
-      "run_id": "eval_kuangjiao_inspection_01_patchcore_1792222532",
-      "i_auroc": null,
-      "i_ap": null,
-      "recall_at_fpr_01": null,
-      "f1": 0.0,
+      "run_id": "eval_kuangjiao_inspection_01_patchcore_1792296216",
+      "protocol": "UNSUPERVISED_NORMAL",
+      "training_origin": null,
+      "i_auroc": 0.5454545454545454,
+      "i_ap": 0.9135928101021134,
+      "recall_at_fpr_01": 0.09090909090909091,
+      "recall_at_fpr_01_status": "NOT_EVALUATED",
+      "f1": 0.9777777777777777,
       "accuracy": 0.9583333333333334,
-      "hard_normal_fpr": 0.0,
-      "threshold": 0.294692,
-      "elapsed_seconds": 0.41118448300403543
-    },
-    {
-      "model_id": "dinomaly2",
-      "run_id": "eval_kuangjiao_inspection_01_dinomaly2_1792222520",
-      "i_auroc": null,
-      "i_ap": null,
-      "recall_at_fpr_01": null,
-      "f1": 0.0,
-      "accuracy": 0.9583333333333334,
-      "hard_normal_fpr": 0.0,
-      "threshold": 0.294692,
-      "elapsed_seconds": 0.4201266210002359
+      "hard_normal_fpr": 1.0,
+      "hard_normal_fp_count": 1,
+      "hard_normal_count": 1,
+      "threshold": 1546.925781,
+      "elapsed_seconds": 7.187971562962048
     }
   ],
   "best_hard_normal_model": "dinomaly2",
-  "report_markdown": "# Model Benchmark Comparison Report\n\n- **Task ID**: `kuangjiao_inspection_01`\n- **Build ID**: `kuangjiao_inspection_01_20261017_003`\n- **Evaluated Models**: dinomaly2, patchcore, feature_knn_dinov2, patchcore, dinomaly2\n\n## 1. Overall Image Metrics Comparison\n\n| Model ID | I-AUROC | I-AP | Recall@1%FPR | F1 Score | Hard Normal FPR | Threshold | Latency (s) |\n|---|---|---|---|---|---|---|---|\n| `dinomaly2` | `0.8409` | `0.9839` | `0.6818` | `0.9302` | `0.0000` | `0.1256` | `18.75` |\n| `patchcore` | `0.2273` | `0.8663` | `0.0455` | `0.9565` | `1.0000` | `825.8611` | `12.84` |\n| `feature_knn_dinov2` | `0.5909` | `0.9481` | `0.3182` | `0.9091` | `1.0000` | `0.0817` | `0.44` |\n| `patchcore` | `N/A` | `N/A` | `N/A` | `0.0000` | `0.0000` | `0.2947` | `0.41` |\n| `dinomaly2` | `N/A` | `N/A` | `N/A` | `0.0000` | `0.0000` | `0.2947` | `0.42` |\n\n## 2. Hard Normal Robustness Diagnosis\n\n- **Most Robust Model on Hard Normals**: `dinomaly2` (Hard Normal FPR: `0.0000`)\n- **Hard Normal Separation Margins**:\n  - `dinomaly2`: `-0.0213`\n  - `patchcore`: `726.6685`\n  - `feature_knn_dinov2`: `0.1377`\n  - `patchcore`: `0.2570`\n  - `dinomaly2`: `0.2570`\n\n## 3. Domain Shift Diagnosis\n\n### Model: `dinomaly2` Domain Breakdown\n| Domain | Accuracy | F1 | I-AUROC | FP Count |\n|---|---|---|---|---|\n| `2023-11-27` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-09-04` | 1.0000 | 1.0000 | N/A | 0 |\n| `22-032315` | 1.0000 | 1.0000 | N/A | 0 |\n| `22-080913` | 0.7500 | 0.8571 | N/A | 0 |\n| `2023-07-03` | 1.0000 | 1.0000 | N/A | 0 |\n| `2022_10_18` | 1.0000 | 1.0000 | N/A | 0 |\n| `2024-06-13` | 0.0000 | 0.0000 | N/A | 0 |\n| `2024-07-05` | 1.0000 | 1.0000 | N/A | 0 |\n| `2024-07-26` | 0.0000 | 0.0000 | N/A | 1 |\n| `2025-03-02` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-05-17` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-06-04` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-08-28` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-09-10` | 1.0000 | 0.0000 | N/A | 0 |\n| `2026-06-29` | 1.0000 | 1.0000 | N/A | 0 |\n| `2026-08-06` | 1.0000 | 1.0000 | N/A | 0 |\n| `22-052410` | 1.0000 | 1.0000 | N/A | 0 |\n| `UNKNOWN` | 1.0000 | 1.0000 | N/A | 0 |\n\n> **Challenging Domain for dinomaly2**: `2024-06-13` (F1: `0.0000`)\n\n### Model: `patchcore` Domain Breakdown\n| Domain | Accuracy | F1 | I-AUROC | FP Count |\n|---|---|---|---|---|\n| `2023-11-27` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-09-04` | 1.0000 | 1.0000 | N/A | 0 |\n| `22-032315` | 1.0000 | 1.0000 | N/A | 0 |\n| `22-080913` | 1.0000 | 1.0000 | N/A | 0 |\n| `2023-07-03` | 1.0000 | 1.0000 | N/A | 0 |\n| `2022_10_18` | 1.0000 | 1.0000 | N/A | 0 |\n| `2024-06-13` | 1.0000 | 1.0000 | N/A | 0 |\n| `2024-07-05` | 1.0000 | 1.0000 | N/A | 0 |\n| `2024-07-26` | 0.0000 | 0.0000 | N/A | 1 |\n| `2025-03-02` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-05-17` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-06-04` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-08-28` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-09-10` | 0.0000 | 0.0000 | N/A | 1 |\n| `2026-06-29` | 1.0000 | 1.0000 | N/A | 0 |\n| `2026-08-06` | 1.0000 | 1.0000 | N/A | 0 |\n| `22-052410` | 1.0000 | 1.0000 | N/A | 0 |\n| `UNKNOWN` | 1.0000 | 1.0000 | N/A | 0 |\n\n> **Challenging Domain for patchcore**: `2024-07-26` (F1: `0.0000`)\n\n### Model: `feature_knn_dinov2` Domain Breakdown\n| Domain | Accuracy | F1 | I-AUROC | FP Count |\n|---|---|---|---|---|\n| `2023-11-27` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-09-04` | 1.0000 | 1.0000 | N/A | 0 |\n| `22-032315` | 1.0000 | 1.0000 | N/A | 0 |\n| `22-080913` | 1.0000 | 1.0000 | N/A | 0 |\n| `2023-07-03` | 1.0000 | 1.0000 | N/A | 0 |\n| `2022_10_18` | 1.0000 | 1.0000 | N/A | 0 |\n| `2024-06-13` | 1.0000 | 1.0000 | N/A | 0 |\n| `2024-07-05` | 1.0000 | 1.0000 | N/A | 0 |\n| `2024-07-26` | 0.0000 | 0.0000 | N/A | 1 |\n| `2025-03-02` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-05-17` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-06-04` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-08-28` | 1.0000 | 1.0000 | N/A | 0 |\n| `2025-09-10` | 0.0000 | 0.0000 | N/A | 1 |\n| `2026-06-29` | 0.0000 | 0.0000 | N/A | 0 |\n| `2026-08-06` | 1.0000 | 1.0000 | N/A | 0 |\n| `22-052410` | 1.0000 | 1.0000 | N/A | 0 |\n| `UNKNOWN` | 0.0000 | 0.0000 | N/A | 0 |\n\n> **Challenging Domain for feature_knn_dinov2**: `2024-07-26` (F1: `0.0000`)\n\n### Model: `patchcore` Domain Breakdown\n| Domain | Accuracy | F1 | I-AUROC | FP Count |\n|---|---|---|---|---|\n| `2023-11-27` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-09-04` | 1.0000 | 0.0000 | N/A | 0 |\n| `22-032315` | 0.5000 | 0.0000 | N/A | 1 |\n| `22-080913` | 1.0000 | 0.0000 | N/A | 0 |\n| `2023-07-03` | 1.0000 | 0.0000 | N/A | 0 |\n| `2022_10_18` | 1.0000 | 0.0000 | N/A | 0 |\n| `2024-06-13` | 1.0000 | 0.0000 | N/A | 0 |\n| `2024-07-05` | 1.0000 | 0.0000 | N/A | 0 |\n| `2024-07-26` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-03-02` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-05-17` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-06-04` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-08-28` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-09-10` | 1.0000 | 0.0000 | N/A | 0 |\n| `2026-06-29` | 1.0000 | 0.0000 | N/A | 0 |\n| `2026-08-06` | 1.0000 | 0.0000 | N/A | 0 |\n| `22-052410` | 1.0000 | 0.0000 | N/A | 0 |\n| `UNKNOWN` | 1.0000 | 0.0000 | N/A | 0 |\n\n> **Challenging Domain for patchcore**: `2023-11-27` (F1: `0.0000`)\n\n### Model: `dinomaly2` Domain Breakdown\n| Domain | Accuracy | F1 | I-AUROC | FP Count |\n|---|---|---|---|---|\n| `2023-11-27` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-09-04` | 1.0000 | 0.0000 | N/A | 0 |\n| `22-032315` | 0.5000 | 0.0000 | N/A | 1 |\n| `22-080913` | 1.0000 | 0.0000 | N/A | 0 |\n| `2023-07-03` | 1.0000 | 0.0000 | N/A | 0 |\n| `2022_10_18` | 1.0000 | 0.0000 | N/A | 0 |\n| `2024-06-13` | 1.0000 | 0.0000 | N/A | 0 |\n| `2024-07-05` | 1.0000 | 0.0000 | N/A | 0 |\n| `2024-07-26` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-03-02` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-05-17` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-06-04` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-08-28` | 1.0000 | 0.0000 | N/A | 0 |\n| `2025-09-10` | 1.0000 | 0.0000 | N/A | 0 |\n| `2026-06-29` | 1.0000 | 0.0000 | N/A | 0 |\n| `2026-08-06` | 1.0000 | 0.0000 | N/A | 0 |\n| `22-052410` | 1.0000 | 0.0000 | N/A | 0 |\n| `UNKNOWN` | 1.0000 | 0.0000 | N/A | 0 |\n\n> **Challenging Domain for dinomaly2**: `2023-11-27` (F1: `0.0000`)\n\n"
+  "report_markdown": "# Model Benchmark Comparison Report\n\n- **Task ID**: `kuangjiao_inspection_01`\n- **Build ID**: `kuangjiao_inspection_01_20261017_003`\n- **Track Readiness**: `PARTIAL (Provisional - statistical power limited by test normal count n=2)`\n- **Test Ground Truth**: `24` samples (1 Regular Normal + 1 Hard Normal = 2 Normal, 22 Anomaly)\n- **Target FPR Resolution**: `50.0%` (`1 / 2`)\n- **Selected Eval Runs**:\n  - `dinomaly2` (`PRETRAINED_INFERENCE`): `eval_kuangjiao_inspection_01_dinomaly2_1792296251`\n  - `feature_knn_dinov2` (`UNSUPERVISED_NORMAL`): `eval_kuangjiao_inspection_01_feature_knn_dinov2_1792296184`\n  - `patchcore` (`UNSUPERVISED_NORMAL`): `eval_kuangjiao_inspection_01_patchcore_1792296216`\n\n## 1. Overall Image Metrics Comparison\n\n| Model ID | Protocol | I-AUROC | I-AP | Recall@1%FPR | F1 Score | Hard Normal FPR | Threshold | Latency (s) |\n|---|---|---|---|---|---|---|---|---|\n| `dinomaly2` | `PRETRAINED_INFERENCE` | `0.8409` | `0.9839` | `NOT_EVALUATED (res=50%)` | `0.9302` | `0/1 (0.0000) [PROVISIONAL]` | `0.1256` | `18.86` |\n| `feature_knn_dinov2` | `UNSUPERVISED_NORMAL` | `0.5000` | `0.8757` | `NOT_EVALUATED (res=50%)` | `0.9545` | `1/1 (1.0000) [PROVISIONAL]` | `0.2983` | `0.38` |\n| `patchcore` | `UNSUPERVISED_NORMAL` | `0.5455` | `0.9136` | `NOT_EVALUATED (res=50%)` | `0.9778` | `1/1 (1.0000) [PROVISIONAL]` | `1546.9258` | `7.19` |\n\n## 2. Hard Normal Robustness Diagnosis\n\n> [!NOTE]\n> Hard Normal sample count is very small (n=1). Robustness rankings and FPR metrics (0/1) are PROVISIONAL and cannot solely determine production selection.\n\n- **Lowest Hard Normal FPR Model**: `dinomaly2` (0/1, FPR: `0.0000`) [PROVISIONAL]\n- **Hard Normal Separation Margins**:\n  - `dinomaly2`: `-0.0213`\n  - `feature_knn_dinov2`: `0.5047`\n  - `patchcore`: `1096.8555`\n\n## 3. Domain Shift Diagnosis\n\n### Model: `dinomaly2` Domain Breakdown\n| Domain | Normal Count | Anomaly Count | Accuracy | F1 | I-AUROC | FP Count | FN Count |\n|---|---|---|---|---|---|---|---|\n| `2023-11-27` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2025-09-04` | 0 | 2 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `22-032315` | 0 | 2 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `22-080913` | 0 | 4 | 0.7500 | 0.8571 | N/A | 0 | 1 |\n| `2023-07-03` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2022_10_18` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2024-06-13` | 0 | 1 | 0.0000 | 0.0000 | N/A | 0 | 1 |\n| `2024-07-05` | 0 | 2 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2024-07-26` | 1 | 0 | 0.0000 | 0.0000 | N/A | 1 | 0 |\n| `2025-03-02` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2025-05-17` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2025-06-04` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2025-08-28` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2025-09-10` | 1 | 0 | 1.0000 | 0.0000 | N/A | 0 | 0 |\n| `2026-06-29` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2026-08-06` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `22-052410` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `UNKNOWN` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n\n> **Challenging Domain for dinomaly2**: `2024-06-13` (F1: `0.0000`)\n\n### Model: `feature_knn_dinov2` Domain Breakdown\n| Domain | Normal Count | Anomaly Count | Accuracy | F1 | I-AUROC | FP Count | FN Count |\n|---|---|---|---|---|---|---|---|\n| `2023-11-27` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2025-09-04` | 0 | 2 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `22-032315` | 0 | 2 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `22-080913` | 0 | 4 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2023-07-03` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2022_10_18` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2024-06-13` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2024-07-05` | 0 | 2 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2024-07-26` | 1 | 0 | 1.0000 | 0.0000 | N/A | 0 | 0 |\n| `2025-03-02` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2025-05-17` | 0 | 1 | 0.0000 | 0.0000 | N/A | 0 | 1 |\n| `2025-06-04` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2025-08-28` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2025-09-10` | 1 | 0 | 0.0000 | 0.0000 | N/A | 1 | 0 |\n| `2026-06-29` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2026-08-06` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `22-052410` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `UNKNOWN` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n\n> **Challenging Domain for feature_knn_dinov2**: `2024-07-26` (F1: `0.0000`)\n\n### Model: `patchcore` Domain Breakdown\n| Domain | Normal Count | Anomaly Count | Accuracy | F1 | I-AUROC | FP Count | FN Count |\n|---|---|---|---|---|---|---|---|\n| `2023-11-27` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2025-09-04` | 0 | 2 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `22-032315` | 0 | 2 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `22-080913` | 0 | 4 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2023-07-03` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2022_10_18` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2024-06-13` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2024-07-05` | 0 | 2 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2024-07-26` | 1 | 0 | 1.0000 | 0.0000 | N/A | 0 | 0 |\n| `2025-03-02` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2025-05-17` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2025-06-04` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2025-08-28` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2025-09-10` | 1 | 0 | 0.0000 | 0.0000 | N/A | 1 | 0 |\n| `2026-06-29` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `2026-08-06` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `22-052410` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n| `UNKNOWN` | 0 | 1 | 1.0000 | 1.0000 | N/A | 0 | 0 |\n\n> **Challenging Domain for patchcore**: `2024-07-26` (F1: `0.0000`)\n\n"
 }

@@ -10,7 +10,7 @@ import numpy as np
 
 from iad_core.storage.models import Sample
 from iad_core.evaluation.contracts import PredictionRecord
-from iad_core.evaluation.baselines.base import BaselineRunner
+from iad_core.evaluation.baselines.base import BaselineRunner, BaselineProtocol, validate_predictions
 
 logger = logging.getLogger("iad_core.evaluation.baselines.dinomaly")
 
@@ -31,6 +31,7 @@ class Dinomaly2Runner(BaselineRunner):
     implementation_name: str = "dinomaly2"
     implementation_source: str = "guojiajeremy/Dinomaly2"
     implementation_revision: Optional[str] = "main"
+    protocol: str = BaselineProtocol.PRETRAINED_INFERENCE
 
     def __init__(
         self,
@@ -42,6 +43,7 @@ class Dinomaly2Runner(BaselineRunner):
         image_size: int = 448,
         crop_size: int = 392,
         cuda: str = "0",
+        training_origin: str = "TRAIN_ORIGIN_UNVERIFIED",
         **kwargs,
     ):
         super().__init__(name=name, **kwargs)
@@ -52,6 +54,8 @@ class Dinomaly2Runner(BaselineRunner):
         self.image_size = image_size
         self.crop_size = crop_size
         self.cuda = cuda
+        self.training_origin = training_origin
+        self.protocol = BaselineProtocol.PRETRAINED_INFERENCE
         self.runtime_config = {
             "python_bin": python_bin,
             "repo_path": repo_path,
@@ -60,6 +64,8 @@ class Dinomaly2Runner(BaselineRunner):
             "image_size": image_size,
             "crop_size": crop_size,
             "cuda": cuda,
+            "protocol": self.protocol,
+            "training_origin": self.training_origin,
             **kwargs,
         }
 
@@ -168,14 +174,5 @@ class Dinomaly2Runner(BaselineRunner):
                         )
                     )
 
-            # Completeness check
-            input_ids = {s.sample_id for s in samples}
-            output_ids = {p.sample_id for p in preds}
-            if input_ids != output_ids:
-                missing = input_ids - output_ids
-                extra = output_ids - input_ids
-                raise ValueError(
-                    f"Dinomaly2 prediction completeness mismatch: missing={missing}, extra={extra}"
-                )
-
+            validate_predictions(preds, samples, split_name)
             return preds

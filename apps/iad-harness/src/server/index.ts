@@ -23,41 +23,41 @@ export const SYSTEM_POLICIES = [
 ].join("\n");
 
 export const ALLOWED_TOOL_SURFACE = [
-  "task_inspect",
-  "dataset_audit",
-  "feature_prepare",
-  "visual_search",
-  "duplicate_audit",
-  "candidate_mine",
-  "evidence_get",
-  "review_status",
-  "benchmark_preview",
-  "benchmark_build",
-  "benchmark_status",
-  "leakage_check",
-  "evaluation_plan",
-  "baseline_run",
-  "evaluation_compare"
+  "mcp__iad__task_inspect",
+  "mcp__iad__dataset_audit",
+  "mcp__iad__feature_prepare",
+  "mcp__iad__visual_search",
+  "mcp__iad__duplicate_audit",
+  "mcp__iad__candidate_mine",
+  "mcp__iad__evidence_get",
+  "mcp__iad__review_status",
+  "mcp__iad__benchmark_preview",
+  "mcp__iad__benchmark_build",
+  "mcp__iad__benchmark_status",
+  "mcp__iad__leakage_check",
+  "mcp__iad__evaluation_plan",
+  "mcp__iad__baseline_run",
+  "mcp__iad__evaluation_compare"
 ];
 
+let policyInjected = false;
+
 export function apply(ctx: any, config: IADHarnessConfig = {}) {
-  // Invariant Policy Injection via official systemPrompt.section (Ticket B003)
-  if (ctx.systemPrompt && typeof ctx.systemPrompt.section === "function") {
+  // Invariant Policy Injection via official systemPrompt.section (Ticket B003, NV-03)
+  if (!policyInjected && ctx.systemPrompt && typeof ctx.systemPrompt.section === "function") {
     ctx.systemPrompt.section({
       name: "industrial_benchmark_policies",
       order: 500,
       text: SYSTEM_POLICIES,
     });
+    policyInjected = true;
   }
 
-  // Tool Surface Restriction via official tools.restrict (Ticket B004)
+  // Tool Surface Restriction via official tools.restrict (Ticket B004, NV-03)
+  // Must fail-fast on restriction errors rather than swallowing them
   const applyRestriction = (toolsCtx: any) => {
     if (toolsCtx && typeof toolsCtx.restrict === "function") {
-      try {
-        toolsCtx.restrict({ allow: ALLOWED_TOOL_SURFACE });
-      } catch (err: any) {
-        // If toolsCtx is not a scoped context, restrict must be applied on agent.ctx instead
-      }
+      toolsCtx.restrict({ allow: ALLOWED_TOOL_SURFACE });
     }
   };
 

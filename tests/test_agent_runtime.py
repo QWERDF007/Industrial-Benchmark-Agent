@@ -55,7 +55,7 @@ def test_agent_runtime_run_invocation():
         assert "Inspect the kuangjiao dataset" in call_args
 
         assert result.session_id == "sess-abc-456"
-        assert result.status == "SUCCESS"
+        assert result.status == "COMPLETED"
         assert result.final_text == "Task inspect finished."
         assert len(result.raw_events) == 3
 
@@ -82,25 +82,44 @@ def test_agent_runtime_resume_session_continuity():
         assert call_args[sess_idx + 1] == "sess-resume-789"
         assert "Review completed, proceed." in call_args
         assert result.session_id == "sess-resume-789"
-        assert result.status == "SUCCESS"
+        assert result.status == "COMPLETED"
 
 
 def test_agent_runtime_review_required_detection():
-    """Verify runtime detects REVIEW_REQUIRED status."""
+    """Verify runtime detects REVIEW_REQUIRED status from structured tool events (NS-01, NV-04)."""
     mock_events = [
         json.dumps({"type": "session", "sessionId": "sess-gate-001"}),
-        json.dumps({"type": "message", "role": "agent", "content": "Benchmark build returned REVIEW_REQUIRED"}),
+        json.dumps({
+            "type": "tool_result",
+            "tool": "mcp__iad__benchmark_build",
+            "result": {"status": "REVIEW_REQUIRED", "summary": "Hard normal review required"}
+        }),
     ]
     stdout_content = "\n".join(mock_events) + "\n"
 
     mock_proc = MagicMock()
-    mock_proc.communicate.return_value = (stdout_content, "WARNING: REVIEW_REQUIRED waiting for human decisions")
+    mock_proc.communicate.return_value = (stdout_content, "")
     mock_proc.returncode = 0
 
     with patch("subprocess.Popen", return_value=mock_proc), \
          patch("os.path.exists", return_value=True):
         result = run(goal="Build benchmark", config=AgentConfig(cwd="/tmp/fake"))
         assert result.status == "REVIEW_REQUIRED"
+        assert len(result.tool_calls) == 1
+
+
+def test_agent_runtime_missing_session_id_fails():
+    """Verify missing session ID fails-fast without creating fake fallback session (NS-01, NV-01)."""
+    mock_proc = MagicMock()
+    mock_proc.communicate.return_value=("No session events here", "")
+    mock_proc.returncode = 0
+
+    with patch("subprocess.Popen", return_value=mock_proc), \
+         patch("os.path.exists", return_value=True):
+        result = run(goal="Do something", config=AgentConfig(cwd="/tmp/fake"))
+        assert result.status == "ERROR"
+        assert "Missing session ID" in (result.error_message or "")
+        assert not result.session_id.startswith("session-fallback")
 
 
 def test_allowed_tool_surface_consistency():

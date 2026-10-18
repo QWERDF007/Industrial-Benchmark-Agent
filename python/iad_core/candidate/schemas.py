@@ -20,6 +20,7 @@ class CandidateRecord(BaseModel):
     physical_sample_id: Optional[str] = None
     image_path: str
     relative_path: str
+    is_required: bool = True
 
 
 class CandidateScoringWeights(BaseModel):

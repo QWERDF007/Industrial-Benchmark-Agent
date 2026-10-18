@@ -4,7 +4,7 @@ from typing import List, Optional, Dict, Any
 
 from iad_core.storage.models import Sample
 from iad_core.evaluation.contracts import PredictionRecord
-from iad_core.evaluation.baselines.base import BaselineRunner
+from iad_core.evaluation.baselines.base import BaselineRunner, BaselineProtocol, validate_predictions
 
 
 class MockBaselineRunner(BaselineRunner):
@@ -56,4 +56,5 @@ class MockBaselineRunner(BaselineRunner):
                     split_name=split_name,
                 )
             )
+        validate_predictions(preds, samples, split_name)
         return preds

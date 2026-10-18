@@ -69,6 +69,7 @@ def task_inspect(
     eval_runs = eval_repo.list_by_task(task_id)
 
     metrics = {
+        "task_id": task_id,
         "total_samples": total_samples,
         "quality_distribution": {
             "PASS": pass_count,

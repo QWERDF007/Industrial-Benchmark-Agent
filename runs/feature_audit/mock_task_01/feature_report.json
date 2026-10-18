@@ -10,7 +10,7 @@
   "dim": 768,
   "dtype": "fp16",
   "storage_bytes": 86016,
-  "elapsed_seconds": 0.05,
-  "throughput": 1021.3,
-  "timestamp": "2026-10-17T13:20:59Z"
+  "elapsed_seconds": 0.04,
+  "throughput": 1499.93,
+  "timestamp": "2026-10-18T04:08:44Z"
 }

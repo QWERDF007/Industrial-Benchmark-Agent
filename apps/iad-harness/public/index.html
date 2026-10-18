@@ -108,25 +108,25 @@
           <div class="col-md-3">
             <div class="card p-3 text-center">
               <div class="text-muted small">Total Dataset Samples</div>
-              <div class="metric-badge text-white" id="stat-samples">5,074</div>
+              <div class="metric-badge text-white" id="stat-samples">--</div>
             </div>
           </div>
           <div class="col-md-3">
             <div class="card p-3 text-center">
               <div class="text-muted small">Feature Cache Coverage</div>
-              <div class="metric-badge text-success" id="stat-features">100.0%</div>
+              <div class="metric-badge text-success" id="stat-features">--</div>
             </div>
           </div>
           <div class="col-md-3">
             <div class="card p-3 text-center">
               <div class="text-muted small">Human Review Decisions</div>
-              <div class="metric-badge text-warning" id="stat-reviews">105 Decisions</div>
+              <div class="metric-badge text-warning" id="stat-reviews">--</div>
             </div>
           </div>
           <div class="col-md-3">
             <div class="card p-3 text-center">
               <div class="text-muted small">Active Benchmark Build</div>
-              <div class="metric-badge text-info" id="stat-build">kuangjiao_inspection_01_20261017_001</div>
+              <div class="metric-badge text-info" id="stat-build">--</div>
             </div>
           </div>
         </div>
@@ -456,6 +456,20 @@
       }
     }
 
+    async function loadTaskOverview() {
+      try {
+        const res = await fetch(`/api/task/${TASK_ID}/overview`);
+        if (!res.ok) return;
+        const data = await res.json();
+        document.getElementById("stat-samples").textContent = Number(data.total_samples || 0).toLocaleString();
+        document.getElementById("stat-features").textContent = Number(data.feature_coverage_pct || 0).toFixed(1) + "%";
+        document.getElementById("stat-reviews").textContent = (data.total_decisions || 0) + " Decisions";
+        document.getElementById("stat-build").textContent = data.latest_build_id || "None";
+      } catch (e) {
+        console.warn("Could not load task overview:", e);
+      }
+    }
+
     // Keyboard shortcuts: 1~5
     window.addEventListener("keydown", (e) => {
       if (document.getElementById("review").classList.contains("active")) {
@@ -467,10 +481,12 @@
       }
     });
 
+    document.getElementById("overview-tab")?.addEventListener("click", loadTaskOverview);
     document.getElementById("benchmark-tab")?.addEventListener("click", loadBenchmarkBuilds);
     document.getElementById("evaluation-tab")?.addEventListener("click", loadEvaluationRuns);
 
     document.addEventListener("DOMContentLoaded", () => {
+      loadTaskOverview();
       loadReviewQueue();
       loadBenchmarkBuilds();
       loadEvaluationRuns();

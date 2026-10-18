@@ -1,9 +1,10 @@
 import os
 import json
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 
 from iad_core.storage.database import Database
+from iad_core.storage.models import EvaluationRunRecord
 from iad_core.storage.repositories import BenchmarkRepository, EvaluationRepository
 from iad_core.evaluation.contracts import ThresholdStrategy, EvaluationPlan
 from iad_core.evaluation.evaluator import EvaluationService
@@ -166,13 +167,38 @@ def evaluation_compare(
     all_records = eval_repo.list_by_task(task_id)
     # Filter by build_id and optional run_ids
     filtered = [r for r in all_records if r.build_id == build_id]
+    warnings = []
+
     if run_ids:
         filtered = [r for r in filtered if r.run_id in run_ids]
+        for r in filtered:
+            m = r.metrics or {}
+            if r.status in ("FAILED", "PROTOCOL_INVALID") or m.get("status") in ("FAILED", "PROTOCOL_INVALID"):
+                warnings.append(f"Run '{r.run_id}' is marked as {r.status}. It will be excluded from formal ranking.")
+    else:
+        # Default: pick latest valid run per (model_id, protocol) (NV-14, NS-10)
+        valid_records = []
+        for r in filtered:
+            m = r.metrics or {}
+            if r.status in ("FAILED", "PROTOCOL_INVALID") or m.get("status") in ("FAILED", "PROTOCOL_INVALID"):
+                continue
+            valid_records.append(r)
+
+        # Group by (model_id, protocol) and pick latest run (first seen since records are ordered by id DESC)
+        latest_by_model: Dict[Tuple[str, str], EvaluationRunRecord] = {}
+        for r in valid_records:
+            m = r.metrics or {}
+            proto = m.get("protocol") or "UNKNOWN"
+            key = (r.model_id, proto)
+            if key not in latest_by_model:
+                latest_by_model[key] = r
+
+        filtered = list(latest_by_model.values())
 
     if not filtered:
         return ToolResult(
             status=ToolStatus.NOT_READY,
-            summary=f"No completed evaluation runs found for build '{build_id}'.",
+            summary=f"No valid completed evaluation runs found for build '{build_id}'.",
             warnings=["Please execute baseline_run on this build first."],
             next_actions=["Run baseline_run to generate evaluation runs."],
         )
@@ -191,6 +217,15 @@ def evaluation_compare(
     out_md = os.path.join(out_d, "comparison.md")
     report_res = generate_comparison_report(runs, output_path=out_md)
 
+    compared_count = len(report_res.get("models", []))
+    if compared_count == 0:
+        return ToolResult(
+            status=ToolStatus.NOT_READY,
+            summary=f"No valid runs could be compared for build '{build_id}'.",
+            warnings=warnings or ["No runs passed evaluation validity checks."],
+            next_actions=["Execute new baseline runs with valid protocols."],
+        )
+
     artifacts = [
         ArtifactRef(
             artifact_id=f"comparison_md_{build_id}",
@@ -203,15 +238,18 @@ def evaluation_compare(
 
     return ToolResult(
         status=ToolStatus.OK,
-        summary=f"Compared {len(runs)} baseline runs on build '{build_id}'. Best Hard Normal model: '{report_res.get('best_hard_normal_model')}'.",
+        summary=f"Compared {compared_count} baseline runs on build '{build_id}'. Best Hard Normal model: '{report_res.get('best_hard_normal_model')}'.",
         metrics={
             "build_id": build_id,
-            "compared_runs_count": len(runs),
+            "compared_runs_count": compared_count,
             "best_hard_normal_model": report_res.get("best_hard_normal_model"),
             "models": report_res.get("models"),
+            "selected_eval_run_ids": report_res.get("selected_eval_run_ids"),
+            "track_readiness": report_res.get("track_readiness"),
+            "fpr_resolution": report_res.get("fpr_resolution"),
         },
         artifacts=artifacts,
-        warnings=[],
+        warnings=warnings,
         next_actions=["Inspect comparison.md for full model rankings."],
         mutation=MutationType.DERIVED_ARTIFACT,
     )

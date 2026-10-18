@@ -270,9 +270,68 @@ def test_evaluation_service_end_to_end(tmp_path):
     assert os.path.exists(eval_run.metrics_json_path)
     assert os.path.exists(eval_run.predictions_path)
     assert os.path.exists(eval_run.report_md_path)
+    assert os.path.exists(eval_run.train_selection_path)
+    assert eval_run.protocol == "UNSUPERVISED_NORMAL"
 
     # Check database persistence
     eval_repo = EvaluationRepository(db)
     saved = eval_repo.get_run(eval_run.run_id)
     assert saved is not None
     assert saved.status == "COMPLETED"
+
+
+def test_evaluator_fails_on_runner_incomplete_predictions(tmp_path):
+    """NV-07 / NV-08: EvaluationService fails-fast if baseline produces incomplete predictions."""
+    from iad_core.evaluation.baselines.base import BaselineRunner
+
+    class BadValRunner(BaselineRunner):
+        def prepare(self, task_id, build_id, train_samples, **kwargs):
+            pass
+
+        def predict(self, samples, split_name="test", **kwargs):
+            # Drops the first sample
+            return [
+                PredictionRecord(sample_id=s.sample_id, image_score=0.2, split_name=split_name)
+                for s in samples[1:]
+            ]
+
+    db_path = str(tmp_path / "test_bad.db")
+    db = Database(db_path)
+    task_repo = TaskRepository(db)
+    sample_repo = SampleRepository(db)
+    bench_repo = BenchmarkRepository(db)
+    gold_repo = GoldRepository(db)
+
+    task_id = "task_bad"
+    build_id = "build_bad"
+    run_dir = str(tmp_path / "runs_bad")
+
+    task_repo.upsert(InspectionTask(task_id=task_id, task_name="Task Bad", inspection_target="t"))
+
+    # 2 train normal, 2 val (1 normal, 1 anomaly), 2 test (1 normal, 1 anomaly)
+    samples = []
+    assignments = []
+    golds = []
+    for sid, sp, b_label, q in [
+        ("tr1", "train", "NORMAL", QualityStatus.PASS),
+        ("tr2", "train", "NORMAL", QualityStatus.PASS),
+        ("val1", "val", "NORMAL", QualityStatus.PASS),
+        ("val2", "val", "ANOMALY", QualityStatus.FAIL),
+        ("te1", "test", "NORMAL", QualityStatus.PASS),
+        ("te2", "test", "ANOMALY", QualityStatus.FAIL),
+    ]:
+        samples.append(Sample(sample_id=sid, task_id=task_id, dataset_id="ds", image_path=f"/{sid}.png", relative_path=f"{sid}.png", width=10, height=10, quality_status=q))
+        assignments.append(SplitAssignmentRecord(build_id=build_id, sample_id=sid, split_group_id=f"g_{sid}", split_name=sp))
+        golds.append(GoldRecord(sample_id=sid, task_id=task_id, policy_name="pol", gold_quality=q.value, binary_label=b_label, gold_source="HUMAN", gold_status="CONFIRMED", image_path=f"/{sid}.png", relative_path=f"{sid}.png"))
+
+    sample_repo.upsert_batch(samples)
+    bench_repo.upsert_build(BenchmarkBuildRecord(build_id=build_id, task_id=task_id, dataset_id="ds", gold_policy="pol", split_policy="pol", seed=42, status="READY", output_dir=run_dir))
+    bench_repo.upsert_split_assignments(assignments)
+    gold_repo.upsert_batch(golds)
+
+    service = EvaluationService(db=db)
+    bad_runner = BadValRunner(name="bad_val")
+
+    with pytest.raises(ValueError, match="(?i)count mismatch"):
+        service.evaluate_model(task_id=task_id, build_id=build_id, model=bad_runner, output_dir=run_dir)
+

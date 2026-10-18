@@ -186,6 +186,14 @@ class SplitPolicyConfig(BaseModel):
     exclude_origins_from_test: List[str] = Field(default_factory=lambda: ["AUGMENTED"])
 
 
+class ReviewPolicyConfig(BaseModel):
+    policy_name: str = "default"
+    required_review_ids: List[str] = Field(default_factory=list)
+    min_confirmed_normal: Optional[int] = None
+    min_confirmed_anomaly: Optional[int] = None
+    block_on_conflicts: bool = True
+
+
 class DatasetConfig(BaseModel):
     dataset: DatasetInfo
     root: str = Field(..., description="Root directory of the dataset")
@@ -201,6 +209,7 @@ class DatasetConfig(BaseModel):
     reference_normal: ReferenceNormalPolicyConfig = Field(default_factory=ReferenceNormalPolicyConfig)
     gold: GoldPolicyConfig = Field(default_factory=GoldPolicyConfig)
     split: SplitPolicyConfig = Field(default_factory=SplitPolicyConfig)
+    review_policy: ReviewPolicyConfig = Field(default_factory=ReviewPolicyConfig)
 
 
 def load_config(config_path: str) -> DatasetConfig:

@@ -266,25 +266,28 @@ def handle_mcp_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 "id": req_id,
                 "error": {
                     "code": -32601,
-                    "message": f"Method not found: tool '{tool_name}' is not registered.",
+                    "message": f"Method not found: Tool not found: '{tool_name}' is not registered.",
                 },
             }
 
         try:
             res: ToolResult = handler(**arguments)
+            res_dict = res.model_dump()
+            result_payload = {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": res.model_dump_json(indent=2),
+                    }
+                ],
+                "structuredContent": res_dict,
+                "isError": res.status == ToolStatus.ERROR,
+            }
+            result_payload.update(res_dict)
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,
-                "result": {
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": res.model_dump_json(indent=2),
-                        }
-                    ],
-                    "structuredContent": res.model_dump(),
-                    "isError": res.status == ToolStatus.ERROR,
-                },
+                "result": result_payload,
             }
         except Exception as e:
             logger.error(f"Error executing tool '{tool_name}': {e}", exc_info=True)
@@ -293,19 +296,22 @@ def handle_mcp_request(request: Dict[str, Any]) -> Dict[str, Any]:
                 summary=f"Tool '{tool_name}' failed with unexpected exception: {str(e)}",
                 warnings=[str(e)],
             )
+            err_dict = err_res.model_dump()
+            err_payload = {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": err_res.model_dump_json(indent=2),
+                    }
+                ],
+                "structuredContent": err_dict,
+                "isError": True,
+            }
+            err_payload.update(err_dict)
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,
-                "result": {
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": err_res.model_dump_json(indent=2),
-                        }
-                    ],
-                    "structuredContent": err_res.model_dump(),
-                    "isError": True,
-                },
+                "result": err_payload,
             }
 
     elif method == "resources/list":

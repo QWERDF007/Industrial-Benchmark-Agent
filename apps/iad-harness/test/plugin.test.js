@@ -40,8 +40,10 @@ test("Industrial Harness Plugin: policy injection and tool restriction", async (
   assert.equal(restrictCalled, true, "tools.restrict must be called");
   assert.equal(restrictedTools.length, 15, "Model-visible surface must be exactly 15 tools");
   assert.deepEqual(restrictedTools, ALLOWED_TOOL_SURFACE);
-  assert.ok(restrictedTools.includes("task_inspect"));
-  assert.ok(restrictedTools.includes("benchmark_build"));
-  assert.ok(restrictedTools.includes("baseline_run"));
-  assert.ok(!restrictedTools.includes("review_write"), "Review write must NEVER be in tool surface");
+  assert.ok(restrictedTools.includes("mcp__iad__task_inspect"));
+  assert.ok(restrictedTools.includes("mcp__iad__benchmark_build"));
+  assert.ok(restrictedTools.includes("mcp__iad__baseline_run"));
+  assert.ok(!restrictedTools.includes("mcp__iad__review_write"), "Review write must NEVER be in tool surface");
+  assert.ok(!restrictedTools.includes("review_write"));
+  assert.ok(!restrictedTools.includes("shell"));
 });

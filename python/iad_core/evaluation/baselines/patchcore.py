@@ -7,7 +7,7 @@ import numpy as np
 
 from iad_core.storage.models import Sample
 from iad_core.evaluation.contracts import PredictionRecord
-from iad_core.evaluation.baselines.base import BaselineRunner
+from iad_core.evaluation.baselines.base import BaselineRunner, BaselineProtocol, validate_predictions
 
 logger = logging.getLogger("iad_core.evaluation.baselines.patchcore")
 
@@ -24,18 +24,23 @@ class PatchCoreRunner(BaselineRunner):
     implementation_name: str = "patchcore"
     implementation_source: str = "amazon-science/patchcore-inspection"
     implementation_revision: Optional[str] = "main"
+    protocol: str = BaselineProtocol.UNSUPERVISED_NORMAL
 
     def __init__(
         self,
         name: str = "patchcore",
         repo_path: str = DEFAULT_PATCHCORE_REPO,
-        backbone: Optional[str] = None,
+        backbone: str = "wideresnet50",
         image_size: int = 448,
         coreset_percentage: float = 0.1,
         device: Optional[str] = None,
         batch_size: int = 8,
         **kwargs,
     ):
+        if not backbone:
+            raise ValueError(
+                "PatchCore requires an explicit valid backbone name (e.g. 'wideresnet50'), got None or empty."
+            )
         super().__init__(name=name, **kwargs)
         self.repo_path = repo_path
         self.backbone = backbone
@@ -49,6 +54,7 @@ class PatchCoreRunner(BaselineRunner):
             "image_size": image_size,
             "coreset_percentage": coreset_percentage,
             "batch_size": batch_size,
+            "protocol": self.protocol,
             **kwargs,
         }
         self.model = None
@@ -87,9 +93,11 @@ class PatchCoreRunner(BaselineRunner):
         self.model = patchcore.patchcore.PatchCore(device)
         nn_method = patchcore.common.FaissNN(False, 4)
 
-        backbone_mod = patchcore.backbones.load(self.backbone) if self.backbone else None
-        layers = ["layer2", "layer3"] if self.backbone else []
-        feat_dim = 1024 if self.backbone else 384
+        backbone_mod = patchcore.backbones.load(self.backbone)
+        if backbone_mod is None:
+            raise RuntimeError(f"Failed to load PatchCore backbone '{self.backbone}' from upstream library.")
+        layers = ["layer2", "layer3"]
+        feat_dim = 1024
 
         self.model.load(
             backbone=backbone_mod,
@@ -185,4 +193,5 @@ class PatchCoreRunner(BaselineRunner):
                 )
             )
 
+        validate_predictions(preds, samples, split_name)
         return preds

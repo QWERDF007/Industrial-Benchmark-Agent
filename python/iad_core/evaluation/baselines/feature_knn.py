@@ -7,7 +7,7 @@ from iad_core.storage.database import Database
 from iad_core.storage.models import Sample
 from iad_core.storage.repositories import FeatureRepository
 from iad_core.evaluation.contracts import PredictionRecord
-from iad_core.evaluation.baselines.base import BaselineRunner
+from iad_core.evaluation.baselines.base import BaselineRunner, BaselineProtocol, validate_predictions
 from iad_core.feature.dino import DINOFeatureExtractor
 
 logger = logging.getLogger("iad_core.evaluation.baselines.feature_knn")
@@ -24,6 +24,7 @@ class FeatureMemoryBankRunner(BaselineRunner):
     implementation_name: str = "feature_knn_dinov2"
     implementation_source: str = "facebookresearch/dinov2"
     implementation_revision: Optional[str] = "dinov2_vitb14_reg"
+    protocol: str = BaselineProtocol.UNSUPERVISED_NORMAL
 
     def __init__(
         self,
@@ -137,4 +138,5 @@ class FeatureMemoryBankRunner(BaselineRunner):
                     split_name=split_name,
                 )
             )
+        validate_predictions(preds, samples, split_name)
         return preds

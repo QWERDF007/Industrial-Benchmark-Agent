@@ -2,6 +2,7 @@ import os
 import json
 import time
 import uuid
+import tempfile
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException, Query, Body
@@ -24,11 +25,22 @@ from iad_core.evidence.builder import EvidenceBuilder
 
 app = FastAPI(title="Industrial Benchmark Agent Domain Server", version="1.0.0")
 
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -83,6 +95,46 @@ def get_task(task_id: str):
     if not task:
         raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
     return {"task": task.model_dump()}
+
+
+@app.get("/api/task/{task_id}/overview")
+def get_task_overview(task_id: str):
+    db = Database(DB_PATH)
+    task_repo = TaskRepository(db)
+    sample_repo = SampleRepository(db)
+    review_repo = ReviewRepository(db)
+    bench_repo = BenchmarkRepository(db)
+
+    task = task_repo.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found.")
+
+    total_samples = sample_repo.count_by_task(task_id)
+    with db.connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT count(*) FROM features f
+            JOIN samples s ON f.sample_id = s.sample_id
+            WHERE s.task_id = ?
+            """,
+            (task_id,),
+        )
+        feature_count = cursor.fetchone()[0]
+
+    feature_coverage = (feature_count / total_samples * 100.0) if total_samples > 0 else 0.0
+    review_stats = review_repo.get_stats(task_id)
+    builds = bench_repo.list_builds_by_task(task_id)
+    latest_build = builds[0].build_id if builds else "None"
+
+    return {
+        "task_id": task_id,
+        "task_name": task.task_name,
+        "total_samples": total_samples,
+        "feature_coverage_pct": feature_coverage,
+        "total_decisions": review_stats.get("total_decisions", 0),
+        "latest_build_id": latest_build,
+    }
 
 
 # -------------------------------------------------------------------------
@@ -313,7 +365,17 @@ def get_sample_image(sample_id: str):
             status_code=404,
             detail=f"Image file for sample '{sample_id}' not found on disk: {sample.image_path if sample else 'None'}"
         )
-    return FileResponse(sample.image_path)
+    real_path = os.path.realpath(sample.image_path)
+    allowed_roots = [
+        os.path.realpath("data"),
+        os.path.realpath("."),
+        "/data1",
+        os.path.realpath(tempfile.gettempdir()),
+        "/tmp",
+    ]
+    if not any(real_path.startswith(root) for root in allowed_roots):
+        raise HTTPException(status_code=403, detail="Forbidden: Image path is outside authorized dataset root.")
+    return FileResponse(real_path)
 
 
 # -------------------------------------------------------------------------

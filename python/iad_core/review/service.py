@@ -87,14 +87,25 @@ class ReviewQueueService:
                 physical_sample_id=r["physical_sample_id"],
                 image_path=r["image_path"],
                 relative_path=r["relative_path"],
+                is_required=False,
             )
             for idx, r in enumerate(rows)
         ]
-        logger.info(f"Loaded {len(self._candidates)} candidate samples from database fallback")
+        logger.info(f"Loaded {len(self._candidates)} candidate samples from database fallback (is_required=False)")
 
     @property
     def candidates(self) -> List[CandidateRecord]:
         return self._candidates
+
+    @property
+    def required_candidates(self) -> List[CandidateRecord]:
+        return [c for c in self._candidates if getattr(c, "is_required", True)]
+
+    @property
+    def pending_required_count(self) -> int:
+        decisions = self.repo.list_decisions_by_task(self.task_id)
+        decided_ids = {d.sample_id for d in decisions}
+        return sum(1 for c in self.required_candidates if c.sample_id not in decided_ids)
 
     @property
     def reviewed_count(self) -> int:

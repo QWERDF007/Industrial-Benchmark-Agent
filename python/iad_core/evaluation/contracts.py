@@ -80,6 +80,7 @@ class EvaluationRun(BaseModel):
     task_id: str
     build_id: str
     model_id: str
+    status: str = "COMPLETED"
     threshold: ThresholdResult
     image_metrics: ImageMetrics
     pixel_metrics: PixelMetrics
@@ -90,6 +91,9 @@ class EvaluationRun(BaseModel):
     implementation_name: Optional[str] = None
     implementation_source: Optional[str] = None
     implementation_revision: Optional[str] = None
+    protocol: Optional[str] = None
+    training_origin: Optional[str] = None
+    train_selection_path: Optional[str] = None
     runtime_config: Dict[str, Any] = Field(default_factory=dict)
     predictions_path: str
     metrics_json_path: str

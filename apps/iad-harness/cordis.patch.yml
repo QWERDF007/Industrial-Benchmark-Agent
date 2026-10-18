@@ -8,6 +8,15 @@
       Your working directory is {{cwd}}. Follow domain safety invariants strictly.
 
 - insert:
+    - id: iad-mcp-client
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        transport: streamable-http
+        serverName: iad
+        url: 'http://127.0.0.1:8000/mcp'
+        failOnStartupError: true
+        toolCallTimeoutMs: 60000
+
     - id: industrial-policy-plugin
       name: '@industrial-benchmark/iad-harness'
       config:

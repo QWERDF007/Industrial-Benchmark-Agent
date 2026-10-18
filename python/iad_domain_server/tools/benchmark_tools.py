@@ -5,7 +5,12 @@ from typing import Optional, Dict, Any, List
 
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import BenchmarkRepository, GoldRepository, ReviewRepository, SampleRepository
-from iad_core.benchmark.builder import run_benchmark_pipeline, load_verified_duplicates, generate_build_id
+from iad_core.benchmark.builder import (
+    run_benchmark_pipeline,
+    preview_benchmark_pipeline,
+    load_verified_duplicates,
+    generate_build_id,
+)
 from iad_core.task.config import load_config
 from iad_core.gold.builder import build_gold
 from iad_core.split.group import build_split_groups
@@ -23,100 +28,48 @@ def benchmark_preview(
     db_path: str = "data/benchmark.db",
 ) -> ToolResult:
     """
-    Preview Gold adjudication and atomic group split without persisting to SQLite (R307).
+    Preview Gold adjudication and atomic group split sharing unified Core domain logic (NV-12, NS-09).
+    Does NOT persist to SQLite or write formal build assets to disk.
     """
-    if not config_path:
-        for candidate_path in [f"configs/{task_id}.yaml", "configs/kuangjiao.yaml"]:
-            if os.path.exists(candidate_path):
-                config_path = candidate_path
-                break
-
-    if not config_path or not os.path.exists(config_path):
+    try:
+        prev = preview_benchmark_pipeline(
+            task_id=task_id,
+            config_path=config_path,
+            seed=seed,
+            db_path=db_path,
+        )
+    except Exception as e:
+        logger.error(f"Benchmark preview failed: {e}", exc_info=True)
         return ToolResult(
             status=ToolStatus.ERROR,
-            summary=f"Benchmark preview requires config. None found for task '{task_id}'.",
-            warnings=["Task configuration is required."],
-            next_actions=["Provide valid config_path."],
+            summary=f"Benchmark preview failed: {str(e)}",
+            warnings=[str(e)],
+            next_actions=["Verify config_path and ensure task data exists."],
         )
 
-    cfg = load_config(config_path)
-    db = Database(db_path)
-    review_repo = ReviewRepository(db)
-    sample_repo = SampleRepository(db)
-
-    # Check human review presence
-    review_stats = review_repo.get_stats(task_id)
-    total_decisions = review_stats.get("total_decisions", 0)
-
-    samples = sample_repo.list_by_task(task_id)
-    samples_map = {s.sample_id: s for s in samples}
-
-    verified_pairs, verified_groups = load_verified_duplicates(task_id)
-
-    # In-memory gold preview
-    gold_records, conflicts = build_gold(
-        task_id=task_id,
-        policy=cfg.gold,
-        db_path=db_path,
-        persist_to_db=False,
+    status = ToolStatus.REVIEW_REQUIRED if prev.status == "REVIEW_REQUIRED" else ToolStatus.OK
+    summary = (
+        f"Benchmark Preview for '{task_id}': {prev.normal + prev.anomaly} Confirmed Gold "
+        f"({prev.normal} Normal/HardNormal, {prev.anomaly} Anomaly, {prev.hard_normal} Hard Normal), "
+        f"Split -> Train: {prev.projected_train}, Val: {prev.projected_val}, Test: {prev.projected_test}."
     )
-
-    confirmed_golds = [g for g in gold_records if g.gold_status == "CONFIRMED"]
-    normal_golds = [g for g in confirmed_golds if g.gold_quality in ("NORMAL", "HARD_NORMAL")]
-    anomaly_golds = [g for g in confirmed_golds if g.gold_quality == "ANOMALY"]
-
-    if len(normal_golds) == 0:
-        return ToolResult(
-            status=ToolStatus.REVIEW_REQUIRED,
-            summary=f"Preview halted: 0 confirmed normal Gold records for '{task_id}'. Human review is required.",
-            metrics={
-                "total_samples": len(samples),
-                "confirmed_gold": len(confirmed_golds),
-                "normal_gold": 0,
-                "anomaly_gold": len(anomaly_golds),
-                "conflicts": len(conflicts),
-                "human_reviews": total_decisions,
-            },
-            warnings=["No confirmed normal samples found. Benchmark cannot be created without normal samples."],
-            next_actions=["Complete human review on hard normal candidates first."],
-        )
-
-    # Build split groups
-    gold_dict = {g.sample_id: g for g in confirmed_golds}
-    groups = build_split_groups(
-        samples=samples,
-        gold_map=gold_dict,
-        verified_pairs=verified_pairs,
-        verified_components=verified_groups,
-        physical_sample_scope=cfg.split.physical_sample_scope,
-    )
-
-    split_res = build_group_split(groups=groups, policy=cfg.split, seed=seed)
-
-    status = ToolStatus.OK
-    warnings = []
-    if total_decisions == 0:
-        warnings.append("Preview generated without human review decisions. Only raw trusted quality was used.")
 
     return ToolResult(
         status=status,
-        summary=(
-            f"Benchmark Preview for '{task_id}': {len(confirmed_golds)} Confirmed Gold "
-            f"({len(normal_golds)} Normal/HardNormal, {len(anomaly_golds)} Anomaly), "
-            f"Split -> Train: {len(split_res.train_sample_ids)}, Val: {len(split_res.val_sample_ids)}, Test: {len(split_res.test_sample_ids)}."
-        ),
+        summary=summary,
         metrics={
-            "confirmed_gold": len(confirmed_golds),
-            "normal_gold": len(normal_golds),
-            "anomaly_gold": len(anomaly_golds),
-            "conflicts": len(conflicts),
-            "groups_count": len(groups),
-            "train_samples": len(split_res.train_sample_ids),
-            "val_samples": len(split_res.val_sample_ids),
-            "test_samples": len(split_res.test_sample_ids),
+            "confirmed_gold": prev.normal + prev.anomaly,
+            "normal_gold": prev.normal,
+            "anomaly_gold": prev.anomaly,
+            "hard_normal_gold": prev.hard_normal,
+            "conflicts": prev.conflicts,
+            "groups_count": prev.groups_count,
+            "train_samples": prev.projected_train,
+            "val_samples": prev.projected_val,
+            "test_samples": prev.projected_test,
         },
-        warnings=warnings,
-        next_actions=["Call benchmark_build to formally build and export the benchmark."],
+        warnings=prev.warnings,
+        next_actions=["Call benchmark_build to formally build and export the benchmark."] if status == ToolStatus.OK else ["Submit required human reviews before building."],
         mutation=MutationType.NONE,
     )
 
@@ -131,34 +84,74 @@ def benchmark_build(
 ) -> ToolResult:
     """
     Formally build benchmark assets, enforce leakage gate, and persist to SQLite (R307).
+    Enforces explicit Review Policy Gate without implicit candidate mining (NV-13, NS-04).
     """
-    # Domain Hard Gate: Review Gate check before build (Ticket C001, Spec S3.2)
     from iad_core.review.service import ReviewQueueService
-    from iad_domain_server.tools.candidate_tools import candidate_mine
 
+    if not config_path:
+        for candidate_path in [f"configs/{task_id}.yaml", "configs/kuangjiao.yaml"]:
+            if os.path.exists(candidate_path):
+                config_path = candidate_path
+                break
+    cfg = load_config(config_path) if config_path and os.path.exists(config_path) else None
+
+    # Domain Hard Gate: Check Review Policy and required reviews (NV-13, NS-04)
     review_svc = ReviewQueueService(task_id=task_id, db_path=db_path)
-    if len(review_svc.candidates) == 0:
-        stats = review_svc.repo.get_stats(task_id)
-        if stats.get("total_decisions", 0) == 0:
-            mine_res = candidate_mine(task_id=task_id, config_path=config_path, db_path=db_path)
-            review_svc = ReviewQueueService(task_id=task_id, db_path=db_path)
+    decisions = review_svc.repo.list_decisions_by_task(task_id)
+    decided_ids = {d.sample_id for d in decisions}
 
-    if len(review_svc.candidates) > 0 and review_svc.pending_count > 0:
+    required_ids = list(cfg.review_policy.required_review_ids) if cfg and hasattr(cfg, "review_policy") else []
+    required_cand_ids = [c.sample_id for c in review_svc.candidates if getattr(c, "is_required", True)]
+    all_required_ids = set(required_ids) | set(required_cand_ids)
+
+    pending_required = [sid for sid in all_required_ids if sid not in decided_ids]
+    if pending_required:
         return ToolResult(
             status=ToolStatus.REVIEW_REQUIRED,
             summary=(
-                f"Benchmark build halted for task '{task_id}': {review_svc.pending_count}/{len(review_svc.candidates)} "
+                f"Benchmark build halted for task '{task_id}': {len(pending_required)}/{len(all_required_ids)} "
                 f"hard normal candidates require human review before benchmark construction."
             ),
             metrics={
                 "total_candidates": len(review_svc.candidates),
-                "reviewed_count": review_svc.reviewed_count,
-                "pending_count": review_svc.pending_count,
+                "pending_required_count": len(pending_required),
+                "reviewed_count": len(decided_ids),
+                "pending_count": len(pending_required),
             },
-            warnings=["Unreviewed hard normal candidates exist. Human review is strictly required."],
+            warnings=["Unreviewed required hard normal candidates exist. Human review is strictly required."],
             next_actions=["Human operator must submit review decisions in Web UI before building benchmark."],
             mutation=MutationType.NONE,
         )
+
+    # Check Gold sufficiency and conflicts
+    gold_policy = cfg.gold if cfg else None
+    if gold_policy:
+        gold_res = build_gold(
+            task_id=task_id,
+            policy=gold_policy,
+            db_path=db_path,
+            persist_to_db=False,
+        )
+        gold_records = gold_res.records
+        conflicts = gold_res.conflicts
+        confirmed_normals = [g for g in gold_records if g.gold_status == "CONFIRMED" and g.binary_label == "NORMAL"]
+        if len(confirmed_normals) == 0:
+            return ToolResult(
+                status=ToolStatus.REVIEW_REQUIRED,
+                summary=f"Benchmark build halted: 0 confirmed normal Gold records found for '{task_id}'.",
+                warnings=["No confirmed normal samples found. Benchmark cannot be created without normal samples."],
+                next_actions=["Submit human review decisions confirming normal samples."],
+                mutation=MutationType.NONE,
+            )
+        if conflicts and cfg and cfg.review_policy.block_on_conflicts:
+            return ToolResult(
+                status=ToolStatus.REVIEW_REQUIRED,
+                summary=f"Benchmark build halted: {len(conflicts)} Gold conflict(s) detected for '{task_id}'.",
+                metrics={"conflicts_count": len(conflicts)},
+                warnings=["Gold conflicts detected. Resolve conflicts before proceeding."],
+                next_actions=["Resolve conflicting annotations or review decisions."],
+                mutation=MutationType.NONE,
+            )
 
     try:
         res = run_benchmark_pipeline(
