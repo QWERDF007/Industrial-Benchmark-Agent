@@ -13,14 +13,15 @@
 - [1. 核心设计原则](#1-核心设计原则)
 - [2. 架构与工程结构](#2-架构与工程结构)
 - [3. 环境与安装](#3-环境与安装)
-- [4. 数据集配置 (Dataset Config)](#4-数据集配置-dataset-config)
-- [5. 运行指南 (Scan & Audit)](#5-运行指南-scan--audit)
-- [6. 标注与质量语义规范](#6-标注与质量语义规范)
-- [7. Benchmark 赛道就绪性 (Track Readiness) 判定逻辑](#7-benchmark-赛道就绪性-track-readiness-判定逻辑)
-- [8. 真实数据集接入情况 (框胶数据集)](#8-真实数据集接入情况-框胶数据集)
-- [9. 如何新增 Dataset Adapter](#9-如何新增-dataset-adapter)
-- [10. 测试套件](#10-测试套件)
-- [11. 交付清单](#11-交付清单)
+- [4. 服务启动与局域网访问 (Service Startup & LAN Access)](#4-服务启动与局域网访问-service-startup--lan-access)
+- [5. 数据集配置 (Dataset Config)](#5-数据集配置-dataset-config)
+- [6. 运行指南 (Scan & Audit)](#6-运行指南-scan--audit)
+- [7. 标注与质量语义规范](#7-标注与质量语义规范)
+- [8. Benchmark 赛道就绪性 (Track Readiness) 判定逻辑](#8-benchmark-赛道就绪性-track-readiness-判定逻辑)
+- [9. 真实数据集接入情况 (框胶数据集)](#9-真实数据集接入情况-框胶数据集)
+- [10. 如何新增 Dataset Adapter](#10-如何新增-dataset-adapter)
+- [11. 测试套件](#11-测试套件)
+- [12. 交付清单](#12-交付清单)
 
 ---
 
@@ -45,68 +46,104 @@
 
 ```text
 Industrial-Benchmark-Agent/
-├── app/
-│   ├── schemas/              # Pydantic 核心数据模型与配置定义
-│   │   ├── task.py           # InspectionTask
-│   │   ├── sample.py         # Sample, QualityStatus (PASS, FAIL, UNCERTAIN)
-│   │   ├── annotation.py     # Annotation, AnnotationType, AnnotationSource
-│   │   ├── issue.py          # ImportIssue, IssueType, Severity
-│   │   ├── audit.py          # DatasetAudit, TrackReadiness
-│   │   └── config.py         # DatasetConfig, load_config
-│   ├── adapters/             # 数据集格式适配层
-│   │   ├── base.py           # DatasetAdapter 抽象基类与通用解析
-│   │   ├── folder.py         # GenericFolderAdapter
-│   │   ├── labelme.py        # LabelmeAdapter (支持矩形、多边形与配对路径替换)
-│   │   └── yolo.py           # YOLOAdapter (归一化坐标转换)
-│   ├── tools/
-│   │   └── dataset.py        # 顶层数据扫描与审计工具入口
-│   ├── services/             # 业务服务层
-│   │   ├── dataset_service.py # 流式批量扫描与事务写入 (scan_dataset)
-│   │   └── audit_service.py  # 审计聚合统计与 Markdown/JSON 报告生成 (audit_dataset)
-│   ├── storage/              # SQLite 存储层
-│   │   ├── database.py       # WAL 模式与表结构初始化
-│   │   └── repositories.py   # Task, Sample, Annotation, Issue 仓储操作
-│   └── cli/
-│       └── main.py           # Typer CLI (iad-benchmark scan / audit)
+├── config/                   # 局域网与框架 Patch 配置
+│   └── dsh_web_lan_patch.yml # DeepSeek Harness Web 局域网绑定与鉴权 Patch
 ├── configs/
 │   ├── example.yaml          # 规范示例配置
 │   └── kuangjiao.yaml        # 真实工业数据配置 (框胶外观检测)
-├── scripts/
-│   ├── scan_dataset.py       # 独立扫描脚本
-│   └── audit_dataset.py      # 独立审计脚本
+├── python/                   # 后端核心包与领域服务
+│   ├── iad_core/             # 数据底座、特征检索与评审逻辑
+│   ├── iad_domain_server/    # FastAPI 领域后端服务与内置 Tool Gateway
+│   └── iad_cli/              # CLI 命令行入口
+├── node_modules/             # DeepSeek Harness 前端与 Cordis 运行库
 ├── tests/                    # 完整单元与集成测试套件
-│   ├── test_schema.py        # Schema 约束与合法性测试
-│   ├── test_database.py      # 数据库与幂等性测试
-│   ├── test_adapters.py      # Folder, Labelme, YOLO Adapter 测试
-│   ├── test_scanner.py       # 数据集扫描端到端与异常恢复测试
-│   └── test_audit.py         # 审计统计精度与赛道判定测试
-├── data/
-│   └── benchmark.db          # SQLite 数据库持久化存储
-└── runs/
-    └── dataset_audit/        # 审计输出报告目录
-        └── <task_id>/
-            ├── audit_report.json
-            └── audit_report.md
+├── runs/                     # 运行日志与审计报告生成目录 (自动忽略)
+├── start.sh                  # 一键启动脚本 (Domain Server + Web 看板)
+├── stop.sh                   # 一键停止脚本
+└── status.sh                 # 服务运行状态检查脚本
 ```
 
 ---
 
 ## 3. 环境与安装
 
-本项目使用 Python 3.8+。推荐使用既有的 conda 环境：
+本项目后端基于 **Python 3.12**，前端及交互内核基于 **Node.js (>= 22)**。
+
+### 3.1 Python 3.12 虚拟环境 (`iad_agent`)
+
+推荐使用专用的 conda 环境 `iad_agent`：
 
 ```bash
-# 激活环境
-conda activate dinomaly
-# 或使用完整二进制路径: /home/dell/anaconda3/envs/dinomaly/bin/python
+# 创建并激活环境
+conda create -n iad_agent python=3.12 -y
+conda activate iad_agent
 
-# 安装本工程依赖 (以可编辑模式安装)
-pip install -e .
+# 安装项目核心与开发依赖 (可编辑模式)
+pip install -e ".[dev]"
+```
+
+> **环境路径说明**：本机默认 Python 解释器路径为 `/home/dell/anaconda3/envs/iad_agent/bin/python`。
+
+### 3.2 Node.js 运行时
+
+DeepSeek Harness Web 端需使用 Node.js >= 22（推荐 v24）。本机已配置兼容系统 glibc 2.17+ 的 Node.js：
+
+```bash
+# 查看 Node.js 版本 (确认输出 >= v22)
+node -v
+
+# 安装前端依赖
+pnpm install
 ```
 
 ---
 
-## 4. 数据集配置 (Dataset Config)
+## 4. 服务启动与局域网访问 (Service Startup & LAN Access)
+
+系统提供了开箱即用的多服务自动化启停与探测脚本，同时启动 **Python 领域核心服务 (FastAPI)** 与 **DeepSeek Harness Web 交互看板**，并自动绑定到局域网 IP（`0.0.0.0`），支持从局域网内任意客户端浏览器访问。
+
+### 4.1 一键启停命令
+
+```bash
+# 启动所有服务 (后台守护运行并打印访问 URL)
+./start.sh
+# 或
+pnpm start
+
+# 查看当前服务运行状态与监听端口
+./status.sh
+# 或
+pnpm status
+
+# 停止所有服务并释放端口
+./stop.sh
+# 或
+pnpm stop
+```
+
+### 4.2 局域网访问端点
+
+服务启动后，终端将输出专属访问地址（以主机局域网 IP `192.168.2.87` 为例）：
+
+| 服务模块 | 局域网访问地址 | 默认端口 | 说明 |
+|---|---|---|---|
+| **Web 质检看板与交互控制台** | `http://192.168.2.87:5173/?token=<TOKEN>` | `5173` | DeepSeek Harness Web 前端，需携带启动时生成的 Token 鉴权 |
+| **领域后端 API 服务** | `http://192.168.2.87:8000` | `8000` | FastAPI 核心接口，已放行局域网跨域 (CORS) |
+| **API 交互式文档 (Swagger)** | `http://192.168.2.87:8000/docs` | `8000` | 在线 API 调试与协议文档 |
+
+> **提示**：运行日志持久化存储在 `runs/domain_server.log` 和 `runs/dsh_web.log`，可通过 `tail -f runs/*.log` 实时监控。
+
+### 4.3 外部多模态 VLM 推理接入
+
+系统内置支持标准 OpenAI 兼容协议的多模态大模型：
+- **服务端点**：`http://192.168.2.197:30002/v1`
+- **模型名称**：`Qwen/Qwen3.8-27B-FP8`
+- **API Key**：`sk-123456`
+
+
+---
+
+## 5. 数据集配置 (Dataset Config)
 
 通过 YAML 文件声明数据集目录、检测任务、质检标签来源与标注转换规则。以生产线框胶数据为例 (`configs/kuangjiao.yaml`)：
 
@@ -175,31 +212,31 @@ metadata:
 
 ---
 
-## 5. 运行指南 (Scan & Audit)
+## 6. 运行指南 (Scan & Audit)
 
-### 5.1 CLI 命令行方式 (`iad-benchmark`)
+### 6.1 CLI 命令行方式 (`iad-benchmark` / `iad`)
 
 ```bash
 # 执行数据集扫描与入库
-iad-benchmark scan --config configs/kuangjiao.yaml --db data/benchmark.db
+iad scan --config configs/kuangjiao.yaml --db data/benchmark.db
 
 # 执行数据质量与 Benchmark 赛道就绪性审计
-iad-benchmark audit --task kuangjiao_inspection_01 --db data/benchmark.db
+iad audit --task kuangjiao_inspection_01 --db data/benchmark.db
 ```
 
-### 5.2 Python 模块调用方式
+### 6.2 Python 模块调用方式
 
 ```bash
 # 扫描
-python -m scripts.scan_dataset --config configs/kuangjiao.yaml --db data/benchmark.db
+python -m iad_cli.main scan --config configs/kuangjiao.yaml --db data/benchmark.db
 
 # 审计
-python -m scripts.audit_dataset --task kuangjiao_inspection_01 --db data/benchmark.db
+python -m iad_cli.main audit --task kuangjiao_inspection_01 --db data/benchmark.db
 ```
 
 ---
 
-## 6. 标注与质量语义规范
+## 7. 标注与质量语义规范
 
 | 概念 | 对应实体 | 语义 | 示例 |
 |---|---|---|---|
@@ -210,7 +247,7 @@ python -m scripts.audit_dataset --task kuangjiao_inspection_01 --db data/benchma
 
 ---
 
-## 7. Benchmark 赛道就绪性 (Track Readiness) 判定逻辑
+## 8. Benchmark 赛道就绪性 (Track Readiness) 判定逻辑
 
 Step 1 仅根据数据底层结构进行严谨初判，绝不伪造结果：
 
@@ -228,7 +265,7 @@ Step 1 仅根据数据底层结构进行严谨初判，绝不伪造结果：
 
 ---
 
-## 8. 真实数据集接入情况 (框胶数据集)
+## 9. 真实数据集接入情况 (框胶数据集)
 
 已完成 `/data1/wt/data/框胶数据集` 全量数据扫描入库与审计：
 
@@ -250,7 +287,7 @@ Step 1 仅根据数据底层结构进行严谨初判，绝不伪造结果：
 
 ---
 
-## 9. 如何新增 Dataset Adapter
+## 10. 如何新增 Dataset Adapter
 
 实现自定义数据集适配器只需继承 `iad_core.dataset.adapters.base.DatasetAdapter` 并重写核心方法：
 
@@ -269,27 +306,36 @@ class CustomDetectorAdapter(DatasetAdapter):
 
 ---
 
-## 10. 测试套件
+## 11. 测试套件
 
 运行完整单元测试与集成测试：
 
 ```bash
-/home/dell/anaconda3/envs/dinomaly/bin/python -m pytest -v
+# 使用 npm/pnpm 统一命令 (基于 iad_agent Python 3.12 执行)
+pnpm test
+
+# 或直接通过虚拟环境执行指定测试模块
+/home/dell/anaconda3/envs/iad_agent/bin/python -m pytest tests/test_internal_api.py tests/test_internal_tools.py -v
 ```
 
-当前全部 17 项测试均通过：
+测试覆盖包括：
 - `tests/test_schema.py`: Schema 约束与非法状态过滤
 - `tests/test_database.py`: SQLite 数据库与幂等性插入验证
 - `tests/test_adapters.py`: Folder, Labelme, YOLO 适配器独立解析验证
 - `tests/test_scanner.py`: 扫描服务流式处理、损坏图像容错与幂等重跑验证
 - `tests/test_audit.py`: 审计指标计算、缺失率与报告输出校验
+- `tests/test_internal_api.py`: FastAPI 内部接口与中间件测试
+- `tests/test_internal_tools.py`: 领域工具网关与 Feature / Review / Task 执行测试
+- `tests/test_live_vlm_e2e.py`: 真实远程 VLM 模型端到端质检与留痕测试
 
 ---
 
-## 11. 交付清单
+## 12. 交付清单
 
-- 源码与 CLI：`app/`, `scripts/`, `configs/`
-- SQLite 数据库：`data/benchmark.db`
+- 核心源码：`python/iad_core/`, `python/iad_domain_server/`, `python/iad_cli/`
+- 前端与交互内核：`config/dsh_web_lan_patch.yml`, `node_modules/`
+- 运维脚本：`start.sh`, `stop.sh`, `status.sh`
+- 数据集配置与数据库：`configs/`, `data/benchmark.db`
 - 结构化审计结果：`runs/dataset_audit/kuangjiao_inspection_01/audit_report.json`
 - Markdown 审计报告：`runs/dataset_audit/kuangjiao_inspection_01/audit_report.md`
-- 规格文档与工单记录：`docs/Step1_Dataset_Foundation_SPECS.md`, `docs/Step1_Dataset_Foundation_TICKETS.md`
+- 架构设计与工单记录：`docs/`
