@@ -24,7 +24,7 @@ export function detectImageMediaType(bytes, headerType) {
             return "image/png";
         }
     }
-    return "image/png";
+    throw new Error("Unsupported or unrecognized image format: only image/png and image/jpeg are supported.");
 }
 export class CoreClient {
     baseUrl;

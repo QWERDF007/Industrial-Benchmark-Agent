@@ -20,6 +20,7 @@ export { createEvaluationTools } from "./evaluation/index.js";
 export interface IADHarnessConfig {
   domainServerUrl?: string;
   timeoutMs?: number;
+  authorizedMcpTools?: string[];
 }
 
 export const name = "iad-harness";
@@ -29,8 +30,9 @@ export function apply(ctx: any, config: IADHarnessConfig = {}) {
   // 1. Initialize shared core HTTP client
   coreClient.apply(ctx, config);
 
-  // 2. Invariant policies and tool restriction
-  policy.apply(ctx);
+  // 2. Invariant policies and tool restriction with MCP authorization (NXM-10, NXM-11)
+  policy.apply(ctx, config);
+
 
   // 3. Register native domain tools
   audit.apply(ctx);

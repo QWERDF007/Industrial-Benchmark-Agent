@@ -43,7 +43,7 @@ export const ALLOWED_TOOL_SURFACE = [
 ];
 export const name = "iad-policy";
 export const inject = ["tools", "systemPrompt"];
-export function apply(ctx) {
+export function apply(ctx, config = {}) {
     // Invariant Policy Injection via official systemPrompt.section
     if (ctx.systemPrompt && typeof ctx.systemPrompt.section === "function") {
         ctx.systemPrompt.section({
@@ -52,17 +52,50 @@ export function apply(ctx) {
             text: SYSTEM_POLICIES,
         });
     }
+    const authorizedMcp = Array.isArray(config.authorizedMcpTools) ? config.authorizedMcpTools : [];
+    const effectiveAllowed = [...ALLOWED_TOOL_SURFACE, ...authorizedMcp];
     // Tool Surface Restriction via official tools.restrict (Fail-fast)
     const applyRestriction = (toolsCtx) => {
         if (toolsCtx && typeof toolsCtx.restrict === "function") {
-            toolsCtx.restrict({ allow: ALLOWED_TOOL_SURFACE });
+            try {
+                toolsCtx.restrict({ allow: effectiveAllowed });
+            }
+            catch (err) {
+                // Root context does not support tools.restrict() in dsh-tools (requires agent.ctx)
+            }
         }
     };
     applyRestriction(ctx.tools);
+    // Execution Guard (NXM-11): Prevent unauthorized tool execution and authority writes
+    const policyGuard = (exec) => {
+        const toolName = exec?.name || "";
+        // 1. Strict invariant: Deny any tool attempting to author review decisions or mutate Gold/Quality
+        if (toolName.includes("review_write") ||
+            toolName.includes("gold_edit") ||
+            toolName.includes("gold_write") ||
+            toolName.includes("sample_quality_write") ||
+            toolName.includes("decision_write") ||
+            (toolName.startsWith("mcp__") && (toolName.endsWith("__delete") || toolName.includes("mutate_gold")))) {
+            return `Execution denied by Industrial Benchmark Policy: Tool '${toolName}' attempts unauthorized mutation of authoritative domain quality, review decisions, or Gold records.`;
+        }
+        // 2. Deny any MCP tool not explicitly in authorized list
+        if (toolName.startsWith("mcp__")) {
+            if (!authorizedMcp.includes(toolName)) {
+                return `Execution denied by Industrial Benchmark Policy: MCP tool '${toolName}' is not in the authorized tool surface for this deployment.`;
+            }
+        }
+        return undefined; // Allowed
+    };
+    if (ctx.tools && typeof ctx.tools.guard === "function") {
+        ctx.tools.guard(policyGuard);
+    }
     if (typeof ctx.on === "function") {
         ctx.on("agent/created", ({ agent }) => {
             applyRestriction(agent?.ctx?.tools);
+            if (agent?.ctx?.tools && typeof agent.ctx.tools.guard === "function") {
+                agent.ctx.tools.guard(policyGuard);
+            }
         });
     }
-    ctx.logger?.info?.("Industrial Benchmark Policy Plugin initialized.");
+    ctx.logger?.info?.("Industrial Benchmark Policy Plugin initialized with guard.");
 }

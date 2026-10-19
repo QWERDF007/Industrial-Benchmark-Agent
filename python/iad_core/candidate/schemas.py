@@ -11,19 +11,27 @@ class CandidateSignals(BaseModel):
 
 class CandidateRecord(BaseModel):
     sample_id: str
-    rank: int
-    candidate_score: float = Field(..., description="Weighted composite candidate score (0..1)")
-    signals: CandidateSignals
-    data_origin: str
-    quality_status: str
+    rank: int = 0
+    candidate_score: float = Field(0.5, description="Weighted composite candidate score (0..1)")
+    signals: CandidateSignals = Field(
+        default_factory=lambda: CandidateSignals(
+            normal_distance=0.5,
+            density_outlier=0.5,
+            domain_novelty=0.5,
+            annotation_signal=0.0,
+        )
+    )
+    data_origin: str = "REAL"
+    quality_status: str = "UNCERTAIN"
     batch_id: Optional[str] = None
     physical_sample_id: Optional[str] = None
-    image_path: str
-    relative_path: str
+    image_path: str = ""
+    relative_path: str = ""
     is_required: bool = True
     sources: Optional[List[str]] = Field(default_factory=list, description="Discovery channels e.g. DINO, LLM, AUDIT")
     priority_reason: Optional[str] = Field(None, description="Detailed reason for review prioritization")
     source_scores: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Per-source score breakdown")
+
 
 
 class CandidateScoringWeights(BaseModel):

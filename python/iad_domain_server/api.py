@@ -70,12 +70,13 @@ DB_PATH = "data/benchmark.db"
 class ReviewDecisionRequest(BaseModel):
     sample_id: str
     decision: str = Field(..., description="PASS, HARD_NORMAL, FAIL, UNCERTAIN, SKIP")
-    session_id: str = Field(..., description="Active Review session ID")
+    session_id: Optional[str] = Field(None, description="Active Review session ID (optional if present in path)")
     reason_code: Optional[str] = None
     comment: Optional[str] = None
     duration_ms: Optional[int] = None
     started_at: Optional[str] = None
     submitted_at: Optional[str] = None
+
 
 
 class SessionStartRequest(BaseModel):
@@ -257,7 +258,12 @@ def submit_review_decision(req: ReviewDecisionRequest, session_id: Optional[str]
     db = Database(DB_PATH)
     repo = ReviewRepository(db)
 
-    target_session_id = session_id if (session_id and session_id.startswith("revsess_")) else req.session_id
+    target_session_id = (
+        (session_id if session_id and session_id.startswith("revsess_") else None)
+        or (task_id if task_id and task_id.startswith("revsess_") else None)
+        or req.session_id
+        or session_id
+    )
     if not target_session_id:
         raise HTTPException(status_code=400, detail="Active session_id is required to submit review decisions.")
 
@@ -399,24 +405,26 @@ def validate_sample_image_path(sample) -> str:
     if "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ:
         allowed_roots.append(os.path.realpath(tempfile.gettempdir()))
 
+    # Resolve authorized dataset root from configs (NXM-17, F08)
+    if os.path.isdir("configs"):
+        for fname in os.listdir("configs"):
+            if fname.endswith((".yaml", ".yml")):
+                cfg_file = os.path.join("configs", fname)
+                try:
+                    from iad_core.task.config import load_config
+                    cfg = load_config(cfg_file)
+                    if cfg and cfg.root and os.path.exists(cfg.root):
+                        allowed_roots.append(os.path.realpath(cfg.root))
+                except Exception:
+                    pass
+
+    # Strictly check containment within authorized dataset roots (NXM-17, F08)
     for root in allowed_roots:
         try:
             if os.path.commonpath([real_path, root]) == root:
                 return real_path
         except ValueError:
             continue
-
-    if sample.relative_path:
-        norm_rel = os.path.normpath(sample.relative_path)
-        if not norm_rel.startswith("..") and not os.path.isabs(norm_rel):
-            if real_path.endswith(norm_rel):
-                ds_root = os.path.realpath(real_path[:-len(norm_rel)])
-                if os.path.isdir(ds_root):
-                    try:
-                        if os.path.commonpath([real_path, ds_root]) == ds_root:
-                            return real_path
-                    except ValueError:
-                        pass
 
     raise HTTPException(status_code=403, detail="Forbidden: Image path is outside authorized dataset root.")
 

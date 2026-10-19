@@ -143,6 +143,7 @@ def test_audit_suggestion_save(audit_test_db):
     res = audit_suggestion_save(
         task_id="t_audit",
         suggestion={
+            "suggestion_id": "sug_test_unique_01",
             "sample_id": "t_audit:s2",
             "observations": [{"phenomenon": "dimension mismatch", "description": "Annotated for 500x500 instead of 100x100"}],
             "conclusion_status": "EVIDENCE_SUPPORTED",
@@ -153,3 +154,47 @@ def test_audit_suggestion_save(audit_test_db):
     assert res.status == ToolStatus.OK
     assert res.metrics["sample_id"] == "t_audit:s2"
     assert res.metrics["recommended_action"] == "RECHECK"
+
+    # NXM-06: Duplicate suggestion ID cannot overwrite
+    with pytest.raises(Exception):
+        audit_suggestion_save(
+            task_id="t_audit",
+            suggestion={
+                "suggestion_id": "sug_test_unique_01",
+                "sample_id": "t_audit:s2",
+                "conclusion_status": "EVIDENCE_SUPPORTED",
+                "recommended_action": "RECHECK",
+            },
+            db_path=audit_test_db,
+        )
+
+    # NXM-06: Invalid conclusion_status strictly rejected (no silent fallback)
+    with pytest.raises(ValueError, match="Invalid conclusion_status"):
+        audit_suggestion_save(
+            task_id="t_audit",
+            suggestion={
+                "sample_id": "t_audit:s2",
+                "conclusion_status": "HYPOTHESIS_ONLY",
+                "recommended_action": "RECHECK",
+            },
+            db_path=audit_test_db,
+        )
+
+    # NXM-06: Invalid recommended_action strictly rejected (no silent fallback)
+    with pytest.raises(ValueError, match="Invalid recommended_action"):
+        audit_suggestion_save(
+            task_id="t_audit",
+            suggestion={
+                "sample_id": "t_audit:s2",
+                "conclusion_status": "EVIDENCE_SUPPORTED",
+                "recommended_action": "HARD_NORMAL",
+            },
+            db_path=audit_test_db,
+        )
+
+    # NXM-06: Verify Sample.quality_status was NOT mutated
+    db = Database(audit_test_db)
+    sample_repo = SampleRepository(db)
+    s2 = sample_repo.get("t_audit:s2")
+    assert s2.quality_status.value == "PASS"
+

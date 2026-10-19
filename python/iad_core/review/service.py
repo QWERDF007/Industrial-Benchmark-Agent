@@ -31,14 +31,27 @@ class ReviewQueueService:
         db: Optional[Database] = None,
         db_path: str = "data/benchmark.db",
         candidates_json_path: Optional[str] = None,
+        config_path: Optional[str] = None,
     ):
         self.task_id = task_id
         self.db = db or Database(db_path)
         self.repo = ReviewRepository(self.db)
         self.sample_repo = SampleRepository(self.db)
+        self.config_path = config_path
+
+        self.required_review_ids: Set[str] = set()
+        if self.config_path and os.path.exists(self.config_path):
+            try:
+                from iad_core.task.config import load_config
+                cfg = load_config(self.config_path)
+                if hasattr(cfg, "review_policy") and hasattr(cfg.review_policy, "required_review_ids"):
+                    self.required_review_ids = set(cfg.review_policy.required_review_ids)
+            except Exception as e:
+                logger.warning(f"Failed to load review policy from {self.config_path}: {e}")
 
         if candidates_json_path:
             self.candidates_json_path = candidates_json_path
+            self._explicit_candidates_path = True
         else:
             merged_path = os.path.join("runs", "candidates", task_id, "merged_candidates.json")
             mining_path = os.path.join("runs", "candidate_mining", task_id, "candidates.json")
@@ -47,81 +60,127 @@ class ReviewQueueService:
             elif os.path.exists(mining_path):
                 self.candidates_json_path = mining_path
             else:
-                self.candidates_json_path = merged_path
+                self.candidates_json_path = None
+            self._explicit_candidates_path = False
 
         self.evidence_builder = EvidenceBuilder(
             task_id=task_id,
             db=self.db,
-            candidates_json_path=self.candidates_json_path,
+            candidates_json_path=self.candidates_json_path or "",
         )
 
         self._candidates: List[CandidateRecord] = []
         self._load_candidates()
 
     def _load_candidates(self):
-        if os.path.exists(self.candidates_json_path):
-            try:
-                with open(self.candidates_json_path, "r", encoding="utf-8") as f:
-                    raw_data = json.load(f)
+        if self.candidates_json_path:
+            if not os.path.exists(self.candidates_json_path):
+                if self._explicit_candidates_path:
+                    raise FileNotFoundError(f"Candidate file '{self.candidates_json_path}' not found")
+            else:
+                try:
+                    with open(self.candidates_json_path, "r", encoding="utf-8") as f:
+                        raw_data = json.load(f)
+                except Exception as e:
+                    logger.error(f"Failed to read candidates JSON from {self.candidates_json_path}: {e}")
+                    raise ValueError(f"Corrupted or invalid candidates file at '{self.candidates_json_path}': {e}") from e
 
-                # Case 1: merged_candidates.json with items list
-                if isinstance(raw_data, dict) and "items" in raw_data:
-                    cands = []
-                    for idx, item in enumerate(raw_data["items"]):
-                        s_id = item.get("sample_id")
-                        sample_obj = self.sample_repo.get(s_id)
-                        data_origin = (
-                            sample_obj.data_origin.value
-                            if (sample_obj and hasattr(sample_obj.data_origin, "value"))
-                            else "REAL"
-                        )
-                        quality_status = (
-                            sample_obj.quality_status.value
-                            if (sample_obj and hasattr(sample_obj.quality_status, "value"))
-                            else (item.get("quality_status") or "UNCERTAIN")
-                        )
-                        sources = item.get("sources", [])
-                        # Only DINO candidates or explicit required IDs are required by default (V2-14)
-                        is_req = "DINO" in sources
+                raw_cands = None
+                if isinstance(raw_data, dict):
+                    raw_cands = raw_data.get("candidates")
+                    if raw_cands is None:
+                        raw_cands = raw_data.get("items")
+                elif isinstance(raw_data, list):
+                    raw_cands = raw_data
 
-                        cands.append(
-                            CandidateRecord(
-                                sample_id=s_id,
-                                rank=idx + 1,
-                                candidate_score=float(item.get("dino_score") if item.get("dino_score") is not None else 0.5),
-                                signals=CandidateSignals(
-                                    normal_distance=0.5,
-                                    density_outlier=0.5,
-                                    domain_novelty=0.5,
-                                    annotation_signal=0.0,
-                                ),
-                                data_origin=data_origin,
-                                quality_status=quality_status,
-                                batch_id=sample_obj.batch_id if sample_obj else None,
-                                physical_sample_id=sample_obj.physical_sample_id if sample_obj else None,
-                                image_path=sample_obj.image_path if sample_obj else "",
-                                relative_path=sample_obj.relative_path if sample_obj else (item.get("relative_path") or ""),
-                                is_required=is_req,
-                                sources=sources,
-                                priority_reason=item.get("priority_reason"),
-                                source_scores={
-                                    "dino": item.get("dino_score"),
-                                    "llm": item.get("llm_suggestions"),
-                                    "audit": item.get("audit_issues"),
-                                },
-                            )
-                        )
-                    self._candidates = cands
-                    logger.info(f"Loaded {len(self._candidates)} merged candidates from {self.candidates_json_path}")
-                    return
+                if raw_cands is None:
+                    raise ValueError(f"No 'candidates' or 'items' array found in '{self.candidates_json_path}'")
 
-                # Case 2: Standard candidates.json list or dict
-                raw_cands = raw_data.get("candidates", []) if isinstance(raw_data, dict) else raw_data
-                self._candidates = [CandidateRecord(**c) for c in raw_cands]
+                cands: List[CandidateRecord] = []
+                for idx, item in enumerate(raw_cands):
+                    if isinstance(item, CandidateRecord):
+                        cands.append(item)
+                        continue
+                    if not isinstance(item, dict):
+                        continue
+
+                    s_id = item.get("sample_id")
+                    if not s_id:
+                        continue
+
+                    sample_obj = self.sample_repo.get(s_id)
+                    data_origin = (
+                        sample_obj.data_origin.value
+                        if (sample_obj and hasattr(sample_obj.data_origin, "value"))
+                        else (str(sample_obj.data_origin) if sample_obj and sample_obj.data_origin else item.get("data_origin", "REAL"))
+                    )
+                    quality_status = (
+                        sample_obj.quality_status.value
+                        if (sample_obj and hasattr(sample_obj.quality_status, "value"))
+                        else (str(sample_obj.quality_status) if sample_obj and sample_obj.quality_status else item.get("quality_status", "UNCERTAIN"))
+                    )
+                    image_path = sample_obj.image_path if (sample_obj and sample_obj.image_path) else item.get("image_path", "")
+                    relative_path = sample_obj.relative_path if (sample_obj and sample_obj.relative_path) else item.get("relative_path", "")
+                    batch_id = sample_obj.batch_id if sample_obj else item.get("batch_id")
+                    physical_sample_id = sample_obj.physical_sample_id if sample_obj else item.get("physical_sample_id")
+
+                    sources = item.get("sources", [])
+                    if not sources:
+                        sources = ["DINO"]
+
+                    score_val = (
+                        item.get("candidate_score")
+                        if item.get("candidate_score") is not None
+                        else (item.get("dino_score") if item.get("dino_score") is not None else item.get("final_score", 0.5))
+                    )
+                    rank_val = item.get("rank") or (idx + 1)
+
+                    raw_signals = item.get("signals")
+                    if isinstance(raw_signals, dict):
+                        signals = CandidateSignals(**raw_signals)
+                    elif isinstance(raw_signals, CandidateSignals):
+                        signals = raw_signals
+                    else:
+                        signals = CandidateSignals(
+                            normal_distance=0.5,
+                            density_outlier=0.5,
+                            domain_novelty=0.5,
+                            annotation_signal=0.0,
+                        )
+
+                    if item.get("is_required") is not None:
+                        is_req = bool(item["is_required"])
+                    elif s_id in self.required_review_ids:
+                        is_req = True
+                    else:
+                        is_req = ("DINO" in sources)
+
+                    cands.append(
+                        CandidateRecord(
+                            sample_id=s_id,
+                            rank=rank_val,
+                            candidate_score=float(score_val),
+                            signals=signals,
+                            data_origin=data_origin,
+                            quality_status=quality_status,
+                            batch_id=batch_id,
+                            physical_sample_id=physical_sample_id,
+                            image_path=image_path,
+                            relative_path=relative_path,
+                            is_required=is_req,
+                            sources=sources,
+                            priority_reason=item.get("priority_reason"),
+                            source_scores=item.get("source_scores") or {
+                                "dino": item.get("dino_score"),
+                                "llm": item.get("llm_suggestions"),
+                                "audit": item.get("audit_issues"),
+                            },
+                        )
+                    )
+
+                self._candidates = cands
                 logger.info(f"Loaded {len(self._candidates)} candidates from {self.candidates_json_path}")
                 return
-            except Exception as e:
-                logger.warning(f"Failed to read candidates from {self.candidates_json_path}: {e}")
 
         with self.db.connection() as conn:
             cursor = conn.cursor()
@@ -152,11 +211,14 @@ class ReviewQueueService:
                 physical_sample_id=r["physical_sample_id"],
                 image_path=r["image_path"],
                 relative_path=r["relative_path"],
-                is_required=False,
+                is_required=(r["sample_id"] in self.required_review_ids),
+                sources=["UNCERTAIN_POOL"],
+                priority_reason="Unreviewed uncertain pool sample",
             )
             for idx, r in enumerate(rows)
         ]
-        logger.info(f"Loaded {len(self._candidates)} candidate samples from database fallback (is_required=False)")
+        logger.info(f"Loaded {len(self._candidates)} candidate samples from database fallback (no candidate file)")
+
 
     @property
     def candidates(self) -> List[CandidateRecord]:

@@ -19,8 +19,8 @@ export const inject = ["tools", "systemPrompt", "attachments?"];
 export function apply(ctx, config = {}) {
     // 1. Initialize shared core HTTP client
     coreClient.apply(ctx, config);
-    // 2. Invariant policies and tool restriction
-    policy.apply(ctx);
+    // 2. Invariant policies and tool restriction with MCP authorization (NXM-10, NXM-11)
+    policy.apply(ctx, config);
     // 3. Register native domain tools
     audit.apply(ctx);
     vision.apply(ctx);

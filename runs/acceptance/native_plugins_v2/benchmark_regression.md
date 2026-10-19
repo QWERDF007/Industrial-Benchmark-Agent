@@ -8,13 +8,13 @@
 |---|---|---|---|
 | **总图像数量 (Total Images)** | 5,074 | 5,074 | **INVARIANT (一致)** |
 | **已确认 Gold (Confirmed Gold)** | 114 | 114 | **INVARIANT (一致)** |
-| **Train 划分** | 67 (全正常) | 67 (全正常) | **INVARIANT (一致)** |
-| **Validation 划分** | 23 (全正常) | 23 (全正常) | **INVARIANT (一致)** |
-| **Test 划分** | 24 (2 正常 + 22 异常) | 24 (2 正常 + 22 异常) | **INVARIANT (一致)** |
+| **Train 划分** | 67 (4 正常 + 63 异常；无监督选样仅消费 4 正常) | 67 (4 正常 + 63 异常；无监督选样仅消费 4 正常) | **INVARIANT (一致)** |
+| **Validation 划分** | 23 (2 正常 + 21 异常；Val 阈值拟合) | 23 (2 正常 + 21 异常；Val 阈值拟合) | **INVARIANT (一致)** |
+| **Test 划分** | 24 (2 正常 + 22 异常；盲测评估) | 24 (2 正常 + 22 异常；盲测评估) | **INVARIANT (一致)** |
 | **Test Hard Normal** | 1 | 1 | **INVARIANT (一致)** |
-| **FPR 最小分辨率** | 1 / 2 = 50.0% | 1 / 2 = 50.0% | **INVARIANT (一致)** |
-| **Recall@1%FPR** | `NOT_EVALUATED` | `NOT_EVALUATED` | **INVARIANT (一致)** |
-| **Hard Normal FPR** | `PROVISIONAL` (分母为 1) | `PROVISIONAL` (分母为 1) | **INVARIANT (一致)** |
+| **FPR 最小分辨率** | 1 / 2 = 50.0% (Test 仅 2 正常) | 1 / 2 = 50.0% (Test 仅 2 正常) | **INVARIANT (一致)** |
+| **Recall@1%FPR** | `NOT_EVALUATED` (分辨率不足) | `NOT_EVALUATED` (分辨率不足) | **INVARIANT (一致)** |
+| **Hard Normal FPR** | `PROVISIONAL` (分母仅 1 张) | `PROVISIONAL` (分母仅 1 张) | **INVARIANT (一致)** |
 
 ## 2. 核心系统不变量校验 (Strict Invariant Gating)
 1. **阻断性防泄漏网关 (`leakage_check`)**:

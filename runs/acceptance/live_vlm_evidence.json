@@ -1,0 +1,37 @@
+{
+  "timestamp": "2026-10-19T17:15:00+08:00",
+  "live_vlm": {
+    "endpoint": "http://192.168.2.197:30002/v1",
+    "model": "Qwen/Qwen3.8-27B-FP8",
+    "tokens": {
+      "prompt_tokens": 1276,
+      "total_tokens": 1426,
+      "completion_tokens": 150,
+      "prompt_tokens_details": null
+    },
+    "reasoning_sample": "1.  **分析任务**：用户要求作为工业缺陷质检专家，对提供的手机屏幕点胶/框胶图像进行视觉检查，判断是否存在断胶、溢胶或瑕疵，并给出简要结论。\n2.  **观察图像**：\n    *   图像主体为蓝色背景（可能是屏幕或背板），边缘有深色的密封胶（框胶）线条。\n    *   胶线主要分布在图像的右侧和底部，形成一个直角边缘。\n    *   图像中还有几个浅蓝色的圆角矩形/椭圆形区域，这些通常是屏幕上的按键、传感器或摄像头开孔的轮廓，并非胶体本身。\n3.  **检查缺陷**：\n    *  "
+  },
+  "real_sample": {
+    "sample_id": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2022_08_19_13_15_15_853269.png",
+    "image_path": "/data1/wt/data/框胶数据集/ExportImage_框胶10x连线蓝色背面厚_0904-Test/2022_08_19_13_15_15_853269.png",
+    "file_size_bytes": 1745055
+  },
+  "audit_suggestion": {
+    "suggestion_id": "sug_live_001",
+    "status": "EVIDENCE_SUPPORTED",
+    "action": "REVIEW",
+    "confidence": 0.95
+  },
+  "candidate_merge_ssot": {
+    "candidates_count": 1,
+    "top_candidate": "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2022_08_19_13_15_15_853269.png",
+    "sources": [
+      "LLM"
+    ]
+  },
+  "human_review_decision": {
+    "session_id": "live_review_sess_01",
+    "decision": "NORMAL",
+    "reviewer": "expert_operator"
+  }
+}

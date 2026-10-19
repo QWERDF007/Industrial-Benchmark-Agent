@@ -26,6 +26,12 @@ function formatToolResultText(val) {
     return parts.join("\n");
 }
 async function checkImageCapability(ctx, exec) {
+    if (exec?.signal?.aborted) {
+        return {
+            capable: false,
+            reason: "Execution request cancelled",
+        };
+    }
     if (!ctx.attachments || typeof ctx.attachments.saveImage !== "function") {
         return {
             capable: false,
@@ -43,28 +49,41 @@ async function checkImageCapability(ctx, exec) {
                 reason: `Model or session declares inputModalities without 'image': [${sessionModalities.join(", ")}]`,
             };
         }
+        return { capable: true };
     }
     const routed = session?.requestHeader?.()?.config;
     const provider = routed?.provider ?? exec?.agent?.options?.provider;
     const model = routed?.model ?? exec?.agent?.options?.model;
-    const llm = typeof ctx.get === "function" ? ctx.get("llm") : ctx.llm;
-    if (provider && model && llm && typeof llm.resolveModelInfo === "function") {
-        try {
-            const active = await llm.resolveModelInfo(provider, model, exec?.signal);
-            if (active &&
-                active.inputModalities !== undefined &&
-                !active.inputModalities.includes("image")) {
-                return {
-                    capable: false,
-                    reason: `Model '${model}' does not declare image input capability (inputModalities: [${active.inputModalities.join(", ")}])`,
-                };
-            }
-        }
-        catch {
-            // Continue
-        }
+    if (!provider || !model) {
+        return {
+            capable: false,
+            reason: "Unknown model route: provider or model is not specified in current execution context",
+        };
     }
-    return { capable: true };
+    const llm = typeof ctx.get === "function" ? ctx.get("llm") : ctx.llm;
+    if (!llm || typeof llm.resolveModelInfo !== "function") {
+        return {
+            capable: false,
+            reason: "LLM service or resolveModelInfo is unavailable to verify image capability",
+        };
+    }
+    try {
+        const active = await llm.resolveModelInfo(provider, model, exec?.signal);
+        if (!active || !Array.isArray(active.inputModalities) || !active.inputModalities.includes("image")) {
+            const declared = active?.inputModalities ? `[${active.inputModalities.join(", ")}]` : "undefined";
+            return {
+                capable: false,
+                reason: `Model '${model}' does not declare image input capability (inputModalities: ${declared})`,
+            };
+        }
+        return { capable: true };
+    }
+    catch (err) {
+        return {
+            capable: false,
+            reason: `Failed to resolve model image capability for '${provider}/${model}': ${err?.message || err}`,
+        };
+    }
 }
 export function createAuditTools(ctx) {
     const client = getClient(ctx);

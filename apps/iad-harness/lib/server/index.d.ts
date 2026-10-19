@@ -11,6 +11,7 @@ export { createEvaluationTools } from "./evaluation/index.js";
 export interface IADHarnessConfig {
     domainServerUrl?: string;
     timeoutMs?: number;
+    authorizedMcpTools?: string[];
 }
 export declare const name = "iad-harness";
 export declare const inject: string[];

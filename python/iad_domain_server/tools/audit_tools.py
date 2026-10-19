@@ -398,12 +398,14 @@ def audit_suggestion_save(
     try:
         c_status = ConclusionStatus(conclusion_status)
     except ValueError:
-        c_status = ConclusionStatus.INSUFFICIENT_EVIDENCE
+        valid_c = [e.value for e in ConclusionStatus]
+        raise ValueError(f"Invalid conclusion_status '{conclusion_status}'. Must be one of {valid_c}")
 
     try:
         r_action = RecommendedAction(recommended_action)
     except ValueError:
-        r_action = RecommendedAction.REVIEW
+        valid_r = [e.value for e in RecommendedAction]
+        raise ValueError(f"Invalid recommended_action '{recommended_action}'. Must be one of {valid_r}")
 
     suggestion_obj = AuditSuggestion(
         suggestion_id=sug_id,

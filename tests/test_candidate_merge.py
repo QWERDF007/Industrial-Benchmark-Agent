@@ -113,5 +113,33 @@ def test_candidate_merge_provenance_and_breakdown(candidate_merge_db):
     assert "LLM" in top_candidates[0]["sources"]
 
     # Verify generated report artifacts
-    assert os.path.exists(os.path.join(out_dir, "merged_candidates.json"))
+    merged_json_path = os.path.join(out_dir, "merged_candidates.json")
+    assert os.path.exists(merged_json_path)
     assert os.path.exists(os.path.join(out_dir, "merged_candidates.md"))
+
+    # NXM-01 / NXM-02: Feed merged_candidates.json directly to ReviewQueueService
+    from iad_core.review.service import ReviewQueueService
+    db = Database(db_file)
+    review_service = ReviewQueueService(
+        task_id="t_merge",
+        db=db,
+        candidates_json_path=merged_json_path,
+    )
+    items = review_service.candidates
+    assert len(items) == 4, f"Expected 4 merged candidates, got {len(items)}"
+    sample_ids = [it.sample_id for it in items]
+    assert set(sample_ids) == {"t_merge:s1", "t_merge:s2", "t_merge:s3", "t_merge:s4"}
+    
+    # Check that s2 preserves DINO + LLM sources
+    s2_item = next(it for it in items if it.sample_id == "t_merge:s2")
+    assert "DINO" in s2_item.sources
+    assert "LLM" in s2_item.sources
+    assert s2_item.is_required is True
+
+    # Check corrupted JSON raises explicit ValueError/RuntimeError rather than silent fallback
+    corrupt_json_path = os.path.join(out_dir, "corrupt_candidates.json")
+    with open(corrupt_json_path, "w") as f:
+        f.write("{ invalid json")
+    with pytest.raises(Exception):
+        ReviewQueueService(task_id="t_merge", db=db, candidates_json_path=corrupt_json_path)
+

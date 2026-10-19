@@ -57,7 +57,14 @@ test("Audit Tools: sample_view with attachments returns ImageBlock", async () =>
 
   const result = await sampleViewTool.execute(
     { task_id: "task_01", sample_id: "s_01", view: "raw" },
-    { signal: new AbortController().signal }
+    {
+      signal: new AbortController().signal,
+      session: {
+        model: {
+          inputModalities: ["text", "image"],
+        },
+      },
+    }
   );
 
   assert.equal(result.status, "OK");
@@ -142,6 +149,98 @@ test("Audit Tools: sample_view with text-only model returns NOT_READY (F-02, V2-
   );
   assert.equal(result.status, "NOT_READY");
   assert.ok(result.warnings.some((w) => w.includes("拒绝生成视觉观察")));
+});
+
+test("Audit Tools: sample_view with unknown route returns NOT_READY (NXM-04)", async () => {
+  const mockAttachments = { async saveImage() {} };
+  const mockCoreClient = { async call() {}, async fetchImage() {} };
+  const mockCtx = {
+    attachments: mockAttachments,
+    iadCoreClient: mockCoreClient,
+    tools: { register() {} },
+  };
+  const tools = createAuditTools(mockCtx);
+  const sampleViewTool = tools.find((t) => t.name === "sample_view");
+
+  // No session, no provider/model
+  const result = await sampleViewTool.execute(
+    { task_id: "task_01", sample_id: "s_unknown_route" },
+    { signal: new AbortController().signal }
+  );
+  assert.equal(result.status, "NOT_READY");
+  assert.match(result.summary, /Unknown model route/);
+});
+
+test("Audit Tools: sample_view with resolveModelInfo throwing returns NOT_READY (NXM-04)", async () => {
+  const mockAttachments = { async saveImage() {} };
+  const mockCoreClient = { async call() {}, async fetchImage() {} };
+  const mockLlm = {
+    async resolveModelInfo() {
+      throw new Error("Provider connection timed out");
+    },
+  };
+  const mockCtx = {
+    attachments: mockAttachments,
+    iadCoreClient: mockCoreClient,
+    llm: mockLlm,
+    tools: { register() {} },
+  };
+  const tools = createAuditTools(mockCtx);
+  const sampleViewTool = tools.find((t) => t.name === "sample_view");
+
+  const result = await sampleViewTool.execute(
+    { task_id: "task_01", sample_id: "s_throw" },
+    {
+      signal: new AbortController().signal,
+      agent: { options: { provider: "deepseek", model: "deepseek-chat" } },
+    }
+  );
+  assert.equal(result.status, "NOT_READY");
+  assert.match(result.summary, /Failed to resolve model image capability/);
+});
+
+test("Audit Tools: sample_view with aborted signal returns NOT_READY (NXM-04)", async () => {
+  const mockAttachments = { async saveImage() {} };
+  const mockCoreClient = { async call() {}, async fetchImage() {} };
+  const mockCtx = {
+    attachments: mockAttachments,
+    iadCoreClient: mockCoreClient,
+    tools: { register() {} },
+  };
+  const tools = createAuditTools(mockCtx);
+  const sampleViewTool = tools.find((t) => t.name === "sample_view");
+
+  const ac = new AbortController();
+  ac.abort();
+
+  const result = await sampleViewTool.execute(
+    { task_id: "task_01", sample_id: "s_aborted" },
+    {
+      signal: ac.signal,
+      session: { model: { inputModalities: ["text", "image"] } },
+    }
+  );
+  assert.equal(result.status, "NOT_READY");
+  assert.match(result.summary, /cancelled/);
+});
+
+test("CoreClient: detectImageMediaType rejects unsupported and invalid bytes (NXM-05)", async () => {
+  const { detectImageMediaType } = await import("../lib/server/core-client/index.js");
+  
+  // Valid PNG
+  const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  assert.equal(detectImageMediaType(pngBytes), "image/png");
+
+  // Valid JPEG
+  const jpegBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+  assert.equal(detectImageMediaType(jpegBytes), "image/jpeg");
+
+  // Plain text / corrupted bytes
+  const textBytes = new TextEncoder().encode("Hello world this is not an image");
+  assert.throws(() => detectImageMediaType(textBytes), /Unsupported or unrecognized image format/);
+
+  // Empty bytes
+  assert.throws(() => detectImageMediaType(new Uint8Array([])), /Unsupported or unrecognized image format/);
 });
 
 test("Vision Tools: candidate_merge executes and formats correctly", async () => {

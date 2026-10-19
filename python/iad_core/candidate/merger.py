@@ -18,15 +18,26 @@ def merge_candidates(
     include_dino: bool = True,
     include_llm: bool = True,
     include_audit: bool = True,
+    config_path: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Merge candidate samples from multiple independent discovery channels (S09, RP-17):
+    Merge candidate samples from multiple independent discovery channels (S09, RP-17, NXM-01):
       - DINO feature mining (candidate_mine 4-signal)
       - Multimodal LLM active suggestions (AuditSuggestionRepository)
       - Deterministic audit issues (import_issues)
     Deduplicates strictly by sample_id, keeping complete provenance and source breakdown.
     Does NOT mutate Sample.quality_status or ReviewDecisionRecord.
     """
+    required_review_ids: Set[str] = set()
+    if config_path and os.path.exists(config_path):
+        try:
+            from iad_core.task.config import load_config
+            cfg = load_config(config_path)
+            if hasattr(cfg, "review_policy") and hasattr(cfg.review_policy, "required_review_ids"):
+                required_review_ids = set(cfg.review_policy.required_review_ids)
+        except Exception as e:
+            logger.warning(f"Failed to load review policy from {config_path}: {e}")
+
     db = Database(db_path)
     sample_repo = SampleRepository(db)
     sug_repo = AuditSuggestionRepository(db)
@@ -119,6 +130,12 @@ def merge_candidates(
         rel_path = sample_obj.relative_path if sample_obj else "unknown"
         q_status = sample_obj.quality_status.value if (sample_obj and hasattr(sample_obj.quality_status, "value")) else "UNKNOWN"
 
+        is_req = (
+            (s_id in required_review_ids)
+            or ("DINO" in sources)
+            or any(s.get("action") == "REVIEW" for s in llm_suggestions.get(s_id, []))
+        )
+
         merged_items.append({
             "sample_id": s_id,
             "relative_path": rel_path,
@@ -128,6 +145,7 @@ def merge_candidates(
             "llm_suggestions": llm_suggestions.get(s_id, []),
             "audit_issues": audit_issues.get(s_id, []),
             "priority_reason": priority_reason,
+            "is_required": is_req,
         })
 
     def sort_key(item):
