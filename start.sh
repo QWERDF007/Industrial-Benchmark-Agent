@@ -13,6 +13,9 @@ fi
 export no_proxy="localhost,127.0.0.1,${LAN_IP},${no_proxy:-}"
 export NO_PROXY="$no_proxy"
 
+# 本地多模态 VLM (Qwen3.8-27B) API Key
+export LIVE_VLM_KEY="${LIVE_VLM_KEY:-sk-123456}"
+
 echo "========================================================"
 echo "  Industrial Benchmark Agent - 服务启动器"
 echo "  局域网主机 IP: ${LAN_IP}"
@@ -74,6 +77,8 @@ if lsof -Pi :5173 -sTCP:LISTEN -t >/dev/null 2>&1; then
     echo "[!] 提示: 5173 端口已有进程在运行，跳过启动 Harness Web。"
 else
     echo "[3/3] 正在启动 DeepSeek Harness Web 端 (0.0.0.0:5173)..."
+    mkdir -p "${HOME}/.dsh/profiles/web/node_modules/@industrial-benchmark"
+    ln -sfn "${SCRIPT_DIR}/apps/iad-harness" "${HOME}/.dsh/profiles/web/node_modules/@industrial-benchmark/iad-harness"
     setsid "${NODE_EXEC}" "${SCRIPT_DIR}/node_modules/@deepseek-ai/dsh/lib/bin.js" \
         --profile web \
         --patch "${SCRIPT_DIR}/config/dsh_web_lan_patch.yml" \

@@ -24,7 +24,7 @@ export interface IADHarnessConfig {
 }
 
 export const name = "iad-harness";
-export const inject = ["tools", "systemPrompt", "attachments?"];
+export const inject = ["tools", "systemPrompt"];
 
 export function apply(ctx: any, config: IADHarnessConfig = {}) {
   // 1. Initialize shared core HTTP client

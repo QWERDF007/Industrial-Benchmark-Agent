@@ -168,10 +168,9 @@ export class CoreClient {
 }
 export const name = "iad-core-client";
 export function apply(ctx, config = {}) {
-    if (!ctx.iadCoreClient) {
-        if (typeof ctx.provide === "function") {
-            ctx.provide("iadCoreClient");
-        }
-        ctx.iadCoreClient = new CoreClient(config);
+    const client = new CoreClient(config);
+    if (typeof ctx.provide === "function") {
+        ctx.provide("iadCoreClient", client);
     }
+    ctx.iadCoreClient = client;
 }

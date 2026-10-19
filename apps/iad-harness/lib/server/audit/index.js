@@ -407,7 +407,7 @@ export function createAuditTools(ctx) {
     ];
 }
 export const name = "iad-audit";
-export const inject = ["tools", "attachments?"];
+export const inject = ["tools"];
 export function apply(ctx) {
     const tools = createAuditTools(ctx);
     if (ctx.tools && typeof ctx.tools.register === "function") {

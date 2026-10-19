@@ -15,7 +15,7 @@ export { createVisionTools } from "./vision/index.js";
 export { createBenchmarkTools } from "./benchmark/index.js";
 export { createEvaluationTools } from "./evaluation/index.js";
 export const name = "iad-harness";
-export const inject = ["tools", "systemPrompt", "attachments?"];
+export const inject = ["tools", "systemPrompt"];
 export function apply(ctx, config = {}) {
     // 1. Initialize shared core HTTP client
     coreClient.apply(ctx, config);

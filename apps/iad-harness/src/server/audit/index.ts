@@ -453,7 +453,7 @@ export function createAuditTools(ctx: any): ToolDefinition[] {
 }
 
 export const name = "iad-audit";
-export const inject = ["tools", "attachments?"];
+export const inject = ["tools"];
 
 export function apply(ctx: any) {
   const tools = createAuditTools(ctx);
