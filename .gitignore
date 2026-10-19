@@ -13,3 +13,5 @@ docs/
 WORKLOG*.md
 node_modules/
 backbones/
+runs/
+*.log

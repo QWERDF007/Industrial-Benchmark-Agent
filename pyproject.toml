@@ -7,7 +7,7 @@ name = "industrial-ad-benchmark-agent"
 version = "0.5.0"
 description = "Industrial AD Benchmark Agent - DeepSeek Harness & Domain Core"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 dependencies = [
     "pydantic>=2.0.0",
     "pyyaml>=6.0",
@@ -19,11 +19,14 @@ dependencies = [
     "scipy>=1.9.0",
     "scikit-learn>=1.1.0",
     "typing-extensions>=4.0.0",
+    "faiss-cpu>=1.7.0",
+    "httpx>=0.24.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
+    "httpx2>=2.0.0",
 ]
 
 [project.scripts]

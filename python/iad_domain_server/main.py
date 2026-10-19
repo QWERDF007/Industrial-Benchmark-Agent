@@ -6,7 +6,7 @@ import uvicorn
 logger = logging.getLogger("iad_domain_server")
 
 
-def main(host: str = "127.0.0.1", port: int = 8000, reload: bool = False):
+def main(host: str = "0.0.0.0", port: int = 8000, reload: bool = False):
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -16,6 +16,6 @@ def main(host: str = "127.0.0.1", port: int = 8000, reload: bool = False):
 
 
 if __name__ == "__main__":
-    host = os.environ.get("IAD_DOMAIN_SERVER_HOST", "127.0.0.1")
+    host = os.environ.get("IAD_DOMAIN_SERVER_HOST", "0.0.0.0")
     port = int(os.environ.get("IAD_DOMAIN_SERVER_PORT", "8000"))
     main(host=host, port=port)
