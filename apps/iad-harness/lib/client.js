@@ -114,6 +114,7 @@ var __IadClientBundle__ = (() => {
   var message = (error) => error instanceof Error ? error.message : String(error);
   var reviewLabels = { PASS: "\u826F\u54C1", HARD_NORMAL: "\u56F0\u96BE\u6B63\u5E38", FAIL: "\u5F02\u5E38", UNCERTAIN: "\u4E0D\u786E\u5B9A", SKIP: "\u8DF3\u8FC7" };
   var reviewLabel = (decision) => reviewLabels[decision] || decision;
+  var modelLabels = { PASS: "\u65E0\u660E\u663E\u5F02\u5E38", FAIL: "\u53D1\u73B0\u7591\u70B9", UNCERTAIN: "\u8BC1\u636E\u4E0D\u8DB3" };
   var auditEvidenceUrl = (suggestionId, image) => `/api/iad/evidence/${encodeURIComponent(suggestionId)}/${encodeURIComponent(image.evidence_id)}`;
   var regionSources = { annotation: "Labelme \u7EBF\u7D22", model: "MLLM \u5019\u9009", coverage: "\u7EC6\u8282\u8986\u76D6" };
   var auditImageIndex = (analysis) => new Map([analysis.overview, ...analysis.regions.map((region) => region.image), ...analysis.auxiliary_evidence].map((image) => [image.evidence_id, image]));
@@ -2045,7 +2046,7 @@ var __IadClientBundle__ = (() => {
           ] }, value)),
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { onClick: () => onFilters({ ...filters, annotation_filters: [] }), children: "\u6E05\u7A7A" })
         ] }),
-        select("model_status", "\u6A21\u578B\u5BA1\u8BA1", [["all", "\u5168\u90E8"], ["pending", "\u5F85\u5BA1\u8BA1"], ["audited", "\u5DF2\u5BA1\u8BA1"], ["risk", "\u53EF\u7591"], ["PASS", "\u6A21\u578B\u5EFA\u8BAE\u826F\u54C1"], ["FAIL", "\u6A21\u578B\u5EFA\u8BAE\u5F02\u5E38"], ["UNCERTAIN", "\u4E0D\u786E\u5B9A"]]),
+        select("model_status", "\u6A21\u578B\u5BA1\u8BA1", [["all", "\u5168\u90E8"], ["pending", "\u672A\u5BA1\u8BA1"], ["audited", "\u5DF2\u5BA1\u8BA1"], ["risk", "\u53EF\u7591"], ["PASS", modelLabels.PASS], ["FAIL", modelLabels.FAIL], ["UNCERTAIN", modelLabels.UNCERTAIN]]),
         select("review_status", "\u4EBA\u5DE5\u590D\u6838", [["all", "\u5168\u90E8"], ["pending", "\u5F85\u590D\u6838"], ["reviewed", "\u5DF2\u590D\u6838"], ["PASS", "\u826F\u54C1"], ["HARD_NORMAL", "\u56F0\u96BE\u6B63\u5E38"], ["FAIL", "\u5F02\u5E38"], ["UNCERTAIN", "\u4E0D\u786E\u5B9A"], ["SKIP", "\u5DF2\u8DF3\u8FC7"]]),
         select("technical", "\u6280\u672F\u8D28\u91CF", [["all", "\u5168\u90E8"], ["issues", "\u5B58\u5728\u95EE\u9898"]]),
         select("sort_by", "\u6392\u5E8F", [["default", "\u9ED8\u8BA4"], ["risk", "\u53EF\u7591\u5EA6\u4F18\u5148"], ["tech", "\u6280\u672F\u95EE\u9898\u4F18\u5148"]]),
@@ -2055,10 +2056,19 @@ var __IadClientBundle__ = (() => {
       loading ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { children: "\u52A0\u8F7D\u4E2D\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "iad-grid", children: items.map((sample) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("button", { "data-sample-id": sample.sample_id, className: `iad-sample ${selected === sample.sample_id ? "is-selected" : ""}`, onClick: () => onSelect(sample.sample_id), children: [
         /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "iad-thumb", children: [
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("img", { loading: "lazy", src: mediaUrl(sample, "thumbnail"), alt: sample.relative_path }),
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: `iad-badge ${sample.suggestion?.suggested_label === "FAIL" ? "is-risk" : ""}`, children: sample.review_decision ? `\u4EBA\u5BA1 ${sample.review_decision}` : sample.suggestion ? `\u6A21\u578B ${sample.suggestion.suggested_label}` : "\u5F85\u6A21\u578B\u5BA1\u8BA1" }),
           dataset.reference_sample_ids.includes(sample.sample_id) && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "iad-reference", children: "\u826F\u54C1\u53C2\u8003" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("strong", { title: sample.relative_path, children: sample.relative_path.split("/").pop() }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "iad-badges", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: `iad-badge ${sample.suggestion?.suggested_label === "FAIL" ? "is-risk" : ""}`, children: [
+            "\u6A21\u578B \xB7 ",
+            sample.suggestion ? modelLabels[sample.suggestion.suggested_label] : "\u672A\u5BA1\u8BA1"
+          ] }),
+          sample.review_decision && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "iad-badge", children: [
+            "\u4EBA\u5BA1 \xB7 ",
+            reviewLabel(sample.review_decision)
+          ] })
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "iad-muted", children: sample.annotation_count ? sample.annotation_categories.join("\u3001") : "\u65E0\u6807\u6CE8" }),
         /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "iad-muted", children: [
           "\u53EF\u7591\u5EA6 ",
@@ -3423,7 +3433,7 @@ var __IadClientBundle__ = (() => {
           /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("h3", { children: "\u6A21\u578B\u89C2\u5BDF" }),
           detail.suggestion ? /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)(import_jsx_runtime18.Fragment, { children: [
             /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("p", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("strong", { children: detail.suggestion.suggested_label }),
+              /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("strong", { children: modelLabels[detail.suggestion.suggested_label] }),
               " \xB7 ",
               detail.suggestion.reason_category,
               " \xB7 \u6A21\u578B\u81EA\u62A5\u7F6E\u4FE1\u5EA6 ",
@@ -3532,7 +3542,7 @@ var __IadClientBundle__ = (() => {
                   /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("strong", { children: [
                     step.step_id,
                     " \xB7 ",
-                    step.result.suggested_label
+                    modelLabels[step.result.suggested_label]
                   ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("p", { children: [
                     step.input_evidence_ids.length,
@@ -4316,8 +4326,9 @@ var __IadClientBundle__ = (() => {
 .iad-workbench button.iad-sample.is-selected {border-color:var(--iad-primary);}
 .iad-sample>strong,.iad-sample>span {display:block;margin:6px 9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;}
 .iad-thumb {position:relative;aspect-ratio:1.35;background:var(--iad-surface-muted);}.iad-thumb img {width:100%;height:100%;object-fit:contain;}
-.iad-badge,.iad-reference {position:absolute;top:6px;left:6px;padding:2px 5px;background:var(--iad-viewer);color:var(--iad-on-viewer);border-radius:4px;font-size:12px;}
-.iad-badge.is-risk {background:var(--iad-danger-badge);}.iad-reference {top:auto;bottom:6px;background:var(--iad-success-badge);}
+.iad-badges {display:flex;flex-wrap:wrap;gap:4px;margin:6px 9px;text-align:left;}
+.iad-badge,.iad-reference {padding:2px 5px;background:var(--iad-viewer);color:var(--iad-on-viewer);border-radius:4px;font-size:12px;}
+.iad-badge.is-risk {background:var(--iad-danger-badge);}.iad-reference {position:absolute;left:6px;bottom:6px;background:var(--iad-success-badge);}
 .iad-inspector {background:var(--iad-surface);border:1px solid var(--iad-border);box-shadow:0 3px 12px var(--iad-surface-muted);border-radius:10px;padding:18px;min-width:0;}
 .iad-image-button {display:block;width:100%;padding:0!important;border:0!important;background:var(--iad-surface-muted)!important;}
 .iad-image-frame {position:relative;width:100%;line-height:0;}.iad-image-frame img {display:block;width:100%;height:auto;}

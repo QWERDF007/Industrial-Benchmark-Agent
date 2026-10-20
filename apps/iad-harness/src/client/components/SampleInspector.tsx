@@ -8,7 +8,7 @@ import { RuleAssessments } from "./RuleAssessments.js";
 import { AuditFindings } from "./AuditFindings.js";
 import { AuditEvidence } from "./AuditEvidence.js";
 import { HumanReviewForm } from "./HumanReviewForm.js";
-import { auditEvidenceUrl, regionSources, mediaUrl, message, request, reviewLabel } from "../api.js";
+import { auditEvidenceUrl, regionSources, mediaUrl, message, request, reviewLabel, modelLabels } from "../api.js";
 import { useWorkspace } from "../workspace.js";
 import { inspectionImage } from "../inspection.js";
 import type { SampleNavigation } from "../useSampleNavigation.js";
@@ -86,7 +86,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
       <h3>Labelme 标注 · {detail.annotations.length}</h3>
       {detail.annotations.length ? detail.annotations.map(a => <div className="iad-annotation" key={a.annotation_id}><strong>{a.raw_label}</strong><span>{a.bbox?.join(", ")} · {a.geometry_status}</span></div>) : <p className="iad-muted">无标注</p>}
       {detail.technical_issues.length > 0 && <div className="iad-error">{detail.technical_issues.map((i, index) => <p key={index}>{i.message}</p>)}</div>}
-      </section><section className="iad-info-group"><h3>模型观察</h3>{detail.suggestion ? <><p><strong>{detail.suggestion.suggested_label}</strong> · {detail.suggestion.reason_category} · 模型自报置信度 {detail.suggestion.confidence === null ? "未记录" : `${Math.round(detail.suggestion.confidence * 100)}%`}</p>
+      </section><section className="iad-info-group"><h3>模型观察</h3>{detail.suggestion ? <><p><strong>{modelLabels[detail.suggestion.suggested_label]}</strong> · {detail.suggestion.reason_category} · 模型自报置信度 {detail.suggestion.confidence === null ? "未记录" : `${Math.round(detail.suggestion.confidence * 100)}%`}</p>
         <p className="iad-observation">{detail.suggestion.notes}</p><small className="iad-muted">{detail.suggestion.model_name}</small>
         {detail.suggestion.analysis && <AuditFindings key={detail.suggestion.suggestion_id} analysis={detail.suggestion.analysis}
           onEvidence={(image, finding) => setLightbox({ ...evidenceSource(image), initialSelection: { kind: "evidence", id: image.evidence_id, findingId: finding.finding_id } })} onLocate={finding => {
@@ -109,7 +109,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
           {detail.suggestion.analysis.auxiliary_evidence.map(image => <button key={image.evidence_id} className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(image))}><img src={auditEvidenceUrl(detail.suggestion!.suggestion_id,image)} alt="实际送模的二值标注定位图" /><span>标注定位图{detail.suggestion!.analysis!.conclusion.evidence_ids.includes(image.evidence_id) ? " · 结论引用" : ""}</span></button>)}
           {detail.suggestion.analysis.conclusion.conflicts.length > 0 && <p className="iad-error">观察矛盾：{detail.suggestion.analysis.conclusion.conflicts.join("；")}</p>}
           {detail.suggestion.analysis.conclusion.missing_evidence.length > 0 && <p className="iad-error">缺失证据：{detail.suggestion.analysis.conclusion.missing_evidence.join("；")}</p>}
-          {detail.suggestion.analysis.joint_steps.length > 1 && <details><summary>联合分析记录 · {detail.suggestion.analysis.joint_steps.length} 步</summary>{detail.suggestion.analysis.joint_steps.map(step => <div key={step.step_id}><strong>{step.step_id} · {step.result.suggested_label}</strong><p>{step.input_evidence_ids.length} 张图像{step.child_step_ids.length ? ` · 汇总 ${step.child_step_ids.join("、")}` : ""}</p><p>{step.result.description}</p>
+          {detail.suggestion.analysis.joint_steps.length > 1 && <details><summary>联合分析记录 · {detail.suggestion.analysis.joint_steps.length} 步</summary>{detail.suggestion.analysis.joint_steps.map(step => <div key={step.step_id}><strong>{step.step_id} · {modelLabels[step.result.suggested_label]}</strong><p>{step.input_evidence_ids.length} 张图像{step.child_step_ids.length ? ` · 汇总 ${step.child_step_ids.join("、")}` : ""}</p><p>{step.result.description}</p>
             {"resolved_findings" in step.result && step.result.resolved_findings.map((resolution, index) => <div key={index}>
               <p>已排除疑点：{resolution.description}</p><p>正常解释：{resolution.normal_explanation}</p>
               <AuditEvidence analysis={detail.suggestion!.analysis!} ids={resolution.evidence_ids} label={resolution.description} onEvidence={image => setLightbox(evidenceSource(image))} />

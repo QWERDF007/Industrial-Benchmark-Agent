@@ -5,6 +5,7 @@ export declare const mediaUrl: (sample: Pick<Sample, "task_id" | "sample_id">, v
 export declare const message: (error: unknown) => string;
 export declare const reviewLabels: Record<Decision, string>;
 export declare const reviewLabel: (decision: string) => string;
+export declare const modelLabels: Record<AuditAnalysis["conclusion"]["suggested_label"], string>;
 export declare const auditEvidenceUrl: (suggestionId: string, image: Pick<VisualEvidence, "evidence_id">) => string;
 export declare const regionSources: {
     annotation: string;

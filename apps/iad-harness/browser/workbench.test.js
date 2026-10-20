@@ -661,6 +661,9 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     assert.equal(detail.review_history.length,1,"响应丢失后的重试不能新增人工裁决");
     assert.equal(detail.sample.quality_status, "UNCERTAIN");
     await select("人工复核", "reviewed"); await gridCount(1);
+    assert.deepEqual(await driver.executeScript("return [...document.querySelectorAll('.iad-sample .iad-badge')].map(e=>e.textContent)"),
+      ["模型 · 发现疑点", "人审 · 良品"], "人工裁决与模型建议必须并列显示，且使用独立中文语义");
+    assert.equal(await (await driver.findElement(By.xpath("//h3[normalize-space(.)='模型观察']/following-sibling::p[1]/strong"))).getText(), "发现疑点");
     await (await element(".iad-decision textarea")).sendKeys("更正：确认异常");
     await button("异常");
     await driver.wait(async()=>{const result=await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();return result.review_history.length===2&&result.review_decision.decision==="FAIL";},5000);

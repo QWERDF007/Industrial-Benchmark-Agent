@@ -17,6 +17,7 @@ export const message = (error: unknown) => error instanceof Error ? error.messag
 
 export const reviewLabels: Record<Decision, string> = { PASS: "良品", HARD_NORMAL: "困难正常", FAIL: "异常", UNCERTAIN: "不确定", SKIP: "跳过" };
 export const reviewLabel = (decision: string) => reviewLabels[decision as Decision] || decision;
+export const modelLabels: Record<AuditAnalysis["conclusion"]["suggested_label"], string> = { PASS: "无明显异常", FAIL: "发现疑点", UNCERTAIN: "证据不足" };
 
 export const auditEvidenceUrl = (suggestionId: string, image: Pick<VisualEvidence, "evidence_id">) => `/api/iad/evidence/${encodeURIComponent(suggestionId)}/${encodeURIComponent(image.evidence_id)}`;
 export const regionSources = { annotation: "Labelme 线索", model: "MLLM 候选", coverage: "细节覆盖" };
