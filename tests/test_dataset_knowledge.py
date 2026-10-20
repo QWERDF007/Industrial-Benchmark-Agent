@@ -1,3 +1,5 @@
+import base64
+import io
 import json
 import os
 import threading
@@ -12,16 +14,19 @@ from iad_core.storage.database import Database
 
 
 @pytest.fixture
-def knowledge_dataset(tmp_path):
+def knowledge_dataset(tmp_path, request):
     images, labels = tmp_path / "images", tmp_path / "labels"
     images.mkdir()
     labels.mkdir()
     for index in range(6):
-        image = Image.new("RGB", (320, 240), "#cccccc")
+        size = getattr(request, "param", (320, 240))
+        image = Image.new("RGB", size, "#cccccc")
         draw = ImageDraw.Draw(image)
         draw.rectangle((40, 60, 280, 180), fill="#333333")
         for x in (100, 220):
             draw.ellipse((x - 15, 105, x + 15, 135), fill="#cccccc")
+        if size[0] > 1800:
+            image.putpixel((1800, 220), (255, 0, 0))
         image.save(images / f"part-{index}.png")
     db = Database(str(tmp_path / "knowledge.db"))
     config = DatasetRegistry(db).import_labelme(DatasetImport(
@@ -288,4 +293,91 @@ def test_cancelling_during_capacity_preflight_does_not_start_generation(knowledg
         assert result["unprocessed"] == 6
     finally:
         release.set()
+        service.close()
+
+
+@pytest.mark.parametrize("knowledge_dataset", [(2048, 512)], indirect=True)
+def test_normal_mining_retains_native_detail_and_overview_of_large_sources(knowledge_dataset):
+    from iad_core.entry import knowledge_evidence, knowledge_get
+    from iad_core.knowledge.service import KnowledgeService
+    from iad_core.workbench.vision import VlmClient
+
+    db, config = knowledge_dataset
+    observed = []
+
+    def respond(request):
+        if request.url.path.endswith("/tokenize"):
+            return httpx.Response(200, json={"count": 40000, "max_model_len": 262144})
+        content = json.loads(request.content)["messages"][0]["content"]
+        for index, item in enumerate(content):
+            if item["type"] == "text" and item["text"].startswith("视觉证据："):
+                evidence = json.loads(item["text"].removeprefix("视觉证据："))
+                encoded = content[index+1]["image_url"]["url"].split(",", 1)[1]
+                with Image.open(io.BytesIO(base64.b64decode(encoded))) as image:
+                    assert list(image.size) == evidence["sent_size"]
+                    if evidence["role"] == "roi":
+                        x1, y1, x2, y2 = evidence["crop_bbox"]
+                        assert image.size == (x2-x1, y2-y1)
+                        if x1 <= 1800 < x2:
+                            assert image.getpixel((1800-x1, 220-y1)) == (255, 0, 0)
+                observed.append(evidence)
+        result = {"summary": "细节覆盖记录", "checks": [], "suspects": [], "limitations": []}
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(result)}}]})
+
+    service = KnowledgeService(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        job = service.start(dataset_id=config.dataset.id, kind="normal", model_name="test-mllm")
+        service.wait(job["run_id"], 5)
+        finished = service.status(job["run_id"])
+        assert finished["status"] == "COMPLETED", finished
+        snapshot = knowledge_get({"version_id": finished["knowledge_version_id"]}, db.db_path)["knowledge"]
+        assert len(snapshot["sources"]) == 6
+        assert len([item for item in observed if item["role"] == "normal"]) == 6
+        native = [item for item in observed if item["role"] == "roi"]
+        assert native
+        assert any(item["crop_bbox"][0] <= 1800 < item["crop_bbox"][2] for item in native)
+        assert len(snapshot["mining_steps"]) == 1
+        assert len(snapshot["evidence"]) == len(observed)
+        for item in snapshot["evidence"]:
+            media = knowledge_evidence({"version_id": snapshot["version_id"], "evidence_id": item["image"]["evidence_id"]}, db.db_path)
+            assert Path(media["path"]).is_file()
+    finally:
+        service.close()
+
+
+@pytest.mark.parametrize("knowledge_dataset", [(2048, 512)], indirect=True)
+def test_capacity_groups_keep_source_overview_with_each_native_detail_group(knowledge_dataset):
+    from iad_core.entry import knowledge_get
+    from iad_core.knowledge.service import KnowledgeService
+    from iad_core.workbench.vision import VlmClient
+
+    db, config = knowledge_dataset
+    batches = []
+
+    def respond(request):
+        content = json.loads(request.content)["messages"][0]["content"]
+        images = [json.loads(item["text"].removeprefix("视觉证据：")) for item in content
+                  if item["type"] == "text" and item["text"].startswith("视觉证据：")]
+        if request.url.path.endswith("/tokenize"):
+            return httpx.Response(200, json={"count": len(images) * 2000, "max_model_len": 15600})
+        if images:
+            batches.append(images)
+        result = {"summary": "保留全图关联的细节观察", "checks": [], "suspects": [], "limitations": []}
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(result)}}]})
+
+    service = KnowledgeService(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        sample_id = DatasetRegistry(db).references(config.dataset.id)[0]
+        job = service.start(dataset_id=config.dataset.id, kind="normal", sample_ids=[sample_id], model_name="test-mllm")
+        service.wait(job["run_id"], 5)
+        finished = service.status(job["run_id"])
+        assert finished["status"] == "COMPLETED", finished
+        assert finished["completed"] == 1
+        knowledge = knowledge_get({"version_id": finished["knowledge_version_id"]}, db.db_path)["knowledge"]
+        assert len(batches) == 2
+        assert all(batch[0]["role"] == "normal" and all(item["role"] == "roi" for item in batch[1:]) for batch in batches)
+        assert batches[0][0]["evidence_id"] == batches[1][0]["evidence_id"]
+        assert {item["evidence_id"] for batch in batches for item in batch} == {
+            item["image"]["evidence_id"] for item in knowledge["evidence"]}
+    finally:
         service.close()

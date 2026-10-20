@@ -1,5 +1,6 @@
 import json
 import uuid
+from dataclasses import dataclass
 from typing import List
 
 from iad_core.evidence.images import PreparedImage
@@ -12,6 +13,12 @@ SYNTHESIS_INSTRUCTION = """依据子批次结果综合数据集知识。这是�
 保留有证据的判据、支持与反对引用、候选异常和限制。不要凭多数票抹去少数异常或冲突；
 不得把某组独有特征推及全部来源，不得编造新的证据或遗漏未解决的疑点。
 子批次结果："""
+
+
+@dataclass(frozen=True)
+class KnowledgeInput:
+    source: KnowledgeSource
+    images: List[PreparedImage]
 
 
 class KnowledgeMiner:
@@ -36,19 +43,28 @@ class KnowledgeMiner:
         self.context.update(mining_steps=[item.model_dump(mode="json") for item in self.steps])
         return step
 
-    def learn(self, instruction: str, sources: List[KnowledgeSource], images: List[PreparedImage], model_name: str) -> KnowledgeStep:
+    def learn(self, instruction: str, inputs: List[KnowledgeInput], model_name: str) -> KnowledgeStep:
         self.context.checkpoint()
-        prompt = instruction + json.dumps([source.model_dump() for source in sources], ensure_ascii=False)
+        images = [image for item in inputs for image in item.images]
+        prompt = instruction + json.dumps([{
+            "source": item.source.model_dump(),
+            "image_evidence_ids": [image.evidence.evidence_id for image in item.images],
+        } for item in inputs], ensure_ascii=False)
         if self.client.fits(KnowledgeDraft, prompt, images, model_name, max_tokens=OUTPUT_TOKENS):
             self.context.checkpoint()
             draft = self.client.generate(KnowledgeDraft, prompt, images, model_name, max_tokens=OUTPUT_TOKENS)
             self.context.checkpoint()
             return self.record(draft, images, [])
-        if len(images) < 2:
-            raise ValueError("One knowledge source exceeds the model context; no knowledge version was published")
-        middle = len(images) // 2
-        children = [self.learn(instruction, sources[:middle], images[:middle], model_name),
-                    self.learn(instruction, sources[middle:], images[middle:], model_name)]
+        if len(inputs) > 1:
+            middle = len(inputs) // 2
+            groups = [inputs[:middle], inputs[middle:]]
+        elif len(images) > 2:
+            middle = 1 + (len(images) - 1) // 2
+            groups = [[KnowledgeInput(inputs[0].source, [images[0], *images[1:middle]])],
+                      [KnowledgeInput(inputs[0].source, [images[0], *images[middle:]])]]
+        else:
+            raise ValueError("One overview and its native detail exceed the model context; no knowledge version was published")
+        children = [self.learn(instruction, group, model_name) for group in groups]
         self.context.checkpoint()
         prompt = SYNTHESIS_INSTRUCTION + json.dumps([child.model_dump(mode="json") for child in children], ensure_ascii=False)
         if not self.client.fits(KnowledgeDraft, prompt, [], model_name, max_tokens=OUTPUT_TOKENS):
