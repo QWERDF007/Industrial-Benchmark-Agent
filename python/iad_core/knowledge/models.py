@@ -2,7 +2,7 @@ from typing import List, Literal, Optional
 
 from pydantic import Field, model_validator
 
-from iad_core.advisory.analysis import AnalysisModel, RegionImage, RegionProposal, VisualEvidence
+from iad_core.advisory.analysis import AnalysisModel, RegionImage, RegionOrigin, RegionProposal, VisualEvidence
 
 KnowledgeKind = Literal["normal", "defect"]
 
@@ -53,6 +53,8 @@ class KnowledgeDraft(AnalysisModel):
 
 class KnowledgeCheck(LearnedCheck):
     check_id: str
+    finding_ids: List[str] = Field(default_factory=list)
+    normal_check_ids: List[str] = Field(default_factory=list)
 
 
 class KnowledgeSource(AnalysisModel):
@@ -60,7 +62,8 @@ class KnowledgeSource(AnalysisModel):
     sha256: str
     annotations_sha256: str
     review_sha256: str
-    qualification: Literal["human_pass", "human_hard_normal", "manual_selection", "raw_pass", "initial_unannotated"]
+    qualification: Literal["human_pass", "human_hard_normal", "manual_selection", "raw_pass", "initial_unannotated",
+                           "human_fail", "annotated_candidate", "normal_suspect"]
 
 
 class KnowledgeEvidence(AnalysisModel):
@@ -79,7 +82,9 @@ class FindingTarget(AnalysisModel):
     finding_id: str
     sample_id: str
     bbox: List[int]
-    proposal: KnowledgeSuspect
+    proposal: Optional[KnowledgeSuspect] = None
+    origins: List[RegionOrigin] = Field(default_factory=list)
+    origin_finding_id: Optional[str] = None
     regions: List[RegionImage]
 
 

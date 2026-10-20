@@ -2,26 +2,26 @@ import hashlib
 import json
 import uuid
 from datetime import datetime, timezone
-from typing import List, Literal, Optional
+from typing import List, Optional
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel
-from iad_core.dataset.path_safety import validate_sample_image_path
 from iad_core.dataset.registry import DatasetRegistry
-from iad_core.evidence.images import EvidenceImages, OVERVIEW_MAX_SIDE, file_sha256
-from iad_core.evidence.masks import MaskImages
+from iad_core.evidence.images import EvidenceImages, OVERVIEW_MAX_SIDE
 from iad_core.knowledge.mining import KnowledgeInput, KnowledgeMiner, SYNTHESIS_INSTRUCTION
 from iad_core.knowledge.models import (KnowledgeCheck, KnowledgeDraft, KnowledgeEvidence, KnowledgeSnapshot,
-                                      KnowledgeSource, KnowledgeVerification)
+                                      KnowledgeKind, KnowledgeVerification)
+from iad_core.knowledge.defect import DefectVerification, DEFECT_INSTRUCTION, DEFECT_VERIFICATION_INSTRUCTION
 from iad_core.knowledge.repository import KnowledgeRepository
+from iad_core.knowledge.sources import KnowledgeSources
 from iad_core.knowledge.verification import NormalVerification, VERIFICATION_INSTRUCTION
 from iad_core.storage.database import Database
-from iad_core.storage.repositories import AnnotationRepository, ReviewRepository, SampleRepository
+from iad_core.storage.repositories import AnnotationRepository, SampleRepository
 from iad_core.workbench.jobs import JobContext, JobRunner
 from iad_core.workbench.vision import DEFAULT_MODEL, VlmClient
 
-GENERATION_VERSION = "dataset-knowledge-v5"
+GENERATION_VERSION = "dataset-knowledge-v6"
 NORMAL_INSTRUCTION = """联合观察这一数据集的候选良品，发现产品可见的部件、结构关系、位置、纹理、光照与允许变化。
 不要根据数据集名称假设产品或预设缺陷检查表。只归纳可观察、可复用且有图像证据的检查判据。
 人工选取和无标注只是来源资格，不是确认真值。寻找候选良品中的异常与矛盾，将其定位为suspects，
@@ -37,9 +37,16 @@ KNOWLEDGE_JOB_TYPES = ("NORMAL_KNOWLEDGE", "DEFECT_KNOWLEDGE")
 
 class MiningStart(AnalysisModel):
     dataset_id: str
-    kind: Literal["normal"]
+    kind: KnowledgeKind
+    normal_version_id: Optional[str] = None
     model_name: str = DEFAULT_MODEL
     sample_ids: Optional[List[str]] = Field(default=None)
+
+    @model_validator(mode='after')
+    def require_normal_version(self):
+        if (self.kind == 'defect') != bool(self.normal_version_id):
+            raise ValueError('Defect mining requires normal_version_id; normal mining cannot reference it')
+        return self
 
 
 class KnowledgeService:
@@ -49,50 +56,34 @@ class KnowledgeService:
         self.jobs = jobs or JobRunner(db, KNOWLEDGE_JOB_TYPES)
         self.registry = DatasetRegistry(db)
         self.repository = KnowledgeRepository(db)
+        self.sources = KnowledgeSources(db)
 
     def start(self, **arguments) -> dict:
         request = MiningStart.model_validate(arguments)
         config = self.registry.resolve(dataset_id=request.dataset_id)
-        eligible = self.registry.references(request.dataset_id, limit=None, use_selection=False)
+        normal = self.repository.get(request.normal_version_id) if request.normal_version_id else None
+        if normal and (normal.dataset_id != request.dataset_id or normal.kind != 'normal'
+                       or not any(check.status == 'supported' for check in normal.checks)):
+            raise ValueError('A usable normal knowledge version from the same dataset is required')
+        eligible = list(self.sources.eligible(request.dataset_id, request.kind, normal))
         sample_ids = list(dict.fromkeys(request.sample_ids)) if request.sample_ids is not None else eligible
         if not sample_ids or not set(sample_ids).issubset(eligible):
-            raise ValueError("Mining requires eligible normal samples from the selected dataset")
+            raise ValueError("Mining requires eligible knowledge sources from the selected dataset")
         parent = self.repository.current(request.dataset_id, request.kind)
-        return self.jobs.start("NORMAL_KNOWLEDGE", config.task.task_id,
+        return self.jobs.start("NORMAL_KNOWLEDGE" if request.kind == "normal" else "DEFECT_KNOWLEDGE", config.task.task_id,
                                {**request.model_dump(), "sample_ids": sample_ids,
-                                "parent_version_id": parent.version_id if parent else None}, self.mine, "准备良品知识挖掘")
-
-    def sources(self, dataset_id: str, sample_ids: List[str]) -> List[KnowledgeSource]:
-        eligible = set(self.registry.references(dataset_id, limit=None, use_selection=False))
-        with self.db.connection() as conn:
-            selected = json.loads(conn.execute("SELECT reference_sample_ids_json FROM datasets WHERE dataset_id=?",
-                                               (dataset_id,)).fetchone()[0])
-        sources = []
-        for sample_id in sample_ids:
-            sample = SampleRepository(self.db).get(sample_id)
-            decision = ReviewRepository(self.db).get_decision(sample_id)
-            annotations = AnnotationRepository(self.db).list_by_sample(sample_id)
-            for annotation in annotations:
-                if annotation.annotation_type == "mask" and annotation.geometry_status != "INVALID":
-                    MaskImages.load(annotation, sample)
-            qualification = ("human_pass" if decision and decision.decision == "PASS" else
-                             "human_hard_normal" if decision and decision.decision == "HARD_NORMAL" else
-                             "manual_selection" if sample_id in selected else "raw_pass" if sample.quality_status == "PASS" else
-                             "initial_unannotated")
-            if sample_id not in eligible:
-                raise ValueError("Normal source qualification changed during mining")
-            sources.append(KnowledgeSource(sample_id=sample_id,
-                sha256=file_sha256(validate_sample_image_path(sample, self.db.db_path)), qualification=qualification,
-                annotations_sha256=hashlib.sha256(json.dumps([a.model_dump(mode="json") for a in annotations], sort_keys=True).encode()).hexdigest(),
-                review_sha256=hashlib.sha256(decision.model_dump_json().encode() if decision else b"null").hexdigest()))
-        return sources
+                                "parent_version_id": parent.version_id if parent else None}, self.mine, "准备良品知识挖掘" if request.kind == "normal" else "准备不良知识挖掘")
 
     def mine(self, context: JobContext):
         payload = context.payload
         context.checkpoint()
-        context.update(phase="LEARNING_NORMAL")
-        sources = self.sources(payload["dataset_id"], payload["sample_ids"])
+        normal = self.repository.get(payload['normal_version_id']) if payload.get('normal_version_id') else None
+        defect = DefectVerification(self.db, self.client, context)
+        references = defect.references(normal) if normal else []
+        context.update(phase='PREPARING_KNOWLEDGE')
+        sources = self.sources.collect(payload['dataset_id'], payload['sample_ids'], payload['kind'], normal)
         signature = hashlib.sha256(json.dumps([GENERATION_VERSION, NORMAL_INSTRUCTION, SYNTHESIS_INSTRUCTION, VERIFICATION_INSTRUCTION,
+            DEFECT_INSTRUCTION, DEFECT_VERIFICATION_INSTRUCTION, payload.get("normal_version_id"), payload["kind"],
             KnowledgeDraft.model_json_schema(), KnowledgeVerification.model_json_schema(), KnowledgeSnapshot.model_json_schema(),
             payload["dataset_id"], payload["model_name"], [source.model_dump() for source in sources]], sort_keys=True).encode()).hexdigest()
         current = self.repository.current(payload["dataset_id"], payload["kind"])
@@ -105,7 +96,7 @@ class KnowledgeService:
         for source in sources:
             context.checkpoint()
             sample = SampleRepository(self.db).get(source.sample_id)
-            images = [evidence_images.capture(sample, "normal", "reference", source_sha256=source.sha256)]
+            images = [evidence_images.capture(sample, "overview" if normal else "normal", "global" if normal else "reference", source_sha256=source.sha256)]
             annotations = AnnotationRepository(self.db).list_by_sample(source.sample_id)
             if max(sample.width, sample.height) > OVERVIEW_MAX_SIDE or annotations:
                 for region in evidence_images.plan(sample, annotations, []):
@@ -117,22 +108,41 @@ class KnowledgeService:
                             source.sha256, annotations=linked, annotation_mode="annotation_mask"))
             inputs.append(KnowledgeInput(source, images))
         miner = KnowledgeMiner(self.client, context)
-        draft = miner.learn(NORMAL_INSTRUCTION, inputs, payload["model_name"]).result
-        proposals = {(item.evidence_id, tuple(item.bbox_1000)): item for step in miner.steps for item in step.result.suspects}
-        draft = draft.model_copy(deep=True, update={"suspects": list(proposals.values())})
-        verification = NormalVerification(self.db, self.client, context).review(draft, inputs, payload["model_name"])
-        if self.sources(payload["dataset_id"], payload["sample_ids"]) != sources:
-            raise ValueError("Knowledge sources changed during mining")
-        checks = [KnowledgeCheck(check_id="check_" + uuid.uuid4().hex, **check.model_dump()) for check in draft.checks]
+        if normal:
+            verification = defect.review(normal, inputs, references, payload['model_name'])
+            context.update(phase='LEARNING_DEFECT')
+            instruction = DEFECT_INSTRUCTION + json.dumps({'normal_version_id': normal.version_id,
+                'normal_checks': [check.model_dump() for check in normal.checks],
+                'findings': [finding.model_dump() for finding in verification.findings]}, ensure_ascii=False) + '\n来源：'
+            draft = miner.learn(instruction, inputs + references, payload['model_name']).result
+            draft = draft.model_copy(deep=True)
+            defect.qualify(draft, verification)
+        else:
+            context.update(phase='LEARNING_NORMAL')
+            draft = miner.learn(NORMAL_INSTRUCTION, inputs, payload['model_name']).result
+            proposals = {(item.evidence_id, tuple(item.bbox_1000)): item for step in miner.steps for item in step.result.suspects}
+            draft = draft.model_copy(deep=True, update={'suspects': list(proposals.values())})
+            verification = NormalVerification(self.db, self.client, context).review(draft, inputs, payload['model_name'])
+        if self.sources.collect(payload['dataset_id'], payload['sample_ids'], payload['kind'], normal) != sources:
+            raise ValueError('Knowledge sources changed during mining')
+        checks = [KnowledgeCheck(check_id='check_' + uuid.uuid4().hex, **check.model_dump()) for check in draft.checks]
         for finding in verification.findings:
-            finding.affected_check_ids = [check.check_id for check in checks if check.title in finding.judgment.affected_check_titles]
+            if normal:
+                for check in checks:
+                    if set(check.support_evidence_ids) & {region.image.evidence_id for region in finding.regions}:
+                        check.finding_ids.append(finding.finding_id)
+                        check.normal_check_ids = list(dict.fromkeys([*check.normal_check_ids, *finding.affected_check_ids]))
+            else:
+                finding.affected_check_ids = [check.check_id for check in checks if check.title in finding.judgment.affected_check_titles]
+        evidence = {image.evidence.evidence_id: KnowledgeEvidence(sample_id=item.source.sample_id, image=image.evidence)
+                    for item in inputs + references for image in item.images}
+        evidence.update({item.image.evidence_id: item for item in verification.evidence})
         snapshot = KnowledgeSnapshot(version_id="knowledge_" + uuid.uuid4().hex, dataset_id=payload["dataset_id"],
-            kind=payload["kind"], parent_version_id=payload["parent_version_id"], normal_version_id=None,
+            kind=payload["kind"], parent_version_id=payload["parent_version_id"], normal_version_id=payload.get("normal_version_id"),
             model_name=payload["model_name"], generation_version=GENERATION_VERSION, signature=signature,
             summary=draft.summary, checks=checks,
             suspects=draft.suspects, limitations=draft.limitations, sources=sources,
-            evidence=[KnowledgeEvidence(sample_id=item.source.sample_id, image=image.evidence)
-                      for item in inputs for image in item.images] + verification.evidence,
+            evidence=list(evidence.values()),
             mining_steps=miner.steps, findings=verification.findings, verification_steps=verification.steps,
             created_at=datetime.now(timezone.utc).isoformat())
         with self.jobs.lock:
