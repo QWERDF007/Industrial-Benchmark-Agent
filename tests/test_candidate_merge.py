@@ -7,8 +7,8 @@ from iad_core.storage.models import InspectionTask, Sample
 from iad_core.storage.repositories import TaskRepository, SampleRepository
 from iad_core.advisory.schemas import AuditSuggestion, ConclusionStatus, RecommendedAction
 from iad_core.advisory.repository import AuditSuggestionRepository
-from iad_domain_server.tools.candidate_tools import candidate_merge
-from iad_domain_server.contracts import ToolStatus
+from iad_core.tools.candidate_tools import candidate_merge
+from iad_core.contracts import ToolStatus
 
 
 @pytest.fixture

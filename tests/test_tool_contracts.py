@@ -27,13 +27,13 @@ from iad_core.storage.repositories import (
     AnnotationRepository,
     BenchmarkRepository,
 )
-from iad_domain_server.api import app, INTERNAL_TOOL_MAP
+from iad_core.tools import INTERNAL_TOOL_MAP, execute_internal_tool, ToolContractError
 
 
 @pytest.fixture
 def contract_env(tmp_path, monkeypatch):
     test_db = str(tmp_path / "contracts_benchmark.db")
-    monkeypatch.setattr("iad_domain_server.api.DB_PATH", test_db)
+    monkeypatch.setattr("iad_core.tools.DEFAULT_DB_PATH", test_db)
 
     db = Database(test_db)
     task_repo = TaskRepository(db)
@@ -130,8 +130,8 @@ TOOL_CONTRACT_SPECS = [
             "suggestion": {
                 "suggestion_id": "sug_c2",
                 "sample_id": "t_contract:s1",
-                "conclusion_status": "HYPOTHESIS_ONLY",
-                "recommended_action": "IGNORE",
+                "conclusion_status": "INSUFFICIENT_EVIDENCE",
+                "recommended_action": "IGNORE_CANDIDATE",
                 "observations": [{"phenomenon": "glare"}],
             },
         },
@@ -259,11 +259,8 @@ def test_tool_catalog_exact_count():
 
 @pytest.mark.parametrize("tool_name,minimal_args,full_args,missing_args", TOOL_CONTRACT_SPECS)
 def test_tool_contract_positive_minimal(contract_env, tool_name, minimal_args, full_args, missing_args):
-    """Verify tool execution with minimal required parameters returns HTTP 200 and ToolResult."""
-    client = TestClient(app)
-    resp = client.post(f"/internal/tool/{tool_name}", json=minimal_args)
-    assert resp.status_code == 200, f"Tool '{tool_name}' failed minimal contract: {resp.text}"
-    data = resp.json()
+    """Verify tool execution with minimal required parameters returns ToolResult."""
+    data = execute_internal_tool(tool_name, minimal_args)
     assert "status" in data
     assert "summary" in data
     assert "metrics" in data
@@ -271,11 +268,8 @@ def test_tool_contract_positive_minimal(contract_env, tool_name, minimal_args, f
 
 @pytest.mark.parametrize("tool_name,minimal_args,full_args,missing_args", TOOL_CONTRACT_SPECS)
 def test_tool_contract_positive_full(contract_env, tool_name, minimal_args, full_args, missing_args):
-    """Verify tool execution with full valid optional parameters returns HTTP 200 and ToolResult."""
-    client = TestClient(app)
-    resp = client.post(f"/internal/tool/{tool_name}", json=full_args)
-    assert resp.status_code == 200, f"Tool '{tool_name}' failed full contract: {resp.text}"
-    data = resp.json()
+    """Verify tool execution with full valid optional parameters returns ToolResult."""
+    data = execute_internal_tool(tool_name, full_args)
     assert "status" in data
     assert "summary" in data
     assert "metrics" in data
@@ -283,27 +277,22 @@ def test_tool_contract_positive_full(contract_env, tool_name, minimal_args, full
 
 @pytest.mark.parametrize("tool_name,minimal_args,full_args,missing_args", TOOL_CONTRACT_SPECS)
 def test_tool_contract_negative_unknown_param(contract_env, tool_name, minimal_args, full_args, missing_args):
-    """Verify unknown arguments strictly raise HTTP 422 (F-01, V2-04)."""
-    client = TestClient(app)
+    """Verify unknown arguments strictly raise ToolContractError (F-01, V2-04)."""
     bad_payload = dict(minimal_args)
     bad_payload["__unsupported_arbitrary_param__"] = "invalid_value"
-    resp = client.post(f"/internal/tool/{tool_name}", json=bad_payload)
-    assert resp.status_code == 422, f"Tool '{tool_name}' did not reject unknown parameter: {resp.status_code}"
-    detail = resp.json().get("detail", "")
-    assert "__unsupported_arbitrary_param__" in detail
+    with pytest.raises(ToolContractError) as exc_info:
+        execute_internal_tool(tool_name, bad_payload)
+    assert "__unsupported_arbitrary_param__" in str(exc_info.value)
 
 
 @pytest.mark.parametrize("tool_name,minimal_args,full_args,missing_args", TOOL_CONTRACT_SPECS)
 def test_tool_contract_negative_missing_required(contract_env, tool_name, minimal_args, full_args, missing_args):
-    """Verify missing required arguments strictly raise HTTP 422 (F-01, V2-04)."""
-    # Only test if tool actually has required arguments
+    """Verify missing required arguments strictly raise ToolContractError (F-01, V2-04)."""
     if not minimal_args:
         return
-    client = TestClient(app)
-    resp = client.post(f"/internal/tool/{tool_name}", json=missing_args)
-    assert resp.status_code == 422, f"Tool '{tool_name}' did not reject missing required arguments: {resp.status_code}"
-    detail = resp.json().get("detail", "")
-    assert "Missing required argument" in detail or "422" in str(resp.status_code)
+    with pytest.raises(ToolContractError) as exc_info:
+        execute_internal_tool(tool_name, missing_args)
+    assert "Missing required argument" in str(exc_info.value)
 
 
 def test_non_authoritative_boundary_invariant(contract_env):
@@ -311,7 +300,6 @@ def test_non_authoritative_boundary_invariant(contract_env):
     AC-V2-06 & System Invariant:
     Verify that NO internal tool in INTERNAL_TOOL_MAP has write access to ReviewDecisions or Gold.
     """
-    client = TestClient(app)
     for forbidden in ["review_write", "decision_submit", "gold_edit", "override_ground_truth"]:
-        resp = client.post(f"/internal/tool/{forbidden}", json={})
-        assert resp.status_code == 404
+        with pytest.raises(ToolContractError):
+            execute_internal_tool(forbidden, {})

@@ -4,8 +4,8 @@ import pytest
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import BenchmarkRepository
 from iad_core.benchmark.builder import preview_benchmark_pipeline, run_benchmark_pipeline
-from iad_domain_server.tools.benchmark_tools import benchmark_preview, benchmark_build
-from iad_domain_server.contracts import ToolStatus
+from iad_core.tools.benchmark_tools import benchmark_preview, benchmark_build
+from iad_core.contracts import ToolStatus
 from iad_core.candidate.schemas import CandidateRecord, CandidateSignals
 
 

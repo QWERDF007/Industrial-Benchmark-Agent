@@ -5,8 +5,8 @@ from PIL import Image
 from iad_core.storage.database import Database
 from iad_core.storage.models import InspectionTask, Sample, Annotation
 from iad_core.storage.repositories import TaskRepository, SampleRepository, AnnotationRepository
-from iad_domain_server.tools.image_tools import sample_view, region_view, samples_compare
-from iad_domain_server.contracts import ToolStatus
+from iad_core.tools.image_tools import sample_view, region_view, samples_compare
+from iad_core.contracts import ToolStatus
 
 
 @pytest.fixture

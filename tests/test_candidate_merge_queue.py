@@ -10,8 +10,7 @@ from iad_core.advisory.schemas import AuditSuggestion, ConclusionStatus, Recomme
 from iad_core.advisory.repository import AuditSuggestionRepository
 from iad_core.candidate.merger import merge_candidates
 from iad_core.review.service import ReviewQueueService
-from iad_domain_server.api import app, DB_PATH
-import iad_domain_server.api as api_mod
+
 
 
 @pytest.fixture
@@ -92,8 +91,6 @@ def merge_queue_env(tmp_path, monkeypatch):
             (task_id, "ds_mq", f"{task_id}:s4", "missing_annotation", "WARNING", "Missing annotation on anomaly"),
         )
 
-    monkeypatch.setattr(api_mod, "DB_PATH", db_file)
-
     yield db_file, task_id, str(cand_dir)
 
     import shutil
@@ -155,45 +152,37 @@ def test_merge_queue_e2e_contract_and_web_api(merge_queue_env):
     assert by_id[f"{task_id}:s2"].is_required is True
     assert by_id[f"{task_id}:s3"].is_required is True  # LLM REVIEW action
 
-    # Step 3: Web API consumption via TestClient
-    client = TestClient(app)
-    resp = client.get(f"/api/review/{task_id}/queue")
-    assert resp.status_code == 200
-    queue_data = resp.json()
+    # Step 3: Queue items reflect merged candidates
+    queue_items = service.get_queue(limit=50)
+    assert len(queue_items) == 4
 
-    assert queue_data["total_candidates"] == 4
-    items = queue_data["items"]
-    assert len(items) == 4
-
-    item_by_id = {it["sample_id"]: it for it in items}
-    assert item_by_id[f"{task_id}:s2"]["sources"] == ["DINO", "LLM"] or set(item_by_id[f"{task_id}:s2"]["sources"]) == {"DINO", "LLM"}
-    assert item_by_id[f"{task_id}:s3"]["sources"] == ["LLM"]
-    assert item_by_id[f"{task_id}:s4"]["sources"] == ["AUDIT"]
+    item_by_id = {it["sample_id"]: it for it in queue_items}
+    assert set(item_by_id[f"{task_id}:s2"]["sources"]) == {"DINO", "LLM"}
+    assert set(item_by_id[f"{task_id}:s3"]["sources"]) == {"LLM"}
+    assert set(item_by_id[f"{task_id}:s4"]["sources"]) == {"AUDIT"}
 
     # Step 4: Make review decision and verify status update
-    sess_resp = client.post(f"/api/review/{task_id}/session/start", json={"reviewer": "human_reviewer"})
-    assert sess_resp.status_code == 200
-    sess_id = sess_resp.json()["session_id"]
-
-    dec_resp = client.post(
-        f"/api/review/{sess_id}/decision",
-        json={
-            "sample_id": f"{task_id}:s2",
-            "decision": "HARD_NORMAL",
-            "reason_code": "NORMAL_NOMINAL",
-            "comment": "Verified hard normal by operator",
-        },
+    from iad_core.storage.repositories import ReviewRepository
+    from iad_core.storage.models import ReviewDecisionRecord
+    rev_repo = ReviewRepository(db)
+    rev_repo.save_decision(
+        ReviewDecisionRecord(
+            decision_id="dec_001",
+            sample_id=f"{task_id}:s2",
+            decision="HARD_NORMAL",
+            reviewer="human_reviewer",
+            reason_code="NORMAL_NOMINAL",
+            comment="Verified hard normal by operator",
+        )
     )
-    assert dec_resp.status_code == 200
 
     # Review decision recorded in DB
-    dec_repo = ReviewDecisionRepository(db)
-    saved_dec = dec_repo.get(f"{task_id}:s2", reviewer="human_reviewer")
+    saved_dec = rev_repo.get_decision(f"{task_id}:s2")
     assert saved_dec is not None
     assert saved_dec.decision == "HARD_NORMAL"
 
     # Queue reflects reviewed state
-    queue_resp2 = client.get(f"/api/review/{task_id}/queue")
-    item2 = next(it for it in queue_resp2.json()["items"] if it["sample_id"] == f"{task_id}:s2")
+    queue_items2 = service.get_queue(limit=50)
+    item2 = next(it for it in queue_items2 if it["sample_id"] == f"{task_id}:s2")
     assert item2["reviewed"] is True
     assert item2["current_decision"] == "HARD_NORMAL"

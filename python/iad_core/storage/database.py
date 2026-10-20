@@ -125,6 +125,12 @@ class Database:
 
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_issues_task_id ON import_issues(task_id)")
 
+            # Migration: ensure dataset_id column exists on legacy databases
+            cursor.execute("PRAGMA table_info(import_issues)")
+            existing_issue_cols = {col[1] for col in cursor.fetchall()}
+            if "dataset_id" not in existing_issue_cols:
+                cursor.execute("ALTER TABLE import_issues ADD COLUMN dataset_id TEXT DEFAULT 'UNKNOWN'")
+
             # 5. feature_records
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS feature_records (

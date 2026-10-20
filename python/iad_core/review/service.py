@@ -242,6 +242,32 @@ class ReviewQueueService:
     def pending_count(self) -> int:
         return self.get_stats().pending_count
 
+    def get_queue(self, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+        decisions = self.repo.list_decisions(self.task_id)
+        decision_map = {d.sample_id: d for d in decisions}
+
+        items = []
+        for c in self._candidates[offset:offset + limit]:
+            d = decision_map.get(c.sample_id)
+            sig = c.signals.model_dump() if hasattr(c.signals, "model_dump") else (c.signals if isinstance(c.signals, dict) else None)
+            items.append({
+                "sample_id": c.sample_id,
+                "rank": c.rank,
+                "candidate_score": c.candidate_score,
+                "signals": sig,
+                "data_origin": c.data_origin,
+                "batch_id": c.batch_id,
+                "image_path": c.image_path,
+                "reviewed": d is not None,
+                "current_decision": d.decision if d else None,
+                "reason_code": d.reason_code if d else None,
+                "sources": getattr(c, "sources", []) or ["DINO"],
+                "priority_reason": getattr(c, "priority_reason", None) or f"Rank {c.rank} candidate",
+                "source_scores": getattr(c, "source_scores", {}) or {},
+                "is_required": getattr(c, "is_required", True),
+            })
+        return items
+
     def get_candidate(self, sample_id: str) -> Optional[CandidateRecord]:
         for c in self._candidates:
             if c.sample_id == sample_id:

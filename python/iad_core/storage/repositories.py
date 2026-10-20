@@ -391,7 +391,7 @@ class ImportIssueRepository:
             return [
                 ImportIssue(
                     task_id=r["task_id"],
-                    dataset_id=r["dataset_id"],
+                    dataset_id=r["dataset_id"] if "dataset_id" in r.keys() else "UNKNOWN",
                     sample_id=r["sample_id"],
                     issue_type=r["issue_type"],
                     severity=r["severity"],
@@ -673,13 +673,19 @@ class ReviewRepository:
                 ),
             )
 
-    def get_decision(self, sample_id: str, reviewer: str = "default") -> Optional[ReviewDecisionRecord]:
+    def get_decision(self, sample_id: str, reviewer: Optional[str] = None) -> Optional[ReviewDecisionRecord]:
         with self.db.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                "SELECT * FROM review_decisions WHERE sample_id = ? AND reviewer = ?",
-                (sample_id, reviewer),
-            )
+            if reviewer:
+                cursor.execute(
+                    "SELECT * FROM review_decisions WHERE sample_id = ? AND reviewer = ?",
+                    (sample_id, reviewer),
+                )
+            else:
+                cursor.execute(
+                    "SELECT * FROM review_decisions WHERE sample_id = ? ORDER BY id DESC LIMIT 1",
+                    (sample_id,),
+                )
             row = cursor.fetchone()
             if not row:
                 return None

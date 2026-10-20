@@ -17,7 +17,8 @@ export NO_PROXY="$no_proxy"
 export LIVE_VLM_KEY="${LIVE_VLM_KEY:-sk-123456}"
 
 echo "========================================================"
-echo "  Industrial Benchmark Agent - 服务启动器"
+echo "  Industrial Benchmark Agent - DSH 原生工作台启动器"
+echo "  单宿主进程架构 (DS-S01): 纯 DSH Web (Port 5173)"
 echo "  局域网主机 IP: ${LAN_IP}"
 echo "========================================================"
 
@@ -34,6 +35,7 @@ elif [ -x "$(which python3.10 2>/dev/null)" ]; then
 else
     PYTHON_EXEC="python"
 fi
+export IAD_PYTHON_PATH="${PYTHON_EXEC}"
 
 # 查找 Node.js (推荐 v22+)
 NODE_EXEC=""
@@ -47,36 +49,20 @@ else
     NODE_EXEC="node"
 fi
 
-echo "[1/3] Python 环境: ${PYTHON_EXEC} ($(${PYTHON_EXEC} --version 2>&1))"
+echo "[1/2] Python 环境: ${PYTHON_EXEC} ($(${PYTHON_EXEC} --version 2>&1))"
 echo "      Node.js 环境: ${NODE_EXEC} ($(${NODE_EXEC} --version 2>&1))"
 
 mkdir -p runs
 
-# 2. 检查并启动 Python Domain Server (FastAPI)
-if lsof -Pi :8000 -sTCP:LISTEN -t >/dev/null 2>&1; then
-    echo "[!] 提示: 8000 端口已有进程在运行，跳过启动 Domain Server。"
-else
-    echo "[2/3] 正在启动 Domain Server (0.0.0.0:8000)..."
-    setsid "${PYTHON_EXEC}" -m iad_domain_server.main > runs/domain_server.log 2>&1 < /dev/null &
-    DOMAIN_PID=$!
-    echo $DOMAIN_PID > runs/domain_server.pid
-    echo "      Domain Server PID: ${DOMAIN_PID}"
-fi
+# 2. 编译 TypeScript 与 DSH Client Bundle
+echo "[2/2] 正在构建 DSH Native 双端插件 Bundle..."
+pnpm -C apps/iad-harness run build
 
-# 等待 Domain Server 启动并验证健康状态
-for i in {1..30}; do
-    if curl --noproxy "*" -s http://127.0.0.1:8000/health >/dev/null 2>&1; then
-        echo "      Domain Server 健康检查通过！"
-        break
-    fi
-    sleep 0.5
-done
-
-# 3. 启动 DeepSeek Harness Web 交互端 (Node.js)
+# 3. 启动 DeepSeek Harness Native Web 交互端 (Node.js 5173)
 if lsof -Pi :5173 -sTCP:LISTEN -t >/dev/null 2>&1; then
-    echo "[!] 提示: 5173 端口已有进程在运行，跳过启动 Harness Web。"
+    echo "[!] 提示: 5173 端口已有进程在运行，跳过启动。"
 else
-    echo "[3/3] 正在启动 DeepSeek Harness Web 端 (0.0.0.0:5173)..."
+    echo "      正在启动 DeepSeek Harness Web 端 (0.0.0.0:5173)..."
     mkdir -p "${HOME}/.dsh/profiles/web/node_modules/@industrial-benchmark"
     ln -sfn "${SCRIPT_DIR}/apps/iad-harness" "${HOME}/.dsh/profiles/web/node_modules/@industrial-benchmark/iad-harness"
     setsid "${NODE_EXEC}" "${SCRIPT_DIR}/node_modules/@deepseek-ai/dsh/lib/bin.js" \
@@ -108,12 +94,9 @@ fi
 echo ""
 echo "========================================================"
 echo "  服务启动完成！可通过局域网任意设备访问："
-echo "  - Web 质检看板与交互控制台:  ${DSH_URL}"
-echo "  - 领域核心服务 API:          http://${LAN_IP}:8000"
-echo "  - API 交互式文档 (Swagger):  http://${LAN_IP}:8000/docs"
+echo "  - DSH 原生工业审计工作台:    ${DSH_URL}"
 echo "========================================================"
 echo "  日志文件:"
-echo "  - Domain Server 日志: runs/domain_server.log"
-echo "  - Harness Web 日志:   runs/dsh_web.log"
+echo "  - Harness Web 日志: runs/dsh_web.log"
 echo "  停止服务请执行: ./stop.sh"
 echo "========================================================"

@@ -15,9 +15,9 @@ from iad_core.storage.database import Database
 from iad_core.storage.models import InspectionTask, Sample
 from iad_core.storage.repositories import TaskRepository, SampleRepository
 from iad_core.review.service import ReviewQueueService
-from iad_domain_server.tools.audit_tools import audit_suggestion_save
-from iad_domain_server.tools.candidate_tools import candidate_merge
-from iad_domain_server.contracts import ToolStatus
+from iad_core.tools.audit_tools import audit_suggestion_save
+from iad_core.tools.candidate_tools import candidate_merge
+from iad_core.contracts import ToolStatus
 
 LIVE_VLM_URL = "http://192.168.2.197:30002/v1"
 LIVE_MODEL = "Qwen/Qwen3.8-27B-FP8"

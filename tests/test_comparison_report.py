@@ -14,8 +14,8 @@ from iad_core.evaluation.report import generate_comparison_report
 from iad_core.storage.database import Database
 from iad_core.storage.models import EvaluationRunRecord
 from iad_core.storage.repositories import EvaluationRepository
-from iad_domain_server.tools.evaluation_tools import evaluation_compare
-from iad_domain_server.contracts import ToolStatus
+from iad_core.tools.evaluation_tools import evaluation_compare
+from iad_core.contracts import ToolStatus
 
 
 def make_dummy_run(

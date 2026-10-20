@@ -2,12 +2,12 @@ import pytest
 from iad_core.storage.database import Database
 from iad_core.storage.models import InspectionTask, Sample, Annotation
 from iad_core.storage.repositories import TaskRepository, SampleRepository, AnnotationRepository
-from iad_domain_server.tools.audit_tools import (
+from iad_core.tools.audit_tools import (
     audit_issue_query,
     audit_recheck,
     audit_suggestion_save,
 )
-from iad_domain_server.contracts import ToolStatus
+from iad_core.contracts import ToolStatus
 
 
 @pytest.fixture

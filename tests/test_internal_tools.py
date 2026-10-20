@@ -1,8 +1,7 @@
 import pytest
-from fastapi import HTTPException
 
-from iad_domain_server.api import INTERNAL_TOOL_MAP, execute_internal_tool
-from iad_domain_server.contracts import MutationType, ToolStatus
+from iad_core.tools import INTERNAL_TOOL_MAP, execute_internal_tool, ToolContractError
+from iad_core.contracts import MutationType, ToolStatus
 
 
 def test_internal_tools_list():
@@ -52,11 +51,10 @@ def test_strict_no_review_mutation_tools():
 
 
 def test_unknown_internal_tool_call():
-    """Verify calling an unknown tool raises 404."""
-    with pytest.raises(HTTPException) as exc_info:
+    """Verify calling an unknown tool raises ToolContractError."""
+    with pytest.raises(ToolContractError) as exc_info:
         execute_internal_tool("non_existent_tool", {})
-    assert exc_info.value.status_code == 404
-    assert "not registered" in exc_info.value.detail
+    assert "not registered" in str(exc_info.value)
 
 
 def test_task_inspect_call():
@@ -79,21 +77,21 @@ def test_evaluation_plan_call():
 
 def test_missing_required_parameter_raises_422():
     """Verify missing required parameter raises HTTP 422 (F-01, V2-04)."""
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(ToolContractError) as exc_info:
         execute_internal_tool("evaluation_plan", {
             "task_id": "kuangjiao_inspection_01",
         })
     assert exc_info.value.status_code == 422
-    assert "Missing required argument" in exc_info.value.detail
-    assert "build_id" in exc_info.value.detail
+    assert "Missing required argument" in str(exc_info.value)
+    assert "build_id" in str(exc_info.value)
 
 
 def test_unknown_parameter_raises_422():
     """Verify unknown parameter raises HTTP 422 (F-01, V2-04)."""
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(ToolContractError) as exc_info:
         execute_internal_tool("task_inspect", {
             "task_id": "kuangjiao_inspection_01",
             "unknown_extra_arg": 123,
         })
     assert exc_info.value.status_code == 422
-    assert "Unknown argument" in exc_info.value.detail
+    assert "Unknown argument" in str(exc_info.value)

@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 from iad_agent.config import AgentConfig
 from iad_agent.result import AgentRunResult
 from iad_agent.runtime import run, resume
-from iad_domain_server.api import INTERNAL_TOOL_MAP
+from iad_core.tools import INTERNAL_TOOL_MAP
 
 
 def test_agent_config_defaults():

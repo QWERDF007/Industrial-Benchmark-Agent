@@ -1,8 +1,8 @@
 import os
 import pytest
-from fastapi.testclient import TestClient
 
-from iad_domain_server.api import app, INTERNAL_TOOL_MAP
+from iad_core.tools import INTERNAL_TOOL_MAP
+from iad_core.entry import dispatch_request
 
 
 def test_internal_tool_discovery():
@@ -19,26 +19,44 @@ def test_internal_tool_discovery():
     assert "review_submit" not in INTERNAL_TOOL_MAP
 
 
-def test_internal_tool_execution_task_inspect():
-    """Real tool execution through POST /internal/tool/task_inspect on real database."""
-    client = TestClient(app)
-    resp = client.post(
-        "/internal/tool/task_inspect",
-        json={"task_id": "kuangjiao_inspection_01"},
-    )
-    assert resp.status_code == 200
-    result = resp.json()
+def test_internal_tool_execution_task_inspect(monkeypatch):
+    """Real tool execution through CLI dispatch on real database."""
+    emitted = []
+    monkeypatch.setattr("iad_core.entry.emit", lambda p: emitted.append(p))
+
+    dispatch_request({
+        "request_id": "req_harness_1",
+        "operation": "tool_call",
+        "arguments": {
+            "tool_name": "task_inspect",
+            "arguments": {"task_id": "kuangjiao_inspection_01"},
+        },
+    })
+
+    assert len(emitted) == 1
+    result = emitted[0]
+    assert result["event"] == "result"
     assert result["status"] == "OK"
     assert result["metrics"]["total_samples"] == 5074
     assert result["metrics"]["task_id"] == "kuangjiao_inspection_01"
 
 
-def test_internal_tool_execution_rejection():
-    """Disallowed or non-existent tools are rejected with 404."""
-    client = TestClient(app)
-    resp = client.post(
-        "/internal/tool/review_write",
-        json={"decision": "PASS"},
-    )
-    assert resp.status_code == 404
-    assert "not registered" in resp.json()["detail"]
+def test_internal_tool_execution_rejection(monkeypatch):
+    """Disallowed or non-existent tools are rejected with CONTRACT_ERROR or NOT_FOUND."""
+    emitted = []
+    monkeypatch.setattr("iad_core.entry.emit", lambda p: emitted.append(p))
+
+    dispatch_request({
+        "request_id": "req_harness_bad",
+        "operation": "tool_call",
+        "arguments": {
+            "tool_name": "review_write",
+            "arguments": {"decision": "PASS"},
+        },
+    })
+
+    assert len(emitted) == 1
+    result = emitted[0]
+    assert result["event"] == "error"
+    assert result["error"]["code"] == "CONTRACT_ERROR"
+    assert "not registered" in result["error"]["message"]

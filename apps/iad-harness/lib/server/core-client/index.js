@@ -1,7 +1,10 @@
 /**
- * CoreClient: Lightweight HTTP client communicating directly with Python domain server (S03, RP-03, V2-S02).
- * Interacts strictly with POST /internal/tool/{tool_name} and GET /internal/sample/{sample_id}/image.
+ * CoreClient: Direct PythonBridge client communicating with Python domain runtime (DS-S01, DS-S04, DSH-04).
+ * Replaces HTTP fetch with in-process stdin/stdout NDJSON CLI bridge (python -m iad_core.entry).
+ * No HTTP server or port 8000 required.
  */
+import fs from "node:fs/promises";
+import { PythonBridge } from "../python-bridge/index.js";
 export function detectImageMediaType(bytes, headerType) {
     if (bytes.length >= 8 &&
         bytes[0] === 0x89 &&
@@ -27,70 +30,35 @@ export function detectImageMediaType(bytes, headerType) {
     throw new Error("Unsupported or unrecognized image format: only image/png and image/jpeg are supported.");
 }
 export class CoreClient {
-    baseUrl;
+    bridge;
     timeoutMs;
     constructor(config = {}) {
-        const rawUrl = config.domainServerUrl ||
-            process.env.IAD_DOMAIN_SERVER_URL ||
-            "http://127.0.0.1:8000";
-        this.baseUrl = rawUrl.replace(/\/+$/, "");
+        this.bridge = config.bridge || new PythonBridge(config);
         this.timeoutMs = config.timeoutMs || 60000;
     }
     /**
-     * Execute domain tool via POST /internal/tool/{tool_name}.
+     * Execute domain tool via PythonBridge CLI invocation.
      */
     async call(toolName, args = {}, signal) {
-        const url = `${this.baseUrl}/internal/tool/${encodeURIComponent(toolName)}`;
-        const controller = new AbortController();
-        let timeoutId;
-        const onAbort = () => controller.abort(signal?.reason);
-        if (signal) {
-            signal.addEventListener("abort", onAbort);
-        }
-        if (this.timeoutMs > 0) {
-            timeoutId = setTimeout(() => {
-                controller.abort(new Error(`CoreClient request timed out after ${this.timeoutMs}ms`));
-            }, this.timeoutMs);
-        }
         try {
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Accept: "application/json",
-                },
-                body: JSON.stringify(args),
-                signal: controller.signal,
-            });
-            if (!response.ok) {
-                let errorDetail = "";
-                try {
-                    const errJson = await response.json();
-                    errorDetail = errJson.detail || JSON.stringify(errJson);
-                }
-                catch {
-                    errorDetail = await response.text();
-                }
-                throw new Error(`CoreClient call failed for ${toolName} [HTTP ${response.status}]: ${errorDetail}`);
-            }
-            return (await response.json());
+            const result = await this.bridge.execute("tool_call", {
+                tool_name: toolName,
+                arguments: args,
+            }, signal);
+            return result;
         }
-        finally {
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-            }
-            if (signal) {
-                signal.removeEventListener("abort", onAbort);
-            }
+        catch (err) {
+            throw new Error(`CoreClient call failed for ${toolName}: ${err.message || err}`);
         }
     }
     /**
-     * Fetch image with verified mediaType (PNG or JPEG) and secure endpoint gating (V2-06, V2-07).
+     * Fetch image with verified mediaType (PNG or JPEG) and secure endpoint gating (DS-S15).
+     * Reads image directly from authorized filesystem path returned by Python domain runtime.
      */
     async fetchImage(params, signal) {
-        let url;
+        let sampleId = params.sampleId;
         if (params.endpoint) {
-            // Security check (V2-06, AC-V2-02): reject external URL schemes and path traversals
+            // Security check: reject external URL schemes and path traversals
             if (params.endpoint.includes("://") ||
                 params.endpoint.startsWith("//") ||
                 !params.endpoint.startsWith("/internal/sample/")) {
@@ -99,64 +67,26 @@ export class CoreClient {
             if (params.endpoint.includes("..")) {
                 throw new Error(`Security violation: path traversal rejected in endpoint: ${params.endpoint}`);
             }
-            url = `${this.baseUrl}${params.endpoint}`;
-        }
-        else {
-            if (!params.sampleId) {
-                throw new Error("sampleId or endpoint must be provided to fetchImage");
+            const match = params.endpoint.match(/^\/internal\/sample\/([^/?#]+)/);
+            if (!match) {
+                throw new Error(`Invalid sample endpoint: ${params.endpoint}`);
             }
-            if (params.sampleId.includes("..")) {
-                throw new Error(`Security violation: path traversal rejected in sampleId: ${params.sampleId}`);
-            }
-            const q = new URLSearchParams();
-            if (params.view)
-                q.set("view", params.view);
-            if (params.bbox && params.bbox.length === 4)
-                q.set("bbox", params.bbox.join(","));
-            if (params.paddingRatio !== undefined)
-                q.set("padding", String(params.paddingRatio));
-            const queryStr = q.toString() ? `?${q.toString()}` : "";
-            url = `${this.baseUrl}/internal/sample/${encodeURIComponent(params.sampleId)}/image${queryStr}`;
+            sampleId = decodeURIComponent(match[1]);
         }
-        const controller = new AbortController();
-        let timeoutId;
-        const onAbort = () => controller.abort(signal?.reason);
-        if (signal) {
-            signal.addEventListener("abort", onAbort);
+        if (!sampleId) {
+            throw new Error("sampleId or endpoint must be provided to fetchImage");
         }
-        if (this.timeoutMs > 0) {
-            timeoutId = setTimeout(() => {
-                controller.abort(new Error(`CoreClient image fetch timed out after ${this.timeoutMs}ms`));
-            }, this.timeoutMs);
+        if (sampleId.includes("..")) {
+            throw new Error(`Security violation: path traversal rejected in sampleId: ${sampleId}`);
         }
-        try {
-            const response = await fetch(url, {
-                method: "GET",
-                headers: {
-                    Accept: "image/png, image/jpeg, image/*",
-                },
-                signal: controller.signal,
-            });
-            if (!response.ok) {
-                throw new Error(`Failed to fetch image bytes from ${url} [HTTP ${response.status}]: ${await response.text()}`);
-            }
-            const buffer = await response.arrayBuffer();
-            const bytes = new Uint8Array(buffer);
-            if (bytes.byteLength === 0) {
-                throw new Error(`Corrupted or empty image payload received from ${url}`);
-            }
-            const headerType = response.headers.get("content-type");
-            const mediaType = detectImageMediaType(bytes, headerType);
-            return { data: bytes, mediaType };
+        const imageInfo = await this.bridge.execute("sample_image_path", { sample_id: sampleId }, signal);
+        const fileBuffer = await fs.readFile(imageInfo.path);
+        const bytes = new Uint8Array(fileBuffer.buffer, fileBuffer.byteOffset, fileBuffer.byteLength);
+        if (bytes.byteLength === 0) {
+            throw new Error(`Corrupted or empty image payload read from ${imageInfo.path}`);
         }
-        finally {
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-            }
-            if (signal) {
-                signal.removeEventListener("abort", onAbort);
-            }
-        }
+        const mediaType = detectImageMediaType(bytes, imageInfo.media_type);
+        return { data: bytes, mediaType };
     }
     /**
      * Fetch raw image bytes from domain server for attachment storage.

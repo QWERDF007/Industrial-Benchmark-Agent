@@ -18,7 +18,7 @@
           - id: "Qwen/Qwen3.8-27B-FP8"
             name: "Qwen 3.8 27B FP8"
             input: ["text", "image"]
-            contextWindow: 32768
+            contextWindow: 262144
 
 - id: agent-default-model
   config:
@@ -36,5 +36,4 @@
 - insert:
     - id: industrial-harness-plugin
       name: '@industrial-benchmark/iad-harness'
-      config:
-        domainServerUrl: 'http://127.0.0.1:8000'
+

@@ -2,17 +2,16 @@ import os
 import sys
 import tempfile
 import pytest
-from fastapi.testclient import TestClient
 
 from iad_core.storage.database import Database
 from iad_core.storage.models import Sample, InspectionTask
 from iad_core.storage.repositories import SampleRepository, TaskRepository
-from iad_domain_server.api import app, validate_sample_image_path, DB_PATH
-import iad_domain_server.api as api_mod
+from iad_core.dataset.path_safety import validate_sample_image_path, PathSafetyError
+from iad_core.entry import op_sample_image_path
 
 
 def test_image_path_safety_validation(tmp_path, monkeypatch):
-    """NXM-17 / F08: Image paths outside authorized roots are rejected with 403."""
+    """NXM-17 / F08 / DS-S15: Image paths outside authorized roots are rejected with 403."""
     db_file = str(tmp_path / "test_safety.db")
     db = Database(db_file)
     sample_repo = SampleRepository(db)
@@ -41,7 +40,6 @@ def test_image_path_safety_validation(tmp_path, monkeypatch):
     sample_repo.upsert(s_valid)
 
     # 2. Outside path test
-    from fastapi import HTTPException
     s_outside = Sample(
         sample_id=f"{task_id}:outside",
         task_id=task_id,
@@ -53,8 +51,8 @@ def test_image_path_safety_validation(tmp_path, monkeypatch):
         quality_status="PASS",
     )
     # File doesn't exist -> 404
-    with pytest.raises(HTTPException) as exc_info:
-        validate_sample_image_path(s_outside)
+    with pytest.raises(PathSafetyError) as exc_info:
+        validate_sample_image_path(s_outside, db_path=db_file)
     assert exc_info.value.status_code == 404
 
     # Now create file in /opt or /tmp if possible, or test outside containment
@@ -64,24 +62,11 @@ def test_image_path_safety_validation(tmp_path, monkeypatch):
         f.write(b"\x89PNG\r\n\x1a\n")
 
     s_outside.image_path = fake_outside
-    # When allowed_roots does not contain tmp_path (simulating production without pytest tempdir)
-    monkeypatch.delitem(sys.modules, "pytest", raising=False)
-    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
-    with pytest.raises(HTTPException) as exc_403:
-        validate_sample_image_path(s_outside)
+    # When allowed_roots does not contain outside path (simulating production without pytest tempdir)
+    monkeypatch.setattr("iad_core.dataset.path_safety.get_authorized_dataset_roots", lambda db_path=None: [data_dir])
+    with pytest.raises(PathSafetyError) as exc_403:
+        validate_sample_image_path(s_outside, db_path=db_file)
     assert exc_403.value.status_code == 403
-
-
-    monkeypatch.setattr(api_mod, "DB_PATH", db_file)
-    client = TestClient(app)
-
-    # Valid image access succeeds
-    resp_valid = client.get(f"/api/sample/{task_id}:valid/image")
-    assert resp_valid.status_code == 200
-
-    # Non-existent sample returns 404
-    resp_404 = client.get("/api/sample/non_existent:fake/image")
-    assert resp_404.status_code == 404
 
     # Clean up valid test image
     if os.path.exists(valid_img):

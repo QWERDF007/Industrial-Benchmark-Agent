@@ -1,10 +1,12 @@
 /**
- * CoreClient: Lightweight HTTP client communicating directly with Python domain server (S03, RP-03, V2-S02).
- * Interacts strictly with POST /internal/tool/{tool_name} and GET /internal/sample/{sample_id}/image.
+ * CoreClient: Direct PythonBridge client communicating with Python domain runtime (DS-S01, DS-S04, DSH-04).
+ * Replaces HTTP fetch with in-process stdin/stdout NDJSON CLI bridge (python -m iad_core.entry).
+ * No HTTP server or port 8000 required.
  */
-export interface CoreClientConfig {
+import { PythonBridge, PythonBridgeConfig } from "../python-bridge/index.js";
+export interface CoreClientConfig extends PythonBridgeConfig {
+    bridge?: PythonBridge;
     domainServerUrl?: string;
-    timeoutMs?: number;
 }
 export interface FetchedImage {
     data: Uint8Array;
@@ -12,15 +14,16 @@ export interface FetchedImage {
 }
 export declare function detectImageMediaType(bytes: Uint8Array, headerType?: string | null): "image/png" | "image/jpeg";
 export declare class CoreClient {
-    readonly baseUrl: string;
+    readonly bridge: PythonBridge;
     readonly timeoutMs: number;
     constructor(config?: CoreClientConfig);
     /**
-     * Execute domain tool via POST /internal/tool/{tool_name}.
+     * Execute domain tool via PythonBridge CLI invocation.
      */
     call<T = any>(toolName: string, args?: Record<string, any>, signal?: AbortSignal): Promise<T>;
     /**
-     * Fetch image with verified mediaType (PNG or JPEG) and secure endpoint gating (V2-06, V2-07).
+     * Fetch image with verified mediaType (PNG or JPEG) and secure endpoint gating (DS-S15).
+     * Reads image directly from authorized filesystem path returned by Python domain runtime.
      */
     fetchImage(params: {
         endpoint?: string;

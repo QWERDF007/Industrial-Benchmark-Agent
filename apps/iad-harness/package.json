@@ -34,17 +34,23 @@
       "types": "./lib/server/evaluation/index.d.ts",
       "default": "./lib/server/evaluation/index.js"
     },
+    "./client": {
+      "default": "./lib/client.js"
+    },
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
     }
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc",
+    "build": "tsc && node scripts/build-client.js",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
@@ -53,8 +59,15 @@
     "@deepseek-ai/dsh-attachment": "0.2.0-rc.2",
     "@deepseek-ai/dsh-base": "0.2.0-rc.2",
     "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-mcp-client": "0.2.0-rc.2",
     "@deepseek-ai/dsh-skill": "0.2.0-rc.2",
     "@deepseek-ai/dsh-tools": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.0-rc.2",
     "@deepseek-ai/dsh-web-app": "0.2.0-rc.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "esbuild": "^0.28.2",
+    "react": "^18.3.1"
   }
 }

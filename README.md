@@ -46,19 +46,21 @@
 
 ```text
 Industrial-Benchmark-Agent/
+├── apps/
+│   └── iad-harness/          # DSH 原生扩展双面插件 (Server + Web Client)
 ├── config/                   # 局域网与框架 Patch 配置
 │   └── dsh_web_lan_patch.yml # DeepSeek Harness Web 局域网绑定与鉴权 Patch
 ├── configs/
 │   ├── example.yaml          # 规范示例配置
 │   └── kuangjiao.yaml        # 真实工业数据配置 (框胶外观检测)
-├── python/                   # 后端核心包与领域服务
-│   ├── iad_core/             # 数据底座、特征检索与评审逻辑
-│   ├── iad_domain_server/    # FastAPI 领域后端服务与内置 Tool Gateway
+├── python/                   # 后端核心包与 CLI 入口
+│   ├── iad_core/             # 数据底座、特征检索、基线评测与 CLI 桥接 (entry.py)
+│   ├── iad_agent/            # DSH Agent Runtime 对接逻辑
 │   └── iad_cli/              # CLI 命令行入口
 ├── node_modules/             # DeepSeek Harness 前端与 Cordis 运行库
 ├── tests/                    # 完整单元与集成测试套件
 ├── runs/                     # 运行日志与审计报告生成目录 (自动忽略)
-├── start.sh                  # 一键启动脚本 (Domain Server + Web 看板)
+├── start.sh                  # 一键启动脚本 (单一 DSH Web 进程，端口 5173)
 ├── stop.sh                   # 一键停止脚本
 └── status.sh                 # 服务运行状态检查脚本
 ```
@@ -100,12 +102,13 @@ pnpm install
 
 ## 4. 服务启动与局域网访问 (Service Startup & LAN Access)
 
-系统提供了开箱即用的多服务自动化启停与探测脚本，同时启动 **Python 领域核心服务 (FastAPI)** 与 **DeepSeek Harness Web 交互看板**，并自动绑定到局域网 IP（`0.0.0.0`），支持从局域网内任意客户端浏览器访问。
+系统采用单一 Web 宿主架构（DSH Web Host），基于 DeepSeek Harness 原生双面扩展插件提供一体化工业质量审计工作台，避免端口分叉与多进程开销。
+通过绑定局域网 IP（`0.0.0.0:5173`），局域网内任意客户端浏览器均可直接访问控制台与原生看板。
 
 ### 4.1 一键启停命令
 
 ```bash
-# 启动所有服务 (后台守护运行并打印访问 URL)
+# 启动单一 DSH Web 宿主服务 (后台守护运行并输出访问 URL 与 Token)
 ./start.sh
 # 或
 pnpm start
@@ -115,7 +118,7 @@ pnpm start
 # 或
 pnpm status
 
-# 停止所有服务并释放端口
+# 停止服务并释放 5173 端口
 ./stop.sh
 # 或
 pnpm stop
@@ -127,11 +130,10 @@ pnpm stop
 
 | 服务模块 | 局域网访问地址 | 默认端口 | 说明 |
 |---|---|---|---|
-| **Web 质检看板与交互控制台** | `http://192.168.2.87:5173/?token=<TOKEN>` | `5173` | DeepSeek Harness Web 前端，需携带启动时生成的 Token 鉴权 |
-| **领域后端 API 服务** | `http://192.168.2.87:8000` | `8000` | FastAPI 核心接口，已放行局域网跨域 (CORS) |
-| **API 交互式文档 (Swagger)** | `http://192.168.2.87:8000/docs` | `8000` | 在线 API 调试与协议文档 |
+| **DSH 原生工业审计工作台** | `http://192.168.2.87:5173/?token=<TOKEN>` | `5173` | 单一宿主 Web 前端，左侧边栏内置“工业审计”工作台面板，集成数据集总览、任务审计、图像查看、人机复核与报告导出 |
+| **工作台原生 API 路由** | `http://192.168.2.87:5173/api/iad/*` | `5173` | 由 DSH Web 宿主挂载的原生路由，直调 Python CLI 桥接，无独立后端端口 |
 
-> **提示**：运行日志持久化存储在 `runs/domain_server.log` 和 `runs/dsh_web.log`，可通过 `tail -f runs/*.log` 实时监控。
+> **提示**：运行日志持久化存储在 `runs/dsh_web.log`，可通过 `tail -f runs/dsh_web.log` 实时监控。
 
 ### 4.3 外部多模态 VLM 推理接入
 

@@ -8,8 +8,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-import iad_domain_server.tools as domain_tools
-from iad_domain_server.contracts import ToolStatus
+import iad_core.tools as domain_tools
+from iad_core.contracts import ToolStatus
 
 app = typer.Typer(
     name="iad",
@@ -77,34 +77,23 @@ def agent_resume(
 
 
 @app.command("web")
-def web_supervisor(
-    port: int = typer.Option(8000, "--port", "-p", help="Domain server port"),
-    dsh_port: int = typer.Option(8080, "--dsh-port", help="DeepSeek Harness Web port"),
+def web_start(
+    port: int = typer.Option(5173, "--port", "-p", help="DSH Native Web port"),
     no_open: bool = typer.Option(False, "--no-open", help="Do not automatically open browser"),
 ):
     """
-    Supervise Industrial Domain Server sidecar and DeepSeek Harness Web UI (Ticket I001, Spec S13.1).
+    Start single native DeepSeek Harness Web Workbench (DS-S01, port 5173).
+    No FastAPI or port 8000 required.
     """
-    console.print(f"[bold green]Starting Industrial Domain Server on http://127.0.0.1:{port}...[/bold green]")
+    console.print(f"[bold cyan]Starting DSH Native Industrial Audit Workbench on port {port}...[/bold cyan]")
     import subprocess
-    import sys
-
-    domain_proc = subprocess.Popen(
-        [sys.executable, "-m", "iad_domain_server.main", "--port", str(port)],
-        cwd=os.getcwd(),
-    )
 
     dsh_bin = os.path.join(os.getcwd(), "node_modules", ".bin", "dsh")
-    dsh_cmd = [dsh_bin, "web", "--port", str(dsh_port)]
+    dsh_cmd = [dsh_bin, "web", "--profile", "web", "--port", str(port)]
     if no_open:
         dsh_cmd.append("--no-open")
 
-    console.print(f"[bold cyan]Starting DeepSeek Harness Web UI on http://127.0.0.1:{dsh_port}...[/bold cyan]")
-    try:
-        subprocess.run(dsh_cmd, cwd=os.getcwd())
-    finally:
-        domain_proc.terminate()
-        domain_proc.wait()
+    subprocess.run(dsh_cmd, cwd=os.getcwd())
 
 
 # -----------------------------------------------------------------------------
