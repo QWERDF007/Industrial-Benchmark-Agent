@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 export function AnnotatedImage({ image, visible = true }) {
-    return _jsxs("div", { className: "iad-image-frame", children: [_jsx("img", { src: image.src, alt: image.title, draggable: false }), visible && image.annotations && _jsx("svg", { className: "iad-annotation-layer", viewBox: `0 0 ${image.width} ${image.height}`, preserveAspectRatio: "none", children: image.annotations.filter(a => a.geometry_status !== "INVALID").map(a => _jsxs("g", { children: [a.polygon ? _jsx("polygon", { points: a.polygon.map(p => p.join(",")).join(" ") }) : a.bbox && _jsx("rect", { x: a.bbox[0], y: a.bbox[1], width: a.bbox[2] - a.bbox[0], height: a.bbox[3] - a.bbox[1] }), a.bbox && _jsx("text", { x: a.bbox[0], y: Math.max(12, a.bbox[1] - 4), children: a.raw_label })] }, a.annotation_id)) })] });
+    return _jsxs("div", { className: "iad-image-frame", children: [_jsx("img", { src: image.src, alt: image.title, draggable: false }), visible && image.annotations && _jsx("svg", { className: "iad-annotation-layer", viewBox: `0 0 ${image.width} ${image.height}`, preserveAspectRatio: "none", children: image.annotations.filter(a => a.geometry_status !== "INVALID").map(a => _jsxs("g", { children: [a.polygon ? _jsx("polygon", { points: a.polygon.map(p => p.join(",")).join(" ") }) : a.bbox && _jsx("rect", { x: a.bbox[0], y: a.bbox[1], width: a.bbox[2] - a.bbox[0], height: a.bbox[3] - a.bbox[1] }), a.bbox && _jsx("text", { x: a.bbox[0], y: Math.max(12, a.bbox[1] - 4), children: a.raw_label })] }, a.annotation_id)) }), image.focus && _jsx("svg", { className: "iad-finding-layer", "data-finding-id": image.focus.findingId, viewBox: `0 0 ${image.width} ${image.height}`, preserveAspectRatio: "none", "aria-label": image.focus.label, children: _jsx("rect", { x: image.focus.bbox[0], y: image.focus.bbox[1], width: image.focus.bbox[2] - image.focus.bbox[0], height: image.focus.bbox[3] - image.focus.bbox[1] }) })] });
 }
 export function ImageViewer({ image, onClose }) {
     const viewport = useRef(null);
@@ -28,6 +28,13 @@ export function ImageViewer({ image, onClose }) {
         return () => { source.onload = null; window.removeEventListener("keydown", key); };
     }, [image.src, onClose]);
     useEffect(() => {
+        if (!image.focus || !bounds.width || !bounds.height || !size.width || !size.height)
+            return;
+        const [x1, y1, x2, y2] = image.focus.bbox;
+        const scale = Math.min(16, bounds.width / ((x2 - x1) * 1.4), bounds.height / ((y2 - y1) * 1.4));
+        setView({ scale, x: (size.width / 2 - (x1 + x2) / 2) * scale, y: (size.height / 2 - (y1 + y2) / 2) * scale });
+    }, [image.focus, bounds.width, bounds.height, size.width, size.height]);
+    useEffect(() => {
         const element = viewport.current;
         const wheel = (event) => {
             event.preventDefault();
@@ -50,5 +57,6 @@ export function ImageViewer({ image, onClose }) {
                         const x = start.panX + event.clientX - start.x, y = start.panY + event.clientY - start.y;
                         setView(previous => ({ ...previous, x, y }));
                     }
-                }, onPointerUp: () => { drag.current = null; }, onPointerCancel: () => { drag.current = null; }, children: _jsx("div", { className: "iad-viewer-world", "data-scale": scale, style: { width: size.width, height: size.height, transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${scale})` }, children: _jsx(AnnotatedImage, { image: { ...image, ...size }, visible: visible }) }) })] });
+                }, onPointerUp: () => { drag.current = null; }, onPointerCancel: () => { drag.current = null; }, children: _jsx("div", { className: "iad-viewer-world", "data-scale": scale, style: { width: size.width, height: size.height, "--iad-view-scale": scale,
+                        transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${scale})` }, children: _jsx(AnnotatedImage, { image: { ...image, ...size }, visible: visible }) }) })] });
 }

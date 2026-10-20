@@ -48,12 +48,16 @@ class SampleInspection:
         evidence = outcome.regions
         global_view = outcome.global_view
         coverage = Coverage(planned_regions=len(expanded), inspected_regions=len(evidence), complete=True)
-        result = VlmResult.model_validate(steps[-1].result.model_dump(exclude={'global_view', 'region_observations', 'check_assessments'}))
+        result = VlmResult.model_validate(steps[-1].result.model_dump(exclude={'global_view', 'region_observations', 'check_assessments', 'findings', 'resolved_findings'}))
+        findings = outcome.finding_ledger.findings
+        if findings and result.suggested_label == 'PASS':
+            result.conflicts.append('仍有需要人工核实的视觉疑点')
         assessments = [assessment.model_copy(deep=True) for assessment in steps[-1].result.check_assessments]
         for assessment in assessments:
             earlier_anomalies = [(step.step_id, earlier) for step in steps[:-1] for earlier in step.result.check_assessments
                 if earlier.check_id == assessment.check_id and earlier.status == 'anomaly'
-                and earlier.check_id in criteria.independent_check_ids]
+                and earlier.check_id in criteria.independent_check_ids
+                and not outcome.finding_ledger.resolved(step.step_id, assessment.check_id)]
             if earlier_anomalies and assessment.status in ('normal', 'not_applicable'):
                 assessment.status = 'insufficient'
                 for step_id, earlier in earlier_anomalies:
@@ -75,7 +79,7 @@ class SampleInspection:
             elif result.suggested_label == 'PASS' and assessment.status == 'anomaly':
                 result.conflicts.append(f'{assessment.check_id}指出异常：{assessment.description}')
         for step in steps[:-1]:
-            if result.suggested_label == "PASS" and (step.result.suggested_label == "FAIL" or (step.result.suggested_label == "UNCERTAIN" and not step.result.region_requests)):
+            if result.suggested_label == "PASS" and not outcome.finding_ledger.resolved(step.step_id) and (step.result.suggested_label == "FAIL" or (step.result.suggested_label == "UNCERTAIN" and not step.result.region_requests)):
                 result.conflicts.append(f"{step.step_id} 建议 {step.result.suggested_label}：{step.result.description}")
             result.conflicts.extend(step.result.conflicts)
             result.missing_evidence.extend(step.result.missing_evidence)
@@ -96,4 +100,5 @@ class SampleInspection:
             defect_version_id=knowledge.defect.version_id if knowledge.defect else None,
             knowledge_limitations=criteria.limitations, reference_sample_ids=criteria.reference_sample_ids, check_assessments=assessments,
             overview=overview.evidence, coverage=coverage, global_view=global_view, regions=evidence,
+            findings=findings,
             auxiliary_evidence=[mask.evidence for mask in masks.values()], conclusion=result, joint_steps=steps)

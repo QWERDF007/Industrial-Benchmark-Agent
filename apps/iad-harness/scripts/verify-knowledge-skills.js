@@ -103,10 +103,29 @@ try {
   assert.deepEqual(analysis.check_assessments.map(item => item.check_id).sort(), expectedChecks);
   const actualIds = new Set(analysis.joint_steps.flatMap(step => step.input_evidence_ids));
   assert.ok(analysis.check_assessments.every(item => item.evidence_ids.length && item.evidence_ids.every(id => actualIds.has(id))));
+  assert.ok(analysis.findings.length, 'Actual synthetic anomaly must produce a locatable review finding');
+  assert.ok(analysis.findings.some(finding => finding.location.scope === 'local' && finding.location.bbox), 'Local synthetic obstruction must have an actual image location');
+  const stepIds = new Set(analysis.joint_steps.map(step => step.step_id));
+  for (const finding of analysis.findings) {
+    assert.ok(finding.finding_id && finding.normal_explanation && finding.review_action);
+    assert.ok(finding.source_step_ids.length && finding.source_step_ids.every(id => stepIds.has(id)));
+    assert.ok(finding.evidence_ids.length && finding.evidence_ids.every(id => actualIds.has(id)));
+  }
   assert.equal(analysis.coverage.complete, true);
-  assert.equal(analysis.coverage.inspected_regions, 1);
-  assert.equal(analysis.joint_steps.length, 1);
+  assert.equal(analysis.coverage.inspected_regions, analysis.regions.length);
+  assert.equal(analysis.coverage.planned_regions, analysis.regions.length);
+  assert.ok(analysis.regions.length >= 1);
   assert.equal(analysis.joint_steps[0].input_evidence_ids.length, 3);
+  if (analysis.joint_steps.length > 1) {
+    assert.ok(analysis.joint_steps.slice(0, -1).some(step => step.result.global_view.suspect_regions.length
+      || step.result.check_assessments.some(check => check.inspection_regions.length)), 'Extra inspection needs an actual recorded evidence request');
+    const initialRoi = analysis.regions[0].image.evidence_id;
+    assert.ok(analysis.joint_steps.slice(1).every(step => !step.input_evidence_ids.includes(initialRoi)), 'Follow-up must inspect new detail without resending the original ROI');
+    if (analysis.joint_steps[0].result.findings.length) {
+      assert.ok(analysis.joint_steps.slice(1).some(step => step.result.findings.some(finding => finding.related_findings.length)
+        || step.result.resolved_findings.length), 'Follow-up must explicitly update or resolve the prior synthetic anomaly');
+    }
+  }
   const mask = analysis.auxiliary_evidence.find(image => image.representation === "annotation_mask");
   assert.ok(mask);
   assert.deepEqual(mask.crop_bbox, analysis.regions[0].crop_bbox);

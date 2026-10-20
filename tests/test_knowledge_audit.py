@@ -67,7 +67,7 @@ def test_missing_frozen_visual_support_fails_without_saving_a_suggestion(dataset
         runtime.close()
 
 
-def test_operator_audits_using_frozen_learned_rules_without_relearning(knowledge_dataset):
+def test_operator_audits_using_frozen_learned_rules_without_relearning(knowledge_dataset, finding_response):
     db, config = knowledge_dataset
     target = config.dataset.id + ':part-2.png'
     with Image.open(config.root + '/part-2.png') as image:
@@ -96,6 +96,7 @@ def test_operator_audits_using_frozen_learned_rules_without_relearning(knowledge
             result = {**view, 'suggested_label': 'FAIL', 'reason_category': 'OCCLUSION', 'confidence': 0.7,
                 'evidence_ids': [image['evidence_id'] for image in images], 'global_view': view,
                 'check_assessments': [{**view, 'check_id': check['check_id'], 'status': 'anomaly', 'evidence_ids': [images[0]['evidence_id']]} for check in checks],
+                'findings': [{**finding_response, 'check_ids': [check['check_id'] for check in checks], 'evidence_ids': [images[0]['evidence_id']]}],
                 'region_observations': [{**view, 'region_index': index} for index in range(1, len(images))]}
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
 
@@ -123,7 +124,7 @@ def test_operator_audits_using_frozen_learned_rules_without_relearning(knowledge
 
 
 @pytest.mark.parametrize('model_label', ['PASS', 'FAIL'])
-def test_target_cannot_be_its_own_only_knowledge_support(knowledge_dataset, model_label):
+def test_target_cannot_be_its_own_only_knowledge_support(knowledge_dataset, model_label, finding_response):
     db, config = knowledge_dataset
     target = config.dataset.id + ':part-0.png'
 
@@ -142,6 +143,7 @@ def test_target_cannot_be_its_own_only_knowledge_support(knowledge_dataset, mode
             checks = json.loads(body['messages'][0]['content'][0]['text'].split('冻结知识：')[1].split('\n')[0])['checks']
             result = {**view, 'suggested_label': model_label, 'reason_category': 'NORMAL', 'confidence': 0.9,
                 'check_assessments': [{**view, 'check_id': check['check_id'], 'status': 'normal' if model_label == 'PASS' else 'anomaly', 'evidence_ids': [images[0]['evidence_id']]} for check in checks],
+                'findings': [] if model_label == 'PASS' else [{**finding_response, 'check_ids': [check['check_id'] for check in checks], 'evidence_ids': [images[0]['evidence_id']]}],
                 'evidence_ids': [item['evidence_id'] for item in images], 'global_view': view,
                 'region_observations': [{**view, 'region_index': index} for index in range(1, len(images))]}
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
@@ -162,7 +164,7 @@ def test_target_cannot_be_its_own_only_knowledge_support(knowledge_dataset, mode
         runtime.close()
 
 
-def test_defect_version_remains_frozen_in_job_progress_and_analysis(defect_dataset):
+def test_defect_version_remains_frozen_in_job_progress_and_analysis(defect_dataset, finding_response):
     db, dataset, original, _ = defect_dataset
     target = original['sample']['sample_id']
     normal = None
@@ -199,6 +201,7 @@ def test_defect_version_remains_frozen_in_job_progress_and_analysis(defect_datas
             checks = json.loads(content[0]['text'].split('冻结知识：')[1].split('\n')[0])['checks']
             result = {**view, 'suggested_label': 'FAIL', 'reason_category': 'OCCLUSION', 'confidence': 0.8,
                 'check_assessments': [{**view, 'check_id': check['check_id'], 'status': 'anomaly', 'evidence_ids': [images[0]['evidence_id']]} for check in checks],
+                'findings': [{**finding_response, 'check_ids': [check['check_id'] for check in checks], 'evidence_ids': [images[0]['evidence_id']]}],
                 'evidence_ids': [item['evidence_id'] for item in images], 'global_view': view,
                 'region_observations': [{**view, 'region_index': index} for index, item in enumerate(
                     [item for item in images if item['role'] == 'roi' and item['representation'] == 'raw'], 1)]}

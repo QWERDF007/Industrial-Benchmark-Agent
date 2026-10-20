@@ -41,7 +41,7 @@ export const workbenchStyles = `
 .iad-image-button {display:block;width:100%;padding:0!important;border:0!important;background:#e8edf5!important;}
 .iad-image-frame {position:relative;width:100%;line-height:0;}.iad-image-frame img {display:block;width:100%;height:auto;}
 .iad-image-frame svg {position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
-.iad-image-frame rect,.iad-image-frame polygon {fill:#ff532b0f;stroke:#ff532b;stroke-width:2;vector-effect:non-scaling-stroke;}
+.iad-image-frame rect,.iad-image-frame polygon {fill:#ff532b0f;stroke:#ff532b;stroke-width:calc(2px / var(--iad-view-scale,1));vector-effect:non-scaling-stroke;}
 .iad-image-frame text {fill:#ff532b;font-size:14px;}
 .iad-workbench dl {display:grid;grid-template-columns:105px minmax(0,1fr);gap:8px 10px;font-size:12px;}
 .iad-workbench dt {color:#8190a5;}.iad-workbench dd {margin:0;overflow-wrap:anywhere;}

@@ -14,7 +14,7 @@ from iad_core.workbench.vision import VlmClient
     ('FAIL', [], 'FAIL'),
     ('PASS', ['主体背面被遮挡，当前图像无法核验'], 'UNCERTAIN'),
 ])
-def test_learned_check_requests_actual_target_detail_and_keeps_rule_provenance(dataset, mllm_api, detail_label, other_missing, expected):
+def test_learned_check_requests_actual_target_detail_and_keeps_rule_provenance(dataset, mllm_api, detail_label, other_missing, expected, finding_response):
     db, _, config = dataset
     normal = knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge']
     check_id = normal['checks'][0]['check_id']
@@ -37,6 +37,7 @@ def test_learned_check_requests_actual_target_detail_and_keeps_rule_provenance(d
         answer = {**view, 'suggested_label': detail_label if detail else 'UNCERTAIN', 'reason_category': 'SURFACE_CHANGE', 'confidence': 0.8,
             'evidence_ids': [item['evidence_id'] for item in views], 'global_view': view,
             'missing_evidence': [] if detail else other_missing,
+            'findings': [{**finding_response, 'check_ids': [check_id], 'evidence_ids': [views[0]['evidence_id']]}] if detail and detail_label == 'FAIL' else [],
             'region_observations': [{**view, 'region_index': index} for index, _ in enumerate(
                 [item for item in views if item['role'] == 'roi' and item['representation'] == 'raw'], 1)],
             'check_assessments': [{**view, 'check_id': check_id, 'status': ('anomaly' if detail_label == 'FAIL' else 'normal') if detail else 'insufficient',

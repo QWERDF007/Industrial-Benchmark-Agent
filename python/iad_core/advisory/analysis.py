@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional, Union
+from typing import Annotated, List, Literal, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
@@ -30,6 +30,7 @@ class GlobalAnalysis(ViewAnalysis):
 
 
 class VlmResult(ViewAnalysis):
+    description: str = Field(min_length=1, description="一句话综合建议，指出优先复核位置与问题；整体和局部观察放在对应字段，不重复长篇视觉描述")
     suggested_label: Literal["PASS", "FAIL", "UNCERTAIN"]
     reason_category: str
     confidence: float = Field(ge=0, le=1)
@@ -53,10 +54,57 @@ class CheckAssessment(ViewAnalysis):
     inspection_regions: List[RegionProposal] = Field(default_factory=list, description="该判据尚需补充细看的区域；仅填尚无足够原分辨率证据的区域，坐标相对整图")
 
 
+class LocalFindingLocation(AnalysisModel):
+    scope: Literal["local"] = Field(description="可定位部位的现象，例如孔内异物或局部色差")
+    bbox: List[int] = Field(min_length=4, max_length=4, description="必须给出原图像素坐标[x1,y1,x2,y2]，不能省略或填null")
+    description: str = Field(min_length=1)
+
+
+class GlobalFindingLocation(AnalysisModel):
+    scope: Literal["global"] = Field(description="仅用于整体结构关系，不用于规避局部现象的定位")
+    bbox: None = None
+    description: str = Field(min_length=1)
+
+
+FindingLocation = Annotated[Union[LocalFindingLocation, GlobalFindingLocation], Field(discriminator='scope')]
+
+
+class FindingReference(AnalysisModel):
+    step_id: str
+    finding_index: int = Field(ge=1, description="该步骤findings中的序号，从1开始")
+
+
+class FindingObservation(AnalysisModel):
+    check_ids: List[str] = Field(description="关联的冻结检查项；新出现且尚无判据的现象可为空，不得伪造检查项")
+    location: FindingLocation
+    description: str = Field(min_length=1, description="一句可见现象")
+    hypothesis: str = Field(min_length=1)
+    normal_explanation: str = Field(min_length=1, description="需排除的合理正常解释，不能直接把疑点视为缺陷事实")
+    limitations: List[str] = Field(default_factory=list)
+    review_action: str = Field(min_length=1)
+    priority: Literal["high", "medium", "low"] = Field(description="人工复核顺序，不代表缺陷概率")
+    evidence_ids: List[str] = Field(min_length=1)
+    related_findings: List[FindingReference] = Field(default_factory=list, description="更新/合并的此前待处理疑点；引用给定reference，不按重叠框自行推断身份")
+
+
+class FindingResolution(AnalysisModel):
+    related_findings: List[FindingReference] = Field(min_length=1)
+    description: str = Field(min_length=1, description="实际证据为何已排除该疑点")
+    normal_explanation: str = Field(min_length=1)
+    evidence_ids: List[str] = Field(min_length=1)
+
+
+class AuditFinding(FindingObservation):
+    finding_id: str
+    source_step_ids: List[str]
+
+
 class JointAnalysis(VlmResult):
     global_view: GlobalAnalysis
     region_observations: List[RegionObservation]
     check_assessments: List[CheckAssessment] = Field(default_factory=list)
+    findings: List[FindingObservation] = Field(default_factory=list)
+    resolved_findings: List[FindingResolution] = Field(default_factory=list)
 
     @property
     def region_requests(self) -> List[RegionProposal]:
@@ -121,6 +169,7 @@ class AuditAnalysis(AnalysisModel):
     legacy_profile_id: Optional[str] = None
     knowledge_limitations: List[str] = Field(default_factory=list)
     check_assessments: List[CheckAssessment] = Field(default_factory=list)
+    findings: List[AuditFinding] = Field(default_factory=list)
     reference_sample_ids: List[str] = Field(default_factory=list)
     overview: VisualEvidence
     coverage: Coverage

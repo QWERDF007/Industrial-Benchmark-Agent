@@ -6,6 +6,7 @@ from typing import Callable, List, Optional
 from iad_core.advisory.analysis import GlobalAnalysis, InspectionProgress, JointAnalysis, RegionEvidence, RegionImage, SynthesisStep, ViewAnalysis
 from iad_core.evidence.images import EvidenceImages, PreparedImage
 from iad_core.workbench.vision import VlmClient
+from iad_core.workbench.findings import FindingLedger
 
 OUTPUT_TOKENS = 16384
 
@@ -21,6 +22,7 @@ class JointOutcome:
     global_view: GlobalAnalysis
     regions: List[RegionEvidence]
     steps: List[SynthesisStep]
+    finding_ledger: FindingLedger
 
 
 class JointInspection:
@@ -34,6 +36,7 @@ class JointInspection:
         pending = [(regions, [])]
         steps = list(previous.steps) if previous else []
         inspected = list(previous.regions) if previous else []
+        ledger = previous.finding_ledger if previous else FindingLedger()
         planned_count = len(inspected) + len(regions)
         total = len(steps) + 1
         while pending:
@@ -49,6 +52,10 @@ class JointInspection:
                     images.append(PreparedImage(region.image, self.images.path(region.image)))
                     images.extend(mask for mask in annotation_masks or [] if mask.evidence.crop_bbox == region.crop_bbox)
                 instruction = context
+                if ledger.context:
+                    instruction += '\n待处理疑点：' + json.dumps(ledger.context, ensure_ascii=False) + '\n'
+                    instruction += ('补看后同一现象用related_findings引用给定reference并更新观察，不再重复创建。'
+                        '确已排除时用resolved_findings给出该reference、实际依据和正常解释；未明确处理的疑点仍待复核。')
                 if previous:
                     instruction += '\n此前实际联合观察与证据记录：' + json.dumps([step.model_dump() for step in previous.steps], ensure_ascii=False)
                     instruction += '当前只追加尚缺的原图细节。结合此前证据与新图逐项重审；已补齐的缺证可消解，尚未消解的异常、冲突和限制须保留。'
@@ -84,9 +91,12 @@ class JointInspection:
                     eid for child in children for eid in child.step.result.evidence_ids
                 } | {
                     eid for child in children for assessment in child.step.result.check_assessments for eid in assessment.evidence_ids
+                } | {
+                    eid for child in children for finding in child.step.result.findings for eid in finding.evidence_ids
                 }
                 if previous:
                     available.update(eid for step in previous.steps for eid in step.input_evidence_ids)
+                available.update(eid for finding in ledger.findings for eid in finding.evidence_ids)
                 if not set(result.evidence_ids) <= available:
                     raise ValueError("MLLM cited unknown visual evidence")
                 assessments = [assessment.check_id for assessment in result.check_assessments]
@@ -98,6 +108,10 @@ class JointInspection:
                 raw_ids.update(region.image.evidence_id for region in inspected)
                 if any(not set(assessment.evidence_ids) & raw_ids for assessment in result.check_assessments):
                     raise ValueError("MLLM check assessment requires raw visual evidence, not only a localization mask")
+                if not {assessment.check_id for assessment in result.check_assessments if assessment.status == 'anomaly'} <= {
+                    check_id for finding in result.findings for check_id in finding.check_ids
+                }:
+                    raise ValueError('MLLM findings must explain every anomalous check')
                 if any(not set(region.check_ids) <= check_ids for region in result.region_requests):
                     raise ValueError("MLLM region request cited an unknown check")
                 indices = [observation.region_index for observation in result.region_observations]
@@ -109,13 +123,16 @@ class JointInspection:
                         observations[index].model_dump(exclude={'region_index'}))) for index, region in enumerate(inputs, 1))
                 step = SynthesisStep(step_id=f"joint_{len(steps) + 1}", input_evidence_ids=[image.evidence.evidence_id for image in images],
                                      child_step_ids=[child.step.step_id for child in children], result=result)
+                visual = {image.evidence.evidence_id: image.evidence for image in [*images, *(annotation_masks or [])]}
+                visual.update({region.image.evidence_id: region.image for region in inspected})
+                ledger.observe(step.step_id, result, {eid: image for eid, image in visual.items() if eid in available}, check_ids)
                 steps.append(step)
                 representative = next((region for region in inputs if region.image.evidence_id in result.evidence_ids), inputs[0])
                 nodes.append(JointNode(step, representative))
                 phase(InspectionProgress(phase="SYNTHESIS", inspected_regions=len(inspected),
                                          planned_regions=planned_count, completed_batches=len(steps), total_batches=total))
             if len(nodes) == 1:
-                return JointOutcome(result.global_view, inspected, steps)
+                return JointOutcome(result.global_view, inspected, steps, ledger)
             if level_size and len(nodes) >= level_size:
                 raise ValueError("MLLM context cannot combine two child analyses")
             pending = [([], nodes)]

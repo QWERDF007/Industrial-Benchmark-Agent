@@ -59,6 +59,12 @@ for name in ['normal','normal2','dent']:
         check_assessments:JSON.parse(parts[0].text.split("冻结知识：")[1].split("\n")[0]).checks.map(check=>({...view,check_id:check.check_id,status:"anomaly",evidence_ids:[images[1].evidence_id]})),
         region_observations:images.filter(image=>image.role==="roi"&&image.representation==="raw").map((_,index)=>({...view,region_index:index+1})),suggested_label:"FAIL",reason_category:"SCRATCH",confidence:0.8,
         evidence_ids:parts.filter(part=>part.type==="text"&&part.text.startsWith("视觉证据：")).map(part=>JSON.parse(part.text.slice(5)).evidence_id)};
+      if (schema.title === "JointAnalysis") answer.findings = ["high", "medium", "low", "high"].map((priority, index) => ({
+        check_ids:answer.check_assessments.map(check=>check.check_id),
+        location:{scope:index===2?"global":"local",bbox:index===2?null:[10,10,30,30],description:index===2?"整体关系":"左上角"},
+        description:`待核实疑点 ${index+1}`, hypothesis:"可能污染", normal_explanation:"可能是反光",
+        limitations:["缺少另一照明角度"], review_action:"核对原图与反光方向", priority, evidence_ids:[images[0].evidence_id,images[1].evidence_id],
+      }));
       if (schema.title === "JointAnalysis" && holdRegion) await new Promise(resolve => { releaseRegion = resolve; });
       res.setHeader("Content-Type","application/json"); res.end(JSON.stringify({choices:[{message:{content:JSON.stringify(answer)}}]}));
     } else api(req, res);
@@ -136,6 +142,24 @@ for name in ['normal','normal2','dent']:
     assert.ok(updatedDataset.reference_sample_ids.includes(dent.sample_id));
     await button("按知识审计此图");
     await driver.wait(async () => (await (await element(".iad-single-job")).getText()).includes("COMPLETED"),15000);
+    assert.equal((await driver.findElements(By.css(".iad-findings li"))).length,3);
+    await driver.executeScript("document.querySelector('.iad-findings').scrollIntoView({block:'start'});");
+    await fs.writeFile(path.join(workspace, "runs/browser/audit-findings.png"), await driver.takeScreenshot(), "base64");
+    await (await element(".iad-findings li button")).click();
+    await element("[role='dialog'] .iad-finding-layer rect");
+    assert.equal(await (await element(".iad-finding-layer rect")).getAttribute("x"),"10");
+    assert.equal(await (await element(".iad-finding-layer rect")).getAttribute("width"),"20");
+    assert.match(await (await element("[role='dialog'] img")).getAttribute("src"), /\/api\/iad\/evidence\//);
+    await driver.wait(async()=>await driver.executeScript("const r=document.querySelector('.iad-finding-layer rect').getBoundingClientRect(),v=document.querySelector('.iad-viewer-viewport').getBoundingClientRect();return Math.abs((r.left+r.right-v.left-v.right)/2)<2&&Math.abs((r.top+r.bottom-v.top-v.bottom)/2)<2"),5000);
+    assert.ok(await driver.executeScript("const r=document.querySelector('.iad-finding-layer rect'),w=document.querySelector('.iad-viewer-world');return parseFloat(getComputedStyle(r).strokeWidth)*new DOMMatrix(getComputedStyle(w).transform).a<=3"), "放大后定位描边仍应保持细线，避免遮挡缺陷");
+    await fs.writeFile(path.join(workspace, "runs/browser/audit-finding-focus.png"), await driver.takeScreenshot(), "base64");
+    await button("关闭");
+    await button("查看其余 1 项");
+    assert.equal((await driver.findElements(By.css(".iad-findings li"))).length,4);
+    await driver.findElement(By.xpath("//section[contains(@class,'iad-findings')]//button[contains(.,'整体关系')]" )).click();
+    await element("[role='dialog'] img");
+    assert.equal((await driver.findElements(By.css(".iad-finding-layer"))).length,0);
+    await button("关闭");
     await (await element(".iad-rule-assessments summary")).click();
     assert.ok((await (await element(".iad-rule-assessments")).getText()).includes("表面外观"));
     assert.ok((await (await element(".iad-rule-assessments")).getText()).includes("发现偏离"));

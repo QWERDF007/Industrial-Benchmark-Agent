@@ -7,6 +7,11 @@ export interface ImageSource {
     width?: number;
     height?: number;
     annotations?: Annotation[];
+    focus?: {
+        bbox: number[];
+        label: string;
+        findingId: string;
+    };
 }
 export declare function AnnotatedImage({ image, visible }: {
     image: ImageSource;

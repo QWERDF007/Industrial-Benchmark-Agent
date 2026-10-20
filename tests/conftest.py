@@ -81,7 +81,13 @@ def dataset(tmp_path):
 
 
 @pytest.fixture
-def mllm_api(dataset):
+def finding_response():
+    return {'location': {'scope': 'global', 'bbox': None, 'description': '主体结构'}, 'description': '需要核对外观判据',
+        'hypothesis': '可能偏离产品判据', 'normal_explanation': '需排除正常成像变化', 'review_action': '核对全图与实际局部', 'priority': 'high'}
+
+
+@pytest.fixture
+def mllm_api(dataset, finding_response):
     bodies = []
     patterns = {"summary": "可见蓝色表面", "checks": [{"title": "表面外观", "subject": "主体", "location": "全图", "criterion": "可见蓝色表面", "allowed_variations": ["亮度变化"], "support_evidence_ids": [], "counter_evidence_ids": [], "limitations": [], "status": "supported"}], "suspects": [], "limitations": []}
     view = {"description": "可观察证据", "position_analysis": "位置合理", "illumination_analysis": "反光已核实"}
@@ -107,6 +113,11 @@ def mllm_api(dataset):
             answer['check_assessments'] = responses.get('CheckAssessments', [{**responses['ViewAnalysis'], 'check_id': check['check_id'],
                 'status': 'anomaly' if answer['suggested_label'] == 'FAIL' else 'normal' if answer['suggested_label'] == 'PASS' else 'insufficient',
                 'evidence_ids': [metadata[0]['evidence_id']]} for check in criteria['checks']])
+            answer['findings'] = responses.get('Findings', [{
+                **finding_response, 'check_ids': [assessment['check_id']], 'description': assessment['description'],
+                'evidence_ids': [metadata[0]['evidence_id']],
+            } for assessment in answer['check_assessments'] if assessment['status'] == 'anomaly'])
+            answer['resolved_findings'] = responses.get('ResolvedFindings', [])
         else:
             answer = dict(responses[schema['title']])
             if schema['title'] == 'VlmResult':

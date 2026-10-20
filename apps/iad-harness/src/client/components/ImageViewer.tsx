@@ -2,7 +2,10 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { SampleDetail } from "../../shared/contracts.js";
 
 type Annotation = SampleDetail["annotations"][number];
-export interface ImageSource { src: string; title: string; width?: number; height?: number; annotations?: Annotation[] }
+export interface ImageSource {
+  src: string; title: string; width?: number; height?: number; annotations?: Annotation[];
+  focus?: { bbox: number[]; label: string; findingId: string };
+}
 
 export function AnnotatedImage({ image, visible = true }: { image: ImageSource; visible?: boolean }) {
   return <div className="iad-image-frame"><img src={image.src} alt={image.title} draggable={false} />
@@ -11,6 +14,10 @@ export function AnnotatedImage({ image, visible = true }: { image: ImageSource; 
         {a.polygon ? <polygon points={a.polygon.map(p => p.join(",")).join(" ")} /> : a.bbox && <rect x={a.bbox[0]} y={a.bbox[1]} width={a.bbox[2] - a.bbox[0]} height={a.bbox[3] - a.bbox[1]} />}
         {a.bbox && <text x={a.bbox[0]} y={Math.max(12, a.bbox[1] - 4)}>{a.raw_label}</text>}
       </g>)}
+    </svg>}
+    {image.focus && <svg className="iad-finding-layer" data-finding-id={image.focus.findingId}
+      viewBox={`0 0 ${image.width} ${image.height}`} preserveAspectRatio="none" aria-label={image.focus.label}>
+      <rect x={image.focus.bbox[0]} y={image.focus.bbox[1]} width={image.focus.bbox[2] - image.focus.bbox[0]} height={image.focus.bbox[3] - image.focus.bbox[1]} />
     </svg>}
   </div>;
 }
@@ -35,6 +42,12 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
     window.addEventListener("keydown", key);
     return () => { source.onload = null; window.removeEventListener("keydown", key); };
   }, [image.src, onClose]);
+  useEffect(() => {
+    if (!image.focus || !bounds.width || !bounds.height || !size.width || !size.height) return;
+    const [x1, y1, x2, y2] = image.focus.bbox;
+    const scale = Math.min(16, bounds.width / ((x2 - x1) * 1.4), bounds.height / ((y2 - y1) * 1.4));
+    setView({ scale, x: (size.width / 2 - (x1 + x2) / 2) * scale, y: (size.height / 2 - (y1 + y2) / 2) * scale });
+  }, [image.focus, bounds.width, bounds.height, size.width, size.height]);
   useEffect(() => {
     const element = viewport.current!;
     const wheel = (event: WheelEvent) => {
@@ -67,7 +80,8 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
         if (start) { const x = start.panX + event.clientX - start.x, y = start.panY + event.clientY - start.y; setView(previous => ({ ...previous, x, y })); }
       }}
       onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}>
-      <div className="iad-viewer-world" data-scale={scale} style={{ width: size.width, height: size.height, transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${scale})` }}>
+      <div className="iad-viewer-world" data-scale={scale} style={{ width: size.width, height: size.height, "--iad-view-scale": scale,
+        transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${scale})` } as React.CSSProperties}>
         <AnnotatedImage image={{ ...image, ...size }} visible={visible} />
       </div>
     </div>
