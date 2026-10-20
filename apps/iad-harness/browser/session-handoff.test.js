@@ -12,6 +12,7 @@ import { Builder, By, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
 import { resolvePythonPath } from "../lib/server/python-bridge/index.js";
 import { verifyWorkbenchLayout } from "./workbench-layout.js";
+import { verifyWorkbenchSurfaces } from "./workbench-surfaces.js";
 
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const toolMessages = request => {
@@ -325,6 +326,7 @@ Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
     while (["PENDING", "RUNNING"].includes(defect.status)) { await delay(100); defect = await api(`/knowledge/status/${defect.run_id}`); }
     assert.equal(defect.status, "COMPLETED", JSON.stringify(defect));
     await button("刷新");
+    await verifyWorkbenchSurfaces(driver, path.join(workspace, "runs/browser/native-surfaces"));
     await verifyWorkbenchLayout(driver, path.join(workspace, "runs/browser/native-layout"));
     assert.equal(agentRequests.length, requestCount, "布局验收不调用Agent模型");
   } catch (error) {

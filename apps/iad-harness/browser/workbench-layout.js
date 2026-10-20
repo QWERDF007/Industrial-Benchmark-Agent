@@ -17,12 +17,7 @@ export async function verifyWorkbenchLayout(driver, output) {
   const results = [], headings = new Map();
   const element = selector => driver.wait(until.elementLocated(By.css(selector)), 10000);
   for (const theme of ["Light", "Dark"]) {
-    await viewport(driver, 1920, 1080);
-    await textZoom(driver, 1);
-    await driver.findElement(By.xpath("//button[normalize-space(.)='Settings']")).click();
-    await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${theme}']`)), 5000).click();
-    await driver.actions().sendKeys(Key.ESCAPE).perform();
-    await driver.wait(() => driver.executeScript("return document.body.hasAttribute('data-ds-dark-theme')===arguments[0]", theme === "Dark"), 5000);
+    await setTheme(driver, theme);
     for (const zoom of [1, 2]) {
       await textZoom(driver, zoom);
       for (const [width, height] of viewports) {
@@ -64,7 +59,17 @@ export async function verifyWorkbenchLayout(driver, output) {
             while (walker.nextNode()) {
               const node = walker.currentNode, parent = node.parentElement;
               if (!node.textContent.trim() || !parent.getClientRects().length || parent.closest(":disabled,[aria-disabled=true]")) continue;
-              if (parent.closest("svg")) { unsupported.push({ tag: "svg", text: node.textContent.trim() }); continue; }
+              if (parent.closest("svg")) {
+                const style = getComputedStyle(parent), matrix = parent.getScreenCTM();
+                const halo = matrix ? parseFloat(style.strokeWidth) * Math.min(Math.hypot(matrix.a, matrix.b), Math.hypot(matrix.c, matrix.d)) : 0;
+                background(parent); context.clearRect(0, 0, 1, 1); paint(style.stroke);
+                const stroke = [...context.getImageData(0, 0, 1, 1).data];
+                if (!style.paintOrder.startsWith("stroke") || style.strokeOpacity !== "1" || style.fillOpacity !== "1" || stroke[3] !== 255 || halo < 2) {
+                  unsupported.push({ tag: "svg", text: node.textContent.trim(), halo, paintOrder: style.paintOrder, stroke }); continue;
+                }
+                paint(style.fill);
+                text.push({ sample: node.textContent.trim(), representation: "svg-outline", foreground: pixels(), background: stroke.slice(0, 3) }); continue;
+              }
               text.push(colors(parent, getComputedStyle(parent).color, node.textContent.trim().slice(0, 90)));
             }
             const borders = [...root.querySelectorAll("input:not([type=checkbox]):not([type=radio]),select,textarea")].filter(e => !e.disabled && e.getClientRects().length).map(e => {
@@ -115,7 +120,7 @@ export async function verifyWorkbenchLayout(driver, output) {
   return results;
 }
 
-async function viewport(driver, width, height) {
+export async function viewport(driver, width, height) {
   await driver.setContext("chrome");
   await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth='';gBrowser.selectedBrowser.style.width='';gBrowser.selectedBrowser.style.flex=''");
   await driver.setContext("content");
@@ -130,9 +135,17 @@ async function viewport(driver, width, height) {
   await driver.wait(() => driver.executeScript("return innerWidth===arguments[0] && innerHeight===arguments[1]", width, height), 5000, `Actual viewport ${width}×${height}`);
 }
 
-async function textZoom(driver, zoom) {
+export async function textZoom(driver, zoom) {
   await driver.setContext("chrome");
   const actual = await driver.executeScript("Services.prefs.setIntPref('ui.prefersReducedMotion',1);ZoomManager.useFullZoom=false;ZoomManager.setZoomForBrowser(gBrowser.selectedBrowser,arguments[0]);return [gBrowser.selectedBrowser.textZoom,gBrowser.selectedBrowser.fullZoom]", zoom);
   await driver.setContext("content");
   assert.deepEqual(actual, [zoom, 1], "Browser text-only zoom, with full-page zoom unchanged");
+}
+
+export async function setTheme(driver, theme) {
+  await viewport(driver, 1920, 1080); await textZoom(driver, 1);
+  await driver.findElement(By.xpath("//button[normalize-space(.)='Settings']")).click();
+  await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${theme}']`)), 5000).click();
+  await driver.actions().sendKeys(Key.ESCAPE).perform();
+  await driver.wait(() => driver.executeScript("return document.body.hasAttribute('data-ds-dark-theme')===arguments[0]", theme === "Dark"), 5000);
 }

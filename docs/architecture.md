@@ -52,6 +52,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 人工复核、待确认提交、草稿与历史 | [HumanReviewForm](../apps/iad-harness/src/client/components/HumanReviewForm.tsx)、[useReviewDraft](../apps/iad-harness/src/client/useReviewDraft.ts)、[独立复核记录](../apps/iad-harness/src/client/components/ReviewRecords.tsx) |
 | 原子人审命令、不可变记录与当前结果投影 | [HumanReview / ReviewSubmission](../python/iad_core/workbench/review.py)、[ReviewRepository](../python/iad_core/storage/review_repository.py)、[复核表与迁移](../python/iad_core/storage/review_schema.py) |
 | 嵌套模态与焦点恢复 | [Modal](../apps/iad-harness/src/client/components/Modal.tsx) |
+| 筛选与图层菜单的定位、避让和键盘关闭 | [FloatingMenu](../apps/iad-harness/src/client/components/FloatingMenu.tsx)、[Floating UI](https://floating-ui.com/docs/react-dom) |
 | 数据表与迁移 | [Database](../python/iad_core/storage/database.py) |
 
 初始无标注图作为良品参考，是本项目的数据约定；可通过数据集管理调整。自动与人工选定范围、参考资格、人工裁决优先级及目标图排除规则以 `DatasetRegistry.references` 为准。导入质量、模型建议和人工裁决分别保留各自来源。
@@ -98,6 +99,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 - [Firefox 用户流程测试](../apps/iad-harness/browser/workbench.test.js)
 - [原生宿主侧栏与页面验收](../apps/iad-harness/scripts/verify-host-browser.js)
 - [真实宿主六页、视口、主题与文字缩放验收](../apps/iad-harness/browser/workbench-layout.js)
+- [真实宿主详情、报告、复核记录及模态焦点验收](../apps/iad-harness/browser/workbench-surfaces.js)
 - [真实图像和模型验证](../scripts/verify_workbench_live.py)
 
 命令见[项目 README](../README.md)，验证记录见本地 `WORKLOG.md`。

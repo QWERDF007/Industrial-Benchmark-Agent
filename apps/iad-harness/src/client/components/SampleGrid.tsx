@@ -2,6 +2,7 @@ import React from "react";
 import type { Dataset, Filters, Sample } from "../../shared/contracts.js";
 import { mediaUrl } from "../api.js";
 import { Pagination } from "./Pagination.js";
+import { FloatingMenu } from "./FloatingMenu.js";
 
 export function SampleGrid({ dataset, filters, onFilters, items, total, page, onPage, selected, onSelect, loading }: {
   dataset: Dataset; filters: Filters; onFilters(filters: Filters): void; items: Sample[]; total: number; page: number;
@@ -11,11 +12,11 @@ export function SampleGrid({ dataset, filters, onFilters, items, total, page, on
     {options.map(([value, title]) => <option key={value} value={value}>{title}</option>)}</select></label>;
   const pagination = <Pagination total={total} page={page} unit="张" onPage={onPage} />;
   return <section className="iad-gallery"><div className="iad-filters">
-    <details className="iad-multiselect"><summary aria-label="标注筛选">标注 · {filters.annotation_filters.length ? `已选 ${filters.annotation_filters.length} 项` : "全部"}</summary>
-      <div className="iad-multiselect-menu">{[["none", "无标注"], ["present", "有标注"], ...dataset.annotation_categories.map(value => [`category:${value}`, `类别 ${value}`])].map(([value, title]) =>
+    <FloatingMenu className="iad-multiselect" label="标注筛选" summary={<>标注 · {filters.annotation_filters.length ? `已选 ${filters.annotation_filters.length} 项` : "全部"}</>}>
+      {[["none", "无标注"], ["present", "有标注"], ...dataset.annotation_categories.map(value => [`category:${value}`, `类别 ${value}`])].map(([value, title]) =>
         <label key={value}><input type="checkbox" aria-label={title} checked={filters.annotation_filters.includes(value)} onChange={e => onFilters({ ...filters, annotation_filters: e.target.checked ? [...filters.annotation_filters, value] : filters.annotation_filters.filter(item => item !== value) })} />{title}</label>)}
         <button onClick={() => onFilters({ ...filters, annotation_filters: [] })}>清空</button>
-      </div></details>
+      </FloatingMenu>
     {select("model_status", "模型审计", [["all", "全部"], ["pending", "待审计"], ["audited", "已审计"], ["risk", "可疑"], ["PASS", "模型建议良品"], ["FAIL", "模型建议异常"], ["UNCERTAIN", "不确定"]])}
     {select("review_status", "人工复核", [["all", "全部"], ["pending", "待复核"], ["reviewed", "已复核"], ["PASS", "良品"], ["HARD_NORMAL", "困难正常"], ["FAIL", "异常"], ["UNCERTAIN", "不确定"], ["SKIP", "已跳过"]])}
     {select("technical", "技术质量", [["all", "全部"], ["issues", "存在问题"]])}

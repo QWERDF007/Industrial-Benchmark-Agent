@@ -51,7 +51,7 @@ export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dat
     })}</div>;
   }
   return <section className="iad-knowledge-page">
-    <section className="iad-job-section"><div className="iad-row"><strong>全部合格{kind === "normal" ? "良品" : "异常"}候选</strong><label>模型<input aria-label="知识挖掘模型" placeholder="使用项目配置" value={model} onChange={event => setModel(event.target.value)} /></label>
+    <section className="iad-job-section"><div className="iad-row"><strong>全部合格{kind === "normal" ? "良品" : "异常"}候选</strong><label className="iad-field">模型<input aria-label="知识挖掘模型" placeholder="使用项目配置" value={model} onChange={event => setModel(event.target.value)} /></label>
       <button className="iad-primary" disabled={busy || loading || !!loadError || running || (kind === "normal" ? !dataset.reference_sample_ids.length : !normal?.checks.some(check => check.status === "supported") || (!!view.normalVersion && normal.version_id !== view.normalVersion))} onClick={() => void start()}>{busy ? "启动中…" : `开始挖掘${kind === "normal" ? "良品" : "不良品"}知识`}</button></div>
       <label className="iad-field">知识版本<select aria-label="知识版本" value={view.version} onChange={event => workspace.updateView(pageId, { version: event.target.value })}><option value="">当前发布版本{versions.length ? "" : " · 尚未发布"}</option>{versions.map(version => <option key={version.version_id} value={version.version_id}>{version.version_id} · {version.source_count} 张来源 · {version.created_at}</option>)}</select></label>
       {view.version && <p className="iad-muted">正在查看固定版本；新作业从当前已发布版本继续核验。</p>}

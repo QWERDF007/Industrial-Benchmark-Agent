@@ -45,7 +45,7 @@ export function AuditJobs({ dataset, filters, jobs, revision, onJobsChanged }: {
     {defect ? <><DatasetKnowledge knowledge={defect} /><KnowledgeState freshness={defectQuery.freshness} /></> : <p className="iad-muted">暂无匹配的不良知识，按正常判据筛查。</p>}
     </>}
     </section><section className="iad-job-section">
-    <h2>启动模型审计</h2><div className="iad-row"><label>模型<input aria-label="模型名称" value={model} onChange={e => setModel(e.target.value)} /></label>
+    <h2>启动模型审计</h2><div className="iad-row"><label className="iad-field">模型<input aria-label="模型名称" value={model} onChange={e => setModel(e.target.value)} /></label>
       <button className="iad-primary" onClick={start} disabled={busy || loading || !!loadError || !normal?.checks.some(check => check.status === "supported") || jobs.some(j => j.status === "RUNNING" || j.status === "PENDING")}>{busy ? "启动中…" : "审计当前筛选全部图像"}</button></div>
     <p className="iad-muted">结合冻结知识、全图与全部局部图，综合分析位置和光照。</p>{error && <p role="alert" className="iad-error">{error}</p>}
     </section><section className="iad-job-section"><h2>审计作业</h2>{jobs.map(job => <JobCard key={job.run_id} job={job} onChanged={onJobsChanged} />)}

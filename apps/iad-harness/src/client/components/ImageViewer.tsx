@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Modal } from "./Modal.js";
+import { FloatingMenu } from "./FloatingMenu.js";
 import { MediaImage, MediaLoad } from "./MediaLoad.js";
 import { AnnotationLayer, type AnnotationLayerSource } from "./AnnotationLayer.js";
 import { regionSources } from "../api.js";
@@ -151,13 +152,13 @@ function ImageCanvas({ image, onClose, navigation, savedView, onRemember }: Imag
     {(image.annotationLayer || inspection) && <button className="iad-eye" title={layers.annotation ? "隐藏标注" : "显示标注"} aria-label={layers.annotation ? "隐藏标注" : "显示标注"} aria-pressed={layers.annotation} onClick={() => setLayers(previous => ({ ...previous, annotation: !previous.annotation }))}>
       <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" />{!layers.annotation && <path d="m3 3 18 18" />}</svg>
     </button>}
-    {inspection && <details ref={layerMenu} className="iad-layer-menu"><summary aria-label="可视图层">图层</summary>
-      <div>{(Object.keys(regionSources) as (keyof typeof regionSources)[]).map(source => {
+    {inspection && <FloatingMenu detailsRef={layerMenu} className="iad-layer-menu" label="可视图层" summary="图层">
+      {(Object.keys(regionSources) as (keyof typeof regionSources)[]).map(source => {
         const label = { annotation: "标注", model: "模型候选", coverage: "细节覆盖" }[source];
         return <label key={source}><input type="checkbox" aria-label={`${label}图层`} checked={layers[source]}
           onChange={event => setLayers(previous => ({ ...previous, [source]: event.target.checked }))} />{label}</label>;
-      })}</div>
-    </details>}
+      })}
+    </FloatingMenu>}
     {navigation && <><button disabled={navigation.busy || !navigation.previous} onClick={() => navigation.move(-1)}>前一张</button><button disabled={navigation.busy || !navigation.next} onClick={() => navigation.move(1)}>后一张</button>{navigation.busy && <span role="status">正在切换图像…</span>}</>}
     <button onClick={onClose}>关闭</button></div>
     {navigation?.error && <p role="alert" className="iad-error">{navigation.error}</p>}
