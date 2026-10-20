@@ -24,6 +24,8 @@ from pathlib import Path
 from PIL import Image
 root=Path(sys.argv[1])
 (root/'images').mkdir(); (root/'labels').mkdir()
+(root/'images-other').mkdir(); (root/'labels-other').mkdir()
+Image.new('RGB',(320,240),'green').save(root/'images-other'/'other.png')
 for name in ['normal','normal2','dent']:
     Image.new('RGB',(320,240),(0,0,200) if name=='normal' else (0,0,220) if name=='normal2' else 'blue').save(root/'images'/f'{name}.png')
 (root/'labels'/'dent.json').write_text(json.dumps({'imageWidth':320,'imageHeight':240,'shapes':[{'label':'dent','shape_type':'rectangle','points':[[10,10],[30,30]]}]}))
@@ -95,11 +97,15 @@ for name in ['normal','normal2','dent']:
     await element("#test-navigation button");
     assert.deepEqual(await driver.executeScript("return [...document.querySelectorAll('#test-navigation button')].map(b=>b.textContent)"),
       ["数据集管理", "图像浏览", "挖掘良品知识", "挖掘不良品知识", "模型审计", "人工复核"]);
+    await button("添加数据集");
+    await element("dialog[aria-label='导入 Labelme 数据集']");
     await (await element("#dataset-name")).sendKeys("浏览器验收");
     await (await element("input[aria-label='图像目录']")).sendKeys(path.join(root, "images"));
     await (await element("input[aria-label='标注目录']")).sendKeys(path.join(root, "labels"));
     await button("导入数据集");
     await driver.wait(async () => (await (await element("select[aria-label='当前数据集']")).getText()).includes("浏览器验收"), 15000);
+    assert.equal((await driver.findElements(By.css("dialog[open]"))).length,0,"成功导入后返回管理列表");
+    await element("button[aria-label='选择数据集 浏览器验收']");
     await button("图像浏览"); await gridCount(3);
     const datasets = await (await fetch(base + "/api/iad/datasets")).json();
     const dataset = datasets.datasets[0];
@@ -284,11 +290,31 @@ for name in ['normal','normal2','dent']:
     await button("数据集管理");
     await (await element("input[aria-label='新的数据集名称']")).sendKeys("验收后改名"); await button("保存名称");
     await driver.wait(async () => (await (await element("select[aria-label='当前数据集']")).getText()).includes("验收后改名"), 15000);
-    await driver.navigate().refresh(); await element("#dataset-name");
+    await driver.navigate().refresh(); await element("button[aria-label='选择数据集 验收后改名']");
     const reloaded = await (await fetch(base + "/api/iad/datasets")).json();
     assert.equal(reloaded.datasets[0].name, "验收后改名");
     assert.equal(reloaded.datasets[0].dataset_id, dataset.dataset_id);
     assert.equal(reloaded.datasets[0].human_reviewed_count, 1);
+    await button("添加数据集");
+    await (await element("#dataset-name")).sendKeys("隔离数据集");
+    await (await element("input[aria-label='图像目录']")).sendKeys(path.join(root,"images-other"));
+    await (await element("input[aria-label='标注目录']")).sendKeys(path.join(root,"labels-other"));
+    await button("导入数据集");
+    await element("button[aria-label='选择数据集 隔离数据集']");
+    assert.equal((await driver.findElements(By.css(".iad-dataset-list button"))).length,2);
+    await button("图像浏览"); await gridCount(1);
+    await element("img[alt='other.png']");
+    assert.equal((await driver.findElements(By.css("img[alt='dent.png']"))).length,0);
+    await button("数据集管理");
+    await (await element("button[aria-label='选择数据集 验收后改名']")).click();
+    await driver.wait(async () => await (await element("select[aria-label='当前数据集']")).getAttribute("value") === dataset.dataset_id,5000);
+    await button("图像浏览"); await gridCount(1);
+    await element("img[alt='dent.png']");
+    assert.equal((await driver.findElements(By.css("img[alt='other.png']"))).length,0);
+    await button("返回图像浏览");
+    await button("数据集管理");
+    await button("添加数据集"); await button("取消");
+    assert.equal(await driver.executeScript("return document.activeElement.textContent"),"添加数据集","关闭导入弹窗应返回发起按钮焦点");
   } catch (error) {
     if (driver) {
       await fs.writeFile(path.join(workspace, "runs/browser/failure.png"), await driver.takeScreenshot(), "base64");

@@ -34,6 +34,7 @@ try {
   };
   await sidebar("数据集管理");
   if (process.env.IAD_VERIFY_DATASET_ROOT) {
+    await driver.findElement(By.xpath("//button[.='添加数据集']")).click();
     await driver.findElement(By.css("#dataset-name")).sendKeys("原生六页验收");
     for (const [label, directory] of [["图像目录", "images"], ["标注目录", "labels"]]) await driver.findElement(By.css(`input[aria-label='${label}']`)).sendKeys(path.join(process.env.IAD_VERIFY_DATASET_ROOT, directory));
     await driver.findElement(By.xpath("//button[.='导入数据集']")).click();
@@ -91,6 +92,16 @@ try {
     verification.viewports.push(viewport);
     assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"), `No page overflow at ${width}`);
     await fs.writeFile(path.join(output, `native-browse-${width}.png`), await driver.takeScreenshot(), "base64");
+    await sidebar("数据集管理");
+    await driver.wait(until.elementLocated(By.css(".iad-dataset-list button")), 10000);
+    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"), `No manager overflow at ${width}`);
+    await driver.findElement(By.xpath("//button[.='添加数据集']")).click();
+    await driver.wait(until.elementLocated(By.css("dialog[open] #dataset-name")),5000);
+    assert.ok(await driver.executeScript("const e=document.querySelector('dialog[open]');return e.scrollWidth<=e.clientWidth+1"), `No import form overflow at ${width}`);
+    await fs.writeFile(path.join(output, `native-import-${width}.png`),await driver.takeScreenshot(),"base64");
+    await driver.findElement(By.xpath("//button[.='取消']")).click();
+    assert.equal(await driver.executeScript("return document.activeElement.textContent"),"添加数据集");
+    await sidebar("图像浏览");
   }
   await driver.navigate().refresh();
   await driver.wait(until.elementLocated(By.css("[data-page='industrial-images'] .iad-grid img")), 15000);

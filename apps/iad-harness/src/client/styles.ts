@@ -52,8 +52,14 @@ export const workbenchStyles = themeStyles + `
 .iad-field {display:flex;flex-direction:column;gap:7px;margin:16px 0;}.iad-field>.iad-row {flex-wrap:nowrap;}.iad-field input {flex:1;}
 .iad-error {color:var(--iad-danger);background:var(--iad-danger-bg);padding:10px;border-radius:6px;overflow-wrap:anywhere;}
 .iad-empty {padding:40px;text-align:center;color:var(--iad-muted);}
-.iad-settings {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;max-width:1200px;}
-.iad-settings>section,.iad-settings>form {padding:20px;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:10px;}
+.iad-settings {display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,2fr);gap:24px;}
+.iad-settings>section {padding:20px;background:var(--iad-surface);border-radius:8px;min-width:0;}
+.iad-dataset-list {display:flex;flex-direction:column;gap:8px;}
+.iad-dataset-list button {display:flex;flex-direction:column;align-items:start;gap:6px;text-align:start;padding:14px;background:var(--iad-surface-muted);border-color:transparent;overflow-wrap:anywhere;}
+.iad-dataset-list button[aria-pressed=true] {background:color-mix(in srgb,var(--iad-primary) 10%,var(--iad-surface));border-color:var(--iad-primary);}
+.iad-dataset-list span {font-size:13px;color:var(--iad-muted);}
+.iad-detail-dialog:has(.iad-dataset-import) {width:min(640px,calc(100vw - 32px));}
+.iad-dataset-import {max-width:640px;margin:auto;}
 .iad-directory {background:var(--iad-surface-muted);padding:14px;border-radius:8px;}.iad-directory code {overflow-wrap:anywhere;}
 .iad-directory-list {display:flex;flex-direction:column;max-height:230px;overflow:auto;gap:5px;margin-top:10px;}
 .iad-rule {margin-top:20px;}.iad-reference-grid {display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
