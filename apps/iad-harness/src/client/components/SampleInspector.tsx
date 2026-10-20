@@ -41,10 +41,10 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
     catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
   async function setReference() {
-    setError("");
+    setBusy(true); setError("");
     const ids = dataset.reference_sample_ids.includes(sampleId) ? dataset.reference_sample_ids.filter(id => id !== sampleId) : [...dataset.reference_sample_ids, sampleId];
     try { await request(`/datasets/${dataset.dataset_id}`, { reference_sample_ids: ids }, "PATCH"); onChanged(); }
-    catch (e) { setError(message(e)); }
+    catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
   async function submit(decision: Decision) {
     if (!reviewer.trim()) { setError("请填写复核人"); return; }

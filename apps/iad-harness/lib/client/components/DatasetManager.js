@@ -59,5 +59,13 @@ export function DatasetManager({ datasets, selected, onChanged }) {
                                             catch (err) {
                                                 setError(message(err));
                                             }
-                                        } }), "\u65E0\u6807\u6CE8\u56FE\u4F5C\u4E3A\u521D\u59CB\u826F\u54C1\u53C2\u8003"] })] }) : _jsx("p", { children: "\u8BF7\u5BFC\u5165\u6570\u636E\u96C6\u3002" })] }), error && _jsx("p", { role: "alert", className: "iad-error", children: error })] });
+                                        } }), "\u65E0\u6807\u6CE8\u56FE\u4F5C\u4E3A\u521D\u59CB\u826F\u54C1\u53C2\u8003"] }), _jsxs("p", { children: ["\u826F\u54C1\u5019\u9009\uFF1A", selected.reference_mode === "selected" ? "人工选定范围" : "自动资格", " \u00B7 ", selected.reference_sample_ids.length, " \u5F20"] }), selected.reference_mode === "selected" && _jsx("button", { onClick: async () => {
+                                    try {
+                                        await request(`/datasets/${selected.dataset_id}`, { reset_references: true }, "PATCH");
+                                        onChanged();
+                                    }
+                                    catch (error) {
+                                        setError(message(error));
+                                    }
+                                }, children: "\u6062\u590D\u81EA\u52A8\u8D44\u683C" })] }) : _jsx("p", { children: "\u8BF7\u5BFC\u5165\u6570\u636E\u96C6\u3002" })] }), error && _jsx("p", { role: "alert", className: "iad-error", children: error })] });
 }

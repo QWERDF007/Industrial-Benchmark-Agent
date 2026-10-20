@@ -106,6 +106,17 @@ for name in ['normal','normal2','dent']:
     const samples = await (await fetch(`${base}/api/iad/samples/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
     const normal = samples.items.find(sample => sample.relative_path === "normal.png");
     const normal2 = samples.items.find(sample => sample.relative_path === "normal2.png");
+    await button("数据集管理");
+    await (await element(".iad-reference-manager summary")).click(); await gridCount(3);
+    await (await element("img[alt='normal.png']")).click();
+    await button("移出良品参考");
+    await button("返回数据集管理");
+    await driver.wait(async ()=>(await (await element(".iad-reference-manager summary")).getText()).includes("1 张"),5000);
+    const curated = (await (await fetch(base+"/api/iad/datasets")).json()).datasets[0];
+    assert.deepEqual(curated.reference_sample_ids,[normal2.sample_id]);
+    assert.equal(curated.reference_mode,"selected");
+    await button("恢复自动资格");
+    await driver.wait(async ()=>(await (await element(".iad-reference-manager summary")).getText()).includes("2 张"),5000);
     await button("挖掘良品知识");
     await button("开始挖掘良品知识");
     await driver.wait(async ()=>(await (await element(".iad-knowledge-jobs")).getText()).includes("COMPLETED"),15000);

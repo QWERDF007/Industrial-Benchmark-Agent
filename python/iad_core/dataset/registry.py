@@ -129,11 +129,12 @@ class DatasetRegistry:
         return config
 
     def references(self, dataset_id: str, exclude: Optional[str] = None, limit: Optional[int] = 4,
-                   selected_ids: Optional[List[str]] = None, use_selection: bool = True) -> List[str]:
+                   selected_ids: Optional[List[str]] = None) -> List[str]:
         config = self.get(dataset_id)
         with self.db.connection() as conn:
-            row = conn.execute("SELECT reference_sample_ids_json FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()
+            row = conn.execute("SELECT reference_sample_ids_json,reference_selection_set FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()
             selected = selected_ids if selected_ids is not None else json.loads(row[0])
+            explicit_selection = selected_ids is not None or bool(row[1])
             rows = conn.execute("""
                 SELECT s.sample_id FROM samples s
                 LEFT JOIN review_decisions d ON d.id=(SELECT r.id FROM review_decisions r
@@ -146,24 +147,29 @@ class DatasetRegistry:
                 ORDER BY s.relative_path,s.sample_id
             """, (dataset_id, exclude or "", json.dumps(selected), config.dataset.unannotated_is_normal)).fetchall()
         eligible = [r[0] for r in rows]
-        if selected and use_selection:
-            return [sid for sid in selected if sid in set(eligible)][:limit]
+        if explicit_selection:
+            eligible_ids = set(eligible)
+            return [sid for sid in selected if sid in eligible_ids][:limit]
         if limit is None or len(eligible) <= limit:
             return eligible
         return [eligible[i * (len(eligible) - 1) // (limit - 1)] for i in range(limit)] if limit > 1 else eligible[:1]
 
     def set_references(self, dataset_id: str, sample_ids: List[str]) -> None:
-        if not 1 <= len(sample_ids) <= 8 or len(sample_ids) != len(set(sample_ids)):
-            raise ValueError("Select 1–8 distinct reference samples")
+        if not isinstance(sample_ids, list) or any(not isinstance(item, str) for item in sample_ids) or len(sample_ids) != len(set(sample_ids)):
+            raise ValueError("References must be distinct sample IDs")
         self.get(dataset_id)
         with self.db.connection() as conn:
-            placeholders = ",".join("?" for _ in sample_ids)
-            count = conn.execute(f"SELECT count(*) FROM samples WHERE dataset_id=? AND sample_id IN ({placeholders})", (dataset_id, *sample_ids)).fetchone()[0]
+            count = conn.execute("SELECT count(*) FROM samples WHERE dataset_id=? AND sample_id IN (SELECT value FROM json_each(?))", (dataset_id, json.dumps(sample_ids))).fetchone()[0]
             if count != len(sample_ids):
                 raise ValueError("References must belong to the selected dataset")
-            if set(self.references(dataset_id, limit=8, selected_ids=sample_ids)) != set(sample_ids):
+            if set(self.references(dataset_id, limit=None, selected_ids=sample_ids)) != set(sample_ids):
                 raise ValueError("References must be technically valid and cannot have an adverse human decision")
-            conn.execute("UPDATE datasets SET reference_sample_ids_json=? WHERE dataset_id=?", (json.dumps(sample_ids), dataset_id))
+            conn.execute("UPDATE datasets SET reference_sample_ids_json=?,reference_selection_set=1 WHERE dataset_id=?", (json.dumps(sample_ids), dataset_id))
+
+    def reset_references(self, dataset_id: str) -> None:
+        self.get(dataset_id)
+        with self.db.connection() as conn:
+            conn.execute("UPDATE datasets SET reference_sample_ids_json='[]',reference_selection_set=0 WHERE dataset_id=?", (dataset_id,))
 
     @staticmethod
     def directories(directory: str) -> dict:

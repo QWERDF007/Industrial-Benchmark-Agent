@@ -21,7 +21,7 @@ class KnowledgeSources:
 
     def eligible(self, dataset_id: str, kind: KnowledgeKind, normal: Optional[KnowledgeSnapshot] = None) -> dict:
         if kind == 'normal':
-            eligible = self.registry.references(dataset_id, limit=None, use_selection=False)
+            eligible = self.registry.references(dataset_id, limit=None)
             with self.db.connection() as conn:
                 selected = json.loads(conn.execute('SELECT reference_sample_ids_json FROM datasets WHERE dataset_id=?',
                                                   (dataset_id,)).fetchone()[0])

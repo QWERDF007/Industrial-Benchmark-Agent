@@ -52,6 +52,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
         }
     }
     async function setReference() {
+        setBusy(true);
         setError("");
         const ids = dataset.reference_sample_ids.includes(sampleId) ? dataset.reference_sample_ids.filter(id => id !== sampleId) : [...dataset.reference_sample_ids, sampleId];
         try {
@@ -60,6 +61,9 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
         }
         catch (e) {
             setError(message(e));
+        }
+        finally {
+            setBusy(false);
         }
     }
     async function submit(decision) {

@@ -41,6 +41,7 @@ class Database:
 
     def init_schema(self):
         with self.connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
             cursor = conn.cursor()
 
             # 1. inspection_tasks
@@ -364,9 +365,14 @@ class Database:
                     task_id TEXT NOT NULL,
                     config_json TEXT NOT NULL,
                     reference_sample_ids_json TEXT NOT NULL DEFAULT '[]',
+                    reference_selection_set INTEGER NOT NULL DEFAULT 0 CHECK(reference_selection_set IN (0,1)),
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+            dataset_columns = {row[1] for row in cursor.execute("PRAGMA table_info(datasets)")}
+            if "reference_selection_set" not in dataset_columns:
+                cursor.execute("ALTER TABLE datasets ADD COLUMN reference_selection_set INTEGER NOT NULL DEFAULT 0 CHECK(reference_selection_set IN (0,1))")
+                cursor.execute("UPDATE datasets SET reference_selection_set=1 WHERE json_array_length(reference_sample_ids_json)>0")
             cursor.execute("""UPDATE audit_suggestions SET analysis_json=json_set(
                 json_remove(analysis_json,'$.profile_id'),'$.legacy_profile_id',json_extract(analysis_json,'$.profile_id'))
                 WHERE json_type(analysis_json,'$.profile_id') IS NOT NULL""")

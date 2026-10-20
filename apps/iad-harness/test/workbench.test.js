@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import http from "node:http";
+import { execFileSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { PythonBridge, createIadHttpHandler } from "../lib/server/index.js";
 
@@ -53,7 +54,7 @@ test("real bridge: normal mining publishes knowledge and serves its actual visua
   const images = path.join(root, "images"), labels = path.join(root, "labels");
   await fs.mkdir(images); await fs.mkdir(labels);
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j1ioAAAAASUVORK5CYII=", "base64");
-  await fs.writeFile(path.join(images, "candidate.png"), png);
+  for (let index=0;index<10;index++) await fs.writeFile(path.join(images, `candidate-${index}.png`), png);
   let visualEvidence;
   const modelRequests = [];
   const model = http.createServer(async (req, res) => {
@@ -85,6 +86,18 @@ test("real bridge: normal mining publishes knowledge and serves its actual visua
     const imported = await post("/datasets/import", { name: "Knowledge inputs", image_dir: images, annotation_dir: labels });
     assert.equal(imported.status, 200, await imported.clone().text());
     const dataset = await imported.json();
+    assert.equal(dataset.reference_sample_ids.length, 10, "管理页候选必须覆盖全部来源，不能只返回默认4张预览");
+    const selected = dataset.reference_sample_ids.slice(1);
+    const selectReferences = await fetch(`${base}/datasets/${dataset.dataset_id}`, { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ reference_sample_ids: selected }) });
+    assert.equal(selectReferences.status, 200, await selectReferences.clone().text());
+    assert.deepEqual((await selectReferences.json()).reference_sample_ids, selected);
+    execFileSync(bridge.pythonPath, ["-c", "import sqlite3,sys; conn=sqlite3.connect(sys.argv[1]); conn.execute('ALTER TABLE datasets DROP COLUMN reference_selection_set'); conn.commit(); conn.close()", path.join(root,"test.db")]);
+    const migrated = (await (await fetch(base+"/datasets")).json()).datasets[0];
+    assert.equal(migrated.reference_mode,"selected","旧数据库的人工参考组必须保留其选择语义");
+    assert.deepEqual(migrated.reference_sample_ids,selected);
+    const invalid = await fetch(`${base}/datasets/${dataset.dataset_id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({reference_sample_ids:["unknown"]})});
+    assert.equal(invalid.status,422);
+    assert.deepEqual((await (await fetch(base+"/datasets")).json()).datasets[0].reference_sample_ids,selected);
     const initial = await fetch(`${base}/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`);
     assert.equal(initial.status, 200, await initial.clone().text());
     assert.equal((await initial.json()).knowledge, null);
@@ -97,7 +110,7 @@ test("real bridge: normal mining publishes knowledge and serves its actual visua
       job = await (await fetch(`${base}/knowledge/status/${job.run_id}`)).json();
     }
     assert.equal(job.status, "COMPLETED", JSON.stringify(job));
-    assert.equal(job.completed, 1);
+    assert.equal(job.completed, 9);
     assert.deepEqual(job.model_calls.map(call => call.operation), ["tokenize", "generate"]);
     for (const [index, call] of job.model_calls.entries()) {
       const response = await fetch(`${base}/jobs/${job.run_id}/model-calls/${call.call_id}`);
@@ -111,7 +124,7 @@ test("real bridge: normal mining publishes knowledge and serves its actual visua
     assert.equal((await fetch(`${base}/jobs/not-this-job/model-calls/${job.model_calls[0].call_id}`)).status, 404);
     const knowledge = (await (await fetch(`${base}/knowledge?version_id=${job.knowledge_version_id}`)).json()).knowledge;
     assert.equal(knowledge.summary, "该来源无法支持结构判据");
-    assert.equal(knowledge.sources.length, 1);
+    assert.deepEqual(knowledge.sources.map(source=>source.sample_id), selected, "排除的参考不得继续进入正常知识");
     const evidence = await fetch(`${base}/knowledge/evidence/${knowledge.version_id}/${visualEvidence.evidence_id}`);
     assert.equal(evidence.status, 200, await evidence.clone().text());
     assert.equal(evidence.headers.get("content-type"), "image/png");
@@ -120,6 +133,18 @@ test("real bridge: normal mining publishes knowledge and serves its actual visua
     assert.equal(jobs.jobs[0].run_id, job.run_id);
     const missing = await fetch(`${base}/knowledge/evidence/${knowledge.version_id}/invented`);
     assert.equal(missing.status, 404);
+    const clear = await fetch(`${base}/datasets/${dataset.dataset_id}`, { method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({reference_sample_ids:[]}) });
+    assert.equal(clear.status,200,await clear.clone().text());
+    assert.deepEqual((await clear.json()).reference_sample_ids,[]);
+    const emptyDataset = (await (await fetch(base+"/datasets")).json()).datasets[0];
+    assert.equal(emptyDataset.reference_mode,"selected");
+    assert.deepEqual(emptyDataset.reference_sample_ids,[]);
+    const noSources = await post("/knowledge/start",{dataset_id:dataset.dataset_id,kind:"normal"});
+    assert.equal(noSources.status,422,"显式空集合不能回退为全部无标注图");
+    const reset = await fetch(`${base}/datasets/${dataset.dataset_id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({reset_references:true})});
+    assert.equal(reset.status,200,await reset.clone().text());
+    assert.equal((await reset.json()).reference_sample_ids.length,10);
+    assert.equal((await (await fetch(`${base}/sample/${encodeURIComponent(dataset.reference_sample_ids[0])}`)).json()).review_decision,null,"资格编辑不生成人工裁决");
   } finally {
     bridge.destroy();
     if (previousEndpoint === undefined) delete process.env.LIVE_VLM_ENDPOINT;

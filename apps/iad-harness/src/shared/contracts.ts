@@ -24,6 +24,7 @@ export interface Dataset extends Report {
   annotation_dir: string | null;
   annotation_categories: string[];
   reference_sample_ids: string[];
+  reference_mode: "automatic" | "selected";
   unannotated_is_normal: boolean;
 }
 export interface Filters {

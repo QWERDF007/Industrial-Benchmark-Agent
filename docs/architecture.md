@@ -46,7 +46,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 复核会话与裁决 | [HumanReview](../python/iad_core/workbench/review.py) |
 | 数据表与迁移 | [Database](../python/iad_core/storage/database.py) |
 
-初始无标注图作为良品参考，是本项目的数据约定；可通过数据集管理调整。参考资格、人工裁决优先级及目标图排除规则以 `DatasetRegistry.references` 为准。导入质量、模型建议和人工裁决分别保留各自来源。
+初始无标注图作为良品参考，是本项目的数据约定；可通过数据集管理调整。自动与人工选定范围、参考资格、人工裁决优先级及目标图排除规则以 `DatasetRegistry.references` 为准。导入质量、模型建议和人工裁决分别保留各自来源。
 
 数据集 ID 为稳定身份，名称是可编辑的显示属性。注册配置以数据库 `datasets` 表为准；YAML 用于命令行导入以及已有数据集的首次注册。显式标注目录的匹配规则以 `LabelmeAdapter` 为准。
 

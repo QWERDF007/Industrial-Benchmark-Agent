@@ -56,6 +56,11 @@ export function DatasetManager({ datasets, selected, onChanged }: { datasets: Da
         try { await request(`/datasets/${selected.dataset_id}`, { unannotated_is_normal: e.target.checked }, "PATCH"); onChanged(); }
         catch (err) { setError(message(err)); }
       }} />无标注图作为初始良品参考</label>
+      <p>良品候选：{selected.reference_mode === "selected" ? "人工选定范围" : "自动资格"} · {selected.reference_sample_ids.length} 张</p>
+      {selected.reference_mode === "selected" && <button onClick={async () => {
+        try { await request(`/datasets/${selected.dataset_id}`, { reset_references: true }, "PATCH"); onChanged(); }
+        catch (error) { setError(message(error)); }
+      }}>恢复自动资格</button>}
     </> : <p>请导入数据集。</p>}</section>
     {error && <p role="alert" className="iad-error">{error}</p>}
   </div>;

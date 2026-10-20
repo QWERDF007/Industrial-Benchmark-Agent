@@ -183,10 +183,12 @@ class WorkbenchQuery:
             with self.db.connection() as conn:
                 categories = [r[0] for r in conn.execute("SELECT DISTINCT a.raw_label FROM annotations a JOIN samples s ON s.sample_id=a.sample_id WHERE s.dataset_id=? ORDER BY a.raw_label", (dataset_id,))]
                 feature_count = conn.execute("SELECT count(DISTINCT f.sample_id) FROM feature_records f JOIN samples s ON s.sample_id=f.sample_id WHERE s.dataset_id=?", (dataset_id,)).fetchone()[0]
+                selected = conn.execute("SELECT reference_selection_set FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()[0]
             items.append({**report, "dataset_id": dataset_id, "name": config.dataset.name or dataset_id,
                           "task_name": config.task.name or config.task.product or config.task.task_id,
                           "product": config.task.product, "image_dir": config.root, "annotation_dir": config.annotations.root,
-                          "annotation_categories": categories, "reference_sample_ids": registry.references(dataset_id),
+                          "annotation_categories": categories, "reference_sample_ids": registry.references(dataset_id, limit=None),
+                          "reference_mode": "selected" if selected else "automatic",
                           "unannotated_is_normal": config.dataset.unannotated_is_normal,
                           "feature_coverage_pct": round(100 * feature_count / report["total_samples"], 2) if report["total_samples"] else 0})
         return {"datasets": items}

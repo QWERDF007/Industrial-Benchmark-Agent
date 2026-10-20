@@ -208,7 +208,7 @@ def test_unusable_mask_is_reported_and_cannot_enter_the_normal_pool(tmp_path, pr
     detail = sample_get({'sample_id':dataset_id+':part.png'},db_path)
     assert not detail['annotations']
     assert any(issue['issue_type']=='ANNOTATION_PARSE_ERROR' and issue['severity']=='ERROR' for issue in detail['technical_issues'])
-    assert DatasetRegistry(Database(db_path)).references(dataset_id,limit=None,use_selection=False)==[]
+    assert DatasetRegistry(Database(db_path)).references(dataset_id,limit=None)==[]
 
 
 def test_fractional_mask_bounds_use_the_stored_patch_extent(tmp_path):

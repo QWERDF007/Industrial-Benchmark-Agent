@@ -223,7 +223,22 @@ var __IadClientBundle__ = (() => {
               }
             } }),
             "\u65E0\u6807\u6CE8\u56FE\u4F5C\u4E3A\u521D\u59CB\u826F\u54C1\u53C2\u8003"
-          ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { children: [
+            "\u826F\u54C1\u5019\u9009\uFF1A",
+            selected.reference_mode === "selected" ? "\u4EBA\u5DE5\u9009\u5B9A\u8303\u56F4" : "\u81EA\u52A8\u8D44\u683C",
+            " \xB7 ",
+            selected.reference_sample_ids.length,
+            " \u5F20"
+          ] }),
+          selected.reference_mode === "selected" && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { onClick: async () => {
+            try {
+              await request(`/datasets/${selected.dataset_id}`, { reset_references: true }, "PATCH");
+              onChanged();
+            } catch (error2) {
+              setError(message(error2));
+            }
+          }, children: "\u6062\u590D\u81EA\u52A8\u8D44\u683C" })
         ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { children: "\u8BF7\u5BFC\u5165\u6570\u636E\u96C6\u3002" })
       ] }),
       error && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { role: "alert", className: "iad-error", children: error })
@@ -616,6 +631,7 @@ var __IadClientBundle__ = (() => {
       }
     }
     async function setReference() {
+      setBusy(true);
       setError("");
       const ids = dataset.reference_sample_ids.includes(sampleId) ? dataset.reference_sample_ids.filter((id) => id !== sampleId) : [...dataset.reference_sample_ids, sampleId];
       try {
@@ -623,6 +639,8 @@ var __IadClientBundle__ = (() => {
         onChanged();
       } catch (e) {
         setError(message(e));
+      } finally {
+        setBusy(false);
       }
     }
     async function submit(decision) {

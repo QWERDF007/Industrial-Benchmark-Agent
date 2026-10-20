@@ -66,6 +66,11 @@ def dataset_archive_inspect(args, db_path):
 
 def dataset_update(args, db_path):
     registry = DatasetRegistry(Database(db_path))
+    if args.get("reset_references") is not None:
+        if not isinstance(args["reset_references"], bool) or "reference_sample_ids" in args:
+            raise ValueError("reset_references must be a boolean and cannot be combined with reference_sample_ids")
+        if args["reset_references"]:
+            registry.reset_references(args["dataset_id"])
     if "name" in args:
         registry.rename(args["dataset_id"], args["name"])
     if "reference_sample_ids" in args:
