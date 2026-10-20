@@ -1,4 +1,5 @@
-import type { AuditAnalysis, KnowledgeSnapshot, AuditStart, ModelCallDetail, DatasetReport as Report } from "./domain.generated.js";
+import type { Annotation, AuditAnalysis, KnowledgeSnapshot, AuditStart, ModelCallDetail, DatasetReport as Report } from "./domain.generated.js";
+export type { Annotation } from "./domain.generated.js";
 export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot, JobRetry, DatasetImport as DatasetImportRequest, ArchiveInspection, DatasetReport as Report } from "./domain.generated.js";
 export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
 export type ModelCallSummary = Omit<ModelCallDetail, "request_body" | "response_body">;
@@ -60,7 +61,7 @@ export interface SampleDetail {
   normal_knowledge: KnowledgeSummary | null;
   defect_knowledge: KnowledgeSummary | null;
   sample: SampleIdentity;
-  annotations: Array<{ annotation_id: string; raw_label: string; phenomenon: string; geometry_status: string; bbox: number[] | null; polygon: number[][] | null }>;
+  annotations: Annotation[];
   technical_issues: Array<{ issue_type: string; severity: string; message: string }>;
   technical_quality_score: number;
   visual_suspicion_score: number | null;

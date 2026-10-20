@@ -18,7 +18,8 @@ from iad_core.workbench.jobs import JobRetry
 from iad_core.dataset.registry import DatasetImport
 from iad_core.dataset.archive import ArchiveInspection
 from iad_core.workbench.report import DatasetReport
-models = [AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, AuditStart, ModelCallDetail, JobRetry, DatasetImport, ArchiveInspection, DatasetReport, MiningStart]
+from iad_core.storage.models import Annotation
+models = [AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, AuditStart, ModelCallDetail, JobRetry, DatasetImport, ArchiveInspection, DatasetReport, MiningStart, Annotation]
 _, schema = models_json_schema([(model, 'validation' if model in (MiningStart, AuditStart, JobRetry, DatasetImport) else 'serialization') for model in models])
 schema.update(title='WorkbenchDomain', type='object', additionalProperties=False,
     properties={model.__name__: {'$ref': '#/$defs/'+model.__name__} for model in models})

@@ -22,7 +22,7 @@ export function SampleGrid({ dataset, filters, onFilters, items, total, page, on
     {select("sort_by", "排序", [["default", "默认"], ["risk", "可疑度优先"], ["tech", "技术问题优先"]])}
     <input aria-label="按文件名搜索" placeholder="按文件名搜索" value={filters.search} onChange={e => onFilters({ ...filters, search: e.target.value })} />
   </div>{pagination}{loading ? <p>加载中…</p> : <div className="iad-grid">{items.map(sample => <button className={`iad-sample ${selected === sample.sample_id ? "is-selected" : ""}`} key={sample.sample_id} onClick={() => onSelect(sample.sample_id)}>
-    <div className="iad-thumb"><img loading="lazy" src={mediaUrl(sample, true)} alt={sample.relative_path} />
+    <div className="iad-thumb"><img loading="lazy" src={mediaUrl(sample, "thumbnail")} alt={sample.relative_path} />
       <span className={`iad-badge ${sample.suggestion?.suggested_label === "FAIL" ? "is-risk" : ""}`}>{sample.review_decision ? `人审 ${sample.review_decision}` : sample.suggestion ? `模型 ${sample.suggestion.suggested_label}` : "待模型审计"}</span>
       {dataset.reference_sample_ids.includes(sample.sample_id) && <span className="iad-reference">良品参考</span>}</div>
     <strong title={sample.relative_path}>{sample.relative_path.split("/").pop()}</strong>

@@ -422,6 +422,19 @@ export type Kind2 = "normal" | "defect";
 export type NormalVersionId5 = string | null;
 export type ModelName3 = string;
 export type SampleIds2 = string[] | null;
+export type AnnotationId3 = string;
+export type SampleId4 = string;
+export type AnnotationType = "bbox" | "polygon" | "mask" | "image";
+export type RawLabel = string;
+export type Phenomenon = string | null;
+export type Bbox6 = number[] | null;
+export type Polygon = number[][] | null;
+export type MaskPath = string | null;
+export type MaskSha256 = string | null;
+export type GeometryStatus = "VALID" | "CLIPPED" | "SCALED" | "INVALID";
+export type AnnotationSource = "manual" | "existing_detector" | "production_system" | "imported" | "unknown";
+export type SourceWidth = number | null;
+export type SourceHeight = number | null;
 export interface WorkbenchDomain {
     AuditAnalysis?: AuditAnalysis;
     KnowledgeSnapshot?: KnowledgeSnapshot;
@@ -433,6 +446,7 @@ export interface WorkbenchDomain {
     ArchiveInspection?: ArchiveInspection;
     DatasetReport?: DatasetReport;
     MiningStart?: MiningStart;
+    Annotation?: Annotation;
 }
 export interface AuditAnalysis {
     normal_version_id: NormalVersionId;
@@ -860,5 +874,20 @@ export interface MiningStart {
     normal_version_id?: NormalVersionId5;
     model_name?: ModelName3;
     sample_ids?: SampleIds2;
+}
+export interface Annotation {
+    annotation_id: AnnotationId3;
+    sample_id: SampleId4;
+    annotation_type: AnnotationType;
+    raw_label: RawLabel;
+    phenomenon?: Phenomenon;
+    bbox?: Bbox6;
+    polygon?: Polygon;
+    mask_path?: MaskPath;
+    mask_sha256?: MaskSha256;
+    geometry_status?: GeometryStatus;
+    source?: AnnotationSource;
+    source_width?: SourceWidth;
+    source_height?: SourceHeight;
 }
 //# sourceMappingURL=domain.generated.d.ts.map

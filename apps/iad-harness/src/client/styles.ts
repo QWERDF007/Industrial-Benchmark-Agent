@@ -46,6 +46,8 @@ export const workbenchStyles = themeStyles + `
 .iad-image-frame svg {position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
 .iad-image-frame rect,.iad-image-frame polygon {fill:none;stroke:var(--iad-warning);stroke-width:calc(2px / var(--iad-view-scale,1));vector-effect:non-scaling-stroke;}
 .iad-image-frame text {fill:var(--iad-warning);font-size:calc(14px / var(--iad-view-scale,1));}
+.iad-image-frame .iad-annotation-mask {opacity:.28;}
+.iad-image-frame .iad-annotation-mask rect {fill:var(--iad-warning);stroke:none;}
 .iad-workbench dl {display:grid;grid-template-columns:105px minmax(0,1fr);gap:8px 10px;font-size:12px;}
 .iad-workbench dt {color:var(--iad-muted);}.iad-workbench dd {margin:0;overflow-wrap:anywhere;}
 .iad-workbench dd code {display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;}

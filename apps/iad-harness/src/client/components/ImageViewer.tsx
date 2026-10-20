@@ -1,24 +1,18 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { SampleDetail } from "../../shared/contracts.js";
 import { Modal } from "./Modal.js";
+import { AnnotationLayer, type AnnotationLayerSource } from "./AnnotationLayer.js";
 import { regionSources } from "../api.js";
 import { InspectionOverlay, InspectionPanel, type InspectionContext } from "./InspectionEvidence.js";
 
-type Annotation = SampleDetail["annotations"][number];
 export interface ImageSource {
-  src: string; title: string; width?: number; height?: number; annotations?: Annotation[];
+  src: string; title: string; width?: number; height?: number; annotationLayer?: AnnotationLayerSource;
   inspection?: InspectionContext;
   focus?: { bbox: number[]; label: string; findingId: string };
 }
 
 export function AnnotatedImage({ image, visible = true }: { image: ImageSource; visible?: boolean }) {
   return <div className="iad-image-frame"><img src={image.src} alt={image.title} draggable={false} />
-    {visible && image.annotations && <svg className="iad-annotation-layer" viewBox={`0 0 ${image.width} ${image.height}`} preserveAspectRatio="none">
-      {image.annotations.filter(a => a.geometry_status !== "INVALID").map(a => <g key={a.annotation_id}>
-        {a.polygon ? <polygon points={a.polygon.map(p => p.join(",")).join(" ")} /> : a.bbox && <rect x={a.bbox[0]} y={a.bbox[1]} width={a.bbox[2] - a.bbox[0]} height={a.bbox[3] - a.bbox[1]} />}
-        {a.bbox && <text x={a.bbox[0]} y={Math.max(12, a.bbox[1] - 4)}>{a.raw_label}</text>}
-      </g>)}
-    </svg>}
+    {visible && image.annotationLayer && <AnnotationLayer source={image.annotationLayer} />}
     {image.focus && <svg className="iad-finding-layer" data-finding-id={image.focus.findingId}
       viewBox={`0 0 ${image.width} ${image.height}`} preserveAspectRatio="none" aria-label={image.focus.label}>
       <rect x={image.focus.bbox[0]} y={image.focus.bbox[1]} width={image.focus.bbox[2] - image.focus.bbox[0]} height={image.focus.bbox[3] - image.focus.bbox[1]} />
@@ -112,7 +106,7 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
       <option value={0}>适应窗口</option><option value={1}>100%</option><option value={1.5}>150%</option><option value={2}>200%</option>
       {!fixed && <option value="custom">{Math.round(scale * 100)}%</option>}
     </select>
-    {(image.annotations || inspection) && <button className="iad-eye" title={layers.annotation ? "隐藏标注" : "显示标注"} aria-label={layers.annotation ? "隐藏标注" : "显示标注"} aria-pressed={layers.annotation} onClick={() => setLayers(previous => ({ ...previous, annotation: !previous.annotation }))}>
+    {(image.annotationLayer || inspection) && <button className="iad-eye" title={layers.annotation ? "隐藏标注" : "显示标注"} aria-label={layers.annotation ? "隐藏标注" : "显示标注"} aria-pressed={layers.annotation} onClick={() => setLayers(previous => ({ ...previous, annotation: !previous.annotation }))}>
       <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" />{!layers.annotation && <path d="m3 3 18 18" />}</svg>
     </button>}
     {inspection && <details ref={layerMenu} className="iad-layer-menu"><summary aria-label="可视图层">图层</summary>

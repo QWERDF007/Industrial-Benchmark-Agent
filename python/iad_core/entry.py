@@ -148,6 +148,24 @@ def sample_thumbnail(args, db_path):
     return {"sample_id": args["sample_id"], "path": str(thumb), "media_type": "image/jpeg", "cached": cached}
 
 
+def sample_mask_path(args, db_path):
+    from iad_core.evidence.masks import MaskImages
+    db = Database(db_path)
+    sample = SampleRepository(db).get(args["sample_id"])
+    if not sample:
+        raise LookupError("Sample not found")
+    annotation = next((item for item in AnnotationRepository(db).list_by_sample(sample.sample_id)
+                       if item.annotation_id == args["annotation_id"]), None)
+    if not annotation:
+        raise LookupError("Annotation not found in this sample")
+    if annotation.annotation_type != "mask" or annotation.geometry_status == "INVALID":
+        raise ValueError("Annotation is not a valid pixel mask")
+    if args.get("sha256") != annotation.mask_sha256:
+        raise ValueError("Mask version changed; refresh the sample")
+    MaskImages.load(annotation, sample)
+    return {"path": annotation.mask_path, "media_type": "image/png"}
+
+
 def review_queue(args, db_path):
     from iad_core.review.service import ReviewQueueService
     service = ReviewQueueService(task_id=args["task_id"], db_path=db_path)
@@ -274,7 +292,7 @@ def model_call_get(args, db_path):
 
 OPERATIONS = {handler.__name__: handler for handler in (
     tool_call, dataset_list, dataset_get, dataset_import, dataset_archive_inspect, dataset_update, dataset_scan,
-    sample_list, sample_get, sample_image_path, sample_thumbnail,
+    sample_list, sample_get, sample_image_path, sample_thumbnail, sample_mask_path,
     review_queue, review_evidence, review_start_session, review_submit_decision, review_finish_session,
     review_stats, report_get, audit_start, audit_status, audit_cancel, audit_retry, audit_list, audit_evidence, directory_list,
     knowledge_get, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_list, model_call_get,

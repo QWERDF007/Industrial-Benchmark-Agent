@@ -59,11 +59,13 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       if (samples && method === "GET") return await call("sample_list", { ...query, task_id: decodeURIComponent(samples[1]) });
       const sample = pathname.match(/^\/api\/iad\/sample\/(.+)$/);
       if (sample && method === "GET") return await call("sample_get", { sample_id: decodeURIComponent(sample[1]) });
-      const media = pathname.match(/^\/api\/iad\/media\/sample\/([^/]+)\/(.+)\/(thumbnail|image)$/);
+      const media = pathname.match(/^\/api\/iad\/media\/sample\/([^/]+)\/(.+)\/(thumbnail|image|mask)$/);
       if (media && method === "GET") {
         const sampleId = decodeURIComponent(media[2]);
-        const info = await bridge.execute<{ path: string; media_type: string }>(media[3] === "thumbnail" ? "sample_thumbnail" : "sample_image_path",
-          { sample_id: sampleId, ...(media[3] === "thumbnail" ? { size: Number(query.size || 240) } : {}) });
+        const operations: Record<string, string> = { thumbnail: "sample_thumbnail", image: "sample_image_path", mask: "sample_mask_path" };
+        const info = await bridge.execute<{ path: string; media_type: string }>(operations[media[3]],
+          { sample_id: sampleId, ...(media[3] === "thumbnail" ? { size: Number(query.size || 240) } : {}),
+            ...(media[3] === "mask" ? { annotation_id: query.annotation_id, sha256: query.sha256 } : {}) });
         await sendMedia(res, info);
         return;
       }

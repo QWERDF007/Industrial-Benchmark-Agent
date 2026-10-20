@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { AuditJob, Dataset, Decision, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
 import { AnnotatedImage, ImageViewer, type ImageSource } from "./ImageViewer.js";
+import type { AnnotationLayerSource } from "./AnnotationLayer.js";
 import { DatasetKnowledge } from "./DatasetKnowledge.js";
 import { RuleAssessments } from "./RuleAssessments.js";
 import { AuditFindings } from "./AuditFindings.js";
@@ -58,13 +59,15 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
       if (activeId.current === id) { onChanged(); setNotice(`已提交 ${decision}`); }
     } catch (e) { if (activeId.current === id) setError(message(e)); } finally { setBusy(false); }
   }
+  const annotationLayer: AnnotationLayerSource | undefined = detail ? { kind: "sample", annotations: detail.annotations, sample: detail.sample } : undefined;
   const evidenceSource = (image: VisualEvidence): ImageSource => ({
     src: auditEvidenceUrl(detail!.suggestion!.suggestion_id,image),
+    annotationLayer: image.role === "overview" && detail!.suggestion!.analysis ? { kind: "audit", analysis: detail!.suggestion!.analysis, suggestionId: detail!.suggestion!.suggestion_id } : undefined,
     inspection: image.role === "overview" && detail!.suggestion!.analysis ? { suggestionId: detail!.suggestion!.suggestion_id, analysis: detail!.suggestion!.analysis } : undefined,
     title: image.role === "overview" ? "送模全图概览" : `${image.representation === "annotation_mask" ? "标注定位图" : "ROI"} · ${image.crop_bbox.join(", ")}`,
     width: image.sent_size[0], height: image.sent_size[1],
   });
-  const image = detail ? { src: mediaUrl(detail.sample), title: detail.sample.relative_path.split("/").pop()!, width: detail.sample.width, height: detail.sample.height, annotations: detail.annotations, inspection: detail.suggestion?.analysis ? { suggestionId: detail.suggestion.suggestion_id, analysis: detail.suggestion.analysis } : undefined } : null;
+  const image = detail ? { src: mediaUrl(detail.sample), title: detail.sample.relative_path.split("/").pop()!, width: detail.sample.width, height: detail.sample.height, annotationLayer, inspection: detail.suggestion?.analysis ? { suggestionId: detail.suggestion.suggestion_id, analysis: detail.suggestion.analysis } : undefined } : null;
   return <aside className="iad-inspector"><h2>{mode === "review" ? "复核明细" : "样本信息"}</h2>
     {error && <p role="alert" className="iad-error">{error}</p>}{notice && <p role="status">{notice}</p>}
     {!sampleId ? <p>选择图像查看。</p> : !detail ? <p>加载中…</p> : <>

@@ -1,13 +1,12 @@
 import React from "react";
-import type { SampleDetail } from "../../shared/contracts.js";
+import { type AnnotationLayerSource } from "./AnnotationLayer.js";
 import { type InspectionContext } from "./InspectionEvidence.js";
-type Annotation = SampleDetail["annotations"][number];
 export interface ImageSource {
     src: string;
     title: string;
     width?: number;
     height?: number;
-    annotations?: Annotation[];
+    annotationLayer?: AnnotationLayerSource;
     inspection?: InspectionContext;
     focus?: {
         bbox: number[];
@@ -23,5 +22,4 @@ export declare function ImageViewer({ image, onClose }: {
     image: ImageSource;
     onClose(): void;
 }): React.JSX.Element;
-export {};
 //# sourceMappingURL=ImageViewer.d.ts.map

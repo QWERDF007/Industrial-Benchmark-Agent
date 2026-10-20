@@ -19,13 +19,18 @@ test("browser: import Labelme, filter, select references, review and rename", { 
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-browser-"));
   const bridge = new PythonBridge({ cwd: workspace, dbPath: path.join(root, "test.db") });
   execFileSync(bridge.pythonPath, ["-c", `
-import json,sys
+import base64,io,json,sys
 from pathlib import Path
 from PIL import Image
 root=Path(sys.argv[1])
 (root/'images').mkdir(); (root/'labels').mkdir()
 (root/'images-other').mkdir(); (root/'labels-other').mkdir()
 Image.new('RGB',(320,240),'green').save(root/'images-other'/'other.png')
+Image.new('RGB',(320,240),'green').save(root/'images-other'/'reference.png')
+mask=Image.new('L',(11,11),0)
+for point in [(0,0),(2,3),(3,3),(10,10)]:mask.putpixel(point,255)
+buffer=io.BytesIO();mask.save(buffer,'PNG')
+(root/'labels-other'/'other.json').write_text(json.dumps({'imageWidth':320,'imageHeight':240,'shapes':[{'label':'稀疏Mask','shape_type':'mask','points':[[20,15],[30,25]],'mask':base64.b64encode(buffer.getvalue()).decode()}]}))
 for name in ['normal','normal2','dent']:
     Image.new('RGB',(320,240),(0,0,200) if name=='normal' else (0,0,220) if name=='normal2' else 'blue').save(root/'images'/f'{name}.png')
 (root/'labels'/'dent.json').write_text(json.dumps({'imageWidth':320,'imageHeight':240,'shapes':[{'label':'dent','shape_type':'rectangle','points':[[10,10],[30,30]]}]}))
@@ -92,10 +97,12 @@ for name in ['normal','normal2','dent']:
   try {
     const options = new firefox.Options().addArguments("-headless");
     if (process.env.FIREFOX_PATH) options.setBinary(process.env.FIREFOX_PATH);
+    if (process.env.IAD_BROWSER_DPR) options.setPreference("layout.css.devPixelsPerPx",process.env.IAD_BROWSER_DPR);
     driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options)
       .setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH || "geckodriver")).build();
     await driver.manage().window().setRect({ width: 1440, height: 1100 });
     await driver.get(base + "?host=kept#host-anchor");
+    if (process.env.IAD_BROWSER_DPR) assert.equal(await driver.executeScript("return devicePixelRatio"),Number(process.env.IAD_BROWSER_DPR));
     const element = css => driver.wait(until.elementLocated(By.css(css)), 15000);
     const button = async text => { const control = await driver.findElement(By.xpath(`//button[normalize-space(.)='${text}']`)); await driver.wait(until.elementIsEnabled(control),15000); await control.click(); };
     const select = async (label, value) => {
@@ -210,12 +217,12 @@ for name in ['normal','normal2','dent']:
     assert.equal(await driver.executeScript("return getComputedStyle(document.querySelector('.iad-finding-layer rect')).fill"),"none","定位框不能遮挡原图");
     const focusScreenshot=path.join(workspace,"runs/browser/audit-finding-focus.png");
     await fs.writeFile(focusScreenshot,await driver.takeScreenshot(),"base64");
-    const edge=await driver.executeScript("const r=document.querySelector('.iad-finding-layer rect').getBoundingClientRect();return [r.left,r.top+r.height/2,devicePixelRatio]");
-    const strokePixels=Number(execFileSync(bridge.pythonPath,["-c",`from PIL import Image
+    const edge=await driver.executeScript("const e=document.querySelector('.iad-finding-layer rect'),r=e.getBoundingClientRect();return [r.left,r.top+r.height/2,devicePixelRatio,getComputedStyle(e).stroke]");
+    const strokePixels=Number(execFileSync(bridge.pythonPath,["-c",`from PIL import Image,ImageColor
 import sys,json
-x,y,dpr=json.loads(sys.argv[2]);x=round(x*dpr);y=round(y*dpr)
-image=Image.open(sys.argv[1]).convert('RGB')
-print(sum(image.getpixel((i,y))!=(0,0,255) for i in range(x-round(20*dpr),x+round(20*dpr)+1)))`,focusScreenshot,JSON.stringify(edge)],{encoding:"utf8"}));
+x,y,dpr,color=json.loads(sys.argv[2]);x=round(x*dpr);y=round(y*dpr)
+image=Image.open(sys.argv[1]).convert('RGB');stroke=ImageColor.getrgb(color)
+print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(20*dpr)+1)))`,focusScreenshot,JSON.stringify(edge)],{encoding:"utf8"}));
     assert.ok(strokePixels>=1&&strokePixels<=4*edge[2],`放大后实际截图的定位描边应保持可辨且纤细，实际占 ${strokePixels} 像素`);
     await element(".iad-inspection-panel");
     assert.ok((await (await element(".iad-inspection-panel")).getText()).includes("综合建议"));
@@ -412,9 +419,55 @@ print(sum(image.getpixel((i,y))!=(0,0,255) for i in range(x-round(20*dpr),x+roun
     await button("导入数据集");
     await element("button[aria-label='选择数据集 隔离数据集']");
     assert.equal((await driver.findElements(By.css(".iad-dataset-list button"))).length,2);
-    await button("图像浏览"); await gridCount(1);
+    await button("图像浏览"); await gridCount(2);
     await element("img[alt='other.png']");
     assert.equal((await driver.findElements(By.css("img[alt='dent.png']"))).length,0);
+    await (await element("img[alt='other.png']")).click();
+    await (await element("button[title='放大图像']")).click();
+    await element(".iad-viewer-dialog .iad-annotation-mask image");
+    await select("缩放","2");
+    const maskScreenshot=path.join(workspace,"runs/browser/labelme-mask.png");
+    const readMaskPixels=async()=>{
+      const geometry=await driver.executeScript("const r=document.querySelector('.iad-viewer-world').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,dpr:devicePixelRatio}");
+      await fs.writeFile(maskScreenshot,await driver.takeScreenshot(),"base64");
+      return JSON.parse(execFileSync(bridge.pythonPath,["-c",`from PIL import Image
+import sys,json
+r=json.loads(sys.argv[2]);image=Image.open(sys.argv[1]).convert('RGB')
+def pixel(x,y):return image.getpixel((round((r['x']+x*r['width']/320)*r['dpr']),round((r['y']+y*r['height']/240)*r['dpr'])))
+print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside':pixel(19.5,15.5),'bbox_edge':pixel(20.5,20.5)}))`,maskScreenshot,JSON.stringify(geometry)],{encoding:"utf8"}));
+    };
+    let shownMask;
+    await driver.wait(async()=>{shownMask=await readMaskPixels();return shownMask.foreground.some((value,index)=>value!==[0,128,0][index]);},5000,"真实Mask前景应在原图对应像素可见");
+    assert.deepEqual(shownMask.hole,[0,128,0],"Mask孔洞必须透出原图");
+    assert.deepEqual(shownMask.outside,[0,128,0]);
+    assert.deepEqual(shownMask.bbox_edge,[0,128,0],"不能用bbox替代Mask形状");
+    assert.ok(shownMask.foreground[1]>70,"叠加仍保留原始图像内容");
+    await fs.copyFile(maskScreenshot,path.join(workspace,"runs/browser/labelme-mask-visible.png"));
+    await (await element("button[title='隐藏标注']")).click();
+    assert.equal((await driver.findElements(By.css(".iad-viewer-dialog .iad-annotation-mask"))).length,0);
+    assert.deepEqual((await readMaskPixels()).foreground,[0,128,0]);
+    await (await element("button[title='显示标注']")).click();
+    await element(".iad-viewer-dialog .iad-annotation-mask image");
+    await button("关闭");await button("返回图像浏览");
+    await button("挖掘良品知识");
+    await button("开始挖掘良品知识");
+    await driver.wait(async()=>(await (await element(".iad-knowledge-jobs")).getText()).includes("COMPLETED"),15000);
+    await button("模型审计");await gridCount(2);
+    await (await element("img[alt='other.png']")).click();
+    await button("按知识审计此图");
+    await driver.wait(async()=>(await (await element(".iad-single-job")).getText()).includes("COMPLETED"),15000);
+    const maskDataset=await (await element("select[aria-label='当前数据集']")).getAttribute("value");
+    const maskAudit=await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(maskDataset+':other.png')}`)).json();
+    await (await element(".iad-findings li button")).click();
+    await select("缩放","2");
+    const frozenMask=await element(".iad-viewer-dialog .iad-annotation-mask image");
+    assert.ok((await frozenMask.getAttribute("href")).includes(`/api/iad/evidence/${maskAudit.suggestion.suggestion_id}/`),"历史审计标注必须来自该建议冻结的送模证据");
+    let frozenPixels;
+    await driver.wait(async()=>{frozenPixels=await readMaskPixels();return frozenPixels.foreground.some((value,index)=>value!==[0,128,0][index]);},5000);
+    assert.deepEqual(frozenPixels.hole,[0,128,0]);
+    assert.deepEqual(frozenPixels.outside,[0,128,0]);
+    await fs.copyFile(maskScreenshot,path.join(workspace,"runs/browser/labelme-mask-frozen.png"));
+    await button("关闭");
     await button("数据集管理");
     await (await element("button[aria-label='选择数据集 验收后改名']")).click();
     await driver.wait(async () => await (await element("select[aria-label='当前数据集']")).getAttribute("value") === dataset.dataset_id,5000);

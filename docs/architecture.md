@@ -33,7 +33,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 全图、局部裁剪及综合判断 | [SampleInspection](../python/iad_core/workbench/inspection.py)、[分析类型](../python/iad_core/advisory/analysis.py) |
 | 视觉证据、原图坐标、无损 ROI 与分块 | [EvidenceImages](../python/iad_core/evidence/images.py) |
 | 源图、标注与 Mask 内容指纹 | [SampleContent](../python/iad_core/evidence/sources.py)、[知识来源资格](../python/iad_core/knowledge/sources.py) |
-| Mask 像素、内容指纹、二值标注图与显示叠加 | [MaskImages / annotation_overlay](../python/iad_core/evidence/masks.py)、[Labelme 官方格式](https://github.com/wkentaro/labelme/blob/main/labelme/_label_file.py)、[官方坐标映射](https://github.com/wkentaro/labelme/blob/main/labelme/_utils/_shape.py) |
+| Mask 像素、内容指纹、二值标注图与显示叠加 | [MaskImages / annotation_overlay](../python/iad_core/evidence/masks.py)、[当前与冻结标注图层](../apps/iad-harness/src/client/components/AnnotationLayer.tsx)、[校验媒体读取](../python/iad_core/entry.py)、[Labelme 官方格式](https://github.com/wkentaro/labelme/blob/main/labelme/_label_file.py)、[官方坐标映射](https://github.com/wkentaro/labelme/blob/main/labelme/_utils/_shape.py) |
 | 模型传输、实际 token 容量、结构化输出与响应校验 | [VlmClient](../python/iad_core/workbench/vision.py)、[vLLM 输出契约](https://github.com/vllm-project/vllm/blob/v0.18.0/docs/features/structured_outputs.md) |
 | 全图与全部 ROI 联合分析、按实际容量分批 | [JointInspection](../python/iad_core/workbench/joint.py) |
 | 知识/审计共享轮询与逐图刷新 | [useJobs](../apps/iad-harness/src/client/useJobs.ts) |
@@ -78,6 +78,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 - [Mask 导入、像素、标注视图、版本与容量配对测试](../tests/test_mask_evidence.py)
 - [复核、置信度和查询一致性测试](../tests/test_workbench_closeout.py)
 - [真实 HTTP / Python 桥接测试](../apps/iad-harness/test/workbench.test.js)
+- [Mask 媒体原像素、归属与指纹验证](../apps/iad-harness/test/mask_media.test.js)
 - [真实 DSH 技能发现、加载、执行、取消及附件测试](../apps/iad-harness/test/knowledge_skills.test.js)
 - [DSH 原生接入与工作台查询一致性测试](../apps/iad-harness/test/dataset_tools.test.js)
 - [真实 DSH Agent/Session 与官方模型适配器测试](../apps/iad-harness/test/agent_session.test.js)
