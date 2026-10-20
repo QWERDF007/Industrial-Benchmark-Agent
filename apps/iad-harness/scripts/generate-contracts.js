@@ -1,0 +1,28 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
+import { compile } from "json-schema-to-typescript";
+import { findWorkspaceRoot, resolvePythonPath } from "../lib/server/python-bridge/index.js";
+
+const workspace = findWorkspaceRoot();
+const schema = JSON.parse(execFileSync(resolvePythonPath(), ["-c", `
+import json
+from pydantic.json_schema import models_json_schema
+from iad_core.advisory.analysis import AuditAnalysis
+from iad_core.knowledge.models import KnowledgeSnapshot
+from iad_core.workbench.audit import AuditStart
+models = [AuditAnalysis, KnowledgeSnapshot, AuditStart]
+_, schema = models_json_schema([(model, 'validation' if model is AuditStart else 'serialization') for model in models])
+schema.update(title='WorkbenchDomain', type='object', additionalProperties=False,
+    properties={model.__name__: {'$ref': '#/$defs/'+model.__name__} for model in models})
+print(json.dumps(schema))
+`], { cwd: workspace, env: { ...process.env, PYTHONPATH: path.join(workspace, "python") }, encoding: "utf8" }));
+const output = await compile(schema, "WorkbenchDomain", {
+  bannerComment: "/* Generated from Python Pydantic models by scripts/generate-contracts.js. */",
+  additionalProperties: false, format: true,
+});
+const target = fileURLToPath(new URL("../src/shared/domain.generated.ts", import.meta.url));
+if (process.argv.includes("--check")) {
+  if (await fs.readFile(target, "utf8") !== output) throw new Error("Domain contracts differ from Pydantic; run generate:contracts");
+} else await fs.writeFile(target, output);

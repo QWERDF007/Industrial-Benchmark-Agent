@@ -1,3 +1,7 @@
+import type { AuditAnalysis, KnowledgeSnapshot, AuditStart } from "./domain.generated.js";
+export type { AuditAnalysis, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot } from "./domain.generated.js";
+export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
+
 export type Decision = "PASS" | "HARD_NORMAL" | "FAIL" | "UNCERTAIN" | "SKIP";
 export interface Suggestion {
   suggestion_id: string;
@@ -64,7 +68,8 @@ export interface Sample extends SampleIdentity {
   suggestion: Suggestion | null;
 }
 export interface SampleDetail {
-  normal_profile: NormalProfile | null;
+  normal_knowledge: KnowledgeSummary | null;
+  defect_knowledge: KnowledgeSummary | null;
   sample: SampleIdentity;
   annotations: Array<{ annotation_id: string; raw_label: string; phenomenon: string; geometry_status: string; bbox: number[] | null; polygon: number[][] | null }>;
   technical_issues: Array<{ issue_type: string; severity: string; message: string }>;
@@ -88,57 +93,12 @@ export interface AuditJob {
   progress: number;
   message: string;
   model_name: string;
-  reference_sample_ids: string[];
   phase?: string;
-  profile_id?: string;
+  normal_version_id?: string;
+  defect_version_id?: string | null;
   errors: Array<{ sample_id: string; message: string }>;
 }
 export interface DirectoryListing { path: string; parent: string; directories: Array<{ name: string; path: string }> }
 export interface DatasetImportRequest { name: string; image_dir: string; annotation_dir: string; unannotated_is_normal?: boolean }
-export interface AuditStartRequest { dataset_id: string; model_name?: string; sample_ids?: string[]; filters?: Partial<Filters> }
+export type AuditStartRequest = Omit<AuditStart, "filters"> & { filters?: Partial<Filters> };
 export interface ReviewSubmission { session_id: string; sample_id: string; decision: Decision; comment?: string; reason_code?: string; duration_ms?: number }
-
-export interface ViewAnalysis { description: string; position_analysis: string; illumination_analysis: string }
-export interface VisualEvidence {
-  evidence_id: string;
-  role: "normal" | "overview" | "roi";
-  source: "reference" | "global" | "annotation" | "model" | "coverage";
-  original_size: number[];
-  crop_bbox: number[];
-  sent_size: number[];
-  sha256: string;
-  source_sha256: string;
-  representation: "raw" | "annotation_mask" | "annotation_overlay";
-  annotation_ids: string[];
-  annotation_sha256: string | null;
-  media_type: "image/png";
-}
-export interface VlmResult extends ViewAnalysis {
-  suggested_label: Suggestion["suggested_label"];
-  reason_category: string;
-  confidence: number;
-  defect_location: string;
-  evidence_ids: string[];
-  conflicts: string[];
-  missing_evidence: string[];
-}
-export interface GlobalAnalysis extends ViewAnalysis { suspect_regions: Array<{ bbox_1000: number[]; reason: string }> }
-export interface JointAnalysis extends VlmResult { global_view: GlobalAnalysis; region_observations: Array<ViewAnalysis & { region_index: number }> }
-export interface SynthesisStep { step_id: string; input_evidence_ids: string[]; child_step_ids: string[]; result: VlmResult | JointAnalysis }
-export interface AuditAnalysis {
-  joint_steps: SynthesisStep[];
-  profile_id: string;
-  overview: VisualEvidence;
-  coverage: { planned_regions: number; inspected_regions: number; complete: boolean; missing: string[] };
-  global_view: GlobalAnalysis;
-  regions: Array<{ origins: Array<{ source: string; annotation_id: string | null; label: string; bbox: number[] }>; source: string; image: VisualEvidence; label: string; bbox: number[]; crop_bbox: number[]; observation: ViewAnalysis }>;
-  conclusion: VlmResult;
-}
-export interface NormalProfile {
-  knowledge_kind: "mllm_semantic";
-  generation_version: string;
-  sources: Array<{ sample_id: string; sha256: string; qualification: string }>;
-  profile_id: string;
-  created_at: string;
-  patterns: { structure: string; texture: string; position_variation: string; illumination_variation: string; normal_allowances: string[]; cautions: string[] };
-}

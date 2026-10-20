@@ -84,8 +84,6 @@ export function createIadHttpHandler(bridge) {
                 return await call("audit_start", body);
             if (pathname === "/api/iad/audit/jobs" && method === "GET")
                 return await call("audit_list", query);
-            if (pathname === "/api/iad/audit/profile" && method === "GET")
-                return await call("audit_profile", query);
             const audit = pathname.match(/^\/api\/iad\/audit\/(status|cancel)\/([^/]+)$/);
             if (audit && ((audit[1] === "status" && method === "GET") || (audit[1] === "cancel" && method === "POST")))
                 return await call("audit_" + audit[1], { run_id: decodeURIComponent(audit[2]) });

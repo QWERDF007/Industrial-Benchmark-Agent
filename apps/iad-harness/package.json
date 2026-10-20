@@ -49,8 +49,9 @@
     }
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "build": "tsc && node scripts/build-client.js",
+    "generate:contracts": "node scripts/generate-contracts.js",
+    "typecheck": "node scripts/generate-contracts.js --check && tsc --noEmit",
+    "build": "node scripts/generate-contracts.js && tsc && node scripts/build-client.js",
     "test": "node --test test/*.test.js",
     "test:browser": "node --test browser/*.test.js",
     "verify:host-browser": "node scripts/verify-host-browser.js"
@@ -73,6 +74,7 @@
     "@deepseek-ai/dsh-tool-skill": "0.2.0-rc.2",
     "@types/react": "^18.3.1",
     "esbuild": "^0.28.2",
+    "json-schema-to-typescript": "^16.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "selenium-webdriver": "^4.51.0"

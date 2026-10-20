@@ -15,7 +15,8 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 数据集身份、目录、名称和良品参考 | [DatasetRegistry](../python/iad_core/dataset/registry.py) |
 | Labelme 定位与导入 | [LabelmeAdapter](../python/iad_core/dataset/adapters/labelme.py)、[scanner](../python/iad_core/dataset/scanner.py) |
 | 样本筛选、分页、评分及报告投影 | [WorkbenchQuery](../python/iad_core/workbench/query.py) |
-| 良品模式学习、版本及参考变更失效 | [NormalProfiles](../python/iad_core/workbench/normal.py) |
+| 审计冻结知识、版本关系与独立支持 | [InspectionKnowledge](../python/iad_core/workbench/knowledge.py) |
+| Python 分析/知识契约与客户端类型生成 | [分析模型](../python/iad_core/advisory/analysis.py)、[知识模型](../python/iad_core/knowledge/models.py)、[生成器](../apps/iad-harness/scripts/generate-contracts.js) |
 | 数据集良品/不良品知识挖掘与版本证据 | [KnowledgeService](../python/iad_core/knowledge/service.py)、[来源资格与指纹](../python/iad_core/knowledge/sources.py)、[全图/原图细节分组与归纳](../python/iad_core/knowledge/mining.py)、[契约](../python/iad_core/knowledge/models.py)、[仓储](../python/iad_core/knowledge/repository.py) |
 | 良品候选疑点、原图定位与联合证据核验 | [NormalVerification](../python/iad_core/knowledge/verification.py) |
 | 冻结良品版本、异常候选与标注核验 | [DefectVerification](../python/iad_core/knowledge/defect.py)、[共享联合核验](../python/iad_core/knowledge/findings.py) |
@@ -47,6 +48,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 
 ## 验证入口
 
+- [冻结知识审计、独立支持与实际 Mask 输入测试](../tests/test_knowledge_audit.py)
 - [数据集、参考图和作业测试](../tests/test_dataset_workbench.py)
 - [良品知识、版本、真实证据与取消测试](../tests/test_dataset_knowledge.py)
 - [来源积累、规则身份、拆分/合并/退役及容量归纳测试](../tests/test_knowledge_evolution.py)

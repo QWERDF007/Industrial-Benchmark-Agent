@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { AuditJob, Dataset, Decision, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
 import { AnnotatedImage, ImageViewer, type ImageSource } from "./ImageViewer.js";
-import { NormalKnowledge } from "./NormalKnowledge.js";
+import { DatasetKnowledge } from "./DatasetKnowledge.js";
 import { auditPhases, mediaUrl, message, request } from "../api.js";
 
 export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, jobs, onJobsChanged }: {
@@ -55,7 +55,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
   }
   const evidenceSource = (image: VisualEvidence): ImageSource => ({
     src: `/api/iad/evidence/${encodeURIComponent(detail!.suggestion!.suggestion_id)}/${image.evidence_id}`,
-    title: image.role === "overview" ? "送模全图概览" : `ROI · ${image.crop_bbox.join(", ")}`,
+    title: image.role === "overview" ? "送模全图概览" : `${image.representation === "annotation_mask" ? "标注定位图" : "ROI"} · ${image.crop_bbox.join(", ")}`,
     width: image.sent_size[0], height: image.sent_size[1],
   });
   const image = detail ? { src: mediaUrl(detail.sample), title: detail.sample.relative_path.split("/").pop()!, width: detail.sample.width, height: detail.sample.height, annotations: detail.annotations } : null;
@@ -74,14 +74,19 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
       {detail.technical_issues.length > 0 && <div className="iad-error">{detail.technical_issues.map((i, index) => <p key={index}>{i.message}</p>)}</div>}
       </section><section className="iad-info-group"><h3>模型观察</h3>{detail.suggestion ? <><p><strong>{detail.suggestion.suggested_label}</strong> · {detail.suggestion.reason_category} · 模型自报置信度 {detail.suggestion.confidence === null ? "未记录" : `${Math.round(detail.suggestion.confidence * 100)}%`}</p>
         <p className="iad-observation">{detail.suggestion.notes}</p><small className="iad-muted">{detail.suggestion.model_name}</small>
-        <p className="iad-muted">良品模式来源 · {detail.suggestion.reference_sample_ids.length} 张参考图</p>
-        <div className="iad-reference-grid">{detail.suggestion.reference_sample_ids.map(id => <button key={id} title="放大参考良品" onClick={() => setLightbox({ src: mediaUrl({ task_id: dataset.task_id, sample_id: id }), title: id.split("/").pop()! })}><img alt="本次审计的正常参考图" src={mediaUrl({ task_id: dataset.task_id, sample_id: id }, true)} /></button>)}</div>
-        {detail.suggestion.analysis && <details className="iad-analysis"><summary>审计过程与模式版本</summary>{detail.normal_profile && <NormalKnowledge profile={detail.normal_profile} />}
+        <p className="iad-muted">良品知识来源 · {detail.suggestion.reference_sample_ids.length} 张参考图</p>
+        <div className="iad-reference-grid">{detail.normal_knowledge?.evidence.filter(item => item.image.role === "normal" && item.image.representation === "raw" && detail.suggestion!.reference_sample_ids.includes(item.sample_id)).map(item => {
+          const src = `/api/iad/knowledge/evidence/${encodeURIComponent(detail.normal_knowledge!.version_id)}/${encodeURIComponent(item.image.evidence_id)}`;
+          return <button key={item.image.evidence_id} title="放大知识来源证据" onClick={() => setLightbox({ src, title: item.sample_id.split("/").pop()! })}><img alt="本次审计的知识来源" src={src} /></button>;
+        })}</div>
+        {detail.suggestion.analysis && <details className="iad-analysis"><summary>审计过程与知识版本</summary>{detail.normal_knowledge ? <DatasetKnowledge knowledge={detail.normal_knowledge} /> : <p className="iad-muted">历史审计，未关联知识版本。</p>}{detail.defect_knowledge && <DatasetKnowledge knowledge={detail.defect_knowledge} />}
+          {!!detail.suggestion.analysis.knowledge_limitations.length && <p className="iad-muted">知识限制：{detail.suggestion.analysis.knowledge_limitations.join("；")}</p>}
           <p className={detail.suggestion.analysis.coverage.complete ? "iad-muted" : "iad-error"}>局部覆盖 {detail.suggestion.analysis.coverage.inspected_regions} / {detail.suggestion.analysis.coverage.planned_regions} · {detail.suggestion.analysis.coverage.complete ? "计划已覆盖" : "检查未完成"}</p>
           <button className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(detail.suggestion!.analysis!.overview))}><img src={evidenceSource(detail.suggestion.analysis.overview).src} alt="送模全图概览" /><span>全图 · {detail.suggestion.analysis.overview.sent_size.join(" × ")}{detail.suggestion.analysis.conclusion.evidence_ids.includes(detail.suggestion.analysis.overview.evidence_id) ? " · 结论引用" : ""}</span></button>
           <h3>全图观察</h3><p>{detail.suggestion.analysis.global_view.description}</p>
           {detail.suggestion.analysis.regions.map((region, index) => <div key={index}><h3>局部 · {region.origins.map(origin => origin.label).join(" / ")}</h3><small>{({ annotation: "Labelme 线索", model: "MLLM 候选", coverage: "细节覆盖" } as Record<string, string>)[region.source]} · 原图坐标 {region.crop_bbox.join(", ")}</small>
             <button className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(region.image))}><img src={evidenceSource(region.image).src} alt={`审计 ROI ${index + 1}`} /><span>{region.image.sent_size.join(" × ")} · PNG{detail.suggestion!.analysis!.conclusion.evidence_ids.includes(region.image.evidence_id) ? " · 结论引用" : ""}</span></button><p>{region.observation.description}</p><p>位置：{region.observation.position_analysis}</p><p>光照：{region.observation.illumination_analysis}</p></div>)}
+          {detail.suggestion.analysis.auxiliary_evidence.map(image => <button key={image.evidence_id} className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(image))}><img src={evidenceSource(image).src} alt="实际送模的二值标注定位图" /><span>标注定位图{detail.suggestion!.analysis!.conclusion.evidence_ids.includes(image.evidence_id) ? " · 结论引用" : ""}</span></button>)}
           {detail.suggestion.analysis.conclusion.conflicts.length > 0 && <p className="iad-error">观察矛盾：{detail.suggestion.analysis.conclusion.conflicts.join("；")}</p>}
           {detail.suggestion.analysis.conclusion.missing_evidence.length > 0 && <p className="iad-error">缺失证据：{detail.suggestion.analysis.conclusion.missing_evidence.join("；")}</p>}
           {detail.suggestion.analysis.joint_steps.length > 1 && <details><summary>联合分析记录 · {detail.suggestion.analysis.joint_steps.length} 步</summary>{detail.suggestion.analysis.joint_steps.map(step => <div key={step.step_id}><strong>{step.step_id} · {step.result.suggested_label}</strong><p>{step.input_evidence_ids.length} 张图像{step.child_step_ids.length ? ` · 汇总 ${step.child_step_ids.join("、")}` : ""}</p><p>{step.result.description}</p></div>)}</details>}
@@ -95,7 +100,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
         {job.errors.map((error, index) => <p className="iad-error" key={index}>{error.message}</p>)}
         {(job.status === "RUNNING" || job.status === "PENDING") && <button onClick={async () => { try { await request<AuditJob>(`/audit/cancel/${job.run_id}`, {}); onJobsChanged(); } catch (error) { setError(message(error)); } }}>取消审计</button>}
       </section>}
-      {mode === "model" ? <div className="iad-actions"><button className="iad-primary" disabled={busy || jobRunning} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按良品模式审计此图"}</button>
+      {mode === "model" ? <div className="iad-actions"><button className="iad-primary" disabled={busy || jobRunning} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按知识审计此图"}</button>
         <button disabled={busy} onClick={setReference}>{dataset.reference_sample_ids.includes(sampleId) ? "移出良品参考" : "设为良品参考"}</button></div> : <section className="iad-decision">
         <h3>人工裁决</h3>{detail.review_decision && <p>当前：{detail.review_decision.decision} · {detail.review_decision.reviewer}<br />{detail.review_decision.comment}</p>}
         <label className="iad-field">复核人<input value={reviewer} onChange={e => setReviewer(e.target.value)} /></label>

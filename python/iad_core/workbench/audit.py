@@ -15,11 +15,14 @@ from iad_core.workbench.query import SampleQuery, WorkbenchQuery
 from iad_core.workbench.vision import DEFAULT_MODEL, VlmClient
 from iad_core.workbench.inspection import SampleInspection
 from iad_core.workbench.jobs import JobContext, JobRunner
+from iad_core.workbench.knowledge import InspectionKnowledge
 
 class AuditStart(BaseModel):
     model_config = ConfigDict(extra="forbid")
     dataset_id: str
     model_name: str = DEFAULT_MODEL
+    normal_version_id: Optional[str] = None
+    defect_version_id: Optional[str] = None
     sample_ids: Optional[List[str]] = None
     filters: dict = Field(default_factory=dict)
 
@@ -34,16 +37,17 @@ class AuditService:
         self.jobs = jobs or JobRunner(db, ("MODEL_AUDIT",))
 
     def audit_sample(self, sample_id: str, model_name: str = DEFAULT_MODEL, run_id: Optional[str] = None,
-                     references: Optional[List[str]] = None, cancel: Optional[threading.Event] = None) -> dict:
+                     knowledge: Optional[InspectionKnowledge] = None, cancel: Optional[threading.Event] = None) -> dict:
         samples = SampleRepository(self.db)
         sample = samples.get(sample_id)
         if not sample:
             raise LookupError("Sample not found")
-        refs = self.registry.references(sample.dataset_id, exclude=sample_id, limit=8 if references is not None else 4, selected_ids=references)
+        knowledge = knowledge or InspectionKnowledge.resolve(self.db, sample.dataset_id)
         def phase(progress):
             if run_id:
                 self.jobs.update(run_id, **progress.model_dump(), current_sample_id=sample_id)
-        analysis = self.inspection.inspect(sample_id, model_name, refs, cancel, phase)
+        analysis = self.inspection.inspect(sample_id, model_name, knowledge, cancel, phase)
+        refs = analysis.reference_sample_ids
         result = analysis.conclusion
         suggestion = AuditSuggestion(
             suggestion_id="sug_" + uuid.uuid4().hex, task_id=sample.task_id, sample_id=sample_id,
@@ -65,9 +69,7 @@ class AuditService:
     def start(self, **arguments) -> dict:
         request = AuditStart.model_validate(arguments)
         config = self.registry.resolve(dataset_id=request.dataset_id)
-        references = self.registry.references(request.dataset_id)
-        if not references:
-            raise ValueError("No normal references available; choose normal reference images first")
+        knowledge = InspectionKnowledge.resolve(self.db, request.dataset_id, request.normal_version_id, request.defect_version_id)
         if request.sample_ids is None:
             filters = {**request.filters, "dataset_id": request.dataset_id, "page": 1, "page_size": 200}
             query = SampleQuery.model_validate(filters)
@@ -87,19 +89,24 @@ class AuditService:
         if not sample_ids:
             raise ValueError("No samples match the audit filters")
         payload = {"dataset_id": request.dataset_id, "model_name": request.model_name, "sample_ids": sample_ids,
-                   "reference_sample_ids": references}
-        return self.jobs.start("MODEL_AUDIT", config.task.task_id, payload, self.run, "正在学习良品模式")
+                   "normal_version_id": knowledge.normal.version_id,
+                   "defect_version_id": knowledge.defect.version_id if knowledge.defect else None}
+        return self.jobs.start("MODEL_AUDIT", config.task.task_id, payload, self.run, "准备冻结知识审计")
 
     def run(self, context: JobContext):
         payload = context.payload
+        from iad_core.knowledge.repository import KnowledgeRepository
+        repository = KnowledgeRepository(self.db)
+        knowledge = InspectionKnowledge(repository.get(payload['normal_version_id']),
+            repository.get(payload['defect_version_id']) if payload['defect_version_id'] else None)
         for sample_id in payload["sample_ids"]:
             context.checkpoint()
             try:
                 result = self.audit_sample(sample_id, payload["model_name"], context.run_id,
-                                           payload["reference_sample_ids"], context.cancel)
+                                           knowledge, context.cancel)
                 context.checkpoint()
                 analysis = result["suggestion"]["analysis"]
-                context.record(sample_id, profile_id=analysis["profile_id"], phase="SAMPLE_COMPLETED",
+                context.record(sample_id, phase="SAMPLE_COMPLETED",
                                inspected_regions=analysis["coverage"]["inspected_regions"],
                                planned_regions=analysis["coverage"]["planned_regions"],
                                completed_batches=len(analysis["joint_steps"]), total_batches=len(analysis["joint_steps"]))

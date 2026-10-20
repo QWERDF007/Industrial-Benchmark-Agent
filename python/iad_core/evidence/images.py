@@ -9,7 +9,7 @@ from typing import List, Literal, Optional
 
 from PIL import Image
 
-from iad_core.advisory.analysis import VisualEvidence, RegionProposal, RegionOrigin
+from iad_core.advisory.analysis import VisualEvidence, RegionProposal, RegionOrigin, RegionImage
 from iad_core.evidence.views import padded_bbox
 from iad_core.evidence.masks import annotation_mask, annotation_overlay
 from iad_core.storage.models import Sample, Annotation
@@ -87,6 +87,20 @@ class EvidenceImages:
         if not path.is_file() or file_sha256(str(path)) != evidence.sha256:
             raise FileNotFoundError("Visual evidence is missing or its content changed")
         return str(path)
+
+    def capture_regions(self, sample: Sample, regions: List[RegionView], annotations: List[Annotation],
+                        source_sha256: str) -> List[RegionImage]:
+        views = []
+        for region in regions:
+            raw = self.capture(sample, "roi", region.source, region.crop_bbox, source_sha256)
+            views.append(RegionImage(**region.model_dump(), image=raw.evidence))
+            linked = [annotation for annotation in annotations
+                      if annotation.annotation_id in {origin.annotation_id for origin in region.origins}]
+            if linked:
+                mask = self.capture(sample, "roi", region.source, region.crop_bbox, source_sha256,
+                                    annotations=linked, annotation_mode="annotation_mask")
+                views.append(RegionImage(**region.model_dump(), image=mask.evidence))
+        return views
 
     @staticmethod
     def tiles(sample: Sample, bbox: List[int], padding: float) -> List[List[int]]:

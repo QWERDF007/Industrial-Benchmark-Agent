@@ -350,15 +350,9 @@ class Database:
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS normal_profiles (
-                    profile_id TEXT PRIMARY KEY,
-                    dataset_id TEXT NOT NULL,
-                    model_name TEXT NOT NULL,
-                    signature TEXT NOT NULL UNIQUE,
-                    profile_json TEXT NOT NULL
-                )
-            """)
+            cursor.execute("""UPDATE audit_suggestions SET analysis_json=json_set(
+                json_remove(analysis_json,'$.profile_id'),'$.legacy_profile_id',json_extract(analysis_json,'$.profile_id'))
+                WHERE json_type(analysis_json,'$.profile_id') IS NOT NULL""")
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS knowledge_versions (
                     version_id TEXT PRIMARY KEY,

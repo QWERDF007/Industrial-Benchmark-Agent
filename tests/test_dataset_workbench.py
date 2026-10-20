@@ -9,25 +9,6 @@ from iad_core.dataset.registry import DatasetImport, DatasetRegistry
 from iad_core.storage.database import Database
 
 
-@pytest.fixture
-def dataset(tmp_path):
-    images = tmp_path / "images"
-    labels = tmp_path / "labels"
-    images.mkdir()
-    labels.mkdir()
-    for name in ["normal", "normal2", "dent", "scratch"]:
-        Image.new("RGB", (320, 240), "blue").save(images / f"{name}.png")
-    for name in ["dent", "scratch"]:
-        (labels / f"{name}.json").write_text(json.dumps({
-            "imageWidth": 320, "imageHeight": 240,
-            "shapes": [{"label": name, "shape_type": "rectangle", "points": [[10, 10], [30, 30]]}],
-        }))
-    db = Database(str(tmp_path / "test.db"))
-    registry = DatasetRegistry(db)
-    config = registry.import_labelme(DatasetImport(name="生产线 A", image_dir=str(images), annotation_dir=str(labels)))
-    return db, registry, config
-
-
 def test_import_rename_and_dataset_isolation(dataset, tmp_path):
     db, registry, config = dataset
     assert registry.get(config.dataset.id).dataset.name == "生产线 A"
@@ -94,7 +75,6 @@ def test_real_audit_job_uses_references_and_persists_confidence(dataset, monkeyp
     else:
         monkeypatch.setenv("LIVE_VLM_ENDPOINT", endpoint)
     http_client, bodies, responses = mllm_api
-    responses['NormalPatterns']['structure'] = '正常胶线连续'
     responses['GlobalAnalysis']['illumination_analysis'] = '高亮是反光'
     responses['ViewAnalysis']['position_analysis'] = '位置偏移已比较'
     responses['VlmResult'].update(suggested_label='FAIL', reason_category='SCRATCH', confidence=0.61)
@@ -113,19 +93,19 @@ def test_real_audit_job_uses_references_and_persists_confidence(dataset, monkeyp
     assert result["progress"] == 1
     content = bodies[0]["messages"][0]["content"]
     assert sum(item["type"] == "image_url" for item in content) == 2
-    assert "正常胶线连续" in bodies[1]["messages"][0]["content"][0]["text"]
+    assert "可见蓝色表面" in bodies[1]["messages"][0]["content"][0]["text"]
     assert bodies[0]["chat_template_kwargs"] == {"enable_thinking": False}
     from iad_core.advisory.repository import AuditSuggestionRepository
     suggestion = AuditSuggestionRepository(db).list_by_sample(target)[0]
     assert suggestion.confidence == 0.61
     assert len(suggestion.reference_sample_ids) == 2
     assert suggestion.audit_run_id == job["run_id"]
-    assert suggestion.analysis.profile_id
+    assert suggestion.analysis.normal_version_id
     assert suggestion.analysis.regions[0].crop_bbox == [6, 6, 34, 34]
     assert suggestion.analysis.global_view.illumination_analysis == "高亮是反光"
     assert suggestion.analysis.regions[0].observation.position_analysis == "位置偏移已比较"
-    from iad_core.workbench.normal import NormalProfiles
-    assert NormalProfiles(db, client).current(config.dataset.id, "test-vlm").profile_id == suggestion.analysis.profile_id
+    from iad_core.entry import knowledge_get
+    assert knowledge_get({"dataset_id": config.dataset.id, "kind": "normal"}, db.db_path)["knowledge"]["version_id"] == suggestion.analysis.normal_version_id
 
 
 def test_job_cancel_prevents_late_suggestion(dataset, mllm_api):
@@ -158,11 +138,11 @@ def test_job_cancel_prevents_late_suggestion(dataset, mllm_api):
     ("stop", None, "no final answer"),
     ("length", json.dumps({"structure":"连续","texture":"平整","position_variation":"平移","illumination_variation":"反光","normal_allowances":[],"cautions":[]}), "token 上限"),
 ])
-def test_empty_model_answer_records_failure_without_suggestion(dataset, finish_reason, content, expected):
+def test_empty_model_answer_records_failure_without_suggestion(dataset, mllm_api, finish_reason, content, expected):
     from iad_core.workbench.audit import AuditService, VlmClient
     from iad_core.advisory.repository import AuditSuggestionRepository
     db, _, config = dataset
-    client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json={
+    client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"count":1000,"max_model_len":262144} if request.url.path.endswith("/tokenize") else {
         "choices": [{"finish_reason": finish_reason, "message": {"content": content, "reasoning_content": "thinking"}}],
     })))
     service = AuditService(db, VlmClient(http_client=client))
@@ -174,90 +154,6 @@ def test_empty_model_answer_records_failure_without_suggestion(dataset, finish_r
     assert result["failed"] == 1 and result["completed"] == 0
     assert expected in result["errors"][0]["message"]
     assert not AuditSuggestionRepository(db).list_by_sample(target)
-
-
-def test_normal_profile_reuses_learning_and_invalidates_when_references_change(dataset):
-    from iad_core.workbench.normal import NormalProfiles
-    from iad_core.workbench.vision import VlmClient
-    db, registry, config = dataset
-    calls = []
-    patterns = {"structure": "连续", "texture": "平整", "position_variation": "平移", "illumination_variation": "反光", "normal_allowances": [], "cautions": []}
-    def respond(request):
-        calls.append(request)
-        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(patterns)}}]})
-    client = VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond)))
-    profiles = NormalProfiles(db, client)
-    refs = registry.references(config.dataset.id)
-    first = profiles.ensure(config.dataset.id, "test", refs)
-    assert NormalProfiles(Database(db.db_path), client).ensure(config.dataset.id, "test", refs).profile_id == first.profile_id
-    assert len(calls) == 1
-    registry.set_references(config.dataset.id, refs[:1])
-    assert profiles.current(config.dataset.id, "test") is None
-    second = profiles.ensure(config.dataset.id, "test", refs[:1])
-    assert second.profile_id != first.profile_id
-    assert profiles.get(first.profile_id).patterns.structure == "连续"
-    assert len(calls) == 2
-    Image.new("RGB", (320, 240), "red").save(config.root + "/normal.png")
-    assert profiles.current(config.dataset.id, "test") is None
-
-
-def test_workbench_exposes_mllm_knowledge_sources_and_invalidates_changed_content(dataset, mllm_api):
-    import os
-    from pathlib import Path
-    from iad_core.entry import audit_profile, sample_get
-    from iad_core.workbench.audit import AuditService, VlmClient
-    db, registry, config = dataset
-    client, _, responses = mllm_api
-    responses['NormalPatterns']['structure'] = '连续'
-    service = AuditService(db, VlmClient(http_client=client))
-    job = service.start(dataset_id=config.dataset.id, sample_ids=[f"{config.dataset.id}:dent.png"], model_name="test")
-    service.wait(job['run_id'], 5)
-    assert service.status(job['run_id'])['status'] == 'COMPLETED'
-    detail = sample_get({'sample_id':f"{config.dataset.id}:dent.png"}, db.db_path)
-    profile_id = detail['suggestion']['analysis']['profile_id']
-    knowledge = audit_profile({'profile_id':profile_id}, db.db_path)['profile']
-    assert knowledge['knowledge_kind'] == 'mllm_semantic'
-    assert knowledge['generation_version']
-    assert len(knowledge['sources']) == 2
-    assert all(s['qualification'] == 'initial_unannotated' and len(s['sha256']) == 64 for s in knowledge['sources'])
-    assert detail['normal_profile']['profile_id'] == profile_id
-    reference = Path(config.root) / 'normal.png'
-    stat = reference.stat()
-    data = reference.read_bytes()
-    # A valid file can change while preserving both size and timestamp.
-    assert b'IDAT' in data
-    reference.write_bytes(data.replace(b'IDAT', b'JUNK', 1))
-    os.utime(reference, ns=(stat.st_atime_ns, stat.st_mtime_ns))
-    assert audit_profile({'dataset_id': config.dataset.id, 'model_name':'test'}, db.db_path)['profile'] is None
-    assert audit_profile({'profile_id':profile_id}, db.db_path)['profile']['patterns']['structure'] == '连续'
-
-
-@pytest.fixture
-def mllm_api():
-    bodies = []
-    patterns = {"structure": "连续", "texture": "平整", "position_variation": "允许平移", "illumination_variation": "允许反光", "normal_allowances": [], "cautions": []}
-    view = {"description": "可观察证据", "position_analysis": "位置合理", "illumination_analysis": "反光已核实"}
-    responses = {"NormalPatterns": patterns, "GlobalAnalysis": view, "ViewAnalysis": view,
-                 "VlmResult": {**view, "suggested_label": "PASS", "reason_category": "NORMAL", "confidence": 0.8}}
-    def respond(request):
-        body = json.loads(request.content)
-        if request.url.path.endswith('/tokenize'):
-            capacity = responses.get('Tokenize', {'count':1000,'max_model_len':262144})
-            count = capacity.get('count', sum(part['type']=='image_url' for part in body['messages'][0]['content']) * capacity.get('tokens_per_image', 1000))
-            return httpx.Response(200,json={'count':count,'max_model_len':capacity['max_model_len']})
-        bodies.append(body)
-        schema = json.loads(body['messages'][0]['content'][0]['text'].split("JSON Schema 的 JSON，不要 Markdown：\n")[1])
-        if schema['title'] == 'JointAnalysis':
-            metadata=[json.loads(part['text'].split('视觉证据：')[1]) for part in body['messages'][0]['content'] if part['type']=='text' and part['text'].startswith('视觉证据：')]
-            answer={**responses['VlmResult'],'global_view':responses['GlobalAnalysis'],
-                    'region_observations':[{**responses['ViewAnalysis'],'region_index':index} for index in range(1,len(metadata))]}
-            answer.setdefault('evidence_ids',[image['evidence_id'] for image in metadata])
-        else:
-            answer = dict(responses[schema['title']])
-            if schema['title'] == 'VlmResult':
-                answer.setdefault('evidence_ids', [json.loads(c['text'].split('视觉证据：')[1])['evidence_id'] for c in body['messages'][0]['content'] if c['type']=='text' and c['text'].startswith('视觉证据：')])
-        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(answer)}}]})
-    return httpx.Client(transport=httpx.MockTransport(respond)), bodies, responses
 
 
 def test_workbench_maps_overview_coordinates_and_exposes_lossless_roi_evidence(dataset, mllm_api):
@@ -310,7 +206,7 @@ def test_workbench_analyzes_overview_and_all_roi_in_one_multimodal_request(datas
         job=service.start(dataset_id=config.dataset.id,sample_ids=[target],model_name='test')
         service.wait(job['run_id'],30)
         assert service.status(job['run_id'])['status']=='COMPLETED'
-        visual=[body for body in bodies if body['response_format']['json_schema']['name']!='NormalPatterns']
+        visual=[body for body in bodies if body['response_format']['json_schema']['name']!='KnowledgeDraft']
         assert len(visual)==1, 'Full image and all ROI must share one analysis, without separate overview or per-ROI generations'
         assert visual[0]['response_format']['json_schema']['name']=='JointAnalysis'
         content=visual[0]['messages'][0]['content']
@@ -408,31 +304,13 @@ def test_identical_roi_is_inspected_once_with_all_origins(dataset, mllm_api):
     assert {origin['source'] for origin in regions[0]['origins']} == {'annotation','model'}
 
 
-def test_reference_change_during_learning_does_not_save_stale_knowledge(dataset):
-    from pathlib import Path
-    from iad_core.workbench.audit import AuditService, VlmClient
-    db, _, config = dataset
-    def respond(request):
-        Image.new('RGB',(320,240),'red').save(Path(config.root)/'normal.png')
-        patterns = {'structure':'连续','texture':'平整','position_variation':'平移','illumination_variation':'反光','normal_allowances':[],'cautions':[]}
-        return httpx.Response(200,json={'choices':[{'message':{'content':json.dumps(patterns)}}]})
-    service = AuditService(db,VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
-    job=service.start(dataset_id=config.dataset.id,sample_ids=[f'{config.dataset.id}:dent.png'])
-    service.wait(job['run_id'],5)
-    assert service.status(job['run_id'])['status']=='FAILED'
-    assert 'Reference images changed' in service.status(job['run_id'])['errors'][0]['message']
-    with db.connection() as conn:
-        assert conn.execute('SELECT COUNT(*) FROM normal_profiles').fetchone()[0]==0
-
-
 @pytest.mark.parametrize("invalid_response", [False, True])
-def test_audit_uses_server_enforced_schema_for_roi_results(dataset, invalid_response):
+def test_audit_uses_server_enforced_schema_for_roi_results(dataset, mllm_api, invalid_response):
     from iad_core.advisory.analysis import JointAnalysis
     from iad_core.entry import sample_get
     from iad_core.workbench.audit import AuditService, VlmClient
     db, _, config = dataset
     bodies = []
-    patterns = {'structure':'连续','texture':'平整','position_variation':'平移','illumination_variation':'反光','normal_allowances':[],'cautions':[]}
     view = {'description':'真实局部观察','position_analysis':'位置合理','illumination_analysis':'已考虑反光'}
     def respond(request):
         body = json.loads(request.content)
@@ -442,12 +320,13 @@ def test_audit_uses_server_enforced_schema_for_roi_results(dataset, invalid_resp
         constrained = body.get('response_format', {}).get('json_schema', {})
         schema = constrained.get('schema') or json.loads(body['messages'][0]['content'][0]['text'].split('JSON Schema 的 JSON，不要 Markdown：\n')[1])
         title = schema['title']
-        answer = dict(patterns if title == 'NormalPatterns' else view)
+        answer = dict(view)
         if title == 'JointAnalysis':
             metadata = [json.loads(p['text'][5:]) for p in body['messages'][0]['content'] if p['type']=='text' and p['text'].startswith('视觉证据：')]
             answer.update(suggested_label='PASS',reason_category='NORMAL',confidence=0.8,
                           evidence_ids=[image['evidence_id'] for image in metadata], global_view=view,
-                          region_observations=[{**view,'region_index':index} for index in range(1,len(metadata))])
+                          region_observations=[{**view,'region_index':index} for index, image in enumerate(
+                              [image for image in metadata if image['role'] == 'roi' and image['representation'] == 'raw'], 1)])
             if not constrained or invalid_response:
                 answer = JointAnalysis.model_json_schema()
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(answer)}}]})

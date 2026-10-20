@@ -95,9 +95,13 @@ def sample_get(args, db_path):
     meta = extract_suggestion_meta(suggestions[0]) if suggestions else None
     issues = ImportIssueRepository(db).list_by_sample(sample.sample_id)
     decision = ReviewRepository(db).get_decision(sample.sample_id)
-    from iad_core.workbench.normal import NormalProfiles
-    profile = NormalProfiles(db).get(meta["analysis"]["profile_id"]) if meta and meta.get("analysis") else None
-    return {"sample": sample.model_dump(), "normal_profile": profile.model_dump() if profile else None, "suggestion": meta, **WorkbenchQuery(db).sample_scores(sample.sample_id),
+    from iad_core.knowledge.repository import KnowledgeRepository
+    repository = KnowledgeRepository(db)
+    analysis = suggestions[0].analysis if suggestions else None
+    knowledge = {kind + '_knowledge': repository.get(version_id).model_dump(exclude={'mining_steps', 'verification_steps'}) if version_id else None
+        for kind, version_id in [('normal', analysis.normal_version_id if analysis else None),
+                                 ('defect', analysis.defect_version_id if analysis else None)]}
+    return {"sample": sample.model_dump(), **knowledge, "suggestion": meta, **WorkbenchQuery(db).sample_scores(sample.sample_id),
             "annotations": [a.model_dump() for a in AnnotationRepository(db).list_by_sample(sample.sample_id)],
             "technical_issues": [i.model_dump() for i in issues], "review_decision": decision.model_dump() if decision else None}
 
@@ -188,18 +192,10 @@ def audit_evidence(args, db_path):
     suggestion = AuditSuggestionRepository(Database(db_path)).get(args["suggestion_id"])
     if not suggestion or not suggestion.analysis:
         raise LookupError("Audit evidence not found")
-    for image in [suggestion.analysis.overview, *[region.image for region in suggestion.analysis.regions]]:
+    for image in [suggestion.analysis.overview, *[region.image for region in suggestion.analysis.regions], *suggestion.analysis.auxiliary_evidence]:
         if image.evidence_id == args["evidence_id"]:
             return {"path": EvidenceImages(db_path).path(image), "media_type": image.media_type}
     raise LookupError("Audit evidence not found")
-
-
-def audit_profile(args, db_path):
-    from iad_core.workbench.normal import NormalProfiles
-    from iad_core.workbench.audit import DEFAULT_MODEL
-    profiles = NormalProfiles(Database(db_path))
-    profile = profiles.get(args["profile_id"]) if args.get("profile_id") else profiles.current(args["dataset_id"], args.get("model_name", DEFAULT_MODEL))
-    return {"profile": profile.model_dump() if profile else None}
 
 
 def knowledge_get(args, db_path):
@@ -253,7 +249,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     tool_call, dataset_list, dataset_get, dataset_import, dataset_update, dataset_scan,
     sample_list, sample_get, sample_image_path, sample_thumbnail,
     review_queue, review_evidence, review_start_session, review_submit_decision, review_finish_session,
-    review_stats, report_get, audit_start, audit_status, audit_cancel, audit_list, audit_profile, audit_evidence, directory_list,
+    review_stats, report_get, audit_start, audit_status, audit_cancel, audit_list, audit_evidence, directory_list,
     knowledge_get, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_list,
 )}
 

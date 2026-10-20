@@ -24,7 +24,7 @@ from PIL import Image
 root=Path(sys.argv[1])
 (root/'images').mkdir(); (root/'labels').mkdir()
 for name in ['normal','normal2','dent']:
-    Image.new('RGB',(320,240),'blue').save(root/'images'/f'{name}.png')
+    Image.new('RGB',(320,240),(0,0,200) if name=='normal' else (0,0,220) if name=='normal2' else 'blue').save(root/'images'/f'{name}.png')
 (root/'labels'/'dent.json').write_text(json.dumps({'imageWidth':320,'imageHeight':240,'shapes':[{'label':'dent','shape_type':'rectangle','points':[[10,10],[30,30]]}]}))
 `, root]);
   const bundle = await build({
@@ -50,11 +50,12 @@ for name in ['normal','normal2','dent']:
       const request = JSON.parse(body); modelRequests.push(request);
       const parts = request.messages[0].content;
       const schema = JSON.parse(parts[0].text.split("JSON Schema 的 JSON，不要 Markdown：\n")[1]);
+      const images = parts.filter(part=>part.type==="text"&&part.text.startsWith("视觉证据：")).map(part=>JSON.parse(part.text.slice(5)));
       const view = {description:"可观察证据",position_analysis:"位置合理",illumination_analysis:"反光已核实"};
       let answer = view;
-      if (schema.title === "NormalPatterns") answer = {structure:"连续胶线模式",texture:"平整",position_variation:"平移",illumination_variation:"反光",normal_allowances:[],cautions:[]};
+      if (schema.title === "KnowledgeDraft") answer = {summary:"可见蓝色表面",checks:[{title:"表面外观",subject:"主体",location:"全图",criterion:"可见蓝色表面",allowed_variations:["亮度变化"],support_evidence_ids:images.map(image=>image.evidence_id),counter_evidence_ids:[],limitations:[],status:"supported"}],suspects:[],limitations:[]};
       if (schema.title === "JointAnalysis") answer = {...view,global_view:view,
-        region_observations:parts.filter(part=>part.type==="image_url").slice(1).map((_,index)=>({...view,region_index:index+1})),suggested_label:"FAIL",reason_category:"SCRATCH",confidence:0.8,
+        region_observations:images.filter(image=>image.role==="roi"&&image.representation==="raw").map((_,index)=>({...view,region_index:index+1})),suggested_label:"FAIL",reason_category:"SCRATCH",confidence:0.8,
         evidence_ids:parts.filter(part=>part.type==="text"&&part.text.startsWith("视觉证据：")).map(part=>JSON.parse(part.text.slice(5)).evidence_id)};
       if (schema.title === "JointAnalysis" && holdRegion) await new Promise(resolve => { releaseRegion = resolve; });
       res.setHeader("Content-Type","application/json"); res.end(JSON.stringify({choices:[{message:{content:JSON.stringify(answer)}}]}));
@@ -84,6 +85,14 @@ for name in ['normal','normal2','dent']:
     await button("导入数据集");
     await driver.wait(async () => (await (await element("select[aria-label='当前数据集']")).getText()).includes("浏览器验收"), 15000);
     await button("图像样本"); await gridCount(3);
+    const datasets = await (await fetch(base + "/api/iad/datasets")).json();
+    const dataset = datasets.datasets[0];
+    const samples = await (await fetch(`${base}/api/iad/samples/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
+    const normal = samples.items.find(sample => sample.relative_path === "normal.png");
+    const normal2 = samples.items.find(sample => sample.relative_path === "normal2.png");
+    const learned = await (await fetch(base + "/api/iad/knowledge/start", {method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({dataset_id:dataset.dataset_id,kind:"normal",sample_ids:[normal.sample_id,normal2.sample_id]})})).json();
+    await driver.wait(async ()=>(await (await fetch(`${base}/api/iad/knowledge/status/${learned.run_id}`)).json()).status === "COMPLETED",15000);
     assert.equal((await driver.findElements(By.css(".iad-reference"))).length, 2);
     await (await element("summary[aria-label='标注筛选']")).click();
     await (await element("input[aria-label='无标注']")).click(); await gridCount(2);
@@ -119,27 +128,25 @@ for name in ['normal','normal2','dent']:
     await (await element(".iad-reference-grid button")).click();
     await element("[role='dialog'] .iad-viewer-viewport img"); await button("关闭");
     await button("图像样本");
-    const datasets = await (await fetch(base + "/api/iad/datasets")).json();
-    const dataset = datasets.datasets[0];
-    const samples = await (await fetch(`${base}/api/iad/samples/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
     const dent = samples.items.find(sample => sample.relative_path === "dent.png");
-    assert.equal(dataset.reference_sample_ids.length, 3);
-    assert.ok(dataset.reference_sample_ids.includes(dent.sample_id));
-    await button("按良品模式审计此图");
+    const updatedDataset = (await (await fetch(base + "/api/iad/datasets")).json()).datasets[0];
+    assert.equal(updatedDataset.reference_sample_ids.length, 3);
+    assert.ok(updatedDataset.reference_sample_ids.includes(dent.sample_id));
+    await button("按知识审计此图");
     await driver.wait(async () => (await (await element(".iad-single-job")).getText()).includes("COMPLETED"),15000);
     await driver.wait(until.elementLocated(By.css(".iad-analysis summary")),15000);
     await (await element(".iad-analysis summary")).click();
-    assert.ok((await (await element(".iad-analysis")).getText()).includes("连续胶线模式"));
+    assert.ok((await (await element(".iad-analysis")).getText()).includes("可见蓝色表面"));
     const previews = await driver.findElements(By.css(".iad-evidence-preview"));
-    assert.equal(previews.length,2);
+    assert.equal(previews.length,3);
     for (const preview of previews) {
       assert.ok((await preview.getText()).includes("结论引用"));
       await preview.click(); await element("[role='dialog'] img"); await button("关闭");
     }
     const final = modelRequests.find(request=>request.messages[0].content[0].text.includes('"title": "JointAnalysis"'));
-    assert.equal(final.messages[0].content.filter(part=>part.type==="image_url").length,2);
+    assert.equal(final.messages[0].content.filter(part=>part.type==="image_url").length,3);
     const audited = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();
-    holdRegion = true; await button("按良品模式审计此图");
+    holdRegion = true; await button("按知识审计此图");
     await driver.wait(()=>Boolean(releaseRegion),15000);
     await driver.wait(async () => (await (await element(".iad-single-job")).getText()).includes("全图与 ROI 联合分析"),5000);
     await button("取消审计"); releaseRegion(); holdRegion = false;
@@ -150,8 +157,6 @@ for name in ['normal','normal2','dent']:
     await (await element("summary[aria-label='标注筛选']")).click();
     await button("清空"); await gridCount(3);
     await (await element("summary[aria-label='标注筛选']")).click();
-    const normal = samples.items.find(sample => sample.relative_path === "normal.png");
-    const normal2 = samples.items.find(sample => sample.relative_path === "normal2.png");
     await select("模型审计", "pending"); await gridCount(2);
     await driver.findElement(By.css("img[alt='normal.png']")).click();
     releaseRegion = null; holdRegion = true;
@@ -172,12 +177,13 @@ for name in ['normal','normal2','dent']:
     holdRegion = false; releaseRegion();
     await driver.wait(async () => (await (await fetch(`${base}/api/iad/audit/status/${batch.run_id}`)).json()).status === "COMPLETED", 15000);
     await select("模型审计", "all"); await gridCount(3);
+    await driver.wait(async () => (await (await element(".iad-kpis div:nth-child(2) strong")).getText()).startsWith("3"), 15000);
 
     await fs.mkdir(path.join(workspace, "runs/browser"), { recursive: true });
     await fs.writeFile(path.join(workspace, "runs/browser/model-audit.png"), await driver.takeScreenshot(), "base64");
     await (await element("#test-navigation button:nth-child(2)")).click(); await gridCount(3);
     assert.equal(await (await element(".iad-inspector h2")).getText(), "复核明细");
-    assert.equal((await driver.findElements(By.xpath("//button[.='按良品模式审计此图']"))).length, 0);
+    assert.equal((await driver.findElements(By.xpath("//button[.='按知识审计此图']"))).length, 0);
     await (await element("input[aria-label='按文件名搜索']")).sendKeys("dent"); await gridCount(1);
     await element(".iad-decision"); await button("良品"); await gridCount(0);
     const detail = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();

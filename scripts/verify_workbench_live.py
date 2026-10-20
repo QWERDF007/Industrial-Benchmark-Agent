@@ -1,4 +1,4 @@
-"""Verify learned normal patterns and joint inspection against the live VLM in a database snapshot."""
+"""Verify existing frozen knowledge and joint inspection against the live MLLM in a database snapshot."""
 import argparse
 import json
 import sqlite3
@@ -70,12 +70,14 @@ def main():
         assert job["status"] == "COMPLETED", job
         assert len(suggestions) == len(targets)
         assert all(item.reference_sample_ids and item.confidence is not None and item.analysis for item in suggestions)
-        assert len({item.analysis.profile_id for item in suggestions}) == 1
+        assert {item.analysis.normal_version_id for item in suggestions} == {job['normal_version_id']}
+        assert {item.analysis.defect_version_id for item in suggestions} == {job['defect_version_id']}
         assert all(item.analysis.regions and item.analysis.global_view.illumination_analysis for item in suggestions)
         assert all(region.observation.position_analysis for item in suggestions for region in item.analysis.regions)
         assert all(item.analysis.coverage.complete for item in suggestions)
         for item in suggestions:
-            ids = {item.analysis.overview.evidence_id, *[r.image.evidence_id for r in item.analysis.regions]}
+            ids = {item.analysis.overview.evidence_id, *[r.image.evidence_id for r in item.analysis.regions],
+                   *[image.evidence_id for image in item.analysis.auxiliary_evidence]}
             assert set(item.analysis.conclusion.evidence_ids) <= ids
         finals = [request for request in requests if request["stage"] == "JointAnalysis"]
         assert len(finals) == sum(len(item.analysis.joint_steps) for item in suggestions)

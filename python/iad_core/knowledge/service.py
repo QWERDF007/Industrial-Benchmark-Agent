@@ -8,7 +8,7 @@ from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.dataset.registry import DatasetRegistry
-from iad_core.evidence.images import EvidenceImages, OVERVIEW_MAX_SIDE
+from iad_core.evidence.images import EvidenceImages, OVERVIEW_MAX_SIDE, PreparedImage
 from iad_core.knowledge.mining import KnowledgeInput, KnowledgeMiner, SYNTHESIS_INSTRUCTION
 from iad_core.knowledge.models import (KnowledgeDraft, KnowledgeEvidence, KnowledgeSnapshot,
                                       KnowledgeKind, KnowledgeVerification)
@@ -110,13 +110,8 @@ class KnowledgeService:
             images = [evidence_images.capture(sample, "overview" if normal else "normal", "global" if normal else "reference", source_sha256=source.sha256)]
             annotations = AnnotationRepository(self.db).list_by_sample(source.sample_id)
             if max(sample.width, sample.height) > OVERVIEW_MAX_SIDE or annotations:
-                for region in evidence_images.plan(sample, annotations, []):
-                    images.append(evidence_images.capture(sample, "roi", region.source, region.crop_bbox, source.sha256))
-                    linked = [annotation for annotation in annotations
-                              if annotation.annotation_id in {origin.annotation_id for origin in region.origins}]
-                    if linked:
-                        images.append(evidence_images.capture(sample, "roi", region.source, region.crop_bbox,
-                            source.sha256, annotations=linked, annotation_mode="annotation_mask"))
+                for region in evidence_images.capture_regions(sample, evidence_images.plan(sample, annotations, []), annotations, source.sha256):
+                    images.append(PreparedImage(region.image, evidence_images.path(region.image)))
             inputs.append(KnowledgeInput(source, images))
         miner = KnowledgeMiner(self.client, context)
         if normal:

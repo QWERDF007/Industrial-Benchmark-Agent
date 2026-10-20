@@ -5,41 +5,13 @@ import threading
 
 import httpx
 import pytest
-from PIL import Image, ImageDraw
+from PIL import Image
 
 from iad_core.entry import dataset_import, dataset_scan, knowledge_evidence, knowledge_get, sample_get
 from iad_core.knowledge.service import KnowledgeService
 from iad_core.storage.database import Database
 from iad_core.workbench.vision import VlmClient
 from iad_core.workbench.review import HumanReview, ReviewSubmission
-
-
-@pytest.fixture
-def defect_dataset(tmp_path):
-    images, labels = tmp_path / 'images', tmp_path / 'labels'
-    images.mkdir()
-    labels.mkdir()
-    for index in range(4):
-        image = Image.new('RGB', (320, 240), (200 + index, 200 + index, 200 + index))
-        draw = ImageDraw.Draw(image)
-        draw.rectangle((40, 60, 280, 180), fill='#333333')
-        draw.ellipse((85, 105, 115, 135), fill='#cccccc')
-        if index == 3:
-            draw.rectangle((90, 110, 110, 130), fill='red')
-        image.save(images / f'part-{index}.png')
-    mask = Image.new('L', (41, 61), 0)
-    ImageDraw.Draw(mask).rectangle((10, 20, 30, 40), fill=255)
-    buffer = io.BytesIO()
-    mask.save(buffer, 'PNG')
-    (labels / 'part-3.json').write_text(json.dumps({'imageWidth': 320, 'imageHeight': 240, 'shapes': [{
-        'shape_type': 'mask', 'label': '待核实遮挡', 'points': [[80, 90], [120, 150]],
-        'mask': base64.b64encode(buffer.getvalue()).decode(),
-    }]}))
-    db_path = str(tmp_path / 'workbench.db')
-    dataset = dataset_import({'name': '孔板', 'image_dir': str(images), 'annotation_dir': str(labels)}, db_path)
-    target_id = dataset['dataset_id'] + ':part-3.png'
-    original = sample_get({'sample_id': target_id}, db_path)
-    return Database(db_path), dataset, original, images
 
 
 @pytest.mark.parametrize('judgment_status,independent,capacity,cite_mask,foreign_lineage,expected', [

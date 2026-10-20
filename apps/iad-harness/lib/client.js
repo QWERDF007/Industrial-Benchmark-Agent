@@ -84,7 +84,7 @@ var __IadClientBundle__ = (() => {
   var initialFilters = { annotation_filters: [], model_status: "all", review_status: "all", technical: "all", search: "", sort_by: "default" };
   var mediaUrl = (sample, thumbnail = false) => `/api/iad/media/sample/${encodeURIComponent(sample.task_id)}/${encodeURIComponent(sample.sample_id)}/${thumbnail ? "thumbnail?size=240" : "image"}`;
   var message = (error) => error instanceof Error ? error.message : String(error);
-  var auditPhases = { LEARNING_NORMAL: "\u5B66\u4E60\u826F\u54C1\u6A21\u5F0F", GLOBAL: "\u5168\u56FE\u89C2\u5BDF", REGIONS: "ROI \u7EC6\u770B", SYNTHESIS: "\u5168\u56FE\u4E0E ROI \u8054\u5408\u5206\u6790", SAMPLE_COMPLETED: "\u56FE\u50CF\u5BA1\u8BA1\u5B8C\u6210" };
+  var auditPhases = { PREPARING_KNOWLEDGE: "\u51C6\u5907\u51BB\u7ED3\u77E5\u8BC6", GLOBAL: "\u5168\u56FE\u89C2\u5BDF", REGIONS: "ROI \u7EC6\u770B", SYNTHESIS: "\u5168\u56FE\u4E0E ROI \u8054\u5408\u5206\u6790", SAMPLE_COMPLETED: "\u56FE\u50CF\u5BA1\u8BA1\u5B8C\u6210" };
 
   // src/client/components/DatasetManager.tsx
   var import_react = __require("react");
@@ -375,47 +375,41 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // src/client/components/NormalKnowledge.tsx
+  // src/client/components/DatasetKnowledge.tsx
   var import_jsx_runtime5 = __require("react/jsx-runtime");
-  var qualifications = { initial_unannotated: "\u521D\u59CB\u65E0\u6807\u6CE8", manual_selection: "\u4EBA\u5DE5\u9009\u53D6", raw_pass: "\u539F\u59CB\u826F\u54C1", human_pass: "\u4EBA\u5BA1\u826F\u54C1", human_hard_normal: "\u4EBA\u5BA1\u56F0\u96BE\u6B63\u5E38" };
-  function NormalKnowledge({ profile }) {
+  var statuses = { supported: "\u6709\u8BC1\u636E\u652F\u6301", provisional: "\u5F85\u9A8C\u8BC1", conflicted: "\u5B58\u5728\u77DB\u76FE" };
+  function DatasetKnowledge({ knowledge }) {
     return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "iad-profile", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("strong", { children: "MLLM \u826F\u54C1\u6A21\u5F0F \xB7 \u8BED\u4E49\u7279\u5F81" }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("p", { className: "iad-muted", children: [
-        profile.profile_id,
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("strong", { children: knowledge.kind === "normal" ? "\u826F\u54C1\u77E5\u8BC6" : "\u4E0D\u826F\u77E5\u8BC6" }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { children: knowledge.summary }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("small", { className: "iad-muted", children: [
+        knowledge.version_id,
         " \xB7 ",
-        new Date(profile.created_at).toLocaleString()
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("dl", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("dt", { children: "\u7ED3\u6784" }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("dd", { children: profile.patterns.structure }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("dt", { children: "\u7EB9\u7406" }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("dd", { children: profile.patterns.texture }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("dt", { children: "\u4F4D\u7F6E\u53D8\u5316" }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("dd", { children: profile.patterns.position_variation }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("dt", { children: "\u5149\u7167\u53D8\u5316" }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("dd", { children: profile.patterns.illumination_variation }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("dt", { children: "\u5141\u8BB8\u5DEE\u5F02" }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("dd", { children: profile.patterns.normal_allowances.join("\uFF1B") || "\u672A\u8BB0\u5F55" }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("dt", { children: "\u5C40\u9650\u4E0E\u5173\u6CE8" }),
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("dd", { children: profile.patterns.cautions.join("\uFF1B") || "\u672A\u8BB0\u5F55" })
+        knowledge.sources.length,
+        " \u5F20\u6765\u6E90 \xB7 ",
+        knowledge.checks.length,
+        " \u9879\u5224\u636E"
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("details", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("summary", { children: [
-          "\u53C2\u8003\u6765\u6E90 \xB7 ",
-          profile.sources.length,
-          " \u5F20"
-        ] }),
-        profile.sources.map((source) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("p", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: source.sample_id.split("/").pop() }),
-          " \xB7 ",
-          qualifications[source.qualification],
-          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("br", {}),
+        /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("summary", { children: "\u68C0\u67E5\u5224\u636E" }),
+        knowledge.checks.map((check) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("strong", { children: [
+            check.title,
+            " \xB7 ",
+            statuses[check.status]
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { children: check.criterion }),
           /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("small", { className: "iad-muted", children: [
-            "SHA256 ",
-            source.sha256
-          ] })
-        ] }, source.sample_id))
+            check.subject,
+            " \xB7 ",
+            check.location
+          ] }),
+          !!check.allowed_variations.length && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("p", { children: [
+            "\u5141\u8BB8\u53D8\u5316\uFF1A",
+            check.allowed_variations.join("\uFF1B")
+          ] }),
+          !!check.limitations.length && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { className: "iad-muted", children: check.limitations.join("\uFF1B") })
+        ] }, check.check_id))
       ] })
     ] });
   }
@@ -498,7 +492,7 @@ var __IadClientBundle__ = (() => {
     }
     const evidenceSource = (image2) => ({
       src: `/api/iad/evidence/${encodeURIComponent(detail.suggestion.suggestion_id)}/${image2.evidence_id}`,
-      title: image2.role === "overview" ? "\u9001\u6A21\u5168\u56FE\u6982\u89C8" : `ROI \xB7 ${image2.crop_bbox.join(", ")}`,
+      title: image2.role === "overview" ? "\u9001\u6A21\u5168\u56FE\u6982\u89C8" : `${image2.representation === "annotation_mask" ? "\u6807\u6CE8\u5B9A\u4F4D\u56FE" : "ROI"} \xB7 ${image2.crop_bbox.join(", ")}`,
       width: image2.sent_size[0],
       height: image2.sent_size[1]
     });
@@ -555,14 +549,22 @@ var __IadClientBundle__ = (() => {
             /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "iad-observation", children: detail.suggestion.notes }),
             /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("small", { className: "iad-muted", children: detail.suggestion.model_name }),
             /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "iad-muted", children: [
-              "\u826F\u54C1\u6A21\u5F0F\u6765\u6E90 \xB7 ",
+              "\u826F\u54C1\u77E5\u8BC6\u6765\u6E90 \xB7 ",
               detail.suggestion.reference_sample_ids.length,
               " \u5F20\u53C2\u8003\u56FE"
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "iad-reference-grid", children: detail.suggestion.reference_sample_ids.map((id) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { title: "\u653E\u5927\u53C2\u8003\u826F\u54C1", onClick: () => setLightbox({ src: mediaUrl({ task_id: dataset.task_id, sample_id: id }), title: id.split("/").pop() }), children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("img", { alt: "\u672C\u6B21\u5BA1\u8BA1\u7684\u6B63\u5E38\u53C2\u8003\u56FE", src: mediaUrl({ task_id: dataset.task_id, sample_id: id }, true) }) }, id)) }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "iad-reference-grid", children: detail.normal_knowledge?.evidence.filter((item) => item.image.role === "normal" && item.image.representation === "raw" && detail.suggestion.reference_sample_ids.includes(item.sample_id)).map((item) => {
+              const src = `/api/iad/knowledge/evidence/${encodeURIComponent(detail.normal_knowledge.version_id)}/${encodeURIComponent(item.image.evidence_id)}`;
+              return /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { title: "\u653E\u5927\u77E5\u8BC6\u6765\u6E90\u8BC1\u636E", onClick: () => setLightbox({ src, title: item.sample_id.split("/").pop() }), children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("img", { alt: "\u672C\u6B21\u5BA1\u8BA1\u7684\u77E5\u8BC6\u6765\u6E90", src }) }, item.image.evidence_id);
+            }) }),
             detail.suggestion.analysis && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("details", { className: "iad-analysis", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("summary", { children: "\u5BA1\u8BA1\u8FC7\u7A0B\u4E0E\u6A21\u5F0F\u7248\u672C" }),
-              detail.normal_profile && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(NormalKnowledge, { profile: detail.normal_profile }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("summary", { children: "\u5BA1\u8BA1\u8FC7\u7A0B\u4E0E\u77E5\u8BC6\u7248\u672C" }),
+              detail.normal_knowledge ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(DatasetKnowledge, { knowledge: detail.normal_knowledge }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "iad-muted", children: "\u5386\u53F2\u5BA1\u8BA1\uFF0C\u672A\u5173\u8054\u77E5\u8BC6\u7248\u672C\u3002" }),
+              detail.defect_knowledge && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(DatasetKnowledge, { knowledge: detail.defect_knowledge }),
+              !!detail.suggestion.analysis.knowledge_limitations.length && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "iad-muted", children: [
+                "\u77E5\u8BC6\u9650\u5236\uFF1A",
+                detail.suggestion.analysis.knowledge_limitations.join("\uFF1B")
+              ] }),
               /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: detail.suggestion.analysis.coverage.complete ? "iad-muted" : "iad-error", children: [
                 "\u5C40\u90E8\u8986\u76D6 ",
                 detail.suggestion.analysis.coverage.inspected_regions,
@@ -609,6 +611,13 @@ var __IadClientBundle__ = (() => {
                   region.observation.illumination_analysis
                 ] })
               ] }, index)),
+              detail.suggestion.analysis.auxiliary_evidence.map((image2) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("button", { className: "iad-evidence-preview", onClick: () => setLightbox(evidenceSource(image2)), children: [
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("img", { src: evidenceSource(image2).src, alt: "\u5B9E\u9645\u9001\u6A21\u7684\u4E8C\u503C\u6807\u6CE8\u5B9A\u4F4D\u56FE" }),
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { children: [
+                  "\u6807\u6CE8\u5B9A\u4F4D\u56FE",
+                  detail.suggestion.analysis.conclusion.evidence_ids.includes(image2.evidence_id) ? " \xB7 \u7ED3\u8BBA\u5F15\u7528" : ""
+                ] })
+              ] }, image2.evidence_id)),
               detail.suggestion.analysis.conclusion.conflicts.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "iad-error", children: [
                 "\u89C2\u5BDF\u77DB\u76FE\uFF1A",
                 detail.suggestion.analysis.conclusion.conflicts.join("\uFF1B")
@@ -679,7 +688,7 @@ var __IadClientBundle__ = (() => {
           }, children: "\u53D6\u6D88\u5BA1\u8BA1" })
         ] }),
         mode === "model" ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "iad-actions", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "iad-primary", disabled: busy || jobRunning, onClick: audit, children: busy || jobRunning ? "\u6B63\u5728\u8054\u5408\u5BA1\u8BA1\u2026" : "\u6309\u826F\u54C1\u6A21\u5F0F\u5BA1\u8BA1\u6B64\u56FE" }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "iad-primary", disabled: busy || jobRunning, onClick: audit, children: busy || jobRunning ? "\u6B63\u5728\u8054\u5408\u5BA1\u8BA1\u2026" : "\u6309\u77E5\u8BC6\u5BA1\u8BA1\u6B64\u56FE" }),
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { disabled: busy, onClick: setReference, children: dataset.reference_sample_ids.includes(sampleId) ? "\u79FB\u51FA\u826F\u54C1\u53C2\u8003" : "\u8BBE\u4E3A\u826F\u54C1\u53C2\u8003" })
         ] }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("section", { className: "iad-decision", children: [
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "\u4EBA\u5DE5\u88C1\u51B3" }),
@@ -711,22 +720,34 @@ var __IadClientBundle__ = (() => {
   var import_jsx_runtime7 = __require("react/jsx-runtime");
   function AuditJobs({ dataset, filters, jobs, onJobsChanged }) {
     const [lightbox, setLightbox] = (0, import_react4.useState)(null);
-    const [profile, setProfile] = (0, import_react4.useState)(null);
+    const [normal, setNormal] = (0, import_react4.useState)(null);
+    const [defect, setDefect] = (0, import_react4.useState)(null);
     const [model, setModel] = (0, import_react4.useState)("Qwen/Qwen3.8-27B-FP8");
     const [busy, setBusy] = (0, import_react4.useState)(false);
     const [error, setError] = (0, import_react4.useState)("");
     (0, import_react4.useEffect)(() => {
       const controller = new AbortController();
-      request(`/audit/profile?${new URLSearchParams({ dataset_id: dataset.dataset_id, model_name: model })}`, void 0, void 0, controller.signal).then((result) => setProfile(result.profile)).catch((error2) => {
+      setNormal(null);
+      setDefect(null);
+      Promise.all(["normal", "defect"].map((kind) => request(`/knowledge?${new URLSearchParams({ dataset_id: dataset.dataset_id, kind })}`, void 0, void 0, controller.signal))).then(([normal2, defect2]) => {
+        setNormal(normal2.knowledge);
+        setDefect(defect2.knowledge?.normal_version_id === normal2.knowledge?.version_id ? defect2.knowledge : null);
+      }).catch((error2) => {
         if (!controller.signal.aborted) setError(message(error2));
       });
       return () => controller.abort();
-    }, [dataset.dataset_id, dataset.reference_sample_ids.join("\n"), model, jobs[0]?.profile_id]);
+    }, [dataset.dataset_id, jobs[0]?.normal_version_id]);
     async function start() {
       setBusy(true);
       setError("");
       try {
-        await request("/audit/start", { dataset_id: dataset.dataset_id, model_name: model, filters });
+        await request("/audit/start", {
+          dataset_id: dataset.dataset_id,
+          model_name: model,
+          normal_version_id: normal?.version_id,
+          defect_version_id: defect?.version_id,
+          filters
+        });
         onJobsChanged();
       } catch (e) {
         setError(message(e));
@@ -736,13 +757,15 @@ var __IadClientBundle__ = (() => {
     }
     return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("section", { className: "iad-job-panel", children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("section", { className: "iad-job-section", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h2", { children: "\u53C2\u8003\u826F\u54C1" }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "iad-reference-grid", children: dataset.reference_sample_ids.map((id) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { title: "\u653E\u5927\u53C2\u8003\u826F\u54C1", onClick: () => setLightbox({ src: mediaUrl({ task_id: dataset.task_id, sample_id: id }), title: id.split("/").pop() }), children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("img", { alt: "\u6B63\u5E38\u53C2\u8003\u56FE", src: mediaUrl({ task_id: dataset.task_id, sample_id: id }, true) }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("small", { children: id.split("/").pop() })
-        ] }, id)) }),
-        !dataset.reference_sample_ids.length && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "iad-error", children: "\u6682\u65E0\u826F\u54C1\u53C2\u8003\uFF0C\u8BF7\u5148\u5728\u56FE\u50CF\u6837\u672C\u4E2D\u9009\u62E9\u3002" }),
-        profile ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(NormalKnowledge, { profile }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "iad-profile iad-muted", children: "\u5F53\u524D\u53C2\u8003\u56FE\u5C1A\u672A\u5B66\u4E60\uFF1B\u542F\u52A8\u540E\u7531 MLLM\u5B66\u4E60\u5E76\u4FDD\u5B58\u826F\u54C1\u6A21\u5F0F\u3002" })
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h2", { children: "\u51BB\u7ED3\u77E5\u8BC6" }),
+        normal ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_jsx_runtime7.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(DatasetKnowledge, { knowledge: normal }),
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "iad-reference-grid", children: normal.evidence.filter((item) => item.image.role === "normal" && item.image.representation === "raw").map((item) => {
+            const src = `/api/iad/knowledge/evidence/${encodeURIComponent(normal.version_id)}/${encodeURIComponent(item.image.evidence_id)}`;
+            return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { title: "\u653E\u5927\u77E5\u8BC6\u6765\u6E90\u56FE", onClick: () => setLightbox({ src, title: item.sample_id.split("/").pop() }), children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("img", { alt: "\u77E5\u8BC6\u6765\u6E90\u8BC1\u636E", src }) }, item.image.evidence_id);
+          }) })
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "iad-profile iad-muted", children: "\u8BF7\u5148\u8FD0\u884C\u201C\u6316\u6398\u826F\u54C1\u77E5\u8BC6\u201D\u6280\u80FD\uFF0C\u751F\u6210\u53EF\u7528\u7248\u672C\u3002" }),
+        defect ? /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(DatasetKnowledge, { knowledge: defect }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "iad-muted", children: "\u6682\u65E0\u5339\u914D\u7684\u4E0D\u826F\u77E5\u8BC6\uFF0C\u6309\u6B63\u5E38\u5224\u636E\u7B5B\u67E5\u3002" })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("section", { className: "iad-job-section", children: [
         /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h2", { children: "\u542F\u52A8\u6A21\u578B\u5BA1\u8BA1" }),
@@ -751,9 +774,9 @@ var __IadClientBundle__ = (() => {
             "\u6A21\u578B",
             /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("input", { "aria-label": "\u6A21\u578B\u540D\u79F0", value: model, onChange: (e) => setModel(e.target.value) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { className: "iad-primary", onClick: start, disabled: busy || !dataset.reference_sample_ids.length || jobs.some((j) => j.status === "RUNNING"), children: busy ? "\u542F\u52A8\u4E2D\u2026" : "\u5BA1\u8BA1\u5F53\u524D\u7B5B\u9009\u5168\u90E8\u56FE\u50CF" })
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { className: "iad-primary", onClick: start, disabled: busy || !normal?.checks.some((check) => check.status === "supported") || jobs.some((j) => j.status === "RUNNING"), children: busy ? "\u542F\u52A8\u4E2D\u2026" : "\u5BA1\u8BA1\u5F53\u524D\u7B5B\u9009\u5168\u90E8\u56FE\u50CF" })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "iad-muted", children: "\u7ED3\u5408\u826F\u54C1\u6A21\u5F0F\u3001\u5168\u56FE\u4E0E\u5168\u90E8\u5C40\u90E8\u56FE\uFF0C\u7EFC\u5408\u5206\u6790\u4F4D\u7F6E\u548C\u5149\u7167\u3002" }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "iad-muted", children: "\u7ED3\u5408\u51BB\u7ED3\u77E5\u8BC6\u3001\u5168\u56FE\u4E0E\u5168\u90E8\u5C40\u90E8\u56FE\uFF0C\u7EFC\u5408\u5206\u6790\u4F4D\u7F6E\u548C\u5149\u7167\u3002" }),
         error && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { role: "alert", className: "iad-error", children: error })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("section", { className: "iad-job-section", children: [
@@ -794,10 +817,15 @@ var __IadClientBundle__ = (() => {
             " / ",
             job.total_batches
           ] }),
-          job.profile_id && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("small", { className: "iad-muted", children: [
-            "\u6A21\u5F0F\u7248\u672C ",
-            job.profile_id,
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("br", {})
+          job.normal_version_id && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("small", { className: "iad-muted", children: [
+            "\u826F\u54C1\u7248\u672C ",
+            job.normal_version_id,
+            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("br", {}),
+            job.defect_version_id && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(import_jsx_runtime7.Fragment, { children: [
+              "\u4E0D\u826F\u7248\u672C ",
+              job.defect_version_id,
+              /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("br", {})
+            ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("small", { className: "iad-muted", children: job.run_id }),
           job.errors.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("details", { children: [

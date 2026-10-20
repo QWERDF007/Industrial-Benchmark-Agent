@@ -83,10 +83,34 @@ try {
     versions.initial_normal);
   assert.equal(versions.defect.normal_version_id, versions.normal.version_id);
   assert.ok(versions.defect.findings.length);
+  let audit = await ctx.iadPythonBridge.execute("audit_start", {
+    dataset_id: dataset.dataset_id, sample_ids: [before.sample.sample_id],
+    normal_version_id: versions.normal.version_id, defect_version_id: versions.defect.version_id,
+  });
+  console.log(JSON.stringify({ kind: "audit", run_id: audit.run_id, total: audit.total_samples }));
+  const auditDeadline = Date.now() + 300000;
+  while (["PENDING", "RUNNING"].includes(audit.status) && Date.now() < auditDeadline) {
+    await delay(500);
+    audit = await ctx.iadPythonBridge.execute("audit_status", { run_id: audit.run_id });
+  }
+  jobs.audit = audit;
+  assert.equal(audit.status, "COMPLETED", JSON.stringify(audit));
   const after = await ctx.iadPythonBridge.execute("sample_get", { sample_id: before.sample.sample_id });
+  const analysis = after.suggestion.analysis;
+  assert.equal(analysis.normal_version_id, versions.normal.version_id);
+  assert.equal(analysis.defect_version_id, versions.defect.version_id);
+  assert.equal(analysis.coverage.complete, true);
+  assert.equal(analysis.coverage.inspected_regions, 1);
+  assert.equal(analysis.joint_steps.length, 1);
+  assert.equal(analysis.joint_steps[0].input_evidence_ids.length, 3);
+  const mask = analysis.auxiliary_evidence.find(image => image.representation === "annotation_mask");
+  assert.ok(mask);
+  assert.deepEqual(mask.crop_bbox, analysis.regions[0].crop_bbox);
+  const media = await ctx.iadPythonBridge.execute("audit_evidence", { suggestion_id: after.suggestion.suggestion_id, evidence_id: mask.evidence_id });
+  assert.ok((await fs.readFile(media.path)).length);
   assert.deepEqual(after.annotations, before.annotations);
   assert.deepEqual(after.review_decision, before.review_decision);
-  const result = { catalog, jobs, versions, trace, elapsed_seconds: (Date.now() - started) / 1000,
+  const result = { catalog, jobs, versions, analysis, trace, elapsed_seconds: (Date.now() - started) / 1000,
     quality_evaluation: "unassessed; synthetic native skill workflow only; no autonomous Agent Session tested" };
   await fs.writeFile(path.join(output, "result.json"), JSON.stringify(result, null, 2));
   console.log(JSON.stringify({ status: "COMPLETED", versions: Object.fromEntries(Object.entries(versions).map(([kind, value]) => [kind, value.version_id])),

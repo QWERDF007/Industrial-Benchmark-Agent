@@ -3,16 +3,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class AnalysisModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-
-class NormalPatterns(AnalysisModel):
-    structure: str
-    texture: str
-    position_variation: str
-    illumination_variation: str
-    normal_allowances: List[str]
-    cautions: List[str]
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
 
 class RegionProposal(AnalysisModel):
@@ -106,37 +97,23 @@ class SynthesisStep(AnalysisModel):
 
 
 class AuditAnalysis(AnalysisModel):
-    profile_id: str
+    normal_version_id: Optional[str] = None
+    defect_version_id: Optional[str] = None
+    legacy_profile_id: Optional[str] = None
+    knowledge_limitations: List[str] = Field(default_factory=list)
+    reference_sample_ids: List[str] = Field(default_factory=list)
     overview: VisualEvidence
     coverage: Coverage
     global_view: GlobalAnalysis
     regions: List[RegionEvidence]
+    auxiliary_evidence: List[VisualEvidence] = Field(default_factory=list)
     conclusion: VlmResult
     joint_steps: List[SynthesisStep] = Field(default_factory=list)
 
 
 class InspectionProgress(AnalysisModel):
-    phase: Literal["LEARNING_NORMAL", "GLOBAL", "REGIONS", "SYNTHESIS"]
-    profile_id: str = ""
+    phase: Literal["PREPARING_KNOWLEDGE", "GLOBAL", "REGIONS", "SYNTHESIS"]
     inspected_regions: int = 0
     planned_regions: int = 0
     completed_batches: int = 0
     total_batches: int = 0
-
-
-class NormalSource(AnalysisModel):
-    sample_id: str
-    sha256: str
-    qualification: Literal["human_pass", "human_hard_normal", "manual_selection", "raw_pass", "initial_unannotated"]
-
-
-class NormalProfile(AnalysisModel):
-    knowledge_kind: Literal["mllm_semantic"] = "mllm_semantic"
-    generation_version: str
-    sources: List[NormalSource]
-    profile_id: str
-    dataset_id: str
-    model_name: str
-    reference_sample_ids: List[str]
-    patterns: NormalPatterns
-    created_at: str
