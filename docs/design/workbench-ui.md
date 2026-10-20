@@ -137,6 +137,8 @@ DSH 左侧栏             当前页面
 
 追问与冻结检视返回的实现见[InspectionQuestion](../../apps/iad-harness/src/client/components/InspectionQuestion.tsx)、[InspectionSession](../../apps/iad-harness/src/client/inspection-session.ts)；宿主会话作用域参考 [DSH 官方会话控制](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-conversation/src/client/service.ts)与[导航](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-workspace/src/client/navigation.ts)。
 
+会话结果入口见[SessionResult](../../apps/iad-harness/src/client/components/SessionResult.tsx)与[页面协议](../../apps/iad-harness/src/shared/navigation.ts)，发起会话返回见[JobCard](../../apps/iad-harness/src/client/components/JobCard.tsx)。原生工具视图注册参考[DSH 官方工具展示](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-tool/src/client/apply.ts)。
+
 ## D05 视觉系统
 
 采用功能性 Minimalism & Swiss Style：中性色背景、清晰密度、低动效。所有业务页使用同一套 DSH 主题适配 tokens，禁止逐页散落色值、覆盖宿主全局样式或另建主题开关。

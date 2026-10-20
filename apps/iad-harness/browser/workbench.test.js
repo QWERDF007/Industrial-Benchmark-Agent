@@ -41,7 +41,7 @@ for name in ['normal','normal2','dent']:
       const entries=[], mains=new Map(), listeners=new Set(); let panel=null;
       const layout={panelInfo:{getSnapshot:()=>({activePanelId:panel}),subscribe:f=>{listeners.add(f);return()=>listeners.delete(f)}},
         selectPanel:id=>{panel=id;listeners.forEach(f=>f())},beginNavigation:()=>new AbortController().signal};
-      apply({layout,slots:{inject:(_,f)=>f(),register:(options,component)=>{if(options.name==='main')mains.set(options.key,component);else entries.push({...options,component});}}});
+      apply({layout,slots:{inject:(_,f)=>f(),register:(options,component)=>{if(options.name==='main')mains.set(options.key,component);else if(options.name==='sidebar.panellist') entries.push({...options,component});}}});
       function App(){const [current,setCurrent]=React.useState(panel||entries[0].id);React.useEffect(()=>layout.panelInfo.subscribe(()=>setCurrent(panel)),[]);
         const Page=mains.get(current);return <><nav id="test-navigation">{entries.map(entry=><button key={entry.id} aria-label={entry.label} onClick={()=>layout.selectPanel(entry.id)}>{entry.label}</button>)}</nav>{Page&&<Page/>}</>}
       createRoot(document.getElementById('root')).render(<App/>);`, loader: "tsx", resolveDir: app },

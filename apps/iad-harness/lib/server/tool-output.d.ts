@@ -4,6 +4,9 @@ export declare const workbenchJsonOutput: {
     schema: {
         readonly type: "json";
     };
+    presentationMeta(_args: unknown, value: InferValue<{
+        type: "json";
+    }>): import("../shared/tool-presentation.js").ToolPresentation | null;
     render(_args: unknown, value: InferValue<{
         type: "json";
     }>): ContentBlock[];

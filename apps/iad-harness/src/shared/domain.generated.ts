@@ -343,6 +343,7 @@ export type CreatedAt1 = string;
 export type SourceCount = number;
 export type CheckCount = number;
 export type DatasetId2 = string;
+export type OriginSessionId = string | null;
 export type ModelName2 = string;
 export type NormalVersionId3 = string | null;
 export type DefectVersionId1 = string | null;
@@ -373,6 +374,7 @@ export type RunId2 = string;
 export type TaskId = string;
 export type DatasetId3 = string;
 export type JobType = "MODEL_AUDIT" | "NORMAL_KNOWLEDGE" | "DEFECT_KNOWLEDGE";
+export type OriginSessionId1 = string | null;
 export type RootRunId = string;
 export type ParentRunId = string | null;
 export type Status4 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
@@ -460,7 +462,7 @@ export type Height = number;
 export type SampleUuid3 = string;
 export type Evidence1 = VisualEvidence[];
 export type AuditRunId = string | null;
-export type OriginSessionId = string | null;
+export type OriginSessionId2 = string | null;
 export type IsLatest = boolean;
 export type Name = string;
 export type ImageDir = string;
@@ -522,6 +524,7 @@ export type SampleCount = number;
 export type KnowledgeVersions = KnowledgeUsage[];
 export type AuditRunIds = string[];
 export type DatasetId8 = string;
+export type OriginSessionId3 = string | null;
 export type Kind3 = "normal" | "defect";
 export type NormalVersionId6 = string | null;
 export type ModelName4 = string;
@@ -907,6 +910,7 @@ export interface KnowledgeVersion {
 }
 export interface AuditStart {
   dataset_id: DatasetId2;
+  origin_session_id?: OriginSessionId;
   model_name?: ModelName2;
   normal_version_id?: NormalVersionId3;
   defect_version_id?: DefectVersionId1;
@@ -948,6 +952,7 @@ export interface JobSnapshot {
   task_id: TaskId;
   dataset_id: DatasetId3;
   job_type: JobType;
+  origin_session_id: OriginSessionId1;
   root_run_id: RootRunId;
   parent_run_id: ParentRunId;
   status: Status4;
@@ -1032,7 +1037,7 @@ export interface InspectionSnapshot {
   analysis: AuditAnalysis;
   evidence: Evidence1;
   audit_run_id: AuditRunId;
-  origin_session_id: OriginSessionId;
+  origin_session_id: OriginSessionId2;
   is_latest: IsLatest;
 }
 export interface InspectionReference1 {
@@ -1140,6 +1145,7 @@ export interface KnowledgeUsage {
 }
 export interface MiningStart {
   dataset_id: DatasetId8;
+  origin_session_id?: OriginSessionId3;
   kind: Kind3;
   normal_version_id?: NormalVersionId6;
   model_name?: ModelName4;

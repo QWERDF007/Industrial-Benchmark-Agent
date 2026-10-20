@@ -13,7 +13,7 @@ export function createKnowledgeTools(bridge, ctx) {
                 sample_ids: { type: "array", items: { type: "string" }, description: "可选新增来源范围，与父版本仍合格来源合并核验；省略覆盖全部合格良品" },
             },
             output: workbenchJsonOutput,
-            execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "normal" }, exec.signal),
+            execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "normal", origin_session_id: exec.agent?.id || null }, exec.signal),
         }),
         defineTool({
             name: "knowledge_mine_defect",
@@ -25,7 +25,7 @@ export function createKnowledgeTools(bridge, ctx) {
                 sample_ids: { type: "array", items: { type: "string" }, description: "可选新增来源范围，与父版本仍合格来源合并核验；省略覆盖全部合格异常候选" },
             },
             output: workbenchJsonOutput,
-            execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "defect" }, exec.signal),
+            execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "defect", origin_session_id: exec.agent?.id || null }, exec.signal),
         }),
         defineTool({
             name: "knowledge_job_status",

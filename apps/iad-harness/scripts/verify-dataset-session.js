@@ -71,6 +71,7 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
   assert.equal(jobs.jobs.length, 2);
   assert.equal(audits.jobs.length, 1);
   assert.ok([...jobs.jobs, ...audits.jobs].every(job => job.status === "COMPLETED" && job.failed === 0));
+  assert.ok([...jobs.jobs, ...audits.jobs].every(job => job.origin_session_id === session.handle.agent.id), "All jobs must retain the actual initiating Session");
   assert.equal(audits.jobs[0].completed, 3);
   const report = trace.findLast(item => item.name === "dataset_report").result.value;
   assert.equal(report.vlm_audited_count, 3);
@@ -100,6 +101,7 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
   assert.ok(context && !context.result.isError, "Agent must resolve the exact frozen inspection reference");
   assert.equal(context.result.value.reference.suggestion_id, target.suggestion.suggestion_id);
   assert.equal(context.result.value.analysis.normal_version_id, target.suggestion.analysis.normal_version_id);
+  assert.equal(context.result.value.origin_session_id, session.handle.agent.id);
   const expected = [target.suggestion.analysis.overview.evidence_id, target.suggestion.analysis.regions[0].image.evidence_id];
   for (const evidence_id of expected) {
     const media = followup.find(item => item.name === "model_audit_evidence" && item.arguments.evidence_id === evidence_id);

@@ -10,5 +10,6 @@ export declare class InspectionSession {
     private host;
     constructor(host: Pick<Context, "sessions" | "uiWorkspace">);
     send(snapshot: InspectionSnapshot, question: string, returnLink: (sessionId: string) => string, previousSessionId?: string): Promise<void>;
+    open(sessionId: string): Promise<void>;
 }
 //# sourceMappingURL=inspection-session.d.ts.map

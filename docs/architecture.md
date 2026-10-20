@@ -29,6 +29,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 审计疑点回流、冻结来源与两类挖掘的重新核验 | [AuditCandidates](../python/iad_core/knowledge/candidates.py)、[来源资格](../python/iad_core/knowledge/sources.py)、[知识疑点契约](../python/iad_core/knowledge/models.py) |
 | DSH 两项知识技能、原生执行工具及图像附件 | [技能定义](../apps/iad-harness/src/server/knowledge/skills.ts)、[工具](../apps/iad-harness/src/server/knowledge/index.ts)、[插件生命周期](../apps/iad-harness/src/server/index.ts) |
 | DSH 会话的数据接入、知识审计、结果与报告操作 | [原生工作台工具及流程指引](../apps/iad-harness/src/server/workbench-tools/index.ts)、[统一聊天结果投影](../apps/iad-harness/src/server/tool-output.ts) |
+| 会话结果打开指定作业、知识版本及数据集 | [原生工具卡片](../apps/iad-harness/src/client/components/SessionResult.tsx)、[结果引用投影](../apps/iad-harness/src/shared/tool-presentation.ts)、[共享页面协议](../apps/iad-harness/src/shared/navigation.ts) |
 | 会话知识/审计的有界等待及真实证据附件 | [共享状态等待](../apps/iad-harness/src/server/job-status.ts)、[共享附件读取](../apps/iad-harness/src/server/evidence-attachment.ts) |
 | 冻结检视引用、原生会话追问与位置恢复 | [InspectionContext](../python/iad_core/workbench/inspection_context.py)、[InspectionSession](../apps/iad-harness/src/client/inspection-session.ts)、[检视状态与图像源](../apps/iad-harness/src/client/inspection.ts)、[追问表单](../apps/iad-harness/src/client/components/InspectionQuestion.tsx) |
 | 全图、局部裁剪及综合判断 | [SampleInspection](../python/iad_core/workbench/inspection.py)、[分析类型](../python/iad_core/advisory/analysis.py) |

@@ -48,6 +48,7 @@ class JobSnapshot(AnalysisModel):
     task_id: str
     dataset_id: str
     job_type: JobKind
+    origin_session_id: Optional[str] = None
     root_run_id: str
     parent_run_id: Optional[str] = None
     status: Literal['PENDING', 'RUNNING', 'COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED', 'INTERRUPTED']

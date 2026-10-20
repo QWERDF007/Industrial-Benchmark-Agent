@@ -398,7 +398,7 @@ var __IadClientBundle__ = (() => {
     return { finding, evidence, region };
   }
 
-  // src/client/workspace.tsx
+  // src/shared/navigation.ts
   var pages = {
     "industrial-datasets": "\u6570\u636E\u96C6\u7BA1\u7406",
     "industrial-images": "\u56FE\u50CF\u6D4F\u89C8",
@@ -407,6 +407,8 @@ var __IadClientBundle__ = (() => {
     "industrial-audit": "\u6A21\u578B\u5BA1\u8BA1",
     "industrial-review": "\u4EBA\u5DE5\u590D\u6838"
   };
+
+  // src/client/workspace.tsx
   var defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", job: "", historyPage: 1, historySearch: "", inspection: null });
   var Workspace = class {
     constructor(conversation) {
@@ -453,6 +455,12 @@ var __IadClientBundle__ = (() => {
       this.commit();
       this.layout?.selectPanel(pageId);
     }
+    openLocation({ pageId, datasetId, ...view }) {
+      this.state = { ...this.state, active: true, pageId, datasetId };
+      this.state = { ...this.state, views: { ...this.state.views, [`${pageId}:${datasetId}`]: { ...this.view(pageId), ...view, inspection: null } } };
+      this.commit();
+      this.layout?.selectPanel(pageId);
+    }
     selectDataset(datasetId, replace = false) {
       if (datasetId === this.state.datasetId) return;
       this.state = { ...this.state, datasetId };
@@ -473,6 +481,9 @@ var __IadClientBundle__ = (() => {
         const route = new URLSearchParams({ iad: JSON.stringify({ pageId, datasetId, ...this.view(pageId) }) });
         return `${location.origin}${location.pathname}?${route}`;
       }, view.inspection?.reference.sample_id === reference.sample_id ? view.inspection.sessionId : void 0);
+    }
+    openSession(sessionId) {
+      return this.conversation.open(sessionId);
     }
     commit(replace = false) {
       const { pageId, datasetId } = this.state;
@@ -520,9 +531,8 @@ var __IadClientBundle__ = (() => {
     return { workspace, state };
   }
 
-  // src/client/components/JobCard.tsx
-  var import_jsx_runtime6 = __require("react/jsx-runtime");
-  var statuses = {
+  // src/shared/job-display.ts
+  var jobStatuses = {
     PENDING: "\u7B49\u5F85\u6267\u884C",
     RUNNING: "\u6267\u884C\u4E2D",
     COMPLETED: "\u5DF2\u5B8C\u6210",
@@ -531,6 +541,9 @@ var __IadClientBundle__ = (() => {
     CANCELLED: "\u5DF2\u53D6\u6D88",
     INTERRUPTED: "\u5DF2\u4E2D\u65AD"
   };
+
+  // src/client/components/JobCard.tsx
+  var import_jsx_runtime6 = __require("react/jsx-runtime");
   var phases = {
     PREPARING_KNOWLEDGE: "\u51C6\u5907\u51BB\u7ED3\u77E5\u8BC6",
     GLOBAL: "\u5168\u56FE\u89C2\u5BDF",
@@ -610,7 +623,7 @@ var __IadClientBundle__ = (() => {
     }
     return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("article", { ref: article, className: "iad-job", "data-job-id": job.run_id, "aria-label": `\u4F5C\u4E1A ${job.run_id}`, "aria-current": focused || void 0, children: [
       /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "iad-row", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("strong", { role: "status", children: active && job.cancel_requested ? "\u6B63\u5728\u505C\u6B62" : statuses[job.status] }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("strong", { role: "status", children: active && job.cancel_requested ? "\u6B63\u5728\u505C\u6B62" : jobStatuses[job.status] }),
         /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { children: job.model_name }),
         active && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { disabled: busy || job.cancel_requested, onClick: cancel, children: job.cancel_requested ? "\u6B63\u5728\u505C\u6B62\u2026" : kind === "audit" ? "\u53D6\u6D88\u5BA1\u8BA1" : "\u53D6\u6D88\u6316\u6398" })
       ] }),
@@ -654,6 +667,17 @@ var __IadClientBundle__ = (() => {
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("small", { className: "iad-muted", children: job.run_id }),
+      job.origin_session_id && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { disabled: busy, onClick: async () => {
+        setBusy(true);
+        setError("");
+        try {
+          await workspace.openSession(job.origin_session_id);
+        } catch (error2) {
+          setError(message(error2));
+        } finally {
+          setBusy(false);
+        }
+      }, children: "\u8FD4\u56DE\u53D1\u8D77\u4F1A\u8BDD" }) }),
       job.parent_run_id && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "iad-job-links", children: [
         /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("button", { onClick: () => related(job.parent_run_id), children: [
           "\u539F\u4F5C\u4E1A ",
@@ -1290,7 +1314,7 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/DatasetKnowledge.tsx
   var import_jsx_runtime14 = __require("react/jsx-runtime");
-  var statuses2 = { supported: "\u6709\u8BC1\u636E\u652F\u6301", provisional: "\u5F85\u9A8C\u8BC1", conflicted: "\u5B58\u5728\u77DB\u76FE" };
+  var statuses = { supported: "\u6709\u8BC1\u636E\u652F\u6301", provisional: "\u5F85\u9A8C\u8BC1", conflicted: "\u5B58\u5728\u77DB\u76FE" };
   function DatasetKnowledge({ knowledge }) {
     return /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("div", { className: "iad-profile", children: [
       /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("strong", { children: knowledge.kind === "normal" ? "\u826F\u54C1\u77E5\u8BC6" : "\u4E0D\u826F\u77E5\u8BC6" }),
@@ -1309,7 +1333,7 @@ var __IadClientBundle__ = (() => {
           /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("strong", { children: [
             check.title,
             " \xB7 ",
-            statuses2[check.status]
+            statuses[check.status]
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("p", { children: check.criterion }),
           /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("small", { className: "iad-muted", children: [
@@ -1329,7 +1353,7 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/RuleAssessments.tsx
   var import_jsx_runtime15 = __require("react/jsx-runtime");
-  var statuses3 = { normal: "\u672A\u89C1\u5F02\u5E38", anomaly: "\u53D1\u73B0\u504F\u79BB", insufficient: "\u8BC1\u636E\u4E0D\u8DB3", not_applicable: "\u4E0D\u9002\u7528" };
+  var statuses2 = { normal: "\u672A\u89C1\u5F02\u5E38", anomaly: "\u53D1\u73B0\u504F\u79BB", insufficient: "\u8BC1\u636E\u4E0D\u8DB3", not_applicable: "\u4E0D\u9002\u7528" };
   function RuleAssessments({ analysis, knowledge, onEvidence }) {
     const checks = new Map(knowledge.flatMap((snapshot) => snapshot.checks.map((check) => [check.check_id, check])));
     if (!analysis.check_assessments.length) return null;
@@ -1341,7 +1365,7 @@ var __IadClientBundle__ = (() => {
       /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("ol", { children: analysis.check_assessments.map((assessment) => /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("li", { "data-check-id": assessment.check_id, children: [
         /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("strong", { children: checks.get(assessment.check_id)?.title || assessment.check_id }),
         " \xB7 ",
-        statuses3[assessment.status],
+        statuses2[assessment.status],
         /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("p", { children: assessment.description }),
         !!assessment.limitations.length && /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("p", { className: "iad-muted", children: assessment.limitations.join("\uFF1B") }),
         /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(AuditEvidence, { analysis, ids: assessment.evidence_ids, label: checks.get(assessment.check_id)?.title || "\u68C0\u67E5\u9879", onEvidence })
@@ -2040,7 +2064,7 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/KnowledgePage.tsx
   var import_jsx_runtime20 = __require("react/jsx-runtime");
-  var statuses4 = { supported: "\u6709\u8BC1\u636E\u652F\u6301", provisional: "\u5F85\u9A8C\u8BC1", conflicted: "\u5B58\u5728\u77DB\u76FE" };
+  var statuses3 = { supported: "\u6709\u8BC1\u636E\u652F\u6301", provisional: "\u5F85\u9A8C\u8BC1", conflicted: "\u5B58\u5728\u77DB\u76FE" };
   function KnowledgePage({ dataset, kind }) {
     const { workspace } = useWorkspace();
     const pageId = kind === "normal" ? "industrial-normal" : "industrial-defect";
@@ -2194,7 +2218,7 @@ var __IadClientBundle__ = (() => {
             knowledge.checks.map((item) => /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("button", { "aria-pressed": check?.check_id === item.check_id, onClick: () => setCheckId(item.check_id), children: [
               /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("strong", { children: item.title }),
               /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("span", { children: [
-                statuses4[item.status],
+                statuses3[item.status],
                 " \xB7 \u652F\u6301 ",
                 item.support_evidence_ids.length,
                 " / \u53CD\u5BF9 ",
@@ -2334,7 +2358,7 @@ var __IadClientBundle__ = (() => {
 
   // src/client/theme.ts
   var themeStyles = `
-.iad-workbench,.iad-detail-dialog::backdrop {
+.iad-workbench,.iad-tool-card,.iad-detail-dialog::backdrop {
  --iad-canvas:var(--dsw-alias-bg-module-platform,#edf2f7);
  --iad-surface:var(--dsw-alias-bg-layer-1,#fff);
  --iad-surface-muted:var(--dsw-alias-bg-module-platform,#e7edf5);
@@ -2722,6 +2746,65 @@ var __IadClientBundle__ = (() => {
         this.host.uiWorkspace.openSession(id);
       });
     }
+    async open(sessionId) {
+      const id = SessionId(sessionId);
+      await this.host.sessions.using(id, { source: "iadInspection" }, async (reference) => {
+        await reference.ready;
+        this.host.uiWorkspace.openSession(id);
+      });
+    }
+  };
+
+  // src/client/components/SessionResult.tsx
+  var import_jsx_runtime23 = __require("react/jsx-runtime");
+  function SessionResult(props) {
+    const { workspace } = useWorkspace();
+    const meta = props.phase === "result" ? props.block.meta : null;
+    const result = meta?.type === "industrial-workbench" ? meta : null;
+    return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("section", { className: "iad-tool-card", "aria-label": props.title, "data-iad-tool": props.toolName, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("style", { children: [
+        themeStyles,
+        `
+      .iad-tool-card{background:var(--iad-surface);color:var(--iad-text);border-radius:12px;padding:12px;margin:8px 0;overflow-wrap:anywhere}
+      .iad-tool-card p{margin:4px 0}.iad-tool-card nav{display:flex;flex-wrap:wrap;gap:8px}
+      .iad-tool-card button{min-height:44px;padding:8px 12px;background:var(--iad-surface-muted);color:var(--iad-text);border:0;border-radius:8px;cursor:pointer;font:inherit}
+      .iad-tool-card button:hover{background:var(--iad-hover)}.iad-tool-card button:focus-visible{outline:2px solid var(--iad-primary);outline-offset:2px}
+    `
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: props.title }),
+      props.phase !== "result" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { role: "status", children: props.phase === "preparing" ? "\u51C6\u5907\u8C03\u7528\u2026" : "\u5DE5\u5177\u6267\u884C\u4E2D\u2026" }) : props.block.isError ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { role: "alert", children: "\u8C03\u7528\u5931\u8D25\uFF0C\u8BF7\u67E5\u770B\u8C03\u7528\u8BE6\u60C5\u3002" }) : result?.job && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("p", { children: [
+        "\u8C03\u7528\u65F6\u72B6\u6001\uFF1A",
+        jobStatuses[result.job.status],
+        " \xB7 \u5B8C\u6210 ",
+        result.job.completed,
+        " \xB7 \u5931\u8D25 ",
+        result.job.failed,
+        " \xB7 \u5171 ",
+        result.job.total_samples,
+        " \u5F20"
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("nav", { "aria-label": "\u67E5\u770B\u5DE5\u5177\u7ED3\u679C", children: [
+        result?.links.map((link, index) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { "data-iad-page": link.location.pageId, "data-iad-run-id": link.location.job, "data-iad-version-id": link.location.version, onClick: () => workspace.openLocation(link.location), children: link.label }, index)),
+        props.inspect && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { onClick: props.inspect, children: "\u8C03\u7528\u8BE6\u60C5" })
+      ] })
+    ] });
+  }
+
+  // src/shared/tool-presentation.ts
+  var workbenchTools = {
+    dataset_list: "\u6570\u636E\u96C6\u5217\u8868",
+    dataset_import: "\u63A5\u5165\u6570\u636E\u96C6",
+    dataset_report: "\u6570\u636E\u96C6\u8D28\u91CF\u62A5\u544A",
+    knowledge_get: "\u77E5\u8BC6\u7248\u672C",
+    knowledge_mine_normal: "\u6316\u6398\u826F\u54C1\u77E5\u8BC6",
+    knowledge_mine_defect: "\u6316\u6398\u4E0D\u826F\u54C1\u77E5\u8BC6",
+    knowledge_job_status: "\u77E5\u8BC6\u4F5C\u4E1A\u72B6\u6001",
+    knowledge_job_cancel: "\u505C\u6B62\u77E5\u8BC6\u4F5C\u4E1A",
+    knowledge_job_retry: "\u91CD\u8BD5\u77E5\u8BC6\u4F5C\u4E1A",
+    model_audit_start: "\u542F\u52A8\u6A21\u578B\u5BA1\u8BA1",
+    model_audit_status: "\u5BA1\u8BA1\u4F5C\u4E1A\u72B6\u6001",
+    model_audit_cancel: "\u505C\u6B62\u6A21\u578B\u5BA1\u8BA1",
+    model_audit_retry: "\u91CD\u8BD5\u6A21\u578B\u5BA1\u8BA1"
   };
 
   // src/client/index.ts
@@ -2730,6 +2813,9 @@ var __IadClientBundle__ = (() => {
   function apply(ctx) {
     const workspace = new Workspace(new InspectionSession(ctx));
     const icons = [DatasetIcon, ImagesIcon, KnowledgeIcon, KnowledgeIcon, AuditIcon, ReviewIcon];
+    ctx.slots.inject("tool.call.toolview", () => {
+      for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props) => import_react19.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react19.default.createElement(SessionResult, { ...props, title })));
+    });
     ctx.slots.inject("sidebar.panellist", () => {
       Object.entries(pages).forEach(([id, label], index) => ctx.slots.register({ name: "sidebar.panellist", id, order: index + 1, label }, icons[index]));
     });

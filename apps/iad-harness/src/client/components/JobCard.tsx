@@ -2,11 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import type { JobRetryOptions, JobSample, JobSnapshot } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 import { useWorkspace } from "../workspace.js";
+import { jobStatuses } from "../../shared/job-display.js";
 
-const statuses: Record<JobSnapshot["status"], string> = {
-  PENDING: "等待执行", RUNNING: "执行中", COMPLETED: "已完成", PARTIAL: "部分成功",
-  FAILED: "失败", CANCELLED: "已取消", INTERRUPTED: "已中断",
-};
 const phases: Record<string, string> = {
   PREPARING_KNOWLEDGE: "准备冻结知识", GLOBAL: "全图观察", REGIONS: "ROI 细看",
   SYNTHESIS: "全图与 ROI 联合分析", SAMPLE_COMPLETED: "图像审计完成",
@@ -58,7 +55,7 @@ export function JobCard({ job, onChanged }: { job: JobSnapshot; onChanged(): voi
     workspace.updateView(page, { job: runId, tab: "jobs" }); workspace.navigate(page);
   }
   return <article ref={article} className="iad-job" data-job-id={job.run_id} aria-label={`作业 ${job.run_id}`} aria-current={focused || undefined}>
-    <div className="iad-row"><strong role="status">{active && job.cancel_requested ? "正在停止" : statuses[job.status]}</strong><span>{job.model_name}</span>
+    <div className="iad-row"><strong role="status">{active && job.cancel_requested ? "正在停止" : jobStatuses[job.status]}</strong><span>{job.model_name}</span>
       {active && <button disabled={busy || job.cancel_requested} onClick={cancel}>{job.cancel_requested ? "正在停止…" : kind === "audit" ? "取消审计" : "取消挖掘"}</button>}
     </div>
     <progress aria-label="作业处理进度" value={job.progress} max={1} />
@@ -69,6 +66,11 @@ export function JobCard({ job, onChanged }: { job: JobSnapshot; onChanged(): voi
     {!!job.total_batches && <p className="iad-muted">联合判断 {job.completed_batches || 0} / {job.total_batches}</p>}
     {job.normal_version_id && <small className="iad-muted">良品版本 {job.normal_version_id}<br />{job.defect_version_id && <>不良版本 {job.defect_version_id}<br /></>}</small>}
     <small className="iad-muted">{job.run_id}</small>
+    {job.origin_session_id && <p><button disabled={busy} onClick={async () => {
+      setBusy(true); setError("");
+      try { await workspace.openSession(job.origin_session_id!); }
+      catch (error) { setError(message(error)); } finally { setBusy(false); }
+    }}>返回发起会话</button></p>}
     {job.parent_run_id && <p className="iad-job-links"><button onClick={() => related(job.parent_run_id!)}>原作业 {job.parent_run_id}</button>{job.root_run_id !== job.parent_run_id && <button onClick={() => related(job.root_run_id)}>起始作业 {job.root_run_id}</button>}</p>}
     {job.knowledge_version_id && <p><button onClick={() => { workspace.updateView(page, { version: job.knowledge_version_id!, tab: "results" }); workspace.navigate(page); }}>查看已发布版本</button></p>}
     {!!job.errors.length && <details><summary>失败详情 · {job.errors.length}</summary><ul className="iad-job-errors">{job.errors.map((error, index) => <li key={index}><button onClick={() => locate(error.sample_id)} title={error.sample_uuid}>{sampleName(error)}</button><p className="iad-error">{error.message}</p></li>)}</ul></details>}

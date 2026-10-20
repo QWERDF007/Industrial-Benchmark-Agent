@@ -39,6 +39,7 @@ KNOWLEDGE_JOB_TYPES = ("NORMAL_KNOWLEDGE", "DEFECT_KNOWLEDGE")
 
 class MiningStart(AnalysisModel):
     dataset_id: str
+    origin_session_id: Optional[str] = None
     kind: KnowledgeKind
     normal_version_id: Optional[str] = None
     model_name: str = DEFAULT_MODEL

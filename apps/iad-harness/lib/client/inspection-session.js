@@ -28,4 +28,11 @@ export class InspectionSession {
             this.host.uiWorkspace.openSession(id);
         });
     }
+    async open(sessionId) {
+        const id = SessionId(sessionId);
+        await this.host.sessions.using(id, { source: "iadInspection" }, async (reference) => {
+            await reference.ready;
+            this.host.uiWorkspace.openSession(id);
+        });
+    }
 }

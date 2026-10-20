@@ -3,11 +3,17 @@ import { AuditIcon, ReviewIcon, DatasetIcon, ImagesIcon, KnowledgeIcon } from ".
 import { WorkbenchPage } from "./WorkbenchPage.js";
 import { pages, Workspace, WorkspaceContext } from "./workspace.js";
 import { InspectionSession } from "./inspection-session.js";
+import { SessionResult } from "./components/SessionResult.js";
+import { workbenchTools } from "../shared/tool-presentation.js";
 export const name = "iad-client";
 export const inject = ["slots", "layout", "sessions", "conversation", "uiWorkspace"];
 export function apply(ctx) {
     const workspace = new Workspace(new InspectionSession(ctx));
     const icons = [DatasetIcon, ImagesIcon, KnowledgeIcon, KnowledgeIcon, AuditIcon, ReviewIcon];
+    ctx.slots.inject("tool.call.toolview", () => {
+        for (const [key, title] of Object.entries(workbenchTools))
+            ctx.slots.register({ name: "tool.call.toolview", key }, (props) => React.createElement(WorkspaceContext.Provider, { value: workspace }, React.createElement(SessionResult, { ...props, title })));
+    });
     ctx.slots.inject("sidebar.panellist", () => {
         Object.entries(pages).forEach(([id, label], index) => ctx.slots.register({ name: "sidebar.panellist", id, order: index + 1, label }, icons[index]));
     });

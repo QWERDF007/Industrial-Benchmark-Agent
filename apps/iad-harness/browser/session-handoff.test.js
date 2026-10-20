@@ -13,6 +13,10 @@ import firefox from "selenium-webdriver/firefox.js";
 import { resolvePythonPath } from "../lib/server/python-bridge/index.js";
 
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const toolMessages = request => {
+  const names = new Map(request.messages.flatMap(message => (message.tool_calls || []).map(call => [call.id, call.function.name])));
+  return request.messages.filter(message => message.role === "tool").map(message => ({ ...message, name: names.get(message.tool_call_id) }));
+};
 
 test("native DSH: ask about frozen evidence and return to the original inspection", { timeout: 120000 }, async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-native-handoff-"));
@@ -26,6 +30,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
   await fs.writeFile(path.join(profile, "cordis.patch.yml"), "- id: ui-settings-general\n  config:\n    welcomeNoticeVersion: 2026-09-28.1\n");
   execFileSync(resolvePythonPath(), [path.join(app, "test/fixtures/knowledge_dataset.py"), root]);
   const agentRequests = [];
+  let agentCompleted = false;
   const model = http.createServer(async (req, res) => {
     const chunks = []; for await (const chunk of req) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString());
@@ -39,11 +44,20 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
       const user = body.messages.find(message => message.role === "user");
       const text = typeof user.content === "string" ? user.content : user.content.filter(part => part.type === "text").map(part => part.text).join("\n");
       const reference = JSON.parse(text.split("冻结检视引用：")[1].split("\n")[0]);
-      const outputs = body.messages.filter(message => message.role === "tool");
+      const outputs = toolMessages(body);
       const context = outputs[0]?.content.startsWith("{") ? JSON.parse(outputs[0].content) : null;
       const image = context?.evidence?.[outputs.length - 1];
-      const tool = !outputs.length ? { name: "model_audit_context", arguments: reference }
+      const last = outputs.at(-1);
+      const value = ["knowledge_mine_normal", "knowledge_job_status", "model_audit_start", "model_audit_status"].includes(last?.name) ? JSON.parse(last.content) : null;
+      let tool = !outputs.length ? { name: "model_audit_context", arguments: reference }
         : outputs.length < 3 && image ? { name: "model_audit_evidence", arguments: { suggestion_id: reference.suggestion_id, evidence_id: image.evidence_id } } : null;
+      if (outputs.length === 3) tool = { name: "knowledge_mine_normal", arguments: { dataset_id: reference.dataset_id, model_name: "test-mllm" } };
+      if (["knowledge_mine_normal", "knowledge_job_status"].includes(last?.name)) tool = value?.status === "COMPLETED"
+        ? { name: "model_audit_start", arguments: { dataset_id: reference.dataset_id, normal_version_id: value.knowledge_version_id, sample_ids: [reference.sample_id], model_name: "test-mllm" } }
+        : { name: "knowledge_job_status", arguments: { run_id: value.run_id, wait_seconds: 5 } };
+      if (["model_audit_start", "model_audit_status"].includes(last?.name)) tool = value?.status === "COMPLETED" ? { name: "dataset_report", arguments: { dataset_id: reference.dataset_id } }
+        : { name: "model_audit_status", arguments: { run_id: value.run_id, wait_seconds: 5 } };
+      if (!tool && last?.name === "dataset_report") agentCompleted = true;
       const delta = tool ? { role: "assistant", tool_calls: [{ index: 0, id: `handoff-${outputs.length}`, type: "function", function: { name: tool.name, arguments: JSON.stringify(tool.arguments) } }] }
         : { role: "assistant", content: `已结合实际全图与ROI核对左孔，反光仍需人工核实。[返回检视](${text.split("返回检视：")[1].split("\n")[0]})` };
       res.writeHead(200, { "Content-Type": "text/event-stream" });
@@ -56,9 +70,20 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     const evidence = content.filter(item => item.type === "text" && item.text.startsWith("视觉证据：")).map(item => JSON.parse(item.text.slice(5)));
     let answer = { count: 1000, max_model_len: 262144 };
     if (req.url !== "/tokenize") {
-      if (body.response_format.json_schema.name === "KnowledgeDraft") answer = { summary: "孔内背景可见", checks: [{ title: "孔内外观", subject: "主体", location: "左孔",
-        criterion: "孔内背景可见", allowed_variations: ["亮度变化"], support_evidence_ids: evidence.map(item => item.evidence_id), counter_evidence_ids: [], limitations: [], status: "supported" }], suspects: [], limitations: [] };
-      else {
+      if (body.response_format.json_schema.name === "KnowledgeDraft") {
+        answer = { summary: "孔内背景可见", checks: [{ title: "孔内外观", subject: "主体", location: "左孔",
+          criterion: "孔内背景可见", allowed_variations: ["亮度变化"], support_evidence_ids: evidence.map(item => item.evidence_id), counter_evidence_ids: [], limitations: [], status: "supported" }], suspects: [], limitations: [] };
+        if (content[0].text.includes("冻结父版本候选：")) {
+          const parent = JSON.parse(content[0].text.split("冻结父版本候选：")[1].split("\n")[0]);
+          answer.revisions = parent.checks.map(check => ({ previous_check_id: check.check_id, current_check_titles: ["孔内外观"], reason: "来源仍支持原孔内背景判据" }));
+        }
+      }
+      else if (body.response_format.json_schema.name === "KnowledgeVerification") {
+        const payload = JSON.parse(content[0].text.split("待核验疑点：")[1].split("\n请根据图像")[0]);
+        answer = { findings: payload.findings.map(target => ({ finding_id: target.finding_id, status: "insufficient", affected_check_titles: [],
+          description: "仍需独立证据", normal_explanation: "不能排除反光", limitations: ["合成验证"], conflicts: [],
+          evidence_ids: [target.regions.find(region => region.image.representation === "raw").image.evidence_id] })) };
+      } else {
         const checks = JSON.parse(content[0].text.split("冻结知识：")[1].split("\n")[0]).checks;
         const regions = evidence.filter(item => item.role === "roi" && item.representation === "raw");
         const view = { description: "左孔需核实", position_analysis: "主体左侧", illumination_analysis: "需排除反光" };
@@ -118,19 +143,26 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     await (await element(".iad-viewer-viewport")).sendKeys("\uE012");
     const geometry = () => driver.executeScript(`const world=document.querySelector('.iad-viewer-world'),viewport=document.querySelector('.iad-viewer-viewport'),image=world.querySelector('img');const w=world.getBoundingClientRect(),v=viewport.getBoundingClientRect();return {scale:Number(world.dataset.scale),center:[(v.left+v.width/2-w.left)*image.naturalWidth/w.width,(v.top+v.height/2-w.top)*image.naturalHeight/w.height]};`);
     const before = await geometry();
-    await button("向 Agent 追问"); await (await element("textarea[aria-label='追问内容']")).sendKeys("这个区域是否可能只是反光？");
+    await button("向 Agent 追问"); await (await element("textarea[aria-label='追问内容']")).sendKeys("这个区域是否可能只是反光？核对真实图像后重新挖掘良品知识并审计这张图。");
     await fs.mkdir(path.join(workspace, "runs/browser/session-handoff"), { recursive: true });
     await fs.writeFile(path.join(workspace, "runs/browser/session-handoff/question.png"), await driver.takeScreenshot(), "base64");
     await button("发送到会话");
-    await driver.wait(async () => agentRequests.length >= 4, 15000);
+    await driver.wait(() => agentCompleted, 15000);
     assert.equal((await driver.findElements(By.css(".iad-workbench"))).length, 0, "Open the actual host conversation");
     const finalImages = agentRequests.at(-1).messages.flatMap(message => Array.isArray(message.content) ? message.content.filter(item => item.type === "image_url") : []);
     assert.equal(finalImages.length, 2, "Actual full image and ROI must reach the Session MLLM");
     assert.deepEqual(finalImages.map(image => createHash("sha256").update(Buffer.from(image.image_url.url.split(",")[1], "base64")).digest("hex")),
       [target.suggestion.analysis.overview.sha256, target.suggestion.analysis.regions[0].image.sha256]);
-    let newer = await api("/audit/start", { dataset_id: dataset.dataset_id, normal_version_id: job.knowledge_version_id, model_name: "test-mllm", sample_ids: [target.sample.sample_id] });
-    while (["PENDING", "RUNNING"].includes(newer.status)) { await delay(100); newer = await api(`/audit/status/${newer.run_id}`); }
-    assert.equal(newer.status, "COMPLETED", JSON.stringify(newer));
+    const userInput = agentRequests[0].messages.find(message => message.role === "user").content;
+    const prompt = typeof userInput === "string" ? userInput : userInput.filter(part => part.type === "text").map(part => part.text).join("\n");
+    const inspectionRoute = JSON.parse(new URL(prompt.split("返回检视：")[1].split("\n")[0]).searchParams.get("iad"));
+    const sessionId = inspectionRoute.inspection.sessionId;
+    const executions = toolMessages(agentRequests.at(-1)).filter(message => ["knowledge_mine_normal", "model_audit_start"].includes(message.name)).map(message => JSON.parse(message.content));
+    assert.equal(executions.length, 2);
+    for (const execution of executions) assert.equal(execution.origin_session_id, sessionId, "Jobs must retain their actual initiating Session");
+    const latest = await api(`/sample/${encodeURIComponent(target.sample.sample_id)}`);
+    const latestContext = await api("/inspection/context", { dataset_id: dataset.dataset_id, sample_id: target.sample.sample_id, suggestion_id: latest.suggestion.suggestion_id });
+    assert.equal(latestContext.origin_session_id, sessionId, "A saved audit suggestion must retain its initiating Session");
     assert.notEqual((await api(`/sample/${encodeURIComponent(target.sample.sample_id)}`)).suggestion.suggestion_id, target.suggestion.suggestion_id);
     const back = await driver.wait(until.elementLocated(By.css("a[href*='?iad=']")), 15000);
     const windows = await driver.getAllWindowHandles(); await back.click();
@@ -147,22 +179,67 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     assert.ok((await (await element(".iad-inspection-region img")).getAttribute("src")).includes(target.suggestion.suggestion_id));
     await fs.writeFile(path.join(workspace, "runs/browser/session-handoff/returned.png"), await driver.takeScreenshot(), "base64");
     const roiPath = path.join(root, "cache/visual-evidence", target.suggestion.analysis.regions[0].image.sha256 + ".png");
+    const requestCount = agentRequests.length;
     await fs.rename(roiPath, roiPath + ".missing");
     try {
       await button("向 Agent 追问"); await button("发送到会话");
       assert.ok((await (await element(".iad-inspection-question [role='alert']")).getText()).includes("冻结图像证据缺失"));
-      assert.equal(agentRequests.length, 4, "Missing frozen images must be rejected before Session submission");
+      assert.equal(agentRequests.length, requestCount, "Missing frozen images must be rejected before Session submission");
     } finally { await fs.rename(roiPath + ".missing", roiPath); }
     const invalid = new URL(await driver.getCurrentUrl());
     const route = JSON.parse(invalid.searchParams.get("iad")); route.inspection.reference.evidence_id = "missing";
     invalid.searchParams.set("iad", JSON.stringify(route)); await driver.get(invalid.href);
     assert.ok((await (await element(".iad-inspector [role='alert']")).getText()).includes("证据引用不存在"));
     assert.equal((await driver.findElements(By.css(".iad-viewer-dialog[open]"))).length, 0);
+    await button("返回图像浏览");
+    for (const [index, label] of ["挖掘良品知识", "模型审计"].entries()) {
+      await (await element(`button[aria-label='${label}']`)).click();
+      if (index) await button("模型审计作业");
+      const card = await element(`article[data-job-id='${executions[index].run_id}']`);
+      await card.findElement(By.xpath(".//button[normalize-space(.)='返回发起会话']")).click();
+      await driver.wait(async () => (await driver.findElements(By.css(".iad-workbench"))).length === 0, 5000);
+      assert.ok((await driver.findElement(By.css("body")).getText()).includes("这个区域是否可能只是反光"), "Return to the actual original conversation");
+      assert.equal(agentRequests.length, requestCount, "Returning to the initiating Session must not submit another message");
+    }
+    async function openToolResult(selector) {
+      await button("Chat");
+      for (const group of await driver.findElements(By.xpath("//button[contains(., 'Completed') and @aria-expanded='false']"))) await group.click();
+      for (const group of await driver.findElements(By.xpath("//button[contains(., 'Called tools') and @aria-expanded='false']"))) await group.click();
+      const link = await element(selector);
+      await driver.executeScript("arguments[0].scrollIntoView({block:'center'})", link);
+      await fs.writeFile(path.join(workspace, "runs/browser/session-handoff/tool-results.png"), await driver.takeScreenshot(), "base64");
+      await link.click();
+    }
+    for (const execution of executions) {
+      await openToolResult(`button[data-iad-run-id='${execution.run_id}']`);
+      const card = await element(`article[data-job-id='${execution.run_id}']`);
+      assert.equal(await card.getAttribute("aria-current"), "true");
+      await card.findElement(By.xpath(".//button[normalize-space(.)='返回发起会话']")).click();
+      await driver.wait(async () => (await driver.findElements(By.css(".iad-workbench"))).length === 0, 5000);
+      assert.equal(agentRequests.length, requestCount);
+    }
+    const knowledgeJob = toolMessages(agentRequests.at(-1)).filter(message => message.name === "knowledge_job_status").map(message => JSON.parse(message.content)).at(-1);
+    await openToolResult(`button[data-iad-version-id='${knowledgeJob.knowledge_version_id}']`);
+    assert.equal(await (await element("select[aria-label='知识版本']")).getAttribute("value"), knowledgeJob.knowledge_version_id);
+    assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad")).datasetId, dataset.dataset_id);
+    await driver.navigate().back();
+    await driver.wait(async () => (await driver.findElements(By.css(".iad-workbench"))).length === 0, 5000);
+    await openToolResult(".iad-tool-card[data-iad-tool='dataset_report'] button[data-iad-page='industrial-audit']");
+    await element(".iad-quality-report");
+    const report = await api(`/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`);
+    assert.equal(report.vlm_audited_count, 3);
+    assert.ok((await (await element(".iad-quality-report")).getText()).includes("3 / 3"));
+    await driver.navigate().back();
+    await driver.wait(async () => (await driver.findElements(By.css(".iad-workbench"))).length === 0, 5000);
+    await openToolResult(".iad-tool-card[data-iad-tool='dataset_report'] button[data-iad-page='industrial-images']");
+    await element("img[alt='part-2.png']");
+    assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad")).datasetId, dataset.dataset_id);
+    assert.equal(agentRequests.length, requestCount, "Tool result navigation and browser Back do not run the model again");
   } catch (error) {
     await fs.mkdir(path.join(workspace, "runs/browser/session-handoff"), { recursive: true });
     if (driver) {
       await fs.writeFile(path.join(workspace, "runs/browser/session-handoff/failure.png"), await driver.takeScreenshot(), "base64");
-      console.error(JSON.stringify({ agentRequests: agentRequests.length, tools: agentRequests.at(-1)?.messages.filter(message => message.role === "tool").map(message => message.content.slice(0,800)), page: (await driver.findElement(By.css("body")).getText()).slice(-2200) }));
+      console.error(JSON.stringify({ agentRequests: agentRequests.length, buttons: await driver.executeScript("return [...document.querySelectorAll('button')].map(b=>({text:b.textContent,expanded:b.getAttribute('aria-expanded')})).filter(b=>b.text||b.expanded)"), page: (await driver.findElement(By.css("body")).getText()).slice(-2200) }));
     }
     console.error(log.slice(-2200).replace(/(token=)[^\s&]+/g, "$1<redacted>"));
     throw error;

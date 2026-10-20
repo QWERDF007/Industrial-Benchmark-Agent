@@ -1,14 +1,8 @@
 import { createContext, useContext, useSyncExternalStore } from "react";
 import { initialFilters, request } from "./api.js";
 import { restoreInspection } from "./inspection.js";
-export const pages = {
-    "industrial-datasets": "数据集管理",
-    "industrial-images": "图像浏览",
-    "industrial-normal": "挖掘良品知识",
-    "industrial-defect": "挖掘不良品知识",
-    "industrial-audit": "模型审计",
-    "industrial-review": "人工复核",
-};
+import { pages } from "../shared/navigation.js";
+export { pages } from "../shared/navigation.js";
 const defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", job: "", historyPage: 1, historySearch: "", inspection: null });
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export class Workspace {
@@ -48,6 +42,12 @@ export class Workspace {
         this.commit();
         this.layout?.selectPanel(pageId);
     }
+    openLocation({ pageId, datasetId, ...view }) {
+        this.state = { ...this.state, active: true, pageId, datasetId };
+        this.state = { ...this.state, views: { ...this.state.views, [`${pageId}:${datasetId}`]: { ...this.view(pageId), ...view, inspection: null } } };
+        this.commit();
+        this.layout?.selectPanel(pageId);
+    }
     selectDataset(datasetId, replace = false) {
         if (datasetId === this.state.datasetId)
             return;
@@ -72,6 +72,7 @@ export class Workspace {
             return `${location.origin}${location.pathname}?${route}`;
         }, view.inspection?.reference.sample_id === reference.sample_id ? view.inspection.sessionId : undefined);
     }
+    openSession(sessionId) { return this.conversation.open(sessionId); }
     commit(replace = false) {
         const { pageId, datasetId } = this.state;
         const url = new URL(location.href);

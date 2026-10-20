@@ -1,6 +1,6 @@
 /** DSH owns theme selection. Standalone surfaces use the same semantic roles. */
 export const themeStyles = `
-.iad-workbench,.iad-detail-dialog::backdrop {
+.iad-workbench,.iad-tool-card,.iad-detail-dialog::backdrop {
  --iad-canvas:var(--dsw-alias-bg-module-platform,#edf2f7);
  --iad-surface:var(--dsw-alias-bg-layer-1,#fff);
  --iad-surface-muted:var(--dsw-alias-bg-module-platform,#e7edf5);

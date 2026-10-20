@@ -25,6 +25,7 @@ AUDIT_GENERATION_VERSION = 'dataset-audit-v1'
 class AuditStart(BaseModel):
     model_config = ConfigDict(extra="forbid")
     dataset_id: str
+    origin_session_id: Optional[str] = None
     model_name: str = DEFAULT_MODEL
     normal_version_id: Optional[str] = None
     defect_version_id: Optional[str] = None
@@ -62,6 +63,7 @@ class AuditService:
         result = analysis.conclusion
         suggestion = AuditSuggestion(
             suggestion_id="sug_" + uuid.uuid4().hex, task_id=sample.task_id, sample_id=sample_id,
+            session_id=context.payload.get('origin_session_id'),
             model_route=model_name, analysis=analysis, confidence=result.confidence, reference_sample_ids=refs, audit_run_id=context.run_id,
             observations=[ObservationItem(phenomenon=result.reason_category, description=(result.defect_location + " " + result.description).strip())],
             hypotheses=[HypothesisItem(label=result.suggested_label)],
@@ -98,6 +100,7 @@ class AuditService:
         if not sample_ids:
             raise ValueError("No samples match the audit filters")
         payload = {"dataset_id": request.dataset_id, "model_name": request.model_name, "sample_ids": sample_ids,
+                   "origin_session_id": request.origin_session_id,
                    "generation_signature": self.generation_signature,
                    "input_sources": [SampleContent.capture(self.db, sid).model_dump() for sid in sample_ids],
                    "normal_version_id": knowledge.normal.version_id,
