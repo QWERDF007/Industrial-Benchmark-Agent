@@ -10,6 +10,7 @@ from iad_core.advisory.analysis import AnalysisModel
 from iad_core.dataset.path_safety import validate_sample_image_path
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.images import EvidenceImages, OVERVIEW_MAX_SIDE, file_sha256
+from iad_core.evidence.masks import MaskImages
 from iad_core.knowledge.mining import KnowledgeInput, KnowledgeMiner, SYNTHESIS_INSTRUCTION
 from iad_core.knowledge.models import (KnowledgeCheck, KnowledgeDraft, KnowledgeEvidence, KnowledgeSnapshot,
                                       KnowledgeSource, KnowledgeVerification)
@@ -20,13 +21,15 @@ from iad_core.storage.repositories import AnnotationRepository, ReviewRepository
 from iad_core.workbench.jobs import JobContext, JobRunner
 from iad_core.workbench.vision import DEFAULT_MODEL, VlmClient
 
-GENERATION_VERSION = "dataset-knowledge-v4"
+GENERATION_VERSION = "dataset-knowledge-v5"
 NORMAL_INSTRUCTION = """联合观察这一数据集的候选良品，发现产品可见的部件、结构关系、位置、纹理、光照与允许变化。
 不要根据数据集名称假设产品或预设缺陷检查表。只归纳可观察、可复用且有图像证据的检查判据。
 人工选取和无标注只是来源资格，不是确认真值。寻找候选良品中的异常与矛盾，将其定位为suspects，
 不要将疑似异常作为对应正常规则的支持。区分跨样本共识、单例、推测与不可观察。
 每个检查项指向实际support_evidence_ids和counter_evidence_ids，不编造尺寸、坐标或不存在的图像引用。
 normal是来源全图，roi是该来源的原分辨率细节。结合其原图尺寸、crop_bbox和光照联合判断，勿将分块视作独立样本。
+annotation_mask是纯二值定位图：白色只表示标注覆盖、黑色表示其外部/空洞，完全不含产品外观或颜色。
+须与相同crop_bbox的raw原图配对联合观察；只在raw图像中判断产品特征，不能根据标注染色/形状推断缺陷或正常变化。
 对每项写明适用对象/位置、可观察判据、允许变化与限制。没有可靠规律时允许checks为空并说明限制。
 来源："""
 KNOWLEDGE_JOB_TYPES = ("NORMAL_KNOWLEDGE", "DEFECT_KNOWLEDGE")
@@ -69,6 +72,9 @@ class KnowledgeService:
             sample = SampleRepository(self.db).get(sample_id)
             decision = ReviewRepository(self.db).get_decision(sample_id)
             annotations = AnnotationRepository(self.db).list_by_sample(sample_id)
+            for annotation in annotations:
+                if annotation.annotation_type == "mask" and annotation.geometry_status != "INVALID":
+                    MaskImages.load(annotation, sample)
             qualification = ("human_pass" if decision and decision.decision == "PASS" else
                              "human_hard_normal" if decision and decision.decision == "HARD_NORMAL" else
                              "manual_selection" if sample_id in selected else "raw_pass" if sample.quality_status == "PASS" else
@@ -104,6 +110,11 @@ class KnowledgeService:
             if max(sample.width, sample.height) > OVERVIEW_MAX_SIDE or annotations:
                 for region in evidence_images.plan(sample, annotations, []):
                     images.append(evidence_images.capture(sample, "roi", region.source, region.crop_bbox, source.sha256))
+                    linked = [annotation for annotation in annotations
+                              if annotation.annotation_id in {origin.annotation_id for origin in region.origins}]
+                    if linked:
+                        images.append(evidence_images.capture(sample, "roi", region.source, region.crop_bbox,
+                            source.sha256, annotations=linked, annotation_mode="annotation_mask"))
             inputs.append(KnowledgeInput(source, images))
         miner = KnowledgeMiner(self.client, context)
         draft = miner.learn(NORMAL_INSTRUCTION, inputs, payload["model_name"]).result

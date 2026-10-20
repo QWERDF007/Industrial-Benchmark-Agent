@@ -134,6 +134,7 @@ class Annotation(BaseModel):
     bbox: Optional[List[float]] = None
     polygon: Optional[List[List[float]]] = None
     mask_path: Optional[str] = None
+    mask_sha256: Optional[str] = Field(default=None, pattern="^[a-f0-9]{64}$")
     geometry_status: GeometryStatus = GeometryStatus.VALID
     source: AnnotationSource = AnnotationSource.IMPORTED
     source_width: Optional[int] = None
@@ -151,6 +152,7 @@ class IssueType(str, Enum):
     MISSING_IMAGE = "missing_image"
     INVALID_BBOX = "invalid_bbox"
     MISSING_MASK = "missing_mask"
+    INVALID_MASK = "invalid_mask"
     UNKNOWN_QUALITY = "unknown_quality"
     UNKNOWN_LABEL = "unknown_label"
     METADATA_MISSING = "metadata_missing"

@@ -5,12 +5,13 @@ import math
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from PIL import Image
 
 from iad_core.advisory.analysis import VisualEvidence, RegionProposal, RegionOrigin
 from iad_core.evidence.views import padded_bbox
+from iad_core.evidence.masks import annotation_mask, annotation_overlay
 from iad_core.storage.models import Sample, Annotation
 
 OVERVIEW_MAX_SIDE = 1280
@@ -41,7 +42,8 @@ class EvidenceImages:
         self.root = Path(db_path).resolve().parent / "cache" / "visual-evidence"
 
     def capture(self, sample: Sample, role: str, source: str, bbox: Optional[List[int]] = None,
-                source_sha256: Optional[str] = None) -> PreparedImage:
+                source_sha256: Optional[str] = None, annotations: Optional[List[Annotation]] = None,
+                annotation_mode: Literal["annotation_mask", "annotation_overlay"] = "annotation_overlay") -> PreparedImage:
         box = bbox or [0, 0, sample.width, sample.height]
         original_bytes = Path(sample.image_path).read_bytes()
         source_sha = hashlib.sha256(original_bytes).hexdigest()
@@ -51,6 +53,9 @@ class EvidenceImages:
             if original.size != (sample.width, sample.height):
                 raise ValueError("Image dimensions changed; rescan the dataset")
             image = original.convert("RGB").crop(tuple(box))
+            if annotations:
+                image = (annotation_mask(sample, annotations, box).convert("RGB") if annotation_mode == "annotation_mask"
+                         else annotation_overlay(sample, image, annotations, box))
             if role != "roi":
                 image.thumbnail((OVERVIEW_MAX_SIDE, OVERVIEW_MAX_SIDE), Image.Resampling.LANCZOS)
             elif max(image.size) > ROI_MAX_SIDE:
@@ -66,10 +71,15 @@ class EvidenceImages:
             temporary = path.with_suffix("." + uuid.uuid4().hex + ".tmp")
             temporary.write_bytes(payload)
             temporary.replace(path)
-        identity = json.dumps([sample.sample_id, role, source, box, sha, source_sha])
+        representation = annotation_mode if annotations else "raw"
+        annotation_ids = [annotation.annotation_id for annotation in annotations or []]
+        annotation_sha = hashlib.sha256(json.dumps([annotation.model_dump(mode="json") for annotation in annotations],
+                                                    sort_keys=True).encode()).hexdigest() if annotations else None
+        identity = json.dumps([sample.sample_id, role, source, box, sha, source_sha, representation, annotation_ids, annotation_sha])
         evidence = VisualEvidence(evidence_id="img_" + hashlib.sha256(identity.encode()).hexdigest(), role=role, source=source,
                                   original_size=[sample.width, sample.height], crop_bbox=box, sent_size=sent_size,
-                                  sha256=sha, source_sha256=source_sha)
+                                  sha256=sha, source_sha256=source_sha, representation=representation,
+                                  annotation_ids=annotation_ids, annotation_sha256=annotation_sha)
         return PreparedImage(evidence=evidence, path=str(path))
 
     def path(self, evidence: VisualEvidence) -> str:

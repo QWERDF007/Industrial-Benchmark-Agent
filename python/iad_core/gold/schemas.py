@@ -36,6 +36,7 @@ class GoldAnnotation(BaseModel):
     bbox: Optional[List[float]] = None
     polygon: Optional[List[List[float]]] = None
     mask_path: Optional[str] = None
+    mask_sha256: Optional[str] = None
     geometry_status: str = "VALID"
     source: str = "imported"
 

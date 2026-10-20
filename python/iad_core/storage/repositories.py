@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from contextlib import nullcontext
 from typing import Optional, List, Dict, Any
 
 from iad_core.storage.database import Database
@@ -234,7 +235,7 @@ class AnnotationRepository:
     def upsert(self, annotation: Annotation):
         self.upsert_batch([annotation])
 
-    def upsert_batch(self, annotations: List[Annotation]):
+    def upsert_batch(self, annotations: List[Annotation], connection: Optional[sqlite3.Connection] = None):
         if not annotations:
             return
         data = [
@@ -247,6 +248,7 @@ class AnnotationRepository:
                 json.dumps(a.bbox) if a.bbox is not None else None,
                 json.dumps(a.polygon) if a.polygon is not None else None,
                 a.mask_path,
+                a.mask_sha256,
                 a.geometry_status.value if isinstance(a.geometry_status, GeometryStatus) else str(a.geometry_status),
                 a.source_width,
                 a.source_height,
@@ -254,14 +256,14 @@ class AnnotationRepository:
             )
             for a in annotations
         ]
-        with self.db.connection() as conn:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
             conn.executemany(
                 """
                 INSERT INTO annotations (
                     annotation_id, sample_id, annotation_type, raw_label, phenomenon,
-                    bbox_json, polygon_json, mask_path, geometry_status, source_width, source_height,
+                    bbox_json, polygon_json, mask_path, mask_sha256, geometry_status, source_width, source_height,
                     source, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(annotation_id) DO UPDATE SET
                     annotation_type = excluded.annotation_type,
                     raw_label = excluded.raw_label,
@@ -269,6 +271,7 @@ class AnnotationRepository:
                     bbox_json = excluded.bbox_json,
                     polygon_json = excluded.polygon_json,
                     mask_path = excluded.mask_path,
+                    mask_sha256 = excluded.mask_sha256,
                     geometry_status = excluded.geometry_status,
                     source_width = excluded.source_width,
                     source_height = excluded.source_height,
@@ -341,6 +344,7 @@ class AnnotationRepository:
             bbox=json.loads(row["bbox_json"]) if row["bbox_json"] else None,
             polygon=json.loads(row["polygon_json"]) if row["polygon_json"] else None,
             mask_path=row["mask_path"],
+            mask_sha256=row["mask_sha256"],
             geometry_status=GeometryStatus(row["geometry_status"]) if "geometry_status" in row.keys() and row["geometry_status"] else GeometryStatus.VALID,
             source_width=row["source_width"] if "source_width" in row.keys() else None,
             source_height=row["source_height"] if "source_height" in row.keys() else None,

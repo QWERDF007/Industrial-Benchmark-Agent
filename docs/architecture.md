@@ -20,6 +20,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 良品候选疑点、原图定位与联合证据核验 | [NormalVerification](../python/iad_core/knowledge/verification.py) |
 | 全图、局部裁剪及综合判断 | [SampleInspection](../python/iad_core/workbench/inspection.py)、[分析类型](../python/iad_core/advisory/analysis.py) |
 | 视觉证据、原图坐标、无损 ROI 与分块 | [EvidenceImages](../python/iad_core/evidence/images.py) |
+| Mask 像素、内容指纹、二值标注图与显示叠加 | [MaskImages / annotation_overlay](../python/iad_core/evidence/masks.py)、[Labelme 官方格式](https://github.com/wkentaro/labelme/blob/main/labelme/_label_file.py)、[官方坐标映射](https://github.com/wkentaro/labelme/blob/main/labelme/_utils/_shape.py) |
 | 模型传输、实际 token 容量、结构化输出与响应校验 | [VlmClient](../python/iad_core/workbench/vision.py)、[vLLM 输出契约](https://github.com/vllm-project/vllm/blob/v0.18.0/docs/features/structured_outputs.md) |
 | 全图与全部 ROI 联合分析、按实际容量分批 | [JointInspection](../python/iad_core/workbench/joint.py) |
 | 页面统一作业轮询与逐图刷新 | [useAuditJobs](../apps/iad-harness/src/client/useAuditJobs.ts) |
@@ -46,6 +47,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 - [数据集、参考图和作业测试](../tests/test_dataset_workbench.py)
 - [良品知识、版本、真实证据与取消测试](../tests/test_dataset_knowledge.py)
 - [良品污染、正常解释、独立证据及核验分组测试](../tests/test_knowledge_contamination.py)
+- [Mask 导入、像素、标注视图、版本与容量配对测试](../tests/test_mask_evidence.py)
 - [复核、置信度和查询一致性测试](../tests/test_workbench_closeout.py)
 - [真实 HTTP / Python 桥接测试](../apps/iad-harness/test/workbench.test.js)
 - [Firefox 用户流程测试](../apps/iad-harness/browser/workbench.test.js)

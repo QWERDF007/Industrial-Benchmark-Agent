@@ -2,9 +2,10 @@ import os
 import json
 import logging
 from typing import List, Dict, Any, Optional
-from PIL import Image, ImageDraw
+from PIL import Image
 
 from iad_core.storage.models import Sample, Annotation
+from iad_core.evidence.masks import annotation_overlay
 
 logger = logging.getLogger("iad_core.evidence.views")
 
@@ -38,14 +39,7 @@ def generate_sample_view(
         overlay_path = os.path.join(output_dir, f"overlay_{clean_id}.png")
 
         with Image.open(sample.image_path) as img:
-            rgb_img = img.convert("RGB")
-            draw = ImageDraw.Draw(rgb_img)
-            for a in annotations:
-                if a.bbox and len(a.bbox) == 4:
-                    x1, y1, x2, y2 = a.bbox
-                    draw.rectangle([x1, y1, x2, y2], outline="red", width=3)
-                    label_str = a.phenomenon or a.raw_label or "defect"
-                    draw.text((x1 + 4, max(0, y1 - 12)), label_str, fill="red")
+            rgb_img = annotation_overlay(sample, img.convert("RGB"), annotations)
             rgb_img.save(overlay_path, "PNG")
 
         return {

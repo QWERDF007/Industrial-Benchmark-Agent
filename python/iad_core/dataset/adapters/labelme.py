@@ -1,8 +1,41 @@
 import os
 import json
+import base64
+import io
+import math
 from typing import List, Optional
+
+import numpy as np
+from PIL import Image
+
 from iad_core.dataset.adapters.base import DatasetAdapter, RawImage, RawAnnotation
-from iad_core.storage.models import AnnotationType, AnnotationSource
+from iad_core.evidence.masks import MaskImages
+from iad_core.storage.models import AnnotationType
+
+
+def decode_labelme_mask(encoded: str, points: list, size: tuple[int, int]) -> tuple[bytes, List[int]]:
+    if len(points) != 2 or any(len(point) != 2 for point in points):
+        raise ValueError("Labelme mask requires two corner points")
+    coordinates = [float(value) for point in points for value in point]
+    if not all(math.isfinite(value) for value in coordinates):
+        raise ValueError("Labelme mask coordinates must be finite")
+    x1, y1, x2, y2 = coordinates
+    if x2 < x1 or y2 < y1 or min(size) <= 0:
+        raise ValueError("Labelme mask has invalid bounds or source dimensions")
+    left, top = round(x1), round(y1)
+    with Image.open(io.BytesIO(base64.b64decode(encoded, validate=True))) as image:
+        pixels = np.asarray(image)
+        if image.format != "PNG" or pixels.ndim != 2:
+            raise ValueError("Labelme mask must be a single-channel PNG")
+        patch = Image.fromarray(pixels != 0).convert("L")
+    if all(value == math.trunc(value) for value in coordinates):
+        width, height = round(x2)-left+1, round(y2)-top+1
+        if patch.width < width or patch.height < height:
+            raise ValueError("Labelme mask pixels are smaller than the declared region")
+        patch = patch.crop((0, 0, width, height))
+    canvas = Image.new("L", size)
+    canvas.paste(patch, (left, top))
+    return MaskImages.encode(canvas), [left, top, left+patch.width, top+patch.height]
 
 
 class LabelmeAdapter(DatasetAdapter):
@@ -86,7 +119,13 @@ class LabelmeAdapter(DatasetAdapter):
             points = shape.get("points", [])
             phenomenon = self.config.annotations.labels.get(raw_label, raw_label if not self.config.annotations.labels else None)
 
-            if shape_type == "rectangle" and len(points) >= 2:
+            if shape_type == "mask":
+                pixels, bbox = decode_labelme_mask(shape.get("mask"), points,
+                    (source_width if source_width is not None else width, source_height if source_height is not None else height))
+                annotations.append(RawAnnotation(annotation_type=AnnotationType.MASK, raw_label=raw_label,
+                    phenomenon=phenomenon, bbox=bbox, mask_png=pixels, source_width=source_width,
+                    source_height=source_height, source=self.config.annotations.source))
+            elif shape_type == "rectangle" and len(points) == 2:
                 xs = [float(p[0]) for p in points]
                 ys = [float(p[1]) for p in points]
                 bbox = [round(min(xs), 2), round(min(ys), 2), round(max(xs), 2), round(max(ys), 2)]
@@ -119,22 +158,6 @@ class LabelmeAdapter(DatasetAdapter):
                     )
                 )
             else:
-                if len(points) >= 2:
-                    xs = [float(p[0]) for p in points]
-                    ys = [float(p[1]) for p in points]
-                    bbox = [round(min(xs), 2), round(min(ys), 2), round(max(xs), 2), round(max(ys), 2)]
-                else:
-                    bbox = None
-                annotations.append(
-                    RawAnnotation(
-                        annotation_type=AnnotationType.BBOX if bbox else AnnotationType.IMAGE,
-                        raw_label=raw_label,
-                        phenomenon=phenomenon,
-                        bbox=bbox,
-                        source_width=source_width,
-                        source_height=source_height,
-                        source=self.config.annotations.source,
-                    )
-                )
+                raise ValueError(f"Unsupported or invalid Labelme shape: {shape_type}")
 
         return annotations

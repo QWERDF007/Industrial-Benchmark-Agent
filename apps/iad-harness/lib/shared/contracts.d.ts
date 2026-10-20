@@ -156,6 +156,9 @@ export interface VisualEvidence {
     sent_size: number[];
     sha256: string;
     source_sha256: string;
+    representation: "raw" | "annotation_mask" | "annotation_overlay";
+    annotation_ids: string[];
+    annotation_sha256: string | null;
     media_type: "image/png";
 }
 export interface VlmResult extends ViewAnalysis {

@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import io
 from typing import Optional, List, Dict, Any
 from PIL import Image
 from pydantic import BaseModel
@@ -18,7 +19,9 @@ from iad_core.storage.models import (
     AnnotationType,
 )
 from iad_core.storage.database import Database
+from iad_core.storage.repositories import AnnotationRepository
 from iad_core.dataset.adapters import get_adapter
+from iad_core.evidence.masks import MaskImages
 
 logger = logging.getLogger("iad_benchmark.scanner")
 
@@ -129,37 +132,7 @@ def scan_dataset(
                     for s in sample_batch
                 ])
 
-            if ann_batch:
-                cursor.executemany("""
-                    INSERT INTO annotations (
-                        annotation_id, sample_id, annotation_type, raw_label, phenomenon,
-                        bbox_json, polygon_json, mask_path, geometry_status, source,
-                        source_width, source_height
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(annotation_id) DO UPDATE SET
-                        raw_label = excluded.raw_label,
-                        phenomenon = excluded.phenomenon,
-                        bbox_json = excluded.bbox_json,
-                        polygon_json = excluded.polygon_json,
-                        mask_path = excluded.mask_path,
-                        geometry_status = excluded.geometry_status,
-                        source = excluded.source,
-                        source_width = excluded.source_width,
-                        source_height = excluded.source_height
-                """, [
-                    (
-                        a.annotation_id, a.sample_id,
-                        a.annotation_type.value if hasattr(a.annotation_type, "value") else str(a.annotation_type),
-                        a.raw_label, a.phenomenon,
-                        json.dumps(a.bbox) if a.bbox else None,
-                        json.dumps(a.polygon) if a.polygon else None,
-                        a.mask_path,
-                        a.geometry_status.value if hasattr(a.geometry_status, "value") else str(a.geometry_status),
-                        a.source.value if hasattr(a.source, "value") else str(a.source),
-                        a.source_width, a.source_height,
-                    )
-                    for a in ann_batch
-                ])
+            AnnotationRepository(db).upsert_batch(ann_batch, connection=conn)
 
             if issue_batch:
                 cursor.executemany("""
@@ -248,6 +221,7 @@ def scan_dataset(
             source_w = raw_ann.source_width
             source_h = raw_ann.source_height
             geometry_status = GeometryStatus.VALID
+            mask_png = raw_ann.mask_png
 
             if phenomenon is None and raw_label not in config.annotations.labels:
                 phenomenon = "unknown"
@@ -274,9 +248,26 @@ def scan_dataset(
                             round(raw_ann.bbox[2] * scale_x, 2),
                             round(raw_ann.bbox[3] * scale_y, 2),
                         ]
+                    if raw_ann.polygon:
+                        raw_ann.polygon = [[round(x*scale_x, 2), round(y*scale_y, 2)] for x, y in raw_ann.polygon]
                     geometry_status = GeometryStatus.SCALED
+                    if mask_png:
+                        with Image.open(io.BytesIO(mask_png)) as pixels:
+                            scaled = pixels.resize((width, height), Image.Resampling.NEAREST)
+                        if scaled.getbbox():
+                            mask_png = MaskImages.encode(scaled)
+                        else:
+                            geometry_status = GeometryStatus.INVALID
+                            issue_batch.append(ImportIssue(task_id=config.task.task_id, dataset_id=config.dataset.id,
+                                sample_id=sample_id, issue_type="INVALID_MASK", severity="ERROR",
+                                message="Mask scaling erased all foreground pixels"))
+                            total_issues += 1
                 else:
                     geometry_status = GeometryStatus.INVALID
+                    issue_batch.append(ImportIssue(task_id=config.task.task_id, dataset_id=config.dataset.id,
+                        sample_id=sample_id, issue_type="INVALID_BBOX", severity="ERROR",
+                        message=f"Annotation source dimensions {source_w}x{source_h} do not match image {width}x{height}"))
+                    total_issues += 1
 
             if raw_ann.bbox and geometry_status != GeometryStatus.INVALID:
                 xmin, ymin, xmax, ymax = raw_ann.bbox
@@ -303,6 +294,7 @@ def scan_dataset(
                     else:
                         geometry_status = GeometryStatus.INVALID
 
+            mask_path, mask_sha256 = MaskImages(db_path).store(mask_png) if mask_png else (None, None)
             annotation = Annotation(
                 annotation_id=ann_id,
                 sample_id=sample_id,
@@ -311,7 +303,8 @@ def scan_dataset(
                 phenomenon=phenomenon,
                 bbox=raw_ann.bbox,
                 polygon=raw_ann.polygon,
-                mask_path=raw_ann.mask_path,
+                mask_path=mask_path,
+                mask_sha256=mask_sha256,
                 geometry_status=geometry_status,
                 source=raw_ann.source,
                 source_width=source_w,

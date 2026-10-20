@@ -27,7 +27,7 @@ class RawAnnotation(BaseModel):
     phenomenon: Optional[str] = None
     bbox: Optional[List[float]] = None
     polygon: Optional[List[List[float]]] = None
-    mask_path: Optional[str] = None
+    mask_png: Optional[bytes] = None
     geometry_status: GeometryStatus = GeometryStatus.VALID
     source_width: Optional[int] = None
     source_height: Optional[int] = None

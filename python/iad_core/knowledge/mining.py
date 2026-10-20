@@ -59,9 +59,15 @@ class KnowledgeMiner:
             middle = len(inputs) // 2
             groups = [inputs[:middle], inputs[middle:]]
         elif len(images) > 2:
-            middle = 1 + (len(images) - 1) // 2
-            groups = [[KnowledgeInput(inputs[0].source, [images[0], *images[1:middle]])],
-                      [KnowledgeInput(inputs[0].source, [images[0], *images[middle:]])]]
+            bundles: dict[tuple[int, ...], List[PreparedImage]] = {}
+            for image in images[1:]:
+                bundles.setdefault(tuple(image.evidence.crop_bbox), []).append(image)
+            details = list(bundles.values())
+            if len(details) < 2:
+                raise ValueError("One overview and its paired native detail exceed the model context")
+            middle = len(details) // 2
+            groups = [[KnowledgeInput(inputs[0].source, [images[0], *[image for bundle in part for image in bundle]])]
+                      for part in [details[:middle], details[middle:]]]
         else:
             raise ValueError("One overview and its native detail exceed the model context; no knowledge version was published")
         children = [self.learn(instruction, group, model_name) for group in groups]

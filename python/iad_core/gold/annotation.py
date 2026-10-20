@@ -23,6 +23,7 @@ def filter_and_convert_gold_annotations(
                     bbox=a.bbox,
                     polygon=a.polygon,
                     mask_path=a.mask_path,
+                    mask_sha256=a.mask_sha256,
                     geometry_status=status_val.value if hasattr(status_val, "value") else str(status_val),
                     source=a.source.value if hasattr(a.source, "value") else str(a.source),
                 )

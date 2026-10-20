@@ -97,6 +97,7 @@ class Database:
                 bbox_json TEXT,
                 polygon_json TEXT,
                 mask_path TEXT,
+                mask_sha256 TEXT,
                 geometry_status TEXT DEFAULT 'VALID',
                 source TEXT NOT NULL DEFAULT 'imported',
                 source_width INTEGER,
@@ -108,6 +109,9 @@ class Database:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_annos_sample_id ON annotations(sample_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_annos_phenomenon ON annotations(phenomenon)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_annos_geometry ON annotations(geometry_status)")
+            annotation_columns = {row[1] for row in cursor.execute("PRAGMA table_info(annotations)")}
+            if "mask_sha256" not in annotation_columns:
+                cursor.execute("ALTER TABLE annotations ADD COLUMN mask_sha256 TEXT")
 
             # 4. import_issues
             cursor.execute("""

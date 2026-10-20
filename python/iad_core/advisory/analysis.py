@@ -65,6 +65,9 @@ class VisualEvidence(AnalysisModel):
     sent_size: List[int]
     sha256: str = Field(pattern="^[a-f0-9]{64}$")
     source_sha256: str = Field(pattern="^[a-f0-9]{64}$")
+    representation: Literal["raw", "annotation_mask", "annotation_overlay"] = "raw"
+    annotation_ids: List[str] = Field(default_factory=list)
+    annotation_sha256: Optional[str] = Field(default=None, pattern="^[a-f0-9]{64}$")
     media_type: Literal["image/png"] = "image/png"
 
 
