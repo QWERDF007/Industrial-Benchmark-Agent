@@ -235,6 +235,71 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     await element("img[alt='part-2.png']");
     assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad")).datasetId, dataset.dataset_id);
     assert.equal(agentRequests.length, requestCount, "Tool result navigation and browser Back do not run the model again");
+    execFileSync(resolvePythonPath(), ["-c", `
+from pathlib import Path
+from PIL import Image
+import json,sys
+root=Path(sys.argv[1]);root.mkdir()
+for i in range(26): Image.new('RGB',(320,240),(20+i,80,120)).save(root/f'sequence-{i:02}.png')
+Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
+(root/'zz-excluded.json').write_text(json.dumps({'imageWidth':320,'imageHeight':240,'shapes':[{'label':'排除标注','shape_type':'rectangle','points':[[10,10],[20,20]]}]}))
+`, path.join(root,"sequence")]);
+    const sequence = await api("/datasets/import", { name: "跨页图像", image_dir: path.join(root,"sequence"), annotation_dir: path.join(root,"sequence") });
+    await button("刷新");
+    await (await element("select[aria-label='当前数据集'] option[value='" + sequence.dataset_id + "']")).click();
+    await (await element("summary[aria-label='标注筛选']")).click();
+    await (await element("input[aria-label='无标注']")).click();
+    await (await element("summary[aria-label='标注筛选']")).click();
+    await (await element("img[alt='sequence-23.png']")).click();
+    await (await element("button[title='放大图像']")).click();
+    async function stepImage(label, name, page) {
+      const control = await driver.findElement(By.xpath(`//button[normalize-space(.)='${label}']`));
+      await driver.wait(() => control.isEnabled(), 5000); await control.click();
+      await driver.wait(async () => (await (await element(".iad-lightbox-toolbar strong")).getText()) === name, 5000);
+      const route = JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad"));
+      assert.equal(route.page, page); assert.deepEqual(route.filters.annotation_filters, ["none"]);
+      assert.equal(route.datasetId, sequence.dataset_id);
+      assert.equal(await (await element("select[aria-label='缩放']")).getAttribute("value"), "0");
+    }
+    await stepImage("后一张", "sequence-24.png", 2);
+    await driver.wait(async () => await driver.executeScript("return document.querySelector('.iad-viewer-world img').naturalWidth===320"),5000);
+    assert.deepEqual(await driver.executeScript("const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const c=canvas.getContext('2d');c.drawImage(document.querySelector('.iad-viewer-world img'),0,0);return [...c.getImageData(0,0,1,1).data]"), [44,80,120,255], "跨页必须展示当前图的真实像素");
+    await stepImage("后一张", "sequence-25.png", 2);
+    assert.equal(await (await driver.findElement(By.xpath("//button[normalize-space(.)='后一张']"))).isEnabled(), false, "标注过滤后的最后一张不能进入被排除图像");
+    await stepImage("前一张", "sequence-24.png", 2);
+    await stepImage("前一张", "sequence-23.png", 1);
+    await fs.writeFile(path.join(workspace, "runs/browser/session-handoff/image-sequence.png"), await driver.takeScreenshot(), "base64");
+    await button("关闭");
+    assert.equal(await driver.executeScript("return document.activeElement?.getAttribute('title')"), "放大图像", "跨页后关闭查看器回到当前图的来源按钮");
+    await (await element("button[title='放大图像']")).click();
+    const nextImage = await driver.findElement(By.xpath("//button[normalize-space(.)='后一张']"));
+    await driver.wait(() => nextImage.isEnabled(), 5000);
+    const closeImage = await driver.findElement(By.xpath("//dialog[contains(@class,'iad-viewer-dialog')]//button[normalize-space(.)='关闭']"));
+    await driver.executeScript("arguments[0].click();arguments[1].click()", nextImage, closeImage);
+    await api(`/samples/${sequence.task_id}?dataset_id=${sequence.dataset_id}&page=2`);
+    assert.equal((await driver.findElements(By.css(".iad-viewer-dialog[open]"))).length, 0);
+    assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad")).page, 1, "关闭时取消未完成的跨页请求");
+    assert.equal(await (await element("[data-field='image-name']")).getText(), "sequence-23.png");
+    await button("返回图像浏览");
+    assert.equal(await driver.executeScript("return document.activeElement?.closest('.iad-sample')?.querySelector('strong')?.textContent"), "sequence-23.png", "关闭详情后焦点回到当前缩略图");
+    const browseTop = await driver.executeScript("return document.querySelector('.iad-workbench').scrollTop");
+    assert.ok(browseTop > 0, "当前缩略图位于滚动后的浏览位置");
+    await (await element("button[aria-label='数据集管理']")).click();
+    await (await element("button[aria-label='图像浏览']")).click();
+    await element("img[alt='sequence-23.png']");
+    await driver.wait(async () => Math.abs(await driver.executeScript("return document.querySelector('.iad-workbench').scrollTop") - browseTop) < 2, 5000, "切页返回恢复当前数据集的浏览位置");
+    await (await element("select[aria-label='当前数据集'] option[value='" + dataset.dataset_id + "']")).click();
+    await element("img[alt='part-2.png']");
+    await (await element("select[aria-label='当前数据集'] option[value='" + sequence.dataset_id + "']")).click();
+    await element("img[alt='sequence-23.png']");
+    await driver.wait(async () => Math.abs(await driver.executeScript("return document.querySelector('.iad-workbench').scrollTop") - browseTop) < 2, 5000, "切换数据集后恢复各自浏览位置");
+    await (await element("input[aria-label='按文件名搜索']")).sendKeys("sequence-2");
+    await (await element("img[alt='sequence-20.png']")).click();
+    await (await element("button[title='放大图像']")).click();
+    assert.equal(await (await driver.findElement(By.xpath("//button[normalize-space(.)='前一张']"))).isEnabled(), false, "按当前搜索范围定位第一张");
+    await stepImage("后一张", "sequence-21.png", 1);
+    assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad")).filters.search, "sequence-2");
+    assert.equal(agentRequests.length, requestCount, "跨页与筛选切图不启动模型");
   } catch (error) {
     await fs.mkdir(path.join(workspace, "runs/browser/session-handoff"), { recursive: true });
     if (driver) {

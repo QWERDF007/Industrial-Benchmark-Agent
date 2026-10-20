@@ -1,5 +1,5 @@
 import type { Filters, InspectionReference } from "../shared/contracts.js";
-import { type InspectionSelection, type InspectionTransform, type InspectionView } from "./inspection.js";
+import { type ImageView, type InspectionSelection, type InspectionTransform, type InspectionView } from "./inspection.js";
 import type { InspectionSession } from "./inspection-session.js";
 import { type PageId, type WorkbenchLocation } from "../shared/navigation.js";
 export { pages, type PageId } from "../shared/navigation.js";
@@ -37,6 +37,12 @@ export declare class Workspace {
     private state;
     private listeners;
     private layout?;
+    private imageViews;
+    private pagePositions;
+    imageView(source: string): ImageView | undefined;
+    rememberImageView(source: string, view: ImageView): void;
+    pagePosition(source: string): number;
+    rememberPagePosition(source: string, top: number): void;
     private defaults;
     getSnapshot: () => WorkspaceState;
     subscribe: (listener: () => void) => () => void;

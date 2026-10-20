@@ -45,7 +45,7 @@ var __IadClientBundle__ = (() => {
     inject: () => inject,
     name: () => name
   });
-  var import_react19 = __toESM(__require("react"), 1);
+  var import_react21 = __toESM(__require("react"), 1);
 
   // src/client/AuditIcon.tsx
   var import_jsx_runtime = __require("react/jsx-runtime");
@@ -95,7 +95,7 @@ var __IadClientBundle__ = (() => {
   }
 
   // src/client/WorkbenchPage.tsx
-  var import_react18 = __require("react");
+  var import_react20 = __require("react");
 
   // src/client/api.ts
   async function request(path, body, method, signal) {
@@ -124,15 +124,18 @@ var __IadClientBundle__ = (() => {
   // src/client/components/Modal.tsx
   var import_react = __require("react");
   var import_jsx_runtime2 = __require("react/jsx-runtime");
-  function Modal({ title, onClose, children, className = "" }) {
+  function Modal({ title, onClose, children, className = "", restoreFocus }) {
     const dialog = (0, import_react.useRef)(null);
+    const focusTarget = (0, import_react.useRef)(restoreFocus);
+    focusTarget.current = restoreFocus;
     (0, import_react.useEffect)(() => {
       const previous = document.activeElement;
       const element = dialog.current;
       element.showModal();
       return () => {
         element.close();
-        if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+        const target = focusTarget.current ? focusTarget.current() : previous;
+        if (target instanceof HTMLElement && target.isConnected) target.focus();
       };
     }, []);
     return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("dialog", { ref: dialog, "aria-label": title, className: `iad-detail-dialog ${className}`, onCancel: (event) => {
@@ -341,7 +344,7 @@ var __IadClientBundle__ = (() => {
         /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("input", { "aria-label": "\u6309\u6587\u4EF6\u540D\u641C\u7D22", placeholder: "\u6309\u6587\u4EF6\u540D\u641C\u7D22", value: filters.search, onChange: (e) => onFilters({ ...filters, search: e.target.value }) })
       ] }),
       pagination,
-      loading ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { children: "\u52A0\u8F7D\u4E2D\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "iad-grid", children: items.map((sample) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("button", { className: `iad-sample ${selected === sample.sample_id ? "is-selected" : ""}`, onClick: () => onSelect(sample.sample_id), children: [
+      loading ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("p", { children: "\u52A0\u8F7D\u4E2D\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "iad-grid", children: items.map((sample) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("button", { "data-sample-id": sample.sample_id, className: `iad-sample ${selected === sample.sample_id ? "is-selected" : ""}`, onClick: () => onSelect(sample.sample_id), children: [
         /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "iad-thumb", children: [
           /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("img", { loading: "lazy", src: mediaUrl(sample, "thumbnail"), alt: sample.relative_path }),
           /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: `iad-badge ${sample.suggestion?.suggested_label === "FAIL" ? "is-risk" : ""}`, children: sample.review_decision ? `\u4EBA\u5BA1 ${sample.review_decision}` : sample.suggestion ? `\u6A21\u578B ${sample.suggestion.suggested_label}` : "\u5F85\u6A21\u578B\u5BA1\u8BA1" }),
@@ -377,7 +380,7 @@ var __IadClientBundle__ = (() => {
       height: analysis.overview.sent_size[1],
       annotationLayer: { kind: "audit", analysis, suggestionId: reference.suggestion_id },
       inspection,
-      initialSelection: selection || void 0,
+      initialSelection: selection,
       initialTransform: transform
     };
   }
@@ -418,6 +421,20 @@ var __IadClientBundle__ = (() => {
     state = { active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
     listeners = /* @__PURE__ */ new Set();
     layout;
+    imageViews = /* @__PURE__ */ new Map();
+    pagePositions = /* @__PURE__ */ new Map();
+    imageView(source) {
+      return this.imageViews.get(source);
+    }
+    rememberImageView(source, view) {
+      this.imageViews.set(source, view);
+    }
+    pagePosition(source) {
+      return this.pagePositions.get(source) || 0;
+    }
+    rememberPagePosition(source, top) {
+      this.pagePositions.set(source, top);
+    }
     defaults = Object.fromEntries(Object.keys(pages).map((id) => [id, defaultView(id)]));
     getSnapshot = () => this.state;
     subscribe = (listener) => {
@@ -1080,12 +1097,19 @@ var __IadClientBundle__ = (() => {
       visible && image.annotationLayer && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(AnnotationLayer, { source: image.annotationLayer })
     ] });
   }
-  function ImageViewer({ image, onClose }) {
+  function ImageViewer({ image, onClose, navigation }) {
+    const { workspace } = useWorkspace();
+    const reference = image.inspection?.reference;
+    const source = JSON.stringify(reference ? [reference.dataset_id, reference.sample_id, reference.suggestion_id] : [image.src]);
+    return /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(ImageCanvas, { image, onClose, navigation, savedView: workspace.imageView(source), onRemember: (view) => workspace.rememberImageView(source, view) }, JSON.stringify([source, image.src]));
+  }
+  function ImageCanvas({ image, onClose, navigation, savedView, onRemember }) {
     const viewport = (0, import_react9.useRef)(null);
     const world = (0, import_react9.useRef)(null);
     const layerMenu = (0, import_react9.useRef)(null);
     const inspection = image.inspection;
-    const [selection, setSelection] = (0, import_react9.useState)(() => inspection ? image.initialSelection || null : null);
+    const [selection, setSelection] = (0, import_react9.useState)(() => inspection ? image.initialSelection === void 0 ? savedView?.selection || null : image.initialSelection : null);
+    const initialTransform = image.initialTransform || (image.initialSelection === void 0 || JSON.stringify(image.initialSelection) === JSON.stringify(savedView?.selection) ? savedView?.transform : void 0);
     const [hover, setHover] = (0, import_react9.useState)(emptyHover);
     const hintId = (0, import_react9.useId)();
     const [choices, setChoices] = (0, import_react9.useState)([]);
@@ -1106,8 +1130,10 @@ var __IadClientBundle__ = (() => {
       } catch {
         localStorage.removeItem("iad.image-layers");
       }
-      if (region) initial[region.source] = true;
-      if (finding?.location.scope === "local") initial.model = true;
+      if (image.initialSelection) {
+        if (region) initial[region.source] = true;
+        if (finding?.location.scope === "local") initial.model = true;
+      }
       return initial;
     });
     const regions = inspection?.analysis.regions.filter((region2) => region2.origins.some((origin) => layers[origin.source])) || [];
@@ -1119,6 +1145,9 @@ var __IadClientBundle__ = (() => {
     const drag = (0, import_react9.useRef)(null);
     const fit = size.width && size.height ? Math.min(bounds.width / size.width, bounds.height / size.height) : 1;
     const scale = view.scale || fit;
+    const remembered = (0, import_react9.useRef)({ onRemember, view: { selection, transform: { zoom: 0, x: 0, y: 0 } } });
+    remembered.current = { onRemember, view: { selection, transform: { zoom: view.scale ? scale / fit : 0, x: view.x, y: view.y } } };
+    (0, import_react9.useEffect)(() => () => remembered.current.onRemember(remembered.current.view), []);
     (0, import_react9.useLayoutEffect)(() => {
       const element = viewport.current;
       const observer = new ResizeObserver(([entry]) => setBounds({ width: entry.contentRect.width, height: entry.contentRect.height }));
@@ -1130,9 +1159,9 @@ var __IadClientBundle__ = (() => {
       const key = JSON.stringify(selection);
       if (focusedSelection.current === key) return;
       focusedSelection.current = key;
-      if (!restoredTransform.current && image.initialTransform) {
+      if (!restoredTransform.current && initialTransform) {
         restoredTransform.current = true;
-        setView({ scale: image.initialTransform.zoom ? image.initialTransform.zoom * fit : 0, x: image.initialTransform.x, y: image.initialTransform.y });
+        setView({ scale: initialTransform.zoom ? initialTransform.zoom * fit : 0, x: initialTransform.x, y: initialTransform.y });
         return;
       }
       if (!inspection || !selection) return;
@@ -1234,8 +1263,14 @@ var __IadClientBundle__ = (() => {
             ] }, source);
           }) })
         ] }),
+        navigation && /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(import_jsx_runtime13.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("button", { disabled: navigation.busy || !navigation.previous, onClick: () => navigation.move(-1), children: "\u524D\u4E00\u5F20" }),
+          /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("button", { disabled: navigation.busy || !navigation.next, onClick: () => navigation.move(1), children: "\u540E\u4E00\u5F20" }),
+          navigation.busy && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("span", { role: "status", children: "\u6B63\u5728\u5207\u6362\u56FE\u50CF\u2026" })
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("button", { onClick: onClose, children: "\u5173\u95ED" })
       ] }),
+      navigation?.error && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("p", { role: "alert", className: "iad-error", children: navigation.error }),
       /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: `iad-viewer-body ${inspection ? "has-inspection" : ""}`, children: [
         /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(MediaLoad, { className: "iad-viewer-media", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(
           "div",
@@ -1551,7 +1586,7 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/SampleInspector.tsx
   var import_jsx_runtime17 = __require("react/jsx-runtime");
-  function SampleInspector({ dataset, sampleId, mode, revision, onChanged, onReviewed, jobs, onJobsChanged }) {
+  function SampleInspector({ dataset, sampleId, mode, revision, onChanged, onReviewed, jobs, onJobsChanged, navigation }) {
     const { workspace, state } = useWorkspace();
     const [detail, setDetail] = (0, import_react12.useState)(null);
     const [error, setError] = (0, import_react12.useState)("");
@@ -1559,6 +1594,7 @@ var __IadClientBundle__ = (() => {
     const job = jobs.find((job2) => job2.sample_ids.includes(sampleId));
     const jobRunning = jobs.some((job2) => job2.status === "RUNNING" || job2.status === "PENDING");
     const [lightbox, setLightbox] = (0, import_react12.useState)(null);
+    const imageButton = (0, import_react12.useRef)(null);
     (0, import_react12.useEffect)(() => {
       setDetail(null);
       setError("");
@@ -1608,18 +1644,31 @@ var __IadClientBundle__ = (() => {
         setBusy(false);
       }
     }
-    const annotationLayer = detail ? { kind: "sample", annotations: detail.annotations, sample: detail.sample } : void 0;
     const evidenceSource = (evidence) => {
       const suggestion = detail.suggestion;
       const analysis = suggestion.analysis;
       return inspectionImage({ reference: { dataset_id: dataset.dataset_id, sample_id: sampleId, suggestion_id: suggestion.suggestion_id }, analysis }, { kind: "evidence", id: evidence.evidence_id });
     };
-    const image = detail ? { src: mediaUrl(detail.sample), title: detail.sample.relative_path.split("/").pop(), width: detail.sample.width, height: detail.sample.height, annotationLayer, inspection: detail.suggestion?.analysis ? { reference: { dataset_id: dataset.dataset_id, sample_id: sampleId, suggestion_id: detail.suggestion.suggestion_id }, analysis: detail.suggestion.analysis } : void 0 } : null;
+    const image = (0, import_react12.useMemo)(() => detail ? {
+      src: mediaUrl(detail.sample),
+      title: detail.sample.relative_path.split("/").pop(),
+      width: detail.sample.width,
+      height: detail.sample.height,
+      annotationLayer: { kind: "sample", annotations: detail.annotations, sample: detail.sample },
+      inspection: detail.suggestion?.analysis ? { reference: { dataset_id: dataset.dataset_id, sample_id: sampleId, suggestion_id: detail.suggestion.suggestion_id }, analysis: detail.suggestion.analysis } : void 0
+    } : null, [detail, dataset.dataset_id, sampleId]);
+    (0, import_react12.useEffect)(() => {
+      if (navigation?.open && image && detail?.sample.sample_id === sampleId) {
+        imageButton.current?.focus({ preventScroll: true });
+        setLightbox({ ...image, initialSelection: null, initialTransform: { zoom: 0, x: 0, y: 0 } });
+        navigation.opened();
+      }
+    }, [navigation, image, detail, sampleId]);
     return /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("aside", { className: "iad-inspector", children: [
       /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("h2", { children: mode === "review" ? "\u590D\u6838\u660E\u7EC6" : "\u6837\u672C\u4FE1\u606F" }),
       error && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { role: "alert", className: "iad-error", children: error }),
       !sampleId ? /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { children: "\u9009\u62E9\u56FE\u50CF\u67E5\u770B\u3002" }) : !detail ? /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("p", { children: "\u52A0\u8F7D\u4E2D\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)(import_jsx_runtime17.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(MediaLoad, { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("button", { className: "iad-image-button", onClick: () => setLightbox(image), title: "\u653E\u5927\u56FE\u50CF", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(AnnotatedImage, { image }) }) }, image.src),
+        /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(MediaLoad, { children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("button", { ref: imageButton, className: "iad-image-button", onClick: () => setLightbox(image), title: "\u653E\u5927\u56FE\u50CF", children: /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(AnnotatedImage, { image }) }) }, image.src),
         /* @__PURE__ */ (0, import_jsx_runtime17.jsxs)("dl", { className: "iad-info-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("dt", { children: "\u56FE\u50CF\u8DEF\u5F84" }),
           /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("dd", { title: detail.sample.image_path, children: detail.sample.image_path }),
@@ -1814,7 +1863,8 @@ var __IadClientBundle__ = (() => {
           /* @__PURE__ */ (0, import_jsx_runtime17.jsx)("button", { onClick: () => workspace.navigate("industrial-review", sampleId), children: "\u524D\u5F80\u4EBA\u5DE5\u590D\u6838" })
         ] })
       ] }),
-      lightbox && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(ImageViewer, { image: lightbox, onClose: () => {
+      lightbox && /* @__PURE__ */ (0, import_jsx_runtime17.jsx)(ImageViewer, { image: lightbox, navigation, onClose: () => {
+        navigation?.cancel();
         setLightbox(null);
         if (workspace.view(state.pageId).inspection) workspace.updateView(state.pageId, { inspection: null }, true);
       } })
@@ -2524,20 +2574,99 @@ var __IadClientBundle__ = (() => {
 @media(max-width:760px) {.iad-knowledge-split {grid-template-columns:minmax(0,1fr);}.iad-knowledge-page .iad-row>label {width:100%;}}
 `;
 
+  // src/client/useSampleNavigation.ts
+  var import_react18 = __require("react");
+  function useSampleNavigation(pageId, taskId, query, result, enabled) {
+    const { workspace, state } = useWorkspace();
+    const view = workspace.view(pageId);
+    const [busy, setBusy] = (0, import_react18.useState)(false);
+    const [error, setError] = (0, import_react18.useState)("");
+    const [target, setTarget] = (0, import_react18.useState)("");
+    const pending = (0, import_react18.useRef)();
+    const position = enabled && result.query === query ? result.items.findIndex((item) => item.sample_id === view.selected) : -1;
+    const previous = position >= 0 && (position > 0 || view.page > 1);
+    const next = position >= 0 && (position < result.items.length - 1 || view.page * pageSize < result.total);
+    const cancel = (0, import_react18.useCallback)(() => {
+      pending.current?.abort();
+      pending.current = void 0;
+      setBusy(false);
+      setError("");
+      setTarget("");
+    }, []);
+    const opened = (0, import_react18.useCallback)(() => setTarget(""), []);
+    (0, import_react18.useEffect)(() => {
+      setBusy(false);
+      setError("");
+      setTarget((target2) => state.active && state.pageId === pageId && target2 === view.selected ? target2 : "");
+      return () => {
+        pending.current?.abort();
+        pending.current = void 0;
+      };
+    }, [query, view.selected, enabled, state.active, state.pageId, state.datasetId, pageId]);
+    async function move(offset) {
+      if (pending.current || !taskId || (offset < 0 ? !previous : !next)) return;
+      const controller = new AbortController();
+      pending.current = controller;
+      setBusy(true);
+      setError("");
+      try {
+        let page = view.page;
+        let sample = result.items[position + offset];
+        if (!sample) {
+          page += offset;
+          const parameters = new URLSearchParams(query);
+          parameters.set("page", String(page));
+          const adjacent = await request(`/samples/${encodeURIComponent(taskId)}?${parameters}`, void 0, void 0, controller.signal);
+          sample = adjacent.items[offset > 0 ? 0 : adjacent.items.length - 1];
+        }
+        if (controller.signal.aborted) return;
+        const current = workspace.getSnapshot(), selected = workspace.view(pageId);
+        if (!current.active || current.pageId !== pageId || current.datasetId !== state.datasetId || selected.selected !== view.selected || selected.page !== view.page || selected.filters !== view.filters) return;
+        if (!sample) throw new Error("\u5F53\u524D\u7B5B\u9009\u8303\u56F4\u5DF2\u53D8\u5316\uFF0C\u8BF7\u5237\u65B0\u540E\u91CD\u8BD5");
+        setTarget(sample.sample_id);
+        workspace.updateView(pageId, { page, selected: sample.sample_id, inspection: null });
+      } catch (error2) {
+        if (!controller.signal.aborted) setError(message(error2));
+      } finally {
+        if (pending.current === controller) {
+          pending.current = void 0;
+          setBusy(false);
+        }
+      }
+    }
+    return { previous, next, busy, error, move, open: !!target && target === view.selected, opened, cancel };
+  }
+
+  // src/client/usePagePosition.ts
+  var import_react19 = __require("react");
+  function usePagePosition(source, ready) {
+    const { workspace } = useWorkspace();
+    const surface = (0, import_react19.useRef)(null);
+    (0, import_react19.useLayoutEffect)(() => {
+      const element = surface.current;
+      if (!source || !ready || !element) return;
+      element.scrollTop = workspace.pagePosition(source);
+      const remember = () => workspace.rememberPagePosition(source, element.scrollTop);
+      element.addEventListener("scroll", remember, { passive: true });
+      return () => element.removeEventListener("scroll", remember);
+    }, [workspace, source, ready]);
+    return surface;
+  }
+
   // src/client/WorkbenchPage.tsx
   var import_jsx_runtime22 = __require("react/jsx-runtime");
   function WorkbenchPage({ pageId }) {
     const { workspace, state } = useWorkspace();
     const datasetId = state.datasetId, view = workspace.view(pageId);
-    const [datasets, setDatasets] = (0, import_react18.useState)([]);
-    const [result, setResult] = (0, import_react18.useState)({ query: "", items: [], total: 0 });
-    const [loading, setLoading] = (0, import_react18.useState)(false);
-    const [error, setError] = (0, import_react18.useState)("");
-    const [revision, setRevision] = (0, import_react18.useState)(0);
-    const advance = (0, import_react18.useRef)(null);
-    const [reviewConfirmation, setReviewConfirmation] = (0, import_react18.useState)(null);
+    const [datasets, setDatasets] = (0, import_react20.useState)([]);
+    const [result, setResult] = (0, import_react20.useState)({ query: "", items: [], total: 0 });
+    const [loading, setLoading] = (0, import_react20.useState)(false);
+    const [error, setError] = (0, import_react20.useState)("");
+    const [revision, setRevision] = (0, import_react20.useState)(0);
+    const advance = (0, import_react20.useRef)(null);
+    const [reviewConfirmation, setReviewConfirmation] = (0, import_react20.useState)(null);
     const dataset = datasets.find((d) => d.dataset_id === datasetId);
-    const loadDatasets = (0, import_react18.useCallback)(async (preferred, signal) => {
+    const loadDatasets = (0, import_react20.useCallback)(async (preferred, signal) => {
       try {
         const result2 = await request("/datasets", void 0, void 0, signal);
         if (signal?.aborted) return;
@@ -2549,19 +2678,21 @@ var __IadClientBundle__ = (() => {
         if (!signal?.aborted) setError(message(e));
       }
     }, [workspace]);
-    const changed = (0, import_react18.useCallback)(() => {
+    const changed = (0, import_react20.useCallback)(() => {
       setRevision((v) => v + 1);
       void loadDatasets();
     }, [loadDatasets]);
     const audit = useJobs("audit", datasetId, changed, workspace.view("industrial-audit").job);
-    (0, import_react18.useEffect)(() => {
+    (0, import_react20.useEffect)(() => {
       const controller = new AbortController();
       void loadDatasets(void 0, controller.signal);
       return () => controller.abort();
     }, [loadDatasets]);
     const gallery = pageId === "industrial-datasets" || pageId === "industrial-images" || (pageId === "industrial-review" || pageId === "industrial-audit") && view.tab === "results";
     const query = new URLSearchParams({ ...view.filters, annotation_filters: JSON.stringify(view.filters.annotation_filters), dataset_id: datasetId, page: String(view.page), page_size: String(pageSize) }).toString();
-    (0, import_react18.useEffect)(() => {
+    const navigation = useSampleNavigation(pageId, dataset?.task_id, query, result, gallery);
+    const surface = usePagePosition(gallery ? JSON.stringify([pageId, view.tab, query]) : null, state.active && state.pageId === pageId && !!dataset && result.query === query && !loading);
+    (0, import_react20.useEffect)(() => {
       if (!dataset || !gallery) return;
       const controller = new AbortController();
       setLoading(true);
@@ -2597,9 +2728,9 @@ var __IadClientBundle__ = (() => {
       changed();
     }
     const updateFilters = (filters) => workspace.updateView(pageId, { filters, page: 1, selected: "" });
-    const inspector = dataset && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(SampleInspector, { dataset, sampleId: view.selected, mode: pageId === "industrial-review" ? "review" : pageId === "industrial-datasets" ? "dataset" : pageId === "industrial-images" ? "browse" : "model", revision, onChanged: changed, onReviewed: reviewed, jobs: audit.jobs, onJobsChanged: audit.refresh }, `${datasetId}:${view.selected}`);
+    const inspector = dataset && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(SampleInspector, { dataset, sampleId: view.selected, mode: pageId === "industrial-review" ? "review" : pageId === "industrial-datasets" ? "dataset" : pageId === "industrial-images" ? "browse" : "model", revision, onChanged: changed, onReviewed: reviewed, jobs: audit.jobs, onJobsChanged: audit.refresh, navigation: gallery ? navigation : void 0 }, `${datasetId}:${view.selected}`);
     const grid = dataset && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(SampleGrid, { dataset, filters: view.filters, onFilters: updateFilters, items: result.query === query ? result.items : [], total: result.query === query ? result.total : 0, page: view.page, onPage: (page) => workspace.updateView(pageId, { page, selected: "" }), selected: view.selected, onSelect: (selected) => workspace.updateView(pageId, { selected }), loading });
-    return /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "iad-workbench", "data-page": pageId, children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { ref: surface, className: "iad-workbench", "data-page": pageId, children: [
       /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("style", { children: workbenchStyles }),
       /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("header", { className: "iad-header", children: [
         /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h1", { children: pages[pageId] }),
@@ -2694,7 +2825,7 @@ var __IadClientBundle__ = (() => {
           ),
           inspector
         ] }),
-        pageId === "industrial-images" && view.selected && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Modal, { title: "\u56FE\u50CF\u8BE6\u60C5", onClose: () => workspace.updateView(pageId, { selected: "" }), children: [
+        pageId === "industrial-images" && view.selected && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(Modal, { title: "\u56FE\u50CF\u8BE6\u60C5", restoreFocus: () => surface.current?.querySelector(`.iad-sample[data-sample-id="${CSS.escape(view.selected)}"]`) || null, onClose: () => workspace.updateView(pageId, { selected: "" }), children: [
           /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "iad-row", children: [
             /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("button", { onClick: () => workspace.updateView(pageId, { selected: "" }), children: "\u8FD4\u56DE\u56FE\u50CF\u6D4F\u89C8" }),
             /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("button", { onClick: () => workspace.navigate("industrial-audit", view.selected), children: "\u524D\u5F80\u6A21\u578B\u5BA1\u8BA1" }),
@@ -2814,14 +2945,14 @@ var __IadClientBundle__ = (() => {
     const workspace = new Workspace(new InspectionSession(ctx));
     const icons = [DatasetIcon, ImagesIcon, KnowledgeIcon, KnowledgeIcon, AuditIcon, ReviewIcon];
     ctx.slots.inject("tool.call.toolview", () => {
-      for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props) => import_react19.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react19.default.createElement(SessionResult, { ...props, title })));
+      for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props) => import_react21.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react21.default.createElement(SessionResult, { ...props, title })));
     });
     ctx.slots.inject("sidebar.panellist", () => {
       Object.entries(pages).forEach(([id, label], index) => ctx.slots.register({ name: "sidebar.panellist", id, order: index + 1, label }, icons[index]));
     });
     ctx.slots.inject("main", () => {
       for (const id of Object.keys(pages)) {
-        ctx.slots.register({ name: "main", key: id }, () => import_react19.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react19.default.createElement(WorkbenchPage, { pageId: id })));
+        ctx.slots.register({ name: "main", key: id }, () => import_react21.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react21.default.createElement(WorkbenchPage, { pageId: id })));
       }
       return workspace.connect(ctx.layout);
     });

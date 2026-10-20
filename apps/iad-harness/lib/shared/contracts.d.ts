@@ -60,6 +60,10 @@ export interface Sample extends SampleIdentity {
     visual_suspicion_score: number | null;
     suggestion: Suggestion | null;
 }
+export interface SamplePage {
+    items: Sample[];
+    total: number;
+}
 export interface SampleDetail {
     normal_knowledge: KnowledgeSummary | null;
     defect_knowledge: KnowledgeSummary | null;

@@ -1,7 +1,7 @@
 import { createContext, useContext, useSyncExternalStore } from "react";
 import type { Filters, InspectionReference, InspectionSnapshot } from "../shared/contracts.js";
 import { initialFilters, request } from "./api.js";
-import { restoreInspection, type InspectionSelection, type InspectionTransform, type InspectionView } from "./inspection.js";
+import { restoreInspection, type ImageView, type InspectionSelection, type InspectionTransform, type InspectionView } from "./inspection.js";
 import type { InspectionSession } from "./inspection-session.js";
 import { pages, type PageId, type WorkbenchLocation } from "../shared/navigation.js";
 export { pages, type PageId } from "../shared/navigation.js";
@@ -20,6 +20,12 @@ export class Workspace {
   private state: WorkspaceState = { active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
   private listeners = new Set<() => void>();
   private layout?: Layout;
+  private imageViews = new Map<string, ImageView>();
+  private pagePositions = new Map<string, number>();
+  imageView(source: string) { return this.imageViews.get(source); }
+  rememberImageView(source: string, view: ImageView) { this.imageViews.set(source, view); }
+  pagePosition(source: string) { return this.pagePositions.get(source) || 0; }
+  rememberPagePosition(source: string, top: number) { this.pagePositions.set(source, top); }
   private defaults = Object.fromEntries(Object.keys(pages).map(id => [id, defaultView(id as PageId)])) as Record<PageId, ViewState>;
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };

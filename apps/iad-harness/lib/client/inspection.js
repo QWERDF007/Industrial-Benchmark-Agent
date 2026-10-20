@@ -4,7 +4,7 @@ export function inspectionImage(inspection, selection, transform) {
     return { src: auditEvidenceUrl(reference.suggestion_id, analysis.overview), title: "送模全图概览",
         width: analysis.overview.sent_size[0], height: analysis.overview.sent_size[1],
         annotationLayer: { kind: "audit", analysis, suggestionId: reference.suggestion_id }, inspection,
-        initialSelection: selection || undefined, initialTransform: transform };
+        initialSelection: selection, initialTransform: transform };
 }
 export function restoreInspection(value, datasetId, sampleId) {
     if (!value || typeof value !== "object")

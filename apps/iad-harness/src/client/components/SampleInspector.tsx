@@ -1,9 +1,8 @@
 import { JobCard } from "./JobCard.js";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { InspectionSnapshot, JobSnapshot, Dataset, ReviewDecisionRecord, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
 import { AnnotatedImage, ImageViewer, type ImageSource } from "./ImageViewer.js";
 import { MediaLoad } from "./MediaLoad.js";
-import type { AnnotationLayerSource } from "./AnnotationLayer.js";
 import { DatasetKnowledge } from "./DatasetKnowledge.js";
 import { RuleAssessments } from "./RuleAssessments.js";
 import { AuditFindings } from "./AuditFindings.js";
@@ -12,8 +11,10 @@ import { HumanReviewForm } from "./HumanReviewForm.js";
 import { auditEvidenceUrl, regionSources, mediaUrl, message, request, reviewLabel } from "../api.js";
 import { useWorkspace } from "../workspace.js";
 import { inspectionImage } from "../inspection.js";
+import type { SampleNavigation } from "../useSampleNavigation.js";
 
-export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, onReviewed, jobs, onJobsChanged }: {
+export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, onReviewed, jobs, onJobsChanged, navigation }: {
+  navigation?: SampleNavigation;
   jobs: JobSnapshot[]; onJobsChanged(): void;
   dataset: Dataset; sampleId: string; mode: "model" | "review" | "browse" | "dataset"; revision: number; onChanged(): void;
   onReviewed(record: ReviewDecisionRecord, relativePath: string): void;
@@ -25,6 +26,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
   const job = jobs.find(job => job.sample_ids.includes(sampleId));
   const jobRunning = jobs.some(job => job.status === "RUNNING" || job.status === "PENDING");
   const [lightbox, setLightbox] = useState<ImageSource | null>(null);
+  const imageButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     setDetail(null); setError(""); setLightbox(null);
   }, [sampleId]);
@@ -56,17 +58,24 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
     try { await request(`/datasets/${dataset.dataset_id}`, { reference_sample_ids: ids }, "PATCH"); onChanged(); }
     catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
-  const annotationLayer: AnnotationLayerSource | undefined = detail ? { kind: "sample", annotations: detail.annotations, sample: detail.sample } : undefined;
   const evidenceSource = (evidence: VisualEvidence): ImageSource => {
     const suggestion = detail!.suggestion!;
     const analysis = suggestion.analysis!;
     return inspectionImage({ reference: { dataset_id: dataset.dataset_id, sample_id: sampleId, suggestion_id: suggestion.suggestion_id }, analysis }, { kind: "evidence", id: evidence.evidence_id });
   };
-  const image = detail ? { src: mediaUrl(detail.sample), title: detail.sample.relative_path.split("/").pop()!, width: detail.sample.width, height: detail.sample.height, annotationLayer, inspection: detail.suggestion?.analysis ? { reference: { dataset_id: dataset.dataset_id, sample_id: sampleId, suggestion_id: detail.suggestion.suggestion_id }, analysis: detail.suggestion.analysis } : undefined } : null;
+  const image = useMemo<ImageSource | null>(() => detail ? { src: mediaUrl(detail.sample), title: detail.sample.relative_path.split("/").pop()!, width: detail.sample.width, height: detail.sample.height,
+    annotationLayer: { kind: "sample", annotations: detail.annotations, sample: detail.sample },
+    inspection: detail.suggestion?.analysis ? { reference: { dataset_id: dataset.dataset_id, sample_id: sampleId, suggestion_id: detail.suggestion.suggestion_id }, analysis: detail.suggestion.analysis } : undefined } : null, [detail, dataset.dataset_id, sampleId]);
+  useEffect(() => {
+    if (navigation?.open && image && detail?.sample.sample_id === sampleId) {
+      imageButton.current?.focus({ preventScroll: true });
+      setLightbox({ ...image, initialSelection: null, initialTransform: { zoom: 0, x: 0, y: 0 } }); navigation.opened();
+    }
+  }, [navigation, image, detail, sampleId]);
   return <aside className="iad-inspector"><h2>{mode === "review" ? "复核明细" : "样本信息"}</h2>
     {error && <p role="alert" className="iad-error">{error}</p>}
     {!sampleId ? <p>选择图像查看。</p> : !detail ? <p>加载中…</p> : <>
-      <MediaLoad key={image!.src}><button className="iad-image-button" onClick={() => setLightbox(image)} title="放大图像"><AnnotatedImage image={image!} /></button></MediaLoad>
+      <MediaLoad key={image!.src}><button ref={imageButton} className="iad-image-button" onClick={() => setLightbox(image)} title="放大图像"><AnnotatedImage image={image!} /></button></MediaLoad>
       <dl className="iad-info-group"><dt>图像路径</dt><dd title={detail.sample.image_path}>{detail.sample.image_path}</dd>
         <dt>图像名</dt><dd data-field="image-name">{detail.sample.relative_path.split("/").pop()}</dd>
         <dt>UUID</dt><dd data-field="sample-uuid"><code title={detail.sample.sample_uuid}>{detail.sample.sample_uuid}</code></dd>
@@ -117,6 +126,6 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
         <button onClick={() => workspace.navigate("industrial-review", sampleId)}>前往人工复核</button>
       </div>}
     </>}
-    {lightbox && <ImageViewer image={lightbox} onClose={() => { setLightbox(null); if (workspace.view(state.pageId).inspection) workspace.updateView(state.pageId, { inspection: null }, true); }} />}
+    {lightbox && <ImageViewer image={lightbox} navigation={navigation} onClose={() => { navigation?.cancel(); setLightbox(null); if (workspace.view(state.pageId).inspection) workspace.updateView(state.pageId, { inspection: null }, true); }} />}
   </aside>;
 }

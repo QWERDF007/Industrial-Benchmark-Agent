@@ -13,6 +13,12 @@ export class Workspace {
     state = { active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
     listeners = new Set();
     layout;
+    imageViews = new Map();
+    pagePositions = new Map();
+    imageView(source) { return this.imageViews.get(source); }
+    rememberImageView(source, view) { this.imageViews.set(source, view); }
+    pagePosition(source) { return this.pagePositions.get(source) || 0; }
+    rememberPagePosition(source, top) { this.pagePositions.set(source, top); }
     defaults = Object.fromEntries(Object.keys(pages).map(id => [id, defaultView(id)]));
     getSnapshot = () => this.state;
     subscribe = (listener) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };

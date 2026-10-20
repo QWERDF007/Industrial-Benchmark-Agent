@@ -7,6 +7,8 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 职责 | 唯一实现入口 |
 | --- | --- |
 | 原生六页导航与共享页面上下文 | [client/index.ts](../apps/iad-harness/src/client/index.ts)、[workspace](../apps/iad-harness/src/client/workspace.tsx) |
+| 同图视口恢复与当前筛选的前后图 | [ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx)、[SampleNavigation](../apps/iad-harness/src/client/useSampleNavigation.ts) |
+| 浏览位置与来源焦点 | [PagePosition](../apps/iad-harness/src/client/usePagePosition.ts)、[Modal](../apps/iad-harness/src/client/components/Modal.tsx) |
 | 宿主语义主题适配 | [theme.ts](../apps/iad-harness/src/client/theme.ts)、[styles.ts](../apps/iad-harness/src/client/styles.ts) |
 | 页面与组件 | [WorkbenchPage.tsx](../apps/iad-harness/src/client/WorkbenchPage.tsx)、[components](../apps/iad-harness/src/client/components/) |
 | 前后端接口类型 | [contracts.ts](../apps/iad-harness/src/shared/contracts.ts) |

@@ -5,14 +5,15 @@ import type { ImageSource } from "./components/ImageViewer.js";
 export interface InspectionContext { reference: InspectionReference; analysis: AuditAnalysis; historical?: boolean }
 export type InspectionSelection = { kind: "finding"; id: string } | { kind: "evidence"; id: string; findingId?: string };
 export interface InspectionTransform { zoom: number; x: number; y: number }
-export interface InspectionView { reference: InspectionReference; selection: InspectionSelection | null; transform: InspectionTransform; sessionId?: string }
+export interface ImageView { selection: InspectionSelection | null; transform: InspectionTransform }
+export interface InspectionView extends ImageView { reference: InspectionReference; sessionId?: string }
 
 export function inspectionImage(inspection: InspectionContext, selection?: InspectionSelection | null, transform?: InspectionTransform): ImageSource {
   const { analysis, reference } = inspection;
   return { src: auditEvidenceUrl(reference.suggestion_id, analysis.overview), title: "送模全图概览",
     width: analysis.overview.sent_size[0], height: analysis.overview.sent_size[1],
     annotationLayer: { kind: "audit", analysis, suggestionId: reference.suggestion_id }, inspection,
-    initialSelection: selection || undefined, initialTransform: transform };
+    initialSelection: selection, initialTransform: transform };
 }
 
 export function restoreInspection(value: unknown, datasetId: string, sampleId: string): InspectionView | null {

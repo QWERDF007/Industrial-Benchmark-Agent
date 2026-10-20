@@ -1,4 +1,4 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Modal } from "./Modal.js";
 import { MediaImage, MediaLoad } from "./MediaLoad.js";
@@ -6,17 +6,25 @@ import { AnnotationLayer } from "./AnnotationLayer.js";
 import { regionSources } from "../api.js";
 import { InspectionOverlay, InspectionPanel } from "./InspectionEvidence.js";
 import { resolveInspection } from "../inspection.js";
+import { useWorkspace } from "../workspace.js";
 const emptyHover = { ids: [], dismissed: false, x: 0, y: 0 };
 const minScale = 0.02, maxScale = 16;
 export function AnnotatedImage({ image, visible = true, onLoad }) {
     return _jsxs("div", { className: "iad-image-frame", children: [_jsx(MediaImage, { src: image.src, alt: image.title, width: image.width, height: image.height, "data-media-label": "\u56FE\u50CF", draggable: false, onLoad: onLoad }), visible && image.annotationLayer && _jsx(AnnotationLayer, { source: image.annotationLayer })] });
 }
-export function ImageViewer({ image, onClose }) {
+export function ImageViewer({ image, onClose, navigation }) {
+    const { workspace } = useWorkspace();
+    const reference = image.inspection?.reference;
+    const source = JSON.stringify(reference ? [reference.dataset_id, reference.sample_id, reference.suggestion_id] : [image.src]);
+    return _jsx(ImageCanvas, { image: image, onClose: onClose, navigation: navigation, savedView: workspace.imageView(source), onRemember: view => workspace.rememberImageView(source, view) }, JSON.stringify([source, image.src]));
+}
+function ImageCanvas({ image, onClose, navigation, savedView, onRemember }) {
     const viewport = useRef(null);
     const world = useRef(null);
     const layerMenu = useRef(null);
     const inspection = image.inspection;
-    const [selection, setSelection] = useState(() => inspection ? image.initialSelection || null : null);
+    const [selection, setSelection] = useState(() => inspection ? image.initialSelection === undefined ? savedView?.selection || null : image.initialSelection : null);
+    const initialTransform = image.initialTransform || (image.initialSelection === undefined || JSON.stringify(image.initialSelection) === JSON.stringify(savedView?.selection) ? savedView?.transform : undefined);
     const [hover, setHover] = useState(emptyHover);
     const hintId = useId();
     const [choices, setChoices] = useState([]);
@@ -39,10 +47,12 @@ export function ImageViewer({ image, onClose }) {
         catch {
             localStorage.removeItem("iad.image-layers");
         }
-        if (region)
-            initial[region.source] = true;
-        if (finding?.location.scope === "local")
-            initial.model = true;
+        if (image.initialSelection) {
+            if (region)
+                initial[region.source] = true;
+            if (finding?.location.scope === "local")
+                initial.model = true;
+        }
         return initial;
     });
     const regions = inspection?.analysis.regions.filter(region => region.origins.some(origin => layers[origin.source])) || [];
@@ -52,6 +62,9 @@ export function ImageViewer({ image, onClose }) {
     const drag = useRef(null);
     const fit = size.width && size.height ? Math.min(bounds.width / size.width, bounds.height / size.height) : 1;
     const scale = view.scale || fit;
+    const remembered = useRef({ onRemember, view: { selection, transform: { zoom: 0, x: 0, y: 0 } } });
+    remembered.current = { onRemember, view: { selection, transform: { zoom: view.scale ? scale / fit : 0, x: view.x, y: view.y } } };
+    useEffect(() => () => remembered.current.onRemember(remembered.current.view), []);
     useLayoutEffect(() => {
         const element = viewport.current;
         const observer = new ResizeObserver(([entry]) => setBounds({ width: entry.contentRect.width, height: entry.contentRect.height }));
@@ -65,9 +78,9 @@ export function ImageViewer({ image, onClose }) {
         if (focusedSelection.current === key)
             return;
         focusedSelection.current = key;
-        if (!restoredTransform.current && image.initialTransform) {
+        if (!restoredTransform.current && initialTransform) {
             restoredTransform.current = true;
-            setView({ scale: image.initialTransform.zoom ? image.initialTransform.zoom * fit : 0, x: image.initialTransform.x, y: image.initialTransform.y });
+            setView({ scale: initialTransform.zoom ? initialTransform.zoom * fit : 0, x: initialTransform.x, y: initialTransform.y });
             return;
         }
         if (!inspection || !selection)
@@ -144,7 +157,7 @@ export function ImageViewer({ image, onClose }) {
                             }, children: [_jsx("option", { value: 0, children: "\u9002\u5E94\u7A97\u53E3" }), _jsx("option", { value: 1, children: "100%" }), _jsx("option", { value: 1.5, children: "150%" }), _jsx("option", { value: 2, children: "200%" }), !fixed && _jsxs("option", { value: "custom", children: [Math.round(scale * 100), "%"] })] }), _jsx("button", { className: "iad-eye", "aria-label": "\u653E\u5927", title: "\u653E\u5927", disabled: scale >= maxScale, onClick: () => zoomBy(2), children: _jsx("svg", { viewBox: "0 0 24 24", width: "21", height: "21", fill: "none", stroke: "currentColor", strokeWidth: "1.8", "aria-hidden": "true", children: _jsx("path", { d: "M5 12h14M12 5v14" }) }) }), (image.annotationLayer || inspection) && _jsx("button", { className: "iad-eye", title: layers.annotation ? "隐藏标注" : "显示标注", "aria-label": layers.annotation ? "隐藏标注" : "显示标注", "aria-pressed": layers.annotation, onClick: () => setLayers(previous => ({ ...previous, annotation: !previous.annotation })), children: _jsxs("svg", { viewBox: "0 0 24 24", width: "21", height: "21", fill: "none", stroke: "currentColor", strokeWidth: "1.8", "aria-hidden": "true", children: [_jsx("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" }), _jsx("circle", { cx: "12", cy: "12", r: "3" }), !layers.annotation && _jsx("path", { d: "m3 3 18 18" })] }) }), inspection && _jsxs("details", { ref: layerMenu, className: "iad-layer-menu", children: [_jsx("summary", { "aria-label": "\u53EF\u89C6\u56FE\u5C42", children: "\u56FE\u5C42" }), _jsx("div", { children: Object.keys(regionSources).map(source => {
                                         const label = { annotation: "标注", model: "模型候选", coverage: "细节覆盖" }[source];
                                         return _jsxs("label", { children: [_jsx("input", { type: "checkbox", "aria-label": `${label}图层`, checked: layers[source], onChange: event => setLayers(previous => ({ ...previous, [source]: event.target.checked })) }), label] }, source);
-                                    }) })] }), _jsx("button", { onClick: onClose, children: "\u5173\u95ED" })] }), _jsxs("div", { className: `iad-viewer-body ${inspection ? "has-inspection" : ""}`, children: [_jsx(MediaLoad, { className: "iad-viewer-media", children: _jsxs("div", { className: "iad-viewer-viewport", ref: viewport, tabIndex: 0, "aria-label": "\u56FE\u50CF\u89C6\u53E3", "aria-describedby": hint ? hintId : undefined, onKeyDown: event => {
+                                    }) })] }), navigation && _jsxs(_Fragment, { children: [_jsx("button", { disabled: navigation.busy || !navigation.previous, onClick: () => navigation.move(-1), children: "\u524D\u4E00\u5F20" }), _jsx("button", { disabled: navigation.busy || !navigation.next, onClick: () => navigation.move(1), children: "\u540E\u4E00\u5F20" }), navigation.busy && _jsx("span", { role: "status", children: "\u6B63\u5728\u5207\u6362\u56FE\u50CF\u2026" })] }), _jsx("button", { onClick: onClose, children: "\u5173\u95ED" })] }), navigation?.error && _jsx("p", { role: "alert", className: "iad-error", children: navigation.error }), _jsxs("div", { className: `iad-viewer-body ${inspection ? "has-inspection" : ""}`, children: [_jsx(MediaLoad, { className: "iad-viewer-media", children: _jsxs("div", { className: "iad-viewer-viewport", ref: viewport, tabIndex: 0, "aria-label": "\u56FE\u50CF\u89C6\u53E3", "aria-describedby": hint ? hintId : undefined, onKeyDown: event => {
                                     const direction = { ArrowLeft: [20, 0], ArrowRight: [-20, 0], ArrowUp: [0, 20], ArrowDown: [0, -20] }[event.key];
                                     if (direction) {
                                         event.preventDefault();

@@ -61,6 +61,8 @@ DSH 左侧栏             当前页面
 
 切数据集时原数据集作业继续执行，并提示有后台作业；新页只展示所选数据集内容。快速切换时取消旧查询或丢弃过时响应，不能短暂串图、串知识。URL 中不写目录、密钥、完整提示或人审草稿。
 
+浏览位置实现见[PagePosition](../../apps/iad-harness/src/client/usePagePosition.ts)，来源焦点恢复见[Modal](../../apps/iad-harness/src/client/components/Modal.tsx)。
+
 ## D03 页面布局
 
 ### 图像浏览
@@ -128,6 +130,8 @@ DSH 左侧栏             当前页面
 ```
 
 全图、知识来源、参考图、实际裁图调用同一查看器。缩放以鼠标所在图像点为锚；按钮/比例输入以视口中心为锚；适应窗口始终居中，调整比例不跳到左上角。图像尚未加载时显示占位，保留图框尺寸。
+
+视口生命周期见[ImageViewer](../../apps/iad-harness/src/client/components/ImageViewer.tsx)，当前筛选与分页的前后图见[SampleNavigation](../../apps/iad-harness/src/client/useSampleNavigation.ts)。生命周期分层参考[成熟查看器的 ZoomController](https://github.com/igordanchenko/yet-another-react-lightbox/blob/master/src/plugins/zoom/ZoomController.tsx)；焦点恢复参考[HTMLElement.focus](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/focus)。
 
 可视按钮使用眼睛图标，提示随状态显示“隐藏标注 / 显示标注”，并提供 aria-label 与 pressed 状态；展开菜单分别控制标注、模型候选、覆盖三层。图层状态不能仅靠颜色区分。
 

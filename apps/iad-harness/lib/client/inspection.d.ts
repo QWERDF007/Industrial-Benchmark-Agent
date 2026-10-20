@@ -18,10 +18,12 @@ export interface InspectionTransform {
     x: number;
     y: number;
 }
-export interface InspectionView {
-    reference: InspectionReference;
+export interface ImageView {
     selection: InspectionSelection | null;
     transform: InspectionTransform;
+}
+export interface InspectionView extends ImageView {
+    reference: InspectionReference;
     sessionId?: string;
 }
 export declare function inspectionImage(inspection: InspectionContext, selection?: InspectionSelection | null, transform?: InspectionTransform): ImageSource;

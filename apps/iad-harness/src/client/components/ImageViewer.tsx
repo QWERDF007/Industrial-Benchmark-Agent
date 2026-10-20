@@ -4,7 +4,8 @@ import { MediaImage, MediaLoad } from "./MediaLoad.js";
 import { AnnotationLayer, type AnnotationLayerSource } from "./AnnotationLayer.js";
 import { regionSources } from "../api.js";
 import { InspectionOverlay, InspectionPanel } from "./InspectionEvidence.js";
-import { resolveInspection, type InspectionContext, type InspectionSelection, type InspectionTransform } from "../inspection.js";
+import { resolveInspection, type ImageView, type InspectionContext, type InspectionSelection, type InspectionTransform } from "../inspection.js";
+import { useWorkspace } from "../workspace.js";
 
 const emptyHover = { ids: [] as string[], dismissed: false, x: 0, y: 0 };
 const minScale = 0.02, maxScale = 16;
@@ -12,9 +13,11 @@ const minScale = 0.02, maxScale = 16;
 export interface ImageSource {
   src: string; title: string; width?: number; height?: number; annotationLayer?: AnnotationLayerSource;
   inspection?: InspectionContext;
-  initialSelection?: InspectionSelection;
+  initialSelection?: InspectionSelection | null;
   initialTransform?: InspectionTransform;
 }
+export interface ImageNavigation { previous: boolean; next: boolean; busy: boolean; error: string; move(offset: -1 | 1): void }
+type ImageViewerProps = { image: ImageSource; onClose(): void; navigation?: ImageNavigation };
 
 export function AnnotatedImage({ image, visible = true, onLoad }: { image: ImageSource; visible?: boolean; onLoad?: React.ReactEventHandler<HTMLImageElement> }) {
   return <div className="iad-image-frame"><MediaImage src={image.src} alt={image.title} width={image.width} height={image.height} data-media-label="图像" draggable={false} onLoad={onLoad} />
@@ -22,12 +25,20 @@ export function AnnotatedImage({ image, visible = true, onLoad }: { image: Image
   </div>;
 }
 
-export function ImageViewer({ image, onClose }: { image: ImageSource; onClose(): void }) {
+export function ImageViewer({ image, onClose, navigation }: ImageViewerProps) {
+  const { workspace } = useWorkspace();
+  const reference = image.inspection?.reference;
+  const source = JSON.stringify(reference ? [reference.dataset_id, reference.sample_id, reference.suggestion_id] : [image.src]);
+  return <ImageCanvas key={JSON.stringify([source, image.src])} image={image} onClose={onClose} navigation={navigation} savedView={workspace.imageView(source)} onRemember={view => workspace.rememberImageView(source, view)} />;
+}
+
+function ImageCanvas({ image, onClose, navigation, savedView, onRemember }: ImageViewerProps & { savedView?: ImageView; onRemember(view: ImageView): void }) {
   const viewport = useRef<HTMLDivElement>(null);
   const world = useRef<HTMLDivElement>(null);
   const layerMenu = useRef<HTMLDetailsElement>(null);
   const inspection = image.inspection;
-  const [selection, setSelection] = useState<InspectionSelection | null>(() => inspection ? image.initialSelection || null : null);
+  const [selection, setSelection] = useState<InspectionSelection | null>(() => inspection ? image.initialSelection === undefined ? savedView?.selection || null : image.initialSelection : null);
+  const initialTransform = image.initialTransform || (image.initialSelection === undefined || JSON.stringify(image.initialSelection) === JSON.stringify(savedView?.selection) ? savedView?.transform : undefined);
   const [hover, setHover] = useState(emptyHover);
   const hintId = useId();
   const [choices, setChoices] = useState<string[]>([]);
@@ -46,8 +57,10 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
         if (typeof saved?.[key] === "boolean") initial[key] = saved[key];
       }
     } catch { localStorage.removeItem("iad.image-layers"); }
-    if (region) initial[region.source] = true;
-    if (finding?.location.scope === "local") initial.model = true;
+    if (image.initialSelection) {
+      if (region) initial[region.source] = true;
+      if (finding?.location.scope === "local") initial.model = true;
+    }
     return initial;
   });
   const regions = inspection?.analysis.regions.filter(region => region.origins.some(origin => layers[origin.source])) || [];
@@ -57,6 +70,9 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
   const drag = useRef<{ x: number; y: number; panX: number; panY: number; moved: boolean } | null>(null);
   const fit = size.width && size.height ? Math.min(bounds.width / size.width, bounds.height / size.height) : 1;
   const scale = view.scale || fit;
+  const remembered = useRef<{ onRemember(view: ImageView): void; view: ImageView }>({ onRemember, view: { selection, transform: { zoom: 0, x: 0, y: 0 } } });
+  remembered.current = { onRemember, view: { selection, transform: { zoom: view.scale ? scale / fit : 0, x: view.x, y: view.y } } };
+  useEffect(() => () => remembered.current.onRemember(remembered.current.view), []);
   useLayoutEffect(() => {
     const element = viewport.current!;
     const observer = new ResizeObserver(([entry]) => setBounds({ width: entry.contentRect.width, height: entry.contentRect.height }));
@@ -67,9 +83,9 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
     const key = JSON.stringify(selection);
     if (focusedSelection.current === key) return;
     focusedSelection.current = key;
-    if (!restoredTransform.current && image.initialTransform) {
+    if (!restoredTransform.current && initialTransform) {
       restoredTransform.current = true;
-      setView({ scale: image.initialTransform.zoom ? image.initialTransform.zoom * fit : 0, x: image.initialTransform.x, y: image.initialTransform.y });
+      setView({ scale: initialTransform.zoom ? initialTransform.zoom * fit : 0, x: initialTransform.x, y: initialTransform.y });
       return;
     }
     if (!inspection || !selection) return;
@@ -142,7 +158,9 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
           onChange={event => setLayers(previous => ({ ...previous, [source]: event.target.checked }))} />{label}</label>;
       })}</div>
     </details>}
+    {navigation && <><button disabled={navigation.busy || !navigation.previous} onClick={() => navigation.move(-1)}>前一张</button><button disabled={navigation.busy || !navigation.next} onClick={() => navigation.move(1)}>后一张</button>{navigation.busy && <span role="status">正在切换图像…</span>}</>}
     <button onClick={onClose}>关闭</button></div>
+    {navigation?.error && <p role="alert" className="iad-error">{navigation.error}</p>}
     <div className={`iad-viewer-body ${inspection ? "has-inspection" : ""}`}>
     <MediaLoad key={image.src} className="iad-viewer-media"><div className="iad-viewer-viewport" ref={viewport} tabIndex={0} aria-label="图像视口" aria-describedby={hint ? hintId : undefined}
       onKeyDown={event => {
