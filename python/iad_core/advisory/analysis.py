@@ -75,7 +75,7 @@ class FindingReference(AnalysisModel):
 
 
 class FindingObservation(AnalysisModel):
-    check_ids: List[str] = Field(description="关联的冻结检查项；新出现且尚无判据的现象可为空，不得伪造检查项")
+    check_ids: List[str] = Field(description="关联此现象影响的全部冻结检查项。一个现象可同时影响正常和异常判据，应合并为一个finding并在此列全相关check_id；所有status=anomaly的检查项必须至少被一个finding引用，不得只填异常知识中的check_id。新现象尚无判据时可为空，不得伪造检查项")
     location: FindingLocation
     description: str = Field(min_length=1, description="一句可见现象")
     hypothesis: str = Field(min_length=1)

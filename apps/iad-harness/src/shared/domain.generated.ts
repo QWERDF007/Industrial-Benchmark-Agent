@@ -32,7 +32,7 @@ export type CheckIds = string[];
 export type InspectionRegions = RegionProposal[];
 export type CheckAssessments = CheckAssessment[];
 /**
- * 关联的冻结检查项；新出现且尚无判据的现象可为空，不得伪造检查项
+ * 关联此现象影响的全部冻结检查项。一个现象可同时影响正常和异常判据，应合并为一个finding并在此列全相关check_id；所有status=anomaly的检查项必须至少被一个finding引用，不得只填异常知识中的check_id。新现象尚无判据时可为空，不得伪造检查项
  */
 export type CheckIds1 = string[];
 export type Location = LocalFindingLocation | GlobalFindingLocation;
@@ -169,7 +169,7 @@ export type RegionIndex = number;
 export type RegionObservations = RegionObservation[];
 export type CheckAssessments1 = CheckAssessment[];
 /**
- * 关联的冻结检查项；新出现且尚无判据的现象可为空，不得伪造检查项
+ * 关联此现象影响的全部冻结检查项。一个现象可同时影响正常和异常判据，应合并为一个finding并在此列全相关check_id；所有status=anomaly的检查项必须至少被一个finding引用，不得只填异常知识中的check_id。新现象尚无判据时可为空，不得伪造检查项
  */
 export type CheckIds4 = string[];
 export type Location1 = LocalFindingLocation | GlobalFindingLocation;
