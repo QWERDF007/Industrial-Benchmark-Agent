@@ -206,8 +206,53 @@ for name in ['normal','normal2','dent']:
     assert.equal(await (await element(".iad-finding-layer rect")).getAttribute("width"),"20");
     assert.match(await (await element(".iad-viewer-dialog img")).getAttribute("src"), /\/api\/iad\/evidence\//);
     await driver.wait(async()=>await driver.executeScript("const r=document.querySelector('.iad-finding-layer rect').getBoundingClientRect(),v=document.querySelector('.iad-viewer-viewport').getBoundingClientRect();return Math.abs((r.left+r.right-v.left-v.right)/2)<2&&Math.abs((r.top+r.bottom-v.top-v.bottom)/2)<2"),5000);
-    assert.ok(await driver.executeScript("const r=document.querySelector('.iad-finding-layer rect'),w=document.querySelector('.iad-viewer-world');return parseFloat(getComputedStyle(r).strokeWidth)*new DOMMatrix(getComputedStyle(w).transform).a<=3"), "放大后定位描边仍应保持细线，避免遮挡缺陷");
-    await fs.writeFile(path.join(workspace, "runs/browser/audit-finding-focus.png"), await driver.takeScreenshot(), "base64");
+    assert.equal(await driver.executeScript("return getComputedStyle(document.querySelector('.iad-finding-layer rect')).fill"),"none","定位框不能遮挡原图");
+    const focusScreenshot=path.join(workspace,"runs/browser/audit-finding-focus.png");
+    await fs.writeFile(focusScreenshot,await driver.takeScreenshot(),"base64");
+    const edge=await driver.executeScript("const r=document.querySelector('.iad-finding-layer rect').getBoundingClientRect();return [r.left,r.top+r.height/2,devicePixelRatio]");
+    const strokePixels=Number(execFileSync(bridge.pythonPath,["-c",`from PIL import Image
+import sys,json
+x,y,dpr=json.loads(sys.argv[2]);x=round(x*dpr);y=round(y*dpr)
+image=Image.open(sys.argv[1]).convert('RGB')
+print(sum(image.getpixel((i,y))!=(0,0,255) for i in range(x-round(20*dpr),x+round(20*dpr)+1)))`,focusScreenshot,JSON.stringify(edge)],{encoding:"utf8"}));
+    assert.ok(strokePixels>=1&&strokePixels<=4*edge[2],`放大后实际截图的定位描边应保持可辨且纤细，实际占 ${strokePixels} 像素`);
+    await element(".iad-inspection-panel");
+    assert.ok((await (await element(".iad-inspection-panel")).getText()).includes("综合建议"));
+    await (await element("button[aria-label='定位 ROI 1']")).click();
+    await driver.wait(async()=>await driver.executeScript("const image=document.querySelector('.iad-inspection-region img');return image&&image.naturalWidth===28&&image.naturalHeight===28"),5000);
+    await element(".iad-roi-layer [data-locked='true']");
+    assert.ok((await (await element(".iad-inspection-region")).getText()).includes("光照"));
+    assert.ok((await (await element(".iad-inspection-region")).getText()).includes("原图区域"));
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    assert.equal((await driver.findElements(By.css(".iad-viewer-dialog[open]"))).length,1,"首次Esc解除锁定，保留查看器");
+    assert.equal((await driver.findElements(By.css(".iad-roi-layer [data-locked='true']"))).length,0);
+    const roiRect=await element(".iad-roi-layer rect");
+    await driver.actions().move({origin:roiRect}).perform();
+    await element(".iad-roi-layer .is-hovered");
+    await driver.actions().move({origin:roiRect}).press().release().perform();
+    await element(".iad-roi-layer [data-locked='true']");
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    const inspectionViewport=await element(".iad-viewer-viewport");
+    await driver.actions().move({origin:inspectionViewport}).press().move({origin:inspectionViewport,x:50,y:25}).release().perform();
+    assert.equal((await driver.findElements(By.css(".iad-roi-layer [data-locked='true']"))).length,0,"拖动画面不应误选ROI");
+    const beforeKeyPan=await (await element(".iad-viewer-world")).getRect();
+    await inspectionViewport.sendKeys(Key.ARROW_RIGHT);
+    const afterKeyPan=await (await element(".iad-viewer-world")).getRect();
+    assert.ok(Math.abs(afterKeyPan.x-beforeKeyPan.x+20)<2,"支持键盘平移代替拖拽");
+    const viewerChrome=await driver.executeScript("return {width:outerWidth-innerWidth,height:outerHeight-innerHeight}");
+    await driver.manage().window().setRect({width:375+viewerChrome.width,height:812+viewerChrome.height});
+    await driver.setContext("chrome");
+    await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth='375px';gBrowser.selectedBrowser.style.width='375px';gBrowser.selectedBrowser.style.flex='none'");
+    await driver.setContext("content");
+    assert.equal(await driver.executeScript("return innerWidth"),375);
+    await (await element("button[aria-label='定位 ROI 1']")).click();
+    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-viewer-dialog'),v=document.querySelector('.iad-viewer-viewport'),p=document.querySelector('.iad-inspection-panel');return e.scrollWidth<=e.clientWidth+1&&v.clientHeight>=160&&p.clientHeight>=160&&p.scrollWidth<=p.clientWidth+1"),"窄屏全图与ROI证据面板均可见且不能横向溢出");
+    await fs.writeFile(path.join(workspace,"runs/browser/audit-roi-375.png"),await driver.takeScreenshot(),"base64");
+    await driver.setContext("chrome");
+    await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth='';gBrowser.selectedBrowser.style.width='';gBrowser.selectedBrowser.style.flex=''");
+    await driver.setContext("content");
+    await driver.manage().window().setRect({width:1440,height:1100});
+
     await button("关闭");
     await button("查看其余 1 项");
     assert.equal((await driver.findElements(By.css(".iad-findings li"))).length,4);

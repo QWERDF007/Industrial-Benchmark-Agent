@@ -6,7 +6,7 @@ import { RuleAssessments } from "./RuleAssessments.js";
 import { AuditFindings } from "./AuditFindings.js";
 import { AuditEvidence } from "./AuditEvidence.js";
 import { useReviewDraft } from "../useReviewDraft.js";
-import { auditPhases, mediaUrl, message, request } from "../api.js";
+import { auditPhases, auditEvidenceUrl, regionSources, mediaUrl, message, request } from "../api.js";
 
 export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, jobs, onJobsChanged }: {
   jobs: AuditJob[]; onJobsChanged(): void;
@@ -59,11 +59,12 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
     } catch (e) { if (activeId.current === id) setError(message(e)); } finally { setBusy(false); }
   }
   const evidenceSource = (image: VisualEvidence): ImageSource => ({
-    src: `/api/iad/evidence/${encodeURIComponent(detail!.suggestion!.suggestion_id)}/${image.evidence_id}`,
+    src: auditEvidenceUrl(detail!.suggestion!.suggestion_id,image),
+    inspection: image.role === "overview" && detail!.suggestion!.analysis ? { suggestionId: detail!.suggestion!.suggestion_id, analysis: detail!.suggestion!.analysis } : undefined,
     title: image.role === "overview" ? "送模全图概览" : `${image.representation === "annotation_mask" ? "标注定位图" : "ROI"} · ${image.crop_bbox.join(", ")}`,
     width: image.sent_size[0], height: image.sent_size[1],
   });
-  const image = detail ? { src: mediaUrl(detail.sample), title: detail.sample.relative_path.split("/").pop()!, width: detail.sample.width, height: detail.sample.height, annotations: detail.annotations } : null;
+  const image = detail ? { src: mediaUrl(detail.sample), title: detail.sample.relative_path.split("/").pop()!, width: detail.sample.width, height: detail.sample.height, annotations: detail.annotations, inspection: detail.suggestion?.analysis ? { suggestionId: detail.suggestion.suggestion_id, analysis: detail.suggestion.analysis } : undefined } : null;
   return <aside className="iad-inspector"><h2>{mode === "review" ? "复核明细" : "样本信息"}</h2>
     {error && <p role="alert" className="iad-error">{error}</p>}{notice && <p role="status">{notice}</p>}
     {!sampleId ? <p>选择图像查看。</p> : !detail ? <p>加载中…</p> : <>
@@ -98,7 +99,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
           <p className={detail.suggestion.analysis.coverage.complete ? "iad-muted" : "iad-error"}>局部覆盖 {detail.suggestion.analysis.coverage.inspected_regions} / {detail.suggestion.analysis.coverage.planned_regions} · {detail.suggestion.analysis.coverage.complete ? "计划已覆盖" : "检查未完成"}</p>
           <button className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(detail.suggestion!.analysis!.overview))}><img src={evidenceSource(detail.suggestion.analysis.overview).src} alt="送模全图概览" /><span>全图 · {detail.suggestion.analysis.overview.sent_size.join(" × ")}{detail.suggestion.analysis.conclusion.evidence_ids.includes(detail.suggestion.analysis.overview.evidence_id) ? " · 结论引用" : ""}</span></button>
           <h3>全图观察</h3><p>{detail.suggestion.analysis.global_view.description}</p>
-          {detail.suggestion.analysis.regions.map((region, index) => <div key={index}><h3>局部 · {region.origins.map(origin => origin.label).join(" / ")}</h3><small>{({ annotation: "Labelme 线索", model: "MLLM 候选", coverage: "细节覆盖" } as Record<string, string>)[region.source]} · 原图坐标 {region.crop_bbox.join(", ")}</small>
+          {detail.suggestion.analysis.regions.map((region, index) => <div key={index}><h3>局部 · {region.origins.map(origin => origin.label).join(" / ")}</h3><small>{regionSources[region.source]} · 原图坐标 {region.crop_bbox.join(", ")}</small>
             <button className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(region.image))}><img src={evidenceSource(region.image).src} alt={`审计 ROI ${index + 1}`} /><span>{region.image.sent_size.join(" × ")} · PNG{detail.suggestion!.analysis!.conclusion.evidence_ids.includes(region.image.evidence_id) ? " · 结论引用" : ""}</span></button><p>{region.observation.description}</p><p>位置：{region.observation.position_analysis}</p><p>光照：{region.observation.illumination_analysis}</p></div>)}
           {detail.suggestion.analysis.auxiliary_evidence.map(image => <button key={image.evidence_id} className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(image))}><img src={evidenceSource(image).src} alt="实际送模的二值标注定位图" /><span>标注定位图{detail.suggestion!.analysis!.conclusion.evidence_ids.includes(image.evidence_id) ? " · 结论引用" : ""}</span></button>)}
           {detail.suggestion.analysis.conclusion.conflicts.length > 0 && <p className="iad-error">观察矛盾：{detail.suggestion.analysis.conclusion.conflicts.join("；")}</p>}

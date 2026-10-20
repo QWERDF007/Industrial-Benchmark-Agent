@@ -1,5 +1,6 @@
 import React from "react";
 import type { SampleDetail } from "../../shared/contracts.js";
+import { type InspectionContext } from "./InspectionEvidence.js";
 type Annotation = SampleDetail["annotations"][number];
 export interface ImageSource {
     src: string;
@@ -7,6 +8,7 @@ export interface ImageSource {
     width?: number;
     height?: number;
     annotations?: Annotation[];
+    inspection?: InspectionContext;
     focus?: {
         bbox: number[];
         label: string;

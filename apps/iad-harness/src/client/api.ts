@@ -1,4 +1,4 @@
-import type { Filters, Sample } from "../shared/contracts.js";
+import type { Filters, Sample, VisualEvidence } from "../shared/contracts.js";
 
 export async function request<T>(path: string, body?: unknown, method?: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch("/api/iad" + path, {
@@ -16,3 +16,6 @@ export const mediaUrl = (sample: Pick<Sample, "task_id" | "sample_id">, thumbnai
 export const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 
 export const auditPhases: Record<string, string> = { PREPARING_KNOWLEDGE: "准备冻结知识", GLOBAL: "全图观察", REGIONS: "ROI 细看", SYNTHESIS: "全图与 ROI 联合分析", SAMPLE_COMPLETED: "图像审计完成" };
+
+export const auditEvidenceUrl = (suggestionId: string, image: Pick<VisualEvidence, "evidence_id">) => `/api/iad/evidence/${encodeURIComponent(suggestionId)}/${encodeURIComponent(image.evidence_id)}`;
+export const regionSources = { annotation: "Labelme 线索", model: "MLLM 候选", coverage: "细节覆盖" };
