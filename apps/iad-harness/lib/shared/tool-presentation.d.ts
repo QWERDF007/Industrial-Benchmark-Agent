@@ -3,6 +3,7 @@ import type { WorkbenchLocation } from "./navigation.js";
 export declare const workbenchTools: {
     readonly dataset_list: "数据集列表";
     readonly dataset_import: "接入数据集";
+    readonly dataset_rescan: "重新扫描目录";
     readonly dataset_report: "数据集质量报告";
     readonly knowledge_get: "知识版本";
     readonly knowledge_mine_normal: "挖掘良品知识";

@@ -135,6 +135,17 @@ test("workbench and native tools reverify proposed knowledge corrections without
       sample_id: dataset.dataset_id + ":part-1.png", reviewer: "知识核验员", decision: "FAIL" })).status, 200);
     const withdrawn = (await (await api(`/knowledge?version_id=${renewed.version_id}`)).json()).freshness;
     assert.deepEqual(withdrawn.source_changes, [{ sample_id: dataset.dataset_id + ":part-1.png", reasons: ["review", "qualification"] }], "资格撤销仍应指出导致撤销的人工反馈变化");
+    await fs.writeFile(path.join(root, "labels/part-0.json"), JSON.stringify({ imageWidth: 320, imageHeight: 240,
+      shapes: [{ shape_type: "rectangle", label: "新增核验区域", points: [[80, 90], [120, 150]] }] }));
+    const rescan = await api(`/datasets/${dataset.dataset_id}/rescan`, {});
+    assert.equal(rescan.status, 200, await rescan.clone().text());
+    const rescanKnowledge = await (await api(`/knowledge?version_id=${renewed.version_id}`)).json();
+    assert.deepEqual(rescanKnowledge.knowledge, renewed);
+    assert.deepEqual(rescanKnowledge.freshness.source_changes.find(item => item.sample_id.endsWith(":part-0.png")).reasons, ["annotations"]);
+    const afterRescan = (await complete(await (await api("/knowledge/start", input)).json())).knowledge;
+    assert.notEqual(afterRescan.version_id, renewed.version_id);
+    assert.equal(afterRescan.parent_version_id, renewed.version_id);
+    assert.equal((await (await api(`/knowledge?version_id=${afterRescan.version_id}`)).json()).freshness.status, "current");
   } finally {
     await new Promise(resolve => server.close(resolve)); await fork.dispose();
     if (priorEndpoint === undefined) delete process.env.LIVE_VLM_ENDPOINT; else process.env.LIVE_VLM_ENDPOINT = priorEndpoint;

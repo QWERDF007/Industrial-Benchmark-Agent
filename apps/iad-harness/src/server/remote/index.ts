@@ -37,7 +37,7 @@ export class IadRemoteService extends TypertRemoteService {
   }
 
   @Remote
-  async datasetScan(args: { config_path: string; task_id?: string }) {
+  async datasetScan(args: { config_path?: string; dataset_id?: string; task_id?: string }) {
     return this.bridge.execute("dataset_scan", args);
   }
 

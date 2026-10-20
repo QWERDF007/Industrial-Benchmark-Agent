@@ -22,7 +22,8 @@ export declare class IadRemoteService extends TypertRemoteService {
         unannotated_is_normal?: boolean;
     }): Promise<any>;
     datasetScan(args: {
-        config_path: string;
+        config_path?: string;
+        dataset_id?: string;
         task_id?: string;
     }): Promise<any>;
     sampleList(args: {

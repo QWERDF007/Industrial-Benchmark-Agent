@@ -181,6 +181,7 @@ var __IadClientBundle__ = (() => {
   }
   function DatasetSettings({ dataset, onChanged }) {
     const [rename, setRename] = (0, import_react2.useState)("");
+    const [scan, setScan] = (0, import_react2.useState)(null);
     const [busy, setBusy] = (0, import_react2.useState)(false);
     const [error, setError] = (0, import_react2.useState)("");
     async function save(patch) {
@@ -196,7 +197,20 @@ var __IadClientBundle__ = (() => {
         setBusy(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("section", { "aria-label": "\u5F53\u524D\u6570\u636E\u96C6\u8BE6\u60C5", children: [
+    async function rescan() {
+      setBusy(true);
+      setError("");
+      setScan(null);
+      try {
+        setScan(await request(`/datasets/${dataset.dataset_id}/rescan`, {}));
+        onChanged();
+      } catch (error2) {
+        setError(message(error2));
+      } finally {
+        setBusy(false);
+      }
+    }
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("section", { "aria-label": "\u5F53\u524D\u6570\u636E\u96C6\u8BE6\u60C5", "aria-busy": busy, children: [
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h2", { children: dataset.name }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("dl", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("dt", { children: "\u56FE\u50CF\u76EE\u5F55" }),
@@ -223,6 +237,17 @@ var __IadClientBundle__ = (() => {
       ] }),
       dataset.reference_mode === "selected" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { disabled: busy, onClick: () => save({ reset_references: true }), children: "\u6062\u590D\u81EA\u52A8\u8D44\u683C" }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "iad-muted", children: "\u6765\u6E90\u8D44\u683C\u53D8\u66F4\u7528\u4E8E\u540E\u7EED\u77E5\u8BC6\u6316\u6398\uFF1B\u5DF2\u6709\u77E5\u8BC6\u4E0E\u5BA1\u8BA1\u4FDD\u7559\u539F\u7248\u672C\u3002" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { disabled: busy, onClick: () => void rescan(), children: busy ? "\u6B63\u5728\u5904\u7406\u2026" : "\u91CD\u65B0\u626B\u63CF\u76EE\u5F55" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { className: "iad-muted", children: "\u66F4\u65B0\u5F53\u524D\u76EE\u5F55\u7684\u56FE\u50CF\u4E0E\u6807\u6CE8\uFF1B\u4EBA\u5DE5\u8BB0\u5F55\u3001\u65E7\u77E5\u8BC6\u4E0E\u5BA1\u8BA1\u4FDD\u7559\u3002\u626B\u63CF\u540E\u53EF\u5728\u77E5\u8BC6\u9875\u67E5\u770B\u53D8\u5316\u5E76\u91CD\u65B0\u6838\u9A8C\u3002" }),
+      scan && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("p", { role: "status", "aria-label": "\u626B\u63CF\u7ED3\u679C", children: [
+        "\u626B\u63CF\u5B8C\u6210 \xB7 ",
+        scan.image_count,
+        " \u5F20\u56FE\u50CF \xB7 ",
+        scan.annotation_count,
+        " \u4E2A\u6807\u6CE8 \xB7 ",
+        scan.issue_count,
+        " \u9879\u95EE\u9898"
+      ] }),
       error && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("p", { role: "alert", className: "iad-error", children: error })
     ] });
   }
@@ -3034,6 +3059,7 @@ var __IadClientBundle__ = (() => {
   var workbenchTools = {
     dataset_list: "\u6570\u636E\u96C6\u5217\u8868",
     dataset_import: "\u63A5\u5165\u6570\u636E\u96C6",
+    dataset_rescan: "\u91CD\u65B0\u626B\u63CF\u76EE\u5F55",
     dataset_report: "\u6570\u636E\u96C6\u8D28\u91CF\u62A5\u544A",
     knowledge_get: "\u77E5\u8BC6\u7248\u672C",
     knowledge_mine_normal: "\u6316\u6398\u826F\u54C1\u77E5\u8BC6",

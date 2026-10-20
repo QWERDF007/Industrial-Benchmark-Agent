@@ -18,10 +18,11 @@ from iad_core.workbench.job_models import JobRetry, JobSnapshot, JobRetryOptions
 from iad_core.workbench.inspection_context import InspectionReference, InspectionSnapshot
 from iad_core.dataset.registry import DatasetImport
 from iad_core.dataset.archive import ArchiveInspection
+from iad_core.dataset.scanner import ScanResult
 from iad_core.workbench.report import DatasetReport
 from iad_core.storage.models import Annotation, ReviewDecisionRecord
 from iad_core.workbench.review import ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage
-models = [AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, AuditStart, ModelCallDetail, JobRetry, JobSnapshot, JobRetryOptions, InspectionReference, InspectionSnapshot, DatasetImport, ArchiveInspection, DatasetReport, MiningStart, Annotation, ReviewDecisionRecord, ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage]
+models = [AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, AuditStart, ModelCallDetail, JobRetry, JobSnapshot, JobRetryOptions, InspectionReference, InspectionSnapshot, DatasetImport, ArchiveInspection, ScanResult, DatasetReport, MiningStart, Annotation, ReviewDecisionRecord, ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage]
 modes = [(model, 'validation' if model in (MiningStart, AuditStart, JobRetry, InspectionReference, DatasetImport, ReviewSubmission, ReviewHistoryQuery) else 'serialization') for model in models]
 references, schema = models_json_schema(modes)
 schema.update(title='WorkbenchDomain', type='object', additionalProperties=False,

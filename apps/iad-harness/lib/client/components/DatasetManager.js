@@ -18,6 +18,7 @@ function DirectoryPicker({ label, value, onChange }) {
 }
 function DatasetSettings({ dataset, onChanged }) {
     const [rename, setRename] = useState("");
+    const [scan, setScan] = useState(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
     async function save(patch) {
@@ -35,7 +36,22 @@ function DatasetSettings({ dataset, onChanged }) {
             setBusy(false);
         }
     }
-    return _jsxs("section", { "aria-label": "\u5F53\u524D\u6570\u636E\u96C6\u8BE6\u60C5", children: [_jsx("h2", { children: dataset.name }), _jsxs("dl", { children: [_jsx("dt", { children: "\u56FE\u50CF\u76EE\u5F55" }), _jsx("dd", { children: dataset.image_dir }), _jsx("dt", { children: "\u6807\u6CE8\u76EE\u5F55" }), _jsx("dd", { children: dataset.annotation_dir || "由原导入配置定位" }), _jsx("dt", { children: "\u6570\u636E\u96C6 ID" }), _jsx("dd", { children: _jsx("code", { children: dataset.dataset_id }) })] }), _jsxs("div", { className: "iad-row", children: [_jsx("input", { "aria-label": "\u65B0\u7684\u6570\u636E\u96C6\u540D\u79F0", placeholder: "\u65B0\u7684\u6570\u636E\u96C6\u540D\u79F0", value: rename, onChange: e => setRename(e.target.value), maxLength: 120, disabled: busy }), _jsx("button", { disabled: busy || !rename.trim(), onClick: () => save({ name: rename }), children: "\u4FDD\u5B58\u540D\u79F0" })] }), _jsxs("label", { className: "iad-row iad-rule", children: [_jsx("input", { type: "checkbox", checked: dataset.unannotated_is_normal, disabled: busy, onChange: e => save({ unannotated_is_normal: e.target.checked }) }), "\u65E0\u6807\u6CE8\u56FE\u4F5C\u4E3A\u521D\u59CB\u826F\u54C1\u53C2\u8003"] }), _jsxs("p", { children: ["\u826F\u54C1\u5019\u9009\uFF1A", dataset.reference_mode === "selected" ? "人工选定范围" : "自动资格", " \u00B7 ", dataset.reference_sample_ids.length, " \u5F20"] }), dataset.reference_mode === "selected" && _jsx("button", { disabled: busy, onClick: () => save({ reset_references: true }), children: "\u6062\u590D\u81EA\u52A8\u8D44\u683C" }), _jsx("p", { className: "iad-muted", children: "\u6765\u6E90\u8D44\u683C\u53D8\u66F4\u7528\u4E8E\u540E\u7EED\u77E5\u8BC6\u6316\u6398\uFF1B\u5DF2\u6709\u77E5\u8BC6\u4E0E\u5BA1\u8BA1\u4FDD\u7559\u539F\u7248\u672C\u3002" }), error && _jsx("p", { role: "alert", className: "iad-error", children: error })] });
+    async function rescan() {
+        setBusy(true);
+        setError("");
+        setScan(null);
+        try {
+            setScan(await request(`/datasets/${dataset.dataset_id}/rescan`, {}));
+            onChanged();
+        }
+        catch (error) {
+            setError(message(error));
+        }
+        finally {
+            setBusy(false);
+        }
+    }
+    return _jsxs("section", { "aria-label": "\u5F53\u524D\u6570\u636E\u96C6\u8BE6\u60C5", "aria-busy": busy, children: [_jsx("h2", { children: dataset.name }), _jsxs("dl", { children: [_jsx("dt", { children: "\u56FE\u50CF\u76EE\u5F55" }), _jsx("dd", { children: dataset.image_dir }), _jsx("dt", { children: "\u6807\u6CE8\u76EE\u5F55" }), _jsx("dd", { children: dataset.annotation_dir || "由原导入配置定位" }), _jsx("dt", { children: "\u6570\u636E\u96C6 ID" }), _jsx("dd", { children: _jsx("code", { children: dataset.dataset_id }) })] }), _jsxs("div", { className: "iad-row", children: [_jsx("input", { "aria-label": "\u65B0\u7684\u6570\u636E\u96C6\u540D\u79F0", placeholder: "\u65B0\u7684\u6570\u636E\u96C6\u540D\u79F0", value: rename, onChange: e => setRename(e.target.value), maxLength: 120, disabled: busy }), _jsx("button", { disabled: busy || !rename.trim(), onClick: () => save({ name: rename }), children: "\u4FDD\u5B58\u540D\u79F0" })] }), _jsxs("label", { className: "iad-row iad-rule", children: [_jsx("input", { type: "checkbox", checked: dataset.unannotated_is_normal, disabled: busy, onChange: e => save({ unannotated_is_normal: e.target.checked }) }), "\u65E0\u6807\u6CE8\u56FE\u4F5C\u4E3A\u521D\u59CB\u826F\u54C1\u53C2\u8003"] }), _jsxs("p", { children: ["\u826F\u54C1\u5019\u9009\uFF1A", dataset.reference_mode === "selected" ? "人工选定范围" : "自动资格", " \u00B7 ", dataset.reference_sample_ids.length, " \u5F20"] }), dataset.reference_mode === "selected" && _jsx("button", { disabled: busy, onClick: () => save({ reset_references: true }), children: "\u6062\u590D\u81EA\u52A8\u8D44\u683C" }), _jsx("p", { className: "iad-muted", children: "\u6765\u6E90\u8D44\u683C\u53D8\u66F4\u7528\u4E8E\u540E\u7EED\u77E5\u8BC6\u6316\u6398\uFF1B\u5DF2\u6709\u77E5\u8BC6\u4E0E\u5BA1\u8BA1\u4FDD\u7559\u539F\u7248\u672C\u3002" }), _jsx("button", { disabled: busy, onClick: () => void rescan(), children: busy ? "正在处理…" : "重新扫描目录" }), _jsx("p", { className: "iad-muted", children: "\u66F4\u65B0\u5F53\u524D\u76EE\u5F55\u7684\u56FE\u50CF\u4E0E\u6807\u6CE8\uFF1B\u4EBA\u5DE5\u8BB0\u5F55\u3001\u65E7\u77E5\u8BC6\u4E0E\u5BA1\u8BA1\u4FDD\u7559\u3002\u626B\u63CF\u540E\u53EF\u5728\u77E5\u8BC6\u9875\u67E5\u770B\u53D8\u5316\u5E76\u91CD\u65B0\u6838\u9A8C\u3002" }), scan && _jsxs("p", { role: "status", "aria-label": "\u626B\u63CF\u7ED3\u679C", children: ["\u626B\u63CF\u5B8C\u6210 \u00B7 ", scan.image_count, " \u5F20\u56FE\u50CF \u00B7 ", scan.annotation_count, " \u4E2A\u6807\u6CE8 \u00B7 ", scan.issue_count, " \u9879\u95EE\u9898"] }), error && _jsx("p", { role: "alert", className: "iad-error", children: error })] });
 }
 export function DatasetManager({ datasets, selected, onChanged }) {
     const [importing, setImporting] = useState(false);

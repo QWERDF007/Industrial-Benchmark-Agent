@@ -20,6 +20,7 @@ export const ALLOWED_TOOL_SURFACE = [
   "dataset_list",
   "dataset_directory_inspect",
   "dataset_import",
+  "dataset_rescan",
   "dataset_archive_inspect",
   "dataset_report",
   "model_audit_start",

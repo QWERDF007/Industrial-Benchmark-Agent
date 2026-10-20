@@ -487,8 +487,14 @@ export type Path = string;
 export type ImageCount = number;
 export type AnnotationCount = number;
 export type Directories = ArchiveDirectory[];
-export type DatasetId7 = string | null;
-export type TaskId2 = string | null;
+export type DatasetId7 = string;
+export type TaskId2 = string;
+export type ImageCount1 = number;
+export type AnnotationCount1 = number;
+export type IssueCount = number;
+export type DbPath = string;
+export type DatasetId8 = string | null;
+export type TaskId3 = string | null;
 export type TotalSamples1 = number;
 export type VlmAuditedCount = number;
 export type VlmCoveragePct = number | null;
@@ -533,7 +539,7 @@ export type LegacyProfileId1 = string | null;
 export type SampleCount = number;
 export type KnowledgeVersions = KnowledgeUsage[];
 export type AuditRunIds = string[];
-export type DatasetId8 = string;
+export type DatasetId9 = string;
 export type OriginSessionId3 = string | null;
 export type Kind3 = "normal" | "defect";
 export type NormalVersionId6 = string | null;
@@ -575,7 +581,7 @@ export type StartedAt3 = string | null;
 export type SubmittedAt = string | null;
 export type ReviewDurationMs = number;
 export type SubmissionId = string;
-export type DatasetId9 = string;
+export type DatasetId10 = string;
 export type SampleId14 = string;
 export type Reviewer1 = string;
 export type ReviewDecisionEnum = "PASS" | "HARD_NORMAL" | "FAIL" | "UNCERTAIN" | "SKIP";
@@ -583,7 +589,7 @@ export type ReasonCode1 = string | null;
 export type Comment1 = string | null;
 export type DurationMs = number;
 export type StartedAt4 = string | null;
-export type DatasetId10 = string;
+export type DatasetId11 = string;
 export type Page = number;
 export type PageSize = number;
 export type Search = string;
@@ -617,6 +623,7 @@ export interface WorkbenchDomain {
     InspectionSnapshot?: InspectionSnapshot;
     DatasetImport?: DatasetImport;
     ArchiveInspection?: ArchiveInspection;
+    ScanResult?: ScanResult;
     DatasetReport?: DatasetReport;
     MiningStart?: MiningStart;
     Annotation?: Annotation;
@@ -1130,9 +1137,17 @@ export interface ArchiveDirectory {
     image_count: ImageCount;
     annotation_count: AnnotationCount;
 }
-export interface DatasetReport {
+export interface ScanResult {
     dataset_id: DatasetId7;
     task_id: TaskId2;
+    image_count: ImageCount1;
+    annotation_count: AnnotationCount1;
+    issue_count: IssueCount;
+    db_path: DbPath;
+}
+export interface DatasetReport {
+    dataset_id: DatasetId8;
+    task_id: TaskId3;
     total_samples: TotalSamples1;
     vlm_audited_count: VlmAuditedCount;
     vlm_coverage_pct: VlmCoveragePct;
@@ -1190,7 +1205,7 @@ export interface KnowledgeUsage {
     sample_count: SampleCount;
 }
 export interface MiningStart {
-    dataset_id: DatasetId8;
+    dataset_id: DatasetId9;
     origin_session_id?: OriginSessionId3;
     kind: Kind3;
     normal_version_id?: NormalVersionId6;
@@ -1229,7 +1244,7 @@ export interface ReviewDecisionRecord {
 }
 export interface ReviewSubmission {
     submission_id: SubmissionId;
-    dataset_id: DatasetId9;
+    dataset_id: DatasetId10;
     sample_id: SampleId14;
     reviewer: Reviewer1;
     decision: ReviewDecisionEnum;
@@ -1239,7 +1254,7 @@ export interface ReviewSubmission {
     started_at?: StartedAt4;
 }
 export interface ReviewHistoryQuery {
-    dataset_id: DatasetId10;
+    dataset_id: DatasetId11;
     page?: Page;
     page_size?: PageSize;
     search?: Search;

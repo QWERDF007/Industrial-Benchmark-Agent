@@ -15,6 +15,7 @@ for (const source of ["directory", "archive"]) test(`a real DSH Session imports 
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-agent-session-"));
   execFileSync(resolvePythonPath(), [fileURLToPath(new URL("fixtures/knowledge_dataset.py", import.meta.url)), root]);
   const requests = [], trace = [];
+  let rescanDataset = null, rescanStart = 0;
   const request = { name: source === "directory" ? path.basename(root) : "会话测试部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") };
   const archived = source === "archive";
   const directoryPaths = archived ? [] : [root, request.image_dir, request.annotation_dir];
@@ -40,7 +41,14 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
     requests.push(body);
     const tools = body.messages.filter(message => message.role === "tool");
     let delta, finish;
-    if (tools.length < inspectionCount) {
+    if (rescanDataset) {
+      const count = tools.length - rescanStart;
+      if (count < 2) {
+        delta = { role: "assistant", tool_calls: [{ index: 0, id: `rescan-${count}`, type: "function", function: {
+          name: count === 0 ? "dataset_rescan" : "dataset_report", arguments: JSON.stringify({ dataset_id: rescanDataset.dataset_id }),
+        } }] }; finish = "tool_calls";
+      } else { delta = { role: "assistant", content: "已重新扫描目录，标注已更新；已有人工记录和历史结果保留。" }; finish = "stop"; }
+    } else if (tools.length < inspectionCount) {
       delta = { role: "assistant", tool_calls: [{ index: 0, id: "inspect", type: "function", function: {
         name: archived ? "dataset_archive_inspect" : "dataset_directory_inspect",
         arguments: JSON.stringify(archived ? { archive_path: request.archive_path } : { path: directoryPaths[tools.length] }),
@@ -116,6 +124,23 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
     assert.ok(!names.includes("review_submit_decision"));
     assert.ok(!names.includes("unrelated_test_tool"), "Agent-scoped policy must filter other registered tools");
     assert.match(requests[0].messages.filter(item => item.role === "system").map(item => item.content).join("\n"), /数据集分析流程/);
+    if (!archived) {
+      rescanDataset = trace.find(item => item.name === "dataset_import").result.value;
+      rescanStart = requests.at(-1).messages.filter(message => message.role === "tool").length;
+      const beforeRescan = trace.length;
+      const labelPath = path.join(root, "labels/part-2.json");
+      const label = JSON.parse(await fs.readFile(labelPath, "utf8")); label.shapes = [];
+      await fs.writeFile(labelPath, JSON.stringify(label));
+      session.handle.agent.followup(createUserMessage({ source: { kind: "user" }, content: [{ type: "text", text: "服务器目录里的标注已更新，请重新扫描原数据集，再查看质量报告。" }] }));
+      await session.handle.agent.whenIdle();
+      assert.deepEqual(trace.slice(beforeRescan).map(item => item.name), ["dataset_rescan", "dataset_report"]);
+      assert.ok(trace.slice(beforeRescan).every(item => !item.result.isError));
+      assert.equal(trace[beforeRescan].result.value.annotation_count, 0);
+      assert.ok(requests.at(-1).tools.some(tool => tool.function.name === "dataset_rescan"));
+      const sample = await session.ctx.iadPythonBridge.execute("sample_get", { sample_id: rescanDataset.dataset_id + ":part-2.png" });
+      assert.deepEqual(sample.annotations, []);
+      assert.equal((await session.ctx.iadPythonBridge.execute("dataset_list", {})).datasets.length, 1);
+    }
   } finally {
     await session?.dispose();
     server.closeAllConnections();

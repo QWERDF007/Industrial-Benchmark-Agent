@@ -1,5 +1,7 @@
 import json
 import os
+from contextlib import nullcontext
+from sqlite3 import Connection
 import uuid
 from collections import Counter
 from pathlib import Path
@@ -24,8 +26,8 @@ class DatasetRegistry:
     def __init__(self, db: Database):
         self.db = db
 
-    def save(self, config: DatasetConfig) -> None:
-        with self.db.connection() as conn:
+    def save(self, config: DatasetConfig, connection: Optional[Connection] = None) -> None:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
             conn.execute("""
                 INSERT INTO datasets(dataset_id,task_id,config_json) VALUES(?,?,?)
                 ON CONFLICT(dataset_id) DO UPDATE SET config_json=excluded.config_json

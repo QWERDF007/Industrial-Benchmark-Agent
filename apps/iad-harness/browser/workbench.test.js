@@ -14,7 +14,7 @@ import { PythonBridge, createIadHttpHandler } from "../lib/server/index.js";
 const app = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const workspace = path.resolve(app, "../..");
 
-test("browser: import Labelme, filter, select references, review and rename", { timeout: 120000 }, async () => {
+test("browser: import Labelme, filter, select references, review and rename", { timeout: 180000 }, async () => {
   await fs.mkdir(path.join(workspace, "runs/browser"), { recursive: true });
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-browser-"));
   const bridge = new PythonBridge({ cwd: workspace, dbPath: path.join(root, "test.db") });
@@ -973,6 +973,32 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await fs.writeFile(sourcePath, sourcePixels);
     await button("刷新");
     await driver.wait(async () => !(await (await element(".iad-job-panel")).getText()).includes("来源发生变化") && (await (await element(".iad-job-panel")).getText()).includes("来源与生成规则未变化"), 5000);
+    await button("数据集管理");
+    const rescanSampleId = dataset.dataset_id + ":dent.png";
+    const beforeRescan = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(rescanSampleId)}`)).json();
+    const updatedLabelme = JSON.parse(await fs.readFile(path.join(root, "labels/dent.json"), "utf8"));
+    updatedLabelme.shapes[0].label = "已修订类别";
+    updatedLabelme.shapes[0].points = [[40, 40], [70, 70]];
+    await fs.writeFile(path.join(root, "labels/dent.json"), JSON.stringify(updatedLabelme));
+    await fs.copyFile(path.join(root, "images/normal.png"), path.join(root, "images/new-image.png"));
+    await button("重新扫描目录");
+    await driver.wait(async () => (await (await element("[aria-label='扫描结果']")).getText()).includes("4 张图像"), 10000);
+    await viewportSize(375, 812);
+    await driver.executeScript("document.querySelector('[aria-label=\"扫描结果\"]').scrollIntoView({block:'center'})");
+    assert.ok(await driver.executeScript("const e=document.querySelector('[aria-label=\"当前数据集详情\"]');return e.scrollWidth<=e.clientWidth+1"), "375px重新扫描详情与实际结果不应横向溢出");
+    await fs.writeFile(path.join(workspace, "runs/browser/dataset-rescan-375.png"), await driver.takeScreenshot(), "base64");
+    await viewportSize(1440, 1100);
+    const afterRescan = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(rescanSampleId)}`)).json();
+    assert.equal(afterRescan.sample.sample_uuid, beforeRescan.sample.sample_uuid);
+    assert.deepEqual(afterRescan.review_decision, beforeRescan.review_decision);
+    assert.deepEqual(afterRescan.suggestion, beforeRescan.suggestion, "重新扫描不能改写旧审计及冻结证据");
+    assert.equal(afterRescan.annotations[0].raw_label, "已修订类别");
+    assert.deepEqual(afterRescan.annotations[0].bbox, [40, 40, 70, 70]);
+    await button("图像浏览");
+    await (await element("summary[aria-label='标注筛选']")).click();
+    await button("清空");
+    await (await element("summary[aria-label='标注筛选']")).click();
+    await gridCount(4);
   } catch (error) {
     if (driver) {
       await fs.writeFile(path.join(workspace, "runs/browser/failure.png"), await driver.takeScreenshot(), "base64");

@@ -9,6 +9,7 @@ export const DATASET_ANALYSIS_WORKFLOW = `数据集分析流程
 
 用户要求“接入数据集、挖掘良品/不良品知识、审计并评估质量”时，使用以下实际操作完成任务；不要只给计划或在启动作业后就声称完成。
 1. 用 dataset_list 确认已接入的数据集。数据接入以服务器目录为主：用户只提供根目录（如 /data1/data/xxx）时，用 dataset_directory_inspect 检查实际子目录及当前层文件扩展名数量，按需向下查看，识别图像目录与 Labelme JSON 标注目录；同一目录混放图像和 JSON 时两者可相同。只有一个明确的目录组合时直接用 dataset_import，不要求用户再次逐一填写路径；多个候选组合或结构不明确时只询问歧义，不猜路径。名称未指定时取用户提供根目录的目录名，后续可在数据集管理修改；名称不是必须追问的信息。用户已明确给出两目录时直接导入。不存在或不可访问的目录如实报告，不能声称已上传或分析。已接入则复用稳定 dataset_id。保留 ZIP 工具供明确提供压缩包路径时使用，普通目录任务不要求上传附件。
+   用户明确告知已接入目录中的图像/Labelme文件已修改、增加或移除时，先用 dataset_rescan 重新扫描该 dataset_id，读取实际数量与问题，再核对 knowledge_get 的来源变化；复用原身份，不重复导入。扫描不自动重跑模型，也不代表旧审计或人工记录已重新核验。
 2. 加载 skill: mine-normal-knowledge，按其指引启动 knowledge_mine_normal，查询同一 run_id，取得发布的 knowledge_version_id 并读取知识。默认覆盖全部合格来源，不预设产品、检查点或数量预算。
 3. 加载 skill: mine-defect-knowledge，将刚取得的 normal_version_id 显式传入，执行并读取实际不良知识。无异常候选时如实说明，不能虚构不良知识；仍可用良品知识进行异常筛查。
 4. 用 model_audit_start 显式传入所选 dataset_id、normal_version_id 及实际可用的 defect_version_id；默认全部图像和全部适用 ROI。dataset_audit 只是技术检查，不能替代该 MLLM 联合审计。
@@ -54,6 +55,13 @@ export function createWorkbenchTools(bridge: PythonBridge, ctx: Context): ToolDe
       },
       output: workbenchJsonOutput,
       execute: (args, exec) => bridge.execute("dataset_import", args, exec.signal),
+    }),
+    defineTool({
+      name: "dataset_rescan",
+      description: "重新扫描已接入数据集的服务器目录，更新当前图像与Labelme标注，返回实际图像/标注/问题数量；复用稳定身份，保留人工记录、旧知识与历史审计，不自动重跑模型。目录内容变化后先显式执行本工具，再读取知识来源状态和重新核验。",
+      parameters: { dataset_id: { type: "string", required: true } },
+      output: workbenchJsonOutput,
+      execute: (args, exec) => bridge.execute("dataset_scan", args, exec.signal),
     }),
     defineTool({
       name: "model_audit_start",
