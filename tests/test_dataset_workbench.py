@@ -151,12 +151,17 @@ def test_job_cancel_prevents_late_suggestion(dataset, mllm_api):
     assert not AuditSuggestionRepository(db).list_by_sample(target)
 
 
-def test_empty_model_answer_records_failure_without_suggestion(dataset):
+@pytest.mark.parametrize("finish_reason,content,expected", [
+    ("length", None, "token 上限"),
+    ("stop", None, "no final answer"),
+    ("length", json.dumps({"structure":"连续","texture":"平整","position_variation":"平移","illumination_variation":"反光","normal_allowances":[],"cautions":[]}), "token 上限"),
+])
+def test_empty_model_answer_records_failure_without_suggestion(dataset, finish_reason, content, expected):
     from iad_core.workbench.audit import AuditService, VlmClient
     from iad_core.advisory.repository import AuditSuggestionRepository
     db, _, config = dataset
     client = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200, json={
-        "choices": [{"finish_reason": "length", "message": {"content": None, "reasoning_content": "thinking"}}],
+        "choices": [{"finish_reason": finish_reason, "message": {"content": content, "reasoning_content": "thinking"}}],
     })))
     service = AuditService(db, VlmClient(http_client=client))
     target = f"{config.dataset.id}:dent.png"
@@ -165,8 +170,7 @@ def test_empty_model_answer_records_failure_without_suggestion(dataset):
     result = service.status(job["run_id"])
     assert result["status"] == "FAILED"
     assert result["failed"] == 1 and result["completed"] == 0
-    assert "no final answer" in result["errors"][0]["message"]
-    assert "length" in result["errors"][0]["message"]
+    assert expected in result["errors"][0]["message"]
     assert not AuditSuggestionRepository(db).list_by_sample(target)
 
 
@@ -376,3 +380,49 @@ def test_reference_change_during_learning_does_not_save_stale_knowledge(dataset)
     assert 'Reference images changed' in service.status(job['run_id'])['errors'][0]['message']
     with db.connection() as conn:
         assert conn.execute('SELECT COUNT(*) FROM normal_profiles').fetchone()[0]==0
+
+
+@pytest.mark.parametrize("invalid_response", [False, True])
+def test_audit_uses_server_enforced_schema_for_roi_results(dataset, invalid_response):
+    from iad_core.advisory.analysis import ViewAnalysis
+    from iad_core.entry import sample_get
+    from iad_core.workbench.audit import AuditService, VlmClient
+    db, _, config = dataset
+    bodies = []
+    patterns = {'structure':'连续','texture':'平整','position_variation':'平移','illumination_variation':'反光','normal_allowances':[],'cautions':[]}
+    view = {'description':'真实局部观察','position_analysis':'位置合理','illumination_analysis':'已考虑反光'}
+    def respond(request):
+        body = json.loads(request.content)
+        bodies.append(body)
+        constrained = body.get('response_format', {}).get('json_schema', {})
+        schema = constrained.get('schema') or json.loads(body['messages'][0]['content'][0]['text'].split('JSON Schema 的 JSON，不要 Markdown：\n')[1])
+        title = schema['title']
+        answer = dict(patterns if title == 'NormalPatterns' else view)
+        if title == 'ViewAnalysis' and (not constrained or invalid_response):
+            answer = ViewAnalysis.model_json_schema()
+        if title == 'VlmResult':
+            answer.update(suggested_label='PASS',reason_category='NORMAL',confidence=0.8,evidence_ids=[json.loads(p['text'][5:])['evidence_id'] for p in body['messages'][0]['content'] if p['type']=='text' and p['text'].startswith('视觉证据：')])
+        return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(answer)}}]})
+    service = AuditService(db,VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
+    target = f'{config.dataset.id}:dent.png'
+    try:
+        job = service.start(dataset_id=config.dataset.id,sample_ids=[target])
+        service.wait(job['run_id'],5)
+        status = service.status(job['run_id'])
+        detail = sample_get({'sample_id':target},db.db_path)
+        if invalid_response:
+            assert status['status']=='FAILED'
+            assert detail['suggestion'] is None
+            assert 'MLLM ViewAnalysis 输出格式错误' in status['errors'][0]['message']
+            assert 'description: missing' in status['errors'][0]['message']
+            assert 'input_value=' not in status['errors'][0]['message']
+        else:
+            assert status['status']=='COMPLETED', status['errors']
+            assert detail['suggestion']['analysis']['regions'][0]['observation']['description']=='真实局部观察'
+        for body in bodies:
+            contract = body['response_format']
+            assert contract['type']=='json_schema'
+            assert contract['json_schema']['strict'] is True
+            assert contract['json_schema']['schema']['additionalProperties'] is False
+    finally:
+        service.close()

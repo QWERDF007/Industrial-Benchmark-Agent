@@ -18,7 +18,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 良品模式学习、版本及参考变更失效 | [NormalProfiles](../python/iad_core/workbench/normal.py) |
 | 全图、局部裁剪及综合判断 | [SampleInspection](../python/iad_core/workbench/inspection.py)、[分析类型](../python/iad_core/advisory/analysis.py) |
 | 视觉证据、原图坐标、无损 ROI 与分块 | [EvidenceImages](../python/iad_core/evidence/images.py) |
-| 模型传输与响应校验 | [VlmClient](../python/iad_core/workbench/vision.py) |
+| 模型传输、服务端结构化输出与响应校验 | [VlmClient](../python/iad_core/workbench/vision.py)、[vLLM 输出契约](https://github.com/vllm-project/vllm/blob/v0.18.0/docs/features/structured_outputs.md) |
 | 审计作业与取消 | [AuditService](../python/iad_core/workbench/audit.py) |
 | 图像查看器与标注图层 | [ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx) |
 | 复核会话与裁决 | [HumanReview](../python/iad_core/workbench/review.py) |

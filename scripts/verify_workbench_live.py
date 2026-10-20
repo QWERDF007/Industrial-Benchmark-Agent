@@ -17,6 +17,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", default="data/benchmark.db")
     parser.add_argument("--output", default="runs/verification/workbench-live")
+    parser.add_argument("--failed-run", help="Verify the first two failures from a persisted audit job")
     options = parser.parse_args()
     output = Path(options.output)
     output.mkdir(parents=True, exist_ok=True)
@@ -28,7 +29,14 @@ def main():
     db = Database(str(snapshot))
     registry, query = DatasetRegistry(db), WorkbenchQuery(db)
     dataset = registry.list()[0]
-    targets = query.samples(SampleQuery(dataset_id=dataset.dataset.id, annotation_filters=["present"], page_size=2))["items"]
+    if options.failed_run:
+        with db.connection() as conn:
+            row = conn.execute("SELECT payload_json FROM job_runs WHERE job_id=? AND job_type='MODEL_AUDIT'", (options.failed_run,)).fetchone()
+        payload = json.loads(row[0])
+        dataset = registry.get(payload['dataset_id'])
+        targets = payload['errors'][:2]
+    else:
+        targets = query.samples(SampleQuery(dataset_id=dataset.dataset.id, annotation_filters=["present"], page_size=2))["items"]
     assert len(targets) == 2 and registry.references(dataset.dataset.id)
     requests = []
     class RecordingVlm(VlmClient):
