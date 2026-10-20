@@ -4,7 +4,7 @@ import { MediaImage, MediaLoad } from "./MediaLoad.js";
 import { AnnotationLayer, type AnnotationLayerSource } from "./AnnotationLayer.js";
 import { regionSources } from "../api.js";
 import { InspectionOverlay, InspectionPanel } from "./InspectionEvidence.js";
-import { resolveInspection, type InspectionContext, type InspectionSelection } from "../inspection.js";
+import { resolveInspection, type InspectionContext, type InspectionSelection, type InspectionTransform } from "../inspection.js";
 
 const emptyHover = { ids: [] as string[], dismissed: false, x: 0, y: 0 };
 const minScale = 0.02, maxScale = 16;
@@ -13,6 +13,7 @@ export interface ImageSource {
   src: string; title: string; width?: number; height?: number; annotationLayer?: AnnotationLayerSource;
   inspection?: InspectionContext;
   initialSelection?: InspectionSelection;
+  initialTransform?: InspectionTransform;
 }
 
 export function AnnotatedImage({ image, visible = true, onLoad }: { image: ImageSource; visible?: boolean; onLoad?: React.ReactEventHandler<HTMLImageElement> }) {
@@ -35,6 +36,8 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
   const [size, setSize] = useState({ width: image.width || 0, height: image.height || 0 });
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
   const [view, setView] = useState({ scale: 0, x: 0, y: 0 });
+  const focusedSelection = useRef<string>();
+  const restoredTransform = useRef(false);
   const [layers, setLayers] = useState<Record<keyof typeof regionSources, boolean>>(() => {
     const initial = { annotation: true, model: true, coverage: true };
     try {
@@ -60,7 +63,16 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
     observer.observe(element); return () => observer.disconnect();
   }, []);
   useEffect(() => {
-    if (!inspection || !selection || !bounds.width || !bounds.height || !size.width || !size.height) return;
+    if (!bounds.width || !bounds.height || !size.width || !size.height) return;
+    const key = JSON.stringify(selection);
+    if (focusedSelection.current === key) return;
+    focusedSelection.current = key;
+    if (!restoredTransform.current && image.initialTransform) {
+      restoredTransform.current = true;
+      setView({ scale: image.initialTransform.zoom ? image.initialTransform.zoom * fit : 0, x: image.initialTransform.x, y: image.initialTransform.y });
+      return;
+    }
+    if (!inspection || !selection) return;
     const box = selection.kind === "evidence" ? evidence?.role === "overview" ? null : evidence?.crop_bbox : finding?.location.bbox;
     if (!box) { setView({ scale: 0, x: 0, y: 0 }); return; }
     const [x1,y1,x2,y2] = box.map((value,axis) => value*(axis%2 ? size.height : size.width)/inspection.analysis.overview.original_size[axis%2]);
@@ -159,7 +171,7 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
         {regionSources[hint.source]} · {hint.label.slice(0,80)}{hint.label.length > 80 ? "…" : ""}{hoveredRegions.length > 1 ? ` · ${hoveredRegions.length} 个重叠区域` : ""}
       </div>}
     </div></MediaLoad>
-    {inspection && <InspectionPanel inspection={inspection} selection={selection} choices={choices} onSelect={select} />}
+    {inspection && <InspectionPanel inspection={inspection} selection={selection} choices={choices} onSelect={select} transform={() => ({ zoom: view.scale ? scale / fit : 0, x: view.x, y: view.y })} />}
     </div>
   </div></Modal>;
 }

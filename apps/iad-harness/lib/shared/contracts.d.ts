@@ -4,6 +4,7 @@ export type { ReviewHistoryQuery, ReviewHistoryPage } from "./domain.generated.j
 export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot, JobRetry, DatasetImport as DatasetImportRequest, ArchiveInspection, DatasetReport as Report } from "./domain.generated.js";
 export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
 export type { JobSnapshot, JobSample, JobRetryOptions, ModelCallSummary } from "./domain.generated.js";
+export type { InspectionReference, InspectionSnapshot } from "./domain.generated.js";
 export type { KnowledgeVersion, MiningStart as KnowledgeStartRequest } from "./domain.generated.js";
 export type Decision = ReviewSubmission["decision"];
 export interface Suggestion {

@@ -121,6 +121,14 @@ class AuditSuggestionRepository:
             rows = cursor.fetchall()
             return [self._row_to_suggestion(r) for r in rows]
 
+    def latest_by_sample(self, sample_id: str) -> Optional[AuditSuggestion]:
+        with self.db.connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM audit_suggestions WHERE sample_id = ? ORDER BY created_at DESC,id DESC LIMIT 1",
+                (sample_id,),
+            ).fetchone()
+            return self._row_to_suggestion(row) if row else None
+
     def list_by_session(self, session_id: str) -> List[AuditSuggestion]:
         with self.db.connection() as conn:
             cursor = conn.cursor()

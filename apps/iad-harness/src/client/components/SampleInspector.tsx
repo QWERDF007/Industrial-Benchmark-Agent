@@ -1,6 +1,6 @@
 import { JobCard } from "./JobCard.js";
 import React, { useEffect, useState } from "react";
-import type { JobSnapshot, Dataset, ReviewDecisionRecord, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
+import type { InspectionSnapshot, JobSnapshot, Dataset, ReviewDecisionRecord, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
 import { AnnotatedImage, ImageViewer, type ImageSource } from "./ImageViewer.js";
 import { MediaLoad } from "./MediaLoad.js";
 import type { AnnotationLayerSource } from "./AnnotationLayer.js";
@@ -11,13 +11,14 @@ import { AuditEvidence } from "./AuditEvidence.js";
 import { HumanReviewForm } from "./HumanReviewForm.js";
 import { auditEvidenceUrl, regionSources, mediaUrl, message, request, reviewLabel } from "../api.js";
 import { useWorkspace } from "../workspace.js";
+import { inspectionImage } from "../inspection.js";
 
 export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, onReviewed, jobs, onJobsChanged }: {
   jobs: JobSnapshot[]; onJobsChanged(): void;
   dataset: Dataset; sampleId: string; mode: "model" | "review" | "browse" | "dataset"; revision: number; onChanged(): void;
   onReviewed(record: ReviewDecisionRecord, relativePath: string): void;
 }) {
-  const { workspace } = useWorkspace();
+  const { workspace, state } = useWorkspace();
   const [detail, setDetail] = useState<SampleDetail | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -27,6 +28,15 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
   useEffect(() => {
     setDetail(null); setError(""); setLightbox(null);
   }, [sampleId]);
+  useEffect(() => {
+    const saved = workspace.view(workspace.getSnapshot().pageId).inspection;
+    if (!saved || saved.reference.sample_id !== sampleId) return;
+    const controller = new AbortController();
+    request<InspectionSnapshot>("/inspection/context", saved.reference, undefined, controller.signal)
+      .then(snapshot => { if (!controller.signal.aborted) setLightbox(inspectionImage({ reference: snapshot.reference, analysis: snapshot.analysis, historical: !snapshot.is_latest }, saved.selection, saved.transform)); })
+      .catch(error => { if (!controller.signal.aborted) setError(message(error)); });
+    return () => controller.abort();
+  }, [sampleId, workspace]);
   useEffect(() => {
     if (!sampleId) return;
     const controller = new AbortController();
@@ -50,14 +60,9 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
   const evidenceSource = (evidence: VisualEvidence): ImageSource => {
     const suggestion = detail!.suggestion!;
     const analysis = suggestion.analysis!;
-    return {
-      src: auditEvidenceUrl(suggestion.suggestion_id,analysis.overview), title: "送模全图概览",
-      annotationLayer: { kind: "audit", analysis, suggestionId: suggestion.suggestion_id },
-      inspection: { suggestionId: suggestion.suggestion_id, analysis }, initialSelection: { kind: "evidence", id: evidence.evidence_id },
-      width: analysis.overview.sent_size[0], height: analysis.overview.sent_size[1],
-    };
+    return inspectionImage({ reference: { dataset_id: dataset.dataset_id, sample_id: sampleId, suggestion_id: suggestion.suggestion_id }, analysis }, { kind: "evidence", id: evidence.evidence_id });
   };
-  const image = detail ? { src: mediaUrl(detail.sample), title: detail.sample.relative_path.split("/").pop()!, width: detail.sample.width, height: detail.sample.height, annotationLayer, inspection: detail.suggestion?.analysis ? { suggestionId: detail.suggestion.suggestion_id, analysis: detail.suggestion.analysis } : undefined } : null;
+  const image = detail ? { src: mediaUrl(detail.sample), title: detail.sample.relative_path.split("/").pop()!, width: detail.sample.width, height: detail.sample.height, annotationLayer, inspection: detail.suggestion?.analysis ? { reference: { dataset_id: dataset.dataset_id, sample_id: sampleId, suggestion_id: detail.suggestion.suggestion_id }, analysis: detail.suggestion.analysis } : undefined } : null;
   return <aside className="iad-inspector"><h2>{mode === "review" ? "复核明细" : "样本信息"}</h2>
     {error && <p role="alert" className="iad-error">{error}</p>}
     {!sampleId ? <p>选择图像查看。</p> : !detail ? <p>加载中…</p> : <>
@@ -112,6 +117,6 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
         <button onClick={() => workspace.navigate("industrial-review", sampleId)}>前往人工复核</button>
       </div>}
     </>}
-    {lightbox && <ImageViewer image={lightbox} onClose={() => setLightbox(null)} />}
+    {lightbox && <ImageViewer image={lightbox} onClose={() => { setLightbox(null); if (workspace.view(state.pageId).inspection) workspace.updateView(state.pageId, { inspection: null }, true); }} />}
   </aside>;
 }

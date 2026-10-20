@@ -1,5 +1,6 @@
 import { createContext, useContext, useSyncExternalStore } from "react";
-import { initialFilters } from "./api.js";
+import { initialFilters, request } from "./api.js";
+import { restoreInspection } from "./inspection.js";
 export const pages = {
     "industrial-datasets": "数据集管理",
     "industrial-images": "图像浏览",
@@ -8,9 +9,13 @@ export const pages = {
     "industrial-audit": "模型审计",
     "industrial-review": "人工复核",
 };
-const defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", job: "", historyPage: 1, historySearch: "" });
+const defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", job: "", historyPage: 1, historySearch: "", inspection: null });
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export class Workspace {
+    conversation;
+    constructor(conversation) {
+        this.conversation = conversation;
+    }
     state = { active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
     listeners = new Set();
     layout;
@@ -53,6 +58,20 @@ export class Workspace {
         this.state = { ...this.state, views: { ...this.state.views, [`${page}:${this.state.datasetId}`]: { ...this.view(page), ...patch } } };
         this.commit(replace);
     }
+    async ask(reference, selection, transform, question) {
+        const { pageId, datasetId } = this.state;
+        const view = this.view(pageId);
+        const snapshot = await request("/inspection/context", reference);
+        if (!this.state.active || this.state.pageId !== pageId || this.state.datasetId !== datasetId || this.view(pageId).selected !== reference.sample_id)
+            throw new Error("检视位置已切换，请在当前图像重新追问");
+        await this.conversation.send(snapshot, question, sessionId => {
+            if (!this.state.active || this.state.pageId !== pageId || this.state.datasetId !== datasetId || this.view(pageId).selected !== reference.sample_id)
+                throw new Error("检视位置已切换，请在当前图像重新追问");
+            this.updateView(pageId, { inspection: { reference, selection, transform, sessionId } }, true);
+            const route = new URLSearchParams({ iad: JSON.stringify({ pageId, datasetId, ...this.view(pageId) }) });
+            return `${location.origin}${location.pathname}?${route}`;
+        }, view.inspection?.reference.sample_id === reference.sample_id ? view.inspection.sessionId : undefined);
+    }
     commit(replace = false) {
         const { pageId, datasetId } = this.state;
         const url = new URL(location.href);
@@ -79,6 +98,7 @@ export class Workspace {
                     for (const key of ["selected", "tab", "version", "normalVersion", "job", "historySearch"])
                         if (typeof route[key] === "string")
                             view[key] = route[key];
+                    view.inspection = restoreInspection(route.inspection, route.datasetId, view.selected);
                     if (Number.isInteger(route.page) && route.page > 0)
                         view.page = route.page;
                     if (Number.isInteger(route.historyPage) && route.historyPage > 0)

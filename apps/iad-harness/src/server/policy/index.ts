@@ -27,6 +27,7 @@ export const ALLOWED_TOOL_SURFACE = [
   "model_audit_cancel",
   "model_audit_retry",
   "model_audit_sample",
+  "model_audit_context",
   "model_audit_evidence",
   "knowledge_mine_normal",
   "knowledge_mine_defect",

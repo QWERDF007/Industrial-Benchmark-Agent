@@ -106,13 +106,13 @@ def sample_get(args, db_path):
     sample = SampleRepository(db).get(args["sample_id"])
     if not sample:
         raise LookupError("Sample not found")
-    suggestions = AuditSuggestionRepository(db).list_by_sample(sample.sample_id)
-    meta = extract_suggestion_meta(suggestions[0]) if suggestions else None
+    suggestion = AuditSuggestionRepository(db).latest_by_sample(sample.sample_id)
+    meta = extract_suggestion_meta(suggestion) if suggestion else None
     issues = ImportIssueRepository(db).list_by_sample(sample.sample_id)
     decision = ReviewRepository(db).get_decision(sample.sample_id)
     from iad_core.knowledge.repository import KnowledgeRepository
     repository = KnowledgeRepository(db)
-    analysis = suggestions[0].analysis if suggestions else None
+    analysis = suggestion.analysis if suggestion else None
     knowledge = {kind + '_knowledge': repository.get(version_id).model_dump(exclude={'mining_steps', 'verification_steps'}) if version_id else None
         for kind, version_id in [('normal', analysis.normal_version_id if analysis else None),
                                  ('defect', analysis.defect_version_id if analysis else None)]}
@@ -237,6 +237,11 @@ def audit_evidence(args, db_path):
     raise LookupError("Audit evidence not found")
 
 
+def inspection_context(args, db_path):
+    from iad_core.workbench.inspection_context import InspectionContext, InspectionReference
+    return InspectionContext(Database(db_path)).resolve(InspectionReference.model_validate(args)).model_dump()
+
+
 def knowledge_get(args, db_path):
     from iad_core.knowledge.repository import KnowledgeRepository
     repository = KnowledgeRepository(Database(db_path))
@@ -305,7 +310,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     tool_call, dataset_list, dataset_get, dataset_import, dataset_archive_inspect, dataset_update, dataset_scan,
     sample_list, sample_get, sample_image_path, sample_thumbnail, sample_mask_path,
     review_queue, review_evidence, review_submit_decision, review_history,
-    review_stats, report_get, audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_list, audit_evidence, directory_list,
+    review_stats, report_get, audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_list, audit_evidence, inspection_context, directory_list,
     knowledge_get, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_retry_options, knowledge_list, model_call_get,
 )}
 

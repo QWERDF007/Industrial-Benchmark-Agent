@@ -420,6 +420,20 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     const final = modelRequests.find(request=>request.messages[0].content[0].text.includes('"title": "JointAnalysis"'));
     assert.equal(final.messages[0].content.filter(part=>part.type==="image_url").length,3);
     const audited = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();
+    const questionReference={dataset_id:dataset.dataset_id,sample_id:dent.sample_id,
+      suggestion_id:audited.suggestion.suggestion_id,finding_id:audited.suggestion.analysis.findings[0].finding_id,
+      evidence_id:audited.suggestion.analysis.regions[0].image.evidence_id};
+    const readContext=reference=>fetch(base+"/api/iad/inspection/context",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(reference)});
+    const contextResponse=await readContext(questionReference);
+    assert.equal(contextResponse.status,200,await contextResponse.clone().text());
+    const frozenContext=await contextResponse.json();
+    assert.equal(frozenContext.sample.relative_path,"dent.png");
+    assert.equal(frozenContext.reference.suggestion_id,audited.suggestion.suggestion_id);
+    assert.equal(frozenContext.analysis.normal_version_id,audited.suggestion.analysis.normal_version_id);
+    assert.deepEqual(frozenContext.evidence.map(image=>image.evidence_id),[audited.suggestion.analysis.overview.evidence_id,...audited.suggestion.analysis.findings[0].evidence_ids.filter(id=>id!==audited.suggestion.analysis.overview.evidence_id)]);
+    assert.equal((await readContext({...questionReference,sample_id:normal.sample_id})).status,422,"不同样本不能借用该建议");
+    assert.equal((await readContext({...questionReference,evidence_id:"missing"})).status,404);
+    assert.equal((await readContext({...questionReference,finding_id:"missing"})).status,404);
     holdRegion = true; await button("按知识审计此图");
     await driver.wait(()=>Boolean(releaseRegion),15000);
     await driver.wait(async () => (await (await element(".iad-single-job")).getText()).includes("全图与 ROI 联合分析"),5000);
@@ -445,6 +459,10 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
       return jobs.some(job=>job.parent_run_id===parentCancelled.run_id&&job.status==="COMPLETED");
     },15000);
     assert.deepEqual(await(await fetch(`${base}/api/iad/audit/status/${parentCancelled.run_id}`)).json(),parentCancelled,"页面重试不能改写原作业");
+    const historicalContext=await(await readContext(questionReference)).json();
+    assert.equal(historicalContext.is_latest,false,"历史引用应明确提示已存在新建议");
+    assert.deepEqual(historicalContext.analysis,frozenContext.analysis,"新建议不能改变追问中的冻结引用");
+    assert.deepEqual(historicalContext.reference,frozenContext.reference);
 
     await (await element("summary[aria-label='标注筛选']")).click();
     await button("清空"); await gridCount(3);
@@ -712,6 +730,12 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     assert.deepEqual(await driver.executeScript("const image=document.querySelector('.iad-inspection-region img');return [image.naturalWidth,image.naturalHeight]"),[15,15]);
     assert.equal(await (await element(".iad-inspection-region")).getAttribute("data-evidence-id"),lockedEvidence);
     assert.equal(await (await element(".iad-viewer-world")).getAttribute("style"),lockedView,"ROI重试必须保留锁定与图像视口");
+    const inspectionMask=maskAudit.suggestion.analysis.auxiliary_evidence.find(image=>image.representation==="annotation_mask");
+    const maskContextResponse=await readContext({dataset_id:maskDataset,sample_id:maskAudit.sample.sample_id,suggestion_id:maskAudit.suggestion.suggestion_id,evidence_id:inspectionMask.evidence_id});
+    assert.equal(maskContextResponse.status,200,await maskContextResponse.clone().text());
+    const maskContext=await maskContextResponse.json();
+    const pairedRaw=maskAudit.suggestion.analysis.regions.find(region=>JSON.stringify(region.image.crop_bbox)===JSON.stringify(inspectionMask.crop_bbox)).image;
+    assert.deepEqual(maskContext.evidence.map(image=>image.evidence_id),[maskAudit.suggestion.analysis.overview.evidence_id,inspectionMask.evidence_id,pairedRaw.evidence_id],"Mask追问必须携带实际配对原图，不能将定位图单独作为缺陷证据");
     await button("关闭");
     await button("数据集管理");
     await (await element("button[aria-label='选择数据集 验收后改名']")).click();

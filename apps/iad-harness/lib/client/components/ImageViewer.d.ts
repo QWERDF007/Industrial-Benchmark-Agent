@@ -1,6 +1,6 @@
 import React from "react";
 import { type AnnotationLayerSource } from "./AnnotationLayer.js";
-import { type InspectionContext, type InspectionSelection } from "../inspection.js";
+import { type InspectionContext, type InspectionSelection, type InspectionTransform } from "../inspection.js";
 export interface ImageSource {
     src: string;
     title: string;
@@ -9,6 +9,7 @@ export interface ImageSource {
     annotationLayer?: AnnotationLayerSource;
     inspection?: InspectionContext;
     initialSelection?: InspectionSelection;
+    initialTransform?: InspectionTransform;
 }
 export declare function AnnotatedImage({ image, visible, onLoad }: {
     image: ImageSource;

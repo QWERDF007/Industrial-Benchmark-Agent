@@ -10,6 +10,7 @@ import { Context } from "@deepseek-ai/cordis";
 import { SkillRegistry } from "@deepseek-ai/dsh-skill";
 import { SystemPrompt } from "@deepseek-ai/dsh-system-prompt";
 import { ToolRuntime } from "@deepseek-ai/dsh-tools";
+import { LocalAttachmentStore } from "@deepseek-ai/dsh-attachment-local";
 import * as harness from "../lib/server/index.js";
 import { resolvePythonPath } from "../lib/server/python-bridge/index.js";
 
@@ -20,6 +21,7 @@ test("DSH directory import and browser queries share one dataset and report", as
   new SystemPrompt(ctx, {});
   new ToolRuntime(ctx);
   new SkillRegistry(ctx);
+  new LocalAttachmentStore(ctx, { dshHome: path.join(root, "dsh") });
   const fork = await ctx.plugin(harness, { dbPath: path.join(root, "test.db") });
   const server = http.createServer(harness.createIadHttpHandler(ctx.iadPythonBridge));
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));

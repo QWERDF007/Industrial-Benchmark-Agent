@@ -1,6 +1,8 @@
 import { createContext, useContext, useSyncExternalStore } from "react";
-import type { Filters } from "../shared/contracts.js";
-import { initialFilters } from "./api.js";
+import type { Filters, InspectionReference, InspectionSnapshot } from "../shared/contracts.js";
+import { initialFilters, request } from "./api.js";
+import { restoreInspection, type InspectionSelection, type InspectionTransform, type InspectionView } from "./inspection.js";
+import type { InspectionSession } from "./inspection-session.js";
 
 export const pages = {
   "industrial-datasets": "数据集管理",
@@ -11,16 +13,17 @@ export const pages = {
   "industrial-review": "人工复核",
 } as const;
 export type PageId = keyof typeof pages;
-interface ViewState { filters: Filters; page: number; selected: string; tab: string; version: string; normalVersion: string; job: string; historyPage: number; historySearch: string }
+interface ViewState { filters: Filters; page: number; selected: string; tab: string; version: string; normalVersion: string; job: string; historyPage: number; historySearch: string; inspection: InspectionView | null }
 interface WorkspaceState { active: boolean; pageId: PageId; datasetId: string; views: Record<string, ViewState> }
 interface Layout {
   selectPanel(id: string | null): void;
   panelInfo: { getSnapshot(): { activePanelId: string | null }; subscribe(listener: () => void): () => void };
 }
-const defaultView = (page: PageId): ViewState => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", job: "", historyPage: 1, historySearch: "" });
+const defaultView = (page: PageId): ViewState => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", job: "", historyPage: 1, historySearch: "", inspection: null });
 
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export class Workspace {
+  constructor(private readonly conversation: InspectionSession) {}
   private state: WorkspaceState = { active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
   private listeners = new Set<() => void>();
   private layout?: Layout;
@@ -57,6 +60,18 @@ export class Workspace {
     this.state = { ...this.state, views: { ...this.state.views, [`${page}:${this.state.datasetId}`]: { ...this.view(page), ...patch } } };
     this.commit(replace);
   }
+  async ask(reference: InspectionReference, selection: InspectionSelection | null, transform: InspectionTransform, question: string) {
+    const { pageId, datasetId } = this.state;
+    const view = this.view(pageId);
+    const snapshot = await request<InspectionSnapshot>("/inspection/context", reference);
+    if (!this.state.active || this.state.pageId !== pageId || this.state.datasetId !== datasetId || this.view(pageId).selected !== reference.sample_id) throw new Error("检视位置已切换，请在当前图像重新追问");
+    await this.conversation.send(snapshot, question, sessionId => {
+      if (!this.state.active || this.state.pageId !== pageId || this.state.datasetId !== datasetId || this.view(pageId).selected !== reference.sample_id) throw new Error("检视位置已切换，请在当前图像重新追问");
+      this.updateView(pageId, { inspection: { reference, selection, transform, sessionId } }, true);
+      const route = new URLSearchParams({ iad: JSON.stringify({ pageId, datasetId, ...this.view(pageId) }) });
+      return `${location.origin}${location.pathname}?${route}`;
+    }, view.inspection?.reference.sample_id === reference.sample_id ? view.inspection.sessionId : undefined);
+  }
   private commit(replace = false) {
     const { pageId, datasetId } = this.state;
     const url = new URL(location.href);
@@ -77,6 +92,7 @@ export class Workspace {
         if (route.pageId in pages && typeof route.datasetId === "string") {
           const view = defaultView(route.pageId);
           for (const key of ["selected", "tab", "version", "normalVersion", "job", "historySearch"] as const) if (typeof route[key] === "string") view[key] = route[key];
+          view.inspection = restoreInspection(route.inspection, route.datasetId, view.selected);
           if (Number.isInteger(route.page) && route.page > 0) view.page = route.page;
           if (Number.isInteger(route.historyPage) && route.historyPage > 0) view.historyPage = route.historyPage;
           if (route.filters) {

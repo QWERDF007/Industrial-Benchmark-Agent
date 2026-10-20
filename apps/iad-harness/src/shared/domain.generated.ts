@@ -432,6 +432,36 @@ export type RelativePath2 = string | null;
 export type State = "failed" | "unprocessed";
 export type SampleUuid2 = string;
 export type Samples = RetrySample[];
+export type DatasetId4 = string;
+export type SampleId8 = string;
+export type SuggestionId = string;
+export type FindingId3 = string | null;
+export type EvidenceId2 = string | null;
+export type DatasetId5 = string;
+export type SampleId9 = string;
+export type SuggestionId1 = string;
+export type FindingId4 = string | null;
+export type EvidenceId3 = string | null;
+export type SampleId10 = string;
+export type TaskId1 = string;
+export type DatasetId6 = string;
+export type ImagePath = string;
+export type RelativePath3 = string;
+export type QualityStatus = "PASS" | "FAIL" | "UNCERTAIN";
+export type QualitySource = string | null;
+export type DataOrigin = "LEGACY_TRAIN" | "LEGACY_TEST" | "AUGMENTED" | "MISSED_CASE" | "PRODUCTION" | "UNKNOWN";
+export type BatchId = string | null;
+export type PhysicalSampleId = string | null;
+export type CaptureSequenceId = string | null;
+export type Station = string | null;
+export type Camera = string | null;
+export type Width = number;
+export type Height = number;
+export type SampleUuid3 = string;
+export type Evidence1 = VisualEvidence[];
+export type AuditRunId = string | null;
+export type OriginSessionId = string | null;
+export type IsLatest = boolean;
 export type Name = string;
 export type ImageDir = string;
 export type AnnotationDir = string;
@@ -445,8 +475,8 @@ export type Path = string;
 export type ImageCount = number;
 export type AnnotationCount = number;
 export type Directories = ArchiveDirectory[];
-export type DatasetId4 = string | null;
-export type TaskId1 = string | null;
+export type DatasetId7 = string | null;
+export type TaskId2 = string | null;
 export type TotalSamples1 = number;
 export type VlmAuditedCount = number;
 export type VlmCoveragePct = number | null;
@@ -491,13 +521,13 @@ export type LegacyProfileId1 = string | null;
 export type SampleCount = number;
 export type KnowledgeVersions = KnowledgeUsage[];
 export type AuditRunIds = string[];
-export type DatasetId5 = string;
+export type DatasetId8 = string;
 export type Kind3 = "normal" | "defect";
 export type NormalVersionId6 = string | null;
 export type ModelName4 = string;
 export type SampleIds3 = string[] | null;
 export type AnnotationId3 = string;
-export type SampleId8 = string;
+export type SampleId11 = string;
 export type AnnotationType = "bbox" | "polygon" | "mask" | "image";
 export type RawLabel = string;
 export type Phenomenon = string | null;
@@ -510,7 +540,7 @@ export type AnnotationSource = "manual" | "existing_detector" | "production_syst
 export type SourceWidth = number | null;
 export type SourceHeight = number | null;
 export type DecisionId = string;
-export type SampleId9 = string;
+export type SampleId12 = string;
 export type Decision = string;
 export type Reviewer = string;
 export type ReasonCode = string | null;
@@ -521,20 +551,20 @@ export type StartedAt3 = string | null;
 export type SubmittedAt = string | null;
 export type ReviewDurationMs = number;
 export type SubmissionId = string;
-export type DatasetId6 = string;
-export type SampleId10 = string;
+export type DatasetId9 = string;
+export type SampleId13 = string;
 export type Reviewer1 = string;
 export type ReviewDecisionEnum = "PASS" | "HARD_NORMAL" | "FAIL" | "UNCERTAIN" | "SKIP";
 export type ReasonCode1 = string | null;
 export type Comment1 = string | null;
 export type DurationMs = number;
 export type StartedAt4 = string | null;
-export type DatasetId7 = string;
+export type DatasetId10 = string;
 export type Page = number;
 export type PageSize = number;
 export type Search = string;
 export type DecisionId1 = string;
-export type SampleId11 = string;
+export type SampleId14 = string;
 export type Decision1 = string;
 export type Reviewer2 = string;
 export type ReasonCode2 = string | null;
@@ -544,7 +574,7 @@ export type ReviewSessionId1 = string | null;
 export type StartedAt5 = string | null;
 export type SubmittedAt1 = string | null;
 export type ReviewDurationMs1 = number;
-export type RelativePath3 = string;
+export type RelativePath4 = string;
 export type Items = ReviewHistoryRecord[];
 export type Total = number;
 export type Page1 = number;
@@ -559,6 +589,8 @@ export interface WorkbenchDomain {
   JobRetry?: JobRetry;
   JobSnapshot?: JobSnapshot;
   JobRetryOptions?: JobRetryOptions;
+  InspectionReference?: InspectionReference;
+  InspectionSnapshot?: InspectionSnapshot;
   DatasetImport?: DatasetImport;
   ArchiveInspection?: ArchiveInspection;
   DatasetReport?: DatasetReport;
@@ -987,6 +1019,47 @@ export interface RetrySample {
   state: State;
   sample_uuid: SampleUuid2;
 }
+export interface InspectionReference {
+  dataset_id: DatasetId4;
+  sample_id: SampleId8;
+  suggestion_id: SuggestionId;
+  finding_id?: FindingId3;
+  evidence_id?: EvidenceId2;
+}
+export interface InspectionSnapshot {
+  reference: InspectionReference1;
+  sample: Sample;
+  analysis: AuditAnalysis;
+  evidence: Evidence1;
+  audit_run_id: AuditRunId;
+  origin_session_id: OriginSessionId;
+  is_latest: IsLatest;
+}
+export interface InspectionReference1 {
+  dataset_id: DatasetId5;
+  sample_id: SampleId9;
+  suggestion_id: SuggestionId1;
+  finding_id: FindingId4;
+  evidence_id: EvidenceId3;
+}
+export interface Sample {
+  sample_id: SampleId10;
+  task_id: TaskId1;
+  dataset_id?: DatasetId6;
+  image_path: ImagePath;
+  relative_path: RelativePath3;
+  quality_status: QualityStatus;
+  quality_source?: QualitySource;
+  data_origin?: DataOrigin;
+  batch_id?: BatchId;
+  physical_sample_id?: PhysicalSampleId;
+  capture_sequence_id?: CaptureSequenceId;
+  station?: Station;
+  camera?: Camera;
+  width: Width;
+  height: Height;
+  sample_uuid: SampleUuid3;
+}
 export interface DatasetImport {
   name: Name;
   image_dir: ImageDir;
@@ -1007,8 +1080,8 @@ export interface ArchiveDirectory {
   annotation_count: AnnotationCount;
 }
 export interface DatasetReport {
-  dataset_id: DatasetId4;
-  task_id: TaskId1;
+  dataset_id: DatasetId7;
+  task_id: TaskId2;
   total_samples: TotalSamples1;
   vlm_audited_count: VlmAuditedCount;
   vlm_coverage_pct: VlmCoveragePct;
@@ -1066,7 +1139,7 @@ export interface KnowledgeUsage {
   sample_count: SampleCount;
 }
 export interface MiningStart {
-  dataset_id: DatasetId5;
+  dataset_id: DatasetId8;
   kind: Kind3;
   normal_version_id?: NormalVersionId6;
   model_name?: ModelName4;
@@ -1074,7 +1147,7 @@ export interface MiningStart {
 }
 export interface Annotation {
   annotation_id: AnnotationId3;
-  sample_id: SampleId8;
+  sample_id: SampleId11;
   annotation_type: AnnotationType;
   raw_label: RawLabel;
   phenomenon?: Phenomenon;
@@ -1089,7 +1162,7 @@ export interface Annotation {
 }
 export interface ReviewDecisionRecord {
   decision_id: DecisionId;
-  sample_id: SampleId9;
+  sample_id: SampleId12;
   decision: Decision;
   reviewer: Reviewer;
   reason_code: ReasonCode;
@@ -1102,8 +1175,8 @@ export interface ReviewDecisionRecord {
 }
 export interface ReviewSubmission {
   submission_id: SubmissionId;
-  dataset_id: DatasetId6;
-  sample_id: SampleId10;
+  dataset_id: DatasetId9;
+  sample_id: SampleId13;
   reviewer: Reviewer1;
   decision: ReviewDecisionEnum;
   reason_code?: ReasonCode1;
@@ -1112,7 +1185,7 @@ export interface ReviewSubmission {
   started_at?: StartedAt4;
 }
 export interface ReviewHistoryQuery {
-  dataset_id: DatasetId7;
+  dataset_id: DatasetId10;
   page?: Page;
   page_size?: PageSize;
   search?: Search;
@@ -1125,7 +1198,7 @@ export interface ReviewHistoryPage {
 }
 export interface ReviewHistoryRecord {
   decision_id: DecisionId1;
-  sample_id: SampleId11;
+  sample_id: SampleId14;
   decision: Decision1;
   reviewer: Reviewer2;
   reason_code: ReasonCode2;
@@ -1135,5 +1208,5 @@ export interface ReviewHistoryRecord {
   started_at: StartedAt5;
   submitted_at: SubmittedAt1;
   review_duration_ms: ReviewDurationMs1;
-  relative_path: RelativePath3;
+  relative_path: RelativePath4;
 }

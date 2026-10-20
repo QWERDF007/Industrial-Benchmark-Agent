@@ -25,6 +25,8 @@ export function ImageViewer({ image, onClose }) {
     const [size, setSize] = useState({ width: image.width || 0, height: image.height || 0 });
     const [bounds, setBounds] = useState({ width: 0, height: 0 });
     const [view, setView] = useState({ scale: 0, x: 0, y: 0 });
+    const focusedSelection = useRef();
+    const restoredTransform = useRef(false);
     const [layers, setLayers] = useState(() => {
         const initial = { annotation: true, model: true, coverage: true };
         try {
@@ -57,7 +59,18 @@ export function ImageViewer({ image, onClose }) {
         return () => observer.disconnect();
     }, []);
     useEffect(() => {
-        if (!inspection || !selection || !bounds.width || !bounds.height || !size.width || !size.height)
+        if (!bounds.width || !bounds.height || !size.width || !size.height)
+            return;
+        const key = JSON.stringify(selection);
+        if (focusedSelection.current === key)
+            return;
+        focusedSelection.current = key;
+        if (!restoredTransform.current && image.initialTransform) {
+            restoredTransform.current = true;
+            setView({ scale: image.initialTransform.zoom ? image.initialTransform.zoom * fit : 0, x: image.initialTransform.x, y: image.initialTransform.y });
+            return;
+        }
+        if (!inspection || !selection)
             return;
         const box = selection.kind === "evidence" ? evidence?.role === "overview" ? null : evidence?.crop_bbox : finding?.location.bbox;
         if (!box) {
@@ -161,5 +174,5 @@ export function ImageViewer({ image, onClose }) {
                                         setChoices(ids);
                                     }
                                 } }, onPointerCancel: () => { drag.current = null; }, children: [_jsxs("div", { className: "iad-viewer-world", ref: world, "data-scale": scale, style: { width: size.width, height: size.height, "--iad-view-scale": scale,
-                                            transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${scale})` }, children: [_jsx(AnnotatedImage, { image: { ...image, ...size }, visible: layers.annotation, onLoad: event => setSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight }) }), inspection && _jsx(InspectionOverlay, { inspection: inspection, selectedId: selectedId, hoveredIds: hover.ids, regions: regions, finding: layers.model ? finding : undefined })] }), hint && _jsxs("div", { id: hintId, role: "tooltip", className: "iad-roi-hint", style: { left: hover.x, top: hover.y + (hover.y < bounds.height / 2 ? 1 : 0), transform: hover.y >= bounds.height / 2 ? "translateY(-100%)" : undefined }, onPointerMove: event => event.stopPropagation(), onPointerDown: event => event.stopPropagation(), children: [regionSources[hint.source], " \u00B7 ", hint.label.slice(0, 80), hint.label.length > 80 ? "…" : "", hoveredRegions.length > 1 ? ` · ${hoveredRegions.length} 个重叠区域` : ""] })] }) }, image.src), inspection && _jsx(InspectionPanel, { inspection: inspection, selection: selection, choices: choices, onSelect: select })] })] }) });
+                                            transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${scale})` }, children: [_jsx(AnnotatedImage, { image: { ...image, ...size }, visible: layers.annotation, onLoad: event => setSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight }) }), inspection && _jsx(InspectionOverlay, { inspection: inspection, selectedId: selectedId, hoveredIds: hover.ids, regions: regions, finding: layers.model ? finding : undefined })] }), hint && _jsxs("div", { id: hintId, role: "tooltip", className: "iad-roi-hint", style: { left: hover.x, top: hover.y + (hover.y < bounds.height / 2 ? 1 : 0), transform: hover.y >= bounds.height / 2 ? "translateY(-100%)" : undefined }, onPointerMove: event => event.stopPropagation(), onPointerDown: event => event.stopPropagation(), children: [regionSources[hint.source], " \u00B7 ", hint.label.slice(0, 80), hint.label.length > 80 ? "…" : "", hoveredRegions.length > 1 ? ` · ${hoveredRegions.length} 个重叠区域` : ""] })] }) }, image.src), inspection && _jsx(InspectionPanel, { inspection: inspection, selection: selection, choices: choices, onSelect: select, transform: () => ({ zoom: view.scale ? scale / fit : 0, x: view.x, y: view.y }) })] })] }) });
 }

@@ -34,7 +34,7 @@ export interface IADHarnessConfig extends PythonBridgeConfig {
 }
 
 export const name = "iad-harness";
-export const inject = ["tools", "systemPrompt", "skills"];
+export const inject = ["tools", "systemPrompt", "skills", "attachments"];
 
 export function apply(ctx: any, config: IADHarnessConfig = {}) {
   // 1. Initialize PythonBridge singleton

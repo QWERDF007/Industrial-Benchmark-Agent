@@ -27,7 +27,7 @@ export { createEvaluationTools } from "./evaluation/index.js";
 export { createKnowledgeTools } from "./knowledge/index.js";
 export { createWorkbenchTools } from "./workbench-tools/index.js";
 export const name = "iad-harness";
-export const inject = ["tools", "systemPrompt", "skills"];
+export const inject = ["tools", "systemPrompt", "skills", "attachments"];
 export function apply(ctx, config = {}) {
     // 1. Initialize PythonBridge singleton
     const bridge = new PythonBridge(config);

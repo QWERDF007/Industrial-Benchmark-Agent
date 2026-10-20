@@ -7,8 +7,6 @@ export const evidenceOutput = {
     },
 };
 export async function readEvidenceAttachment(bridge, ctx, operation, args, signal) {
-    if (!ctx.attachments)
-        throw new Error("Evidence requires the DSH attachment store");
     const media = await bridge.execute(operation, args, signal);
     signal.throwIfAborted();
     const data = await fs.readFile(media.path, { signal });

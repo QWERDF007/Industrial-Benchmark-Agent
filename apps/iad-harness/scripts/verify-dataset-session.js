@@ -87,10 +87,19 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
   assert.ok(!Object.hasOwn(report.quality, "total_score") && !Object.hasOwn(report.quality, "accuracy"));
   const target = await session.ctx.iadPythonBridge.execute("sample_get", { sample_id: dataset.dataset_id + ":part-2.png" });
   const beforeFollowup = trace.length;
+  const roi = target.suggestion.analysis.regions[0].image;
+  const finding = target.suggestion.analysis.findings.find(item => item.evidence_ids.includes(roi.evidence_id));
+  const reference = { dataset_id: dataset.dataset_id, sample_id: target.sample.sample_id,
+    suggestion_id: target.suggestion.suggestion_id, evidence_id: roi.evidence_id,
+    ...(finding ? { finding_id: finding.finding_id } : {}) };
   session.handle.agent.followup(createUserMessage({ source: { kind: "user" }, content: [{ type: "text",
-    text: `请打开样本 ${target.sample.sample_id} 本次审计真正使用的全图与 ROI 图像，结合图像解释需要关注的位置，不能只复述文本结论。` }] }));
+    text: `请先用 model_audit_context 解析本次冻结检视引用，再逐一打开返回清单的实际全图与 ROI 图像，结合图像解释需要关注的位置，不能只复述文本结论。冻结检视引用：${JSON.stringify(reference)}` }] }));
   await session.handle.agent.whenIdle();
   const followup = trace.slice(beforeFollowup);
+  const context = followup.find(item => item.name === "model_audit_context");
+  assert.ok(context && !context.result.isError, "Agent must resolve the exact frozen inspection reference");
+  assert.equal(context.result.value.reference.suggestion_id, target.suggestion.suggestion_id);
+  assert.equal(context.result.value.analysis.normal_version_id, target.suggestion.analysis.normal_version_id);
   const expected = [target.suggestion.analysis.overview.evidence_id, target.suggestion.analysis.regions[0].image.evidence_id];
   for (const evidence_id of expected) {
     const media = followup.find(item => item.name === "model_audit_evidence" && item.arguments.evidence_id === evidence_id);

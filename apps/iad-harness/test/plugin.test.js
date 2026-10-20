@@ -1,17 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { Context } from "@deepseek-ai/cordis";
 import { SkillRegistry } from "@deepseek-ai/dsh-skill";
 import { SystemPrompt } from "@deepseek-ai/dsh-system-prompt";
 import { ToolRuntime } from "@deepseek-ai/dsh-tools";
+import { LocalAttachmentStore } from "@deepseek-ai/dsh-attachment-local";
 import * as skillTool from "@deepseek-ai/dsh-tool-skill";
 import * as harness from "../lib/server/index.js";
 
 test("Industrial Harness Plugin exposes the allowed native tools and its authoritative policies", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-plugin-"));
   const ctx = new Context();
   new SystemPrompt(ctx, {});
   new ToolRuntime(ctx);
   new SkillRegistry(ctx);
+  new LocalAttachmentStore(ctx, { dshHome: root });
   skillTool.apply(ctx);
   const fork = await ctx.plugin(harness);
   try {
@@ -27,6 +33,7 @@ test("Industrial Harness Plugin exposes the allowed native tools and its authori
     assert.ok(ctx.tools.get("knowledge_evidence"));
   } finally {
     await fork.dispose();
+    await fs.rm(root, { recursive: true, force: true });
   }
   assert.equal(ctx.tools.get("knowledge_mine_normal"), undefined);
   assert.equal(ctx.iadPythonBridge, undefined);

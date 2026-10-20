@@ -14,14 +14,18 @@ import { SystemPrompt } from "@deepseek-ai/dsh-system-prompt";
 import { ToolRuntime } from "@deepseek-ai/dsh-tools";
 import * as skillTool from "@deepseek-ai/dsh-tool-skill";
 import { LocalAttachmentStore } from "@deepseek-ai/dsh-attachment-local";
+import { createUserMessage } from "@deepseek-ai/dsh-llm";
+import { createDatasetSession } from "./fixtures/dataset_session.js";
 import * as harness from "../lib/server/index.js";
 import { resolvePythonPath } from "../lib/server/python-bridge/index.js";
 
 test("DSH discovers and loads both bundled knowledge skills and removes them with the plugin", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-skill-registration-"));
   const ctx = new Context();
   new SystemPrompt(ctx, {});
   new ToolRuntime(ctx);
   new SkillRegistry(ctx);
+  new LocalAttachmentStore(ctx, { dshHome: root });
   skillTool.apply(ctx);
   const fork = await ctx.plugin(harness);
   try {
@@ -41,6 +45,7 @@ test("DSH discovers and loads both bundled knowledge skills and removes them wit
     assert.ok(harness.ALLOWED_TOOL_SURFACE.includes("skill"));
   } finally {
     await fork.dispose();
+    await fs.rm(root, { recursive: true, force: true });
   }
   assert.deepEqual(await ctx.skills.list(), []);
   assert.equal(ctx.tools.get("knowledge_mine_normal"), undefined);
@@ -68,6 +73,7 @@ test("DSH cancelling a knowledge job preserves unprocessed scope and prevents la
   new SystemPrompt(ctx, {});
   new ToolRuntime(ctx);
   new SkillRegistry(ctx);
+  new LocalAttachmentStore(ctx, { dshHome: path.join(root, "dsh") });
   const fork = await ctx.plugin(harness, { dbPath: path.join(root, "test.db") });
   const api = http.createServer(harness.createIadHttpHandler(ctx.iadPythonBridge));
   await new Promise(resolve => api.listen(0, "127.0.0.1", resolve));
@@ -142,10 +148,28 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-skill-"));
   execFileSync(resolvePythonPath(), [fileURLToPath(new URL("fixtures/knowledge_dataset.py", import.meta.url)), root]);
   let failNextAudit = true;
+  let followupReference;
+  const agentRequests = [];
   const model = http.createServer(async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString());
+    if (body.stream) {
+      agentRequests.push(body);
+      const outputs = body.messages.filter(message => message.role === "tool");
+      const context = outputs[0]?.content.startsWith("{") ? JSON.parse(outputs[0].content) : null;
+      const image = context?.evidence?.[outputs.length - 1];
+      const tool = outputs.length === 0 ? { name: "model_audit_context", arguments: followupReference }
+        : outputs.length < 3 && image ? { name: "model_audit_evidence", arguments: { suggestion_id: followupReference.suggestion_id, evidence_id: image.evidence_id } } : null;
+      const delta = tool ? { role: "assistant", tool_calls: [{ index: 0, id: `inspection-${outputs.length}`, type: "function", function: { name: tool.name, arguments: JSON.stringify(tool.arguments) } }] }
+        : { role: "assistant", content: "已结合本次冻结全图与左孔ROI核对，反光仍需人工核实。" };
+      res.writeHead(200, { "Content-Type": "text/event-stream" });
+      for (const choice of [{ index: 0, delta, finish_reason: null }, { index: 0, delta: {}, finish_reason: tool ? "tool_calls" : "stop" }]) {
+        res.write(`data: ${JSON.stringify({ id: "inspection-response", object: "chat.completion.chunk", model: "test-mllm", choices: [choice] })}\n\n`);
+      }
+      res.end("data: [DONE]\n\n");
+      return;
+    }
     const content = body.messages[0].content;
     const evidence = content.filter(item => item.type === "text" && item.text.startsWith("视觉证据："))
       .map(item => JSON.parse(item.text.slice("视觉证据：".length)));
@@ -292,6 +316,37 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
     assert.equal(report.human_reviewed_count, 0);
     assert.deepEqual(after.annotations, original.annotations);
     assert.deepEqual(after.review_decision, original.review_decision);
+    followupReference = { dataset_id: dataset.dataset_id, sample_id: after.sample.sample_id,
+      suggestion_id: after.suggestion.suggestion_id, finding_id: after.suggestion.analysis.findings[0].finding_id,
+      evidence_id: roi.evidence_id };
+    const previousCredential = process.env.IAD_SESSION_TEST_CREDENTIAL;
+    process.env.IAD_SESSION_TEST_CREDENTIAL = "synthetic-test-credential";
+    const session = await createDatasetSession({ root: path.join(root, "followup"), dbPath: path.join(root, "test.db"),
+      endpoint: process.env.LIVE_VLM_ENDPOINT, model: "test-mllm", apiKeyEnv: "IAD_SESSION_TEST_CREDENTIAL" });
+    try {
+      const trace = [];
+      session.ctx.on("tools/result", (exec, result) => trace.push({ name: exec.name, result }));
+      session.handle.agent.followup(createUserMessage({ source: { kind: "user" }, content: [{ type: "text",
+        text: `请核对当前疑点，先解析冻结引用，再读取实际全图与ROI：${JSON.stringify(followupReference)}` }] }));
+      await session.handle.agent.whenIdle();
+      assert.deepEqual(trace.map(item => item.name), ["model_audit_context", "model_audit_evidence", "model_audit_evidence"]);
+      assert.ok(trace.every(item => item.result.isError === false), JSON.stringify(trace));
+      assert.equal(trace[0].result.value.reference.suggestion_id, after.suggestion.suggestion_id);
+      assert.equal(trace[0].result.value.analysis.normal_version_id, versions.normal.version_id);
+      const expected = [after.suggestion.analysis.overview, roi];
+      for (const [index, evidence] of expected.entries()) {
+        const attachment = trace[index + 1].result.content.find(item => item.type === "image");
+        const actual = await session.ctx.attachments.readImage(attachment.attachment);
+        assert.equal(createHash("sha256").update(actual.data).digest("hex"), evidence.sha256);
+      }
+      const imageInputs = agentRequests.at(-1).messages.flatMap(message => Array.isArray(message.content) ? message.content.filter(item => item.type === "image_url") : []);
+      assert.equal(imageInputs.length, 2, "The actual Session must deliver both evidence images to its MLLM");
+      assert.ok(!agentRequests[0].tools.some(tool => /review_submit|gold_write/.test(tool.function.name)));
+    } finally {
+      await session.dispose();
+      if (previousCredential === undefined) delete process.env.IAD_SESSION_TEST_CREDENTIAL;
+      else process.env.IAD_SESSION_TEST_CREDENTIAL = previousCredential;
+    }
   } finally {
     await fork.dispose();
     await new Promise(resolve => model.close(resolve));

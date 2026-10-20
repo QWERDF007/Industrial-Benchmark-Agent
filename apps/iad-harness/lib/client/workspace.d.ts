@@ -1,4 +1,6 @@
-import type { Filters } from "../shared/contracts.js";
+import type { Filters, InspectionReference } from "../shared/contracts.js";
+import { type InspectionSelection, type InspectionTransform, type InspectionView } from "./inspection.js";
+import type { InspectionSession } from "./inspection-session.js";
 export declare const pages: {
     readonly "industrial-datasets": "数据集管理";
     readonly "industrial-images": "图像浏览";
@@ -18,6 +20,7 @@ interface ViewState {
     job: string;
     historyPage: number;
     historySearch: string;
+    inspection: InspectionView | null;
 }
 interface WorkspaceState {
     active: boolean;
@@ -36,6 +39,8 @@ interface Layout {
 }
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export declare class Workspace {
+    private readonly conversation;
+    constructor(conversation: InspectionSession);
     private state;
     private listeners;
     private layout?;
@@ -52,11 +57,13 @@ export declare class Workspace {
         job: string;
         historyPage: number;
         historySearch: string;
+        inspection: InspectionView | null;
     };
     connect(layout: Layout): () => void;
     navigate(pageId: PageId, selected?: string): void;
     selectDataset(datasetId: string, replace?: boolean): void;
     updateView(page: PageId, patch: Partial<ViewState>, replace?: boolean): void;
+    ask(reference: InspectionReference, selection: InspectionSelection | null, transform: InspectionTransform, question: string): Promise<void>;
     private commit;
     private restore;
 }

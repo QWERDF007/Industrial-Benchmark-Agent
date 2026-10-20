@@ -135,6 +135,8 @@ DSH 左侧栏             当前页面
 
 仅展开当前 ROI 正文和真实送模图；显示观察框与外扩裁剪范围差异。样本信息按“图像路径、图像名、UUID”顺序放在独立浅色信息区域，长路径可复制/展开。内部历史样本键不替代面向用户的 UUID。
 
+追问与冻结检视返回的实现见[InspectionQuestion](../../apps/iad-harness/src/client/components/InspectionQuestion.tsx)、[InspectionSession](../../apps/iad-harness/src/client/inspection-session.ts)；宿主会话作用域参考 [DSH 官方会话控制](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-conversation/src/client/service.ts)与[导航](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-workspace/src/client/navigation.ts)。
+
 ## D05 视觉系统
 
 采用功能性 Minimalism & Swiss Style：中性色背景、清晰密度、低动效。所有业务页使用同一套 DSH 主题适配 tokens，禁止逐页散落色值、覆盖宿主全局样式或另建主题开关。

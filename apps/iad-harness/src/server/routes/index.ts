@@ -76,6 +76,7 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         await sendMedia(res, info); return;
       }
       if (pathname === "/api/iad/audit/start" && method === "POST") return await call("audit_start", body);
+      if (pathname === "/api/iad/inspection/context" && method === "POST") return await call("inspection_context", body);
       const modelCall = pathname.match(/^\/api\/iad\/jobs\/([^/]+)\/model-calls\/([^/]+)$/);
       if (modelCall && method === "GET") return await call("model_call_get", {
         run_id: decodeURIComponent(modelCall[1]), call_id: decodeURIComponent(modelCall[2]),

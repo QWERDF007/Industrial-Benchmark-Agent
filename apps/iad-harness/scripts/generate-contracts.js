@@ -15,15 +15,17 @@ from iad_core.knowledge.service import MiningStart
 from iad_core.workbench.audit import AuditStart
 from iad_core.workbench.calls import ModelCallDetail
 from iad_core.workbench.job_models import JobRetry, JobSnapshot, JobRetryOptions
+from iad_core.workbench.inspection_context import InspectionReference, InspectionSnapshot
 from iad_core.dataset.registry import DatasetImport
 from iad_core.dataset.archive import ArchiveInspection
 from iad_core.workbench.report import DatasetReport
 from iad_core.storage.models import Annotation, ReviewDecisionRecord
 from iad_core.workbench.review import ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage
-models = [AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, AuditStart, ModelCallDetail, JobRetry, JobSnapshot, JobRetryOptions, DatasetImport, ArchiveInspection, DatasetReport, MiningStart, Annotation, ReviewDecisionRecord, ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage]
-_, schema = models_json_schema([(model, 'validation' if model in (MiningStart, AuditStart, JobRetry, DatasetImport, ReviewSubmission, ReviewHistoryQuery) else 'serialization') for model in models])
+models = [AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, AuditStart, ModelCallDetail, JobRetry, JobSnapshot, JobRetryOptions, InspectionReference, InspectionSnapshot, DatasetImport, ArchiveInspection, DatasetReport, MiningStart, Annotation, ReviewDecisionRecord, ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage]
+modes = [(model, 'validation' if model in (MiningStart, AuditStart, JobRetry, InspectionReference, DatasetImport, ReviewSubmission, ReviewHistoryQuery) else 'serialization') for model in models]
+references, schema = models_json_schema(modes)
 schema.update(title='WorkbenchDomain', type='object', additionalProperties=False,
-    properties={model.__name__: {'$ref': '#/$defs/'+model.__name__} for model in models})
+    properties={model.__name__: references[(model, mode)] for model, mode in modes})
 print(json.dumps(schema))
 `], { cwd: workspace, env: { ...process.env, PYTHONPATH: path.join(workspace, "python") }, encoding: "utf8" }));
 const output = await compile(schema, "WorkbenchDomain", {

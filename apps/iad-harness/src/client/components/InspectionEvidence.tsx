@@ -2,10 +2,11 @@ import React from "react";
 import { AuditEvidence } from "./AuditEvidence.js";
 import { FindingExplanation } from "./AuditFindings.js";
 import { MediaLoad, MediaImage } from "./MediaLoad.js";
+import { InspectionQuestion } from "./InspectionQuestion.js";
 import type { AuditAnalysis, AuditFinding } from "../../shared/contracts.js";
 import { auditEvidenceUrl, regionSources } from "../api.js";
 
-import { resolveInspection, type InspectionContext, type InspectionSelection } from "../inspection.js";
+import { resolveInspection, type InspectionContext, type InspectionSelection, type InspectionTransform } from "../inspection.js";
 
 export function InspectionOverlay({ inspection, selectedId, hoveredIds, regions, finding }: {
   inspection: InspectionContext; selectedId: string; hoveredIds: string[]; regions: AuditAnalysis["regions"]; finding?: AuditFinding;
@@ -24,14 +25,17 @@ export function InspectionOverlay({ inspection, selectedId, hoveredIds, regions,
   </svg>}</>;
 }
 
-export function InspectionPanel({ inspection, selection, onSelect, choices }: {
-  inspection: InspectionContext; selection: InspectionSelection | null; onSelect(target: InspectionSelection | null): void; choices: string[];
+export function InspectionPanel({ inspection, selection, onSelect, choices, transform }: {
+  inspection: InspectionContext; selection: InspectionSelection | null; onSelect(target: InspectionSelection | null): void; choices: string[]; transform(): InspectionTransform;
 }) {
-  const { analysis, suggestionId } = inspection;
+  const { analysis, reference } = inspection;
+  const suggestionId = reference.suggestion_id;
   const { finding, evidence, region } = resolveInspection(analysis, selection);
   const selectedId = region?.image.evidence_id || "";
   const related = region ? analysis.findings.filter(finding => finding.evidence_ids.includes(region.image.evidence_id)) : [];
   return <aside className="iad-inspection-panel" aria-label="全图与 ROI 综合分析">
+    {inspection.historical && <p role="status">历史建议 · 保留该次冻结知识与图像证据。</p>}
+    <InspectionQuestion inspection={inspection} selection={selection} transform={transform} />
     <h2>综合建议</h2><p>{analysis.conclusion.description}</p>
     <p className="iad-muted">位置：{analysis.conclusion.position_analysis}<br />光照：{analysis.conclusion.illumination_analysis}</p>
     {!!analysis.findings.length && <label className="iad-field">审计疑点<select aria-label="审计疑点" value={finding?.finding_id || ""} onChange={event => onSelect(event.target.value ? { kind: "finding", id: event.target.value } : null)}>
