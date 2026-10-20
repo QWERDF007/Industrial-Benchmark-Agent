@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, ValidationError
 from iad_core.evidence.images import PreparedImage, file_sha256
 
 T = TypeVar("T", bound=BaseModel)
+DEFAULT_MODEL = "Qwen/Qwen3.8-27B-FP8"
 
 
 class TokenCapacity(BaseModel):

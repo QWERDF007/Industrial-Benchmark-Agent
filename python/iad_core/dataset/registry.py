@@ -121,7 +121,8 @@ class DatasetRegistry:
             raise ValueError("No readable images were imported")
         return config
 
-    def references(self, dataset_id: str, exclude: Optional[str] = None, limit: int = 4, selected_ids: Optional[List[str]] = None) -> List[str]:
+    def references(self, dataset_id: str, exclude: Optional[str] = None, limit: Optional[int] = 4,
+                   selected_ids: Optional[List[str]] = None, use_selection: bool = True) -> List[str]:
         config = self.get(dataset_id)
         with self.db.connection() as conn:
             row = conn.execute("SELECT reference_sample_ids_json FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()
@@ -138,9 +139,9 @@ class DatasetRegistry:
                 ORDER BY s.relative_path,s.sample_id
             """, (dataset_id, exclude or "", json.dumps(selected), config.dataset.unannotated_is_normal)).fetchall()
         eligible = [r[0] for r in rows]
-        if selected:
+        if selected and use_selection:
             return [sid for sid in selected if sid in set(eligible)][:limit]
-        if len(eligible) <= limit:
+        if limit is None or len(eligible) <= limit:
             return eligible
         return [eligible[i * (len(eligible) - 1) // (limit - 1)] for i in range(limit)] if limit > 1 else eligible[:1]
 

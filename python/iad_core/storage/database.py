@@ -355,3 +355,24 @@ class Database:
                     profile_json TEXT NOT NULL
                 )
             """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS knowledge_versions (
+                    version_id TEXT PRIMARY KEY,
+                    dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id),
+                    kind TEXT NOT NULL CHECK(kind IN ('normal','defect')),
+                    parent_version_id TEXT REFERENCES knowledge_versions(version_id),
+                    normal_version_id TEXT REFERENCES knowledge_versions(version_id),
+                    signature TEXT NOT NULL,
+                    snapshot_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_knowledge_dataset_kind ON knowledge_versions(dataset_id,kind,created_at)")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS knowledge_heads (
+                    dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id),
+                    kind TEXT NOT NULL CHECK(kind IN ('normal','defect')),
+                    version_id TEXT NOT NULL REFERENCES knowledge_versions(version_id),
+                    PRIMARY KEY(dataset_id,kind)
+                )
+            """)

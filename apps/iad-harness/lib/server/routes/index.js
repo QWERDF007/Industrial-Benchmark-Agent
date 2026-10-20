@@ -89,6 +89,24 @@ export function createIadHttpHandler(bridge) {
             const audit = pathname.match(/^\/api\/iad\/audit\/(status|cancel)\/([^/]+)$/);
             if (audit && ((audit[1] === "status" && method === "GET") || (audit[1] === "cancel" && method === "POST")))
                 return await call("audit_" + audit[1], { run_id: decodeURIComponent(audit[2]) });
+            if (pathname === "/api/iad/knowledge" && method === "GET")
+                return await call("knowledge_get", query);
+            if (pathname === "/api/iad/knowledge/start" && method === "POST")
+                return await call("knowledge_start", body);
+            if (pathname === "/api/iad/knowledge/jobs" && method === "GET")
+                return await call("knowledge_list", query);
+            const knowledge = pathname.match(/^\/api\/iad\/knowledge\/(status|cancel)\/([^/]+)$/);
+            if (knowledge && ((knowledge[1] === "status" && method === "GET") || (knowledge[1] === "cancel" && method === "POST"))) {
+                return await call("knowledge_" + knowledge[1], { run_id: decodeURIComponent(knowledge[2]) });
+            }
+            const knowledgeEvidence = pathname.match(/^\/api\/iad\/knowledge\/evidence\/([^/]+)\/([^/]+)$/);
+            if (knowledgeEvidence && method === "GET") {
+                const info = await bridge.execute("knowledge_evidence", {
+                    version_id: decodeURIComponent(knowledgeEvidence[1]), evidence_id: decodeURIComponent(knowledgeEvidence[2]),
+                });
+                await sendMedia(res, info);
+                return;
+            }
             if (pathname === "/api/iad/review/session" && method === "POST")
                 return await call("review_start_session", body);
             if (pathname === "/api/iad/review/submit" && method === "POST")

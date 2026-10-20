@@ -20,7 +20,7 @@ from iad_core.workbench.review import HumanReview, ReviewSubmission
 DEFAULT_DB_PATH = os.environ.get("IAD_DB_PATH", "data/benchmark.db")
 _output_lock = threading.Lock()
 _service_lock = threading.Lock()
-_audit_services = {}
+_workbenches = {}
 
 
 def emit(payload: Dict[str, Any]) -> None:
@@ -29,13 +29,13 @@ def emit(payload: Dict[str, Any]) -> None:
         sys.stdout.flush()
 
 
-def audit_service(db_path):
-    from iad_core.workbench.audit import AuditService
+def workbench(db_path):
+    from iad_core.workbench.runtime import WorkbenchRuntime
     key = os.path.abspath(db_path)
     with _service_lock:
-        if key not in _audit_services:
-            _audit_services[key] = AuditService(Database(key))
-        return _audit_services[key]
+        if key not in _workbenches:
+            _workbenches[key] = WorkbenchRuntime(Database(key))
+        return _workbenches[key]
 
 
 def tool_call(args, db_path):
@@ -168,19 +168,19 @@ def report_get(args, db_path):
 
 
 def audit_start(args, db_path):
-    return audit_service(db_path).start(**args)
+    return workbench(db_path).audit.start(**args)
 
 
 def audit_status(args, db_path):
-    return audit_service(db_path).status(args["run_id"])
+    return workbench(db_path).audit.status(args["run_id"])
 
 
 def audit_cancel(args, db_path):
-    return audit_service(db_path).cancel(args["run_id"])
+    return workbench(db_path).audit.cancel(args["run_id"])
 
 
 def audit_list(args, db_path):
-    return {"jobs": audit_service(db_path).list(args["dataset_id"])}
+    return {"jobs": workbench(db_path).audit.list(args["dataset_id"])}
 
 
 def audit_evidence(args, db_path):
@@ -202,6 +202,49 @@ def audit_profile(args, db_path):
     return {"profile": profile.model_dump() if profile else None}
 
 
+def knowledge_get(args, db_path):
+    from iad_core.knowledge.repository import KnowledgeRepository
+    repository = KnowledgeRepository(Database(db_path))
+    if args.get("version_id"):
+        snapshot = repository.get(args["version_id"])
+        if args.get("dataset_id") and snapshot.dataset_id != args["dataset_id"]:
+            raise ValueError("Knowledge version belongs to another dataset")
+        if args.get("kind") and snapshot.kind != args["kind"]:
+            raise ValueError("Knowledge version has a different kind")
+    else:
+        if args.get("kind") not in ("normal", "defect"):
+            raise ValueError("Knowledge kind must be normal or defect")
+        DatasetRegistry(repository.db).get(args["dataset_id"])
+        snapshot = repository.current(args["dataset_id"], args["kind"])
+    return {"knowledge": snapshot.model_dump() if snapshot else None}
+
+
+def knowledge_start(args, db_path):
+    return workbench(db_path).knowledge.start(**args)
+
+
+def knowledge_status(args, db_path):
+    return workbench(db_path).knowledge.status(args["run_id"])
+
+
+def knowledge_cancel(args, db_path):
+    return workbench(db_path).knowledge.cancel(args["run_id"])
+
+
+def knowledge_list(args, db_path):
+    return {"jobs": workbench(db_path).knowledge.list(args["dataset_id"])}
+
+
+def knowledge_evidence(args, db_path):
+    from iad_core.evidence.images import EvidenceImages
+    from iad_core.knowledge.repository import KnowledgeRepository
+    snapshot = KnowledgeRepository(Database(db_path)).get(args["version_id"])
+    for evidence in snapshot.evidence:
+        if evidence.image.evidence_id == args["evidence_id"]:
+            return {"path": EvidenceImages(db_path).path(evidence.image), "media_type": evidence.image.media_type}
+    raise LookupError("Knowledge evidence not found")
+
+
 def directory_list(args, db_path):
     return DatasetRegistry.directories(args.get("path", "/data1"))
 
@@ -211,6 +254,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     sample_list, sample_get, sample_image_path, sample_thumbnail,
     review_queue, review_evidence, review_start_session, review_submit_decision, review_finish_session,
     review_stats, report_get, audit_start, audit_status, audit_cancel, audit_list, audit_profile, audit_evidence, directory_list,
+    knowledge_get, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_list,
 )}
 
 
@@ -255,7 +299,7 @@ def main():
                 except (ValueError, TypeError) as error:
                     emit({"event": "error", "request_id": "decode", "error": {"code": "JSON_DECODE_ERROR", "message": str(error)}})
     finally:
-        for service in _audit_services.values():
+        for service in _workbenches.values():
             service.close()
 
 

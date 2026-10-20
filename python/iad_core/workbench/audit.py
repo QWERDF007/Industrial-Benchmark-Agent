@@ -1,7 +1,5 @@
-import json
 import threading
 import uuid
-from datetime import datetime, timezone
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -14,11 +12,9 @@ from iad_core.storage.repositories import SampleRepository
 from iad_core.workbench.projection import suggestion_meta
 from iad_core.workbench.query import SampleQuery, WorkbenchQuery
 
-from iad_core.workbench.vision import VlmClient
+from iad_core.workbench.vision import DEFAULT_MODEL, VlmClient
 from iad_core.workbench.inspection import SampleInspection
-
-DEFAULT_MODEL = "Qwen/Qwen3.8-27B-FP8"
-
+from iad_core.workbench.jobs import JobContext, JobRunner
 
 class AuditStart(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -29,17 +25,13 @@ class AuditStart(BaseModel):
 
 
 class AuditService:
-    def __init__(self, db: Database, client: Optional[VlmClient] = None):
+    def __init__(self, db: Database, client: Optional[VlmClient] = None, jobs: Optional[JobRunner] = None):
         self.db = db
         self.registry = DatasetRegistry(db)
         self.client = client or VlmClient()
         self.inspection = SampleInspection(db, self.client)
-        self.lock = threading.RLock()
-        self.threads = {}
-        self.cancelled = {}
-        with db.connection() as conn:
-            conn.execute("UPDATE job_runs SET status='INTERRUPTED',message='Worker stopped before completion',finished_at=? WHERE job_type='MODEL_AUDIT' AND status IN ('PENDING','RUNNING')",
-                         (datetime.now(timezone.utc).isoformat(),))
+        self.owns_jobs = jobs is None
+        self.jobs = jobs or JobRunner(db, ("MODEL_AUDIT",))
 
     def audit_sample(self, sample_id: str, model_name: str = DEFAULT_MODEL, run_id: Optional[str] = None,
                      references: Optional[List[str]] = None, cancel: Optional[threading.Event] = None) -> dict:
@@ -50,9 +42,7 @@ class AuditService:
         refs = self.registry.references(sample.dataset_id, exclude=sample_id, limit=8 if references is not None else 4, selected_ids=references)
         def phase(progress):
             if run_id:
-                with self.lock, self.db.connection() as conn:
-                    conn.execute("UPDATE job_runs SET message=?,payload_json=json_patch(payload_json,?) WHERE job_id=? AND status='RUNNING'",
-                                 (progress.phase, json.dumps({**progress.model_dump(), "current_sample_id": sample_id}), run_id))
+                self.jobs.update(run_id, **progress.model_dump(), current_sample_id=sample_id)
         analysis = self.inspection.inspect(sample_id, model_name, refs, cancel, phase)
         result = analysis.conclusion
         suggestion = AuditSuggestion(
@@ -65,7 +55,7 @@ class AuditService:
             evidence_refs=[EvidenceRefItem(kind="normal_reference", sample_id=sid) for sid in refs],
             input_modalities_used=["image", "text"],
         )
-        with self.lock:
+        with self.jobs.lock:
             if cancel and cancel.is_set():
                 return {"cancelled": True}
             AuditSuggestionRepository(self.db).save(suggestion)
@@ -96,85 +86,41 @@ class AuditService:
                     raise ValueError("Audit samples must belong to the selected dataset")
         if not sample_ids:
             raise ValueError("No samples match the audit filters")
-        run_id = "audit_" + uuid.uuid4().hex
         payload = {"dataset_id": request.dataset_id, "model_name": request.model_name, "sample_ids": sample_ids,
-                   "reference_sample_ids": references, "completed": 0, "failed": 0, "errors": [], "total_samples": len(sample_ids)}
-        with self.lock, self.db.connection() as conn:
-            if conn.execute("SELECT 1 FROM job_runs WHERE job_type='MODEL_AUDIT' AND status IN ('PENDING','RUNNING') AND json_extract(payload_json,'$.dataset_id')=?", (request.dataset_id,)).fetchone():
-                raise ValueError("This dataset already has an active audit")
-            conn.execute("INSERT INTO job_runs(job_id,task_id,job_type,status,progress,message,payload_json,started_at) VALUES(?,?,'MODEL_AUDIT','RUNNING',0,?,?,?)",
-                         (run_id, config.task.task_id, "正在学习良品模式", json.dumps(payload), datetime.now(timezone.utc).isoformat()))
-            event = self.cancelled[run_id] = threading.Event()
-            thread = self.threads[run_id] = threading.Thread(target=self.run, args=(run_id, payload, event), daemon=True)
-        thread.start()
-        return self.status(run_id)
+                   "reference_sample_ids": references}
+        return self.jobs.start("MODEL_AUDIT", config.task.task_id, payload, self.run, "正在学习良品模式")
 
-    def run(self, run_id: str, payload: dict, cancel: threading.Event):
+    def run(self, context: JobContext):
+        payload = context.payload
         for sample_id in payload["sample_ids"]:
-            if cancel.is_set():
-                break
+            context.checkpoint()
             try:
-                result = self.audit_sample(sample_id, payload["model_name"], run_id, payload["reference_sample_ids"], cancel)
-                if cancel.is_set():
-                    break
-                payload["completed"] += 1
-                payload["profile_id"] = result["suggestion"]["analysis"]["profile_id"]
-                payload["phase"] = "SAMPLE_COMPLETED"
-                payload["inspected_regions"] = result["suggestion"]["analysis"]["coverage"]["inspected_regions"]
-                payload["planned_regions"] = result["suggestion"]["analysis"]["coverage"]["planned_regions"]
-                payload["completed_batches"] = payload["total_batches"] = len(result["suggestion"]["analysis"]["joint_steps"])
+                result = self.audit_sample(sample_id, payload["model_name"], context.run_id,
+                                           payload["reference_sample_ids"], context.cancel)
+                context.checkpoint()
+                analysis = result["suggestion"]["analysis"]
+                context.record(sample_id, profile_id=analysis["profile_id"], phase="SAMPLE_COMPLETED",
+                               inspected_regions=analysis["coverage"]["inspected_regions"],
+                               planned_regions=analysis["coverage"]["planned_regions"],
+                               completed_batches=len(analysis["joint_steps"]), total_batches=len(analysis["joint_steps"]))
+            except InterruptedError:
+                raise
             except Exception as error:
-                if cancel.is_set():
-                    break
-                payload["failed"] += 1
-                payload["errors"].append({"sample_id": sample_id, "message": str(error)})
-            with self.lock, self.db.connection() as conn:
-                conn.execute("UPDATE job_runs SET payload_json=?,progress=?,message=? WHERE job_id=? AND status='RUNNING'",
-                             (json.dumps(payload), (payload["completed"] + payload["failed"]) / payload["total_samples"],
-                              f"完成 {payload['completed']}，失败 {payload['failed']} / {payload['total_samples']}", run_id))
-        with self.lock, self.db.connection() as conn:
-            status = "CANCELLED" if cancel.is_set() else "FAILED" if payload["failed"] == payload["total_samples"] else "PARTIAL" if payload["failed"] else "COMPLETED"
-            conn.execute("UPDATE job_runs SET status=?,payload_json=?,finished_at=? WHERE job_id=?",
-                         (status, json.dumps(payload), datetime.now(timezone.utc).isoformat(), run_id))
-        with self.lock:
-            self.threads.pop(run_id, None)
-            self.cancelled.pop(run_id, None)
+                context.record(sample_id, error)
 
     def status(self, run_id: str) -> dict:
-        with self.db.connection() as conn:
-            row = conn.execute("SELECT * FROM job_runs WHERE job_id=? AND job_type='MODEL_AUDIT'", (run_id,)).fetchone()
-        if not row:
-            raise LookupError("Audit job not found")
-        payload = json.loads(row["payload_json"])
-        return {**payload, "run_id": run_id, "task_id": row["task_id"], "status": row["status"],
-                "message": row["message"], "started_at": row["started_at"], "finished_at": row["finished_at"],
-                "progress": (payload["completed"] + payload["failed"]) / payload["total_samples"]}
+        return self.jobs.status(run_id, ("MODEL_AUDIT",))
 
     def list(self, dataset_id: str) -> list:
-        with self.db.connection() as conn:
-            ids = [r[0] for r in conn.execute("SELECT job_id FROM job_runs WHERE job_type='MODEL_AUDIT' AND json_extract(payload_json,'$.dataset_id')=? ORDER BY id DESC LIMIT 30", (dataset_id,))]
-        return [self.status(run_id) for run_id in ids]
+        return self.jobs.list(dataset_id, ("MODEL_AUDIT",))
 
     def cancel(self, run_id: str) -> dict:
-        with self.lock:
-            status = self.status(run_id)
-            if status["status"] in ("RUNNING", "PENDING"):
-                self.cancelled[run_id].set()
-                with self.db.connection() as conn:
-                    conn.execute("UPDATE job_runs SET status='CANCELLED',message='已取消，当前请求返回后停止',finished_at=? WHERE job_id=?", (datetime.now(timezone.utc).isoformat(), run_id))
-        return self.status(run_id)
+        return self.jobs.cancel(run_id, ("MODEL_AUDIT",))
 
     def wait(self, run_id: str, timeout: float):
-        with self.lock:
-            thread = self.threads.get(run_id)
-        if thread:
-            thread.join(timeout)
+        self.jobs.wait(run_id, timeout)
 
     def close(self):
-        with self.lock:
-            threads = list(self.threads.values())
-            for event in self.cancelled.values():
-                event.set()
-        for thread in threads:
-            thread.join(timeout=1)
-        self.client.close()
+        if self.owns_jobs:
+            self.jobs.close()
+            self.client.close()
