@@ -95,6 +95,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 - [真实 DSH 宿主的图像追问与冻结检视返回](../apps/iad-harness/browser/session-handoff.test.js)
 - [真实 MLLM 与原生知识技能验证](../apps/iad-harness/scripts/verify-knowledge-skills.js)
 - [真实自然语言会话、知识审计与图像追问验证](../apps/iad-harness/scripts/verify-dataset-session.js)
+- [跨产品受控图集与真实会话验收](../apps/iad-harness/scripts/verify-knowledge-products.js)、[图集生成器](../tests/product_corpus.py)、[导入与 Mask 原像素验证](../tests/test_controlled_products.py)
 - [合成图真实 MLLM 与进程终止恢复验证](../scripts/verify_job_recovery_live.py)
 - [Firefox 用户流程测试](../apps/iad-harness/browser/workbench.test.js)
 - [原生宿主侧栏与页面验收](../apps/iad-harness/scripts/verify-host-browser.js)
