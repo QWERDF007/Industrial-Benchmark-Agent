@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 
-export function Modal({ title, onClose, children }: { title: string; onClose(): void; children: React.ReactNode }) {
+export function Modal({ title, onClose, children, className = "" }: { title: string; onClose(): void; children: React.ReactNode; className?: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const previous = document.activeElement;
@@ -8,5 +8,5 @@ export function Modal({ title, onClose, children }: { title: string; onClose(): 
     element.showModal();
     return () => { element.close(); if (previous instanceof HTMLElement && previous.isConnected) previous.focus(); };
   }, []);
-  return <dialog ref={dialog} aria-label={title} className="iad-detail-dialog" onCancel={event => { event.preventDefault(); onClose(); }}>{children}</dialog>;
+  return <dialog ref={dialog} aria-label={title} className={`iad-detail-dialog ${className}`} onCancel={event => { event.preventDefault(); event.stopPropagation(); onClose(); }}>{children}</dialog>;
 }

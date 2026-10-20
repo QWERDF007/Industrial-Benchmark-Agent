@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { SampleDetail } from "../../shared/contracts.js";
+import { Modal } from "./Modal.js";
 
 type Annotation = SampleDetail["annotations"][number];
 export interface ImageSource {
@@ -38,10 +39,8 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
   }, []);
   useEffect(() => {
     const source = new Image(); source.onload = () => setSize({ width: source.naturalWidth, height: source.naturalHeight }); source.src = image.src;
-    const key = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
-    window.addEventListener("keydown", key);
-    return () => { source.onload = null; window.removeEventListener("keydown", key); };
-  }, [image.src, onClose]);
+    return () => { source.onload = null; };
+  }, [image.src]);
   useEffect(() => {
     if (!image.focus || !bounds.width || !bounds.height || !size.width || !size.height) return;
     const [x1, y1, x2, y2] = image.focus.bbox;
@@ -64,7 +63,7 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
     return () => element.removeEventListener("wheel", wheel);
   }, [fit]);
   const fixed = [0, 1, 1.5, 2].includes(view.scale);
-  return <div className="iad-lightbox" role="dialog" aria-modal="true" aria-label="原图检视器"><div className="iad-lightbox-toolbar"><strong>{image.title}</strong>
+  return <Modal title="原图检视器" className="iad-viewer-dialog" onClose={onClose}><div className="iad-lightbox"><div className="iad-lightbox-toolbar"><strong>{image.title}</strong>
     <select aria-label="缩放" value={fixed ? view.scale : "custom"} onChange={e => setView({ scale: Number(e.target.value), x: 0, y: 0 })}>
       <option value={0}>适应窗口</option><option value={1}>100%</option><option value={1.5}>150%</option><option value={2}>200%</option>
       {!fixed && <option value="custom">{Math.round(scale * 100)}%</option>}
@@ -85,5 +84,5 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
         <AnnotatedImage image={{ ...image, ...size }} visible={visible} />
       </div>
     </div>
-  </div>;
+  </div></Modal>;
 }

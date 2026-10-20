@@ -42,7 +42,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 作业关联的真实模型请求、返回、错误与服务用量 | [ModelCalls](../python/iad_core/workbench/calls.py)、[VlmClient](../python/iad_core/workbench/vision.py)、[原文读取操作](../python/iad_core/entry.py) |
 | 图像查看器与标注图层 | [ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx) |
 | 知识独立页面、版本与真实证据 | [KnowledgePage](../apps/iad-harness/src/client/components/KnowledgePage.tsx)、[版本投影](../python/iad_core/knowledge/repository.py) |
-| 复核草稿与共享模态焦点 | [useReviewDraft](../apps/iad-harness/src/client/useReviewDraft.ts)、[Modal](../apps/iad-harness/src/client/components/Modal.tsx) |
+| 复核草稿、嵌套模态与焦点恢复 | [useReviewDraft](../apps/iad-harness/src/client/useReviewDraft.ts)、[Modal](../apps/iad-harness/src/client/components/Modal.tsx) |
 | 复核会话与裁决 | [HumanReview](../python/iad_core/workbench/review.py) |
 | 数据表与迁移 | [Database](../python/iad_core/storage/database.py) |
 

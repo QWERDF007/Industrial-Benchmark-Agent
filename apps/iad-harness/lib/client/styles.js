@@ -98,6 +98,7 @@ export const workbenchStyles = themeStyles + `
 .iad-workbench :is(button,input,select,textarea,summary):focus-visible {outline:2px solid var(--iad-primary);outline-offset:3px;}
 .iad-workbench :is(input[type=checkbox]) {min-height:20px;width:20px;accent-color:var(--iad-primary);}
 .iad-detail-dialog {width:min(1000px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:auto;margin:auto;background:var(--iad-surface);color:var(--iad-text);border:0;border-radius:8px;padding:16px;}
+.iad-detail-dialog.iad-viewer-dialog {width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;padding:0;background:var(--iad-viewer);overflow:hidden;}
 .iad-detail-dialog::backdrop {background:var(--iad-scrim);}
 .iad-detail-dialog>.iad-row {margin-bottom:16px;}
 .iad-detail-dialog .iad-inspector {border:0;box-shadow:none;}

@@ -120,7 +120,7 @@ var __IadClientBundle__ = (() => {
   // src/client/components/Modal.tsx
   var import_react = __require("react");
   var import_jsx_runtime2 = __require("react/jsx-runtime");
-  function Modal({ title, onClose, children }) {
+  function Modal({ title, onClose, children, className = "" }) {
     const dialog = (0, import_react.useRef)(null);
     (0, import_react.useEffect)(() => {
       const previous = document.activeElement;
@@ -131,8 +131,9 @@ var __IadClientBundle__ = (() => {
         if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
       };
     }, []);
-    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("dialog", { ref: dialog, "aria-label": title, className: "iad-detail-dialog", onCancel: (event) => {
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("dialog", { ref: dialog, "aria-label": title, className: `iad-detail-dialog ${className}`, onCancel: (event) => {
       event.preventDefault();
+      event.stopPropagation();
       onClose();
     }, children });
   }
@@ -393,15 +394,10 @@ var __IadClientBundle__ = (() => {
       const source = new Image();
       source.onload = () => setSize({ width: source.naturalWidth, height: source.naturalHeight });
       source.src = image.src;
-      const key = (event) => {
-        if (event.key === "Escape") onClose();
-      };
-      window.addEventListener("keydown", key);
       return () => {
         source.onload = null;
-        window.removeEventListener("keydown", key);
       };
-    }, [image.src, onClose]);
+    }, [image.src]);
     (0, import_react3.useEffect)(() => {
       if (!image.focus || !bounds.width || !bounds.height || !size.width || !size.height) return;
       const [x1, y1, x2, y2] = image.focus.bbox;
@@ -424,7 +420,7 @@ var __IadClientBundle__ = (() => {
       return () => element.removeEventListener("wheel", wheel);
     }, [fit]);
     const fixed = [0, 1, 1.5, 2].includes(view.scale);
-    return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "iad-lightbox", role: "dialog", "aria-modal": "true", "aria-label": "\u539F\u56FE\u68C0\u89C6\u5668", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(Modal, { title: "\u539F\u56FE\u68C0\u89C6\u5668", className: "iad-viewer-dialog", onClose, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "iad-lightbox", children: [
       /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "iad-lightbox-toolbar", children: [
         /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("strong", { children: image.title }),
         /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("select", { "aria-label": "\u7F29\u653E", value: fixed ? view.scale : "custom", onChange: (e) => setView({ scale: Number(e.target.value), x: 0, y: 0 }), children: [
@@ -475,7 +471,7 @@ var __IadClientBundle__ = (() => {
           }, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(AnnotatedImage, { image: { ...image, ...size }, visible }) })
         }
       )
-    ] });
+    ] }) });
   }
 
   // src/client/components/DatasetKnowledge.tsx
@@ -1750,6 +1746,7 @@ var __IadClientBundle__ = (() => {
 .iad-workbench :is(button,input,select,textarea,summary):focus-visible {outline:2px solid var(--iad-primary);outline-offset:3px;}
 .iad-workbench :is(input[type=checkbox]) {min-height:20px;width:20px;accent-color:var(--iad-primary);}
 .iad-detail-dialog {width:min(1000px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:auto;margin:auto;background:var(--iad-surface);color:var(--iad-text);border:0;border-radius:8px;padding:16px;}
+.iad-detail-dialog.iad-viewer-dialog {width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;padding:0;background:var(--iad-viewer);overflow:hidden;}
 .iad-detail-dialog::backdrop {background:var(--iad-scrim);}
 .iad-detail-dialog>.iad-row {margin-bottom:16px;}
 .iad-detail-dialog .iad-inspector {border:0;box-shadow:none;}

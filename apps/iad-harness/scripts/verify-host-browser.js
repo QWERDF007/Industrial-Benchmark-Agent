@@ -77,6 +77,11 @@ try {
   await driver.findElement(By.css(".iad-grid img")).click();
   await driver.wait(until.elementLocated(By.css("dialog[open] .iad-inspector")), 5000);
   assert.equal((await driver.findElements(By.css(".iad-decision"))).length, 0);
+  await driver.findElement(By.css("dialog[open] button[title='放大图像']")).click();
+  await driver.wait(until.elementLocated(By.css("dialog[open].iad-viewer-dialog")),5000);
+  await driver.actions().sendKeys(Key.ESCAPE).perform();
+  assert.equal((await driver.findElements(By.css("dialog[open][aria-label='图像详情']"))).length,1);
+  assert.equal(await driver.executeScript("return document.activeElement.getAttribute('title')"),"放大图像");
   await driver.findElement(By.xpath("//button[.='返回图像浏览']")).click();
   for (const [width, height] of [[1920,1080],[1366,768],[1280,800],[375,812]]) {
     const chrome = await driver.executeScript("return {width:outerWidth-innerWidth,height:outerHeight-innerHeight}");

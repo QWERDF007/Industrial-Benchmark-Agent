@@ -7,7 +7,7 @@ import http from "node:http";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
-import { Builder, By, until } from "selenium-webdriver";
+import { Builder, By, Key, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
 import { PythonBridge, createIadHttpHandler } from "../lib/server/index.js";
 
@@ -123,6 +123,11 @@ for name in ['normal','normal2','dent']:
     await button("数据集管理");
     await (await element(".iad-reference-manager summary")).click(); await gridCount(3);
     await (await element("img[alt='normal.png']")).click();
+    await (await element("button[title='放大图像']")).click();
+    await element(".iad-viewer-viewport");
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    assert.equal((await driver.findElements(By.css("dialog[open][aria-label='良品参考资格']"))).length,1,"Esc只关闭大图，不能连同来源详情一起关闭");
+    assert.equal(await driver.executeScript("return document.activeElement.getAttribute('title')"),"放大图像","大图关闭应返回来源图像按钮焦点");
     await button("移出良品参考");
     await button("返回数据集管理");
     await driver.wait(async ()=>(await (await element(".iad-reference-manager summary")).getText()).includes("1 张"),5000);
@@ -140,7 +145,7 @@ for name in ['normal','normal2','dent']:
     assert.equal(published.versions[0].version_id, published.knowledge.version_id);
     assert.ok((await (await element("select[aria-label='知识版本']")).getText()).includes(published.knowledge.version_id));
     await (await element(".iad-knowledge-evidence button")).click();
-    await element("[role='dialog'] img"); await button("关闭");
+    await element(".iad-viewer-dialog img"); await button("关闭");
     await button("图像浏览"); await gridCount(3);
     assert.equal((await driver.findElements(By.css(".iad-reference"))).length, 2);
     await (await element("summary[aria-label='标注筛选']")).click();
@@ -162,7 +167,7 @@ for name in ['normal','normal2','dent']:
     await gridCount(3);
     await driver.wait(until.elementLocated(By.css(".iad-reference")), 15000);
     await (await element("button[title='放大图像']")).click();
-    await element("[role='dialog'] .iad-annotation-layer rect");
+    await element(".iad-viewer-dialog .iad-annotation-layer rect");
     const viewport = await element(".iad-viewer-viewport");
     await select("缩放", "2");
     assert.ok(await driver.executeScript(`const v=arguments[0].getBoundingClientRect(),i=document.querySelector('.iad-viewer-world').getBoundingClientRect();return Math.abs(v.x+v.width/2-i.x-i.width/2)<2&&Math.abs(v.y+v.height/2-i.y-i.height/2)<2`, viewport), "fixed zoom stays centered");
@@ -170,9 +175,9 @@ for name in ['normal','normal2','dent']:
     await driver.executeScript("arguments[0].dispatchEvent(new WheelEvent('wheel',{deltaY:-150,clientX:400,clientY:400,bubbles:true,cancelable:true}))", viewport);
     await driver.wait(async () => Number(await (await element(".iad-viewer-world")).getAttribute("data-scale")) > Number(scale), 3000);
     await (await element("button[title='隐藏标注']")).click();
-    assert.equal((await driver.findElements(By.css("[role='dialog'] .iad-annotation-layer"))).length, 0);
+    assert.equal((await driver.findElements(By.css(".iad-viewer-dialog .iad-annotation-layer"))).length, 0);
     await (await element("button[title='显示标注']")).click();
-    await element("[role='dialog'] .iad-annotation-layer rect");
+    await element(".iad-viewer-dialog .iad-annotation-layer rect");
     await select("缩放", "1.5");
     const beforeDrag = await (await element(".iad-viewer-world")).getRect();
     await driver.actions({ async: true }).move({ origin: viewport }).press().move({ origin: viewport, x: 60, y: 35 }).release().perform();
@@ -185,7 +190,7 @@ for name in ['normal','normal2','dent']:
     assert.equal((await driver.findElements(By.xpath("//label[contains(.,'最多审计图数') or contains(.,'每图 ROI 预算')]//input"))).length, 0);
     await driver.findElement(By.xpath("//button[.='审计当前筛选全部图像']"));
     await (await element(".iad-reference-grid button")).click();
-    await element("[role='dialog'] .iad-viewer-viewport img"); await button("关闭");
+    await element(".iad-viewer-dialog .iad-viewer-viewport img"); await button("关闭");
     await button("结果");
     const dent = samples.items.find(sample => sample.relative_path === "dent.png");
     const updatedDataset = (await (await fetch(base + "/api/iad/datasets")).json()).datasets[0];
@@ -196,10 +201,10 @@ for name in ['normal','normal2','dent']:
     await driver.executeScript("document.querySelector('.iad-findings').scrollIntoView({block:'start'});");
     await fs.writeFile(path.join(workspace, "runs/browser/audit-findings.png"), await driver.takeScreenshot(), "base64");
     await (await element(".iad-findings li button")).click();
-    await element("[role='dialog'] .iad-finding-layer rect");
+    await element(".iad-viewer-dialog .iad-finding-layer rect");
     assert.equal(await (await element(".iad-finding-layer rect")).getAttribute("x"),"10");
     assert.equal(await (await element(".iad-finding-layer rect")).getAttribute("width"),"20");
-    assert.match(await (await element("[role='dialog'] img")).getAttribute("src"), /\/api\/iad\/evidence\//);
+    assert.match(await (await element(".iad-viewer-dialog img")).getAttribute("src"), /\/api\/iad\/evidence\//);
     await driver.wait(async()=>await driver.executeScript("const r=document.querySelector('.iad-finding-layer rect').getBoundingClientRect(),v=document.querySelector('.iad-viewer-viewport').getBoundingClientRect();return Math.abs((r.left+r.right-v.left-v.right)/2)<2&&Math.abs((r.top+r.bottom-v.top-v.bottom)/2)<2"),5000);
     assert.ok(await driver.executeScript("const r=document.querySelector('.iad-finding-layer rect'),w=document.querySelector('.iad-viewer-world');return parseFloat(getComputedStyle(r).strokeWidth)*new DOMMatrix(getComputedStyle(w).transform).a<=3"), "放大后定位描边仍应保持细线，避免遮挡缺陷");
     await fs.writeFile(path.join(workspace, "runs/browser/audit-finding-focus.png"), await driver.takeScreenshot(), "base64");
@@ -207,14 +212,14 @@ for name in ['normal','normal2','dent']:
     await button("查看其余 1 项");
     assert.equal((await driver.findElements(By.css(".iad-findings li"))).length,4);
     await driver.findElement(By.xpath("//section[contains(@class,'iad-findings')]//button[contains(.,'整体关系')]" )).click();
-    await element("[role='dialog'] img");
+    await element(".iad-viewer-dialog img");
     assert.equal((await driver.findElements(By.css(".iad-finding-layer"))).length,0);
     await button("关闭");
     await (await element(".iad-rule-assessments summary")).click();
     assert.ok((await (await element(".iad-rule-assessments")).getText()).includes("表面外观"));
     assert.ok((await (await element(".iad-rule-assessments")).getText()).includes("发现偏离"));
     await (await element(".iad-rule-assessments button")).click();
-    await driver.wait(async()=>await driver.executeScript("const image=document.querySelector('[role=dialog] img');return image&&image.naturalWidth===28&&image.naturalHeight===28"),5000);
+    await driver.wait(async()=>await driver.executeScript("const image=document.querySelector('.iad-viewer-dialog img');return image&&image.naturalWidth===28&&image.naturalHeight===28"),5000);
     await button("关闭");
     await driver.executeScript("document.querySelector('.iad-rule-assessments').scrollIntoView({block:'center'});");
     await fs.writeFile(path.join(workspace, "runs/browser/rule-assessments.png"), await driver.takeScreenshot(), "base64");
@@ -225,7 +230,7 @@ for name in ['normal','normal2','dent']:
     assert.equal(previews.length,3);
     for (const preview of previews) {
       assert.ok((await preview.getText()).includes("结论引用"));
-      await preview.click(); await element("[role='dialog'] img"); await button("关闭");
+      await preview.click(); await element(".iad-viewer-dialog img"); await button("关闭");
     }
     const final = modelRequests.find(request=>request.messages[0].content[0].text.includes('"title": "JointAnalysis"'));
     assert.equal(final.messages[0].content.filter(part=>part.type==="image_url").length,3);
@@ -251,7 +256,7 @@ for name in ['normal','normal2','dent']:
     const releaseFirst = releaseRegion; releaseRegion = null; releaseFirst();
     await driver.wait(() => Boolean(releaseRegion), 15000);
     await gridCount(1);
-    await element("[role='dialog'] img");
+    await element(".iad-viewer-dialog img");
     const partial = await (await fetch(`${base}/api/iad/audit/status/${batch.run_id}`)).json();
     assert.equal(partial.status, "RUNNING"); assert.equal(partial.completed, 1);
     await button("关闭");
