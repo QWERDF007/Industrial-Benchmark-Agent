@@ -359,10 +359,9 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/InspectionEvidence.tsx
   var import_jsx_runtime5 = __require("react/jsx-runtime");
-  function InspectionOverlay({ inspection, selectedId, hoveredIds, annotationsVisible }) {
+  function InspectionOverlay({ inspection, selectedId, hoveredIds, regions }) {
     const { analysis } = inspection;
-    return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("svg", { className: "iad-roi-layer", viewBox: `0 0 ${analysis.overview.original_size.join(" ")}`, preserveAspectRatio: "none", "aria-label": "\u5BA1\u8BA1\u533A\u57DF", children: analysis.regions.map((region) => {
-      if (!annotationsVisible && region.source === "annotation") return null;
+    return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("svg", { className: "iad-roi-layer", viewBox: `0 0 ${analysis.overview.original_size.join(" ")}`, preserveAspectRatio: "none", "aria-label": "\u5BA1\u8BA1\u533A\u57DF", children: regions.map((region) => {
       const [x1, y1, x2, y2] = region.crop_bbox;
       return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("g", { "data-evidence-id": region.image.evidence_id, "data-locked": selectedId === region.image.evidence_id, className: hoveredIds.includes(region.image.evidence_id) ? "is-hovered" : "", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("rect", { x: x1, y: y1, width: x2 - x1, height: y2 - y1 }) }, region.image.evidence_id);
     }) });
@@ -467,6 +466,7 @@ var __IadClientBundle__ = (() => {
   function ImageViewer({ image, onClose }) {
     const viewport = (0, import_react3.useRef)(null);
     const world = (0, import_react3.useRef)(null);
+    const layerMenu = (0, import_react3.useRef)(null);
     const inspection = image.inspection;
     const [selection, setSelection] = (0, import_react3.useState)(inspection && image.focus ? { kind: "finding", id: image.focus.findingId } : null);
     const [hoveredIds, setHoveredIds] = (0, import_react3.useState)([]);
@@ -476,7 +476,22 @@ var __IadClientBundle__ = (() => {
     const [size, setSize] = (0, import_react3.useState)({ width: image.width || 0, height: image.height || 0 });
     const [bounds, setBounds] = (0, import_react3.useState)({ width: 0, height: 0 });
     const [view, setView] = (0, import_react3.useState)({ scale: 0, x: 0, y: 0 });
-    const [visible, setVisible] = (0, import_react3.useState)(true);
+    const [layers, setLayers] = (0, import_react3.useState)(() => {
+      const initial = { annotation: true, model: true, coverage: true };
+      try {
+        const saved = JSON.parse(localStorage.getItem("iad.image-layers") || "null");
+        for (const key of Object.keys(initial)) {
+          if (typeof saved?.[key] === "boolean") initial[key] = saved[key];
+        }
+      } catch {
+        localStorage.removeItem("iad.image-layers");
+      }
+      return initial;
+    });
+    const regions = inspection?.analysis.regions.filter((region) => region.origins.some((origin) => layers[origin.source])) || [];
+    (0, import_react3.useEffect)(() => {
+      localStorage.setItem("iad.image-layers", JSON.stringify(layers));
+    }, [layers]);
     const drag = (0, import_react3.useRef)(null);
     const fit = size.width && size.height ? Math.min(bounds.width / size.width, bounds.height / size.height) : 1;
     const scale = view.scale || fit;
@@ -505,6 +520,7 @@ var __IadClientBundle__ = (() => {
     }, [image.focus, focusBox]);
     function selectRegion(id) {
       const region = inspection.analysis.regions.find((region2) => region2.image.evidence_id === id);
+      setLayers((previous) => ({ ...previous, [region.source]: true }));
       setSelection({ kind: "region", id });
       setChoices([]);
       focusBox(region.crop_bbox.map((value, axis) => value * (axis % 2 ? size.height : size.width) / inspection.analysis.overview.original_size[axis % 2]));
@@ -514,10 +530,13 @@ var __IadClientBundle__ = (() => {
       const rect = world.current.getBoundingClientRect();
       const x = (event.clientX - rect.left) * inspection.analysis.overview.original_size[0] / rect.width;
       const y = (event.clientY - rect.top) * inspection.analysis.overview.original_size[1] / rect.height;
-      return inspection.analysis.regions.filter((region) => (visible || region.source !== "annotation") && x >= region.crop_bbox[0] && x <= region.crop_bbox[2] && y >= region.crop_bbox[1] && y <= region.crop_bbox[3]).map((region) => region.image.evidence_id);
+      return regions.filter((region) => x >= region.crop_bbox[0] && x <= region.crop_bbox[2] && y >= region.crop_bbox[1] && y <= region.crop_bbox[3]).map((region) => region.image.evidence_id);
     }
     function cancel() {
-      if (choices.length) setChoices([]);
+      if (layerMenu.current?.open) {
+        layerMenu.current.open = false;
+        layerMenu.current.querySelector("summary")?.focus();
+      } else if (choices.length) setChoices([]);
       else if (selection) setSelection(null);
       else onClose();
     }
@@ -550,11 +569,29 @@ var __IadClientBundle__ = (() => {
             "%"
           ] })
         ] }),
-        image.annotations && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "iad-eye", title: visible ? "\u9690\u85CF\u6807\u6CE8" : "\u663E\u793A\u6807\u6CE8", "aria-label": visible ? "\u9690\u85CF\u6807\u6CE8" : "\u663E\u793A\u6807\u6CE8", "aria-pressed": visible, onClick: () => setVisible((v) => !v), children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("svg", { viewBox: "0 0 24 24", width: "21", height: "21", fill: "none", stroke: "currentColor", strokeWidth: "1.8", "aria-hidden": "true", children: [
+        (image.annotations || inspection) && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "iad-eye", title: layers.annotation ? "\u9690\u85CF\u6807\u6CE8" : "\u663E\u793A\u6807\u6CE8", "aria-label": layers.annotation ? "\u9690\u85CF\u6807\u6CE8" : "\u663E\u793A\u6807\u6CE8", "aria-pressed": layers.annotation, onClick: () => setLayers((previous) => ({ ...previous, annotation: !previous.annotation })), children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("svg", { viewBox: "0 0 24 24", width: "21", height: "21", fill: "none", stroke: "currentColor", strokeWidth: "1.8", "aria-hidden": "true", children: [
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" }),
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("circle", { cx: "12", cy: "12", r: "3" }),
-          !visible && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("path", { d: "m3 3 18 18" })
+          !layers.annotation && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("path", { d: "m3 3 18 18" })
         ] }) }),
+        inspection && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("details", { ref: layerMenu, className: "iad-layer-menu", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("summary", { "aria-label": "\u53EF\u89C6\u56FE\u5C42", children: "\u56FE\u5C42" }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { children: Object.keys(regionSources).map((source) => {
+            const label = { annotation: "\u6807\u6CE8", model: "\u6A21\u578B\u5019\u9009", coverage: "\u7EC6\u8282\u8986\u76D6" }[source];
+            return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("label", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+                "input",
+                {
+                  type: "checkbox",
+                  "aria-label": `${label}\u56FE\u5C42`,
+                  checked: layers[source],
+                  onChange: (event) => setLayers((previous) => ({ ...previous, [source]: event.target.checked }))
+                }
+              ),
+              label
+            ] }, source);
+          }) })
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { onClick: onClose, children: "\u5173\u95ED" })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: `iad-viewer-body ${inspection ? "has-inspection" : ""}`, children: [
@@ -607,8 +644,8 @@ var __IadClientBundle__ = (() => {
               "--iad-view-scale": scale,
               transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${scale})`
             }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(AnnotatedImage, { image: { ...image, ...size, focus: inspection && !finding ? void 0 : image.focus }, visible }),
-              inspection && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(InspectionOverlay, { inspection, selectedId, hoveredIds, annotationsVisible: visible })
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(AnnotatedImage, { image: { ...image, ...size, focus: inspection && (!finding || !layers.model) ? void 0 : image.focus }, visible: layers.annotation }),
+              inspection && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(InspectionOverlay, { inspection, selectedId, hoveredIds, regions })
             ] })
           }
         ),
@@ -1878,6 +1915,11 @@ var __IadClientBundle__ = (() => {
 .iad-viewer-world {position:absolute;left:50%;top:50%;transform-origin:center;}
 .iad-viewer-world .iad-image-frame,.iad-viewer-world img {width:100%;height:100%;}
 .iad-eye {display:flex;align-items:center;justify-content:center;}
+.iad-layer-menu {position:relative;color:var(--iad-text);}
+.iad-layer-menu summary {cursor:pointer;padding:8px 12px;border-radius:8px;background:var(--iad-surface);min-height:40px;}
+.iad-layer-menu>div {position:absolute;top:calc(100% + 8px);right:0;z-index:1;min-width:180px;padding:12px;background:var(--iad-surface);box-shadow:0 3px 12px var(--iad-scrim);border-radius:8px;}
+.iad-layer-menu label {display:flex;align-items:center;gap:8px;padding:6px;white-space:nowrap;}
+
 .iad-info-group {background:var(--iad-surface-muted);padding:14px;border-radius:8px;margin:14px 0;}
 .iad-info-group h3:first-child {margin-top:0;}
 .iad-analysis {margin-top:14px;font-size:12px;overflow-wrap:anywhere;}

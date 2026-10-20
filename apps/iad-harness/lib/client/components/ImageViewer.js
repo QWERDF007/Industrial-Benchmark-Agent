@@ -1,6 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Modal } from "./Modal.js";
+import { regionSources } from "../api.js";
 import { InspectionOverlay, InspectionPanel } from "./InspectionEvidence.js";
 export function AnnotatedImage({ image, visible = true }) {
     return _jsxs("div", { className: "iad-image-frame", children: [_jsx("img", { src: image.src, alt: image.title, draggable: false }), visible && image.annotations && _jsx("svg", { className: "iad-annotation-layer", viewBox: `0 0 ${image.width} ${image.height}`, preserveAspectRatio: "none", children: image.annotations.filter(a => a.geometry_status !== "INVALID").map(a => _jsxs("g", { children: [a.polygon ? _jsx("polygon", { points: a.polygon.map(p => p.join(",")).join(" ") }) : a.bbox && _jsx("rect", { x: a.bbox[0], y: a.bbox[1], width: a.bbox[2] - a.bbox[0], height: a.bbox[3] - a.bbox[1] }), a.bbox && _jsx("text", { x: a.bbox[0], y: Math.max(12, a.bbox[1] - 4), children: a.raw_label })] }, a.annotation_id)) }), image.focus && _jsx("svg", { className: "iad-finding-layer", "data-finding-id": image.focus.findingId, viewBox: `0 0 ${image.width} ${image.height}`, preserveAspectRatio: "none", "aria-label": image.focus.label, children: _jsx("rect", { x: image.focus.bbox[0], y: image.focus.bbox[1], width: image.focus.bbox[2] - image.focus.bbox[0], height: image.focus.bbox[3] - image.focus.bbox[1] }) })] });
@@ -8,6 +9,7 @@ export function AnnotatedImage({ image, visible = true }) {
 export function ImageViewer({ image, onClose }) {
     const viewport = useRef(null);
     const world = useRef(null);
+    const layerMenu = useRef(null);
     const inspection = image.inspection;
     const [selection, setSelection] = useState(inspection && image.focus ? { kind: "finding", id: image.focus.findingId } : null);
     const [hoveredIds, setHoveredIds] = useState([]);
@@ -17,7 +19,22 @@ export function ImageViewer({ image, onClose }) {
     const [size, setSize] = useState({ width: image.width || 0, height: image.height || 0 });
     const [bounds, setBounds] = useState({ width: 0, height: 0 });
     const [view, setView] = useState({ scale: 0, x: 0, y: 0 });
-    const [visible, setVisible] = useState(true);
+    const [layers, setLayers] = useState(() => {
+        const initial = { annotation: true, model: true, coverage: true };
+        try {
+            const saved = JSON.parse(localStorage.getItem("iad.image-layers") || "null");
+            for (const key of Object.keys(initial)) {
+                if (typeof saved?.[key] === "boolean")
+                    initial[key] = saved[key];
+            }
+        }
+        catch {
+            localStorage.removeItem("iad.image-layers");
+        }
+        return initial;
+    });
+    const regions = inspection?.analysis.regions.filter(region => region.origins.some(origin => layers[origin.source])) || [];
+    useEffect(() => { localStorage.setItem("iad.image-layers", JSON.stringify(layers)); }, [layers]);
     const drag = useRef(null);
     const fit = size.width && size.height ? Math.min(bounds.width / size.width, bounds.height / size.height) : 1;
     const scale = view.scale || fit;
@@ -44,6 +61,7 @@ export function ImageViewer({ image, onClose }) {
         focusBox(image.focus.bbox); }, [image.focus, focusBox]);
     function selectRegion(id) {
         const region = inspection.analysis.regions.find(region => region.image.evidence_id === id);
+        setLayers(previous => ({ ...previous, [region.source]: true }));
         setSelection({ kind: "region", id });
         setChoices([]);
         focusBox(region.crop_bbox.map((value, axis) => value * (axis % 2 ? size.height : size.width) / inspection.analysis.overview.original_size[axis % 2]));
@@ -54,10 +72,14 @@ export function ImageViewer({ image, onClose }) {
         const rect = world.current.getBoundingClientRect();
         const x = (event.clientX - rect.left) * inspection.analysis.overview.original_size[0] / rect.width;
         const y = (event.clientY - rect.top) * inspection.analysis.overview.original_size[1] / rect.height;
-        return inspection.analysis.regions.filter(region => (visible || region.source !== "annotation") && x >= region.crop_bbox[0] && x <= region.crop_bbox[2] && y >= region.crop_bbox[1] && y <= region.crop_bbox[3]).map(region => region.image.evidence_id);
+        return regions.filter(region => x >= region.crop_bbox[0] && x <= region.crop_bbox[2] && y >= region.crop_bbox[1] && y <= region.crop_bbox[3]).map(region => region.image.evidence_id);
     }
     function cancel() {
-        if (choices.length)
+        if (layerMenu.current?.open) {
+            layerMenu.current.open = false;
+            layerMenu.current.querySelector("summary")?.focus();
+        }
+        else if (choices.length)
             setChoices([]);
         else if (selection)
             setSelection(null);
@@ -80,7 +102,10 @@ export function ImageViewer({ image, onClose }) {
         return () => element.removeEventListener("wheel", wheel);
     }, [fit]);
     const fixed = [0, 1, 1.5, 2].includes(view.scale);
-    return _jsx(Modal, { title: "\u539F\u56FE\u68C0\u89C6\u5668", className: "iad-viewer-dialog", onClose: cancel, children: _jsxs("div", { className: "iad-lightbox", children: [_jsxs("div", { className: "iad-lightbox-toolbar", children: [_jsx("strong", { children: image.title }), _jsxs("select", { "aria-label": "\u7F29\u653E", value: fixed ? view.scale : "custom", onChange: e => setView({ scale: Number(e.target.value), x: 0, y: 0 }), children: [_jsx("option", { value: 0, children: "\u9002\u5E94\u7A97\u53E3" }), _jsx("option", { value: 1, children: "100%" }), _jsx("option", { value: 1.5, children: "150%" }), _jsx("option", { value: 2, children: "200%" }), !fixed && _jsxs("option", { value: "custom", children: [Math.round(scale * 100), "%"] })] }), image.annotations && _jsx("button", { className: "iad-eye", title: visible ? "隐藏标注" : "显示标注", "aria-label": visible ? "隐藏标注" : "显示标注", "aria-pressed": visible, onClick: () => setVisible(v => !v), children: _jsxs("svg", { viewBox: "0 0 24 24", width: "21", height: "21", fill: "none", stroke: "currentColor", strokeWidth: "1.8", "aria-hidden": "true", children: [_jsx("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" }), _jsx("circle", { cx: "12", cy: "12", r: "3" }), !visible && _jsx("path", { d: "m3 3 18 18" })] }) }), _jsx("button", { onClick: onClose, children: "\u5173\u95ED" })] }), _jsxs("div", { className: `iad-viewer-body ${inspection ? "has-inspection" : ""}`, children: [_jsx("div", { className: "iad-viewer-viewport", ref: viewport, tabIndex: 0, "aria-label": "\u56FE\u50CF\u89C6\u53E3", onKeyDown: event => {
+    return _jsx(Modal, { title: "\u539F\u56FE\u68C0\u89C6\u5668", className: "iad-viewer-dialog", onClose: cancel, children: _jsxs("div", { className: "iad-lightbox", children: [_jsxs("div", { className: "iad-lightbox-toolbar", children: [_jsx("strong", { children: image.title }), _jsxs("select", { "aria-label": "\u7F29\u653E", value: fixed ? view.scale : "custom", onChange: e => setView({ scale: Number(e.target.value), x: 0, y: 0 }), children: [_jsx("option", { value: 0, children: "\u9002\u5E94\u7A97\u53E3" }), _jsx("option", { value: 1, children: "100%" }), _jsx("option", { value: 1.5, children: "150%" }), _jsx("option", { value: 2, children: "200%" }), !fixed && _jsxs("option", { value: "custom", children: [Math.round(scale * 100), "%"] })] }), (image.annotations || inspection) && _jsx("button", { className: "iad-eye", title: layers.annotation ? "隐藏标注" : "显示标注", "aria-label": layers.annotation ? "隐藏标注" : "显示标注", "aria-pressed": layers.annotation, onClick: () => setLayers(previous => ({ ...previous, annotation: !previous.annotation })), children: _jsxs("svg", { viewBox: "0 0 24 24", width: "21", height: "21", fill: "none", stroke: "currentColor", strokeWidth: "1.8", "aria-hidden": "true", children: [_jsx("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" }), _jsx("circle", { cx: "12", cy: "12", r: "3" }), !layers.annotation && _jsx("path", { d: "m3 3 18 18" })] }) }), inspection && _jsxs("details", { ref: layerMenu, className: "iad-layer-menu", children: [_jsx("summary", { "aria-label": "\u53EF\u89C6\u56FE\u5C42", children: "\u56FE\u5C42" }), _jsx("div", { children: Object.keys(regionSources).map(source => {
+                                        const label = { annotation: "标注", model: "模型候选", coverage: "细节覆盖" }[source];
+                                        return _jsxs("label", { children: [_jsx("input", { type: "checkbox", "aria-label": `${label}图层`, checked: layers[source], onChange: event => setLayers(previous => ({ ...previous, [source]: event.target.checked })) }), label] }, source);
+                                    }) })] }), _jsx("button", { onClick: onClose, children: "\u5173\u95ED" })] }), _jsxs("div", { className: `iad-viewer-body ${inspection ? "has-inspection" : ""}`, children: [_jsx("div", { className: "iad-viewer-viewport", ref: viewport, tabIndex: 0, "aria-label": "\u56FE\u50CF\u89C6\u53E3", onKeyDown: event => {
                                 const direction = { ArrowLeft: [20, 0], ArrowRight: [-20, 0], ArrowUp: [0, 20], ArrowDown: [0, -20] }[event.key];
                                 if (direction) {
                                     event.preventDefault();
@@ -106,5 +131,5 @@ export function ImageViewer({ image, onClose }) {
                                     setChoices(ids);
                                 }
                             } }, onPointerCancel: () => { drag.current = null; }, children: _jsxs("div", { className: "iad-viewer-world", ref: world, "data-scale": scale, style: { width: size.width, height: size.height, "--iad-view-scale": scale,
-                                    transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${scale})` }, children: [_jsx(AnnotatedImage, { image: { ...image, ...size, focus: inspection && !finding ? undefined : image.focus }, visible: visible }), inspection && _jsx(InspectionOverlay, { inspection: inspection, selectedId: selectedId, hoveredIds: hoveredIds, annotationsVisible: visible })] }) }), inspection && _jsx(InspectionPanel, { inspection: inspection, selectedId: selectedId, onSelect: selectRegion, choices: choices })] })] }) });
+                                    transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${scale})` }, children: [_jsx(AnnotatedImage, { image: { ...image, ...size, focus: inspection && (!finding || !layers.model) ? undefined : image.focus }, visible: layers.annotation }), inspection && _jsx(InspectionOverlay, { inspection: inspection, selectedId: selectedId, hoveredIds: hoveredIds, regions: regions })] }) }), inspection && _jsx(InspectionPanel, { inspection: inspection, selectedId: selectedId, onSelect: selectRegion, choices: choices })] })] }) });
 }

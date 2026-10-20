@@ -44,7 +44,7 @@ for name in ['normal','normal2','dent']:
   });
   const previousEndpoint = process.env.LIVE_VLM_ENDPOINT;
   const modelRequests = [];
-  let holdRegion = false, releaseRegion;
+  let holdRegion = false, releaseRegion, proposeRegion = false;
   const api = createIadHttpHandler(bridge);
   const server = http.createServer(async (req, res) => {
     if (new URL(req.url, "http://localhost").pathname === "/") { res.setHeader("Content-Type", "text/html; charset=utf-8"); res.end('<!doctype html><meta charset="utf-8"><style>html,body,#root{height:100%;margin:0}</style><div id="root"></div><script src="/browser.js"></script>'); }
@@ -74,6 +74,7 @@ for name in ['normal','normal2','dent']:
         check_assessments:JSON.parse(parts[0].text.split("冻结知识：")[1].split("\n")[0]).checks.map(check=>({...view,check_id:check.check_id,status:"anomaly",evidence_ids:[images[1].evidence_id]})),
         region_observations:images.filter(image=>image.role==="roi"&&image.representation==="raw").map((_,index)=>({...view,region_index:index+1})),suggested_label:"FAIL",reason_category:"SCRATCH",confidence:0.8,
         evidence_ids:parts.filter(part=>part.type==="text"&&part.text.startsWith("视觉证据：")).map(part=>JSON.parse(part.text.slice(5)).evidence_id)};
+      if (schema.title === "JointAnalysis" && proposeRegion) answer.global_view = {...view,suspect_regions:[{bbox_1000:[31,41,125,167],reason:"补看边缘"}]};
       if (schema.title === "JointAnalysis") answer.findings = ["high", "medium", "low", "high"].map((priority, index) => ({
         check_ids:answer.check_assessments.map(check=>check.check_id),
         location:{scope:index===2?"global":"local",bbox:index===2?null:[10,10,30,30],description:index===2?"整体关系":"左上角"},
@@ -218,11 +219,26 @@ print(sum(image.getpixel((i,y))!=(0,0,255) for i in range(x-round(20*dpr),x+roun
     assert.ok(strokePixels>=1&&strokePixels<=4*edge[2],`放大后实际截图的定位描边应保持可辨且纤细，实际占 ${strokePixels} 像素`);
     await element(".iad-inspection-panel");
     assert.ok((await (await element(".iad-inspection-panel")).getText()).includes("综合建议"));
+    await (await element("summary[aria-label='可视图层']")).click();
+    await (await element("input[aria-label='模型候选图层']")).click();
+    assert.equal((await driver.findElements(By.css(".iad-finding-layer"))).length,0,"关闭模型候选图层时疑点定位框也应隐藏");
+    await (await element("input[aria-label='模型候选图层']")).click();
+    await element(".iad-finding-layer");
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
     await (await element("button[aria-label='定位 ROI 1']")).click();
     await driver.wait(async()=>await driver.executeScript("const image=document.querySelector('.iad-inspection-region img');return image&&image.naturalWidth===28&&image.naturalHeight===28"),5000);
     await element(".iad-roi-layer [data-locked='true']");
     assert.ok((await (await element(".iad-inspection-region")).getText()).includes("光照"));
     assert.ok((await (await element(".iad-inspection-region")).getText()).includes("原图区域"));
+    await (await element("summary[aria-label='可视图层']")).click();
+    for(const label of ["标注图层","模型候选图层","细节覆盖图层"]) await element(`input[aria-label='${label}']`);
+    await (await element("input[aria-label='细节覆盖图层']")).click();
+    await (await element("input[aria-label='标注图层']")).click();
+    assert.equal((await driver.findElements(By.css(".iad-roi-layer g"))).length,0,"隐藏标注图层后，关联的ROI轮廓也应隐藏");
+    await (await element("input[aria-label='标注图层']")).click();
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    assert.equal(await (await element("summary[aria-label='可视图层']")).findElement(By.xpath("..")).getAttribute("open"),null,"首次Esc只关闭图层菜单");
+    await element(".iad-roi-layer [data-locked='true']");
     await driver.actions().sendKeys(Key.ESCAPE).perform();
     assert.equal((await driver.findElements(By.css(".iad-viewer-dialog[open]"))).length,1,"首次Esc解除锁定，保留查看器");
     assert.equal((await driver.findElements(By.css(".iad-roi-layer [data-locked='true']"))).length,0);
@@ -259,6 +275,9 @@ print(sum(image.getpixel((i,y))!=(0,0,255) for i in range(x-round(20*dpr),x+roun
     await driver.findElement(By.xpath("//section[contains(@class,'iad-findings')]//button[contains(.,'整体关系')]" )).click();
     await element(".iad-viewer-dialog img");
     assert.equal((await driver.findElements(By.css(".iad-finding-layer"))).length,0);
+    await (await element("summary[aria-label='可视图层']")).click();
+    assert.equal(await (await element("input[aria-label='细节覆盖图层']")).isSelected(),false,"跨图保留图层偏好");
+    await (await element("input[aria-label='细节覆盖图层']")).click();
     await button("关闭");
     await (await element(".iad-rule-assessments summary")).click();
     assert.ok((await (await element(".iad-rule-assessments")).getText()).includes("表面外观"));
@@ -314,6 +333,39 @@ print(sum(image.getpixel((i,y))!=(0,0,255) for i in range(x-round(20*dpr),x+roun
     await driver.wait(async () => (await (await element(".iad-kpis div:nth-child(2) strong")).getText()).startsWith("3"), 15000);
 
     await fs.writeFile(path.join(workspace, "runs/browser/model-audit.png"), await driver.takeScreenshot(), "base64");
+    await driver.findElement(By.css("img[alt='normal.png']")).click();
+    await (await element("button[title='放大图像']")).click();
+    await (await element("summary[aria-label='可视图层']")).click();
+    assert.equal((await driver.findElements(By.css(".iad-roi-layer g"))).length,1);
+    await (await element("input[aria-label='细节覆盖图层']")).click();
+    assert.equal((await driver.findElements(By.css(".iad-roi-layer g"))).length,0,"无标注图实际覆盖ROI受覆盖图层控制");
+    await (await element("input[aria-label='细节覆盖图层']")).click();
+    await button("关闭");
+    await driver.findElement(By.css("img[alt='dent.png']")).click();
+    const beforeExpanded = (await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json()).suggestion.suggestion_id;
+    proposeRegion = true;
+    await button("按知识审计此图");
+    await driver.wait(async()=>{const result=await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();return result.suggestion.suggestion_id!==beforeExpanded&&result.suggestion.analysis.regions.length===2;},15000);
+    proposeRegion = false;
+    await driver.wait(async()=>(await (await element(".iad-single-job")).getText()).includes("COMPLETED"),15000);
+    await (await element("button[title='放大图像']")).click();
+    await (await element("button[aria-label='定位 ROI 1']")).click();
+    await driver.actions().move({origin:await element(".iad-roi-layer g:first-child rect")}).press().release().perform();
+    const overlap = await element("[aria-label='重叠区域']");
+    const overlapButtons = await overlap.findElements(By.css("button"));
+    assert.equal(overlapButtons.length,2,"同一点覆盖标注与模型区域时应明确选择");
+    await overlapButtons[1].click();
+    assert.ok((await (await element(".iad-inspection-region")).getText()).includes("MLLM 候选"));
+    await (await element("summary[aria-label='可视图层']")).click();
+    await (await element("input[aria-label='标注图层']")).click();
+    assert.equal((await driver.findElements(By.css(".iad-roi-layer g"))).length,1);
+    await (await element("input[aria-label='模型候选图层']")).click();
+    assert.equal((await driver.findElements(By.css(".iad-roi-layer g"))).length,0,"模型实际追加ROI受模型图层控制");
+    await driver.actions().move({origin:await element(".iad-viewer-viewport")}).press().release().perform();
+    assert.equal((await driver.findElements(By.css(".iad-inspection-region"))).length,0,"隐藏的ROI不参与指针命中");
+    await (await element("input[aria-label='标注图层']")).click();
+    await (await element("input[aria-label='模型候选图层']")).click();
+    await button("关闭");
     await button("人工复核"); await gridCount(3);
     assert.equal(await (await element(".iad-inspector h2")).getText(), "复核明细");
     assert.equal((await driver.findElements(By.xpath("//button[.='按知识审计此图']"))).length, 0);

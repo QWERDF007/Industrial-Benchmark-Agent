@@ -86,6 +86,11 @@ export const workbenchStyles = themeStyles + `
 .iad-viewer-world {position:absolute;left:50%;top:50%;transform-origin:center;}
 .iad-viewer-world .iad-image-frame,.iad-viewer-world img {width:100%;height:100%;}
 .iad-eye {display:flex;align-items:center;justify-content:center;}
+.iad-layer-menu {position:relative;color:var(--iad-text);}
+.iad-layer-menu summary {cursor:pointer;padding:8px 12px;border-radius:8px;background:var(--iad-surface);min-height:40px;}
+.iad-layer-menu>div {position:absolute;top:calc(100% + 8px);right:0;z-index:1;min-width:180px;padding:12px;background:var(--iad-surface);box-shadow:0 3px 12px var(--iad-scrim);border-radius:8px;}
+.iad-layer-menu label {display:flex;align-items:center;gap:8px;padding:6px;white-space:nowrap;}
+
 .iad-info-group {background:var(--iad-surface-muted);padding:14px;border-radius:8px;margin:14px 0;}
 .iad-info-group h3:first-child {margin-top:0;}
 .iad-analysis {margin-top:14px;font-size:12px;overflow-wrap:anywhere;}

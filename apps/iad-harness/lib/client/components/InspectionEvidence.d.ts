@@ -4,11 +4,11 @@ export interface InspectionContext {
     suggestionId: string;
     analysis: AuditAnalysis;
 }
-export declare function InspectionOverlay({ inspection, selectedId, hoveredIds, annotationsVisible }: {
+export declare function InspectionOverlay({ inspection, selectedId, hoveredIds, regions }: {
     inspection: InspectionContext;
     selectedId: string;
     hoveredIds: string[];
-    annotationsVisible: boolean;
+    regions: AuditAnalysis["regions"];
 }): React.JSX.Element;
 export declare function InspectionPanel({ inspection, selectedId, onSelect, choices }: {
     inspection: InspectionContext;

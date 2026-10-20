@@ -1,10 +1,8 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { auditEvidenceUrl, regionSources } from "../api.js";
-export function InspectionOverlay({ inspection, selectedId, hoveredIds, annotationsVisible }) {
+export function InspectionOverlay({ inspection, selectedId, hoveredIds, regions }) {
     const { analysis } = inspection;
-    return _jsx("svg", { className: "iad-roi-layer", viewBox: `0 0 ${analysis.overview.original_size.join(" ")}`, preserveAspectRatio: "none", "aria-label": "\u5BA1\u8BA1\u533A\u57DF", children: analysis.regions.map(region => {
-            if (!annotationsVisible && region.source === "annotation")
-                return null;
+    return _jsx("svg", { className: "iad-roi-layer", viewBox: `0 0 ${analysis.overview.original_size.join(" ")}`, preserveAspectRatio: "none", "aria-label": "\u5BA1\u8BA1\u533A\u57DF", children: regions.map(region => {
             const [x1, y1, x2, y2] = region.crop_bbox;
             return _jsx("g", { "data-evidence-id": region.image.evidence_id, "data-locked": selectedId === region.image.evidence_id, className: hoveredIds.includes(region.image.evidence_id) ? "is-hovered" : "", children: _jsx("rect", { x: x1, y: y1, width: x2 - x1, height: y2 - y1 }) }, region.image.evidence_id);
         }) });

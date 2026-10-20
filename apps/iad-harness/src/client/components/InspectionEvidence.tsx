@@ -4,13 +4,12 @@ import { auditEvidenceUrl, regionSources } from "../api.js";
 
 export interface InspectionContext { suggestionId: string; analysis: AuditAnalysis }
 
-export function InspectionOverlay({ inspection, selectedId, hoveredIds, annotationsVisible }: {
-  inspection: InspectionContext; selectedId: string; hoveredIds: string[]; annotationsVisible: boolean;
+export function InspectionOverlay({ inspection, selectedId, hoveredIds, regions }: {
+  inspection: InspectionContext; selectedId: string; hoveredIds: string[]; regions: AuditAnalysis["regions"];
 }) {
   const { analysis } = inspection;
   return <svg className="iad-roi-layer" viewBox={`0 0 ${analysis.overview.original_size.join(" ")}`} preserveAspectRatio="none" aria-label="审计区域">
-    {analysis.regions.map(region => {
-      if (!annotationsVisible && region.source === "annotation") return null;
+    {regions.map(region => {
       const [x1, y1, x2, y2] = region.crop_bbox;
       return <g key={region.image.evidence_id} data-evidence-id={region.image.evidence_id} data-locked={selectedId === region.image.evidence_id} className={hoveredIds.includes(region.image.evidence_id) ? "is-hovered" : ""}>
         <rect x={x1} y={y1} width={x2-x1} height={y2-y1} />
