@@ -164,3 +164,5 @@ DSH 左侧栏             当前页面
 匹配并采用：Minimalism & Swiss Style、当前导航标识、可恢复导航、焦点可见、共享低频状态和局部表单状态。两次生成均返回营销 Hero 布局，没有匹配到可直接采用的工业工作台布局；上述页面线框为结合现有 DSH 工作台作出的设计。字体、营销布局、入场动画与整套配色不作为项目规范。React 检索标注版本高于当前 React 18，仅采用通用状态设计，不据此升级框架。
 
 步骤反馈补充检索 `background task progress feedback`，采用命中的 Progress Indicators 建议。对照 [LangGraph 官方人工介入文档](https://docs.langchain.com/oss/python/langgraph/interrupts)的持久化身份与恢复语义，作为交互参考，执行仍复用 DSH 与本项目作业。[Open Agent Platform](https://github.com/langchain-ai/open-agent-platform) 官方仓库已声明弃用，不作为新增依赖或实施模板。
+
+检视器交互依据：[W3C 悬浮提示模式](https://www.w3.org/WAI/ARIA/apg/patterns/tooltip/)、[对应 GitHub 源码](https://github.com/w3c/aria-practices/blob/main/content/patterns/tooltip/tooltip-pattern.html)、[d3-zoom 的缩放锚点实现](https://github.com/d3/d3-zoom/blob/main/src/zoom.js)。

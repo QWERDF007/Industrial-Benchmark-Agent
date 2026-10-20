@@ -652,6 +652,9 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/ImageViewer.tsx
   var import_jsx_runtime10 = __require("react/jsx-runtime");
+  var emptyHover = { ids: [], dismissed: false, x: 0, y: 0 };
+  var minScale = 0.02;
+  var maxScale = 16;
   function AnnotatedImage({ image, visible = true, onLoad }) {
     return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "iad-image-frame", children: [
       /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(MediaImage, { src: image.src, alt: image.title, width: image.width, height: image.height, "data-media-label": "\u56FE\u50CF", draggable: false, onLoad }),
@@ -664,7 +667,8 @@ var __IadClientBundle__ = (() => {
     const layerMenu = (0, import_react6.useRef)(null);
     const inspection = image.inspection;
     const [selection, setSelection] = (0, import_react6.useState)(() => inspection ? image.initialSelection || null : null);
-    const [hoveredIds, setHoveredIds] = (0, import_react6.useState)([]);
+    const [hover, setHover] = (0, import_react6.useState)(emptyHover);
+    const hintId = (0, import_react6.useId)();
     const [choices, setChoices] = (0, import_react6.useState)([]);
     const { finding, evidence, region } = resolveInspection(inspection?.analysis, selection);
     const selectedId = region?.image.evidence_id || "";
@@ -686,6 +690,8 @@ var __IadClientBundle__ = (() => {
       return initial;
     });
     const regions = inspection?.analysis.regions.filter((region2) => region2.origins.some((origin) => layers[origin.source])) || [];
+    const hoveredRegions = regions.filter((region2) => hover.ids.includes(region2.image.evidence_id));
+    const hint = !hover.dismissed && hoveredRegions[0];
     (0, import_react6.useEffect)(() => {
       localStorage.setItem("iad.image-layers", JSON.stringify(layers));
     }, [layers]);
@@ -706,7 +712,7 @@ var __IadClientBundle__ = (() => {
         return;
       }
       const [x1, y1, x2, y2] = box.map((value, axis) => value * (axis % 2 ? size.height : size.width) / inspection.analysis.overview.original_size[axis % 2]);
-      const scale2 = Math.min(16, bounds.width / ((x2 - x1) * 1.4), bounds.height / ((y2 - y1) * 1.4));
+      const scale2 = Math.min(maxScale, bounds.width / ((x2 - x1) * 1.4), bounds.height / ((y2 - y1) * 1.4));
       setView({ scale: scale2, x: (size.width / 2 - (x1 + x2) / 2) * scale2, y: (size.height / 2 - (y1 + y2) / 2) * scale2 });
     }, [selection, inspection, finding, evidence, bounds.width, bounds.height, size.width, size.height]);
     function select(target) {
@@ -715,6 +721,7 @@ var __IadClientBundle__ = (() => {
       if (targetFinding?.location.scope === "local") setLayers((previous) => ({ ...previous, model: true }));
       setSelection(target);
       setChoices([]);
+      setHover(emptyHover);
     }
     function regionsAt(event) {
       if (!inspection || !world.current) return [];
@@ -727,9 +734,18 @@ var __IadClientBundle__ = (() => {
       if (layerMenu.current?.open) {
         layerMenu.current.open = false;
         layerMenu.current.querySelector("summary")?.focus();
-      } else if (choices.length) setChoices([]);
+      } else if (hint) setHover((previous) => ({ ...previous, dismissed: true }));
+      else if (choices.length) setChoices([]);
       else if (selection) setSelection(null);
       else onClose();
+    }
+    function zoomBy(factor, anchorX = 0, anchorY = 0) {
+      setHover(emptyHover);
+      setView((previous) => {
+        const oldScale = previous.scale || fit;
+        const next = Math.max(minScale, Math.min(maxScale, oldScale * factor));
+        return { scale: next, x: anchorX - (anchorX - previous.x) * next / oldScale, y: anchorY - (anchorY - previous.y) * next / oldScale };
+      });
     }
     (0, import_react6.useEffect)(() => {
       const element = viewport.current;
@@ -737,11 +753,7 @@ var __IadClientBundle__ = (() => {
         event.preventDefault();
         const rect = element.getBoundingClientRect();
         const x = event.clientX - rect.left - rect.width / 2, y = event.clientY - rect.top - rect.height / 2;
-        setView((previous) => {
-          const oldScale = previous.scale || fit;
-          const next = Math.max(0.02, Math.min(16, oldScale * Math.exp(-event.deltaY * 15e-4)));
-          return { scale: next, x: x - (x - previous.x) * next / oldScale, y: y - (y - previous.y) * next / oldScale };
-        });
+        zoomBy(Math.exp(-event.deltaY * 15e-4), x, y);
       };
       element.addEventListener("wheel", wheel, { passive: false });
       return () => element.removeEventListener("wheel", wheel);
@@ -750,7 +762,15 @@ var __IadClientBundle__ = (() => {
     return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Modal, { title: "\u539F\u56FE\u68C0\u89C6\u5668", className: "iad-viewer-dialog", onClose: cancel, children: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "iad-lightbox", children: [
       /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "iad-lightbox-toolbar", children: [
         /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("strong", { children: image.title }),
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("select", { "aria-label": "\u7F29\u653E", value: fixed ? view.scale : "custom", onChange: (e) => setView({ scale: Number(e.target.value), x: 0, y: 0 }), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("button", { className: "iad-eye", "aria-label": "\u7F29\u5C0F", title: "\u7F29\u5C0F", disabled: scale <= minScale, onClick: () => zoomBy(0.5), children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("svg", { viewBox: "0 0 24 24", width: "21", height: "21", fill: "none", stroke: "currentColor", strokeWidth: "1.8", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("path", { d: "M5 12h14" }) }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("select", { "aria-label": "\u7F29\u653E", value: fixed ? view.scale : "custom", onChange: (e) => {
+          const next = Number(e.target.value);
+          if (next) zoomBy(next / scale);
+          else {
+            setView({ scale: 0, x: 0, y: 0 });
+            setHover(emptyHover);
+          }
+        }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("option", { value: 0, children: "\u9002\u5E94\u7A97\u53E3" }),
           /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("option", { value: 1, children: "100%" }),
           /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("option", { value: 1.5, children: "150%" }),
@@ -760,6 +780,7 @@ var __IadClientBundle__ = (() => {
             "%"
           ] })
         ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("button", { className: "iad-eye", "aria-label": "\u653E\u5927", title: "\u653E\u5927", disabled: scale >= maxScale, onClick: () => zoomBy(2), children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("svg", { viewBox: "0 0 24 24", width: "21", height: "21", fill: "none", stroke: "currentColor", strokeWidth: "1.8", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("path", { d: "M5 12h14M12 5v14" }) }) }),
         (image.annotationLayer || inspection) && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("button", { className: "iad-eye", title: layers.annotation ? "\u9690\u85CF\u6807\u6CE8" : "\u663E\u793A\u6807\u6CE8", "aria-label": layers.annotation ? "\u9690\u85CF\u6807\u6CE8" : "\u663E\u793A\u6807\u6CE8", "aria-pressed": layers.annotation, onClick: () => setLayers((previous) => ({ ...previous, annotation: !previous.annotation })), children: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("svg", { viewBox: "0 0 24 24", width: "21", height: "21", fill: "none", stroke: "currentColor", strokeWidth: "1.8", "aria-hidden": "true", children: [
           /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" }),
           /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("circle", { cx: "12", cy: "12", r: "3" }),
@@ -786,13 +807,14 @@ var __IadClientBundle__ = (() => {
         /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("button", { onClick: onClose, children: "\u5173\u95ED" })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: `iad-viewer-body ${inspection ? "has-inspection" : ""}`, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(MediaLoad, { className: "iad-viewer-media", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(MediaLoad, { className: "iad-viewer-media", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
           "div",
           {
             className: "iad-viewer-viewport",
             ref: viewport,
             tabIndex: 0,
             "aria-label": "\u56FE\u50CF\u89C6\u53E3",
+            "aria-describedby": hint ? hintId : void 0,
             onKeyDown: (event) => {
               const direction = { ArrowLeft: [20, 0], ArrowRight: [-20, 0], ArrowUp: [0, 20], ArrowDown: [0, -20] }[event.key];
               if (direction) {
@@ -802,6 +824,7 @@ var __IadClientBundle__ = (() => {
             },
             onPointerDown: (event) => {
               if (event.button !== 0) return;
+              setHover(emptyHover);
               event.currentTarget.setPointerCapture(event.pointerId);
               drag.current = { x: event.clientX, y: event.clientY, panX: view.x, panY: view.y, moved: false };
             },
@@ -811,9 +834,14 @@ var __IadClientBundle__ = (() => {
                 const dx = event.clientX - start.x, dy = event.clientY - start.y;
                 start.moved ||= Math.hypot(dx, dy) > 4;
                 if (start.moved) setView((previous) => ({ ...previous, x: start.panX + dx, y: start.panY + dy }));
-              } else if (inspection) setHoveredIds(regionsAt(event));
+              } else if (inspection && event.pointerType !== "touch") {
+                const ids = regionsAt(event);
+                const rect = event.currentTarget.getBoundingClientRect();
+                const x = Math.max(12, Math.min(event.clientX - rect.left, rect.width - 292)), y = event.clientY - rect.top;
+                setHover((previous) => ids.length === previous.ids.length && ids.every((id, index) => id === previous.ids[index]) ? previous : { ids, dismissed: false, x, y });
+              }
             },
-            onPointerLeave: () => setHoveredIds([]),
+            onPointerLeave: () => setHover(emptyHover),
             onPointerUp: (event) => {
               const start = drag.current;
               drag.current = null;
@@ -829,15 +857,24 @@ var __IadClientBundle__ = (() => {
             onPointerCancel: () => {
               drag.current = null;
             },
-            children: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "iad-viewer-world", ref: world, "data-scale": scale, style: {
-              width: size.width,
-              height: size.height,
-              "--iad-view-scale": scale,
-              transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${scale})`
-            }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(AnnotatedImage, { image: { ...image, ...size }, visible: layers.annotation, onLoad: (event) => setSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight }) }),
-              inspection && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(InspectionOverlay, { inspection, selectedId, hoveredIds, regions, finding: layers.model ? finding : void 0 })
-            ] })
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "iad-viewer-world", ref: world, "data-scale": scale, style: {
+                width: size.width,
+                height: size.height,
+                "--iad-view-scale": scale,
+                transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${scale})`
+              }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(AnnotatedImage, { image: { ...image, ...size }, visible: layers.annotation, onLoad: (event) => setSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight }) }),
+                inspection && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(InspectionOverlay, { inspection, selectedId, hoveredIds: hover.ids, regions, finding: layers.model ? finding : void 0 })
+              ] }),
+              hint && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { id: hintId, role: "tooltip", className: "iad-roi-hint", style: { left: hover.x, top: hover.y + (hover.y < bounds.height / 2 ? 1 : 0), transform: hover.y >= bounds.height / 2 ? "translateY(-100%)" : void 0 }, onPointerMove: (event) => event.stopPropagation(), onPointerDown: (event) => event.stopPropagation(), children: [
+                regionSources[hint.source],
+                " \xB7 ",
+                hint.label.slice(0, 80),
+                hint.label.length > 80 ? "\u2026" : "",
+                hoveredRegions.length > 1 ? ` \xB7 ${hoveredRegions.length} \u4E2A\u91CD\u53E0\u533A\u57DF` : ""
+              ] })
+            ]
           }
         ) }, image.src),
         inspection && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(InspectionPanel, { inspection, selection, choices, onSelect: select })
@@ -2037,6 +2074,7 @@ var __IadClientBundle__ = (() => {
 .iad-viewer-media>.iad-media-error {position:absolute;left:0;right:0;bottom:0;z-index:1;}
 .iad-viewer-viewport {position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;cursor:grab;user-select:none;}
 .iad-viewer-viewport:active {cursor:grabbing;}
+.iad-roi-hint {position:absolute;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;max-width:min(280px,calc(100% - 24px));padding:8px 12px;border-radius:6px;background:var(--iad-surface);color:var(--iad-text);font-size:13px;line-height:1.5;overflow-wrap:anywhere;cursor:default;}
 .iad-viewer-body {display:grid;grid-template-columns:minmax(0,1fr);flex:1;min-height:0;margin-top:18px;gap:16px;}
 .iad-viewer-body.has-inspection {grid-template-columns:minmax(0,1fr) 340px;}
 .iad-inspection-panel {padding:16px;min-width:0;overflow:auto;background:var(--iad-surface);color:var(--iad-text);border-radius:8px;}
