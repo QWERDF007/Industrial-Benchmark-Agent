@@ -43,10 +43,11 @@ class KnowledgeMiner:
         self.context.update(mining_steps=[item.model_dump(mode="json") for item in self.steps])
         return step
 
-    def learn(self, instruction: str, inputs: List[KnowledgeInput], model_name: str) -> KnowledgeStep:
+    def learn(self, instruction: str, inputs: List[KnowledgeInput], model_name: str,
+              evolution_instruction: str = '') -> KnowledgeStep:
         self.context.checkpoint()
         images = [image for item in inputs for image in item.images]
-        prompt = instruction + json.dumps([{
+        prompt = evolution_instruction + instruction + json.dumps([{
             "source": item.source.model_dump(),
             "image_evidence_ids": [image.evidence.evidence_id for image in item.images],
         } for item in inputs], ensure_ascii=False)
@@ -70,9 +71,9 @@ class KnowledgeMiner:
                       for part in [details[:middle], details[middle:]]]
         else:
             raise ValueError("One overview and its native detail exceed the model context; no knowledge version was published")
-        children = [self.learn(instruction, group, model_name) for group in groups]
+        children = [self.learn(instruction, group, model_name, evolution_instruction) for group in groups]
         self.context.checkpoint()
-        prompt = SYNTHESIS_INSTRUCTION + json.dumps([child.model_dump(mode="json") for child in children], ensure_ascii=False)
+        prompt = evolution_instruction + SYNTHESIS_INSTRUCTION + json.dumps([child.model_dump(mode="json") for child in children], ensure_ascii=False)
         if not self.client.fits(KnowledgeDraft, prompt, [], model_name, max_tokens=OUTPUT_TOKENS):
             raise ValueError("Knowledge synthesis exceeds the model context; partial observations remain in the job")
         self.context.checkpoint()

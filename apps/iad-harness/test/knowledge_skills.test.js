@@ -129,6 +129,11 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
         subject: "孔", location: "主体左侧", criterion: defect ? "实体覆盖背景" : "可见背景", allowed_variations: ["整体亮度变化"],
         support_evidence_ids: evidence.filter(item => !defect || (item.role === "roi" && item.representation === "raw")).map(item => item.evidence_id),
         counter_evidence_ids: [], limitations: [], status: "supported" }], suspects: [], limitations: [] };
+      if (content[0].text.includes("冻结父版本候选：")) {
+        const parent = JSON.parse(content[0].text.split("冻结父版本候选：")[1].split("\n")[0]);
+        result.revisions = parent.checks.map(check => ({ previous_check_id: check.check_id,
+          current_check_titles: ["孔内外观"], reason: "追加来源仍支持同一孔内可见背景判据" }));
+      }
     }
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(req.url === "/tokenize" ? result : { choices: [{ finish_reason: "stop", message: { content: JSON.stringify(result) } }] }));
@@ -155,9 +160,14 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
     const original = await ctx.iadPythonBridge.execute("sample_get", { sample_id: dataset.dataset_id + ":part-2.png" });
     assert.equal((await execute("dataset_list", {})).value.datasets.length, 1);
     const versions = {};
-    for (const kind of ["normal", "defect"]) {
+    for (const { key, kind, sampleIndex } of [
+      { key: "initial_normal", kind: "normal", sampleIndex: 0 },
+      { key: "normal", kind: "normal", sampleIndex: 1 },
+      { key: "defect", kind: "defect" },
+    ]) {
       await execute("skill", { name: `mine-${kind}-knowledge` });
       const args = { dataset_id: dataset.dataset_id, model_name: "test-mllm" };
+      if (kind === "normal") args.sample_ids = [dataset.dataset_id + `:part-${sampleIndex}.png`];
       if (kind === "defect") args.normal_version_id = versions.normal.version_id;
       let job = (await execute(`knowledge_mine_${kind}`, args)).value;
       const deadline = Date.now() + 5000;
@@ -167,12 +177,16 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
       }
       assert.equal(job.status, "COMPLETED", JSON.stringify(job));
       const read = await execute("knowledge_get", { version_id: job.knowledge_version_id });
-      versions[kind] = read.value.knowledge;
-      assert.ok(versions[kind].mining_steps.length);
+      versions[key] = read.value.knowledge;
+      assert.ok(versions[key].mining_steps.length);
       assert.ok(!read.content[0].text.includes('"mining_steps"'));
-      assert.equal(versions[kind].kind, kind);
-      assert.equal(job.completed, kind === "normal" ? 2 : 1);
+      assert.equal(versions[key].kind, kind);
+      assert.equal(job.completed, key === "normal" ? 2 : 1);
     }
+    assert.equal(versions.normal.parent_version_id, versions.initial_normal.version_id);
+    assert.equal(versions.normal.checks[0].check_id, versions.initial_normal.checks[0].check_id);
+    assert.deepEqual(versions.normal.checks[0].predecessor_check_ids, [versions.initial_normal.checks[0].check_id]);
+    assert.equal(versions.normal.sources.length, 2);
     assert.equal(versions.defect.normal_version_id, versions.normal.version_id);
     assert.equal(versions.defect.findings[0].judgment.status, "supported");
     const raw = versions.defect.evidence.find(item => item.image.role === "roi" && item.image.representation === "raw").image;

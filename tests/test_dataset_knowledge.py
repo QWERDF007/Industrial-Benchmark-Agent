@@ -7,32 +7,9 @@ from pathlib import Path
 
 import httpx
 import pytest
-from PIL import Image, ImageDraw
+from PIL import Image
 
-from iad_core.dataset.registry import DatasetImport, DatasetRegistry
-from iad_core.storage.database import Database
-
-
-@pytest.fixture
-def knowledge_dataset(tmp_path, request):
-    images, labels = tmp_path / "images", tmp_path / "labels"
-    images.mkdir()
-    labels.mkdir()
-    for index in range(6):
-        size = getattr(request, "param", (320, 240))
-        image = Image.new("RGB", size, "#cccccc")
-        draw = ImageDraw.Draw(image)
-        draw.rectangle((40, 60, 280, 180), fill="#333333")
-        for x in (100, 220):
-            draw.ellipse((x - 15, 105, x + 15, 135), fill="#cccccc")
-        if size[0] > 1800:
-            image.putpixel((1800, 220), (255, 0, 0))
-        image.save(images / f"part-{index}.png")
-    db = Database(str(tmp_path / "knowledge.db"))
-    config = DatasetRegistry(db).import_labelme(DatasetImport(
-        name="双孔部件", image_dir=str(images), annotation_dir=str(labels),
-    ))
-    return db, config
+from iad_core.dataset.registry import DatasetRegistry
 
 
 def test_operator_mines_and_reopens_evidence_backed_normal_knowledge(knowledge_dataset):
@@ -216,7 +193,7 @@ def test_mining_covers_all_sources_when_actual_context_requires_grouping(knowled
         if request.url.path.endswith("/tokenize"):
             return httpx.Response(200, json={"count": len(images) * 2000, "max_model_len": 15600})
         observed.update({image["evidence_id"]: image for image in images})
-        support = list(observed) if "子批次" in content[0]["text"] else [image["evidence_id"] for image in images]
+        support = [image["evidence_id"] for image in images] if images else list(observed)
         result = {"summary": "各图组均有双孔结构", "checks": [{
             "title": "双孔", "subject": "部件", "location": "中部", "criterion": "两个孔横向排列",
             "allowed_variations": [], "support_evidence_ids": support, "counter_evidence_ids": [],

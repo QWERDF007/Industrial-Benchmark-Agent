@@ -42,16 +42,17 @@ def defect_dataset(tmp_path):
     return Database(db_path), dataset, original, images
 
 
-@pytest.mark.parametrize('judgment_status,independent,capacity,cite_mask,expected', [
-    ('supported', True, 262144, False, 'supported'),
-    ('refuted', True, 262144, False, 'refuted'),
-    ('insufficient', True, 262144, False, 'insufficient'),
-    ('supported', False, 262144, False, 'insufficient'),
-    ('supported', True, 17600, False, 'supported'),
-    ('supported', True, 262144, True, 'invalid'),
+@pytest.mark.parametrize('judgment_status,independent,capacity,cite_mask,foreign_lineage,expected', [
+    ('supported', True, 262144, False, False, 'supported'),
+    ('refuted', True, 262144, False, False, 'refuted'),
+    ('insufficient', True, 262144, False, False, 'insufficient'),
+    ('supported', False, 262144, False, False, 'insufficient'),
+    ('supported', True, 17600, False, False, 'supported'),
+    ('supported', True, 262144, True, False, 'invalid'),
+    ('supported', True, 262144, False, True, 'invalid_lineage'),
 ])
 def test_operator_verifies_annotated_defect_against_frozen_normal_knowledge(
-        defect_dataset, judgment_status, independent, capacity, cite_mask, expected):
+        defect_dataset, judgment_status, independent, capacity, cite_mask, foreign_lineage, expected):
     db, dataset, original, images = defect_dataset
     db_path = db.db_path
     target_id = original['sample']['sample_id']
@@ -112,6 +113,9 @@ def test_operator_verifies_annotated_defect_against_frozen_normal_knowledge(
                 'allowed_variations': ['整体亮度变化'], 'support_evidence_ids': support,
                 'counter_evidence_ids': [], 'limitations': ['不能推断材料'], 'status': 'supported',
             }], 'suspects': [], 'limitations': []}
+            if is_defect and foreign_lineage:
+                result['revisions'] = [{'previous_check_id': normal['checks'][0]['check_id'],
+                    'current_check_titles': ['孔内遮挡'], 'reason': '错误地将正常比较规则作为不良规则的父项'}]
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
 
     service = KnowledgeService(Database(db_path), VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
@@ -123,9 +127,9 @@ def test_operator_verifies_annotated_defect_against_frozen_normal_knowledge(
         job = service.start(dataset_id=dataset['dataset_id'], kind='defect', normal_version_id=normal['version_id'], model_name='test-mllm')
         service.wait(job['run_id'], 5)
         finished = service.status(job['run_id'])
-        if expected == 'invalid':
+        if expected in ('invalid', 'invalid_lineage'):
             assert finished['status'] == 'FAILED', finished
-            assert 'raw ROI' in finished['errors'][0]['message']
+            assert ('raw ROI' if expected == 'invalid' else 'Knowledge revisions') in finished['errors'][0]['message']
             assert knowledge_get({'dataset_id': dataset['dataset_id'], 'kind': 'defect'}, db_path)['knowledge'] is None
             return
         assert finished['status'] == 'COMPLETED', finished
@@ -192,6 +196,10 @@ def test_defect_mining_keeps_frozen_normal_lineage_when_normal_head_changes(defe
                 'allowed_variations': [], 'support_evidence_ids': [item['evidence_id'] for item in evidence],
                 'counter_evidence_ids': [], 'limitations': [], 'status': 'supported',
             }], 'suspects': [], 'limitations': []}
+            if '冻结父版本候选：' in content[0]['text']:
+                parent = json.loads(content[0]['text'].split('冻结父版本候选：')[1].split('\n')[0])
+                result['revisions'] = [{'previous_check_id': check['check_id'],
+                    'current_check_titles': ['孔内外观'], 'reason': '重新观察后仍为同一孔内判据'} for check in parent['checks']]
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))

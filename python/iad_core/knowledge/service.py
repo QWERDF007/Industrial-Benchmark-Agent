@@ -10,9 +10,10 @@ from iad_core.advisory.analysis import AnalysisModel
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.images import EvidenceImages, OVERVIEW_MAX_SIDE
 from iad_core.knowledge.mining import KnowledgeInput, KnowledgeMiner, SYNTHESIS_INSTRUCTION
-from iad_core.knowledge.models import (KnowledgeCheck, KnowledgeDraft, KnowledgeEvidence, KnowledgeSnapshot,
+from iad_core.knowledge.models import (KnowledgeDraft, KnowledgeEvidence, KnowledgeSnapshot,
                                       KnowledgeKind, KnowledgeVerification)
 from iad_core.knowledge.defect import DefectVerification, DEFECT_INSTRUCTION, DEFECT_VERIFICATION_INSTRUCTION
+from iad_core.knowledge.evolution import EVOLUTION_INSTRUCTION, KnowledgeEvolution
 from iad_core.knowledge.repository import KnowledgeRepository
 from iad_core.knowledge.sources import KnowledgeSources
 from iad_core.knowledge.verification import NormalVerification, VERIFICATION_INSTRUCTION
@@ -21,7 +22,7 @@ from iad_core.storage.repositories import AnnotationRepository, SampleRepository
 from iad_core.workbench.jobs import JobContext, JobRunner
 from iad_core.workbench.vision import DEFAULT_MODEL, VlmClient
 
-GENERATION_VERSION = "dataset-knowledge-v6"
+GENERATION_VERSION = "dataset-knowledge-v7"
 NORMAL_INSTRUCTION = """联合观察这一数据集的候选良品，发现产品可见的部件、结构关系、位置、纹理、光照与允许变化。
 不要根据数据集名称假设产品或预设缺陷检查表。只归纳可观察、可复用且有图像证据的检查判据。
 人工选取和无标注只是来源资格，不是确认真值。寻找候选良品中的异常与矛盾，将其定位为suspects，
@@ -66,27 +67,37 @@ class KnowledgeService:
                        or not any(check.status == 'supported' for check in normal.checks)):
             raise ValueError('A usable normal knowledge version from the same dataset is required')
         eligible = list(self.sources.eligible(request.dataset_id, request.kind, normal))
-        sample_ids = list(dict.fromkeys(request.sample_ids)) if request.sample_ids is not None else eligible
-        if not sample_ids or not set(sample_ids).issubset(eligible):
+        requested = list(dict.fromkeys(request.sample_ids)) if request.sample_ids is not None else eligible
+        if not requested or not set(requested).issubset(eligible):
             raise ValueError("Mining requires eligible knowledge sources from the selected dataset")
         parent = self.repository.current(request.dataset_id, request.kind)
+        previous = {source.sample_id for source in parent.sources} if parent else set()
+        scope = previous | set(requested)
+        sample_ids = [sample_id for sample_id in eligible if sample_id in scope]
         return self.jobs.start("NORMAL_KNOWLEDGE" if request.kind == "normal" else "DEFECT_KNOWLEDGE", config.task.task_id,
                                {**request.model_dump(), "sample_ids": sample_ids,
+                                "requested_sample_ids": requested,
+                                "removed_source_ids": sorted(previous - set(eligible)),
                                 "parent_version_id": parent.version_id if parent else None}, self.mine, "准备良品知识挖掘" if request.kind == "normal" else "准备不良知识挖掘")
 
     def mine(self, context: JobContext):
         payload = context.payload
         context.checkpoint()
+        parent = self.repository.get(payload['parent_version_id']) if payload['parent_version_id'] else None
+        evolution = KnowledgeEvolution(parent)
         normal = self.repository.get(payload['normal_version_id']) if payload.get('normal_version_id') else None
         defect = DefectVerification(self.db, self.client, context)
         references = defect.references(normal) if normal else []
         context.update(phase='PREPARING_KNOWLEDGE')
         sources = self.sources.collect(payload['dataset_id'], payload['sample_ids'], payload['kind'], normal)
         signature = hashlib.sha256(json.dumps([GENERATION_VERSION, NORMAL_INSTRUCTION, SYNTHESIS_INSTRUCTION, VERIFICATION_INSTRUCTION,
-            DEFECT_INSTRUCTION, DEFECT_VERIFICATION_INSTRUCTION, payload.get("normal_version_id"), payload["kind"],
+            DEFECT_INSTRUCTION, DEFECT_VERIFICATION_INSTRUCTION, EVOLUTION_INSTRUCTION,
+            payload.get("normal_version_id"), payload["kind"],
             KnowledgeDraft.model_json_schema(), KnowledgeVerification.model_json_schema(), KnowledgeSnapshot.model_json_schema(),
             payload["dataset_id"], payload["model_name"], [source.model_dump() for source in sources]], sort_keys=True).encode()).hexdigest()
         current = self.repository.current(payload["dataset_id"], payload["kind"])
+        if (current.version_id if current else None) != payload['parent_version_id']:
+            raise ValueError('Knowledge head changed during mining; restart with the current version')
         if current and current.signature == signature:
             for source in sources:
                 context.record(source.sample_id, knowledge_version_id=current.version_id, phase="KNOWLEDGE_REUSED")
@@ -114,18 +125,18 @@ class KnowledgeService:
             instruction = DEFECT_INSTRUCTION + json.dumps({'normal_version_id': normal.version_id,
                 'normal_checks': [check.model_dump() for check in normal.checks],
                 'findings': [finding.model_dump() for finding in verification.findings]}, ensure_ascii=False) + '\n来源：'
-            draft = miner.learn(instruction, inputs + references, payload['model_name']).result
+            draft = miner.learn(instruction, inputs + references, payload['model_name'], evolution.instruction).result
             draft = draft.model_copy(deep=True)
             defect.qualify(draft, verification)
         else:
             context.update(phase='LEARNING_NORMAL')
-            draft = miner.learn(NORMAL_INSTRUCTION, inputs, payload['model_name']).result
+            draft = miner.learn(NORMAL_INSTRUCTION, inputs, payload['model_name'], evolution.instruction).result
             proposals = {(item.evidence_id, tuple(item.bbox_1000)): item for step in miner.steps for item in step.result.suspects}
             draft = draft.model_copy(deep=True, update={'suspects': list(proposals.values())})
-            verification = NormalVerification(self.db, self.client, context).review(draft, inputs, payload['model_name'])
+            verification = NormalVerification(self.db, self.client, context).review(draft, inputs, payload['model_name'], parent)
         if self.sources.collect(payload['dataset_id'], payload['sample_ids'], payload['kind'], normal) != sources:
             raise ValueError('Knowledge sources changed during mining')
-        checks = [KnowledgeCheck(check_id='check_' + uuid.uuid4().hex, **check.model_dump()) for check in draft.checks]
+        checks = evolution.checks(draft)
         for finding in verification.findings:
             if normal:
                 for check in checks:
@@ -140,7 +151,8 @@ class KnowledgeService:
         snapshot = KnowledgeSnapshot(version_id="knowledge_" + uuid.uuid4().hex, dataset_id=payload["dataset_id"],
             kind=payload["kind"], parent_version_id=payload["parent_version_id"], normal_version_id=payload.get("normal_version_id"),
             model_name=payload["model_name"], generation_version=GENERATION_VERSION, signature=signature,
-            summary=draft.summary, checks=checks,
+            summary=draft.summary, checks=checks, revisions=draft.revisions,
+            removed_source_ids=payload['removed_source_ids'],
             suspects=draft.suspects, limitations=draft.limitations, sources=sources,
             evidence=list(evidence.values()),
             mining_steps=miner.steps, findings=verification.findings, verification_steps=verification.steps,

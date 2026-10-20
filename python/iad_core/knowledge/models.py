@@ -16,7 +16,7 @@ class LearnedCheck(AnalysisModel):
     support_evidence_ids: List[str]
     counter_evidence_ids: List[str]
     limitations: List[str]
-    status: Literal["supported", "provisional", "conflicted"]
+    status: Literal["supported", "provisional", "conflicted"] = Field(description="supported：本轮实际证据支持该可观察判据；provisional：单例或待验证假设；conflicted：证据存在未消解矛盾。不可观察的尺寸/材质写入limitations，不否定已有的可见外观证据；supported不是工业真值")
 
     @model_validator(mode="after")
     def supported_has_evidence(self):
@@ -37,11 +37,18 @@ class KnowledgeSuspect(AnalysisModel):
         return self
 
 
+class CheckRevision(AnalysisModel):
+    previous_check_id: str = Field(min_length=1)
+    current_check_titles: List[str] = Field(description="同一判据对应的当前检查项；拆分可多项，退役为空。仅改措辞或允许变化保持一对一")
+    reason: str = Field(min_length=1)
+
+
 class KnowledgeDraft(AnalysisModel):
     summary: str
     checks: List[LearnedCheck]
     suspects: List[KnowledgeSuspect]
     limitations: List[str]
+    revisions: List[CheckRevision] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def unique_check_titles(self):
@@ -53,6 +60,7 @@ class KnowledgeDraft(AnalysisModel):
 
 class KnowledgeCheck(LearnedCheck):
     check_id: str
+    predecessor_check_ids: List[str] = Field(default_factory=list)
     finding_ids: List[str] = Field(default_factory=list)
     normal_check_ids: List[str] = Field(default_factory=list)
 
@@ -126,6 +134,8 @@ class KnowledgeSnapshot(AnalysisModel):
     signature: str
     summary: str
     checks: List[KnowledgeCheck]
+    revisions: List[CheckRevision] = Field(default_factory=list)
+    removed_source_ids: List[str] = Field(default_factory=list)
     suspects: List[KnowledgeSuspect]
     limitations: List[str]
     sources: List[KnowledgeSource]

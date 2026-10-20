@@ -19,6 +19,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 数据集良品/不良品知识挖掘与版本证据 | [KnowledgeService](../python/iad_core/knowledge/service.py)、[来源资格与指纹](../python/iad_core/knowledge/sources.py)、[全图/原图细节分组与归纳](../python/iad_core/knowledge/mining.py)、[契约](../python/iad_core/knowledge/models.py)、[仓储](../python/iad_core/knowledge/repository.py) |
 | 良品候选疑点、原图定位与联合证据核验 | [NormalVerification](../python/iad_core/knowledge/verification.py) |
 | 冻结良品版本、异常候选与标注核验 | [DefectVerification](../python/iad_core/knowledge/defect.py)、[共享联合核验](../python/iad_core/knowledge/findings.py) |
+| 后继知识来源积累、检查项身份及拆分/合并/退役 | [KnowledgeService](../python/iad_core/knowledge/service.py)、[KnowledgeEvolution](../python/iad_core/knowledge/evolution.py) |
 | DSH 两项知识技能、原生执行工具及图像附件 | [技能定义](../apps/iad-harness/src/server/knowledge/skills.ts)、[工具](../apps/iad-harness/src/server/knowledge/index.ts)、[插件生命周期](../apps/iad-harness/src/server/index.ts) |
 | 全图、局部裁剪及综合判断 | [SampleInspection](../python/iad_core/workbench/inspection.py)、[分析类型](../python/iad_core/advisory/analysis.py) |
 | 视觉证据、原图坐标、无损 ROI 与分块 | [EvidenceImages](../python/iad_core/evidence/images.py) |
@@ -48,6 +49,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 
 - [数据集、参考图和作业测试](../tests/test_dataset_workbench.py)
 - [良品知识、版本、真实证据与取消测试](../tests/test_dataset_knowledge.py)
+- [来源积累、规则身份、拆分/合并/退役及容量归纳测试](../tests/test_knowledge_evolution.py)
 - [良品污染、正常解释、独立证据及核验分组测试](../tests/test_knowledge_contamination.py)
 - [不良知识、标注核验、正常版本冻结与证据资格测试](../tests/test_defect_knowledge.py)
 - [Mask 导入、像素、标注视图、版本与容量配对测试](../tests/test_mask_evidence.py)

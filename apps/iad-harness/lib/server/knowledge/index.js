@@ -21,7 +21,7 @@ export function createKnowledgeTools(bridge, ctx) {
             parameters: {
                 dataset_id: { type: "string", required: true },
                 model_name: { type: "string", description: "可选；省略使用项目配置的 MLLM" },
-                sample_ids: { type: "array", items: { type: "string" }, description: "可选明确范围；省略覆盖全部合格良品" },
+                sample_ids: { type: "array", items: { type: "string" }, description: "可选新增来源范围，与父版本仍合格来源合并核验；省略覆盖全部合格良品" },
             },
             output: jsonOutput,
             execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "normal" }, exec.signal),
@@ -33,7 +33,7 @@ export function createKnowledgeTools(bridge, ctx) {
                 dataset_id: { type: "string", required: true },
                 normal_version_id: { type: "string", required: true },
                 model_name: { type: "string", description: "可选；省略使用项目配置的 MLLM" },
-                sample_ids: { type: "array", items: { type: "string" }, description: "可选明确范围；省略覆盖全部合格异常候选" },
+                sample_ids: { type: "array", items: { type: "string" }, description: "可选新增来源范围，与父版本仍合格来源合并核验；省略覆盖全部合格异常候选" },
             },
             output: jsonOutput,
             execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "defect" }, exec.signal),

@@ -41,28 +41,46 @@ try {
   const before = await ctx.iadPythonBridge.execute("sample_get", { sample_id: dataset.dataset_id + ":part-2.png" });
   const catalog = await ctx.skills.list();
   assert.deepEqual(catalog.map(skill => skill.name), ["mine-defect-knowledge", "mine-normal-knowledge"]);
-  for (const kind of ["normal", "defect"]) {
+  for (const { key, kind, sampleIndex } of [
+    { key: "initial_normal", kind: "normal", sampleIndex: 0 },
+    { key: "normal", kind: "normal", sampleIndex: 1 },
+    { key: "defect", kind: "defect" },
+  ]) {
     await execute("skill", { name: `mine-${kind}-knowledge` });
     const args = { dataset_id: dataset.dataset_id };
+    if (kind === "normal") args.sample_ids = [dataset.dataset_id + `:part-${sampleIndex}.png`];
     if (kind === "defect") args.normal_version_id = versions.normal.version_id;
     let job = (await execute(`knowledge_mine_${kind}`, args)).value;
-    console.log(JSON.stringify({ kind, run_id: job.run_id, total: job.total_samples }));
+    console.log(JSON.stringify({ key, kind, run_id: job.run_id, total: job.total_samples }));
     const deadline = Date.now() + 300000;
     while (["PENDING", "RUNNING"].includes(job.status) && Date.now() < deadline) {
       await delay(500);
       job = (await execute("knowledge_job_status", { run_id: job.run_id })).value;
     }
-    jobs[kind] = job;
+    jobs[key] = job;
     assert.equal(job.status, "COMPLETED", JSON.stringify(job));
-    versions[kind] = (await execute("knowledge_get", { version_id: job.knowledge_version_id })).value.knowledge;
-    const evidence = versions[kind].evidence.find(item => item.image.role === (kind === "normal" ? "normal" : "roi")
+    versions[key] = (await execute("knowledge_get", { version_id: job.knowledge_version_id })).value.knowledge;
+    const evidence = versions[key].evidence.find(item => item.image.role === (kind === "normal" ? "normal" : "roi")
       && item.image.representation === "raw");
-    const media = await execute("knowledge_evidence", { version_id: versions[kind].version_id, evidence_id: evidence.image.evidence_id });
+    const media = await execute("knowledge_evidence", { version_id: versions[key].version_id, evidence_id: evidence.image.evidence_id });
     const block = media.content.find(item => item.type === "image");
     assert.ok(block, "Native knowledge tool did not return an ImageBlock");
     const stored = await ctx.attachments.readImage(block.attachment);
     assert.ok(stored.data.length);
   }
+  assert.equal(versions.initial_normal.sources.length, 1);
+  assert.equal(versions.normal.sources.length, 2);
+  assert.equal(versions.normal.parent_version_id, versions.initial_normal.version_id);
+  assert.deepEqual(versions.normal.revisions.map(item => item.previous_check_id).sort(),
+    versions.initial_normal.checks.map(item => item.check_id).sort());
+  for (const check of versions.normal.checks) {
+    if (check.predecessor_check_ids.length === 1) {
+      const revision = versions.normal.revisions.find(item => item.previous_check_id === check.predecessor_check_ids[0]);
+      if (revision.current_check_titles.length === 1) assert.equal(check.check_id, revision.previous_check_id);
+    }
+  }
+  assert.deepEqual((await execute("knowledge_get", { version_id: versions.initial_normal.version_id })).value.knowledge,
+    versions.initial_normal);
   assert.equal(versions.defect.normal_version_id, versions.normal.version_id);
   assert.ok(versions.defect.findings.length);
   const after = await ctx.iadPythonBridge.execute("sample_get", { sample_id: before.sample.sample_id });

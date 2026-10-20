@@ -1,6 +1,7 @@
 import base64
 import io
 import json
+from pathlib import Path
 
 import httpx
 import pytest
@@ -128,5 +129,76 @@ def test_operator_can_locate_contaminated_normal_source_without_changing_human_t
         assert detail['review_decision']==original['review_decision']
         assert detail['annotations']==original['annotations']
         assert detail['sample']['quality_status']==original['sample']['quality_status']
+    finally:
+        service.close()
+
+
+@pytest.mark.parametrize('later_status', ['supported', 'refuted'])
+def test_successor_rechecks_unresolved_contamination_even_when_new_draft_omits_it(knowledge_dataset, later_status):
+    db, config = knowledge_dataset
+    images = Path(config.root)
+    with Image.open(images / 'part-1.png') as image:
+        ImageDraw.Draw(image).rectangle((90, 110, 110, 130), fill='red')
+        image.save(images / 'part-1.png')
+    previous = None
+    verifications = []
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 4000, 'max_model_len': 262144})
+        body = json.loads(request.content)
+        content = body['messages'][0]['content']
+        evidence = [json.loads(item['text'].removeprefix('视觉证据：')) for item in content
+                    if item['type'] == 'text' and item['text'].startswith('视觉证据：')]
+        if body['response_format']['json_schema']['name'] == 'KnowledgeVerification':
+            verifications.append(evidence)
+            payload = json.loads(content[0]['text'].split('待核验疑点：')[1].split('\n请根据图像')[0])
+            raw = next(item for item in evidence if item['role'] == 'roi')
+            normal = next(item for item in evidence if item['source_sha256'] != raw['source_sha256'])
+            result = {'findings': [{'finding_id': target['finding_id'],
+                'status': later_status if previous else 'supported', 'affected_check_titles': ['孔内外观'],
+                'description': '孔内红色区域', 'normal_explanation': '后续证据支持有色反射的正常解释',
+                'limitations': [], 'evidence_ids': [raw['evidence_id'], normal['evidence_id']], 'conflicts': [],
+            } for target in payload['findings']]}
+        else:
+            result = {'summary': '新图未提出疑点', 'checks': [{
+                'title': '孔内外观', 'subject': '孔', 'location': '中部', 'criterion': '孔内部可见背景',
+                'allowed_variations': [], 'support_evidence_ids': [item['evidence_id'] for item in evidence],
+                'counter_evidence_ids': [], 'limitations': [], 'status': 'supported',
+            }], 'suspects': [] if previous else [{
+                'evidence_id': evidence[-1]['evidence_id'], 'bbox_1000': [250, 375, 375, 625],
+                'description': '孔内红色区域', 'normal_explanation': '可能为有色反射',
+            }], 'limitations': [], 'revisions': [] if previous is None else [{
+                'previous_check_id': previous['checks'][0]['check_id'], 'current_check_titles': ['孔内外观'],
+                'reason': '追加来源重新核验同一孔内外观判据',
+            }]}
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
+
+    service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        job = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=[config.dataset.id + ':part-0.png', config.dataset.id + ':part-1.png'])
+        service.wait(job['run_id'], 5)
+        status = service.status(job['run_id'])
+        assert status['status'] == 'COMPLETED', status
+        previous = knowledge_get({'version_id': status['knowledge_version_id']}, db.db_path)['knowledge']
+        job = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=[config.dataset.id + ':part-2.png'])
+        service.wait(job['run_id'], 5)
+        status = service.status(job['run_id'])
+        assert status['status'] == 'COMPLETED', status
+        current = knowledge_get({'version_id': status['knowledge_version_id']}, db.db_path)['knowledge']
+        assert len(verifications) == 2
+        finding, = current['findings']
+        assert finding['origin_finding_id'] == previous['findings'][0]['finding_id']
+        assert finding['bbox'] == previous['findings'][0]['bbox']
+        assert finding['judgment']['status'] == later_status
+        affected_source = next(item for item in current['evidence'] if item['sample_id'].endswith(':part-1.png') and item['image']['role'] == 'normal')
+        check, = current['checks']
+        if later_status == 'supported':
+            assert affected_source['image']['evidence_id'] not in check['support_evidence_ids']
+            assert finding['regions'][0]['image']['evidence_id'] in check['counter_evidence_ids']
+        else:
+            assert affected_source['image']['evidence_id'] in check['support_evidence_ids']
+            assert finding['judgment']['normal_explanation'] in check['allowed_variations']
+        assert knowledge_get({'version_id': previous['version_id']}, db.db_path)['knowledge'] == previous
     finally:
         service.close()
