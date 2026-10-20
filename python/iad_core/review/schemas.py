@@ -1,14 +1,7 @@
 from enum import Enum
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
-
-
-class ReviewDecisionType(str, Enum):
-    PASS = "PASS"
-    HARD_NORMAL = "HARD_NORMAL"
-    FAIL = "FAIL"
-    UNCERTAIN = "UNCERTAIN"
-    SKIP = "SKIP"
+from iad_core.storage.models import ReviewDecisionEnum as ReviewDecisionType, ReviewDecisionRecord
 
 
 class ReasonCode(str, Enum):
@@ -22,22 +15,6 @@ class ReasonCode(str, Enum):
     DEFECT_CONFIRMED = "defect_confirmed"
     INSUFFICIENT_EVIDENCE = "insufficient_evidence"
     DATA_ISSUE = "data_issue"
-
-
-class ReviewDecisionRecord(BaseModel):
-    id: Optional[int] = None
-    sample_id: str
-    decision: str
-    reviewer: str = "default"
-    reason_code: Optional[str] = None
-    comment: Optional[str] = None
-    evidence_version: str = "v2"
-    review_session_id: Optional[str] = None
-    started_at: Optional[str] = None
-    submitted_at: Optional[str] = None
-    review_duration_ms: int = 0
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
 
 
 class ReviewDecisionCreate(BaseModel):

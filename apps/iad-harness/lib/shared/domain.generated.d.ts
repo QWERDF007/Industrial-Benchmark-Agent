@@ -435,6 +435,26 @@ export type GeometryStatus = "VALID" | "CLIPPED" | "SCALED" | "INVALID";
 export type AnnotationSource = "manual" | "existing_detector" | "production_system" | "imported" | "unknown";
 export type SourceWidth = number | null;
 export type SourceHeight = number | null;
+export type DecisionId = string;
+export type SampleId5 = string;
+export type Decision = string;
+export type Reviewer = string;
+export type ReasonCode = string | null;
+export type Comment = string | null;
+export type EvidenceVersion = string;
+export type ReviewSessionId = string | null;
+export type StartedAt1 = string | null;
+export type SubmittedAt = string | null;
+export type ReviewDurationMs = number;
+export type SubmissionId = string;
+export type DatasetId5 = string;
+export type SampleId6 = string;
+export type Reviewer1 = string;
+export type ReviewDecisionEnum = "PASS" | "HARD_NORMAL" | "FAIL" | "UNCERTAIN" | "SKIP";
+export type ReasonCode1 = string | null;
+export type Comment1 = string | null;
+export type DurationMs = number;
+export type StartedAt2 = string | null;
 export interface WorkbenchDomain {
     AuditAnalysis?: AuditAnalysis;
     KnowledgeSnapshot?: KnowledgeSnapshot;
@@ -447,6 +467,8 @@ export interface WorkbenchDomain {
     DatasetReport?: DatasetReport;
     MiningStart?: MiningStart;
     Annotation?: Annotation;
+    ReviewDecisionRecord?: ReviewDecisionRecord;
+    ReviewSubmission?: ReviewSubmission;
 }
 export interface AuditAnalysis {
     normal_version_id: NormalVersionId;
@@ -889,5 +911,29 @@ export interface Annotation {
     source?: AnnotationSource;
     source_width?: SourceWidth;
     source_height?: SourceHeight;
+}
+export interface ReviewDecisionRecord {
+    decision_id: DecisionId;
+    sample_id: SampleId5;
+    decision: Decision;
+    reviewer: Reviewer;
+    reason_code: ReasonCode;
+    comment: Comment;
+    evidence_version: EvidenceVersion;
+    review_session_id: ReviewSessionId;
+    started_at: StartedAt1;
+    submitted_at: SubmittedAt;
+    review_duration_ms: ReviewDurationMs;
+}
+export interface ReviewSubmission {
+    submission_id: SubmissionId;
+    dataset_id: DatasetId5;
+    sample_id: SampleId6;
+    reviewer: Reviewer1;
+    decision: ReviewDecisionEnum;
+    reason_code?: ReasonCode1;
+    comment?: Comment1;
+    duration_ms?: DurationMs;
+    started_at?: StartedAt2;
 }
 //# sourceMappingURL=domain.generated.d.ts.map

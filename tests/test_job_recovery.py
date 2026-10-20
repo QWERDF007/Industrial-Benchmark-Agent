@@ -1,3 +1,4 @@
+from uuid import uuid4
 import json
 
 import httpx
@@ -299,8 +300,7 @@ def test_knowledge_retry_rejects_changed_human_feedback(dataset, mllm_api):
         assert runtime.knowledge.status(first['run_id'])['status'] == 'FAILED'
         sid = first['sample_ids'][0]
         reviews = HumanReview(db)
-        session = reviews.start(config.task.task_id, 'operator', config.dataset.id)
-        reviews.submit(ReviewSubmission(session_id=session['session_id'], sample_id=sid, decision='PASS'))
+        reviews.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=config.dataset.id, reviewer='operator', sample_id=sid, decision='PASS'))
         decision = sample_get({'sample_id': sid}, db.db_path)['review_decision']
         with pytest.raises(ValueError, match='重新启动挖掘'):
             runtime.knowledge.retry(run_id=first['run_id'])

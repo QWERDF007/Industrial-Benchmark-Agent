@@ -98,18 +98,8 @@ export class IadRemoteService extends TypertRemoteService {
   }
 
   @Remote
-  async reviewStartSession(args: { reviewer: string; task_id: string; dataset_id?: string }) {
-    return this.bridge.execute("review_start_session", args);
-  }
-
-  @Remote
   async reviewSubmitDecision(args: ReviewSubmission) {
     return this.bridge.execute("review_submit_decision", { ...args });
-  }
-
-  @Remote
-  async reviewFinishSession(args: { session_id: string }) {
-    return this.bridge.execute("review_finish_session", args);
   }
 
   @Remote

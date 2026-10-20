@@ -345,7 +345,7 @@ class ReviewQueueService:
             submitted_at=submitted_at,
             review_duration_ms=duration_ms,
         )
-        self.repo.upsert_decision(rec)
+        self.repo.append_decision(rec)
         return rec
 
     def skip_sample(

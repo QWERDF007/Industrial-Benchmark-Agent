@@ -605,8 +605,8 @@ class ReviewRepository:
     def __init__(self, db: Database):
         self.db = db
 
-    def upsert_session(self, session: ReviewSession):
-        with self.db.connection() as conn:
+    def save_session(self, session: ReviewSession, connection: Optional[sqlite3.Connection] = None) -> None:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
             conn.execute(
                 """
                 INSERT INTO review_sessions (
@@ -668,183 +668,66 @@ class ReviewRepository:
                 for r in cursor.fetchall()
             ]
 
-    def upsert_decision(self, decision: ReviewDecisionRecord):
-        with self.db.connection() as conn:
-            conn.execute(
-                """
-                INSERT INTO review_decisions (
-                    sample_id, decision, reviewer, reason_code, comment, evidence_version,
-                    review_session_id, started_at, submitted_at, review_duration_ms, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT(sample_id, reviewer) DO UPDATE SET
-                    decision = excluded.decision,
-                    reason_code = excluded.reason_code,
-                    comment = excluded.comment,
-                    evidence_version = excluded.evidence_version,
-                    review_session_id = excluded.review_session_id,
-                    started_at = excluded.started_at,
-                    submitted_at = excluded.submitted_at,
-                    review_duration_ms = excluded.review_duration_ms,
-                    updated_at = CURRENT_TIMESTAMP
-                """,
-                (
-                    decision.sample_id,
-                    decision.decision,
-                    decision.reviewer,
-                    decision.reason_code,
-                    decision.comment,
-                    decision.evidence_version,
-                    decision.review_session_id,
-                    decision.started_at,
-                    decision.submitted_at,
-                    decision.review_duration_ms,
-                ),
-            )
+    def append_decision(self, decision: ReviewDecisionRecord, connection: Optional[sqlite3.Connection] = None) -> ReviewDecisionRecord:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+            if not conn.in_transaction:
+                conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT * FROM review_decisions WHERE decision_id=?", (decision.decision_id,)).fetchone()
+            if row:
+                existing = ReviewDecisionRecord.model_validate(dict(row))
+                if existing != decision:
+                    raise ValueError("Decision ID already belongs to different review content")
+                return existing
+            values = decision.model_dump()
+            conn.execute(f"INSERT INTO review_decisions ({','.join(values)}) VALUES ({','.join('?' for _ in values)})", tuple(values.values()))
+            return decision
 
     def get_decision(self, sample_id: str, reviewer: Optional[str] = None) -> Optional[ReviewDecisionRecord]:
         with self.db.connection() as conn:
-            cursor = conn.cursor()
-            if reviewer:
-                cursor.execute(
-                    "SELECT * FROM review_decisions WHERE sample_id = ? AND reviewer = ?",
-                    (sample_id, reviewer),
-                )
-            else:
-                cursor.execute(
-                    "SELECT * FROM review_decisions WHERE sample_id = ? ORDER BY COALESCE(submitted_at,updated_at) DESC,id DESC LIMIT 1",
-                    (sample_id,),
-                )
-            row = cursor.fetchone()
-            if not row:
-                return None
-            return ReviewDecisionRecord(
-                sample_id=row["sample_id"],
-                decision=row["decision"],
-                reviewer=row["reviewer"],
-                reason_code=row["reason_code"],
-                comment=row["comment"],
-                evidence_version=row["evidence_version"],
-                review_session_id=row["review_session_id"],
-                started_at=row["started_at"],
-                submitted_at=row["submitted_at"],
-                review_duration_ms=row["review_duration_ms"] or 0,
-            )
+            row = conn.execute("""SELECT * FROM current_review_decisions WHERE sample_id=?"""
+                + (" AND reviewer=?" if reviewer else "")
+                + " ORDER BY COALESCE(submitted_at,updated_at) DESC,id DESC LIMIT 1",
+                (sample_id,reviewer) if reviewer else (sample_id,)).fetchone()
+            return ReviewDecisionRecord.model_validate(dict(row)) if row else None
 
     def list_decisions(self, task_id: Optional[str] = None) -> List[ReviewDecisionRecord]:
         with self.db.connection() as conn:
-            cursor = conn.cursor()
-            if task_id:
-                cursor.execute(
-                    """
-                    SELECT d.* FROM review_decisions d
-                    JOIN samples s ON d.sample_id = s.sample_id
-                    WHERE s.task_id = ?
-                    ORDER BY d.id ASC
-                    """,
-                    (task_id,),
-                )
-            else:
-                cursor.execute("SELECT * FROM review_decisions ORDER BY id ASC")
-            return [
-                ReviewDecisionRecord(
-                    sample_id=r["sample_id"],
-                    decision=r["decision"],
-                    reviewer=r["reviewer"],
-                    reason_code=r["reason_code"],
-                    comment=r["comment"],
-                    evidence_version=r["evidence_version"],
-                    review_session_id=r["review_session_id"],
-                    started_at=r["started_at"],
-                    submitted_at=r["submitted_at"],
-                    review_duration_ms=r["review_duration_ms"] or 0,
-                )
-                for r in cursor.fetchall()
-            ]
+            rows = conn.execute("SELECT d.* FROM current_review_decisions d"
+                + (" JOIN samples s ON d.sample_id=s.sample_id WHERE s.task_id=?" if task_id else "")
+                + " ORDER BY d.id ASC", (task_id,) if task_id else ()).fetchall()
+            return [ReviewDecisionRecord.model_validate(dict(row)) for row in rows]
+
+    def list_history(self, sample_id: Optional[str] = None, *, task_id: Optional[str] = None) -> List[ReviewDecisionRecord]:
+        if (sample_id is None) == (task_id is None):
+            raise ValueError("Specify a sample or task for review history")
+        with self.db.connection() as conn:
+            return [ReviewDecisionRecord.model_validate(dict(row)) for row in conn.execute(
+                "SELECT d.* FROM review_decisions d"
+                + (" JOIN samples s ON d.sample_id=s.sample_id WHERE s.task_id=?" if task_id is not None else " WHERE d.sample_id=?")
+                + " ORDER BY COALESCE(d.submitted_at,d.updated_at) DESC,d.id DESC", (task_id if task_id is not None else sample_id,))]
 
     def count_decisions(self, task_id: Optional[str] = None) -> int:
         with self.db.connection() as conn:
-            cursor = conn.cursor()
-            if task_id:
-                cursor.execute(
-                    """
-                    SELECT COUNT(*) FROM review_decisions d
-                    JOIN samples s ON d.sample_id = s.sample_id
-                    WHERE s.task_id = ?
-                    """,
-                    (task_id,),
-                )
-            else:
-                cursor.execute("SELECT COUNT(*) FROM review_decisions")
-            return cursor.fetchone()[0]
-
-    def save_decision(self, decision: ReviewDecisionRecord):
-        self.upsert_decision(decision)
-
-    def save_session(self, session: ReviewSession):
-        self.upsert_session(session)
+            return conn.execute("SELECT COUNT(*) FROM current_review_decisions d"
+                + (" JOIN samples s ON d.sample_id=s.sample_id WHERE s.task_id=?" if task_id else ""), (task_id,) if task_id else ()).fetchone()[0]
 
     def list_decisions_by_task(self, task_id: str) -> List[ReviewDecisionRecord]:
         return self.list_decisions(task_id)
 
     def list_decisions_by_session(self, session_id: str) -> List[ReviewDecisionRecord]:
         with self.db.connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT * FROM review_decisions WHERE review_session_id = ? ORDER BY id ASC",
-                (session_id,),
-            )
-            return [
-                ReviewDecisionRecord(
-                    sample_id=r["sample_id"],
-                    decision=r["decision"],
-                    reviewer=r["reviewer"],
-                    reason_code=r["reason_code"],
-                    comment=r["comment"],
-                    evidence_version=r["evidence_version"],
-                    review_session_id=r["review_session_id"],
-                    started_at=r["started_at"],
-                    submitted_at=r["submitted_at"],
-                    review_duration_ms=r["review_duration_ms"] or 0,
-                )
-                for r in cursor.fetchall()
-            ]
+            return [ReviewDecisionRecord.model_validate(dict(row)) for row in conn.execute(
+                "SELECT * FROM review_decisions WHERE review_session_id=? ORDER BY id ASC", (session_id,))]
 
     def get_stats(self, task_id: str) -> Dict[str, Any]:
-        with self.db.connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT d.decision, COUNT(*) FROM review_decisions d
-                JOIN samples s ON d.sample_id = s.sample_id
-                WHERE s.task_id = ?
-                GROUP BY d.decision
-                """,
-                (task_id,),
-            )
-            counts = {row[0]: row[1] for row in cursor.fetchall()}
-            total = sum(counts.values())
-            return {
-                "task_id": task_id,
-                "total_decisions": total,
-                "decision_counts": counts,
-            }
+        counts = self.count_by_decision(task_id)
+        return {"task_id": task_id, "total_decisions": sum(counts.values()), "decision_counts": counts}
 
     def count_by_decision(self, task_id: str) -> Dict[str, int]:
         with self.db.connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT d.decision, COUNT(*) FROM review_decisions d
-                JOIN samples s ON d.sample_id = s.sample_id
-                WHERE s.task_id = ?
-                GROUP BY d.decision
-                """,
-                (task_id,),
-            )
-            return {row[0]: row[1] for row in cursor.fetchall()}
-
-    def upsert(self, decision: ReviewDecisionRecord):
-        return self.upsert_decision(decision)
+            return {row[0]: row[1] for row in conn.execute("""SELECT d.decision,COUNT(*)
+                FROM current_review_decisions d JOIN samples s ON d.sample_id=s.sample_id
+                WHERE s.task_id=? GROUP BY d.decision""", (task_id,))}
 
     def get(self, sample_id: str, reviewer: str = "default") -> Optional[ReviewDecisionRecord]:
         return self.get_decision(sample_id, reviewer)

@@ -1,10 +1,10 @@
-import type { Annotation, AuditAnalysis, KnowledgeSnapshot, AuditStart, ModelCallDetail, DatasetReport as Report } from "./domain.generated.js";
-export type { Annotation } from "./domain.generated.js";
+import type { Annotation, AuditAnalysis, KnowledgeSnapshot, AuditStart, ModelCallDetail, DatasetReport as Report, ReviewDecisionRecord, ReviewSubmission } from "./domain.generated.js";
+export type { Annotation, ReviewDecisionRecord, ReviewSubmission } from "./domain.generated.js";
 export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot, JobRetry, DatasetImport as DatasetImportRequest, ArchiveInspection, DatasetReport as Report } from "./domain.generated.js";
 export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
 export type ModelCallSummary = Omit<ModelCallDetail, "request_body" | "response_body">;
 export type { KnowledgeVersion, MiningStart as KnowledgeStartRequest } from "./domain.generated.js";
-export type Decision = "PASS" | "HARD_NORMAL" | "FAIL" | "UNCERTAIN" | "SKIP";
+export type Decision = ReviewSubmission["decision"];
 export interface Suggestion {
     suggestion_id: string;
     suggested_label: "PASS" | "FAIL" | "UNCERTAIN";
@@ -71,12 +71,8 @@ export interface SampleDetail {
     technical_quality_score: number;
     visual_suspicion_score: number | null;
     suggestion: DetailedSuggestion | null;
-    review_decision: {
-        decision: Decision;
-        comment: string | null;
-        reviewer: string;
-        submitted_at: string;
-    } | null;
+    review_decision: ReviewDecisionRecord | null;
+    review_history: ReviewDecisionRecord[];
 }
 export interface AuditJob {
     parent_run_id?: string | null;
@@ -119,14 +115,6 @@ export interface DirectoryListing {
 export type AuditStartRequest = Omit<AuditStart, "filters"> & {
     filters?: Partial<Filters>;
 };
-export interface ReviewSubmission {
-    session_id: string;
-    sample_id: string;
-    decision: Decision;
-    comment?: string;
-    reason_code?: string;
-    duration_ms?: number;
-}
 export interface KnowledgeJob extends AuditJob {
     kind: "normal" | "defect";
     knowledge_version_id?: string;

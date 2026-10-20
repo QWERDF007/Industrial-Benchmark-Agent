@@ -137,7 +137,7 @@ class DatasetRegistry:
             explicit_selection = selected_ids is not None or bool(row[1])
             rows = conn.execute("""
                 SELECT s.sample_id FROM samples s
-                LEFT JOIN review_decisions d ON d.id=(SELECT r.id FROM review_decisions r
+                LEFT JOIN current_review_decisions d ON d.id=(SELECT r.id FROM current_review_decisions r
                     WHERE r.sample_id=s.sample_id ORDER BY COALESCE(r.submitted_at,r.updated_at) DESC,r.id DESC LIMIT 1)
                 WHERE s.dataset_id=? AND s.sample_id!=? AND NOT EXISTS(
                     SELECT 1 FROM import_issues i WHERE i.sample_id=s.sample_id AND i.severity IN ('ERROR','WARNING'))

@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
-from pydantic import BaseModel, Field, computed_field, field_validator
-from uuid import NAMESPACE_URL, uuid5
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 
 def sample_uuid(sample_id: str) -> str:
@@ -198,6 +198,8 @@ class ReviewSession(BaseModel):
 
 # 7. ReviewDecisionRecord
 class ReviewDecisionRecord(BaseModel):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+    decision_id: str = Field(default_factory=lambda: str(uuid4()))
     sample_id: str
     decision: str
     reviewer: str = "default"

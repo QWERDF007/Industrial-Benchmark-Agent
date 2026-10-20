@@ -44,7 +44,7 @@ def get_normal_reference_set(
                 cursor.execute(
                     """
                     SELECT r.sample_id 
-                    FROM review_decisions r
+                    FROM current_review_decisions r
                     JOIN samples s ON r.sample_id = s.sample_id
                     WHERE s.task_id = ? AND r.decision = 'PASS'
                     """,
@@ -57,7 +57,7 @@ def get_normal_reference_set(
                 cursor.execute(
                     """
                     SELECT r.sample_id 
-                    FROM review_decisions r
+                    FROM current_review_decisions r
                     JOIN samples s ON r.sample_id = s.sample_id
                     WHERE s.task_id = ? AND r.decision = 'HARD_NORMAL'
                     """,

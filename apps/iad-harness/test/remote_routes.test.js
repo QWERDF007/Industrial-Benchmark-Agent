@@ -105,7 +105,8 @@ test("DSH-05 / DSH-06 / DSH-07: Remote Service and HTTP Routes contract verifica
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        session_id: "sess_123",
+        submission_id: "c567e714-0ccc-436e-8e16-1c3d03884301",
+        dataset_id: "dataset_001",
         sample_id: "sample_001",
         decision: "PASS",
         reviewer: "auditor_alice",

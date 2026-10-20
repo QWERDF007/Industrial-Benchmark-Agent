@@ -235,7 +235,7 @@ def test_review_decision_persistence_and_isolated_quality(review_test_env):
         evidence_version="v1",
         review_duration_ms=4500,
     )
-    repo.upsert(rec)
+    repo.append_decision(rec)
 
     # 1. Verify saved in review_decisions
     saved = repo.get("cand_01", reviewer="expert_alice")
@@ -325,12 +325,15 @@ def test_review_report_and_export(review_test_env):
         duration_ms=3500,
     )
 
+    service.save_decision(sample_id="cand_01", decision=ReviewDecisionType.FAIL, comment="Confirmed after inspection")
+
     # Export JSON
     exp_path = export_review_decisions(task_id=task_id, db=db, output_dir=out_dir)
     assert os.path.exists(exp_path)
     with open(exp_path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    assert len(data) == 2
+    assert len(data) == 3
+    assert {r["comment"] for r in data if r["sample_id"] == "cand_01"} == {"Good hard normal", "Confirmed after inspection"}
 
     # Generate Markdown Report
     rep_path = generate_review_report(task_id=task_id, db=db, output_dir=out_dir)

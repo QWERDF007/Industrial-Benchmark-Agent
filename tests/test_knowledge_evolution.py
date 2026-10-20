@@ -1,3 +1,4 @@
+from uuid import uuid4
 import json
 
 import httpx
@@ -157,8 +158,7 @@ def test_source_losing_normal_qualification_is_not_carried_into_successor(knowle
         service.wait(first['run_id'], 5)
         previous = knowledge_get({'version_id': service.status(first['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
         human = HumanReview(db)
-        session = human.start(config.task.task_id, 'operator', config.dataset.id)
-        human.submit(ReviewSubmission(session_id=session['session_id'], sample_id=sample_ids[0], decision='FAIL'))
+        human.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=config.dataset.id, reviewer='operator', sample_id=sample_ids[0], decision='FAIL'))
         job = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=sample_ids[2:])
         service.wait(job['run_id'], 5)
         status = service.status(job['run_id'])

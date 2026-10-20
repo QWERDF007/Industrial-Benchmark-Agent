@@ -1,32 +1,24 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnnotatedImage, ImageViewer } from "./ImageViewer.js";
 import { MediaLoad } from "./MediaLoad.js";
 import { DatasetKnowledge } from "./DatasetKnowledge.js";
 import { RuleAssessments } from "./RuleAssessments.js";
 import { AuditFindings } from "./AuditFindings.js";
 import { AuditEvidence } from "./AuditEvidence.js";
-import { useReviewDraft } from "../useReviewDraft.js";
+import { HumanReviewForm } from "./HumanReviewForm.js";
 import { auditPhases, auditEvidenceUrl, regionSources, mediaUrl, message, request } from "../api.js";
 export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, jobs, onJobsChanged }) {
     const [detail, setDetail] = useState(null);
     const [error, setError] = useState("");
-    const [notice, setNotice] = useState("");
     const [busy, setBusy] = useState(false);
     const job = jobs.find(job => job.sample_ids.includes(sampleId));
     const jobRunning = jobs.some(job => job.status === "RUNNING" || job.status === "PENDING");
-    const draft = useReviewDraft(dataset.dataset_id, sampleId);
-    const { reviewer, comment } = draft;
     const [lightbox, setLightbox] = useState(null);
-    const activeId = useRef(sampleId);
-    const openedAt = useRef(Date.now());
     useEffect(() => {
-        activeId.current = sampleId;
         setDetail(null);
         setError("");
-        setNotice("");
         setLightbox(null);
-        openedAt.current = Date.now();
     }, [sampleId]);
     useEffect(() => {
         if (!sampleId)
@@ -67,33 +59,6 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
             setBusy(false);
         }
     }
-    async function submit(decision) {
-        if (!reviewer.trim()) {
-            setError("请填写复核人");
-            return;
-        }
-        const id = sampleId;
-        setBusy(true);
-        setError("");
-        try {
-            localStorage.setItem("iad.reviewer", reviewer.trim());
-            const session = await request("/review/session", { task_id: dataset.task_id, dataset_id: dataset.dataset_id, reviewer: reviewer.trim() });
-            await request("/review/submit", { session_id: session.session_id, sample_id: id, decision, comment, duration_ms: Date.now() - openedAt.current });
-            await request("/review/finish", { session_id: session.session_id });
-            draft.discard();
-            if (activeId.current === id) {
-                onChanged();
-                setNotice(`已提交 ${decision}`);
-            }
-        }
-        catch (e) {
-            if (activeId.current === id)
-                setError(message(e));
-        }
-        finally {
-            setBusy(false);
-        }
-    }
     const annotationLayer = detail ? { kind: "sample", annotations: detail.annotations, sample: detail.sample } : undefined;
     const evidenceSource = (evidence) => {
         const suggestion = detail.suggestion;
@@ -106,7 +71,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
         };
     };
     const image = detail ? { src: mediaUrl(detail.sample), title: detail.sample.relative_path.split("/").pop(), width: detail.sample.width, height: detail.sample.height, annotationLayer, inspection: detail.suggestion?.analysis ? { suggestionId: detail.suggestion.suggestion_id, analysis: detail.suggestion.analysis } : undefined } : null;
-    return _jsxs("aside", { className: "iad-inspector", children: [_jsx("h2", { children: mode === "review" ? "复核明细" : "样本信息" }), error && _jsx("p", { role: "alert", className: "iad-error", children: error }), notice && _jsx("p", { role: "status", children: notice }), !sampleId ? _jsx("p", { children: "\u9009\u62E9\u56FE\u50CF\u67E5\u770B\u3002" }) : !detail ? _jsx("p", { children: "\u52A0\u8F7D\u4E2D\u2026" }) : _jsxs(_Fragment, { children: [_jsx(MediaLoad, { children: _jsx("button", { className: "iad-image-button", onClick: () => setLightbox(image), title: "\u653E\u5927\u56FE\u50CF", children: _jsx(AnnotatedImage, { image: image }) }) }, image.src), _jsxs("dl", { className: "iad-info-group", children: [_jsx("dt", { children: "\u56FE\u50CF\u8DEF\u5F84" }), _jsx("dd", { title: detail.sample.image_path, children: detail.sample.image_path }), _jsx("dt", { children: "\u56FE\u50CF\u540D" }), _jsx("dd", { "data-field": "image-name", children: detail.sample.relative_path.split("/").pop() }), _jsx("dt", { children: "UUID" }), _jsx("dd", { "data-field": "sample-uuid", children: _jsx("code", { title: detail.sample.sample_uuid, children: detail.sample.sample_uuid }) }), _jsx("dt", { children: "\u539F\u59CB\u8D28\u91CF" }), _jsx("dd", { children: detail.sample.quality_status }), _jsx("dt", { children: "\u5206\u8FA8\u7387" }), _jsxs("dd", { children: [detail.sample.width, " \u00D7 ", detail.sample.height] }), _jsx("dt", { children: "\u6570\u636E\u4E0E\u6280\u672F\u8D28\u91CF" }), _jsx("dd", { children: detail.technical_quality_score })] }), _jsxs("section", { className: "iad-info-group", children: [_jsxs("h3", { children: ["Labelme \u6807\u6CE8 \u00B7 ", detail.annotations.length] }), detail.annotations.length ? detail.annotations.map(a => _jsxs("div", { className: "iad-annotation", children: [_jsx("strong", { children: a.raw_label }), _jsxs("span", { children: [a.bbox?.join(", "), " \u00B7 ", a.geometry_status] })] }, a.annotation_id)) : _jsx("p", { className: "iad-muted", children: "\u65E0\u6807\u6CE8" }), detail.technical_issues.length > 0 && _jsx("div", { className: "iad-error", children: detail.technical_issues.map((i, index) => _jsx("p", { children: i.message }, index)) })] }), _jsxs("section", { className: "iad-info-group", children: [_jsx("h3", { children: "\u6A21\u578B\u89C2\u5BDF" }), detail.suggestion ? _jsxs(_Fragment, { children: [_jsxs("p", { children: [_jsx("strong", { children: detail.suggestion.suggested_label }), " \u00B7 ", detail.suggestion.reason_category, " \u00B7 \u6A21\u578B\u81EA\u62A5\u7F6E\u4FE1\u5EA6 ", detail.suggestion.confidence === null ? "未记录" : `${Math.round(detail.suggestion.confidence * 100)}%`] }), _jsx("p", { className: "iad-observation", children: detail.suggestion.notes }), _jsx("small", { className: "iad-muted", children: detail.suggestion.model_name }), detail.suggestion.analysis && _jsx(AuditFindings, { analysis: detail.suggestion.analysis, onEvidence: (image, finding) => setLightbox({ ...evidenceSource(image), initialSelection: { kind: "evidence", id: image.evidence_id, findingId: finding.finding_id } }), onLocate: finding => {
+    return _jsxs("aside", { className: "iad-inspector", children: [_jsx("h2", { children: mode === "review" ? "复核明细" : "样本信息" }), error && _jsx("p", { role: "alert", className: "iad-error", children: error }), !sampleId ? _jsx("p", { children: "\u9009\u62E9\u56FE\u50CF\u67E5\u770B\u3002" }) : !detail ? _jsx("p", { children: "\u52A0\u8F7D\u4E2D\u2026" }) : _jsxs(_Fragment, { children: [_jsx(MediaLoad, { children: _jsx("button", { className: "iad-image-button", onClick: () => setLightbox(image), title: "\u653E\u5927\u56FE\u50CF", children: _jsx(AnnotatedImage, { image: image }) }) }, image.src), _jsxs("dl", { className: "iad-info-group", children: [_jsx("dt", { children: "\u56FE\u50CF\u8DEF\u5F84" }), _jsx("dd", { title: detail.sample.image_path, children: detail.sample.image_path }), _jsx("dt", { children: "\u56FE\u50CF\u540D" }), _jsx("dd", { "data-field": "image-name", children: detail.sample.relative_path.split("/").pop() }), _jsx("dt", { children: "UUID" }), _jsx("dd", { "data-field": "sample-uuid", children: _jsx("code", { title: detail.sample.sample_uuid, children: detail.sample.sample_uuid }) }), _jsx("dt", { children: "\u539F\u59CB\u8D28\u91CF" }), _jsx("dd", { children: detail.sample.quality_status }), _jsx("dt", { children: "\u5206\u8FA8\u7387" }), _jsxs("dd", { children: [detail.sample.width, " \u00D7 ", detail.sample.height] }), _jsx("dt", { children: "\u6570\u636E\u4E0E\u6280\u672F\u8D28\u91CF" }), _jsx("dd", { children: detail.technical_quality_score })] }), _jsxs("section", { className: "iad-info-group", children: [_jsxs("h3", { children: ["Labelme \u6807\u6CE8 \u00B7 ", detail.annotations.length] }), detail.annotations.length ? detail.annotations.map(a => _jsxs("div", { className: "iad-annotation", children: [_jsx("strong", { children: a.raw_label }), _jsxs("span", { children: [a.bbox?.join(", "), " \u00B7 ", a.geometry_status] })] }, a.annotation_id)) : _jsx("p", { className: "iad-muted", children: "\u65E0\u6807\u6CE8" }), detail.technical_issues.length > 0 && _jsx("div", { className: "iad-error", children: detail.technical_issues.map((i, index) => _jsx("p", { children: i.message }, index)) })] }), _jsxs("section", { className: "iad-info-group", children: [_jsx("h3", { children: "\u6A21\u578B\u89C2\u5BDF" }), detail.suggestion ? _jsxs(_Fragment, { children: [_jsxs("p", { children: [_jsx("strong", { children: detail.suggestion.suggested_label }), " \u00B7 ", detail.suggestion.reason_category, " \u00B7 \u6A21\u578B\u81EA\u62A5\u7F6E\u4FE1\u5EA6 ", detail.suggestion.confidence === null ? "未记录" : `${Math.round(detail.suggestion.confidence * 100)}%`] }), _jsx("p", { className: "iad-observation", children: detail.suggestion.notes }), _jsx("small", { className: "iad-muted", children: detail.suggestion.model_name }), detail.suggestion.analysis && _jsx(AuditFindings, { analysis: detail.suggestion.analysis, onEvidence: (image, finding) => setLightbox({ ...evidenceSource(image), initialSelection: { kind: "evidence", id: image.evidence_id, findingId: finding.finding_id } }), onLocate: finding => {
                                             const overview = detail.suggestion.analysis.overview;
                                             setLightbox({ ...evidenceSource(overview), initialSelection: { kind: "finding", id: finding.finding_id } });
                                         } }, detail.suggestion.suggestion_id), _jsxs("p", { className: "iad-muted", children: ["\u826F\u54C1\u77E5\u8BC6\u6765\u6E90 \u00B7 ", detail.suggestion.reference_sample_ids.length, " \u5F20\u53C2\u8003\u56FE"] }), _jsx("div", { className: "iad-reference-grid", children: detail.normal_knowledge?.evidence.filter(item => item.image.role === "normal" && item.image.representation === "raw" && detail.suggestion.reference_sample_ids.includes(item.sample_id)).map(item => {
@@ -118,5 +83,5 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
                                 }
                                 catch (error) {
                                     setError(message(error));
-                                } }, children: "\u53D6\u6D88\u5BA1\u8BA1" })] }), mode === "dataset" && _jsx("div", { className: "iad-actions", children: _jsx("button", { disabled: busy, onClick: setReference, children: dataset.reference_sample_ids.includes(sampleId) ? "移出良品参考" : "设为良品参考" }) }), mode === "model" ? _jsx("div", { className: "iad-actions", children: _jsx("button", { className: "iad-primary", disabled: busy || jobRunning, onClick: audit, children: busy || jobRunning ? "正在联合审计…" : "按知识审计此图" }) }) : mode === "review" ? _jsxs("section", { className: "iad-decision", children: [_jsx("h3", { children: "\u4EBA\u5DE5\u88C1\u51B3" }), draft.dirty && _jsxs("div", { className: "iad-row", children: [_jsx("span", { role: "status", children: "\u8349\u7A3F\u672A\u63D0\u4EA4" }), _jsx("button", { disabled: busy, onClick: draft.discard, children: "\u653E\u5F03\u8349\u7A3F" })] }), detail.review_decision && _jsxs("p", { children: ["\u5F53\u524D\uFF1A", detail.review_decision.decision, " \u00B7 ", detail.review_decision.reviewer, _jsx("br", {}), detail.review_decision.comment] }), _jsxs("label", { className: "iad-field", children: ["\u590D\u6838\u4EBA", _jsx("input", { value: reviewer, onChange: e => draft.update({ reviewer: e.target.value }) })] }), _jsxs("label", { className: "iad-field", children: ["\u590D\u6838\u8BF4\u660E", _jsx("textarea", { value: comment, onChange: e => draft.update({ comment: e.target.value }) })] }), _jsx("div", { className: "iad-actions", children: [['PASS', '良品'], ['HARD_NORMAL', '困难正常'], ['FAIL', '异常'], ['UNCERTAIN', '不确定'], ['SKIP', '跳过']].map(([value, label]) => _jsx("button", { className: value === "FAIL" ? "iad-danger" : "", disabled: busy, onClick: () => submit(value), children: label }, value)) })] }) : null] }), lightbox && _jsx(ImageViewer, { image: lightbox, onClose: () => setLightbox(null) })] });
+                                } }, children: "\u53D6\u6D88\u5BA1\u8BA1" })] }), mode === "dataset" && _jsx("div", { className: "iad-actions", children: _jsx("button", { disabled: busy, onClick: setReference, children: dataset.reference_sample_ids.includes(sampleId) ? "移出良品参考" : "设为良品参考" }) }), mode === "model" ? _jsx("div", { className: "iad-actions", children: _jsx("button", { className: "iad-primary", disabled: busy || jobRunning, onClick: audit, children: busy || jobRunning ? "正在联合审计…" : "按知识审计此图" }) }) : mode === "review" ? _jsx(HumanReviewForm, { datasetId: dataset.dataset_id, sampleId: sampleId, detail: detail, onChanged: onChanged }) : null] }), lightbox && _jsx(ImageViewer, { image: lightbox, onClose: () => setLightbox(null) })] });
 }

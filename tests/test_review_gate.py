@@ -143,7 +143,7 @@ def test_review_session_workflow(test_env):
         reason_code="BENIGN_VARIATION",
         comment="Verified as benign noise",
     )
-    repo.save_decision(dec)
+    repo.append_decision(dec)
 
     saved_dec = repo.get_decision(test_env["sample1"].sample_id)
     assert saved_dec is not None

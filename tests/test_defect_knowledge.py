@@ -1,3 +1,4 @@
+from uuid import uuid4
 import base64
 import io
 import json
@@ -258,8 +259,7 @@ def test_operator_can_mine_unannotated_suspects_without_inventing_annotation_pro
     target_id = original['sample']['sample_id']
     if source_kind == 'human_fail':
         review = HumanReview(db)
-        session = review.start(dataset['dataset_id'], 'operator', dataset['dataset_id'])
-        review.submit(ReviewSubmission(session_id=session['session_id'], sample_id=target_id, decision='FAIL'))
+        review.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=dataset['dataset_id'], reviewer='operator', sample_id=target_id, decision='FAIL'))
     baseline = sample_get({'sample_id': target_id}, db.db_path)
 
     def respond(request):

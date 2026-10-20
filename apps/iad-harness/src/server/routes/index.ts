@@ -96,9 +96,7 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         });
         await sendMedia(res, info); return;
       }
-      if (pathname === "/api/iad/review/session" && method === "POST") return await call("review_start_session", body);
       if (pathname === "/api/iad/review/submit" && method === "POST") return await call("review_submit_decision", body);
-      if (pathname === "/api/iad/review/finish" && method === "POST") return await call("review_finish_session", body);
       const queue = pathname.match(/^\/api\/iad\/review\/([^/]+)\/queue$/);
       if (queue && method === "GET") return await call("review_queue", { ...query, task_id: decodeURIComponent(queue[1]) });
       const stats = pathname.match(/^\/api\/iad\/review\/stats\/([^/]+)$/);

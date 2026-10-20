@@ -62,15 +62,7 @@ export declare class IadRemoteService extends TypertRemoteService {
         task_id: string;
         sample_id: string;
     }): Promise<any>;
-    reviewStartSession(args: {
-        reviewer: string;
-        task_id: string;
-        dataset_id?: string;
-    }): Promise<any>;
     reviewSubmitDecision(args: ReviewSubmission): Promise<any>;
-    reviewFinishSession(args: {
-        session_id: string;
-    }): Promise<any>;
     reviewStats(args: {
         task_id: string;
     }): Promise<any>;

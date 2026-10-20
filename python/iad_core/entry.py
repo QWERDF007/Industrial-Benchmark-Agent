@@ -113,7 +113,8 @@ def sample_get(args, db_path):
                                  ('defect', analysis.defect_version_id if analysis else None)]}
     return {"sample": sample.model_dump(), **knowledge, "suggestion": meta, **WorkbenchQuery(db).sample_scores(sample.sample_id),
             "annotations": [a.model_dump() for a in AnnotationRepository(db).list_by_sample(sample.sample_id)],
-            "technical_issues": [i.model_dump() for i in issues], "review_decision": decision.model_dump() if decision else None}
+            "technical_issues": [i.model_dump() for i in issues], "review_decision": decision.model_dump() if decision else None,
+            "review_history": [record.model_dump() for record in ReviewRepository(db).list_history(sample.sample_id)]}
 
 
 def sample_image_path(args, db_path):
@@ -179,16 +180,8 @@ def review_evidence(args, db_path):
     return EvidenceBuilder(task_id=args["task_id"], db_path=db_path).build(args["sample_id"]).model_dump()
 
 
-def review_start_session(args, db_path):
-    return HumanReview(Database(db_path)).start(**args)
-
-
 def review_submit_decision(args, db_path):
     return HumanReview(Database(db_path)).submit(ReviewSubmission.model_validate(args))
-
-
-def review_finish_session(args, db_path):
-    return HumanReview(Database(db_path)).finish(**args)
 
 
 def review_stats(args, db_path):
@@ -293,7 +286,7 @@ def model_call_get(args, db_path):
 OPERATIONS = {handler.__name__: handler for handler in (
     tool_call, dataset_list, dataset_get, dataset_import, dataset_archive_inspect, dataset_update, dataset_scan,
     sample_list, sample_get, sample_image_path, sample_thumbnail, sample_mask_path,
-    review_queue, review_evidence, review_start_session, review_submit_decision, review_finish_session,
+    review_queue, review_evidence, review_submit_decision,
     review_stats, report_get, audit_start, audit_status, audit_cancel, audit_retry, audit_list, audit_evidence, directory_list,
     knowledge_get, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_list, model_call_get,
 )}

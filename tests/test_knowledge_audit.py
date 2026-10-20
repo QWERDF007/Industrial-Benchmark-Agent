@@ -1,3 +1,4 @@
+from uuid import uuid4
 import json
 import threading
 from pathlib import Path
@@ -349,8 +350,7 @@ def test_historical_analysis_migration_preserves_evidence_and_human_decision(dat
             conn.execute('UPDATE audit_suggestions SET analysis_json=? WHERE suggestion_id=?',
                          (json.dumps(historical), suggestion['suggestion_id']))
         human = HumanReview(db)
-        session = human.start(config.dataset.id, 'inspector', config.task.task_id)
-        human.submit(ReviewSubmission(session_id=session['session_id'], sample_id=target, decision='PASS', comment='人工核对'))
+        human.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=config.dataset.id, reviewer='inspector', sample_id=target, decision='PASS', comment='人工核对'))
         before = sample_get({'sample_id': target}, db.db_path)
         for _ in range(2):
             reopened = sample_get({'sample_id': target}, db.db_path)

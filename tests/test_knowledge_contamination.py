@@ -45,7 +45,7 @@ def test_operator_can_locate_contaminated_normal_source_without_changing_human_t
     config = DatasetRegistry(db).import_labelme(DatasetImport(name='孔板', image_dir=str(images), annotation_dir=str(labels)))
     target_id = config.dataset.id+':part-3.png'
     if annotated_roi:
-        ReviewRepository(db).save_decision(ReviewDecisionRecord(sample_id=target_id, decision='PASS', reviewer='operator'))
+        ReviewRepository(db).append_decision(ReviewDecisionRecord(sample_id=target_id, decision='PASS', reviewer='operator'))
     original = sample_get({'sample_id':target_id}, db.db_path)
     calls = []
     initial = []

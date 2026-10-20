@@ -6,6 +6,8 @@ from pathlib import Path
 
 from filelock import FileLock
 
+from iad_core.storage.review_schema import init_review_schema
+
 
 class Database:
     """
@@ -161,44 +163,7 @@ class Database:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_features_sample_id ON feature_records(sample_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_features_lookup ON feature_records(sample_id, model_id, preprocess_key)")
 
-            # 6. review_sessions
-            cursor.execute("""
-            CREATE TABLE IF NOT EXISTS review_sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id TEXT UNIQUE NOT NULL,
-                task_id TEXT NOT NULL,
-                reviewer TEXT NOT NULL,
-                started_at TIMESTAMP,
-                submitted_at TIMESTAMP,
-                total_reviewed INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-            """)
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_task_id ON review_sessions(task_id)")
-
-            # 7. review_decisions
-            cursor.execute("""
-            CREATE TABLE IF NOT EXISTS review_decisions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                sample_id TEXT NOT NULL,
-                decision TEXT NOT NULL,
-                reviewer TEXT NOT NULL DEFAULT 'default',
-                reason_code TEXT,
-                comment TEXT,
-                evidence_version TEXT DEFAULT 'v2',
-                review_session_id TEXT,
-                started_at TIMESTAMP,
-                submitted_at TIMESTAMP,
-                review_duration_ms INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(sample_id, reviewer)
-            )
-            """)
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_review_sample_id ON review_decisions(sample_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_review_decision ON review_decisions(decision)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_review_session ON review_decisions(review_session_id)")
+            init_review_schema(conn)
 
             # 8. gold_records
             cursor.execute("""
@@ -356,9 +321,6 @@ class Database:
                 cursor.execute("ALTER TABLE job_runs ADD COLUMN payload_json TEXT NOT NULL DEFAULT '{}'")
             cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_root
                 ON job_runs(json_extract(payload_json,'$.root_run_id'))""")
-            session_columns = {row[1] for row in cursor.execute("PRAGMA table_info(review_sessions)")}
-            if "dataset_id" not in session_columns:
-                cursor.execute("ALTER TABLE review_sessions ADD COLUMN dataset_id TEXT")
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS datasets (
                     dataset_id TEXT PRIMARY KEY,

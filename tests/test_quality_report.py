@@ -1,8 +1,9 @@
+from uuid import uuid4
 from pathlib import Path
 
 from PIL import Image
 
-from iad_core.entry import dataset_import, report_get, review_start_session, review_submit_decision
+from iad_core.entry import dataset_import, report_get, review_submit_decision
 
 
 def test_quality_dimensions_include_rejected_images_and_distinguish_human_verification(tmp_path):
@@ -16,9 +17,8 @@ def test_quality_dimensions_include_rejected_images_and_distinguish_human_verifi
     db_path = str(tmp_path / 'quality.db')
     imported = dataset_import({'name': '质量分项', 'image_dir': str(images), 'annotation_dir': str(labels)}, db_path)
     scope = {'dataset_id': imported['dataset_id'], 'task_id': imported['task_id']}
-    session = review_start_session({**scope, 'reviewer': '检验员'}, db_path)
     for name, decision in [('valid', 'HARD_NORMAL'), ('skipped', 'SKIP'), ('uncertain', 'UNCERTAIN')]:
-        review_submit_decision({'session_id': session['session_id'],
+        review_submit_decision({'submission_id': str(uuid4()), 'dataset_id': scope['dataset_id'], 'reviewer': '检验员',
             'sample_id': imported['dataset_id'] + ':' + name + '.png', 'decision': decision}, db_path)
     report = report_get(scope, db_path)
     quality = report['quality']
@@ -108,9 +108,8 @@ def test_empty_and_intersected_scopes_never_claim_evaluated_quality(dataset, mll
 def test_human_coverage_uses_latest_submitted_decision(dataset):
     db, _, config = dataset
     scope = {'dataset_id': config.dataset.id, 'task_id': config.task.task_id}
-    session = review_start_session({**scope, 'reviewer': '检验员'}, db.db_path)
     for decision in ['PASS', 'SKIP', 'FAIL']:
-        review_submit_decision({'session_id': session['session_id'], 'sample_id': config.dataset.id + ':normal.png',
+        review_submit_decision({'submission_id': str(uuid4()), 'dataset_id': scope['dataset_id'], 'reviewer': '检验员', 'sample_id': config.dataset.id + ':normal.png',
             'decision': decision}, db.db_path)
         quality = report_get(scope, db.db_path)['quality']
         assert quality['human_verification_coverage']['percent'] == (0 if decision == 'SKIP' else 25)

@@ -1,5 +1,5 @@
 import json
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -45,8 +45,7 @@ def test_confidence_round_trip(workbench, confidence):
 
 def test_review_session_submission_preserves_raw_quality(workbench):
     db, request = workbench
-    session = request("review_start_session", task_id="task", reviewer="alice")["data"]
-    result = request("review_submit_decision", session_id=session["session_id"],
+    result = request("review_submit_decision", submission_id=str(uuid4()), dataset_id="dataset", reviewer="alice",
                      sample_id="dataset:image.png", decision="HARD_NORMAL", comment="verified")
     assert result["event"] == "result"
     assert SampleRepository(db).get("dataset:image.png").quality_status == "UNCERTAIN"
@@ -58,18 +57,16 @@ def test_review_session_submission_preserves_raw_quality(workbench):
 @pytest.mark.parametrize("decision", ["INVALID", "", "pass"])
 def test_review_rejects_invalid_decision(workbench, decision):
     db, request = workbench
-    session = request("review_start_session", task_id="task", reviewer="alice")["data"]
-    result = request("review_submit_decision", session_id=session["session_id"],
+    result = request("review_submit_decision", submission_id=str(uuid4()), dataset_id="dataset", reviewer="alice",
                      sample_id="dataset:image.png", decision=decision)
     assert result["event"] == "error"
     with db.connection() as conn:
         assert conn.execute("SELECT count(*) FROM review_decisions").fetchone()[0] == 0
 
 
-def test_review_rejects_cross_task_sample(workbench):
+def test_review_rejects_cross_dataset_sample(workbench):
     _, request = workbench
-    session = request("review_start_session", task_id="other", reviewer="alice")["data"]
-    result = request("review_submit_decision", session_id=session["session_id"],
+    result = request("review_submit_decision", submission_id=str(uuid4()), dataset_id="other", reviewer="alice",
                      sample_id="dataset:image.png", decision="PASS")
     assert result["event"] == "error"
 

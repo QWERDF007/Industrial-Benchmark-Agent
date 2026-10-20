@@ -38,7 +38,7 @@ WITH advice AS (
  FROM audit_suggestions
 ), decisions AS (
  SELECT *,ROW_NUMBER() OVER(PARTITION BY sample_id ORDER BY COALESCE(submitted_at,updated_at) DESC,id DESC) AS position
- FROM review_decisions
+ FROM current_review_decisions
 ), base AS (
  SELECT s.*,a.suggestion_id,a.model_route,a.confidence,a.created_at AS audited_at,
  a.reference_sample_ids_json,a.audit_run_id,

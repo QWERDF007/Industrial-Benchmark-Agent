@@ -1,3 +1,4 @@
+from uuid import uuid4
 import base64
 import io
 import json
@@ -66,8 +67,7 @@ def test_mining_sends_raw_and_binary_mask_evidence_and_retains_prior_pixels(tmp_
     sample_id = dataset_id + ':part.png'
     db = Database(db_path)
     review = HumanReview(db)
-    session = review.start(dataset_id, 'operator', dataset_id)
-    review.submit(ReviewSubmission(session_id=session['session_id'], sample_id=sample_id, decision='PASS'))
+    review.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=dataset_id, reviewer='operator', sample_id=sample_id, decision='PASS'))
     sent = []
 
     def respond(request):
@@ -146,8 +146,7 @@ def test_capacity_grouping_keeps_each_raw_region_with_its_binary_mask(tmp_path):
     dataset_scan({'dataset_id':dataset_id},db_path)
     db = Database(db_path)
     review = HumanReview(db)
-    session = review.start(dataset_id,'operator',dataset_id)
-    review.submit(ReviewSubmission(session_id=session['session_id'],sample_id=dataset_id+':part.png',decision='PASS'))
+    review.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=dataset_id, reviewer='operator', sample_id=dataset_id+':part.png',decision='PASS'))
     sent = []
 
     def respond(request):
@@ -325,8 +324,7 @@ def test_mining_preserves_the_actual_annotation_shape_in_its_binary_view(tmp_pat
     dataset_scan({'dataset_id':dataset_id},db_path)
     db = Database(db_path)
     review = HumanReview(db)
-    session = review.start(dataset_id,'operator',dataset_id)
-    review.submit(ReviewSubmission(session_id=session['session_id'],sample_id=dataset_id+':part.png',decision='PASS'))
+    review.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=dataset_id, reviewer='operator', sample_id=dataset_id+':part.png',decision='PASS'))
 
     def respond(request):
         if request.url.path.endswith('/tokenize'):

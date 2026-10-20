@@ -165,7 +165,7 @@ def test_merge_queue_e2e_contract_and_web_api(merge_queue_env):
     from iad_core.storage.repositories import ReviewRepository
     from iad_core.storage.models import ReviewDecisionRecord
     rev_repo = ReviewRepository(db)
-    rev_repo.save_decision(
+    rev_repo.append_decision(
         ReviewDecisionRecord(
             decision_id="dec_001",
             sample_id=f"{task_id}:s2",

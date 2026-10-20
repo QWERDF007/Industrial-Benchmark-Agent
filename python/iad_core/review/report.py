@@ -22,7 +22,7 @@ def export_review_decisions(
     """
     database = db or Database(db_path)
     repo = ReviewRepository(database)
-    records = repo.list_decisions(task_id)
+    records = repo.list_history(task_id=task_id)
 
     out_dir = output_dir or os.path.join("runs", "review", task_id)
     os.makedirs(out_dir, exist_ok=True)

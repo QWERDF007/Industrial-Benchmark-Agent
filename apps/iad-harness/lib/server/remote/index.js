@@ -55,9 +55,7 @@ let IadRemoteService = (() => {
     let _modelCallGet_decorators;
     let _reviewQueue_decorators;
     let _reviewEvidence_decorators;
-    let _reviewStartSession_decorators;
     let _reviewSubmitDecision_decorators;
-    let _reviewFinishSession_decorators;
     let _reviewStats_decorators;
     let _reportGet_decorators;
     return class IadRemoteService extends _classSuper {
@@ -78,9 +76,7 @@ let IadRemoteService = (() => {
             _modelCallGet_decorators = [Remote];
             _reviewQueue_decorators = [Remote];
             _reviewEvidence_decorators = [Remote];
-            _reviewStartSession_decorators = [Remote];
             _reviewSubmitDecision_decorators = [Remote];
-            _reviewFinishSession_decorators = [Remote];
             _reviewStats_decorators = [Remote];
             _reportGet_decorators = [Remote];
             __esDecorate(this, null, _datasetList_decorators, { kind: "method", name: "datasetList", static: false, private: false, access: { has: obj => "datasetList" in obj, get: obj => obj.datasetList }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -98,9 +94,7 @@ let IadRemoteService = (() => {
             __esDecorate(this, null, _modelCallGet_decorators, { kind: "method", name: "modelCallGet", static: false, private: false, access: { has: obj => "modelCallGet" in obj, get: obj => obj.modelCallGet }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _reviewQueue_decorators, { kind: "method", name: "reviewQueue", static: false, private: false, access: { has: obj => "reviewQueue" in obj, get: obj => obj.reviewQueue }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _reviewEvidence_decorators, { kind: "method", name: "reviewEvidence", static: false, private: false, access: { has: obj => "reviewEvidence" in obj, get: obj => obj.reviewEvidence }, metadata: _metadata }, null, _instanceExtraInitializers);
-            __esDecorate(this, null, _reviewStartSession_decorators, { kind: "method", name: "reviewStartSession", static: false, private: false, access: { has: obj => "reviewStartSession" in obj, get: obj => obj.reviewStartSession }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _reviewSubmitDecision_decorators, { kind: "method", name: "reviewSubmitDecision", static: false, private: false, access: { has: obj => "reviewSubmitDecision" in obj, get: obj => obj.reviewSubmitDecision }, metadata: _metadata }, null, _instanceExtraInitializers);
-            __esDecorate(this, null, _reviewFinishSession_decorators, { kind: "method", name: "reviewFinishSession", static: false, private: false, access: { has: obj => "reviewFinishSession" in obj, get: obj => obj.reviewFinishSession }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _reviewStats_decorators, { kind: "method", name: "reviewStats", static: false, private: false, access: { has: obj => "reviewStats" in obj, get: obj => obj.reviewStats }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _reportGet_decorators, { kind: "method", name: "reportGet", static: false, private: false, access: { has: obj => "reportGet" in obj, get: obj => obj.reportGet }, metadata: _metadata }, null, _instanceExtraInitializers);
             if (_metadata) Object.defineProperty(this, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
@@ -155,14 +149,8 @@ let IadRemoteService = (() => {
         async reviewEvidence(args) {
             return this.bridge.execute("review_evidence", args);
         }
-        async reviewStartSession(args) {
-            return this.bridge.execute("review_start_session", args);
-        }
         async reviewSubmitDecision(args) {
             return this.bridge.execute("review_submit_decision", { ...args });
-        }
-        async reviewFinishSession(args) {
-            return this.bridge.execute("review_finish_session", args);
         }
         async reviewStats(args) {
             return this.bridge.execute("review_stats", args);

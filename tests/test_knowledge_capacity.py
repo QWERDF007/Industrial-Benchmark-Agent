@@ -1,3 +1,4 @@
+from uuid import uuid4
 import base64
 import io
 import json
@@ -40,8 +41,7 @@ def large_mask_dataset(tmp_path, request):
     target_id = dataset['dataset_id'] + ':part-2.png'
     if with_reference_mask:
         review = HumanReview(Database(db_path))
-        session = review.start(dataset['dataset_id'], 'operator', dataset['dataset_id'])
-        review.submit(ReviewSubmission(session_id=session['session_id'], sample_id=dataset['dataset_id'] + ':part-0.png', decision='PASS'))
+        review.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=dataset['dataset_id'], reviewer='operator', sample_id=dataset['dataset_id'] + ':part-0.png', decision='PASS'))
     original = sample_get({'sample_id': target_id}, db_path)
     return db_path, dataset, target_id, original, with_reference_mask
 

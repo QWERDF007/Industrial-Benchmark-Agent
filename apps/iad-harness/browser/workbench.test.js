@@ -50,6 +50,8 @@ for name in ['normal','normal2','dent']:
   const previousEndpoint = process.env.LIVE_VLM_ENDPOINT;
   const modelRequests = [];
   let holdRegion = false, releaseRegion, proposeRegion = false;
+  let dropReviewResponse = false;
+  const reviewRequests = [];
   const api = createIadHttpHandler(bridge);
   const server = http.createServer(async (req, res) => {
     if (new URL(req.url, "http://localhost").pathname === "/") { res.setHeader("Content-Type", "text/html; charset=utf-8"); res.end('<!doctype html><meta charset="utf-8"><style>html,body,#root{height:100%;margin:0}</style><div id="root"></div><script src="/browser.js"></script>'); }
@@ -88,7 +90,16 @@ for name in ['normal','normal2','dent']:
       }));
       if (schema.title === "JointAnalysis" && holdRegion) await new Promise(resolve => { releaseRegion = resolve; });
       res.setHeader("Content-Type","application/json"); res.end(JSON.stringify({choices:[{message:{content:JSON.stringify(answer)}}]}));
-    } else api(req, res);
+    } else {
+      if(req.url==="/api/iad/review/submit") {
+        let body="";req.on("data",chunk=>{body+=chunk;});req.on("end",()=>reviewRequests.push(JSON.parse(body)));
+        if(dropReviewResponse) {
+          dropReviewResponse=false;
+          res.end=body=>{res.write(body.slice(0,Math.floor(body.length/2)),()=>req.socket.destroy());return res;};
+        }
+      }
+      api(req, res);
+    }
   });
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -483,11 +494,30 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await driver.navigate().refresh(); await gridCount(1);
     assert.equal(await (await element(".iad-decision textarea")).getAttribute("value"), "已核实局部反光");
     assert.ok((await (await element(".iad-decision")).getText()).includes("草稿未提交"));
-    await button("良品"); await gridCount(0);
+    dropReviewResponse=true;
+    await button("良品");
+    await element(".iad-decision [role='alert']");
+    assert.equal(reviewRequests.length,1,"服务端真实提交后断开响应连接");
+    assert.equal(await (await element(".iad-decision textarea")).getAttribute("value"),"已核实局部反光");
+    await driver.navigate().refresh();await gridCount(0);
+    assert.equal(await (await element(".iad-decision textarea")).getAttribute("value"),"已核实局部反光");
+    await button("重试提交");
+    await driver.wait(async()=>(await (await element(".iad-decision")).getText()).includes("已提交 PASS"),5000);
+    assert.equal(reviewRequests.length,2);
+    assert.deepEqual(reviewRequests[1],reviewRequests[0],"刷新后必须重放同一份提交，包括标识和耗时");
     const detail = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();
     assert.equal(detail.review_decision.decision, "PASS");
+    assert.equal(detail.review_history.length,1,"响应丢失后的重试不能新增人工裁决");
     assert.equal(detail.sample.quality_status, "UNCERTAIN");
     await select("人工复核", "reviewed"); await gridCount(1);
+    await (await element(".iad-decision textarea")).sendKeys("更正：确认异常");
+    await button("异常");
+    await driver.wait(async()=>{const result=await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();return result.review_history.length===2&&result.review_decision.decision==="FAIL";},5000);
+    await (await element(".iad-review-history summary")).click();
+    await driver.wait(async()=>(await driver.findElements(By.css(".iad-review-history li"))).length===2,5000);
+    const reviewHistory=await (await element(".iad-review-history")).getText();
+    assert.ok(reviewHistory.includes("更正：确认异常")&&reviewHistory.includes("已核实局部反光"));
+    await driver.executeScript("arguments[0].scrollIntoView({block:'end'})",await element(".iad-review-history"));
     await fs.writeFile(path.join(workspace, "runs/browser/human-review.png"), await driver.takeScreenshot(), "base64");
     await button("模型审计");
     await button("报告");

@@ -43,7 +43,7 @@ def test_reference_pool_excludes_target_and_human_fail(dataset):
     assert len(refs) == 2
     assert all("normal" in sid for sid in refs)
     assert refs[0] not in registry.references(config.dataset.id, exclude=refs[0])
-    ReviewRepository(db).save_decision(ReviewDecisionRecord(sample_id=refs[0], decision="FAIL"))
+    ReviewRepository(db).append_decision(ReviewDecisionRecord(sample_id=refs[0], decision="FAIL"))
     assert refs[0] not in registry.references(config.dataset.id)
 
 
@@ -56,7 +56,7 @@ def test_manual_reference_selection_survives_reload_and_human_correction(dataset
     reloaded = DatasetRegistry(Database(db.db_path))
     assert reloaded.references(config.dataset.id) == selected
     assert reloaded.references(config.dataset.id, exclude=selected[0]) == []
-    ReviewRepository(db).save_decision(ReviewDecisionRecord(sample_id=selected[0], reviewer="alice", decision="FAIL"))
+    ReviewRepository(db).append_decision(ReviewDecisionRecord(sample_id=selected[0], reviewer="alice", decision="FAIL"))
     assert reloaded.references(config.dataset.id) == []
 
 

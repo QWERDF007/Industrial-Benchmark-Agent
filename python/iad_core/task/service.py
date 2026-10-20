@@ -77,7 +77,7 @@ def inspect_task_summary(task_id: str, db_path: str = "data/benchmark.db") -> Di
 
     cursor.execute("""
         SELECT r.decision, COUNT(*)
-        FROM review_decisions r
+        FROM current_review_decisions r
         JOIN samples s ON r.sample_id = s.sample_id
         WHERE s.task_id = ? GROUP BY r.decision
     """, (task_id,))

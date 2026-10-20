@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import http from "node:http";
+import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { PythonBridge, createIadHttpHandler } from "../lib/server/index.js";
@@ -26,19 +27,54 @@ test("real bridge: Labelme import, composed filters and human session submission
     const response = await fetch(`${base}/samples/${dataset.task_id}?dataset_id=${dataset.dataset_id}&annotation_filters=${encodeURIComponent(JSON.stringify(["none"]))}`);
     const samples = await response.json();
     assert.equal(samples.total, 1);
-    const sessionResponse = await post("/review/session", { task_id: dataset.task_id, dataset_id: dataset.dataset_id, reviewer: "alice" });
-    const session = await sessionResponse.json();
-    const decision = await post("/review/submit", { session_id: session.session_id, sample_id: samples.items[0].sample_id, decision: "PASS", comment: "human confirmed" });
+    execFileSync(bridge.pythonPath,["-c",`
+import sqlite3,sys
+conn=sqlite3.connect(sys.argv[1])
+conn.executescript('''DROP VIEW current_review_decisions; DROP TABLE review_decisions;
+CREATE TABLE review_decisions (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,sample_id TEXT NOT NULL,decision TEXT NOT NULL,
+ reviewer TEXT NOT NULL,reason_code TEXT,comment TEXT,evidence_version TEXT DEFAULT 'v2',
+ review_session_id TEXT,started_at TIMESTAMP,submitted_at TIMESTAMP,review_duration_ms INTEGER DEFAULT 0,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE(sample_id,reviewer));''')
+conn.execute("INSERT INTO review_decisions (id,sample_id,reviewer,decision,comment,submitted_at) VALUES (7,?,'alice','HARD_NORMAL','既有人审','2020-01-01T00:00:00Z')",(sys.argv[2],))
+conn.commit();conn.close()
+`,path.join(root,"test.db"),samples.items[0].sample_id]);
+    const migrated=await (await fetch(`${base}/sample/${encodeURIComponent(samples.items[0].sample_id)}`)).json();
+    assert.equal(migrated.review_history.length,1,"迁移只保留真实既有记录，不补造历史");
+    assert.equal(migrated.review_history[0].comment,"既有人审");
+    assert.equal(migrated.review_history[0].submitted_at,"2020-01-01T00:00:00Z");
+    const legacyId=migrated.review_history[0].decision_id;
+    const submission={ submission_id:randomUUID(),dataset_id:dataset.dataset_id,reviewer:"alice",sample_id:samples.items[0].sample_id,decision:"PASS",comment:"human confirmed",duration_ms:1300 };
+    const decision = await post("/review/submit", submission);
     assert.equal(decision.status, 200, await decision.clone().text());
-    const invalid = await post("/review/submit", { session_id: "invented", sample_id: samples.items[0].sample_id, decision: "PASS" });
+    const first=await decision.json();
+    const repeated=await Promise.all([post("/review/submit",submission),post("/review/submit",submission)]);
+    for(const response of repeated){assert.equal(response.status,200,await response.clone().text());assert.deepEqual(await response.json(),first,"相同提交标识必须返回已持久化原结果");}
+    const conflict=await post("/review/submit",{...submission,decision:"FAIL"});
+    assert.equal(conflict.status,422,"同一个提交标识不能改写内容");
+    const corrected = await post("/review/submit", { ...submission,submission_id:randomUUID(),decision: "FAIL", comment: "近看确认异常" });
+    assert.equal(corrected.status,200,await corrected.clone().text());
+    const invalid = await post("/review/submit", {...submission,submission_id:randomUUID(),sample_id:"invented"});
     assert.equal(invalid.status, 404);
     const detail = await (await fetch(`${base}/sample/${encodeURIComponent(samples.items[0].sample_id)}`)).json();
     assert.equal(detail.sample.quality_status, "UNCERTAIN");
-    assert.equal(detail.review_decision.decision, "PASS");
+    assert.equal(detail.review_decision.decision, "FAIL");
+    assert.deepEqual(detail.review_history.map(record=>[record.decision,record.comment]),[["FAIL","近看确认异常"],["PASS","human confirmed"],["HARD_NORMAL","既有人审"]],"人工更正必须保留原裁决");
+    assert.equal(detail.review_history[2].decision_id,legacyId,"重复初始化不能改变迁移记录身份");
+    assert.notEqual(detail.review_history[0].decision_id,detail.review_history[1].decision_id);
+    assert.deepEqual((await (await fetch(base+"/datasets")).json()).datasets[0].reference_sample_ids,[],"旧正常裁决不能使已更正异常继续进入良品参考");
     const report = await (await fetch(`${base}/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
     assert.equal(report.quality.technical_usability.percent, 100);
     assert.equal(report.quality.human_verification_coverage.percent, 100);
     assert.equal(report.quality.audit_coverage.percent, 0);
+    assert.equal(report.human_fail_count,1);
+    const blocked={...submission,submission_id:randomUUID(),decision:"UNCERTAIN",comment:"事务恢复"};
+    execFileSync(bridge.pythonPath,["-c","import sqlite3,sys; c=sqlite3.connect(sys.argv[1]); c.execute(\"CREATE TRIGGER fail_review_session BEFORE INSERT ON review_sessions BEGIN SELECT RAISE(ABORT,'injected session storage failure'); END\"); c.commit(); c.close()",path.join(root,"test.db")]);
+    assert.equal((await post("/review/submit",blocked)).status,500);
+    assert.equal((await (await fetch(`${base}/sample/${encodeURIComponent(samples.items[0].sample_id)}`)).json()).review_history.length,3,"会话存储失败时裁决必须一起回滚");
+    execFileSync(bridge.pythonPath,["-c","import sqlite3,sys; c=sqlite3.connect(sys.argv[1]); c.execute('DROP TRIGGER fail_review_session'); c.commit(); c.close()",path.join(root,"test.db")]);
+    assert.equal((await post("/review/submit",blocked)).status,200,"故障修复后可使用原提交标识重试");
     const badImport = await post("/datasets/import", { name: "broken", image_dir: "/does-not-exist", annotation_dir: labels });
     assert.equal(badImport.status, 404);
     assert.equal((await (await fetch(base + "/datasets")).json()).datasets.length, 1);
