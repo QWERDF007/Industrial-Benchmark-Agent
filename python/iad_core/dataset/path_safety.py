@@ -23,6 +23,13 @@ def get_authorized_dataset_roots(db_path: Optional[str] = None) -> List[str]:
         db_dir = os.path.dirname(os.path.realpath(db_path))
         if db_dir and os.path.isdir(db_dir):
             allowed_roots.append(db_dir)
+        import sqlite3
+        with sqlite3.connect(db_path) as conn:
+            registered = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='datasets'").fetchone()
+            if registered:
+                import json
+                for row in conn.execute("SELECT config_json FROM datasets"):
+                    allowed_roots.append(os.path.realpath(json.loads(row[0])["root"]))
 
     if "pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ:
         allowed_roots.append(os.path.realpath(tempfile.gettempdir()))

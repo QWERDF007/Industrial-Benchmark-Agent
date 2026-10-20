@@ -1,10 +1,10 @@
 /**
  * Industrial Benchmark Agent - Root Harness Extension Bundle (DS-S00, DS-S01, DS-S03, DS-S04).
  * Single Web Entrypoint: Assembles Native Cordis plugins for PythonBridge, IAD Remote RPC,
- * native HTTP media & upload routes on port 5173, invariant policies, and the 22 domain tools.
+ * native HTTP workbench routes, invariant policies, and domain tools.
  */
 
-import { PythonBridge } from "./python-bridge/index.js";
+import { PythonBridge, type PythonBridgeConfig } from "./python-bridge/index.js";
 import { IadRemoteService } from "./remote/index.js";
 import { createIadHttpHandler } from "./routes/index.js";
 import * as coreClient from "./core-client/index.js";
@@ -24,11 +24,7 @@ export { createVisionTools } from "./vision/index.js";
 export { createBenchmarkTools } from "./benchmark/index.js";
 export { createEvaluationTools } from "./evaluation/index.js";
 
-export interface IADHarnessConfig {
-  domainServerUrl?: string;
-  pythonPath?: string;
-  cwd?: string;
-  timeoutMs?: number;
+export interface IADHarnessConfig extends PythonBridgeConfig {
   authorizedMcpTools?: string[];
 }
 
@@ -38,6 +34,7 @@ export const inject = ["tools", "systemPrompt"];
 export function apply(ctx: any, config: IADHarnessConfig = {}) {
   // 1. Initialize PythonBridge singleton
   const bridge = new PythonBridge(config);
+  ctx.on?.("dispose", () => bridge.destroy());
   ctx.provide?.("iadPythonBridge", bridge);
   ctx.iadPythonBridge = bridge;
 

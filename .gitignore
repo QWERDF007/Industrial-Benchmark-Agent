@@ -18,3 +18,11 @@ runs/
 data/cache/
 data/iad.db
 data/uploads/
+*.db-shm
+*.db-wal
+
+# Local runtime state and deployment configuration
+.env*
+!.env.example
+.scratch/
+data/*.db

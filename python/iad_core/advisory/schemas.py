@@ -1,3 +1,4 @@
+from iad_core.advisory.analysis import AuditAnalysis
 from enum import Enum
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
@@ -51,6 +52,10 @@ class AuditSuggestion(BaseModel):
     sample_id: Optional[str] = None
     session_id: Optional[str] = None
     model_route: Optional[str] = None
+    confidence: Optional[float] = Field(None, ge=0, le=1)
+    reference_sample_ids: List[str] = Field(default_factory=list)
+    audit_run_id: Optional[str] = None
+    analysis: Optional[AuditAnalysis] = None
     observations: List[ObservationItem] = Field(default_factory=list)
     hypotheses: List[HypothesisItem] = Field(default_factory=list)
     conclusion_status: ConclusionStatus = ConclusionStatus.INSUFFICIENT_EVIDENCE

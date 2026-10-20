@@ -606,13 +606,14 @@ class ReviewRepository:
             conn.execute(
                 """
                 INSERT INTO review_sessions (
-                    session_id, task_id, reviewer, started_at, submitted_at, total_reviewed, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    session_id, task_id, reviewer, started_at, submitted_at, total_reviewed, dataset_id, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(session_id) DO UPDATE SET
                     reviewer = excluded.reviewer,
                     started_at = excluded.started_at,
                     submitted_at = excluded.submitted_at,
                     total_reviewed = excluded.total_reviewed,
+                    dataset_id = excluded.dataset_id,
                     updated_at = CURRENT_TIMESTAMP
                 """,
                 (
@@ -622,6 +623,7 @@ class ReviewRepository:
                     session.started_at,
                     session.submitted_at,
                     session.total_reviewed,
+                    session.dataset_id,
                 ),
             )
 
@@ -639,6 +641,7 @@ class ReviewRepository:
                 started_at=row["started_at"],
                 submitted_at=row["submitted_at"],
                 total_reviewed=row["total_reviewed"],
+                dataset_id=row["dataset_id"],
             )
 
     def list_sessions(self, task_id: str) -> List[ReviewSession]:
@@ -656,6 +659,7 @@ class ReviewRepository:
                     started_at=r["started_at"],
                     submitted_at=r["submitted_at"],
                     total_reviewed=r["total_reviewed"],
+                    dataset_id=r["dataset_id"],
                 )
                 for r in cursor.fetchall()
             ]
@@ -703,7 +707,7 @@ class ReviewRepository:
                 )
             else:
                 cursor.execute(
-                    "SELECT * FROM review_decisions WHERE sample_id = ? ORDER BY id DESC LIMIT 1",
+                    "SELECT * FROM review_decisions WHERE sample_id = ? ORDER BY COALESCE(submitted_at,updated_at) DESC,id DESC LIMIT 1",
                     (sample_id,),
                 )
             row = cursor.fetchone()

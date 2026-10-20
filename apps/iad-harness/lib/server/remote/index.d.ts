@@ -5,24 +5,33 @@
 import { Context } from "@deepseek-ai/cordis";
 import { TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
 import { PythonBridge } from "../python-bridge/index.js";
+import type { AuditStartRequest, DatasetImportRequest, Filters, ReviewSubmission } from "../../shared/contracts.js";
 export declare class IadRemoteService extends TypertRemoteService {
     readonly bridge: PythonBridge;
     constructor(ctx: Context, bridge: PythonBridge);
     datasetList(args?: any): Promise<any>;
     datasetGet(args: {
-        task_id: string;
+        dataset_id?: string;
+        task_id?: string;
+    }): Promise<any>;
+    datasetImport(args: DatasetImportRequest): Promise<any>;
+    datasetUpdate(args: {
+        dataset_id: string;
+        name?: string;
+        reference_sample_ids?: string[];
+        unannotated_is_normal?: boolean;
     }): Promise<any>;
     datasetScan(args: {
         config_path: string;
         task_id?: string;
     }): Promise<any>;
     sampleList(args: {
-        task_id: string;
+        task_id?: string;
+        dataset_id?: string;
         page?: number;
         page_size?: number;
-        filter?: string;
         sort_by?: string;
-    }): Promise<any>;
+    } & Partial<Filters>): Promise<any>;
     sampleGet(args: {
         sample_id: string;
     }): Promise<any>;
@@ -33,11 +42,7 @@ export declare class IadRemoteService extends TypertRemoteService {
         sample_id: string;
         size?: number;
     }): Promise<any>;
-    auditStart(args: {
-        task_id: string;
-        mode?: string;
-        model_name?: string;
-    }): Promise<any>;
+    auditStart(args: AuditStartRequest): Promise<any>;
     auditStatus(args: {
         run_id: string;
     }): Promise<any>;
@@ -46,24 +51,19 @@ export declare class IadRemoteService extends TypertRemoteService {
     }): Promise<any>;
     reviewQueue(args: {
         task_id: string;
-        limit?: number;
-        offset?: number;
+        page?: number;
+        page_size?: number;
     }): Promise<any>;
     reviewEvidence(args: {
+        task_id: string;
         sample_id: string;
     }): Promise<any>;
     reviewStartSession(args: {
         reviewer: string;
         task_id: string;
-        goal?: string;
+        dataset_id?: string;
     }): Promise<any>;
-    reviewSubmitDecision(args: {
-        session_id: string;
-        sample_id: string;
-        decision: "PASS" | "FAIL" | "UNCERTAIN";
-        reason?: string;
-        reviewer?: string;
-    }): Promise<any>;
+    reviewSubmitDecision(args: ReviewSubmission): Promise<any>;
     reviewFinishSession(args: {
         session_id: string;
     }): Promise<any>;

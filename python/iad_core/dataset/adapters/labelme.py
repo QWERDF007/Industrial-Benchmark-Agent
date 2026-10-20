@@ -16,6 +16,9 @@ class LabelmeAdapter(DatasetAdapter):
 
         # 1. Custom folder replacement if specified
         ann_cfg = self.config.annotations
+        if ann_cfg.root:
+            candidate = os.path.join(ann_cfg.root, stem + ".json")
+            return candidate if os.path.isfile(candidate) else None
         if ann_cfg.folder_replace:
             replaced_rel = rel_path
             for src, dst in ann_cfg.folder_replace.items():
@@ -81,7 +84,7 @@ class LabelmeAdapter(DatasetAdapter):
             raw_label = str(shape.get("label", ""))
             shape_type = shape.get("shape_type", "rectangle")
             points = shape.get("points", [])
-            phenomenon = self.config.annotations.labels.get(raw_label, None)
+            phenomenon = self.config.annotations.labels.get(raw_label, raw_label if not self.config.annotations.labels else None)
 
             if shape_type == "rectangle" and len(points) >= 2:
                 xs = [float(p[0]) for p in points]

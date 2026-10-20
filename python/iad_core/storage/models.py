@@ -1,7 +1,12 @@
 from enum import Enum
 from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, computed_field, field_validator
+from uuid import NAMESPACE_URL, uuid5
+
+
+def sample_uuid(sample_id: str) -> str:
+    return str(uuid5(NAMESPACE_URL, "iad:sample:" + sample_id))
 
 
 class QualityStatus(str, Enum):
@@ -103,6 +108,11 @@ class Sample(BaseModel):
     width: int
     height: int
 
+    @computed_field
+    @property
+    def sample_uuid(self) -> str:
+        return sample_uuid(self.sample_id)
+
     @field_validator("quality_status", mode="before")
     @classmethod
     def validate_quality_status(cls, v):
@@ -181,6 +191,7 @@ class ReviewSession(BaseModel):
     started_at: Optional[str] = None
     submitted_at: Optional[str] = None
     total_reviewed: int = 0
+    dataset_id: Optional[str] = None
 
 
 # 7. ReviewDecisionRecord

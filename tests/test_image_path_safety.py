@@ -7,7 +7,6 @@ from iad_core.storage.database import Database
 from iad_core.storage.models import Sample, InspectionTask
 from iad_core.storage.repositories import SampleRepository, TaskRepository
 from iad_core.dataset.path_safety import validate_sample_image_path, PathSafetyError
-from iad_core.entry import op_sample_image_path
 
 
 def test_image_path_safety_validation(tmp_path, monkeypatch):

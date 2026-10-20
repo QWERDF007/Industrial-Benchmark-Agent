@@ -2,6 +2,7 @@ export interface PythonBridgeConfig {
     pythonPath?: string;
     cwd?: string;
     timeoutMs?: number;
+    dbPath?: string;
 }
 export interface PythonBridgeResponse<T = any> {
     event: "result" | "error" | "progress";
@@ -22,6 +23,7 @@ export declare class PythonBridge {
     readonly pythonPath: string;
     readonly cwd: string;
     readonly timeoutMs: number;
+    readonly dbPath?: string;
     private worker;
     private pendingRequests;
     private stdoutAccum;

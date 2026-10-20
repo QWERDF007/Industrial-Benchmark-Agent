@@ -6,6 +6,7 @@ export interface PythonBridgeConfig {
   pythonPath?: string;
   cwd?: string;
   timeoutMs?: number;
+  dbPath?: string;
 }
 
 export interface PythonBridgeResponse<T = any> {
@@ -61,6 +62,7 @@ export class PythonBridge {
   readonly pythonPath: string;
   readonly cwd: string;
   readonly timeoutMs: number;
+  readonly dbPath?: string;
 
   private worker: ChildProcess | null = null;
   private pendingRequests: Map<string, PendingRequest> = new Map();
@@ -70,7 +72,8 @@ export class PythonBridge {
   constructor(config: PythonBridgeConfig = {}) {
     this.cwd = config.cwd ? path.resolve(config.cwd) : findWorkspaceRoot();
     this.pythonPath = resolvePythonPath(config.pythonPath);
-    this.timeoutMs = config.timeoutMs || 60000;
+    this.timeoutMs = config.timeoutMs ?? 120000;
+    this.dbPath = config.dbPath;
   }
 
   private ensureWorker(): ChildProcess {
@@ -139,10 +142,12 @@ export class PythonBridge {
     });
 
     child.on("error", (err: Error) => {
+      if (this.worker !== child) return;
       this.handleWorkerExit(new Error(`Python process error: ${err.message}`));
     });
 
     child.on("close", (code: number | null) => {
+      if (this.worker !== child) return;
       this.handleWorkerExit(
         new Error(`Python worker exited with code ${code}. Stderr: ${this.stderrAccum.slice(-1000)}`)
       );
@@ -220,6 +225,7 @@ export class PythonBridge {
         request_id: requestId,
         operation,
         arguments: argumentsPayload,
+        db_path: this.dbPath,
       }) + "\n";
 
       try {
@@ -238,5 +244,6 @@ export class PythonBridge {
       } catch {}
       this.worker = null;
     }
+    this.handleWorkerExit(new Error("Python bridge was disposed"));
   }
 }

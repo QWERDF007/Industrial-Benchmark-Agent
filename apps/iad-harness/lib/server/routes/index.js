@@ -1,306 +1,115 @@
-/**
- * DSH Native HTTP Route Handler for Industrial AD Benchmark (DS-S01, DS-S02, DS-S03, DS-S11, DS-S15).
- * Mounted directly into DSH WebServer (port 5173) under /api/iad/*.
- * Strictly isolated, safe, no external server or port 8000.
- */
 import fs from "node:fs";
 import fsp from "node:fs/promises";
-import path from "node:path";
-import crypto from "node:crypto";
 function sendJson(res, statusCode, data) {
-    const jsonStr = JSON.stringify(data);
-    res.writeHead(statusCode, {
-        "Content-Type": "application/json; charset=utf-8",
-        "Content-Length": Buffer.byteLength(jsonStr),
-        "Cache-Control": "no-cache",
-    });
-    res.end(jsonStr);
+    const body = JSON.stringify(data);
+    res.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8", "Content-Length": Buffer.byteLength(body), "Cache-Control": "no-store" });
+    res.end(body);
 }
-function sendError(res, statusCode, message, details) {
-    sendJson(res, statusCode, {
-        error: {
-            status_code: statusCode,
-            message,
-            details,
-        },
-    });
+async function readJson(req) {
+    const chunks = [];
+    let size = 0;
+    for await (const chunk of req) {
+        size += chunk.length;
+        if (size > 1024 * 1024)
+            throw Object.assign(new Error("JSON body is too large"), { statusCode: 413 });
+        chunks.push(Buffer.from(chunk));
+    }
+    const body = JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
+    if (!body || typeof body !== "object" || Array.isArray(body))
+        throw new Error("Expected a JSON object");
+    return body;
 }
-async function readBodyJson(req) {
-    return new Promise((resolve, reject) => {
-        let body = "";
-        req.on("data", (chunk) => {
-            body += chunk.toString("utf8");
-            if (body.length > 10 * 1024 * 1024) {
-                // 10MB limit for JSON bodies
-                req.destroy(new Error("Request payload too large"));
-            }
-        });
-        req.on("end", () => {
-            if (!body.trim())
-                return resolve({});
-            try {
-                resolve(JSON.parse(body));
-            }
-            catch (err) {
-                reject(new Error(`Invalid JSON payload: ${err.message}`));
-            }
-        });
-        req.on("error", reject);
-    });
+async function sendMedia(res, info) {
+    const stat = await fsp.stat(info.path);
+    res.writeHead(200, { "Content-Type": info.media_type, "Content-Length": stat.size, "Cache-Control": "private, max-age=60" });
+    fs.createReadStream(info.path).on("error", () => res.destroy()).pipe(res);
 }
 export function createIadHttpHandler(bridge) {
-    const sampleImagePathCache = new Map();
     return async function iadHttpHandler(req, res) {
         try {
-            const parsedUrl = new URL(req.url || "/", `http://${req.headers.host || "127.0.0.1"}`);
-            const pathname = parsedUrl.pathname.replace(/\/+$/, "");
-            const method = (req.method || "GET").toUpperCase();
-            // CORS headers for local development & LAN access
-            res.setHeader("Access-Control-Allow-Origin", "*");
-            res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-            res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+            const url = new URL(req.url || "/", "http://localhost");
+            const pathname = url.pathname.replace(/\/+$/, "");
+            const method = req.method || "GET";
             if (method === "OPTIONS") {
                 res.writeHead(204);
                 res.end();
                 return;
             }
-            // 1. Generic RPC fallback: POST /api/iad/rpc
-            if (pathname === "/api/iad/rpc" && method === "POST") {
-                const payload = await readBodyJson(req);
-                const { operation, arguments: args } = payload;
-                if (!operation) {
-                    sendError(res, 400, "Field 'operation' is required");
-                    return;
-                }
-                const result = await bridge.execute(operation, args || {});
-                sendJson(res, 200, { status: "OK", data: result });
+            const query = Object.fromEntries(url.searchParams);
+            for (const key of ["page", "page_size"]) {
+                if (key in query)
+                    query[key] = Number(query[key]);
+            }
+            if (url.searchParams.has("annotation_filters"))
+                query.annotation_filters = JSON.parse(url.searchParams.get("annotation_filters"));
+            const body = ["POST", "PATCH"].includes(method) ? await readJson(req) : {};
+            const call = async (operation, args = {}) => {
+                const data = await bridge.execute(operation, args);
+                sendJson(res, 200, data);
+            };
+            if (pathname === "/api/iad/datasets" && method === "GET")
+                return await call("dataset_list");
+            if (pathname === "/api/iad/datasets/import" && method === "POST")
+                return await call("dataset_import", body);
+            if (pathname === "/api/iad/directories" && method === "GET")
+                return await call("directory_list", query);
+            const dataset = pathname.match(/^\/api\/iad\/datasets\/([^/]+)$/);
+            if (dataset) {
+                const args = { ...body, dataset_id: decodeURIComponent(dataset[1]) };
+                if (method === "PATCH")
+                    return await call("dataset_update", args);
+                if (method === "GET")
+                    return await call("dataset_get", { dataset_id: args.dataset_id });
+            }
+            const samples = pathname.match(/^\/api\/iad\/samples\/([^/]+)$/);
+            if (samples && method === "GET")
+                return await call("sample_list", { ...query, task_id: decodeURIComponent(samples[1]) });
+            const sample = pathname.match(/^\/api\/iad\/sample\/(.+)$/);
+            if (sample && method === "GET")
+                return await call("sample_get", { sample_id: decodeURIComponent(sample[1]) });
+            const media = pathname.match(/^\/api\/iad\/media\/sample\/([^/]+)\/(.+)\/(thumbnail|image)$/);
+            if (media && method === "GET") {
+                const sampleId = decodeURIComponent(media[2]);
+                const info = await bridge.execute(media[3] === "thumbnail" ? "sample_thumbnail" : "sample_image_path", { sample_id: sampleId, ...(media[3] === "thumbnail" ? { size: Number(query.size || 240) } : {}) });
+                await sendMedia(res, info);
                 return;
             }
-            // 2. Dataset list: GET /api/iad/tasks
-            if (pathname === "/api/iad/tasks" && method === "GET") {
-                const result = await bridge.execute("dataset_list");
-                sendJson(res, 200, result);
+            const evidence = pathname.match(/^\/api\/iad\/evidence\/([^/]+)\/([^/]+)$/);
+            if (evidence && method === "GET") {
+                const info = await bridge.execute("audit_evidence", { suggestion_id: decodeURIComponent(evidence[1]), evidence_id: decodeURIComponent(evidence[2]) });
+                await sendMedia(res, info);
                 return;
             }
-            // 3. Dataset detail: GET /api/iad/task/:taskId
-            const taskDetailMatch = pathname.match(/^\/api\/iad\/task\/([^/?#]+)$/);
-            if (taskDetailMatch && method === "GET") {
-                const taskId = decodeURIComponent(taskDetailMatch[1]);
-                const result = await bridge.execute("dataset_get", { task_id: taskId });
-                sendJson(res, 200, result);
-                return;
-            }
-            // 4. Sample list: GET /api/iad/samples/:taskId
-            const samplesMatch = pathname.match(/^\/api\/iad\/samples\/([^/?#]+)$/);
-            if (samplesMatch && method === "GET") {
-                const taskId = decodeURIComponent(samplesMatch[1]);
-                const page = parseInt(parsedUrl.searchParams.get("page") || "1", 10);
-                const pageSize = parseInt(parsedUrl.searchParams.get("page_size") || "24", 10);
-                const filter = parsedUrl.searchParams.get("filter") || "all";
-                const sortBy = parsedUrl.searchParams.get("sort_by") || "default";
-                const result = await bridge.execute("sample_list", {
-                    task_id: taskId,
-                    page,
-                    page_size: pageSize,
-                    filter,
-                    sort_by: sortBy,
-                });
-                sendJson(res, 200, result);
-                return;
-            }
-            // 5. Sample detail: GET /api/iad/sample/:sampleId
-            const sampleMatch = pathname.match(/^\/api\/iad\/sample\/(.+)$/);
-            if (sampleMatch && method === "GET") {
-                const sampleId = decodeURIComponent(sampleMatch[1]);
-                const result = await bridge.execute("sample_get", { sample_id: sampleId });
-                sendJson(res, 200, result);
-                return;
-            }
-            // 5b. Single-sample Multimodal Audit: POST /api/iad/sample/:sampleId/audit or POST /api/iad/audit/sample
-            const sampleAuditMatch = pathname.match(/^\/api\/iad\/sample\/(.+)\/audit$/);
-            if ((sampleAuditMatch && method === "POST") || (pathname === "/api/iad/audit/sample" && method === "POST")) {
-                const payload = await readBodyJson(req);
-                const sampleId = sampleAuditMatch ? decodeURIComponent(sampleAuditMatch[1]) : payload.sample_id;
-                if (!sampleId) {
-                    sendError(res, 400, "sample_id is required");
-                    return;
-                }
-                const result = await bridge.execute("sample_audit", {
-                    sample_id: sampleId,
-                    model_name: payload.model_name || "Qwen/Qwen3.8-27B-FP8",
-                });
-                sendJson(res, 200, result);
-                return;
-            }
-            // 6. Thumbnail delivery: GET /api/iad/media/sample/:taskId/:sampleId/thumbnail
-            const thumbMatch = pathname.match(/^\/api\/iad\/media\/sample\/([^/?#]+)\/(.+)\/thumbnail$/);
-            if (thumbMatch && method === "GET") {
-                const sampleId = decodeURIComponent(thumbMatch[2]);
-                const size = parseInt(parsedUrl.searchParams.get("size") || "240", 10);
-                // Fast-path: Check thumbnail disk cache directly in Node.js first (<1ms)
-                const thumbName = crypto.createHash("sha256").update(sampleId, "utf8").digest("hex") + `_${size}.jpg`;
-                const cachedThumbPath = path.resolve(bridge.cwd, "data/cache/thumbnails", thumbName);
-                if (fs.existsSync(cachedThumbPath)) {
-                    const stat = await fsp.stat(cachedThumbPath);
-                    res.writeHead(200, {
-                        "Content-Type": "image/jpeg",
-                        "Content-Length": stat.size,
-                        "Cache-Control": "public, max-age=86400, immutable",
-                    });
-                    fs.createReadStream(cachedThumbPath).pipe(res);
-                    return;
-                }
-                const thumbInfo = await bridge.execute("sample_thumbnail", { sample_id: sampleId, size });
-                if (!fs.existsSync(thumbInfo.path)) {
-                    sendError(res, 404, "Thumbnail file not found");
-                    return;
-                }
-                const stat = await fsp.stat(thumbInfo.path);
-                res.writeHead(200, {
-                    "Content-Type": thumbInfo.media_type || "image/jpeg",
-                    "Content-Length": stat.size,
-                    "Cache-Control": "public, max-age=86400, immutable",
-                });
-                fs.createReadStream(thumbInfo.path).pipe(res);
-                return;
-            }
-            // 7. Full Image delivery: GET /api/iad/media/sample/:taskId/:sampleId/image
-            const imageMatch = pathname.match(/^\/api\/iad\/media\/sample\/([^/?#]+)\/(.+)\/image$/);
-            if (imageMatch && method === "GET") {
-                const taskId = decodeURIComponent(imageMatch[1]);
-                const sampleId = decodeURIComponent(imageMatch[2]);
-                // Fast-path: In-memory cache for resolved image paths (<1ms)
-                const cachedPath = sampleImagePathCache.get(sampleId);
-                if (cachedPath && fs.existsSync(cachedPath)) {
-                    const ext = path.extname(cachedPath).toLowerCase();
-                    const mediaType = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
-                    const stat = await fsp.stat(cachedPath);
-                    res.writeHead(200, {
-                        "Content-Type": mediaType,
-                        "Content-Length": stat.size,
-                        "Cache-Control": "public, max-age=3600",
-                    });
-                    fs.createReadStream(cachedPath).pipe(res);
-                    return;
-                }
-                const imageInfo = await bridge.execute("sample_image_path", { sample_id: sampleId });
-                if (!fs.existsSync(imageInfo.path)) {
-                    sendError(res, 404, "Image file not found");
-                    return;
-                }
-                sampleImagePathCache.set(sampleId, imageInfo.path);
-                const stat = await fsp.stat(imageInfo.path);
-                res.writeHead(200, {
-                    "Content-Type": imageInfo.media_type || "image/jpeg",
-                    "Content-Length": stat.size,
-                    "Cache-Control": "public, max-age=3600",
-                });
-                fs.createReadStream(imageInfo.path).pipe(res);
-                return;
-            }
-            // 8. Audit start: POST /api/iad/audit/start
-            if (pathname === "/api/iad/audit/start" && method === "POST") {
-                const payload = await readBodyJson(req);
-                const { task_id, mode, model_name } = payload;
-                const result = await bridge.execute("audit_start", {
-                    task_id,
-                    mode: mode || "HYBRID",
-                    model_name: model_name || "Qwen/Qwen3.8-27B-FP8",
-                });
-                sendJson(res, 200, result);
-                return;
-            }
-            // 9. Audit status: GET /api/iad/audit/status/:runId
-            const auditStatusMatch = pathname.match(/^\/api\/iad\/audit\/status\/([^/?#]+)$/);
-            if (auditStatusMatch && method === "GET") {
-                const runId = decodeURIComponent(auditStatusMatch[1]);
-                const result = await bridge.execute("audit_status", { run_id: runId });
-                sendJson(res, 200, result);
-                return;
-            }
-            // 10. Audit cancel: POST /api/iad/audit/cancel/:runId
-            const auditCancelMatch = pathname.match(/^\/api\/iad\/audit\/cancel\/([^/?#]+)$/);
-            if (auditCancelMatch && method === "POST") {
-                const runId = decodeURIComponent(auditCancelMatch[1]);
-                const result = await bridge.execute("audit_cancel", { run_id: runId });
-                sendJson(res, 200, result);
-                return;
-            }
-            // 11. Review submit: POST /api/iad/review/submit
-            if (pathname === "/api/iad/review/submit" && method === "POST") {
-                const payload = await readBodyJson(req);
-                const result = await bridge.execute("review_submit_decision", payload);
-                sendJson(res, 200, result);
-                return;
-            }
-            // 11b. Review queue: GET /api/iad/review/:taskId/queue
-            const revQueueMatch = pathname.match(/^\/api\/iad\/review\/([^/?#]+)\/queue$/);
-            if (revQueueMatch && method === "GET") {
-                const taskId = decodeURIComponent(revQueueMatch[1]);
-                const page = parseInt(parsedUrl.searchParams.get("page") || "1", 10);
-                const pageSize = parseInt(parsedUrl.searchParams.get("page_size") || "20", 10);
-                const result = await bridge.execute("review_queue", { task_id: taskId, page, page_size: pageSize });
-                sendJson(res, 200, result);
-                return;
-            }
-            // 12. Review stats: GET /api/iad/review/stats/:taskId
-            const revStatsMatch = pathname.match(/^\/api\/iad\/review\/stats\/([^/?#]+)$/);
-            if (revStatsMatch && method === "GET") {
-                const taskId = decodeURIComponent(revStatsMatch[1]);
-                const result = await bridge.execute("review_stats", { task_id: taskId });
-                sendJson(res, 200, result);
-                return;
-            }
-            // 13. Audit report: GET /api/iad/report/:taskId
-            const reportMatch = pathname.match(/^\/api\/iad\/report\/([^/?#]+)$/);
-            if (reportMatch && method === "GET") {
-                const taskId = decodeURIComponent(reportMatch[1]);
-                const result = await bridge.execute("report_get", { task_id: taskId });
-                sendJson(res, 200, result);
-                return;
-            }
-            // 14. File Upload: POST /api/iad/upload (DS-S02, DS-S15)
-            if (pathname === "/api/iad/upload" && method === "POST") {
-                const taskId = parsedUrl.searchParams.get("task_id") || `upload_${Date.now()}`;
-                const uploadId = `upl_${Date.now()}_${crypto.randomBytes(4).toString("hex")}`;
-                const uploadDir = path.resolve(bridge.cwd, "data/uploads", uploadId);
-                await fsp.mkdir(uploadDir, { recursive: true });
-                // Save incoming binary body directly to a zip file or tar
-                const rawFilePath = path.join(uploadDir, "upload.zip");
-                const fileStream = fs.createWriteStream(rawFilePath);
-                await new Promise((resolve, reject) => {
-                    req.pipe(fileStream);
-                    fileStream.on("finish", resolve);
-                    fileStream.on("error", reject);
-                    req.on("error", reject);
-                });
-                // Generate synthetic or scanned dataset configuration
-                const yamlConfigPath = path.join(uploadDir, "dataset_config.yaml");
-                const yamlContent = `task_id: "${taskId}"\nproduct: "${taskId}"\nroot_dir: "${uploadDir}"\npatterns: ["*.png", "*.jpg", "*.jpeg"]\n`;
-                await fsp.writeFile(yamlConfigPath, yamlContent, "utf8");
-                // Execute dataset scan
-                try {
-                    const scanRes = await bridge.execute("dataset_scan", {
-                        config_path: yamlConfigPath,
-                        task_id: taskId,
-                    });
-                    sendJson(res, 200, {
-                        status: "OK",
-                        upload_id: uploadId,
-                        task_id: taskId,
-                        scan: scanRes,
-                    });
-                }
-                catch (scanErr) {
-                    sendError(res, 400, `Dataset scan failed: ${scanErr.message}`);
-                }
-                return;
-            }
-            // Route not found
-            sendError(res, 404, `No IAD route matched ${method} ${pathname}`);
+            if (pathname === "/api/iad/audit/start" && method === "POST")
+                return await call("audit_start", body);
+            if (pathname === "/api/iad/audit/jobs" && method === "GET")
+                return await call("audit_list", query);
+            if (pathname === "/api/iad/audit/profile" && method === "GET")
+                return await call("audit_profile", query);
+            const audit = pathname.match(/^\/api\/iad\/audit\/(status|cancel)\/([^/]+)$/);
+            if (audit && ((audit[1] === "status" && method === "GET") || (audit[1] === "cancel" && method === "POST")))
+                return await call("audit_" + audit[1], { run_id: decodeURIComponent(audit[2]) });
+            if (pathname === "/api/iad/review/session" && method === "POST")
+                return await call("review_start_session", body);
+            if (pathname === "/api/iad/review/submit" && method === "POST")
+                return await call("review_submit_decision", body);
+            if (pathname === "/api/iad/review/finish" && method === "POST")
+                return await call("review_finish_session", body);
+            const queue = pathname.match(/^\/api\/iad\/review\/([^/]+)\/queue$/);
+            if (queue && method === "GET")
+                return await call("review_queue", { ...query, task_id: decodeURIComponent(queue[1]) });
+            const stats = pathname.match(/^\/api\/iad\/review\/stats\/([^/]+)$/);
+            if (stats && method === "GET")
+                return await call("review_stats", { ...query, task_id: decodeURIComponent(stats[1]) });
+            const report = pathname.match(/^\/api\/iad\/report\/([^/]+)$/);
+            if (report && method === "GET")
+                return await call("report_get", { ...query, task_id: decodeURIComponent(report[1]) });
+            sendJson(res, 404, { error: { message: `No route for ${method} ${pathname}` } });
         }
-        catch (err) {
-            sendError(res, 500, `Internal IAD error: ${err.message}`, { stack: err.stack });
+        catch (error) {
+            const err = error;
+            const status = err.details?.status_code || err.statusCode || (error instanceof SyntaxError ? 400 : 500);
+            sendJson(res, status, { error: { message: err.message } });
         }
     };
 }

@@ -6,6 +6,7 @@
 import { Context } from "@deepseek-ai/cordis";
 import { Remote, TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
 import { PythonBridge } from "../python-bridge/index.js";
+import type { AuditStartRequest, DatasetImportRequest, Filters, ReviewSubmission } from "../../shared/contracts.js";
 
 export class IadRemoteService extends TypertRemoteService {
   readonly bridge: PythonBridge;
@@ -21,8 +22,18 @@ export class IadRemoteService extends TypertRemoteService {
   }
 
   @Remote
-  async datasetGet(args: { task_id: string }) {
+  async datasetGet(args: { dataset_id?: string; task_id?: string }) {
     return this.bridge.execute("dataset_get", args);
+  }
+
+  @Remote
+  async datasetImport(args: DatasetImportRequest) {
+    return this.bridge.execute("dataset_import", { ...args });
+  }
+
+  @Remote
+  async datasetUpdate(args: { dataset_id: string; name?: string; reference_sample_ids?: string[]; unannotated_is_normal?: boolean }) {
+    return this.bridge.execute("dataset_update", args);
   }
 
   @Remote
@@ -32,12 +43,12 @@ export class IadRemoteService extends TypertRemoteService {
 
   @Remote
   async sampleList(args: {
-    task_id: string;
+    task_id?: string;
+    dataset_id?: string;
     page?: number;
     page_size?: number;
-    filter?: string;
     sort_by?: string;
-  }) {
+  } & Partial<Filters>) {
     return this.bridge.execute("sample_list", args);
   }
 
@@ -57,8 +68,8 @@ export class IadRemoteService extends TypertRemoteService {
   }
 
   @Remote
-  async auditStart(args: { task_id: string; mode?: string; model_name?: string }) {
-    return this.bridge.execute("audit_start", args);
+  async auditStart(args: AuditStartRequest) {
+    return this.bridge.execute("audit_start", { ...args });
   }
 
   @Remote
@@ -72,29 +83,23 @@ export class IadRemoteService extends TypertRemoteService {
   }
 
   @Remote
-  async reviewQueue(args: { task_id: string; limit?: number; offset?: number }) {
+  async reviewQueue(args: { task_id: string; page?: number; page_size?: number }) {
     return this.bridge.execute("review_queue", args);
   }
 
   @Remote
-  async reviewEvidence(args: { sample_id: string }) {
+  async reviewEvidence(args: { task_id: string; sample_id: string }) {
     return this.bridge.execute("review_evidence", args);
   }
 
   @Remote
-  async reviewStartSession(args: { reviewer: string; task_id: string; goal?: string }) {
+  async reviewStartSession(args: { reviewer: string; task_id: string; dataset_id?: string }) {
     return this.bridge.execute("review_start_session", args);
   }
 
   @Remote
-  async reviewSubmitDecision(args: {
-    session_id: string;
-    sample_id: string;
-    decision: "PASS" | "FAIL" | "UNCERTAIN";
-    reason?: string;
-    reviewer?: string;
-  }) {
-    return this.bridge.execute("review_submit_decision", args);
+  async reviewSubmitDecision(args: ReviewSubmission) {
+    return this.bridge.execute("review_submit_decision", { ...args });
   }
 
   @Remote

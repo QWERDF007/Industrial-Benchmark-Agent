@@ -1,4 +1,7 @@
 import React from "react";
+export declare function ReviewIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
 export declare function AuditIcon({ size }: {
     size?: number;
 }): React.JSX.Element;

@@ -56,7 +56,7 @@ def test_cli_entry_dataset_list(monkeypatch):
     assert len(emitted) == 1
     res = emitted[0]
     assert res["event"] == "result"
-    assert "tasks" in res["data"]
+    assert "datasets" in res["data"]
 
 
 def test_cli_entry_sample_list(monkeypatch):

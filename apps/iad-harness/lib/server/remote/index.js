@@ -42,6 +42,8 @@ let IadRemoteService = (() => {
     let _instanceExtraInitializers = [];
     let _datasetList_decorators;
     let _datasetGet_decorators;
+    let _datasetImport_decorators;
+    let _datasetUpdate_decorators;
     let _datasetScan_decorators;
     let _sampleList_decorators;
     let _sampleGet_decorators;
@@ -62,6 +64,8 @@ let IadRemoteService = (() => {
             const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(_classSuper[Symbol.metadata] ?? null) : void 0;
             _datasetList_decorators = [Remote];
             _datasetGet_decorators = [Remote];
+            _datasetImport_decorators = [Remote];
+            _datasetUpdate_decorators = [Remote];
             _datasetScan_decorators = [Remote];
             _sampleList_decorators = [Remote];
             _sampleGet_decorators = [Remote];
@@ -79,6 +83,8 @@ let IadRemoteService = (() => {
             _reportGet_decorators = [Remote];
             __esDecorate(this, null, _datasetList_decorators, { kind: "method", name: "datasetList", static: false, private: false, access: { has: obj => "datasetList" in obj, get: obj => obj.datasetList }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _datasetGet_decorators, { kind: "method", name: "datasetGet", static: false, private: false, access: { has: obj => "datasetGet" in obj, get: obj => obj.datasetGet }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _datasetImport_decorators, { kind: "method", name: "datasetImport", static: false, private: false, access: { has: obj => "datasetImport" in obj, get: obj => obj.datasetImport }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _datasetUpdate_decorators, { kind: "method", name: "datasetUpdate", static: false, private: false, access: { has: obj => "datasetUpdate" in obj, get: obj => obj.datasetUpdate }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _datasetScan_decorators, { kind: "method", name: "datasetScan", static: false, private: false, access: { has: obj => "datasetScan" in obj, get: obj => obj.datasetScan }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _sampleList_decorators, { kind: "method", name: "sampleList", static: false, private: false, access: { has: obj => "sampleList" in obj, get: obj => obj.sampleList }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _sampleGet_decorators, { kind: "method", name: "sampleGet", static: false, private: false, access: { has: obj => "sampleGet" in obj, get: obj => obj.sampleGet }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -107,6 +113,12 @@ let IadRemoteService = (() => {
         async datasetGet(args) {
             return this.bridge.execute("dataset_get", args);
         }
+        async datasetImport(args) {
+            return this.bridge.execute("dataset_import", { ...args });
+        }
+        async datasetUpdate(args) {
+            return this.bridge.execute("dataset_update", args);
+        }
         async datasetScan(args) {
             return this.bridge.execute("dataset_scan", args);
         }
@@ -123,7 +135,7 @@ let IadRemoteService = (() => {
             return this.bridge.execute("sample_thumbnail", args);
         }
         async auditStart(args) {
-            return this.bridge.execute("audit_start", args);
+            return this.bridge.execute("audit_start", { ...args });
         }
         async auditStatus(args) {
             return this.bridge.execute("audit_status", args);
@@ -141,7 +153,7 @@ let IadRemoteService = (() => {
             return this.bridge.execute("review_start_session", args);
         }
         async reviewSubmitDecision(args) {
-            return this.bridge.execute("review_submit_decision", args);
+            return this.bridge.execute("review_submit_decision", { ...args });
         }
         async reviewFinishSession(args) {
             return this.bridge.execute("review_finish_session", args);

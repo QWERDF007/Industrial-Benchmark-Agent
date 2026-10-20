@@ -9,7 +9,6 @@ import { PythonBridge, PythonBridgeConfig } from "../python-bridge/index.js";
 
 export interface CoreClientConfig extends PythonBridgeConfig {
   bridge?: PythonBridge;
-  domainServerUrl?: string; // Kept for interface backward-compatibility only
 }
 
 export interface FetchedImage {

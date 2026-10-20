@@ -19,7 +19,7 @@ test("DSH-05 / DSH-06 / DSH-07: Remote Service and HTTP Routes contract verifica
     async execute(operation, args = {}) {
       executed.push({ operation, args });
       if (operation === "dataset_list") {
-        return { tasks: [{ task_id: "task_demo", product: "demo_product", total_samples: 100 }] };
+        return { datasets: [{ dataset_id: "dataset_demo", task_id: "task_demo", product: "demo_product", total_samples: 100 }] };
       }
       if (operation === "sample_list") {
         return {
@@ -61,8 +61,8 @@ test("DSH-05 / DSH-06 / DSH-07: Remote Service and HTTP Routes contract verifica
   const ctx = new Context();
   const remoteService = new IadRemoteService(ctx, mockBridge);
   const taskList = await remoteService.datasetList({});
-  assert.equal(taskList.tasks.length, 1);
-  assert.equal(taskList.tasks[0].task_id, "task_demo");
+  assert.equal(taskList.datasets.length, 1);
+  assert.equal(taskList.datasets[0].task_id, "task_demo");
 
   const sampleList = await remoteService.sampleList({ task_id: "task_demo", page: 1 });
   assert.equal(sampleList.items.length, 1);
@@ -79,11 +79,11 @@ test("DSH-05 / DSH-06 / DSH-07: Remote Service and HTTP Routes contract verifica
   const baseUrl = `http://127.0.0.1:${port}`;
 
   try {
-    // Test GET /api/iad/tasks
-    const resTasks = await fetch(`${baseUrl}/api/iad/tasks`);
+    // Test GET /api/iad/datasets
+    const resTasks = await fetch(`${baseUrl}/api/iad/datasets`);
     assert.equal(resTasks.status, 200);
     const dataTasks = await resTasks.json();
-    assert.equal(dataTasks.tasks[0].task_id, "task_demo");
+    assert.equal(dataTasks.datasets[0].task_id, "task_demo");
 
     // Test GET /api/iad/samples/task_demo?page=2&page_size=10
     const resSamples = await fetch(`${baseUrl}/api/iad/samples/task_demo?page=2&page_size=10`);

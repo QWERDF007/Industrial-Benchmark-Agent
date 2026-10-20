@@ -1,7 +1,7 @@
 /**
  * Industrial Benchmark Agent - Root Harness Extension Bundle (DS-S00, DS-S01, DS-S03, DS-S04).
  * Single Web Entrypoint: Assembles Native Cordis plugins for PythonBridge, IAD Remote RPC,
- * native HTTP media & upload routes on port 5173, invariant policies, and the 22 domain tools.
+ * native HTTP workbench routes, invariant policies, and domain tools.
  */
 import { PythonBridge } from "./python-bridge/index.js";
 import { IadRemoteService } from "./remote/index.js";
@@ -26,6 +26,7 @@ export const inject = ["tools", "systemPrompt"];
 export function apply(ctx, config = {}) {
     // 1. Initialize PythonBridge singleton
     const bridge = new PythonBridge(config);
+    ctx.on?.("dispose", () => bridge.destroy());
     ctx.provide?.("iadPythonBridge", bridge);
     ctx.iadPythonBridge = bridge;
     // 2. Initialize shared CoreClient backed by PythonBridge

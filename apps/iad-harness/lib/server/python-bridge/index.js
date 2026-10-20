@@ -32,6 +32,7 @@ export class PythonBridge {
     pythonPath;
     cwd;
     timeoutMs;
+    dbPath;
     worker = null;
     pendingRequests = new Map();
     stdoutAccum = "";
@@ -39,7 +40,8 @@ export class PythonBridge {
     constructor(config = {}) {
         this.cwd = config.cwd ? path.resolve(config.cwd) : findWorkspaceRoot();
         this.pythonPath = resolvePythonPath(config.pythonPath);
-        this.timeoutMs = config.timeoutMs || 60000;
+        this.timeoutMs = config.timeoutMs ?? 120000;
+        this.dbPath = config.dbPath;
     }
     ensureWorker() {
         if (this.worker && !this.worker.killed && this.worker.exitCode === null) {
@@ -107,9 +109,13 @@ export class PythonBridge {
             }
         });
         child.on("error", (err) => {
+            if (this.worker !== child)
+                return;
             this.handleWorkerExit(new Error(`Python process error: ${err.message}`));
         });
         child.on("close", (code) => {
+            if (this.worker !== child)
+                return;
             this.handleWorkerExit(new Error(`Python worker exited with code ${code}. Stderr: ${this.stderrAccum.slice(-1000)}`));
         });
         this.worker = child;
@@ -173,6 +179,7 @@ export class PythonBridge {
                 request_id: requestId,
                 operation,
                 arguments: argumentsPayload,
+                db_path: this.dbPath,
             }) + "\n";
             try {
                 worker.stdin?.write(payload, "utf8");
@@ -191,5 +198,6 @@ export class PythonBridge {
             catch { }
             this.worker = null;
         }
+        this.handleWorkerExit(new Error("Python bridge was disposed"));
     }
 }

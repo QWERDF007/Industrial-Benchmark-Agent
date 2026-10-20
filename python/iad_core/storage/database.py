@@ -321,3 +321,37 @@ class Database:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_suggestions_task ON audit_suggestions(task_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_suggestions_sample ON audit_suggestions(sample_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_suggestions_session ON audit_suggestions(session_id)")
+            columns = {row[1] for row in cursor.execute("PRAGMA table_info(audit_suggestions)")}
+            for column, definition in {
+                "confidence": "REAL",
+                "reference_sample_ids_json": "TEXT NOT NULL DEFAULT '[]'",
+                "audit_run_id": "TEXT",
+                "analysis_json": "TEXT",
+            }.items():
+                if column not in columns:
+                    cursor.execute(f"ALTER TABLE audit_suggestions ADD COLUMN {column} {definition}")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_issues_sample ON import_issues(sample_id)")
+            job_columns = {row[1] for row in cursor.execute("PRAGMA table_info(job_runs)")}
+            if "payload_json" not in job_columns:
+                cursor.execute("ALTER TABLE job_runs ADD COLUMN payload_json TEXT NOT NULL DEFAULT '{}'")
+            session_columns = {row[1] for row in cursor.execute("PRAGMA table_info(review_sessions)")}
+            if "dataset_id" not in session_columns:
+                cursor.execute("ALTER TABLE review_sessions ADD COLUMN dataset_id TEXT")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS datasets (
+                    dataset_id TEXT PRIMARY KEY,
+                    task_id TEXT NOT NULL,
+                    config_json TEXT NOT NULL,
+                    reference_sample_ids_json TEXT NOT NULL DEFAULT '[]',
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS normal_profiles (
+                    profile_id TEXT PRIMARY KEY,
+                    dataset_id TEXT NOT NULL,
+                    model_name TEXT NOT NULL,
+                    signature TEXT NOT NULL UNIQUE,
+                    profile_json TEXT NOT NULL
+                )
+            """)

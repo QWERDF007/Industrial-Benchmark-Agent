@@ -12,6 +12,7 @@ class DatasetInfo(BaseModel):
     name: Optional[str] = Field(None, description="Dataset name")
     industry: Optional[str] = Field("3c", description="Industry domain")
     description: Optional[str] = Field(None, description="Dataset description")
+    unannotated_is_normal: bool = False
 
 
 class TaskConfig(BaseModel):
@@ -85,6 +86,7 @@ class BBoxPolicyConfig(BaseModel):
 
 
 class AnnotationsConfig(BaseModel):
+    root: Optional[str] = Field(None, description="Labelme root; mirrors image-relative paths")
     format: str = Field(
         "none",
         description="Annotation format: 'none', 'labelme', 'yolo', 'folder'",

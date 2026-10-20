@@ -1,5 +1,9 @@
 import React from "react";
 
+export function ReviewIcon({ size = 20 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 4H5v17h14V4h-4M9 2h6v5H9zM8 14l3 3 5-6" /></svg>;
+}
+
 export function AuditIcon({ size = 20 }: { size?: number }) {
   return (
     <svg

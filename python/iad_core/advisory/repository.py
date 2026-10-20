@@ -1,6 +1,6 @@
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from iad_core.storage.database import Database
@@ -22,7 +22,7 @@ class AuditSuggestionRepository:
         self.db = db
 
     def save(self, suggestion: AuditSuggestion) -> AuditSuggestion:
-        now = suggestion.created_at or (datetime.utcnow().isoformat() + "Z")
+        now = suggestion.created_at or datetime.now(timezone.utc).isoformat()
         suggestion.created_at = now
 
         obs_json = json.dumps([o.model_dump() for o in suggestion.observations], ensure_ascii=False)
@@ -41,8 +41,9 @@ class AuditSuggestionRepository:
                 INSERT INTO audit_suggestions (
                     suggestion_id, task_id, sample_id, session_id, model_route,
                     observations_json, hypotheses_json, evidence_refs_json,
-                    conclusion_status, recommended_action, input_modalities_json, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    conclusion_status, recommended_action, input_modalities_json, created_at,
+                    confidence, reference_sample_ids_json, audit_run_id, analysis_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     suggestion.suggestion_id,
@@ -57,6 +58,10 @@ class AuditSuggestionRepository:
                     suggestion.recommended_action.value if isinstance(suggestion.recommended_action, RecommendedAction) else str(suggestion.recommended_action),
                     mods_json,
                     now,
+                    suggestion.confidence,
+                    json.dumps(suggestion.reference_sample_ids),
+                    suggestion.audit_run_id,
+                    suggestion.analysis.model_dump_json() if suggestion.analysis else None,
                 ),
             )
         return suggestion
@@ -73,6 +78,10 @@ class AuditSuggestionRepository:
             sample_id=row["sample_id"],
             session_id=row["session_id"],
             model_route=row["model_route"],
+            confidence=row["confidence"],
+            reference_sample_ids=json.loads(row["reference_sample_ids_json"]),
+            audit_run_id=row["audit_run_id"],
+            analysis=json.loads(row["analysis_json"]) if row["analysis_json"] else None,
             observations=[ObservationItem(**o) for o in obs_raw],
             hypotheses=[HypothesisItem(**h) for h in hyp_raw],
             conclusion_status=ConclusionStatus(row["conclusion_status"]),
@@ -105,7 +114,7 @@ class AuditSuggestionRepository:
         with self.db.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT * FROM audit_suggestions WHERE sample_id = ? ORDER BY created_at DESC",
+                "SELECT * FROM audit_suggestions WHERE sample_id = ? ORDER BY created_at DESC,id DESC",
                 (sample_id,),
             )
             rows = cursor.fetchall()

@@ -33,15 +33,20 @@ class ScanResult(BaseModel):
 
 
 def scan_dataset(
-    config_path: str,
+    config_path: Optional[str] = None,
     db_path: str = "data/benchmark.db",
     batch_size: int = 500,
+    config: Optional[DatasetConfig] = None,
 ) -> ScanResult:
     """
     R203: Scan dataset according to YAML config, persist into SQLite database, and return summary.
     """
-    config = load_config(config_path)
+    if config is not None and config_path is not None:
+        raise ValueError("Specify config or config_path, not both")
+    config = config or load_config(config_path)
     db = Database(db_path)
+    from iad_core.dataset.registry import DatasetRegistry
+    DatasetRegistry(db).save(config)
 
     # 1. Upsert InspectionTask
     with db.connection() as conn:

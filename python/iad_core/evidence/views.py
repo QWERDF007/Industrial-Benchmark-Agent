@@ -65,18 +65,7 @@ def generate_sample_view(
     }
 
 
-def generate_region_view(
-    sample: Sample,
-    bbox_xyxy: List[int],
-    padding_ratio: float = 0.1,
-    output_dir: str = "runs/views",
-) -> Dict[str, Any]:
-    """
-    Crop specific region from sample with padding for high-resolution inspection (S05, RP-10).
-    """
-    if not os.path.exists(sample.image_path):
-        raise FileNotFoundError(f"Image not found at {sample.image_path}")
-
+def padded_bbox(sample: Sample, bbox_xyxy: List[int], padding_ratio: float) -> List[int]:
     if len(bbox_xyxy) != 4:
         raise ValueError(f"bbox_xyxy must contain 4 integers [x1, y1, x2, y2], got {bbox_xyxy}")
 
@@ -93,6 +82,24 @@ def generate_region_view(
     crop_y1 = max(0, y1 - pad_h)
     crop_x2 = min(sample.width, x2 + pad_w)
     crop_y2 = min(sample.height, y2 + pad_h)
+
+    return [crop_x1, crop_y1, crop_x2, crop_y2]
+
+
+def generate_region_view(
+    sample: Sample,
+    bbox_xyxy: List[int],
+    padding_ratio: float = 0.1,
+    output_dir: str = "runs/views",
+) -> Dict[str, Any]:
+    """
+    Crop specific region from sample with padding for high-resolution inspection (S05, RP-10).
+    """
+    if not os.path.exists(sample.image_path):
+        raise FileNotFoundError(f"Image not found at {sample.image_path}")
+
+    x1, y1, x2, y2 = [int(v) for v in bbox_xyxy]
+    crop_x1, crop_y1, crop_x2, crop_y2 = padded_bbox(sample, bbox_xyxy, padding_ratio)
 
     os.makedirs(output_dir, exist_ok=True)
     clean_id = sample.sample_id.replace(":", "_").replace("/", "_")

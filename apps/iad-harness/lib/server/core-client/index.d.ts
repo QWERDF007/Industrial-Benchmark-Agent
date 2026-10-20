@@ -6,7 +6,6 @@
 import { PythonBridge, PythonBridgeConfig } from "../python-bridge/index.js";
 export interface CoreClientConfig extends PythonBridgeConfig {
     bridge?: PythonBridge;
-    domainServerUrl?: string;
 }
 export interface FetchedImage {
     data: Uint8Array;
