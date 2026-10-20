@@ -55,6 +55,13 @@ class KnowledgeEvidence(AnalysisModel):
     image: VisualEvidence
 
 
+class KnowledgeStep(AnalysisModel):
+    step_id: str
+    image_evidence_ids: List[str]
+    child_step_ids: List[str]
+    result: KnowledgeDraft
+
+
 class KnowledgeSnapshot(AnalysisModel):
     version_id: str
     dataset_id: str
@@ -70,4 +77,5 @@ class KnowledgeSnapshot(AnalysisModel):
     limitations: List[str]
     sources: List[KnowledgeSource]
     evidence: List[KnowledgeEvidence]
+    mining_steps: List[KnowledgeStep]
     created_at: str

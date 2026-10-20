@@ -1,4 +1,5 @@
 import json
+import os
 import threading
 from pathlib import Path
 
@@ -191,4 +192,100 @@ def test_invalid_model_localization_cannot_be_published_as_knowledge(knowledge_d
         assert result["completed"] == 0
         assert knowledge_get({"dataset_id": config.dataset.id, "kind": "normal"}, db.db_path)["knowledge"] is None
     finally:
+        service.close()
+
+
+def test_mining_covers_all_sources_when_actual_context_requires_grouping(knowledge_dataset):
+    from iad_core.entry import knowledge_get
+    from iad_core.knowledge.service import KnowledgeService
+    from iad_core.workbench.vision import VlmClient
+
+    db, config = knowledge_dataset
+    observed = {}
+
+    def respond(request):
+        body = json.loads(request.content)
+        content = body["messages"][0]["content"]
+        images = [json.loads(item["text"].removeprefix("视觉证据：")) for item in content
+                  if item["type"] == "text" and item["text"].startswith("视觉证据：")]
+        if request.url.path.endswith("/tokenize"):
+            return httpx.Response(200, json={"count": len(images) * 2000, "max_model_len": 15600})
+        observed.update({image["evidence_id"]: image for image in images})
+        support = list(observed) if "子批次" in content[0]["text"] else [image["evidence_id"] for image in images]
+        result = {"summary": "各图组均有双孔结构", "checks": [{
+            "title": "双孔", "subject": "部件", "location": "中部", "criterion": "两个孔横向排列",
+            "allowed_variations": [], "support_evidence_ids": support, "counter_evidence_ids": [],
+            "limitations": [], "status": "supported",
+        }], "suspects": [], "limitations": []}
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(result)}}]})
+
+    service = KnowledgeService(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        job = service.start(dataset_id=config.dataset.id, kind="normal", model_name="test-mllm")
+        service.wait(job["run_id"], 5)
+        result = service.status(job["run_id"])
+        assert result["status"] == "COMPLETED", result
+        assert result["completed"] == 6
+        snapshot = knowledge_get({"version_id": result["knowledge_version_id"]}, db.db_path)["knowledge"]
+        leaves = [step for step in snapshot["mining_steps"] if not step["child_step_ids"]]
+        assert len(leaves) > 1
+        assert len(snapshot["sources"]) == 6
+        assert set(observed) == {image["image"]["evidence_id"] for image in snapshot["evidence"]}
+        assert set(snapshot["checks"][0]["support_evidence_ids"]) == set(observed)
+        assert set(snapshot["mining_steps"][-1]["child_step_ids"]) == {step["step_id"] for step in leaves}
+    finally:
+        service.close()
+
+
+@pytest.mark.skipif(os.environ.get("IAD_RUN_LIVE_MLLM") != "1", reason="Explicit live MLLM verification only")
+def test_live_normal_mining_survives_multimodal_capacity_preflight(knowledge_dataset):
+    from iad_core.entry import knowledge_get
+    from iad_core.knowledge.service import KnowledgeService
+
+    db, config = knowledge_dataset
+    service = KnowledgeService(db)
+    try:
+        job = service.start(dataset_id=config.dataset.id, kind="normal")
+        service.wait(job["run_id"], 180)
+        result = service.status(job["run_id"])
+        assert result["status"] == "COMPLETED", result
+        assert result["completed"] == 6
+        knowledge = knowledge_get({"version_id": result["knowledge_version_id"]}, db.db_path)["knowledge"]
+        assert len(knowledge["evidence"]) == 6
+        assert len(knowledge["mining_steps"]) == 1
+        assert len(knowledge["mining_steps"][0]["image_evidence_ids"]) == 6
+    finally:
+        service.close()
+
+
+def test_cancelling_during_capacity_preflight_does_not_start_generation(knowledge_dataset):
+    from iad_core.knowledge.service import KnowledgeService
+    from iad_core.workbench.vision import VlmClient
+
+    db, config = knowledge_dataset
+    entered, release = threading.Event(), threading.Event()
+    generated = []
+
+    def respond(request):
+        if request.url.path.endswith("/tokenize"):
+            entered.set()
+            assert release.wait(5)
+            return httpx.Response(200, json={"count": 4000, "max_model_len": 262144})
+        generated.append(request)
+        result = {"summary": "不应执行", "checks": [], "suspects": [], "limitations": []}
+        return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(result)}}]})
+
+    service = KnowledgeService(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        job = service.start(dataset_id=config.dataset.id, kind="normal", model_name="test-mllm")
+        assert entered.wait(3)
+        service.cancel(job["run_id"])
+        release.set()
+        service.wait(job["run_id"], 5)
+        result = service.status(job["run_id"])
+        assert result["status"] == "CANCELLED"
+        assert generated == []
+        assert result["unprocessed"] == 6
+    finally:
+        release.set()
         service.close()

@@ -16,7 +16,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | Labelme 定位与导入 | [LabelmeAdapter](../python/iad_core/dataset/adapters/labelme.py)、[scanner](../python/iad_core/dataset/scanner.py) |
 | 样本筛选、分页、评分及报告投影 | [WorkbenchQuery](../python/iad_core/workbench/query.py) |
 | 良品模式学习、版本及参考变更失效 | [NormalProfiles](../python/iad_core/workbench/normal.py) |
-| 数据集良品知识挖掘与版本证据 | [KnowledgeService](../python/iad_core/knowledge/service.py)、[契约](../python/iad_core/knowledge/models.py)、[仓储](../python/iad_core/knowledge/repository.py) |
+| 数据集良品知识挖掘与版本证据 | [KnowledgeService](../python/iad_core/knowledge/service.py)、[容量分组与归纳](../python/iad_core/knowledge/mining.py)、[契约](../python/iad_core/knowledge/models.py)、[仓储](../python/iad_core/knowledge/repository.py) |
 | 全图、局部裁剪及综合判断 | [SampleInspection](../python/iad_core/workbench/inspection.py)、[分析类型](../python/iad_core/advisory/analysis.py) |
 | 视觉证据、原图坐标、无损 ROI 与分块 | [EvidenceImages](../python/iad_core/evidence/images.py) |
 | 模型传输、实际 token 容量、结构化输出与响应校验 | [VlmClient](../python/iad_core/workbench/vision.py)、[vLLM 输出契约](https://github.com/vllm-project/vllm/blob/v0.18.0/docs/features/structured_outputs.md) |
@@ -51,3 +51,5 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 - [真实图像和模型验证](../scripts/verify_workbench_live.py)
 
 命令见[项目 README](../README.md)，验证记录见本地 `WORKLOG.md`。
+
+模型服务的容量预检要求见[MLLM 服务契约](operations/mllm.md)。

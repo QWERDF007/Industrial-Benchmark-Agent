@@ -10,6 +10,7 @@ from iad_core.advisory.analysis import AnalysisModel
 from iad_core.dataset.path_safety import validate_sample_image_path
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.images import EvidenceImages, file_sha256
+from iad_core.knowledge.mining import KnowledgeMiner, SYNTHESIS_INSTRUCTION
 from iad_core.knowledge.models import KnowledgeCheck, KnowledgeDraft, KnowledgeEvidence, KnowledgeSnapshot, KnowledgeSource
 from iad_core.knowledge.repository import KnowledgeRepository
 from iad_core.storage.database import Database
@@ -17,7 +18,7 @@ from iad_core.storage.repositories import AnnotationRepository, ReviewRepository
 from iad_core.workbench.jobs import JobContext, JobRunner
 from iad_core.workbench.vision import DEFAULT_MODEL, VlmClient
 
-GENERATION_VERSION = "dataset-knowledge-v1"
+GENERATION_VERSION = "dataset-knowledge-v2"
 NORMAL_INSTRUCTION = """联合观察这一数据集的候选良品，发现产品可见的部件、结构关系、位置、纹理、光照与允许变化。
 不要根据数据集名称假设产品或预设缺陷检查表。只归纳可观察、可复用且有图像证据的检查判据。
 人工选取和无标注只是来源资格，不是确认真值。寻找候选良品中的异常与矛盾，将其定位为suspects，
@@ -82,7 +83,7 @@ class KnowledgeService:
         context.checkpoint()
         context.update(phase="LEARNING_NORMAL")
         sources = self.sources(payload["dataset_id"], payload["sample_ids"])
-        signature = hashlib.sha256(json.dumps([GENERATION_VERSION, NORMAL_INSTRUCTION, KnowledgeDraft.model_json_schema(),
+        signature = hashlib.sha256(json.dumps([GENERATION_VERSION, NORMAL_INSTRUCTION, SYNTHESIS_INSTRUCTION, KnowledgeDraft.model_json_schema(),
             payload["dataset_id"], payload["model_name"], [source.model_dump() for source in sources]], sort_keys=True).encode()).hexdigest()
         current = self.repository.current(payload["dataset_id"], payload["kind"])
         if current and current.signature == signature:
@@ -91,15 +92,8 @@ class KnowledgeService:
             return
         images = [EvidenceImages(self.db.db_path).capture(SampleRepository(self.db).get(source.sample_id),
                   "normal", "reference", source_sha256=source.sha256) for source in sources]
-        instruction = NORMAL_INSTRUCTION + json.dumps([source.model_dump() for source in sources], ensure_ascii=False)
-        if not self.client.fits(KnowledgeDraft, instruction, images, payload["model_name"], max_tokens=8192):
-            raise ValueError("Knowledge inputs exceed the model context; no knowledge version was published")
-        draft = self.client.generate(KnowledgeDraft, instruction, images, payload["model_name"], max_tokens=8192)
-        evidence_ids = {image.evidence.evidence_id for image in images}
-        referenced = {ref for check in draft.checks for ref in check.support_evidence_ids + check.counter_evidence_ids}
-        referenced.update(suspect.evidence_id for suspect in draft.suspects)
-        if not referenced.issubset(evidence_ids):
-            raise ValueError("Knowledge output references visual evidence that was not supplied")
+        miner = KnowledgeMiner(self.client, context)
+        draft = miner.learn(NORMAL_INSTRUCTION, sources, images, payload["model_name"]).result
         if self.sources(payload["dataset_id"], payload["sample_ids"]) != sources:
             raise ValueError("Knowledge sources changed during mining")
         snapshot = KnowledgeSnapshot(version_id="knowledge_" + uuid.uuid4().hex, dataset_id=payload["dataset_id"],
@@ -108,6 +102,7 @@ class KnowledgeService:
             summary=draft.summary, checks=[KnowledgeCheck(check_id="check_" + uuid.uuid4().hex, **check.model_dump()) for check in draft.checks],
             suspects=draft.suspects, limitations=draft.limitations, sources=sources,
             evidence=[KnowledgeEvidence(sample_id=source.sample_id, image=image.evidence) for source, image in zip(sources, images)],
+            mining_steps=miner.steps,
             created_at=datetime.now(timezone.utc).isoformat())
         with self.jobs.lock:
             context.checkpoint()
