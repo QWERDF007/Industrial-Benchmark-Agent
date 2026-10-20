@@ -78,6 +78,18 @@ class EvidenceImages:
             raise FileNotFoundError("Visual evidence is missing or its content changed")
         return str(path)
 
+    @staticmethod
+    def tiles(sample: Sample, bbox: List[int], padding: float) -> List[List[int]]:
+        if not (0 <= bbox[0] < bbox[2] <= sample.width and 0 <= bbox[1] < bbox[3] <= sample.height):
+            raise ValueError(f"Invalid original image region: {bbox}")
+        x1, y1, x2, y2 = padded_bbox(sample, bbox, padding)
+        axes = []
+        for start, end in [(x1, x2), (y1, y2)]:
+            distance = max(0, end - start - ROI_MAX_SIDE)
+            steps = math.ceil(distance / (ROI_MAX_SIDE * 0.8))
+            axes.append([start + round(distance * i / steps) for i in range(steps + 1)] if steps else [start])
+        return [[x, y, min(x + ROI_MAX_SIDE, x2), min(y + ROI_MAX_SIDE, y2)] for y in axes[1] for x in axes[0]]
+
     def plan(self, sample: Sample, annotations: List[Annotation], proposals: List[RegionProposal]) -> List[RegionView]:
         requested = []
         for annotation in annotations:
@@ -94,21 +106,11 @@ class EvidenceImages:
             requested.append(("coverage", None, "原图细节覆盖", [0, 0, sample.width, sample.height]))
         regions = {}
         for source, annotation_id, label, bbox in requested:
-            if not (0 <= bbox[0] < bbox[2] <= sample.width and 0 <= bbox[1] < bbox[3] <= sample.height):
-                raise ValueError(f"Invalid original image region: {bbox}")
-            x1, y1, x2, y2 = padded_bbox(sample, bbox, 0 if source == "coverage" else 0.2)
             origin = RegionOrigin(source=source, annotation_id=annotation_id, label=label, bbox=bbox)
-            axes = []
-            for start, end in [(x1, x2), (y1, y2)]:
-                distance = max(0, end - start - ROI_MAX_SIDE)
-                steps = math.ceil(distance / (ROI_MAX_SIDE * 0.8))
-                axes.append([start + round(distance * i / steps) for i in range(steps + 1)] if steps else [start])
-            for y in axes[1]:
-                for x in axes[0]:
-                    tile = [x, y, min(x + ROI_MAX_SIDE, x2), min(y + ROI_MAX_SIDE, y2)]
-                    key = tuple(tile)
-                    if key not in regions:
-                        regions[key] = RegionView(**origin.model_dump(), origins=[origin], crop_bbox=tile)
-                    elif origin not in regions[key].origins:
-                        regions[key].origins.append(origin)
+            for tile in self.tiles(sample, bbox, 0 if source == "coverage" else 0.2):
+                key = tuple(tile)
+                if key not in regions:
+                    regions[key] = RegionView(**origin.model_dump(), origins=[origin], crop_bbox=tile)
+                elif origin not in regions[key].origins:
+                    regions[key].origins.append(origin)
         return list(regions.values())

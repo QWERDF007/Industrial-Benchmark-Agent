@@ -11,14 +11,16 @@ from iad_core.dataset.path_safety import validate_sample_image_path
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.images import EvidenceImages, OVERVIEW_MAX_SIDE, file_sha256
 from iad_core.knowledge.mining import KnowledgeInput, KnowledgeMiner, SYNTHESIS_INSTRUCTION
-from iad_core.knowledge.models import KnowledgeCheck, KnowledgeDraft, KnowledgeEvidence, KnowledgeSnapshot, KnowledgeSource
+from iad_core.knowledge.models import (KnowledgeCheck, KnowledgeDraft, KnowledgeEvidence, KnowledgeSnapshot,
+                                      KnowledgeSource, KnowledgeVerification)
 from iad_core.knowledge.repository import KnowledgeRepository
+from iad_core.knowledge.verification import NormalVerification, VERIFICATION_INSTRUCTION
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import AnnotationRepository, ReviewRepository, SampleRepository
 from iad_core.workbench.jobs import JobContext, JobRunner
 from iad_core.workbench.vision import DEFAULT_MODEL, VlmClient
 
-GENERATION_VERSION = "dataset-knowledge-v3"
+GENERATION_VERSION = "dataset-knowledge-v4"
 NORMAL_INSTRUCTION = """联合观察这一数据集的候选良品，发现产品可见的部件、结构关系、位置、纹理、光照与允许变化。
 不要根据数据集名称假设产品或预设缺陷检查表。只归纳可观察、可复用且有图像证据的检查判据。
 人工选取和无标注只是来源资格，不是确认真值。寻找候选良品中的异常与矛盾，将其定位为suspects，
@@ -84,7 +86,8 @@ class KnowledgeService:
         context.checkpoint()
         context.update(phase="LEARNING_NORMAL")
         sources = self.sources(payload["dataset_id"], payload["sample_ids"])
-        signature = hashlib.sha256(json.dumps([GENERATION_VERSION, NORMAL_INSTRUCTION, SYNTHESIS_INSTRUCTION, KnowledgeDraft.model_json_schema(),
+        signature = hashlib.sha256(json.dumps([GENERATION_VERSION, NORMAL_INSTRUCTION, SYNTHESIS_INSTRUCTION, VERIFICATION_INSTRUCTION,
+            KnowledgeDraft.model_json_schema(), KnowledgeVerification.model_json_schema(), KnowledgeSnapshot.model_json_schema(),
             payload["dataset_id"], payload["model_name"], [source.model_dump() for source in sources]], sort_keys=True).encode()).hexdigest()
         current = self.repository.current(payload["dataset_id"], payload["kind"])
         if current and current.signature == signature:
@@ -104,15 +107,22 @@ class KnowledgeService:
             inputs.append(KnowledgeInput(source, images))
         miner = KnowledgeMiner(self.client, context)
         draft = miner.learn(NORMAL_INSTRUCTION, inputs, payload["model_name"]).result
+        proposals = {(item.evidence_id, tuple(item.bbox_1000)): item for step in miner.steps for item in step.result.suspects}
+        draft = draft.model_copy(deep=True, update={"suspects": list(proposals.values())})
+        verification = NormalVerification(self.db, self.client, context).review(draft, inputs, payload["model_name"])
         if self.sources(payload["dataset_id"], payload["sample_ids"]) != sources:
             raise ValueError("Knowledge sources changed during mining")
+        checks = [KnowledgeCheck(check_id="check_" + uuid.uuid4().hex, **check.model_dump()) for check in draft.checks]
+        for finding in verification.findings:
+            finding.affected_check_ids = [check.check_id for check in checks if check.title in finding.judgment.affected_check_titles]
         snapshot = KnowledgeSnapshot(version_id="knowledge_" + uuid.uuid4().hex, dataset_id=payload["dataset_id"],
             kind=payload["kind"], parent_version_id=payload["parent_version_id"], normal_version_id=None,
             model_name=payload["model_name"], generation_version=GENERATION_VERSION, signature=signature,
-            summary=draft.summary, checks=[KnowledgeCheck(check_id="check_" + uuid.uuid4().hex, **check.model_dump()) for check in draft.checks],
+            summary=draft.summary, checks=checks,
             suspects=draft.suspects, limitations=draft.limitations, sources=sources,
-            evidence=[KnowledgeEvidence(sample_id=item.source.sample_id, image=image.evidence) for item in inputs for image in item.images],
-            mining_steps=miner.steps,
+            evidence=[KnowledgeEvidence(sample_id=item.source.sample_id, image=image.evidence)
+                      for item in inputs for image in item.images] + verification.evidence,
+            mining_steps=miner.steps, findings=verification.findings, verification_steps=verification.steps,
             created_at=datetime.now(timezone.utc).isoformat())
         with self.jobs.lock:
             context.checkpoint()
