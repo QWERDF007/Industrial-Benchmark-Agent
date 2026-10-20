@@ -11,3 +11,5 @@ vLLM 的 tokenize 渲染路径需要独立于生成请求的多模态发送缓�
 无法立即升级时，可在 vLLM 启动参数中设置 `--mm-processor-cache-gb 0` 并重启，禁用这层预处理缓存。该参数定义见[官方配置](https://github.com/vllm-project/vllm/blob/v0.18.0/vllm/config/multimodal.py)；重复图像会重新预处理。它不改变联合输入的图像与分析契约。
 
 验收使用[公开知识流程的真实模型测试](../../tests/test_dataset_knowledge.py)：加载本地环境后，显式设置 `IAD_RUN_LIVE_MLLM=1`，运行 `test_live_normal_mining_survives_multimodal_capacity_preflight`。测试只生成合成部件图并使用临时数据库；仅验证传输、结构与持久化，不代表工业缺陷准确率。
+
+多块大 Mask 的联合输入验收见[真实大图知识测试](../../tests/test_knowledge_capacity.py)中的 `test_live_tiled_mask_knowledge_uses_real_joint_evidence`，使用相同显式开关。实际容量判定与证据分组由 [FindingVerification](../../python/iad_core/knowledge/findings.py)负责。

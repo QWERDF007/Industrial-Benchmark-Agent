@@ -59,6 +59,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 - [良品知识、版本、真实证据与取消测试](../tests/test_dataset_knowledge.py)
 - [来源积累、规则身份、拆分/合并/退役及容量归纳测试](../tests/test_knowledge_evolution.py)
 - [审计候选回流、污染隔离、过期来源与并发冻结测试](../tests/test_knowledge_feedback.py)
+- [单个大 Mask 的容量分组、原像素配对、综合缺证与真实模型测试](../tests/test_knowledge_capacity.py)
 - [良品污染、正常解释、独立证据及核验分组测试](../tests/test_knowledge_contamination.py)
 - [不良知识、标注核验、正常版本冻结与证据资格测试](../tests/test_defect_knowledge.py)
 - [Mask 导入、像素、标注视图、版本与容量配对测试](../tests/test_mask_evidence.py)
