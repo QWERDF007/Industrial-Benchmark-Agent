@@ -119,13 +119,15 @@ export interface VlmResult extends ViewAnalysis {
   conflicts: string[];
   missing_evidence: string[];
 }
-export interface SynthesisStep { step_id: string; input_evidence_ids: string[]; child_step_ids: string[]; result: VlmResult }
+export interface GlobalAnalysis extends ViewAnalysis { suspect_regions: Array<{ bbox_1000: number[]; reason: string }> }
+export interface JointAnalysis extends VlmResult { global_view: GlobalAnalysis; region_observations: Array<ViewAnalysis & { region_index: number }> }
+export interface SynthesisStep { step_id: string; input_evidence_ids: string[]; child_step_ids: string[]; result: VlmResult | JointAnalysis }
 export interface AuditAnalysis {
   joint_steps: SynthesisStep[];
   profile_id: string;
   overview: VisualEvidence;
   coverage: { planned_regions: number; inspected_regions: number; complete: boolean; missing: string[] };
-  global_view: ViewAnalysis;
+  global_view: GlobalAnalysis;
   regions: Array<{ origins: Array<{ source: string; annotation_id: string | null; label: string; bbox: number[] }>; source: string; image: VisualEvidence; label: string; bbox: number[]; crop_bbox: number[]; observation: ViewAnalysis }>;
   conclusion: VlmResult;
 }

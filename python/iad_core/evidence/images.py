@@ -85,11 +85,12 @@ class EvidenceImages:
                 x1, y1, x2, y2 = annotation.bbox
                 requested.append(("annotation", annotation.annotation_id, annotation.raw_label,
                                   [math.floor(x1), math.floor(y1), math.ceil(x2), math.ceil(y2)]))
+        has_annotations = bool(requested)
         for proposal in proposals:
             x1, y1, x2, y2 = proposal.bbox_1000
             requested.append(("model", None, proposal.reason, [math.floor(x1 * sample.width / 1000), math.floor(y1 * sample.height / 1000),
                                                               math.ceil(x2 * sample.width / 1000), math.ceil(y2 * sample.height / 1000)]))
-        if max(sample.width, sample.height) > OVERVIEW_MAX_SIDE or not requested:
+        if max(sample.width, sample.height) > OVERVIEW_MAX_SIDE or not has_annotations:
             requested.append(("coverage", None, "原图细节覆盖", [0, 0, sample.width, sample.height]))
         regions = {}
         for source, annotation_id, label, bbox in requested:

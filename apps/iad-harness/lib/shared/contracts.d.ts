@@ -167,11 +167,23 @@ export interface VlmResult extends ViewAnalysis {
     conflicts: string[];
     missing_evidence: string[];
 }
+export interface GlobalAnalysis extends ViewAnalysis {
+    suspect_regions: Array<{
+        bbox_1000: number[];
+        reason: string;
+    }>;
+}
+export interface JointAnalysis extends VlmResult {
+    global_view: GlobalAnalysis;
+    region_observations: Array<ViewAnalysis & {
+        region_index: number;
+    }>;
+}
 export interface SynthesisStep {
     step_id: string;
     input_evidence_ids: string[];
     child_step_ids: string[];
-    result: VlmResult;
+    result: VlmResult | JointAnalysis;
 }
 export interface AuditAnalysis {
     joint_steps: SynthesisStep[];
@@ -183,7 +195,7 @@ export interface AuditAnalysis {
         complete: boolean;
         missing: string[];
     };
-    global_view: ViewAnalysis;
+    global_view: GlobalAnalysis;
     regions: Array<{
         origins: Array<{
             source: string;

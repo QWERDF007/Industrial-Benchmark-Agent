@@ -84,7 +84,7 @@ var __IadClientBundle__ = (() => {
   var initialFilters = { annotation_filters: [], model_status: "all", review_status: "all", technical: "all", search: "", sort_by: "default" };
   var mediaUrl = (sample, thumbnail = false) => `/api/iad/media/sample/${encodeURIComponent(sample.task_id)}/${encodeURIComponent(sample.sample_id)}/${thumbnail ? "thumbnail?size=240" : "image"}`;
   var message = (error) => error instanceof Error ? error.message : String(error);
-  var auditPhases = { LEARNING_NORMAL: "\u5B66\u4E60\u826F\u54C1\u6A21\u5F0F", GLOBAL: "\u5168\u56FE\u89C2\u5BDF", REGIONS: "ROI \u7EC6\u770B", SYNTHESIS: "\u5E26\u56FE\u8054\u5408\u5224\u65AD", SAMPLE_COMPLETED: "\u56FE\u50CF\u5BA1\u8BA1\u5B8C\u6210" };
+  var auditPhases = { LEARNING_NORMAL: "\u5B66\u4E60\u826F\u54C1\u6A21\u5F0F", GLOBAL: "\u5168\u56FE\u89C2\u5BDF", REGIONS: "ROI \u7EC6\u770B", SYNTHESIS: "\u5168\u56FE\u4E0E ROI \u8054\u5408\u5206\u6790", SAMPLE_COMPLETED: "\u56FE\u50CF\u5BA1\u8BA1\u5B8C\u6210" };
 
   // src/client/components/DatasetManager.tsx
   var import_react = __require("react");
@@ -619,7 +619,7 @@ var __IadClientBundle__ = (() => {
               ] }),
               detail.suggestion.analysis.joint_steps.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("details", { children: [
                 /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("summary", { children: [
-                  "\u5206\u6279\u8054\u5408\u5224\u65AD \xB7 ",
+                  "\u8054\u5408\u5206\u6790\u8BB0\u5F55 \xB7 ",
                   detail.suggestion.analysis.joint_steps.length,
                   " \u6B65"
                 ] }),
@@ -679,7 +679,7 @@ var __IadClientBundle__ = (() => {
           }, children: "\u53D6\u6D88\u5BA1\u8BA1" })
         ] }),
         mode === "model" ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "iad-actions", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "iad-primary", disabled: busy || jobRunning, onClick: audit, children: busy || jobRunning ? "\u6B63\u5728\u5206\u9636\u6BB5\u5BA1\u8BA1\u2026" : "\u6309\u826F\u54C1\u6A21\u5F0F\u5BA1\u8BA1\u6B64\u56FE" }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { className: "iad-primary", disabled: busy || jobRunning, onClick: audit, children: busy || jobRunning ? "\u6B63\u5728\u8054\u5408\u5BA1\u8BA1\u2026" : "\u6309\u826F\u54C1\u6A21\u5F0F\u5BA1\u8BA1\u6B64\u56FE" }),
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { disabled: busy, onClick: setReference, children: dataset.reference_sample_ids.includes(sampleId) ? "\u79FB\u51FA\u826F\u54C1\u53C2\u8003" : "\u8BBE\u4E3A\u826F\u54C1\u53C2\u8003" })
         ] }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("section", { className: "iad-decision", children: [
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "\u4EBA\u5DE5\u88C1\u51B3" }),
@@ -753,7 +753,7 @@ var __IadClientBundle__ = (() => {
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { className: "iad-primary", onClick: start, disabled: busy || !dataset.reference_sample_ids.length || jobs.some((j) => j.status === "RUNNING"), children: busy ? "\u542F\u52A8\u4E2D\u2026" : "\u5BA1\u8BA1\u5F53\u524D\u7B5B\u9009\u5168\u90E8\u56FE\u50CF" })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "iad-muted", children: "\u5168\u56FE\u89C2\u5BDF \u2192 \u6807\u6CE8\u53CA\u53EF\u7591\u533A\u57DF\u7EC6\u770B \u2192 \u7ED3\u5408\u4F4D\u7F6E\u3001\u5149\u7167\u7EFC\u5408\u5224\u65AD\u3002" }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "iad-muted", children: "\u7ED3\u5408\u826F\u54C1\u6A21\u5F0F\u3001\u5168\u56FE\u4E0E\u5168\u90E8\u5C40\u90E8\u56FE\uFF0C\u7EFC\u5408\u5206\u6790\u4F4D\u7F6E\u548C\u5149\u7167\u3002" }),
         error && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { role: "alert", className: "iad-error", children: error })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("section", { className: "iad-job-section", children: [

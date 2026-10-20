@@ -4,10 +4,15 @@ import os
 from typing import List, Optional, Type, TypeVar
 
 import httpx
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 from iad_core.evidence.images import PreparedImage, file_sha256
 
 T = TypeVar("T", bound=BaseModel)
+
+
+class TokenCapacity(BaseModel):
+    count: int = Field(ge=0)
+    max_model_len: int = Field(gt=0)
 
 
 class VlmClient:
@@ -16,7 +21,7 @@ class VlmClient:
         endpoint = os.environ.get("LIVE_VLM_ENDPOINT", "http://127.0.0.1:8000/v1")
         self.endpoint = endpoint if endpoint.endswith("/chat/completions") else endpoint.rstrip("/") + "/chat/completions"
 
-    def generate(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str) -> T:
+    def prepare(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str, max_tokens: int = 2048) -> dict:
         schema = response_type.model_json_schema()
         content = [{"type": "text", "text": instruction + "\n请根据图像和上下文填写实际分析结果；Schema 是格式约束，不是答案，不要复述其定义。\n只输出符合以下 JSON Schema 的 JSON，不要 Markdown：\n" + json.dumps(schema, ensure_ascii=False)}]
         for image in images:
@@ -26,11 +31,24 @@ class VlmClient:
                 encoded = base64.b64encode(source.read()).decode("ascii")
             content.append({"type": "text", "text": "视觉证据：" + image.evidence.model_dump_json()})
             content.append({"type": "image_url", "image_url": {"url": "data:image/png;base64," + encoded}})
-        response = self.client.post(self.endpoint, headers={"Authorization": "Bearer " + os.environ.get("LIVE_VLM_KEY", "sk-123456")}, json={
+        return {
             "model": model_name, "messages": [{"role": "user", "content": content}],
             "response_format": {"type": "json_schema", "json_schema": {"name": response_type.__name__, "strict": True, "schema": schema}},
-            "temperature": 0.1, "max_tokens": 2048, "chat_template_kwargs": {"enable_thinking": False},
-        })
+            "temperature": 0.1, "max_tokens": max_tokens, "chat_template_kwargs": {"enable_thinking": False},
+        }
+
+    def fits(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str, max_tokens: int = 2048) -> bool:
+        body = self.prepare(response_type, instruction, images, model_name, max_tokens)
+        root = self.endpoint.rsplit('/chat/completions', 1)[0].removesuffix('/v1')
+        response = self.client.post(root + '/tokenize', headers={"Authorization": "Bearer " + os.environ.get("LIVE_VLM_KEY", "sk-123456")},
+                                    json={key: body[key] for key in ('model', 'messages', 'chat_template_kwargs')})
+        response.raise_for_status()
+        capacity = TokenCapacity.model_validate(response.json())
+        return capacity.count + max_tokens <= capacity.max_model_len
+
+    def generate(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str, max_tokens: int = 2048) -> T:
+        response = self.client.post(self.endpoint, headers={"Authorization": "Bearer " + os.environ.get("LIVE_VLM_KEY", "sk-123456")},
+                                    json=self.prepare(response_type, instruction, images, model_name, max_tokens))
         response.raise_for_status()
         choice = response.json()["choices"][0]
         if choice.get("finish_reason") == "length":

@@ -84,7 +84,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
             <button className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(region.image))}><img src={evidenceSource(region.image).src} alt={`审计 ROI ${index + 1}`} /><span>{region.image.sent_size.join(" × ")} · PNG{detail.suggestion!.analysis!.conclusion.evidence_ids.includes(region.image.evidence_id) ? " · 结论引用" : ""}</span></button><p>{region.observation.description}</p><p>位置：{region.observation.position_analysis}</p><p>光照：{region.observation.illumination_analysis}</p></div>)}
           {detail.suggestion.analysis.conclusion.conflicts.length > 0 && <p className="iad-error">观察矛盾：{detail.suggestion.analysis.conclusion.conflicts.join("；")}</p>}
           {detail.suggestion.analysis.conclusion.missing_evidence.length > 0 && <p className="iad-error">缺失证据：{detail.suggestion.analysis.conclusion.missing_evidence.join("；")}</p>}
-          {detail.suggestion.analysis.joint_steps.length > 1 && <details><summary>分批联合判断 · {detail.suggestion.analysis.joint_steps.length} 步</summary>{detail.suggestion.analysis.joint_steps.map(step => <div key={step.step_id}><strong>{step.step_id} · {step.result.suggested_label}</strong><p>{step.input_evidence_ids.length} 张图像{step.child_step_ids.length ? ` · 汇总 ${step.child_step_ids.join("、")}` : ""}</p><p>{step.result.description}</p></div>)}</details>}
+          {detail.suggestion.analysis.joint_steps.length > 1 && <details><summary>联合分析记录 · {detail.suggestion.analysis.joint_steps.length} 步</summary>{detail.suggestion.analysis.joint_steps.map(step => <div key={step.step_id}><strong>{step.step_id} · {step.result.suggested_label}</strong><p>{step.input_evidence_ids.length} 张图像{step.child_step_ids.length ? ` · 汇总 ${step.child_step_ids.join("、")}` : ""}</p><p>{step.result.description}</p></div>)}</details>}
           <p className="iad-muted">结论引用 {detail.suggestion.analysis.conclusion.evidence_ids.length} 项视觉证据</p>
           <p>位置分析：{detail.suggestion.analysis.conclusion.position_analysis}</p><p>光照分析：{detail.suggestion.analysis.conclusion.illumination_analysis}</p>
         </details>}
@@ -95,7 +95,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
         {job.errors.map((error, index) => <p className="iad-error" key={index}>{error.message}</p>)}
         {(job.status === "RUNNING" || job.status === "PENDING") && <button onClick={async () => { try { await request<AuditJob>(`/audit/cancel/${job.run_id}`, {}); onJobsChanged(); } catch (error) { setError(message(error)); } }}>取消审计</button>}
       </section>}
-      {mode === "model" ? <div className="iad-actions"><button className="iad-primary" disabled={busy || jobRunning} onClick={audit}>{busy || jobRunning ? "正在分阶段审计…" : "按良品模式审计此图"}</button>
+      {mode === "model" ? <div className="iad-actions"><button className="iad-primary" disabled={busy || jobRunning} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按良品模式审计此图"}</button>
         <button disabled={busy} onClick={setReference}>{dataset.reference_sample_ids.includes(sampleId) ? "移出良品参考" : "设为良品参考"}</button></div> : <section className="iad-decision">
         <h3>人工裁决</h3>{detail.review_decision && <p>当前：{detail.review_decision.decision} · {detail.review_decision.reviewer}<br />{detail.review_decision.comment}</p>}
         <label className="iad-field">复核人<input value={reviewer} onChange={e => setReviewer(e.target.value)} /></label>

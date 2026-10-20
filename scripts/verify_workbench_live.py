@@ -1,4 +1,4 @@
-"""Verify learned normal patterns and staged inspection against the live VLM in a database snapshot."""
+"""Verify learned normal patterns and joint inspection against the live VLM in a database snapshot."""
 import argparse
 import json
 import sqlite3
@@ -40,10 +40,10 @@ def main():
     assert len(targets) == 2 and registry.references(dataset.dataset.id)
     requests = []
     class RecordingVlm(VlmClient):
-        def generate(self, response_type, instruction, images, model_name):
+        def generate(self, response_type, instruction, images, model_name, max_tokens=2048):
             requests.append({"stage": response_type.__name__, "model": model_name,
                              "images": [image.evidence.model_dump(mode="json") for image in images]})
-            return super().generate(response_type, instruction, images, model_name)
+            return super().generate(response_type, instruction, images, model_name, max_tokens)
     service = AuditService(db, RecordingVlm())
     started = time.monotonic()
     latencies, progress = [], []
@@ -77,7 +77,7 @@ def main():
         for item in suggestions:
             ids = {item.analysis.overview.evidence_id, *[r.image.evidence_id for r in item.analysis.regions]}
             assert set(item.analysis.conclusion.evidence_ids) <= ids
-        finals = [request for request in requests if request["stage"] == "VlmResult"]
+        finals = [request for request in requests if request["stage"] == "JointAnalysis"]
         assert len(finals) == sum(len(item.analysis.joint_steps) for item in suggestions)
         assert all(request["images"][0]["role"] == "overview" and any(i["role"] == "roi" for i in request["images"]) for request in finals)
         print(json.dumps({key: result[key] for key in ("elapsed_seconds", "max_list_latency_seconds")}), flush=True)

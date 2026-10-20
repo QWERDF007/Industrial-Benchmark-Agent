@@ -29,7 +29,7 @@ export function AuditJobs({ dataset, filters, jobs, onJobsChanged }: { dataset: 
     </section><section className="iad-job-section">
     <h2>启动模型审计</h2><div className="iad-row"><label>模型<input aria-label="模型名称" value={model} onChange={e => setModel(e.target.value)} /></label>
       <button className="iad-primary" onClick={start} disabled={busy || !dataset.reference_sample_ids.length || jobs.some(j => j.status === "RUNNING")}>{busy ? "启动中…" : "审计当前筛选全部图像"}</button></div>
-    <p className="iad-muted">全图观察 → 标注及可疑区域细看 → 结合位置、光照综合判断。</p>{error && <p role="alert" className="iad-error">{error}</p>}
+    <p className="iad-muted">结合良品模式、全图与全部局部图，综合分析位置和光照。</p>{error && <p role="alert" className="iad-error">{error}</p>}
     </section><section className="iad-job-section"><h2>审计作业</h2>{jobs.map(job => <article className="iad-job" key={job.run_id}><div className="iad-row"><strong>{job.status}</strong><span>{job.model_name}</span>
       {(job.status === "RUNNING" || job.status === "PENDING") && <button onClick={async () => { try { await request(`/audit/cancel/${job.run_id}`, {}); onJobsChanged(); } catch (e) { setError(message(e)); } }}>取消</button>}</div>
       <progress value={job.progress} max={1} /><p>完成 {job.completed} · 失败 {job.failed} · 共 {job.total_samples} 张</p>

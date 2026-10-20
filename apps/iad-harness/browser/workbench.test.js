@@ -41,6 +41,10 @@ for name in ['normal','normal2','dent']:
   const server = http.createServer(async (req, res) => {
     if (req.url === "/") { res.setHeader("Content-Type", "text/html; charset=utf-8"); res.end('<!doctype html><meta charset="utf-8"><style>html,body,#root{height:100%;margin:0}</style><div id="root"></div><script src="/browser.js"></script>'); }
     else if (req.url === "/browser.js") { res.setHeader("Content-Type", "application/javascript"); res.end(bundle.outputFiles[0].contents); }
+    else if (req.url === "/model/tokenize") {
+      for await (const chunk of req) { /* Drain request before replying. */ }
+      res.setHeader("Content-Type","application/json"); res.end(JSON.stringify({count:1000,max_model_len:262144}));
+    }
     else if (req.url === "/model/v1/chat/completions") {
       let body = ""; for await (const chunk of req) body += chunk;
       const request = JSON.parse(body); modelRequests.push(request);
@@ -49,9 +53,10 @@ for name in ['normal','normal2','dent']:
       const view = {description:"可观察证据",position_analysis:"位置合理",illumination_analysis:"反光已核实"};
       let answer = view;
       if (schema.title === "NormalPatterns") answer = {structure:"连续胶线模式",texture:"平整",position_variation:"平移",illumination_variation:"反光",normal_allowances:[],cautions:[]};
-      if (schema.title === "VlmResult") answer = {...view,suggested_label:"FAIL",reason_category:"SCRATCH",confidence:0.8,
+      if (schema.title === "JointAnalysis") answer = {...view,global_view:view,
+        region_observations:parts.filter(part=>part.type==="image_url").slice(1).map((_,index)=>({...view,region_index:index+1})),suggested_label:"FAIL",reason_category:"SCRATCH",confidence:0.8,
         evidence_ids:parts.filter(part=>part.type==="text"&&part.text.startsWith("视觉证据：")).map(part=>JSON.parse(part.text.slice(5)).evidence_id)};
-      if (schema.title === "ViewAnalysis" && holdRegion) await new Promise(resolve => { releaseRegion = resolve; });
+      if (schema.title === "JointAnalysis" && holdRegion) await new Promise(resolve => { releaseRegion = resolve; });
       res.setHeader("Content-Type","application/json"); res.end(JSON.stringify({choices:[{message:{content:JSON.stringify(answer)}}]}));
     } else api(req, res);
   });
@@ -131,12 +136,12 @@ for name in ['normal','normal2','dent']:
       assert.ok((await preview.getText()).includes("结论引用"));
       await preview.click(); await element("[role='dialog'] img"); await button("关闭");
     }
-    const final = modelRequests.find(request=>request.messages[0].content[0].text.includes('"title": "VlmResult"'));
+    const final = modelRequests.find(request=>request.messages[0].content[0].text.includes('"title": "JointAnalysis"'));
     assert.equal(final.messages[0].content.filter(part=>part.type==="image_url").length,2);
     const audited = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();
     holdRegion = true; await button("按良品模式审计此图");
     await driver.wait(()=>Boolean(releaseRegion),15000);
-    await driver.wait(async () => (await (await element(".iad-single-job")).getText()).includes("ROI 细看"),5000);
+    await driver.wait(async () => (await (await element(".iad-single-job")).getText()).includes("全图与 ROI 联合分析"),5000);
     await button("取消审计"); releaseRegion(); holdRegion = false;
     await driver.wait(async ()=>(await (await element(".iad-single-job")).getText()).includes("CANCELLED"),15000);
     const cancelled = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();

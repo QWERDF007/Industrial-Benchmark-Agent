@@ -86,27 +86,23 @@ def test_import_rejects_blank_name_before_creating_dataset(dataset):
 
 
 @pytest.mark.parametrize("endpoint,expected_url", [(None, "http://127.0.0.1:8000/v1/chat/completions"), ("https://mllm.example.invalid/v1", "https://mllm.example.invalid/v1/chat/completions")])
-def test_real_audit_job_uses_references_and_persists_confidence(dataset, monkeypatch, endpoint, expected_url):
+def test_real_audit_job_uses_references_and_persists_confidence(dataset, monkeypatch, mllm_api, endpoint, expected_url):
     from iad_core.workbench.audit import AuditService, VlmClient
     db, registry, config = dataset
     if endpoint is None:
         monkeypatch.delenv("LIVE_VLM_ENDPOINT", raising=False)
     else:
         monkeypatch.setenv("LIVE_VLM_ENDPOINT", endpoint)
-    bodies = []
-    patterns = {"structure": "正常胶线连续", "texture": "平整", "position_variation": "允许平移", "illumination_variation": "允许反光", "normal_allowances": ["亮度变化"], "cautions": ["细小裂纹需局部检查"]}
-    view = {"description": "胶线连续", "position_analysis": "位置偏移已比较", "illumination_analysis": "高亮是反光"}
-    result = {**view, "suggested_label": "FAIL", "reason_category": "SCRATCH", "confidence": 0.61, "defect_location": "bottom"}
-    responses = [patterns, view, view, result, view, view, result]
-    def respond(request):
-        assert str(request.url) == expected_url
-        body = json.loads(request.content)
-        bodies.append(body)
-        answer = dict(responses[len(bodies)-1])
-        if 'suggested_label' in answer:
-            answer['evidence_ids'] = [json.loads(c['text'].split('视觉证据：')[1])['evidence_id'] for c in body['messages'][0]['content'] if c['type']=='text' and c['text'].startswith('视觉证据：')]
-        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(answer)}}]})
-    client = VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond)))
+    http_client, bodies, responses = mllm_api
+    responses['NormalPatterns']['structure'] = '正常胶线连续'
+    responses['GlobalAnalysis']['illumination_analysis'] = '高亮是反光'
+    responses['ViewAnalysis']['position_analysis'] = '位置偏移已比较'
+    responses['VlmResult'].update(suggested_label='FAIL', reason_category='SCRATCH', confidence=0.61)
+    def check_endpoint(request):
+        expected = expected_url if request.url.path.endswith('/chat/completions') else expected_url.removesuffix('/v1/chat/completions') + '/tokenize'
+        assert str(request.url) == expected
+    http_client.event_hooks['request'].append(check_endpoint)
+    client = VlmClient(http_client=http_client)
     service = AuditService(db, client)
     target = f"{config.dataset.id}:scratch.png"
     job = service.start(dataset_id=config.dataset.id, sample_ids=[target, f"{config.dataset.id}:dent.png"], model_name="test-vlm")
@@ -139,7 +135,7 @@ def test_job_cancel_prevents_late_suggestion(dataset, mllm_api):
     entered, release = threading.Event(), threading.Event()
     client, _, _ = mllm_api
     def hold_roi(request):
-        if '"title": "ViewAnalysis"' in json.loads(request.content)['messages'][0]['content'][0]['text']:
+        if request.url.path.endswith("/chat/completions") and json.loads(request.content)["response_format"]["json_schema"]["name"] == "JointAnalysis":
             entered.set()
             release.wait(5)
     client.event_hooks['request'].append(hold_roi)
@@ -148,7 +144,7 @@ def test_job_cancel_prevents_late_suggestion(dataset, mllm_api):
     job = service.start(dataset_id=config.dataset.id, sample_ids=[target], model_name="test")
     try:
         assert entered.wait(3)
-        assert service.status(job["run_id"])["phase"] == "REGIONS"
+        assert service.status(job["run_id"])["phase"] == "SYNTHESIS"
         service.cancel(job["run_id"])
     finally:
         release.set()
@@ -205,24 +201,15 @@ def test_normal_profile_reuses_learning_and_invalidates_when_references_change(d
     assert profiles.current(config.dataset.id, "test") is None
 
 
-def test_workbench_exposes_mllm_knowledge_sources_and_invalidates_changed_content(dataset):
+def test_workbench_exposes_mllm_knowledge_sources_and_invalidates_changed_content(dataset, mllm_api):
     import os
     from pathlib import Path
     from iad_core.entry import audit_profile, sample_get
     from iad_core.workbench.audit import AuditService, VlmClient
     db, registry, config = dataset
-    patterns = {"structure": "连续", "texture": "平整", "position_variation": "平移", "illumination_variation": "反光", "normal_allowances": [], "cautions": ["参考未人工确认"]}
-    view = {"description": "完整", "position_analysis": "正常", "illumination_analysis": "正常"}
-    responses = {"NormalPatterns": patterns, "GlobalAnalysis": view, "ViewAnalysis": view,
-                 "VlmResult": {**view, "suggested_label": "PASS", "reason_category": "NORMAL", "confidence": 0.8}}
-    def respond(request):
-        text = json.loads(request.content)["messages"][0]["content"][0]["text"]
-        schema = json.loads(text.split("JSON Schema 的 JSON，不要 Markdown：\n")[1])
-        answer = dict(responses[schema['title']])
-        if schema['title'] == 'VlmResult':
-            answer.setdefault('evidence_ids', [json.loads(c['text'].split('视觉证据：')[1])['evidence_id'] for c in json.loads(request.content)['messages'][0]['content'] if c['type']=='text' and c['text'].startswith('视觉证据：')])
-        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(answer)}}]})
-    service = AuditService(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
+    client, _, responses = mllm_api
+    responses['NormalPatterns']['structure'] = '连续'
+    service = AuditService(db, VlmClient(http_client=client))
     job = service.start(dataset_id=config.dataset.id, sample_ids=[f"{config.dataset.id}:dent.png"], model_name="test")
     service.wait(job['run_id'], 5)
     assert service.status(job['run_id'])['status'] == 'COMPLETED'
@@ -253,11 +240,22 @@ def mllm_api():
     responses = {"NormalPatterns": patterns, "GlobalAnalysis": view, "ViewAnalysis": view,
                  "VlmResult": {**view, "suggested_label": "PASS", "reason_category": "NORMAL", "confidence": 0.8}}
     def respond(request):
-        body = json.loads(request.content); bodies.append(body)
+        body = json.loads(request.content)
+        if request.url.path.endswith('/tokenize'):
+            capacity = responses.get('Tokenize', {'count':1000,'max_model_len':262144})
+            count = capacity.get('count', sum(part['type']=='image_url' for part in body['messages'][0]['content']) * capacity.get('tokens_per_image', 1000))
+            return httpx.Response(200,json={'count':count,'max_model_len':capacity['max_model_len']})
+        bodies.append(body)
         schema = json.loads(body['messages'][0]['content'][0]['text'].split("JSON Schema 的 JSON，不要 Markdown：\n")[1])
-        answer = dict(responses[schema['title']])
-        if schema['title'] == 'VlmResult':
-            answer.setdefault('evidence_ids', [json.loads(c['text'].split('视觉证据：')[1])['evidence_id'] for c in json.loads(request.content)['messages'][0]['content'] if c['type']=='text' and c['text'].startswith('视觉证据：')])
+        if schema['title'] == 'JointAnalysis':
+            metadata=[json.loads(part['text'].split('视觉证据：')[1]) for part in body['messages'][0]['content'] if part['type']=='text' and part['text'].startswith('视觉证据：')]
+            answer={**responses['VlmResult'],'global_view':responses['GlobalAnalysis'],
+                    'region_observations':[{**responses['ViewAnalysis'],'region_index':index} for index in range(1,len(metadata))]}
+            answer.setdefault('evidence_ids',[image['evidence_id'] for image in metadata])
+        else:
+            answer = dict(responses[schema['title']])
+            if schema['title'] == 'VlmResult':
+                answer.setdefault('evidence_ids', [json.loads(c['text'].split('视觉证据：')[1])['evidence_id'] for c in body['messages'][0]['content'] if c['type']=='text' and c['text'].startswith('视觉证据：')])
         return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(answer)}}]})
     return httpx.Client(transport=httpx.MockTransport(respond)), bodies, responses
 
@@ -295,24 +293,39 @@ def test_workbench_maps_overview_coordinates_and_exposes_lossless_roi_evidence(d
     assert any(r['source']=='coverage' for r in trace['regions'])
 
 
-def test_workbench_final_verdict_receives_global_and_roi_images(dataset, mllm_api):
+def test_workbench_analyzes_overview_and_all_roi_in_one_multimodal_request(dataset, mllm_api):
+    import base64
+    import hashlib
+    from pathlib import Path
+    from iad_core.dataset.scanner import scan_dataset
     from iad_core.entry import sample_get
     from iad_core.workbench.audit import AuditService, VlmClient
     db, _, config = dataset
+    Image.new('RGB',(6000,1800),'blue').save(Path(config.root)/'fresh.png')
+    scan_dataset(config=config,db_path=db.db_path)
     client, bodies, _ = mllm_api
     service=AuditService(db,VlmClient(http_client=client))
-    target=f'{config.dataset.id}:dent.png'
-    job=service.start(dataset_id=config.dataset.id,sample_ids=[target],model_name='test')
-    service.wait(job['run_id'],5)
-    detail=sample_get({'sample_id':target},db.db_path)
-    final=next(body for body in reversed(bodies) if '"title": "VlmResult"' in body['messages'][0]['content'][0]['text'])
-    parts=final['messages'][0]['content']
-    assert len([part for part in parts if part['type']=='image_url'])==2
-    assert '已学习的良品模式' in parts[0]['text']
-    trace=detail['suggestion']['analysis']
-    available={trace['overview']['evidence_id'],trace['regions'][0]['image']['evidence_id']}
-    assert set(trace['conclusion']['evidence_ids'])==available
-    assert detail['sample']['quality_status']=='UNCERTAIN'
+    target=f'{config.dataset.id}:fresh.png'
+    try:
+        job=service.start(dataset_id=config.dataset.id,sample_ids=[target],model_name='test')
+        service.wait(job['run_id'],30)
+        assert service.status(job['run_id'])['status']=='COMPLETED'
+        visual=[body for body in bodies if body['response_format']['json_schema']['name']!='NormalPatterns']
+        assert len(visual)==1, 'Full image and all ROI must share one analysis, without separate overview or per-ROI generations'
+        assert visual[0]['response_format']['json_schema']['name']=='JointAnalysis'
+        content=visual[0]['messages'][0]['content']
+        metadata=[json.loads(part['text'].split('视觉证据：')[1]) for part in content if part['type']=='text' and part['text'].startswith('视觉证据：')]
+        assert [image['role'] for image in metadata]==['overview']+['roi']*16
+        encoded_images=[part['image_url']['url'].split(',',1)[1] for part in content if part['type']=='image_url']
+        assert len(encoded_images)==17
+        assert [hashlib.sha256(base64.b64decode(image)).hexdigest() for image in encoded_images]==[image['sha256'] for image in metadata]
+        trace=sample_get({'sample_id':target},db.db_path)['suggestion']['analysis']
+        assert trace['coverage']['complete'] and len(trace['regions'])==16
+        assert len(trace['joint_steps'])==1
+        assert {image['evidence_id'] for image in metadata}==set(trace['conclusion']['evidence_ids'])
+        assert all(region['observation']['position_analysis'] for region in trace['regions'])
+    finally:
+        service.close()
 
 
 @pytest.mark.parametrize("first_batch_label", ["PASS", "FAIL"])
@@ -325,10 +338,11 @@ def test_workbench_inspects_all_roi_and_preserves_batched_joint_evidence(dataset
     Image.new('RGB',(6000,1800),'blue').save(Path(config.root)/'fresh.png')
     scan_dataset(config=config,db_path=db.db_path)
     client,bodies,responses=mllm_api
+    responses['Tokenize'] = {'tokens_per_image':1000, 'max_model_len':26000}
     joint_calls = []
     def mark_first_batch(request):
         body = json.loads(request.content)
-        if body['response_format']['json_schema']['name'] == 'VlmResult':
+        if request.url.path.endswith('/chat/completions') and body['response_format']['json_schema']['name'] == 'JointAnalysis':
             joint_calls.append(body)
             responses['VlmResult']['suggested_label'] = first_batch_label if len(joint_calls) == 1 else 'PASS'
     client.event_hooks['request'].append(mark_first_batch)
@@ -413,7 +427,7 @@ def test_reference_change_during_learning_does_not_save_stale_knowledge(dataset)
 
 @pytest.mark.parametrize("invalid_response", [False, True])
 def test_audit_uses_server_enforced_schema_for_roi_results(dataset, invalid_response):
-    from iad_core.advisory.analysis import ViewAnalysis
+    from iad_core.advisory.analysis import JointAnalysis
     from iad_core.entry import sample_get
     from iad_core.workbench.audit import AuditService, VlmClient
     db, _, config = dataset
@@ -422,15 +436,20 @@ def test_audit_uses_server_enforced_schema_for_roi_results(dataset, invalid_resp
     view = {'description':'真实局部观察','position_analysis':'位置合理','illumination_analysis':'已考虑反光'}
     def respond(request):
         body = json.loads(request.content)
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200,json={'count':1000,'max_model_len':262144})
         bodies.append(body)
         constrained = body.get('response_format', {}).get('json_schema', {})
         schema = constrained.get('schema') or json.loads(body['messages'][0]['content'][0]['text'].split('JSON Schema 的 JSON，不要 Markdown：\n')[1])
         title = schema['title']
         answer = dict(patterns if title == 'NormalPatterns' else view)
-        if title == 'ViewAnalysis' and (not constrained or invalid_response):
-            answer = ViewAnalysis.model_json_schema()
-        if title == 'VlmResult':
-            answer.update(suggested_label='PASS',reason_category='NORMAL',confidence=0.8,evidence_ids=[json.loads(p['text'][5:])['evidence_id'] for p in body['messages'][0]['content'] if p['type']=='text' and p['text'].startswith('视觉证据：')])
+        if title == 'JointAnalysis':
+            metadata = [json.loads(p['text'][5:]) for p in body['messages'][0]['content'] if p['type']=='text' and p['text'].startswith('视觉证据：')]
+            answer.update(suggested_label='PASS',reason_category='NORMAL',confidence=0.8,
+                          evidence_ids=[image['evidence_id'] for image in metadata], global_view=view,
+                          region_observations=[{**view,'region_index':index} for index in range(1,len(metadata))])
+            if not constrained or invalid_response:
+                answer = JointAnalysis.model_json_schema()
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(answer)}}]})
     service = AuditService(db,VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
     target = f'{config.dataset.id}:dent.png'
@@ -442,7 +461,7 @@ def test_audit_uses_server_enforced_schema_for_roi_results(dataset, invalid_resp
         if invalid_response:
             assert status['status']=='FAILED'
             assert detail['suggestion'] is None
-            assert 'MLLM ViewAnalysis 输出格式错误' in status['errors'][0]['message']
+            assert 'MLLM JointAnalysis 输出格式错误' in status['errors'][0]['message']
             assert 'description: missing' in status['errors'][0]['message']
             assert 'input_value=' not in status['errors'][0]['message']
         else:
@@ -474,5 +493,54 @@ def test_default_audit_includes_every_filtered_image_across_query_pages(dataset,
         result=service.status(job['run_id'])
         assert result['status']=='COMPLETED',result['errors']
         assert result['completed']==203
+    finally:
+        service.close()
+
+
+def test_joint_discovery_keeps_existing_coverage_when_adding_candidate(dataset, mllm_api):
+    from iad_core.entry import sample_get
+    from iad_core.workbench.audit import AuditService, VlmClient
+    db, _, config = dataset
+    client, bodies, responses = mllm_api
+    responses['GlobalAnalysis'] = {**responses['GlobalAnalysis'], 'suspect_regions':[{'bbox_1000':[400,400,600,600], 'reason':'待验证局部'}]}
+    service = AuditService(db, VlmClient(http_client=client))
+    target = f'{config.dataset.id}:normal.png'
+    try:
+        job = service.start(dataset_id=config.dataset.id, sample_ids=[target], model_name='test')
+        service.wait(job['run_id'], 10)
+        assert service.status(job['run_id'])['status'] == 'COMPLETED', service.status(job['run_id'])['errors']
+        trace = sample_get({'sample_id':target}, db.db_path)['suggestion']['analysis']
+        assert {r['source'] for r in trace['regions']} == {'coverage', 'model'}
+        assert trace['coverage']['planned_regions'] == trace['coverage']['inspected_regions'] == 2
+        assert len(trace['joint_steps']) == 2
+        assert len(trace['joint_steps'][-1]['input_evidence_ids']) == 3
+    finally:
+        service.close()
+
+
+def test_joint_review_reports_new_uninspected_candidates_as_missing(dataset, mllm_api):
+    from iad_core.entry import sample_get
+    from iad_core.workbench.audit import AuditService, VlmClient
+    db, _, config = dataset
+    client, _, responses = mllm_api
+    calls = []
+    def propose(request):
+        if request.url.path.endswith('/chat/completions') and json.loads(request.content)['response_format']['json_schema']['name'] == 'JointAnalysis':
+            calls.append(request)
+            box = [400,400,600,600] if len(calls) == 1 else [800,800,900,900]
+            responses['GlobalAnalysis'] = {**responses['GlobalAnalysis'], 'suspect_regions':[{'bbox_1000':box, 'reason':'仍需补充证据'}]}
+    client.event_hooks['request'].append(propose)
+    service = AuditService(db, VlmClient(http_client=client))
+    target = f'{config.dataset.id}:dent.png'
+    try:
+        job = service.start(dataset_id=config.dataset.id, sample_ids=[target], model_name='test')
+        service.wait(job['run_id'], 10)
+        assert service.status(job['run_id'])['status'] == 'COMPLETED'
+        trace = sample_get({'sample_id':target}, db.db_path)['suggestion']['analysis']
+        assert not trace['coverage']['complete']
+        assert trace['coverage']['planned_regions'] > trace['coverage']['inspected_regions']
+        assert trace['conclusion']['suggested_label'] == 'UNCERTAIN'
+        assert trace['conclusion']['missing_evidence']
+        assert trace['joint_steps'][-1]['result']['suggested_label'] == 'PASS'
     finally:
         service.close()

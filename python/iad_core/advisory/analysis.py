@@ -1,4 +1,4 @@
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
@@ -47,6 +47,15 @@ class VlmResult(ViewAnalysis):
     missing_evidence: List[str] = Field(default_factory=list)
 
 
+class RegionObservation(ViewAnalysis):
+    region_index: int = Field(ge=1, description="本次请求的 ROI 序号，从1开始，与输入区域顺序对应")
+
+
+class JointAnalysis(VlmResult):
+    global_view: GlobalAnalysis
+    region_observations: List[RegionObservation]
+
+
 class VisualEvidence(AnalysisModel):
     evidence_id: str
     role: Literal["normal", "overview", "roi"]
@@ -76,10 +85,13 @@ class RegionOrigin(AnalysisModel):
     bbox: List[int]
 
 
-class RegionEvidence(RegionOrigin):
+class RegionImage(RegionOrigin):
     origins: List[RegionOrigin]
     image: VisualEvidence
     crop_bbox: List[int]
+
+
+class RegionEvidence(RegionImage):
     observation: ViewAnalysis
 
 
@@ -87,7 +99,7 @@ class SynthesisStep(AnalysisModel):
     step_id: str
     input_evidence_ids: List[str]
     child_step_ids: List[str]
-    result: VlmResult
+    result: Union[VlmResult, JointAnalysis]
 
 
 class AuditAnalysis(AnalysisModel):

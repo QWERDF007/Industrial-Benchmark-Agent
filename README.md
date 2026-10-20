@@ -36,4 +36,4 @@ GECKODRIVER_PATH=/path/to/geckodriver pnpm --filter @industrial-benchmark/iad-ha
 FIREFOX_PATH=/path/to/firefox GECKODRIVER_PATH=/path/to/geckodriver pnpm --filter @industrial-benchmark/iad-harness verify:host-browser
 ```
 
-真实模型验证入口为 [verify_workbench_live.py](scripts/verify_workbench_live.py)，使用数据库快照，需可访问数据集目录及项目配置的 VLM。命令行验证前需导出模型环境变量；本地配置模板见 [.env.example](.env.example)，启动器自动加载 `.env.local`。模型服务环境变量定义见 [VlmClient](python/iad_core/workbench/vision.py)。
+真实模型验证入口为 [verify_workbench_live.py](scripts/verify_workbench_live.py)，使用数据库快照，需可访问数据集目录及项目配置的 VLM。命令行验证前需导出模型环境变量；本地配置模板见 [.env.example](.env.example)，启动器自动加载 `.env.local`。模型服务环境变量及实际上下文检查见 [VlmClient](python/iad_core/workbench/vision.py)；审计需要支持多图输入、结构化 JSON 输出与含图像计数的 `/tokenize` 接口（当前使用 vLLM）。
