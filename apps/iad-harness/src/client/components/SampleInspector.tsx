@@ -61,13 +61,16 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
     } catch (e) { if (activeId.current === id) setError(message(e)); } finally { setBusy(false); }
   }
   const annotationLayer: AnnotationLayerSource | undefined = detail ? { kind: "sample", annotations: detail.annotations, sample: detail.sample } : undefined;
-  const evidenceSource = (image: VisualEvidence): ImageSource => ({
-    src: auditEvidenceUrl(detail!.suggestion!.suggestion_id,image),
-    annotationLayer: image.role === "overview" && detail!.suggestion!.analysis ? { kind: "audit", analysis: detail!.suggestion!.analysis, suggestionId: detail!.suggestion!.suggestion_id } : undefined,
-    inspection: image.role === "overview" && detail!.suggestion!.analysis ? { suggestionId: detail!.suggestion!.suggestion_id, analysis: detail!.suggestion!.analysis } : undefined,
-    title: image.role === "overview" ? "送模全图概览" : `${image.representation === "annotation_mask" ? "标注定位图" : "ROI"} · ${image.crop_bbox.join(", ")}`,
-    width: image.sent_size[0], height: image.sent_size[1],
-  });
+  const evidenceSource = (evidence: VisualEvidence): ImageSource => {
+    const suggestion = detail!.suggestion!;
+    const analysis = suggestion.analysis!;
+    return {
+      src: auditEvidenceUrl(suggestion.suggestion_id,analysis.overview), title: "送模全图概览",
+      annotationLayer: { kind: "audit", analysis, suggestionId: suggestion.suggestion_id },
+      inspection: { suggestionId: suggestion.suggestion_id, analysis }, initialSelection: { kind: "evidence", id: evidence.evidence_id },
+      width: analysis.overview.sent_size[0], height: analysis.overview.sent_size[1],
+    };
+  };
   const image = detail ? { src: mediaUrl(detail.sample), title: detail.sample.relative_path.split("/").pop()!, width: detail.sample.width, height: detail.sample.height, annotationLayer, inspection: detail.suggestion?.analysis ? { suggestionId: detail.suggestion.suggestion_id, analysis: detail.suggestion.analysis } : undefined } : null;
   return <aside className="iad-inspector"><h2>{mode === "review" ? "复核明细" : "样本信息"}</h2>
     {error && <p role="alert" className="iad-error">{error}</p>}{notice && <p role="status">{notice}</p>}
@@ -85,12 +88,9 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
       </section><section className="iad-info-group"><h3>模型观察</h3>{detail.suggestion ? <><p><strong>{detail.suggestion.suggested_label}</strong> · {detail.suggestion.reason_category} · 模型自报置信度 {detail.suggestion.confidence === null ? "未记录" : `${Math.round(detail.suggestion.confidence * 100)}%`}</p>
         <p className="iad-observation">{detail.suggestion.notes}</p><small className="iad-muted">{detail.suggestion.model_name}</small>
         {detail.suggestion.analysis && <AuditFindings key={detail.suggestion.suggestion_id} analysis={detail.suggestion.analysis}
-          onEvidence={image => setLightbox(evidenceSource(image))} onLocate={finding => {
+          onEvidence={(image, finding) => setLightbox({ ...evidenceSource(image), initialSelection: { kind: "evidence", id: image.evidence_id, findingId: finding.finding_id } })} onLocate={finding => {
             const overview = detail.suggestion!.analysis!.overview;
-            setLightbox({ ...evidenceSource(overview), focus: finding.location.bbox ? {
-              bbox: finding.location.bbox.map((coordinate, axis) => coordinate * overview.sent_size[axis % 2] / overview.original_size[axis % 2]),
-              label: finding.location.description, findingId: finding.finding_id,
-            } : undefined });
+            setLightbox({ ...evidenceSource(overview), initialSelection: { kind: "finding", id: finding.finding_id } });
           }} />}
         <p className="iad-muted">良品知识来源 · {detail.suggestion.reference_sample_ids.length} 张参考图</p>
         <div className="iad-reference-grid">{detail.normal_knowledge?.evidence.filter(item => item.image.role === "normal" && item.image.representation === "raw" && detail.suggestion!.reference_sample_ids.includes(item.sample_id)).map(item => {
@@ -101,11 +101,11 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
         {detail.suggestion.analysis && <details className="iad-analysis"><summary>审计过程与知识版本</summary>{detail.normal_knowledge ? <DatasetKnowledge knowledge={detail.normal_knowledge} /> : <p className="iad-muted">历史审计，未关联知识版本。</p>}{detail.defect_knowledge && <DatasetKnowledge knowledge={detail.defect_knowledge} />}
           {!!detail.suggestion.analysis.knowledge_limitations.length && <p className="iad-muted">知识限制：{detail.suggestion.analysis.knowledge_limitations.join("；")}</p>}
           <p className={detail.suggestion.analysis.coverage.complete ? "iad-muted" : "iad-error"}>局部覆盖 {detail.suggestion.analysis.coverage.inspected_regions} / {detail.suggestion.analysis.coverage.planned_regions} · {detail.suggestion.analysis.coverage.complete ? "计划已覆盖" : "检查未完成"}</p>
-          <button className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(detail.suggestion!.analysis!.overview))}><img src={evidenceSource(detail.suggestion.analysis.overview).src} alt="送模全图概览" /><span>全图 · {detail.suggestion.analysis.overview.sent_size.join(" × ")}{detail.suggestion.analysis.conclusion.evidence_ids.includes(detail.suggestion.analysis.overview.evidence_id) ? " · 结论引用" : ""}</span></button>
+          <button className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(detail.suggestion!.analysis!.overview))}><img src={auditEvidenceUrl(detail.suggestion.suggestion_id,detail.suggestion.analysis.overview)} alt="送模全图概览" /><span>全图 · {detail.suggestion.analysis.overview.sent_size.join(" × ")}{detail.suggestion.analysis.conclusion.evidence_ids.includes(detail.suggestion.analysis.overview.evidence_id) ? " · 结论引用" : ""}</span></button>
           <h3>全图观察</h3><p>{detail.suggestion.analysis.global_view.description}</p>
           {detail.suggestion.analysis.regions.map((region, index) => <div key={index}><h3>局部 · {region.origins.map(origin => origin.label).join(" / ")}</h3><small>{regionSources[region.source]} · 原图坐标 {region.crop_bbox.join(", ")}</small>
-            <button className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(region.image))}><img src={evidenceSource(region.image).src} alt={`审计 ROI ${index + 1}`} /><span>{region.image.sent_size.join(" × ")} · PNG{detail.suggestion!.analysis!.conclusion.evidence_ids.includes(region.image.evidence_id) ? " · 结论引用" : ""}</span></button><p>{region.observation.description}</p><p>位置：{region.observation.position_analysis}</p><p>光照：{region.observation.illumination_analysis}</p></div>)}
-          {detail.suggestion.analysis.auxiliary_evidence.map(image => <button key={image.evidence_id} className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(image))}><img src={evidenceSource(image).src} alt="实际送模的二值标注定位图" /><span>标注定位图{detail.suggestion!.analysis!.conclusion.evidence_ids.includes(image.evidence_id) ? " · 结论引用" : ""}</span></button>)}
+            <button className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(region.image))}><img src={auditEvidenceUrl(detail.suggestion!.suggestion_id,region.image)} alt={`审计 ROI ${index + 1}`} /><span>{region.image.sent_size.join(" × ")} · PNG{detail.suggestion!.analysis!.conclusion.evidence_ids.includes(region.image.evidence_id) ? " · 结论引用" : ""}</span></button><p>{region.observation.description}</p><p>位置：{region.observation.position_analysis}</p><p>光照：{region.observation.illumination_analysis}</p></div>)}
+          {detail.suggestion.analysis.auxiliary_evidence.map(image => <button key={image.evidence_id} className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(image))}><img src={auditEvidenceUrl(detail.suggestion!.suggestion_id,image)} alt="实际送模的二值标注定位图" /><span>标注定位图{detail.suggestion!.analysis!.conclusion.evidence_ids.includes(image.evidence_id) ? " · 结论引用" : ""}</span></button>)}
           {detail.suggestion.analysis.conclusion.conflicts.length > 0 && <p className="iad-error">观察矛盾：{detail.suggestion.analysis.conclusion.conflicts.join("；")}</p>}
           {detail.suggestion.analysis.conclusion.missing_evidence.length > 0 && <p className="iad-error">缺失证据：{detail.suggestion.analysis.conclusion.missing_evidence.join("；")}</p>}
           {detail.suggestion.analysis.joint_steps.length > 1 && <details><summary>联合分析记录 · {detail.suggestion.analysis.joint_steps.length} 步</summary>{detail.suggestion.analysis.joint_steps.map(step => <div key={step.step_id}><strong>{step.step_id} · {step.result.suggested_label}</strong><p>{step.input_evidence_ids.length} 张图像{step.child_step_ids.length ? ` · 汇总 ${step.child_step_ids.join("、")}` : ""}</p><p>{step.result.description}</p>

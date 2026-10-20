@@ -115,6 +115,7 @@ var __IadClientBundle__ = (() => {
   var auditPhases = { PREPARING_KNOWLEDGE: "\u51C6\u5907\u51BB\u7ED3\u77E5\u8BC6", GLOBAL: "\u5168\u56FE\u89C2\u5BDF", REGIONS: "ROI \u7EC6\u770B", SYNTHESIS: "\u5168\u56FE\u4E0E ROI \u8054\u5408\u5206\u6790", SAMPLE_COMPLETED: "\u56FE\u50CF\u5BA1\u8BA1\u5B8C\u6210" };
   var auditEvidenceUrl = (suggestionId, image) => `/api/iad/evidence/${encodeURIComponent(suggestionId)}/${encodeURIComponent(image.evidence_id)}`;
   var regionSources = { annotation: "Labelme \u7EBF\u7D22", model: "MLLM \u5019\u9009", coverage: "\u7EC6\u8282\u8986\u76D6" };
+  var auditImageIndex = (analysis) => new Map([analysis.overview, ...analysis.regions.map((region) => region.image), ...analysis.auxiliary_evidence].map((image) => [image.evidence_id, image]));
 
   // src/client/components/DatasetManager.tsx
   var import_react2 = __require("react");
@@ -355,7 +356,7 @@ var __IadClientBundle__ = (() => {
   var import_react8 = __require("react");
 
   // src/client/components/ImageViewer.tsx
-  var import_react5 = __require("react");
+  var import_react6 = __require("react");
 
   // src/client/components/MediaLoad.tsx
   var import_react3 = __require("react");
@@ -432,123 +433,245 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // src/client/components/InspectionEvidence.tsx
+  // src/client/components/AuditEvidence.tsx
   var import_jsx_runtime7 = __require("react/jsx-runtime");
-  function InspectionOverlay({ inspection, selectedId, hoveredIds, regions }) {
-    const { analysis } = inspection;
-    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("svg", { className: "iad-roi-layer", viewBox: `0 0 ${analysis.overview.original_size.join(" ")}`, preserveAspectRatio: "none", "aria-label": "\u5BA1\u8BA1\u533A\u57DF", children: regions.map((region) => {
-      const [x1, y1, x2, y2] = region.crop_bbox;
-      return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("g", { "data-evidence-id": region.image.evidence_id, "data-locked": selectedId === region.image.evidence_id, className: hoveredIds.includes(region.image.evidence_id) ? "is-hovered" : "", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("rect", { x: x1, y: y1, width: x2 - x1, height: y2 - y1 }) }, region.image.evidence_id);
+  function AuditEvidence({ analysis, ids, label, onEvidence, selectedId }) {
+    const images = auditImageIndex(analysis);
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "iad-actions", children: ids.map((id, index) => {
+      const image = images.get(id);
+      return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)(
+        "button",
+        {
+          "data-evidence-id": id,
+          "aria-current": id === selectedId ? "true" : void 0,
+          disabled: !image,
+          onClick: () => image && onEvidence(image),
+          "aria-label": `\u67E5\u770B${label}\u7684\u8BC1\u636E ${index + 1}`,
+          children: [
+            "\u8BC1\u636E ",
+            index + 1,
+            " \xB7 ",
+            !image ? "\u4E0D\u53EF\u7528" : image.representation === "annotation_mask" ? "\u5B9A\u4F4D\u56FE" : image.role === "overview" ? "\u5168\u56FE" : "ROI"
+          ]
+        },
+        id
+      );
     }) });
   }
-  function InspectionPanel({ inspection, selectedId, onSelect, choices }) {
+
+  // src/client/components/AuditFindings.tsx
+  var import_react5 = __require("react");
+  var import_jsx_runtime8 = __require("react/jsx-runtime");
+  var priorities = { high: "\u4F18\u5148\u590D\u6838", medium: "\u968F\u540E\u590D\u6838", low: "\u8865\u5145\u6838\u5BF9" };
+  function AuditFindings({ analysis, onLocate, onEvidence }) {
+    const [expanded, setExpanded] = (0, import_react5.useState)(false);
+    if (!analysis.findings.length) return null;
+    const visible = expanded ? analysis.findings : analysis.findings.slice(0, 3);
+    return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("section", { className: "iad-findings", "aria-label": "\u4F18\u5148\u590D\u6838\u7591\u70B9", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("h3", { children: [
+        "\u91CD\u70B9\u7591\u70B9 \xB7 ",
+        analysis.findings.length
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("ol", { children: visible.map((finding) => /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("li", { "data-finding-id": finding.finding_id, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { children: priorities[finding.priority] }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("button", { onClick: () => onLocate(finding), title: "\u5728\u5168\u56FE\u5B9A\u4F4D", children: [
+          finding.location.description,
+          " \xB7 ",
+          finding.description
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { children: finding.review_action }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("details", { className: "iad-analysis", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("summary", { children: "\u4F9D\u636E\u4E0E\u6B63\u5E38\u89E3\u91CA" }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(FindingExplanation, { finding }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(AuditEvidence, { analysis, ids: finding.evidence_ids, label: finding.description, onEvidence: (image) => onEvidence(image, finding) })
+        ] })
+      ] }, finding.finding_id)) }),
+      analysis.findings.length > 3 && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { "aria-expanded": expanded, onClick: () => setExpanded((value) => !value), children: expanded ? "\u6536\u8D77\u5176\u4ED6\u7591\u70B9" : `\u67E5\u770B\u5176\u4F59 ${analysis.findings.length - 3} \u9879` })
+    ] });
+  }
+  function FindingExplanation({ finding }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_jsx_runtime8.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("p", { children: [
+        "\u5F02\u5E38\u5047\u8BBE\uFF1A",
+        finding.hypothesis
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("p", { children: [
+        "\u6B63\u5E38\u89E3\u91CA\uFF1A",
+        finding.normal_explanation
+      ] }),
+      !!finding.limitations.length && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { className: "iad-muted", children: finding.limitations.join("\uFF1B") })
+    ] });
+  }
+
+  // src/client/inspection.ts
+  function resolveInspection(analysis, selection) {
+    const findingId = selection?.kind === "finding" ? selection.id : selection?.findingId;
+    const finding = analysis?.findings.find((item) => item.finding_id === findingId);
+    const evidence = analysis && selection?.kind === "evidence" ? auditImageIndex(analysis).get(selection.id) : void 0;
+    const region = analysis?.regions.find((item) => selection?.kind === "evidence" ? item.image.evidence_id === selection.id : finding?.location.scope === "local" && finding.evidence_ids.includes(item.image.evidence_id));
+    return { finding, evidence, region };
+  }
+
+  // src/client/components/InspectionEvidence.tsx
+  var import_jsx_runtime9 = __require("react/jsx-runtime");
+  function InspectionOverlay({ inspection, selectedId, hoveredIds, regions, finding }) {
+    const { analysis } = inspection;
+    return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(import_jsx_runtime9.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("svg", { className: "iad-roi-layer", viewBox: `0 0 ${analysis.overview.original_size.join(" ")}`, preserveAspectRatio: "none", "aria-label": "\u5BA1\u8BA1\u533A\u57DF", children: regions.map((region) => {
+        const [x1, y1, x2, y2] = region.crop_bbox;
+        return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("g", { "data-evidence-id": region.image.evidence_id, "data-locked": selectedId === region.image.evidence_id, className: hoveredIds.includes(region.image.evidence_id) ? "is-hovered" : "", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("rect", { x: x1, y: y1, width: x2 - x1, height: y2 - y1 }) }, region.image.evidence_id);
+      }) }),
+      finding?.location.scope === "local" && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+        "svg",
+        {
+          className: "iad-finding-layer",
+          "data-finding-id": finding.finding_id,
+          viewBox: `0 0 ${analysis.overview.original_size.join(" ")}`,
+          preserveAspectRatio: "none",
+          "aria-label": finding.location.description,
+          children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("rect", { x: finding.location.bbox[0], y: finding.location.bbox[1], width: finding.location.bbox[2] - finding.location.bbox[0], height: finding.location.bbox[3] - finding.location.bbox[1] })
+        }
+      )
+    ] });
+  }
+  function InspectionPanel({ inspection, selection, onSelect, choices }) {
     const { analysis, suggestionId } = inspection;
-    const region = analysis.regions.find((region2) => region2.image.evidence_id === selectedId);
-    const related = region ? analysis.findings.filter((finding) => finding.evidence_ids.includes(region.image.evidence_id)) : [];
-    return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("aside", { className: "iad-inspection-panel", "aria-label": "\u5168\u56FE\u4E0E ROI \u7EFC\u5408\u5206\u6790", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h2", { children: "\u7EFC\u5408\u5EFA\u8BAE" }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { children: analysis.conclusion.description }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { className: "iad-muted", children: [
+    const { finding, evidence, region } = resolveInspection(analysis, selection);
+    const selectedId = region?.image.evidence_id || "";
+    const related = region ? analysis.findings.filter((finding2) => finding2.evidence_ids.includes(region.image.evidence_id)) : [];
+    return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("aside", { className: "iad-inspection-panel", "aria-label": "\u5168\u56FE\u4E0E ROI \u7EFC\u5408\u5206\u6790", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("h2", { children: "\u7EFC\u5408\u5EFA\u8BAE" }),
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { children: analysis.conclusion.description }),
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("p", { className: "iad-muted", children: [
         "\u4F4D\u7F6E\uFF1A",
         analysis.conclusion.position_analysis,
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("br", {}),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("br", {}),
         "\u5149\u7167\uFF1A",
         analysis.conclusion.illumination_analysis
       ] }),
-      !!choices.length && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { role: "group", "aria-label": "\u91CD\u53E0\u533A\u57DF", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h3", { children: "\u9009\u62E9\u91CD\u53E0\u533A\u57DF" }),
-        analysis.regions.filter((item) => choices.includes(item.image.evidence_id)).map((item) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("button", { onClick: () => onSelect(item.image.evidence_id), children: [
+      !!analysis.findings.length && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("label", { className: "iad-field", children: [
+        "\u5BA1\u8BA1\u7591\u70B9",
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("select", { "aria-label": "\u5BA1\u8BA1\u7591\u70B9", value: finding?.finding_id || "", onChange: (event) => onSelect(event.target.value ? { kind: "finding", id: event.target.value } : null), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("option", { value: "", children: "\u9009\u62E9\u7591\u70B9" }),
+          analysis.findings.map((item) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("option", { value: item.finding_id, children: [
+            item.location.scope === "global" ? "\u5168\u56FE" : "\u5C40\u90E8",
+            " \xB7 ",
+            item.location.description,
+            " \xB7 ",
+            item.description
+          ] }, item.finding_id))
+        ] })
+      ] }),
+      finding && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("section", { className: "iad-inspection-finding", "data-finding-id": finding.finding_id, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("h3", { children: [
+          finding.location.scope === "global" ? "\u5168\u56FE\u5173\u7CFB" : "\u5C40\u90E8\u7591\u70B9",
+          " \xB7 ",
+          finding.location.description
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { children: finding.description }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(FindingExplanation, { finding }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { children: finding.review_action }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(AuditEvidence, { analysis, ids: finding.evidence_ids, label: finding.description, selectedId: evidence?.evidence_id || region?.image.evidence_id, onEvidence: (image) => onSelect({ kind: "evidence", id: image.evidence_id, findingId: finding.finding_id }) })
+      ] }),
+      !!choices.length && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { role: "group", "aria-label": "\u91CD\u53E0\u533A\u57DF", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("h3", { children: "\u9009\u62E9\u91CD\u53E0\u533A\u57DF" }),
+        analysis.regions.filter((item) => choices.includes(item.image.evidence_id)).map((item) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("button", { onClick: () => onSelect({ kind: "evidence", id: item.image.evidence_id }), children: [
           item.label,
           " \xB7 ",
           item.crop_bbox.join(", ")
         ] }, item.image.evidence_id))
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "iad-roi-list", "aria-label": "\u5BA1\u8BA1 ROI", children: analysis.regions.map((item, index) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("button", { "aria-label": `\u5B9A\u4F4D ROI ${index + 1}`, "aria-pressed": selectedId === item.image.evidence_id, onClick: () => onSelect(item.image.evidence_id), children: [
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "iad-roi-list", "aria-label": "\u5BA1\u8BA1 ROI", children: analysis.regions.map((item, index) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("button", { "aria-label": `\u5B9A\u4F4D ROI ${index + 1}`, "aria-pressed": selectedId === item.image.evidence_id, onClick: () => onSelect({ kind: "evidence", id: item.image.evidence_id }), children: [
         "ROI ",
         index + 1,
         " \xB7 ",
         item.label
       ] }, item.image.evidence_id)) }),
-      region ? /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("section", { className: "iad-inspection-region", "data-evidence-id": region.image.evidence_id, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("h3", { children: [
+      region ? /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("section", { className: "iad-inspection-region", "data-evidence-id": region.image.evidence_id, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("h3", { children: [
           regionSources[region.source],
           " \xB7 ",
           region.label
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(MediaLoad, { children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(MediaImage, { src: auditEvidenceUrl(suggestionId, region.image), alt: "\u6240\u9009 ROI \u7684\u5B9E\u9645\u9001\u6A21\u88C1\u56FE", "data-media-label": "ROI \u88C1\u56FE" }) }, region.image.evidence_id),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("dl", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("dt", { children: "\u539F\u56FE\u533A\u57DF" }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("dd", { children: region.bbox.join(", ") }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("dt", { children: "\u5916\u6269\u88C1\u56FE" }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("dd", { children: region.crop_bbox.join(", ") })
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(MediaLoad, { children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(MediaImage, { src: auditEvidenceUrl(suggestionId, region.image), alt: "\u6240\u9009 ROI \u7684\u5B9E\u9645\u9001\u6A21\u88C1\u56FE", "data-media-label": "ROI \u88C1\u56FE" }) }, region.image.evidence_id),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("dl", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("dt", { children: "\u539F\u56FE\u533A\u57DF" }),
+          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("dd", { children: region.bbox.join(", ") }),
+          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("dt", { children: "\u5916\u6269\u88C1\u56FE" }),
+          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("dd", { children: region.crop_bbox.join(", ") })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { children: region.observation.description }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { children: region.observation.description }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("p", { children: [
           "\u4F4D\u7F6E\uFF1A",
           region.observation.position_analysis
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("p", { children: [
           "\u5149\u7167\uFF1A",
           region.observation.illumination_analysis
         ] }),
-        related.slice(0, 3).map((finding) => /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { children: finding.description }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { children: [
-            "\u6B63\u5E38\u89E3\u91CA\uFF1A",
-            finding.normal_explanation
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "iad-muted", children: finding.limitations.join("\uFF1B") }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { children: finding.review_action })
-        ] }, finding.finding_id))
-      ] }) : /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "iad-muted", children: "\u70B9\u9009\u56FE\u4E2D\u533A\u57DF\u6216 ROI \u6309\u94AE\u67E5\u770B\u5B9E\u9645\u88C1\u56FE\u3002" }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("details", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("summary", { children: "\u7248\u672C\u4E0E\u8BC1\u636E\u8303\u56F4" }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { children: /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("code", { children: analysis.normal_version_id }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { children: [
+        !finding && !!related.length && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "iad-related-findings iad-actions", "aria-label": "ROI \u5173\u8054\u7591\u70B9", children: related.map((item) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("button", { "data-finding-id": item.finding_id, onClick: () => onSelect({ kind: "finding", id: item.finding_id }), children: [
+          item.location.description,
+          " \xB7 ",
+          item.description
+        ] }, item.finding_id)) })
+      ] }) : !evidence && !finding && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { className: "iad-muted", children: "\u70B9\u9009\u56FE\u4E2D\u533A\u57DF\u6216 ROI \u6309\u94AE\u67E5\u770B\u5B9E\u9645\u88C1\u56FE\u3002" }),
+      evidence && evidence.representation !== "raw" && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("section", { className: "iad-inspection-mask", "data-evidence-id": evidence.evidence_id, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("h3", { children: evidence.representation === "annotation_mask" ? "\u6807\u6CE8\u5B9A\u4F4D\u56FE" : "\u6807\u6CE8\u53E0\u52A0\u56FE" }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(MediaLoad, { children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(MediaImage, { src: auditEvidenceUrl(suggestionId, evidence), alt: "\u6240\u9009\u6807\u6CE8\u7684\u5B9E\u9645\u9001\u6A21\u56FE", "data-media-label": "\u6807\u6CE8\u8BC1\u636E" }) }, evidence.evidence_id),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("p", { children: [
+          "\u539F\u56FE\u5750\u6807\uFF1A",
+          evidence.crop_bbox.join(", ")
+        ] })
+      ] }),
+      evidence?.role === "overview" && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("section", { className: "iad-inspection-overview", "data-evidence-id": evidence.evidence_id, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("h3", { children: "\u5168\u56FE\u89C2\u5BDF" }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { children: analysis.global_view.description }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("p", { children: [
+          "\u4F4D\u7F6E\uFF1A",
+          analysis.global_view.position_analysis
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("p", { children: [
+          "\u5149\u7167\uFF1A",
+          analysis.global_view.illumination_analysis
+        ] })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("details", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("summary", { children: "\u7248\u672C\u4E0E\u8BC1\u636E\u8303\u56F4" }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("code", { children: analysis.normal_version_id }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("p", { children: [
           "\u5B9E\u9645\u7EC6\u770B ",
           analysis.coverage.inspected_regions,
           " / ",
           analysis.coverage.planned_regions,
           " \u4E2A ROI"
         ] }),
-        analysis.coverage.missing.map((item, index) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { children: item }, index))
+        analysis.coverage.missing.map((item, index) => /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { children: item }, index))
       ] })
     ] });
   }
 
   // src/client/components/ImageViewer.tsx
-  var import_jsx_runtime8 = __require("react/jsx-runtime");
+  var import_jsx_runtime10 = __require("react/jsx-runtime");
   function AnnotatedImage({ image, visible = true, onLoad }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "iad-image-frame", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(MediaImage, { src: image.src, alt: image.title, width: image.width, height: image.height, "data-media-label": "\u56FE\u50CF", draggable: false, onLoad }),
-      visible && image.annotationLayer && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(AnnotationLayer, { source: image.annotationLayer }),
-      image.focus && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
-        "svg",
-        {
-          className: "iad-finding-layer",
-          "data-finding-id": image.focus.findingId,
-          viewBox: `0 0 ${image.width} ${image.height}`,
-          preserveAspectRatio: "none",
-          "aria-label": image.focus.label,
-          children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("rect", { x: image.focus.bbox[0], y: image.focus.bbox[1], width: image.focus.bbox[2] - image.focus.bbox[0], height: image.focus.bbox[3] - image.focus.bbox[1] })
-        }
-      )
+    return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "iad-image-frame", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(MediaImage, { src: image.src, alt: image.title, width: image.width, height: image.height, "data-media-label": "\u56FE\u50CF", draggable: false, onLoad }),
+      visible && image.annotationLayer && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(AnnotationLayer, { source: image.annotationLayer })
     ] });
   }
   function ImageViewer({ image, onClose }) {
-    const viewport = (0, import_react5.useRef)(null);
-    const world = (0, import_react5.useRef)(null);
-    const layerMenu = (0, import_react5.useRef)(null);
+    const viewport = (0, import_react6.useRef)(null);
+    const world = (0, import_react6.useRef)(null);
+    const layerMenu = (0, import_react6.useRef)(null);
     const inspection = image.inspection;
-    const [selection, setSelection] = (0, import_react5.useState)(inspection && image.focus ? { kind: "finding", id: image.focus.findingId } : null);
-    const [hoveredIds, setHoveredIds] = (0, import_react5.useState)([]);
-    const [choices, setChoices] = (0, import_react5.useState)([]);
-    const finding = selection?.kind === "finding" ? inspection?.analysis.findings.find((item) => item.finding_id === selection.id) : void 0;
-    const selectedId = selection?.kind === "region" ? selection.id : inspection?.analysis.regions.find((region) => finding?.evidence_ids.includes(region.image.evidence_id))?.image.evidence_id || "";
-    const [size, setSize] = (0, import_react5.useState)({ width: image.width || 0, height: image.height || 0 });
-    const [bounds, setBounds] = (0, import_react5.useState)({ width: 0, height: 0 });
-    const [view, setView] = (0, import_react5.useState)({ scale: 0, x: 0, y: 0 });
-    const [layers, setLayers] = (0, import_react5.useState)(() => {
+    const [selection, setSelection] = (0, import_react6.useState)(() => inspection ? image.initialSelection || null : null);
+    const [hoveredIds, setHoveredIds] = (0, import_react6.useState)([]);
+    const [choices, setChoices] = (0, import_react6.useState)([]);
+    const { finding, evidence, region } = resolveInspection(inspection?.analysis, selection);
+    const selectedId = region?.image.evidence_id || "";
+    const [size, setSize] = (0, import_react6.useState)({ width: image.width || 0, height: image.height || 0 });
+    const [bounds, setBounds] = (0, import_react6.useState)({ width: 0, height: 0 });
+    const [view, setView] = (0, import_react6.useState)({ scale: 0, x: 0, y: 0 });
+    const [layers, setLayers] = (0, import_react6.useState)(() => {
       const initial = { annotation: true, model: true, coverage: true };
       try {
         const saved = JSON.parse(localStorage.getItem("iad.image-layers") || "null");
@@ -558,43 +681,47 @@ var __IadClientBundle__ = (() => {
       } catch {
         localStorage.removeItem("iad.image-layers");
       }
+      if (region) initial[region.source] = true;
+      if (finding?.location.scope === "local") initial.model = true;
       return initial;
     });
-    const regions = inspection?.analysis.regions.filter((region) => region.origins.some((origin) => layers[origin.source])) || [];
-    (0, import_react5.useEffect)(() => {
+    const regions = inspection?.analysis.regions.filter((region2) => region2.origins.some((origin) => layers[origin.source])) || [];
+    (0, import_react6.useEffect)(() => {
       localStorage.setItem("iad.image-layers", JSON.stringify(layers));
     }, [layers]);
-    const drag = (0, import_react5.useRef)(null);
+    const drag = (0, import_react6.useRef)(null);
     const fit = size.width && size.height ? Math.min(bounds.width / size.width, bounds.height / size.height) : 1;
     const scale = view.scale || fit;
-    (0, import_react5.useLayoutEffect)(() => {
+    (0, import_react6.useLayoutEffect)(() => {
       const element = viewport.current;
       const observer = new ResizeObserver(([entry]) => setBounds({ width: entry.contentRect.width, height: entry.contentRect.height }));
       observer.observe(element);
       return () => observer.disconnect();
     }, []);
-    const focusBox = (0, import_react5.useCallback)((box) => {
-      if (!bounds.width || !bounds.height || !size.width || !size.height) return;
-      const [x1, y1, x2, y2] = box;
+    (0, import_react6.useEffect)(() => {
+      if (!inspection || !selection || !bounds.width || !bounds.height || !size.width || !size.height) return;
+      const box = selection.kind === "evidence" ? evidence?.role === "overview" ? null : evidence?.crop_bbox : finding?.location.bbox;
+      if (!box) {
+        setView({ scale: 0, x: 0, y: 0 });
+        return;
+      }
+      const [x1, y1, x2, y2] = box.map((value, axis) => value * (axis % 2 ? size.height : size.width) / inspection.analysis.overview.original_size[axis % 2]);
       const scale2 = Math.min(16, bounds.width / ((x2 - x1) * 1.4), bounds.height / ((y2 - y1) * 1.4));
       setView({ scale: scale2, x: (size.width / 2 - (x1 + x2) / 2) * scale2, y: (size.height / 2 - (y1 + y2) / 2) * scale2 });
-    }, [bounds.width, bounds.height, size.width, size.height]);
-    (0, import_react5.useEffect)(() => {
-      if (image.focus) focusBox(image.focus.bbox);
-    }, [image.focus, focusBox]);
-    function selectRegion(id) {
-      const region = inspection.analysis.regions.find((region2) => region2.image.evidence_id === id);
-      setLayers((previous) => ({ ...previous, [region.source]: true }));
-      setSelection({ kind: "region", id });
+    }, [selection, inspection, finding, evidence, bounds.width, bounds.height, size.width, size.height]);
+    function select(target) {
+      const { region: targetRegion, finding: targetFinding } = resolveInspection(inspection?.analysis, target);
+      if (targetRegion) setLayers((previous) => ({ ...previous, [targetRegion.source]: true }));
+      if (targetFinding?.location.scope === "local") setLayers((previous) => ({ ...previous, model: true }));
+      setSelection(target);
       setChoices([]);
-      focusBox(region.crop_bbox.map((value, axis) => value * (axis % 2 ? size.height : size.width) / inspection.analysis.overview.original_size[axis % 2]));
     }
     function regionsAt(event) {
       if (!inspection || !world.current) return [];
       const rect = world.current.getBoundingClientRect();
       const x = (event.clientX - rect.left) * inspection.analysis.overview.original_size[0] / rect.width;
       const y = (event.clientY - rect.top) * inspection.analysis.overview.original_size[1] / rect.height;
-      return regions.filter((region) => x >= region.crop_bbox[0] && x <= region.crop_bbox[2] && y >= region.crop_bbox[1] && y <= region.crop_bbox[3]).map((region) => region.image.evidence_id);
+      return regions.filter((region2) => x >= region2.crop_bbox[0] && x <= region2.crop_bbox[2] && y >= region2.crop_bbox[1] && y <= region2.crop_bbox[3]).map((region2) => region2.image.evidence_id);
     }
     function cancel() {
       if (layerMenu.current?.open) {
@@ -604,7 +731,7 @@ var __IadClientBundle__ = (() => {
       else if (selection) setSelection(null);
       else onClose();
     }
-    (0, import_react5.useEffect)(() => {
+    (0, import_react6.useEffect)(() => {
       const element = viewport.current;
       const wheel = (event) => {
         event.preventDefault();
@@ -620,30 +747,30 @@ var __IadClientBundle__ = (() => {
       return () => element.removeEventListener("wheel", wheel);
     }, [fit]);
     const fixed = [0, 1, 1.5, 2].includes(view.scale);
-    return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Modal, { title: "\u539F\u56FE\u68C0\u89C6\u5668", className: "iad-viewer-dialog", onClose: cancel, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "iad-lightbox", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "iad-lightbox-toolbar", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("strong", { children: image.title }),
-        /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("select", { "aria-label": "\u7F29\u653E", value: fixed ? view.scale : "custom", onChange: (e) => setView({ scale: Number(e.target.value), x: 0, y: 0 }), children: [
-          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("option", { value: 0, children: "\u9002\u5E94\u7A97\u53E3" }),
-          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("option", { value: 1, children: "100%" }),
-          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("option", { value: 1.5, children: "150%" }),
-          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("option", { value: 2, children: "200%" }),
-          !fixed && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("option", { value: "custom", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Modal, { title: "\u539F\u56FE\u68C0\u89C6\u5668", className: "iad-viewer-dialog", onClose: cancel, children: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "iad-lightbox", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "iad-lightbox-toolbar", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("strong", { children: image.title }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("select", { "aria-label": "\u7F29\u653E", value: fixed ? view.scale : "custom", onChange: (e) => setView({ scale: Number(e.target.value), x: 0, y: 0 }), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("option", { value: 0, children: "\u9002\u5E94\u7A97\u53E3" }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("option", { value: 1, children: "100%" }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("option", { value: 1.5, children: "150%" }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("option", { value: 2, children: "200%" }),
+          !fixed && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("option", { value: "custom", children: [
             Math.round(scale * 100),
             "%"
           ] })
         ] }),
-        (image.annotationLayer || inspection) && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { className: "iad-eye", title: layers.annotation ? "\u9690\u85CF\u6807\u6CE8" : "\u663E\u793A\u6807\u6CE8", "aria-label": layers.annotation ? "\u9690\u85CF\u6807\u6CE8" : "\u663E\u793A\u6807\u6CE8", "aria-pressed": layers.annotation, onClick: () => setLayers((previous) => ({ ...previous, annotation: !previous.annotation })), children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("svg", { viewBox: "0 0 24 24", width: "21", height: "21", fill: "none", stroke: "currentColor", strokeWidth: "1.8", "aria-hidden": "true", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" }),
-          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("circle", { cx: "12", cy: "12", r: "3" }),
-          !layers.annotation && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("path", { d: "m3 3 18 18" })
+        (image.annotationLayer || inspection) && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("button", { className: "iad-eye", title: layers.annotation ? "\u9690\u85CF\u6807\u6CE8" : "\u663E\u793A\u6807\u6CE8", "aria-label": layers.annotation ? "\u9690\u85CF\u6807\u6CE8" : "\u663E\u793A\u6807\u6CE8", "aria-pressed": layers.annotation, onClick: () => setLayers((previous) => ({ ...previous, annotation: !previous.annotation })), children: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("svg", { viewBox: "0 0 24 24", width: "21", height: "21", fill: "none", stroke: "currentColor", strokeWidth: "1.8", "aria-hidden": "true", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("circle", { cx: "12", cy: "12", r: "3" }),
+          !layers.annotation && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("path", { d: "m3 3 18 18" })
         ] }) }),
-        inspection && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("details", { ref: layerMenu, className: "iad-layer-menu", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("summary", { "aria-label": "\u53EF\u89C6\u56FE\u5C42", children: "\u56FE\u5C42" }),
-          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { children: Object.keys(regionSources).map((source) => {
+        inspection && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("details", { ref: layerMenu, className: "iad-layer-menu", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("summary", { "aria-label": "\u53EF\u89C6\u56FE\u5C42", children: "\u56FE\u5C42" }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { children: Object.keys(regionSources).map((source) => {
             const label = { annotation: "\u6807\u6CE8", model: "\u6A21\u578B\u5019\u9009", coverage: "\u7EC6\u8282\u8986\u76D6" }[source];
-            return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("label", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+            return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("label", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
                 "input",
                 {
                   type: "checkbox",
@@ -656,10 +783,10 @@ var __IadClientBundle__ = (() => {
             ] }, source);
           }) })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { onClick: onClose, children: "\u5173\u95ED" })
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("button", { onClick: onClose, children: "\u5173\u95ED" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: `iad-viewer-body ${inspection ? "has-inspection" : ""}`, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(MediaLoad, { className: "iad-viewer-media", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: `iad-viewer-body ${inspection ? "has-inspection" : ""}`, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(MediaLoad, { className: "iad-viewer-media", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
           "div",
           {
             className: "iad-viewer-viewport",
@@ -692,7 +819,7 @@ var __IadClientBundle__ = (() => {
               drag.current = null;
               if (start && !start.moved && inspection) {
                 const ids = regionsAt(event);
-                if (ids.length === 1) selectRegion(ids[0]);
+                if (ids.length === 1) select({ kind: "evidence", id: ids[0] });
                 else {
                   setSelection(null);
                   setChoices(ids);
@@ -702,30 +829,30 @@ var __IadClientBundle__ = (() => {
             onPointerCancel: () => {
               drag.current = null;
             },
-            children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "iad-viewer-world", ref: world, "data-scale": scale, style: {
+            children: /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "iad-viewer-world", ref: world, "data-scale": scale, style: {
               width: size.width,
               height: size.height,
               "--iad-view-scale": scale,
               transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${scale})`
             }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(AnnotatedImage, { image: { ...image, ...size, focus: inspection && (!finding || !layers.model) ? void 0 : image.focus }, visible: layers.annotation, onLoad: (event) => setSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight }) }),
-              inspection && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(InspectionOverlay, { inspection, selectedId, hoveredIds, regions })
+              /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(AnnotatedImage, { image: { ...image, ...size }, visible: layers.annotation, onLoad: (event) => setSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight }) }),
+              inspection && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(InspectionOverlay, { inspection, selectedId, hoveredIds, regions, finding: layers.model ? finding : void 0 })
             ] })
           }
         ) }, image.src),
-        inspection && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(InspectionPanel, { inspection, selectedId, onSelect: selectRegion, choices })
+        inspection && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(InspectionPanel, { inspection, selection, choices, onSelect: select })
       ] })
     ] }) });
   }
 
   // src/client/components/DatasetKnowledge.tsx
-  var import_jsx_runtime9 = __require("react/jsx-runtime");
+  var import_jsx_runtime11 = __require("react/jsx-runtime");
   var statuses = { supported: "\u6709\u8BC1\u636E\u652F\u6301", provisional: "\u5F85\u9A8C\u8BC1", conflicted: "\u5B58\u5728\u77DB\u76FE" };
   function DatasetKnowledge({ knowledge }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "iad-profile", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("strong", { children: knowledge.kind === "normal" ? "\u826F\u54C1\u77E5\u8BC6" : "\u4E0D\u826F\u77E5\u8BC6" }),
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { children: knowledge.summary }),
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("small", { className: "iad-muted", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "iad-profile", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("strong", { children: knowledge.kind === "normal" ? "\u826F\u54C1\u77E5\u8BC6" : "\u4E0D\u826F\u77E5\u8BC6" }),
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { children: knowledge.summary }),
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("small", { className: "iad-muted", children: [
         knowledge.version_id,
         " \xB7 ",
         knowledge.sources.length,
@@ -733,113 +860,49 @@ var __IadClientBundle__ = (() => {
         knowledge.checks.length,
         " \u9879\u5224\u636E"
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("details", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("summary", { children: "\u68C0\u67E5\u5224\u636E" }),
-        knowledge.checks.map((check) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("strong", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("details", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("summary", { children: "\u68C0\u67E5\u5224\u636E" }),
+        knowledge.checks.map((check) => /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("strong", { children: [
             check.title,
             " \xB7 ",
             statuses[check.status]
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { children: check.criterion }),
-          /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("small", { className: "iad-muted", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { children: check.criterion }),
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("small", { className: "iad-muted", children: [
             check.subject,
             " \xB7 ",
             check.location
           ] }),
-          !!check.allowed_variations.length && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("p", { children: [
+          !!check.allowed_variations.length && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("p", { children: [
             "\u5141\u8BB8\u53D8\u5316\uFF1A",
             check.allowed_variations.join("\uFF1B")
           ] }),
-          !!check.limitations.length && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { className: "iad-muted", children: check.limitations.join("\uFF1B") })
+          !!check.limitations.length && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { className: "iad-muted", children: check.limitations.join("\uFF1B") })
         ] }, check.check_id))
       ] })
     ] });
   }
 
-  // src/client/components/AuditEvidence.tsx
-  var import_jsx_runtime10 = __require("react/jsx-runtime");
-  function AuditEvidence({ analysis, ids, label, onEvidence }) {
-    const images = new Map([analysis.overview, ...analysis.regions.map((region) => region.image), ...analysis.auxiliary_evidence].map((image) => [image.evidence_id, image]));
-    return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "iad-actions", children: ids.map((id, index) => {
-      const image = images.get(id);
-      return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(
-        "button",
-        {
-          "data-evidence-id": id,
-          disabled: !image,
-          onClick: () => image && onEvidence(image),
-          "aria-label": `\u67E5\u770B${label}\u7684\u8BC1\u636E ${index + 1}`,
-          children: [
-            "\u8BC1\u636E ",
-            index + 1,
-            " \xB7 ",
-            !image ? "\u4E0D\u53EF\u7528" : image.representation === "annotation_mask" ? "\u5B9A\u4F4D\u56FE" : image.role === "overview" ? "\u5168\u56FE" : "ROI"
-          ]
-        },
-        id
-      );
-    }) });
-  }
-
   // src/client/components/RuleAssessments.tsx
-  var import_jsx_runtime11 = __require("react/jsx-runtime");
+  var import_jsx_runtime12 = __require("react/jsx-runtime");
   var statuses2 = { normal: "\u672A\u89C1\u5F02\u5E38", anomaly: "\u53D1\u73B0\u504F\u79BB", insufficient: "\u8BC1\u636E\u4E0D\u8DB3", not_applicable: "\u4E0D\u9002\u7528" };
   function RuleAssessments({ analysis, knowledge, onEvidence }) {
     const checks = new Map(knowledge.flatMap((snapshot) => snapshot.checks.map((check) => [check.check_id, check])));
     if (!analysis.check_assessments.length) return null;
-    return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("details", { className: "iad-rule-assessments iad-analysis", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("summary", { children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("details", { className: "iad-rule-assessments iad-analysis", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("summary", { children: [
         "\u68C0\u67E5\u9879 \xB7 ",
         analysis.check_assessments.length
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("ol", { children: analysis.check_assessments.map((assessment) => /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("li", { "data-check-id": assessment.check_id, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("strong", { children: checks.get(assessment.check_id)?.title || assessment.check_id }),
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("ol", { children: analysis.check_assessments.map((assessment) => /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("li", { "data-check-id": assessment.check_id, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("strong", { children: checks.get(assessment.check_id)?.title || assessment.check_id }),
         " \xB7 ",
         statuses2[assessment.status],
-        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { children: assessment.description }),
-        !!assessment.limitations.length && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { className: "iad-muted", children: assessment.limitations.join("\uFF1B") }),
-        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(AuditEvidence, { analysis, ids: assessment.evidence_ids, label: checks.get(assessment.check_id)?.title || "\u68C0\u67E5\u9879", onEvidence })
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("p", { children: assessment.description }),
+        !!assessment.limitations.length && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("p", { className: "iad-muted", children: assessment.limitations.join("\uFF1B") }),
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(AuditEvidence, { analysis, ids: assessment.evidence_ids, label: checks.get(assessment.check_id)?.title || "\u68C0\u67E5\u9879", onEvidence })
       ] }, assessment.check_id)) })
-    ] });
-  }
-
-  // src/client/components/AuditFindings.tsx
-  var import_react6 = __require("react");
-  var import_jsx_runtime12 = __require("react/jsx-runtime");
-  var priorities = { high: "\u4F18\u5148\u590D\u6838", medium: "\u968F\u540E\u590D\u6838", low: "\u8865\u5145\u6838\u5BF9" };
-  function AuditFindings({ analysis, onLocate, onEvidence }) {
-    const [expanded, setExpanded] = (0, import_react6.useState)(false);
-    if (!analysis.findings.length) return null;
-    const visible = expanded ? analysis.findings : analysis.findings.slice(0, 3);
-    return /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("section", { className: "iad-findings", "aria-label": "\u4F18\u5148\u590D\u6838\u7591\u70B9", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("h3", { children: [
-        "\u91CD\u70B9\u7591\u70B9 \xB7 ",
-        analysis.findings.length
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("ol", { children: visible.map((finding) => /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("li", { "data-finding-id": finding.finding_id, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("p", { children: priorities[finding.priority] }),
-        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("button", { onClick: () => onLocate(finding), title: "\u5728\u5168\u56FE\u5B9A\u4F4D", children: [
-          finding.location.description,
-          " \xB7 ",
-          finding.description
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("p", { children: finding.review_action }),
-        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("details", { className: "iad-analysis", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("summary", { children: "\u4F9D\u636E\u4E0E\u6B63\u5E38\u89E3\u91CA" }),
-          /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("p", { children: [
-            "\u5F02\u5E38\u5047\u8BBE\uFF1A",
-            finding.hypothesis
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("p", { children: [
-            "\u6B63\u5E38\u89E3\u91CA\uFF1A",
-            finding.normal_explanation
-          ] }),
-          !!finding.limitations.length && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("p", { className: "iad-muted", children: finding.limitations.join("\uFF1B") }),
-          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(AuditEvidence, { analysis, ids: finding.evidence_ids, label: finding.description, onEvidence })
-        ] })
-      ] }, finding.finding_id)) }),
-      analysis.findings.length > 3 && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("button", { "aria-expanded": expanded, onClick: () => setExpanded((value) => !value), children: expanded ? "\u6536\u8D77\u5176\u4ED6\u7591\u70B9" : `\u67E5\u770B\u5176\u4F59 ${analysis.findings.length - 3} \u9879` })
     ] });
   }
 
@@ -949,14 +1012,19 @@ var __IadClientBundle__ = (() => {
       }
     }
     const annotationLayer = detail ? { kind: "sample", annotations: detail.annotations, sample: detail.sample } : void 0;
-    const evidenceSource = (image2) => ({
-      src: auditEvidenceUrl(detail.suggestion.suggestion_id, image2),
-      annotationLayer: image2.role === "overview" && detail.suggestion.analysis ? { kind: "audit", analysis: detail.suggestion.analysis, suggestionId: detail.suggestion.suggestion_id } : void 0,
-      inspection: image2.role === "overview" && detail.suggestion.analysis ? { suggestionId: detail.suggestion.suggestion_id, analysis: detail.suggestion.analysis } : void 0,
-      title: image2.role === "overview" ? "\u9001\u6A21\u5168\u56FE\u6982\u89C8" : `${image2.representation === "annotation_mask" ? "\u6807\u6CE8\u5B9A\u4F4D\u56FE" : "ROI"} \xB7 ${image2.crop_bbox.join(", ")}`,
-      width: image2.sent_size[0],
-      height: image2.sent_size[1]
-    });
+    const evidenceSource = (evidence) => {
+      const suggestion = detail.suggestion;
+      const analysis = suggestion.analysis;
+      return {
+        src: auditEvidenceUrl(suggestion.suggestion_id, analysis.overview),
+        title: "\u9001\u6A21\u5168\u56FE\u6982\u89C8",
+        annotationLayer: { kind: "audit", analysis, suggestionId: suggestion.suggestion_id },
+        inspection: { suggestionId: suggestion.suggestion_id, analysis },
+        initialSelection: { kind: "evidence", id: evidence.evidence_id },
+        width: analysis.overview.sent_size[0],
+        height: analysis.overview.sent_size[1]
+      };
+    };
     const image = detail ? { src: mediaUrl(detail.sample), title: detail.sample.relative_path.split("/").pop(), width: detail.sample.width, height: detail.sample.height, annotationLayer, inspection: detail.suggestion?.analysis ? { suggestionId: detail.suggestion.suggestion_id, analysis: detail.suggestion.analysis } : void 0 } : null;
     return /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("aside", { className: "iad-inspector", children: [
       /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("h2", { children: mode === "review" ? "\u590D\u6838\u660E\u7EC6" : "\u6837\u672C\u4FE1\u606F" }),
@@ -1013,14 +1081,10 @@ var __IadClientBundle__ = (() => {
               AuditFindings,
               {
                 analysis: detail.suggestion.analysis,
-                onEvidence: (image2) => setLightbox(evidenceSource(image2)),
+                onEvidence: (image2, finding) => setLightbox({ ...evidenceSource(image2), initialSelection: { kind: "evidence", id: image2.evidence_id, findingId: finding.finding_id } }),
                 onLocate: (finding) => {
                   const overview = detail.suggestion.analysis.overview;
-                  setLightbox({ ...evidenceSource(overview), focus: finding.location.bbox ? {
-                    bbox: finding.location.bbox.map((coordinate, axis) => coordinate * overview.sent_size[axis % 2] / overview.original_size[axis % 2]),
-                    label: finding.location.description,
-                    findingId: finding.finding_id
-                  } : void 0 });
+                  setLightbox({ ...evidenceSource(overview), initialSelection: { kind: "finding", id: finding.finding_id } });
                 }
               },
               detail.suggestion.suggestion_id
@@ -1052,7 +1116,7 @@ var __IadClientBundle__ = (() => {
                 detail.suggestion.analysis.coverage.complete ? "\u8BA1\u5212\u5DF2\u8986\u76D6" : "\u68C0\u67E5\u672A\u5B8C\u6210"
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("button", { className: "iad-evidence-preview", onClick: () => setLightbox(evidenceSource(detail.suggestion.analysis.overview)), children: [
-                /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("img", { src: evidenceSource(detail.suggestion.analysis.overview).src, alt: "\u9001\u6A21\u5168\u56FE\u6982\u89C8" }),
+                /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("img", { src: auditEvidenceUrl(detail.suggestion.suggestion_id, detail.suggestion.analysis.overview), alt: "\u9001\u6A21\u5168\u56FE\u6982\u89C8" }),
                 /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("span", { children: [
                   "\u5168\u56FE \xB7 ",
                   detail.suggestion.analysis.overview.sent_size.join(" \xD7 "),
@@ -1072,7 +1136,7 @@ var __IadClientBundle__ = (() => {
                   region.crop_bbox.join(", ")
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("button", { className: "iad-evidence-preview", onClick: () => setLightbox(evidenceSource(region.image)), children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("img", { src: evidenceSource(region.image).src, alt: `\u5BA1\u8BA1 ROI ${index + 1}` }),
+                  /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("img", { src: auditEvidenceUrl(detail.suggestion.suggestion_id, region.image), alt: `\u5BA1\u8BA1 ROI ${index + 1}` }),
                   /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("span", { children: [
                     region.image.sent_size.join(" \xD7 "),
                     " \xB7 PNG",
@@ -1090,7 +1154,7 @@ var __IadClientBundle__ = (() => {
                 ] })
               ] }, index)),
               detail.suggestion.analysis.auxiliary_evidence.map((image2) => /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("button", { className: "iad-evidence-preview", onClick: () => setLightbox(evidenceSource(image2)), children: [
-                /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("img", { src: evidenceSource(image2).src, alt: "\u5B9E\u9645\u9001\u6A21\u7684\u4E8C\u503C\u6807\u6CE8\u5B9A\u4F4D\u56FE" }),
+                /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("img", { src: auditEvidenceUrl(detail.suggestion.suggestion_id, image2), alt: "\u5B9E\u9645\u9001\u6A21\u7684\u4E8C\u503C\u6807\u6CE8\u5B9A\u4F4D\u56FE" }),
                 /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("span", { children: [
                   "\u6807\u6CE8\u5B9A\u4F4D\u56FE",
                   detail.suggestion.analysis.conclusion.evidence_ids.includes(image2.evidence_id) ? " \xB7 \u7ED3\u8BBA\u5F15\u7528" : ""
@@ -1938,8 +2002,8 @@ var __IadClientBundle__ = (() => {
 .iad-inspector {background:var(--iad-surface);border:1px solid var(--iad-border);box-shadow:0 3px 12px var(--iad-surface-muted);border-radius:10px;padding:18px;min-width:0;}
 .iad-image-button {display:block;width:100%;padding:0!important;border:0!important;background:var(--iad-surface-muted)!important;}
 .iad-image-frame {position:relative;width:100%;line-height:0;}.iad-image-frame img {display:block;width:100%;height:auto;}
-.iad-image-frame svg {position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
-.iad-image-frame rect,.iad-image-frame polygon {fill:none;stroke:var(--iad-warning);stroke-width:calc(2px / var(--iad-view-scale,1));vector-effect:non-scaling-stroke;}
+.iad-image-frame svg,.iad-finding-layer {position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+.iad-image-frame rect,.iad-image-frame polygon,.iad-finding-layer rect {fill:none;stroke:var(--iad-warning);stroke-width:calc(2px / var(--iad-view-scale,1));vector-effect:non-scaling-stroke;}
 .iad-image-frame text {fill:var(--iad-warning);font-size:calc(14px / var(--iad-view-scale,1));}
 .iad-image-frame .iad-annotation-mask {opacity:.28;}
 .iad-image-frame .iad-annotation-mask rect {fill:var(--iad-warning);stroke:none;}
@@ -1977,7 +2041,7 @@ var __IadClientBundle__ = (() => {
 .iad-viewer-body.has-inspection {grid-template-columns:minmax(0,1fr) 340px;}
 .iad-inspection-panel {padding:16px;min-width:0;overflow:auto;background:var(--iad-surface);color:var(--iad-text);border-radius:8px;}
 .iad-inspection-panel img {display:block;width:100%;max-height:220px;object-fit:contain;background:var(--iad-surface-muted);}
-.iad-roi-list {display:flex;flex-wrap:wrap;gap:8px;}.iad-roi-list button[aria-pressed=true] {border-color:var(--iad-primary);background:var(--iad-hover);}
+.iad-roi-list {display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}.iad-roi-list button[aria-pressed=true],.iad-actions button[aria-current=true] {border-color:var(--iad-primary);background:var(--iad-hover);}
 .iad-roi-layer {position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
 .iad-roi-layer rect {fill:none;stroke:var(--iad-on-viewer);stroke-width:calc(1px / var(--iad-view-scale,1));stroke-dasharray:calc(5px / var(--iad-view-scale,1)) calc(4px / var(--iad-view-scale,1));vector-effect:non-scaling-stroke;}
 .iad-roi-layer [data-locked=true] rect,.iad-roi-layer .is-hovered rect {stroke:var(--iad-warning);stroke-width:calc(2px / var(--iad-view-scale,1));stroke-dasharray:none;}

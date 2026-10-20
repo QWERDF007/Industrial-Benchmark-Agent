@@ -84,7 +84,7 @@ for name in ['normal','normal2','dent']:
         check_ids:answer.check_assessments.map(check=>check.check_id),
         location:{scope:index===2?"global":"local",bbox:index===2?null:[10,10,30,30],description:index===2?"整体关系":"左上角"},
         description:`待核实疑点 ${index+1}`, hypothesis:"可能污染", normal_explanation:"可能是反光",
-        limitations:["缺少另一照明角度"], review_action:"核对原图与反光方向", priority, evidence_ids:[images[0].evidence_id,images[1].evidence_id],
+        limitations:["缺少另一照明角度"], review_action:"核对原图与反光方向", priority, evidence_ids:images.map(image=>image.evidence_id),
       }));
       if (schema.title === "JointAnalysis" && holdRegion) await new Promise(resolve => { releaseRegion = resolve; });
       res.setHeader("Content-Type","application/json"); res.end(JSON.stringify({choices:[{message:{content:JSON.stringify(answer)}}]}));
@@ -108,6 +108,19 @@ for name in ['normal','normal2','dent']:
     const select = async (label, value) => {
       const el = await element(`select[aria-label='${label}']`);
       await driver.executeScript("arguments[0].value=arguments[1];arguments[0].dispatchEvent(new Event('change',{bubbles:true}));", el, value);
+    };
+    const viewportSize=async(width,height)=>{
+      await driver.setContext("chrome");
+      await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth='';gBrowser.selectedBrowser.style.width='';gBrowser.selectedBrowser.style.flex=''");
+      await driver.setContext("content");
+      const chrome=await driver.executeScript("return {width:outerWidth-innerWidth,height:outerHeight-innerHeight}");
+      await driver.manage().window().setRect({width:width+chrome.width,height:height+chrome.height});
+      if(width<450){
+        await driver.setContext("chrome");
+        await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth=arguments[0];gBrowser.selectedBrowser.style.width=arguments[0];gBrowser.selectedBrowser.style.flex='none'",`${width}px`);
+        await driver.setContext("content");
+      }
+      assert.equal(await driver.executeScript("return innerWidth"),width);
     };
     const gridCount = count => driver.wait(async () => await driver.executeScript("return document.querySelectorAll('.iad-grid .iad-sample').length===arguments[0] && !!document.querySelector('.iad-gallery') && !document.querySelector('.iad-gallery').textContent.includes('加载中');", count), 15000, `Expected ${count} grid images`);
     await element("#test-navigation button");
@@ -205,7 +218,7 @@ for name in ['normal','normal2','dent']:
     assert.equal(updatedDataset.reference_sample_ids.length, 2);
     await button("按知识审计此图");
     await driver.wait(async () => (await (await element(".iad-single-job")).getText()).includes("COMPLETED"),15000);
-    assert.equal((await driver.findElements(By.css(".iad-findings li"))).length,3);
+    await driver.wait(async()=>(await driver.findElements(By.css(".iad-findings li"))).length===3,5000,"等待样本详情展示三项优先疑点");
     await driver.executeScript("document.querySelector('.iad-findings').scrollIntoView({block:'start'});");
     await fs.writeFile(path.join(workspace, "runs/browser/audit-findings.png"), await driver.takeScreenshot(), "base64");
     await (await element(".iad-findings li button")).click();
@@ -262,26 +275,68 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await inspectionViewport.sendKeys(Key.ARROW_RIGHT);
     const afterKeyPan=await (await element(".iad-viewer-world")).getRect();
     assert.ok(Math.abs(afterKeyPan.x-beforeKeyPan.x+20)<2,"支持键盘平移代替拖拽");
-    const viewerChrome=await driver.executeScript("return {width:outerWidth-innerWidth,height:outerHeight-innerHeight}");
-    await driver.manage().window().setRect({width:375+viewerChrome.width,height:812+viewerChrome.height});
-    await driver.setContext("chrome");
-    await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth='375px';gBrowser.selectedBrowser.style.width='375px';gBrowser.selectedBrowser.style.flex='none'");
-    await driver.setContext("content");
-    assert.equal(await driver.executeScript("return innerWidth"),375);
+    await viewportSize(375,812);
     await (await element("button[aria-label='定位 ROI 1']")).click();
     assert.ok(await driver.executeScript("const e=document.querySelector('.iad-viewer-dialog'),v=document.querySelector('.iad-viewer-viewport'),p=document.querySelector('.iad-inspection-panel');return e.scrollWidth<=e.clientWidth+1&&v.clientHeight>=160&&p.clientHeight>=160&&p.scrollWidth<=p.clientWidth+1"),"窄屏全图与ROI证据面板均可见且不能横向溢出");
     await fs.writeFile(path.join(workspace,"runs/browser/audit-roi-375.png"),await driver.takeScreenshot(),"base64");
-    await driver.setContext("chrome");
-    await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth='';gBrowser.selectedBrowser.style.width='';gBrowser.selectedBrowser.style.flex=''");
-    await driver.setContext("content");
-    await driver.manage().window().setRect({width:1440,height:1100});
+    await viewportSize(1440,1100);
 
     await button("关闭");
     await button("查看其余 1 项");
     assert.equal((await driver.findElements(By.css(".iad-findings li"))).length,4);
     await driver.findElement(By.xpath("//section[contains(@class,'iad-findings')]//button[contains(.,'整体关系')]" )).click();
     await element(".iad-viewer-dialog img");
+    const globalFinding=await element(".iad-inspection-finding");
+    assert.ok((await globalFinding.getText()).includes("整体关系"));
+    assert.ok((await globalFinding.getText()).includes("正常解释：可能是反光"));
+    assert.ok((await globalFinding.getText()).includes("异常假设：可能污染"));
+    assert.ok((await globalFinding.getText()).includes("缺少另一照明角度"));
     assert.equal((await driver.findElements(By.css(".iad-finding-layer"))).length,0);
+    assert.equal((await driver.findElements(By.css(".iad-roi-layer [data-locked='true']"))).length,0,"全图关系疑点不能自动锁定某个局部框");
+    const findingSelector=await element("select[aria-label='审计疑点']");
+    const findingOptions=await findingSelector.findElements(By.css("option"));
+    assert.equal(findingOptions.length,5,"查看器必须能选择全部四项疑点");
+    const globalId=await findingSelector.getAttribute("value");
+    await findingSelector.sendKeys(Key.HOME,Key.ARROW_DOWN,Key.ENTER);
+    const localId=await findingSelector.getAttribute("value");
+    assert.notEqual(localId,globalId);
+    await driver.wait(async()=>await (await element(".iad-finding-layer")).getAttribute("data-finding-id")===localId,5000);
+    assert.equal(await (await element(".iad-inspection-finding")).getAttribute("data-finding-id"),localId);
+    assert.ok((await (await element(".iad-inspection-finding")).getText()).includes("局部疑点"));
+    await select("审计疑点",globalId);
+    assert.equal((await driver.findElements(By.css(".iad-finding-layer"))).length,0);
+    await fs.writeFile(path.join(workspace,"runs/browser/global-finding.png"),await driver.takeScreenshot(),"base64");
+    const roiEvidence=await element(".iad-inspection-finding .iad-actions button:nth-child(2)");
+    assert.ok((await roiEvidence.getText()).includes("ROI"));
+    const roiEvidenceId=await roiEvidence.getAttribute("data-evidence-id");
+    await roiEvidence.click();
+    await driver.wait(async()=>await driver.executeScript("const image=document.querySelector('.iad-inspection-region img');return image&&image.naturalWidth===28&&image.naturalHeight===28"),5000);
+    assert.equal(await (await element(".iad-inspection-finding")).getAttribute("data-finding-id"),globalId,"查看ROI依据时不能丢失当前全图疑点");
+    assert.equal(await (await element(".iad-inspection-region")).getAttribute("data-evidence-id"),roiEvidenceId);
+    assert.equal(await (await element(".iad-roi-layer [data-locked='true']")).getAttribute("data-evidence-id"),roiEvidenceId);
+    assert.equal((await driver.findElements(By.css(".iad-finding-layer"))).length,0,"实际ROI轮廓不能伪装成全图疑点框");
+    assert.equal(await driver.executeScript("return document.querySelector('.iad-viewer-world img').naturalWidth"),320,"查看局部依据时仍保留全图");
+    await (await element(".iad-inspection-finding .iad-actions button:nth-child(3)")).click();
+    const maskEvidence=await element(".iad-inspection-mask img");
+    assert.ok((await maskEvidence.getAttribute("src")).includes("/api/iad/evidence/"));
+    await driver.wait(async()=>Number(await maskEvidence.getAttribute("naturalWidth"))===28,5000);
+    assert.equal(await (await element(".iad-inspection-finding")).getAttribute("data-finding-id"),globalId);
+    await (await element(".iad-inspection-finding .iad-actions button:first-child")).click();
+    await element(".iad-inspection-overview");
+    assert.equal((await driver.findElements(By.css(".iad-roi-layer [data-locked='true']"))).length,0);
+    await (await element("button[aria-label='定位 ROI 1']")).click();
+    const relatedFindings=await element(".iad-related-findings");
+    assert.equal((await relatedFindings.findElements(By.css("button"))).length,4,"ROI必须能反向选择全部关联疑点");
+    await (await relatedFindings.findElement(By.css(`button[data-finding-id='${globalId}']`))).click();
+    assert.equal(await (await element(".iad-inspection-finding")).getAttribute("data-finding-id"),globalId);
+    assert.equal((await driver.findElements(By.css(".iad-roi-layer [data-locked='true']"))).length,0);
+    await viewportSize(375,812);
+    await (await element(".iad-inspection-finding .iad-actions button:nth-child(2)")).click();
+    assert.equal(await (await element(".iad-inspection-finding")).getAttribute("data-finding-id"),globalId);
+    assert.ok(await driver.executeScript("const v=document.querySelector('.iad-viewer-viewport'),p=document.querySelector('.iad-inspection-panel');return v.clientHeight>=160&&p.clientHeight>=160&&p.scrollWidth<=p.clientWidth+1"),"375px的疑点、真实ROI和全图检视不能横向溢出");
+    await driver.executeScript("document.querySelector('.iad-inspection-region img').scrollIntoView({block:'center'})");
+    await fs.writeFile(path.join(workspace,"runs/browser/finding-roi-375.png"),await driver.takeScreenshot(),"base64");
+    await viewportSize(1440,1100);
     await (await element("summary[aria-label='可视图层']")).click();
     assert.equal(await (await element("input[aria-label='细节覆盖图层']")).isSelected(),false,"跨图保留图层偏好");
     await (await element("input[aria-label='细节覆盖图层']")).click();
@@ -290,7 +345,7 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     assert.ok((await (await element(".iad-rule-assessments")).getText()).includes("表面外观"));
     assert.ok((await (await element(".iad-rule-assessments")).getText()).includes("发现偏离"));
     await (await element(".iad-rule-assessments button")).click();
-    await driver.wait(async()=>await driver.executeScript("const image=document.querySelector('.iad-viewer-dialog img');return image&&image.naturalWidth===28&&image.naturalHeight===28"),5000);
+    await driver.wait(async()=>await driver.executeScript("const image=document.querySelector('.iad-inspection-region img');return image&&image.naturalWidth===28&&image.naturalHeight===28"),5000);
     await button("关闭");
     await driver.executeScript("document.querySelector('.iad-rule-assessments').scrollIntoView({block:'center'});");
     await fs.writeFile(path.join(workspace, "runs/browser/rule-assessments.png"), await driver.takeScreenshot(), "base64");
@@ -299,9 +354,16 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     assert.ok((await processDetails.getText()).includes("可见蓝色表面"));
     const previews = await driver.findElements(By.css(".iad-evidence-preview"));
     assert.equal(previews.length,3);
-    for (const preview of previews) {
+    for (const [index,preview] of previews.entries()) {
       assert.ok((await preview.getText()).includes("结论引用"));
-      await preview.click(); await element(".iad-viewer-dialog img"); await button("关闭");
+      const thumbnail=await preview.findElement(By.css("img"));
+      await driver.wait(async()=>Number(await thumbnail.getAttribute("naturalWidth"))>0,5000);
+      assert.deepEqual([Number(await thumbnail.getAttribute("naturalWidth")),Number(await thumbnail.getAttribute("naturalHeight"))],index===0?[320,240]:[28,28],"证据缩略图必须显示该实际全图或裁图");
+      await preview.click(); await element(".iad-viewer-dialog img");
+      if(index===1) await element(".iad-inspection-region");
+      if(index===2) await element(".iad-inspection-mask");
+      assert.equal(await driver.executeScript("return document.querySelector('.iad-viewer-world img').naturalWidth"),320,"每个审计证据入口均保留实际全图上下文");
+      await button("关闭");
     }
     const final = modelRequests.find(request=>request.messages[0].content[0].text.includes('"title": "JointAnalysis"'));
     assert.equal(final.messages[0].content.filter(part=>part.type==="image_url").length,3);
@@ -534,12 +596,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     assert.ok((await (await element("[data-field='knowledge-normal-version']")).getText()).includes(published.knowledge.version_id),"下次执行的正常版本不能改写已发布不良知识的依赖展示");
     await button("标注核验");
     await driver.wait(async()=>(await (await element(".iad-knowledge-content")).getText()).includes("证据不足"),10000);
-    const chrome=await driver.executeScript("return {width:outerWidth-innerWidth,height:outerHeight-innerHeight}");
-    await driver.manage().window().setRect({width:375+chrome.width,height:812+chrome.height});
-    await driver.setContext("chrome");
-    await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth='375px';gBrowser.selectedBrowser.style.width='375px';gBrowser.selectedBrowser.style.flex='none'");
-    await driver.setContext("content");
-    assert.equal(await driver.executeScript("return innerWidth"),375);
+    await viewportSize(375,812);
     assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"),"带真实知识版本和核验记录的窄屏页面不能横向溢出");
     await fs.writeFile(path.join(workspace,"runs/browser/knowledge-versions-375.png"),await driver.takeScreenshot(),"base64");
 

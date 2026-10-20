@@ -40,7 +40,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 审计领域执行 | [AuditService](../python/iad_core/workbench/audit.py) |
 | 审计/知识共享作业、原子完成、进程接管与关联重试 | [JobRunner / JobContext / JobRetry](../python/iad_core/workbench/jobs.py)、[WorkbenchRuntime](../python/iad_core/workbench/runtime.py) |
 | 作业关联的真实模型请求、返回、错误与服务用量 | [ModelCalls](../python/iad_core/workbench/calls.py)、[VlmClient](../python/iad_core/workbench/vision.py)、[原文读取操作](../python/iad_core/entry.py) |
-| 共用图像查看器、来源图层和全图 ROI 联动 | [ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx)、[InspectionEvidence](../apps/iad-harness/src/client/components/InspectionEvidence.tsx)、[媒体失败提示与重新加载](../apps/iad-harness/src/client/components/MediaLoad.tsx) |
+| 共用图像查看器、来源图层和全图 ROI 联动 | [ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx)、[疑点与实际证据选择](../apps/iad-harness/src/client/inspection.ts)、[InspectionEvidence](../apps/iad-harness/src/client/components/InspectionEvidence.tsx)、[媒体失败提示与重新加载](../apps/iad-harness/src/client/components/MediaLoad.tsx) |
 | 知识独立页面、版本与真实证据 | [KnowledgePage](../apps/iad-harness/src/client/components/KnowledgePage.tsx)、[版本投影](../python/iad_core/knowledge/repository.py) |
 | 复核草稿、嵌套模态与焦点恢复 | [useReviewDraft](../apps/iad-harness/src/client/useReviewDraft.ts)、[Modal](../apps/iad-harness/src/client/components/Modal.tsx) |
 | 复核会话与裁决 | [HumanReview](../python/iad_core/workbench/review.py) |

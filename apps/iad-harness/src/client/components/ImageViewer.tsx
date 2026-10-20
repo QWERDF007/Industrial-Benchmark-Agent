@@ -1,23 +1,20 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Modal } from "./Modal.js";
 import { MediaImage, MediaLoad } from "./MediaLoad.js";
 import { AnnotationLayer, type AnnotationLayerSource } from "./AnnotationLayer.js";
 import { regionSources } from "../api.js";
-import { InspectionOverlay, InspectionPanel, type InspectionContext } from "./InspectionEvidence.js";
+import { InspectionOverlay, InspectionPanel } from "./InspectionEvidence.js";
+import { resolveInspection, type InspectionContext, type InspectionSelection } from "../inspection.js";
 
 export interface ImageSource {
   src: string; title: string; width?: number; height?: number; annotationLayer?: AnnotationLayerSource;
   inspection?: InspectionContext;
-  focus?: { bbox: number[]; label: string; findingId: string };
+  initialSelection?: InspectionSelection;
 }
 
 export function AnnotatedImage({ image, visible = true, onLoad }: { image: ImageSource; visible?: boolean; onLoad?: React.ReactEventHandler<HTMLImageElement> }) {
   return <div className="iad-image-frame"><MediaImage src={image.src} alt={image.title} width={image.width} height={image.height} data-media-label="图像" draggable={false} onLoad={onLoad} />
     {visible && image.annotationLayer && <AnnotationLayer source={image.annotationLayer} />}
-    {image.focus && <svg className="iad-finding-layer" data-finding-id={image.focus.findingId}
-      viewBox={`0 0 ${image.width} ${image.height}`} preserveAspectRatio="none" aria-label={image.focus.label}>
-      <rect x={image.focus.bbox[0]} y={image.focus.bbox[1]} width={image.focus.bbox[2] - image.focus.bbox[0]} height={image.focus.bbox[3] - image.focus.bbox[1]} />
-    </svg>}
   </div>;
 }
 
@@ -26,11 +23,11 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
   const world = useRef<HTMLDivElement>(null);
   const layerMenu = useRef<HTMLDetailsElement>(null);
   const inspection = image.inspection;
-  const [selection, setSelection] = useState<{ kind: "region" | "finding"; id: string } | null>(inspection && image.focus ? { kind: "finding", id: image.focus.findingId } : null);
+  const [selection, setSelection] = useState<InspectionSelection | null>(() => inspection ? image.initialSelection || null : null);
   const [hoveredIds, setHoveredIds] = useState<string[]>([]);
   const [choices, setChoices] = useState<string[]>([]);
-  const finding = selection?.kind === "finding" ? inspection?.analysis.findings.find(item => item.finding_id === selection.id) : undefined;
-  const selectedId = selection?.kind === "region" ? selection.id : inspection?.analysis.regions.find(region => finding?.evidence_ids.includes(region.image.evidence_id))?.image.evidence_id || "";
+  const { finding, evidence, region } = resolveInspection(inspection?.analysis, selection);
+  const selectedId = region?.image.evidence_id || "";
   const [size, setSize] = useState({ width: image.width || 0, height: image.height || 0 });
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
   const [view, setView] = useState({ scale: 0, x: 0, y: 0 });
@@ -42,6 +39,8 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
         if (typeof saved?.[key] === "boolean") initial[key] = saved[key];
       }
     } catch { localStorage.removeItem("iad.image-layers"); }
+    if (region) initial[region.source] = true;
+    if (finding?.location.scope === "local") initial.model = true;
     return initial;
   });
   const regions = inspection?.analysis.regions.filter(region => region.origins.some(origin => layers[origin.source])) || [];
@@ -54,18 +53,19 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
     const observer = new ResizeObserver(([entry]) => setBounds({ width: entry.contentRect.width, height: entry.contentRect.height }));
     observer.observe(element); return () => observer.disconnect();
   }, []);
-  const focusBox = useCallback((box: number[]) => {
-    if (!bounds.width || !bounds.height || !size.width || !size.height) return;
-    const [x1,y1,x2,y2] = box;
+  useEffect(() => {
+    if (!inspection || !selection || !bounds.width || !bounds.height || !size.width || !size.height) return;
+    const box = selection.kind === "evidence" ? evidence?.role === "overview" ? null : evidence?.crop_bbox : finding?.location.bbox;
+    if (!box) { setView({ scale: 0, x: 0, y: 0 }); return; }
+    const [x1,y1,x2,y2] = box.map((value,axis) => value*(axis%2 ? size.height : size.width)/inspection.analysis.overview.original_size[axis%2]);
     const scale = Math.min(16,bounds.width/((x2-x1)*1.4),bounds.height/((y2-y1)*1.4));
     setView({scale,x:(size.width/2-(x1+x2)/2)*scale,y:(size.height/2-(y1+y2)/2)*scale});
-  },[bounds.width,bounds.height,size.width,size.height]);
-  useEffect(() => { if (image.focus) focusBox(image.focus.bbox); },[image.focus,focusBox]);
-  function selectRegion(id: string) {
-    const region = inspection!.analysis.regions.find(region => region.image.evidence_id === id)!;
-    setLayers(previous => ({ ...previous, [region.source]: true }));
-    setSelection({kind:"region",id}); setChoices([]);
-    focusBox(region.crop_bbox.map((value,axis) => value*(axis%2 ? size.height : size.width)/inspection!.analysis.overview.original_size[axis%2]));
+  }, [selection, inspection, finding, evidence, bounds.width, bounds.height, size.width, size.height]);
+  function select(target: InspectionSelection | null) {
+    const { region: targetRegion, finding: targetFinding } = resolveInspection(inspection?.analysis, target);
+    if (targetRegion) setLayers(previous => ({ ...previous, [targetRegion.source]: true }));
+    if (targetFinding?.location.scope === "local") setLayers(previous => ({ ...previous, model: true }));
+    setSelection(target); setChoices([]);
   }
   function regionsAt(event: React.PointerEvent) {
     if (!inspection || !world.current) return [];
@@ -127,14 +127,14 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
         else if(inspection)setHoveredIds(regionsAt(event));
       }}
       onPointerLeave={()=>setHoveredIds([])}
-      onPointerUp={event => { const start=drag.current;drag.current=null;if(start && !start.moved && inspection){const ids=regionsAt(event);if(ids.length===1)selectRegion(ids[0]);else{setSelection(null);setChoices(ids);}} }} onPointerCancel={() => { drag.current = null; }}>
+      onPointerUp={event => { const start=drag.current;drag.current=null;if(start && !start.moved && inspection){const ids=regionsAt(event);if(ids.length===1)select({kind:"evidence",id:ids[0]});else{setSelection(null);setChoices(ids);}} }} onPointerCancel={() => { drag.current = null; }}>
       <div className="iad-viewer-world" ref={world} data-scale={scale} style={{ width: size.width, height: size.height, "--iad-view-scale": scale,
         transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${scale})` } as React.CSSProperties}>
-        <AnnotatedImage image={{ ...image, ...size, focus: inspection && (!finding || !layers.model) ? undefined : image.focus }} visible={layers.annotation} onLoad={event => setSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })} />
-        {inspection && <InspectionOverlay inspection={inspection} selectedId={selectedId} hoveredIds={hoveredIds} regions={regions} />}
+        <AnnotatedImage image={{ ...image, ...size }} visible={layers.annotation} onLoad={event => setSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })} />
+        {inspection && <InspectionOverlay inspection={inspection} selectedId={selectedId} hoveredIds={hoveredIds} regions={regions} finding={layers.model ? finding : undefined} />}
       </div>
     </div></MediaLoad>
-    {inspection && <InspectionPanel inspection={inspection} selectedId={selectedId} onSelect={selectRegion} choices={choices} />}
+    {inspection && <InspectionPanel inspection={inspection} selection={selection} choices={choices} onSelect={select} />}
     </div>
   </div></Modal>;
 }

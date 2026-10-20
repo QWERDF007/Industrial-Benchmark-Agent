@@ -1,4 +1,4 @@
-import type { Filters, Sample, VisualEvidence } from "../shared/contracts.js";
+import type { AuditAnalysis, Filters, Sample, VisualEvidence } from "../shared/contracts.js";
 
 export async function request<T>(path: string, body?: unknown, method?: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch("/api/iad" + path, {
@@ -19,3 +19,5 @@ export const auditPhases: Record<string, string> = { PREPARING_KNOWLEDGE: "准�
 
 export const auditEvidenceUrl = (suggestionId: string, image: Pick<VisualEvidence, "evidence_id">) => `/api/iad/evidence/${encodeURIComponent(suggestionId)}/${encodeURIComponent(image.evidence_id)}`;
 export const regionSources = { annotation: "Labelme 线索", model: "MLLM 候选", coverage: "细节覆盖" };
+
+export const auditImageIndex = (analysis: AuditAnalysis) => new Map([analysis.overview, ...analysis.regions.map(region => region.image), ...analysis.auxiliary_evidence].map(image => [image.evidence_id, image] as const));

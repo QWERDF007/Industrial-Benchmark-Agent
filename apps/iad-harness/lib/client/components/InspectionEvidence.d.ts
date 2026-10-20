@@ -1,19 +1,17 @@
 import React from "react";
-import type { AuditAnalysis } from "../../shared/contracts.js";
-export interface InspectionContext {
-    suggestionId: string;
-    analysis: AuditAnalysis;
-}
-export declare function InspectionOverlay({ inspection, selectedId, hoveredIds, regions }: {
+import type { AuditAnalysis, AuditFinding } from "../../shared/contracts.js";
+import { type InspectionContext, type InspectionSelection } from "../inspection.js";
+export declare function InspectionOverlay({ inspection, selectedId, hoveredIds, regions, finding }: {
     inspection: InspectionContext;
     selectedId: string;
     hoveredIds: string[];
     regions: AuditAnalysis["regions"];
+    finding?: AuditFinding;
 }): React.JSX.Element;
-export declare function InspectionPanel({ inspection, selectedId, onSelect, choices }: {
+export declare function InspectionPanel({ inspection, selection, onSelect, choices }: {
     inspection: InspectionContext;
-    selectedId: string;
-    onSelect(id: string): void;
+    selection: InspectionSelection | null;
+    onSelect(target: InspectionSelection | null): void;
     choices: string[];
 }): React.JSX.Element;
 //# sourceMappingURL=InspectionEvidence.d.ts.map
