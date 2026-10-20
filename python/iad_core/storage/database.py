@@ -290,6 +290,16 @@ class Database:
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_jobs_task_id ON job_runs(task_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON job_runs(status)")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS model_calls (
+                    call_id TEXT PRIMARY KEY,
+                    run_id TEXT NOT NULL REFERENCES job_runs(job_id),
+                    summary_json TEXT NOT NULL,
+                    request_body BLOB NOT NULL,
+                    response_body BLOB
+                )
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_model_calls_run ON model_calls(run_id)")
 
             # 13. agent_runs
             cursor.execute("""

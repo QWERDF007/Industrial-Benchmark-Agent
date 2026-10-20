@@ -327,10 +327,31 @@ export type ModelName1 = string;
 export type NormalVersionId2 = string | null;
 export type DefectVersionId1 = string | null;
 export type SampleIds = string[] | null;
+export type CallId = string;
+export type RunId = string;
+export type Operation = "tokenize" | "generate";
+export type SchemaName = string;
+export type Phase = string | null;
+export type SampleId3 = string | null;
+export type StartedAt = string;
+export type FinishedAt = string | null;
+export type ElapsedMs = number | null;
+export type HttpStatus = number | null;
+export type ResponseId = string | null;
+export type ResponseModel = string | null;
+export type FinishReason = string | null;
+export type Usage = {
+    [k: string]: unknown;
+} | null;
+export type Type = string;
+export type Message = string;
+export type RequestBody = string;
+export type ResponseBody = string | null;
 export interface WorkbenchDomain {
     AuditAnalysis?: AuditAnalysis;
     KnowledgeSnapshot?: KnowledgeSnapshot;
     AuditStart?: AuditStart;
+    ModelCallDetail?: ModelCallDetail;
 }
 export interface AuditAnalysis {
     normal_version_id: NormalVersionId;
@@ -635,5 +656,28 @@ export interface AuditStart {
 }
 export interface Filters {
     [k: string]: unknown;
+}
+export interface ModelCallDetail {
+    call_id: CallId;
+    run_id: RunId;
+    operation: Operation;
+    schema_name: SchemaName;
+    phase: Phase;
+    sample_id: SampleId3;
+    started_at: StartedAt;
+    finished_at: FinishedAt;
+    elapsed_ms: ElapsedMs;
+    http_status: HttpStatus;
+    response_id: ResponseId;
+    response_model: ResponseModel;
+    finish_reason: FinishReason;
+    usage: Usage;
+    error: ModelCallError | null;
+    request_body: RequestBody;
+    response_body: ResponseBody;
+}
+export interface ModelCallError {
+    type: Type;
+    message: Message;
 }
 //# sourceMappingURL=domain.generated.d.ts.map

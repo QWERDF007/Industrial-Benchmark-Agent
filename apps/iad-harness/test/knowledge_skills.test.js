@@ -152,6 +152,10 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
   const execute = async (name, args) => {
     const result = await ctx.tools.execute({ name, arguments: args, callId: `knowledge-${++call}`, signal: new AbortController().signal });
     assert.equal(result.isError, false, JSON.stringify(result));
+    if (name === "knowledge_job_status") {
+      assert.ok(Array.isArray(result.value.model_calls));
+      assert.ok(!result.content[0].text.includes('"model_calls"'), "Chat polling must not repeat technical call traces");
+    }
     return result;
   };
   try {

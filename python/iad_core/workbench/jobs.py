@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Callable, Literal, Optional, Sequence
 
 from iad_core.storage.database import Database
+from iad_core.workbench.calls import ModelCalls
 
 JobKind = Literal["MODEL_AUDIT", "NORMAL_KNOWLEDGE", "DEFECT_KNOWLEDGE"]
 
@@ -75,7 +76,8 @@ class JobRunner:
 
     def run(self, context: JobContext, execute: Callable[[JobContext], None]):
         try:
-            execute(context)
+            with ModelCalls(self.db).bind(context.run_id):
+                execute(context)
         except InterruptedError:
             context.cancel.set()
         except Exception as error:
@@ -114,7 +116,8 @@ class JobRunner:
         return {**payload, "run_id": run_id, "task_id": row["task_id"], "job_type": row["job_type"],
                 "status": row["status"], "message": row["message"], "started_at": row["started_at"],
                 "finished_at": row["finished_at"], "progress": row["progress"],
-                "unprocessed": payload["total_samples"] - payload["completed"] - payload["failed"]}
+                "unprocessed": payload["total_samples"] - payload["completed"] - payload["failed"],
+                "model_calls": [call.model_dump() for call in ModelCalls(self.db).list(run_id)]}
 
     def list(self, dataset_id: str, job_types: Sequence[JobKind]) -> list:
         placeholders = ",".join("?" for _ in job_types)

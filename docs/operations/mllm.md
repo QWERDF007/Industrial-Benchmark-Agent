@@ -13,3 +13,5 @@ vLLM 的 tokenize 渲染路径需要独立于生成请求的多模态发送缓�
 验收使用[公开知识流程的真实模型测试](../../tests/test_dataset_knowledge.py)：加载本地环境后，显式设置 `IAD_RUN_LIVE_MLLM=1`，运行 `test_live_normal_mining_survives_multimodal_capacity_preflight`。测试只生成合成部件图并使用临时数据库；仅验证传输、结构与持久化，不代表工业缺陷准确率。
 
 多块大 Mask 的联合输入验收见[真实大图知识测试](../../tests/test_knowledge_capacity.py)中的 `test_live_tiled_mask_knowledge_uses_real_joint_evidence`，使用相同显式开关。实际容量判定与证据分组由 [FindingVerification](../../python/iad_core/knowledge/findings.py)负责。
+
+调用原文、阶段、完成原因、错误与服务报告的 usage 通过 [ModelCalls](../../python/iad_core/workbench/calls.py) 读取；公开工作台验证见[追踪测试](../../tests/test_model_calls.py)与 [HTTP 流程](../../apps/iad-harness/test/workbench.test.js)。usage 缺失表示服务未报告，不能替换为零、预检 token 或金额估算。原文含真实图像，仅存放于本地运行数据库。

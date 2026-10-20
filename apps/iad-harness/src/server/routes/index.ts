@@ -72,6 +72,10 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         await sendMedia(res, info); return;
       }
       if (pathname === "/api/iad/audit/start" && method === "POST") return await call("audit_start", body);
+      const modelCall = pathname.match(/^\/api\/iad\/jobs\/([^/]+)\/model-calls\/([^/]+)$/);
+      if (modelCall && method === "GET") return await call("model_call_get", {
+        run_id: decodeURIComponent(modelCall[1]), call_id: decodeURIComponent(modelCall[2]),
+      });
       if (pathname === "/api/iad/audit/jobs" && method === "GET") return await call("audit_list", query);
       const audit = pathname.match(/^\/api\/iad\/audit\/(status|cancel)\/([^/]+)$/);
       if (audit && ((audit[1] === "status" && method === "GET") || (audit[1] === "cancel" && method === "POST"))) return await call("audit_" + audit[1], { run_id: decodeURIComponent(audit[2]) });

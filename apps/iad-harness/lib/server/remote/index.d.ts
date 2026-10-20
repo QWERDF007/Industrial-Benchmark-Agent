@@ -49,6 +49,10 @@ export declare class IadRemoteService extends TypertRemoteService {
     auditCancel(args: {
         run_id: string;
     }): Promise<any>;
+    modelCallGet(args: {
+        run_id: string;
+        call_id: string;
+    }): Promise<any>;
     reviewQueue(args: {
         task_id: string;
         page?: number;

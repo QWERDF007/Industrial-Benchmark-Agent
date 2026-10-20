@@ -33,6 +33,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 页面统一作业轮询与逐图刷新 | [useAuditJobs](../apps/iad-harness/src/client/useAuditJobs.ts) |
 | 审计领域执行 | [AuditService](../python/iad_core/workbench/audit.py) |
 | 审计/知识共享作业生命周期 | [JobRunner](../python/iad_core/workbench/jobs.py)、[WorkbenchRuntime](../python/iad_core/workbench/runtime.py) |
+| 作业关联的真实模型请求、返回、错误与服务用量 | [ModelCalls](../python/iad_core/workbench/calls.py)、[VlmClient](../python/iad_core/workbench/vision.py)、[原文读取操作](../python/iad_core/entry.py) |
 | 图像查看器与标注图层 | [ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx) |
 | 复核会话与裁决 | [HumanReview](../python/iad_core/workbench/review.py) |
 | 数据表与迁移 | [Database](../python/iad_core/storage/database.py) |
@@ -60,6 +61,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 - [来源积累、规则身份、拆分/合并/退役及容量归纳测试](../tests/test_knowledge_evolution.py)
 - [审计候选回流、污染隔离、过期来源与并发冻结测试](../tests/test_knowledge_feedback.py)
 - [单个大 Mask 的容量分组、原像素配对、综合缺证与真实模型测试](../tests/test_knowledge_capacity.py)
+- [模型原文、用量、错误、并发隔离和取消追踪测试](../tests/test_model_calls.py)
 - [良品污染、正常解释、独立证据及核验分组测试](../tests/test_knowledge_contamination.py)
 - [不良知识、标注核验、正常版本冻结与证据资格测试](../tests/test_defect_knowledge.py)
 - [Mask 导入、像素、标注视图、版本与容量配对测试](../tests/test_mask_evidence.py)

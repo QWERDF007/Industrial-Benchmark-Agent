@@ -245,12 +245,17 @@ def directory_list(args, db_path):
     return DatasetRegistry.directories(args.get("path", "/data1"))
 
 
+def model_call_get(args, db_path):
+    from iad_core.workbench.calls import ModelCalls
+    return ModelCalls(Database(db_path)).get(args['run_id'], args['call_id']).model_dump()
+
+
 OPERATIONS = {handler.__name__: handler for handler in (
     tool_call, dataset_list, dataset_get, dataset_import, dataset_update, dataset_scan,
     sample_list, sample_get, sample_image_path, sample_thumbnail,
     review_queue, review_evidence, review_start_session, review_submit_decision, review_finish_session,
     review_stats, report_get, audit_start, audit_status, audit_cancel, audit_list, audit_evidence, directory_list,
-    knowledge_get, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_list,
+    knowledge_get, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_list, model_call_get,
 )}
 
 

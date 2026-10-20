@@ -1,6 +1,7 @@
-import type { AuditAnalysis, KnowledgeSnapshot, AuditStart } from "./domain.generated.js";
+import type { AuditAnalysis, KnowledgeSnapshot, AuditStart, ModelCallDetail } from "./domain.generated.js";
 export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot } from "./domain.generated.js";
 export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
+export type ModelCallSummary = Omit<ModelCallDetail, "request_body" | "response_body">;
 
 export type Decision = "PASS" | "HARD_NORMAL" | "FAIL" | "UNCERTAIN" | "SKIP";
 export interface Suggestion {
@@ -79,6 +80,7 @@ export interface SampleDetail {
   review_decision: { decision: Decision; comment: string | null; reviewer: string; submitted_at: string } | null;
 }
 export interface AuditJob {
+  model_calls: ModelCallSummary[];
   run_id: string;
   sample_ids: string[];
   inspected_regions?: number;

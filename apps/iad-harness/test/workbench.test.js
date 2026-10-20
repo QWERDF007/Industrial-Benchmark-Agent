@@ -51,10 +51,13 @@ test("real bridge: normal mining publishes knowledge and serves its actual visua
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j1ioAAAAASUVORK5CYII=", "base64");
   await fs.writeFile(path.join(images, "candidate.png"), png);
   let visualEvidence;
+  const modelRequests = [];
   const model = http.createServer(async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
-    const body = JSON.parse(Buffer.concat(chunks).toString());
+    const requestBody = Buffer.concat(chunks).toString();
+    modelRequests.push(requestBody);
+    const body = JSON.parse(requestBody);
     const content = body.messages[0].content;
     const text = content.find(item => item.type === "text" && item.text.startsWith("视觉证据："));
     visualEvidence = JSON.parse(text.text.slice("视觉证据：".length));
@@ -91,6 +94,17 @@ test("real bridge: normal mining publishes knowledge and serves its actual visua
     }
     assert.equal(job.status, "COMPLETED", JSON.stringify(job));
     assert.equal(job.completed, 1);
+    assert.deepEqual(job.model_calls.map(call => call.operation), ["tokenize", "generate"]);
+    for (const [index, call] of job.model_calls.entries()) {
+      const response = await fetch(`${base}/jobs/${job.run_id}/model-calls/${call.call_id}`);
+      assert.equal(response.status, 200, await response.clone().text());
+      const detail = await response.json();
+      assert.equal(detail.request_body, modelRequests[index]);
+      assert.equal(detail.http_status, 200);
+      assert.equal(detail.usage, null);
+      assert.ok(detail.response_body);
+    }
+    assert.equal((await fetch(`${base}/jobs/not-this-job/model-calls/${job.model_calls[0].call_id}`)).status, 404);
     const knowledge = (await (await fetch(`${base}/knowledge?version_id=${job.knowledge_version_id}`)).json()).knowledge;
     assert.equal(knowledge.summary, "该来源无法支持结构判据");
     assert.equal(knowledge.sources.length, 1);

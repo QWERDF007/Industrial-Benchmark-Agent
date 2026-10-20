@@ -13,7 +13,7 @@ const jsonOutput = {
   schema: { type: "json" } as const,
   render(_args: unknown, value: JsonResult): ContentBlock[] {
     return [{ type: "text", text: JSON.stringify(value, (key, item) =>
-      key === "mining_steps" || key === "verification_steps" ? undefined : item) }];
+      key === "mining_steps" || key === "verification_steps" || key === "model_calls" ? undefined : item) }];
   },
 };
 

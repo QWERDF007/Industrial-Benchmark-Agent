@@ -6,6 +6,7 @@ from typing import List, Optional, Type, TypeVar
 import httpx
 from pydantic import BaseModel, Field, ValidationError
 from iad_core.evidence.images import PreparedImage, file_sha256
+from iad_core.workbench.calls import ModelCalls
 
 T = TypeVar("T", bound=BaseModel)
 DEFAULT_MODEL = "Qwen/Qwen3.8-27B-FP8"
@@ -41,30 +42,32 @@ class VlmClient:
     def fits(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str, max_tokens: int = 2048) -> bool:
         body = self.prepare(response_type, instruction, images, model_name, max_tokens)
         root = self.endpoint.rsplit('/chat/completions', 1)[0].removesuffix('/v1')
-        response = self.client.post(root + '/tokenize', headers={"Authorization": "Bearer " + os.environ.get("LIVE_VLM_KEY", "sk-123456")},
+        request = self.client.build_request('POST', root + '/tokenize', headers={"Authorization": "Bearer " + os.environ.get("LIVE_VLM_KEY", "sk-123456")},
                                     json={key: body[key] for key in ('model', 'messages', 'chat_template_kwargs')})
-        response.raise_for_status()
-        capacity = TokenCapacity.model_validate(response.json())
-        return capacity.count + max_tokens <= capacity.max_model_len
+        with ModelCalls.exchange(self.client, request, 'tokenize', response_type.__name__) as response:
+            response.raise_for_status()
+            capacity = TokenCapacity.model_validate(response.json())
+            return capacity.count + max_tokens <= capacity.max_model_len
 
     def generate(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str, max_tokens: int = 2048) -> T:
-        response = self.client.post(self.endpoint, headers={"Authorization": "Bearer " + os.environ.get("LIVE_VLM_KEY", "sk-123456")},
+        request = self.client.build_request('POST', self.endpoint, headers={"Authorization": "Bearer " + os.environ.get("LIVE_VLM_KEY", "sk-123456")},
                                     json=self.prepare(response_type, instruction, images, model_name, max_tokens))
-        response.raise_for_status()
-        choice = response.json()["choices"][0]
-        if choice.get("finish_reason") == "length":
-            raise ValueError(f"MLLM {response_type.__name__} 输出达到 token 上限，分析未完整返回")
-        text = choice["message"].get("content")
-        if not isinstance(text, str) or not text.strip():
-            raise ValueError(f"VLM returned no final answer (finish_reason={choice.get('finish_reason')})")
-        text = text.strip()
-        if text.startswith("```") and text.endswith("```"):
-            text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-        try:
-            return response_type.model_validate_json(text)
-        except ValidationError as error:
-            issues = "; ".join(f"{'.'.join(map(str, issue['loc'])) or '$'}: {issue['type']}" for issue in error.errors())
-            raise ValueError(f"MLLM {response_type.__name__} 输出格式错误 (finish_reason={choice.get('finish_reason')}): {issues}") from error
+        with ModelCalls.exchange(self.client, request, 'generate', response_type.__name__) as response:
+            response.raise_for_status()
+            choice = response.json()["choices"][0]
+            if choice.get("finish_reason") == "length":
+                raise ValueError(f"MLLM {response_type.__name__} 输出达到 token 上限，分析未完整返回")
+            text = choice["message"].get("content")
+            if not isinstance(text, str) or not text.strip():
+                raise ValueError(f"VLM returned no final answer (finish_reason={choice.get('finish_reason')})")
+            text = text.strip()
+            if text.startswith("```") and text.endswith("```"):
+                text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+            try:
+                return response_type.model_validate_json(text)
+            except ValidationError as error:
+                issues = "; ".join(f"{'.'.join(map(str, issue['loc'])) or '$'}: {issue['type']}" for issue in error.errors())
+                raise ValueError(f"MLLM {response_type.__name__} 输出格式错误 (finish_reason={choice.get('finish_reason')}): {issues}") from error
 
     def close(self):
         self.client.close()

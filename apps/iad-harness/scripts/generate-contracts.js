@@ -12,7 +12,8 @@ from pydantic.json_schema import models_json_schema
 from iad_core.advisory.analysis import AuditAnalysis
 from iad_core.knowledge.models import KnowledgeSnapshot
 from iad_core.workbench.audit import AuditStart
-models = [AuditAnalysis, KnowledgeSnapshot, AuditStart]
+from iad_core.workbench.calls import ModelCallDetail
+models = [AuditAnalysis, KnowledgeSnapshot, AuditStart, ModelCallDetail]
 _, schema = models_json_schema([(model, 'validation' if model is AuditStart else 'serialization') for model in models])
 schema.update(title='WorkbenchDomain', type='object', additionalProperties=False,
     properties={model.__name__: {'$ref': '#/$defs/'+model.__name__} for model in models})

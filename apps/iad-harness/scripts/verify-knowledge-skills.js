@@ -175,6 +175,22 @@ try {
   assert.deepEqual(candidateAfter.suggestion, candidate.suggestion);
   assert.deepEqual(candidateAfter.annotations, candidate.annotations);
   assert.deepEqual(candidateAfter.review_decision, candidate.review_decision);
+  for (const job of Object.values(jobs)) {
+    assert.ok(job.model_calls.length, 'Actual native jobs must retain their model calls');
+    for (const call of job.model_calls) {
+      const detail = await ctx.iadPythonBridge.execute('model_call_get', { run_id: job.run_id, call_id: call.call_id });
+      assert.equal(detail.http_status, 200);
+      assert.equal(detail.error, null);
+      assert.ok(detail.finished_at && detail.elapsed_ms >= 0);
+      const request = JSON.parse(detail.request_body), response = JSON.parse(detail.response_body);
+      assert.ok(request.messages[0].content.length);
+      if (call.operation === 'generate') {
+        assert.ok(response.choices[0].message.content);
+        assert.deepEqual(detail.usage, response.usage);
+        assert.ok(detail.usage.prompt_tokens >= 0 && detail.usage.completion_tokens > 0);
+      } else assert.ok(response.count >= 0);
+    }
+  }
   const result = { catalog, jobs, versions, analysis, trace, elapsed_seconds: (Date.now() - started) / 1000,
     quality_evaluation: "unassessed; synthetic native skill workflow only; no autonomous Agent Session tested" };
   await fs.writeFile(path.join(output, "result.json"), JSON.stringify(result, null, 2));

@@ -82,6 +82,11 @@ export function createIadHttpHandler(bridge) {
             }
             if (pathname === "/api/iad/audit/start" && method === "POST")
                 return await call("audit_start", body);
+            const modelCall = pathname.match(/^\/api\/iad\/jobs\/([^/]+)\/model-calls\/([^/]+)$/);
+            if (modelCall && method === "GET")
+                return await call("model_call_get", {
+                    run_id: decodeURIComponent(modelCall[1]), call_id: decodeURIComponent(modelCall[2]),
+                });
             if (pathname === "/api/iad/audit/jobs" && method === "GET")
                 return await call("audit_list", query);
             const audit = pathname.match(/^\/api\/iad\/audit\/(status|cancel)\/([^/]+)$/);

@@ -83,6 +83,11 @@ export class IadRemoteService extends TypertRemoteService {
   }
 
   @Remote
+  async modelCallGet(args: { run_id: string; call_id: string }) {
+    return this.bridge.execute("model_call_get", args);
+  }
+
+  @Remote
   async reviewQueue(args: { task_id: string; page?: number; page_size?: number }) {
     return this.bridge.execute("review_queue", args);
   }
