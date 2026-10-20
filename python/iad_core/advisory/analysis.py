@@ -9,6 +9,7 @@ class AnalysisModel(BaseModel):
 class RegionProposal(AnalysisModel):
     bbox_1000: List[int] = Field(min_length=4, max_length=4, description="图像归一化坐标 [x1,y1,x2,y2]，范围 0..1000")
     reason: str
+    check_ids: List[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def valid_box(self):
@@ -42,9 +43,26 @@ class RegionObservation(ViewAnalysis):
     region_index: int = Field(ge=1, description="本次请求的 ROI 序号，从1开始，与输入区域顺序对应")
 
 
+class CheckAssessment(ViewAnalysis):
+    description: str = Field(min_length=1)
+    check_id: str
+    status: Literal["normal", "anomaly", "insufficient", "not_applicable"] = Field(
+        description="normal：符合正常判据或未命中异常判据；anomaly：偏离正常判据或命中异常判据；不可观察/缺证为insufficient；不适用为not_applicable，须解释原因")
+    evidence_ids: List[str] = Field(min_length=1)
+    limitations: List[str] = Field(default_factory=list)
+    inspection_regions: List[RegionProposal] = Field(default_factory=list, description="该判据尚需补充细看的区域；仅填尚无足够原分辨率证据的区域，坐标相对整图")
+
+
 class JointAnalysis(VlmResult):
     global_view: GlobalAnalysis
     region_observations: List[RegionObservation]
+    check_assessments: List[CheckAssessment] = Field(default_factory=list)
+
+    @property
+    def region_requests(self) -> List[RegionProposal]:
+        return [*self.global_view.suspect_regions, *[region.model_copy(update={
+            'check_ids': sorted(set(region.check_ids) | {assessment.check_id})})
+            for assessment in self.check_assessments for region in assessment.inspection_regions]]
 
 
 class VisualEvidence(AnalysisModel):
@@ -77,6 +95,7 @@ class RegionOrigin(AnalysisModel):
     annotation_id: Optional[str] = None
     label: str
     bbox: List[int]
+    check_ids: List[str] = Field(default_factory=list)
 
 
 class RegionImage(RegionOrigin):
@@ -101,6 +120,7 @@ class AuditAnalysis(AnalysisModel):
     defect_version_id: Optional[str] = None
     legacy_profile_id: Optional[str] = None
     knowledge_limitations: List[str] = Field(default_factory=list)
+    check_assessments: List[CheckAssessment] = Field(default_factory=list)
     reference_sample_ids: List[str] = Field(default_factory=list)
     overview: VisualEvidence
     coverage: Coverage

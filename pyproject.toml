@@ -19,6 +19,7 @@ dependencies = [
     "typing-extensions>=4.0.0",
     "faiss-gpu-cu12>=1.7.0",
     "httpx>=0.24.0",
+    "filelock>=3.16.0",
 ]
 
 [project.optional-dependencies]

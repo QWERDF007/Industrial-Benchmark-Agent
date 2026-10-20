@@ -96,13 +96,17 @@ def mllm_api(dataset):
         bodies.append(body)
         schema = json.loads(body['messages'][0]['content'][0]['text'].split("JSON Schema 的 JSON，不要 Markdown：\n")[1])
         if schema['title'] == 'KnowledgeDraft':
-            answer = {**patterns, 'checks': [{**patterns['checks'][0], 'support_evidence_ids': [json.loads(part['text'][5:])['evidence_id'] for part in body['messages'][0]['content'] if part['type']=='text' and part['text'].startswith('视觉证据：')]}]}
+            answer = {**patterns, 'checks': [{**check, 'support_evidence_ids': [json.loads(part['text'][5:])['evidence_id'] for part in body['messages'][0]['content'] if part['type']=='text' and part['text'].startswith('视觉证据：')]} for check in patterns['checks']]}
         elif schema['title'] == 'JointAnalysis':
             metadata=[json.loads(part['text'].split('视觉证据：')[1]) for part in body['messages'][0]['content'] if part['type']=='text' and part['text'].startswith('视觉证据：')]
             answer={**responses['VlmResult'],'global_view':responses['GlobalAnalysis'],
                     'region_observations':[{**responses['ViewAnalysis'],'region_index':index} for index, image in enumerate(
                         [image for image in metadata if image['role'] == 'roi' and image['representation'] == 'raw'], 1)]}
             answer.setdefault('evidence_ids',[image['evidence_id'] for image in metadata])
+            criteria = json.loads(body['messages'][0]['content'][0]['text'].split('冻结知识：')[1].split('\n')[0])
+            answer['check_assessments'] = responses.get('CheckAssessments', [{**responses['ViewAnalysis'], 'check_id': check['check_id'],
+                'status': 'anomaly' if answer['suggested_label'] == 'FAIL' else 'normal' if answer['suggested_label'] == 'PASS' else 'insufficient',
+                'evidence_ids': [metadata[0]['evidence_id']]} for check in criteria['checks']])
         else:
             answer = dict(responses[schema['title']])
             if schema['title'] == 'VlmResult':

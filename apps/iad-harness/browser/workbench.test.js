@@ -15,6 +15,7 @@ const app = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const workspace = path.resolve(app, "../..");
 
 test("browser: import Labelme, filter, select references, review and rename", { timeout: 120000 }, async () => {
+  await fs.mkdir(path.join(workspace, "runs/browser"), { recursive: true });
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-browser-"));
   const bridge = new PythonBridge({ cwd: workspace, dbPath: path.join(root, "test.db") });
   execFileSync(bridge.pythonPath, ["-c", `
@@ -55,6 +56,7 @@ for name in ['normal','normal2','dent']:
       let answer = view;
       if (schema.title === "KnowledgeDraft") answer = {summary:"可见蓝色表面",checks:[{title:"表面外观",subject:"主体",location:"全图",criterion:"可见蓝色表面",allowed_variations:["亮度变化"],support_evidence_ids:images.map(image=>image.evidence_id),counter_evidence_ids:[],limitations:[],status:"supported"}],suspects:[],limitations:[]};
       if (schema.title === "JointAnalysis") answer = {...view,global_view:view,
+        check_assessments:JSON.parse(parts[0].text.split("冻结知识：")[1].split("\n")[0]).checks.map(check=>({...view,check_id:check.check_id,status:"anomaly",evidence_ids:[images[1].evidence_id]})),
         region_observations:images.filter(image=>image.role==="roi"&&image.representation==="raw").map((_,index)=>({...view,region_index:index+1})),suggested_label:"FAIL",reason_category:"SCRATCH",confidence:0.8,
         evidence_ids:parts.filter(part=>part.type==="text"&&part.text.startsWith("视觉证据：")).map(part=>JSON.parse(part.text.slice(5)).evidence_id)};
       if (schema.title === "JointAnalysis" && holdRegion) await new Promise(resolve => { releaseRegion = resolve; });
@@ -134,9 +136,17 @@ for name in ['normal','normal2','dent']:
     assert.ok(updatedDataset.reference_sample_ids.includes(dent.sample_id));
     await button("按知识审计此图");
     await driver.wait(async () => (await (await element(".iad-single-job")).getText()).includes("COMPLETED"),15000);
-    await driver.wait(until.elementLocated(By.css(".iad-analysis summary")),15000);
-    await (await element(".iad-analysis summary")).click();
-    assert.ok((await (await element(".iad-analysis")).getText()).includes("可见蓝色表面"));
+    await (await element(".iad-rule-assessments summary")).click();
+    assert.ok((await (await element(".iad-rule-assessments")).getText()).includes("表面外观"));
+    assert.ok((await (await element(".iad-rule-assessments")).getText()).includes("发现偏离"));
+    await (await element(".iad-rule-assessments button")).click();
+    await driver.wait(async()=>await driver.executeScript("const image=document.querySelector('[role=dialog] img');return image&&image.naturalWidth===28&&image.naturalHeight===28"),5000);
+    await button("关闭");
+    await driver.executeScript("document.querySelector('.iad-rule-assessments').scrollIntoView({block:'center'});");
+    await fs.writeFile(path.join(workspace, "runs/browser/rule-assessments.png"), await driver.takeScreenshot(), "base64");
+    const processDetails = await driver.wait(until.elementLocated(By.xpath("//details[summary[normalize-space(.)='审计过程与知识版本']]")),15000);
+    await processDetails.findElement(By.css("summary")).click();
+    assert.ok((await processDetails.getText()).includes("可见蓝色表面"));
     const previews = await driver.findElements(By.css(".iad-evidence-preview"));
     assert.equal(previews.length,3);
     for (const preview of previews) {
@@ -179,7 +189,6 @@ for name in ['normal','normal2','dent']:
     await select("模型审计", "all"); await gridCount(3);
     await driver.wait(async () => (await (await element(".iad-kpis div:nth-child(2) strong")).getText()).startsWith("3"), 15000);
 
-    await fs.mkdir(path.join(workspace, "runs/browser"), { recursive: true });
     await fs.writeFile(path.join(workspace, "runs/browser/model-audit.png"), await driver.takeScreenshot(), "base64");
     await (await element("#test-navigation button:nth-child(2)")).click(); await gridCount(3);
     assert.equal(await (await element(".iad-inspector h2")).getText(), "复核明细");
@@ -202,7 +211,6 @@ for name in ['normal','normal2','dent']:
     assert.equal(reloaded.datasets[0].human_reviewed_count, 1);
   } catch (error) {
     if (driver) {
-      await fs.mkdir(path.join(workspace, "runs/browser"), { recursive: true });
       await fs.writeFile(path.join(workspace, "runs/browser/failure.png"), await driver.takeScreenshot(), "base64");
       console.error(await driver.findElement(By.css("body")).getText());
     }

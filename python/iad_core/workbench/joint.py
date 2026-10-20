@@ -29,10 +29,13 @@ class JointInspection:
 
     def inspect(self, context: str, overview: PreparedImage, regions: List[RegionImage], model_name: str,
                 cancel: Optional[threading.Event], phase: Callable[[InspectionProgress], None],
-                annotation_masks: Optional[List[PreparedImage]] = None) -> JointOutcome:
+                annotation_masks: Optional[List[PreparedImage]] = None, *, check_ids: frozenset[str],
+                previous: Optional[JointOutcome] = None) -> JointOutcome:
         pending = [(regions, [])]
-        steps, inspected = [], []
-        total = 1
+        steps = list(previous.steps) if previous else []
+        inspected = list(previous.regions) if previous else []
+        planned_count = len(inspected) + len(regions)
+        total = len(steps) + 1
         while pending:
             nodes = []
             level_size = sum(len(children) for _, children in pending)
@@ -46,6 +49,9 @@ class JointInspection:
                     images.append(PreparedImage(region.image, self.images.path(region.image)))
                     images.extend(mask for mask in annotation_masks or [] if mask.evidence.crop_bbox == region.crop_bbox)
                 instruction = context
+                if previous:
+                    instruction += '\n此前实际联合观察与证据记录：' + json.dumps([step.model_dump() for step in previous.steps], ensure_ascii=False)
+                    instruction += '当前只追加尚缺的原图细节。结合此前证据与新图逐项重审；已补齐的缺证可消解，尚未消解的异常、冲突和限制须保留。'
                 if children:
                     instruction += "综合各子批次完整分析，结合当前全图和代表性ROI重新判断；不得用正常批次否定其他批次的异常证据。"
                     instruction += json.dumps([child.step.model_dump() for child in children], ensure_ascii=False)
@@ -62,7 +68,7 @@ class JointInspection:
                     + json.dumps([region.model_dump() for region in inputs], ensure_ascii=False)
                 )
                 phase(InspectionProgress(phase="SYNTHESIS", inspected_regions=len(inspected),
-                                         planned_regions=len(regions), completed_batches=len(steps), total_batches=total))
+                                         planned_regions=planned_count, completed_batches=len(steps), total_batches=total))
                 if not self.client.fits(JointAnalysis, instruction, images, model_name, OUTPUT_TOKENS):
                     work = children or batch
                     if len(work) < 2:
@@ -76,9 +82,24 @@ class JointInspection:
                 result = self.client.generate(JointAnalysis, instruction, images, model_name, OUTPUT_TOKENS)
                 available = {image.evidence.evidence_id for image in images} | {
                     eid for child in children for eid in child.step.result.evidence_ids
+                } | {
+                    eid for child in children for assessment in child.step.result.check_assessments for eid in assessment.evidence_ids
                 }
+                if previous:
+                    available.update(eid for step in previous.steps for eid in step.input_evidence_ids)
                 if not set(result.evidence_ids) <= available:
                     raise ValueError("MLLM cited unknown visual evidence")
+                assessments = [assessment.check_id for assessment in result.check_assessments]
+                if len(assessments) != len(check_ids) or set(assessments) != check_ids:
+                    raise ValueError("MLLM check assessments must cover every frozen check exactly once")
+                if any(not set(assessment.evidence_ids) <= available for assessment in result.check_assessments):
+                    raise ValueError("MLLM check assessment cited unknown visual evidence")
+                raw_ids = {image.evidence.evidence_id for image in images if image.evidence.representation == 'raw'}
+                raw_ids.update(region.image.evidence_id for region in inspected)
+                if any(not set(assessment.evidence_ids) & raw_ids for assessment in result.check_assessments):
+                    raise ValueError("MLLM check assessment requires raw visual evidence, not only a localization mask")
+                if any(not set(region.check_ids) <= check_ids for region in result.region_requests):
+                    raise ValueError("MLLM region request cited an unknown check")
                 indices = [observation.region_index for observation in result.region_observations]
                 if len(indices) != len(inputs) or set(indices) != set(range(1, len(inputs) + 1)):
                     raise ValueError("MLLM ROI observations must cover each supplied region exactly once")
@@ -92,7 +113,7 @@ class JointInspection:
                 representative = next((region for region in inputs if region.image.evidence_id in result.evidence_ids), inputs[0])
                 nodes.append(JointNode(step, representative))
                 phase(InspectionProgress(phase="SYNTHESIS", inspected_regions=len(inspected),
-                                         planned_regions=len(regions), completed_batches=len(steps), total_batches=total))
+                                         planned_regions=planned_count, completed_batches=len(steps), total_batches=total))
             if len(nodes) == 1:
                 return JointOutcome(result.global_view, inspected, steps)
             if level_size and len(nodes) >= level_size:

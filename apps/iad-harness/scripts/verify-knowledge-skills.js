@@ -99,6 +99,10 @@ try {
   const analysis = after.suggestion.analysis;
   assert.equal(analysis.normal_version_id, versions.normal.version_id);
   assert.equal(analysis.defect_version_id, versions.defect.version_id);
+  const expectedChecks = [...versions.normal.checks, ...versions.defect.checks].map(check => check.check_id).sort();
+  assert.deepEqual(analysis.check_assessments.map(item => item.check_id).sort(), expectedChecks);
+  const actualIds = new Set(analysis.joint_steps.flatMap(step => step.input_evidence_ids));
+  assert.ok(analysis.check_assessments.every(item => item.evidence_ids.length && item.evidence_ids.every(id => actualIds.has(id))));
   assert.equal(analysis.coverage.complete, true);
   assert.equal(analysis.coverage.inspected_regions, 1);
   assert.equal(analysis.joint_steps.length, 1);

@@ -20,6 +20,7 @@ data/iad.db
 data/uploads/
 *.db-shm
 *.db-wal
+*.schema.lock
 
 # Local runtime state and deployment configuration
 .env*

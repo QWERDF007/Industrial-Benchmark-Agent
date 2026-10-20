@@ -323,7 +323,9 @@ def test_audit_uses_server_enforced_schema_for_roi_results(dataset, mllm_api, in
         answer = dict(view)
         if title == 'JointAnalysis':
             metadata = [json.loads(p['text'][5:]) for p in body['messages'][0]['content'] if p['type']=='text' and p['text'].startswith('视觉证据：')]
+            checks = json.loads(body['messages'][0]['content'][0]['text'].split('冻结知识：')[1].split('\n')[0])['checks']
             answer.update(suggested_label='PASS',reason_category='NORMAL',confidence=0.8,
+                          check_assessments=[{**view,'check_id':check['check_id'],'status':'normal','evidence_ids':[metadata[0]['evidence_id']]} for check in checks],
                           evidence_ids=[image['evidence_id'] for image in metadata], global_view=view,
                           region_observations=[{**view,'region_index':index} for index, image in enumerate(
                               [image for image in metadata if image['role'] == 'roi' and image['representation'] == 'raw'], 1)])
@@ -392,12 +394,12 @@ def test_joint_discovery_keeps_existing_coverage_when_adding_candidate(dataset, 
         assert {r['source'] for r in trace['regions']} == {'coverage', 'model'}
         assert trace['coverage']['planned_regions'] == trace['coverage']['inspected_regions'] == 2
         assert len(trace['joint_steps']) == 2
-        assert len(trace['joint_steps'][-1]['input_evidence_ids']) == 3
+        assert len(trace['joint_steps'][-1]['input_evidence_ids']) == 2
     finally:
         service.close()
 
 
-def test_joint_review_reports_new_uninspected_candidates_as_missing(dataset, mllm_api):
+def test_joint_review_continues_until_all_new_candidates_have_actual_detail(dataset, mllm_api):
     from iad_core.entry import sample_get
     from iad_core.workbench.audit import AuditService, VlmClient
     db, _, config = dataset
@@ -416,10 +418,11 @@ def test_joint_review_reports_new_uninspected_candidates_as_missing(dataset, mll
         service.wait(job['run_id'], 10)
         assert service.status(job['run_id'])['status'] == 'COMPLETED'
         trace = sample_get({'sample_id':target}, db.db_path)['suggestion']['analysis']
-        assert not trace['coverage']['complete']
-        assert trace['coverage']['planned_regions'] > trace['coverage']['inspected_regions']
-        assert trace['conclusion']['suggested_label'] == 'UNCERTAIN'
-        assert trace['conclusion']['missing_evidence']
+        assert trace['coverage']['complete']
+        assert trace['coverage']['planned_regions'] == trace['coverage']['inspected_regions'] == 3
+        assert len(trace['joint_steps']) == 3
+        assert [len(step['input_evidence_ids']) for step in trace['joint_steps']] == [3, 2, 2]
+        assert trace['conclusion']['suggested_label'] == 'PASS'
         assert trace['joint_steps'][-1]['result']['suggested_label'] == 'PASS'
     finally:
         service.close()

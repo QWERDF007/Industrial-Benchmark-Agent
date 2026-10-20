@@ -2,6 +2,9 @@ import os
 import sqlite3
 from typing import Optional
 from contextlib import contextmanager
+from pathlib import Path
+
+from filelock import FileLock
 
 
 class Database:
@@ -12,12 +15,14 @@ class Database:
     def __init__(self, db_path: str = "data/benchmark.db"):
         self.db_path = db_path
         os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
-        self.init_schema()
+        with FileLock(str(Path(db_path).resolve()) + '.schema.lock'):
+            with self.connection() as conn:
+                conn.execute("PRAGMA journal_mode = WAL")
+            self.init_schema()
 
     def get_connection(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA journal_mode = WAL")
         conn.execute("PRAGMA synchronous = NORMAL")
         conn.execute("PRAGMA foreign_keys = ON")
         return conn

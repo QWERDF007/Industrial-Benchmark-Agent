@@ -120,17 +120,17 @@ class EvidenceImages:
             if annotation.bbox and annotation.geometry_status != "INVALID":
                 x1, y1, x2, y2 = annotation.bbox
                 requested.append(("annotation", annotation.annotation_id, annotation.raw_label,
-                                  [math.floor(x1), math.floor(y1), math.ceil(x2), math.ceil(y2)]))
+                                  [math.floor(x1), math.floor(y1), math.ceil(x2), math.ceil(y2)], []))
         has_annotations = bool(requested)
         for proposal in proposals:
             x1, y1, x2, y2 = proposal.bbox_1000
             requested.append(("model", None, proposal.reason, [math.floor(x1 * sample.width / 1000), math.floor(y1 * sample.height / 1000),
-                                                              math.ceil(x2 * sample.width / 1000), math.ceil(y2 * sample.height / 1000)]))
+                                                              math.ceil(x2 * sample.width / 1000), math.ceil(y2 * sample.height / 1000)], proposal.check_ids))
         if max(sample.width, sample.height) > OVERVIEW_MAX_SIDE or not has_annotations:
-            requested.append(("coverage", None, "原图细节覆盖", [0, 0, sample.width, sample.height]))
+            requested.append(("coverage", None, "原图细节覆盖", [0, 0, sample.width, sample.height], []))
         regions = {}
-        for source, annotation_id, label, bbox in requested:
-            origin = RegionOrigin(source=source, annotation_id=annotation_id, label=label, bbox=bbox)
+        for source, annotation_id, label, bbox, check_ids in requested:
+            origin = RegionOrigin(source=source, annotation_id=annotation_id, label=label, bbox=bbox, check_ids=check_ids)
             for tile in self.tiles(sample, bbox, 0 if source == "coverage" else 0.2):
                 key = tuple(tile)
                 if key not in regions:

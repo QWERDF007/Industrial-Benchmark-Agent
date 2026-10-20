@@ -92,8 +92,10 @@ def test_operator_audits_using_frozen_learned_rules_without_relearning(knowledge
         else:
             assert kind == 'JointAnalysis'
             view = {'description': '孔内红色区域遮挡背景', 'position_analysis': '位于主体左孔', 'illumination_analysis': '需排除有色反光'}
+            checks = json.loads(content[0]['text'].split('冻结知识：')[1].split('\n')[0])['checks']
             result = {**view, 'suggested_label': 'FAIL', 'reason_category': 'OCCLUSION', 'confidence': 0.7,
                 'evidence_ids': [image['evidence_id'] for image in images], 'global_view': view,
+                'check_assessments': [{**view, 'check_id': check['check_id'], 'status': 'anomaly', 'evidence_ids': [images[0]['evidence_id']]} for check in checks],
                 'region_observations': [{**view, 'region_index': index} for index in range(1, len(images))]}
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
 
@@ -137,7 +139,9 @@ def test_target_cannot_be_its_own_only_knowledge_support(knowledge_dataset, mode
                 'counter_evidence_ids': [], 'limitations': [], 'status': 'supported'}], 'suspects': [], 'limitations': []}
         else:
             view = {'description': '仅有目标自身的正常知识', 'position_analysis': '中部', 'illumination_analysis': '未发现反光'}
+            checks = json.loads(body['messages'][0]['content'][0]['text'].split('冻结知识：')[1].split('\n')[0])['checks']
             result = {**view, 'suggested_label': model_label, 'reason_category': 'NORMAL', 'confidence': 0.9,
+                'check_assessments': [{**view, 'check_id': check['check_id'], 'status': 'normal' if model_label == 'PASS' else 'anomaly', 'evidence_ids': [images[0]['evidence_id']]} for check in checks],
                 'evidence_ids': [item['evidence_id'] for item in images], 'global_view': view,
                 'region_observations': [{**view, 'region_index': index} for index in range(1, len(images))]}
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
@@ -192,7 +196,9 @@ def test_defect_version_remains_frozen_in_job_progress_and_analysis(defect_datas
             entered.set()
             assert release.wait(5)
             view = {'description': '孔内红色遮挡', 'position_analysis': '左孔', 'illumination_analysis': '未排除反光'}
+            checks = json.loads(content[0]['text'].split('冻结知识：')[1].split('\n')[0])['checks']
             result = {**view, 'suggested_label': 'FAIL', 'reason_category': 'OCCLUSION', 'confidence': 0.8,
+                'check_assessments': [{**view, 'check_id': check['check_id'], 'status': 'anomaly', 'evidence_ids': [images[0]['evidence_id']]} for check in checks],
                 'evidence_ids': [item['evidence_id'] for item in images], 'global_view': view,
                 'region_observations': [{**view, 'region_index': index} for index, item in enumerate(
                     [item for item in images if item['role'] == 'roi' and item['representation'] == 'raw'], 1)]}
