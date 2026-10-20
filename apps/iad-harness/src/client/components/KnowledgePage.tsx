@@ -8,8 +8,8 @@ import { useKnowledge } from "../useKnowledge.js";
 import { ImageViewer, type ImageSource } from "./ImageViewer.js";
 import { KnowledgeRevision } from "./KnowledgeRevision.js";
 import { KnowledgeState } from "./KnowledgeState.js";
+import { knowledgeStatuses, type KnowledgeStatusFilter } from "../../shared/knowledge-presentation.js";
 
-const statuses = { supported: "有证据支持", provisional: "待验证", conflicted: "存在矛盾" };
 export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dataset; kind: "normal" | "defect"; refreshRevision: number }) {
   const { workspace } = useWorkspace();
   const pageId = kind === "normal" ? "industrial-normal" : "industrial-defect";
@@ -39,7 +39,10 @@ export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dat
       workspace.updateView(pageId, { version: "" }); polling.refresh(); updated();
     } catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
-  const check = knowledge?.checks.find(check => check.check_id === checkId) || knowledge?.checks[0];
+  const term = view.knowledgeSearch.trim().normalize("NFKC").toLocaleLowerCase();
+  const checks = (knowledge?.checks || []).filter(item => (!view.knowledgeStatus || item.status === view.knowledgeStatus)
+    && [item.title, item.subject, item.location, item.criterion, ...item.allowed_variations, ...item.limitations].join(" ").normalize("NFKC").toLocaleLowerCase().includes(term));
+  const check = checks.find(check => check.check_id === checkId) || checks[0];
   function evidence(ids: string[]) {
     return <div className="iad-knowledge-evidence iad-reference-grid">{knowledge?.evidence.filter(item => ids.includes(item.image.evidence_id)).map(item => {
       const image = item.image;
@@ -69,7 +72,11 @@ export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dat
       {knowledge.normal_version_id && <p data-field="knowledge-normal-version">此知识版本依据良品 <code>{knowledge.normal_version_id}</code></p>}
       {knowledge.kind === "defect" && !loading && normal && normal.version_id !== knowledge.normal_version_id && <p className="iad-muted">下次挖掘将使用另一良品版本，当前结果保留原依据。</p>}
       <p>{knowledge.summary}</p><p className="iad-muted"><code>{knowledge.version_id}</code> · {knowledge.sources.length} 张来源 · {knowledge.checks.length} 项判据 · {knowledge.findings.length} 项核验</p>
-      {view.tab === "results" && <div className="iad-knowledge-split"><div className="iad-check-list">{knowledge.checks.map(item => <button key={item.check_id} aria-pressed={check?.check_id === item.check_id} onClick={() => setCheckId(item.check_id)}><strong>{item.title}</strong><span>{statuses[item.status]} · 支持 {item.support_evidence_ids.length} / 反对 {item.counter_evidence_ids.length}</span></button>)}{!knowledge.checks.length && <p>尚无可发布判据，请查看限制和核验结果。</p>}</div>{check && <article className="iad-info-group"><h2>{check.title}</h2><p>{check.subject} · {check.location}</p><p>{check.criterion}</p>{!view.version && <button disabled={busy || loading || !!loadError || running} onClick={() => { setError(""); setEditing({ versionId: knowledge.version_id, check }); }}>修订判据</button>}<p>允许变化：{check.allowed_variations.join("；") || "未记录"}</p><h3>支持证据</h3>{evidence(check.support_evidence_ids)}{!!check.counter_evidence_ids.length && <><h3>反对证据</h3>{evidence(check.counter_evidence_ids)}</>}<p className="iad-muted">{check.limitations.join("；")}</p></article>}</div>}
+      {view.tab === "results" && <><div className="iad-row" aria-label="知识条目筛选">
+        <label className="iad-field">搜索知识条目<input type="search" aria-label="搜索知识条目" value={view.knowledgeSearch} onChange={event => workspace.updateView(pageId, { knowledgeSearch: event.target.value }, true)} /></label>
+        <label className="iad-field">支持状态<select aria-label="知识支持状态" value={view.knowledgeStatus} onChange={event => workspace.updateView(pageId, { knowledgeStatus: event.target.value as KnowledgeStatusFilter })}><option value="">全部状态</option>{Object.entries(knowledgeStatuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <button disabled={!view.knowledgeSearch && !view.knowledgeStatus} onClick={() => workspace.updateView(pageId, { knowledgeSearch: "", knowledgeStatus: "" })}>清除知识筛选</button>
+      </div><p role="status" aria-label="知识筛选结果">显示 {checks.length} / {knowledge.checks.length} 项判据</p><div className="iad-knowledge-split"><div className="iad-check-list">{checks.map(item => <button key={item.check_id} aria-pressed={check?.check_id === item.check_id} onClick={() => setCheckId(item.check_id)}><strong>{item.title}</strong><span>{knowledgeStatuses[item.status]} · 支持 {item.support_evidence_ids.length} / 反对 {item.counter_evidence_ids.length}</span></button>)}{!checks.length && <p>{knowledge.checks.length ? "没有匹配的判据，请调整或清除筛选。" : "尚无可发布判据，请查看限制和核验结果。"}</p>}</div>{check && <article className="iad-info-group"><h2>{check.title}</h2><p>{check.subject} · {check.location}</p><p>{check.criterion}</p>{!view.version && <button disabled={busy || loading || !!loadError || running} onClick={() => { setError(""); setEditing({ versionId: knowledge.version_id, check }); }}>修订判据</button>}<p>允许变化：{check.allowed_variations.join("；") || "未记录"}</p><h3>支持证据</h3>{evidence(check.support_evidence_ids)}{!!check.counter_evidence_ids.length && <><h3>反对证据</h3>{evidence(check.counter_evidence_ids)}</>}<p className="iad-muted">{check.limitations.join("；")}</p></article>}</div></>}
       {view.tab === "findings" && <>{knowledge.findings.map(finding => <article className="iad-info-group" key={finding.finding_id}><h3>{finding.judgment.status === "supported" ? "图像支持异常" : finding.judgment.status === "refuted" ? "正常解释成立" : "证据不足"}</h3><p>{finding.judgment.description}</p><p>正常替代解释：{finding.judgment.normal_explanation}</p><p className="iad-muted">{finding.judgment.limitations.join("；")}</p>{evidence(finding.judgment.evidence_ids)}<button onClick={() => workspace.navigate("industrial-review", finding.sample_id)}>人工核实此图</button></article>)}{!knowledge.findings.length && <p>此版本没有待核验区域。</p>}</>}
       {!!knowledge.limitations.length && <details><summary>知识限制</summary>{knowledge.limitations.map((limitation, index) => <p key={index}>{limitation}</p>)}</details>}
       {!!knowledge.corrections.length && <details><summary>人工修订候选</summary>{knowledge.corrections.map(item => <div key={item.check_id}><p>{item.instruction}</p><p className="iad-muted">{knowledge.revisions.find(revision => revision.previous_check_id === item.check_id)?.reason}</p></div>)}</details>}

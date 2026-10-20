@@ -49,6 +49,7 @@ for name in ['normal','normal2','dent']:
   });
   const previousEndpoint = process.env.LIVE_VLM_ENDPOINT;
   const modelRequests = [];
+  let includeFilterChecks = true;
   let holdRegion = false, releaseRegion, proposeRegion = false;
   let failHeldRegion = false;
   let dropReviewResponse = false;
@@ -70,6 +71,9 @@ for name in ['normal','normal2','dent']:
       const view = {description:"可观察证据",position_analysis:"位置合理",illumination_analysis:"反光已核实"};
       let answer = view;
       if (schema.title === "KnowledgeDraft") answer = {summary:"可见蓝色表面",checks:[{title:"表面外观",subject:"主体",location:"全图",criterion:"可见蓝色表面",allowed_variations:["亮度变化"],support_evidence_ids:images.map(image=>image.evidence_id),counter_evidence_ids:[],limitations:[],status:"supported"}],suspects:[],limitations:[]};
+      if (schema.title === "KnowledgeDraft" && includeFilterChecks) answer.checks.push(
+        {title:"边缘完整性",subject:"轮廓",location:"边缘",criterion:"EDGE visible",allowed_variations:["正常倒角"],support_evidence_ids:[images[0].evidence_id],counter_evidence_ids:[],limitations:["需要侧视"],status:"provisional"},
+        {title:"光照适用范围",subject:"主体",location:"全图",criterion:"光照覆盖尚存矛盾",allowed_variations:[],support_evidence_ids:[images[0].evidence_id],counter_evidence_ids:[images.at(-1).evidence_id],limitations:["需要不同照明条件"],status:"conflicted"});
       if (schema.title === "KnowledgeDraft" && parts[0].text.includes("冻结父版本候选：")) {
         const parent=JSON.parse(parts[0].text.split("冻结父版本候选：")[1].split("\n")[0]);
         answer.revisions=parent.checks.map(check=>({previous_check_id:check.check_id,current_check_titles:["表面外观"],reason:"本轮图像仍支持相同外观判据"}));
@@ -182,6 +186,33 @@ for name in ['normal','normal2','dent']:
     const published = await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json();
     assert.equal(published.versions[0].version_id, published.knowledge.version_id);
     assert.ok((await (await element("select[aria-label='知识版本']")).getText()).includes(published.knowledge.version_id));
+    includeFilterChecks = false;
+    const beforeKnowledgeFiltering = modelRequests.length;
+    assert.deepEqual(published.knowledge.checks.map(check => check.status), ["supported", "provisional", "conflicted"]);
+    await (await element("input[aria-label='搜索知识条目']")).sendKeys("  edge  ");
+    await driver.wait(async () => await driver.executeScript("return document.querySelectorAll('.iad-check-list>button').length===1 && document.querySelector('.iad-knowledge-split article h2')?.textContent==='边缘完整性'"), 5000);
+    await (await element("select[aria-label='知识支持状态'] option[value='supported']")).click();
+    await driver.wait(async () => (await (await element("[aria-label='知识筛选结果']")).getText()).includes("0 / 3"), 5000);
+    assert.equal((await driver.findElements(By.css(".iad-knowledge-split article"))).length, 0, "无匹配时不能显示已被筛掉的判据详情");
+    assert.ok((await (await element(".iad-check-list")).getText()).includes("没有匹配的判据"));
+    await button("清除知识筛选");
+    await driver.wait(async () => (await driver.findElements(By.css(".iad-check-list>button"))).length === 3, 5000);
+    await (await element("select[aria-label='知识支持状态'] option[value='conflicted']")).click();
+    await driver.wait(async () => (await (await element(".iad-knowledge-split article h2")).getText()) === "光照适用范围", 5000);
+    await (await element("input[aria-label='搜索知识条目']")).sendKeys("光照");
+    await driver.navigate().refresh();
+    assert.equal(await (await element("input[aria-label='搜索知识条目']")).getAttribute("value"), "光照");
+    assert.equal(await (await element("select[aria-label='知识支持状态']")).getAttribute("value"), "conflicted");
+    await button("图像浏览"); await gridCount(3); await button("挖掘良品知识");
+    assert.equal(await (await element("input[aria-label='搜索知识条目']")).getAttribute("value"), "光照");
+    await viewportSize(375, 812);
+    await driver.executeScript("document.querySelector('[aria-label=\"知识条目筛选\"]').scrollIntoView({block:'start'});");
+    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"), "375px知识筛选及判据列表不能横向溢出");
+    await fs.writeFile(path.join(workspace, "runs/browser/knowledge-filters-375.png"), await driver.takeScreenshot(), "base64");
+    await viewportSize(1440, 1100);
+    await button("清除知识筛选");
+    assert.deepEqual((await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json()).knowledge, published.knowledge, "筛选不能修改已发布知识");
+    assert.equal(modelRequests.length, beforeKnowledgeFiltering, "筛选和恢复不重新调用模型");
     await (await element(".iad-knowledge-evidence button")).click();
     await element(".iad-viewer-dialog img"); await button("关闭");
     await button("图像浏览"); await gridCount(3);

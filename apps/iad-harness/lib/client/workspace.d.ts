@@ -2,6 +2,7 @@ import type { Filters, InspectionReference } from "../shared/contracts.js";
 import { type ImageView, type InspectionSelection, type InspectionTransform, type InspectionView } from "./inspection.js";
 import type { InspectionSession } from "./inspection-session.js";
 import { type PageId, type WorkbenchLocation } from "../shared/navigation.js";
+import { type KnowledgeStatusFilter } from "../shared/knowledge-presentation.js";
 export { pages, type PageId } from "../shared/navigation.js";
 interface ViewState {
     filters: Filters;
@@ -14,6 +15,8 @@ interface ViewState {
     job: string;
     historyPage: number;
     historySearch: string;
+    knowledgeSearch: string;
+    knowledgeStatus: KnowledgeStatusFilter;
     inspection: InspectionView | null;
 }
 interface WorkspaceState {
@@ -58,6 +61,8 @@ export declare class Workspace {
         job: string;
         historyPage: number;
         historySearch: string;
+        knowledgeSearch: string;
+        knowledgeStatus: KnowledgeStatusFilter;
         inspection: InspectionView | null;
     };
     connect(layout: Layout): () => void;

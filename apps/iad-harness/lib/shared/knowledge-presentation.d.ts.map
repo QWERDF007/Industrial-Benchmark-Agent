@@ -1,0 +1,1 @@
+{"version":3,"file":"knowledge-presentation.d.ts","sourceRoot":"","sources":["../../src/shared/knowledge-presentation.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,gBAAgB,CAAC;AAErD,MAAM,MAAM,qBAAqB,GAAG,cAAc,CAAC,QAAQ,CAAC,GAAG,EAAE,CAAC;AAClE,eAAO,MAAM,iBAAiB,EAAE,MAAM,CAAC,cAAc,CAAC,QAAQ,CAAC,EAAE,MAAM,CAEtE,CAAC"}

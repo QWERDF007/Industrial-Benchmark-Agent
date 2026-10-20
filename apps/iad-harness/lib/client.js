@@ -436,8 +436,15 @@ var __IadClientBundle__ = (() => {
     "industrial-review": "\u4EBA\u5DE5\u590D\u6838"
   };
 
+  // src/shared/knowledge-presentation.ts
+  var knowledgeStatuses = {
+    supported: "\u6709\u8BC1\u636E\u652F\u6301",
+    provisional: "\u5F85\u9A8C\u8BC1",
+    conflicted: "\u5B58\u5728\u77DB\u76FE"
+  };
+
   // src/client/workspace.tsx
-  var defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", inspection: null });
+  var defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
   var Workspace = class {
     constructor(conversation) {
       this.conversation = conversation;
@@ -546,7 +553,8 @@ var __IadClientBundle__ = (() => {
           const route = JSON.parse(raw);
           if (route.pageId in pages && typeof route.datasetId === "string") {
             const view = defaultView(route.pageId);
-            for (const key of ["selected", "tab", "version", "normalVersion", "defectVersion", "job", "historySearch"]) if (typeof route[key] === "string") view[key] = route[key];
+            for (const key of ["selected", "tab", "version", "normalVersion", "defectVersion", "job", "historySearch", "knowledgeSearch"]) if (typeof route[key] === "string") view[key] = route[key];
+            if (typeof route.knowledgeStatus === "string" && (route.knowledgeStatus === "" || Object.hasOwn(knowledgeStatuses, route.knowledgeStatus))) view.knowledgeStatus = route.knowledgeStatus;
             view.inspection = restoreInspection(route.inspection, route.datasetId, view.selected);
             if (Number.isInteger(route.page) && route.page > 0) view.page = route.page;
             if (Number.isInteger(route.historyPage) && route.historyPage > 0) view.historyPage = route.historyPage;
@@ -2252,7 +2260,6 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/KnowledgePage.tsx
   var import_jsx_runtime22 = __require("react/jsx-runtime");
-  var statuses3 = { supported: "\u6709\u8BC1\u636E\u652F\u6301", provisional: "\u5F85\u9A8C\u8BC1", conflicted: "\u5B58\u5728\u77DB\u76FE" };
   function KnowledgePage({ dataset, kind, refreshRevision }) {
     const { workspace } = useWorkspace();
     const pageId = kind === "normal" ? "industrial-normal" : "industrial-defect";
@@ -2289,7 +2296,9 @@ var __IadClientBundle__ = (() => {
         setBusy(false);
       }
     }
-    const check = knowledge?.checks.find((check2) => check2.check_id === checkId) || knowledge?.checks[0];
+    const term = view.knowledgeSearch.trim().normalize("NFKC").toLocaleLowerCase();
+    const checks = (knowledge?.checks || []).filter((item) => (!view.knowledgeStatus || item.status === view.knowledgeStatus) && [item.title, item.subject, item.location, item.criterion, ...item.allowed_variations, ...item.limitations].join(" ").normalize("NFKC").toLocaleLowerCase().includes(term));
+    const check = checks.find((check2) => check2.check_id === checkId) || checks[0];
     function evidence(ids) {
       return /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("div", { className: "iad-knowledge-evidence iad-reference-grid", children: knowledge?.evidence.filter((item) => ids.includes(item.image.evidence_id)).map((item) => {
         const image = item.image;
@@ -2381,43 +2390,66 @@ var __IadClientBundle__ = (() => {
           knowledge.findings.length,
           " \u9879\u6838\u9A8C"
         ] }),
-        view.tab === "results" && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "iad-knowledge-split", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "iad-check-list", children: [
-            knowledge.checks.map((item) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("button", { "aria-pressed": check?.check_id === item.check_id, onClick: () => setCheckId(item.check_id), children: [
-              /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("strong", { children: item.title }),
-              /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { children: [
-                statuses3[item.status],
-                " \xB7 \u652F\u6301 ",
-                item.support_evidence_ids.length,
-                " / \u53CD\u5BF9 ",
-                item.counter_evidence_ids.length
+        view.tab === "results" && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(import_jsx_runtime22.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "iad-row", "aria-label": "\u77E5\u8BC6\u6761\u76EE\u7B5B\u9009", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("label", { className: "iad-field", children: [
+              "\u641C\u7D22\u77E5\u8BC6\u6761\u76EE",
+              /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("input", { type: "search", "aria-label": "\u641C\u7D22\u77E5\u8BC6\u6761\u76EE", value: view.knowledgeSearch, onChange: (event) => workspace.updateView(pageId, { knowledgeSearch: event.target.value }, true) })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("label", { className: "iad-field", children: [
+              "\u652F\u6301\u72B6\u6001",
+              /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("select", { "aria-label": "\u77E5\u8BC6\u652F\u6301\u72B6\u6001", value: view.knowledgeStatus, onChange: (event) => workspace.updateView(pageId, { knowledgeStatus: event.target.value }), children: [
+                /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("option", { value: "", children: "\u5168\u90E8\u72B6\u6001" }),
+                Object.entries(knowledgeStatuses).map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("option", { value, children: label }, value))
               ] })
-            ] }, item.check_id)),
-            !knowledge.checks.length && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { children: "\u5C1A\u65E0\u53EF\u53D1\u5E03\u5224\u636E\uFF0C\u8BF7\u67E5\u770B\u9650\u5236\u548C\u6838\u9A8C\u7ED3\u679C\u3002" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("button", { disabled: !view.knowledgeSearch && !view.knowledgeStatus, onClick: () => workspace.updateView(pageId, { knowledgeSearch: "", knowledgeStatus: "" }), children: "\u6E05\u9664\u77E5\u8BC6\u7B5B\u9009" })
           ] }),
-          check && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("article", { className: "iad-info-group", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { children: check.title }),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("p", { children: [
-              check.subject,
-              " \xB7 ",
-              check.location
+          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("p", { role: "status", "aria-label": "\u77E5\u8BC6\u7B5B\u9009\u7ED3\u679C", children: [
+            "\u663E\u793A ",
+            checks.length,
+            " / ",
+            knowledge.checks.length,
+            " \u9879\u5224\u636E"
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "iad-knowledge-split", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("div", { className: "iad-check-list", children: [
+              checks.map((item) => /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("button", { "aria-pressed": check?.check_id === item.check_id, onClick: () => setCheckId(item.check_id), children: [
+                /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("strong", { children: item.title }),
+                /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("span", { children: [
+                  knowledgeStatuses[item.status],
+                  " \xB7 \u652F\u6301 ",
+                  item.support_evidence_ids.length,
+                  " / \u53CD\u5BF9 ",
+                  item.counter_evidence_ids.length
+                ] })
+              ] }, item.check_id)),
+              !checks.length && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { children: knowledge.checks.length ? "\u6CA1\u6709\u5339\u914D\u7684\u5224\u636E\uFF0C\u8BF7\u8C03\u6574\u6216\u6E05\u9664\u7B5B\u9009\u3002" : "\u5C1A\u65E0\u53EF\u53D1\u5E03\u5224\u636E\uFF0C\u8BF7\u67E5\u770B\u9650\u5236\u548C\u6838\u9A8C\u7ED3\u679C\u3002" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { children: check.criterion }),
-            !view.version && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("button", { disabled: busy || loading || !!loadError || running, onClick: () => {
-              setError("");
-              setEditing({ versionId: knowledge.version_id, check });
-            }, children: "\u4FEE\u8BA2\u5224\u636E" }),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("p", { children: [
-              "\u5141\u8BB8\u53D8\u5316\uFF1A",
-              check.allowed_variations.join("\uFF1B") || "\u672A\u8BB0\u5F55"
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { children: "\u652F\u6301\u8BC1\u636E" }),
-            evidence(check.support_evidence_ids),
-            !!check.counter_evidence_ids.length && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(import_jsx_runtime22.Fragment, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { children: "\u53CD\u5BF9\u8BC1\u636E" }),
-              evidence(check.counter_evidence_ids)
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { className: "iad-muted", children: check.limitations.join("\uFF1B") })
+            check && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("article", { className: "iad-info-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h2", { children: check.title }),
+              /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("p", { children: [
+                check.subject,
+                " \xB7 ",
+                check.location
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { children: check.criterion }),
+              !view.version && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("button", { disabled: busy || loading || !!loadError || running, onClick: () => {
+                setError("");
+                setEditing({ versionId: knowledge.version_id, check });
+              }, children: "\u4FEE\u8BA2\u5224\u636E" }),
+              /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)("p", { children: [
+                "\u5141\u8BB8\u53D8\u5316\uFF1A",
+                check.allowed_variations.join("\uFF1B") || "\u672A\u8BB0\u5F55"
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { children: "\u652F\u6301\u8BC1\u636E" }),
+              evidence(check.support_evidence_ids),
+              !!check.counter_evidence_ids.length && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(import_jsx_runtime22.Fragment, { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("h3", { children: "\u53CD\u5BF9\u8BC1\u636E" }),
+                evidence(check.counter_evidence_ids)
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime22.jsx)("p", { className: "iad-muted", children: check.limitations.join("\uFF1B") })
+            ] })
           ] })
         ] }),
         view.tab === "findings" && /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(import_jsx_runtime22.Fragment, { children: [
