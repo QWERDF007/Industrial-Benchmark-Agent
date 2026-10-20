@@ -5,7 +5,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 from iad_core.storage.database import Database
 from iad_core.storage.models import ReviewDecisionRecord, ReviewSession
-from iad_core.storage.repositories import ReviewRepository
+from iad_core.storage.review_repository import ReviewRepository
 
 
 def import_authoritative_state(

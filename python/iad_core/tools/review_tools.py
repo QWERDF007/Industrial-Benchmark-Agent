@@ -4,7 +4,7 @@ import logging
 from typing import Optional, Dict, Any
 
 from iad_core.storage.database import Database
-from iad_core.storage.repositories import ReviewRepository
+from iad_core.storage.review_repository import ReviewRepository
 from iad_core.contracts import ToolResult, ToolStatus, MutationType, ArtifactRef
 
 logger = logging.getLogger("iad_core.tools.review")

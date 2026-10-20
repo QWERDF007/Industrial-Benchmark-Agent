@@ -1,5 +1,6 @@
 import type { Annotation, AuditAnalysis, KnowledgeSnapshot, AuditStart, ModelCallDetail, DatasetReport as Report, ReviewDecisionRecord, ReviewSubmission } from "./domain.generated.js";
 export type { Annotation, ReviewDecisionRecord, ReviewSubmission } from "./domain.generated.js";
+export type { ReviewHistoryQuery, ReviewHistoryPage } from "./domain.generated.js";
 export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot, JobRetry, DatasetImport as DatasetImportRequest, ArchiveInspection, DatasetReport as Report } from "./domain.generated.js";
 export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
 export type ModelCallSummary = Omit<ModelCallDetail, "request_body" | "response_body">;

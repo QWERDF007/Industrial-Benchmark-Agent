@@ -5,7 +5,7 @@
 import { Context } from "@deepseek-ai/cordis";
 import { TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
 import { PythonBridge } from "../python-bridge/index.js";
-import type { AuditStartRequest, DatasetImportRequest, Filters, ReviewSubmission } from "../../shared/contracts.js";
+import type { AuditStartRequest, DatasetImportRequest, Filters, ReviewSubmission, ReviewHistoryQuery } from "../../shared/contracts.js";
 export declare class IadRemoteService extends TypertRemoteService {
     readonly bridge: PythonBridge;
     constructor(ctx: Context, bridge: PythonBridge);
@@ -62,6 +62,7 @@ export declare class IadRemoteService extends TypertRemoteService {
         task_id: string;
         sample_id: string;
     }): Promise<any>;
+    reviewHistory(args: ReviewHistoryQuery): Promise<any>;
     reviewSubmitDecision(args: ReviewSubmission): Promise<any>;
     reviewStats(args: {
         task_id: string;

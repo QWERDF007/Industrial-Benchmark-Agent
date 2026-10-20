@@ -52,7 +52,8 @@ def test_preview_benchmark_matches_build_counts():
 def test_review_gate_non_required_candidates_do_not_block(tmp_path):
     """NV-13 / NS-04: Non-required UNCERTAIN candidates (is_required=False) do NOT block benchmark_build."""
     from iad_core.storage.models import InspectionTask, Sample, QualityStatus, GoldRecord
-    from iad_core.storage.repositories import TaskRepository, SampleRepository, GoldRepository, ReviewRepository
+    from iad_core.storage.repositories import TaskRepository, SampleRepository, GoldRepository
+    from iad_core.storage.review_repository import ReviewRepository
 
     db_path = str(tmp_path / "test_gate.db")
     db = Database(db_path)

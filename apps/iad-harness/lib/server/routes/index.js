@@ -49,6 +49,8 @@ export function createIadHttpHandler(bridge) {
             };
             if (pathname === "/api/iad/datasets" && method === "GET")
                 return await call("dataset_list");
+            if (pathname === "/api/iad/review/history" && method === "GET")
+                return await call("review_history", query);
             if (pathname === "/api/iad/datasets/import" && method === "POST")
                 return await call("dataset_import", body);
             if (pathname === "/api/iad/datasets/archive/inspect" && method === "POST")

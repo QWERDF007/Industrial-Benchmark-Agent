@@ -8,7 +8,7 @@ export const pages = {
     "industrial-audit": "模型审计",
     "industrial-review": "人工复核",
 };
-const defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", job: "" });
+const defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", job: "", historyPage: 1, historySearch: "" });
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export class Workspace {
     state = { active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
@@ -17,7 +17,7 @@ export class Workspace {
     defaults = Object.fromEntries(Object.keys(pages).map(id => [id, defaultView(id)]));
     getSnapshot = () => this.state;
     subscribe = (listener) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
-    view(page) { return this.state.views[`${page}:${this.state.datasetId}`] || this.defaults[page]; }
+    view(page) { return { ...this.defaults[page], ...this.state.views[`${page}:${this.state.datasetId}`] }; }
     connect(layout) {
         this.layout = layout;
         this.restore();
@@ -76,11 +76,13 @@ export class Workspace {
                 const route = JSON.parse(raw);
                 if (route.pageId in pages && typeof route.datasetId === "string") {
                     const view = defaultView(route.pageId);
-                    for (const key of ["selected", "tab", "version", "normalVersion", "job"])
+                    for (const key of ["selected", "tab", "version", "normalVersion", "job", "historySearch"])
                         if (typeof route[key] === "string")
                             view[key] = route[key];
                     if (Number.isInteger(route.page) && route.page > 0)
                         view.page = route.page;
+                    if (Number.isInteger(route.historyPage) && route.historyPage > 0)
+                        view.historyPage = route.historyPage;
                     if (route.filters) {
                         for (const key of ["search", "model_status", "review_status", "technical", "sort_by"])
                             if (typeof route.filters[key] === "string")

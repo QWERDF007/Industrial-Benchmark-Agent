@@ -9,7 +9,8 @@ from iad_core.evidence.sources import SampleContent
 from iad_core.knowledge.models import KnowledgeFinding, KnowledgeKind, KnowledgeSnapshot, KnowledgeSource
 from iad_core.knowledge.candidates import AuditCandidates
 from iad_core.storage.database import Database
-from iad_core.storage.repositories import AnnotationRepository, ReviewRepository, SampleRepository
+from iad_core.storage.repositories import AnnotationRepository, SampleRepository
+from iad_core.storage.review_repository import ReviewRepository
 
 
 class KnowledgeSources:

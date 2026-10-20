@@ -120,6 +120,7 @@ for name in ['normal','normal2','dent']:
       const el = await element(`select[aria-label='${label}']`);
       await driver.executeScript("arguments[0].value=arguments[1];arguments[0].dispatchEvent(new Event('change',{bubbles:true}));", el, value);
     };
+    const selectedSample = name => driver.wait(until.elementLocated(By.xpath(`//dt[normalize-space(.)='图像名']/following-sibling::dd[1][normalize-space(.)='${name}']`)),5000);
     const viewportSize=async(width,height)=>{
       await driver.setContext("chrome");
       await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth='';gBrowser.selectedBrowser.style.width='';gBrowser.selectedBrowser.style.flex=''");
@@ -502,7 +503,8 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await driver.navigate().refresh();await gridCount(0);
     assert.equal(await (await element(".iad-decision textarea")).getAttribute("value"),"已核实局部反光");
     await button("重试提交");
-    await driver.wait(async()=>(await (await element(".iad-decision")).getText()).includes("已提交 PASS"),5000);
+    await driver.wait(async()=>(await (await element(".iad-review-confirmation")).getText()).includes("dent.png · 良品"),5000);
+    await driver.wait(async()=>(await driver.findElements(By.css(".iad-decision"))).length===0,5000);
     assert.equal(reviewRequests.length,2);
     assert.deepEqual(reviewRequests[1],reviewRequests[0],"刷新后必须重放同一份提交，包括标识和耗时");
     const detail = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();
@@ -517,8 +519,36 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await driver.wait(async()=>(await driver.findElements(By.css(".iad-review-history li"))).length===2,5000);
     const reviewHistory=await (await element(".iad-review-history")).getText();
     assert.ok(reviewHistory.includes("更正：确认异常")&&reviewHistory.includes("已核实局部反光"));
+    await button("复核记录");
+    await driver.wait(async()=>(await driver.findElements(By.css(".iad-review-records tbody tr"))).length===2,5000);
+    const recordsText=await (await element(".iad-review-records")).getText();
+    assert.ok(recordsText.includes("更正：确认异常")&&recordsText.includes("已核实局部反光"));
+    await (await element("input[aria-label='搜索复核记录']")).sendKeys("已核实局部反光");
+    await driver.wait(async()=>(await driver.findElements(By.css(".iad-review-records tbody tr"))).length===1,5000);
+    await driver.navigate().refresh();
+    await driver.wait(async()=>(await driver.findElements(By.css(".iad-review-records tbody tr"))).length===1,5000);
+    assert.equal(await (await element("input[aria-label='搜索复核记录']")).getAttribute("value"),"已核实局部反光");
+    await (await element(".iad-review-records tbody button")).click();
+    await driver.wait(async()=>(await (await element(".iad-review-history")).getText()).includes("复核记录 · 2 次"),5000);
     await driver.executeScript("arguments[0].scrollIntoView({block:'end'})",await element(".iad-review-history"));
     await fs.writeFile(path.join(workspace, "runs/browser/human-review.png"), await driver.takeScreenshot(), "base64");
+    await viewportSize(375,812);
+    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"),"复核记录窄屏不造成页面横向溢出");
+    const recordsRegion=await element("[aria-label='复核历史表格']");
+    await (await element("input[aria-label='搜索复核记录']")).click();
+    await driver.actions().sendKeys(Key.TAB).perform();
+    assert.ok(await driver.executeScript("return document.activeElement===arguments[0]",recordsRegion),"Tab按页面顺序进入历史表格");
+    await driver.actions().sendKeys(Key.ARROW_RIGHT).perform();
+    await driver.wait(async()=>await driver.executeScript("return arguments[0].scrollLeft>0",recordsRegion),5000,"键盘可查看表格右侧内容");
+    await driver.executeScript("document.querySelector('.iad-workbench').scrollTop=0");
+    await fs.writeFile(path.join(workspace,"runs/browser/review-records-375.png"),await driver.takeScreenshot(),"base64");
+    await viewportSize(1440,1100);
+    await button("模型审计");
+    const readOnlyReview=await driver.wait(until.elementLocated(By.xpath("//dt[normalize-space(.)='人工结果']/following-sibling::dd[1]")),5000);
+    assert.ok((await readOnlyReview.getText()).includes("异常"));
+    assert.equal((await driver.findElements(By.css(".iad-decision"))).length,0);
+    await button("前往人工复核");await element(".iad-decision");
+    await selectedSample("dent.png");
     await button("模型审计");
     await button("报告");
     await driver.wait(async () => (await driver.findElement(By.css(".iad-workbench")).getText()).includes("人工核验覆盖率"), 15000);
@@ -664,6 +694,32 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await viewportSize(375,812);
     assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"),"带真实知识版本和核验记录的窄屏页面不能横向溢出");
     await fs.writeFile(path.join(workspace,"runs/browser/knowledge-versions-375.png"),await driver.takeScreenshot(),"base64");
+
+    await viewportSize(1440,1100);
+    await button("人工复核");await select("当前数据集",dataset.dataset_id);
+    await button("复核队列");await gridCount(1);
+    await select("人工复核","pending");
+    await (await element("input[aria-label='按文件名搜索']")).clear();await gridCount(2);
+    await (await element(".iad-grid img[alt='normal.png']")).click();
+    await selectedSample("normal.png");
+    await (await element(".iad-decision textarea")).sendKeys("第一张的草稿");
+    await (await element(".iad-grid img[alt='normal2.png']")).click();
+    await selectedSample("normal2.png");
+    assert.equal(await (await element(".iad-decision textarea")).getAttribute("value"),"");
+    await (await element(".iad-decision textarea")).sendKeys("第二张的草稿");
+    await (await element(".iad-grid img[alt='normal.png']")).click();
+    await selectedSample("normal.png");
+    assert.equal(await (await element(".iad-decision textarea")).getAttribute("value"),"第一张的草稿");
+    await button("良品");await gridCount(1);
+    await selectedSample("normal2.png");
+    assert.equal(await (await element(".iad-decision textarea")).getAttribute("value"),"第二张的草稿","确认保存后推进下一张且恢复该图草稿");
+    await button("不确定");await gridCount(0);
+    assert.equal((await driver.findElements(By.css(".iad-decision"))).length,0);
+    const confirmed=await (await element(".iad-review-confirmation")).getText();
+    assert.ok(confirmed.includes("normal2.png")&&confirmed.includes("不确定"));
+    const reviewedAll=await (await fetch(`${base}/api/iad/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
+    assert.equal(reviewedAll.human_reviewed_count,3);
+    assert.equal(reviewedAll.quality.human_verification_coverage.numerator,2,"人工不确定不能算成已核验真值");
 
 
   } catch (error) {

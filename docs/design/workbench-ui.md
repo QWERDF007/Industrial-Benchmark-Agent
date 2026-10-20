@@ -161,6 +161,8 @@ DSH 左侧栏             当前页面
 
 ## 设计依据
 
+连续复核参考 [Label Studio 的队列与 Quick View 行为](https://labelstud.io/guide/labeling.html)及其[GitHub 源文档](https://github.com/HumanSignal/label-studio/blob/develop/docs/source/guide/labeling.md)；本项目以 D03 定义队列提交推进与历史回看。
+
 已实际执行 ui-ux-pro-max 的 design-system（industrial inspection dashboard；operations dashboard，variance 2 / motion 1 / density 8）、UX（sidebar navigation active state；keyboard focus modal）和 React（state shared context）检索。
 
 匹配并采用：Minimalism & Swiss Style、当前导航标识、可恢复导航、焦点可见、共享低频状态和局部表单状态。两次生成均返回营销 Hero 布局，没有匹配到可直接采用的工业工作台布局；上述页面线框为结合现有 DSH 工作台作出的设计。字体、营销布局、入场动画与整套配色不作为项目规范。React 检索标注版本高于当前 React 18，仅采用通用状态设计，不据此升级框架。

@@ -16,6 +16,8 @@ interface ViewState {
     version: string;
     normalVersion: string;
     job: string;
+    historyPage: number;
+    historySearch: string;
 }
 interface WorkspaceState {
     active: boolean;
@@ -40,7 +42,17 @@ export declare class Workspace {
     private defaults;
     getSnapshot: () => WorkspaceState;
     subscribe: (listener: () => void) => () => void;
-    view(page: PageId): ViewState;
+    view(page: PageId): {
+        filters: Filters;
+        page: number;
+        selected: string;
+        tab: string;
+        version: string;
+        normalVersion: string;
+        job: string;
+        historyPage: number;
+        historySearch: string;
+    };
     connect(layout: Layout): () => void;
     navigate(pageId: PageId, selected?: string): void;
     selectDataset(datasetId: string, replace?: boolean): void;

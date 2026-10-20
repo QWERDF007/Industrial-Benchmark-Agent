@@ -55,6 +55,7 @@ let IadRemoteService = (() => {
     let _modelCallGet_decorators;
     let _reviewQueue_decorators;
     let _reviewEvidence_decorators;
+    let _reviewHistory_decorators;
     let _reviewSubmitDecision_decorators;
     let _reviewStats_decorators;
     let _reportGet_decorators;
@@ -76,6 +77,7 @@ let IadRemoteService = (() => {
             _modelCallGet_decorators = [Remote];
             _reviewQueue_decorators = [Remote];
             _reviewEvidence_decorators = [Remote];
+            _reviewHistory_decorators = [Remote];
             _reviewSubmitDecision_decorators = [Remote];
             _reviewStats_decorators = [Remote];
             _reportGet_decorators = [Remote];
@@ -94,6 +96,7 @@ let IadRemoteService = (() => {
             __esDecorate(this, null, _modelCallGet_decorators, { kind: "method", name: "modelCallGet", static: false, private: false, access: { has: obj => "modelCallGet" in obj, get: obj => obj.modelCallGet }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _reviewQueue_decorators, { kind: "method", name: "reviewQueue", static: false, private: false, access: { has: obj => "reviewQueue" in obj, get: obj => obj.reviewQueue }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _reviewEvidence_decorators, { kind: "method", name: "reviewEvidence", static: false, private: false, access: { has: obj => "reviewEvidence" in obj, get: obj => obj.reviewEvidence }, metadata: _metadata }, null, _instanceExtraInitializers);
+            __esDecorate(this, null, _reviewHistory_decorators, { kind: "method", name: "reviewHistory", static: false, private: false, access: { has: obj => "reviewHistory" in obj, get: obj => obj.reviewHistory }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _reviewSubmitDecision_decorators, { kind: "method", name: "reviewSubmitDecision", static: false, private: false, access: { has: obj => "reviewSubmitDecision" in obj, get: obj => obj.reviewSubmitDecision }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _reviewStats_decorators, { kind: "method", name: "reviewStats", static: false, private: false, access: { has: obj => "reviewStats" in obj, get: obj => obj.reviewStats }, metadata: _metadata }, null, _instanceExtraInitializers);
             __esDecorate(this, null, _reportGet_decorators, { kind: "method", name: "reportGet", static: false, private: false, access: { has: obj => "reportGet" in obj, get: obj => obj.reportGet }, metadata: _metadata }, null, _instanceExtraInitializers);
@@ -148,6 +151,9 @@ let IadRemoteService = (() => {
         }
         async reviewEvidence(args) {
             return this.bridge.execute("review_evidence", args);
+        }
+        async reviewHistory(args) {
+            return this.bridge.execute("review_history", { ...args });
         }
         async reviewSubmitDecision(args) {
             return this.bridge.execute("review_submit_decision", { ...args });

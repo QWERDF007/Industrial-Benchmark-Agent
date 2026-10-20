@@ -5,8 +5,9 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from iad_core.storage.database import Database
-from iad_core.storage.models import ReviewSession, ReviewDecisionRecord, ReviewDecisionEnum
-from iad_core.storage.repositories import ReviewRepository
+from iad_core.dataset.registry import DatasetRegistry
+from iad_core.storage.models import ReviewSession, ReviewDecisionRecord, ReviewDecisionEnum, ReviewHistoryRecord
+from iad_core.storage.review_repository import ReviewRepository
 
 
 class ReviewSubmission(BaseModel):
@@ -29,10 +30,30 @@ class ReviewSubmission(BaseModel):
         return value.strip()
 
 
+class ReviewHistoryQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    dataset_id: str
+    page: int = Field(1, ge=1)
+    page_size: int = Field(24, ge=1, le=200)
+    search: str = ""
+
+
+class ReviewHistoryPage(BaseModel):
+    items: list[ReviewHistoryRecord]
+    total: int
+    page: int
+    page_size: int
+
+
 class HumanReview:
     def __init__(self, db: Database):
         self.db = db
         self.repo = ReviewRepository(db)
+
+    def history(self, query: ReviewHistoryQuery) -> ReviewHistoryPage:
+        DatasetRegistry(self.db).get(query.dataset_id)
+        items, total = self.repo.history_page(query.dataset_id, (query.page - 1) * query.page_size, query.page_size, query.search)
+        return ReviewHistoryPage(items=items, total=total, page=query.page, page_size=query.page_size)
 
     def submit(self, request: ReviewSubmission) -> dict:
         with self.db.connection() as conn:

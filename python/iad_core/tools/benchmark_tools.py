@@ -4,7 +4,7 @@ import logging
 from typing import Optional, Dict, Any, List
 
 from iad_core.storage.database import Database
-from iad_core.storage.repositories import BenchmarkRepository, GoldRepository, ReviewRepository, SampleRepository
+from iad_core.storage.repositories import BenchmarkRepository, GoldRepository, SampleRepository
 from iad_core.benchmark.builder import (
     run_benchmark_pipeline,
     preview_benchmark_pipeline,

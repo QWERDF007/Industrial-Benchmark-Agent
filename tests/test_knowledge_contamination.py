@@ -12,7 +12,7 @@ from iad_core.entry import knowledge_evidence, knowledge_get, sample_get
 from iad_core.knowledge.service import KnowledgeService
 from iad_core.storage.database import Database
 from iad_core.storage.models import ReviewDecisionRecord
-from iad_core.storage.repositories import ReviewRepository
+from iad_core.storage.review_repository import ReviewRepository
 from iad_core.workbench.vision import VlmClient
 
 

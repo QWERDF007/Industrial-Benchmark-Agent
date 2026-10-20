@@ -9,13 +9,18 @@ from pathlib import Path
 from typing import Any, Dict
 
 from iad_core.storage.database import Database
-from iad_core.storage.repositories import AnnotationRepository, ImportIssueRepository, ReviewRepository, SampleRepository
+from iad_core.storage.repositories import (
+    AnnotationRepository,
+    ImportIssueRepository,
+    SampleRepository,
+)
+from iad_core.storage.review_repository import ReviewRepository
 from iad_core.advisory.repository import AuditSuggestionRepository
 from iad_core.dataset.path_safety import PathSafetyError, validate_sample_image_path
 from iad_core.dataset.registry import DatasetImport, DatasetRegistry
 from iad_core.workbench.projection import suggestion_meta as extract_suggestion_meta
 from iad_core.workbench.query import SampleQuery, WorkbenchQuery
-from iad_core.workbench.review import HumanReview, ReviewSubmission
+from iad_core.workbench.review import HumanReview, ReviewSubmission, ReviewHistoryQuery
 
 DEFAULT_DB_PATH = os.environ.get("IAD_DB_PATH", "data/benchmark.db")
 _output_lock = threading.Lock()
@@ -184,6 +189,10 @@ def review_submit_decision(args, db_path):
     return HumanReview(Database(db_path)).submit(ReviewSubmission.model_validate(args))
 
 
+def review_history(args, db_path):
+    return HumanReview(Database(db_path)).history(ReviewHistoryQuery.model_validate(args)).model_dump()
+
+
 def review_stats(args, db_path):
     return WorkbenchQuery(Database(db_path)).report(**args)
 
@@ -286,7 +295,7 @@ def model_call_get(args, db_path):
 OPERATIONS = {handler.__name__: handler for handler in (
     tool_call, dataset_list, dataset_get, dataset_import, dataset_archive_inspect, dataset_update, dataset_scan,
     sample_list, sample_get, sample_image_path, sample_thumbnail, sample_mask_path,
-    review_queue, review_evidence, review_submit_decision,
+    review_queue, review_evidence, review_submit_decision, review_history,
     review_stats, report_get, audit_start, audit_status, audit_cancel, audit_retry, audit_list, audit_evidence, directory_list,
     knowledge_get, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_list, model_call_get,
 )}

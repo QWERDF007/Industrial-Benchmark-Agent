@@ -42,8 +42,8 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 作业关联的真实模型请求、返回、错误与服务用量 | [ModelCalls](../python/iad_core/workbench/calls.py)、[VlmClient](../python/iad_core/workbench/vision.py)、[原文读取操作](../python/iad_core/entry.py) |
 | 共用图像查看器、来源图层和全图 ROI 联动 | [ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx)、[疑点与实际证据选择](../apps/iad-harness/src/client/inspection.ts)、[InspectionEvidence](../apps/iad-harness/src/client/components/InspectionEvidence.tsx)、[媒体失败提示与重新加载](../apps/iad-harness/src/client/components/MediaLoad.tsx) |
 | 知识独立页面、版本与真实证据 | [KnowledgePage](../apps/iad-harness/src/client/components/KnowledgePage.tsx)、[版本投影](../python/iad_core/knowledge/repository.py) |
-| 人工复核、待确认提交、草稿与历史 | [HumanReviewForm](../apps/iad-harness/src/client/components/HumanReviewForm.tsx)、[useReviewDraft](../apps/iad-harness/src/client/useReviewDraft.ts) |
-| 原子人审命令、不可变记录与当前结果投影 | [HumanReview / ReviewSubmission](../python/iad_core/workbench/review.py)、[ReviewRepository](../python/iad_core/storage/repositories.py)、[复核表与迁移](../python/iad_core/storage/review_schema.py) |
+| 人工复核、待确认提交、草稿与历史 | [HumanReviewForm](../apps/iad-harness/src/client/components/HumanReviewForm.tsx)、[useReviewDraft](../apps/iad-harness/src/client/useReviewDraft.ts)、[独立复核记录](../apps/iad-harness/src/client/components/ReviewRecords.tsx) |
+| 原子人审命令、不可变记录与当前结果投影 | [HumanReview / ReviewSubmission](../python/iad_core/workbench/review.py)、[ReviewRepository](../python/iad_core/storage/review_repository.py)、[复核表与迁移](../python/iad_core/storage/review_schema.py) |
 | 嵌套模态与焦点恢复 | [Modal](../apps/iad-harness/src/client/components/Modal.tsx) |
 | 数据表与迁移 | [Database](../python/iad_core/storage/database.py) |
 

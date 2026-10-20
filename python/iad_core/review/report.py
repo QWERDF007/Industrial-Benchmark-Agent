@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 from iad_core.storage.database import Database
-from iad_core.storage.repositories import ReviewRepository
+from iad_core.storage.review_repository import ReviewRepository
 from iad_core.review.service import ReviewQueueService
 
 logger = logging.getLogger("iad_core.review.report")

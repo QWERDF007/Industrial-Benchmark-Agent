@@ -5,7 +5,8 @@ from fastapi.testclient import TestClient
 
 from iad_core.storage.database import Database
 from iad_core.storage.models import InspectionTask, Sample, QualityStatus, DataOrigin
-from iad_core.storage.repositories import TaskRepository, SampleRepository, ReviewDecisionRepository
+from iad_core.storage.repositories import TaskRepository, SampleRepository
+from iad_core.storage.review_repository import ReviewRepository
 from iad_core.advisory.schemas import AuditSuggestion, ConclusionStatus, RecommendedAction
 from iad_core.advisory.repository import AuditSuggestionRepository
 from iad_core.candidate.merger import merge_candidates
@@ -162,7 +163,6 @@ def test_merge_queue_e2e_contract_and_web_api(merge_queue_env):
     assert set(item_by_id[f"{task_id}:s4"]["sources"]) == {"AUDIT"}
 
     # Step 4: Make review decision and verify status update
-    from iad_core.storage.repositories import ReviewRepository
     from iad_core.storage.models import ReviewDecisionRecord
     rev_repo = ReviewRepository(db)
     rev_repo.append_decision(

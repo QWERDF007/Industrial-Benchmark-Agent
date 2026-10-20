@@ -37,7 +37,7 @@ def test_combined_filters_and_report_share_counts(dataset):
 
 def test_reference_pool_excludes_target_and_human_fail(dataset):
     from iad_core.storage.models import ReviewDecisionRecord
-    from iad_core.storage.repositories import ReviewRepository
+    from iad_core.storage.review_repository import ReviewRepository
     db, registry, config = dataset
     refs = registry.references(config.dataset.id)
     assert len(refs) == 2
@@ -49,7 +49,7 @@ def test_reference_pool_excludes_target_and_human_fail(dataset):
 
 def test_manual_reference_selection_survives_reload_and_human_correction(dataset):
     from iad_core.storage.models import ReviewDecisionRecord
-    from iad_core.storage.repositories import ReviewRepository
+    from iad_core.storage.review_repository import ReviewRepository
     db, registry, config = dataset
     selected = [f"{config.dataset.id}:dent.png"]
     registry.set_references(config.dataset.id, selected)

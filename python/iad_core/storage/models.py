@@ -212,6 +212,10 @@ class ReviewDecisionRecord(BaseModel):
     review_duration_ms: int = 0
 
 
+class ReviewHistoryRecord(ReviewDecisionRecord):
+    relative_path: str
+
+
 # 8. GoldRecord
 class GoldRecord(BaseModel):
     sample_id: str

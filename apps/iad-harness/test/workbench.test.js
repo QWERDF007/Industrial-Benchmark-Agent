@@ -75,9 +75,25 @@ conn.commit();conn.close()
     assert.equal((await (await fetch(`${base}/sample/${encodeURIComponent(samples.items[0].sample_id)}`)).json()).review_history.length,3,"会话存储失败时裁决必须一起回滚");
     execFileSync(bridge.pythonPath,["-c","import sqlite3,sys; c=sqlite3.connect(sys.argv[1]); c.execute('DROP TRIGGER fail_review_session'); c.commit(); c.close()",path.join(root,"test.db")]);
     assert.equal((await post("/review/submit",blocked)).status,200,"故障修复后可使用原提交标识重试");
+    const history=await fetch(`${base}/review/history?dataset_id=${dataset.dataset_id}&page_size=2`);
+    assert.equal(history.status,200,await history.clone().text());
+    const records=await history.json();
+    assert.equal(records.total,4);
+    assert.deepEqual(records.items.map(item=>[item.decision,item.relative_path]),[["UNCERTAIN","good.png"],["FAIL","good.png"]]);
+    const older=await (await fetch(`${base}/review/history?dataset_id=${dataset.dataset_id}&page_size=2&page=2`)).json();
+    assert.deepEqual(older.items.map(item=>item.decision),["PASS","HARD_NORMAL"]);
+    const searched=await (await fetch(`${base}/review/history?dataset_id=${dataset.dataset_id}&search=${encodeURIComponent("既有人审")}`)).json();
+    assert.equal(searched.total,1);assert.equal(searched.items[0].decision_id,legacyId);
+    assert.equal((await fetch(`${base}/review/history?dataset_id=${dataset.dataset_id}&page=0`)).status,422);
+    const otherImages=path.join(root,"other-images");await fs.mkdir(otherImages);await fs.writeFile(path.join(otherImages,"other.png"),png);
+    const otherImport=await post("/datasets/import",{name:"Other dataset",image_dir:otherImages,annotation_dir:labels});
+    assert.equal(otherImport.status,200,await otherImport.clone().text());
+    const other=await otherImport.json();
+    const isolated=await (await fetch(`${base}/review/history?dataset_id=${other.dataset_id}`)).json();
+    assert.equal(isolated.total,0,"不同数据集不能读取本数据集的人工历史");
     const badImport = await post("/datasets/import", { name: "broken", image_dir: "/does-not-exist", annotation_dir: labels });
     assert.equal(badImport.status, 404);
-    assert.equal((await (await fetch(base + "/datasets")).json()).datasets.length, 1);
+    assert.equal((await (await fetch(base + "/datasets")).json()).datasets.length, 2);
   } finally {
     bridge.destroy();
     await new Promise(resolve => server.close(resolve));

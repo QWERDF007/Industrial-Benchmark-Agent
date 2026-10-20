@@ -10,8 +10,8 @@ from iad_core.storage.repositories import (
     SampleRepository,
     FeatureRepository,
     AnnotationRepository,
-    ReviewDecisionRepository,
 )
+from iad_core.storage.review_repository import ReviewRepository
 from iad_core.storage.models import (
     FeatureRecord,
     InspectionTask,
@@ -217,7 +217,7 @@ def test_review_decision_persistence_and_isolated_quality(review_test_env):
     """
     env = review_test_env
     db = env["db"]
-    repo = ReviewDecisionRepository(db)
+    repo = ReviewRepository(db)
     sample_repo = SampleRepository(db)
 
     # Check original quality status
@@ -371,7 +371,7 @@ def test_review_session_and_wall_clock_tracking(review_test_env):
         duration_ms=3500,
     )
 
-    repo = ReviewDecisionRepository(db)
+    repo = ReviewRepository(db)
     saved = repo.get("cand_03", reviewer="session_reviewer")
     assert saved is not None
     assert saved.review_session_id == session_id

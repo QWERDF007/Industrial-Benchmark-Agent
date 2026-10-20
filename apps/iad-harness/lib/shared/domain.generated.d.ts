@@ -455,6 +455,26 @@ export type ReasonCode1 = string | null;
 export type Comment1 = string | null;
 export type DurationMs = number;
 export type StartedAt2 = string | null;
+export type DatasetId6 = string;
+export type Page = number;
+export type PageSize = number;
+export type Search = string;
+export type DecisionId1 = string;
+export type SampleId7 = string;
+export type Decision1 = string;
+export type Reviewer2 = string;
+export type ReasonCode2 = string | null;
+export type Comment2 = string | null;
+export type EvidenceVersion1 = string;
+export type ReviewSessionId1 = string | null;
+export type StartedAt3 = string | null;
+export type SubmittedAt1 = string | null;
+export type ReviewDurationMs1 = number;
+export type RelativePath = string;
+export type Items = ReviewHistoryRecord[];
+export type Total = number;
+export type Page1 = number;
+export type PageSize1 = number;
 export interface WorkbenchDomain {
     AuditAnalysis?: AuditAnalysis;
     KnowledgeSnapshot?: KnowledgeSnapshot;
@@ -469,6 +489,8 @@ export interface WorkbenchDomain {
     Annotation?: Annotation;
     ReviewDecisionRecord?: ReviewDecisionRecord;
     ReviewSubmission?: ReviewSubmission;
+    ReviewHistoryQuery?: ReviewHistoryQuery;
+    ReviewHistoryPage?: ReviewHistoryPage;
 }
 export interface AuditAnalysis {
     normal_version_id: NormalVersionId;
@@ -935,5 +957,31 @@ export interface ReviewSubmission {
     comment?: Comment1;
     duration_ms?: DurationMs;
     started_at?: StartedAt2;
+}
+export interface ReviewHistoryQuery {
+    dataset_id: DatasetId6;
+    page?: Page;
+    page_size?: PageSize;
+    search?: Search;
+}
+export interface ReviewHistoryPage {
+    items: Items;
+    total: Total;
+    page: Page1;
+    page_size: PageSize1;
+}
+export interface ReviewHistoryRecord {
+    decision_id: DecisionId1;
+    sample_id: SampleId7;
+    decision: Decision1;
+    reviewer: Reviewer2;
+    reason_code: ReasonCode2;
+    comment: Comment2;
+    evidence_version: EvidenceVersion1;
+    review_session_id: ReviewSessionId1;
+    started_at: StartedAt3;
+    submitted_at: SubmittedAt1;
+    review_duration_ms: ReviewDurationMs1;
+    relative_path: RelativePath;
 }
 //# sourceMappingURL=domain.generated.d.ts.map

@@ -11,13 +11,13 @@ export const pages = {
   "industrial-review": "人工复核",
 } as const;
 export type PageId = keyof typeof pages;
-interface ViewState { filters: Filters; page: number; selected: string; tab: string; version: string; normalVersion: string; job: string }
+interface ViewState { filters: Filters; page: number; selected: string; tab: string; version: string; normalVersion: string; job: string; historyPage: number; historySearch: string }
 interface WorkspaceState { active: boolean; pageId: PageId; datasetId: string; views: Record<string, ViewState> }
 interface Layout {
   selectPanel(id: string | null): void;
   panelInfo: { getSnapshot(): { activePanelId: string | null }; subscribe(listener: () => void): () => void };
 }
-const defaultView = (page: PageId): ViewState => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", job: "" });
+const defaultView = (page: PageId): ViewState => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", job: "", historyPage: 1, historySearch: "" });
 
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export class Workspace {
@@ -27,7 +27,7 @@ export class Workspace {
   private defaults = Object.fromEntries(Object.keys(pages).map(id => [id, defaultView(id as PageId)])) as Record<PageId, ViewState>;
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
-  view(page: PageId) { return this.state.views[`${page}:${this.state.datasetId}`] || this.defaults[page]; }
+  view(page: PageId) { return { ...this.defaults[page], ...this.state.views[`${page}:${this.state.datasetId}`] }; }
   connect(layout: Layout) {
     this.layout = layout;
     this.restore();
@@ -76,8 +76,9 @@ export class Workspace {
         const route = JSON.parse(raw);
         if (route.pageId in pages && typeof route.datasetId === "string") {
           const view = defaultView(route.pageId);
-          for (const key of ["selected", "tab", "version", "normalVersion", "job"] as const) if (typeof route[key] === "string") view[key] = route[key];
+          for (const key of ["selected", "tab", "version", "normalVersion", "job", "historySearch"] as const) if (typeof route[key] === "string") view[key] = route[key];
           if (Number.isInteger(route.page) && route.page > 0) view.page = route.page;
+          if (Number.isInteger(route.historyPage) && route.historyPage > 0) view.historyPage = route.historyPage;
           if (route.filters) {
             for (const key of ["search", "model_status", "review_status", "technical", "sort_by"] as const) if (typeof route.filters[key] === "string") view.filters[key] = route.filters[key];
             if (Array.isArray(route.filters.annotation_filters) && route.filters.annotation_filters.every((item: unknown) => typeof item === "string")) view.filters.annotation_filters = route.filters.annotation_filters;

@@ -6,12 +6,8 @@ from typing import Optional, List, Dict, Any
 
 from iad_core.storage.database import Database
 from iad_core.storage.models import Sample, Annotation, ReviewDecisionRecord, GoldRecord as StorageGoldRecord
-from iad_core.storage.repositories import (
-    SampleRepository,
-    AnnotationRepository,
-    ReviewRepository,
-    GoldRepository,
-)
+from iad_core.storage.repositories import SampleRepository, AnnotationRepository, GoldRepository
+from iad_core.storage.review_repository import ReviewRepository
 from iad_core.task.config import GoldPolicyConfig, load_config
 from iad_core.gold.schemas import (
     GoldRecord,

@@ -5,7 +5,8 @@ from typing import Optional, List, Dict, Any, Set
 
 from iad_core.storage.database import Database
 from iad_core.storage.models import ReviewDecisionRecord
-from iad_core.storage.repositories import ReviewRepository, SampleRepository
+from iad_core.storage.repositories import SampleRepository
+from iad_core.storage.review_repository import ReviewRepository
 from iad_core.candidate.schemas import CandidateRecord, CandidateSignals
 from iad_core.evidence.schemas import EvidencePackage
 from iad_core.evidence.builder import EvidenceBuilder

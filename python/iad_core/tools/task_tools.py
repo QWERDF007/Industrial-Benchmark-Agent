@@ -7,10 +7,10 @@ from iad_core.storage.repositories import (
     SampleRepository,
     AnnotationRepository,
     FeatureRepository,
-    ReviewRepository,
     BenchmarkRepository,
     EvaluationRepository,
 )
+from iad_core.storage.review_repository import ReviewRepository
 from iad_core.contracts import ToolResult, ToolStatus, MutationType
 
 logger = logging.getLogger("iad_core.tools.task")

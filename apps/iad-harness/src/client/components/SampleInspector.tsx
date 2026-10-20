@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import type { AuditJob, Dataset, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
+import type { AuditJob, Dataset, ReviewDecisionRecord, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
 import { AnnotatedImage, ImageViewer, type ImageSource } from "./ImageViewer.js";
 import { MediaLoad } from "./MediaLoad.js";
 import type { AnnotationLayerSource } from "./AnnotationLayer.js";
@@ -8,12 +8,15 @@ import { RuleAssessments } from "./RuleAssessments.js";
 import { AuditFindings } from "./AuditFindings.js";
 import { AuditEvidence } from "./AuditEvidence.js";
 import { HumanReviewForm } from "./HumanReviewForm.js";
-import { auditPhases, auditEvidenceUrl, regionSources, mediaUrl, message, request } from "../api.js";
+import { auditPhases, auditEvidenceUrl, regionSources, mediaUrl, message, request, reviewLabel } from "../api.js";
+import { useWorkspace } from "../workspace.js";
 
-export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, jobs, onJobsChanged }: {
+export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, onReviewed, jobs, onJobsChanged }: {
   jobs: AuditJob[]; onJobsChanged(): void;
   dataset: Dataset; sampleId: string; mode: "model" | "review" | "browse" | "dataset"; revision: number; onChanged(): void;
+  onReviewed(record: ReviewDecisionRecord, relativePath: string): void;
 }) {
+  const { workspace } = useWorkspace();
   const [detail, setDetail] = useState<SampleDetail | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -62,6 +65,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
         <dt>图像名</dt><dd data-field="image-name">{detail.sample.relative_path.split("/").pop()}</dd>
         <dt>UUID</dt><dd data-field="sample-uuid"><code title={detail.sample.sample_uuid}>{detail.sample.sample_uuid}</code></dd>
         <dt>原始质量</dt><dd>{detail.sample.quality_status}</dd><dt>分辨率</dt><dd>{detail.sample.width} × {detail.sample.height}</dd>
+        {mode !== "review" && <><dt>人工结果</dt><dd>{detail.review_decision ? `${reviewLabel(detail.review_decision.decision)} · ${detail.review_decision.reviewer}` : "待人工复核"}</dd></>}
         <dt>数据与技术质量</dt><dd>{detail.technical_quality_score}</dd></dl>
       <section className="iad-info-group">
       <h3>Labelme 标注 · {detail.annotations.length}</h3>
@@ -106,8 +110,11 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
         {job.errors.map((error, index) => <p className="iad-error" key={index}>{error.message}</p>)}
         {(job.status === "RUNNING" || job.status === "PENDING") && <button onClick={async () => { try { await request<AuditJob>(`/audit/cancel/${job.run_id}`, {}); onJobsChanged(); } catch (error) { setError(message(error)); } }}>取消审计</button>}
       </section>}
-      {mode === "dataset" && <div className="iad-actions"><button disabled={busy} onClick={setReference}>{dataset.reference_sample_ids.includes(sampleId) ? "移出良品参考" : "设为良品参考"}</button></div>}
-      {mode === "model" ? <div className="iad-actions"><button className="iad-primary" disabled={busy || jobRunning} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按知识审计此图"}</button></div> : mode === "review" ? <HumanReviewForm datasetId={dataset.dataset_id} sampleId={sampleId} detail={detail} onChanged={onChanged} /> : null}
+      {mode === "review" ? <HumanReviewForm datasetId={dataset.dataset_id} sampleId={sampleId} detail={detail} onSubmitted={record => onReviewed(record, detail.sample.relative_path)} /> : mode !== "browse" && <div className="iad-actions">
+        {mode === "dataset" && <button disabled={busy} onClick={setReference}>{dataset.reference_sample_ids.includes(sampleId) ? "移出良品参考" : "设为良品参考"}</button>}
+        {mode === "model" && <button className="iad-primary" disabled={busy || jobRunning} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按知识审计此图"}</button>}
+        <button onClick={() => workspace.navigate("industrial-review", sampleId)}>前往人工复核</button>
+      </div>}
     </>}
     {lightbox && <ImageViewer image={lightbox} onClose={() => setLightbox(null)} />}
   </aside>;

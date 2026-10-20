@@ -1,6 +1,7 @@
 import React from "react";
 import type { Dataset, Filters, Sample } from "../../shared/contracts.js";
 import { mediaUrl } from "../api.js";
+import { Pagination } from "./Pagination.js";
 
 export function SampleGrid({ dataset, filters, onFilters, items, total, page, onPage, selected, onSelect, loading }: {
   dataset: Dataset; filters: Filters; onFilters(filters: Filters): void; items: Sample[]; total: number; page: number;
@@ -8,8 +9,7 @@ export function SampleGrid({ dataset, filters, onFilters, items, total, page, on
 }) {
   const select = (key: keyof Filters, label: string, options: [string, string][]) => <label className="iad-filter">{label}<select aria-label={label} value={filters[key] as string} onChange={e => onFilters({ ...filters, [key]: e.target.value })}>
     {options.map(([value, title]) => <option key={value} value={value}>{title}</option>)}</select></label>;
-  const pagination = <div className="iad-pagination"><span>{total} 张</span><button disabled={page <= 1} onClick={() => onPage(page - 1)}>上一页</button>
-    <span>{page} / {Math.max(1, Math.ceil(total / 24))}</span><button disabled={page * 24 >= total} onClick={() => onPage(page + 1)}>下一页</button></div>;
+  const pagination = <Pagination total={total} page={page} unit="张" onPage={onPage} />;
   return <section className="iad-gallery"><div className="iad-filters">
     <details className="iad-multiselect"><summary aria-label="标注筛选">标注 · {filters.annotation_filters.length ? `已选 ${filters.annotation_filters.length} 项` : "全部"}</summary>
       <div className="iad-multiselect-menu">{[["none", "无标注"], ["present", "有标注"], ...dataset.annotation_categories.map(value => [`category:${value}`, `类别 ${value}`])].map(([value, title]) =>

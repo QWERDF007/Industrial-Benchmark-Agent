@@ -11,11 +11,8 @@ from iad_core.storage.models import (
     ReviewSession,
     ReviewDecisionRecord,
 )
-from iad_core.storage.repositories import (
-    TaskRepository,
-    SampleRepository,
-    ReviewRepository,
-)
+from iad_core.storage.repositories import TaskRepository, SampleRepository
+from iad_core.storage.review_repository import ReviewRepository
 from iad_core.candidate.schemas import CandidateRecord, CandidateSignals
 from iad_core.contracts import ToolStatus
 from iad_core.tools.benchmark_tools import benchmark_build
