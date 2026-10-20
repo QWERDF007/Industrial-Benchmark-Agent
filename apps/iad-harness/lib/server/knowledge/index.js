@@ -43,7 +43,7 @@ export function createKnowledgeTools(bridge, ctx) {
         }),
         defineTool({
             name: "knowledge_get",
-            description: "读取不可变知识版本及检查项、核验结果、来源和真实 evidence_id。指定 version_id，或 dataset_id 加 kind。",
+            description: "读取不可变知识及检查项、核验、真实 evidence_id，并返回实际来源变化、未覆盖候选和良品依赖状态。指定 version_id，或 dataset_id 加 kind；freshness 是查询时状态，不会改写旧版。",
             parameters: {
                 version_id: { type: "string" },
                 dataset_id: { type: "string" },

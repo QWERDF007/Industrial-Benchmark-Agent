@@ -340,6 +340,18 @@ export type ModelName1 = string;
 export type CreatedAt1 = string;
 export type SourceCount = number;
 export type CheckCount = number;
+export type Versions = KnowledgeVersion[];
+export type Status4 = "current" | "changed" | "unverified";
+export type CheckedAt = string;
+export type CurrentVersionId = string | null;
+export type CurrentNormalVersionId = string | null;
+export type SampleId3 = string;
+export type Reasons = ("image" | "annotations" | "review" | "audit_candidates" | "qualification" | "unavailable")[];
+export type SourceChanges = KnowledgeSourceChange[];
+export type AdditionalSourceIds = string[];
+export type GenerationChanged = boolean | null;
+export type NormalVersionChanged = boolean;
+export type NormalSourcesChanged = boolean;
 export type DatasetId2 = string;
 export type OriginSessionId = string | null;
 export type ModelName2 = string;
@@ -351,7 +363,7 @@ export type RunId = string;
 export type Operation = "tokenize" | "generate";
 export type SchemaName = string;
 export type Phase = string | null;
-export type SampleId3 = string | null;
+export type SampleId4 = string | null;
 export type StartedAt = string;
 export type FinishedAt = string | null;
 export type ElapsedMs = number | null;
@@ -375,7 +387,7 @@ export type JobType = "MODEL_AUDIT" | "NORMAL_KNOWLEDGE" | "DEFECT_KNOWLEDGE";
 export type OriginSessionId1 = string | null;
 export type RootRunId = string;
 export type ParentRunId = string | null;
-export type Status4 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
+export type Status5 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type CancelRequested = boolean;
 export type SampleIds2 = string[];
 export type CompletedSampleIds = string[];
@@ -389,7 +401,7 @@ export type Message1 = string;
 export type StartedAt1 = string | null;
 export type FinishedAt1 = string | null;
 export type ModelName3 = string;
-export type SampleId4 = string;
+export type SampleId5 = string;
 export type RelativePath = string | null;
 export type SampleUuid = string;
 export type Phase1 = string | null;
@@ -401,7 +413,7 @@ export type InspectedRegions1 = number | null;
 export type PlannedRegions1 = number | null;
 export type CompletedBatches = number | null;
 export type TotalBatches = number | null;
-export type SampleId5 = string;
+export type SampleId6 = string;
 export type RelativePath1 = string | null;
 export type Message2 = string;
 export type SampleUuid1 = string;
@@ -411,7 +423,7 @@ export type RunId3 = string;
 export type Operation1 = "tokenize" | "generate";
 export type SchemaName1 = string;
 export type Phase2 = string | null;
-export type SampleId6 = string | null;
+export type SampleId7 = string | null;
 export type StartedAt2 = string;
 export type FinishedAt2 = string | null;
 export type ElapsedMs1 = number | null;
@@ -427,22 +439,22 @@ export type RunId4 = string;
 export type RootRunId1 = string;
 export type SelectionMode = "subset" | "all_sources";
 export type ActiveRunId = string | null;
-export type SampleId7 = string;
+export type SampleId8 = string;
 export type RelativePath2 = string | null;
 export type State = "failed" | "unprocessed";
 export type SampleUuid2 = string;
 export type Samples = RetrySample[];
 export type DatasetId4 = string;
-export type SampleId8 = string;
+export type SampleId9 = string;
 export type SuggestionId = string;
 export type FindingId3 = string | null;
 export type EvidenceId2 = string | null;
 export type DatasetId5 = string;
-export type SampleId9 = string;
+export type SampleId10 = string;
 export type SuggestionId1 = string;
 export type FindingId4 = string | null;
 export type EvidenceId3 = string | null;
-export type SampleId10 = string;
+export type SampleId11 = string;
 export type TaskId1 = string;
 export type DatasetId6 = string;
 export type ImagePath = string;
@@ -539,7 +551,7 @@ export type BaseVersionId = string | null;
  */
 export type Corrections1 = KnowledgeCorrection[];
 export type AnnotationId3 = string;
-export type SampleId11 = string;
+export type SampleId12 = string;
 export type AnnotationType = "bbox" | "polygon" | "mask" | "image";
 export type RawLabel = string;
 export type Phenomenon = string | null;
@@ -552,7 +564,7 @@ export type AnnotationSource = "manual" | "existing_detector" | "production_syst
 export type SourceWidth = number | null;
 export type SourceHeight = number | null;
 export type DecisionId = string;
-export type SampleId12 = string;
+export type SampleId13 = string;
 export type Decision = string;
 export type Reviewer = string;
 export type ReasonCode = string | null;
@@ -564,7 +576,7 @@ export type SubmittedAt = string | null;
 export type ReviewDurationMs = number;
 export type SubmissionId = string;
 export type DatasetId9 = string;
-export type SampleId13 = string;
+export type SampleId14 = string;
 export type Reviewer1 = string;
 export type ReviewDecisionEnum = "PASS" | "HARD_NORMAL" | "FAIL" | "UNCERTAIN" | "SKIP";
 export type ReasonCode1 = string | null;
@@ -576,7 +588,7 @@ export type Page = number;
 export type PageSize = number;
 export type Search = string;
 export type DecisionId1 = string;
-export type SampleId14 = string;
+export type SampleId15 = string;
 export type Decision1 = string;
 export type Reviewer2 = string;
 export type ReasonCode2 = string | null;
@@ -595,6 +607,7 @@ export interface WorkbenchDomain {
     AuditAnalysis?: AuditAnalysis;
     KnowledgeSnapshot?: KnowledgeSnapshot;
     KnowledgeVersion?: KnowledgeVersion;
+    KnowledgeQuery?: KnowledgeQuery;
     AuditStart?: AuditStart;
     ModelCallDetail?: ModelCallDetail;
     JobRetry?: JobRetry;
@@ -921,6 +934,26 @@ export interface KnowledgeVersion {
     source_count: SourceCount;
     check_count: CheckCount;
 }
+export interface KnowledgeQuery {
+    knowledge: KnowledgeSnapshot | null;
+    versions: Versions;
+    freshness: KnowledgeFreshness | null;
+}
+export interface KnowledgeFreshness {
+    status: Status4;
+    checked_at: CheckedAt;
+    current_version_id: CurrentVersionId;
+    current_normal_version_id: CurrentNormalVersionId;
+    source_changes: SourceChanges;
+    additional_source_ids: AdditionalSourceIds;
+    generation_changed: GenerationChanged;
+    normal_version_changed: NormalVersionChanged;
+    normal_sources_changed: NormalSourcesChanged;
+}
+export interface KnowledgeSourceChange {
+    sample_id: SampleId3;
+    reasons: Reasons;
+}
 export interface AuditStart {
     dataset_id: DatasetId2;
     origin_session_id?: OriginSessionId;
@@ -939,7 +972,7 @@ export interface ModelCallDetail {
     operation: Operation;
     schema_name: SchemaName;
     phase: Phase;
-    sample_id: SampleId3;
+    sample_id: SampleId4;
     started_at: StartedAt;
     finished_at: FinishedAt;
     elapsed_ms: ElapsedMs;
@@ -968,7 +1001,7 @@ export interface JobSnapshot {
     origin_session_id: OriginSessionId1;
     root_run_id: RootRunId;
     parent_run_id: ParentRunId;
-    status: Status4;
+    status: Status5;
     cancel_requested: CancelRequested;
     sample_ids: SampleIds2;
     completed_sample_ids: CompletedSampleIds;
@@ -997,12 +1030,12 @@ export interface JobSnapshot {
     [k: string]: unknown;
 }
 export interface JobSample {
-    sample_id: SampleId4;
+    sample_id: SampleId5;
     relative_path: RelativePath;
     sample_uuid: SampleUuid;
 }
 export interface JobFailure {
-    sample_id: SampleId5;
+    sample_id: SampleId6;
     relative_path: RelativePath1;
     message: Message2;
     sample_uuid: SampleUuid1;
@@ -1013,7 +1046,7 @@ export interface ModelCallSummary {
     operation: Operation1;
     schema_name: SchemaName1;
     phase: Phase2;
-    sample_id: SampleId6;
+    sample_id: SampleId7;
     started_at: StartedAt2;
     finished_at: FinishedAt2;
     elapsed_ms: ElapsedMs1;
@@ -1032,14 +1065,14 @@ export interface JobRetryOptions {
     samples: Samples;
 }
 export interface RetrySample {
-    sample_id: SampleId7;
+    sample_id: SampleId8;
     relative_path: RelativePath2;
     state: State;
     sample_uuid: SampleUuid2;
 }
 export interface InspectionReference {
     dataset_id: DatasetId4;
-    sample_id: SampleId8;
+    sample_id: SampleId9;
     suggestion_id: SuggestionId;
     finding_id?: FindingId3;
     evidence_id?: EvidenceId2;
@@ -1055,13 +1088,13 @@ export interface InspectionSnapshot {
 }
 export interface InspectionReference1 {
     dataset_id: DatasetId5;
-    sample_id: SampleId9;
+    sample_id: SampleId10;
     suggestion_id: SuggestionId1;
     finding_id: FindingId4;
     evidence_id: EvidenceId3;
 }
 export interface Sample {
-    sample_id: SampleId10;
+    sample_id: SampleId11;
     task_id: TaskId1;
     dataset_id?: DatasetId6;
     image_path: ImagePath;
@@ -1168,7 +1201,7 @@ export interface MiningStart {
 }
 export interface Annotation {
     annotation_id: AnnotationId3;
-    sample_id: SampleId11;
+    sample_id: SampleId12;
     annotation_type: AnnotationType;
     raw_label: RawLabel;
     phenomenon?: Phenomenon;
@@ -1183,7 +1216,7 @@ export interface Annotation {
 }
 export interface ReviewDecisionRecord {
     decision_id: DecisionId;
-    sample_id: SampleId12;
+    sample_id: SampleId13;
     decision: Decision;
     reviewer: Reviewer;
     reason_code: ReasonCode;
@@ -1197,7 +1230,7 @@ export interface ReviewDecisionRecord {
 export interface ReviewSubmission {
     submission_id: SubmissionId;
     dataset_id: DatasetId9;
-    sample_id: SampleId13;
+    sample_id: SampleId14;
     reviewer: Reviewer1;
     decision: ReviewDecisionEnum;
     reason_code?: ReasonCode1;
@@ -1219,7 +1252,7 @@ export interface ReviewHistoryPage {
 }
 export interface ReviewHistoryRecord {
     decision_id: DecisionId1;
-    sample_id: SampleId14;
+    sample_id: SampleId15;
     decision: Decision1;
     reviewer: Reviewer2;
     reason_code: ReasonCode2;

@@ -65,8 +65,8 @@ class KnowledgeService:
         self.repository = KnowledgeRepository(db)
         self.sources = KnowledgeSources(db)
 
-    @property
-    def generation_signature(self) -> str:
+    @staticmethod
+    def generation_signature() -> str:
         return hashlib.sha256(json.dumps([GENERATION_VERSION, NORMAL_INSTRUCTION, SYNTHESIS_INSTRUCTION,
             VERIFICATION_INSTRUCTION, DEFECT_INSTRUCTION, DEFECT_VERIFICATION_INSTRUCTION,
             EVOLUTION_INSTRUCTION, EVIDENCE_SCOPE_INSTRUCTION, KnowledgeDraft.model_json_schema(),
@@ -79,7 +79,7 @@ class KnowledgeService:
         if normal and (normal.dataset_id != request.dataset_id or normal.kind != 'normal'
                        or not any(check.status == 'supported' for check in normal.checks)):
             raise ValueError('A usable normal knowledge version from the same dataset is required')
-        eligible = list(self.sources.eligible(request.dataset_id, request.kind, normal))
+        eligible = list(self.sources.eligible(request.dataset_id, request.kind, normal).require_available())
         requested = list(dict.fromkeys(request.sample_ids)) if request.sample_ids is not None else eligible
         if not requested or not set(requested).issubset(eligible):
             raise ValueError("Mining requires eligible knowledge sources from the selected dataset")
@@ -94,7 +94,7 @@ class KnowledgeService:
         return self.jobs.start("NORMAL_KNOWLEDGE" if request.kind == "normal" else "DEFECT_KNOWLEDGE", config.task.task_id,
                                {**request.model_dump(), "sample_ids": sample_ids,
                                 "input_sources": [source.model_dump() for source in sources],
-                                "generation_signature": self.generation_signature,
+                                "generation_signature": self.generation_signature(),
                                 "requested_sample_ids": requested,
                                 "removed_source_ids": sorted(previous - set(eligible)),
                                 "parent_version_id": parent.version_id if parent else None}, self.mine, "准备良品知识挖掘" if request.kind == "normal" else "准备不良知识挖掘")
@@ -102,7 +102,7 @@ class KnowledgeService:
     def mine(self, context: JobContext):
         payload = context.payload
         context.checkpoint()
-        if payload['generation_signature'] != self.generation_signature:
+        if payload['generation_signature'] != self.generation_signature():
             raise ValueError('知识生成规则已变化，请重新启动挖掘')
         parent = self.repository.get(payload['parent_version_id']) if payload['parent_version_id'] else None
         corrections = [KnowledgeCorrection.model_validate(item) for item in payload['corrections']]
@@ -187,7 +187,7 @@ class KnowledgeService:
                 sources = self.sources.collect(request['dataset_id'], request['sample_ids'], request['kind'], normal)
                 parent = self.repository.current(request['dataset_id'], request['kind'])
                 if ([source.model_dump() for source in sources] != request['input_sources']
-                        or request['generation_signature'] != self.generation_signature
+                        or request['generation_signature'] != self.generation_signature()
                         or (parent.version_id if parent else None) != request['parent_version_id']):
                     raise ValueError('知识来源、反馈或当前版本已变化')
                 if normal:

@@ -243,22 +243,8 @@ def inspection_context(args, db_path):
 
 
 def knowledge_get(args, db_path):
-    from iad_core.knowledge.repository import KnowledgeRepository
-    repository = KnowledgeRepository(Database(db_path))
-    if args.get("version_id"):
-        snapshot = repository.get(args["version_id"])
-        if args.get("dataset_id") and snapshot.dataset_id != args["dataset_id"]:
-            raise ValueError("Knowledge version belongs to another dataset")
-        if args.get("kind") and snapshot.kind != args["kind"]:
-            raise ValueError("Knowledge version has a different kind")
-    else:
-        if args.get("kind") not in ("normal", "defect"):
-            raise ValueError("Knowledge kind must be normal or defect")
-        DatasetRegistry(repository.db).get(args["dataset_id"])
-        snapshot = repository.current(args["dataset_id"], args["kind"])
-    return {"knowledge": snapshot.model_dump() if snapshot else None,
-            "versions": [version.model_dump() for version in repository.versions(
-                snapshot.dataset_id if snapshot else args["dataset_id"], snapshot.kind if snapshot else args["kind"])]}
+    from iad_core.knowledge.query import KnowledgeReader
+    return KnowledgeReader(Database(db_path)).read(**args).model_dump()
 
 
 def knowledge_start(args, db_path):

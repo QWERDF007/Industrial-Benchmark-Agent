@@ -7,17 +7,18 @@ import { useWorkspace } from "../workspace.js";
 import { useKnowledge } from "../useKnowledge.js";
 import { ImageViewer, type ImageSource } from "./ImageViewer.js";
 import { KnowledgeRevision } from "./KnowledgeRevision.js";
+import { KnowledgeState } from "./KnowledgeState.js";
 
 const statuses = { supported: "有证据支持", provisional: "待验证", conflicted: "存在矛盾" };
-export function KnowledgePage({ dataset, kind }: { dataset: Dataset; kind: "normal" | "defect" }) {
+export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dataset; kind: "normal" | "defect"; refreshRevision: number }) {
   const { workspace } = useWorkspace();
   const pageId = kind === "normal" ? "industrial-normal" : "industrial-defect";
   const view = workspace.view(pageId);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
-  const current = useKnowledge(dataset.dataset_id, kind, view.version, revision);
-  const reference = useKnowledge(dataset.dataset_id, kind === "defect" ? "normal" : null, view.normalVersion, revision);
+  const current = useKnowledge(dataset.dataset_id, kind, view.version, revision + refreshRevision);
+  const reference = useKnowledge(dataset.dataset_id, kind === "defect" ? "normal" : null, view.normalVersion, revision + refreshRevision);
   const { knowledge, versions } = current;
   const normal = reference.knowledge, normalVersions = reference.versions;
   const loading = current.loading || reference.loading, loadError = current.error || reference.error;
@@ -64,6 +65,7 @@ export function KnowledgePage({ dataset, kind }: { dataset: Dataset; kind: "norm
     </section>
     <nav className="iad-tabs" aria-label="知识视图">{[["results", "知识条目"], ["findings", kind === "normal" ? "待核实" : "标注核验"], ["versions", "版本"], ["jobs", "作业记录"]].map(([tab, title]) => <button key={tab} className={view.tab === tab ? "active" : ""} aria-pressed={view.tab === tab} onClick={() => workspace.updateView(pageId, { tab })}>{title}</button>)}</nav>
     <section className="iad-knowledge-content iad-job-section">{knowledge ? <>
+      <KnowledgeState freshness={current.freshness} />
       {knowledge.normal_version_id && <p data-field="knowledge-normal-version">此知识版本依据良品 <code>{knowledge.normal_version_id}</code></p>}
       {knowledge.kind === "defect" && !loading && normal && normal.version_id !== knowledge.normal_version_id && <p className="iad-muted">下次挖掘将使用另一良品版本，当前结果保留原依据。</p>}
       <p>{knowledge.summary}</p><p className="iad-muted"><code>{knowledge.version_id}</code> · {knowledge.sources.length} 张来源 · {knowledge.checks.length} 项判据 · {knowledge.findings.length} 项核验</p>

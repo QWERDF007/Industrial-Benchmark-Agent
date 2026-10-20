@@ -1,10 +1,10 @@
-import type { Annotation, AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, AuditStart, DatasetReport as Report, ReviewDecisionRecord, ReviewSubmission } from "./domain.generated.js";
+import type { Annotation, AuditAnalysis, KnowledgeSnapshot, AuditStart, DatasetReport as Report, ReviewDecisionRecord, ReviewSubmission } from "./domain.generated.js";
 export type { Annotation, ReviewDecisionRecord, ReviewSubmission } from "./domain.generated.js";
 export type { ReviewHistoryQuery, ReviewHistoryPage } from "./domain.generated.js";
 export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot, JobRetry, DatasetImport as DatasetImportRequest, ArchiveInspection, DatasetReport as Report } from "./domain.generated.js";
 export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
 export type { KnowledgeCheck, KnowledgeCorrection } from "./domain.generated.js";
-export interface KnowledgeQuery { knowledge: KnowledgeSnapshot | null; versions: KnowledgeVersion[] }
+export type { KnowledgeQuery, KnowledgeFreshness } from "./domain.generated.js";
 export type { JobSnapshot, JobSample, JobRetryOptions, ModelCallSummary } from "./domain.generated.js";
 export type { InspectionReference, InspectionSnapshot } from "./domain.generated.js";
 export type { KnowledgeVersion, MiningStart as KnowledgeStartRequest } from "./domain.generated.js";

@@ -7,6 +7,7 @@ import { DatasetKnowledge } from "./DatasetKnowledge.js";
 import { message, request } from "../api.js";
 import { useKnowledge } from "../useKnowledge.js";
 import { useWorkspace } from "../workspace.js";
+import { KnowledgeState } from "./KnowledgeState.js";
 
 export function AuditJobs({ dataset, filters, jobs, revision, onJobsChanged }: { dataset: Dataset; filters: Filters; jobs: JobSnapshot[]; revision: number; onJobsChanged(): void }) {
   const { workspace } = useWorkspace();
@@ -37,11 +38,11 @@ export function AuditJobs({ dataset, filters, jobs, revision, onJobsChanged }: {
       <option value="">匹配的当前版本</option>{defectQuery.versions.filter(version => version.normal_version_id === normal?.version_id).map(version => <option key={version.version_id} value={version.version_id}>{version.version_id} · {version.created_at}</option>)}
     </select></label></div>
     {loading ? <p role="status">正在读取审计知识…</p> : loadError ? <p role="alert" className="iad-error">{loadError}</p> : <>
-    {normal ? <><DatasetKnowledge knowledge={normal} /><div className="iad-reference-grid">{normal.evidence.filter(item => item.image.role === "normal" && item.image.representation === "raw").map(item => {
+    {normal ? <><DatasetKnowledge knowledge={normal} /><KnowledgeState freshness={normalQuery.freshness} /><div className="iad-reference-grid">{normal.evidence.filter(item => item.image.role === "normal" && item.image.representation === "raw").map(item => {
       const src = `/api/iad/knowledge/evidence/${encodeURIComponent(normal.version_id)}/${encodeURIComponent(item.image.evidence_id)}`;
       return <button key={item.image.evidence_id} title="放大知识来源图" onClick={() => setLightbox({ src, title: item.sample_id.split("/").pop()! })}><img alt="知识来源证据" src={src} /></button>;
     })}</div></> : <p className="iad-profile iad-muted">请先运行“挖掘良品知识”技能，生成可用版本。</p>}
-    {defect ? <DatasetKnowledge knowledge={defect} /> : <p className="iad-muted">暂无匹配的不良知识，按正常判据筛查。</p>}
+    {defect ? <><DatasetKnowledge knowledge={defect} /><KnowledgeState freshness={defectQuery.freshness} /></> : <p className="iad-muted">暂无匹配的不良知识，按正常判据筛查。</p>}
     </>}
     </section><section className="iad-job-section">
     <h2>启动模型审计</h2><div className="iad-row"><label>模型<input aria-label="模型名称" value={model} onChange={e => setModel(e.target.value)} /></label>

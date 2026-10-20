@@ -9,6 +9,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 原生六页导航与共享页面上下文 | [client/index.ts](../apps/iad-harness/src/client/index.ts)、[workspace](../apps/iad-harness/src/client/workspace.tsx) |
 | 同图视口恢复与当前筛选的前后图 | [ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx)、[SampleNavigation](../apps/iad-harness/src/client/useSampleNavigation.ts) |
 | 知识查询与待审计版本选择 | [useKnowledge](../apps/iad-harness/src/client/useKnowledge.ts)、[KnowledgePage](../apps/iad-harness/src/client/components/KnowledgePage.tsx)、[AuditJobs](../apps/iad-harness/src/client/components/AuditJobs.tsx) |
+| 知识来源变化、生成规则与正常依赖的只读状态 | [KnowledgeReader](../python/iad_core/knowledge/query.py)、[来源资格与指纹](../python/iad_core/knowledge/sources.py)、[KnowledgeState](../apps/iad-harness/src/client/components/KnowledgeState.tsx) |
 | 浏览位置与来源焦点 | [PagePosition](../apps/iad-harness/src/client/usePagePosition.ts)、[Modal](../apps/iad-harness/src/client/components/Modal.tsx) |
 | 宿主语义主题适配 | [theme.ts](../apps/iad-harness/src/client/theme.ts)、[styles.ts](../apps/iad-harness/src/client/styles.ts) |
 | 页面与组件 | [WorkbenchPage.tsx](../apps/iad-harness/src/client/WorkbenchPage.tsx)、[components](../apps/iad-harness/src/client/components/) |

@@ -955,6 +955,24 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await button("取消");
     assert.equal(await driver.executeScript("return document.activeElement?.textContent"), "修订判据", "后台刷新后关闭修订表单回到当前入口");
     assert.equal((await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json()).knowledge.version_id, concurrentVersion);
+    const currentKnowledge = (await (await fetch(`${base}/api/iad/knowledge?version_id=${concurrentVersion}`)).json()).knowledge;
+    const sourcePath = path.join(root, "images", currentKnowledge.sources[0].sample_id.slice(dataset.dataset_id.length + 1));
+    const sourcePixels = await fs.readFile(sourcePath);
+    execFileSync(bridge.pythonPath, ["-c", "from PIL import Image;import sys;Image.new('RGB',(320,240),'purple').save(sys.argv[1])", sourcePath]);
+    await button("刷新");
+    await driver.wait(async () => (await (await element("[aria-label='知识来源状态']")).getText()).includes("来源发生变化"), 5000);
+    await fs.writeFile(sourcePath, sourcePixels);
+    await button("刷新");
+    await driver.wait(async () => (await (await element("[aria-label='知识来源状态']")).getText()).includes("来源与生成规则未变化"), 5000);
+    assert.deepEqual((await (await fetch(`${base}/api/iad/knowledge?version_id=${concurrentVersion}`)).json()).knowledge, currentKnowledge);
+    execFileSync(bridge.pythonPath, ["-c", "from PIL import Image;import sys;Image.new('RGB',(320,240),'purple').save(sys.argv[1])", sourcePath]);
+    await button("模型审计");
+    await select("审计良品知识版本", "");
+    await select("审计不良品知识版本", "");
+    await driver.wait(async () => (await (await element(".iad-job-panel")).getText()).includes("来源发生变化"), 5000);
+    await fs.writeFile(sourcePath, sourcePixels);
+    await button("刷新");
+    await driver.wait(async () => !(await (await element(".iad-job-panel")).getText()).includes("来源发生变化") && (await (await element(".iad-job-panel")).getText()).includes("来源与生成规则未变化"), 5000);
   } catch (error) {
     if (driver) {
       await fs.writeFile(path.join(workspace, "runs/browser/failure.png"), await driver.takeScreenshot(), "base64");

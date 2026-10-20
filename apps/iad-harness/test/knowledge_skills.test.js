@@ -193,11 +193,10 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
           description: "红色区域覆盖背景", hypothesis: "局部遮挡", normal_explanation: "仍需排除有色反光", limitations: ["合成验证"], review_action: "查看左孔", priority: "high", evidence_ids: [regions[0].evidence_id] }] : [] };
     } else if (body.response_format.json_schema.name === "KnowledgeVerification") {
       const payload = JSON.parse(content[0].text.split("待核验疑点：")[1].split("\n请根据图像")[0]);
-      const raw = evidence.find(item => item.role === "roi" && item.representation === "raw");
       const normal = evidence.find(item => item.role === "normal");
       result = { findings: payload.findings.map(target => ({ finding_id: target.finding_id, status: "supported",
         affected_check_titles: ["孔内外观"], description: "红色区域覆盖孔内背景", normal_explanation: "需排除反光",
-        limitations: ["合成验证"], evidence_ids: [raw.evidence_id, normal.evidence_id], conflicts: [] })) };
+        limitations: ["合成验证"], evidence_ids: [target.regions.find(region => region.image.representation === "raw").image.evidence_id, normal.evidence_id], conflicts: [] })) };
     } else {
       const defect = content[0].text.includes("已核验异常");
       result = { summary: defect ? "孔内遮挡判据" : "孔内可见背景", checks: [{ title: defect ? "孔内遮挡" : "孔内外观",
@@ -356,6 +355,24 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
       if (previousCredential === undefined) delete process.env.IAD_SESSION_TEST_CREDENTIAL;
       else process.env.IAD_SESSION_TEST_CREDENTIAL = previousCredential;
     }
+    const frozenDefect = (await execute("knowledge_get", { version_id: versions.defect.version_id })).value;
+    assert.equal(frozenDefect.freshness.normal_version_changed, false);
+    let successor = (await execute("knowledge_mine_normal", { dataset_id: dataset.dataset_id, model_name: "test-refreshed-normal" })).value;
+    const successorDeadline = Date.now() + 10000;
+    while (["PENDING", "RUNNING"].includes(successor.status) && Date.now() < successorDeadline) {
+      await delay(20);
+      successor = (await execute("knowledge_job_status", { run_id: successor.run_id })).value;
+    }
+    assert.equal(successor.status, "COMPLETED", JSON.stringify(successor.errors));
+    const dependency = (await execute("knowledge_get", { version_id: versions.defect.version_id })).value;
+    assert.equal(dependency.freshness.normal_version_changed, true);
+    assert.equal(dependency.freshness.current_normal_version_id, successor.knowledge_version_id);
+    assert.deepEqual(dependency.knowledge, frozenDefect.knowledge, "良品头变化不能改写异常知识的冻结依赖");
+    await fs.rename(path.join(root, "images/part-0.png"), path.join(root, "images/missing-source.png"));
+    const unavailable = await ctx.tools.execute({ name: "knowledge_get", arguments: { version_id: versions.defect.version_id }, callId: "missing-source", signal: new AbortController().signal });
+    assert.equal(unavailable.isError, false, JSON.stringify(unavailable));
+    assert.equal(unavailable.value.freshness.normal_sources_changed, true, "上游来源无法读取时，仍须能查看历史异常知识和依赖状态");
+    await fs.rename(path.join(root, "images/missing-source.png"), path.join(root, "images/part-0.png"));
   } finally {
     await fork.dispose();
     await new Promise(resolve => model.close(resolve));

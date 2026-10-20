@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import http from "node:http";
+import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
@@ -49,7 +50,7 @@ test("workbench and native tools reverify proposed knowledge corrections without
   const server = http.createServer(harness.createIadHttpHandler(ctx.iadPythonBridge));
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${server.address().port}/api/iad`;
-  const api = (url, body) => fetch(base + url, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : undefined);
+  const api = (url, body, method = "POST") => fetch(base + url, body ? { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : undefined);
   async function complete(job) {
     for (let attempt = 0; attempt < 100; attempt++) {
       const status = await (await api(`/knowledge/status/${job.run_id}`)).json();
@@ -63,6 +64,27 @@ test("workbench and native tools reverify proposed knowledge corrections without
     const dataset = await (await api("/datasets/import", { name: "修订验证", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") })).json();
     const input = { dataset_id: dataset.dataset_id, kind: "normal", model_name: "test-revision" };
     const first = (await complete(await (await api("/knowledge/start", input)).json())).knowledge;
+    const originalImage = await fs.readFile(path.join(root, "images/part-0.png"));
+    const freshness = async () => (await (await api(`/knowledge?version_id=${first.version_id}`)).json()).freshness;
+    assert.equal((await freshness()).status, "current");
+    assert.equal((await api(`/datasets/${dataset.dataset_id}`, { name: "仅改显示名称" }, "PATCH")).status, 200);
+    assert.equal((await freshness()).status, "current", "改名不能使知识陈旧");
+    await fs.copyFile(path.join(root, "images/part-1.png"), path.join(root, "images/part-0.png"));
+    const changed = await freshness();
+    assert.equal(changed.status, "changed");
+    assert.deepEqual(changed.source_changes, [{ sample_id: dataset.dataset_id + ":part-0.png", reasons: ["image"] }]);
+    assert.deepEqual((await (await api(`/knowledge?version_id=${first.version_id}`)).json()).knowledge, first, "查询来源变化不能修改冻结版本");
+    await fs.writeFile(path.join(root, "images/part-0.png"), originalImage);
+    assert.equal((await freshness()).status, "current", "状态必须派生于当前真实内容，不能存储陈旧标记");
+    const nativeFreshness = await ctx.tools.execute({ name: "knowledge_get", arguments: { version_id: first.version_id }, callId: "read-freshness", signal: new AbortController().signal });
+    assert.equal(nativeFreshness.value.freshness.status, "current");
+    await fs.rename(path.join(root, "images/part-0.png"), path.join(root, "images/temporarily-missing.png"));
+    assert.deepEqual((await freshness()).source_changes, [{ sample_id: dataset.dataset_id + ":part-0.png", reasons: ["unavailable"] }]);
+    await fs.rename(path.join(root, "images/temporarily-missing.png"), path.join(root, "images/part-0.png"));
+    assert.equal((await api(`/datasets/${dataset.dataset_id}`, { reference_sample_ids: [dataset.dataset_id + ":part-1.png"] }, "PATCH")).status, 200);
+    assert.deepEqual((await freshness()).source_changes, [0, 1].map(index => ({ sample_id: dataset.dataset_id + `:part-${index}.png`, reasons: ["qualification"] })));
+    assert.equal((await api(`/datasets/${dataset.dataset_id}`, { reset_references: true }, "PATCH")).status, 200);
+    assert.equal((await freshness()).status, "current");
     const proposal = { check_id: first.checks[0].check_id, instruction: "两个孔必须精确相距100毫米" };
     const proposed = await api("/knowledge/start", { ...input, base_version_id: first.version_id, corrections: [proposal] });
     assert.equal(proposed.status, 200, await proposed.clone().text());
@@ -97,6 +119,22 @@ test("workbench and native tools reverify proposed knowledge corrections without
     const report = await (await api(`/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
     assert.equal(report.human_reviewed_count, 0);
     assert.equal(report.vlm_audited_count, 0);
+    const review = await api("/review/submit", { submission_id: randomUUID(), dataset_id: dataset.dataset_id,
+      sample_id: dataset.dataset_id + ":part-0.png", reviewer: "知识核验员", decision: "PASS" });
+    assert.equal(review.status, 200, await review.clone().text());
+    assert.deepEqual((await freshness()).source_changes, [{ sample_id: dataset.dataset_id + ":part-0.png", reasons: ["review", "qualification"] }]);
+    const renewed = (await complete(await (await api("/knowledge/start", { ...input, base_version_id: third.version_id, corrections: [correction] })).json())).knowledge;
+    assert.notEqual(renewed.version_id, third.version_id, "真实人工反馈变化后不能复用旧输入的版本");
+    assert.equal((await (await api(`/knowledge?version_id=${renewed.version_id}`)).json()).freshness.status, "current");
+    assert.equal((await api("/review/submit", { submission_id: randomUUID(), dataset_id: dataset.dataset_id,
+      sample_id: dataset.dataset_id + ":part-2.png", reviewer: "知识核验员", decision: "PASS" })).status, 200);
+    const expanded = (await (await api(`/knowledge?version_id=${renewed.version_id}`)).json()).freshness;
+    assert.deepEqual(expanded.additional_source_ids, [dataset.dataset_id + ":part-2.png"], "新增合格候选应提示覆盖范围，而不是悄悄加入冻结知识");
+    assert.deepEqual(expanded.source_changes, []);
+    assert.equal((await api("/review/submit", { submission_id: randomUUID(), dataset_id: dataset.dataset_id,
+      sample_id: dataset.dataset_id + ":part-1.png", reviewer: "知识核验员", decision: "FAIL" })).status, 200);
+    const withdrawn = (await (await api(`/knowledge?version_id=${renewed.version_id}`)).json()).freshness;
+    assert.deepEqual(withdrawn.source_changes, [{ sample_id: dataset.dataset_id + ":part-1.png", reasons: ["review", "qualification"] }], "资格撤销仍应指出导致撤销的人工反馈变化");
   } finally {
     await new Promise(resolve => server.close(resolve)); await fork.dispose();
     if (priorEndpoint === undefined) delete process.env.LIVE_VLM_ENDPOINT; else process.env.LIVE_VLM_ENDPOINT = priorEndpoint;

@@ -168,3 +168,26 @@ class KnowledgeVersion(AnalysisModel):
     created_at: str
     source_count: int
     check_count: int
+
+
+class KnowledgeSourceChange(AnalysisModel):
+    sample_id: str
+    reasons: List[Literal['image', 'annotations', 'review', 'audit_candidates', 'qualification', 'unavailable']]
+
+
+class KnowledgeFreshness(AnalysisModel):
+    status: Literal['current', 'changed', 'unverified']
+    checked_at: str
+    current_version_id: Optional[str]
+    current_normal_version_id: Optional[str]
+    source_changes: List[KnowledgeSourceChange]
+    additional_source_ids: List[str]
+    generation_changed: Optional[bool]
+    normal_version_changed: bool
+    normal_sources_changed: bool
+
+
+class KnowledgeQuery(AnalysisModel):
+    knowledge: Optional[KnowledgeSnapshot]
+    versions: List[KnowledgeVersion]
+    freshness: Optional[KnowledgeFreshness]
