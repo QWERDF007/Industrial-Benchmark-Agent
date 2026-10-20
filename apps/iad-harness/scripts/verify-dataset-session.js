@@ -115,14 +115,51 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
   assert.deepEqual(after.annotations, target.annotations);
   assert.deepEqual(after.review_decision, target.review_decision);
   assert.equal(after.sample.quality_status, target.sample.quality_status);
+  const beforeRevision = (await session.ctx.iadPythonBridge.execute("knowledge_get", { dataset_id: dataset.dataset_id, kind: "normal" })).knowledge;
+  const proposal = { check_id: beforeRevision.checks[0].check_id,
+    instruction: "均匀光照与亮度变化可能正常，须结合原图的位置和结构关系核验，不能仅凭亮度确定异常" };
+  const revisionStart = trace.length;
+  session.handle.agent.followup(createUserMessage({ source: { kind: "user" }, content: [{ type: "text", text:
+    `请修订本数据集的良品判据。先用knowledge_get核对当前normal版本${beforeRevision.version_id}，将${JSON.stringify(proposal)}作为待核验corrections，明确base_version_id，不能直接当作事实。` +
+    "调用knowledge_mine_normal重新看图核验，等待发布后继；再基于新良品版本挖掘不良品知识并等待完成，然后使用新版本审计本数据集全部3张图，最后读取质量报告。全部复用已有工具与真实作业，不改写原标注、人审或原始质量。" }] }));
+  await session.handle.agent.whenIdle();
+  const revisionTrace = trace.slice(revisionStart);
+  assert.ok(revisionTrace.every(item => !item.result.isError), "Revision turn had a tool error");
+  const proposedJob = revisionTrace.find(item => item.name === "knowledge_mine_normal");
+  assert.ok(proposedJob, "Agent must submit the proposed correction through the real mining tool");
+  assert.equal(proposedJob.arguments.base_version_id, beforeRevision.version_id);
+  assert.deepEqual(proposedJob.arguments.corrections, [proposal]);
+  const revised = (await session.ctx.iadPythonBridge.execute("knowledge_get", { dataset_id: dataset.dataset_id, kind: "normal" })).knowledge;
+  assert.notEqual(revised.version_id, beforeRevision.version_id);
+  assert.equal(revised.parent_version_id, beforeRevision.version_id);
+  assert.deepEqual(revised.corrections, [proposal]);
+  assert.deepEqual((await session.ctx.iadPythonBridge.execute("knowledge_get", { version_id: beforeRevision.version_id })).knowledge, beforeRevision);
+  const revisedDefect = (await session.ctx.iadPythonBridge.execute("knowledge_get", { dataset_id: dataset.dataset_id, kind: "defect" })).knowledge;
+  assert.equal(revisedDefect.normal_version_id, revised.version_id);
+  const revisedJobs = await session.ctx.iadPythonBridge.execute("knowledge_list", { dataset_id: dataset.dataset_id });
+  const revisedAudits = await session.ctx.iadPythonBridge.execute("audit_list", { dataset_id: dataset.dataset_id });
+  const allJobs = [...revisedJobs.jobs, ...revisedAudits.jobs];
+  assert.ok(allJobs.every(job => job.status === "COMPLETED" && job.failed === 0 && job.origin_session_id === session.handle.agent.id));
+  assert.equal(revisedAudits.jobs[0].normal_version_id, revised.version_id);
+  assert.equal(revisedAudits.jobs[0].defect_version_id, revisedDefect.version_id);
+  assert.equal(revisedAudits.jobs[0].completed, 3);
+  const revisionReport = revisionTrace.findLast(item => item.name === "dataset_report")?.result.value;
+  assert.ok(revisionReport, "Agent must report actual post-revision quality");
+  assert.equal(revisionReport.human_reviewed_count, 0);
+  assert.equal(revisionReport.quality.audit_coverage.percent, 100);
+  const revisedSample = await session.ctx.iadPythonBridge.execute("sample_get", { sample_id: target.sample.sample_id });
+  assert.deepEqual(revisedSample.annotations, target.annotations);
+  assert.deepEqual(revisedSample.review_decision, target.review_decision);
+  assert.equal(revisedSample.sample.quality_status, target.sample.quality_status);
   const messages = session.handle.agent.session.deriveMessages();
   const turns = session.handle.agent.session.snapshotEvents().filter(event => event.type === "turn/end");
-  assert.equal(turns.length, 2);
-  assert.ok(turns.every(event => event.data.reason.kind === "completed"), "Both actual Agent turns must finish without a model or tool error");
+  assert.equal(turns.length, 3);
+  assert.ok(turns.every(event => event.data.reason.kind === "completed"), "All actual Agent turns must finish without a model or tool error");
   assert.ok(messages.filter(message => message.role === "tool").flatMap(message => message.content).filter(block => block.type === "image").length >= 2);
   assert.ok(messages.some(message => message.role === "assistant" && message.content.some(block => block.type === "text" && block.text.length)));
   await fs.writeFile(path.join(output, "result.json"), JSON.stringify({ session_id: session.handle.agent.id, elapsed_ms: Date.now() - started,
-    model, report, jobs: [...jobs.jobs, ...audits.jobs], actual_tool_calls: trace.length, industrial_quality: "unassessed",
+    model, report, revision_report: revisionReport, revision: { parent_version_id: beforeRevision.version_id, version_id: revised.version_id, corrections: [proposal] },
+    jobs: allJobs, actual_tool_calls: trace.length, industrial_quality: "unassessed",
     attachment_upload: archiveMode ? "actual DSH verbatim ZIP file attachment; browser upload not tested" : "not tested",
     sidebar_pages: "not tested", quality_score: "three factual dimensions with explicit counts, scope and frozen knowledge versions; no aggregate or accuracy", evidence_followup: "actual full-image and ROI attachments" }, null, 2));
   console.log(JSON.stringify({ verified: true, session_id: session.handle.agent.id, actual_tool_calls: trace.length, elapsed_ms: Date.now() - started }));

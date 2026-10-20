@@ -44,6 +44,11 @@ class CheckRevision(AnalysisModel):
     reason: str = Field(min_length=1)
 
 
+class KnowledgeCorrection(AnalysisModel):
+    check_id: str = Field(min_length=1, description="冻结基准版本中的检查项ID")
+    instruction: str = Field(min_length=1, pattern=r'\S', description="待视觉核验的人工修订建议，不是已证实事实")
+
+
 class KnowledgeDraft(AnalysisModel):
     summary: str
     checks: List[LearnedCheck]
@@ -141,6 +146,7 @@ class KnowledgeSnapshot(AnalysisModel):
     summary: str
     checks: List[KnowledgeCheck]
     revisions: List[CheckRevision] = Field(default_factory=list)
+    corrections: List[KnowledgeCorrection] = Field(default_factory=list)
     removed_source_ids: List[str] = Field(default_factory=list)
     suspects: List[KnowledgeSuspect]
     limitations: List[str]

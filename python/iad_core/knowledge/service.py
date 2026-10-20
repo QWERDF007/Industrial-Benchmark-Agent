@@ -10,7 +10,7 @@ from iad_core.advisory.analysis import AnalysisModel
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.images import EvidenceImages, OVERVIEW_MAX_SIDE, PreparedImage
 from iad_core.knowledge.mining import KnowledgeInput, KnowledgeMiner, SYNTHESIS_INSTRUCTION
-from iad_core.knowledge.models import (KnowledgeDraft, KnowledgeEvidence, KnowledgeSnapshot,
+from iad_core.knowledge.models import (KnowledgeCorrection, KnowledgeDraft, KnowledgeEvidence, KnowledgeSnapshot,
                                       KnowledgeKind, KnowledgeVerification)
 from iad_core.knowledge.defect import DefectVerification, DEFECT_INSTRUCTION, DEFECT_VERIFICATION_INSTRUCTION
 from iad_core.knowledge.evolution import EVOLUTION_INSTRUCTION, KnowledgeEvolution
@@ -23,7 +23,7 @@ from iad_core.storage.repositories import AnnotationRepository, SampleRepository
 from iad_core.workbench.jobs import JobContext, JobRunner
 from iad_core.workbench.vision import DEFAULT_MODEL, VlmClient
 
-GENERATION_VERSION = "dataset-knowledge-v9"
+GENERATION_VERSION = "dataset-knowledge-v10"
 NORMAL_INSTRUCTION = """联合观察这一数据集的候选良品，发现产品可见的部件、结构关系、位置、纹理、光照与允许变化。
 不要根据数据集名称假设产品或预设缺陷检查表。只归纳可观察、可复用且有图像证据的检查判据。
 人工选取和无标注只是来源资格，不是确认真值。寻找候选良品中的异常与矛盾，将其定位为suspects，
@@ -43,12 +43,16 @@ class MiningStart(AnalysisModel):
     kind: KnowledgeKind
     normal_version_id: Optional[str] = None
     model_name: str = DEFAULT_MODEL
-    sample_ids: Optional[List[str]] = Field(default=None)
+    sample_ids: Optional[List[str]] = Field(default=None, description="新增来源范围，与父版本仍合格来源合并核验；省略覆盖全部合格来源")
+    base_version_id: Optional[str] = Field(default=None, min_length=1, description="人工修订所依据的当前同类型知识版本")
+    corrections: List[KnowledgeCorrection] = Field(default_factory=list, description="待核验的人工修订，需同时指定base_version_id；不得直接作为事实")
 
     @model_validator(mode='after')
     def require_normal_version(self):
         if (self.kind == 'defect') != bool(self.normal_version_id):
             raise ValueError('Defect mining requires normal_version_id; normal mining cannot reference it')
+        if self.corrections and not self.base_version_id:
+            raise ValueError('人工修订必须指定基准知识版本')
         return self
 
 
@@ -80,6 +84,9 @@ class KnowledgeService:
         if not requested or not set(requested).issubset(eligible):
             raise ValueError("Mining requires eligible knowledge sources from the selected dataset")
         parent = self.repository.current(request.dataset_id, request.kind)
+        if request.base_version_id and (not parent or request.base_version_id != parent.version_id):
+            raise ValueError('知识版本已变化，请刷新并基于当前版本重新修订')
+        KnowledgeEvolution(parent, request.corrections)
         previous = {source.sample_id for source in parent.sources} if parent else set()
         scope = previous | set(requested)
         sample_ids = [sample_id for sample_id in eligible if sample_id in scope]
@@ -98,7 +105,8 @@ class KnowledgeService:
         if payload['generation_signature'] != self.generation_signature:
             raise ValueError('知识生成规则已变化，请重新启动挖掘')
         parent = self.repository.get(payload['parent_version_id']) if payload['parent_version_id'] else None
-        evolution = KnowledgeEvolution(parent)
+        corrections = [KnowledgeCorrection.model_validate(item) for item in payload['corrections']]
+        evolution = KnowledgeEvolution(parent, corrections)
         normal = self.repository.get(payload['normal_version_id']) if payload.get('normal_version_id') else None
         defect = DefectVerification(self.db, self.client, context)
         references = defect.references(normal) if normal else []
@@ -107,7 +115,7 @@ class KnowledgeService:
         if [source.model_dump() for source in sources] != payload['input_sources']:
             raise ValueError('知识来源已变化，请重新启动挖掘')
         signature = hashlib.sha256(json.dumps([payload['generation_signature'], payload.get("normal_version_id"), payload["kind"],
-            payload["dataset_id"], payload["model_name"], [source.model_dump() for source in sources]], sort_keys=True).encode()).hexdigest()
+            payload["dataset_id"], payload["model_name"], payload['corrections'], [source.model_dump() for source in sources]], sort_keys=True).encode()).hexdigest()
         current = self.repository.current(payload["dataset_id"], payload["kind"])
         if (current.version_id if current else None) != payload['parent_version_id']:
             raise ValueError('Knowledge head changed during mining; restart with the current version')
@@ -158,7 +166,7 @@ class KnowledgeService:
         snapshot = KnowledgeSnapshot(version_id="knowledge_" + uuid.uuid4().hex, dataset_id=payload["dataset_id"],
             kind=payload["kind"], parent_version_id=payload["parent_version_id"], normal_version_id=payload.get("normal_version_id"),
             model_name=payload["model_name"], generation_version=GENERATION_VERSION, signature=signature,
-            summary=draft.summary, checks=checks, revisions=draft.revisions,
+            summary=draft.summary, checks=checks, revisions=draft.revisions, corrections=corrections,
             removed_source_ids=payload['removed_source_ids'],
             suspects=draft.suspects, limitations=draft.limitations, sources=sources,
             evidence=list(evidence.values()),

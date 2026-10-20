@@ -2,28 +2,21 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import { workbenchJsonOutput } from "../tool-output.js";
 import { evidenceOutput, readEvidenceAttachment } from "../evidence-attachment.js";
 import { jobRetryParameters, jobStatusParameters, waitForJobStatus } from "../job-status.js";
+import { miningParameters } from "../../shared/mining.parameters.generated.js";
+const { kind: _kind, origin_session_id: _origin, normal_version_id: normalVersion, ...sourceParameters } = miningParameters;
 export function createKnowledgeTools(bridge, ctx) {
     return [
         defineTool({
             name: "knowledge_mine_normal",
             description: "启动良品知识挖掘，复用工作台的来源资格、联合 MLLM、持久化作业和不可变知识版本。",
-            parameters: {
-                dataset_id: { type: "string", required: true },
-                model_name: { type: "string", description: "可选；省略使用项目配置的 MLLM" },
-                sample_ids: { type: "array", items: { type: "string" }, description: "可选新增来源范围，与父版本仍合格来源合并核验；省略覆盖全部合格良品" },
-            },
+            parameters: sourceParameters,
             output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "normal", origin_session_id: exec.agent?.id || null }, exec.signal),
         }),
         defineTool({
             name: "knowledge_mine_defect",
             description: "依据显式冻结的同数据集良品版本，联合核验标注/疑点并挖掘不良知识，不改写人审或原始标签。",
-            parameters: {
-                dataset_id: { type: "string", required: true },
-                normal_version_id: { type: "string", required: true },
-                model_name: { type: "string", description: "可选；省略使用项目配置的 MLLM" },
-                sample_ids: { type: "array", items: { type: "string" }, description: "可选新增来源范围，与父版本仍合格来源合并核验；省略覆盖全部合格异常候选" },
-            },
+            parameters: { ...sourceParameters, normal_version_id: { ...normalVersion, required: true } },
             output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "defect", origin_session_id: exec.agent?.id || null }, exec.signal),
         }),

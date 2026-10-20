@@ -207,7 +207,7 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
       if (content[0].text.includes("冻结父版本候选：")) {
         const parent = JSON.parse(content[0].text.split("冻结父版本候选：")[1].split("\n")[0]);
         result.revisions = parent.checks.map(check => ({ previous_check_id: check.check_id,
-          current_check_titles: ["孔内外观"], reason: "追加来源仍支持同一孔内可见背景判据" }));
+          current_check_titles: result.checks.map(item => item.title), reason: "重新核验同类型检查项" }));
       }
     }
     res.writeHead(200, { "Content-Type": "application/json" });
@@ -243,11 +243,16 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
       { key: "initial_normal", kind: "normal", sampleIndex: 0 },
       { key: "normal", kind: "normal", sampleIndex: 1 },
       { key: "defect", kind: "defect" },
+      { key: "defect_revised", kind: "defect" },
     ]) {
       await execute("skill", { name: `mine-${kind}-knowledge` });
       const args = { dataset_id: dataset.dataset_id, model_name: "test-mllm" };
       if (kind === "normal") args.sample_ids = [dataset.dataset_id + `:part-${sampleIndex}.png`];
       if (kind === "defect") args.normal_version_id = versions.normal.version_id;
+      if (key === "defect_revised") {
+        args.base_version_id = versions.defect.version_id;
+        args.corrections = [{ check_id: versions.defect.checks[0].check_id, instruction: "重新排除有色反光，实体遮挡须有独立可见证据" }];
+      }
       let job = (await execute(`knowledge_mine_${kind}`, args)).value;
       const deadline = Date.now() + 5000;
       while (["PENDING", "RUNNING"].includes(job.status) && Date.now() < deadline) {
@@ -267,6 +272,10 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
     assert.deepEqual(versions.normal.checks[0].predecessor_check_ids, [versions.initial_normal.checks[0].check_id]);
     assert.equal(versions.normal.sources.length, 2);
     assert.equal(versions.defect.normal_version_id, versions.normal.version_id);
+    assert.equal(versions.defect_revised.parent_version_id, versions.defect.version_id);
+    assert.equal(versions.defect_revised.normal_version_id, versions.normal.version_id);
+    assert.deepEqual(versions.defect_revised.corrections, [{ check_id: versions.defect.checks[0].check_id, instruction: "重新排除有色反光，实体遮挡须有独立可见证据" }]);
+    assert.deepEqual((await execute("knowledge_get", { version_id: versions.defect.version_id })).value.knowledge, versions.defect);
     assert.equal(versions.defect.findings[0].judgment.status, "supported");
     const raw = versions.defect.evidence.find(item => item.image.role === "roi" && item.image.representation === "raw").image;
     const media = await execute("knowledge_evidence", { version_id: versions.defect.version_id, evidence_id: raw.evidence_id });

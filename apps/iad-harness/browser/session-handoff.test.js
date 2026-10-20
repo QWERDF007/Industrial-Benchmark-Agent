@@ -48,10 +48,12 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
       const context = outputs[0]?.content.startsWith("{") ? JSON.parse(outputs[0].content) : null;
       const image = context?.evidence?.[outputs.length - 1];
       const last = outputs.at(-1);
-      const value = ["knowledge_mine_normal", "knowledge_job_status", "model_audit_start", "model_audit_status"].includes(last?.name) ? JSON.parse(last.content) : null;
+      const value = ["knowledge_get", "knowledge_mine_normal", "knowledge_job_status", "model_audit_start", "model_audit_status"].includes(last?.name) ? JSON.parse(last.content) : null;
       let tool = !outputs.length ? { name: "model_audit_context", arguments: reference }
         : outputs.length < 3 && image ? { name: "model_audit_evidence", arguments: { suggestion_id: reference.suggestion_id, evidence_id: image.evidence_id } } : null;
-      if (outputs.length === 3) tool = { name: "knowledge_mine_normal", arguments: { dataset_id: reference.dataset_id, model_name: "test-mllm" } };
+      if (outputs.length === 3) tool = { name: "knowledge_get", arguments: { dataset_id: reference.dataset_id, kind: "normal" } };
+      if (last?.name === "knowledge_get") tool = { name: "knowledge_mine_normal", arguments: { dataset_id: reference.dataset_id, model_name: "test-mllm",
+        base_version_id: value.knowledge.version_id, corrections: [{ check_id: value.knowledge.checks[0].check_id, instruction: "均匀亮度变化可能正常，需结合位置核验" }] } };
       if (["knowledge_mine_normal", "knowledge_job_status"].includes(last?.name)) tool = value?.status === "COMPLETED"
         ? { name: "model_audit_start", arguments: { dataset_id: reference.dataset_id, normal_version_id: value.knowledge_version_id, sample_ids: [reference.sample_id], model_name: "test-mllm" } }
         : { name: "knowledge_job_status", arguments: { run_id: value.run_id, wait_seconds: 5 } };
@@ -143,7 +145,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     await (await element(".iad-viewer-viewport")).sendKeys("\uE012");
     const geometry = () => driver.executeScript(`const world=document.querySelector('.iad-viewer-world'),viewport=document.querySelector('.iad-viewer-viewport'),image=world.querySelector('img');const w=world.getBoundingClientRect(),v=viewport.getBoundingClientRect();return {scale:Number(world.dataset.scale),center:[(v.left+v.width/2-w.left)*image.naturalWidth/w.width,(v.top+v.height/2-w.top)*image.naturalHeight/w.height]};`);
     const before = await geometry();
-    await button("向 Agent 追问"); await (await element("textarea[aria-label='追问内容']")).sendKeys("这个区域是否可能只是反光？核对真实图像后重新挖掘良品知识并审计这张图。");
+    await button("向 Agent 追问"); await (await element("textarea[aria-label='追问内容']")).sendKeys("这个区域是否可能只是反光？请将“均匀亮度变化可能正常，需结合位置核验”作为判据修订候选，核对真实图像后重新挖掘良品知识并审计这张图。");
     await fs.mkdir(path.join(workspace, "runs/browser/session-handoff"), { recursive: true });
     await fs.writeFile(path.join(workspace, "runs/browser/session-handoff/question.png"), await driver.takeScreenshot(), "base64");
     await button("发送到会话");
@@ -159,6 +161,11 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     const sessionId = inspectionRoute.inspection.sessionId;
     const executions = toolMessages(agentRequests.at(-1)).filter(message => ["knowledge_mine_normal", "model_audit_start"].includes(message.name)).map(message => JSON.parse(message.content));
     assert.equal(executions.length, 2);
+    const revisionBase = JSON.parse(toolMessages(agentRequests.at(-1)).find(message => message.name === "knowledge_get").content).knowledge;
+    const revisionJob = await api(`/knowledge/status/${executions[0].run_id}`);
+    const revisedKnowledge = (await api(`/knowledge?version_id=${revisionJob.knowledge_version_id}`)).knowledge;
+    assert.equal(revisedKnowledge.parent_version_id, revisionBase.version_id);
+    assert.deepEqual(revisedKnowledge.corrections, [{ check_id: revisionBase.checks[0].check_id, instruction: "均匀亮度变化可能正常，需结合位置核验" }]);
     for (const execution of executions) assert.equal(execution.origin_session_id, sessionId, "Jobs must retain their actual initiating Session");
     const latest = await api(`/sample/${encodeURIComponent(target.sample.sample_id)}`);
     const latestContext = await api("/inspection/context", { dataset_id: dataset.dataset_id, sample_id: target.sample.sample_id, suggestion_id: latest.suggestion.suggestion_id });

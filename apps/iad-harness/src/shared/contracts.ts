@@ -3,6 +3,7 @@ export type { Annotation, ReviewDecisionRecord, ReviewSubmission } from "./domai
 export type { ReviewHistoryQuery, ReviewHistoryPage } from "./domain.generated.js";
 export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot, JobRetry, DatasetImport as DatasetImportRequest, ArchiveInspection, DatasetReport as Report } from "./domain.generated.js";
 export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
+export type { KnowledgeCheck, KnowledgeCorrection } from "./domain.generated.js";
 export interface KnowledgeQuery { knowledge: KnowledgeSnapshot | null; versions: KnowledgeVersion[] }
 export type { JobSnapshot, JobSample, JobRetryOptions, ModelCallSummary } from "./domain.generated.js";
 export type { InspectionReference, InspectionSnapshot } from "./domain.generated.js";

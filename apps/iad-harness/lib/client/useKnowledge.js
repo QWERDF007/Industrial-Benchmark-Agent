@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { message, request } from "./api.js";
 const empty = { knowledge: null, versions: [] };
 /** A response belongs to one dataset, kind and version; pending queries never expose another selection. */
 export function useKnowledge(datasetId, kind, versionId = "", revision = 0) {
-    const key = JSON.stringify([datasetId, kind, versionId, revision]);
+    const queryIdentity = useMemo(() => ({ scope: JSON.stringify([datasetId, kind, versionId]), revision }), [datasetId, kind, versionId, revision]);
     const [value, setValue] = useState();
     useEffect(() => {
         if (!datasetId || !kind)
@@ -12,12 +12,13 @@ export function useKnowledge(datasetId, kind, versionId = "", revision = 0) {
         const query = new URLSearchParams({ dataset_id: datasetId, kind, ...(versionId ? { version_id: versionId } : {}) });
         request(`/knowledge?${query}`, undefined, undefined, controller.signal)
             .then(data => { if (!controller.signal.aborted)
-            setValue({ key, data, error: "" }); })
+            setValue({ query: queryIdentity, data, error: "" }); })
             .catch(error => { if (!controller.signal.aborted)
-            setValue({ key, data: empty, error: message(error) }); });
+            setValue(previous => ({ query: queryIdentity, data: previous?.query.scope === queryIdentity.scope ? previous.data : empty, error: message(error) })); });
         return () => controller.abort();
-    }, [datasetId, kind, versionId, revision]);
+    }, [queryIdentity]);
     if (!datasetId || !kind)
         return { ...empty, loading: false, error: "" };
-    return value?.key === key ? { ...value.data, loading: false, error: value.error } : { ...empty, loading: true, error: "" };
+    const data = value?.query.scope === queryIdentity.scope ? value.data : empty;
+    return { ...data, loading: value?.query !== queryIdentity, error: value?.query === queryIdentity ? value.error : "" };
 }

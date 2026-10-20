@@ -2,7 +2,7 @@ import json
 import uuid
 from typing import List, Optional
 
-from iad_core.knowledge.models import KnowledgeCheck, KnowledgeDraft, KnowledgeSnapshot
+from iad_core.knowledge.models import KnowledgeCheck, KnowledgeCorrection, KnowledgeDraft, KnowledgeSnapshot
 
 
 EVOLUTION_INSTRUCTION = """以下是冻结父版本的检查判据，仅作为本轮需要重新观察的候选，不是本轮视觉事实。
@@ -15,12 +15,19 @@ EVOLUTION_INSTRUCTION = """以下是冻结父版本的检查判据，仅作为�
 同一适用对象、位置及可观察判据改措辞/补充允许变化时映射到一项；判据分拆映射到多项，合并可由多个旧项指向同一项。
 已被反驳、不再适用或本轮无法支持的旧判据不得静默丢失：保留conflicted/provisional并说明限制，或空映射并给出退役理由。
 不要为不同判据复用身份；新发现没有旧项映射。旧规则不代表预设产品清单。不编造旧ID或当前title。
+人工修订只是待核验候选，必须重新结合本轮实际图像与独立来源判断，不能直接采纳为事实或支持证据。
+不可观察的尺寸、材质或未消解冲突保留provisional/conflicted并说明限制；在revisions.reason中解释是否采纳及依据。
 冻结父版本候选："""
 
 
 class KnowledgeEvolution:
-    def __init__(self, parent: Optional[KnowledgeSnapshot]):
+    def __init__(self, parent: Optional[KnowledgeSnapshot], corrections: Optional[List[KnowledgeCorrection]] = None):
         self.parent = parent
+        self.corrections = corrections or []
+        ids = [item.check_id for item in self.corrections]
+        allowed = {check.check_id for check in parent.checks} if parent else set()
+        if len(ids) != len(set(ids)) or not set(ids) <= allowed:
+            raise ValueError('人工修订必须唯一关联当前基准版本的检查项')
 
     @property
     def instruction(self) -> str:
@@ -29,7 +36,7 @@ class KnowledgeEvolution:
             'checks': [check.model_dump(exclude={'support_evidence_ids', 'counter_evidence_ids',
                 'finding_ids', 'normal_check_ids', 'predecessor_check_ids', 'status', 'limitations'})
                 for check in self.parent.checks] if self.parent else [],
-        }, ensure_ascii=False) + '\n'
+        }, ensure_ascii=False) + '\n待核验人工修订：' + json.dumps([item.model_dump() for item in self.corrections], ensure_ascii=False) + '\n'
 
     def checks(self, draft: KnowledgeDraft) -> List[KnowledgeCheck]:
         previous = {check.check_id for check in self.parent.checks} if self.parent else set()

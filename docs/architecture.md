@@ -24,7 +24,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 审计冻结知识、版本关系与独立支持 | [InspectionKnowledge](../python/iad_core/workbench/knowledge.py) |
 | 逐项适用性、规则区域来源及缺口追加 | [分析契约](../python/iad_core/advisory/analysis.py)、[SampleInspection](../python/iad_core/workbench/inspection.py)、[JointInspection](../python/iad_core/workbench/joint.py)、[规则证据视图](../apps/iad-harness/src/client/components/RuleAssessments.tsx) |
 | 综合疑点、实际来源关联/消解与全图聚焦 | [疑点契约](../python/iad_core/advisory/analysis.py)、[FindingLedger](../python/iad_core/workbench/findings.py)、[疑点视图](../apps/iad-harness/src/client/components/AuditFindings.tsx)、[共享证据按钮](../apps/iad-harness/src/client/components/AuditEvidence.tsx)、[ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx) |
-| Python 分析/知识契约与客户端类型生成 | [分析模型](../python/iad_core/advisory/analysis.py)、[知识模型](../python/iad_core/knowledge/models.py)、[挖掘请求](../python/iad_core/knowledge/service.py)、[生成器](../apps/iad-harness/scripts/generate-contracts.js) |
+| Python 分析/知识契约、客户端类型与原生挖掘参数生成 | [分析模型](../python/iad_core/advisory/analysis.py)、[知识模型](../python/iad_core/knowledge/models.py)、[挖掘请求](../python/iad_core/knowledge/service.py)、[生成器](../apps/iad-harness/scripts/generate-contracts.js) |
 | 数据集良品/不良品知识挖掘与版本证据 | [KnowledgeService](../python/iad_core/knowledge/service.py)、[来源资格与指纹](../python/iad_core/knowledge/sources.py)、[全图/原图细节分组与归纳](../python/iad_core/knowledge/mining.py)、[契约](../python/iad_core/knowledge/models.py)、[仓储](../python/iad_core/knowledge/repository.py) |
 | 良品候选疑点、原图定位与联合证据核验 | [NormalVerification](../python/iad_core/knowledge/verification.py) |
 | 冻结良品版本、异常候选与标注核验 | [DefectVerification](../python/iad_core/knowledge/defect.py)、[共享联合核验](../python/iad_core/knowledge/findings.py) |
@@ -46,7 +46,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 审计/知识共享作业、原子完成、进程接管与关联重试 | [JobRunner / JobContext](../python/iad_core/workbench/jobs.py)、[WorkbenchRuntime](../python/iad_core/workbench/runtime.py) |
 | 作业关联的真实模型请求、返回、错误与服务用量 | [ModelCalls](../python/iad_core/workbench/calls.py)、[VlmClient](../python/iad_core/workbench/vision.py)、[原文读取操作](../python/iad_core/entry.py) |
 | 共用图像查看器、来源图层和全图 ROI 联动 | [ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx)、[疑点与实际证据选择](../apps/iad-harness/src/client/inspection.ts)、[InspectionEvidence](../apps/iad-harness/src/client/components/InspectionEvidence.tsx)、[媒体失败提示与重新加载](../apps/iad-harness/src/client/components/MediaLoad.tsx) |
-| 知识独立页面、版本与真实证据 | [KnowledgePage](../apps/iad-harness/src/client/components/KnowledgePage.tsx)、[版本投影](../python/iad_core/knowledge/repository.py) |
+| 知识独立页面、版本、修订候选与真实证据 | [KnowledgePage](../apps/iad-harness/src/client/components/KnowledgePage.tsx)、[修订表单](../apps/iad-harness/src/client/components/KnowledgeRevision.tsx)、[版本投影](../python/iad_core/knowledge/repository.py) |
 | 人工复核、待确认提交、草稿与历史 | [HumanReviewForm](../apps/iad-harness/src/client/components/HumanReviewForm.tsx)、[useReviewDraft](../apps/iad-harness/src/client/useReviewDraft.ts)、[独立复核记录](../apps/iad-harness/src/client/components/ReviewRecords.tsx) |
 | 原子人审命令、不可变记录与当前结果投影 | [HumanReview / ReviewSubmission](../python/iad_core/workbench/review.py)、[ReviewRepository](../python/iad_core/storage/review_repository.py)、[复核表与迁移](../python/iad_core/storage/review_schema.py) |
 | 嵌套模态与焦点恢复 | [Modal](../apps/iad-harness/src/client/components/Modal.tsx) |
@@ -86,6 +86,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 - [真实 HTTP / Python 桥接测试](../apps/iad-harness/test/workbench.test.js)
 - [Mask 媒体原像素、归属与指纹验证](../apps/iad-harness/test/mask_media.test.js)
 - [真实 DSH 技能发现、加载、执行、取消及附件测试](../apps/iad-harness/test/knowledge_skills.test.js)
+- [公开 HTTP 与原生工具的知识修订、基准保护及不可变历史测试](../apps/iad-harness/test/knowledge_revision.test.js)
 - [DSH 原生接入与工作台查询一致性测试](../apps/iad-harness/test/dataset_tools.test.js)
 - [真实 DSH Agent/Session 与官方模型适配器测试](../apps/iad-harness/test/agent_session.test.js)
 - [真实 DSH 宿主的图像追问与冻结检视返回](../apps/iad-harness/browser/session-handoff.test.js)

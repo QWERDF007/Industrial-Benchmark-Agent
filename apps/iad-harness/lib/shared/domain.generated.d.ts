@@ -243,6 +243,15 @@ export type PreviousCheckId = string;
 export type CurrentCheckTitles = string[];
 export type Reason1 = string;
 export type Revisions = CheckRevision[];
+/**
+ * 冻结基准版本中的检查项ID
+ */
+export type CheckId2 = string;
+/**
+ * 待视觉核验的人工修订建议，不是已证实事实
+ */
+export type Instruction = string;
+export type Corrections = KnowledgeCorrection[];
 export type RemovedSourceIds = string[];
 export type EvidenceId1 = string;
 /**
@@ -517,7 +526,18 @@ export type OriginSessionId3 = string | null;
 export type Kind3 = "normal" | "defect";
 export type NormalVersionId6 = string | null;
 export type ModelName4 = string;
+/**
+ * 新增来源范围，与父版本仍合格来源合并核验；省略覆盖全部合格来源
+ */
 export type SampleIds3 = string[] | null;
+/**
+ * 人工修订所依据的当前同类型知识版本
+ */
+export type BaseVersionId = string | null;
+/**
+ * 待核验的人工修订，需同时指定base_version_id；不得直接作为事实
+ */
+export type Corrections1 = KnowledgeCorrection[];
 export type AnnotationId3 = string;
 export type SampleId11 = string;
 export type AnnotationType = "bbox" | "polygon" | "mask" | "image";
@@ -771,6 +791,7 @@ export interface KnowledgeSnapshot {
     summary: Summary;
     checks: Checks;
     revisions: Revisions;
+    corrections: Corrections;
     removed_source_ids: RemovedSourceIds;
     suspects: Suspects;
     limitations: Limitations4;
@@ -800,6 +821,10 @@ export interface CheckRevision {
     previous_check_id: PreviousCheckId;
     current_check_titles: CurrentCheckTitles;
     reason: Reason1;
+}
+export interface KnowledgeCorrection {
+    check_id: CheckId2;
+    instruction: Instruction;
 }
 export interface KnowledgeSuspect {
     evidence_id: EvidenceId1;
@@ -1138,6 +1163,8 @@ export interface MiningStart {
     normal_version_id?: NormalVersionId6;
     model_name?: ModelName4;
     sample_ids?: SampleIds3;
+    base_version_id?: BaseVersionId;
+    corrections?: Corrections1;
 }
 export interface Annotation {
     annotation_id: AnnotationId3;

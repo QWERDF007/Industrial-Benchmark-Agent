@@ -32,7 +32,27 @@ const output = await compile(schema, "WorkbenchDomain", {
   bannerComment: "/* Generated from Python Pydantic models by scripts/generate-contracts.js. */",
   additionalProperties: false, format: true,
 });
-const target = fileURLToPath(new URL("../src/shared/domain.generated.ts", import.meta.url));
-if (process.argv.includes("--check")) {
-  if (await fs.readFile(target, "utf8") !== output) throw new Error("Domain contracts differ from Pydantic; run generate:contracts");
-} else await fs.writeFile(target, output);
+// The native SDK uses per-property required flags and a JSON-value schema DSL.
+function toolSchema(node) {
+  if (node.$ref) return toolSchema(schema.$defs[node.$ref.split("/").at(-1)]);
+  const value = node.anyOf ? { oneOf: node.anyOf.map(toolSchema) } : { type: node.type };
+  if (node.type === "object") {
+    value.additionalProperties = node.additionalProperties ?? false;
+    value.properties = Object.fromEntries(Object.entries(node.properties || {}).map(([name, property]) => [name,
+      { ...toolSchema(property), ...(node.required?.includes(name) ? { required: true } : {}) }]));
+  }
+  if (node.items) value.items = toolSchema(node.items);
+  for (const key of ["enum", "description", "title", "default"]) if (key in node) value[key] = node[key];
+  return value;
+}
+const parameters = toolSchema(schema.properties.MiningStart).properties;
+const targets = {
+  "domain.generated.ts": output,
+  "mining.parameters.generated.ts": `/* Generated from Python MiningStart by scripts/generate-contracts.js. */\nexport const miningParameters = ${JSON.stringify(parameters, null, 2)} as const;\n`,
+};
+for (const [name, content] of Object.entries(targets)) {
+  const target = fileURLToPath(new URL(`../src/shared/${name}`, import.meta.url));
+  if (process.argv.includes("--check")) {
+    if (await fs.readFile(target, "utf8") !== content) throw new Error(`${name} differs from Pydantic; run generate:contracts`);
+  } else await fs.writeFile(target, content);
+}

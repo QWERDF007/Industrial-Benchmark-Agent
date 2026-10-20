@@ -908,8 +908,53 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     assert.ok((await historical.getText()).includes("已完成"));
     await historical.findElement(By.xpath(".//button[normalize-space()='查看已发布版本']")).click();
     await driver.wait(async()=>await(await element("select[aria-label='知识版本']")).getAttribute("value")===published.knowledge.version_id,5000);
-
-
+    assert.equal((await driver.findElements(By.xpath("//button[normalize-space(.)='修订判据']"))).length, 0, "固定历史版本只读回看");
+    await select("知识版本", "");
+    await driver.wait(async () => (await (await element(".iad-knowledge-content")).getText()).includes("可见蓝色表面"), 5000);
+    const beforeCorrection = (await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json()).knowledge;
+    const beforeCorrectionReport = await (await fetch(`${base}/api/iad/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
+    await button("修订判据");
+    const proposedCriterion = "补充核验：均匀光照变化不应判为异常";
+    const correctionInput = await element("textarea[aria-label='判据修订建议']");
+    await correctionInput.clear(); await correctionInput.sendKeys(proposedCriterion);
+    await viewportSize(375, 812);
+    assert.ok(await driver.executeScript("const d=document.querySelector('dialog[aria-label=\"修订判据\"]');return d.scrollWidth<=d.clientWidth+1"), "375px修订表单不能横向溢出");
+    await fs.writeFile(path.join(workspace, "runs/browser/knowledge-correction-375.png"), await driver.takeScreenshot(), "base64");
+    assert.deepEqual((await (await fetch(`${base}/api/iad/knowledge?version_id=${beforeCorrection.version_id}`)).json()).knowledge, beforeCorrection, "输入人工候选不能改写知识事实");
+    await button("提交核验");
+    await viewportSize(1440, 1100);
+    let afterCorrection;
+    await driver.wait(async () => {
+      afterCorrection = (await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json()).knowledge;
+      return afterCorrection.version_id !== beforeCorrection.version_id;
+    }, 10000);
+    assert.equal(afterCorrection.parent_version_id, beforeCorrection.version_id);
+    assert.deepEqual(afterCorrection.corrections, [{ check_id: beforeCorrection.checks[0].check_id, instruction: proposedCriterion }]);
+    assert.equal(afterCorrection.checks[0].criterion, "可见蓝色表面", "实际判据来自模型图像核验结果，不能直接替换成人工文字");
+    await (await driver.wait(until.elementLocated(By.xpath("//summary[normalize-space(.)='人工修订候选']")), 5000)).click();
+    await driver.wait(async () => (await (await element(".iad-knowledge-content")).getText()).includes(proposedCriterion), 5000);
+    const afterCorrectionReport = await (await fetch(`${base}/api/iad/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
+    assert.equal(afterCorrectionReport.human_reviewed_count, beforeCorrectionReport.human_reviewed_count);
+    assert.deepEqual((await (await fetch(`${base}/api/iad/knowledge?version_id=${beforeCorrection.version_id}`)).json()).knowledge, beforeCorrection);
+    const reviseAgain = await driver.findElement(By.xpath("//button[normalize-space(.)='修订判据']"));
+    await driver.wait(() => reviseAgain.isEnabled(), 5000); await reviseAgain.click();
+    const retainedDraft = "保留此候选，等待确认新的基准版本";
+    const retainedInput = await element("textarea[aria-label='判据修订建议']");
+    await retainedInput.clear(); await retainedInput.sendKeys(retainedDraft);
+    const concurrentJob = await (await fetch(`${base}/api/iad/knowledge/start`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataset_id: dataset.dataset_id, kind: "normal", model_name: "test-concurrent-correction" }) })).json();
+    let concurrentVersion;
+    await driver.wait(async () => {
+      const status = await (await fetch(`${base}/api/iad/knowledge/status/${concurrentJob.run_id}`)).json();
+      assert.ok(!["FAILED", "PARTIAL"].includes(status.status), JSON.stringify(status.errors));
+      concurrentVersion = status.knowledge_version_id; return status.status === "COMPLETED";
+    }, 10000);
+    await button("提交核验");
+    await driver.wait(async () => (await (await element("dialog[aria-label='修订判据'] [role='alert']")).getText()).includes("知识版本已变化"), 5000);
+    assert.equal(await retainedInput.getAttribute("value"), retainedDraft, "基准冲突不能丢失人工候选");
+    await driver.wait(async () => (await (await element(".iad-knowledge-content")).getText()).includes(concurrentVersion), 10000);
+    await button("取消");
+    assert.equal(await driver.executeScript("return document.activeElement?.textContent"), "修订判据", "后台刷新后关闭修订表单回到当前入口");
+    assert.equal((await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json()).knowledge.version_id, concurrentVersion);
   } catch (error) {
     if (driver) {
       await fs.writeFile(path.join(workspace, "runs/browser/failure.png"), await driver.takeScreenshot(), "base64");
