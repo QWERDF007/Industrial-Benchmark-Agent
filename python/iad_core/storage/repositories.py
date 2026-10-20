@@ -406,6 +406,26 @@ class ImportIssueRepository:
             cursor.execute("SELECT COUNT(*) FROM import_issues WHERE task_id = ?", (task_id,))
             return cursor.fetchone()[0]
 
+    def list_by_sample(self, sample_id: str) -> List[ImportIssue]:
+        with self.db.connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM import_issues WHERE sample_id = ? ORDER BY id ASC",
+                (sample_id,),
+            )
+            rows = cursor.fetchall()
+            return [
+                ImportIssue(
+                    task_id=r["task_id"],
+                    dataset_id=r["dataset_id"] if "dataset_id" in r.keys() else "UNKNOWN",
+                    sample_id=r["sample_id"],
+                    issue_type=r["issue_type"],
+                    severity=r["severity"],
+                    message=r["message"],
+                )
+                for r in rows
+            ]
+
     def clear_by_task(self, task_id: str):
         with self.db.connection() as conn:
             conn.execute("DELETE FROM import_issues WHERE task_id = ?", (task_id,))

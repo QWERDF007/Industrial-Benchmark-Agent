@@ -28,10 +28,8 @@ from iad_core.advisory.schemas import (
     ConclusionStatus,
     RecommendedAction,
 )
-from iad_core.tools import execute_internal_tool, ToolContractError, INTERNAL_TOOL_MAP
 from iad_core.dataset.path_safety import validate_sample_image_path, PathSafetyError
 from iad_core.dataset.scanner import scan_dataset
-from iad_core.review.service import ReviewQueueService
 from iad_core.evidence.builder import EvidenceBuilder
 
 DEFAULT_DB_PATH = os.environ.get("IAD_DB_PATH", "data/benchmark.db")
@@ -85,6 +83,7 @@ def emit_error(request_id: str, code: str, message: str, details: Optional[Any] 
 
 
 def op_tool_call(req_id: str, args: Dict[str, Any], db_path: str):
+    from iad_core.tools import execute_internal_tool, ToolContractError
     tool_name = args.get("tool_name")
     tool_args = args.get("arguments", {})
     if not tool_name:
@@ -425,9 +424,8 @@ def op_sample_get(req_id: str, args: Dict[str, Any], db_path: str):
     dec = rev_repo.get_decision(sample_id)
     anns = ann_repo.list_by_sample(sample_id)
 
-    # Technical issues for this sample
-    all_issues = issue_repo.list_by_task(sample.task_id)
-    sample_issues = [i for i in all_issues if i.sample_id == sample_id]
+    # Technical issues for this sample (indexed by sample_id for sub-millisecond speed)
+    sample_issues = issue_repo.list_by_sample(sample_id)
     tech_score = compute_technical_quality_score(sample, sample_issues)
 
     sug_meta = None
@@ -484,6 +482,7 @@ def op_sample_image_path(req_id: str, args: Dict[str, Any], db_path: str):
 
 
 def op_review_queue(req_id: str, args: Dict[str, Any], db_path: str):
+    from iad_core.review.service import ReviewQueueService
     task_id = args.get("task_id")
     page = int(args.get("page", 1))
     page_size = int(args.get("page_size", 20))
@@ -1055,15 +1054,11 @@ def main():
             emit_error("error_decode", "JSON_DECODE_ERROR", str(e))
         return
 
-    # 2. Otherwise read from stdin (line-by-line NDJSON or single JSON EOF)
-    stdin_content = sys.stdin.read().strip()
-    if not stdin_content:
-        emit_error("error_empty", "EMPTY_INPUT", "No input received on stdin")
-        return
-
-    # Check if multiline NDJSON or single block JSON
-    lines = [line.strip() for line in stdin_content.splitlines() if line.strip()]
-    for line in lines:
+    # 2. Otherwise read from stdin line-by-line (NDJSON streaming, supports persistent daemon and EOF pipe)
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
         try:
             req_data = json.loads(line)
             dispatch_request(req_data)

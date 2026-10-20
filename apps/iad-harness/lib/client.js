@@ -81,6 +81,7 @@ var __IadClientBundle__ = (() => {
     const [sampleDetail, setSampleDetail] = (0, import_react.useState)(null);
     const [loadingDetail, setLoadingDetail] = (0, import_react.useState)(false);
     const [copiedId, setCopiedId] = (0, import_react.useState)(false);
+    const detailCacheRef = (0, import_react.useRef)(/* @__PURE__ */ new Map());
     const [auditingSingle, setAuditingSingle] = (0, import_react.useState)(false);
     const [singleAuditMsg, setSingleAuditMsg] = (0, import_react.useState)("");
     const [lightboxOpen, setLightboxOpen] = (0, import_react.useState)(false);
@@ -167,13 +168,19 @@ var __IadClientBundle__ = (() => {
         setSampleDetail(null);
       }
     }, [selectedSample?.sample_id]);
-    async function fetchSampleDetail(sampleId) {
-      setLoadingDetail(true);
+    async function fetchSampleDetail(sampleId, forceRefresh = false) {
       setSingleAuditMsg("");
+      if (!forceRefresh && detailCacheRef.current.has(sampleId)) {
+        setSampleDetail(detailCacheRef.current.get(sampleId));
+        setLoadingDetail(false);
+        return;
+      }
+      setLoadingDetail(true);
       try {
         const res = await fetch(`/api/iad/sample/${encodeURIComponent(sampleId)}`);
         if (res.ok) {
           const data = await res.json();
+          detailCacheRef.current.set(sampleId, data);
           setSampleDetail(data);
         }
       } catch (e) {
@@ -199,7 +206,7 @@ var __IadClientBundle__ = (() => {
           const newSug = data.suggestion;
           const newRisk = data.visual_suspicion_score;
           setSingleAuditMsg(`\u2713 \u5BA1\u8BA1\u5B8C\u6210: \u6A21\u578B\u5EFA\u8BAE\u3010${newSug.suggested_label}\u3011(${newSug.reason_category || "\u6B63\u5E38"}) \xB7 \u53EF\u7591\u5EA6: ${newRisk}\u5206`);
-          fetchSampleDetail(selectedSample.sample_id);
+          fetchSampleDetail(selectedSample.sample_id, true);
           setSamples(
             (prev) => prev.map(
               (s) => s.sample_id === selectedSample.sample_id ? {
@@ -267,6 +274,19 @@ var __IadClientBundle__ = (() => {
           setSelectedSample(updated);
           setSamples((prev) => prev.map((s) => s.sample_id === updated.sample_id ? updated : s));
           setReviewReason("");
+          if (detailCacheRef.current.has(selectedSample.sample_id)) {
+            const cached = detailCacheRef.current.get(selectedSample.sample_id);
+            detailCacheRef.current.set(selectedSample.sample_id, {
+              ...cached,
+              sample: { ...cached.sample, quality_status: decision },
+              review_decision: {
+                decision,
+                reason: payload.reason,
+                reviewer: reviewerName,
+                reviewed_at: (/* @__PURE__ */ new Date()).toISOString()
+              }
+            });
+          }
         }
       } catch (e) {
         alert(`\u63D0\u4EA4\u590D\u6838\u5931\u8D25: ${e.message}`);
@@ -579,13 +599,13 @@ var __IadClientBundle__ = (() => {
                     )
                   ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.cardInfo, children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: styles.cardTitle, title: s.sample_id, children: s.sample_id }),
+                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: styles.cardTitle, title: s.sample_id, children: s.sample_id.includes(":") ? s.sample_id.split(":").slice(1).join(":") : s.sample_id }),
                     /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.cardMetrics, children: [
                       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { children: [
                         "\u53EF\u7591\u5EA6: ",
                         s.visual_suspicion_score !== null && s.visual_suspicion_score !== void 0 ? `${s.visual_suspicion_score}\u5206` : "\u672A\u6D4B"
                       ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { style: { color: (s.technical_quality_score || 98) < 70 ? "#ea580c" : "#64748b" }, children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { style: { color: (s.technical_quality_score || 98) < 70 ? "#ea580c" : "#64748b" }, title: "\u6570\u636E\u4E0E\u6280\u672F\u8D28\u91CF\u5206 (DS-S07)", children: [
                         "\u6280\u672F: ",
                         s.technical_quality_score ?? 98
                       ] })
@@ -627,10 +647,7 @@ var __IadClientBundle__ = (() => {
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("aside", { style: styles.detailAside, children: selectedSample ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { marginBottom: 12 }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h3", { style: styles.asideTitle, children: "\u6837\u672C\u8BC1\u636E\u4E0E\u590D\u6838\u660E\u7EC6" }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { fontSize: 11, color: "#64748b", marginTop: -6 }, children: "\u96C6\u6210\u9AD8\u5206\u8FA8\u7387\u539F\u56FE\u3001\u771F\u5B9E\u6807\u6CE8\u3001\u6280\u672F\u6210\u50CF\u5206\u3001\u591A\u6A21\u6001 AI \u5EFA\u8BAE\u4E0E\u6743\u5A01\u4EBA\u5BA1" })
-          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { marginBottom: 12 }, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h3", { style: styles.asideTitle, children: "\u6837\u672C\u8BC1\u636E\u4E0E\u590D\u6838\u660E\u7EC6" }) }),
           /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
             "div",
             {
@@ -675,58 +692,76 @@ var __IadClientBundle__ = (() => {
               ]
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailRow, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailKey, children: "\u6837\u672C\u7F16\u53F7:" }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailValEllipsisWrapper, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-                "span",
-                {
-                  style: styles.detailValEllipsis,
-                  title: selectedSample.sample_id,
-                  children: selectedSample.sample_id
-                }
-              ),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-                "button",
-                {
-                  style: styles.copyBtn,
-                  title: "\u590D\u5236\u5B8C\u6574\u6837\u672C\u7F16\u53F7",
-                  onClick: () => {
-                    navigator.clipboard?.writeText(selectedSample.sample_id);
-                    setCopiedId(true);
-                    setTimeout(() => setCopiedId(false), 1500);
-                  },
-                  children: copiedId ? "\u5DF2\u590D\u5236" : "\u590D\u5236"
-                }
-              )
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailRow, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailKey, children: "\u6279\u6B21\u6807\u8BC6:" }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailVal, children: selectedSample.batch_id || "default" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailRow, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailKey, children: "\u539F\u59CB\u72B6\u6001:" }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailVal, children: selectedSample.quality_status })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailRow, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailKey, children: "\u56FE\u50CF\u5206\u8FA8\u7387:" }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailVal, children: sampleDetail?.sample.width ? `${sampleDetail.sample.width} \xD7 ${sampleDetail.sample.height} \u50CF\u7D20` : "\u8BFB\u53D6\u4E2D..." })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailRow, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailKey, children: "\u89C6\u89C9\u53EF\u7591\u8BC4\u5206:" }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { ...styles.detailVal, color: (selectedSample.visual_suspicion_score || 0) >= 60 ? "#dc2626" : "#16a34a", fontWeight: "bold" }, children: selectedSample.visual_suspicion_score !== null && selectedSample.visual_suspicion_score !== void 0 ? `${selectedSample.visual_suspicion_score} / 100` : "\u672A\u5BA1\u8BA1 (null)" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailRow, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailKey, children: "\u6280\u672F\u6210\u50CF\u5206:" }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { style: { ...styles.detailVal, color: (selectedSample.technical_quality_score || 98) < 70 ? "#ea580c" : "#0f172a", fontWeight: "bold" }, children: [
-              selectedSample.technical_quality_score ?? 98,
-              "/100"
-            ] })
-          ] }),
+          (() => {
+            const rawId = selectedSample.sample_id;
+            const filename = rawId.includes(":") ? rawId.split(":").slice(1).join(":") : rawId;
+            const pureName = filename.split("/").pop() || filename;
+            return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(import_jsx_runtime2.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailRow, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailKey, children: "\u56FE\u50CF\u6587\u4EF6\u540D:" }),
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: styles.detailValEllipsisWrapper, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+                  "span",
+                  {
+                    style: { ...styles.detailValEllipsis, fontWeight: 600, color: "#0f172a" },
+                    title: pureName,
+                    children: pureName
+                  }
+                ) })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailRow, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailKey, children: "\u6837\u672C\u7F16\u53F7URI:" }),
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailValEllipsisWrapper, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+                    "span",
+                    {
+                      style: styles.detailValEllipsis,
+                      title: rawId,
+                      children: rawId
+                    }
+                  ),
+                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+                    "button",
+                    {
+                      style: styles.copyBtn,
+                      title: "\u590D\u5236\u5B8C\u6574\u6837\u672C\u7F16\u53F7URI",
+                      onClick: () => {
+                        navigator.clipboard?.writeText(rawId);
+                        setCopiedId(true);
+                        setTimeout(() => setCopiedId(false), 1500);
+                      },
+                      children: copiedId ? "\u5DF2\u590D\u5236" : "\u590D\u5236"
+                    }
+                  )
+                ] })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailRow, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailKey, children: "\u751F\u4EA7\u6279\u6B21:" }),
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailVal, title: "\u751F\u4EA7\u6392\u7A0B/Lot\u7269\u7406\u6279\u6B21", children: selectedSample.batch_id || "\u9ED8\u8BA4\u6279\u6B21 (default)" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailRow, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailKey, children: "\u539F\u59CB\u72B6\u6001:" }),
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailVal, children: selectedSample.quality_status })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailRow, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailKey, children: "\u56FE\u50CF\u5206\u8FA8\u7387:" }),
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailVal, children: sampleDetail?.sample.width ? `${sampleDetail.sample.width} \xD7 ${sampleDetail.sample.height} \u50CF\u7D20` : "\u8BFB\u53D6\u4E2D..." })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailRow, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailKey, children: "\u89C6\u89C9\u53EF\u7591\u5EA6:" }),
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { ...styles.detailVal, color: (selectedSample.visual_suspicion_score || 0) >= 60 ? "#dc2626" : "#16a34a", fontWeight: "bold" }, children: selectedSample.visual_suspicion_score !== null && selectedSample.visual_suspicion_score !== void 0 ? `${selectedSample.visual_suspicion_score} / 100` : "\u672A\u5BA1\u8BA1 (null)" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.detailRow, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: styles.detailKey, title: "DS-S07 \u5DE5\u4E1A\u6570\u636E\u96C6\u6280\u672F\u8D28\u91CF\u89C4\u8303 (\u6587\u4EF6\u5B8C\u597D\u5EA6 + \u51E0\u4F55\u6807\u6CE8\u6709\u6548\u6027)", children: "\u6570\u636E\u4E0E\u6280\u672F\u8D28\u91CF:" }),
+                /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { style: { ...styles.detailVal, color: (selectedSample.technical_quality_score || 98) < 70 ? "#ea580c" : "#0f172a", fontWeight: "bold" }, children: [
+                  selectedSample.technical_quality_score ?? 98,
+                  "/100"
+                ] })
+              ] })
+            ] });
+          })(),
           sampleDetail?.technical_issues && sampleDetail.technical_issues.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.techIssueBox, children: [
             /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.techIssueTitle, children: [
-              "\u26A0\uFE0F \u6280\u672F\u8D28\u91CF\u6263\u5206\u539F\u56E0 (",
+              "\u26A0\uFE0F \u6570\u636E\u4E0E\u6280\u672F\u8D28\u91CF\u6263\u5206\u539F\u56E0 (",
               sampleDetail.technical_issues.length,
               " \u6761)"
             ] }),
@@ -1098,11 +1133,11 @@ var __IadClientBundle__ = (() => {
             /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { fontSize: 12, color: "#94a3b8" }, children: [
               "\u7269\u7406\u5206\u8FA8\u7387: ",
               sampleDetail?.sample.width ? `${sampleDetail.sample.width} \xD7 ${sampleDetail.sample.height} \u50CF\u7D20` : "\u8BFB\u53D6\u4E2D...",
-              " \xB7 \u6279\u6B21: ",
+              " \xB7 \u751F\u4EA7\u6279\u6B21: ",
               selectedSample.batch_id || "default",
               " \xB7 \u7F3A\u9677\u6807\u6CE8: ",
               sampleDetail?.annotations?.length || 0,
-              " \u5904 \xB7 \u6280\u672F\u6210\u50CF: ",
+              " \u5904 \xB7 \u6570\u636E\u4E0E\u6280\u672F\u8D28\u91CF: ",
               selectedSample.technical_quality_score ?? 98,
               "\u5206"
             ] })

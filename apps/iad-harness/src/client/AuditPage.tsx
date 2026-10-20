@@ -123,6 +123,7 @@ export function AuditPage() {
   const [sampleDetail, setSampleDetail] = useState<SampleDetailResponse | null>(null);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<boolean>(false);
+  const detailCacheRef = useRef<Map<string, SampleDetailResponse>>(new Map());
 
   // Single sample VLM audit state
   const [auditingSingle, setAuditingSingle] = useState<boolean>(false);
@@ -232,13 +233,19 @@ export function AuditPage() {
     }
   }, [selectedSample?.sample_id]);
 
-  async function fetchSampleDetail(sampleId: string) {
-    setLoadingDetail(true);
+  async function fetchSampleDetail(sampleId: string, forceRefresh = false) {
     setSingleAuditMsg("");
+    if (!forceRefresh && detailCacheRef.current.has(sampleId)) {
+      setSampleDetail(detailCacheRef.current.get(sampleId)!);
+      setLoadingDetail(false);
+      return;
+    }
+    setLoadingDetail(true);
     try {
       const res = await fetch(`/api/iad/sample/${encodeURIComponent(sampleId)}`);
       if (res.ok) {
         const data: SampleDetailResponse = await res.json();
+        detailCacheRef.current.set(sampleId, data);
         setSampleDetail(data);
       }
     } catch (e) {
@@ -266,7 +273,7 @@ export function AuditPage() {
         const newSug = data.suggestion;
         const newRisk = data.visual_suspicion_score;
         setSingleAuditMsg(`✓ 审计完成: 模型建议【${newSug.suggested_label}】(${newSug.reason_category || "正常"}) · 可疑度: ${newRisk}分`);
-        fetchSampleDetail(selectedSample.sample_id);
+        fetchSampleDetail(selectedSample.sample_id, true);
         // Update local list
         setSamples((prev) =>
           prev.map((s) =>
@@ -343,6 +350,20 @@ export function AuditPage() {
         setSelectedSample(updated);
         setSamples((prev) => prev.map((s) => (s.sample_id === updated.sample_id ? updated : s)));
         setReviewReason("");
+
+        if (detailCacheRef.current.has(selectedSample.sample_id)) {
+          const cached = detailCacheRef.current.get(selectedSample.sample_id)!;
+          detailCacheRef.current.set(selectedSample.sample_id, {
+            ...cached,
+            sample: { ...cached.sample, quality_status: decision },
+            review_decision: {
+              decision,
+              reason: payload.reason,
+              reviewer: reviewerName,
+              reviewed_at: new Date().toISOString(),
+            },
+          });
+        }
       }
     } catch (e: any) {
       alert(`提交复核失败: ${e.message}`);
@@ -670,11 +691,11 @@ export function AuditPage() {
 
                       <div style={styles.cardInfo}>
                         <div style={styles.cardTitle} title={s.sample_id}>
-                          {s.sample_id}
+                          {s.sample_id.includes(":") ? s.sample_id.split(":").slice(1).join(":") : s.sample_id}
                         </div>
                         <div style={styles.cardMetrics}>
                           <span>可疑度: {s.visual_suspicion_score !== null && s.visual_suspicion_score !== undefined ? `${s.visual_suspicion_score}分` : "未测"}</span>
-                          <span style={{ color: (s.technical_quality_score || 98) < 70 ? "#ea580c" : "#64748b" }}>
+                          <span style={{ color: (s.technical_quality_score || 98) < 70 ? "#ea580c" : "#64748b" }} title="数据与技术质量分 (DS-S07)">
                             技术: {s.technical_quality_score ?? 98}
                           </span>
                         </div>
@@ -713,9 +734,6 @@ export function AuditPage() {
               <div>
                 <div style={{ marginBottom: 12 }}>
                   <h3 style={styles.asideTitle}>样本证据与复核明细</h3>
-                  <div style={{ fontSize: 11, color: "#64748b", marginTop: -6 }}>
-                    集成高分辨率原图、真实标注、技术成像分、多模态 AI 建议与权威人审
-                  </div>
                 </div>
 
                 {/* Big Image View with Click to Zoom */}
@@ -759,62 +777,83 @@ export function AuditPage() {
                 </div>
 
                 {/* Sample Metadata Rows */}
-                <div style={styles.detailRow}>
-                  <span style={styles.detailKey}>样本编号:</span>
-                  <div style={styles.detailValEllipsisWrapper}>
-                    <span
-                      style={styles.detailValEllipsis}
-                      title={selectedSample.sample_id}
-                    >
-                      {selectedSample.sample_id}
-                    </span>
-                    <button
-                      style={styles.copyBtn}
-                      title="复制完整样本编号"
-                      onClick={() => {
-                        navigator.clipboard?.writeText(selectedSample.sample_id);
-                        setCopiedId(true);
-                        setTimeout(() => setCopiedId(false), 1500);
-                      }}
-                    >
-                      {copiedId ? "已复制" : "复制"}
-                    </button>
-                  </div>
-                </div>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailKey}>批次标识:</span>
-                  <span style={styles.detailVal}>{selectedSample.batch_id || "default"}</span>
-                </div>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailKey}>原始状态:</span>
-                  <span style={styles.detailVal}>{selectedSample.quality_status}</span>
-                </div>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailKey}>图像分辨率:</span>
-                  <span style={styles.detailVal}>
-                    {sampleDetail?.sample.width ? `${sampleDetail.sample.width} × ${sampleDetail.sample.height} 像素` : "读取中..."}
-                  </span>
-                </div>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailKey}>视觉可疑评分:</span>
-                  <span style={{ ...styles.detailVal, color: (selectedSample.visual_suspicion_score || 0) >= 60 ? "#dc2626" : "#16a34a", fontWeight: "bold" }}>
-                    {selectedSample.visual_suspicion_score !== null && selectedSample.visual_suspicion_score !== undefined
-                      ? `${selectedSample.visual_suspicion_score} / 100`
-                      : "未审计 (null)"}
-                  </span>
-                </div>
-                <div style={styles.detailRow}>
-                  <span style={styles.detailKey}>技术成像分:</span>
-                  <span style={{ ...styles.detailVal, color: (selectedSample.technical_quality_score || 98) < 70 ? "#ea580c" : "#0f172a", fontWeight: "bold" }}>
-                    {selectedSample.technical_quality_score ?? 98}/100
-                  </span>
-                </div>
+                {(() => {
+                  const rawId = selectedSample.sample_id;
+                  const filename = rawId.includes(":") ? rawId.split(":").slice(1).join(":") : rawId;
+                  const pureName = filename.split("/").pop() || filename;
+
+                  return (
+                    <>
+                      <div style={styles.detailRow}>
+                        <span style={styles.detailKey}>图像文件名:</span>
+                        <div style={styles.detailValEllipsisWrapper}>
+                          <span
+                            style={{ ...styles.detailValEllipsis, fontWeight: 600, color: "#0f172a" }}
+                            title={pureName}
+                          >
+                            {pureName}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={styles.detailRow}>
+                        <span style={styles.detailKey}>样本编号URI:</span>
+                        <div style={styles.detailValEllipsisWrapper}>
+                          <span
+                            style={styles.detailValEllipsis}
+                            title={rawId}
+                          >
+                            {rawId}
+                          </span>
+                          <button
+                            style={styles.copyBtn}
+                            title="复制完整样本编号URI"
+                            onClick={() => {
+                              navigator.clipboard?.writeText(rawId);
+                              setCopiedId(true);
+                              setTimeout(() => setCopiedId(false), 1500);
+                            }}
+                          >
+                            {copiedId ? "已复制" : "复制"}
+                          </button>
+                        </div>
+                      </div>
+                      <div style={styles.detailRow}>
+                        <span style={styles.detailKey}>生产批次:</span>
+                        <span style={styles.detailVal} title="生产排程/Lot物理批次">{selectedSample.batch_id || "默认批次 (default)"}</span>
+                      </div>
+                      <div style={styles.detailRow}>
+                        <span style={styles.detailKey}>原始状态:</span>
+                        <span style={styles.detailVal}>{selectedSample.quality_status}</span>
+                      </div>
+                      <div style={styles.detailRow}>
+                        <span style={styles.detailKey}>图像分辨率:</span>
+                        <span style={styles.detailVal}>
+                          {sampleDetail?.sample.width ? `${sampleDetail.sample.width} × ${sampleDetail.sample.height} 像素` : "读取中..."}
+                        </span>
+                      </div>
+                      <div style={styles.detailRow}>
+                        <span style={styles.detailKey}>视觉可疑度:</span>
+                        <span style={{ ...styles.detailVal, color: (selectedSample.visual_suspicion_score || 0) >= 60 ? "#dc2626" : "#16a34a", fontWeight: "bold" }}>
+                          {selectedSample.visual_suspicion_score !== null && selectedSample.visual_suspicion_score !== undefined
+                            ? `${selectedSample.visual_suspicion_score} / 100`
+                            : "未审计 (null)"}
+                        </span>
+                      </div>
+                      <div style={styles.detailRow}>
+                        <span style={styles.detailKey} title="DS-S07 工业数据集技术质量规范 (文件完好度 + 几何标注有效性)">数据与技术质量:</span>
+                        <span style={{ ...styles.detailVal, color: (selectedSample.technical_quality_score || 98) < 70 ? "#ea580c" : "#0f172a", fontWeight: "bold" }}>
+                          {selectedSample.technical_quality_score ?? 98}/100
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {/* Technical Quality Issues Box (if any) */}
                 {sampleDetail?.technical_issues && sampleDetail.technical_issues.length > 0 && (
                   <div style={styles.techIssueBox}>
                     <div style={styles.techIssueTitle}>
-                      ⚠️ 技术质量扣分原因 ({sampleDetail.technical_issues.length} 条)
+                      ⚠️ 数据与技术质量扣分原因 ({sampleDetail.technical_issues.length} 条)
                     </div>
                     {sampleDetail.technical_issues.map((iss, idx) => (
                       <div key={idx} style={styles.techIssueItem}>
@@ -1223,9 +1262,9 @@ export function AuditPage() {
                 </div>
                 <div style={{ fontSize: 12, color: "#94a3b8" }}>
                   物理分辨率: {sampleDetail?.sample.width ? `${sampleDetail.sample.width} × ${sampleDetail.sample.height} 像素` : "读取中..."} ·
-                  批次: {selectedSample.batch_id || "default"} ·
+                  生产批次: {selectedSample.batch_id || "default"} ·
                   缺陷标注: {sampleDetail?.annotations?.length || 0} 处 ·
-                  技术成像: {selectedSample.technical_quality_score ?? 98}分
+                  数据与技术质量: {selectedSample.technical_quality_score ?? 98}分
                 </div>
               </div>
 

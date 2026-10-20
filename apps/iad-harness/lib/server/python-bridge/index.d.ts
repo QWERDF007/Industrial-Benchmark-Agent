@@ -22,10 +22,18 @@ export declare class PythonBridge {
     readonly pythonPath: string;
     readonly cwd: string;
     readonly timeoutMs: number;
+    private worker;
+    private pendingRequests;
+    private stdoutAccum;
+    private stderrAccum;
     constructor(config?: PythonBridgeConfig);
+    private ensureWorker;
+    private handleWorkerExit;
     /**
-     * Execute an operation against python -m iad_core.entry via stdin/stdout JSON streaming (DS-S04).
+     * Execute an operation against persistent python -m iad_core.entry worker via streaming NDJSON (DS-S04).
+     * Achieves sub-millisecond dispatch by avoiding per-call process spawn overhead.
      */
     execute<T = any>(operation: string, argumentsPayload?: Record<string, any>, signal?: AbortSignal, onProgress?: (progressEvent: any) => void): Promise<T>;
+    destroy(): void;
 }
 //# sourceMappingURL=index.d.ts.map

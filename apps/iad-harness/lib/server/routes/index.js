@@ -49,6 +49,7 @@ async function readBodyJson(req) {
     });
 }
 export function createIadHttpHandler(bridge) {
+    const sampleImagePathCache = new Map();
     return async function iadHttpHandler(req, res) {
         try {
             const parsedUrl = new URL(req.url || "/", `http://${req.headers.host || "127.0.0.1"}`);
@@ -136,6 +137,19 @@ export function createIadHttpHandler(bridge) {
             if (thumbMatch && method === "GET") {
                 const sampleId = decodeURIComponent(thumbMatch[2]);
                 const size = parseInt(parsedUrl.searchParams.get("size") || "240", 10);
+                // Fast-path: Check thumbnail disk cache directly in Node.js first (<1ms)
+                const thumbName = crypto.createHash("sha256").update(sampleId, "utf8").digest("hex") + `_${size}.jpg`;
+                const cachedThumbPath = path.resolve(bridge.cwd, "data/cache/thumbnails", thumbName);
+                if (fs.existsSync(cachedThumbPath)) {
+                    const stat = await fsp.stat(cachedThumbPath);
+                    res.writeHead(200, {
+                        "Content-Type": "image/jpeg",
+                        "Content-Length": stat.size,
+                        "Cache-Control": "public, max-age=86400, immutable",
+                    });
+                    fs.createReadStream(cachedThumbPath).pipe(res);
+                    return;
+                }
                 const thumbInfo = await bridge.execute("sample_thumbnail", { sample_id: sampleId, size });
                 if (!fs.existsSync(thumbInfo.path)) {
                     sendError(res, 404, "Thumbnail file not found");
@@ -155,11 +169,26 @@ export function createIadHttpHandler(bridge) {
             if (imageMatch && method === "GET") {
                 const taskId = decodeURIComponent(imageMatch[1]);
                 const sampleId = decodeURIComponent(imageMatch[2]);
+                // Fast-path: In-memory cache for resolved image paths (<1ms)
+                const cachedPath = sampleImagePathCache.get(sampleId);
+                if (cachedPath && fs.existsSync(cachedPath)) {
+                    const ext = path.extname(cachedPath).toLowerCase();
+                    const mediaType = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
+                    const stat = await fsp.stat(cachedPath);
+                    res.writeHead(200, {
+                        "Content-Type": mediaType,
+                        "Content-Length": stat.size,
+                        "Cache-Control": "public, max-age=3600",
+                    });
+                    fs.createReadStream(cachedPath).pipe(res);
+                    return;
+                }
                 const imageInfo = await bridge.execute("sample_image_path", { sample_id: sampleId });
                 if (!fs.existsSync(imageInfo.path)) {
                     sendError(res, 404, "Image file not found");
                     return;
                 }
+                sampleImagePathCache.set(sampleId, imageInfo.path);
                 const stat = await fsp.stat(imageInfo.path);
                 res.writeHead(200, {
                     "Content-Type": imageInfo.media_type || "image/jpeg",
