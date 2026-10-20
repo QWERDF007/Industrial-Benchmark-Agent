@@ -60,6 +60,13 @@ class KnowledgeService:
         self.repository = KnowledgeRepository(db)
         self.sources = KnowledgeSources(db)
 
+    @property
+    def generation_signature(self) -> str:
+        return hashlib.sha256(json.dumps([GENERATION_VERSION, NORMAL_INSTRUCTION, SYNTHESIS_INSTRUCTION,
+            VERIFICATION_INSTRUCTION, DEFECT_INSTRUCTION, DEFECT_VERIFICATION_INSTRUCTION,
+            EVOLUTION_INSTRUCTION, EVIDENCE_SCOPE_INSTRUCTION, KnowledgeDraft.model_json_schema(),
+            KnowledgeVerification.model_json_schema(), KnowledgeSnapshot.model_json_schema()], sort_keys=True).encode()).hexdigest()
+
     def start(self, **arguments) -> dict:
         request = MiningStart.model_validate(arguments)
         config = self.registry.resolve(dataset_id=request.dataset_id)
@@ -75,8 +82,11 @@ class KnowledgeService:
         previous = {source.sample_id for source in parent.sources} if parent else set()
         scope = previous | set(requested)
         sample_ids = [sample_id for sample_id in eligible if sample_id in scope]
+        sources = self.sources.collect(request.dataset_id, sample_ids, request.kind, normal)
         return self.jobs.start("NORMAL_KNOWLEDGE" if request.kind == "normal" else "DEFECT_KNOWLEDGE", config.task.task_id,
                                {**request.model_dump(), "sample_ids": sample_ids,
+                                "input_sources": [source.model_dump() for source in sources],
+                                "generation_signature": self.generation_signature,
                                 "requested_sample_ids": requested,
                                 "removed_source_ids": sorted(previous - set(eligible)),
                                 "parent_version_id": parent.version_id if parent else None}, self.mine, "准备良品知识挖掘" if request.kind == "normal" else "准备不良知识挖掘")
@@ -84,6 +94,8 @@ class KnowledgeService:
     def mine(self, context: JobContext):
         payload = context.payload
         context.checkpoint()
+        if payload['generation_signature'] != self.generation_signature:
+            raise ValueError('知识生成规则已变化，请重新启动挖掘')
         parent = self.repository.get(payload['parent_version_id']) if payload['parent_version_id'] else None
         evolution = KnowledgeEvolution(parent)
         normal = self.repository.get(payload['normal_version_id']) if payload.get('normal_version_id') else None
@@ -91,17 +103,15 @@ class KnowledgeService:
         references = defect.references(normal) if normal else []
         context.update(phase='PREPARING_KNOWLEDGE')
         sources = self.sources.collect(payload['dataset_id'], payload['sample_ids'], payload['kind'], normal)
-        signature = hashlib.sha256(json.dumps([GENERATION_VERSION, NORMAL_INSTRUCTION, SYNTHESIS_INSTRUCTION, VERIFICATION_INSTRUCTION,
-            DEFECT_INSTRUCTION, DEFECT_VERIFICATION_INSTRUCTION, EVOLUTION_INSTRUCTION, EVIDENCE_SCOPE_INSTRUCTION,
-            payload.get("normal_version_id"), payload["kind"],
-            KnowledgeDraft.model_json_schema(), KnowledgeVerification.model_json_schema(), KnowledgeSnapshot.model_json_schema(),
+        if [source.model_dump() for source in sources] != payload['input_sources']:
+            raise ValueError('知识来源已变化，请重新启动挖掘')
+        signature = hashlib.sha256(json.dumps([payload['generation_signature'], payload.get("normal_version_id"), payload["kind"],
             payload["dataset_id"], payload["model_name"], [source.model_dump() for source in sources]], sort_keys=True).encode()).hexdigest()
         current = self.repository.current(payload["dataset_id"], payload["kind"])
         if (current.version_id if current else None) != payload['parent_version_id']:
             raise ValueError('Knowledge head changed during mining; restart with the current version')
         if current and current.signature == signature:
-            for source in sources:
-                context.record(source.sample_id, knowledge_version_id=current.version_id, phase="KNOWLEDGE_REUSED")
+            context.record([source.sample_id for source in sources], knowledge_version_id=current.version_id, phase="KNOWLEDGE_REUSED")
             return
         evidence_images = EvidenceImages(self.db.db_path)
         inputs = []
@@ -153,14 +163,30 @@ class KnowledgeService:
             evidence=list(evidence.values()),
             mining_steps=miner.steps, findings=verification.findings, verification_steps=verification.steps,
             created_at=datetime.now(timezone.utc).isoformat())
-        with self.jobs.lock:
-            context.checkpoint()
-            self.repository.publish(snapshot)
-            for source in sources:
-                context.record(source.sample_id, knowledge_version_id=snapshot.version_id, phase="KNOWLEDGE_PUBLISHED")
+        context.record([source.sample_id for source in sources], persist=lambda conn: self.repository.publish(snapshot, conn),
+                       knowledge_version_id=snapshot.version_id, phase="KNOWLEDGE_PUBLISHED")
 
     def status(self, run_id: str) -> dict:
         return self.jobs.status(run_id, KNOWLEDGE_JOB_TYPES)
+
+    def retry(self, run_id: str, sample_ids: Optional[List[str]] = None) -> dict:
+        def validate(request):
+            if sample_ids is not None and set(sample_ids) != set(request['sample_ids']):
+                raise ValueError('知识联合归纳须重试全部冻结来源；改变来源范围请重新启动挖掘')
+            try:
+                normal = self.repository.get(request['normal_version_id']) if request['normal_version_id'] else None
+                sources = self.sources.collect(request['dataset_id'], request['sample_ids'], request['kind'], normal)
+                parent = self.repository.current(request['dataset_id'], request['kind'])
+                if ([source.model_dump() for source in sources] != request['input_sources']
+                        or request['generation_signature'] != self.generation_signature
+                        or (parent.version_id if parent else None) != request['parent_version_id']):
+                    raise ValueError('知识来源、反馈或当前版本已变化')
+                if normal:
+                    for evidence in normal.evidence:
+                        EvidenceImages(self.db.db_path).path(evidence.image)
+            except (ValueError, LookupError, OSError) as error:
+                raise ValueError(f'冻结输入不可恢复，请重新启动挖掘：{error}') from error
+        return self.jobs.retry(run_id, KNOWLEDGE_JOB_TYPES, self.mine, sample_ids, validate)
 
     def list(self, dataset_id: str) -> list:
         return self.jobs.list(dataset_id, KNOWLEDGE_JOB_TYPES)

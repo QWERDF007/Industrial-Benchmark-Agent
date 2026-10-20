@@ -1,7 +1,7 @@
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { workbenchJsonOutput } from "../tool-output.js";
 import { evidenceOutput, readEvidenceAttachment } from "../evidence-attachment.js";
-import { jobStatusParameters, waitForJobStatus } from "../job-status.js";
+import { jobRetryParameters, jobStatusParameters, waitForJobStatus } from "../job-status.js";
 export function createKnowledgeTools(bridge, ctx) {
     return [
         defineTool({
@@ -40,6 +40,13 @@ export function createKnowledgeTools(bridge, ctx) {
             parameters: { run_id: { type: "string", required: true } },
             output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("knowledge_cancel", args, exec.signal),
+        }),
+        defineTool({
+            name: "knowledge_job_retry",
+            description: "用全部冻结来源重试失败、取消或中断的联合知识挖掘，核验原图、标注、反馈及冻结版本；保留原运行和已发布知识，变化时要求重新启动。",
+            parameters: { run_id: jobRetryParameters.run_id },
+            output: workbenchJsonOutput,
+            execute: (args, exec) => bridge.execute("knowledge_retry", args, exec.signal),
         }),
         defineTool({
             name: "knowledge_get",

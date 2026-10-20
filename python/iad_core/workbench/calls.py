@@ -5,6 +5,7 @@ import zlib
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import datetime, timezone
+from sqlite3 import Connection
 from typing import Any, List, Literal, Optional, Tuple
 
 import httpx
@@ -105,6 +106,16 @@ class ModelCalls:
         with self.db.connection() as conn:
             rows = conn.execute('SELECT summary_json FROM model_calls WHERE run_id=? ORDER BY rowid', (run_id,)).fetchall()
         return [ModelCallSummary.model_validate_json(row[0]) for row in rows]
+
+    def interrupt(self, run_id: str, connection: Connection) -> None:
+        rows = connection.execute("""SELECT summary_json FROM model_calls WHERE run_id=?
+            AND json_extract(summary_json,'$.finished_at') IS NULL""", (run_id,)).fetchall()
+        for row in rows:
+            summary = ModelCallSummary.model_validate_json(row[0])
+            summary.error = ModelCallError(type='WorkerInterrupted', message='工作进程已中断；模型服务是否完成、返回内容和用量未知')
+            summary.finished_at = datetime.now(timezone.utc).isoformat()
+            connection.execute('UPDATE model_calls SET summary_json=? WHERE call_id=?',
+                               (summary.model_dump_json(), summary.call_id))
 
     def get(self, run_id: str, call_id: str) -> ModelCallDetail:
         with self.db.connection() as conn:

@@ -8,6 +8,11 @@ export const jobStatusParameters = {
   wait_seconds: { type: "number", description: "等待作业终态的最长秒数，0..30；省略最多等10秒，终态立即返回，超时仍返回真实当前状态" },
 } as const;
 
+export const jobRetryParameters = {
+  run_id: jobStatusParameters.run_id,
+  sample_ids: { type: "array", items: { type: "string" }, description: "省略重试失败及未处理项；显式子集必须属于原作业且尚未完成" },
+} as const;
+
 type JobStatus = { status: AuditJob["status"]; [key: string]: InferValue<{ type: "json" }> };
 
 export async function waitForJobStatus(bridge: PythonBridge, operation: "knowledge_status" | "audit_status",

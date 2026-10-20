@@ -13,8 +13,9 @@ from iad_core.advisory.analysis import AuditAnalysis
 from iad_core.knowledge.models import KnowledgeSnapshot
 from iad_core.workbench.audit import AuditStart
 from iad_core.workbench.calls import ModelCallDetail
-models = [AuditAnalysis, KnowledgeSnapshot, AuditStart, ModelCallDetail]
-_, schema = models_json_schema([(model, 'validation' if model is AuditStart else 'serialization') for model in models])
+from iad_core.workbench.jobs import JobRetry
+models = [AuditAnalysis, KnowledgeSnapshot, AuditStart, ModelCallDetail, JobRetry]
+_, schema = models_json_schema([(model, 'validation' if model in (AuditStart, JobRetry) else 'serialization') for model in models])
 schema.update(title='WorkbenchDomain', type='object', additionalProperties=False,
     properties={model.__name__: {'$ref': '#/$defs/'+model.__name__} for model in models})
 print(json.dumps(schema))

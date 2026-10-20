@@ -347,11 +347,14 @@ export type Type = string;
 export type Message = string;
 export type RequestBody = string;
 export type ResponseBody = string | null;
+export type RunId1 = string;
+export type SampleIds1 = string[] | null;
 export interface WorkbenchDomain {
     AuditAnalysis?: AuditAnalysis;
     KnowledgeSnapshot?: KnowledgeSnapshot;
     AuditStart?: AuditStart;
     ModelCallDetail?: ModelCallDetail;
+    JobRetry?: JobRetry;
 }
 export interface AuditAnalysis {
     normal_version_id: NormalVersionId;
@@ -679,5 +682,9 @@ export interface ModelCallDetail {
 export interface ModelCallError {
     type: Type;
     message: Message;
+}
+export interface JobRetry {
+    run_id: RunId1;
+    sample_ids?: SampleIds1;
 }
 //# sourceMappingURL=domain.generated.d.ts.map

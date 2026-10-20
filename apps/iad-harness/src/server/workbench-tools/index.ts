@@ -3,7 +3,7 @@ import { defineTool, type ToolDefinition } from "@deepseek-ai/dsh-tools";
 import { PythonBridge } from "../python-bridge/index.js";
 import { workbenchJsonOutput } from "../tool-output.js";
 import { evidenceOutput, readEvidenceAttachment } from "../evidence-attachment.js";
-import { jobStatusParameters, waitForJobStatus } from "../job-status.js";
+import { jobRetryParameters, jobStatusParameters, waitForJobStatus } from "../job-status.js";
 
 export const DATASET_ANALYSIS_WORKFLOW = `数据集分析流程
 
@@ -13,6 +13,7 @@ export const DATASET_ANALYSIS_WORKFLOW = `数据集分析流程
 3. 加载 skill: mine-defect-knowledge，将刚取得的 normal_version_id 显式传入，执行并读取实际不良知识。无异常候选时如实说明，不能虚构不良知识；仍可用良品知识进行异常筛查。
 4. 用 model_audit_start 显式传入所选 dataset_id、normal_version_id 及实际可用的 defect_version_id；默认全部图像和全部适用 ROI。dataset_audit 只是技术检查，不能替代该 MLLM 联合审计。
 5. 用 model_audit_status 等待同一作业达到终态。PENDING/RUNNING 不是完成，部分成功要报告完成/失败/未处理数量。用户要求停止时取消对应知识或审计作业，不把取消会话等同于取消后台作业。
+失败或中断后用 model_audit_retry 或 knowledge_job_retry 创建关联的新执行。审计只处理尚未完成的单图；知识联合归纳须保留整组冻结来源，原子发布一个版本。源图、标注、反馈或冻结知识变化时须重新启动，不绕过核验。重试仍失败时查询新 run_id，再决定是否重试该执行。
 6. 用 dataset_report 读取实际质量统计；必要时 model_audit_sample 读取样本综合结论，model_audit_evidence 或 knowledge_evidence 读取真正送模的全图/ROI/Mask。简要回答覆盖、版本、主要风险及最多三个优先复核项，说明范围与限制。现有报告不提供准确率或综合质量分时不得编造，模型置信度不是准确率。
 所有步骤与工作台共用同一数据集、作业、知识、建议和报告；进度按真实结果说明。修改来源需要新知识版本并明确重审，不能改写原始标签、人工决定或 Gold。`;
 
@@ -63,6 +64,13 @@ export function createWorkbenchTools(bridge: PythonBridge, ctx: Context): ToolDe
       parameters: { run_id: { type: "string", required: true } },
       output: workbenchJsonOutput,
       execute: (args, exec) => bridge.execute("audit_cancel", args, exec.signal),
+    }),
+    defineTool({
+      name: "model_audit_retry",
+      description: "重试终态审计作业的失败/未处理样本，复用原冻结知识并核验来源，保留成功建议和原记录；输入变化时拒绝恢复。",
+      parameters: jobRetryParameters,
+      output: workbenchJsonOutput,
+      execute: (args, exec) => bridge.execute("audit_retry", args, exec.signal),
     }),
     defineTool({
       name: "model_audit_sample",

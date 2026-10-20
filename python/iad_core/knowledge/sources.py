@@ -5,7 +5,7 @@ from typing import List, Optional
 from iad_core.dataset.path_safety import validate_sample_image_path
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.images import file_sha256
-from iad_core.evidence.masks import MaskImages
+from iad_core.evidence.sources import SampleContent
 from iad_core.knowledge.models import KnowledgeFinding, KnowledgeKind, KnowledgeSnapshot, KnowledgeSource
 from iad_core.knowledge.candidates import AuditCandidates
 from iad_core.storage.database import Database
@@ -69,16 +69,10 @@ class KnowledgeSources:
             if sample_id not in eligible:
                 raise ValueError('Knowledge source qualification changed during mining')
             sample = self.samples.get(sample_id)
-            sha256 = file_sha256(validate_sample_image_path(sample, self.db.db_path))
-            candidates = self.candidates.matching(sample, sha256)
+            content = SampleContent.capture(self.db, sample_id)
+            candidates = self.candidates.matching(sample, content.sha256)
             decision = self.reviews.get_decision(sample_id)
-            annotations = self.annotations.list_by_sample(sample_id)
-            for annotation in annotations:
-                if annotation.annotation_type == 'mask' and annotation.geometry_status != 'INVALID':
-                    MaskImages.load(annotation, sample)
-            sources.append(KnowledgeSource(sample_id=sample_id,
-                sha256=sha256, qualification=eligible[sample_id],
+            sources.append(KnowledgeSource(**content.model_dump(), qualification=eligible[sample_id],
                 audit_suggestion_ids=[item.suggestion_id for item in candidates],
-                annotations_sha256=hashlib.sha256(json.dumps([a.model_dump(mode='json') for a in annotations], sort_keys=True).encode()).hexdigest(),
                 review_sha256=hashlib.sha256(decision.model_dump_json().encode() if decision else b'null').hexdigest()))
         return sources

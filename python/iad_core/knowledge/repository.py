@@ -1,4 +1,6 @@
 from typing import Optional
+from contextlib import nullcontext
+from sqlite3 import Connection
 
 from iad_core.knowledge.models import KnowledgeKind, KnowledgeSnapshot
 from iad_core.storage.database import Database
@@ -22,9 +24,10 @@ class KnowledgeRepository:
                                (dataset_id, kind)).fetchone()
         return KnowledgeSnapshot.model_validate_json(row[0]) if row else None
 
-    def publish(self, snapshot: KnowledgeSnapshot) -> None:
-        with self.db.connection() as conn:
-            conn.execute("BEGIN IMMEDIATE")
+    def publish(self, snapshot: KnowledgeSnapshot, connection: Optional[Connection] = None) -> None:
+        with (nullcontext(connection) if connection else self.db.connection()) as conn:
+            if not connection:
+                conn.execute("BEGIN IMMEDIATE")
             row = conn.execute("SELECT version_id FROM knowledge_heads WHERE dataset_id=? AND kind=?",
                                (snapshot.dataset_id, snapshot.kind)).fetchone()
             if (row[0] if row else None) != snapshot.parent_version_id:

@@ -69,6 +69,9 @@ test("DSH cancelling a knowledge job preserves unprocessed scope and prevents la
   new ToolRuntime(ctx);
   new SkillRegistry(ctx);
   const fork = await ctx.plugin(harness, { dbPath: path.join(root, "test.db") });
+  const api = http.createServer(harness.createIadHttpHandler(ctx.iadPythonBridge));
+  await new Promise(resolve => api.listen(0, "127.0.0.1", resolve));
+  const base = `http://127.0.0.1:${api.address().port}/api/iad`;
   let call = 0;
   const execute = async (name, args) => {
     const result = await ctx.tools.execute({ name, arguments: args, callId: `cancel-${++call}`, signal: new AbortController().signal });
@@ -107,9 +110,27 @@ test("DSH cancelling a knowledge job preserves unprocessed scope and prevents la
     assert.equal(status.failed, 0);
     assert.equal(status.unprocessed, 2);
     assert.equal((await execute("knowledge_get", { dataset_id: dataset.dataset_id, kind: "normal" })).knowledge, null);
+    const response = await fetch(`${base}/knowledge/retry/${job.run_id}`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
+    });
+    assert.equal(response.status, 200, await response.clone().text());
+    const retry = await response.json();
+    const restored = await execute("knowledge_job_status", { run_id: retry.run_id });
+    assert.equal(restored.status, "COMPLETED");
+    assert.equal(restored.parent_run_id, job.run_id);
+    assert.equal(restored.completed, 2);
+    assert.equal((await execute("knowledge_job_status", { run_id: job.run_id })).status, "CANCELLED");
+    assert.equal((await execute("knowledge_job_status", { run_id: retry.run_id })).status,
+      (await (await fetch(`${base}/knowledge/status/${retry.run_id}`)).json()).status);
+    assert.ok(ctx.tools.get("knowledge_job_retry"));
+    assert.ok(harness.ALLOWED_TOOL_SURFACE.includes("knowledge_job_retry"));
+    const duplicate = await ctx.tools.execute({ name: "knowledge_job_retry", arguments: { run_id: job.run_id },
+      callId: "already-completed-retry", signal: new AbortController().signal });
+    assert.equal(duplicate.isError, true);
   } finally {
     release.resolve();
     await fork.dispose();
+    await new Promise(resolve => api.close(resolve));
     await new Promise(resolve => model.close(resolve));
     if (previousEndpoint === undefined) delete process.env.LIVE_VLM_ENDPOINT;
     else process.env.LIVE_VLM_ENDPOINT = previousEndpoint;
@@ -120,6 +141,7 @@ test("DSH cancelling a knowledge job preserves unprocessed scope and prevents la
 test("DSH knowledge skills execute shared jobs and return actual evidence attachments", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-skill-"));
   execFileSync(resolvePythonPath(), [fileURLToPath(new URL("fixtures/knowledge_dataset.py", import.meta.url)), root]);
+  let failNextAudit = true;
   const model = http.createServer(async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
@@ -130,6 +152,12 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
     let result;
     if (req.url === "/tokenize") result = { count: 4000, max_model_len: 262144 };
     else if (body.response_format.json_schema.name === "JointAnalysis") {
+      if (failNextAudit) {
+        failNextAudit = false;
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: { message: "temporary model failure" } }));
+        return;
+      }
       const checks = JSON.parse(content[0].text.split("冻结知识：")[1].split("\n")[0]).checks;
       const regions = evidence.filter(item => item.role === "roi" && item.representation === "raw");
       const view = { description: regions.length ? "左孔红色遮挡" : "两孔背景可见", position_analysis: "主体左侧", illumination_analysis: "整体亮度均匀" };
@@ -232,9 +260,17 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
       await delay(20);
       audit = (await execute("model_audit_status", { run_id: audit.run_id })).value;
     }
-    assert.equal(audit.status, "COMPLETED", JSON.stringify(audit));
-    assert.equal(audit.completed, 3);
-    assert.equal(audit.failed, 0);
+    assert.equal(audit.status, "PARTIAL", JSON.stringify(audit));
+    assert.equal(audit.completed, 2);
+    assert.equal(audit.failed, 1);
+    const retry = (await execute("model_audit_retry", { run_id: audit.run_id })).value;
+    const restored = (await execute("model_audit_status", { run_id: retry.run_id })).value;
+    assert.equal(restored.status, "COMPLETED");
+    assert.equal(restored.completed, 1);
+    assert.equal(restored.parent_run_id, audit.run_id);
+    assert.ok(harness.ALLOWED_TOOL_SURFACE.includes("model_audit_retry"));
+    assert.deepEqual(restored.sample_ids, audit.failed_sample_ids);
+    assert.equal((await execute("model_audit_status", { run_id: audit.run_id })).value.status, "PARTIAL");
     assert.equal(audit.normal_version_id, versions.normal.version_id);
     assert.equal(audit.defect_version_id, versions.defect.version_id);
     const audited = await execute("model_audit_sample", { sample_id: original.sample.sample_id });

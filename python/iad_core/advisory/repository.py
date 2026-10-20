@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -21,7 +22,7 @@ class AuditSuggestionRepository:
     def __init__(self, db: Database):
         self.db = db
 
-    def save(self, suggestion: AuditSuggestion) -> AuditSuggestion:
+    def save(self, suggestion: AuditSuggestion, connection: Optional[sqlite3.Connection] = None) -> AuditSuggestion:
         now = suggestion.created_at or datetime.now(timezone.utc).isoformat()
         suggestion.created_at = now
 
@@ -34,7 +35,7 @@ class AuditSuggestionRepository:
         if existing:
             raise ValueError(f"Audit suggestion '{suggestion.suggestion_id}' already exists and cannot be overwritten.")
 
-        with self.db.connection() as conn:
+        with (nullcontext(connection) if connection else self.db.connection()) as conn:
             cursor = conn.cursor()
             cursor.execute(
                 """

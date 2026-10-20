@@ -126,11 +126,8 @@ def test_mining_sends_raw_and_binary_mask_evidence_and_retains_prior_pixels(tmp_
         assert sample_get({'sample_id':sample_id},db_path)['review_decision']['decision']=='PASS'
         annotation = sample_get({'sample_id':sample_id},db_path)['annotations'][0]
         Image.new('L',(80,60),255).save(annotation['mask_path'],'PNG')
-        changed = service.start(dataset_id=dataset_id,kind='normal',model_name='test-mllm')
-        service.wait(changed['run_id'],5)
-        failed = service.status(changed['run_id'])
-        assert failed['status']=='FAILED',failed
-        assert any('Mask pixels changed' in error['message'] for error in failed['errors'])
+        with pytest.raises(ValueError, match='Mask pixels changed after import'):
+            service.start(dataset_id=dataset_id,kind='normal',model_name='test-mllm')
         assert knowledge_get({'dataset_id':dataset_id,'kind':'normal'},db_path)['knowledge']['version_id']==successor['version_id']
     finally:
         service.close()

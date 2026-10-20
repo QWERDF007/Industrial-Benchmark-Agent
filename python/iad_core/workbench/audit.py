@@ -1,21 +1,26 @@
-import threading
+import hashlib
+import json
 import uuid
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from iad_core.advisory.repository import AuditSuggestionRepository
+from iad_core.advisory.analysis import AuditAnalysis
 from iad_core.advisory.schemas import AuditSuggestion, ConclusionStatus, EvidenceRefItem, HypothesisItem, ObservationItem, RecommendedAction
 from iad_core.dataset.registry import DatasetRegistry
+from iad_core.evidence.images import EvidenceImages
+from iad_core.evidence.sources import SampleContent
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import SampleRepository
-from iad_core.workbench.projection import suggestion_meta
 from iad_core.workbench.query import SampleQuery, WorkbenchQuery
 
 from iad_core.workbench.vision import DEFAULT_MODEL, VlmClient
 from iad_core.workbench.inspection import SampleInspection
 from iad_core.workbench.jobs import JobContext, JobRunner
 from iad_core.workbench.knowledge import InspectionKnowledge
+
+AUDIT_GENERATION_VERSION = 'dataset-audit-v1'
 
 class AuditStart(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -36,22 +41,28 @@ class AuditService:
         self.owns_jobs = jobs is None
         self.jobs = jobs or JobRunner(db, ("MODEL_AUDIT",))
 
-    def audit_sample(self, sample_id: str, model_name: str = DEFAULT_MODEL, run_id: Optional[str] = None,
-                     knowledge: Optional[InspectionKnowledge] = None, cancel: Optional[threading.Event] = None) -> dict:
+    @property
+    def generation_signature(self) -> str:
+        return hashlib.sha256(json.dumps([AUDIT_GENERATION_VERSION, AuditAnalysis.model_json_schema()], sort_keys=True).encode()).hexdigest()
+
+    def audit_sample(self, sample_id: str, model_name: str, knowledge: InspectionKnowledge, context: JobContext):
         samples = SampleRepository(self.db)
         sample = samples.get(sample_id)
         if not sample:
             raise LookupError("Sample not found")
-        knowledge = knowledge or InspectionKnowledge.resolve(self.db, sample.dataset_id)
+        expected = next(source for source in context.payload['input_sources'] if source['sample_id'] == sample_id)
+        if SampleContent.capture(self.db, sample_id).model_dump() != expected:
+            raise ValueError('源图像或标注内容已变化，请重新启动审计')
         def phase(progress):
-            if run_id:
-                self.jobs.update(run_id, **progress.model_dump(), current_sample_id=sample_id)
-        analysis = self.inspection.inspect(sample_id, model_name, knowledge, cancel, phase)
+            context.update(**progress.model_dump(), current_sample_id=sample_id)
+        analysis = self.inspection.inspect(sample_id, model_name, knowledge, context.cancel, phase)
+        if SampleContent.capture(self.db, sample_id).model_dump() != expected:
+            raise ValueError('源图像或标注内容已变化，请重新启动审计')
         refs = analysis.reference_sample_ids
         result = analysis.conclusion
         suggestion = AuditSuggestion(
             suggestion_id="sug_" + uuid.uuid4().hex, task_id=sample.task_id, sample_id=sample_id,
-            model_route=model_name, analysis=analysis, confidence=result.confidence, reference_sample_ids=refs, audit_run_id=run_id,
+            model_route=model_name, analysis=analysis, confidence=result.confidence, reference_sample_ids=refs, audit_run_id=context.run_id,
             observations=[ObservationItem(phenomenon=result.reason_category, description=(result.defect_location + " " + result.description).strip())],
             hypotheses=[HypothesisItem(label=result.suggested_label)],
             conclusion_status=ConclusionStatus.INSUFFICIENT_EVIDENCE if result.suggested_label == "UNCERTAIN" else ConclusionStatus.EVIDENCE_SUPPORTED,
@@ -59,12 +70,10 @@ class AuditService:
             evidence_refs=[EvidenceRefItem(kind="normal_reference", sample_id=sid) for sid in refs],
             input_modalities_used=["image", "text"],
         )
-        with self.jobs.lock:
-            if cancel and cancel.is_set():
-                return {"cancelled": True}
-            AuditSuggestionRepository(self.db).save(suggestion)
-        meta = suggestion_meta(suggestion)
-        return {"sample_id": sample_id, "suggestion": meta, **WorkbenchQuery(self.db).sample_scores(sample_id)}
+        context.record(sample_id, persist=lambda conn: AuditSuggestionRepository(self.db).save(suggestion, conn),
+            phase="SAMPLE_COMPLETED", inspected_regions=analysis.coverage.inspected_regions,
+            planned_regions=analysis.coverage.planned_regions,
+            completed_batches=len(analysis.joint_steps), total_batches=len(analysis.joint_steps))
 
     def start(self, **arguments) -> dict:
         request = AuditStart.model_validate(arguments)
@@ -89,12 +98,16 @@ class AuditService:
         if not sample_ids:
             raise ValueError("No samples match the audit filters")
         payload = {"dataset_id": request.dataset_id, "model_name": request.model_name, "sample_ids": sample_ids,
+                   "generation_signature": self.generation_signature,
+                   "input_sources": [SampleContent.capture(self.db, sid).model_dump() for sid in sample_ids],
                    "normal_version_id": knowledge.normal.version_id,
                    "defect_version_id": knowledge.defect.version_id if knowledge.defect else None}
         return self.jobs.start("MODEL_AUDIT", config.task.task_id, payload, self.run, "准备冻结知识审计")
 
     def run(self, context: JobContext):
         payload = context.payload
+        if payload['generation_signature'] != self.generation_signature:
+            raise ValueError('模型审计规则已变化，请重新启动审计')
         from iad_core.knowledge.repository import KnowledgeRepository
         repository = KnowledgeRepository(self.db)
         knowledge = InspectionKnowledge(repository.get(payload['normal_version_id']),
@@ -102,14 +115,7 @@ class AuditService:
         for sample_id in payload["sample_ids"]:
             context.checkpoint()
             try:
-                result = self.audit_sample(sample_id, payload["model_name"], context.run_id,
-                                           knowledge, context.cancel)
-                context.checkpoint()
-                analysis = result["suggestion"]["analysis"]
-                context.record(sample_id, phase="SAMPLE_COMPLETED",
-                               inspected_regions=analysis["coverage"]["inspected_regions"],
-                               planned_regions=analysis["coverage"]["planned_regions"],
-                               completed_batches=len(analysis["joint_steps"]), total_batches=len(analysis["joint_steps"]))
+                self.audit_sample(sample_id, payload["model_name"], knowledge, context)
             except InterruptedError:
                 raise
             except Exception as error:
@@ -117,6 +123,23 @@ class AuditService:
 
     def status(self, run_id: str) -> dict:
         return self.jobs.status(run_id, ("MODEL_AUDIT",))
+
+    def retry(self, run_id: str, sample_ids: Optional[List[str]] = None) -> dict:
+        def validate(request):
+            try:
+                current = [SampleContent.capture(self.db, sid).model_dump() for sid in request['sample_ids']]
+                if current != request['input_sources'] or request['generation_signature'] != self.generation_signature:
+                    raise ValueError('源图像或标注内容已变化')
+                from iad_core.knowledge.repository import KnowledgeRepository
+                repository = KnowledgeRepository(self.db)
+                knowledge = InspectionKnowledge(repository.get(request['normal_version_id']),
+                    repository.get(request['defect_version_id']) if request['defect_version_id'] else None)
+                for snapshot in [knowledge.normal, *([knowledge.defect] if knowledge.defect else [])]:
+                    for evidence in snapshot.evidence:
+                        EvidenceImages(self.db.db_path).path(evidence.image)
+            except (ValueError, LookupError, OSError) as error:
+                raise ValueError(f'冻结输入不可恢复，请重新启动审计：{error}') from error
+        return self.jobs.retry(run_id, ("MODEL_AUDIT",), self.run, sample_ids, validate)
 
     def list(self, dataset_id: str) -> list:
         return self.jobs.list(dataset_id, ("MODEL_AUDIT",))

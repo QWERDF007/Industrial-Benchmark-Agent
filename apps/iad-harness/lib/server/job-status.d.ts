@@ -11,6 +11,19 @@ export declare const jobStatusParameters: {
         readonly description: "等待作业终态的最长秒数，0..30；省略最多等10秒，终态立即返回，超时仍返回真实当前状态";
     };
 };
+export declare const jobRetryParameters: {
+    readonly run_id: {
+        readonly type: "string";
+        readonly required: true;
+    };
+    readonly sample_ids: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "string";
+        };
+        readonly description: "省略重试失败及未处理项；显式子集必须属于原作业且尚未完成";
+    };
+};
 type JobStatus = {
     status: AuditJob["status"];
     [key: string]: InferValue<{

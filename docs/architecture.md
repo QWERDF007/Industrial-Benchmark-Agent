@@ -29,12 +29,13 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 会话知识/审计的有界等待及真实证据附件 | [共享状态等待](../apps/iad-harness/src/server/job-status.ts)、[共享附件读取](../apps/iad-harness/src/server/evidence-attachment.ts) |
 | 全图、局部裁剪及综合判断 | [SampleInspection](../python/iad_core/workbench/inspection.py)、[分析类型](../python/iad_core/advisory/analysis.py) |
 | 视觉证据、原图坐标、无损 ROI 与分块 | [EvidenceImages](../python/iad_core/evidence/images.py) |
+| 源图、标注与 Mask 内容指纹 | [SampleContent](../python/iad_core/evidence/sources.py)、[知识来源资格](../python/iad_core/knowledge/sources.py) |
 | Mask 像素、内容指纹、二值标注图与显示叠加 | [MaskImages / annotation_overlay](../python/iad_core/evidence/masks.py)、[Labelme 官方格式](https://github.com/wkentaro/labelme/blob/main/labelme/_label_file.py)、[官方坐标映射](https://github.com/wkentaro/labelme/blob/main/labelme/_utils/_shape.py) |
 | 模型传输、实际 token 容量、结构化输出与响应校验 | [VlmClient](../python/iad_core/workbench/vision.py)、[vLLM 输出契约](https://github.com/vllm-project/vllm/blob/v0.18.0/docs/features/structured_outputs.md) |
 | 全图与全部 ROI 联合分析、按实际容量分批 | [JointInspection](../python/iad_core/workbench/joint.py) |
 | 页面统一作业轮询与逐图刷新 | [useAuditJobs](../apps/iad-harness/src/client/useAuditJobs.ts) |
 | 审计领域执行 | [AuditService](../python/iad_core/workbench/audit.py) |
-| 审计/知识共享作业生命周期 | [JobRunner](../python/iad_core/workbench/jobs.py)、[WorkbenchRuntime](../python/iad_core/workbench/runtime.py) |
+| 审计/知识共享作业、原子完成、进程接管与关联重试 | [JobRunner / JobContext / JobRetry](../python/iad_core/workbench/jobs.py)、[WorkbenchRuntime](../python/iad_core/workbench/runtime.py) |
 | 作业关联的真实模型请求、返回、错误与服务用量 | [ModelCalls](../python/iad_core/workbench/calls.py)、[VlmClient](../python/iad_core/workbench/vision.py)、[原文读取操作](../python/iad_core/entry.py) |
 | 图像查看器与标注图层 | [ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx) |
 | 复核会话与裁决 | [HumanReview](../python/iad_core/workbench/review.py) |
@@ -64,6 +65,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 - [审计候选回流、污染隔离、过期来源与并发冻结测试](../tests/test_knowledge_feedback.py)
 - [单个大 Mask 的容量分组、原像素配对、综合缺证与真实模型测试](../tests/test_knowledge_capacity.py)
 - [模型原文、用量、错误、并发隔离和取消追踪测试](../tests/test_model_calls.py)
+- [部分失败、源变化、知识发布及真实工作进程终止恢复](../tests/test_job_recovery.py)
 - [良品污染、正常解释、独立证据及核验分组测试](../tests/test_knowledge_contamination.py)
 - [不良知识、标注核验、正常版本冻结与证据资格测试](../tests/test_defect_knowledge.py)
 - [Mask 导入、像素、标注视图、版本与容量配对测试](../tests/test_mask_evidence.py)
@@ -74,6 +76,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 - [真实 DSH Agent/Session 与官方模型适配器测试](../apps/iad-harness/test/agent_session.test.js)
 - [真实 MLLM 与原生知识技能验证](../apps/iad-harness/scripts/verify-knowledge-skills.js)
 - [真实自然语言会话、知识审计与图像追问验证](../apps/iad-harness/scripts/verify-dataset-session.js)
+- [合成图真实 MLLM 与进程终止恢复验证](../scripts/verify_job_recovery_live.py)
 - [Firefox 用户流程测试](../apps/iad-harness/browser/workbench.test.js)
 - [原生宿主侧栏与页面验收](../apps/iad-harness/scripts/verify-host-browser.js)
 - [真实图像和模型验证](../scripts/verify_workbench_live.py)

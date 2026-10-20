@@ -3,6 +3,7 @@ from typing import List, Literal, Optional
 from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, AuditFinding, RegionImage, RegionOrigin, RegionProposal, VisualEvidence
+from iad_core.evidence.sources import SampleContent
 
 KnowledgeKind = Literal["normal", "defect"]
 
@@ -65,10 +66,7 @@ class KnowledgeCheck(LearnedCheck):
     normal_check_ids: List[str] = Field(default_factory=list)
 
 
-class KnowledgeSource(AnalysisModel):
-    sample_id: str
-    sha256: str
-    annotations_sha256: str
+class KnowledgeSource(SampleContent):
     review_sha256: str
     audit_suggestion_ids: List[str] = Field(default_factory=list)
     qualification: Literal["human_pass", "human_hard_normal", "manual_selection", "raw_pass", "initial_unannotated",

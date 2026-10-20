@@ -1,5 +1,5 @@
 import type { AuditAnalysis, KnowledgeSnapshot, AuditStart, ModelCallDetail } from "./domain.generated.js";
-export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot } from "./domain.generated.js";
+export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot, JobRetry } from "./domain.generated.js";
 export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
 export type ModelCallSummary = Omit<ModelCallDetail, "request_body" | "response_body">;
 export type Decision = "PASS" | "HARD_NORMAL" | "FAIL" | "UNCERTAIN" | "SKIP";
@@ -97,6 +97,11 @@ export interface SampleDetail {
     } | null;
 }
 export interface AuditJob {
+    parent_run_id?: string | null;
+    root_run_id?: string;
+    unprocessed: number;
+    completed_sample_ids: string[];
+    failed_sample_ids: string[];
     model_calls: ModelCallSummary[];
     run_id: string;
     sample_ids: string[];
