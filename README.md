@@ -7,6 +7,8 @@
 ```bash
 pnpm install
 pip install -e '.[dev]'
+cp .env.example .env.local
+# 编辑 .env.local 配置本地模型服务
 ./start.sh
 ```
 
@@ -22,7 +24,7 @@ pip install -e '.[dev]'
 - [架构与源代码索引](docs/architecture.md)
 - [数据集配置示例](configs/example.yaml)
 - [命令行入口](python/iad_cli/main.py)
-- 本地任务账本：`WORKLOG.md`
+- 本地任务账本：`WORKLOG.md`（不纳入版本控制）
 
 ```bash
 pnpm --filter @industrial-benchmark/iad-harness build
@@ -34,4 +36,4 @@ GECKODRIVER_PATH=/path/to/geckodriver pnpm --filter @industrial-benchmark/iad-ha
 FIREFOX_PATH=/path/to/firefox GECKODRIVER_PATH=/path/to/geckodriver pnpm --filter @industrial-benchmark/iad-harness verify:host-browser
 ```
 
-真实模型验证入口为 [verify_workbench_live.py](scripts/verify_workbench_live.py)，使用数据库快照，需可访问数据集目录及项目配置的 VLM。模型服务环境变量定义见 [VlmClient](python/iad_core/workbench/vision.py)。
+真实模型验证入口为 [verify_workbench_live.py](scripts/verify_workbench_live.py)，使用数据库快照，需可访问数据集目录及项目配置的 VLM。命令行验证前需导出模型环境变量；本地配置模板见 [.env.example](.env.example)，启动器自动加载 `.env.local`。模型服务环境变量定义见 [VlmClient](python/iad_core/workbench/vision.py)。

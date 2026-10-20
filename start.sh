@@ -4,6 +4,12 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+if [ -f .env.local ]; then
+    set -a
+    source .env.local
+    set +a
+fi
+
 LAN_IP=$(hostname -I | awk '{print $1}')
 if [ -z "$LAN_IP" ]; then
     LAN_IP="127.0.0.1"

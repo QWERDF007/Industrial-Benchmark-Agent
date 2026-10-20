@@ -85,15 +85,21 @@ def test_import_rejects_blank_name_before_creating_dataset(dataset):
         DatasetImport(name="  ", image_dir=config.root, annotation_dir=config.annotations.root)
 
 
-def test_real_audit_job_uses_references_and_persists_confidence(dataset):
+@pytest.mark.parametrize("endpoint,expected_url", [(None, "http://127.0.0.1:8000/v1/chat/completions"), ("https://mllm.example.invalid/v1", "https://mllm.example.invalid/v1/chat/completions")])
+def test_real_audit_job_uses_references_and_persists_confidence(dataset, monkeypatch, endpoint, expected_url):
     from iad_core.workbench.audit import AuditService, VlmClient
     db, registry, config = dataset
+    if endpoint is None:
+        monkeypatch.delenv("LIVE_VLM_ENDPOINT", raising=False)
+    else:
+        monkeypatch.setenv("LIVE_VLM_ENDPOINT", endpoint)
     bodies = []
     patterns = {"structure": "正常胶线连续", "texture": "平整", "position_variation": "允许平移", "illumination_variation": "允许反光", "normal_allowances": ["亮度变化"], "cautions": ["细小裂纹需局部检查"]}
     view = {"description": "胶线连续", "position_analysis": "位置偏移已比较", "illumination_analysis": "高亮是反光"}
     result = {**view, "suggested_label": "FAIL", "reason_category": "SCRATCH", "confidence": 0.61, "defect_location": "bottom"}
     responses = [patterns, view, view, result, view, view, result]
     def respond(request):
+        assert str(request.url) == expected_url
         body = json.loads(request.content)
         bodies.append(body)
         answer = dict(responses[len(bodies)-1])
