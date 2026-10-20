@@ -14,6 +14,7 @@ interface ViewState {
     selected: string;
     tab: string;
     version: string;
+    normalVersion: string;
     job: string;
 }
 interface WorkspaceState {

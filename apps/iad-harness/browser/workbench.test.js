@@ -62,6 +62,14 @@ for name in ['normal','normal2','dent']:
       const view = {description:"可观察证据",position_analysis:"位置合理",illumination_analysis:"反光已核实"};
       let answer = view;
       if (schema.title === "KnowledgeDraft") answer = {summary:"可见蓝色表面",checks:[{title:"表面外观",subject:"主体",location:"全图",criterion:"可见蓝色表面",allowed_variations:["亮度变化"],support_evidence_ids:images.map(image=>image.evidence_id),counter_evidence_ids:[],limitations:[],status:"supported"}],suspects:[],limitations:[]};
+      if (schema.title === "KnowledgeDraft" && parts[0].text.includes("冻结父版本候选：")) {
+        const parent=JSON.parse(parts[0].text.split("冻结父版本候选：")[1].split("\n")[0]);
+        answer.revisions=parent.checks.map(check=>({previous_check_id:check.check_id,current_check_titles:["表面外观"],reason:"本轮图像仍支持相同外观判据"}));
+      }
+      if (schema.title === "KnowledgeVerification") {
+        const payload=JSON.parse(parts[0].text.split("待核验疑点：")[1].split("\n请根据图像")[0]);
+        answer={findings:payload.findings.map(target=>({finding_id:target.finding_id,status:"insufficient",affected_check_titles:[],description:"当前图像不足以确认异常",normal_explanation:"仍需排除反光",limitations:["需要独立证据"],evidence_ids:[target.regions.find(region=>region.image.representation==="raw").image.evidence_id],conflicts:[]}))};
+      }
       if (schema.title === "JointAnalysis") answer = {...view,global_view:view,
         check_assessments:JSON.parse(parts[0].text.split("冻结知识：")[1].split("\n")[0]).checks.map(check=>({...view,check_id:check.check_id,status:"anomaly",evidence_ids:[images[1].evidence_id]})),
         region_observations:images.filter(image=>image.role==="roi"&&image.representation==="raw").map((_,index)=>({...view,region_index:index+1})),suggested_label:"FAIL",reason_category:"SCRATCH",confidence:0.8,
@@ -88,7 +96,7 @@ for name in ['normal','normal2','dent']:
     await driver.manage().window().setRect({ width: 1440, height: 1100 });
     await driver.get(base + "?host=kept#host-anchor");
     const element = css => driver.wait(until.elementLocated(By.css(css)), 15000);
-    const button = async text => (await driver.findElement(By.xpath(`//button[normalize-space(.)='${text}']`))).click();
+    const button = async text => { const control = await driver.findElement(By.xpath(`//button[normalize-space(.)='${text}']`)); await driver.wait(until.elementIsEnabled(control),15000); await control.click(); };
     const select = async (label, value) => {
       const el = await element(`select[aria-label='${label}']`);
       await driver.executeScript("arguments[0].value=arguments[1];arguments[0].dispatchEvent(new Event('change',{bubbles:true}));", el, value);
@@ -315,6 +323,34 @@ for name in ['normal','normal2','dent']:
     await button("数据集管理");
     await button("添加数据集"); await button("取消");
     assert.equal(await driver.executeScript("return document.activeElement.textContent"),"添加数据集","关闭导入弹窗应返回发起按钮焦点");
+    await button("挖掘良品知识");
+    await (await element("input[aria-label='知识挖掘模型']")).sendKeys("test-next");
+    await button("开始挖掘良品知识");
+    let nextNormal;
+    await driver.wait(async()=>{const response=await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json();nextNormal=response.knowledge;return nextNormal?.version_id!==published.knowledge.version_id;},15000);
+    await button("挖掘不良品知识");
+    await select("依据良品知识版本",published.knowledge.version_id);
+    await button("开始挖掘不良品知识");
+    let defect;
+    await driver.wait(async()=>{defect=(await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=defect`)).json()).knowledge;return !!defect;},15000);
+    assert.equal(defect.normal_version_id,published.knowledge.version_id);
+    await driver.wait(async()=>(await (await element("[data-field='knowledge-normal-version']")).getText()).includes(published.knowledge.version_id),15000);
+    await select("依据良品知识版本",nextNormal.version_id);
+    await driver.navigate().refresh();
+    await driver.wait(async()=>await (await element("select[aria-label='依据良品知识版本']")).getAttribute("value")===nextNormal.version_id,10000);
+    assert.ok((await (await element("[data-field='knowledge-normal-version']")).getText()).includes(published.knowledge.version_id),"下次执行的正常版本不能改写已发布不良知识的依赖展示");
+    await button("标注核验");
+    await driver.wait(async()=>(await (await element(".iad-knowledge-content")).getText()).includes("证据不足"),10000);
+    const chrome=await driver.executeScript("return {width:outerWidth-innerWidth,height:outerHeight-innerHeight}");
+    await driver.manage().window().setRect({width:375+chrome.width,height:812+chrome.height});
+    await driver.setContext("chrome");
+    await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth='375px';gBrowser.selectedBrowser.style.width='375px';gBrowser.selectedBrowser.style.flex='none'");
+    await driver.setContext("content");
+    assert.equal(await driver.executeScript("return innerWidth"),375);
+    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"),"带真实知识版本和核验记录的窄屏页面不能横向溢出");
+    await fs.writeFile(path.join(workspace,"runs/browser/knowledge-versions-375.png"),await driver.takeScreenshot(),"base64");
+
+
   } catch (error) {
     if (driver) {
       await fs.writeFile(path.join(workspace, "runs/browser/failure.png"), await driver.takeScreenshot(), "base64");

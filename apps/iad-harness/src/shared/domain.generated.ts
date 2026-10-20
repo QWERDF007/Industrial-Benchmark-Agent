@@ -428,6 +428,11 @@ export type LegacyProfileId1 = string | null;
 export type SampleCount = number;
 export type KnowledgeVersions = KnowledgeUsage[];
 export type AuditRunIds = string[];
+export type DatasetId4 = string;
+export type Kind2 = "normal" | "defect";
+export type NormalVersionId5 = string | null;
+export type ModelName3 = string;
+export type SampleIds2 = string[] | null;
 
 export interface WorkbenchDomain {
   AuditAnalysis?: AuditAnalysis;
@@ -439,6 +444,7 @@ export interface WorkbenchDomain {
   DatasetImport?: DatasetImport;
   ArchiveInspection?: ArchiveInspection;
   DatasetReport?: DatasetReport;
+  MiningStart?: MiningStart;
 }
 export interface AuditAnalysis {
   normal_version_id: NormalVersionId;
@@ -859,4 +865,11 @@ export interface KnowledgeUsage {
   defect_version_id: DefectVersionId2;
   legacy_profile_id: LegacyProfileId1;
   sample_count: SampleCount;
+}
+export interface MiningStart {
+  dataset_id: DatasetId4;
+  kind: Kind2;
+  normal_version_id?: NormalVersionId5;
+  model_name?: ModelName3;
+  sample_ids?: SampleIds2;
 }

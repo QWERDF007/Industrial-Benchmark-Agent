@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import type { Dataset, KnowledgeJob, KnowledgeSnapshot, KnowledgeVersion } from "../../shared/contracts.js";
+import type { Dataset, KnowledgeJob, KnowledgeSnapshot, KnowledgeVersion, KnowledgeStartRequest } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 import { useJobs } from "../useJobs.js";
 import { useWorkspace } from "../workspace.js";
@@ -13,6 +13,9 @@ export function KnowledgePage({ dataset, kind }: { dataset: Dataset; kind: "norm
   const [knowledge, setKnowledge] = useState<KnowledgeSnapshot | null>(null);
   const [normal, setNormal] = useState<KnowledgeSnapshot | null>(null);
   const [versions, setVersions] = useState<KnowledgeVersion[]>([]);
+  const [normalVersions, setNormalVersions] = useState<KnowledgeVersion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -24,19 +27,21 @@ export function KnowledgePage({ dataset, kind }: { dataset: Dataset; kind: "norm
   const running = jobs.some(job => job.status === "RUNNING" || job.status === "PENDING");
   const [checkId, setCheckId] = useState("");
   useEffect(() => {
-    const controller = new AbortController();
+    const controller = new AbortController(); setLoading(true);
     const query = new URLSearchParams({ dataset_id: dataset.dataset_id, kind, ...(view.version ? { version_id: view.version } : {}) });
     Promise.all([
       request<{ knowledge: KnowledgeSnapshot | null; versions: KnowledgeVersion[] }>(`/knowledge?${query}`, undefined, undefined, controller.signal),
-      kind === "defect" ? request<{ knowledge: KnowledgeSnapshot | null }>(`/knowledge?${new URLSearchParams({ dataset_id: dataset.dataset_id, kind: "normal" })}`, undefined, undefined, controller.signal) : Promise.resolve({ knowledge: null }),
-    ]).then(([current, reference]) => { if (!controller.signal.aborted) { setKnowledge(current.knowledge); setVersions(current.versions); setNormal(reference.knowledge); setError(""); } })
-      .catch(error => { if (!controller.signal.aborted) setError(message(error)); });
+      kind === "defect" ? request<{ knowledge: KnowledgeSnapshot | null; versions: KnowledgeVersion[] }>(`/knowledge?${new URLSearchParams({ dataset_id: dataset.dataset_id, kind: "normal", ...(view.normalVersion ? { version_id: view.normalVersion } : {}) })}`, undefined, undefined, controller.signal) : Promise.resolve({ knowledge: null, versions: [] }),
+    ]).then(([current, reference]) => { if (!controller.signal.aborted) { setKnowledge(current.knowledge); setVersions(current.versions); setNormal(reference.knowledge); setNormalVersions(reference.versions); setLoadError(""); } })
+      .catch(error => { if (!controller.signal.aborted) setLoadError(message(error)); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [dataset.dataset_id, kind, revision, view.version]);
+  }, [dataset.dataset_id, kind, revision, view.version, view.normalVersion]);
   async function start() {
     setBusy(true); setError("");
     try {
-      await request("/knowledge/start", { dataset_id: dataset.dataset_id, kind, ...(kind === "defect" ? { normal_version_id: normal?.version_id } : {}), ...(model.trim() ? { model_name: model.trim() } : {}) });
+      const input: KnowledgeStartRequest = { dataset_id: dataset.dataset_id, kind, ...(kind === "defect" ? { normal_version_id: normal?.version_id } : {}), ...(model.trim() ? { model_name: model.trim() } : {}) };
+      await request<KnowledgeJob>("/knowledge/start", input);
       workspace.updateView(pageId, { version: "" }); polling.refresh(); updated();
     } catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
@@ -50,15 +55,24 @@ export function KnowledgePage({ dataset, kind }: { dataset: Dataset; kind: "norm
   }
   return <section className="iad-knowledge-page">
     <section className="iad-job-section"><div className="iad-row"><strong>全部合格{kind === "normal" ? "良品" : "异常"}候选</strong><label>模型<input aria-label="知识挖掘模型" placeholder="使用项目配置" value={model} onChange={event => setModel(event.target.value)} /></label>
-      <button className="iad-primary" disabled={busy || running || (kind === "defect" && !normal?.checks.some(check => check.status === "supported"))} onClick={start}>{busy ? "启动中…" : `开始挖掘${kind === "normal" ? "良品" : "不良品"}知识`}</button></div>
-      <label className="iad-field">知识版本<select aria-label="知识版本" value={view.version} onChange={event => workspace.updateView(pageId, { version: event.target.value })}><option value="">当前发布版本{versions.length ? "" : " · 尚未发布"}</option>{versions.map(version => <option key={version.version_id} value={version.version_id}>{version.created_at} · {version.version_id} · {version.source_count} 张来源</option>)}</select></label>
+      <button className="iad-primary" disabled={busy || loading || !!loadError || running || (kind === "normal" ? !dataset.reference_sample_ids.length : !normal?.checks.some(check => check.status === "supported") || (!!view.normalVersion && normal.version_id !== view.normalVersion))} onClick={start}>{busy ? "启动中…" : `开始挖掘${kind === "normal" ? "良品" : "不良品"}知识`}</button></div>
+      <label className="iad-field">知识版本<select aria-label="知识版本" value={view.version} onChange={event => workspace.updateView(pageId, { version: event.target.value })}><option value="">当前发布版本{versions.length ? "" : " · 尚未发布"}</option>{versions.map(version => <option key={version.version_id} value={version.version_id}>{version.version_id} · {version.source_count} 张来源 · {version.created_at}</option>)}</select></label>
       {view.version && <p className="iad-muted">正在查看固定版本；新作业从当前已发布版本继续核验。</p>}
-      {kind === "defect" && (normal ? <p className="iad-muted">依据良品版本 <code>{normal.version_id}</code></p> : <p>需要可用的良品知识。<button onClick={() => workspace.navigate("industrial-normal")}>前往良品知识</button></p>)}
+      {kind === "defect" && <>
+        <label className="iad-field">下次挖掘依据的良品版本<select aria-label="依据良品知识版本" value={view.normalVersion || ""} onChange={event => workspace.updateView(pageId, { normalVersion: event.target.value })} disabled={busy || running}>
+          <option value="">当前发布版本</option>{normalVersions.map(version => <option key={version.version_id} value={version.version_id}>{version.version_id} · {version.created_at}</option>)}
+        </select></label>
+        {!loading && !normal?.checks.some(check => check.status === "supported") && <p>所选版本没有可用的良品判据。<button onClick={() => workspace.navigate("industrial-normal")}>前往良品知识</button></p>}
+      </>}
+      {loading && <p role="status" className="iad-muted">正在读取知识…</p>}
+      {loadError && <p role="alert" className="iad-error">{loadError} <button onClick={updated}>重新读取知识</button></p>}
       {(error || polling.error) && <p role="alert" className="iad-error">{error || polling.error}</p>}
       <p className="iad-muted">参考资格与初始无标注约定在数据集管理维护。</p><button onClick={() => workspace.navigate("industrial-datasets")}>维护候选来源</button>
     </section>
     <nav className="iad-tabs" aria-label="知识视图">{[["results", "知识条目"], ["findings", kind === "normal" ? "待核实" : "标注核验"], ["versions", "版本"], ["jobs", "作业记录"]].map(([tab, title]) => <button key={tab} className={view.tab === tab ? "active" : ""} aria-pressed={view.tab === tab} onClick={() => workspace.updateView(pageId, { tab })}>{title}</button>)}</nav>
     <section className="iad-knowledge-content iad-job-section">{knowledge ? <>
+      {knowledge.normal_version_id && <p data-field="knowledge-normal-version">此知识版本依据良品 <code>{knowledge.normal_version_id}</code></p>}
+      {knowledge.kind === "defect" && !loading && normal && normal.version_id !== knowledge.normal_version_id && <p className="iad-muted">下次挖掘将使用另一良品版本，当前结果保留原依据。</p>}
       <p>{knowledge.summary}</p><p className="iad-muted"><code>{knowledge.version_id}</code> · {knowledge.sources.length} 张来源 · {knowledge.checks.length} 项判据 · {knowledge.findings.length} 项核验</p>
       {view.tab === "results" && <div className="iad-knowledge-split"><div className="iad-check-list">{knowledge.checks.map(item => <button key={item.check_id} aria-pressed={check?.check_id === item.check_id} onClick={() => setCheckId(item.check_id)}><strong>{item.title}</strong><span>{statuses[item.status]} · 支持 {item.support_evidence_ids.length} / 反对 {item.counter_evidence_ids.length}</span></button>)}{!knowledge.checks.length && <p>尚无可发布判据，请查看限制和核验结果。</p>}</div>{check && <article className="iad-info-group"><h2>{check.title}</h2><p>{check.subject} · {check.location}</p><p>{check.criterion}</p><p>允许变化：{check.allowed_variations.join("；") || "未记录"}</p><h3>支持证据</h3>{evidence(check.support_evidence_ids)}{!!check.counter_evidence_ids.length && <><h3>反对证据</h3>{evidence(check.counter_evidence_ids)}</>}<p className="iad-muted">{check.limitations.join("；")}</p></article>}</div>}
       {view.tab === "findings" && <>{knowledge.findings.map(finding => <article className="iad-info-group" key={finding.finding_id}><h3>{finding.judgment.status === "supported" ? "图像支持异常" : finding.judgment.status === "refuted" ? "正常解释成立" : "证据不足"}</h3><p>{finding.judgment.description}</p><p>正常替代解释：{finding.judgment.normal_explanation}</p><p className="iad-muted">{finding.judgment.limitations.join("；")}</p>{evidence(finding.judgment.evidence_ids)}<button onClick={() => workspace.navigate("industrial-review", finding.sample_id)}>人工核实此图</button></article>)}{!knowledge.findings.length && <p>此版本没有待核验区域。</p>}</>}

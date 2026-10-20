@@ -21,7 +21,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 审计冻结知识、版本关系与独立支持 | [InspectionKnowledge](../python/iad_core/workbench/knowledge.py) |
 | 逐项适用性、规则区域来源及缺口追加 | [分析契约](../python/iad_core/advisory/analysis.py)、[SampleInspection](../python/iad_core/workbench/inspection.py)、[JointInspection](../python/iad_core/workbench/joint.py)、[规则证据视图](../apps/iad-harness/src/client/components/RuleAssessments.tsx) |
 | 综合疑点、实际来源关联/消解与全图聚焦 | [疑点契约](../python/iad_core/advisory/analysis.py)、[FindingLedger](../python/iad_core/workbench/findings.py)、[疑点视图](../apps/iad-harness/src/client/components/AuditFindings.tsx)、[共享证据按钮](../apps/iad-harness/src/client/components/AuditEvidence.tsx)、[ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx) |
-| Python 分析/知识契约与客户端类型生成 | [分析模型](../python/iad_core/advisory/analysis.py)、[知识模型](../python/iad_core/knowledge/models.py)、[生成器](../apps/iad-harness/scripts/generate-contracts.js) |
+| Python 分析/知识契约与客户端类型生成 | [分析模型](../python/iad_core/advisory/analysis.py)、[知识模型](../python/iad_core/knowledge/models.py)、[挖掘请求](../python/iad_core/knowledge/service.py)、[生成器](../apps/iad-harness/scripts/generate-contracts.js) |
 | 数据集良品/不良品知识挖掘与版本证据 | [KnowledgeService](../python/iad_core/knowledge/service.py)、[来源资格与指纹](../python/iad_core/knowledge/sources.py)、[全图/原图细节分组与归纳](../python/iad_core/knowledge/mining.py)、[契约](../python/iad_core/knowledge/models.py)、[仓储](../python/iad_core/knowledge/repository.py) |
 | 良品候选疑点、原图定位与联合证据核验 | [NormalVerification](../python/iad_core/knowledge/verification.py) |
 | 冻结良品版本、异常候选与标注核验 | [DefectVerification](../python/iad_core/knowledge/defect.py)、[共享联合核验](../python/iad_core/knowledge/findings.py) |

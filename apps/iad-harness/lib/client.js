@@ -1264,7 +1264,7 @@ var __IadClientBundle__ = (() => {
     "industrial-audit": "\u6A21\u578B\u5BA1\u8BA1",
     "industrial-review": "\u4EBA\u5DE5\u590D\u6838"
   };
-  var defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", job: "" });
+  var defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", job: "" });
   var Workspace = class {
     state = { active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
     listeners = /* @__PURE__ */ new Set();
@@ -1334,7 +1334,7 @@ var __IadClientBundle__ = (() => {
           const route = JSON.parse(raw);
           if (route.pageId in pages && typeof route.datasetId === "string") {
             const view = defaultView(route.pageId);
-            for (const key of ["selected", "tab", "version", "job"]) if (typeof route[key] === "string") view[key] = route[key];
+            for (const key of ["selected", "tab", "version", "normalVersion", "job"]) if (typeof route[key] === "string") view[key] = route[key];
             if (Number.isInteger(route.page) && route.page > 0) view.page = route.page;
             if (route.filters) {
               for (const key of ["search", "model_status", "review_status", "technical", "sort_by"]) if (typeof route.filters[key] === "string") view.filters[key] = route.filters[key];
@@ -1369,6 +1369,9 @@ var __IadClientBundle__ = (() => {
     const [knowledge, setKnowledge] = (0, import_react11.useState)(null);
     const [normal, setNormal] = (0, import_react11.useState)(null);
     const [versions, setVersions] = (0, import_react11.useState)([]);
+    const [normalVersions, setNormalVersions] = (0, import_react11.useState)([]);
+    const [loading, setLoading] = (0, import_react11.useState)(true);
+    const [loadError, setLoadError] = (0, import_react11.useState)("");
     const [error, setError] = (0, import_react11.useState)("");
     const [busy, setBusy] = (0, import_react11.useState)(false);
     const [revision, setRevision] = (0, import_react11.useState)(0);
@@ -1381,27 +1384,32 @@ var __IadClientBundle__ = (() => {
     const [checkId, setCheckId] = (0, import_react11.useState)("");
     (0, import_react11.useEffect)(() => {
       const controller = new AbortController();
+      setLoading(true);
       const query = new URLSearchParams({ dataset_id: dataset.dataset_id, kind, ...view.version ? { version_id: view.version } : {} });
       Promise.all([
         request(`/knowledge?${query}`, void 0, void 0, controller.signal),
-        kind === "defect" ? request(`/knowledge?${new URLSearchParams({ dataset_id: dataset.dataset_id, kind: "normal" })}`, void 0, void 0, controller.signal) : Promise.resolve({ knowledge: null })
+        kind === "defect" ? request(`/knowledge?${new URLSearchParams({ dataset_id: dataset.dataset_id, kind: "normal", ...view.normalVersion ? { version_id: view.normalVersion } : {} })}`, void 0, void 0, controller.signal) : Promise.resolve({ knowledge: null, versions: [] })
       ]).then(([current, reference]) => {
         if (!controller.signal.aborted) {
           setKnowledge(current.knowledge);
           setVersions(current.versions);
           setNormal(reference.knowledge);
-          setError("");
+          setNormalVersions(reference.versions);
+          setLoadError("");
         }
       }).catch((error2) => {
-        if (!controller.signal.aborted) setError(message(error2));
+        if (!controller.signal.aborted) setLoadError(message(error2));
+      }).finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
       });
       return () => controller.abort();
-    }, [dataset.dataset_id, kind, revision, view.version]);
+    }, [dataset.dataset_id, kind, revision, view.version, view.normalVersion]);
     async function start() {
       setBusy(true);
       setError("");
       try {
-        await request("/knowledge/start", { dataset_id: dataset.dataset_id, kind, ...kind === "defect" ? { normal_version_id: normal?.version_id } : {}, ...model.trim() ? { model_name: model.trim() } : {} });
+        const input = { dataset_id: dataset.dataset_id, kind, ...kind === "defect" ? { normal_version_id: normal?.version_id } : {}, ...model.trim() ? { model_name: model.trim() } : {} };
+        await request("/knowledge/start", input);
         workspace.updateView(pageId, { version: "" });
         polling.refresh();
         updated();
@@ -1438,7 +1446,7 @@ var __IadClientBundle__ = (() => {
             "\u6A21\u578B",
             /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("input", { "aria-label": "\u77E5\u8BC6\u6316\u6398\u6A21\u578B", placeholder: "\u4F7F\u7528\u9879\u76EE\u914D\u7F6E", value: model, onChange: (event) => setModel(event.target.value) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("button", { className: "iad-primary", disabled: busy || running || kind === "defect" && !normal?.checks.some((check2) => check2.status === "supported"), onClick: start, children: busy ? "\u542F\u52A8\u4E2D\u2026" : `\u5F00\u59CB\u6316\u6398${kind === "normal" ? "\u826F\u54C1" : "\u4E0D\u826F\u54C1"}\u77E5\u8BC6` })
+          /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("button", { className: "iad-primary", disabled: busy || loading || !!loadError || running || (kind === "normal" ? !dataset.reference_sample_ids.length : !normal?.checks.some((check2) => check2.status === "supported") || !!view.normalVersion && normal.version_id !== view.normalVersion), onClick: start, children: busy ? "\u542F\u52A8\u4E2D\u2026" : `\u5F00\u59CB\u6316\u6398${kind === "normal" ? "\u826F\u54C1" : "\u4E0D\u826F\u54C1"}\u77E5\u8BC6` })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("label", { className: "iad-field", children: [
           "\u77E5\u8BC6\u7248\u672C",
@@ -1448,29 +1456,49 @@ var __IadClientBundle__ = (() => {
               versions.length ? "" : " \xB7 \u5C1A\u672A\u53D1\u5E03"
             ] }),
             versions.map((version) => /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("option", { value: version.version_id, children: [
-              version.created_at,
-              " \xB7 ",
               version.version_id,
               " \xB7 ",
               version.source_count,
-              " \u5F20\u6765\u6E90"
+              " \u5F20\u6765\u6E90 \xB7 ",
+              version.created_at
             ] }, version.version_id))
           ] })
         ] }),
         view.version && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("p", { className: "iad-muted", children: "\u6B63\u5728\u67E5\u770B\u56FA\u5B9A\u7248\u672C\uFF1B\u65B0\u4F5C\u4E1A\u4ECE\u5F53\u524D\u5DF2\u53D1\u5E03\u7248\u672C\u7EE7\u7EED\u6838\u9A8C\u3002" }),
-        kind === "defect" && (normal ? /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("p", { className: "iad-muted", children: [
-          "\u4F9D\u636E\u826F\u54C1\u7248\u672C ",
-          /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("code", { children: normal.version_id })
-        ] }) : /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("p", { children: [
-          "\u9700\u8981\u53EF\u7528\u7684\u826F\u54C1\u77E5\u8BC6\u3002",
-          /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("button", { onClick: () => workspace.navigate("industrial-normal"), children: "\u524D\u5F80\u826F\u54C1\u77E5\u8BC6" })
-        ] })),
+        kind === "defect" && /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(import_jsx_runtime13.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("label", { className: "iad-field", children: [
+            "\u4E0B\u6B21\u6316\u6398\u4F9D\u636E\u7684\u826F\u54C1\u7248\u672C",
+            /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("select", { "aria-label": "\u4F9D\u636E\u826F\u54C1\u77E5\u8BC6\u7248\u672C", value: view.normalVersion || "", onChange: (event) => workspace.updateView(pageId, { normalVersion: event.target.value }), disabled: busy || running, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("option", { value: "", children: "\u5F53\u524D\u53D1\u5E03\u7248\u672C" }),
+              normalVersions.map((version) => /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("option", { value: version.version_id, children: [
+                version.version_id,
+                " \xB7 ",
+                version.created_at
+              ] }, version.version_id))
+            ] })
+          ] }),
+          !loading && !normal?.checks.some((check2) => check2.status === "supported") && /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("p", { children: [
+            "\u6240\u9009\u7248\u672C\u6CA1\u6709\u53EF\u7528\u7684\u826F\u54C1\u5224\u636E\u3002",
+            /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("button", { onClick: () => workspace.navigate("industrial-normal"), children: "\u524D\u5F80\u826F\u54C1\u77E5\u8BC6" })
+          ] })
+        ] }),
+        loading && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("p", { role: "status", className: "iad-muted", children: "\u6B63\u5728\u8BFB\u53D6\u77E5\u8BC6\u2026" }),
+        loadError && /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("p", { role: "alert", className: "iad-error", children: [
+          loadError,
+          " ",
+          /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("button", { onClick: updated, children: "\u91CD\u65B0\u8BFB\u53D6\u77E5\u8BC6" })
+        ] }),
         (error || polling.error) && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("p", { role: "alert", className: "iad-error", children: error || polling.error }),
         /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("p", { className: "iad-muted", children: "\u53C2\u8003\u8D44\u683C\u4E0E\u521D\u59CB\u65E0\u6807\u6CE8\u7EA6\u5B9A\u5728\u6570\u636E\u96C6\u7BA1\u7406\u7EF4\u62A4\u3002" }),
         /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("button", { onClick: () => workspace.navigate("industrial-datasets"), children: "\u7EF4\u62A4\u5019\u9009\u6765\u6E90" })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("nav", { className: "iad-tabs", "aria-label": "\u77E5\u8BC6\u89C6\u56FE", children: [["results", "\u77E5\u8BC6\u6761\u76EE"], ["findings", kind === "normal" ? "\u5F85\u6838\u5B9E" : "\u6807\u6CE8\u6838\u9A8C"], ["versions", "\u7248\u672C"], ["jobs", "\u4F5C\u4E1A\u8BB0\u5F55"]].map(([tab, title]) => /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("button", { className: view.tab === tab ? "active" : "", "aria-pressed": view.tab === tab, onClick: () => workspace.updateView(pageId, { tab }), children: title }, tab)) }),
       /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("section", { className: "iad-knowledge-content iad-job-section", children: knowledge ? /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(import_jsx_runtime13.Fragment, { children: [
+        knowledge.normal_version_id && /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("p", { "data-field": "knowledge-normal-version", children: [
+          "\u6B64\u77E5\u8BC6\u7248\u672C\u4F9D\u636E\u826F\u54C1 ",
+          /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("code", { children: knowledge.normal_version_id })
+        ] }),
+        knowledge.kind === "defect" && !loading && normal && normal.version_id !== knowledge.normal_version_id && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("p", { className: "iad-muted", children: "\u4E0B\u6B21\u6316\u6398\u5C06\u4F7F\u7528\u53E6\u4E00\u826F\u54C1\u7248\u672C\uFF0C\u5F53\u524D\u7ED3\u679C\u4FDD\u7559\u539F\u4F9D\u636E\u3002" }),
         /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("p", { children: knowledge.summary }),
         /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("p", { className: "iad-muted", children: [
           /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("code", { children: knowledge.version_id }),
@@ -1626,6 +1654,8 @@ var __IadClientBundle__ = (() => {
   var workbenchStyles = themeStyles + `
 .iad-workbench {height:100%;box-sizing:border-box;overflow:auto;min-width:0;padding:24px;color:var(--iad-text);background:var(--iad-canvas);font:var(--dsh-content-font-size,14px)/1.55 system-ui,sans-serif;}
 .iad-workbench * {box-sizing:border-box;}
+.iad-workbench code {overflow-wrap:anywhere;}
+.iad-field select {width:100%;}
 .iad-workbench h1 {font-size:24px;margin:3px 0 0;font-weight:700;}
 .iad-workbench h2 {font-size:17px;margin:0 0 16px;}
 .iad-workbench h3 {font-size:14px;margin:20px 0 9px;overflow:hidden;text-overflow:ellipsis;}

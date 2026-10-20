@@ -2,6 +2,8 @@ import { themeStyles } from "./theme.js";
 export const workbenchStyles = themeStyles + `
 .iad-workbench {height:100%;box-sizing:border-box;overflow:auto;min-width:0;padding:24px;color:var(--iad-text);background:var(--iad-canvas);font:var(--dsh-content-font-size,14px)/1.55 system-ui,sans-serif;}
 .iad-workbench * {box-sizing:border-box;}
+.iad-workbench code {overflow-wrap:anywhere;}
+.iad-field select {width:100%;}
 .iad-workbench h1 {font-size:24px;margin:3px 0 0;font-weight:700;}
 .iad-workbench h2 {font-size:17px;margin:0 0 16px;}
 .iad-workbench h3 {font-size:14px;margin:20px 0 9px;overflow:hidden;text-overflow:ellipsis;}

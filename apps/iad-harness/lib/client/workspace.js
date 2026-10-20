@@ -8,7 +8,7 @@ export const pages = {
     "industrial-audit": "模型审计",
     "industrial-review": "人工复核",
 };
-const defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", job: "" });
+const defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", job: "" });
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export class Workspace {
     state = { active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
@@ -76,7 +76,7 @@ export class Workspace {
                 const route = JSON.parse(raw);
                 if (route.pageId in pages && typeof route.datasetId === "string") {
                     const view = defaultView(route.pageId);
-                    for (const key of ["selected", "tab", "version", "job"])
+                    for (const key of ["selected", "tab", "version", "normalVersion", "job"])
                         if (typeof route[key] === "string")
                             view[key] = route[key];
                     if (Number.isInteger(route.page) && route.page > 0)

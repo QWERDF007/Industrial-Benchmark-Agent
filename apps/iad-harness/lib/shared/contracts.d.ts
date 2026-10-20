@@ -2,7 +2,7 @@ import type { AuditAnalysis, KnowledgeSnapshot, AuditStart, ModelCallDetail, Dat
 export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot, JobRetry, DatasetImport as DatasetImportRequest, ArchiveInspection, DatasetReport as Report } from "./domain.generated.js";
 export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
 export type ModelCallSummary = Omit<ModelCallDetail, "request_body" | "response_body">;
-export type { KnowledgeVersion } from "./domain.generated.js";
+export type { KnowledgeVersion, MiningStart as KnowledgeStartRequest } from "./domain.generated.js";
 export type Decision = "PASS" | "HARD_NORMAL" | "FAIL" | "UNCERTAIN" | "SKIP";
 export interface Suggestion {
     suggestion_id: string;
