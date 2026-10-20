@@ -20,7 +20,7 @@ Linux x64 的原生图像附件要求 GLIBC ≥ 2.28，见 [Sharp 官方运行�
 - **人工复核**：查看复核明细并提交人工裁决。
 - **插件**：保留 DSH 原生插件管理入口。
 - **知识技能**：[`mine-normal-knowledge` / `mine-defect-knowledge`](apps/iad-harness/src/server/knowledge/skills.ts)，通过同一工作台作业挖掘知识并回读实际证据。
-- **DSH 对话**：提供数据集图像目录、Labelme 标注目录和名称，要求挖掘两类知识并审计；[原生工具与流程指引](apps/iad-harness/src/server/workbench-tools/index.ts)连接同一工作台数据和结果。附件上传、六步骤页面及综合质量评分的目标见[规格](docs/specs/dataset-knowledge-audit.md)。
+- **DSH 对话**：提供服务器目录或上传 Labelme ZIP 附件，要求挖掘两类知识并审计。ZIP 沿用宿主文件附件，先查阅包内目录，再选择图像目录、标注目录和名称；[原生工具与流程指引](apps/iad-harness/src/server/workbench-tools/index.ts)连接同一工作台数据和结果。六步骤页面及质量评分的目标见[规格](docs/specs/dataset-knowledge-audit.md)。
 
 ## 开发入口
 
@@ -45,6 +45,6 @@ FIREFOX_PATH=/path/to/firefox GECKODRIVER_PATH=/path/to/geckodriver pnpm --filte
 
 原生知识技能与后续审计的合成图真实验证入口为 [verify-knowledge-skills.js](apps/iad-harness/scripts/verify-knowledge-skills.js)，同样先导出模型环境变量，再运行 `node apps/iad-harness/scripts/verify-knowledge-skills.js`；生成独立数据库和本地验证记录。
 
-自然语言会话验收使用 [verify-dataset-session.js](apps/iad-harness/scripts/verify-dataset-session.js)：显式导出 `LIVE_VLM_ENDPOINT` 和 `LIVE_VLM_KEY` 后运行 `node apps/iad-harness/scripts/verify-dataset-session.js`。脚本创建官方 DSH Agent/Session，经实际模型选择工具执行目录接入、两项技能、知识审计、报告读取及全图/ROI 追问；生成合成图、隔离数据库和会话轨迹，不使用主数据库。该验证不代表独立工业准确率或全部 UI 已验收。
+自然语言会话验收使用 [verify-dataset-session.js](apps/iad-harness/scripts/verify-dataset-session.js)：显式导出 `LIVE_VLM_ENDPOINT` 和 `LIVE_VLM_KEY` 后运行 `node apps/iad-harness/scripts/verify-dataset-session.js`，添加 `--archive` 验证真实 DSH ZIP 文件附件。脚本创建官方 DSH Agent/Session，经实际模型选择工具执行接入、两项技能、知识审计、报告读取及全图/ROI 追问；生成合成图、隔离数据库和会话轨迹，不使用主数据库。该验证不代表浏览器上传、独立工业准确率或全部 UI 已验收。
 
 真实模型的工作进程恢复验收使用 [verify_job_recovery_live.py](scripts/verify_job_recovery_live.py)：导出同一模型环境变量后运行 `PYTHONPATH=python python scripts/verify_job_recovery_live.py`，使用合成图与隔离库；仅终止脚本创建的工作进程，不操作主服务。

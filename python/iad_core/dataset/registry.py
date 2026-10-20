@@ -15,6 +15,7 @@ class DatasetImport(BaseModel):
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
     image_dir: str
     annotation_dir: str
+    archive_path: Optional[str] = None
     unannotated_is_normal: bool = True
 
 
@@ -93,8 +94,13 @@ class DatasetRegistry:
     def import_labelme(self, request: DatasetImport) -> DatasetConfig:
         from iad_core.dataset.scanner import scan_dataset
 
-        image_dir = Path(request.image_dir).expanduser().resolve(strict=True)
-        annotation_dir = Path(request.annotation_dir).expanduser().resolve(strict=True)
+        if request.archive_path:
+            from iad_core.dataset.archive import DatasetArchive
+            image_dir, annotation_dir = DatasetArchive(request.archive_path).prepare(
+                self.db.db_path, request.image_dir, request.annotation_dir)
+        else:
+            image_dir = Path(request.image_dir).expanduser().resolve(strict=True)
+            annotation_dir = Path(request.annotation_dir).expanduser().resolve(strict=True)
         if not image_dir.is_dir() or not annotation_dir.is_dir():
             raise ValueError("Image and annotation paths must be directories")
         if not any(p.suffix.lower() in {".png", ".jpg", ".jpeg", ".bmp", ".webp"} for p in image_dir.rglob("*") if p.is_file()):

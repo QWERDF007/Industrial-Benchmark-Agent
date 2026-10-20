@@ -9,7 +9,8 @@ import { findWorkspaceRoot, resolvePythonPath } from "../lib/server/python-bridg
 
 assert.ok(process.env.LIVE_VLM_ENDPOINT && process.env.LIVE_VLM_KEY, "Set the configured LIVE_VLM_ENDPOINT and LIVE_VLM_KEY before verification");
 const workspace = findWorkspaceRoot();
-const output = path.resolve(process.argv[2] || path.join(workspace, "runs/verification/dataset-session", String(Date.now())));
+const archiveMode = process.argv.includes("--archive");
+const output = path.resolve(process.argv.slice(2).find(arg => arg !== "--archive") || path.join(workspace, "runs/verification/dataset-session", String(Date.now())));
 await fs.mkdir(output, { recursive: true });
 execFileSync(resolvePythonPath(), [fileURLToPath(new URL("../test/fixtures/knowledge_dataset.py", import.meta.url)), output]);
 const model = execFileSync(resolvePythonPath(), ["-c", "from iad_core.workbench.vision import DEFAULT_MODEL; print(DEFAULT_MODEL)"],
@@ -24,8 +25,25 @@ session.ctx.on("tools/result", (exec, result) => {
 const started = Date.now();
 const timeout = setTimeout(() => session.handle.agent.cancel({ kind: "hook", reason: "Verification deadline exceeded" }), 900000);
 try {
-  const prompt = `现在有一份数据集，进行良品、不良品知识挖掘，并审计，评估此数据集的质量。名称：合成部件会话验证；图像目录：${path.join(output, "images")}；Labelme 标注目录：${path.join(output, "labels")}。`;
-  session.handle.agent.followup(createUserMessage({ source: { kind: "user" }, content: [{ type: "text", text: prompt }] }));
+  const source = archiveMode ? "使用所附 ZIP，包内图像目录 product/images、Labelme 标注目录 product/labels"
+    : `图像目录：${path.join(output, "images")}；Labelme 标注目录：${path.join(output, "labels")}`;
+  const content = [{ type: "text", text: `现在有一份数据集，进行良品、不良品知识挖掘，并审计，评估此数据集的质量。名称：合成部件会话验证；${source}。` }];
+  let attachment;
+  if (archiveMode) {
+    execFileSync(resolvePythonPath(), ["-c", `
+from pathlib import Path
+from zipfile import ZipFile, ZIP_DEFLATED
+import sys
+root = Path(sys.argv[1])
+with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
+    for directory in ('images', 'labels'):
+        for item in (root / directory).rglob('*'):
+            if item.is_file(): archive.write(item, 'product/' + item.relative_to(root).as_posix())
+`, output]);
+    attachment = await session.ctx.attachments.saveFile({ data: await fs.readFile(path.join(output, "dataset.zip")), name: "dataset.zip" });
+    content.push({ type: "file", attachment });
+  }
+  session.handle.agent.followup(createUserMessage({ source: { kind: "user" }, content }));
   await session.handle.agent.whenIdle();
   const failed = trace.filter(item => item.result.isError);
   assert.deepEqual(failed, [], "Agent tool errors must be inspected, not hidden");
@@ -36,6 +54,12 @@ try {
     assert.ok(trace.some(item => item.name === "skill" && item.arguments.name === name), `Agent did not load ${name}`);
   }
   const dataset = trace.find(item => item.name === "dataset_import").result.value;
+  if (archiveMode) {
+    assert.ok(trace.some(item => item.name === "dataset_archive_inspect" && !item.result.isError));
+    assert.equal(trace.find(item => item.name === "dataset_import").arguments.archive_path, session.ctx.attachments.fileHostPath(attachment));
+    assert.deepEqual(await fs.readFile(path.join(dataset.image_dir, "part-2.png")), await fs.readFile(path.join(output, "images/part-2.png")));
+    assert.deepEqual(await fs.readFile(path.join(dataset.annotation_dir, "part-2.json")), await fs.readFile(path.join(output, "labels/part-2.json")));
+  }
   const jobs = await session.ctx.iadPythonBridge.execute("knowledge_list", { dataset_id: dataset.dataset_id });
   const audits = await session.ctx.iadPythonBridge.execute("audit_list", { dataset_id: dataset.dataset_id });
   assert.equal(jobs.jobs.length, 2);
@@ -72,7 +96,8 @@ try {
   assert.ok(messages.some(message => message.role === "assistant" && message.content.some(block => block.type === "text" && block.text.length)));
   await fs.writeFile(path.join(output, "result.json"), JSON.stringify({ session_id: session.handle.agent.id, elapsed_ms: Date.now() - started,
     model, report, jobs: [...jobs.jobs, ...audits.jobs], actual_tool_calls: trace.length, industrial_quality: "unassessed",
-    attachment_upload: "not tested", sidebar_pages: "not tested", quality_score: "not implemented", evidence_followup: "actual full-image and ROI attachments" }, null, 2));
+    attachment_upload: archiveMode ? "actual DSH verbatim ZIP file attachment; browser upload not tested" : "not tested",
+    sidebar_pages: "not tested", quality_score: "not implemented", evidence_followup: "actual full-image and ROI attachments" }, null, 2));
   console.log(JSON.stringify({ verified: true, session_id: session.handle.agent.id, actual_tool_calls: trace.length, elapsed_ms: Date.now() - started }));
 } finally {
   clearTimeout(timeout);

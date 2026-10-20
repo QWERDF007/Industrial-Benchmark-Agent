@@ -17,6 +17,7 @@ export const ALLOWED_TOOL_SURFACE = [
     "skill",
     "dataset_list",
     "dataset_import",
+    "dataset_archive_inspect",
     "dataset_report",
     "model_audit_start",
     "model_audit_status",

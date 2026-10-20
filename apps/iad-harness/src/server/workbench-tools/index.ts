@@ -8,7 +8,7 @@ import { jobRetryParameters, jobStatusParameters, waitForJobStatus } from "../jo
 export const DATASET_ANALYSIS_WORKFLOW = `数据集分析流程
 
 用户要求“接入数据集、挖掘良品/不良品知识、审计并评估质量”时，使用以下实际操作完成任务；不要只给计划或在启动作业后就声称完成。
-1. 用 dataset_list 确认已接入的数据集。用户给出服务器图像目录、Labelme 标注目录和名称时调用 dataset_import；已接入则复用稳定 dataset_id。不猜目录或数据集身份，只询问确实缺少的输入。未接入的附件不能声称已上传或已分析。
+1. 用 dataset_list 确认已接入的数据集。用户给出服务器图像目录、Labelme 标注目录和名称时调用 dataset_import。用户上传 ZIP 附件时，从宿主文件句柄取得保存路径，用 dataset_archive_inspect 查看包内目录，再用 dataset_import 的 archive_path 及包内相对 image_dir/annotation_dir 导入；目录不明确时询问，不猜测。已接入则复用稳定 dataset_id，未成功导入的附件不能声称已分析。
 2. 加载 skill: mine-normal-knowledge，按其指引启动 knowledge_mine_normal，查询同一 run_id，取得发布的 knowledge_version_id 并读取知识。默认覆盖全部合格来源，不预设产品、检查点或数量预算。
 3. 加载 skill: mine-defect-knowledge，将刚取得的 normal_version_id 显式传入，执行并读取实际不良知识。无异常候选时如实说明，不能虚构不良知识；仍可用良品知识进行异常筛查。
 4. 用 model_audit_start 显式传入所选 dataset_id、normal_version_id 及实际可用的 defect_version_id；默认全部图像和全部适用 ROI。dataset_audit 只是技术检查，不能替代该 MLLM 联合审计。
@@ -27,12 +27,20 @@ export function createWorkbenchTools(bridge: PythonBridge, ctx: Context): ToolDe
       execute: (_args, exec) => bridge.execute("dataset_list", {}, exec.signal),
     }),
     defineTool({
+      name: "dataset_archive_inspect",
+      description: "检查用户提供的 ZIP 数据集附件或服务器压缩包，列出包内目录的图像/JSON 数量；使用宿主附件句柄中的保存路径，再据实际目录导入。",
+      parameters: { archive_path: { type: "string", required: true } },
+      output: workbenchJsonOutput,
+      execute: (args, exec) => bridge.execute("dataset_archive_inspect", args, exec.signal),
+    }),
+    defineTool({
       name: "dataset_import",
-      description: "从用户提供的服务器图像目录和 Labelme 标注目录导入数据集；名称可指定，结果立即与工作台共享。目录必须真实存在，已导入的目录请复用 dataset_list 中的数据集。",
+      description: "从服务器目录或 ZIP 附件导入 Labelme 数据集。给 archive_path 时，image_dir/annotation_dir 是包内相对目录；否则是服务器目录。保留原始图像与标注，与工作台共享；重复目录请复用已有数据集。",
       parameters: {
         name: { type: "string", required: true },
         image_dir: { type: "string", required: true },
         annotation_dir: { type: "string", required: true },
+        archive_path: { type: "string", description: "可选 ZIP 的宿主保存路径，先用 dataset_archive_inspect 确认目录；附件使用宿主提供的只读文件路径" },
         unannotated_is_normal: { type: "boolean", description: "省略时将无标注图作为初始良品候选，不赋予人工 PASS" },
       },
       output: workbenchJsonOutput,

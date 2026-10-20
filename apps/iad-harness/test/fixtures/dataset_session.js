@@ -10,6 +10,7 @@ import { SkillRegistry } from "@deepseek-ai/dsh-skill";
 import { SystemPrompt } from "@deepseek-ai/dsh-system-prompt";
 import { ToolRuntime } from "@deepseek-ai/dsh-tools";
 import { LocalAttachmentStore } from "@deepseek-ai/dsh-attachment-local";
+import { LocalFileSystem } from "@deepseek-ai/dsh-fs-local";
 import * as skillTool from "@deepseek-ai/dsh-tool-skill";
 import * as harness from "../../lib/server/index.js";
 
@@ -32,6 +33,7 @@ export async function createDatasetSession({ root, dbPath, endpoint, model, apiK
     for (const fork of forks.toReversed()) await fork.dispose();
   };
   try {
+    forks.push(await ctx.plugin(LocalFileSystem, { cwd: root }));
     forks.push(await ctx.plugin(piAi, { providers: { "iad-verification": {
       api: "openai-completions", baseURL: endpoint, apiKeyEnv,
       retryPolicy: { mode: "normal", maxRetries: 0 },

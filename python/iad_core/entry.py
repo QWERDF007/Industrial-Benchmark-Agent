@@ -59,6 +59,11 @@ def dataset_import(args, db_path):
     return dataset_get({"dataset_id": config.dataset.id}, db_path)
 
 
+def dataset_archive_inspect(args, db_path):
+    from iad_core.dataset.archive import DatasetArchive
+    return DatasetArchive(args['archive_path']).inspect().model_dump()
+
+
 def dataset_update(args, db_path):
     registry = DatasetRegistry(Database(db_path))
     if "name" in args:
@@ -261,7 +266,7 @@ def model_call_get(args, db_path):
 
 
 OPERATIONS = {handler.__name__: handler for handler in (
-    tool_call, dataset_list, dataset_get, dataset_import, dataset_update, dataset_scan,
+    tool_call, dataset_list, dataset_get, dataset_import, dataset_archive_inspect, dataset_update, dataset_scan,
     sample_list, sample_get, sample_image_path, sample_thumbnail,
     review_queue, review_evidence, review_start_session, review_submit_decision, review_finish_session,
     review_stats, report_get, audit_start, audit_status, audit_cancel, audit_retry, audit_list, audit_evidence, directory_list,

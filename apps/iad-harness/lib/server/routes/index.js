@@ -51,6 +51,8 @@ export function createIadHttpHandler(bridge) {
                 return await call("dataset_list");
             if (pathname === "/api/iad/datasets/import" && method === "POST")
                 return await call("dataset_import", body);
+            if (pathname === "/api/iad/datasets/archive/inspect" && method === "POST")
+                return await call("dataset_archive_inspect", body);
             if (pathname === "/api/iad/directories" && method === "GET")
                 return await call("directory_list", query);
             const dataset = pathname.match(/^\/api\/iad\/datasets\/([^/]+)$/);

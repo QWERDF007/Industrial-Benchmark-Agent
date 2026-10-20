@@ -360,6 +360,19 @@ export type RequestBody = string;
 export type ResponseBody = string | null;
 export type RunId1 = string;
 export type SampleIds1 = string[] | null;
+export type Name = string;
+export type ImageDir = string;
+export type AnnotationDir = string;
+export type ArchivePath = string | null;
+export type UnannotatedIsNormal = boolean;
+export type ArchivePath1 = string;
+export type Sha2562 = string;
+export type FileCount = number;
+export type UncompressedBytes = number;
+export type Path = string;
+export type ImageCount = number;
+export type AnnotationCount = number;
+export type Directories = ArchiveDirectory[];
 
 export interface WorkbenchDomain {
   AuditAnalysis?: AuditAnalysis;
@@ -367,6 +380,8 @@ export interface WorkbenchDomain {
   AuditStart?: AuditStart;
   ModelCallDetail?: ModelCallDetail;
   JobRetry?: JobRetry;
+  DatasetImport?: DatasetImport;
+  ArchiveInspection?: ArchiveInspection;
 }
 export interface AuditAnalysis {
   normal_version_id: NormalVersionId;
@@ -698,4 +713,23 @@ export interface ModelCallError {
 export interface JobRetry {
   run_id: RunId1;
   sample_ids?: SampleIds1;
+}
+export interface DatasetImport {
+  name: Name;
+  image_dir: ImageDir;
+  annotation_dir: AnnotationDir;
+  archive_path?: ArchivePath;
+  unannotated_is_normal?: UnannotatedIsNormal;
+}
+export interface ArchiveInspection {
+  archive_path: ArchivePath1;
+  sha256: Sha2562;
+  file_count: FileCount;
+  uncompressed_bytes: UncompressedBytes;
+  directories: Directories;
+}
+export interface ArchiveDirectory {
+  path: Path;
+  image_count: ImageCount;
+  annotation_count: AnnotationCount;
 }

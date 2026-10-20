@@ -11,11 +11,26 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import { resolvePythonPath } from "../lib/server/python-bridge/index.js";
 import { createDatasetSession } from "./fixtures/dataset_session.js";
 
-test("a real DSH Session imports a dataset and reads the shared report through allowed tools", { timeout: 15000 }, async () => {
+for (const source of ["directory", "archive"]) test(`a real DSH Session imports a ${source} dataset and reads the shared report through allowed tools`, { timeout: 15000 }, async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-agent-session-"));
   execFileSync(resolvePythonPath(), [fileURLToPath(new URL("fixtures/knowledge_dataset.py", import.meta.url)), root]);
   const requests = [], trace = [];
   const request = { name: "会话测试部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") };
+  const archived = source === "archive";
+  if (archived) {
+    execFileSync(resolvePythonPath(), ["-c", `
+from pathlib import Path
+from zipfile import ZipFile, ZIP_DEFLATED
+import sys
+root = Path(sys.argv[1])
+with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
+    for directory in ('images', 'labels'):
+        for item in (root / directory).rglob('*'):
+            if item.is_file(): archive.write(item, 'product/' + item.relative_to(root).as_posix())
+`, root]);
+    request.image_dir = "product/images";
+    request.annotation_dir = "product/labels";
+  }
   const server = http.createServer(async (req, res) => {
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
@@ -23,11 +38,16 @@ test("a real DSH Session imports a dataset and reads the shared report through a
     requests.push(body);
     const tools = body.messages.filter(message => message.role === "tool");
     let delta, finish;
-    if (!tools.length) {
+    if (archived && !tools.length) {
+      delta = { role: "assistant", tool_calls: [{ index: 0, id: "inspect", type: "function", function: {
+        name: "dataset_archive_inspect", arguments: JSON.stringify({ archive_path: request.archive_path }),
+      } }] };
+      finish = "tool_calls";
+    } else if (tools.length === Number(archived)) {
       delta = { role: "assistant", tool_calls: [{ index: 0, id: "import", type: "function", function: { name: "dataset_import", arguments: JSON.stringify(request) } }] };
       finish = "tool_calls";
-    } else if (tools.length === 1) {
-      const dataset = JSON.parse(tools[0].content);
+    } else if (tools.length === Number(archived) + 1) {
+      const dataset = JSON.parse(tools.at(-1).content);
       delta = { role: "assistant", tool_calls: [{ index: 0, id: "report", type: "function", function: { name: "dataset_report", arguments: JSON.stringify({ dataset_id: dataset.dataset_id }) } }] };
       finish = "tool_calls";
     } else {
@@ -50,16 +70,34 @@ test("a real DSH Session imports a dataset and reads the shared report through a
     session.ctx.on("tools/result", (exec, result) => trace.push({ name: exec.name, result }));
     session.ctx.tools.register(defineTool({ name: "unrelated_test_tool", description: "Outside the IAD Agent tool surface",
       parameters: {}, output: { schema: { type: "json" }, render: () => [] }, execute: () => ({}) }));
-    session.handle.agent.followup(createUserMessage({ source: { kind: "user" },
-      content: [{ type: "text", text: `导入这份数据集并查看当前报告：${JSON.stringify(request)}` }] }));
+    const content = [{ type: "text", text: archived
+      ? "导入附件数据集并查看报告，图像目录 product/images、Labelme 目录 product/labels，名称：会话测试部件。"
+      : `导入这份数据集并查看当前报告：${JSON.stringify(request)}` }];
+    if (archived) {
+      const attachment = await session.ctx.attachments.saveFile({ data: await fs.readFile(path.join(root, "dataset.zip")), name: "dataset.zip" });
+      request.archive_path = session.ctx.attachments.fileHostPath(attachment);
+      content.push({ type: "file", attachment });
+    }
+    session.handle.agent.followup(createUserMessage({ source: { kind: "user" }, content }));
     await session.handle.agent.whenIdle();
     assert.ok(trace.length, JSON.stringify(session.handle.agent.session.snapshotEvents().filter(event => /error|attempt|turn\/end/.test(event.type))));
-    assert.deepEqual(trace.map(item => item.name), ["dataset_import", "dataset_report"]);
+    assert.deepEqual(trace.map(item => item.name), [...(archived ? ["dataset_archive_inspect"] : []), "dataset_import", "dataset_report"]);
     assert.ok(trace.every(item => item.result.isError === false));
-    assert.equal(trace[1].result.value.total_samples, 3);
-    assert.equal(trace[1].result.value.vlm_audited_count, 0);
+    assert.equal(trace.at(-1).result.value.total_samples, 3);
+    assert.equal(trace.at(-1).result.value.vlm_audited_count, 0);
     const messages = session.handle.agent.session.deriveMessages();
-    assert.equal(messages.filter(item => item.role === "tool").length, 2);
+    assert.equal(messages.filter(item => item.role === "tool").length, archived ? 3 : 2);
+    if (archived) {
+      assert.ok(messages.some(item => item.content.some(block => block.type === "file")));
+      const filePrompt = JSON.stringify(requests[0].messages.filter(message => message.role === "user"));
+      assert.ok(filePrompt.includes(request.archive_path), filePrompt);
+      assert.ok(trace[0].result.value.directories.some(item => item.path === "product/images" && item.image_count === 3));
+      const imported = trace[1].result.value;
+      assert.deepEqual(await fs.readFile(path.join(imported.image_dir, "part-2.png")), await fs.readFile(path.join(root, "images/part-2.png")));
+      assert.deepEqual(await fs.readFile(path.join(imported.annotation_dir, "part-2.json")), await fs.readFile(path.join(root, "labels/part-2.json")));
+      const sample = await session.ctx.iadPythonBridge.execute("sample_get", { sample_id: imported.dataset_id + ":part-2.png" });
+      assert.equal(sample.annotations[0].raw_label, "待核实区域");
+    }
     assert.ok(messages.some(item => item.role === "assistant" && item.content.some(block => block.type === "text" && block.text.includes("尚未开展"))));
     const names = requests[0].tools.map(tool => tool.function.name);
     assert.ok(names.includes("model_audit_start"));
@@ -69,6 +107,7 @@ test("a real DSH Session imports a dataset and reads the shared report through a
     assert.match(requests[0].messages.filter(item => item.role === "system").map(item => item.content).join("\n"), /数据集分析流程/);
   } finally {
     await session?.dispose();
+    server.closeAllConnections();
     await new Promise(resolve => server.close(resolve));
     if (previousCredential === undefined) delete process.env.IAD_SESSION_TEST_CREDENTIAL;
     else process.env.IAD_SESSION_TEST_CREDENTIAL = previousCredential;
