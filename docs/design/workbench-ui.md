@@ -103,6 +103,8 @@ DSH 左侧栏             当前页面
 
 默认“审计结果”视图，上方紧凑显示筛选范围、良品/不良品知识版本、知识可用性及“开始审计”；没有图像数量或 ROI 预算输入。其他视图为“作业”“报告”。缺少可用良品知识时指向良品挖掘；缺少异常正例时如实提示，可使用已有良品知识作异常筛查，不伪造异常知识。旧数据结果明确显示知识来源不可追溯或未采用当前版本。
 
+共同作业状态与恢复操作见 [JobCard](../../apps/iad-harness/src/client/components/JobCard.tsx) 和 [JobRunner](../../python/iad_core/workbench/jobs.py)；停止语义参考 [Celery 官方 worker 文档](https://github.com/celery/celery/blob/main/docs/userguide/workers.rst#revoke-revoking-tasks)。
+
 作业行显示当前样本、实际阶段、完成/失败/未处理数量与取消入口。详情显示真实批次与错误，点击失败项定位样本。每张完成后更新结果、统计与选中样本的模型摘要；保留筛选、滚动、图像视口和人审草稿。
 
 ### 人工复核

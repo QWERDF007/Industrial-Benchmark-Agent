@@ -1,5 +1,6 @@
+import { JobCard } from "./JobCard.js";
 import React, { useEffect, useState } from "react";
-import type { AuditJob, Dataset, ReviewDecisionRecord, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
+import type { JobSnapshot, Dataset, ReviewDecisionRecord, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
 import { AnnotatedImage, ImageViewer, type ImageSource } from "./ImageViewer.js";
 import { MediaLoad } from "./MediaLoad.js";
 import type { AnnotationLayerSource } from "./AnnotationLayer.js";
@@ -8,11 +9,11 @@ import { RuleAssessments } from "./RuleAssessments.js";
 import { AuditFindings } from "./AuditFindings.js";
 import { AuditEvidence } from "./AuditEvidence.js";
 import { HumanReviewForm } from "./HumanReviewForm.js";
-import { auditPhases, auditEvidenceUrl, regionSources, mediaUrl, message, request, reviewLabel } from "../api.js";
+import { auditEvidenceUrl, regionSources, mediaUrl, message, request, reviewLabel } from "../api.js";
 import { useWorkspace } from "../workspace.js";
 
 export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, onReviewed, jobs, onJobsChanged }: {
-  jobs: AuditJob[]; onJobsChanged(): void;
+  jobs: JobSnapshot[]; onJobsChanged(): void;
   dataset: Dataset; sampleId: string; mode: "model" | "review" | "browse" | "dataset"; revision: number; onChanged(): void;
   onReviewed(record: ReviewDecisionRecord, relativePath: string): void;
 }) {
@@ -36,7 +37,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
   }, [sampleId, revision]);
   async function audit() {
     setBusy(true); setError("");
-    try { await request<AuditJob>("/audit/start", { dataset_id: dataset.dataset_id, sample_ids: [sampleId] }); onJobsChanged(); }
+    try { await request<JobSnapshot>("/audit/start", { dataset_id: dataset.dataset_id, sample_ids: [sampleId] }); onJobsChanged(); }
     catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
   async function setReference() {
@@ -104,12 +105,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
           <p>位置分析：{detail.suggestion.analysis.conclusion.position_analysis}</p><p>光照分析：{detail.suggestion.analysis.conclusion.illumination_analysis}</p>
         </details>}
       </> : <p className="iad-muted">尚无模型观察。</p>}</section>
-      {mode === "model" && job && <section className="iad-single-job iad-info-group" aria-live="polite"><strong>{job.status}</strong><p>{auditPhases[job.phase || ""] || job.message}</p>
-        {!!job.planned_regions && <p>ROI {job.inspected_regions || 0} / {job.planned_regions}</p>}
-        {!!job.total_batches && <p>联合判断 {job.completed_batches || 0} / {job.total_batches}</p>}
-        {job.errors.map((error, index) => <p className="iad-error" key={index}>{error.message}</p>)}
-        {(job.status === "RUNNING" || job.status === "PENDING") && <button onClick={async () => { try { await request<AuditJob>(`/audit/cancel/${job.run_id}`, {}); onJobsChanged(); } catch (error) { setError(message(error)); } }}>取消审计</button>}
-      </section>}
+      {mode === "model" && job && <section className="iad-single-job" aria-label="当前样本作业"><JobCard key={job.run_id} job={job} onChanged={onJobsChanged} /></section>}
       {mode === "review" ? <HumanReviewForm datasetId={dataset.dataset_id} sampleId={sampleId} detail={detail} onSubmitted={record => onReviewed(record, detail.sample.relative_path)} /> : mode !== "browse" && <div className="iad-actions">
         {mode === "dataset" && <button disabled={busy} onClick={setReference}>{dataset.reference_sample_ids.includes(sampleId) ? "移出良品参考" : "设为良品参考"}</button>}
         {mode === "model" && <button className="iad-primary" disabled={busy || jobRunning} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按知识审计此图"}</button>}

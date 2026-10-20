@@ -1,7 +1,7 @@
 import React from "react";
-import type { AuditJob, Dataset, ReviewDecisionRecord } from "../../shared/contracts.js";
+import type { JobSnapshot, Dataset, ReviewDecisionRecord } from "../../shared/contracts.js";
 export declare function SampleInspector({ dataset, sampleId, mode, revision, onChanged, onReviewed, jobs, onJobsChanged }: {
-    jobs: AuditJob[];
+    jobs: JobSnapshot[];
     onJobsChanged(): void;
     dataset: Dataset;
     sampleId: string;

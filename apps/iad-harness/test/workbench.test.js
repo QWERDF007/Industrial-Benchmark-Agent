@@ -206,3 +206,61 @@ test("real bridge: normal mining publishes knowledge and serves its actual visua
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+
+test("real bridge: cancellation stays requested until the model call returns", { timeout: 15000 }, async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-job-cancel-"));
+  const images = path.join(root,"images"), labels = path.join(root,"labels");
+  await fs.mkdir(images); await fs.mkdir(labels);
+  await fs.writeFile(path.join(images,"normal.png"),Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j1ioAAAAASUVORK5CYII=","base64"));
+  let release, entered;
+  const waiting = new Promise(resolve=>{entered=resolve;});
+  const model = http.createServer(async(req,res)=>{
+    for await(const chunk of req) { /* Consume the actual MLLM request. */ }
+    if(req.url.endsWith("/tokenize")){res.end(JSON.stringify({count:1000,max_model_len:262144}));return;}
+    entered(); await new Promise(resolve=>{release=resolve;});
+    res.setHeader("Content-Type","application/json");res.end(JSON.stringify({choices:[{message:{content:JSON.stringify({summary:"像素不足",checks:[],suspects:[],limitations:["无法判断结构"]})}}]}));
+  });
+  await new Promise(resolve=>model.listen(0,"127.0.0.1",resolve));
+  const previousEndpoint=process.env.LIVE_VLM_ENDPOINT;
+  process.env.LIVE_VLM_ENDPOINT=`http://127.0.0.1:${model.address().port}/v1`;
+  const bridge=new PythonBridge({cwd:process.cwd().endsWith("iad-harness")?path.resolve("../.."):process.cwd(),dbPath:path.join(root,"test.db")});
+  const server=http.createServer(createIadHttpHandler(bridge));
+  await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
+  const base=`http://127.0.0.1:${server.address().port}/api/iad`;
+  const post=(url,body)=>fetch(base+url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  try {
+    const imported=await post("/datasets/import",{name:"Cancellation",image_dir:images,annotation_dir:labels});
+    assert.equal(imported.status,200,await imported.clone().text());const dataset=await imported.json();
+    const started=await post("/knowledge/start",{dataset_id:dataset.dataset_id,kind:"normal",model_name:"test-model"});
+    assert.equal(started.status,200,await started.clone().text());const job=await started.json();
+    await Promise.race([waiting,delay(5000).then(()=>{throw new Error("Model request did not arrive");})]);
+    const cancellation=await post(`/knowledge/cancel/${job.run_id}`,{});
+    assert.equal(cancellation.status,200,await cancellation.clone().text());const requested=await cancellation.json();
+    assert.equal(requested.status,"RUNNING");
+    assert.equal(requested.cancel_requested,true,"停止请求必须是持久化字段，不能靠解析消息判断");
+    const listed=(await(await fetch(`${base}/knowledge/jobs?dataset_id=${dataset.dataset_id}`)).json()).jobs[0];
+    assert.equal(listed.cancel_requested,true);assert.equal(listed.unprocessed,1);
+    assert.equal(listed.model_calls.at(-1).finished_at,null,"当前真实HTTP请求尚未返回");
+    release();release=undefined;
+    let finished;const deadline=Date.now()+5000;
+    do{finished=await(await fetch(`${base}/knowledge/status/${job.run_id}`)).json();if(finished.status!=="RUNNING")break;await delay(20);}while(Date.now()<deadline);
+    assert.equal(finished.status,"CANCELLED");assert.equal(finished.cancel_requested,true);
+    assert.equal(finished.completed,0);assert.equal(finished.unprocessed,1);
+    const scopeResponse=await fetch(`${base}/knowledge/retry/${job.run_id}`);
+    assert.equal(scopeResponse.status,200,await scopeResponse.clone().text());
+    const scope=await scopeResponse.json();
+    assert.equal(scope.selection_mode,"all_sources");assert.equal(scope.active_run_id,null);
+    assert.equal(scope.samples.length,1);assert.equal(scope.samples[0].state,"unprocessed");
+    assert.equal(scope.samples[0].relative_path,"normal.png");
+    assert.match(scope.samples[0].sample_uuid,/^[a-f0-9-]{36}$/);
+    await fs.writeFile(path.join(images,"normal.png"),"changed image");
+    const changed=await post(`/knowledge/retry/${job.run_id}`,{sample_ids:scope.samples.map(sample=>sample.sample_id)});
+    assert.equal(changed.status,422);assert.match(await changed.text(),/重新启动/);
+    assert.equal((await(await fetch(`${base}/knowledge/jobs?dataset_id=${dataset.dataset_id}`)).json()).jobs.length,1);
+  } finally {
+    release?.();bridge.destroy();
+    if(previousEndpoint===undefined)delete process.env.LIVE_VLM_ENDPOINT;else process.env.LIVE_VLM_ENDPOINT=previousEndpoint;
+    await new Promise(resolve=>server.close(resolve));await new Promise(resolve=>model.close(resolve));
+    await fs.rm(root,{recursive:true,force:true});
+  }
+});

@@ -50,6 +50,7 @@ for name in ['normal','normal2','dent']:
   const previousEndpoint = process.env.LIVE_VLM_ENDPOINT;
   const modelRequests = [];
   let holdRegion = false, releaseRegion, proposeRegion = false;
+  let failHeldRegion = false;
   let dropReviewResponse = false;
   const reviewRequests = [];
   const api = createIadHttpHandler(bridge);
@@ -89,6 +90,10 @@ for name in ['normal','normal2','dent']:
         limitations:["缺少另一照明角度"], review_action:"核对原图与反光方向", priority, evidence_ids:images.map(image=>image.evidence_id),
       }));
       if (schema.title === "JointAnalysis" && holdRegion) await new Promise(resolve => { releaseRegion = resolve; });
+      if (schema.title === "JointAnalysis" && failHeldRegion) {
+        failHeldRegion=false;res.writeHead(500,{"Content-Type":"application/json"});
+        res.end(JSON.stringify({error:{message:"temporary model failure"}}));return;
+      }
       res.setHeader("Content-Type","application/json"); res.end(JSON.stringify({choices:[{message:{content:JSON.stringify(answer)}}]}));
     } else {
       if(req.url==="/api/iad/review/submit") {
@@ -171,7 +176,7 @@ for name in ['normal','normal2','dent']:
     await driver.wait(async ()=>(await (await element(".iad-reference-manager summary")).getText()).includes("2 张"),5000);
     await button("挖掘良品知识");
     await button("开始挖掘良品知识");
-    await driver.wait(async ()=>(await (await element(".iad-knowledge-jobs")).getText()).includes("COMPLETED"),15000);
+    await driver.wait(async ()=>(await (await element(".iad-knowledge-jobs")).getText()).includes("已完成"),15000);
     const learned = (await (await fetch(`${base}/api/iad/knowledge/jobs?dataset_id=${dataset.dataset_id}`)).json()).jobs[0];
     await driver.wait(async ()=>(await (await element(".iad-knowledge-content")).getText()).includes("可见蓝色表面"),15000);
     const published = await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json();
@@ -248,7 +253,7 @@ for name in ['normal','normal2','dent']:
     const updatedDataset = (await (await fetch(base + "/api/iad/datasets")).json()).datasets[0];
     assert.equal(updatedDataset.reference_sample_ids.length, 2);
     await button("按知识审计此图");
-    await driver.wait(async () => (await (await element(".iad-single-job")).getText()).includes("COMPLETED"),15000);
+    await driver.wait(async () => (await (await element(".iad-single-job")).getText()).includes("已完成"),15000);
     await driver.wait(async()=>(await driver.findElements(By.css(".iad-findings li"))).length===3,5000,"等待样本详情展示三项优先疑点");
     await driver.executeScript("document.querySelector('.iad-findings').scrollIntoView({block:'start'});");
     await fs.writeFile(path.join(workspace, "runs/browser/audit-findings.png"), await driver.takeScreenshot(), "base64");
@@ -418,10 +423,28 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     holdRegion = true; await button("按知识审计此图");
     await driver.wait(()=>Boolean(releaseRegion),15000);
     await driver.wait(async () => (await (await element(".iad-single-job")).getText()).includes("全图与 ROI 联合分析"),5000);
-    await button("取消审计"); releaseRegion(); holdRegion = false;
-    await driver.wait(async ()=>(await (await element(".iad-single-job")).getText()).includes("CANCELLED"),15000);
+    await button("取消审计");
+    await driver.wait(async ()=>(await (await element(".iad-single-job")).getText()).includes("正在停止"),5000);
+    const stopping=await driver.findElement(By.xpath("//section[contains(@class,'iad-single-job')]//button[contains(.,'正在停止')]"));
+    assert.equal(await stopping.isEnabled(),false,"模型请求返回前不能重复取消或声称已停止");
+    const pendingCancel=(await(await fetch(`${base}/api/iad/audit/jobs?dataset_id=${dataset.dataset_id}`)).json()).jobs[0];
+    assert.equal(pendingCancel.status,"RUNNING");assert.equal(pendingCancel.cancel_requested,true);
+    releaseRegion(); holdRegion = false;
+    await driver.wait(async ()=>(await (await element(".iad-single-job")).getText()).includes("已取消"),15000);
     const cancelled = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();
     assert.equal(cancelled.suggestion.suggestion_id,audited.suggestion.suggestion_id);
+    const parentCancelled=await(await fetch(`${base}/api/iad/audit/status/${pendingCancel.run_id}`)).json();
+    await button("选择重试范围");
+    const retryChoice=await element(".iad-single-job input[type='checkbox']");
+    assert.equal(await retryChoice.isSelected(),true);
+    assert.ok((await(await element(".iad-single-job")).getText()).includes("dent.png"));
+    await fs.writeFile(path.join(workspace,"runs/browser/job-retry.png"),await driver.takeScreenshot(),"base64");
+    await button("重试所选 1 张");
+    await driver.wait(async()=>{
+      const jobs=(await(await fetch(`${base}/api/iad/audit/jobs?dataset_id=${dataset.dataset_id}`)).json()).jobs;
+      return jobs.some(job=>job.parent_run_id===parentCancelled.run_id&&job.status==="COMPLETED");
+    },15000);
+    assert.deepEqual(await(await fetch(`${base}/api/iad/audit/status/${parentCancelled.run_id}`)).json(),parentCancelled,"页面重试不能改写原作业");
 
     await (await element("summary[aria-label='标注筛选']")).click();
     await button("清空"); await gridCount(3);
@@ -443,8 +466,35 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     assert.equal(await (await element("[data-field='image-name']")).getText(), "normal.png");
     await driver.wait(async () => (await (await element(".iad-kpis div:nth-child(2) strong")).getText()).startsWith("2"), 15000);
     await driver.wait(async () => (await (await element(".iad-inspector")).getText()).includes("可观察证据"), 15000);
-    holdRegion = false; releaseRegion();
-    await driver.wait(async () => (await (await fetch(`${base}/api/iad/audit/status/${batch.run_id}`)).json()).status === "COMPLETED", 15000);
+    const firstCommitted=(await(await fetch(`${base}/api/iad/sample/${encodeURIComponent(normal.sample_id)}`)).json()).suggestion;
+    failHeldRegion=true;holdRegion = false; releaseRegion();
+    await driver.wait(async () => (await (await fetch(`${base}/api/iad/audit/status/${batch.run_id}`)).json()).status === "PARTIAL", 15000);
+    await driver.wait(async()=>(await(await element(".iad-single-job")).getText()).includes("部分成功"),5000);
+    await button("选择重试范围");
+    await element(".iad-single-job input[type='checkbox']");
+    const choices=await driver.findElements(By.css(".iad-single-job input[type='checkbox']"));
+    assert.equal(choices.length,1,"已成功样本不能再次进入重试范围");
+    assert.ok((await(await element(".iad-retry-scope")).getText()).includes("normal2.png"));
+    const failedParent=await(await fetch(`${base}/api/iad/audit/status/${batch.run_id}`)).json();
+    const retryScope=await(await fetch(`${base}/api/iad/audit/retry/${batch.run_id}`)).json();
+    assert.equal(retryScope.selection_mode,"subset");
+    assert.deepEqual(retryScope.samples.map(sample=>[sample.sample_id,sample.state]),[[normal2.sample_id,"failed"]]);
+    await button("仅未处理");assert.equal(await choices[0].isSelected(),false);
+    assert.equal(await driver.findElement(By.xpath("//button[normalize-space()='重试所选 0 张']")).isEnabled(),false);
+    await button("仅失败");assert.equal(await choices[0].isSelected(),true);
+    await viewportSize(375,812);
+    await driver.executeScript("arguments[0].scrollIntoView({block:'center'})",await element(".iad-retry-scope"));
+    assert.ok(await driver.executeScript("return document.documentElement.scrollWidth<=window.innerWidth+1"),"375px重试范围不能导致页面横向溢出");
+    await fs.writeFile(path.join(workspace,"runs/browser/job-retry-375.png"),await driver.takeScreenshot(),"base64");
+    await viewportSize(1440,1100);
+    await button("重试所选 1 张");
+    await driver.wait(async()=>{
+      const jobs=(await(await fetch(`${base}/api/iad/audit/jobs?dataset_id=${dataset.dataset_id}`)).json()).jobs;
+      return jobs.some(job=>job.parent_run_id===batch.run_id&&job.status==="COMPLETED");
+    },15000);
+    assert.deepEqual(await(await fetch(`${base}/api/iad/audit/status/${batch.run_id}`)).json(),failedParent);
+    assert.deepEqual((await(await fetch(`${base}/api/iad/sample/${encodeURIComponent(normal.sample_id)}`)).json()).suggestion,firstCommitted,"重试失败图不能覆盖已成功图的建议");
+    assert.deepEqual((await(await fetch(`${base}/api/iad/audit/retry/${batch.run_id}`)).json()).samples,[],"关联重试完成后不再提供已成功图像");
     await select("模型审计", "all"); await gridCount(3);
     await driver.wait(async () => (await (await element(".iad-kpis div:nth-child(2) strong")).getText()).startsWith("3"), 15000);
 
@@ -463,7 +513,7 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await button("按知识审计此图");
     await driver.wait(async()=>{const result=await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();return result.suggestion.suggestion_id!==beforeExpanded&&result.suggestion.analysis.regions.length===2;},15000);
     proposeRegion = false;
-    await driver.wait(async()=>(await (await element(".iad-single-job")).getText()).includes("COMPLETED"),15000);
+    await driver.wait(async()=>(await (await element(".iad-single-job")).getText()).includes("已完成"),15000);
     await driver.wait(()=>driver.executeScript("return [...document.querySelectorAll('.iad-analysis h3')].filter(heading=>heading.textContent.startsWith('局部 ·')).length===2"),5000,"等待样本详情展示两项真实ROI");
     await (await element("button[title='放大图像']")).click();
     await (await element("button[aria-label='定位 ROI 1']")).click();
@@ -630,7 +680,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await button("关闭");await button("返回图像浏览");
     await button("挖掘良品知识");
     await button("开始挖掘良品知识");
-    await driver.wait(async()=>(await (await element(".iad-knowledge-jobs")).getText()).includes("COMPLETED"),15000);
+    await driver.wait(async()=>(await (await element(".iad-knowledge-jobs")).getText()).includes("已完成"),15000);
     await button("模型审计");await gridCount(2);
     await (await element("img[alt='other.png']")).click();
     holdRegion=true;releaseRegion=null;
@@ -640,7 +690,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     const roiPath=path.join(root,"cache","visual-evidence",pendingRoi.sha256+".png");
     await fs.rename(roiPath,roiPath+".missing");
     holdRegion=false;releaseRegion();
-    await driver.wait(async()=>(await (await element(".iad-single-job")).getText()).includes("COMPLETED"),15000);
+    await driver.wait(async()=>(await (await element(".iad-single-job")).getText()).includes("已完成"),15000);
     const maskDataset=await (await element("select[aria-label='当前数据集']")).getAttribute("value");
     const maskAudit=await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(maskDataset+':other.png')}`)).json();
     await (await element(".iad-findings li button")).click();
@@ -720,6 +770,27 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     const reviewedAll=await (await fetch(`${base}/api/iad/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
     assert.equal(reviewedAll.human_reviewed_count,3);
     assert.equal(reviewedAll.quality.human_verification_coverage.numerator,2,"人工不确定不能算成已核验真值");
+
+    for(let index=0;index<31;index++) {
+      const response=await fetch(base+"/api/iad/knowledge/start",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({dataset_id:dataset.dataset_id,kind:"normal",model_name:"test-next"})});
+      assert.equal(response.status,200,await response.clone().text());const created=await response.json();
+      await driver.wait(async()=>{
+        const current=await(await fetch(`${base}/api/iad/knowledge/status/${created.run_id}`)).json();
+        assert.ok(!["FAILED","PARTIAL"].includes(current.status),JSON.stringify(current.errors));
+        return current.status==="COMPLETED";
+      },5000);
+    }
+    const recent=(await(await fetch(`${base}/api/iad/knowledge/jobs?dataset_id=${dataset.dataset_id}`)).json()).jobs;
+    assert.equal(recent.length,30);assert.ok(!recent.some(job=>job.run_id===learned.run_id));
+    const historicalUrl=new URL(base);
+    historicalUrl.searchParams.set("iad",JSON.stringify({pageId:"industrial-normal",datasetId:dataset.dataset_id,tab:"jobs",job:learned.run_id}));
+    await driver.get(historicalUrl.href);
+    const historical=await element(`.iad-knowledge-jobs [data-job-id='${learned.run_id}']`);
+    assert.equal(await historical.getAttribute("aria-current"),"true");
+    assert.ok((await historical.getText()).includes("已完成"));
+    await historical.findElement(By.xpath(".//button[normalize-space()='查看已发布版本']")).click();
+    await driver.wait(async()=>await(await element("select[aria-label='知识版本']")).getAttribute("value")===published.knowledge.version_id,5000);
 
 
   } catch (error) {

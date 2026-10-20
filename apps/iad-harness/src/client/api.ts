@@ -15,7 +15,6 @@ export const mediaUrl = (sample: Pick<Sample, "task_id" | "sample_id">, view: "i
   `/api/iad/media/sample/${encodeURIComponent(sample.task_id)}/${encodeURIComponent(sample.sample_id)}/${view}${view === "thumbnail" ? "?size=240" : ""}`;
 export const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 
-export const auditPhases: Record<string, string> = { PREPARING_KNOWLEDGE: "准备冻结知识", GLOBAL: "全图观察", REGIONS: "ROI 细看", SYNTHESIS: "全图与 ROI 联合分析", SAMPLE_COMPLETED: "图像审计完成" };
 export const reviewLabels: Record<Decision, string> = { PASS: "良品", HARD_NORMAL: "困难正常", FAIL: "异常", UNCERTAIN: "不确定", SKIP: "跳过" };
 export const reviewLabel = (decision: string) => reviewLabels[decision as Decision] || decision;
 

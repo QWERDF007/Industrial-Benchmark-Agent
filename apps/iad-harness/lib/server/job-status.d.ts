@@ -1,5 +1,5 @@
 import type { InferValue } from "@deepseek-ai/dsh-tools";
-import type { AuditJob } from "../shared/contracts.js";
+import type { JobSnapshot } from "../shared/contracts.js";
 import type { PythonBridge } from "./python-bridge/index.js";
 export declare const jobStatusParameters: {
     readonly run_id: {
@@ -25,7 +25,7 @@ export declare const jobRetryParameters: {
     };
 };
 type JobStatus = {
-    status: AuditJob["status"];
+    status: JobSnapshot["status"];
     [key: string]: InferValue<{
         type: "json";
     }>;

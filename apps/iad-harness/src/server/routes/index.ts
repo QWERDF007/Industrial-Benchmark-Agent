@@ -81,6 +81,8 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         run_id: decodeURIComponent(modelCall[1]), call_id: decodeURIComponent(modelCall[2]),
       });
       if (pathname === "/api/iad/audit/jobs" && method === "GET") return await call("audit_list", query);
+      const retryOptions = pathname.match(/^\/api\/iad\/(audit|knowledge)\/retry\/([^/]+)$/);
+      if (retryOptions && method === "GET") return await call(retryOptions[1] + "_retry_options", { run_id: decodeURIComponent(retryOptions[2]) });
       const audit = pathname.match(/^\/api\/iad\/audit\/(status|cancel|retry)\/([^/]+)$/);
       if (audit && ((audit[1] === "status" && method === "GET") || (audit[1] !== "status" && method === "POST"))) return await call("audit_" + audit[1], { ...body, run_id: decodeURIComponent(audit[2]) });
       if (pathname === "/api/iad/knowledge" && method === "GET") return await call("knowledge_get", query);

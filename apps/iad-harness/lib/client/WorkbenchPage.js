@@ -39,7 +39,7 @@ export function WorkbenchPage({ pageId }) {
         }
     }, [workspace]);
     const changed = useCallback(() => { setRevision(v => v + 1); void loadDatasets(); }, [loadDatasets]);
-    const audit = useJobs("audit", datasetId, changed);
+    const audit = useJobs("audit", datasetId, changed, workspace.view("industrial-audit").job);
     useEffect(() => { const controller = new AbortController(); void loadDatasets(undefined, controller.signal); return () => controller.abort(); }, [loadDatasets]);
     const gallery = pageId === "industrial-datasets" || pageId === "industrial-images" || ((pageId === "industrial-review" || pageId === "industrial-audit") && view.tab === "results");
     const query = new URLSearchParams({ ...view.filters, annotation_filters: JSON.stringify(view.filters.annotation_filters), dataset_id: datasetId, page: String(view.page), page_size: String(pageSize) }).toString();

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { message, request } from "./api.js";
-export function useJobs(kind, datasetId, onProgress) {
+export function useJobs(kind, datasetId, onProgress, selectedRunId = "") {
     const [jobs, setJobs] = useState([]);
     const [error, setError] = useState("");
     const [revision, setRevision] = useState(0);
@@ -18,6 +18,12 @@ export function useJobs(kind, datasetId, onProgress) {
         async function poll() {
             try {
                 const result = await request(`/${kind}/jobs?dataset_id=${encodeURIComponent(datasetId)}`, undefined, undefined, controller.signal);
+                if (selectedRunId && !result.jobs.some(job => job.run_id === selectedRunId)) {
+                    const selected = await request(`/${kind}/status/${encodeURIComponent(selectedRunId)}`, undefined, undefined, controller.signal);
+                    if (selected.dataset_id !== datasetId)
+                        throw new Error("所选作业不属于当前数据集");
+                    result.jobs.push(selected);
+                }
                 if (controller.signal.aborted)
                     return;
                 const signature = JSON.stringify(result.jobs.map(job => [job.run_id, job.status, job.completed, job.failed]));
@@ -39,6 +45,6 @@ export function useJobs(kind, datasetId, onProgress) {
         }
         poll();
         return () => { controller.abort(); clearTimeout(timer); };
-    }, [kind, datasetId, onProgress, revision]);
+    }, [kind, datasetId, onProgress, revision, selectedRunId]);
     return { jobs, error, refresh };
 }

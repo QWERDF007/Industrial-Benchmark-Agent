@@ -1,6 +1,6 @@
-import type { AuditJob } from "../shared/contracts.js";
-export declare function useJobs<T extends AuditJob>(kind: "audit" | "knowledge", datasetId: string, onProgress: () => void): {
-    jobs: T[];
+import type { JobSnapshot } from "../shared/contracts.js";
+export declare function useJobs(kind: "audit" | "knowledge", datasetId: string, onProgress: () => void, selectedRunId?: string): {
+    jobs: JobSnapshot[];
     error: string;
     refresh: () => void;
 };

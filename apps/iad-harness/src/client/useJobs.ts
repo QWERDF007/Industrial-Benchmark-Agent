@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AuditJob } from "../shared/contracts.js";
+import type { JobSnapshot } from "../shared/contracts.js";
 import { message, request } from "./api.js";
 
-export function useJobs<T extends AuditJob>(kind: "audit" | "knowledge", datasetId: string, onProgress: () => void) {
-  const [jobs, setJobs] = useState<T[]>([]);
+export function useJobs(kind: "audit" | "knowledge", datasetId: string, onProgress: () => void, selectedRunId = "") {
+  const [jobs, setJobs] = useState<JobSnapshot[]>([]);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   const observed = useRef({ datasetId: "", signature: "" });
@@ -18,7 +18,12 @@ export function useJobs<T extends AuditJob>(kind: "audit" | "knowledge", dataset
     let timer: ReturnType<typeof setTimeout>, running = true;
     async function poll() {
       try {
-        const result = await request<{ jobs: T[] }>(`/${kind}/jobs?dataset_id=${encodeURIComponent(datasetId)}`, undefined, undefined, controller.signal);
+        const result = await request<{ jobs: JobSnapshot[] }>(`/${kind}/jobs?dataset_id=${encodeURIComponent(datasetId)}`, undefined, undefined, controller.signal);
+        if (selectedRunId && !result.jobs.some(job => job.run_id === selectedRunId)) {
+          const selected = await request<JobSnapshot>(`/${kind}/status/${encodeURIComponent(selectedRunId)}`, undefined, undefined, controller.signal);
+          if (selected.dataset_id !== datasetId) throw new Error("所选作业不属于当前数据集");
+          result.jobs.push(selected);
+        }
         if (controller.signal.aborted) return;
         const signature = JSON.stringify(result.jobs.map(job => [job.run_id, job.status, job.completed, job.failed]));
         if (observed.current.signature && observed.current.signature !== signature) onProgress();
@@ -30,6 +35,6 @@ export function useJobs<T extends AuditJob>(kind: "audit" | "knowledge", dataset
     }
     poll();
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [kind, datasetId, onProgress, revision]);
+  }, [kind, datasetId, onProgress, revision, selectedRunId]);
   return { jobs, error, refresh };
 }

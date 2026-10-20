@@ -1,6 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises";
 import type { InferValue } from "@deepseek-ai/dsh-tools";
-import type { AuditJob } from "../shared/contracts.js";
+import type { JobSnapshot } from "../shared/contracts.js";
 import type { PythonBridge } from "./python-bridge/index.js";
 
 export const jobStatusParameters = {
@@ -13,7 +13,7 @@ export const jobRetryParameters = {
   sample_ids: { type: "array", items: { type: "string" }, description: "省略重试失败及未处理项；显式子集必须属于原作业且尚未完成" },
 } as const;
 
-type JobStatus = { status: AuditJob["status"]; [key: string]: InferValue<{ type: "json" }> };
+type JobStatus = { status: JobSnapshot["status"]; [key: string]: InferValue<{ type: "json" }> };
 
 export async function waitForJobStatus(bridge: PythonBridge, operation: "knowledge_status" | "audit_status",
   { run_id, wait_seconds = 10 }: { run_id: string; wait_seconds?: number }, signal: AbortSignal) {

@@ -1,5 +1,6 @@
+import { JobCard } from "./JobCard.js";
 import React, { useCallback, useEffect, useState } from "react";
-import type { Dataset, KnowledgeJob, KnowledgeSnapshot, KnowledgeVersion, KnowledgeStartRequest } from "../../shared/contracts.js";
+import type { Dataset, JobSnapshot, KnowledgeSnapshot, KnowledgeVersion, KnowledgeStartRequest } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 import { useJobs } from "../useJobs.js";
 import { useWorkspace } from "../workspace.js";
@@ -22,7 +23,7 @@ export function KnowledgePage({ dataset, kind }: { dataset: Dataset; kind: "norm
   const [lightbox, setLightbox] = useState<ImageSource | null>(null);
   const [model, setModel] = useState("");
   const updated = useCallback(() => setRevision(value => value + 1), []);
-  const polling = useJobs<KnowledgeJob>("knowledge", dataset.dataset_id, updated);
+  const polling = useJobs("knowledge", dataset.dataset_id, updated, view.job);
   const jobs = polling.jobs.filter(job => job.kind === kind);
   const running = jobs.some(job => job.status === "RUNNING" || job.status === "PENDING");
   const [checkId, setCheckId] = useState("");
@@ -41,7 +42,7 @@ export function KnowledgePage({ dataset, kind }: { dataset: Dataset; kind: "norm
     setBusy(true); setError("");
     try {
       const input: KnowledgeStartRequest = { dataset_id: dataset.dataset_id, kind, ...(kind === "defect" ? { normal_version_id: normal?.version_id } : {}), ...(model.trim() ? { model_name: model.trim() } : {}) };
-      await request<KnowledgeJob>("/knowledge/start", input);
+      await request<JobSnapshot>("/knowledge/start", input);
       workspace.updateView(pageId, { version: "" }); polling.refresh(); updated();
     } catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
@@ -79,7 +80,7 @@ export function KnowledgePage({ dataset, kind }: { dataset: Dataset; kind: "norm
       {!!knowledge.limitations.length && <details><summary>知识限制</summary>{knowledge.limitations.map((limitation, index) => <p key={index}>{limitation}</p>)}</details>}
       {view.tab === "versions" && versions.map(version => <article className="iad-info-group" key={version.version_id}><button onClick={() => workspace.updateView(pageId, { version: version.version_id, tab: "results" })}>{version.version_id}</button><p>{version.source_count} 张来源 · {version.check_count} 项判据 · {version.created_at}</p>{version.parent_version_id && <p className="iad-muted">父版本 {version.parent_version_id}</p>}{version.normal_version_id && <p className="iad-muted">依据良品版本 {version.normal_version_id}</p>}</article>)}
     </> : <p>尚无{kind === "normal" ? "良品" : "不良品"}知识版本。</p>}</section>
-    <section className="iad-knowledge-jobs iad-job-section"><h2>挖掘作业</h2>{jobs.map(job => <article className="iad-job" key={job.run_id}><div className="iad-row"><strong>{job.status}</strong><code>{job.run_id}</code>{(job.status === "RUNNING" || job.status === "PENDING") && <button onClick={async () => { try { await request(`/knowledge/cancel/${job.run_id}`, {}); polling.refresh(); } catch (error) { setError(message(error)); } }}>取消挖掘</button>}</div><progress value={job.progress} max={1} /><p>完成 {job.completed} · 失败 {job.failed} · 未处理 {job.unprocessed} · 共 {job.total_samples} 张</p><p className="iad-muted">{job.message}</p>{job.knowledge_version_id && <button onClick={() => workspace.updateView(pageId, { version: job.knowledge_version_id!, tab: "results" })}>查看已发布版本</button>}{job.errors.length > 0 && <details><summary>失败详情</summary>{job.errors.map((error, index) => <p key={index}>{error.message}</p>)}</details>}</article>)}{!jobs.length && <p>尚无挖掘作业。</p>}</section>
+    <section className="iad-knowledge-jobs iad-job-section"><h2>挖掘作业</h2>{jobs.map(job => <JobCard key={job.run_id} job={job} onChanged={polling.refresh} />)}{!jobs.length && <p>尚无挖掘作业。</p>}</section>
     {lightbox && <ImageViewer image={lightbox} onClose={() => setLightbox(null)} />}
   </section>;
 }

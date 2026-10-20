@@ -6,21 +6,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from sqlite3 import Connection
-from typing import Callable, Literal, Optional, Sequence
+from typing import Callable, Optional, Sequence
 
 from filelock import FileLock, Timeout
-from pydantic import BaseModel, ConfigDict
-
 from iad_core.storage.database import Database
 from iad_core.workbench.calls import ModelCalls
-
-JobKind = Literal["MODEL_AUDIT", "NORMAL_KNOWLEDGE", "DEFECT_KNOWLEDGE"]
-
-
-class JobRetry(BaseModel):
-    model_config = ConfigDict(extra='forbid')
-    run_id: str
-    sample_ids: Optional[list[str]] = None
+from iad_core.workbench.job_models import JobKind, JobRetryOptions, JobSample, JobSnapshot, RetrySample
 
 
 @dataclass
@@ -107,7 +98,7 @@ class JobRunner:
         run_id = ("audit_" if job_type == "MODEL_AUDIT" else "knowledge_") + uuid.uuid4().hex
         payload = {"request": request, "root_run_id": root_run_id or run_id, "parent_run_id": parent_run_id,
                    "completed": 0, "failed": 0, "errors": [], "completed_sample_ids": [],
-                   "failed_sample_ids": [], "total_samples": len(request["sample_ids"])}
+                   "failed_sample_ids": [], "total_samples": len(request["sample_ids"]), "cancel_requested": False}
         with self.lock, self.db.connection() as conn:
             if self.closing:
                 raise ValueError('Worker is closing')
@@ -135,8 +126,7 @@ class JobRunner:
         thread.start()
         return self.status(run_id)
 
-    def retry(self, run_id: str, job_types: Sequence[JobKind], execute: Callable[[JobContext], None],
-              sample_ids: Optional[list[str]] = None, validate: Optional[Callable[[dict], None]] = None) -> dict:
+    def _retry_scope(self, run_id: str, job_types: Sequence[JobKind]) -> tuple[dict, dict, list[str]]:
         parent = self.status(run_id, job_types)
         if parent["status"] in ("PENDING", "RUNNING"):
             raise ValueError("当前作业仍在执行，请等待结束后重试")
@@ -148,6 +138,25 @@ class JobRunner:
                 WHERE json_extract(payload_json,'$.root_run_id')=?""", (root["run_id"],)).fetchall()
         completed = {sid for row in relatives for sid in json.loads(row[0])["completed_sample_ids"]}
         remaining = [sid for sid in parent["sample_ids"] if sid not in completed]
+        return parent, root, remaining
+
+    def retry_options(self, run_id: str, job_types: Sequence[JobKind]) -> dict:
+        parent, root, remaining = self._retry_scope(run_id, job_types)
+        samples = self._samples(parent['dataset_id'], remaining)
+        with self.db.connection() as conn:
+            active = conn.execute("""SELECT job_id FROM job_runs WHERE job_type=?
+                AND status IN ('PENDING','RUNNING')
+                AND json_extract(payload_json,'$.request.dataset_id')=?""",
+                (parent['job_type'], parent['dataset_id'])).fetchone()
+        return JobRetryOptions(run_id=run_id, root_run_id=root['run_id'],
+            selection_mode='subset' if parent['job_type'] == 'MODEL_AUDIT' else 'all_sources',
+            active_run_id=active[0] if active else None,
+            samples=[RetrySample(**samples[sid].model_dump(exclude_computed_fields=True),
+                state='failed' if sid in parent['failed_sample_ids'] else 'unprocessed') for sid in remaining]).model_dump()
+
+    def retry(self, run_id: str, job_types: Sequence[JobKind], execute: Callable[[JobContext], None],
+              sample_ids: Optional[list[str]] = None, validate: Optional[Callable[[dict], None]] = None) -> dict:
+        parent, root, remaining = self._retry_scope(run_id, job_types)
         selected = list(dict.fromkeys(sample_ids)) if sample_ids is not None else remaining
         if not selected:
             raise ValueError("没有需要重试的失败或未处理样本")
@@ -196,17 +205,30 @@ class JobRunner:
                          (json.dumps(payload, ensure_ascii=False), (completed + failed) / total, message, run_id))
         return {**payload.get('request', {}), **payload}
 
+    def _samples(self, dataset_id: str, sample_ids: Sequence[str]) -> dict[str, JobSample]:
+        with self.db.connection() as conn:
+            rows = conn.execute("""SELECT sample_id,relative_path FROM samples WHERE dataset_id=?
+                AND sample_id IN (SELECT value FROM json_each(?))""", (dataset_id, json.dumps(list(sample_ids)))).fetchall()
+        paths = {row['sample_id']: row['relative_path'] for row in rows}
+        return {sid: JobSample(sample_id=sid, relative_path=paths.get(sid)) for sid in sample_ids}
+
     def status(self, run_id: str, job_types: Optional[Sequence[JobKind]] = None) -> dict:
         with self.db.connection() as conn:
             row = conn.execute("SELECT * FROM job_runs WHERE job_id=?", (run_id,)).fetchone()
         if not row or row["job_type"] not in (job_types or self.job_types):
             raise LookupError("Job not found")
         payload = json.loads(row["payload_json"])
-        return {**payload.get('request', {}), **payload, "run_id": run_id, "task_id": row["task_id"], "job_type": row["job_type"],
+        values = {**payload.get('request', {}), **payload, "run_id": run_id, "task_id": row["task_id"], "job_type": row["job_type"],
                 "status": row["status"], "message": row["message"], "started_at": row["started_at"],
                 "finished_at": row["finished_at"], "progress": row["progress"],
+                "cancel_requested": payload.get("cancel_requested", False),
                 "unprocessed": payload["total_samples"] - payload["completed"] - payload["failed"],
                 "model_calls": [call.model_dump() for call in ModelCalls(self.db).list(run_id)]}
+        current = payload.get('current_sample_id')
+        samples = self._samples(values['dataset_id'], [error['sample_id'] for error in payload['errors']] + ([current] if current else []))
+        values['current_sample'] = samples[current] if current else None
+        values['errors'] = [{**error, 'relative_path': samples[error['sample_id']].relative_path} for error in payload['errors']]
+        return JobSnapshot.model_validate(values).model_dump()
 
     def list(self, dataset_id: str, job_types: Sequence[JobKind]) -> list:
         placeholders = ",".join("?" for _ in job_types)
@@ -219,9 +241,10 @@ class JobRunner:
         with self.lock:
             status = self.status(run_id, job_types)
             if status["status"] in ("RUNNING", "PENDING"):
-                self.cancelled[run_id].set()
                 with self.db.connection() as conn:
-                    conn.execute("UPDATE job_runs SET message='正在停止，当前请求返回后结束' WHERE job_id=?", (run_id,))
+                    conn.execute("""UPDATE job_runs SET message='正在停止，当前请求返回后结束',
+                        payload_json=json_set(payload_json,'$.cancel_requested',json('true')) WHERE job_id=?""", (run_id,))
+                self.cancelled[run_id].set()
         return self.status(run_id, job_types)
 
     def wait(self, run_id: str, timeout: float):
@@ -234,8 +257,8 @@ class JobRunner:
         with self.lock:
             self.closing = True
             threads = list(self.threads.values())
-            for event in self.cancelled.values():
-                event.set()
+            for run_id in list(self.cancelled):
+                self.cancel(run_id, self.job_types)
         for thread in threads:
             thread.join(timeout=1)
         with self.lock:

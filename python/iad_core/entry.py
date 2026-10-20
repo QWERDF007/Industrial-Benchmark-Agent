@@ -214,8 +214,12 @@ def audit_cancel(args, db_path):
 
 
 def audit_retry(args, db_path):
-    from iad_core.workbench.jobs import JobRetry
+    from iad_core.workbench.job_models import JobRetry
     return workbench(db_path).audit.retry(**JobRetry.model_validate(args).model_dump())
+
+
+def audit_retry_options(args, db_path):
+    return workbench(db_path).jobs.retry_options(args['run_id'], ('MODEL_AUDIT',))
 
 
 def audit_list(args, db_path):
@@ -265,8 +269,13 @@ def knowledge_cancel(args, db_path):
 
 
 def knowledge_retry(args, db_path):
-    from iad_core.workbench.jobs import JobRetry
+    from iad_core.workbench.job_models import JobRetry
     return workbench(db_path).knowledge.retry(**JobRetry.model_validate(args).model_dump())
+
+
+def knowledge_retry_options(args, db_path):
+    from iad_core.knowledge.service import KNOWLEDGE_JOB_TYPES
+    return workbench(db_path).jobs.retry_options(args['run_id'], KNOWLEDGE_JOB_TYPES)
 
 
 def knowledge_list(args, db_path):
@@ -296,8 +305,8 @@ OPERATIONS = {handler.__name__: handler for handler in (
     tool_call, dataset_list, dataset_get, dataset_import, dataset_archive_inspect, dataset_update, dataset_scan,
     sample_list, sample_get, sample_image_path, sample_thumbnail, sample_mask_path,
     review_queue, review_evidence, review_submit_decision, review_history,
-    review_stats, report_get, audit_start, audit_status, audit_cancel, audit_retry, audit_list, audit_evidence, directory_list,
-    knowledge_get, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_list, model_call_get,
+    review_stats, report_get, audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_list, audit_evidence, directory_list,
+    knowledge_get, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_retry_options, knowledge_list, model_call_get,
 )}
 
 

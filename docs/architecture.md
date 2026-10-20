@@ -36,9 +36,9 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | Mask 像素、内容指纹、二值标注图与显示叠加 | [MaskImages / annotation_overlay](../python/iad_core/evidence/masks.py)、[当前与冻结标注图层](../apps/iad-harness/src/client/components/AnnotationLayer.tsx)、[校验媒体读取](../python/iad_core/entry.py)、[Labelme 官方格式](https://github.com/wkentaro/labelme/blob/main/labelme/_label_file.py)、[官方坐标映射](https://github.com/wkentaro/labelme/blob/main/labelme/_utils/_shape.py) |
 | 模型传输、实际 token 容量、结构化输出与响应校验 | [VlmClient](../python/iad_core/workbench/vision.py)、[vLLM 输出契约](https://github.com/vllm-project/vllm/blob/v0.18.0/docs/features/structured_outputs.md) |
 | 全图与全部 ROI 联合分析、按实际容量分批 | [JointInspection](../python/iad_core/workbench/joint.py) |
-| 知识/审计共享轮询与逐图刷新 | [useJobs](../apps/iad-harness/src/client/useJobs.ts) |
+| 知识/审计共同作业契约、展示与恢复操作 | [作业契约](../python/iad_core/workbench/job_models.py)、[JobCard](../apps/iad-harness/src/client/components/JobCard.tsx)、[共享轮询](../apps/iad-harness/src/client/useJobs.ts) |
 | 审计领域执行 | [AuditService](../python/iad_core/workbench/audit.py) |
-| 审计/知识共享作业、原子完成、进程接管与关联重试 | [JobRunner / JobContext / JobRetry](../python/iad_core/workbench/jobs.py)、[WorkbenchRuntime](../python/iad_core/workbench/runtime.py) |
+| 审计/知识共享作业、原子完成、进程接管与关联重试 | [JobRunner / JobContext](../python/iad_core/workbench/jobs.py)、[WorkbenchRuntime](../python/iad_core/workbench/runtime.py) |
 | 作业关联的真实模型请求、返回、错误与服务用量 | [ModelCalls](../python/iad_core/workbench/calls.py)、[VlmClient](../python/iad_core/workbench/vision.py)、[原文读取操作](../python/iad_core/entry.py) |
 | 共用图像查看器、来源图层和全图 ROI 联动 | [ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx)、[疑点与实际证据选择](../apps/iad-harness/src/client/inspection.ts)、[InspectionEvidence](../apps/iad-harness/src/client/components/InspectionEvidence.tsx)、[媒体失败提示与重新加载](../apps/iad-harness/src/client/components/MediaLoad.tsx) |
 | 知识独立页面、版本与真实证据 | [KnowledgePage](../apps/iad-harness/src/client/components/KnowledgePage.tsx)、[版本投影](../python/iad_core/knowledge/repository.py) |
