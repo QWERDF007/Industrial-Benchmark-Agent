@@ -107,6 +107,8 @@ DSH 左侧栏             当前页面
 
 共同作业状态与恢复操作见 [JobCard](../../apps/iad-harness/src/client/components/JobCard.tsx) 和 [JobRunner](../../python/iad_core/workbench/jobs.py)；停止语义参考 [Celery 官方 worker 文档](https://github.com/celery/celery/blob/main/docs/userguide/workers.rst#revoke-revoking-tasks)。
 
+待审计版本查询与选择见 [useKnowledge](../../apps/iad-harness/src/client/useKnowledge.ts) 和 [AuditJobs](../../apps/iad-harness/src/client/components/AuditJobs.tsx)，选择上下文见 [Workspace](../../apps/iad-harness/src/client/workspace.tsx)。
+
 作业行显示当前样本、实际阶段、完成/失败/未处理数量与取消入口。详情显示真实批次与错误，点击失败项定位样本。每张完成后更新结果、统计与选中样本的模型摘要；保留筛选、滚动、图像视口和人审草稿。
 
 ### 人工复核

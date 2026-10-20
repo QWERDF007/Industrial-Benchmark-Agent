@@ -45,7 +45,7 @@ var __IadClientBundle__ = (() => {
     inject: () => inject,
     name: () => name
   });
-  var import_react21 = __toESM(__require("react"), 1);
+  var import_react22 = __toESM(__require("react"), 1);
 
   // src/client/AuditIcon.tsx
   var import_jsx_runtime = __require("react/jsx-runtime");
@@ -95,7 +95,7 @@ var __IadClientBundle__ = (() => {
   }
 
   // src/client/WorkbenchPage.tsx
-  var import_react20 = __require("react");
+  var import_react21 = __require("react");
 
   // src/client/api.ts
   async function request(path, body, method, signal) {
@@ -412,7 +412,7 @@ var __IadClientBundle__ = (() => {
   };
 
   // src/client/workspace.tsx
-  var defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", job: "", historyPage: 1, historySearch: "", inspection: null });
+  var defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", inspection: null });
   var Workspace = class {
     constructor(conversation) {
       this.conversation = conversation;
@@ -521,7 +521,7 @@ var __IadClientBundle__ = (() => {
           const route = JSON.parse(raw);
           if (route.pageId in pages && typeof route.datasetId === "string") {
             const view = defaultView(route.pageId);
-            for (const key of ["selected", "tab", "version", "normalVersion", "job", "historySearch"]) if (typeof route[key] === "string") view[key] = route[key];
+            for (const key of ["selected", "tab", "version", "normalVersion", "defectVersion", "job", "historySearch"]) if (typeof route[key] === "string") view[key] = route[key];
             view.inspection = restoreInspection(route.inspection, route.datasetId, view.selected);
             if (Number.isInteger(route.page) && route.page > 0) view.page = route.page;
             if (Number.isInteger(route.historyPage) && route.historyPage > 0) view.historyPage = route.historyPage;
@@ -1964,38 +1964,56 @@ var __IadClientBundle__ = (() => {
   }
 
   // src/client/components/AuditJobs.tsx
+  var import_react15 = __require("react");
+
+  // src/client/useKnowledge.ts
   var import_react14 = __require("react");
-  var import_jsx_runtime19 = __require("react/jsx-runtime");
-  function AuditJobs({ dataset, filters, jobs, onJobsChanged }) {
-    const [lightbox, setLightbox] = (0, import_react14.useState)(null);
-    const [normal, setNormal] = (0, import_react14.useState)(null);
-    const [defect, setDefect] = (0, import_react14.useState)(null);
-    const [model, setModel] = (0, import_react14.useState)("Qwen/Qwen3.8-27B-FP8");
-    const [busy, setBusy] = (0, import_react14.useState)(false);
-    const [error, setError] = (0, import_react14.useState)("");
+  var empty = { knowledge: null, versions: [] };
+  function useKnowledge(datasetId, kind, versionId = "", revision = 0) {
+    const key = JSON.stringify([datasetId, kind, versionId, revision]);
+    const [value, setValue] = (0, import_react14.useState)();
     (0, import_react14.useEffect)(() => {
+      if (!datasetId || !kind) return;
       const controller = new AbortController();
-      setNormal(null);
-      setDefect(null);
-      Promise.all(["normal", "defect"].map((kind) => request(`/knowledge?${new URLSearchParams({ dataset_id: dataset.dataset_id, kind })}`, void 0, void 0, controller.signal))).then(([normal2, defect2]) => {
-        setNormal(normal2.knowledge);
-        setDefect(defect2.knowledge?.normal_version_id === normal2.knowledge?.version_id ? defect2.knowledge : null);
-      }).catch((error2) => {
-        if (!controller.signal.aborted) setError(message(error2));
+      const query = new URLSearchParams({ dataset_id: datasetId, kind, ...versionId ? { version_id: versionId } : {} });
+      request(`/knowledge?${query}`, void 0, void 0, controller.signal).then((data) => {
+        if (!controller.signal.aborted) setValue({ key, data, error: "" });
+      }).catch((error) => {
+        if (!controller.signal.aborted) setValue({ key, data: empty, error: message(error) });
       });
       return () => controller.abort();
-    }, [dataset.dataset_id, jobs[0]?.normal_version_id]);
+    }, [datasetId, kind, versionId, revision]);
+    if (!datasetId || !kind) return { ...empty, loading: false, error: "" };
+    return value?.key === key ? { ...value.data, loading: false, error: value.error } : { ...empty, loading: true, error: "" };
+  }
+
+  // src/client/components/AuditJobs.tsx
+  var import_jsx_runtime19 = __require("react/jsx-runtime");
+  function AuditJobs({ dataset, filters, jobs, revision, onJobsChanged }) {
+    const { workspace } = useWorkspace();
+    const view = workspace.view("industrial-audit");
+    const normalQuery = useKnowledge(dataset.dataset_id, "normal", view.normalVersion, revision);
+    const defectQuery = useKnowledge(dataset.dataset_id, "defect", view.defectVersion, revision);
+    const normal = normalQuery.knowledge;
+    const defect = defectQuery.knowledge?.normal_version_id === normal?.version_id ? defectQuery.knowledge : null;
+    const loading = normalQuery.loading || defectQuery.loading;
+    const loadError = normalQuery.error || defectQuery.error || (!loading && view.defectVersion && !defect ? "\u6240\u9009\u4E0D\u826F\u77E5\u8BC6\u4E0E\u826F\u54C1\u7248\u672C\u4E0D\u5339\u914D\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9" : "");
+    const [lightbox, setLightbox] = (0, import_react15.useState)(null);
+    const [model, setModel] = (0, import_react15.useState)("Qwen/Qwen3.8-27B-FP8");
+    const [busy, setBusy] = (0, import_react15.useState)(false);
+    const [error, setError] = (0, import_react15.useState)("");
     async function start() {
       setBusy(true);
       setError("");
       try {
-        await request("/audit/start", {
+        const input = {
           dataset_id: dataset.dataset_id,
           model_name: model,
           normal_version_id: normal?.version_id,
           defect_version_id: defect?.version_id,
           filters
-        });
+        };
+        await request("/audit/start", input);
         onJobsChanged();
       } catch (e) {
         setError(message(e));
@@ -2005,15 +2023,41 @@ var __IadClientBundle__ = (() => {
     }
     return /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("section", { className: "iad-job-panel", children: [
       /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("section", { className: "iad-job-section", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("h2", { children: "\u51BB\u7ED3\u77E5\u8BC6" }),
-        normal ? /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(import_jsx_runtime19.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(DatasetKnowledge, { knowledge: normal }),
-          /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("div", { className: "iad-reference-grid", children: normal.evidence.filter((item) => item.image.role === "normal" && item.image.representation === "raw").map((item) => {
-            const src = `/api/iad/knowledge/evidence/${encodeURIComponent(normal.version_id)}/${encodeURIComponent(item.image.evidence_id)}`;
-            return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("button", { title: "\u653E\u5927\u77E5\u8BC6\u6765\u6E90\u56FE", onClick: () => setLightbox({ src, title: item.sample_id.split("/").pop() }), children: /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("img", { alt: "\u77E5\u8BC6\u6765\u6E90\u8BC1\u636E", src }) }, item.image.evidence_id);
-          }) })
-        ] }) : /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "iad-profile iad-muted", children: "\u8BF7\u5148\u8FD0\u884C\u201C\u6316\u6398\u826F\u54C1\u77E5\u8BC6\u201D\u6280\u80FD\uFF0C\u751F\u6210\u53EF\u7528\u7248\u672C\u3002" }),
-        defect ? /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(DatasetKnowledge, { knowledge: defect }) : /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "iad-muted", children: "\u6682\u65E0\u5339\u914D\u7684\u4E0D\u826F\u77E5\u8BC6\uFF0C\u6309\u6B63\u5E38\u5224\u636E\u7B5B\u67E5\u3002" })
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("h2", { children: "\u5BA1\u8BA1\u77E5\u8BC6" }),
+        /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { className: "iad-field", children: [
+            "\u826F\u54C1\u7248\u672C",
+            /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("select", { "aria-label": "\u5BA1\u8BA1\u826F\u54C1\u77E5\u8BC6\u7248\u672C", value: view.normalVersion, disabled: loading, onChange: (event) => workspace.updateView("industrial-audit", { normalVersion: event.target.value, defectVersion: "" }), children: [
+              /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("option", { value: "", children: "\u5F53\u524D\u7248\u672C" }),
+              normalQuery.versions.map((version) => /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("option", { value: version.version_id, children: [
+                version.version_id,
+                " \xB7 ",
+                version.created_at
+              ] }, version.version_id))
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("label", { className: "iad-field", children: [
+            "\u4E0D\u826F\u54C1\u7248\u672C",
+            /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("select", { "aria-label": "\u5BA1\u8BA1\u4E0D\u826F\u54C1\u77E5\u8BC6\u7248\u672C", value: view.defectVersion, disabled: loading || !normal, onChange: (event) => workspace.updateView("industrial-audit", { defectVersion: event.target.value }), children: [
+              /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("option", { value: "", children: "\u5339\u914D\u7684\u5F53\u524D\u7248\u672C" }),
+              defectQuery.versions.filter((version) => version.normal_version_id === normal?.version_id).map((version) => /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("option", { value: version.version_id, children: [
+                version.version_id,
+                " \xB7 ",
+                version.created_at
+              ] }, version.version_id))
+            ] })
+          ] })
+        ] }),
+        loading ? /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u5BA1\u8BA1\u77E5\u8BC6\u2026" }) : loadError ? /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { role: "alert", className: "iad-error", children: loadError }) : /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(import_jsx_runtime19.Fragment, { children: [
+          normal ? /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(import_jsx_runtime19.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(DatasetKnowledge, { knowledge: normal }),
+            /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("div", { className: "iad-reference-grid", children: normal.evidence.filter((item) => item.image.role === "normal" && item.image.representation === "raw").map((item) => {
+              const src = `/api/iad/knowledge/evidence/${encodeURIComponent(normal.version_id)}/${encodeURIComponent(item.image.evidence_id)}`;
+              return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("button", { title: "\u653E\u5927\u77E5\u8BC6\u6765\u6E90\u56FE", onClick: () => setLightbox({ src, title: item.sample_id.split("/").pop() }), children: /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("img", { alt: "\u77E5\u8BC6\u6765\u6E90\u8BC1\u636E", src }) }, item.image.evidence_id);
+            }) })
+          ] }) : /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "iad-profile iad-muted", children: "\u8BF7\u5148\u8FD0\u884C\u201C\u6316\u6398\u826F\u54C1\u77E5\u8BC6\u201D\u6280\u80FD\uFF0C\u751F\u6210\u53EF\u7528\u7248\u672C\u3002" }),
+          defect ? /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(DatasetKnowledge, { knowledge: defect }) : /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "iad-muted", children: "\u6682\u65E0\u5339\u914D\u7684\u4E0D\u826F\u77E5\u8BC6\uFF0C\u6309\u6B63\u5E38\u5224\u636E\u7B5B\u67E5\u3002" })
+        ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("section", { className: "iad-job-section", children: [
         /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("h2", { children: "\u542F\u52A8\u6A21\u578B\u5BA1\u8BA1" }),
@@ -2022,7 +2066,7 @@ var __IadClientBundle__ = (() => {
             "\u6A21\u578B",
             /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("input", { "aria-label": "\u6A21\u578B\u540D\u79F0", value: model, onChange: (e) => setModel(e.target.value) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("button", { className: "iad-primary", onClick: start, disabled: busy || !normal?.checks.some((check) => check.status === "supported") || jobs.some((j) => j.status === "RUNNING" || j.status === "PENDING"), children: busy ? "\u542F\u52A8\u4E2D\u2026" : "\u5BA1\u8BA1\u5F53\u524D\u7B5B\u9009\u5168\u90E8\u56FE\u50CF" })
+          /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("button", { className: "iad-primary", onClick: start, disabled: busy || loading || !!loadError || !normal?.checks.some((check) => check.status === "supported") || jobs.some((j) => j.status === "RUNNING" || j.status === "PENDING"), children: busy ? "\u542F\u52A8\u4E2D\u2026" : "\u5BA1\u8BA1\u5F53\u524D\u7B5B\u9009\u5168\u90E8\u56FE\u50CF" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "iad-muted", children: "\u7ED3\u5408\u51BB\u7ED3\u77E5\u8BC6\u3001\u5168\u56FE\u4E0E\u5168\u90E8\u5C40\u90E8\u56FE\uFF0C\u7EFC\u5408\u5206\u6790\u4F4D\u7F6E\u548C\u5149\u7167\u3002" }),
         error && /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { role: "alert", className: "iad-error", children: error })
@@ -2036,9 +2080,9 @@ var __IadClientBundle__ = (() => {
     ] });
   }
   function AuditReport({ dataset }) {
-    const [report, setReport] = (0, import_react14.useState)(null);
-    const [error, setError] = (0, import_react14.useState)("");
-    (0, import_react14.useEffect)(() => {
+    const [report, setReport] = (0, import_react15.useState)(null);
+    const [error, setError] = (0, import_react15.useState)("");
+    (0, import_react15.useEffect)(() => {
       const controller = new AbortController();
       request(`/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`, void 0, void 0, controller.signal).then(setReport).catch((e) => {
         if (!controller.signal.aborted) setError(message(e));
@@ -2064,17 +2108,17 @@ var __IadClientBundle__ = (() => {
   }
 
   // src/client/components/KnowledgePage.tsx
-  var import_react16 = __require("react");
+  var import_react17 = __require("react");
 
   // src/client/useJobs.ts
-  var import_react15 = __require("react");
+  var import_react16 = __require("react");
   function useJobs(kind, datasetId, onProgress, selectedRunId = "") {
-    const [jobs, setJobs] = (0, import_react15.useState)([]);
-    const [error, setError] = (0, import_react15.useState)("");
-    const [revision, setRevision] = (0, import_react15.useState)(0);
-    const observed = (0, import_react15.useRef)({ datasetId: "", signature: "" });
-    const refresh = (0, import_react15.useCallback)(() => setRevision((value) => value + 1), []);
-    (0, import_react15.useEffect)(() => {
+    const [jobs, setJobs] = (0, import_react16.useState)([]);
+    const [error, setError] = (0, import_react16.useState)("");
+    const [revision, setRevision] = (0, import_react16.useState)(0);
+    const observed = (0, import_react16.useRef)({ datasetId: "", signature: "" });
+    const refresh = (0, import_react16.useCallback)(() => setRevision((value) => value + 1), []);
+    (0, import_react16.useEffect)(() => {
       if (observed.current.datasetId !== datasetId) {
         observed.current = { datasetId, signature: "" };
         setJobs([]);
@@ -2119,44 +2163,21 @@ var __IadClientBundle__ = (() => {
     const { workspace } = useWorkspace();
     const pageId = kind === "normal" ? "industrial-normal" : "industrial-defect";
     const view = workspace.view(pageId);
-    const [knowledge, setKnowledge] = (0, import_react16.useState)(null);
-    const [normal, setNormal] = (0, import_react16.useState)(null);
-    const [versions, setVersions] = (0, import_react16.useState)([]);
-    const [normalVersions, setNormalVersions] = (0, import_react16.useState)([]);
-    const [loading, setLoading] = (0, import_react16.useState)(true);
-    const [loadError, setLoadError] = (0, import_react16.useState)("");
-    const [error, setError] = (0, import_react16.useState)("");
-    const [busy, setBusy] = (0, import_react16.useState)(false);
-    const [revision, setRevision] = (0, import_react16.useState)(0);
-    const [lightbox, setLightbox] = (0, import_react16.useState)(null);
-    const [model, setModel] = (0, import_react16.useState)("");
-    const updated = (0, import_react16.useCallback)(() => setRevision((value) => value + 1), []);
+    const [error, setError] = (0, import_react17.useState)("");
+    const [busy, setBusy] = (0, import_react17.useState)(false);
+    const [revision, setRevision] = (0, import_react17.useState)(0);
+    const current = useKnowledge(dataset.dataset_id, kind, view.version, revision);
+    const reference = useKnowledge(dataset.dataset_id, kind === "defect" ? "normal" : null, view.normalVersion, revision);
+    const { knowledge, versions } = current;
+    const normal = reference.knowledge, normalVersions = reference.versions;
+    const loading = current.loading || reference.loading, loadError = current.error || reference.error;
+    const [lightbox, setLightbox] = (0, import_react17.useState)(null);
+    const [model, setModel] = (0, import_react17.useState)("");
+    const updated = (0, import_react17.useCallback)(() => setRevision((value) => value + 1), []);
     const polling = useJobs("knowledge", dataset.dataset_id, updated, view.job);
     const jobs = polling.jobs.filter((job) => job.kind === kind);
     const running = jobs.some((job) => job.status === "RUNNING" || job.status === "PENDING");
-    const [checkId, setCheckId] = (0, import_react16.useState)("");
-    (0, import_react16.useEffect)(() => {
-      const controller = new AbortController();
-      setLoading(true);
-      const query = new URLSearchParams({ dataset_id: dataset.dataset_id, kind, ...view.version ? { version_id: view.version } : {} });
-      Promise.all([
-        request(`/knowledge?${query}`, void 0, void 0, controller.signal),
-        kind === "defect" ? request(`/knowledge?${new URLSearchParams({ dataset_id: dataset.dataset_id, kind: "normal", ...view.normalVersion ? { version_id: view.normalVersion } : {} })}`, void 0, void 0, controller.signal) : Promise.resolve({ knowledge: null, versions: [] })
-      ]).then(([current, reference]) => {
-        if (!controller.signal.aborted) {
-          setKnowledge(current.knowledge);
-          setVersions(current.versions);
-          setNormal(reference.knowledge);
-          setNormalVersions(reference.versions);
-          setLoadError("");
-        }
-      }).catch((error2) => {
-        if (!controller.signal.aborted) setLoadError(message(error2));
-      }).finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-      return () => controller.abort();
-    }, [dataset.dataset_id, kind, revision, view.version, view.normalVersion]);
+    const [checkId, setCheckId] = (0, import_react17.useState)("");
     async function start() {
       setBusy(true);
       setError("");
@@ -2349,13 +2370,13 @@ var __IadClientBundle__ = (() => {
   }
 
   // src/client/components/ReviewRecords.tsx
-  var import_react17 = __require("react");
+  var import_react18 = __require("react");
   var import_jsx_runtime21 = __require("react/jsx-runtime");
   function ReviewRecords({ datasetId, page, search, selected, revision, onPage, onSearch, onSelect }) {
-    const [result, setResult] = (0, import_react17.useState)(null);
-    const [loading, setLoading] = (0, import_react17.useState)(true), [error, setError] = (0, import_react17.useState)("");
-    const [retry, setRetry] = (0, import_react17.useState)(0);
-    (0, import_react17.useEffect)(() => {
+    const [result, setResult] = (0, import_react18.useState)(null);
+    const [loading, setLoading] = (0, import_react18.useState)(true), [error, setError] = (0, import_react18.useState)("");
+    const [retry, setRetry] = (0, import_react18.useState)(0);
+    (0, import_react18.useEffect)(() => {
       const controller = new AbortController();
       setLoading(true);
       setError("");
@@ -2486,6 +2507,7 @@ var __IadClientBundle__ = (() => {
 .iad-annotation {display:flex;flex-direction:column;padding:7px 0;font-size:12px;}.iad-annotation span {color:var(--iad-muted);}
 .iad-observation {white-space:pre-wrap;font-size:13px;}.iad-actions {display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
 .iad-field {display:flex;flex-direction:column;gap:7px;margin:16px 0;}.iad-field>.iad-row {flex-wrap:nowrap;}.iad-field input {flex:1;}
+.iad-row>.iad-field {flex:1 1 280px;min-width:0;}
 .iad-error {color:var(--iad-danger);background:var(--iad-danger-bg);padding:10px;border-radius:6px;overflow-wrap:anywhere;}
 .iad-empty {padding:40px;text-align:center;color:var(--iad-muted);}
 .iad-review-records {min-width:0;padding:18px;background:var(--iad-surface);border-radius:10px;}
@@ -2552,7 +2574,7 @@ var __IadClientBundle__ = (() => {
 .iad-evidence-preview {display:flex;align-items:center;gap:10px;width:100%;margin:10px 0;text-align:left;font-size:12px!important;}
 .iad-evidence-preview img {width:90px;height:70px;object-fit:contain;background:var(--iad-surface-muted);}
 .iad-quality-report dt {color:var(--iad-muted);}
-.iad-profile {padding:14px;background:var(--iad-surface-muted);border-radius:8px;}
+.iad-profile {padding:14px;background:var(--iad-surface-muted);border-radius:8px;overflow-wrap:anywhere;}
 @media(max-width:1100px) {.iad-workbench {padding:20px;}.iad-main {grid-template-columns:minmax(0,1fr) 300px;}.iad-grid {grid-template-columns:repeat(auto-fill,minmax(125px,1fr));}}
 @media(max-width:760px) {.iad-main,.iad-settings {grid-template-columns:1fr;}.iad-kpis {grid-template-columns:repeat(2,1fr);gap:10px;}.iad-inspector {width:100%;}}
 
@@ -2575,26 +2597,26 @@ var __IadClientBundle__ = (() => {
 `;
 
   // src/client/useSampleNavigation.ts
-  var import_react18 = __require("react");
+  var import_react19 = __require("react");
   function useSampleNavigation(pageId, taskId, query, result, enabled) {
     const { workspace, state } = useWorkspace();
     const view = workspace.view(pageId);
-    const [busy, setBusy] = (0, import_react18.useState)(false);
-    const [error, setError] = (0, import_react18.useState)("");
-    const [target, setTarget] = (0, import_react18.useState)("");
-    const pending = (0, import_react18.useRef)();
+    const [busy, setBusy] = (0, import_react19.useState)(false);
+    const [error, setError] = (0, import_react19.useState)("");
+    const [target, setTarget] = (0, import_react19.useState)("");
+    const pending = (0, import_react19.useRef)();
     const position = enabled && result.query === query ? result.items.findIndex((item) => item.sample_id === view.selected) : -1;
     const previous = position >= 0 && (position > 0 || view.page > 1);
     const next = position >= 0 && (position < result.items.length - 1 || view.page * pageSize < result.total);
-    const cancel = (0, import_react18.useCallback)(() => {
+    const cancel = (0, import_react19.useCallback)(() => {
       pending.current?.abort();
       pending.current = void 0;
       setBusy(false);
       setError("");
       setTarget("");
     }, []);
-    const opened = (0, import_react18.useCallback)(() => setTarget(""), []);
-    (0, import_react18.useEffect)(() => {
+    const opened = (0, import_react19.useCallback)(() => setTarget(""), []);
+    (0, import_react19.useEffect)(() => {
       setBusy(false);
       setError("");
       setTarget((target2) => state.active && state.pageId === pageId && target2 === view.selected ? target2 : "");
@@ -2638,11 +2660,11 @@ var __IadClientBundle__ = (() => {
   }
 
   // src/client/usePagePosition.ts
-  var import_react19 = __require("react");
+  var import_react20 = __require("react");
   function usePagePosition(source, ready) {
     const { workspace } = useWorkspace();
-    const surface = (0, import_react19.useRef)(null);
-    (0, import_react19.useLayoutEffect)(() => {
+    const surface = (0, import_react20.useRef)(null);
+    (0, import_react20.useLayoutEffect)(() => {
       const element = surface.current;
       if (!source || !ready || !element) return;
       element.scrollTop = workspace.pagePosition(source);
@@ -2658,15 +2680,15 @@ var __IadClientBundle__ = (() => {
   function WorkbenchPage({ pageId }) {
     const { workspace, state } = useWorkspace();
     const datasetId = state.datasetId, view = workspace.view(pageId);
-    const [datasets, setDatasets] = (0, import_react20.useState)([]);
-    const [result, setResult] = (0, import_react20.useState)({ query: "", items: [], total: 0 });
-    const [loading, setLoading] = (0, import_react20.useState)(false);
-    const [error, setError] = (0, import_react20.useState)("");
-    const [revision, setRevision] = (0, import_react20.useState)(0);
-    const advance = (0, import_react20.useRef)(null);
-    const [reviewConfirmation, setReviewConfirmation] = (0, import_react20.useState)(null);
+    const [datasets, setDatasets] = (0, import_react21.useState)([]);
+    const [result, setResult] = (0, import_react21.useState)({ query: "", items: [], total: 0 });
+    const [loading, setLoading] = (0, import_react21.useState)(false);
+    const [error, setError] = (0, import_react21.useState)("");
+    const [revision, setRevision] = (0, import_react21.useState)(0);
+    const advance = (0, import_react21.useRef)(null);
+    const [reviewConfirmation, setReviewConfirmation] = (0, import_react21.useState)(null);
     const dataset = datasets.find((d) => d.dataset_id === datasetId);
-    const loadDatasets = (0, import_react20.useCallback)(async (preferred, signal) => {
+    const loadDatasets = (0, import_react21.useCallback)(async (preferred, signal) => {
       try {
         const result2 = await request("/datasets", void 0, void 0, signal);
         if (signal?.aborted) return;
@@ -2678,12 +2700,12 @@ var __IadClientBundle__ = (() => {
         if (!signal?.aborted) setError(message(e));
       }
     }, [workspace]);
-    const changed = (0, import_react20.useCallback)(() => {
+    const changed = (0, import_react21.useCallback)(() => {
       setRevision((v) => v + 1);
       void loadDatasets();
     }, [loadDatasets]);
     const audit = useJobs("audit", datasetId, changed, workspace.view("industrial-audit").job);
-    (0, import_react20.useEffect)(() => {
+    (0, import_react21.useEffect)(() => {
       const controller = new AbortController();
       void loadDatasets(void 0, controller.signal);
       return () => controller.abort();
@@ -2692,7 +2714,7 @@ var __IadClientBundle__ = (() => {
     const query = new URLSearchParams({ ...view.filters, annotation_filters: JSON.stringify(view.filters.annotation_filters), dataset_id: datasetId, page: String(view.page), page_size: String(pageSize) }).toString();
     const navigation = useSampleNavigation(pageId, dataset?.task_id, query, result, gallery);
     const surface = usePagePosition(gallery ? JSON.stringify([pageId, view.tab, query]) : null, state.active && state.pageId === pageId && !!dataset && result.query === query && !loading);
-    (0, import_react20.useEffect)(() => {
+    (0, import_react21.useEffect)(() => {
       if (!dataset || !gallery) return;
       const controller = new AbortController();
       setLoading(true);
@@ -2833,7 +2855,7 @@ var __IadClientBundle__ = (() => {
           ] }),
           inspector
         ] }),
-        pageId === "industrial-audit" && view.tab === "jobs" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(AuditJobs, { dataset, filters: view.filters, jobs: audit.jobs, onJobsChanged: audit.refresh }, datasetId),
+        pageId === "industrial-audit" && view.tab === "jobs" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(AuditJobs, { dataset, filters: view.filters, jobs: audit.jobs, revision, onJobsChanged: audit.refresh }, datasetId),
         pageId === "industrial-audit" && view.tab === "reports" && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(AuditReport, { dataset })
       ] })
     ] });
@@ -2945,14 +2967,14 @@ var __IadClientBundle__ = (() => {
     const workspace = new Workspace(new InspectionSession(ctx));
     const icons = [DatasetIcon, ImagesIcon, KnowledgeIcon, KnowledgeIcon, AuditIcon, ReviewIcon];
     ctx.slots.inject("tool.call.toolview", () => {
-      for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props) => import_react21.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react21.default.createElement(SessionResult, { ...props, title })));
+      for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props) => import_react22.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react22.default.createElement(SessionResult, { ...props, title })));
     });
     ctx.slots.inject("sidebar.panellist", () => {
       Object.entries(pages).forEach(([id, label], index) => ctx.slots.register({ name: "sidebar.panellist", id, order: index + 1, label }, icons[index]));
     });
     ctx.slots.inject("main", () => {
       for (const id of Object.keys(pages)) {
-        ctx.slots.register({ name: "main", key: id }, () => import_react21.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react21.default.createElement(WorkbenchPage, { pageId: id })));
+        ctx.slots.register({ name: "main", key: id }, () => import_react22.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react22.default.createElement(WorkbenchPage, { pageId: id })));
       }
       return workspace.connect(ctx.layout);
     });

@@ -14,5 +14,6 @@
 - [AnomalyGPT：专门训练的多模态异常检测模型](https://github.com/CASIA-IVA-Lab/AnomalyGPT)
 - [DSH：原生技能注册与提供方接口](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/skill/skill/README.zh.md)
 - [Mem0：知识更新与身份保留提示](https://github.com/mem0ai/mem0/blob/main/mem0/configs/prompts.py)
+- [Label Studio：模型版本与预标注复核](https://labelstud.io/guide/predictions.html)
 
 本项目的知识挖掘与证据审计实现见[架构索引](architecture.md)。

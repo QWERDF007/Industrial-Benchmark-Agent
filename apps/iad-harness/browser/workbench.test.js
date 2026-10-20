@@ -820,6 +820,49 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await fs.writeFile(path.join(workspace,"runs/browser/knowledge-versions-375.png"),await driver.takeScreenshot(),"base64");
 
     await viewportSize(1440,1100);
+    await button("模型审计"); await button("模型审计作业");
+    async function selectAuditKnowledge(kind, version) {
+      const query = `select[aria-label='审计${kind}知识版本']`;
+      const control = await element(query); await driver.wait(() => control.isEnabled(), 5000);
+      await (await element(`${query} option[value='${version}']`)).click();
+    }
+    await selectAuditKnowledge("良品", published.knowledge.version_id);
+    await selectAuditKnowledge("不良品", defect.version_id);
+    const beforeVersionAudit = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();
+    async function auditSelectedVersion(model) {
+      const input = await element("input[aria-label='模型名称']"); await input.clear(); await input.sendKeys(model);
+      const start = await driver.findElement(By.xpath("//button[normalize-space(.)='审计当前筛选全部图像']"));
+      await driver.wait(() => start.isEnabled(), 5000); await start.click();
+      let job;
+      await driver.wait(async () => {
+        const result = await (await fetch(`${base}/api/iad/audit/jobs?dataset_id=${dataset.dataset_id}`)).json();
+        job = result.jobs.find(item => item.model_name === model);
+        if (job) assert.ok(!["FAILED", "PARTIAL"].includes(job.status), JSON.stringify(job.errors));
+        return job?.status === "COMPLETED";
+      }, 15000);
+      return job;
+    }
+    const oldVersionAudit = await auditSelectedVersion("test-old-knowledge");
+    assert.equal(oldVersionAudit.normal_version_id, published.knowledge.version_id);
+    assert.equal(oldVersionAudit.defect_version_id, defect.version_id);
+    await viewportSize(375, 812);
+    await fs.writeFile(path.join(workspace, "runs/browser/audit-version-selectors-375.png"), await driver.takeScreenshot(), "base64");
+    assert.ok(await driver.executeScript("const element=document.querySelector('.iad-workbench');return element.scrollWidth<=element.clientWidth+1"), "长版本号的审计知识选择在375px不应造成横向滚动");
+    await viewportSize(1440, 1100);
+    await selectAuditKnowledge("良品", nextNormal.version_id);
+    await driver.wait(async () => (await (await element(".iad-job-panel")).getText()).includes("暂无匹配的不良知识"), 5000);
+    assert.equal((await driver.findElements(By.css("select[aria-label='审计不良品知识版本'] option[value='" + defect.version_id + "']"))).length, 0, "另一良品版本的不良知识不可混用");
+    await driver.navigate().refresh();
+    await driver.wait(async () => await (await element("select[aria-label='审计良品知识版本']")).getAttribute("value") === nextNormal.version_id, 5000, "刷新保留待审计知识选择");
+    const newVersionAudit = await auditSelectedVersion("test-new-knowledge");
+    assert.equal(newVersionAudit.normal_version_id, nextNormal.version_id);
+    assert.equal(newVersionAudit.defect_version_id, null);
+    const afterVersionAudit = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();
+    assert.deepEqual(afterVersionAudit.review_history, beforeVersionAudit.review_history);
+    assert.equal(afterVersionAudit.sample.quality_status, beforeVersionAudit.sample.quality_status);
+    const historicalVersionContext = await (await readContext({ dataset_id: dataset.dataset_id, sample_id: dent.sample_id, suggestion_id: beforeVersionAudit.suggestion.suggestion_id })).json();
+    assert.equal(historicalVersionContext.is_latest, false);
+    assert.deepEqual(historicalVersionContext.analysis, beforeVersionAudit.suggestion.analysis, "重审保留历史建议的冻结分析");
     await button("人工复核");await select("当前数据集",dataset.dataset_id);
     await button("复核队列");await gridCount(1);
     await select("人工复核","pending");

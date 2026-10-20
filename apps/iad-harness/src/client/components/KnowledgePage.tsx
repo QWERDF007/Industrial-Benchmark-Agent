@@ -1,9 +1,10 @@
 import { JobCard } from "./JobCard.js";
-import React, { useCallback, useEffect, useState } from "react";
-import type { Dataset, JobSnapshot, KnowledgeSnapshot, KnowledgeVersion, KnowledgeStartRequest } from "../../shared/contracts.js";
+import React, { useCallback, useState } from "react";
+import type { Dataset, JobSnapshot, KnowledgeStartRequest } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 import { useJobs } from "../useJobs.js";
 import { useWorkspace } from "../workspace.js";
+import { useKnowledge } from "../useKnowledge.js";
 import { ImageViewer, type ImageSource } from "./ImageViewer.js";
 
 const statuses = { supported: "有证据支持", provisional: "待验证", conflicted: "存在矛盾" };
@@ -11,15 +12,14 @@ export function KnowledgePage({ dataset, kind }: { dataset: Dataset; kind: "norm
   const { workspace } = useWorkspace();
   const pageId = kind === "normal" ? "industrial-normal" : "industrial-defect";
   const view = workspace.view(pageId);
-  const [knowledge, setKnowledge] = useState<KnowledgeSnapshot | null>(null);
-  const [normal, setNormal] = useState<KnowledgeSnapshot | null>(null);
-  const [versions, setVersions] = useState<KnowledgeVersion[]>([]);
-  const [normalVersions, setNormalVersions] = useState<KnowledgeVersion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
+  const current = useKnowledge(dataset.dataset_id, kind, view.version, revision);
+  const reference = useKnowledge(dataset.dataset_id, kind === "defect" ? "normal" : null, view.normalVersion, revision);
+  const { knowledge, versions } = current;
+  const normal = reference.knowledge, normalVersions = reference.versions;
+  const loading = current.loading || reference.loading, loadError = current.error || reference.error;
   const [lightbox, setLightbox] = useState<ImageSource | null>(null);
   const [model, setModel] = useState("");
   const updated = useCallback(() => setRevision(value => value + 1), []);
@@ -27,17 +27,6 @@ export function KnowledgePage({ dataset, kind }: { dataset: Dataset; kind: "norm
   const jobs = polling.jobs.filter(job => job.kind === kind);
   const running = jobs.some(job => job.status === "RUNNING" || job.status === "PENDING");
   const [checkId, setCheckId] = useState("");
-  useEffect(() => {
-    const controller = new AbortController(); setLoading(true);
-    const query = new URLSearchParams({ dataset_id: dataset.dataset_id, kind, ...(view.version ? { version_id: view.version } : {}) });
-    Promise.all([
-      request<{ knowledge: KnowledgeSnapshot | null; versions: KnowledgeVersion[] }>(`/knowledge?${query}`, undefined, undefined, controller.signal),
-      kind === "defect" ? request<{ knowledge: KnowledgeSnapshot | null; versions: KnowledgeVersion[] }>(`/knowledge?${new URLSearchParams({ dataset_id: dataset.dataset_id, kind: "normal", ...(view.normalVersion ? { version_id: view.normalVersion } : {}) })}`, undefined, undefined, controller.signal) : Promise.resolve({ knowledge: null, versions: [] }),
-    ]).then(([current, reference]) => { if (!controller.signal.aborted) { setKnowledge(current.knowledge); setVersions(current.versions); setNormal(reference.knowledge); setNormalVersions(reference.versions); setLoadError(""); } })
-      .catch(error => { if (!controller.signal.aborted) setLoadError(message(error)); })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => controller.abort();
-  }, [dataset.dataset_id, kind, revision, view.version, view.normalVersion]);
   async function start() {
     setBusy(true); setError("");
     try {

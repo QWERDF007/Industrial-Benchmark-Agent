@@ -95,7 +95,7 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
       {pageId === "industrial-review" && view.tab === "records" && <div className="iad-main"><ReviewRecords key={datasetId} datasetId={datasetId} page={view.historyPage} search={view.historySearch} selected={view.selected} revision={revision}
         onPage={historyPage => workspace.updateView(pageId, { historyPage })} onSearch={historySearch => workspace.updateView(pageId, { historySearch, historyPage: 1 }, true)} onSelect={selected => workspace.updateView(pageId, { selected })} />{inspector}</div>}
       {pageId === "industrial-images" && view.selected && <Modal title="图像详情" restoreFocus={() => surface.current?.querySelector<HTMLElement>(`.iad-sample[data-sample-id="${CSS.escape(view.selected)}"]`) || null} onClose={() => workspace.updateView(pageId, { selected: "" })}><div className="iad-row"><button onClick={() => workspace.updateView(pageId, { selected: "" })}>返回图像浏览</button><button onClick={() => workspace.navigate("industrial-audit", view.selected)}>前往模型审计</button><button onClick={() => workspace.navigate("industrial-review", view.selected)}>前往人工复核</button></div>{inspector}</Modal>}
-      {pageId === "industrial-audit" && view.tab === "jobs" && <AuditJobs key={datasetId} dataset={dataset} filters={view.filters} jobs={audit.jobs} onJobsChanged={audit.refresh} />}
+      {pageId === "industrial-audit" && view.tab === "jobs" && <AuditJobs key={datasetId} dataset={dataset} filters={view.filters} jobs={audit.jobs} revision={revision} onJobsChanged={audit.refresh} />}
       {pageId === "industrial-audit" && view.tab === "reports" && <AuditReport dataset={dataset} />}
     </>}
   </div>;

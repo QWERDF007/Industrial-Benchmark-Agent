@@ -12,6 +12,8 @@ export type WorkbenchLocation = {
   datasetId: string;
   job?: string;
   version?: string;
+  normalVersion?: string;
+  defectVersion?: string;
   selected?: string;
   tab?: string;
 };

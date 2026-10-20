@@ -10,6 +10,7 @@ interface ViewState {
     tab: string;
     version: string;
     normalVersion: string;
+    defectVersion: string;
     job: string;
     historyPage: number;
     historySearch: string;
@@ -53,6 +54,7 @@ export declare class Workspace {
         tab: string;
         version: string;
         normalVersion: string;
+        defectVersion: string;
         job: string;
         historyPage: number;
         historySearch: string;

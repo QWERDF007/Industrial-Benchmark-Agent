@@ -195,6 +195,17 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     for (const [index, label] of ["挖掘良品知识", "模型审计"].entries()) {
       await (await element(`button[aria-label='${label}']`)).click();
       if (index) await button("模型审计作业");
+      if (index) {
+        const versions = await element("select[aria-label='审计良品知识版本']");
+        await driver.wait(() => versions.isEnabled(), 5000);
+        await (await element(`select[aria-label='审计良品知识版本'] option[value='${executions[index].normal_version_id}']`)).click();
+        await driver.navigate().refresh();
+        await driver.wait(async () => await (await element("select[aria-label='审计良品知识版本']")).getAttribute("value") === executions[index].normal_version_id, 5000);
+        const selectedVersion = JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad"));
+        assert.equal(selectedVersion.normalVersion, executions[index].normal_version_id);
+        assert.equal(selectedVersion.defectVersion, "");
+        assert.equal(agentRequests.length, requestCount, "原生宿主知识选择与刷新不重新运行模型");
+      }
       const card = await element(`article[data-job-id='${executions[index].run_id}']`);
       await card.findElement(By.xpath(".//button[normalize-space(.)='返回发起会话']")).click();
       await driver.wait(async () => (await driver.findElements(By.css(".iad-workbench"))).length === 0, 5000);
