@@ -27,6 +27,17 @@ test("DSH directory import and browser queries share one dataset and report", as
   const execute = (name, args) => ctx.tools.execute({ name, arguments: args,
     callId: name, signal: new AbortController().signal });
   try {
+    const rootListing = await execute("dataset_directory_inspect", { path: root });
+    assert.equal(rootListing.isError, false, JSON.stringify(rootListing));
+    assert.deepEqual(rootListing.value.directories.map(item => item.name), ["images", "labels"]);
+    const images = await execute("dataset_directory_inspect", { path: path.join(root, "images") });
+    const labels = await execute("dataset_directory_inspect", { path: path.join(root, "labels") });
+    assert.deepEqual(images.value.file_counts, { ".png": 3 });
+    assert.deepEqual(labels.value.file_counts, { ".json": 1 });
+    assert.deepEqual((await (await fetch(base + "/directories?path=" + encodeURIComponent(root))).json()), rootListing.value);
+    const missing = await execute("dataset_directory_inspect", { path: path.join(root, "missing") });
+    assert.equal(missing.isError, true);
+    assert.deepEqual((await execute("dataset_list", {})).value.datasets, [], "Directory inspection must not import datasets");
     const result = await execute("dataset_import", { name: "会话接入的部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
     assert.equal(result.isError, false, JSON.stringify(result));
     const dataset = result.value;
@@ -58,7 +69,7 @@ test("DSH directory import and browser queries share one dataset and report", as
     const duplicate = await execute("dataset_import", { name: "不应重复导入", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
     assert.equal(duplicate.isError, true);
     assert.equal((await execute("dataset_list", {})).value.datasets.length, 1);
-    for (const name of ["dataset_import", "dataset_list", "dataset_report"]) {
+    for (const name of ["dataset_directory_inspect", "dataset_import", "dataset_list", "dataset_report"]) {
       assert.ok(harness.ALLOWED_TOOL_SURFACE.includes(name), `${name} must be visible in an Agent scope`);
     }
   } finally {

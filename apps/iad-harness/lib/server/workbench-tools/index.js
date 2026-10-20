@@ -5,7 +5,7 @@ import { jobRetryParameters, jobStatusParameters, waitForJobStatus } from "../jo
 export const DATASET_ANALYSIS_WORKFLOW = `数据集分析流程
 
 用户要求“接入数据集、挖掘良品/不良品知识、审计并评估质量”时，使用以下实际操作完成任务；不要只给计划或在启动作业后就声称完成。
-1. 用 dataset_list 确认已接入的数据集。用户给出服务器图像目录、Labelme 标注目录和名称时调用 dataset_import。用户上传 ZIP 附件时，从宿主文件句柄取得保存路径，用 dataset_archive_inspect 查看包内目录，再用 dataset_import 的 archive_path 及包内相对 image_dir/annotation_dir 导入；目录不明确时询问，不猜测。已接入则复用稳定 dataset_id，未成功导入的附件不能声称已分析。
+1. 用 dataset_list 确认已接入的数据集。数据接入以服务器目录为主：用户只提供根目录（如 /data1/data/xxx）时，用 dataset_directory_inspect 检查实际子目录及当前层文件扩展名数量，按需向下查看，识别图像目录与 Labelme JSON 标注目录；同一目录混放图像和 JSON 时两者可相同。只有一个明确的目录组合时直接用 dataset_import，不要求用户再次逐一填写路径；多个候选组合或结构不明确时只询问歧义，不猜路径。名称未指定时取用户提供根目录的目录名，后续可在数据集管理修改；名称不是必须追问的信息。用户已明确给出两目录时直接导入。不存在或不可访问的目录如实报告，不能声称已上传或分析。已接入则复用稳定 dataset_id。保留 ZIP 工具供明确提供压缩包路径时使用，普通目录任务不要求上传附件。
 2. 加载 skill: mine-normal-knowledge，按其指引启动 knowledge_mine_normal，查询同一 run_id，取得发布的 knowledge_version_id 并读取知识。默认覆盖全部合格来源，不预设产品、检查点或数量预算。
 3. 加载 skill: mine-defect-knowledge，将刚取得的 normal_version_id 显式传入，执行并读取实际不良知识。无异常候选时如实说明，不能虚构不良知识；仍可用良品知识进行异常筛查。
 4. 用 model_audit_start 显式传入所选 dataset_id、normal_version_id 及实际可用的 defect_version_id；默认全部图像和全部适用 ROI。dataset_audit 只是技术检查，不能替代该 MLLM 联合审计。
@@ -21,6 +21,13 @@ export function createWorkbenchTools(bridge, ctx) {
             parameters: {},
             output: workbenchJsonOutput,
             execute: (_args, exec) => bridge.execute("dataset_list", {}, exec.signal),
+        }),
+        defineTool({
+            name: "dataset_directory_inspect",
+            description: "只读检查服务器数据集目录，返回真实子目录和当前层文件扩展名数量 file_counts（不递归，不等于有效样本数）；按需逐层识别图像与 Labelme JSON 所在目录，二者可为同一目录。不会导入或修改数据。",
+            parameters: { path: { type: "string", required: true, description: "用户给出的服务器目录或已列出的子目录绝对路径" } },
+            output: workbenchJsonOutput,
+            execute: (args, exec) => bridge.execute("directory_list", args, exec.signal),
         }),
         defineTool({
             name: "dataset_archive_inspect",

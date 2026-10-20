@@ -25,9 +25,9 @@ session.ctx.on("tools/result", (exec, result) => {
 const started = Date.now();
 const timeout = setTimeout(() => session.handle.agent.cancel({ kind: "hook", reason: "Verification deadline exceeded" }), 900000);
 try {
-  const source = archiveMode ? "使用所附 ZIP，包内图像目录 product/images、Labelme 标注目录 product/labels"
-    : `图像目录：${path.join(output, "images")}；Labelme 标注目录：${path.join(output, "labels")}`;
-  const content = [{ type: "text", text: `现在有一份数据集，进行良品、不良品知识挖掘，并审计，评估此数据集的质量。名称：合成部件会话验证；${source}。` }];
+  const source = archiveMode ? "名称：合成部件会话验证；使用所附 ZIP，包内图像目录 product/images、Labelme 标注目录 product/labels"
+    : `数据集在服务器上的 ${output} 目录。请检查目录，识别图像和 Labelme 标注，名称默认使用该目录名`;
+  const content = [{ type: "text", text: `现在有一份数据集，进行良品、不良品知识挖掘，并审计，评估此数据集的质量。${source}。` }];
   let attachment;
   if (archiveMode) {
     execFileSync(resolvePythonPath(), ["-c", `
@@ -54,6 +54,12 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
     assert.ok(trace.some(item => item.name === "skill" && item.arguments.name === name), `Agent did not load ${name}`);
   }
   const dataset = trace.find(item => item.name === "dataset_import").result.value;
+  if (!archiveMode) {
+    assert.ok(trace.some(item => item.name === "dataset_directory_inspect" && item.arguments.path === output && !item.result.isError));
+    assert.equal(dataset.image_dir, path.join(output, "images"));
+    assert.equal(dataset.annotation_dir, path.join(output, "labels"));
+    assert.equal(dataset.name, path.basename(output));
+  }
   if (archiveMode) {
     assert.ok(trace.some(item => item.name === "dataset_archive_inspect" && !item.result.isError));
     assert.equal(trace.find(item => item.name === "dataset_import").arguments.archive_path, session.ctx.attachments.fileHostPath(attachment));

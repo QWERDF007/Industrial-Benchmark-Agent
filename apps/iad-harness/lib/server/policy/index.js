@@ -16,6 +16,7 @@ export const SYSTEM_POLICIES = [
 export const ALLOWED_TOOL_SURFACE = [
     "skill",
     "dataset_list",
+    "dataset_directory_inspect",
     "dataset_import",
     "dataset_archive_inspect",
     "dataset_report",

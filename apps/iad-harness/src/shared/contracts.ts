@@ -91,6 +91,6 @@ export interface AuditJob {
   defect_version_id?: string | null;
   errors: Array<{ sample_id: string; message: string }>;
 }
-export interface DirectoryListing { path: string; parent: string; directories: Array<{ name: string; path: string }> }
+export interface DirectoryListing { path: string; parent: string; directories: Array<{ name: string; path: string }>; file_counts: Record<string, number> }
 export type AuditStartRequest = Omit<AuditStart, "filters"> & { filters?: Partial<Filters> };
 export interface ReviewSubmission { session_id: string; sample_id: string; decision: Decision; comment?: string; reason_code?: string; duration_ms?: number }

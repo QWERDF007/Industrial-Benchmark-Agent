@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+from collections import Counter
 from pathlib import Path
 from typing import Annotated, List, Optional
 
@@ -169,7 +170,7 @@ class DatasetRegistry:
         current = Path(directory).expanduser().resolve(strict=True)
         if not current.is_dir():
             raise ValueError("Path is not a directory")
+        entries = sorted(current.iterdir(), key=lambda p: p.name)
         return {"path": str(current), "parent": str(current.parent), "directories": [
-            {"name": p.name, "path": str(p)} for p in sorted(current.iterdir(), key=lambda p: p.name)
-            if p.is_dir() and not p.name.startswith(".")
-        ]}
+            {"name": p.name, "path": str(p)} for p in entries if p.is_dir() and not p.name.startswith(".")
+        ], "file_counts": dict(Counter(p.suffix.lower() for p in entries if p.is_file()))}

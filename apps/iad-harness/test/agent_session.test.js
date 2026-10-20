@@ -15,8 +15,10 @@ for (const source of ["directory", "archive"]) test(`a real DSH Session imports 
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-agent-session-"));
   execFileSync(resolvePythonPath(), [fileURLToPath(new URL("fixtures/knowledge_dataset.py", import.meta.url)), root]);
   const requests = [], trace = [];
-  const request = { name: "会话测试部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") };
+  const request = { name: source === "directory" ? path.basename(root) : "会话测试部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") };
   const archived = source === "archive";
+  const directoryPaths = archived ? [] : [root, request.image_dir, request.annotation_dir];
+  const inspectionCount = archived ? 1 : directoryPaths.length;
   if (archived) {
     execFileSync(resolvePythonPath(), ["-c", `
 from pathlib import Path
@@ -38,15 +40,16 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
     requests.push(body);
     const tools = body.messages.filter(message => message.role === "tool");
     let delta, finish;
-    if (archived && !tools.length) {
+    if (tools.length < inspectionCount) {
       delta = { role: "assistant", tool_calls: [{ index: 0, id: "inspect", type: "function", function: {
-        name: "dataset_archive_inspect", arguments: JSON.stringify({ archive_path: request.archive_path }),
+        name: archived ? "dataset_archive_inspect" : "dataset_directory_inspect",
+        arguments: JSON.stringify(archived ? { archive_path: request.archive_path } : { path: directoryPaths[tools.length] }),
       } }] };
       finish = "tool_calls";
-    } else if (tools.length === Number(archived)) {
+    } else if (tools.length === inspectionCount) {
       delta = { role: "assistant", tool_calls: [{ index: 0, id: "import", type: "function", function: { name: "dataset_import", arguments: JSON.stringify(request) } }] };
       finish = "tool_calls";
-    } else if (tools.length === Number(archived) + 1) {
+    } else if (tools.length === inspectionCount + 1) {
       const dataset = JSON.parse(tools.at(-1).content);
       delta = { role: "assistant", tool_calls: [{ index: 0, id: "report", type: "function", function: { name: "dataset_report", arguments: JSON.stringify({ dataset_id: dataset.dataset_id }) } }] };
       finish = "tool_calls";
@@ -72,7 +75,7 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
       parameters: {}, output: { schema: { type: "json" }, render: () => [] }, execute: () => ({}) }));
     const content = [{ type: "text", text: archived
       ? "导入附件数据集并查看报告，图像目录 product/images、Labelme 目录 product/labels，名称：会话测试部件。"
-      : `导入这份数据集并查看当前报告：${JSON.stringify(request)}` }];
+      : `导入服务器上的 ${root} 数据集并查看当前报告。` }];
     if (archived) {
       const attachment = await session.ctx.attachments.saveFile({ data: await fs.readFile(path.join(root, "dataset.zip")), name: "dataset.zip" });
       request.archive_path = session.ctx.attachments.fileHostPath(attachment);
@@ -81,12 +84,20 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
     session.handle.agent.followup(createUserMessage({ source: { kind: "user" }, content }));
     await session.handle.agent.whenIdle();
     assert.ok(trace.length, JSON.stringify(session.handle.agent.session.snapshotEvents().filter(event => /error|attempt|turn\/end/.test(event.type))));
-    assert.deepEqual(trace.map(item => item.name), [...(archived ? ["dataset_archive_inspect"] : []), "dataset_import", "dataset_report"]);
+    assert.deepEqual(trace.map(item => item.name), [...(archived ? ["dataset_archive_inspect"] : directoryPaths.map(() => "dataset_directory_inspect")), "dataset_import", "dataset_report"]);
     assert.ok(trace.every(item => item.result.isError === false));
     assert.equal(trace.at(-1).result.value.total_samples, 3);
     assert.equal(trace.at(-1).result.value.vlm_audited_count, 0);
     const messages = session.handle.agent.session.deriveMessages();
-    assert.equal(messages.filter(item => item.role === "tool").length, archived ? 3 : 2);
+    assert.equal(messages.filter(item => item.role === "tool").length, inspectionCount + 2);
+    if (!archived) {
+      assert.deepEqual(trace[0].result.value.directories.map(item => item.name), ["images", "labels"]);
+      assert.deepEqual(trace[1].result.value.file_counts, { ".png": 3 });
+      assert.deepEqual(trace[2].result.value.file_counts, { ".json": 1 });
+      assert.equal(trace[3].result.value.name, path.basename(root));
+      const originalInput = requests[0].messages.filter(message => message.role === "user").map(message => message.content).join("\n");
+      assert.ok(!originalInput.includes(request.image_dir) && !originalInput.includes(request.annotation_dir));
+    }
     if (archived) {
       assert.ok(messages.some(item => item.content.some(block => block.type === "file")));
       const filePrompt = JSON.stringify(requests[0].messages.filter(message => message.role === "user"));

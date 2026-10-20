@@ -118,6 +118,7 @@ export interface DirectoryListing {
         name: string;
         path: string;
     }>;
+    file_counts: Record<string, number>;
 }
 export type AuditStartRequest = Omit<AuditStart, "filters"> & {
     filters?: Partial<Filters>;
