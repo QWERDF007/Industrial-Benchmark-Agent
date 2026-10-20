@@ -16,6 +16,14 @@ export const SYSTEM_POLICIES = [
 ].join("\n");
 
 export const ALLOWED_TOOL_SURFACE = [
+  "skill",
+  "dataset_list",
+  "knowledge_mine_normal",
+  "knowledge_mine_defect",
+  "knowledge_job_status",
+  "knowledge_job_cancel",
+  "knowledge_get",
+  "knowledge_evidence",
   // Audit & Images (7 tools)
   "dataset_audit",
   "audit_issue_query",

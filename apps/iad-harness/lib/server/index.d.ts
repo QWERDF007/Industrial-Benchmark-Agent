@@ -13,6 +13,7 @@ export { createAuditTools } from "./audit/index.js";
 export { createVisionTools } from "./vision/index.js";
 export { createBenchmarkTools } from "./benchmark/index.js";
 export { createEvaluationTools } from "./evaluation/index.js";
+export { createKnowledgeTools } from "./knowledge/index.js";
 export interface IADHarnessConfig extends PythonBridgeConfig {
     authorizedMcpTools?: string[];
 }

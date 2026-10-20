@@ -12,6 +12,8 @@ import * as audit from "./audit/index.js";
 import * as vision from "./vision/index.js";
 import * as benchmark from "./benchmark/index.js";
 import * as evaluation from "./evaluation/index.js";
+import { KNOWLEDGE_SKILLS } from "./knowledge/skills.js";
+import { createKnowledgeTools } from "./knowledge/index.js";
 export { SYSTEM_POLICIES, ALLOWED_TOOL_SURFACE } from "./policy/index.js";
 export { CoreClient } from "./core-client/index.js";
 export { PythonBridge } from "./python-bridge/index.js";
@@ -21,12 +23,13 @@ export { createAuditTools } from "./audit/index.js";
 export { createVisionTools } from "./vision/index.js";
 export { createBenchmarkTools } from "./benchmark/index.js";
 export { createEvaluationTools } from "./evaluation/index.js";
+export { createKnowledgeTools } from "./knowledge/index.js";
 export const name = "iad-harness";
-export const inject = ["tools", "systemPrompt"];
+export const inject = ["tools", "systemPrompt", "skills"];
 export function apply(ctx, config = {}) {
     // 1. Initialize PythonBridge singleton
     const bridge = new PythonBridge(config);
-    ctx.on?.("dispose", () => bridge.destroy());
+    ctx.effect(() => () => bridge.destroy());
     ctx.provide?.("iadPythonBridge", bridge);
     ctx.iadPythonBridge = bridge;
     // 2. Initialize shared CoreClient backed by PythonBridge
@@ -59,10 +62,14 @@ export function apply(ctx, config = {}) {
     }
     // 5. Invariant policies and tool restriction with MCP authorization
     policy.apply(ctx, config);
-    // 6. Register native domain tools (22 Cordis tools)
+    // 6. Register native domain tools and bundled skills.
     audit.apply(ctx);
     vision.apply(ctx);
     benchmark.apply(ctx);
     evaluation.apply(ctx);
+    for (const tool of createKnowledgeTools(bridge, ctx))
+        ctx.tools.register(tool);
+    for (const skill of KNOWLEDGE_SKILLS)
+        ctx.skills.register(skill);
     ctx.logger?.info?.("Industrial Benchmark Agent Root Harness Bundle initialized successfully.");
 }
