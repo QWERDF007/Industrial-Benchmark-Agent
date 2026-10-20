@@ -1,4 +1,5 @@
 import React from "react";
+import { MediaLoad, MediaImage } from "./MediaLoad.js";
 import type { AuditAnalysis } from "../../shared/contracts.js";
 import { auditEvidenceUrl, regionSources } from "../api.js";
 
@@ -31,7 +32,7 @@ export function InspectionPanel({ inspection, selectedId, onSelect, choices }: {
     <div className="iad-roi-list" aria-label="审计 ROI">{analysis.regions.map((item,index) => <button key={item.image.evidence_id} aria-label={`定位 ROI ${index+1}`} aria-pressed={selectedId === item.image.evidence_id} onClick={() => onSelect(item.image.evidence_id)}>ROI {index+1} · {item.label}</button>)}</div>
     {region ? <section className="iad-inspection-region" data-evidence-id={region.image.evidence_id}>
       <h3>{regionSources[region.source]} · {region.label}</h3>
-      <img src={auditEvidenceUrl(suggestionId,region.image)} alt="所选 ROI 的实际送模裁图" />
+      <MediaLoad key={region.image.evidence_id}><MediaImage src={auditEvidenceUrl(suggestionId,region.image)} alt="所选 ROI 的实际送模裁图" data-media-label="ROI 裁图" /></MediaLoad>
       <dl><dt>原图区域</dt><dd>{region.bbox.join(", ")}</dd><dt>外扩裁图</dt><dd>{region.crop_bbox.join(", ")}</dd></dl>
       <p>{region.observation.description}</p><p>位置：{region.observation.position_analysis}</p><p>光照：{region.observation.illumination_analysis}</p>
       {related.slice(0,3).map(finding => <div key={finding.finding_id}><p>{finding.description}</p><p>正常解释：{finding.normal_explanation}</p><p className="iad-muted">{finding.limitations.join("；")}</p><p>{finding.review_action}</p></div>)}

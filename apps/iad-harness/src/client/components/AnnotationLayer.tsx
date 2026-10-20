@@ -1,4 +1,5 @@
 import React, { useId } from "react";
+import { MediaMask } from "./MediaLoad.js";
 import type { Annotation, AuditAnalysis, SampleIdentity } from "../../shared/contracts.js";
 import { auditEvidenceUrl, mediaUrl } from "../api.js";
 
@@ -30,7 +31,7 @@ export function AnnotationLayer({ source }: { source: AnnotationLayerSource }) {
       const [x1, y1, x2, y2] = mask.bbox;
       return <g key={mask.id}>
         <defs><mask id={maskId} x={0} y={0} width={width} height={height} maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" style={{ maskType: "luminance" }}>
-          <image href={mask.url} x={x1} y={y1} width={x2-x1} height={y2-y1} preserveAspectRatio="none" style={{ imageRendering: "pixelated" }} />
+          <MediaMask href={mask.url} x={x1} y={y1} width={x2-x1} height={y2-y1} preserveAspectRatio="none" style={{ imageRendering: "pixelated" }} />
         </mask></defs>
         <rect x={0} y={0} width={width} height={height} mask={`url(#${maskId})`} />
       </g>;

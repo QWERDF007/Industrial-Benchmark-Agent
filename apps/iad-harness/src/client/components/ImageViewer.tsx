@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Modal } from "./Modal.js";
+import { MediaImage, MediaLoad } from "./MediaLoad.js";
 import { AnnotationLayer, type AnnotationLayerSource } from "./AnnotationLayer.js";
 import { regionSources } from "../api.js";
 import { InspectionOverlay, InspectionPanel, type InspectionContext } from "./InspectionEvidence.js";
@@ -10,8 +11,8 @@ export interface ImageSource {
   focus?: { bbox: number[]; label: string; findingId: string };
 }
 
-export function AnnotatedImage({ image, visible = true }: { image: ImageSource; visible?: boolean }) {
-  return <div className="iad-image-frame"><img src={image.src} alt={image.title} draggable={false} />
+export function AnnotatedImage({ image, visible = true, onLoad }: { image: ImageSource; visible?: boolean; onLoad?: React.ReactEventHandler<HTMLImageElement> }) {
+  return <div className="iad-image-frame"><MediaImage src={image.src} alt={image.title} width={image.width} height={image.height} data-media-label="图像" draggable={false} onLoad={onLoad} />
     {visible && image.annotationLayer && <AnnotationLayer source={image.annotationLayer} />}
     {image.focus && <svg className="iad-finding-layer" data-finding-id={image.focus.findingId}
       viewBox={`0 0 ${image.width} ${image.height}`} preserveAspectRatio="none" aria-label={image.focus.label}>
@@ -53,10 +54,6 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
     const observer = new ResizeObserver(([entry]) => setBounds({ width: entry.contentRect.width, height: entry.contentRect.height }));
     observer.observe(element); return () => observer.disconnect();
   }, []);
-  useEffect(() => {
-    const source = new Image(); source.onload = () => setSize({ width: source.naturalWidth, height: source.naturalHeight }); source.src = image.src;
-    return () => { source.onload = null; };
-  }, [image.src]);
   const focusBox = useCallback((box: number[]) => {
     if (!bounds.width || !bounds.height || !size.width || !size.height) return;
     const [x1,y1,x2,y2] = box;
@@ -118,7 +115,7 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
     </details>}
     <button onClick={onClose}>关闭</button></div>
     <div className={`iad-viewer-body ${inspection ? "has-inspection" : ""}`}>
-    <div className="iad-viewer-viewport" ref={viewport} tabIndex={0} aria-label="图像视口"
+    <MediaLoad key={image.src} className="iad-viewer-media"><div className="iad-viewer-viewport" ref={viewport} tabIndex={0} aria-label="图像视口"
       onKeyDown={event => {
         const direction=({ArrowLeft:[20,0],ArrowRight:[-20,0],ArrowUp:[0,20],ArrowDown:[0,-20]} as Record<string,number[]>)[event.key];
         if(direction){event.preventDefault();setView(previous=>({...previous,x:previous.x+direction[0],y:previous.y+direction[1]}));}
@@ -133,10 +130,10 @@ export function ImageViewer({ image, onClose }: { image: ImageSource; onClose():
       onPointerUp={event => { const start=drag.current;drag.current=null;if(start && !start.moved && inspection){const ids=regionsAt(event);if(ids.length===1)selectRegion(ids[0]);else{setSelection(null);setChoices(ids);}} }} onPointerCancel={() => { drag.current = null; }}>
       <div className="iad-viewer-world" ref={world} data-scale={scale} style={{ width: size.width, height: size.height, "--iad-view-scale": scale,
         transform: `translate(-50%, -50%) translate(${view.x}px, ${view.y}px) scale(${scale})` } as React.CSSProperties}>
-        <AnnotatedImage image={{ ...image, ...size, focus: inspection && (!finding || !layers.model) ? undefined : image.focus }} visible={layers.annotation} />
+        <AnnotatedImage image={{ ...image, ...size, focus: inspection && (!finding || !layers.model) ? undefined : image.focus }} visible={layers.annotation} onLoad={event => setSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })} />
         {inspection && <InspectionOverlay inspection={inspection} selectedId={selectedId} hoveredIds={hoveredIds} regions={regions} />}
       </div>
-    </div>
+    </div></MediaLoad>
     {inspection && <InspectionPanel inspection={inspection} selectedId={selectedId} onSelect={selectRegion} choices={choices} />}
     </div>
   </div></Modal>;

@@ -14,9 +14,10 @@ export interface ImageSource {
         findingId: string;
     };
 }
-export declare function AnnotatedImage({ image, visible }: {
+export declare function AnnotatedImage({ image, visible, onLoad }: {
     image: ImageSource;
     visible?: boolean;
+    onLoad?: React.ReactEventHandler<HTMLImageElement>;
 }): React.JSX.Element;
 export declare function ImageViewer({ image, onClose }: {
     image: ImageSource;
