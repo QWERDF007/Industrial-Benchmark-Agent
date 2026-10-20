@@ -83,6 +83,13 @@ class RegionEvidence(RegionOrigin):
     observation: ViewAnalysis
 
 
+class SynthesisStep(AnalysisModel):
+    step_id: str
+    input_evidence_ids: List[str]
+    child_step_ids: List[str]
+    result: VlmResult
+
+
 class AuditAnalysis(AnalysisModel):
     profile_id: str
     overview: VisualEvidence
@@ -90,6 +97,7 @@ class AuditAnalysis(AnalysisModel):
     global_view: GlobalAnalysis
     regions: List[RegionEvidence]
     conclusion: VlmResult
+    joint_steps: List[SynthesisStep] = Field(default_factory=list)
 
 
 class InspectionProgress(AnalysisModel):
@@ -97,6 +105,8 @@ class InspectionProgress(AnalysisModel):
     profile_id: str = ""
     inspected_regions: int = 0
     planned_regions: int = 0
+    completed_batches: int = 0
+    total_batches: int = 0
 
 
 class NormalSource(AnalysisModel):

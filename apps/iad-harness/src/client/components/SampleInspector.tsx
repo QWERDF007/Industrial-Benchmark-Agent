@@ -4,15 +4,16 @@ import { AnnotatedImage, ImageViewer, type ImageSource } from "./ImageViewer.js"
 import { NormalKnowledge } from "./NormalKnowledge.js";
 import { auditPhases, mediaUrl, message, request } from "../api.js";
 
-export function SampleInspector({ dataset, sampleId, mode, revision, onChanged }: {
+export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, jobs, onJobsChanged }: {
+  jobs: AuditJob[]; onJobsChanged(): void;
   dataset: Dataset; sampleId: string; mode: "model" | "review"; revision: number; onChanged(): void;
 }) {
   const [detail, setDetail] = useState<SampleDetail | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
-  const [job, setJob] = useState<AuditJob | null>(null);
-  const jobRunning = job?.status === "RUNNING" || job?.status === "PENDING";
+  const job = jobs.find(job => job.sample_ids.includes(sampleId));
+  const jobRunning = jobs.some(job => job.status === "RUNNING" || job.status === "PENDING");
   const [reviewer, setReviewer] = useState(localStorage.getItem("iad.reviewer") || "auditor_qc");
   const [comment, setComment] = useState("");
   const [lightbox, setLightbox] = useState<ImageSource | null>(null);
@@ -21,6 +22,8 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged }
   useEffect(() => {
     activeId.current = sampleId;
     setDetail(null); setError(""); setNotice(""); setComment(""); setLightbox(null); openedAt.current = Date.now();
+  }, [sampleId]);
+  useEffect(() => {
     if (!sampleId) return;
     const controller = new AbortController();
     request<SampleDetail>(`/sample/${encodeURIComponent(sampleId)}`, undefined, undefined, controller.signal).then(setDetail).catch(e => {
@@ -28,23 +31,9 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged }
     });
     return () => controller.abort();
   }, [sampleId, revision]);
-  useEffect(() => {
-    if (!job) return;
-    const controller = new AbortController(); let timer: ReturnType<typeof setTimeout>;
-    async function refresh() {
-      try {
-        const latest = await request<AuditJob>(`/audit/status/${job!.run_id}`, undefined, undefined, controller.signal);
-        if (controller.signal.aborted) return;
-        setJob(latest);
-        if (latest.status === "RUNNING" || latest.status === "PENDING") timer = setTimeout(refresh, 1000);
-        else onChanged();
-      } catch (error) { if (!controller.signal.aborted) setError(message(error)); }
-    }
-    refresh(); return () => { controller.abort(); clearTimeout(timer); };
-  }, [job?.run_id, onChanged]);
   async function audit() {
     setBusy(true); setError("");
-    try { setJob(await request<AuditJob>("/audit/start", { dataset_id: dataset.dataset_id, sample_ids: [sampleId] })); }
+    try { await request<AuditJob>("/audit/start", { dataset_id: dataset.dataset_id, sample_ids: [sampleId] }); onJobsChanged(); }
     catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
   async function setReference() {
@@ -95,14 +84,16 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged }
             <button className="iad-evidence-preview" onClick={() => setLightbox(evidenceSource(region.image))}><img src={evidenceSource(region.image).src} alt={`审计 ROI ${index + 1}`} /><span>{region.image.sent_size.join(" × ")} · PNG{detail.suggestion!.analysis!.conclusion.evidence_ids.includes(region.image.evidence_id) ? " · 结论引用" : ""}</span></button><p>{region.observation.description}</p><p>位置：{region.observation.position_analysis}</p><p>光照：{region.observation.illumination_analysis}</p></div>)}
           {detail.suggestion.analysis.conclusion.conflicts.length > 0 && <p className="iad-error">观察矛盾：{detail.suggestion.analysis.conclusion.conflicts.join("；")}</p>}
           {detail.suggestion.analysis.conclusion.missing_evidence.length > 0 && <p className="iad-error">缺失证据：{detail.suggestion.analysis.conclusion.missing_evidence.join("；")}</p>}
+          {detail.suggestion.analysis.joint_steps.length > 1 && <details><summary>分批联合判断 · {detail.suggestion.analysis.joint_steps.length} 步</summary>{detail.suggestion.analysis.joint_steps.map(step => <div key={step.step_id}><strong>{step.step_id} · {step.result.suggested_label}</strong><p>{step.input_evidence_ids.length} 张图像{step.child_step_ids.length ? ` · 汇总 ${step.child_step_ids.join("、")}` : ""}</p><p>{step.result.description}</p></div>)}</details>}
           <p className="iad-muted">结论引用 {detail.suggestion.analysis.conclusion.evidence_ids.length} 项视觉证据</p>
           <p>位置分析：{detail.suggestion.analysis.conclusion.position_analysis}</p><p>光照分析：{detail.suggestion.analysis.conclusion.illumination_analysis}</p>
         </details>}
       </> : <p className="iad-muted">尚无模型观察。</p>}</section>
       {mode === "model" && job && <section className="iad-single-job iad-info-group" aria-live="polite"><strong>{job.status}</strong><p>{auditPhases[job.phase || ""] || job.message}</p>
         {!!job.planned_regions && <p>ROI {job.inspected_regions || 0} / {job.planned_regions}</p>}
+        {!!job.total_batches && <p>联合判断 {job.completed_batches || 0} / {job.total_batches}</p>}
         {job.errors.map((error, index) => <p className="iad-error" key={index}>{error.message}</p>)}
-        {jobRunning && <button onClick={async () => { try { setJob(await request<AuditJob>(`/audit/cancel/${job.run_id}`, {})); } catch (error) { setError(message(error)); } }}>取消审计</button>}
+        {(job.status === "RUNNING" || job.status === "PENDING") && <button onClick={async () => { try { await request<AuditJob>(`/audit/cancel/${job.run_id}`, {}); onJobsChanged(); } catch (error) { setError(message(error)); } }}>取消审计</button>}
       </section>}
       {mode === "model" ? <div className="iad-actions"><button className="iad-primary" disabled={busy || jobRunning} onClick={audit}>{busy || jobRunning ? "正在分阶段审计…" : "按良品模式审计此图"}</button>
         <button disabled={busy} onClick={setReference}>{dataset.reference_sample_ids.includes(sampleId) ? "移出良品参考" : "设为良品参考"}</button></div> : <section className="iad-decision">

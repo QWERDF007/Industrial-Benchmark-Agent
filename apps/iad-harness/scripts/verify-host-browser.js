@@ -23,7 +23,7 @@ try {
   assert.deepEqual(navigation, ["Plugins", "模型审计", "人工复核"]);
   await driver.findElement(By.css("button[aria-label='模型审计']")).click();
   await driver.wait(until.elementLocated(By.css(".iad-inspector .iad-image-frame img")), 15000);
-  await driver.wait(async () => await driver.executeScript("return document.querySelector('.iad-thumb img')?.naturalWidth>0;"), 15000);
+  await driver.wait(async () => await driver.executeScript("return document.querySelector('.iad-thumb img')?.naturalWidth>0 && document.querySelector('.iad-inspector .iad-image-frame img')?.naturalWidth>0;"), 15000);
   assert.equal(await driver.findElement(By.css(".iad-workbench h1")).getText(), "模型审计");
   assert.equal((await driver.findElements(By.xpath("//h2[.='复核明细']"))).length, 0);
   const output = path.join(workspace, "runs/browser");
@@ -38,6 +38,8 @@ try {
   await fs.writeFile(path.join(output, "dsh-image-viewer.png"), await driver.takeScreenshot(), "base64");
   await driver.findElement(By.xpath("//button[.='关闭']")).click();
   await driver.findElement(By.xpath("//button[.='模型审计作业']")).click();
+  await driver.wait(until.elementLocated(By.xpath("//button[.='审计当前筛选全部图像']")), 5000);
+  assert.equal((await driver.findElements(By.xpath("//label[contains(.,'最多审计图数') or contains(.,'每图 ROI 预算')]//input"))).length, 0);
   await driver.wait(until.elementLocated(By.css(".iad-reference-grid button")), 5000).click();
   await driver.wait(until.elementLocated(By.css(".iad-viewer-viewport img")), 5000);
   await driver.findElement(By.xpath("//button[.='关闭']")).click();

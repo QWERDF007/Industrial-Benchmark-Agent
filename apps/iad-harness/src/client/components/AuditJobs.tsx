@@ -4,37 +4,21 @@ import { ImageViewer, type ImageSource } from "./ImageViewer.js";
 import { NormalKnowledge } from "./NormalKnowledge.js";
 import { auditPhases, mediaUrl, message, request } from "../api.js";
 
-export function AuditJobs({ dataset, filters, onChanged }: { dataset: Dataset; filters: Filters; onChanged(): void }) {
+export function AuditJobs({ dataset, filters, jobs, onJobsChanged }: { dataset: Dataset; filters: Filters; jobs: AuditJob[]; onJobsChanged(): void }) {
   const [lightbox, setLightbox] = useState<ImageSource | null>(null);
   const [profile, setProfile] = useState<NormalProfile | null>(null);
-  const [jobs, setJobs] = useState<AuditJob[]>([]);
   const [model, setModel] = useState("Qwen/Qwen3.8-27B-FP8");
-  const [limit, setLimit] = useState(50);
-  const [maxRegions, setMaxRegions] = useState(12);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [revision, setRevision] = useState(0);
   useEffect(() => {
-    const controller = new AbortController(); let timer: ReturnType<typeof setTimeout>; let wasRunning = false;
-    async function refresh() {
-      try {
-        const [data, learned] = await Promise.all([
-          request<{ jobs: AuditJob[] }>(`/audit/jobs?dataset_id=${dataset.dataset_id}`, undefined, undefined, controller.signal),
-          request<{ profile: NormalProfile | null }>(`/audit/profile?${new URLSearchParams({ dataset_id: dataset.dataset_id, model_name: model })}`, undefined, undefined, controller.signal),
-        ]);
-        if (controller.signal.aborted) return;
-        setJobs(data.jobs); setProfile(learned.profile);
-        const running = data.jobs.some(job => job.status === "RUNNING" || job.status === "PENDING");
-        if (wasRunning && !running) onChanged();
-        wasRunning = running;
-        timer = setTimeout(refresh, running ? 1200 : 5000);
-      } catch (e) { if (!controller.signal.aborted) setError(message(e)); }
-    }
-    refresh(); return () => { controller.abort(); clearTimeout(timer); };
-  }, [dataset, model, revision, onChanged]);
+    const controller = new AbortController();
+    request<{ profile: NormalProfile | null }>(`/audit/profile?${new URLSearchParams({ dataset_id: dataset.dataset_id, model_name: model })}`, undefined, undefined, controller.signal)
+      .then(result => setProfile(result.profile)).catch(error => { if (!controller.signal.aborted) setError(message(error)); });
+    return () => controller.abort();
+  }, [dataset.dataset_id, dataset.reference_sample_ids.join("\n"), model, jobs[0]?.profile_id]);
   async function start() {
     setBusy(true); setError("");
-    try { await request("/audit/start", { dataset_id: dataset.dataset_id, model_name: model, max_regions: maxRegions, limit, filters }); setRevision(v => v + 1); }
+    try { await request("/audit/start", { dataset_id: dataset.dataset_id, model_name: model, filters }); onJobsChanged(); }
     catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
   return <section className="iad-job-panel"><section className="iad-job-section"><h2>参考良品</h2><div className="iad-reference-grid">{dataset.reference_sample_ids.map(id => <div key={id}>
@@ -44,15 +28,14 @@ export function AuditJobs({ dataset, filters, onChanged }: { dataset: Dataset; f
     {profile ? <NormalKnowledge profile={profile} /> : <p className="iad-profile iad-muted">当前参考图尚未学习；启动后由 MLLM学习并保存良品模式。</p>}
     </section><section className="iad-job-section">
     <h2>启动模型审计</h2><div className="iad-row"><label>模型<input aria-label="模型名称" value={model} onChange={e => setModel(e.target.value)} /></label>
-      <label>最多审计图数<input type="number" min={1} max={10000} value={limit} onChange={e => setLimit(Number(e.target.value))} /></label>
-      <label>每图 ROI 预算<input aria-label="每图 ROI 预算" type="number" min={1} max={32} value={maxRegions} onChange={e => setMaxRegions(Number(e.target.value))} /></label>
-      <button className="iad-primary" onClick={start} disabled={busy || !dataset.reference_sample_ids.length || jobs.some(j => j.status === "RUNNING")}>{busy ? "启动中…" : "按当前样本筛选启动"}</button></div>
+      <button className="iad-primary" onClick={start} disabled={busy || !dataset.reference_sample_ids.length || jobs.some(j => j.status === "RUNNING")}>{busy ? "启动中…" : "审计当前筛选全部图像"}</button></div>
     <p className="iad-muted">全图观察 → 标注及可疑区域细看 → 结合位置、光照综合判断。</p>{error && <p role="alert" className="iad-error">{error}</p>}
     </section><section className="iad-job-section"><h2>审计作业</h2>{jobs.map(job => <article className="iad-job" key={job.run_id}><div className="iad-row"><strong>{job.status}</strong><span>{job.model_name}</span>
-      {(job.status === "RUNNING" || job.status === "PENDING") && <button onClick={async () => { try { await request(`/audit/cancel/${job.run_id}`, {}); setRevision(v => v + 1); } catch (e) { setError(message(e)); } }}>取消</button>}</div>
+      {(job.status === "RUNNING" || job.status === "PENDING") && <button onClick={async () => { try { await request(`/audit/cancel/${job.run_id}`, {}); onJobsChanged(); } catch (e) { setError(message(e)); } }}>取消</button>}</div>
       <progress value={job.progress} max={1} /><p>完成 {job.completed} · 失败 {job.failed} · 共 {job.total_samples} 张</p>
       <p className="iad-muted">{auditPhases[job.phase || ""] || job.message}</p>
       {!!job.planned_regions && <p className="iad-muted">ROI {job.inspected_regions || 0} / {job.planned_regions}</p>}
+      {!!job.total_batches && <p className="iad-muted">联合判断 {job.completed_batches || 0} / {job.total_batches}</p>}
       {job.profile_id && <small className="iad-muted">模式版本 {job.profile_id}<br /></small>}<small className="iad-muted">{job.run_id}</small>{job.errors.length > 0 && <details><summary>失败详情</summary>{job.errors.map((error, i) => <p key={i}>{error.sample_id}: {error.message}</p>)}</details>}</article>)}
     {!jobs.length && <p className="iad-muted">尚无审计作业。</p>}</section>
     {lightbox && <ImageViewer image={lightbox} onClose={() => setLightbox(null)} />}

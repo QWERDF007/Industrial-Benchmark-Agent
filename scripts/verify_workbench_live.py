@@ -78,7 +78,7 @@ def main():
             ids = {item.analysis.overview.evidence_id, *[r.image.evidence_id for r in item.analysis.regions]}
             assert set(item.analysis.conclusion.evidence_ids) <= ids
         finals = [request for request in requests if request["stage"] == "VlmResult"]
-        assert len(finals) == 2
+        assert len(finals) == sum(len(item.analysis.joint_steps) for item in suggestions)
         assert all(request["images"][0]["role"] == "overview" and any(i["role"] == "roi" for i in request["images"]) for request in finals)
         print(json.dumps({key: result[key] for key in ("elapsed_seconds", "max_list_latency_seconds")}), flush=True)
     finally:

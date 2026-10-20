@@ -96,6 +96,8 @@ export interface AuditJob {
     sample_ids: string[];
     inspected_regions?: number;
     planned_regions?: number;
+    completed_batches?: number;
+    total_batches?: number;
     dataset_id: string;
     status: "RUNNING" | "PENDING" | "COMPLETED" | "FAILED" | "PARTIAL" | "CANCELLED" | "INTERRUPTED";
     completed: number;
@@ -129,9 +131,7 @@ export interface DatasetImportRequest {
 export interface AuditStartRequest {
     dataset_id: string;
     model_name?: string;
-    max_regions?: number;
     sample_ids?: string[];
-    limit?: number;
     filters?: Partial<Filters>;
 }
 export interface ReviewSubmission {
@@ -158,7 +158,23 @@ export interface VisualEvidence {
     source_sha256: string;
     media_type: "image/png";
 }
+export interface VlmResult extends ViewAnalysis {
+    suggested_label: Suggestion["suggested_label"];
+    reason_category: string;
+    confidence: number;
+    defect_location: string;
+    evidence_ids: string[];
+    conflicts: string[];
+    missing_evidence: string[];
+}
+export interface SynthesisStep {
+    step_id: string;
+    input_evidence_ids: string[];
+    child_step_ids: string[];
+    result: VlmResult;
+}
 export interface AuditAnalysis {
+    joint_steps: SynthesisStep[];
     profile_id: string;
     overview: VisualEvidence;
     coverage: {
@@ -182,11 +198,7 @@ export interface AuditAnalysis {
         crop_bbox: number[];
         observation: ViewAnalysis;
     }>;
-    conclusion: ViewAnalysis & {
-        evidence_ids: string[];
-        conflicts: string[];
-        missing_evidence: string[];
-    };
+    conclusion: VlmResult;
 }
 export interface NormalProfile {
     knowledge_kind: "mllm_semantic";

@@ -309,25 +309,48 @@ def test_workbench_final_verdict_receives_global_and_roi_images(dataset, mllm_ap
     assert detail['sample']['quality_status']=='UNCERTAIN'
 
 
-def test_workbench_partial_roi_coverage_never_becomes_pass(dataset, mllm_api):
+@pytest.mark.parametrize("first_batch_label", ["PASS", "FAIL"])
+def test_workbench_inspects_all_roi_and_preserves_batched_joint_evidence(dataset, mllm_api, first_batch_label):
     from pathlib import Path
     from iad_core.dataset.scanner import scan_dataset
     from iad_core.entry import sample_get
     from iad_core.workbench.audit import AuditService, VlmClient
     db, _, config=dataset
-    Image.new('RGB',(3600,1800),'blue').save(Path(config.root)/'fresh.png')
+    Image.new('RGB',(6000,1800),'blue').save(Path(config.root)/'fresh.png')
     scan_dataset(config=config,db_path=db.db_path)
-    client,_,_=mllm_api
+    client,bodies,responses=mllm_api
+    joint_calls = []
+    def mark_first_batch(request):
+        body = json.loads(request.content)
+        if body['response_format']['json_schema']['name'] == 'VlmResult':
+            joint_calls.append(body)
+            responses['VlmResult']['suggested_label'] = first_batch_label if len(joint_calls) == 1 else 'PASS'
+    client.event_hooks['request'].append(mark_first_batch)
     service=AuditService(db,VlmClient(http_client=client))
     target=f'{config.dataset.id}:fresh.png'
-    job=service.start(dataset_id=config.dataset.id,sample_ids=[target],model_name='test',max_regions=1)
-    service.wait(job['run_id'],10)
-    assert service.status(job['run_id'])['status']=='COMPLETED'
-    detail=sample_get({'sample_id':target},db.db_path)
-    assert detail['suggestion']['suggested_label']=='UNCERTAIN'
-    coverage=detail['suggestion']['analysis']['coverage']
-    assert not coverage['complete'] and coverage['missing']
-    assert coverage['inspected_regions']==1 and coverage['planned_regions']>1
+    try:
+        job=service.start(dataset_id=config.dataset.id,sample_ids=[target],model_name='test')
+        service.wait(job['run_id'],30)
+        status=service.status(job['run_id'])
+        assert status['status']=='COMPLETED',status['errors']
+        trace=sample_get({'sample_id':target},db.db_path)['suggestion']['analysis']
+        assert trace['coverage']['complete']
+        assert trace['coverage']['planned_regions']==trace['coverage']['inspected_regions']==16
+        ids={region['image']['evidence_id'] for region in trace['regions']}
+        leaves=[step for step in trace['joint_steps'] if not step['child_step_ids']]
+        assert len(leaves)>1
+        assert ids <= {eid for step in leaves for eid in step['input_evidence_ids']}
+        assert set(trace['joint_steps'][-1]['child_step_ids'])=={step['step_id'] for step in leaves}
+        assert all(step['input_evidence_ids'][0]==trace['overview']['evidence_id'] for step in trace['joint_steps'])
+        assert all(len(step['input_evidence_ids'])<17 for step in trace['joint_steps'])
+        assert status['completed_batches']==status['total_batches']==len(trace['joint_steps'])
+        if first_batch_label == 'FAIL':
+            assert trace['conclusion']['suggested_label']=='UNCERTAIN'
+            assert trace['conclusion']['conflicts']
+            assert trace['joint_steps'][-1]['result']['suggested_label']=='PASS'
+
+    finally:
+        service.close()
 
 
 def test_workbench_rejects_unknown_visual_citation_without_saving_suggestion(dataset, mllm_api):
@@ -424,5 +447,26 @@ def test_audit_uses_server_enforced_schema_for_roi_results(dataset, invalid_resp
             assert contract['type']=='json_schema'
             assert contract['json_schema']['strict'] is True
             assert contract['json_schema']['schema']['additionalProperties'] is False
+    finally:
+        service.close()
+
+
+def test_default_audit_includes_every_filtered_image_across_query_pages(dataset, mllm_api):
+    from pathlib import Path
+    from iad_core.dataset.scanner import scan_dataset
+    from iad_core.workbench.audit import AuditService, VlmClient
+    db, _, config = dataset
+    for index in range(203):
+        Image.new('RGB',(24,24),'blue').save(Path(config.root)/f'all-{index:02}.png')
+    scan_dataset(config=config,db_path=db.db_path)
+    client, _, _ = mllm_api
+    service = AuditService(db,VlmClient(http_client=client))
+    try:
+        job=service.start(dataset_id=config.dataset.id,filters={'search':'all-'})
+        assert job['total_samples']==203
+        service.wait(job['run_id'],60)
+        result=service.status(job['run_id'])
+        assert result['status']=='COMPLETED',result['errors']
+        assert result['completed']==203
     finally:
         service.close()

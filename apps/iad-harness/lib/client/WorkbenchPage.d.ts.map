@@ -1,1 +1,1 @@
-{"version":3,"file":"WorkbenchPage.d.ts","sourceRoot":"","sources":["../../src/client/WorkbenchPage.tsx"],"names":[],"mappings":"AAAA,OAAO,KAA2C,MAAM,OAAO,CAAC;AA6DhE,wBAAgB,cAAc,sBAA6C;AAC3E,wBAAgB,eAAe,sBAA8C"}
+{"version":3,"file":"WorkbenchPage.d.ts","sourceRoot":"","sources":["../../src/client/WorkbenchPage.tsx"],"names":[],"mappings":"AAAA,OAAO,KAA2C,MAAM,OAAO,CAAC;AA+DhE,wBAAgB,cAAc,sBAA6C;AAC3E,wBAAgB,eAAe,sBAA8C"}

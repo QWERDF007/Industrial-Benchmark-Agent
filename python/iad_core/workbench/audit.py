@@ -25,8 +25,6 @@ class AuditStart(BaseModel):
     dataset_id: str
     model_name: str = DEFAULT_MODEL
     sample_ids: Optional[List[str]] = None
-    limit: int = Field(50, ge=1, le=10000)
-    max_regions: int = Field(12, ge=1, le=32)
     filters: dict = Field(default_factory=dict)
 
 
@@ -44,7 +42,7 @@ class AuditService:
                          (datetime.now(timezone.utc).isoformat(),))
 
     def audit_sample(self, sample_id: str, model_name: str = DEFAULT_MODEL, run_id: Optional[str] = None,
-                     references: Optional[List[str]] = None, cancel: Optional[threading.Event] = None, max_regions: int = 12) -> dict:
+                     references: Optional[List[str]] = None, cancel: Optional[threading.Event] = None) -> dict:
         samples = SampleRepository(self.db)
         sample = samples.get(sample_id)
         if not sample:
@@ -55,7 +53,7 @@ class AuditService:
                 with self.lock, self.db.connection() as conn:
                     conn.execute("UPDATE job_runs SET message=?,payload_json=json_patch(payload_json,?) WHERE job_id=? AND status='RUNNING'",
                                  (progress.phase, json.dumps({**progress.model_dump(), "current_sample_id": sample_id}), run_id))
-        analysis = self.inspection.inspect(sample_id, model_name, refs, cancel, phase, max_regions)
+        analysis = self.inspection.inspect(sample_id, model_name, refs, cancel, phase)
         result = analysis.conclusion
         suggestion = AuditSuggestion(
             suggestion_id="sug_" + uuid.uuid4().hex, task_id=sample.task_id, sample_id=sample_id,
@@ -84,17 +82,14 @@ class AuditService:
             filters = {**request.filters, "dataset_id": request.dataset_id, "page": 1, "page_size": 200}
             query = SampleQuery.model_validate(filters)
             sample_ids = []
-            while len(sample_ids) < request.limit:
+            while True:
                 page = WorkbenchQuery(self.db).samples(query)
                 sample_ids.extend(item["sample_id"] for item in page["items"])
                 if query.page * query.page_size >= page["total"]:
                     break
                 query.page += 1
-            sample_ids = sample_ids[:request.limit]
         else:
             sample_ids = list(dict.fromkeys(request.sample_ids))
-            if len(sample_ids) > 10000:
-                raise ValueError("Too many samples")
             for sid in sample_ids:
                 sample = SampleRepository(self.db).get(sid)
                 if not sample or sample.dataset_id != request.dataset_id:
@@ -103,7 +98,7 @@ class AuditService:
             raise ValueError("No samples match the audit filters")
         run_id = "audit_" + uuid.uuid4().hex
         payload = {"dataset_id": request.dataset_id, "model_name": request.model_name, "sample_ids": sample_ids,
-                   "reference_sample_ids": references, "max_regions": request.max_regions, "completed": 0, "failed": 0, "errors": [], "total_samples": len(sample_ids)}
+                   "reference_sample_ids": references, "completed": 0, "failed": 0, "errors": [], "total_samples": len(sample_ids)}
         with self.lock, self.db.connection() as conn:
             if conn.execute("SELECT 1 FROM job_runs WHERE job_type='MODEL_AUDIT' AND status IN ('PENDING','RUNNING') AND json_extract(payload_json,'$.dataset_id')=?", (request.dataset_id,)).fetchone():
                 raise ValueError("This dataset already has an active audit")
@@ -119,7 +114,7 @@ class AuditService:
             if cancel.is_set():
                 break
             try:
-                result = self.audit_sample(sample_id, payload["model_name"], run_id, payload["reference_sample_ids"], cancel, payload["max_regions"])
+                result = self.audit_sample(sample_id, payload["model_name"], run_id, payload["reference_sample_ids"], cancel)
                 if cancel.is_set():
                     break
                 payload["completed"] += 1
@@ -127,6 +122,7 @@ class AuditService:
                 payload["phase"] = "SAMPLE_COMPLETED"
                 payload["inspected_regions"] = result["suggestion"]["analysis"]["coverage"]["inspected_regions"]
                 payload["planned_regions"] = result["suggestion"]["analysis"]["coverage"]["planned_regions"]
+                payload["completed_batches"] = payload["total_batches"] = len(result["suggestion"]["analysis"]["joint_steps"])
             except Exception as error:
                 if cancel.is_set():
                     break

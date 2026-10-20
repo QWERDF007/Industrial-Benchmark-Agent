@@ -109,6 +109,8 @@ for name in ['normal','normal2','dent']:
     assert.match(await (await element("[data-field='sample-uuid']")).getText(), /^[0-9a-f]{8}-[0-9a-f-]{27}$/);
     assert.equal(await (await element("[data-field='image-name']")).getText(), "dent.png");
     await button("模型审计作业");
+    assert.equal((await driver.findElements(By.xpath("//label[contains(.,'最多审计图数') or contains(.,'每图 ROI 预算')]//input"))).length, 0);
+    await driver.findElement(By.xpath("//button[.='审计当前筛选全部图像']"));
     await (await element(".iad-reference-grid button")).click();
     await element("[role='dialog'] .iad-viewer-viewport img"); await button("关闭");
     await button("图像样本");
@@ -139,6 +141,32 @@ for name in ['normal','normal2','dent']:
     await driver.wait(async ()=>(await (await element(".iad-single-job")).getText()).includes("CANCELLED"),15000);
     const cancelled = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();
     assert.equal(cancelled.suggestion.suggestion_id,audited.suggestion.suggestion_id);
+
+    await (await element("summary[aria-label='标注筛选']")).click();
+    await button("清空"); await gridCount(3);
+    await (await element("summary[aria-label='标注筛选']")).click();
+    const normal = samples.items.find(sample => sample.relative_path === "normal.png");
+    const normal2 = samples.items.find(sample => sample.relative_path === "normal2.png");
+    await select("模型审计", "pending"); await gridCount(2);
+    await driver.findElement(By.css("img[alt='normal.png']")).click();
+    releaseRegion = null; holdRegion = true;
+    const batch = await (await fetch(base + "/api/iad/audit/start", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dataset_id: dataset.dataset_id, sample_ids: [normal.sample_id, normal2.sample_id] }) })).json();
+    await driver.wait(() => Boolean(releaseRegion), 15000);
+    await (await element("button[title='放大图像']")).click();
+    const releaseFirst = releaseRegion; releaseRegion = null; releaseFirst();
+    await driver.wait(() => Boolean(releaseRegion), 15000);
+    await gridCount(1);
+    await element("[role='dialog'] img");
+    const partial = await (await fetch(`${base}/api/iad/audit/status/${batch.run_id}`)).json();
+    assert.equal(partial.status, "RUNNING"); assert.equal(partial.completed, 1);
+    await button("关闭");
+    assert.equal(await (await element("[data-field='image-name']")).getText(), "normal.png");
+    await driver.wait(async () => (await (await element(".iad-kpis div:nth-child(2) strong")).getText()).startsWith("2"), 15000);
+    await driver.wait(async () => (await (await element(".iad-inspector")).getText()).includes("可观察证据"), 15000);
+    holdRegion = false; releaseRegion();
+    await driver.wait(async () => (await (await fetch(`${base}/api/iad/audit/status/${batch.run_id}`)).json()).status === "COMPLETED", 15000);
+    await select("模型审计", "all"); await gridCount(3);
 
     await fs.mkdir(path.join(workspace, "runs/browser"), { recursive: true });
     await fs.writeFile(path.join(workspace, "runs/browser/model-audit.png"), await driver.takeScreenshot(), "base64");

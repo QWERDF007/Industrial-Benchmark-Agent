@@ -1,9 +1,10 @@
 import React from "react";
-import type { Dataset, Filters } from "../../shared/contracts.js";
-export declare function AuditJobs({ dataset, filters, onChanged }: {
+import type { AuditJob, Dataset, Filters } from "../../shared/contracts.js";
+export declare function AuditJobs({ dataset, filters, jobs, onJobsChanged }: {
     dataset: Dataset;
     filters: Filters;
-    onChanged(): void;
+    jobs: AuditJob[];
+    onJobsChanged(): void;
 }): React.JSX.Element;
 export declare function AuditReport({ dataset }: {
     dataset: Dataset;

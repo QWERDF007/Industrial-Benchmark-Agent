@@ -67,7 +67,7 @@ var __IadClientBundle__ = (() => {
   }
 
   // src/client/WorkbenchPage.tsx
-  var import_react5 = __require("react");
+  var import_react6 = __require("react");
 
   // src/client/api.ts
   async function request(path, body, method, signal) {
@@ -422,13 +422,13 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/SampleInspector.tsx
   var import_jsx_runtime6 = __require("react/jsx-runtime");
-  function SampleInspector({ dataset, sampleId, mode, revision, onChanged }) {
+  function SampleInspector({ dataset, sampleId, mode, revision, onChanged, jobs, onJobsChanged }) {
     const [detail, setDetail] = (0, import_react3.useState)(null);
     const [error, setError] = (0, import_react3.useState)("");
     const [notice, setNotice] = (0, import_react3.useState)("");
     const [busy, setBusy] = (0, import_react3.useState)(false);
-    const [job, setJob] = (0, import_react3.useState)(null);
-    const jobRunning = job?.status === "RUNNING" || job?.status === "PENDING";
+    const job = jobs.find((job2) => job2.sample_ids.includes(sampleId));
+    const jobRunning = jobs.some((job2) => job2.status === "RUNNING" || job2.status === "PENDING");
     const [reviewer, setReviewer] = (0, import_react3.useState)(localStorage.getItem("iad.reviewer") || "auditor_qc");
     const [comment, setComment] = (0, import_react3.useState)("");
     const [lightbox, setLightbox] = (0, import_react3.useState)(null);
@@ -442,6 +442,8 @@ var __IadClientBundle__ = (() => {
       setComment("");
       setLightbox(null);
       openedAt.current = Date.now();
+    }, [sampleId]);
+    (0, import_react3.useEffect)(() => {
       if (!sampleId) return;
       const controller = new AbortController();
       request(`/sample/${encodeURIComponent(sampleId)}`, void 0, void 0, controller.signal).then(setDetail).catch((e) => {
@@ -449,32 +451,12 @@ var __IadClientBundle__ = (() => {
       });
       return () => controller.abort();
     }, [sampleId, revision]);
-    (0, import_react3.useEffect)(() => {
-      if (!job) return;
-      const controller = new AbortController();
-      let timer;
-      async function refresh() {
-        try {
-          const latest = await request(`/audit/status/${job.run_id}`, void 0, void 0, controller.signal);
-          if (controller.signal.aborted) return;
-          setJob(latest);
-          if (latest.status === "RUNNING" || latest.status === "PENDING") timer = setTimeout(refresh, 1e3);
-          else onChanged();
-        } catch (error2) {
-          if (!controller.signal.aborted) setError(message(error2));
-        }
-      }
-      refresh();
-      return () => {
-        controller.abort();
-        clearTimeout(timer);
-      };
-    }, [job?.run_id, onChanged]);
     async function audit() {
       setBusy(true);
       setError("");
       try {
-        setJob(await request("/audit/start", { dataset_id: dataset.dataset_id, sample_ids: [sampleId] }));
+        await request("/audit/start", { dataset_id: dataset.dataset_id, sample_ids: [sampleId] });
+        onJobsChanged();
       } catch (error2) {
         setError(message(error2));
       } finally {
@@ -635,6 +617,26 @@ var __IadClientBundle__ = (() => {
                 "\u7F3A\u5931\u8BC1\u636E\uFF1A",
                 detail.suggestion.analysis.conclusion.missing_evidence.join("\uFF1B")
               ] }),
+              detail.suggestion.analysis.joint_steps.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("details", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("summary", { children: [
+                  "\u5206\u6279\u8054\u5408\u5224\u65AD \xB7 ",
+                  detail.suggestion.analysis.joint_steps.length,
+                  " \u6B65"
+                ] }),
+                detail.suggestion.analysis.joint_steps.map((step) => /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("strong", { children: [
+                    step.step_id,
+                    " \xB7 ",
+                    step.result.suggested_label
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { children: [
+                    step.input_evidence_ids.length,
+                    " \u5F20\u56FE\u50CF",
+                    step.child_step_ids.length ? ` \xB7 \u6C47\u603B ${step.child_step_ids.join("\u3001")}` : ""
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { children: step.result.description })
+                ] }, step.step_id))
+              ] }),
               /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "iad-muted", children: [
                 "\u7ED3\u8BBA\u5F15\u7528 ",
                 detail.suggestion.analysis.conclusion.evidence_ids.length,
@@ -660,10 +662,17 @@ var __IadClientBundle__ = (() => {
             " / ",
             job.planned_regions
           ] }),
+          !!job.total_batches && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { children: [
+            "\u8054\u5408\u5224\u65AD ",
+            job.completed_batches || 0,
+            " / ",
+            job.total_batches
+          ] }),
           job.errors.map((error2, index) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "iad-error", children: error2.message }, index)),
-          jobRunning && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { onClick: async () => {
+          (job.status === "RUNNING" || job.status === "PENDING") && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { onClick: async () => {
             try {
-              setJob(await request(`/audit/cancel/${job.run_id}`, {}));
+              await request(`/audit/cancel/${job.run_id}`, {});
+              onJobsChanged();
             } catch (error2) {
               setError(message(error2));
             }
@@ -700,49 +709,25 @@ var __IadClientBundle__ = (() => {
   // src/client/components/AuditJobs.tsx
   var import_react4 = __require("react");
   var import_jsx_runtime7 = __require("react/jsx-runtime");
-  function AuditJobs({ dataset, filters, onChanged }) {
+  function AuditJobs({ dataset, filters, jobs, onJobsChanged }) {
     const [lightbox, setLightbox] = (0, import_react4.useState)(null);
     const [profile, setProfile] = (0, import_react4.useState)(null);
-    const [jobs, setJobs] = (0, import_react4.useState)([]);
     const [model, setModel] = (0, import_react4.useState)("Qwen/Qwen3.8-27B-FP8");
-    const [limit, setLimit] = (0, import_react4.useState)(50);
-    const [maxRegions, setMaxRegions] = (0, import_react4.useState)(12);
     const [busy, setBusy] = (0, import_react4.useState)(false);
     const [error, setError] = (0, import_react4.useState)("");
-    const [revision, setRevision] = (0, import_react4.useState)(0);
     (0, import_react4.useEffect)(() => {
       const controller = new AbortController();
-      let timer;
-      let wasRunning = false;
-      async function refresh() {
-        try {
-          const [data, learned] = await Promise.all([
-            request(`/audit/jobs?dataset_id=${dataset.dataset_id}`, void 0, void 0, controller.signal),
-            request(`/audit/profile?${new URLSearchParams({ dataset_id: dataset.dataset_id, model_name: model })}`, void 0, void 0, controller.signal)
-          ]);
-          if (controller.signal.aborted) return;
-          setJobs(data.jobs);
-          setProfile(learned.profile);
-          const running = data.jobs.some((job) => job.status === "RUNNING" || job.status === "PENDING");
-          if (wasRunning && !running) onChanged();
-          wasRunning = running;
-          timer = setTimeout(refresh, running ? 1200 : 5e3);
-        } catch (e) {
-          if (!controller.signal.aborted) setError(message(e));
-        }
-      }
-      refresh();
-      return () => {
-        controller.abort();
-        clearTimeout(timer);
-      };
-    }, [dataset, model, revision, onChanged]);
+      request(`/audit/profile?${new URLSearchParams({ dataset_id: dataset.dataset_id, model_name: model })}`, void 0, void 0, controller.signal).then((result) => setProfile(result.profile)).catch((error2) => {
+        if (!controller.signal.aborted) setError(message(error2));
+      });
+      return () => controller.abort();
+    }, [dataset.dataset_id, dataset.reference_sample_ids.join("\n"), model, jobs[0]?.profile_id]);
     async function start() {
       setBusy(true);
       setError("");
       try {
-        await request("/audit/start", { dataset_id: dataset.dataset_id, model_name: model, max_regions: maxRegions, limit, filters });
-        setRevision((v) => v + 1);
+        await request("/audit/start", { dataset_id: dataset.dataset_id, model_name: model, filters });
+        onJobsChanged();
       } catch (e) {
         setError(message(e));
       } finally {
@@ -766,15 +751,7 @@ var __IadClientBundle__ = (() => {
             "\u6A21\u578B",
             /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("input", { "aria-label": "\u6A21\u578B\u540D\u79F0", value: model, onChange: (e) => setModel(e.target.value) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("label", { children: [
-            "\u6700\u591A\u5BA1\u8BA1\u56FE\u6570",
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("input", { type: "number", min: 1, max: 1e4, value: limit, onChange: (e) => setLimit(Number(e.target.value)) })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("label", { children: [
-            "\u6BCF\u56FE ROI \u9884\u7B97",
-            /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("input", { "aria-label": "\u6BCF\u56FE ROI \u9884\u7B97", type: "number", min: 1, max: 32, value: maxRegions, onChange: (e) => setMaxRegions(Number(e.target.value)) })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { className: "iad-primary", onClick: start, disabled: busy || !dataset.reference_sample_ids.length || jobs.some((j) => j.status === "RUNNING"), children: busy ? "\u542F\u52A8\u4E2D\u2026" : "\u6309\u5F53\u524D\u6837\u672C\u7B5B\u9009\u542F\u52A8" })
+          /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { className: "iad-primary", onClick: start, disabled: busy || !dataset.reference_sample_ids.length || jobs.some((j) => j.status === "RUNNING"), children: busy ? "\u542F\u52A8\u4E2D\u2026" : "\u5BA1\u8BA1\u5F53\u524D\u7B5B\u9009\u5168\u90E8\u56FE\u50CF" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { className: "iad-muted", children: "\u5168\u56FE\u89C2\u5BDF \u2192 \u6807\u6CE8\u53CA\u53EF\u7591\u533A\u57DF\u7EC6\u770B \u2192 \u7ED3\u5408\u4F4D\u7F6E\u3001\u5149\u7167\u7EFC\u5408\u5224\u65AD\u3002" }),
         error && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { role: "alert", className: "iad-error", children: error })
@@ -788,7 +765,7 @@ var __IadClientBundle__ = (() => {
             (job.status === "RUNNING" || job.status === "PENDING") && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { onClick: async () => {
               try {
                 await request(`/audit/cancel/${job.run_id}`, {});
-                setRevision((v) => v + 1);
+                onJobsChanged();
               } catch (e) {
                 setError(message(e));
               }
@@ -810,6 +787,12 @@ var __IadClientBundle__ = (() => {
             job.inspected_regions || 0,
             " / ",
             job.planned_regions
+          ] }),
+          !!job.total_batches && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("p", { className: "iad-muted", children: [
+            "\u8054\u5408\u5224\u65AD ",
+            job.completed_batches || 0,
+            " / ",
+            job.total_batches
           ] }),
           job.profile_id && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("small", { className: "iad-muted", children: [
             "\u6A21\u5F0F\u7248\u672C ",
@@ -881,6 +864,47 @@ var __IadClientBundle__ = (() => {
         /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { onClick: download, children: "\u5BFC\u51FA JSON" })
       ] })
     ] });
+  }
+
+  // src/client/useAuditJobs.ts
+  var import_react5 = __require("react");
+  function useAuditJobs(datasetId, onProgress) {
+    const [jobs, setJobs] = (0, import_react5.useState)([]);
+    const [error, setError] = (0, import_react5.useState)("");
+    const [revision, setRevision] = (0, import_react5.useState)(0);
+    const observed = (0, import_react5.useRef)({ datasetId: "", signature: "" });
+    const refresh = (0, import_react5.useCallback)(() => setRevision((value) => value + 1), []);
+    (0, import_react5.useEffect)(() => {
+      if (observed.current.datasetId !== datasetId) {
+        observed.current = { datasetId, signature: "" };
+        setJobs([]);
+      }
+      if (!datasetId) return;
+      const controller = new AbortController();
+      let timer, running = true;
+      async function poll() {
+        try {
+          const result = await request(`/audit/jobs?dataset_id=${encodeURIComponent(datasetId)}`, void 0, void 0, controller.signal);
+          if (controller.signal.aborted) return;
+          const signature = JSON.stringify(result.jobs.map((job) => [job.run_id, job.status, job.completed, job.failed]));
+          if (observed.current.signature && observed.current.signature !== signature) onProgress();
+          observed.current.signature = signature;
+          setJobs(result.jobs);
+          setError("");
+          running = result.jobs.some((job) => job.status === "RUNNING" || job.status === "PENDING");
+        } catch (error2) {
+          if (!controller.signal.aborted) setError(message(error2));
+        } finally {
+          if (!controller.signal.aborted) timer = setTimeout(poll, running ? 1200 : 5e3);
+        }
+      }
+      poll();
+      return () => {
+        controller.abort();
+        clearTimeout(timer);
+      };
+    }, [datasetId, onProgress, revision]);
+    return { jobs, error, refresh };
   }
 
   // src/client/styles.ts
@@ -975,19 +999,19 @@ var __IadClientBundle__ = (() => {
   // src/client/WorkbenchPage.tsx
   var import_jsx_runtime8 = __require("react/jsx-runtime");
   function WorkbenchPage({ mode }) {
-    const [datasets, setDatasets] = (0, import_react5.useState)([]);
-    const [datasetId, setDatasetId] = (0, import_react5.useState)(localStorage.getItem("iad.dataset") || "");
-    const [tab, setTab] = (0, import_react5.useState)("samples");
-    const [filters, setFilters] = (0, import_react5.useState)({ ...initialFilters, review_status: mode === "review" ? "pending" : "all" });
-    const [page, setPage] = (0, import_react5.useState)(1);
-    const [items, setItems] = (0, import_react5.useState)([]);
-    const [total, setTotal] = (0, import_react5.useState)(0);
-    const [selected, setSelected] = (0, import_react5.useState)("");
-    const [loading, setLoading] = (0, import_react5.useState)(false);
-    const [error, setError] = (0, import_react5.useState)("");
-    const [revision, setRevision] = (0, import_react5.useState)(0);
+    const [datasets, setDatasets] = (0, import_react6.useState)([]);
+    const [datasetId, setDatasetId] = (0, import_react6.useState)(localStorage.getItem("iad.dataset") || "");
+    const [tab, setTab] = (0, import_react6.useState)("samples");
+    const [filters, setFilters] = (0, import_react6.useState)({ ...initialFilters, review_status: mode === "review" ? "pending" : "all" });
+    const [page, setPage] = (0, import_react6.useState)(1);
+    const [items, setItems] = (0, import_react6.useState)([]);
+    const [total, setTotal] = (0, import_react6.useState)(0);
+    const [selected, setSelected] = (0, import_react6.useState)("");
+    const [loading, setLoading] = (0, import_react6.useState)(false);
+    const [error, setError] = (0, import_react6.useState)("");
+    const [revision, setRevision] = (0, import_react6.useState)(0);
     const dataset = datasets.find((d) => d.dataset_id === datasetId);
-    const loadDatasets = (0, import_react5.useCallback)(async (preferred) => {
+    const loadDatasets = (0, import_react6.useCallback)(async (preferred) => {
       try {
         const result = await request("/datasets");
         setDatasets(result.datasets);
@@ -997,19 +1021,20 @@ var __IadClientBundle__ = (() => {
         setError(message(e));
       }
     }, []);
-    const changed = (0, import_react5.useCallback)(() => {
+    const changed = (0, import_react6.useCallback)(() => {
       setRevision((v) => v + 1);
       loadDatasets();
     }, [loadDatasets]);
-    (0, import_react5.useEffect)(() => {
+    const audit = useAuditJobs(dataset?.dataset_id || "", changed);
+    (0, import_react6.useEffect)(() => {
       loadDatasets();
     }, [loadDatasets]);
-    (0, import_react5.useEffect)(() => {
+    (0, import_react6.useEffect)(() => {
       localStorage.setItem("iad.dataset", datasetId);
       setPage(1);
       setSelected("");
     }, [datasetId]);
-    (0, import_react5.useEffect)(() => {
+    (0, import_react6.useEffect)(() => {
       if (!dataset) return;
       const controller = new AbortController();
       setLoading(true);
@@ -1017,7 +1042,7 @@ var __IadClientBundle__ = (() => {
       request(`/samples/${dataset.task_id}?${query}`, void 0, void 0, controller.signal).then((result) => {
         setItems(result.items);
         setTotal(result.total);
-        setSelected((current) => result.items.some((sample) => sample.sample_id === current) ? current : result.items[0]?.sample_id || "");
+        setSelected((current) => current || result.items[0]?.sample_id || "");
       }).catch((e) => {
         if (!controller.signal.aborted) setError(message(e));
       }).finally(() => {
@@ -1050,7 +1075,7 @@ var __IadClientBundle__ = (() => {
           /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { onClick: changed, children: "\u5237\u65B0" })
         ] })
       ] }),
-      error && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { role: "alert", className: "iad-error", children: error }),
+      (error || audit.error) && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { role: "alert", className: "iad-error", children: error || audit.error }),
       dataset && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "iad-kpis", children: [
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { children: "\u56FE\u50CF" }),
@@ -1082,10 +1107,13 @@ var __IadClientBundle__ = (() => {
         setRevision((v) => v + 1);
       } }) : dataset ? /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_jsx_runtime8.Fragment, { children: [
         (mode === "review" || tab === "samples") && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "iad-main", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(SampleGrid, { dataset, filters, onFilters: updateFilters, items, total, page, onPage: setPage, selected, onSelect: setSelected, loading }),
-          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(SampleInspector, { dataset, sampleId: selected, mode, revision, onChanged: changed })
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(SampleGrid, { dataset, filters, onFilters: updateFilters, items, total, page, onPage: (value) => {
+            setPage(value);
+            setSelected("");
+          }, selected, onSelect: setSelected, loading }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(SampleInspector, { dataset, sampleId: selected, mode, revision, onChanged: changed, jobs: audit.jobs, onJobsChanged: audit.refresh })
         ] }),
-        mode === "model" && tab === "jobs" && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(AuditJobs, { dataset, filters, onChanged: changed }),
+        mode === "model" && tab === "jobs" && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(AuditJobs, { dataset, filters, jobs: audit.jobs, onJobsChanged: audit.refresh }),
         mode === "model" && tab === "reports" && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(AuditReport, { dataset })
       ] }) : /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { className: "iad-empty", children: "\u8BF7\u5728\u6A21\u578B\u5BA1\u8BA1\u7684\u6570\u636E\u96C6\u7BA1\u7406\u4E2D\u5BFC\u5165\u6570\u636E\u96C6\u3002" })
     ] });
