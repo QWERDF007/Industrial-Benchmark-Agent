@@ -20,7 +20,7 @@ Linux x64 的原生图像附件要求 GLIBC ≥ 2.28，见 [Sharp 官方运行�
 - **人工复核**：查看复核明细并提交人工裁决。
 - **插件**：保留 DSH 原生插件管理入口。
 - **知识技能**：[`mine-normal-knowledge` / `mine-defect-knowledge`](apps/iad-harness/src/server/knowledge/skills.ts)，通过同一工作台作业挖掘知识并回读实际证据。
-- **DSH 对话**：提供服务器目录或上传 Labelme ZIP 附件，要求挖掘两类知识并审计。ZIP 沿用宿主文件附件，先查阅包内目录，再选择图像目录、标注目录和名称；[原生工具与流程指引](apps/iad-harness/src/server/workbench-tools/index.ts)连接同一工作台数据和结果。六步骤页面及质量评分的目标见[规格](docs/specs/dataset-knowledge-audit.md)。
+- **DSH 对话**：提供服务器目录或上传 Labelme ZIP 附件，要求挖掘两类知识并审计。ZIP 沿用宿主文件附件，先查阅包内目录，再选择图像目录、标注目录和名称；[原生工具与流程指引](apps/iad-harness/src/server/workbench-tools/index.ts)连接同一工作台数据和结果。分项质量报告使用[统一口径与契约](python/iad_core/workbench/report.py)，会话和页面读取同一报告。六步骤页面的目标见[规格](docs/specs/dataset-knowledge-audit.md)。
 
 ## 开发入口
 

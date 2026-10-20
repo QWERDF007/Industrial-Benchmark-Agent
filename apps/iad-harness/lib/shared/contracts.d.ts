@@ -1,5 +1,5 @@
-import type { AuditAnalysis, KnowledgeSnapshot, AuditStart, ModelCallDetail } from "./domain.generated.js";
-export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot, JobRetry, DatasetImport as DatasetImportRequest, ArchiveInspection } from "./domain.generated.js";
+import type { AuditAnalysis, KnowledgeSnapshot, AuditStart, ModelCallDetail, DatasetReport as Report } from "./domain.generated.js";
+export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot, JobRetry, DatasetImport as DatasetImportRequest, ArchiveInspection, DatasetReport as Report } from "./domain.generated.js";
 export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
 export type ModelCallSummary = Omit<ModelCallDetail, "request_body" | "response_body">;
 export type Decision = "PASS" | "HARD_NORMAL" | "FAIL" | "UNCERTAIN" | "SKIP";
@@ -15,20 +15,6 @@ export interface Suggestion {
 }
 export interface DetailedSuggestion extends Suggestion {
     analysis: AuditAnalysis | null;
-}
-export interface Report {
-    total_samples: number;
-    vlm_audited_count: number;
-    vlm_coverage_pct: number;
-    vlm_anomalies_count: number;
-    technical_quality_issues: number;
-    human_reviewed_count: number;
-    human_pass_count: number;
-    human_fail_count: number;
-    human_uncertain_count: number;
-    pending_risk_count: number;
-    categories: Record<string, number>;
-    generated_at: string;
 }
 export interface Dataset extends Report {
     dataset_id: string;

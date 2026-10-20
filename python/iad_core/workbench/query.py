@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.storage.database import Database
 from iad_core.storage.models import sample_uuid
+from iad_core.workbench.report import DatasetReport, QualityAssessment
 
 
 class SampleQuery(BaseModel):
@@ -138,8 +139,14 @@ class WorkbenchQuery:
     def report(self, dataset_id: Optional[str] = None, task_id: Optional[str] = None) -> dict:
         if not dataset_id and not task_id:
             raise ValueError("dataset_id or task_id is required")
-        column, value = ("dataset_id", dataset_id) if dataset_id else ("task_id", task_id)
+        clauses, params = [], []
+        for column, value in (("dataset_id", dataset_id), ("task_id", task_id)):
+            if value:
+                clauses.append(column + "=?")
+                params.append(value)
+        where = " AND ".join(clauses)
         with self.db.connection() as conn:
+            conn.execute("BEGIN")
             row = conn.execute(BASE + f"""
                 SELECT count(*) AS total_samples,count(suggestion_id) AS vlm_audited_count,
                 COALESCE(sum(suggested_label='FAIL'),0) AS vlm_anomalies_count,
@@ -148,15 +155,24 @@ class WorkbenchQuery:
                 COALESCE(sum(review_decision IN ('PASS','HARD_NORMAL')),0) AS human_pass_count,
                 COALESCE(sum(review_decision='FAIL'),0) AS human_fail_count,
                 COALESCE(sum(review_decision='UNCERTAIN'),0) AS human_uncertain_count,
+                COALESCE(sum(review_decision='SKIP'),0) AS human_skipped_count,
                 COALESCE(sum(review_decision IS NULL AND suggested_label='FAIL'),0) AS pending_risk_count
-                FROM base WHERE {column}=?
-            """, (value,)).fetchone()
-            categories = {r[0]: r[1] for r in conn.execute(BASE + f"SELECT reason_category,count(*) FROM base WHERE {column}=? AND suggestion_id IS NOT NULL GROUP BY reason_category", (value,))}
+                FROM base WHERE {where}
+            """, params).fetchone()
+            categories = {r[0]: r[1] for r in conn.execute(BASE + f"SELECT COALESCE(reason_category,'UNSPECIFIED'),count(*) FROM base WHERE {where} AND suggestion_id IS NOT NULL GROUP BY COALESCE(reason_category,'UNSPECIFIED')", params)}
+            samples = conn.execute(BASE + f"""
+                SELECT b.sample_id,b.width,b.height,b.suggestion_id,b.suggested_label,b.review_decision,
+                    b.reviewed_at,b.audit_run_id,a.analysis_json
+                FROM base b LEFT JOIN audit_suggestions a ON a.suggestion_id=b.suggestion_id
+                WHERE {" AND ".join("b." + clause for clause in clauses)}
+            """, params).fetchall()
+            issues = conn.execute(f"SELECT sample_id,severity FROM import_issues WHERE {where}", params).fetchall()
+            quality = QualityAssessment.from_records(samples, issues)
         result = dict(row)
         result.update({"dataset_id": dataset_id, "task_id": task_id, "categories": categories,
-                       "vlm_coverage_pct": round(100 * result["vlm_audited_count"] / result["total_samples"], 2) if result["total_samples"] else 0,
-                       "generated_at": datetime.now(timezone.utc).isoformat()})
-        return result
+                       "vlm_coverage_pct": quality.audit_coverage.percent,
+                       "generated_at": datetime.now(timezone.utc).isoformat(), "quality": quality})
+        return DatasetReport(**result).model_dump(mode="json")
 
     def datasets(self) -> dict:
         registry = DatasetRegistry(self.db)

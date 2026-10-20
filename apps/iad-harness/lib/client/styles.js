@@ -81,6 +81,7 @@ export const workbenchStyles = `
 .iad-job-section h2 {margin-top:0;}
 .iad-evidence-preview {display:flex;align-items:center;gap:10px;width:100%;margin:10px 0;text-align:left;font-size:11px!important;}
 .iad-evidence-preview img {width:90px;height:70px;object-fit:contain;background:#e6edf7;}
+.iad-quality-report dt {color:#54657d;}
 .iad-profile {padding:14px;background:#f0f5fc;border-radius:8px;}
 @media(max-width:1100px) {.iad-workbench {padding:20px;}.iad-main {grid-template-columns:minmax(0,1fr) 300px;}.iad-grid {grid-template-columns:repeat(auto-fill,minmax(125px,1fr));}}
 @media(max-width:760px) {.iad-main,.iad-settings {grid-template-columns:1fr;}.iad-kpis {grid-template-columns:repeat(2,1fr);gap:10px;}.iad-inspector {width:100%;}}

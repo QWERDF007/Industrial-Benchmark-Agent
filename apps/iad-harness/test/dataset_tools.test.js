@@ -45,6 +45,10 @@ test("DSH directory import and browser queries share one dataset and report", as
     assert.equal(report.value.total_samples, 3);
     assert.equal(report.value.vlm_audited_count, 0);
     assert.equal(report.value.human_reviewed_count, 0);
+    assert.equal(report.value.quality.technical_usability.percent, 100);
+    assert.equal(report.value.quality.audit_coverage.percent, 0);
+    assert.equal(report.value.quality.human_verification_coverage.percent, 0);
+    assert.equal(report.value.quality.scope.observed_inputs, 3);
     const { generated_at: reportTime, task_id: toolTask, ...toolReport } = report.value;
     const { generated_at: httpReportTime, task_id: browserTask, ...browserReport } = await (await fetch(`${base}/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
     assert.ok(reportTime && httpReportTime);

@@ -1,3 +1,4 @@
+import { QualityReport } from "./QualityReport.js";
 import React, { useEffect, useState } from "react";
 import type { AuditJob, Dataset, Filters, KnowledgeSummary, Report } from "../../shared/contracts.js";
 import { ImageViewer, type ImageSource } from "./ImageViewer.js";
@@ -59,9 +60,5 @@ export function AuditReport({ dataset }: { dataset: Dataset }) {
     const blob = new Blob([JSON.stringify({ dataset_id: dataset.dataset_id, name: dataset.name, ...report }, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob), anchor = document.createElement("a"); anchor.href = url; anchor.download = `${dataset.name}-report.json`; anchor.click(); URL.revokeObjectURL(url);
   }
-  return <section><h2>审计汇总</h2>{error && <p role="alert" className="iad-error">{error}</p>}{report && <><dl>
-    <dt>模型覆盖</dt><dd>{report.vlm_audited_count} / {report.total_samples} ({report.vlm_coverage_pct}%)</dd>
-    <dt>模型建议异常</dt><dd>{report.vlm_anomalies_count}</dd><dt>技术质量问题</dt><dd>{report.technical_quality_issues}</dd>
-    <dt>人工复核</dt><dd>{report.human_reviewed_count}</dd><dt>人审良品 / 异常 / 不确定</dt><dd>{report.human_pass_count} / {report.human_fail_count} / {report.human_uncertain_count}</dd>
-  </dl><button onClick={download}>导出 JSON</button></>}</section>;
+  return <section className="iad-job-section iad-quality-report"><h2>审计汇总</h2>{error && <p role="alert" className="iad-error">{error}</p>}{report && <><QualityReport report={report} /><button onClick={download}>导出 JSON</button></>}</section>;
 }

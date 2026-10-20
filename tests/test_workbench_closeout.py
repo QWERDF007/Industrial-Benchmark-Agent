@@ -83,6 +83,8 @@ def test_report_counts_latest_suggestion_per_sample(workbench):
     result = request("report_get", task_id="task")["data"]
     assert result["vlm_audited_count"] == 1
     assert result["vlm_coverage_pct"] == 100
+    assert result["quality"]["model"]["unstructured_samples"] == 1
+    assert result["quality"]["knowledge_versions"] == []
 
 
 def test_detail_and_grid_use_the_same_score(workbench):

@@ -225,6 +225,18 @@ for name in ['normal','normal2','dent']:
     await select("人工复核", "reviewed"); await gridCount(1);
     await fs.writeFile(path.join(workspace, "runs/browser/human-review.png"), await driver.takeScreenshot(), "base64");
     await (await element("#test-navigation button:first-child")).click();
+    await button("报告");
+    await driver.wait(async () => (await driver.findElement(By.css(".iad-workbench")).getText()).includes("人工核验覆盖率"), 15000);
+    const ratioValue = label => driver.findElement(By.xpath(`//dt[normalize-space(.)='${label}']/following-sibling::dd[1]`)).getText();
+    assert.equal(await ratioValue("技术可用率"), "100% · 3 / 3");
+    assert.equal(await ratioValue("审计覆盖率"), "100% · 3 / 3");
+    assert.equal(await ratioValue("人工核验覆盖率"), "33.33% · 1 / 3");
+    await (await driver.findElement(By.xpath("//summary[normalize-space(.)='口径、范围与版本']"))).click();
+    const scopeText = await driver.findElement(By.css(".iad-workbench")).getText();
+    assert.ok(scopeText.includes(learned.knowledge_version_id || (await (await fetch(`${base}/api/iad/knowledge/status/${learned.run_id}`)).json()).knowledge_version_id));
+    assert.ok(scopeText.includes("不受当前网格筛选影响"));
+    assert.ok(scopeText.includes("不代表准确率"));
+    await fs.writeFile(path.join(workspace, "runs/browser/quality-report.png"), await driver.takeScreenshot(), "base64");
     await button("数据集管理");
     await (await element("input[aria-label='新的数据集名称']")).sendKeys("验收后改名"); await button("保存名称");
     await driver.wait(async () => (await (await element("select[aria-label='当前数据集']")).getText()).includes("验收后改名"), 15000);

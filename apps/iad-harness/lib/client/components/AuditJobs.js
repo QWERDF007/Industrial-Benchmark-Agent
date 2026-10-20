@@ -1,4 +1,5 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { QualityReport } from "./QualityReport.js";
 import { useEffect, useState } from "react";
 import { ImageViewer } from "./ImageViewer.js";
 import { DatasetKnowledge } from "./DatasetKnowledge.js";
@@ -63,5 +64,5 @@ export function AuditReport({ dataset }) {
         anchor.click();
         URL.revokeObjectURL(url);
     }
-    return _jsxs("section", { children: [_jsx("h2", { children: "\u5BA1\u8BA1\u6C47\u603B" }), error && _jsx("p", { role: "alert", className: "iad-error", children: error }), report && _jsxs(_Fragment, { children: [_jsxs("dl", { children: [_jsx("dt", { children: "\u6A21\u578B\u8986\u76D6" }), _jsxs("dd", { children: [report.vlm_audited_count, " / ", report.total_samples, " (", report.vlm_coverage_pct, "%)"] }), _jsx("dt", { children: "\u6A21\u578B\u5EFA\u8BAE\u5F02\u5E38" }), _jsx("dd", { children: report.vlm_anomalies_count }), _jsx("dt", { children: "\u6280\u672F\u8D28\u91CF\u95EE\u9898" }), _jsx("dd", { children: report.technical_quality_issues }), _jsx("dt", { children: "\u4EBA\u5DE5\u590D\u6838" }), _jsx("dd", { children: report.human_reviewed_count }), _jsx("dt", { children: "\u4EBA\u5BA1\u826F\u54C1 / \u5F02\u5E38 / \u4E0D\u786E\u5B9A" }), _jsxs("dd", { children: [report.human_pass_count, " / ", report.human_fail_count, " / ", report.human_uncertain_count] })] }), _jsx("button", { onClick: download, children: "\u5BFC\u51FA JSON" })] })] });
+    return _jsxs("section", { className: "iad-job-section iad-quality-report", children: [_jsx("h2", { children: "\u5BA1\u8BA1\u6C47\u603B" }), error && _jsx("p", { role: "alert", className: "iad-error", children: error }), report && _jsxs(_Fragment, { children: [_jsx(QualityReport, { report: report }), _jsx("button", { onClick: download, children: "\u5BFC\u51FA JSON" })] })] });
 }

@@ -69,6 +69,16 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
   const report = trace.findLast(item => item.name === "dataset_report").result.value;
   assert.equal(report.vlm_audited_count, 3);
   assert.equal(report.human_reviewed_count, 0);
+  assert.equal(report.quality.scope.observed_inputs, 3);
+  assert.equal(report.quality.technical_usability.percent, 100);
+  assert.equal(report.quality.audit_coverage.percent, 100);
+  assert.equal(report.quality.human_verification_coverage.percent, 0);
+  assert.equal(report.quality.model.unstructured_samples, 0);
+  assert.deepEqual(report.quality.audit_run_ids, [audits.jobs[0].run_id]);
+  assert.deepEqual(report.quality.knowledge_versions, [{ normal_version_id: audits.jobs[0].normal_version_id,
+    defect_version_id: audits.jobs[0].defect_version_id, legacy_profile_id: null, sample_count: 3 }]);
+  assert.ok(report.quality.technical_usability.basis && report.quality.scope.limitations.length);
+  assert.ok(!Object.hasOwn(report.quality, "total_score") && !Object.hasOwn(report.quality, "accuracy"));
   const target = await session.ctx.iadPythonBridge.execute("sample_get", { sample_id: dataset.dataset_id + ":part-2.png" });
   const beforeFollowup = trace.length;
   session.handle.agent.followup(createUserMessage({ source: { kind: "user" }, content: [{ type: "text",
@@ -97,7 +107,7 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
   await fs.writeFile(path.join(output, "result.json"), JSON.stringify({ session_id: session.handle.agent.id, elapsed_ms: Date.now() - started,
     model, report, jobs: [...jobs.jobs, ...audits.jobs], actual_tool_calls: trace.length, industrial_quality: "unassessed",
     attachment_upload: archiveMode ? "actual DSH verbatim ZIP file attachment; browser upload not tested" : "not tested",
-    sidebar_pages: "not tested", quality_score: "not implemented", evidence_followup: "actual full-image and ROI attachments" }, null, 2));
+    sidebar_pages: "not tested", quality_score: "three factual dimensions with explicit counts, scope and frozen knowledge versions; no aggregate or accuracy", evidence_followup: "actual full-image and ROI attachments" }, null, 2));
   console.log(JSON.stringify({ verified: true, session_id: session.handle.agent.id, actual_tool_calls: trace.length, elapsed_ms: Date.now() - started }));
 } finally {
   clearTimeout(timeout);

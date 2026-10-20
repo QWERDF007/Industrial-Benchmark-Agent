@@ -373,6 +373,52 @@ export type Path = string;
 export type ImageCount = number;
 export type AnnotationCount = number;
 export type Directories = ArchiveDirectory[];
+export type DatasetId2 = string | null;
+export type TaskId = string | null;
+export type TotalSamples = number;
+export type VlmAuditedCount = number;
+export type VlmCoveragePct = number | null;
+export type VlmAnomaliesCount = number;
+export type TechnicalQualityIssues = number;
+export type HumanReviewedCount = number;
+export type HumanPassCount = number;
+export type HumanFailCount = number;
+export type HumanUncertainCount = number;
+export type HumanSkippedCount = number;
+export type PendingRiskCount = number;
+export type GeneratedAt = string;
+export type Version = "quality-dimensions-v1";
+export type ObservedInputs = number;
+export type RegisteredSamples = number;
+export type UnregisteredInputs = number;
+export type Basis = "persisted_samples_and_import_issues";
+export type Selection = "latest_per_sample";
+export type Limitations8 = string[];
+export type Numerator = number;
+export type Denominator = number;
+export type Basis1 = string;
+export type Percent = number | null;
+/**
+ * 最新建议为 FAIL 或仍有待核验 finding 的图像数，不代表已确认缺陷
+ */
+export type SuspectSamples = number;
+export type FindingCount = number;
+export type UncertainSamples = number;
+/**
+ * 综合结论标记缺证或检查项为 insufficient 的图像数
+ */
+export type MissingEvidenceSamples = number;
+export type ConflictSamples = number;
+/**
+ * 已有建议但未保存结构化证据分析，不能据此断言没有缺证
+ */
+export type UnstructuredSamples = number;
+export type NormalVersionId3 = string | null;
+export type DefectVersionId2 = string | null;
+export type LegacyProfileId1 = string | null;
+export type SampleCount = number;
+export type KnowledgeVersions = KnowledgeUsage[];
+export type AuditRunIds = string[];
 
 export interface WorkbenchDomain {
   AuditAnalysis?: AuditAnalysis;
@@ -382,6 +428,7 @@ export interface WorkbenchDomain {
   JobRetry?: JobRetry;
   DatasetImport?: DatasetImport;
   ArchiveInspection?: ArchiveInspection;
+  DatasetReport?: DatasetReport;
 }
 export interface AuditAnalysis {
   normal_version_id: NormalVersionId;
@@ -732,4 +779,63 @@ export interface ArchiveDirectory {
   path: Path;
   image_count: ImageCount;
   annotation_count: AnnotationCount;
+}
+export interface DatasetReport {
+  dataset_id: DatasetId2;
+  task_id: TaskId;
+  total_samples: TotalSamples;
+  vlm_audited_count: VlmAuditedCount;
+  vlm_coverage_pct: VlmCoveragePct;
+  vlm_anomalies_count: VlmAnomaliesCount;
+  technical_quality_issues: TechnicalQualityIssues;
+  human_reviewed_count: HumanReviewedCount;
+  human_pass_count: HumanPassCount;
+  human_fail_count: HumanFailCount;
+  human_uncertain_count: HumanUncertainCount;
+  human_skipped_count: HumanSkippedCount;
+  pending_risk_count: PendingRiskCount;
+  categories: Categories;
+  generated_at: GeneratedAt;
+  quality: QualityAssessment;
+}
+export interface Categories {
+  [k: string]: number;
+}
+export interface QualityAssessment {
+  version: Version;
+  scope: QualityScope;
+  technical_usability: QualityRatio;
+  audit_coverage: QualityRatio;
+  human_verification_coverage: QualityRatio;
+  model: ModelIndicators;
+  knowledge_versions: KnowledgeVersions;
+  audit_run_ids: AuditRunIds;
+}
+export interface QualityScope {
+  observed_inputs: ObservedInputs;
+  registered_samples: RegisteredSamples;
+  unregistered_inputs: UnregisteredInputs;
+  basis: Basis;
+  selection: Selection;
+  limitations: Limitations8;
+}
+export interface QualityRatio {
+  numerator: Numerator;
+  denominator: Denominator;
+  basis: Basis1;
+  percent: Percent;
+}
+export interface ModelIndicators {
+  suspect_samples: SuspectSamples;
+  finding_count: FindingCount;
+  uncertain_samples: UncertainSamples;
+  missing_evidence_samples: MissingEvidenceSamples;
+  conflict_samples: ConflictSamples;
+  unstructured_samples: UnstructuredSamples;
+}
+export interface KnowledgeUsage {
+  normal_version_id: NormalVersionId3;
+  defect_version_id: DefectVersionId2;
+  legacy_profile_id: LegacyProfileId1;
+  sample_count: SampleCount;
 }

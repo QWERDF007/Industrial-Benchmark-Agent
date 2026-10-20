@@ -34,6 +34,10 @@ test("real bridge: Labelme import, composed filters and human session submission
     const detail = await (await fetch(`${base}/sample/${encodeURIComponent(samples.items[0].sample_id)}`)).json();
     assert.equal(detail.sample.quality_status, "UNCERTAIN");
     assert.equal(detail.review_decision.decision, "PASS");
+    const report = await (await fetch(`${base}/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
+    assert.equal(report.quality.technical_usability.percent, 100);
+    assert.equal(report.quality.human_verification_coverage.percent, 100);
+    assert.equal(report.quality.audit_coverage.percent, 0);
     const badImport = await post("/datasets/import", { name: "broken", image_dir: "/does-not-exist", annotation_dir: labels });
     assert.equal(badImport.status, 404);
     assert.equal((await (await fetch(base + "/datasets")).json()).datasets.length, 1);

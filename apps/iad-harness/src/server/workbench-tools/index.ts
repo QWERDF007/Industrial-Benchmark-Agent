@@ -14,7 +14,7 @@ export const DATASET_ANALYSIS_WORKFLOW = `数据集分析流程
 4. 用 model_audit_start 显式传入所选 dataset_id、normal_version_id 及实际可用的 defect_version_id；默认全部图像和全部适用 ROI。dataset_audit 只是技术检查，不能替代该 MLLM 联合审计。
 5. 用 model_audit_status 等待同一作业达到终态。PENDING/RUNNING 不是完成，部分成功要报告完成/失败/未处理数量。用户要求停止时取消对应知识或审计作业，不把取消会话等同于取消后台作业。
 失败或中断后用 model_audit_retry 或 knowledge_job_retry 创建关联的新执行。审计只处理尚未完成的单图；知识联合归纳须保留整组冻结来源，原子发布一个版本。源图、标注、反馈或冻结知识变化时须重新启动，不绕过核验。重试仍失败时查询新 run_id，再决定是否重试该执行。
-6. 用 dataset_report 读取实际质量统计；必要时 model_audit_sample 读取样本综合结论，model_audit_evidence 或 knowledge_evidence 读取真正送模的全图/ROI/Mask。简要回答覆盖、版本、主要风险及最多三个优先复核项，说明范围与限制。现有报告不提供准确率或综合质量分时不得编造，模型置信度不是准确率。
+6. 用 dataset_report 读取实际质量统计；必要时 model_audit_sample 读取样本综合结论，model_audit_evidence 或 knowledge_evidence 读取真正送模的全图/ROI/Mask。简要回答覆盖、版本、主要风险及最多三个优先复核项，说明范围与限制。按 quality 中的技术可用率、审计覆盖率、人工核验覆盖率分别说明分子、分母和百分比；分母为零时未评估，不显示0%或100%。单列疑点、缺证、冲突及未保存结构化分析的数量，保留实际知识版本组合、范围、限制和时间。报告未提供加权总分或准确率，不得编造，模型置信度不是准确率。
 所有步骤与工作台共用同一数据集、作业、知识、建议和报告；进度按真实结果说明。修改来源需要新知识版本并明确重审，不能改写原始标签、人工决定或 Gold。`;
 
 export function createWorkbenchTools(bridge: PythonBridge, ctx: Context): ToolDefinition[] {

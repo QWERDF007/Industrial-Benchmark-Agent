@@ -4,9 +4,11 @@ window.__ModuleLoader__.load({
 
 "use strict";
 var __IadClientBundle__ = (() => {
+  var __create = Object.create;
   var __defProp = Object.defineProperty;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
   var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __getProtoOf = Object.getPrototypeOf;
   var __hasOwnProp = Object.prototype.hasOwnProperty;
   var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
     get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
@@ -26,6 +28,14 @@ var __IadClientBundle__ = (() => {
     }
     return to;
   };
+  var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+    // If the importer is in node compatibility mode or this is not an ESM
+    // file that has been converted to a CommonJS file using a Babel-
+    // compatible transform (i.e. "__esModule" has not been set), then set
+    // "default" to the CommonJS "module.exports" for node compatibility.
+    isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+    mod
+  ));
   var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
   // src/client/index.ts
@@ -67,7 +77,7 @@ var __IadClientBundle__ = (() => {
   }
 
   // src/client/WorkbenchPage.tsx
-  var import_react7 = __require("react");
+  var import_react8 = __require("react");
 
   // src/client/api.ts
   async function request(path, body, method, signal) {
@@ -851,17 +861,109 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // src/client/components/AuditJobs.tsx
-  var import_react5 = __require("react");
+  // src/client/components/QualityReport.tsx
+  var import_react5 = __toESM(__require("react"), 1);
   var import_jsx_runtime10 = __require("react/jsx-runtime");
+  function QualityReport({ report }) {
+    const quality = report.quality;
+    const dimensions = [
+      ["\u6280\u672F\u53EF\u7528\u7387", quality.technical_usability],
+      ["\u5BA1\u8BA1\u8986\u76D6\u7387", quality.audit_coverage],
+      ["\u4EBA\u5DE5\u6838\u9A8C\u8986\u76D6\u7387", quality.human_verification_coverage]
+    ];
+    return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(import_jsx_runtime10.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dl", { children: dimensions.map(([label, ratio]) => /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(import_react5.default.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: label }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("dd", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("strong", { children: ratio.percent === null ? "\u672A\u8BC4\u4F30" : `${ratio.percent}%` }),
+          " \xB7 ",
+          ratio.numerator,
+          " / ",
+          ratio.denominator
+        ] })
+      ] }, label)) }),
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("dl", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u7591\u70B9\u56FE\u50CF / \u6570" }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("dd", { children: [
+          quality.model.suspect_samples,
+          " / ",
+          quality.model.finding_count
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u7F3A\u8BC1 / \u51B2\u7A81\u56FE\u50CF" }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("dd", { children: [
+          quality.model.missing_evidence_samples,
+          " / ",
+          quality.model.conflict_samples
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u6A21\u578B\u4E0D\u786E\u5B9A" }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dd", { children: quality.model.uncertain_samples }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u65E0\u7ED3\u6784\u5316\u5206\u6790" }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dd", { children: quality.model.unstructured_samples }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u4EBA\u5BA1\u826F\u54C1 / \u5F02\u5E38" }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("dd", { children: [
+          "\u826F\u54C1 ",
+          report.human_pass_count,
+          " \xB7 \u5F02\u5E38 ",
+          report.human_fail_count
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u4EBA\u5DE5\u5F85\u5B9A / \u8DF3\u8FC7" }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("dd", { children: [
+          report.human_uncertain_count,
+          " / ",
+          report.human_skipped_count
+        ] })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("details", { className: "iad-analysis", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("summary", { children: "\u53E3\u5F84\u3001\u8303\u56F4\u4E0E\u7248\u672C" }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("dl", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u8F93\u5165 / \u5DF2\u767B\u8BB0" }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("dd", { children: [
+            quality.scope.observed_inputs,
+            " / ",
+            quality.scope.registered_samples,
+            "\uFF0C\u672A\u767B\u8BB0 ",
+            quality.scope.unregistered_inputs
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u8303\u56F4" }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dd", { children: "\u5168\u90E8\u5DF2\u4FDD\u5B58\u56FE\u50CF\uFF0C\u6BCF\u5F20\u53D6\u6700\u65B0\u8BB0\u5F55\uFF1B\u4E0D\u53D7\u5F53\u524D\u7F51\u683C\u7B5B\u9009\u5F71\u54CD\u3002" }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u7EDF\u8BA1\u65F6\u95F4" }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dd", { children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("time", { dateTime: report.generated_at, children: report.generated_at }) }),
+          dimensions.map(([label, ratio]) => /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(import_react5.default.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: label }),
+            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dd", { children: ratio.basis })
+          ] }, label))
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("h3", { children: "\u5BA1\u8BA1\u4F7F\u7528\u7684\u77E5\u8BC6\u7EC4\u5408" }),
+        quality.knowledge_versions.length ? quality.knowledge_versions.map((usage, index) => /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("dl", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u56FE\u50CF\u6570" }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dd", { children: usage.sample_count }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u826F\u54C1\u7248\u672C" }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dd", { children: usage.normal_version_id || "\u672A\u8BB0\u5F55" }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u4E0D\u826F\u54C1\u7248\u672C" }),
+          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dd", { children: usage.defect_version_id || "\u672A\u4F7F\u7528" }),
+          usage.legacy_profile_id && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(import_jsx_runtime10.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u53C2\u8003\u6A21\u5F0F" }),
+            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dd", { children: usage.legacy_profile_id })
+          ] })
+        ] }, index)) : /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { children: "\u5C1A\u65E0\u53EF\u8FFD\u6EAF\u7684\u77E5\u8BC6\u7248\u672C\u3002" }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("h3", { children: "\u5BA1\u8BA1\u4F5C\u4E1A" }),
+        quality.audit_run_ids.length ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("ul", { children: quality.audit_run_ids.map((id) => /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("li", { children: id }, id)) }) : /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { children: "\u5C1A\u65E0\u5DF2\u8BB0\u5F55\u7684\u5BA1\u8BA1\u4F5C\u4E1A\u3002" }),
+        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("ul", { children: quality.scope.limitations.map((text) => /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("li", { children: text }, text)) })
+      ] })
+    ] });
+  }
+
+  // src/client/components/AuditJobs.tsx
+  var import_react6 = __require("react");
+  var import_jsx_runtime11 = __require("react/jsx-runtime");
   function AuditJobs({ dataset, filters, jobs, onJobsChanged }) {
-    const [lightbox, setLightbox] = (0, import_react5.useState)(null);
-    const [normal, setNormal] = (0, import_react5.useState)(null);
-    const [defect, setDefect] = (0, import_react5.useState)(null);
-    const [model, setModel] = (0, import_react5.useState)("Qwen/Qwen3.8-27B-FP8");
-    const [busy, setBusy] = (0, import_react5.useState)(false);
-    const [error, setError] = (0, import_react5.useState)("");
-    (0, import_react5.useEffect)(() => {
+    const [lightbox, setLightbox] = (0, import_react6.useState)(null);
+    const [normal, setNormal] = (0, import_react6.useState)(null);
+    const [defect, setDefect] = (0, import_react6.useState)(null);
+    const [model, setModel] = (0, import_react6.useState)("Qwen/Qwen3.8-27B-FP8");
+    const [busy, setBusy] = (0, import_react6.useState)(false);
+    const [error, setError] = (0, import_react6.useState)("");
+    (0, import_react6.useEffect)(() => {
       const controller = new AbortController();
       setNormal(null);
       setDefect(null);
@@ -891,37 +993,37 @@ var __IadClientBundle__ = (() => {
         setBusy(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("section", { className: "iad-job-panel", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("section", { className: "iad-job-section", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("h2", { children: "\u51BB\u7ED3\u77E5\u8BC6" }),
-        normal ? /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(import_jsx_runtime10.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(DatasetKnowledge, { knowledge: normal }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "iad-reference-grid", children: normal.evidence.filter((item) => item.image.role === "normal" && item.image.representation === "raw").map((item) => {
+    return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("section", { className: "iad-job-panel", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("section", { className: "iad-job-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("h2", { children: "\u51BB\u7ED3\u77E5\u8BC6" }),
+        normal ? /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(import_jsx_runtime11.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(DatasetKnowledge, { knowledge: normal }),
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("div", { className: "iad-reference-grid", children: normal.evidence.filter((item) => item.image.role === "normal" && item.image.representation === "raw").map((item) => {
             const src = `/api/iad/knowledge/evidence/${encodeURIComponent(normal.version_id)}/${encodeURIComponent(item.image.evidence_id)}`;
-            return /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("button", { title: "\u653E\u5927\u77E5\u8BC6\u6765\u6E90\u56FE", onClick: () => setLightbox({ src, title: item.sample_id.split("/").pop() }), children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("img", { alt: "\u77E5\u8BC6\u6765\u6E90\u8BC1\u636E", src }) }, item.image.evidence_id);
+            return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("button", { title: "\u653E\u5927\u77E5\u8BC6\u6765\u6E90\u56FE", onClick: () => setLightbox({ src, title: item.sample_id.split("/").pop() }), children: /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("img", { alt: "\u77E5\u8BC6\u6765\u6E90\u8BC1\u636E", src }) }, item.image.evidence_id);
           }) })
-        ] }) : /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { className: "iad-profile iad-muted", children: "\u8BF7\u5148\u8FD0\u884C\u201C\u6316\u6398\u826F\u54C1\u77E5\u8BC6\u201D\u6280\u80FD\uFF0C\u751F\u6210\u53EF\u7528\u7248\u672C\u3002" }),
-        defect ? /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(DatasetKnowledge, { knowledge: defect }) : /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { className: "iad-muted", children: "\u6682\u65E0\u5339\u914D\u7684\u4E0D\u826F\u77E5\u8BC6\uFF0C\u6309\u6B63\u5E38\u5224\u636E\u7B5B\u67E5\u3002" })
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { className: "iad-profile iad-muted", children: "\u8BF7\u5148\u8FD0\u884C\u201C\u6316\u6398\u826F\u54C1\u77E5\u8BC6\u201D\u6280\u80FD\uFF0C\u751F\u6210\u53EF\u7528\u7248\u672C\u3002" }),
+        defect ? /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(DatasetKnowledge, { knowledge: defect }) : /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { className: "iad-muted", children: "\u6682\u65E0\u5339\u914D\u7684\u4E0D\u826F\u77E5\u8BC6\uFF0C\u6309\u6B63\u5E38\u5224\u636E\u7B5B\u67E5\u3002" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("section", { className: "iad-job-section", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("h2", { children: "\u542F\u52A8\u6A21\u578B\u5BA1\u8BA1" }),
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("label", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("section", { className: "iad-job-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("h2", { children: "\u542F\u52A8\u6A21\u578B\u5BA1\u8BA1" }),
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("label", { children: [
             "\u6A21\u578B",
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("input", { "aria-label": "\u6A21\u578B\u540D\u79F0", value: model, onChange: (e) => setModel(e.target.value) })
+            /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("input", { "aria-label": "\u6A21\u578B\u540D\u79F0", value: model, onChange: (e) => setModel(e.target.value) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("button", { className: "iad-primary", onClick: start, disabled: busy || !normal?.checks.some((check) => check.status === "supported") || jobs.some((j) => j.status === "RUNNING"), children: busy ? "\u542F\u52A8\u4E2D\u2026" : "\u5BA1\u8BA1\u5F53\u524D\u7B5B\u9009\u5168\u90E8\u56FE\u50CF" })
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("button", { className: "iad-primary", onClick: start, disabled: busy || !normal?.checks.some((check) => check.status === "supported") || jobs.some((j) => j.status === "RUNNING"), children: busy ? "\u542F\u52A8\u4E2D\u2026" : "\u5BA1\u8BA1\u5F53\u524D\u7B5B\u9009\u5168\u90E8\u56FE\u50CF" })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { className: "iad-muted", children: "\u7ED3\u5408\u51BB\u7ED3\u77E5\u8BC6\u3001\u5168\u56FE\u4E0E\u5168\u90E8\u5C40\u90E8\u56FE\uFF0C\u7EFC\u5408\u5206\u6790\u4F4D\u7F6E\u548C\u5149\u7167\u3002" }),
-        error && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { role: "alert", className: "iad-error", children: error })
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { className: "iad-muted", children: "\u7ED3\u5408\u51BB\u7ED3\u77E5\u8BC6\u3001\u5168\u56FE\u4E0E\u5168\u90E8\u5C40\u90E8\u56FE\uFF0C\u7EFC\u5408\u5206\u6790\u4F4D\u7F6E\u548C\u5149\u7167\u3002" }),
+        error && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { role: "alert", className: "iad-error", children: error })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("section", { className: "iad-job-section", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("h2", { children: "\u5BA1\u8BA1\u4F5C\u4E1A" }),
-        jobs.map((job) => /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("article", { className: "iad-job", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "iad-row", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("strong", { children: job.status }),
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("span", { children: job.model_name }),
-            (job.status === "RUNNING" || job.status === "PENDING") && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("button", { onClick: async () => {
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("section", { className: "iad-job-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("h2", { children: "\u5BA1\u8BA1\u4F5C\u4E1A" }),
+        jobs.map((job) => /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("article", { className: "iad-job", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "iad-row", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("strong", { children: job.status }),
+            /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { children: job.model_name }),
+            (job.status === "RUNNING" || job.status === "PENDING") && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("button", { onClick: async () => {
               try {
                 await request(`/audit/cancel/${job.run_id}`, {});
                 onJobsChanged();
@@ -930,8 +1032,8 @@ var __IadClientBundle__ = (() => {
               }
             }, children: "\u53D6\u6D88" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("progress", { value: job.progress, max: 1 }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("p", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("progress", { value: job.progress, max: 1 }),
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("p", { children: [
             "\u5B8C\u6210 ",
             job.completed,
             " \xB7 \u5931\u8D25 ",
@@ -940,48 +1042,48 @@ var __IadClientBundle__ = (() => {
             job.total_samples,
             " \u5F20"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { className: "iad-muted", children: auditPhases[job.phase || ""] || job.message }),
-          !!job.planned_regions && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("p", { className: "iad-muted", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { className: "iad-muted", children: auditPhases[job.phase || ""] || job.message }),
+          !!job.planned_regions && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("p", { className: "iad-muted", children: [
             "ROI ",
             job.inspected_regions || 0,
             " / ",
             job.planned_regions
           ] }),
-          !!job.total_batches && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("p", { className: "iad-muted", children: [
+          !!job.total_batches && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("p", { className: "iad-muted", children: [
             "\u8054\u5408\u5224\u65AD ",
             job.completed_batches || 0,
             " / ",
             job.total_batches
           ] }),
-          job.normal_version_id && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("small", { className: "iad-muted", children: [
+          job.normal_version_id && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("small", { className: "iad-muted", children: [
             "\u826F\u54C1\u7248\u672C ",
             job.normal_version_id,
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("br", {}),
-            job.defect_version_id && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(import_jsx_runtime10.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("br", {}),
+            job.defect_version_id && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(import_jsx_runtime11.Fragment, { children: [
               "\u4E0D\u826F\u7248\u672C ",
               job.defect_version_id,
-              /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("br", {})
+              /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("br", {})
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("small", { className: "iad-muted", children: job.run_id }),
-          job.errors.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("details", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("summary", { children: "\u5931\u8D25\u8BE6\u60C5" }),
-            job.errors.map((error2, i) => /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("p", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("small", { className: "iad-muted", children: job.run_id }),
+          job.errors.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("details", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("summary", { children: "\u5931\u8D25\u8BE6\u60C5" }),
+            job.errors.map((error2, i) => /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("p", { children: [
               error2.sample_id,
               ": ",
               error2.message
             ] }, i))
           ] })
         ] }, job.run_id)),
-        !jobs.length && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { className: "iad-muted", children: "\u5C1A\u65E0\u5BA1\u8BA1\u4F5C\u4E1A\u3002" })
+        !jobs.length && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { className: "iad-muted", children: "\u5C1A\u65E0\u5BA1\u8BA1\u4F5C\u4E1A\u3002" })
       ] }),
-      lightbox && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(ImageViewer, { image: lightbox, onClose: () => setLightbox(null) })
+      lightbox && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(ImageViewer, { image: lightbox, onClose: () => setLightbox(null) })
     ] });
   }
   function AuditReport({ dataset }) {
-    const [report, setReport] = (0, import_react5.useState)(null);
-    const [error, setError] = (0, import_react5.useState)("");
-    (0, import_react5.useEffect)(() => {
+    const [report, setReport] = (0, import_react6.useState)(null);
+    const [error, setError] = (0, import_react6.useState)("");
+    (0, import_react6.useEffect)(() => {
       const controller = new AbortController();
       request(`/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`, void 0, void 0, controller.signal).then(setReport).catch((e) => {
         if (!controller.signal.aborted) setError(message(e));
@@ -996,49 +1098,25 @@ var __IadClientBundle__ = (() => {
       anchor.click();
       URL.revokeObjectURL(url);
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("section", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("h2", { children: "\u5BA1\u8BA1\u6C47\u603B" }),
-      error && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { role: "alert", className: "iad-error", children: error }),
-      report && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)(import_jsx_runtime10.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("dl", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u6A21\u578B\u8986\u76D6" }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("dd", { children: [
-            report.vlm_audited_count,
-            " / ",
-            report.total_samples,
-            " (",
-            report.vlm_coverage_pct,
-            "%)"
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u6A21\u578B\u5EFA\u8BAE\u5F02\u5E38" }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dd", { children: report.vlm_anomalies_count }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u6280\u672F\u8D28\u91CF\u95EE\u9898" }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dd", { children: report.technical_quality_issues }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u4EBA\u5DE5\u590D\u6838" }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dd", { children: report.human_reviewed_count }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("dt", { children: "\u4EBA\u5BA1\u826F\u54C1 / \u5F02\u5E38 / \u4E0D\u786E\u5B9A" }),
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("dd", { children: [
-            report.human_pass_count,
-            " / ",
-            report.human_fail_count,
-            " / ",
-            report.human_uncertain_count
-          ] })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("button", { onClick: download, children: "\u5BFC\u51FA JSON" })
+    return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("section", { className: "iad-job-section iad-quality-report", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("h2", { children: "\u5BA1\u8BA1\u6C47\u603B" }),
+      error && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { role: "alert", className: "iad-error", children: error }),
+      report && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(import_jsx_runtime11.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(QualityReport, { report }),
+        /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("button", { onClick: download, children: "\u5BFC\u51FA JSON" })
       ] })
     ] });
   }
 
   // src/client/useAuditJobs.ts
-  var import_react6 = __require("react");
+  var import_react7 = __require("react");
   function useAuditJobs(datasetId, onProgress) {
-    const [jobs, setJobs] = (0, import_react6.useState)([]);
-    const [error, setError] = (0, import_react6.useState)("");
-    const [revision, setRevision] = (0, import_react6.useState)(0);
-    const observed = (0, import_react6.useRef)({ datasetId: "", signature: "" });
-    const refresh = (0, import_react6.useCallback)(() => setRevision((value) => value + 1), []);
-    (0, import_react6.useEffect)(() => {
+    const [jobs, setJobs] = (0, import_react7.useState)([]);
+    const [error, setError] = (0, import_react7.useState)("");
+    const [revision, setRevision] = (0, import_react7.useState)(0);
+    const observed = (0, import_react7.useRef)({ datasetId: "", signature: "" });
+    const refresh = (0, import_react7.useCallback)(() => setRevision((value) => value + 1), []);
+    (0, import_react7.useEffect)(() => {
       if (observed.current.datasetId !== datasetId) {
         observed.current = { datasetId, signature: "" };
         setJobs([]);
@@ -1155,27 +1233,28 @@ var __IadClientBundle__ = (() => {
 .iad-job-section h2 {margin-top:0;}
 .iad-evidence-preview {display:flex;align-items:center;gap:10px;width:100%;margin:10px 0;text-align:left;font-size:11px!important;}
 .iad-evidence-preview img {width:90px;height:70px;object-fit:contain;background:#e6edf7;}
+.iad-quality-report dt {color:#54657d;}
 .iad-profile {padding:14px;background:#f0f5fc;border-radius:8px;}
 @media(max-width:1100px) {.iad-workbench {padding:20px;}.iad-main {grid-template-columns:minmax(0,1fr) 300px;}.iad-grid {grid-template-columns:repeat(auto-fill,minmax(125px,1fr));}}
 @media(max-width:760px) {.iad-main,.iad-settings {grid-template-columns:1fr;}.iad-kpis {grid-template-columns:repeat(2,1fr);gap:10px;}.iad-inspector {width:100%;}}
 `;
 
   // src/client/WorkbenchPage.tsx
-  var import_jsx_runtime11 = __require("react/jsx-runtime");
+  var import_jsx_runtime12 = __require("react/jsx-runtime");
   function WorkbenchPage({ mode }) {
-    const [datasets, setDatasets] = (0, import_react7.useState)([]);
-    const [datasetId, setDatasetId] = (0, import_react7.useState)(localStorage.getItem("iad.dataset") || "");
-    const [tab, setTab] = (0, import_react7.useState)("samples");
-    const [filters, setFilters] = (0, import_react7.useState)({ ...initialFilters, review_status: mode === "review" ? "pending" : "all" });
-    const [page, setPage] = (0, import_react7.useState)(1);
-    const [items, setItems] = (0, import_react7.useState)([]);
-    const [total, setTotal] = (0, import_react7.useState)(0);
-    const [selected, setSelected] = (0, import_react7.useState)("");
-    const [loading, setLoading] = (0, import_react7.useState)(false);
-    const [error, setError] = (0, import_react7.useState)("");
-    const [revision, setRevision] = (0, import_react7.useState)(0);
+    const [datasets, setDatasets] = (0, import_react8.useState)([]);
+    const [datasetId, setDatasetId] = (0, import_react8.useState)(localStorage.getItem("iad.dataset") || "");
+    const [tab, setTab] = (0, import_react8.useState)("samples");
+    const [filters, setFilters] = (0, import_react8.useState)({ ...initialFilters, review_status: mode === "review" ? "pending" : "all" });
+    const [page, setPage] = (0, import_react8.useState)(1);
+    const [items, setItems] = (0, import_react8.useState)([]);
+    const [total, setTotal] = (0, import_react8.useState)(0);
+    const [selected, setSelected] = (0, import_react8.useState)("");
+    const [loading, setLoading] = (0, import_react8.useState)(false);
+    const [error, setError] = (0, import_react8.useState)("");
+    const [revision, setRevision] = (0, import_react8.useState)(0);
     const dataset = datasets.find((d) => d.dataset_id === datasetId);
-    const loadDatasets = (0, import_react7.useCallback)(async (preferred) => {
+    const loadDatasets = (0, import_react8.useCallback)(async (preferred) => {
       try {
         const result = await request("/datasets");
         setDatasets(result.datasets);
@@ -1185,20 +1264,20 @@ var __IadClientBundle__ = (() => {
         setError(message(e));
       }
     }, []);
-    const changed = (0, import_react7.useCallback)(() => {
+    const changed = (0, import_react8.useCallback)(() => {
       setRevision((v) => v + 1);
       loadDatasets();
     }, [loadDatasets]);
     const audit = useAuditJobs(dataset?.dataset_id || "", changed);
-    (0, import_react7.useEffect)(() => {
+    (0, import_react8.useEffect)(() => {
       loadDatasets();
     }, [loadDatasets]);
-    (0, import_react7.useEffect)(() => {
+    (0, import_react8.useEffect)(() => {
       localStorage.setItem("iad.dataset", datasetId);
       setPage(1);
       setSelected("");
     }, [datasetId]);
-    (0, import_react7.useEffect)(() => {
+    (0, import_react8.useEffect)(() => {
       if (!dataset) return;
       const controller = new AbortController();
       setLoading(true);
@@ -1219,74 +1298,74 @@ var __IadClientBundle__ = (() => {
       setPage(1);
       setSelected("");
     };
-    return /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "iad-workbench", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("style", { children: workbenchStyles }),
-      /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("header", { className: "iad-header", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { className: "iad-eyebrow", children: "INDUSTRIAL BENCHMARK" }),
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("h1", { children: mode === "review" ? "\u4EBA\u5DE5\u590D\u6838" : "\u6A21\u578B\u5BA1\u8BA1" })
+    return /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "iad-workbench", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("style", { children: workbenchStyles }),
+      /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("header", { className: "iad-header", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { className: "iad-eyebrow", children: "INDUSTRIAL BENCHMARK" }),
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("h1", { children: mode === "review" ? "\u4EBA\u5DE5\u590D\u6838" : "\u6A21\u578B\u5BA1\u8BA1" })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("select", { "aria-label": "\u5F53\u524D\u6570\u636E\u96C6", value: datasetId, onChange: (e) => setDatasetId(e.target.value), children: [
-            /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("option", { value: "", disabled: true, children: "\u9009\u62E9\u6570\u636E\u96C6" }),
-            datasets.map((item) => /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("option", { value: item.dataset_id, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("select", { "aria-label": "\u5F53\u524D\u6570\u636E\u96C6", value: datasetId, onChange: (e) => setDatasetId(e.target.value), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("option", { value: "", disabled: true, children: "\u9009\u62E9\u6570\u636E\u96C6" }),
+            datasets.map((item) => /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("option", { value: item.dataset_id, children: [
               item.name,
               " (",
               item.total_samples,
               ")"
             ] }, item.dataset_id))
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("button", { onClick: changed, children: "\u5237\u65B0" })
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("button", { onClick: changed, children: "\u5237\u65B0" })
         ] })
       ] }),
-      (error || audit.error) && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { role: "alert", className: "iad-error", children: error || audit.error }),
-      dataset && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "iad-kpis", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { children: "\u56FE\u50CF" }),
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("strong", { children: dataset.total_samples })
+      (error || audit.error) && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("p", { role: "alert", className: "iad-error", children: error || audit.error }),
+      dataset && /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "iad-kpis", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { children: "\u56FE\u50CF" }),
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("strong", { children: dataset.total_samples })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { children: "\u6A21\u578B\u5BA1\u8BA1" }),
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("strong", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { children: "\u6A21\u578B\u5BA1\u8BA1" }),
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("strong", { children: [
             dataset.vlm_audited_count,
             " ",
-            /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("small", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("small", { children: [
               "/ ",
               dataset.total_samples
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { children: "\u5F85\u590D\u6838\u5F02\u5E38\u5EFA\u8BAE" }),
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("strong", { children: dataset.pending_risk_count })
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { children: "\u5F85\u590D\u6838\u5F02\u5E38\u5EFA\u8BAE" }),
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("strong", { children: dataset.pending_risk_count })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("span", { children: "\u5DF2\u4EBA\u5DE5\u590D\u6838" }),
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("strong", { children: dataset.human_reviewed_count })
+        /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { children: "\u5DF2\u4EBA\u5DE5\u590D\u6838" }),
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("strong", { children: dataset.human_reviewed_count })
         ] })
       ] }),
-      mode === "model" && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("nav", { className: "iad-tabs", children: [["samples", "\u56FE\u50CF\u6837\u672C"], ["datasets", "\u6570\u636E\u96C6\u7BA1\u7406"], ["jobs", "\u6A21\u578B\u5BA1\u8BA1\u4F5C\u4E1A"], ["reports", "\u62A5\u544A"]].map(([key, label]) => /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("button", { className: tab === key ? "active" : "", onClick: () => setTab(key), children: label }, key)) }),
-      mode === "model" && (tab === "datasets" || !datasets.length) ? /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(DatasetManager, { datasets, selected: dataset, onChanged: (id) => {
+      mode === "model" && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("nav", { className: "iad-tabs", children: [["samples", "\u56FE\u50CF\u6837\u672C"], ["datasets", "\u6570\u636E\u96C6\u7BA1\u7406"], ["jobs", "\u6A21\u578B\u5BA1\u8BA1\u4F5C\u4E1A"], ["reports", "\u62A5\u544A"]].map(([key, label]) => /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("button", { className: tab === key ? "active" : "", onClick: () => setTab(key), children: label }, key)) }),
+      mode === "model" && (tab === "datasets" || !datasets.length) ? /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(DatasetManager, { datasets, selected: dataset, onChanged: (id) => {
         loadDatasets(id);
         setRevision((v) => v + 1);
-      } }) : dataset ? /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)(import_jsx_runtime11.Fragment, { children: [
-        (mode === "review" || tab === "samples") && /* @__PURE__ */ (0, import_jsx_runtime11.jsxs)("div", { className: "iad-main", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(SampleGrid, { dataset, filters, onFilters: updateFilters, items, total, page, onPage: (value) => {
+      } }) : dataset ? /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(import_jsx_runtime12.Fragment, { children: [
+        (mode === "review" || tab === "samples") && /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "iad-main", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(SampleGrid, { dataset, filters, onFilters: updateFilters, items, total, page, onPage: (value) => {
             setPage(value);
             setSelected("");
           }, selected, onSelect: setSelected, loading }),
-          /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(SampleInspector, { dataset, sampleId: selected, mode, revision, onChanged: changed, jobs: audit.jobs, onJobsChanged: audit.refresh })
+          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(SampleInspector, { dataset, sampleId: selected, mode, revision, onChanged: changed, jobs: audit.jobs, onJobsChanged: audit.refresh })
         ] }),
-        mode === "model" && tab === "jobs" && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(AuditJobs, { dataset, filters, jobs: audit.jobs, onJobsChanged: audit.refresh }),
-        mode === "model" && tab === "reports" && /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(AuditReport, { dataset })
-      ] }) : /* @__PURE__ */ (0, import_jsx_runtime11.jsx)("p", { className: "iad-empty", children: "\u8BF7\u5728\u6A21\u578B\u5BA1\u8BA1\u7684\u6570\u636E\u96C6\u7BA1\u7406\u4E2D\u5BFC\u5165\u6570\u636E\u96C6\u3002" })
+        mode === "model" && tab === "jobs" && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(AuditJobs, { dataset, filters, jobs: audit.jobs, onJobsChanged: audit.refresh }),
+        mode === "model" && tab === "reports" && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(AuditReport, { dataset })
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("p", { className: "iad-empty", children: "\u8BF7\u5728\u6A21\u578B\u5BA1\u8BA1\u7684\u6570\u636E\u96C6\u7BA1\u7406\u4E2D\u5BFC\u5165\u6570\u636E\u96C6\u3002" })
     ] });
   }
   function ModelAuditPage() {
-    return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(WorkbenchPage, { mode: "model" });
+    return /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(WorkbenchPage, { mode: "model" });
   }
   function HumanReviewPage() {
-    return /* @__PURE__ */ (0, import_jsx_runtime11.jsx)(WorkbenchPage, { mode: "review" });
+    return /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(WorkbenchPage, { mode: "review" });
   }
 
   // src/client/index.ts

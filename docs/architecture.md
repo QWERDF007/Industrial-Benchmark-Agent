@@ -15,7 +15,8 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 数据集身份、目录、名称和良品参考 | [DatasetRegistry](../python/iad_core/dataset/registry.py) |
 | Labelme 定位与导入 | [LabelmeAdapter](../python/iad_core/dataset/adapters/labelme.py)、[scanner](../python/iad_core/dataset/scanner.py) |
 | Labelme ZIP 目录检查、原样提取及统一导入 | [DatasetArchive](../python/iad_core/dataset/archive.py)、[DatasetImport / DatasetRegistry](../python/iad_core/dataset/registry.py)、[DSH 接入工具](../apps/iad-harness/src/server/workbench-tools/index.ts) |
-| 样本筛选、分页、评分及报告投影 | [WorkbenchQuery](../python/iad_core/workbench/query.py) |
+| 样本筛选、分页、排序及报告投影 | [WorkbenchQuery](../python/iad_core/workbench/query.py) |
+| 分项质量报告口径、范围及统一契约 | [DatasetReport / QualityAssessment](../python/iad_core/workbench/report.py)、[报告界面](../apps/iad-harness/src/client/components/QualityReport.tsx) |
 | 审计冻结知识、版本关系与独立支持 | [InspectionKnowledge](../python/iad_core/workbench/knowledge.py) |
 | 逐项适用性、规则区域来源及缺口追加 | [分析契约](../python/iad_core/advisory/analysis.py)、[SampleInspection](../python/iad_core/workbench/inspection.py)、[JointInspection](../python/iad_core/workbench/joint.py)、[规则证据视图](../apps/iad-harness/src/client/components/RuleAssessments.tsx) |
 | 综合疑点、实际来源关联/消解与全图聚焦 | [疑点契约](../python/iad_core/advisory/analysis.py)、[FindingLedger](../python/iad_core/workbench/findings.py)、[疑点视图](../apps/iad-harness/src/client/components/AuditFindings.tsx)、[共享证据按钮](../apps/iad-harness/src/client/components/AuditEvidence.tsx)、[ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx) |
@@ -60,6 +61,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 - [规则逐项覆盖、适用性、真实区域追加与证据约束测试](../tests/test_rule_audit.py)
 - [局部/整体疑点、实际引用、跨批关联与有据消解测试](../tests/test_audit_findings.py)
 - [数据集、参考图和作业测试](../tests/test_dataset_workbench.py)
+- [分项质量、拒绝图分母、最新人审与冻结版本](../tests/test_quality_report.py)
 - [ZIP 接入、原图/Mask 保持与坏包原子拒绝](../tests/test_dataset_archive.py)
 - [并发查询与独立 worker 的首次数据库初始化测试](../tests/test_workbench_concurrency.py)
 - [良品知识、版本、真实证据与取消测试](../tests/test_dataset_knowledge.py)
