@@ -1,6 +1,6 @@
 # 数据集知识与审计票据索引
 
-行为与验收以[完整规格](../specs/dataset-knowledge-audit.md)及[统一 UI 设计](../design/workbench-ui.md)为准。本轮使用已确认的本地票据方式，一票一文件位于 `.scratch/dataset-knowledge-audit/issues/`；进度只记录于根 WORKLOG.md，下面仅定义交付顺序。细化方案待确认，尚未实现。
+行为与验收以[完整规格](../specs/dataset-knowledge-audit.md)及[统一 UI 设计](../design/workbench-ui.md)为准。本轮使用已确认的本地票据方式，一票一文件位于 `.scratch/dataset-knowledge-audit/issues/`；进度只记录于根 WORKLOG.md，下面仅定义交付顺序。
 
 每票是可通过用户操作独立验证的完整切片。契约、存储与组件随首个使用流程交付，不单独拆成不可演示的水平层票；所有票先在公开边界写失败测试，再实现与定向验证。
 

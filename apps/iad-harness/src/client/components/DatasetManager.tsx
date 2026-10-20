@@ -15,7 +15,7 @@ function DirectoryPicker({ label, value, onChange }: { label: string; value: str
   </div>{error && <p role="alert" className="iad-error">{error}</p>}{listing && <div className="iad-directory">
     <div className="iad-row"><code>{listing.path}</code><button type="button" onClick={() => browse(listing.parent)}>上级</button>
       <button type="button" onClick={() => { onChange(listing.path); setListing(null); }}>选择此目录</button><button type="button" onClick={() => setListing(null)}>关闭</button></div>
-    <div className="iad-directory-list">{listing.directories.map(dir => <button type="button" key={dir.path} onClick={() => browse(dir.path)}>📁 {dir.name}</button>)}</div>
+    <div className="iad-directory-list">{listing.directories.map(dir => <button type="button" key={dir.path} onClick={() => browse(dir.path)}>{dir.name}</button>)}</div>
   </div>}</div>;
 }
 

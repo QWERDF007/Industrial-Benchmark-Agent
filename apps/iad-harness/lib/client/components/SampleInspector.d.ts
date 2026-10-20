@@ -5,7 +5,7 @@ export declare function SampleInspector({ dataset, sampleId, mode, revision, onC
     onJobsChanged(): void;
     dataset: Dataset;
     sampleId: string;
-    mode: "model" | "review";
+    mode: "model" | "review" | "browse" | "dataset";
     revision: number;
     onChanged(): void;
 }): React.JSX.Element;

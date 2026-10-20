@@ -6,7 +6,8 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 
 | 职责 | 唯一实现入口 |
 | --- | --- |
-| 原生导航：模型审计、人工复核 | [client/index.ts](../apps/iad-harness/src/client/index.ts) |
+| 原生六页导航与共享页面上下文 | [client/index.ts](../apps/iad-harness/src/client/index.ts)、[workspace](../apps/iad-harness/src/client/workspace.tsx) |
+| 宿主语义主题适配 | [theme.ts](../apps/iad-harness/src/client/theme.ts)、[styles.ts](../apps/iad-harness/src/client/styles.ts) |
 | 页面与组件 | [WorkbenchPage.tsx](../apps/iad-harness/src/client/WorkbenchPage.tsx)、[components](../apps/iad-harness/src/client/components/) |
 | 前后端接口类型 | [contracts.ts](../apps/iad-harness/src/shared/contracts.ts) |
 | 宿主生命周期 | [server/index.ts](../apps/iad-harness/src/server/index.ts) |
@@ -35,15 +36,17 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | Mask 像素、内容指纹、二值标注图与显示叠加 | [MaskImages / annotation_overlay](../python/iad_core/evidence/masks.py)、[Labelme 官方格式](https://github.com/wkentaro/labelme/blob/main/labelme/_label_file.py)、[官方坐标映射](https://github.com/wkentaro/labelme/blob/main/labelme/_utils/_shape.py) |
 | 模型传输、实际 token 容量、结构化输出与响应校验 | [VlmClient](../python/iad_core/workbench/vision.py)、[vLLM 输出契约](https://github.com/vllm-project/vllm/blob/v0.18.0/docs/features/structured_outputs.md) |
 | 全图与全部 ROI 联合分析、按实际容量分批 | [JointInspection](../python/iad_core/workbench/joint.py) |
-| 页面统一作业轮询与逐图刷新 | [useAuditJobs](../apps/iad-harness/src/client/useAuditJobs.ts) |
+| 知识/审计共享轮询与逐图刷新 | [useJobs](../apps/iad-harness/src/client/useJobs.ts) |
 | 审计领域执行 | [AuditService](../python/iad_core/workbench/audit.py) |
 | 审计/知识共享作业、原子完成、进程接管与关联重试 | [JobRunner / JobContext / JobRetry](../python/iad_core/workbench/jobs.py)、[WorkbenchRuntime](../python/iad_core/workbench/runtime.py) |
 | 作业关联的真实模型请求、返回、错误与服务用量 | [ModelCalls](../python/iad_core/workbench/calls.py)、[VlmClient](../python/iad_core/workbench/vision.py)、[原文读取操作](../python/iad_core/entry.py) |
 | 图像查看器与标注图层 | [ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx) |
+| 知识独立页面、版本与真实证据 | [KnowledgePage](../apps/iad-harness/src/client/components/KnowledgePage.tsx)、[版本投影](../python/iad_core/knowledge/repository.py) |
+| 复核草稿与共享模态焦点 | [useReviewDraft](../apps/iad-harness/src/client/useReviewDraft.ts)、[Modal](../apps/iad-harness/src/client/components/Modal.tsx) |
 | 复核会话与裁决 | [HumanReview](../python/iad_core/workbench/review.py) |
 | 数据表与迁移 | [Database](../python/iad_core/storage/database.py) |
 
-初始无标注图作为良品参考，是本项目的数据约定；可通过模型审计页面调整。参考资格、人工裁决优先级及目标图排除规则以 `DatasetRegistry.references` 为准。导入质量、模型建议和人工裁决分别保留各自来源。
+初始无标注图作为良品参考，是本项目的数据约定；可通过数据集管理调整。参考资格、人工裁决优先级及目标图排除规则以 `DatasetRegistry.references` 为准。导入质量、模型建议和人工裁决分别保留各自来源。
 
 数据集 ID 为稳定身份，名称是可编辑的显示属性。注册配置以数据库 `datasets` 表为准；YAML 用于命令行导入以及已有数据集的首次注册。显式标注目录的匹配规则以 `LabelmeAdapter` 为准。
 

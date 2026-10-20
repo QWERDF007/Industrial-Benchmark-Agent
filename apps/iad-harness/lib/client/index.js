@@ -1,13 +1,19 @@
-import { AuditIcon, ReviewIcon } from "./AuditIcon.js";
-import { ModelAuditPage, HumanReviewPage } from "./WorkbenchPage.js";
+import React from "react";
+import { AuditIcon, ReviewIcon, DatasetIcon, ImagesIcon, KnowledgeIcon } from "./AuditIcon.js";
+import { WorkbenchPage } from "./WorkbenchPage.js";
+import { pages, Workspace, WorkspaceContext } from "./workspace.js";
 export const name = "iad-client";
-export const inject = ["slots"];
+export const inject = ["slots", "layout"];
 export function apply(ctx) {
-    for (const [id, label, order, icon, page] of [
-        ["industrial-audit", "模型审计", 1, AuditIcon, ModelAuditPage],
-        ["industrial-review", "人工复核", 2, ReviewIcon, HumanReviewPage],
-    ]) {
-        ctx.slots.inject("sidebar.panellist", () => ctx.slots.register({ name: "sidebar.panellist", id, order, label }, icon));
-        ctx.slots.inject("main", () => ctx.slots.register({ name: "main", key: id }, page));
-    }
+    const workspace = new Workspace();
+    const icons = [DatasetIcon, ImagesIcon, KnowledgeIcon, KnowledgeIcon, AuditIcon, ReviewIcon];
+    ctx.slots.inject("sidebar.panellist", () => {
+        Object.entries(pages).forEach(([id, label], index) => ctx.slots.register({ name: "sidebar.panellist", id, order: index + 1, label }, icons[index]));
+    });
+    ctx.slots.inject("main", () => {
+        for (const id of Object.keys(pages)) {
+            ctx.slots.register({ name: "main", key: id }, () => React.createElement(WorkspaceContext.Provider, { value: workspace }, React.createElement(WorkbenchPage, { pageId: id })));
+        }
+        return workspace.connect(ctx.layout);
+    });
 }

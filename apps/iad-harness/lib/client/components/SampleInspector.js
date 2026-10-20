@@ -5,6 +5,7 @@ import { DatasetKnowledge } from "./DatasetKnowledge.js";
 import { RuleAssessments } from "./RuleAssessments.js";
 import { AuditFindings } from "./AuditFindings.js";
 import { AuditEvidence } from "./AuditEvidence.js";
+import { useReviewDraft } from "../useReviewDraft.js";
 import { auditPhases, mediaUrl, message, request } from "../api.js";
 export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, jobs, onJobsChanged }) {
     const [detail, setDetail] = useState(null);
@@ -13,8 +14,8 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
     const [busy, setBusy] = useState(false);
     const job = jobs.find(job => job.sample_ids.includes(sampleId));
     const jobRunning = jobs.some(job => job.status === "RUNNING" || job.status === "PENDING");
-    const [reviewer, setReviewer] = useState(localStorage.getItem("iad.reviewer") || "auditor_qc");
-    const [comment, setComment] = useState("");
+    const draft = useReviewDraft(dataset.dataset_id, sampleId);
+    const { reviewer, comment } = draft;
     const [lightbox, setLightbox] = useState(null);
     const activeId = useRef(sampleId);
     const openedAt = useRef(Date.now());
@@ -23,7 +24,6 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
         setDetail(null);
         setError("");
         setNotice("");
-        setComment("");
         setLightbox(null);
         openedAt.current = Date.now();
     }, [sampleId]);
@@ -75,6 +75,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
             const session = await request("/review/session", { task_id: dataset.task_id, dataset_id: dataset.dataset_id, reviewer: reviewer.trim() });
             await request("/review/submit", { session_id: session.session_id, sample_id: id, decision, comment, duration_ms: Date.now() - openedAt.current });
             await request("/review/finish", { session_id: session.session_id });
+            draft.discard();
             if (activeId.current === id) {
                 onChanged();
                 setNotice(`已提交 ${decision}`);
@@ -109,5 +110,5 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
                                 }
                                 catch (error) {
                                     setError(message(error));
-                                } }, children: "\u53D6\u6D88\u5BA1\u8BA1" })] }), mode === "model" ? _jsxs("div", { className: "iad-actions", children: [_jsx("button", { className: "iad-primary", disabled: busy || jobRunning, onClick: audit, children: busy || jobRunning ? "正在联合审计…" : "按知识审计此图" }), _jsx("button", { disabled: busy, onClick: setReference, children: dataset.reference_sample_ids.includes(sampleId) ? "移出良品参考" : "设为良品参考" })] }) : _jsxs("section", { className: "iad-decision", children: [_jsx("h3", { children: "\u4EBA\u5DE5\u88C1\u51B3" }), detail.review_decision && _jsxs("p", { children: ["\u5F53\u524D\uFF1A", detail.review_decision.decision, " \u00B7 ", detail.review_decision.reviewer, _jsx("br", {}), detail.review_decision.comment] }), _jsxs("label", { className: "iad-field", children: ["\u590D\u6838\u4EBA", _jsx("input", { value: reviewer, onChange: e => setReviewer(e.target.value) })] }), _jsxs("label", { className: "iad-field", children: ["\u590D\u6838\u8BF4\u660E", _jsx("textarea", { value: comment, onChange: e => setComment(e.target.value) })] }), _jsx("div", { className: "iad-actions", children: [['PASS', '良品'], ['HARD_NORMAL', '困难正常'], ['FAIL', '异常'], ['UNCERTAIN', '不确定'], ['SKIP', '跳过']].map(([value, label]) => _jsx("button", { className: value === "FAIL" ? "iad-danger" : "", disabled: busy, onClick: () => submit(value), children: label }, value)) })] })] }), lightbox && _jsx(ImageViewer, { image: lightbox, onClose: () => setLightbox(null) })] });
+                                } }, children: "\u53D6\u6D88\u5BA1\u8BA1" })] }), mode === "dataset" && _jsx("div", { className: "iad-actions", children: _jsx("button", { disabled: busy, onClick: setReference, children: dataset.reference_sample_ids.includes(sampleId) ? "移出良品参考" : "设为良品参考" }) }), mode === "model" ? _jsx("div", { className: "iad-actions", children: _jsx("button", { className: "iad-primary", disabled: busy || jobRunning, onClick: audit, children: busy || jobRunning ? "正在联合审计…" : "按知识审计此图" }) }) : mode === "review" ? _jsxs("section", { className: "iad-decision", children: [_jsx("h3", { children: "\u4EBA\u5DE5\u88C1\u51B3" }), draft.dirty && _jsxs("div", { className: "iad-row", children: [_jsx("span", { role: "status", children: "\u8349\u7A3F\u672A\u63D0\u4EA4" }), _jsx("button", { disabled: busy, onClick: draft.discard, children: "\u653E\u5F03\u8349\u7A3F" })] }), detail.review_decision && _jsxs("p", { children: ["\u5F53\u524D\uFF1A", detail.review_decision.decision, " \u00B7 ", detail.review_decision.reviewer, _jsx("br", {}), detail.review_decision.comment] }), _jsxs("label", { className: "iad-field", children: ["\u590D\u6838\u4EBA", _jsx("input", { value: reviewer, onChange: e => draft.update({ reviewer: e.target.value }) })] }), _jsxs("label", { className: "iad-field", children: ["\u590D\u6838\u8BF4\u660E", _jsx("textarea", { value: comment, onChange: e => draft.update({ comment: e.target.value }) })] }), _jsx("div", { className: "iad-actions", children: [['PASS', '良品'], ['HARD_NORMAL', '困难正常'], ['FAIL', '异常'], ['UNCERTAIN', '不确定'], ['SKIP', '跳过']].map(([value, label]) => _jsx("button", { className: value === "FAIL" ? "iad-danger" : "", disabled: busy, onClick: () => submit(value), children: label }, value)) })] }) : null] }), lightbox && _jsx(ImageViewer, { image: lightbox, onClose: () => setLightbox(null) })] });
 }

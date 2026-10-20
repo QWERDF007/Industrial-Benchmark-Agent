@@ -1,4 +1,13 @@
 import React from "react";
+export declare function DatasetIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
+export declare function ImagesIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
+export declare function KnowledgeIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
 export declare function ReviewIcon({ size }: {
     size?: number;
 }): React.JSX.Element;

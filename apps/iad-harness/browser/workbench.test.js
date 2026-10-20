@@ -30,8 +30,13 @@ for name in ['normal','normal2','dent']:
 `, root]);
   const bundle = await build({
     stdin: { contents: `import React from 'react'; import {createRoot} from 'react-dom/client';
-      import {ModelAuditPage,HumanReviewPage} from './src/client/WorkbenchPage.tsx';
-      function App(){const [mode,setMode]=React.useState('model');return <><nav id="test-navigation"><button onClick={()=>setMode('model')}>模型审计</button><button onClick={()=>setMode('review')}>人工复核</button></nav>{mode==='model'?<ModelAuditPage/>:<HumanReviewPage/>}</>}
+      import {apply} from './src/client/index.ts';
+      const entries=[], mains=new Map(), listeners=new Set(); let panel=null;
+      const layout={panelInfo:{getSnapshot:()=>({activePanelId:panel}),subscribe:f=>{listeners.add(f);return()=>listeners.delete(f)}},
+        selectPanel:id=>{panel=id;listeners.forEach(f=>f())},beginNavigation:()=>new AbortController().signal};
+      apply({layout,slots:{inject:(_,f)=>f(),register:(options,component)=>{if(options.name==='main')mains.set(options.key,component);else entries.push({...options,component});}}});
+      function App(){const [current,setCurrent]=React.useState(panel||entries[0].id);React.useEffect(()=>layout.panelInfo.subscribe(()=>setCurrent(panel)),[]);
+        const Page=mains.get(current);return <><nav id="test-navigation">{entries.map(entry=><button key={entry.id} aria-label={entry.label} onClick={()=>layout.selectPanel(entry.id)}>{entry.label}</button>)}</nav>{Page&&<Page/>}</>}
       createRoot(document.getElementById('root')).render(<App/>);`, loader: "tsx", resolveDir: app },
     bundle: true, format: "iife", write: false, target: "es2022", define: { "process.env.NODE_ENV": '"production"' },
   });
@@ -40,7 +45,7 @@ for name in ['normal','normal2','dent']:
   let holdRegion = false, releaseRegion;
   const api = createIadHttpHandler(bridge);
   const server = http.createServer(async (req, res) => {
-    if (req.url === "/") { res.setHeader("Content-Type", "text/html; charset=utf-8"); res.end('<!doctype html><meta charset="utf-8"><style>html,body,#root{height:100%;margin:0}</style><div id="root"></div><script src="/browser.js"></script>'); }
+    if (new URL(req.url, "http://localhost").pathname === "/") { res.setHeader("Content-Type", "text/html; charset=utf-8"); res.end('<!doctype html><meta charset="utf-8"><style>html,body,#root{height:100%;margin:0}</style><div id="root"></div><script src="/browser.js"></script>'); }
     else if (req.url === "/browser.js") { res.setHeader("Content-Type", "application/javascript"); res.end(bundle.outputFiles[0].contents); }
     else if (req.url === "/model/tokenize") {
       for await (const chunk of req) { /* Drain request before replying. */ }
@@ -79,7 +84,7 @@ for name in ['normal','normal2','dent']:
     driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options)
       .setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH || "geckodriver")).build();
     await driver.manage().window().setRect({ width: 1440, height: 1100 });
-    await driver.get(base);
+    await driver.get(base + "?host=kept#host-anchor");
     const element = css => driver.wait(until.elementLocated(By.css(css)), 15000);
     const button = async text => (await driver.findElement(By.xpath(`//button[normalize-space(.)='${text}']`))).click();
     const select = async (label, value) => {
@@ -87,28 +92,49 @@ for name in ['normal','normal2','dent']:
       await driver.executeScript("arguments[0].value=arguments[1];arguments[0].dispatchEvent(new Event('change',{bubbles:true}));", el, value);
     };
     const gridCount = count => driver.wait(async () => await driver.executeScript("return document.querySelectorAll('.iad-grid .iad-sample').length===arguments[0] && !!document.querySelector('.iad-gallery') && !document.querySelector('.iad-gallery').textContent.includes('加载中');", count), 15000, `Expected ${count} grid images`);
+    await element("#test-navigation button");
+    assert.deepEqual(await driver.executeScript("return [...document.querySelectorAll('#test-navigation button')].map(b=>b.textContent)"),
+      ["数据集管理", "图像浏览", "挖掘良品知识", "挖掘不良品知识", "模型审计", "人工复核"]);
     await (await element("#dataset-name")).sendKeys("浏览器验收");
     await (await element("input[aria-label='图像目录']")).sendKeys(path.join(root, "images"));
     await (await element("input[aria-label='标注目录']")).sendKeys(path.join(root, "labels"));
     await button("导入数据集");
     await driver.wait(async () => (await (await element("select[aria-label='当前数据集']")).getText()).includes("浏览器验收"), 15000);
-    await button("图像样本"); await gridCount(3);
+    await button("图像浏览"); await gridCount(3);
     const datasets = await (await fetch(base + "/api/iad/datasets")).json();
     const dataset = datasets.datasets[0];
     const samples = await (await fetch(`${base}/api/iad/samples/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
     const normal = samples.items.find(sample => sample.relative_path === "normal.png");
     const normal2 = samples.items.find(sample => sample.relative_path === "normal2.png");
-    const learned = await (await fetch(base + "/api/iad/knowledge/start", {method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({dataset_id:dataset.dataset_id,kind:"normal",sample_ids:[normal.sample_id,normal2.sample_id]})})).json();
-    await driver.wait(async ()=>(await (await fetch(`${base}/api/iad/knowledge/status/${learned.run_id}`)).json()).status === "COMPLETED",15000);
+    await button("挖掘良品知识");
+    await button("开始挖掘良品知识");
+    await driver.wait(async ()=>(await (await element(".iad-knowledge-jobs")).getText()).includes("COMPLETED"),15000);
+    const learned = (await (await fetch(`${base}/api/iad/knowledge/jobs?dataset_id=${dataset.dataset_id}`)).json()).jobs[0];
+    await driver.wait(async ()=>(await (await element(".iad-knowledge-content")).getText()).includes("可见蓝色表面"),15000);
+    const published = await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json();
+    assert.equal(published.versions[0].version_id, published.knowledge.version_id);
+    assert.ok((await (await element("select[aria-label='知识版本']")).getText()).includes(published.knowledge.version_id));
+    await (await element(".iad-knowledge-evidence button")).click();
+    await element("[role='dialog'] img"); await button("关闭");
+    await button("图像浏览"); await gridCount(3);
     assert.equal((await driver.findElements(By.css(".iad-reference"))).length, 2);
     await (await element("summary[aria-label='标注筛选']")).click();
     await (await element("input[aria-label='无标注']")).click(); await gridCount(2);
     await (await element("input[aria-label='类别 dent']")).click(); await gridCount(3);
     await (await element("input[aria-label='无标注']")).click(); await gridCount(1);
     await (await element("summary[aria-label='标注筛选']")).click();
-    await driver.wait(until.elementLocated(By.xpath("//button[.='设为良品参考']")), 15000);
-    await button("设为良品参考");
+    await button("挖掘良品知识");
+    await element("[data-page='industrial-normal']");
+    await button("图像浏览"); await gridCount(1);
+    await driver.navigate().back(); await element("[data-page='industrial-normal']");
+    await driver.navigate().forward(); await element("[data-page='industrial-images']"); await gridCount(1);
+    await driver.navigate().refresh(); await gridCount(1);
+    assert.equal(new URL(await driver.getCurrentUrl()).searchParams.get("host"), "kept");
+    assert.equal(new URL(await driver.getCurrentUrl()).hash, "#host-anchor");
+    assert.equal((await driver.findElements(By.css(".iad-inspector"))).length, 0, "浏览网格不常驻长详情");
+    await (await element("img[alt='dent.png']")).click();
+    await button("前往模型审计");
+    await gridCount(3);
     await driver.wait(until.elementLocated(By.css(".iad-reference")), 15000);
     await (await element("button[title='放大图像']")).click();
     await element("[role='dialog'] .iad-annotation-layer rect");
@@ -135,11 +161,10 @@ for name in ['normal','normal2','dent']:
     await driver.findElement(By.xpath("//button[.='审计当前筛选全部图像']"));
     await (await element(".iad-reference-grid button")).click();
     await element("[role='dialog'] .iad-viewer-viewport img"); await button("关闭");
-    await button("图像样本");
+    await button("结果");
     const dent = samples.items.find(sample => sample.relative_path === "dent.png");
     const updatedDataset = (await (await fetch(base + "/api/iad/datasets")).json()).datasets[0];
-    assert.equal(updatedDataset.reference_sample_ids.length, 3);
-    assert.ok(updatedDataset.reference_sample_ids.includes(dent.sample_id));
+    assert.equal(updatedDataset.reference_sample_ids.length, 2);
     await button("按知识审计此图");
     await driver.wait(async () => (await (await element(".iad-single-job")).getText()).includes("COMPLETED"),15000);
     assert.equal((await driver.findElements(By.css(".iad-findings li"))).length,3);
@@ -214,17 +239,25 @@ for name in ['normal','normal2','dent']:
     await driver.wait(async () => (await (await element(".iad-kpis div:nth-child(2) strong")).getText()).startsWith("3"), 15000);
 
     await fs.writeFile(path.join(workspace, "runs/browser/model-audit.png"), await driver.takeScreenshot(), "base64");
-    await (await element("#test-navigation button:nth-child(2)")).click(); await gridCount(3);
+    await button("人工复核"); await gridCount(3);
     assert.equal(await (await element(".iad-inspector h2")).getText(), "复核明细");
     assert.equal((await driver.findElements(By.xpath("//button[.='按知识审计此图']"))).length, 0);
     await (await element("input[aria-label='按文件名搜索']")).sendKeys("dent"); await gridCount(1);
-    await element(".iad-decision"); await button("良品"); await gridCount(0);
+    await element(".iad-decision");
+    await (await element(".iad-decision textarea")).sendKeys("已核实局部反光");
+    await button("图像浏览"); await gridCount(1);
+    await button("前往人工复核"); await gridCount(1);
+    assert.equal(await (await element(".iad-decision textarea")).getAttribute("value"), "已核实局部反光");
+    await driver.navigate().refresh(); await gridCount(1);
+    assert.equal(await (await element(".iad-decision textarea")).getAttribute("value"), "已核实局部反光");
+    assert.ok((await (await element(".iad-decision")).getText()).includes("草稿未提交"));
+    await button("良品"); await gridCount(0);
     const detail = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();
     assert.equal(detail.review_decision.decision, "PASS");
     assert.equal(detail.sample.quality_status, "UNCERTAIN");
     await select("人工复核", "reviewed"); await gridCount(1);
     await fs.writeFile(path.join(workspace, "runs/browser/human-review.png"), await driver.takeScreenshot(), "base64");
-    await (await element("#test-navigation button:first-child")).click();
+    await button("模型审计");
     await button("报告");
     await driver.wait(async () => (await driver.findElement(By.css(".iad-workbench")).getText()).includes("人工核验覆盖率"), 15000);
     const ratioValue = label => driver.findElement(By.xpath(`//dt[normalize-space(.)='${label}']/following-sibling::dd[1]`)).getText();
@@ -240,7 +273,7 @@ for name in ['normal','normal2','dent']:
     await button("数据集管理");
     await (await element("input[aria-label='新的数据集名称']")).sendKeys("验收后改名"); await button("保存名称");
     await driver.wait(async () => (await (await element("select[aria-label='当前数据集']")).getText()).includes("验收后改名"), 15000);
-    await driver.navigate().refresh(); await gridCount(3);
+    await driver.navigate().refresh(); await element("#dataset-name");
     const reloaded = await (await fetch(base + "/api/iad/datasets")).json();
     assert.equal(reloaded.datasets[0].name, "验收后改名");
     assert.equal(reloaded.datasets[0].dataset_id, dataset.dataset_id);

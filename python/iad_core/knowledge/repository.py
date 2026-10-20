@@ -2,7 +2,7 @@ from typing import Optional
 from contextlib import nullcontext
 from sqlite3 import Connection
 
-from iad_core.knowledge.models import KnowledgeKind, KnowledgeSnapshot
+from iad_core.knowledge.models import KnowledgeKind, KnowledgeSnapshot, KnowledgeVersion
 from iad_core.storage.database import Database
 
 
@@ -23,6 +23,16 @@ class KnowledgeRepository:
                 JOIN knowledge_versions v ON v.version_id=h.version_id WHERE h.dataset_id=? AND h.kind=?""",
                                (dataset_id, kind)).fetchone()
         return KnowledgeSnapshot.model_validate_json(row[0]) if row else None
+
+    def versions(self, dataset_id: str, kind: KnowledgeKind) -> list[KnowledgeVersion]:
+        with self.db.connection() as conn:
+            rows = conn.execute("""SELECT version_id,dataset_id,kind,parent_version_id,normal_version_id,created_at,
+                json_extract(snapshot_json,'$.model_name') AS model_name,
+                json_array_length(snapshot_json,'$.sources') AS source_count,
+                json_array_length(snapshot_json,'$.checks') AS check_count
+                FROM knowledge_versions WHERE dataset_id=? AND kind=? ORDER BY created_at DESC,version_id""",
+                (dataset_id, kind)).fetchall()
+        return [KnowledgeVersion.model_validate(dict(row)) for row in rows]
 
     def publish(self, snapshot: KnowledgeSnapshot, connection: Optional[Connection] = None) -> None:
         with (nullcontext(connection) if connection else self.db.connection()) as conn:

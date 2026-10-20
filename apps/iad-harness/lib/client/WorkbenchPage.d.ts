@@ -1,4 +1,6 @@
 import React from "react";
-export declare function ModelAuditPage(): React.JSX.Element;
-export declare function HumanReviewPage(): React.JSX.Element;
+import { type PageId } from "./workspace.js";
+export declare function WorkbenchPage({ pageId }: {
+    pageId: PageId;
+}): React.JSX.Element;
 //# sourceMappingURL=WorkbenchPage.d.ts.map

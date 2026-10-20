@@ -333,9 +333,18 @@ export type ChildStepIds2 = string[];
 export type Findings3 = KnowledgeJudgment[];
 export type VerificationSteps = VerificationStep[];
 export type CreatedAt = string;
+export type VersionId1 = string;
 export type DatasetId1 = string;
-export type ModelName1 = string;
+export type Kind1 = "normal" | "defect";
+export type ParentVersionId1 = string | null;
 export type NormalVersionId2 = string | null;
+export type ModelName1 = string;
+export type CreatedAt1 = string;
+export type SourceCount = number;
+export type CheckCount = number;
+export type DatasetId2 = string;
+export type ModelName2 = string;
+export type NormalVersionId3 = string | null;
 export type DefectVersionId1 = string | null;
 export type SampleIds = string[] | null;
 export type CallId = string;
@@ -373,7 +382,7 @@ export type Path = string;
 export type ImageCount = number;
 export type AnnotationCount = number;
 export type Directories = ArchiveDirectory[];
-export type DatasetId2 = string | null;
+export type DatasetId3 = string | null;
 export type TaskId = string | null;
 export type TotalSamples = number;
 export type VlmAuditedCount = number;
@@ -413,7 +422,7 @@ export type ConflictSamples = number;
  * 已有建议但未保存结构化证据分析，不能据此断言没有缺证
  */
 export type UnstructuredSamples = number;
-export type NormalVersionId3 = string | null;
+export type NormalVersionId4 = string | null;
 export type DefectVersionId2 = string | null;
 export type LegacyProfileId1 = string | null;
 export type SampleCount = number;
@@ -423,6 +432,7 @@ export type AuditRunIds = string[];
 export interface WorkbenchDomain {
   AuditAnalysis?: AuditAnalysis;
   KnowledgeSnapshot?: KnowledgeSnapshot;
+  KnowledgeVersion?: KnowledgeVersion;
   AuditStart?: AuditStart;
   ModelCallDetail?: ModelCallDetail;
   JobRetry?: JobRetry;
@@ -723,10 +733,21 @@ export interface VerificationStep {
 export interface KnowledgeVerification {
   findings: Findings3;
 }
-export interface AuditStart {
+export interface KnowledgeVersion {
+  version_id: VersionId1;
   dataset_id: DatasetId1;
-  model_name?: ModelName1;
-  normal_version_id?: NormalVersionId2;
+  kind: Kind1;
+  parent_version_id: ParentVersionId1;
+  normal_version_id: NormalVersionId2;
+  model_name: ModelName1;
+  created_at: CreatedAt1;
+  source_count: SourceCount;
+  check_count: CheckCount;
+}
+export interface AuditStart {
+  dataset_id: DatasetId2;
+  model_name?: ModelName2;
+  normal_version_id?: NormalVersionId3;
   defect_version_id?: DefectVersionId1;
   sample_ids?: SampleIds;
   filters?: Filters;
@@ -781,7 +802,7 @@ export interface ArchiveDirectory {
   annotation_count: AnnotationCount;
 }
 export interface DatasetReport {
-  dataset_id: DatasetId2;
+  dataset_id: DatasetId3;
   task_id: TaskId;
   total_samples: TotalSamples;
   vlm_audited_count: VlmAuditedCount;
@@ -834,7 +855,7 @@ export interface ModelIndicators {
   unstructured_samples: UnstructuredSamples;
 }
 export interface KnowledgeUsage {
-  normal_version_id: NormalVersionId3;
+  normal_version_id: NormalVersionId4;
   defect_version_id: DefectVersionId2;
   legacy_profile_id: LegacyProfileId1;
   sample_count: SampleCount;

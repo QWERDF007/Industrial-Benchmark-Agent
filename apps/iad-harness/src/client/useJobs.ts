@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AuditJob } from "../shared/contracts.js";
 import { message, request } from "./api.js";
 
-export function useAuditJobs(datasetId: string, onProgress: () => void) {
-  const [jobs, setJobs] = useState<AuditJob[]>([]);
+export function useJobs<T extends AuditJob>(kind: "audit" | "knowledge", datasetId: string, onProgress: () => void) {
+  const [jobs, setJobs] = useState<T[]>([]);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   const observed = useRef({ datasetId: "", signature: "" });
@@ -18,7 +18,7 @@ export function useAuditJobs(datasetId: string, onProgress: () => void) {
     let timer: ReturnType<typeof setTimeout>, running = true;
     async function poll() {
       try {
-        const result = await request<{ jobs: AuditJob[] }>(`/audit/jobs?dataset_id=${encodeURIComponent(datasetId)}`, undefined, undefined, controller.signal);
+        const result = await request<{ jobs: T[] }>(`/${kind}/jobs?dataset_id=${encodeURIComponent(datasetId)}`, undefined, undefined, controller.signal);
         if (controller.signal.aborted) return;
         const signature = JSON.stringify(result.jobs.map(job => [job.run_id, job.status, job.completed, job.failed]));
         if (observed.current.signature && observed.current.signature !== signature) onProgress();
@@ -30,6 +30,6 @@ export function useAuditJobs(datasetId: string, onProgress: () => void) {
     }
     poll();
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [datasetId, onProgress, revision]);
+  }, [kind, datasetId, onProgress, revision]);
   return { jobs, error, refresh };
 }

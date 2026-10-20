@@ -150,3 +150,15 @@ class KnowledgeSnapshot(AnalysisModel):
     findings: List[KnowledgeFinding] = Field(default_factory=list)
     verification_steps: List[VerificationStep] = Field(default_factory=list)
     created_at: str
+
+
+class KnowledgeVersion(AnalysisModel):
+    version_id: str
+    dataset_id: str
+    kind: KnowledgeKind
+    parent_version_id: Optional[str]
+    normal_version_id: Optional[str]
+    model_name: str
+    created_at: str
+    source_count: int
+    check_count: int

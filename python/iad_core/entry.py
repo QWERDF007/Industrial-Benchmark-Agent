@@ -222,7 +222,9 @@ def knowledge_get(args, db_path):
             raise ValueError("Knowledge kind must be normal or defect")
         DatasetRegistry(repository.db).get(args["dataset_id"])
         snapshot = repository.current(args["dataset_id"], args["kind"])
-    return {"knowledge": snapshot.model_dump() if snapshot else None}
+    return {"knowledge": snapshot.model_dump() if snapshot else None,
+            "versions": [version.model_dump() for version in repository.versions(
+                snapshot.dataset_id if snapshot else args["dataset_id"], snapshot.kind if snapshot else args["kind"])]}
 
 
 def knowledge_start(args, db_path):

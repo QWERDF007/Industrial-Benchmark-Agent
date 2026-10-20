@@ -5,11 +5,12 @@ import { DatasetKnowledge } from "./DatasetKnowledge.js";
 import { RuleAssessments } from "./RuleAssessments.js";
 import { AuditFindings } from "./AuditFindings.js";
 import { AuditEvidence } from "./AuditEvidence.js";
+import { useReviewDraft } from "../useReviewDraft.js";
 import { auditPhases, mediaUrl, message, request } from "../api.js";
 
 export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, jobs, onJobsChanged }: {
   jobs: AuditJob[]; onJobsChanged(): void;
-  dataset: Dataset; sampleId: string; mode: "model" | "review"; revision: number; onChanged(): void;
+  dataset: Dataset; sampleId: string; mode: "model" | "review" | "browse" | "dataset"; revision: number; onChanged(): void;
 }) {
   const [detail, setDetail] = useState<SampleDetail | null>(null);
   const [error, setError] = useState("");
@@ -17,14 +18,14 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
   const [busy, setBusy] = useState(false);
   const job = jobs.find(job => job.sample_ids.includes(sampleId));
   const jobRunning = jobs.some(job => job.status === "RUNNING" || job.status === "PENDING");
-  const [reviewer, setReviewer] = useState(localStorage.getItem("iad.reviewer") || "auditor_qc");
-  const [comment, setComment] = useState("");
+  const draft = useReviewDraft(dataset.dataset_id, sampleId);
+  const { reviewer, comment } = draft;
   const [lightbox, setLightbox] = useState<ImageSource | null>(null);
   const activeId = useRef(sampleId);
   const openedAt = useRef(Date.now());
   useEffect(() => {
     activeId.current = sampleId;
-    setDetail(null); setError(""); setNotice(""); setComment(""); setLightbox(null); openedAt.current = Date.now();
+    setDetail(null); setError(""); setNotice(""); setLightbox(null); openedAt.current = Date.now();
   }, [sampleId]);
   useEffect(() => {
     if (!sampleId) return;
@@ -53,6 +54,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
       const session = await request<{ session_id: string }>("/review/session", { task_id: dataset.task_id, dataset_id: dataset.dataset_id, reviewer: reviewer.trim() });
       await request("/review/submit", { session_id: session.session_id, sample_id: id, decision, comment, duration_ms: Date.now() - openedAt.current });
       await request("/review/finish", { session_id: session.session_id });
+      draft.discard();
       if (activeId.current === id) { onChanged(); setNotice(`已提交 ${decision}`); }
     } catch (e) { if (activeId.current === id) setError(message(e)); } finally { setBusy(false); }
   }
@@ -117,14 +119,14 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
         {job.errors.map((error, index) => <p className="iad-error" key={index}>{error.message}</p>)}
         {(job.status === "RUNNING" || job.status === "PENDING") && <button onClick={async () => { try { await request<AuditJob>(`/audit/cancel/${job.run_id}`, {}); onJobsChanged(); } catch (error) { setError(message(error)); } }}>取消审计</button>}
       </section>}
-      {mode === "model" ? <div className="iad-actions"><button className="iad-primary" disabled={busy || jobRunning} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按知识审计此图"}</button>
-        <button disabled={busy} onClick={setReference}>{dataset.reference_sample_ids.includes(sampleId) ? "移出良品参考" : "设为良品参考"}</button></div> : <section className="iad-decision">
-        <h3>人工裁决</h3>{detail.review_decision && <p>当前：{detail.review_decision.decision} · {detail.review_decision.reviewer}<br />{detail.review_decision.comment}</p>}
-        <label className="iad-field">复核人<input value={reviewer} onChange={e => setReviewer(e.target.value)} /></label>
-        <label className="iad-field">复核说明<textarea value={comment} onChange={e => setComment(e.target.value)} /></label>
+      {mode === "dataset" && <div className="iad-actions"><button disabled={busy} onClick={setReference}>{dataset.reference_sample_ids.includes(sampleId) ? "移出良品参考" : "设为良品参考"}</button></div>}
+      {mode === "model" ? <div className="iad-actions"><button className="iad-primary" disabled={busy || jobRunning} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按知识审计此图"}</button></div> : mode === "review" ? <section className="iad-decision">
+        <h3>人工裁决</h3>{draft.dirty && <div className="iad-row"><span role="status">草稿未提交</span><button disabled={busy} onClick={draft.discard}>放弃草稿</button></div>}{detail.review_decision && <p>当前：{detail.review_decision.decision} · {detail.review_decision.reviewer}<br />{detail.review_decision.comment}</p>}
+        <label className="iad-field">复核人<input value={reviewer} onChange={e => draft.update({ reviewer: e.target.value })} /></label>
+        <label className="iad-field">复核说明<textarea value={comment} onChange={e => draft.update({ comment: e.target.value })} /></label>
         <div className="iad-actions">{([['PASS', '良品'], ['HARD_NORMAL', '困难正常'], ['FAIL', '异常'], ['UNCERTAIN', '不确定'], ['SKIP', '跳过']] as [Decision, string][]).map(([value, label]) =>
           <button key={value} className={value === "FAIL" ? "iad-danger" : ""} disabled={busy} onClick={() => submit(value)}>{label}</button>)}</div>
-      </section>}
+      </section> : null}
     </>}
     {lightbox && <ImageViewer image={lightbox} onClose={() => setLightbox(null)} />}
   </aside>;

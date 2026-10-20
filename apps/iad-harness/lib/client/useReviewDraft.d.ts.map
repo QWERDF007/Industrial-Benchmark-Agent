@@ -1,0 +1,1 @@
+{"version":3,"file":"useReviewDraft.d.ts","sourceRoot":"","sources":["../../src/client/useReviewDraft.ts"],"names":[],"mappings":"AAEA,UAAU,WAAW;IAAG,QAAQ,EAAE,MAAM,CAAC;IAAC,OAAO,EAAE,MAAM,CAAA;CAAE;AAC3D,wBAAgB,cAAc,CAAC,SAAS,EAAE,MAAM,EAAE,QAAQ,EAAE,MAAM;cADhC,MAAM;aAAW,MAAM;;oBAWhC,OAAO,CAAC,WAAW,CAAC;;EAU5C"}

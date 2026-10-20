@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { message, request } from "./api.js";
-export function useAuditJobs(datasetId, onProgress) {
+export function useJobs(kind, datasetId, onProgress) {
     const [jobs, setJobs] = useState([]);
     const [error, setError] = useState("");
     const [revision, setRevision] = useState(0);
@@ -17,7 +17,7 @@ export function useAuditJobs(datasetId, onProgress) {
         let timer, running = true;
         async function poll() {
             try {
-                const result = await request(`/audit/jobs?dataset_id=${encodeURIComponent(datasetId)}`, undefined, undefined, controller.signal);
+                const result = await request(`/${kind}/jobs?dataset_id=${encodeURIComponent(datasetId)}`, undefined, undefined, controller.signal);
                 if (controller.signal.aborted)
                     return;
                 const signature = JSON.stringify(result.jobs.map(job => [job.run_id, job.status, job.completed, job.failed]));
@@ -39,6 +39,6 @@ export function useAuditJobs(datasetId, onProgress) {
         }
         poll();
         return () => { controller.abort(); clearTimeout(timer); };
-    }, [datasetId, onProgress, revision]);
+    }, [kind, datasetId, onProgress, revision]);
     return { jobs, error, refresh };
 }

@@ -2,6 +2,7 @@ import type { AuditAnalysis, KnowledgeSnapshot, AuditStart, ModelCallDetail, Dat
 export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot, JobRetry, DatasetImport as DatasetImportRequest, ArchiveInspection, DatasetReport as Report } from "./domain.generated.js";
 export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
 export type ModelCallSummary = Omit<ModelCallDetail, "request_body" | "response_body">;
+export type { KnowledgeVersion } from "./domain.generated.js";
 
 export type Decision = "PASS" | "HARD_NORMAL" | "FAIL" | "UNCERTAIN" | "SKIP";
 export interface Suggestion {
@@ -94,3 +95,5 @@ export interface AuditJob {
 export interface DirectoryListing { path: string; parent: string; directories: Array<{ name: string; path: string }>; file_counts: Record<string, number> }
 export type AuditStartRequest = Omit<AuditStart, "filters"> & { filters?: Partial<Filters> };
 export interface ReviewSubmission { session_id: string; sample_id: string; decision: Decision; comment?: string; reason_code?: string; duration_ms?: number }
+
+export interface KnowledgeJob extends AuditJob { kind: "normal" | "defect"; knowledge_version_id?: string; phase?: string }

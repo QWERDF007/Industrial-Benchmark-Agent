@@ -1,6 +1,6 @@
 # 工作台 UI 与交互设计
 
-本文件是视觉、页面布局和交互的唯一设计源。领域行为见[规格](../specs/dataset-knowledge-audit.md)，实现入口见[架构索引](../architecture.md)，交付依赖见[票据索引](../tickets/dataset-knowledge-audit.md)。以下为目标设计，尚未实现。
+本文件是视觉、页面布局和交互的唯一设计源。领域行为见[规格](../specs/dataset-knowledge-audit.md)，实现入口见[架构索引](../architecture.md)，交付依赖见[票据索引](../tickets/dataset-knowledge-audit.md)。实现与验收进度仅见根 WORKLOG.md。
 
 ## D01 导航与信息架构
 

@@ -1,0 +1,112 @@
+import { createContext, useContext, useSyncExternalStore } from "react";
+import { initialFilters } from "./api.js";
+export const pages = {
+    "industrial-datasets": "数据集管理",
+    "industrial-images": "图像浏览",
+    "industrial-normal": "挖掘良品知识",
+    "industrial-defect": "挖掘不良品知识",
+    "industrial-audit": "模型审计",
+    "industrial-review": "人工复核",
+};
+const defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", job: "" });
+/** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
+export class Workspace {
+    state = { active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
+    listeners = new Set();
+    layout;
+    defaults = Object.fromEntries(Object.keys(pages).map(id => [id, defaultView(id)]));
+    getSnapshot = () => this.state;
+    subscribe = (listener) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
+    view(page) { return this.state.views[`${page}:${this.state.datasetId}`] || this.defaults[page]; }
+    connect(layout) {
+        this.layout = layout;
+        this.restore();
+        const unsubscribe = layout.panelInfo.subscribe(() => {
+            const id = layout.panelInfo.getSnapshot().activePanelId;
+            if (id && id in pages) {
+                if (!this.state.active || id !== this.state.pageId)
+                    this.navigate(id);
+            }
+            else if (this.state.active) {
+                this.state = { ...this.state, active: false };
+                this.commit();
+            }
+        });
+        const restore = () => this.restore(true);
+        window.addEventListener("popstate", restore);
+        return () => { unsubscribe(); window.removeEventListener("popstate", restore); this.layout = undefined; };
+    }
+    navigate(pageId, selected) {
+        this.state = { ...this.state, active: true, pageId };
+        if (selected !== undefined)
+            this.state = { ...this.state, views: { ...this.state.views, [`${pageId}:${this.state.datasetId}`]: { ...this.view(pageId), selected, tab: "results" } } };
+        this.commit();
+        this.layout?.selectPanel(pageId);
+    }
+    selectDataset(datasetId, replace = false) {
+        if (datasetId === this.state.datasetId)
+            return;
+        this.state = { ...this.state, datasetId };
+        this.commit(replace);
+    }
+    updateView(page, patch, replace = false) {
+        this.state = { ...this.state, views: { ...this.state.views, [`${page}:${this.state.datasetId}`]: { ...this.view(page), ...patch } } };
+        this.commit(replace);
+    }
+    commit(replace = false) {
+        const { pageId, datasetId } = this.state;
+        const url = new URL(location.href);
+        if (this.state.active)
+            url.searchParams.set("iad", JSON.stringify({ pageId, datasetId, ...this.view(pageId) }));
+        else
+            url.searchParams.delete("iad");
+        history[replace ? "replaceState" : "pushState"](history.state, "", url);
+        sessionStorage.setItem("iad.workspace", JSON.stringify(this.state));
+        this.listeners.forEach(listener => listener());
+    }
+    restore(fromHistory = false) {
+        const raw = new URL(location.href).searchParams.get("iad");
+        try {
+            const saved = JSON.parse(sessionStorage.getItem("iad.workspace") || "null");
+            if (!fromHistory && saved?.pageId in pages && typeof saved.datasetId === "string" && typeof saved.active === "boolean")
+                this.state = saved;
+            if (fromHistory)
+                this.state = { ...this.state, active: false };
+            if (raw) {
+                const route = JSON.parse(raw);
+                if (route.pageId in pages && typeof route.datasetId === "string") {
+                    const view = defaultView(route.pageId);
+                    for (const key of ["selected", "tab", "version", "job"])
+                        if (typeof route[key] === "string")
+                            view[key] = route[key];
+                    if (Number.isInteger(route.page) && route.page > 0)
+                        view.page = route.page;
+                    if (route.filters) {
+                        for (const key of ["search", "model_status", "review_status", "technical", "sort_by"])
+                            if (typeof route.filters[key] === "string")
+                                view.filters[key] = route.filters[key];
+                        if (Array.isArray(route.filters.annotation_filters) && route.filters.annotation_filters.every((item) => typeof item === "string"))
+                            view.filters.annotation_filters = route.filters.annotation_filters;
+                    }
+                    this.state = { ...this.state, active: true, pageId: route.pageId, datasetId: route.datasetId, views: { ...this.state.views, [`${route.pageId}:${route.datasetId}`]: view } };
+                }
+            }
+        }
+        catch {
+            sessionStorage.removeItem("iad.workspace");
+        }
+        if (this.state.active)
+            this.layout?.selectPanel(this.state.pageId);
+        else if (fromHistory)
+            this.layout?.selectPanel(null);
+        this.listeners.forEach(listener => listener());
+    }
+}
+export const WorkspaceContext = createContext(null);
+export function useWorkspace() {
+    const workspace = useContext(WorkspaceContext);
+    if (!workspace)
+        throw new Error("Workbench requires its workspace owner");
+    const state = useSyncExternalStore(workspace.subscribe, workspace.getSnapshot);
+    return { workspace, state };
+}
