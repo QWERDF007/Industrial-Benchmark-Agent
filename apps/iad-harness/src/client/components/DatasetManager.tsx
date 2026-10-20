@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { Dataset, DirectoryListing, ScanResult } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 import { Modal } from "./Modal.js";
 
-function DirectoryPicker({ label, value, onChange }: { label: string; value: string; onChange(value: string): void }) {
+function DirectoryPicker({ label, value, onChange, disabled = false }: { label: string; value: string; onChange(value: string): void; disabled?: boolean }) {
   const [listing, setListing] = useState<DirectoryListing | null>(null);
   const [error, setError] = useState("");
   async function browse(path: string) {
@@ -11,17 +11,21 @@ function DirectoryPicker({ label, value, onChange }: { label: string; value: str
     catch (e) { setError(message(e)); }
   }
   return <div className="iad-field"><label>{label}</label><div className="iad-row">
-    <input aria-label={label} value={value} onChange={e => onChange(e.target.value)} placeholder="服务器上的目录" />
-    <button type="button" onClick={() => browse(value)}>浏览</button>
-  </div>{error && <p role="alert" className="iad-error">{error}</p>}{listing && <div className="iad-directory">
+    <input aria-label={label} disabled={disabled} value={value} onChange={e => onChange(e.target.value)} placeholder="服务器上的目录" />
+    <button type="button" disabled={disabled} onClick={() => browse(value)}>浏览</button>
+  </div>{error && <p role="alert" className="iad-error">{error}</p>}{listing && <fieldset className="iad-directory" aria-label={`${label}浏览`} disabled={disabled}>
     <div className="iad-row"><code>{listing.path}</code><button type="button" onClick={() => browse(listing.parent)}>上级</button>
       <button type="button" onClick={() => { onChange(listing.path); setListing(null); }}>选择此目录</button><button type="button" onClick={() => setListing(null)}>关闭</button></div>
     <div className="iad-directory-list">{listing.directories.map(dir => <button type="button" key={dir.path} onClick={() => browse(dir.path)}>{dir.name}</button>)}</div>
-  </div>}</div>;
+  </fieldset>}</div>;
 }
 
 function DatasetSettings({ dataset, onChanged }: { dataset: Dataset; onChanged(): void }) {
   const [rename, setRename] = useState("");
+  const [imageDir, setImageDir] = useState(dataset.image_dir);
+  const [annotationDir, setAnnotationDir] = useState(dataset.annotation_dir || "");
+  useEffect(() => { setImageDir(dataset.image_dir); setAnnotationDir(dataset.annotation_dir || ""); }, [dataset.image_dir, dataset.annotation_dir]);
+  const directoriesChanged = imageDir !== dataset.image_dir || annotationDir !== (dataset.annotation_dir || "");
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -32,20 +36,20 @@ function DatasetSettings({ dataset, onChanged }: { dataset: Dataset; onChanged()
   }
   async function rescan() {
     setBusy(true); setError(""); setScan(null);
-    try { setScan(await request<ScanResult>(`/datasets/${dataset.dataset_id}/rescan`, {})); onChanged(); }
+    try { setScan(await request<ScanResult>(`/datasets/${dataset.dataset_id}/rescan`, directoriesChanged ? { image_dir: imageDir, annotation_dir: annotationDir } : {})); onChanged(); }
     catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
   return <section aria-label="当前数据集详情" aria-busy={busy}><h2>{dataset.name}</h2>
-    <dl><dt>图像目录</dt><dd>{dataset.image_dir}</dd><dt>标注目录</dt><dd>{dataset.annotation_dir || "由原导入配置定位"}</dd>
-      <dt>数据集 ID</dt><dd><code>{dataset.dataset_id}</code></dd></dl>
+    <DirectoryPicker label="图像目录" value={imageDir} onChange={setImageDir} disabled={busy} />
+    <DirectoryPicker label="标注目录" value={annotationDir} onChange={setAnnotationDir} disabled={busy} />
+    <dl><dt>数据集 ID</dt><dd><code>{dataset.dataset_id}</code></dd></dl>
     <div className="iad-row"><input aria-label="新的数据集名称" placeholder="新的数据集名称" value={rename} onChange={e => setRename(e.target.value)} maxLength={120} disabled={busy} />
       <button disabled={busy || !rename.trim()} onClick={() => save({ name: rename })}>保存名称</button></div>
     <label className="iad-row iad-rule"><input type="checkbox" checked={dataset.unannotated_is_normal} disabled={busy} onChange={e => save({ unannotated_is_normal: e.target.checked })} />无标注图作为初始良品参考</label>
     <p>良品候选：{dataset.reference_mode === "selected" ? "人工选定范围" : "自动资格"} · {dataset.reference_sample_ids.length} 张</p>
     {dataset.reference_mode === "selected" && <button disabled={busy} onClick={() => save({ reset_references: true })}>恢复自动资格</button>}
-    <p className="iad-muted">来源资格变更用于后续知识挖掘；已有知识与审计保留原版本。</p>
-    <button disabled={busy} onClick={() => void rescan()}>{busy ? "正在处理…" : "重新扫描目录"}</button>
-    <p className="iad-muted">更新当前目录的图像与标注；人工记录、旧知识与审计保留。扫描后可在知识页查看变化并重新核验。</p>
+    <button disabled={busy || (directoriesChanged && (!imageDir.trim() || !annotationDir.trim()))} onClick={() => void rescan()}>{busy ? "正在处理…" : directoriesChanged ? "保存目录并重新扫描" : "重新扫描目录"}</button>
+    <p className="iad-muted">保存并扫描后，后续挖掘使用新来源；人工记录、旧知识与审计保留。</p>
     {scan && <p role="status" aria-label="扫描结果">扫描完成 · {scan.image_count} 张图像 · {scan.annotation_count} 个标注 · {scan.issue_count} 项问题</p>}
     {error && <p role="alert" className="iad-error">{error}</p>}
   </section>;
@@ -75,8 +79,8 @@ export function DatasetManager({ datasets, selected, onChanged }: { datasets: Da
     {importing && <Modal title="导入 Labelme 数据集" onClose={() => { if (!busy) setImporting(false); }}>
       <form className="iad-dataset-import" onSubmit={importDataset}><h2>导入 Labelme 数据集</h2>
         <div className="iad-field"><label htmlFor="dataset-name">数据集名称</label><input id="dataset-name" value={name} onChange={e => setName(e.target.value)} maxLength={120} autoFocus required disabled={busy} /></div>
-        <DirectoryPicker label="图像目录" value={imageDir} onChange={setImageDir} />
-        <DirectoryPicker label="标注目录" value={annotationDir} onChange={setAnnotationDir} />
+        <DirectoryPicker label="图像目录" value={imageDir} onChange={setImageDir} disabled={busy} />
+        <DirectoryPicker label="标注目录" value={annotationDir} onChange={setAnnotationDir} disabled={busy} />
         <p className="iad-muted">按相对路径匹配同名 JSON，无标注图作为初始良品候选。</p>
         {error && <p role="alert" className="iad-error">{error}</p>}
         <div className="iad-row"><button className="iad-primary" disabled={busy || !name.trim() || !imageDir || !annotationDir}>{busy ? "正在扫描导入…" : "导入数据集"}</button>

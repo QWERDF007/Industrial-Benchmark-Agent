@@ -37,7 +37,7 @@ try {
   if (process.env.IAD_VERIFY_DATASET_ROOT) {
     await driver.findElement(By.xpath("//button[.='添加数据集']")).click();
     await driver.findElement(By.css("#dataset-name")).sendKeys("原生六页验收");
-    for (const [label, directory] of [["图像目录", "images"], ["标注目录", "labels"]]) await driver.findElement(By.css(`input[aria-label='${label}']`)).sendKeys(path.join(process.env.IAD_VERIFY_DATASET_ROOT, directory));
+    for (const [label, directory] of [["图像目录", "images"], ["标注目录", "labels"]]) await driver.findElement(By.css(`.iad-dataset-import input[aria-label='${label}']`)).sendKeys(path.join(process.env.IAD_VERIFY_DATASET_ROOT, directory));
     await driver.findElement(By.xpath("//button[.='导入数据集']")).click();
     await driver.wait(async () => (await driver.findElement(By.css("select[aria-label='当前数据集']")).getText()).includes("原生六页验收"), 15000);
   }

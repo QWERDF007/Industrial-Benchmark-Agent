@@ -1,7 +1,9 @@
 import json
+
 from dataclasses import dataclass
 from typing import List, Optional
 
+from iad_core.workbench.audit_prompts import AUDIT_PROMPTS
 from iad_core.evidence.images import EvidenceImages
 from iad_core.knowledge.models import KnowledgeSnapshot
 from iad_core.knowledge.repository import KnowledgeRepository
@@ -62,18 +64,7 @@ class InspectionKnowledge:
                     limitation = f'{check.check_id}（{check.title}）：知识尚未核实或缺少独立于待审图的支持'
                     limitations.append(limitation)
             limitations.extend(snapshot.limitations)
-        instruction = ('依据冻结的数据集知识联合分析真实全图与全部ROI，逐项核验可观察判据，结合结构、位置、光照与允许变化。'
-            '不要预设产品或缺陷清单。知识规则是可追溯的判据，不是当前图像的事实；本次结论只能引用实际输入图像。'
-            'independent_support=false的规则仅为待验证线索，不能作为唯一判定依据；未知、冲突或不可观察不得给确定PASS。'
-            'check_assessments必须覆盖所有冻结check_id各一次；不适用或不可观察必须给出原因和图像依据。'
-            '每项须引用至少一张实际raw图像，二值定位图不能独立支持外观判断。'
-            '正常判据偏离或异常判据命中均标记anomaly，不可用标注类别直接推断。'
-            '若某检查项缺少局部细节，使用其inspection_regions提出实际位置，由系统追加原图裁剪；不要猜测不存在的证据。'
-            'findings记录需要复核的实际疑点，每项关联检查点、所见现象、异常假设、合理正常解释、限制与具体复核动作。'
-            'location局部位置使用原图像素坐标bbox并引用实际覆盖该位置的raw证据；整体关系疑点使用global位置且引用全图，不伪造局部框。'
-            'location.scope=local用于孔内异物、表面色差等可定位现象，必须给出原图bbox；global仅用于整体结构关系，不能用它跳过局部定位。'
-            'priority仅表示复核顺序，不是缺陷概率；每个anomaly检查项须关联至少一个finding，无疑点时findings为空。'
-            '以一句简短综合建议指出最需要人工复核的位置，避免长篇重复视觉描述。冻结知识：'
+        instruction = (AUDIT_PROMPTS["criteria"]
             + json.dumps({'normal_version_id': self.normal.version_id, 'defect_version_id': self.defect.version_id if self.defect else None,
                 'checks': checks, 'limitations': limitations}, ensure_ascii=False) + '\n')
         return InspectionCriteria(instruction, list(dict.fromkeys(limitations)),

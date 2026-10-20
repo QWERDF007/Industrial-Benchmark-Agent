@@ -4,7 +4,7 @@ import { restoreInspection } from "./inspection.js";
 import { pages } from "../shared/navigation.js";
 import { knowledgeStatuses } from "../shared/knowledge-presentation.js";
 export { pages } from "../shared/navigation.js";
-const defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
+const defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", model: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export class Workspace {
     conversation;
@@ -103,7 +103,7 @@ export class Workspace {
                 const route = JSON.parse(raw);
                 if (route.pageId in pages && typeof route.datasetId === "string") {
                     const view = defaultView(route.pageId);
-                    for (const key of ["selected", "tab", "version", "normalVersion", "defectVersion", "job", "historySearch", "knowledgeSearch"])
+                    for (const key of ["selected", "tab", "version", "model", "normalVersion", "defectVersion", "job", "historySearch", "knowledgeSearch"])
                         if (typeof route[key] === "string")
                             view[key] = route[key];
                     if (typeof route.knowledgeStatus === "string" && (route.knowledgeStatus === "" || Object.hasOwn(knowledgeStatuses, route.knowledgeStatus)))

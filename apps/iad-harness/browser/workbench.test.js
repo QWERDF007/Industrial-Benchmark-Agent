@@ -54,8 +54,11 @@ for name in ['normal','normal2','dent']:
   let failHeldRegion = false;
   let dropReviewResponse = false;
   const reviewRequests = [];
+  let holdReportDataset = "", releaseReport, reportRequested;
+  let reportGate = Promise.resolve();
   const api = createIadHttpHandler(bridge);
   const server = http.createServer(async (req, res) => {
+    if (holdReportDataset && req.url.includes("/api/iad/report/") && new URL(req.url, "http://localhost").searchParams.get("dataset_id") === holdReportDataset) { reportRequested?.(); await reportGate; }
     if (new URL(req.url, "http://localhost").pathname === "/") { res.setHeader("Content-Type", "text/html; charset=utf-8"); res.end('<!doctype html><meta charset="utf-8"><style>html,body,#root{height:100%;margin:0}</style><div id="root"></div><script src="/browser.js"></script>'); }
     else if (req.url === "/browser.js") { res.setHeader("Content-Type", "application/javascript"); res.end(bundle.outputFiles[0].contents); }
     else if (req.url === "/model/tokenize") {
@@ -124,7 +127,7 @@ for name in ['normal','normal2','dent']:
     await driver.get(base + "?host=kept#host-anchor");
     if (process.env.IAD_BROWSER_DPR) assert.equal(await driver.executeScript("return devicePixelRatio"),Number(process.env.IAD_BROWSER_DPR));
     const element = css => driver.wait(until.elementLocated(By.css(css)), 15000);
-    const button = async text => { const control = await driver.findElement(By.xpath(`//button[normalize-space(.)='${text}']`)); await driver.wait(until.elementIsEnabled(control),15000); await control.click(); };
+    const button = async text => { const control = await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}']`)),15000); await driver.wait(until.elementIsEnabled(control),15000); await control.click(); };
     const select = async (label, value) => {
       const el = await element(`select[aria-label='${label}']`);
       await driver.executeScript("arguments[0].value=arguments[1];arguments[0].dispatchEvent(new Event('change',{bubbles:true}));", el, value);
@@ -150,8 +153,8 @@ for name in ['normal','normal2','dent']:
     await button("添加数据集");
     await element("dialog[aria-label='导入 Labelme 数据集']");
     await (await element("#dataset-name")).sendKeys("浏览器验收");
-    await (await element("input[aria-label='图像目录']")).sendKeys(path.join(root, "images"));
-    await (await element("input[aria-label='标注目录']")).sendKeys(path.join(root, "labels"));
+    await (await element(".iad-dataset-import input[aria-label='图像目录']")).sendKeys(path.join(root, "images"));
+    await (await element(".iad-dataset-import input[aria-label='标注目录']")).sendKeys(path.join(root, "labels"));
     await button("导入数据集");
     await driver.wait(async () => (await (await element("select[aria-label='当前数据集']")).getText()).includes("浏览器验收"), 15000);
     assert.equal((await driver.findElements(By.css("dialog[open]"))).length,0,"成功导入后返回管理列表");
@@ -293,6 +296,9 @@ for name in ['normal','normal2','dent']:
     await button("关闭");
     assert.match(await (await element("[data-field='sample-uuid']")).getText(), /^[0-9a-f]{8}-[0-9a-f-]{27}$/);
     assert.equal(await (await element("[data-field='image-name']")).getText(), "dent.png");
+    const resultStart = await driver.findElements(By.xpath("//button[normalize-space(.)='审计当前筛选全部图像']"));
+    assert.equal(resultStart.length, 1, "默认审计结果页必须提供当前筛选全部图像的执行入口");
+    assert.ok(await (await element("select[aria-label='审计良品知识版本']")).isDisplayed(), "结果页直接选择冻结知识版本");
     await button("模型审计作业");
     assert.equal((await driver.findElements(By.xpath("//label[contains(.,'最多审计图数') or contains(.,'每图 ROI 预算')]//input"))).length, 0);
     await driver.findElement(By.xpath("//button[.='审计当前筛选全部图像']"));
@@ -704,7 +710,7 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await button("模型审计");
     await button("报告");
     await driver.wait(async () => (await driver.findElement(By.css(".iad-workbench")).getText()).includes("人工核验覆盖率"), 15000);
-    const ratioValue = label => driver.findElement(By.xpath(`//dt[normalize-space(.)='${label}']/following-sibling::dd[1]`)).getText();
+    const ratioValue = async label => { const values = await driver.findElements(By.xpath(`//dt[normalize-space(.)='${label}']/following-sibling::dd[1]`)); return values[0] ? values[0].getText() : ""; };
     assert.equal(await ratioValue("技术可用率"), "100% · 3 / 3");
     assert.equal(await ratioValue("审计覆盖率"), "100% · 3 / 3");
     assert.equal(await ratioValue("人工核验覆盖率"), "33.33% · 1 / 3");
@@ -724,11 +730,25 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     assert.equal(reloaded.datasets[0].human_reviewed_count, 1);
     await button("添加数据集");
     await (await element("#dataset-name")).sendKeys("隔离数据集");
-    await (await element("input[aria-label='图像目录']")).sendKeys(path.join(root,"images-other"));
-    await (await element("input[aria-label='标注目录']")).sendKeys(path.join(root,"labels-other"));
+    await (await element(".iad-dataset-import input[aria-label='图像目录']")).sendKeys(path.join(root,"images-other"));
+    await (await element(".iad-dataset-import input[aria-label='标注目录']")).sendKeys(path.join(root,"labels-other"));
     await button("导入数据集");
     await element("button[aria-label='选择数据集 隔离数据集']");
     assert.equal((await driver.findElements(By.css(".iad-dataset-list button"))).length,2);
+    const movedImages = path.join(root, "moved-images-other"), movedLabels = path.join(root, "moved-labels-other");
+    await fs.cp(path.join(root, "images-other"), movedImages, { recursive: true });
+    await fs.cp(path.join(root, "labels-other"), movedLabels, { recursive: true });
+    const currentImages = await element("section[aria-label='当前数据集详情'] input[aria-label='图像目录']");
+    const currentLabels = await element("section[aria-label='当前数据集详情'] input[aria-label='标注目录']");
+    await currentImages.clear(); await currentImages.sendKeys(movedImages);
+    await currentLabels.clear(); await currentLabels.sendKeys(movedLabels);
+    assert.equal((await (await fetch(base + "/api/iad/datasets")).json()).datasets.find(item => item.name === "隔离数据集").image_dir, path.join(root, "images-other"), "编辑目录草稿不能直接写入数据集");
+    await button("保存目录并重新扫描");
+    await element("[aria-label='扫描结果']");
+    const movedDataset = (await (await fetch(base + "/api/iad/datasets")).json()).datasets.find(item => item.name === "隔离数据集");
+    assert.equal(movedDataset.image_dir, movedImages);
+    assert.equal(movedDataset.annotation_dir, movedLabels);
+    assert.equal(movedDataset.total_samples, 2);
     await button("图像浏览"); await gridCount(2);
     await element("img[alt='other.png']");
     assert.equal((await driver.findElements(By.css("img[alt='dent.png']"))).length,0);
@@ -821,6 +841,20 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     const pairedRaw=maskAudit.suggestion.analysis.regions.find(region=>JSON.stringify(region.image.crop_bbox)===JSON.stringify(inspectionMask.crop_bbox)).image;
     assert.deepEqual(maskContext.evidence.map(image=>image.evidence_id),[maskAudit.suggestion.analysis.overview.evidence_id,inspectionMask.evidence_id,pairedRaw.evidence_id],"Mask追问必须携带实际配对原图，不能将定位图单独作为缺陷证据");
     await button("关闭");
+    await button("模型审计"); await button("报告");
+    await driver.wait(async () => await ratioValue("技术可用率") === "100% · 2 / 2", 10000);
+    await select("当前数据集", dataset.dataset_id);
+    await driver.wait(async () => await ratioValue("技术可用率") === "100% · 3 / 3", 10000);
+    holdReportDataset = otherDataset.dataset_id;
+    reportGate = new Promise(resolve => { releaseReport = resolve; });
+    const waitingReport = new Promise(resolve => { reportRequested = resolve; });
+    try {
+      await select("当前数据集", otherDataset.dataset_id); await waitingReport;
+      assert.equal((await driver.findElements(By.css(".iad-quality-report dl"))).length, 0, "切数据集后等待新报告时不能保留上一数据集统计");
+      assert.equal((await driver.findElements(By.xpath("//button[normalize-space(.)='导出 JSON']"))).length, 0, "新数据集报告返回前不能导出旧统计");
+    } finally { holdReportDataset = ""; releaseReport(); }
+    await driver.wait(async () => await ratioValue("技术可用率") === "100% · 2 / 2", 10000);
+    await button("图像浏览"); await gridCount(2);
     await button("数据集管理");
     await (await element("button[aria-label='选择数据集 验收后改名']")).click();
     await driver.wait(async () => await (await element("select[aria-label='当前数据集']")).getAttribute("value") === dataset.dataset_id,5000);
@@ -879,6 +913,22 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     const oldVersionAudit = await auditSelectedVersion("test-old-knowledge");
     assert.equal(oldVersionAudit.normal_version_id, published.knowledge.version_id);
     assert.equal(oldVersionAudit.defect_version_id, defect.version_id);
+    await driver.navigate().refresh();
+    await button("结果");
+    await (await element(".iad-grid img[alt='dent.png']")).click();
+    await selectedSample("dent.png");
+    const beforeSingleRuns = new Set((await (await fetch(`${base}/api/iad/audit/jobs?dataset_id=${dataset.dataset_id}`)).json()).jobs.map(job => job.run_id));
+    await button("按知识审计此图");
+    let selectedSingleAudit;
+    await driver.wait(async () => {
+      const result = await (await fetch(`${base}/api/iad/audit/jobs?dataset_id=${dataset.dataset_id}`)).json();
+      selectedSingleAudit = result.jobs.find(job => !beforeSingleRuns.has(job.run_id) && job.sample_ids.length === 1 && job.sample_ids[0] === dent.sample_id);
+      return selectedSingleAudit?.status === "COMPLETED";
+    }, 15000);
+    assert.equal(selectedSingleAudit.normal_version_id, published.knowledge.version_id, "单图审计必须使用页面选择的历史良品版本");
+    assert.equal(selectedSingleAudit.defect_version_id, defect.version_id, "单图审计必须使用页面选择的不良品版本");
+    assert.equal(selectedSingleAudit.model_name, "test-old-knowledge", "单图审计与批量审计共享所选模型");
+    await button("模型审计作业");
     await viewportSize(375, 812);
     await fs.writeFile(path.join(workspace, "runs/browser/audit-version-selectors-375.png"), await driver.takeScreenshot(), "base64");
     assert.ok(await driver.executeScript("const element=document.querySelector('.iad-workbench');return element.scrollWidth<=element.clientWidth+1"), "长版本号的审计知识选择在375px不应造成横向滚动");

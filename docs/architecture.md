@@ -20,11 +20,12 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | NDJSON 调度与 worker | [PythonBridge](../apps/iad-harness/src/server/python-bridge/index.ts)、[entry.py](../python/iad_core/entry.py) |
 | 数据集身份、服务器目录检查、名称和良品参考 | [DatasetRegistry](../python/iad_core/dataset/registry.py)、[会话根目录接入](../apps/iad-harness/src/server/workbench-tools/index.ts)、[数据集列表与目录导入](../apps/iad-harness/src/client/components/DatasetManager.tsx) |
 | Labelme 定位与导入 | [LabelmeAdapter](../python/iad_core/dataset/adapters/labelme.py)、[scanner](../python/iad_core/dataset/scanner.py) |
-| 原目录重新扫描、当前导入原子发布与历史保留 | [扫描临时结果与发布](../python/iad_core/dataset/scan_snapshot.py)、[数据集管理](../apps/iad-harness/src/client/components/DatasetManager.tsx)、[原生工具](../apps/iad-harness/src/server/workbench-tools/index.ts) |
+| 接入目录修改、重新扫描、原子发布与历史保留 | [扫描临时结果与发布](../python/iad_core/dataset/scan_snapshot.py)、[数据集管理](../apps/iad-harness/src/client/components/DatasetManager.tsx)、[原生工具](../apps/iad-harness/src/server/workbench-tools/index.ts) |
 | Labelme ZIP 目录检查、原样提取及统一导入 | [DatasetArchive](../python/iad_core/dataset/archive.py)、[DatasetImport / DatasetRegistry](../python/iad_core/dataset/registry.py)、[DSH 接入工具](../apps/iad-harness/src/server/workbench-tools/index.ts) |
 | 样本筛选、分页、排序及报告投影 | [WorkbenchQuery](../python/iad_core/workbench/query.py) |
-| 分项质量报告口径、范围及统一契约 | [DatasetReport / QualityAssessment](../python/iad_core/workbench/report.py)、[报告界面](../apps/iad-harness/src/client/components/QualityReport.tsx) |
-| 审计冻结知识、版本关系与独立支持 | [InspectionKnowledge](../python/iad_core/workbench/knowledge.py) |
+| 分项质量报告口径、范围及统一契约 | [DatasetReport / QualityAssessment](../python/iad_core/workbench/report.py)、[报告界面](../apps/iad-harness/src/client/components/QualityReport.tsx)、[数据集报告身份](../apps/iad-harness/src/client/components/AuditJobs.tsx) |
+| 审计版本选择与共享执行控件 | [AuditSetup](../apps/iad-harness/src/client/components/AuditSetup.tsx)、[单图入口](../apps/iad-harness/src/client/components/SampleInspector.tsx)、[Workspace](../apps/iad-harness/src/client/workspace.tsx) |
+| 审计冻结知识、提示与生成参数、版本关系和独立支持 | [InspectionKnowledge](../python/iad_core/workbench/knowledge.py)、[审计提示](../python/iad_core/workbench/audit_prompts.py)、[审计恢复签名](../python/iad_core/workbench/audit.py)、[生成参数](../python/iad_core/workbench/vision.py) |
 | 逐项适用性、规则区域来源及缺口追加 | [分析契约](../python/iad_core/advisory/analysis.py)、[SampleInspection](../python/iad_core/workbench/inspection.py)、[JointInspection](../python/iad_core/workbench/joint.py)、[规则证据视图](../apps/iad-harness/src/client/components/RuleAssessments.tsx) |
 | 综合疑点、实际来源关联/消解与全图聚焦 | [疑点契约](../python/iad_core/advisory/analysis.py)、[FindingLedger](../python/iad_core/workbench/findings.py)、[疑点视图](../apps/iad-harness/src/client/components/AuditFindings.tsx)、[共享证据按钮](../apps/iad-harness/src/client/components/AuditEvidence.tsx)、[ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx) |
 | Python 分析/知识契约、客户端类型与原生挖掘参数生成 | [分析模型](../python/iad_core/advisory/analysis.py)、[知识模型](../python/iad_core/knowledge/models.py)、[挖掘请求](../python/iad_core/knowledge/service.py)、[生成器](../apps/iad-harness/scripts/generate-contracts.js) |
@@ -82,6 +83,9 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 - [审计候选回流、污染隔离、过期来源与并发冻结测试](../tests/test_knowledge_feedback.py)
 - [单个大 Mask 的容量分组、原像素配对、综合缺证与真实模型测试](../tests/test_knowledge_capacity.py)
 - [模型原文、用量、错误、并发隔离和取消追踪测试](../tests/test_model_calls.py)
+- [接入目录修改、身份和历史证据保留](../tests/test_dataset_sources.py)
+- [提示及生成参数变更后的恢复边界](../tests/test_audit_generation.py)
+- [显式真实图像验证与临时证据](../tests/test_live_vlm_e2e.py)
 - [部分失败、源变化、知识发布及真实工作进程终止恢复](../tests/test_job_recovery.py)
 - [良品污染、正常解释、独立证据及核验分组测试](../tests/test_knowledge_contamination.py)
 - [不良知识、标注核验、正常版本冻结与证据资格测试](../tests/test_defect_knowledge.py)

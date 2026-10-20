@@ -157,6 +157,21 @@ test("DSH directory import and browser queries share one dataset and report", as
     }
     assert.equal((await configurationScan).isError, true, "扫描期间配置变化必须要求重扫，不能覆盖并发维护");
     assert.equal((await execute("dataset_list", {})).value.datasets[0].name, "扫描期间改名");
+    await fs.unlink(pendingImage);
+    const historyBeforeMove = (await (await fetch(`${base}/sample/${encodeURIComponent(sampleId)}`)).json()).review_history;
+    assert.ok(historyBeforeMove.length);
+    const movedImages = path.join(root, "moved-images"), movedLabels = path.join(root, "moved-labels");
+    await fs.cp(path.join(root, "images"), movedImages, { recursive: true });
+    await fs.cp(path.join(root, "labels"), movedLabels, { recursive: true });
+    const relocated = await execute("dataset_rescan", { dataset_id: dataset.dataset_id, image_dir: movedImages, annotation_dir: movedLabels });
+    assert.equal(relocated.isError, false, JSON.stringify(relocated));
+    const relocatedDataset = (await (await fetch(base + "/datasets")).json()).datasets[0];
+    assert.equal(relocatedDataset.dataset_id, dataset.dataset_id);
+    assert.equal(relocatedDataset.image_dir, movedImages);
+    assert.equal(relocatedDataset.annotation_dir, movedLabels);
+    assert.deepEqual((await (await fetch(`${base}/sample/${encodeURIComponent(sampleId)}`)).json()).review_history,
+      historyBeforeMove);
+
   } finally {
     await fork.dispose();
     await new Promise(resolve => server.close(resolve));

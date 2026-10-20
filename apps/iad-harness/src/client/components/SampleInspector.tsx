@@ -1,6 +1,6 @@
 import { JobCard } from "./JobCard.js";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { InspectionSnapshot, JobSnapshot, Dataset, ReviewDecisionRecord, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
+import type { AuditStartRequest, InspectionSnapshot, JobSnapshot, Dataset, ReviewDecisionRecord, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
 import { AnnotatedImage, ImageViewer, type ImageSource } from "./ImageViewer.js";
 import { MediaLoad } from "./MediaLoad.js";
 import { DatasetKnowledge } from "./DatasetKnowledge.js";
@@ -49,7 +49,12 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
   }, [sampleId, revision]);
   async function audit() {
     setBusy(true); setError("");
-    try { await request<JobSnapshot>("/audit/start", { dataset_id: dataset.dataset_id, sample_ids: [sampleId] }); onJobsChanged(); }
+    try {
+      const view = workspace.view("industrial-audit");
+      const input: AuditStartRequest = { dataset_id: dataset.dataset_id, sample_ids: [sampleId],
+        model_name: view.model || undefined, normal_version_id: view.normalVersion || undefined, defect_version_id: view.defectVersion || undefined };
+      await request<JobSnapshot>("/audit/start", input); onJobsChanged();
+    }
     catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
   async function setReference() {

@@ -7,13 +7,13 @@ import { pages, type PageId, type WorkbenchLocation } from "../shared/navigation
 import { knowledgeStatuses, type KnowledgeStatusFilter } from "../shared/knowledge-presentation.js";
 export { pages, type PageId } from "../shared/navigation.js";
 
-interface ViewState { filters: Filters; page: number; selected: string; tab: string; version: string; normalVersion: string; defectVersion: string; job: string; historyPage: number; historySearch: string; knowledgeSearch: string; knowledgeStatus: KnowledgeStatusFilter; inspection: InspectionView | null }
+interface ViewState { filters: Filters; page: number; selected: string; tab: string; version: string; model: string; normalVersion: string; defectVersion: string; job: string; historyPage: number; historySearch: string; knowledgeSearch: string; knowledgeStatus: KnowledgeStatusFilter; inspection: InspectionView | null }
 interface WorkspaceState { active: boolean; pageId: PageId; datasetId: string; views: Record<string, ViewState> }
 interface Layout {
   selectPanel(id: string | null): void;
   panelInfo: { getSnapshot(): { activePanelId: string | null }; subscribe(listener: () => void): () => void };
 }
-const defaultView = (page: PageId): ViewState => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
+const defaultView = (page: PageId): ViewState => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", model: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
 
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export class Workspace {
@@ -98,7 +98,7 @@ export class Workspace {
         const route = JSON.parse(raw);
         if (route.pageId in pages && typeof route.datasetId === "string") {
           const view = defaultView(route.pageId);
-          for (const key of ["selected", "tab", "version", "normalVersion", "defectVersion", "job", "historySearch", "knowledgeSearch"] as const) if (typeof route[key] === "string") view[key] = route[key];
+          for (const key of ["selected", "tab", "version", "model", "normalVersion", "defectVersion", "job", "historySearch", "knowledgeSearch"] as const) if (typeof route[key] === "string") view[key] = route[key];
           if (typeof route.knowledgeStatus === "string" && (route.knowledgeStatus === "" || Object.hasOwn(knowledgeStatuses, route.knowledgeStatus))) view.knowledgeStatus = route.knowledgeStatus;
           view.inspection = restoreInspection(route.inspection, route.datasetId, view.selected);
           if (Number.isInteger(route.page) && route.page > 0) view.page = route.page;

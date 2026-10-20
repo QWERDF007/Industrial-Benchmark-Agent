@@ -10,6 +10,9 @@ import base64
 import urllib.request
 import pytest
 from pathlib import Path
+from datetime import datetime, timezone
+from PIL import Image
+from iad_core.workbench.vision import DEFAULT_MODEL
 
 from iad_core.storage.database import Database
 from iad_core.storage.models import InspectionTask, Sample
@@ -19,26 +22,25 @@ from iad_core.tools.audit_tools import audit_suggestion_save
 from iad_core.tools.candidate_tools import candidate_merge
 from iad_core.contracts import ToolStatus
 
-LIVE_VLM_URL = "http://192.168.2.197:30002/v1"
-LIVE_MODEL = "Qwen/Qwen3.8-27B-FP8"
-LIVE_API_KEY = "sk-123456"
-
-REAL_SAMPLE_ID = "kuangjiao_dataset:ExportImage_框胶10x连线蓝色背面厚_0904-Test/2022_08_19_13_15_15_853269.png"
-REAL_IMAGE_PATH = "/data1/wt/data/框胶数据集/ExportImage_框胶10x连线蓝色背面厚_0904-Test/2022_08_19_13_15_15_853269.png"
-
-
+@pytest.mark.skipif(os.environ.get("IAD_RUN_LIVE_MLLM") != "1", reason="Explicit live MLLM opt-in required")
 def test_live_vlm_e2e_pipeline(tmp_path):
-    if not Path(REAL_IMAGE_PATH).exists():
-        pytest.skip(f"Real image path not found: {REAL_IMAGE_PATH}")
+    endpoint = os.environ["LIVE_VLM_ENDPOINT"].rstrip("/")
+    api_key = os.environ["LIVE_VLM_KEY"]
+    image_path = Path(os.environ["IAD_LIVE_IMAGE_PATH"]).resolve(strict=True)
+    model = os.environ.get("LIVE_VLM_MODEL", DEFAULT_MODEL)
+    sample_id = "live:" + image_path.name
+    with Image.open(image_path) as image:
+        width, height = image.size
+        mime_type = Image.MIME[image.format]
 
     # 1. Read real image bytes and encode to base64
-    with open(REAL_IMAGE_PATH, "rb") as f:
+    with open(str(image_path), "rb") as f:
         img_bytes = f.read()
     b64_img = base64.b64encode(img_bytes).decode("utf-8")
 
     # 2. Query live VLM for visual defect analysis
     vlm_payload = {
-        "model": LIVE_MODEL,
+        "model": model,
         "messages": [
             {
                 "role": "user",
@@ -46,11 +48,11 @@ def test_live_vlm_e2e_pipeline(tmp_path):
                     {
                         "type": "text",
                         "text": (
-                            "你是一名工业缺陷质检专家。请对这张手机屏幕点胶/框胶图像进行视觉检查。"
-                            "判断是否存在断胶、溢胶或瑕疵。给出简要质检结论。"
+                            "请根据图像中实际可见的对象和结构，给出简要观察与待人工复核的疑点。"
+                            "不要假定产品类型或将不可见内容当作事实。"
                         ),
                     },
-                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64_img}"}},
+                    {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64_img}"}},
                 ],
             }
         ],
@@ -59,11 +61,11 @@ def test_live_vlm_e2e_pipeline(tmp_path):
     }
 
     req = urllib.request.Request(
-        f"{LIVE_VLM_URL}/chat/completions",
+        f"{endpoint}/chat/completions",
         data=json.dumps(vlm_payload).encode("utf-8"),
         headers={
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {LIVE_API_KEY}",
+            "Authorization": f"Bearer {api_key}",
         },
     )
 
@@ -82,17 +84,17 @@ def test_live_vlm_e2e_pipeline(tmp_path):
     task_repo = TaskRepository(db)
     sample_repo = SampleRepository(db)
 
-    task_id = "task_kuangjiao_live"
-    task_repo.upsert(InspectionTask(task_id=task_id, inspection_target="glue_dispensing"))
+    task_id = "task_live"
+    task_repo.upsert(InspectionTask(task_id=task_id, inspection_target="surface"))
     sample_repo.upsert(
         Sample(
-            sample_id=REAL_SAMPLE_ID,
+            sample_id=sample_id,
             task_id=task_id,
-            dataset_id="kuangjiao",
-            image_path=REAL_IMAGE_PATH,
-            relative_path="2022_08_19_13_15_15_853269.png",
-            width=2048,
-            height=1536,
+            dataset_id="live",
+            image_path=str(image_path),
+            relative_path=image_path.name,
+            width=width,
+            height=height,
             quality_status="UNCERTAIN",
         )
     )
@@ -103,12 +105,12 @@ def test_live_vlm_e2e_pipeline(tmp_path):
         task_id=task_id,
         suggestion={
             "suggestion_id": suggestion_id,
-            "sample_id": REAL_SAMPLE_ID,
+            "sample_id": sample_id,
             "conclusion_status": "EVIDENCE_SUPPORTED",
             "recommended_action": "REVIEW",
             "confidence": 0.95,
             "visual_explanation": vlm_content[:200],
-            "feature_flags": ["uniform_glue_line"],
+            "feature_flags": [],
         },
         db_path=db_file,
     )
@@ -117,7 +119,7 @@ def test_live_vlm_e2e_pipeline(tmp_path):
     assert save_result.metrics["suggestion_id"] == suggestion_id
 
     # 5. Verify advisory boundary: Suggestion does NOT alter raw sample quality
-    raw_sample = sample_repo.get(REAL_SAMPLE_ID)
+    raw_sample = sample_repo.get(sample_id)
     assert raw_sample.quality_status == "UNCERTAIN", "Sample quality_status must remain unaltered"
 
     # 6. Candidate merge: generate merged_candidates.json with candidates SSOT
@@ -142,39 +144,39 @@ def test_live_vlm_e2e_pipeline(tmp_path):
     assert "candidates" in merged_json
     assert len(merged_json["candidates"]) == 1
     top_cand = merged_json["candidates"][0]
-    assert top_cand["sample_id"] == REAL_SAMPLE_ID
+    assert top_cand["sample_id"] == sample_id
     assert "LLM" in top_cand["sources"]
 
     # 7. Feed to ReviewQueueService: verify strict parsing of candidates SSOT
     queue_service = ReviewQueueService(task_id=task_id, db=db, candidates_json_path=str(merged_path))
     assert len(queue_service._candidates) == 1
-    assert queue_service._candidates[0].sample_id == REAL_SAMPLE_ID
+    assert queue_service._candidates[0].sample_id == sample_id
 
     # 8. Human review decision: submit decision and verify state transition
     decision_record = queue_service.save_decision(
-        sample_id=REAL_SAMPLE_ID,
+        sample_id=sample_id,
         decision="NORMAL",
         reviewer="expert_operator",
-        comment=f"VLM verified glue quality: {vlm_content[:60]}",
+        comment=f"人工复核测试: {vlm_content[:60]}",
         review_session_id="live_review_sess_01",
     )
 
-    assert decision_record.sample_id == REAL_SAMPLE_ID
+    assert decision_record.sample_id == sample_id
     assert decision_record.decision == "NORMAL"
     assert decision_record.reviewer == "expert_operator"
 
     # 9. Record acceptance evidence
     evidence = {
-        "timestamp": "2026-10-19T17:15:00+08:00",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "live_vlm": {
-            "endpoint": LIVE_VLM_URL,
-            "model": LIVE_MODEL,
+            "endpoint": endpoint,
+            "model": model,
             "tokens": usage,
             "reasoning_sample": vlm_content[:300],
         },
         "real_sample": {
-            "sample_id": REAL_SAMPLE_ID,
-            "image_path": REAL_IMAGE_PATH,
+            "sample_id": sample_id,
+            "image_path": str(image_path),
             "file_size_bytes": len(img_bytes),
         },
         "audit_suggestion": {
@@ -195,7 +197,7 @@ def test_live_vlm_e2e_pipeline(tmp_path):
         },
     }
 
-    acceptance_dir = Path("runs/acceptance")
+    acceptance_dir = tmp_path / "acceptance"
     acceptance_dir.mkdir(parents=True, exist_ok=True)
     with open(acceptance_dir / "live_vlm_evidence.json", "w", encoding="utf-8") as f:
         json.dump(evidence, f, ensure_ascii=False, indent=2)

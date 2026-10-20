@@ -1,8 +1,10 @@
 import json
+
 import threading
 from dataclasses import dataclass
 from typing import Callable, List, Optional
 
+from iad_core.workbench.audit_prompts import AUDIT_PROMPTS
 from iad_core.advisory.analysis import GlobalAnalysis, InspectionProgress, JointAnalysis, RegionEvidence, RegionImage, SynthesisStep, ViewAnalysis
 from iad_core.evidence.images import EvidenceImages, PreparedImage
 from iad_core.workbench.vision import VlmClient
@@ -53,25 +55,18 @@ class JointInspection:
                     images.extend(mask for mask in annotation_masks or [] if mask.evidence.crop_bbox == region.crop_bbox)
                 instruction = context
                 if ledger.context:
-                    instruction += '\n待处理疑点：' + json.dumps(ledger.context, ensure_ascii=False) + '\n'
-                    instruction += ('补看后同一现象用related_findings引用给定reference并更新观察，不再重复创建。'
-                        '确已排除时用resolved_findings给出该reference、实际依据和正常解释；未明确处理的疑点仍待复核。')
+                    instruction += AUDIT_PROMPTS["pending_label"] + json.dumps(ledger.context, ensure_ascii=False) + '\n'
+                    instruction += AUDIT_PROMPTS["followup"]
                 if previous:
-                    instruction += '\n此前实际联合观察与证据记录：' + json.dumps([step.model_dump() for step in previous.steps], ensure_ascii=False)
-                    instruction += '当前只追加尚缺的原图细节。结合此前证据与新图逐项重审；已补齐的缺证可消解，尚未消解的异常、冲突和限制须保留。'
+                    instruction += AUDIT_PROMPTS["previous_label"] + json.dumps([step.model_dump() for step in previous.steps], ensure_ascii=False)
+                    instruction += AUDIT_PROMPTS["continuation"]
                 if children:
-                    instruction += "综合各子批次完整分析，结合当前全图和代表性ROI重新判断；不得用正常批次否定其他批次的异常证据。"
+                    instruction += AUDIT_PROMPTS["synthesis"]
                     instruction += json.dumps([child.step.model_dump() for child in children], ensure_ascii=False)
                 else:
-                    instruction += "在同一次分析中同时观察全图与所附全部ROI，关联整体结构、各区域关系和产品知识。"
+                    instruction += AUDIT_PROMPTS["joint"]
                 instruction += (
-                    "第一张是全图，其余为同一原图的ROI及配对的二值定位图。annotation_mask白色只表示标注覆盖，"
-                    "黑色表示其外或空洞，不代表产品颜色；必须结合相同crop_bbox的raw图观察，不把定位图另计为ROI。"
-                    "坐标均为原图像素坐标，裁剪没有拉伸；将局部现象定位回全图，"
-                    "综合周边结构、位置与光照解释，标注只是待核实线索，不是缺陷真值。"
-                    "global_view描述整体；region_observations必须按region_index为每个输入ROI各给一项观察，从1开始，不遗漏或重复。"
-                    "最终结论关联全图与局部证据；evidence_ids只能用所附证据ID或子批次已引用的ID。"
-                    "suspect_regions仅列需要补充细看的新线索，用整图0..1000归一化坐标。每项观察简洁明确。区域顺序与来源："
+                    AUDIT_PROMPTS["evidence"]
                     + json.dumps([region.model_dump() for region in inputs], ensure_ascii=False)
                 )
                 phase(InspectionProgress(phase="SYNTHESIS", inspected_regions=len(inspected),

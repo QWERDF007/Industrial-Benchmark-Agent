@@ -93,8 +93,10 @@ def dataset_scan(args, db_path):
     from iad_core.dataset.scanner import scan_dataset
     if args.get("config_path"):
         return scan_dataset(config_path=args["config_path"], db_path=db_path).model_dump()
-    config = DatasetRegistry(Database(db_path)).resolve(dataset_id=args.get("dataset_id"), task_id=args.get("task_id"))
-    return scan_dataset(config=config, db_path=db_path).model_dump()
+    registry = DatasetRegistry(Database(db_path))
+    config = registry.resolve(dataset_id=args.get("dataset_id"), task_id=args.get("task_id"))
+    return registry.rescan(config.dataset.id, image_dir=args.get("image_dir"),
+        annotation_dir=args.get("annotation_dir")).model_dump()
 
 
 def sample_list(args, db_path):

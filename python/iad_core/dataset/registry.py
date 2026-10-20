@@ -5,12 +5,16 @@ from sqlite3 import Connection
 import uuid
 from collections import Counter
 from pathlib import Path
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Optional, TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from iad_core.storage.database import Database
 from iad_core.task.config import DatasetConfig, load_config
+
+
+if TYPE_CHECKING:
+    from iad_core.dataset.scanner import ScanResult
 
 
 class DatasetImport(BaseModel):
@@ -104,13 +108,7 @@ class DatasetRegistry:
         else:
             image_dir = Path(request.image_dir).expanduser().resolve(strict=True)
             annotation_dir = Path(request.annotation_dir).expanduser().resolve(strict=True)
-        if not image_dir.is_dir() or not annotation_dir.is_dir():
-            raise ValueError("Image and annotation paths must be directories")
-        if not any(p.suffix.lower() in {".png", ".jpg", ".jpeg", ".bmp", ".webp"} for p in image_dir.rglob("*") if p.is_file()):
-            raise ValueError("Image directory contains no supported images")
-        for existing in self.list():
-            if Path(existing.root).resolve() == image_dir and existing.annotations.root and Path(existing.annotations.root).resolve() == annotation_dir:
-                raise ValueError("These image and annotation directories have already been imported")
+        image_dir, annotation_dir = self.sources(str(image_dir), str(annotation_dir))
         dataset_id = "ds_" + uuid.uuid4().hex
         config = DatasetConfig.model_validate({
             "dataset": {"id": dataset_id, "name": request.name.strip(), "unannotated_is_normal": request.unannotated_is_normal},
@@ -129,6 +127,30 @@ class DatasetRegistry:
                 conn.execute("DELETE FROM inspection_tasks WHERE task_id=?", (dataset_id,))
             raise ValueError("No readable images were imported")
         return config
+
+    def sources(self, image_dir: str, annotation_dir: str, dataset_id: Optional[str] = None) -> tuple[Path, Path]:
+        images = Path(image_dir).expanduser().resolve(strict=True)
+        annotations = Path(annotation_dir).expanduser().resolve(strict=True)
+        if not images.is_dir() or not annotations.is_dir():
+            raise ValueError("Image and annotation paths must be directories")
+        if not any(p.suffix.lower() in {".png", ".jpg", ".jpeg", ".bmp", ".webp"} for p in images.rglob("*") if p.is_file()):
+            raise ValueError("Image directory contains no supported images")
+        for existing in self.list():
+            if (existing.dataset.id != dataset_id and Path(existing.root).resolve() == images
+                    and existing.annotations.root and Path(existing.annotations.root).resolve() == annotations):
+                raise ValueError("These image and annotation directories have already been imported")
+        return images, annotations
+
+    def rescan(self, dataset_id: str, image_dir: Optional[str] = None, annotation_dir: Optional[str] = None) -> "ScanResult":
+        from iad_core.dataset.scanner import scan_dataset
+
+        config = self.get(dataset_id)
+        if image_dir is not None or annotation_dir is not None:
+            if not image_dir or not annotation_dir:
+                raise ValueError("Changing dataset sources requires both image and annotation directories")
+            images, annotations = self.sources(image_dir, annotation_dir, dataset_id)
+            config.root, config.annotations.root = str(images), str(annotations)
+        return scan_dataset(config=config, db_path=self.db.db_path)
 
     def references(self, dataset_id: str, exclude: Optional[str] = None, limit: Optional[int] = 4,
                    selected_ids: Optional[List[str]] = None) -> List[str]:

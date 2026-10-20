@@ -70,7 +70,7 @@ export const workbenchStyles = themeStyles + `
 .iad-dataset-list span {font-size:13px;color:var(--iad-muted);}
 .iad-detail-dialog:has(.iad-dataset-import) {width:min(640px,calc(100vw - 32px));}
 .iad-dataset-import {max-width:640px;margin:auto;}
-.iad-directory {background:var(--iad-surface-muted);padding:14px;border-radius:8px;}.iad-directory code {overflow-wrap:anywhere;}
+.iad-directory {min-width:0;margin:0;border:0;background:var(--iad-surface-muted);padding:14px;border-radius:8px;}.iad-directory code {overflow-wrap:anywhere;}
 .iad-directory-list {display:flex;flex-direction:column;max-height:230px;overflow:auto;gap:5px;margin-top:10px;}
 .iad-rule {margin-top:20px;}.iad-reference-grid {display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
 .iad-reference-grid img {width:90px;height:68px;object-fit:contain;background:var(--iad-surface-muted);border-radius:5px;}

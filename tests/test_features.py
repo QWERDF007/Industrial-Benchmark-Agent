@@ -200,6 +200,7 @@ def test_feature_invalidate_one_file(test_env):
         model_id=extractor.model_id,
         preprocess_key=extractor.preprocess_key,
         db_path=test_env["db_path"],
+        output_dir=os.path.join(test_env["temp_dir"], "feature_audit"),
         extractor=extractor,
     )
 
@@ -214,6 +215,7 @@ def test_feature_invalidate_one_file(test_env):
         model_id=extractor.model_id,
         preprocess_key=extractor.preprocess_key,
         db_path=test_env["db_path"],
+        output_dir=os.path.join(test_env["temp_dir"], "feature_audit"),
         extractor=extractor,
     )
 
@@ -230,6 +232,7 @@ def test_search_self_top1(test_env):
         model_id=extractor.model_id,
         preprocess_key=extractor.preprocess_key,
         db_path=test_env["db_path"],
+        output_dir=os.path.join(test_env["temp_dir"], "feature_audit"),
         extractor=extractor,
     )
 
@@ -267,6 +270,7 @@ def test_search_exclude_self(test_env):
         model_id=extractor.model_id,
         preprocess_key=extractor.preprocess_key,
         db_path=test_env["db_path"],
+        output_dir=os.path.join(test_env["temp_dir"], "feature_audit"),
         extractor=extractor,
     )
 
@@ -302,6 +306,7 @@ def test_index_rebuild(test_env):
         model_id=extractor.model_id,
         preprocess_key=extractor.preprocess_key,
         db_path=test_env["db_path"],
+        output_dir=os.path.join(test_env["temp_dir"], "feature_audit"),
         extractor=extractor,
     )
 
@@ -340,6 +345,7 @@ def test_duplicate_copy_candidate(test_env):
         model_id=extractor.model_id,
         preprocess_key=extractor.preprocess_key,
         db_path=test_env["db_path"],
+        output_dir=os.path.join(test_env["temp_dir"], "feature_audit"),
         extractor=extractor,
     )
 
@@ -460,6 +466,7 @@ def test_filtered_search_sparse_class_progressive_overfetch(test_env):
         model_id=extractor.model_id,
         preprocess_key=extractor.preprocess_key,
         db_path=test_env["db_path"],
+        output_dir=os.path.join(test_env["temp_dir"], "feature_audit"),
         extractor=extractor,
     )
     idx_dir = os.path.join(test_env["temp_dir"], "sparse_features_idx")

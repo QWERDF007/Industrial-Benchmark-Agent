@@ -51,7 +51,10 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
         setBusy(true);
         setError("");
         try {
-            await request("/audit/start", { dataset_id: dataset.dataset_id, sample_ids: [sampleId] });
+            const view = workspace.view("industrial-audit");
+            const input = { dataset_id: dataset.dataset_id, sample_ids: [sampleId],
+                model_name: view.model || undefined, normal_version_id: view.normalVersion || undefined, defect_version_id: view.defectVersion || undefined };
+            await request("/audit/start", input);
             onJobsChanged();
         }
         catch (error) {

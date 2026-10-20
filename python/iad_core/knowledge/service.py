@@ -9,7 +9,7 @@ from pydantic import Field, model_validator
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.images import EvidenceImages, OVERVIEW_MAX_SIDE, PreparedImage
-from iad_core.knowledge.mining import KnowledgeInput, KnowledgeMiner, SYNTHESIS_INSTRUCTION
+from iad_core.knowledge.mining import KnowledgeInput, KnowledgeMiner, OUTPUT_TOKENS, SYNTHESIS_INSTRUCTION
 from iad_core.knowledge.models import (KnowledgeCorrection, KnowledgeDraft, KnowledgeEvidence, KnowledgeSnapshot,
                                       KnowledgeKind, KnowledgeVerification)
 from iad_core.knowledge.defect import DefectVerification, DEFECT_INSTRUCTION, DEFECT_VERIFICATION_INSTRUCTION
@@ -21,7 +21,7 @@ from iad_core.knowledge.findings import EVIDENCE_SCOPE_INSTRUCTION
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import AnnotationRepository, SampleRepository
 from iad_core.workbench.jobs import JobContext, JobRunner
-from iad_core.workbench.vision import DEFAULT_MODEL, VlmClient
+from iad_core.workbench.vision import RESPONSE_INSTRUCTION, GENERATION_PARAMETERS, DEFAULT_MODEL, VlmClient
 
 GENERATION_VERSION = "dataset-knowledge-v11"
 NORMAL_INSTRUCTION = """联合观察这一数据集的候选良品，发现产品可见的部件、结构关系、位置、纹理、光照与允许变化。
@@ -67,7 +67,7 @@ class KnowledgeService:
 
     @staticmethod
     def generation_signature() -> str:
-        return hashlib.sha256(json.dumps([GENERATION_VERSION, NORMAL_INSTRUCTION, SYNTHESIS_INSTRUCTION,
+        return hashlib.sha256(json.dumps([GENERATION_VERSION, RESPONSE_INSTRUCTION, GENERATION_PARAMETERS, OUTPUT_TOKENS, NORMAL_INSTRUCTION, SYNTHESIS_INSTRUCTION,
             VERIFICATION_INSTRUCTION, DEFECT_INSTRUCTION, DEFECT_VERIFICATION_INSTRUCTION,
             EVOLUTION_INSTRUCTION, EVIDENCE_SCOPE_INSTRUCTION, KnowledgeDraft.model_json_schema(),
             KnowledgeVerification.model_json_schema(), KnowledgeSnapshot.model_json_schema()], sort_keys=True).encode()).hexdigest()

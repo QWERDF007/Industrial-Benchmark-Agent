@@ -55,7 +55,11 @@ export function createWorkbenchTools(bridge, ctx) {
         defineTool({
             name: "dataset_rescan",
             description: "重新扫描已接入数据集的服务器目录，更新当前图像与Labelme标注，返回实际图像/标注/问题数量；复用稳定身份，保留人工记录、旧知识与历史审计，不自动重跑模型。目录内容变化后先显式执行本工具，再读取知识来源状态和重新核验。",
-            parameters: { dataset_id: { type: "string", required: true } },
+            parameters: {
+                dataset_id: { type: "string", required: true },
+                image_dir: { type: "string", description: "修改接入目录时与 annotation_dir 一起传入；扫描成功后保存新目录" },
+                annotation_dir: { type: "string", description: "与 image_dir 一起修改，原身份及历史记录保留" },
+            },
             output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("dataset_scan", args, exec.signal),
         }),
