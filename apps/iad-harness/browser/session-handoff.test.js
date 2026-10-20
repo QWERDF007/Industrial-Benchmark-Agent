@@ -32,7 +32,9 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
   await fs.writeFile(path.join(profile, "cordis.patch.yml"), "- id: ui-settings-general\n  config:\n    welcomeNoticeVersion: 2026-09-28.1\n");
   execFileSync(resolvePythonPath(), [path.join(app, "test/fixtures/knowledge_dataset.py"), root]);
   const agentRequests = [];
-  let agentCompleted = false;
+  let agentCompleted = false, rejectedAudits = 2;
+  let releaseKnowledge;
+  const knowledgeGate = new Promise(resolve => { releaseKnowledge = resolve; });
   const model = http.createServer(async (req, res) => {
     const chunks = []; for await (const chunk of req) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString());
@@ -75,6 +77,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     let answer = { count: 1000, max_model_len: 262144 };
     if (req.url !== "/tokenize") {
       if (body.response_format.json_schema.name === "KnowledgeDraft") {
+        await knowledgeGate;
         answer = { summary: "孔内背景可见", checks: [{ title: "孔内外观", subject: "主体", location: "左孔",
           criterion: "孔内背景可见", allowed_variations: ["亮度变化"], support_evidence_ids: evidence.map(item => item.evidence_id), counter_evidence_ids: [], limitations: [], status: "supported" }], suspects: [], limitations: [] };
         if (content[0].text.includes("冻结父版本候选：")) {
@@ -97,6 +100,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
           findings: regions.length ? [{ check_ids: checks.map(check => check.check_id), location: { scope: "local", bbox: [90,110,110,130], description: "主体左孔" },
             description: "红色覆盖背景", hypothesis: "局部遮挡", normal_explanation: "可能反光", limitations: ["合成验证"], review_action: "核对左孔", priority: "high", evidence_ids: [regions[0].evidence_id] }] : [] };
       }
+      if (body.response_format.json_schema.name === "JointAnalysis" && rejectedAudits > 0) { rejectedAudits--; answer = { invalid_field: true }; }
       answer = { choices: [{ finish_reason: "stop", message: { content: JSON.stringify(answer) } }] };
     }
     res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify(answer));
@@ -129,19 +133,40 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
       const result = await driver.executeAsyncScript(`const done=arguments[arguments.length-1];fetch('/api/iad'+arguments[0],arguments[1]?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(arguments[1])}:undefined).then(async response=>done({status:response.status,value:await response.json()})).catch(error=>done({error:String(error)}));`, pathname, body || null);
       assert.equal(result.status, 200, JSON.stringify(result)); return result.value;
     };
-    await element("button[aria-label='数据集管理']");
+    await element("button[aria-label^='数据集管理']");
     const later = await driver.findElements(By.xpath("//button[.='Configure later']")); if (later.length) await later[0].click();
     const notice = await driver.findElements(By.xpath("//button[.='Continue']")); if (notice.length) await notice[0].click();
-    await (await element("button[aria-label='数据集管理']")).click();
+    await (await element("button[aria-label^='数据集管理']")).click();
     const dataset = await api("/datasets/import", { name: "会话交接", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
+    await button("刷新");
+    await driver.wait(async () => (await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label")).includes("待审计 3"), 10000, "侧栏从当前数据集显示待审计数量");
     let job = await api("/knowledge/start", { dataset_id: dataset.dataset_id, kind: "normal", model_name: "test-mllm" });
+    await driver.wait(async () => (await (await element("button[aria-label^='挖掘良品知识']")).getAttribute("aria-label")).includes("运行 1"), 10000, "真实作业尚未完成时，侧栏显示运行数量");
+    await (await element("button[aria-label^='挖掘良品知识']")).click();
+    await driver.wait(() => driver.executeScript("return document.querySelector('.iad-workbench h1')?.textContent==='挖掘良品知识'"), 5000);
+    releaseKnowledge();
     while (["PENDING", "RUNNING"].includes(job.status)) { await delay(100); job = await api(`/knowledge/status/${job.run_id}`); }
     assert.equal(job.status, "COMPLETED", JSON.stringify(job));
+    await driver.wait(async () => !(await (await element("button[aria-label^='挖掘良品知识']")).getAttribute("aria-label")).includes("运行"), 10000);
+    assert.ok((await driver.executeScript("return document.activeElement?.getAttribute('aria-label')"))?.startsWith("挖掘良品知识"), "状态更新保留原生导航按钮的键盘焦点");
     let audit = await api("/audit/start", { dataset_id: dataset.dataset_id, normal_version_id: job.knowledge_version_id, model_name: "test-mllm" });
     while (["PENDING", "RUNNING"].includes(audit.status)) { await delay(100); audit = await api(`/audit/status/${audit.run_id}`); }
-    assert.equal(audit.status, "COMPLETED", JSON.stringify(audit));
+    assert.equal(audit.status, "PARTIAL", JSON.stringify(audit));
+    assert.equal(audit.failed, 2);
+    const failedRun = audit.run_id;
+    const auditLabel = async () => (await (await element("button[aria-label^='模型审计']")).getAttribute("aria-label"));
+    await driver.wait(async () => (await auditLabel()).includes("近期失败 1"), 10000);
+    for (const [index, sample_id] of audit.failed_sample_ids.entries()) {
+      const since = await driver.executeScript("return performance.now()");
+      let retry = await api(`/audit/retry/${failedRun}`, { sample_ids: [sample_id] });
+      while (["PENDING", "RUNNING"].includes(retry.status)) { await delay(100); retry = await api(`/audit/status/${retry.run_id}`); }
+      assert.equal(retry.status, "COMPLETED", JSON.stringify(retry));
+      await driver.wait(() => driver.executeScript("return performance.getEntriesByType('resource').some(e=>e.name.includes('/api/iad/audit/jobs?') && e.responseEnd>arguments[0])", since), 10000);
+      if (index === 0) assert.ok((await auditLabel()).includes("近期失败 1"), "只补审一张后，原作业尚有失败图，侧栏不能提前清除失败状态");
+      else await driver.wait(async () => !(await auditLabel()).includes("近期失败"), 10000, "全部失败图补审成功后，侧栏不重复统计父失败作业");
+    }
     const target = await api(`/sample/${encodeURIComponent(dataset.dataset_id + ":part-2.png")}`);
-    await button("刷新"); await (await element("button[aria-label='图像浏览']")).click();
+    await button("刷新"); await (await element("button[aria-label^='图像浏览']")).click();
     await (await element("img[alt='part-2.png']")).click();
     await (await element("button[title='放大图像']")).click(); await (await element("button[aria-label='定位 ROI 1']")).click();
     await (await element(".iad-viewer-viewport")).sendKeys("\uE012");
@@ -202,7 +227,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     assert.equal((await driver.findElements(By.css(".iad-viewer-dialog[open]"))).length, 0);
     await button("返回图像浏览");
     for (const [index, label] of ["挖掘良品知识", "模型审计"].entries()) {
-      await (await element(`button[aria-label='${label}']`)).click();
+      await (await element(`button[aria-label^='${label}']`)).click();
       if (index) await button("模型审计作业");
       if (index) {
         const versions = await element("select[aria-label='审计良品知识版本']");
@@ -267,6 +292,8 @@ Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
     const sequence = await api("/datasets/import", { name: "跨页图像", image_dir: path.join(root,"sequence"), annotation_dir: path.join(root,"sequence") });
     await button("刷新");
     await (await element("select[aria-label='当前数据集'] option[value='" + sequence.dataset_id + "']")).click();
+    await driver.wait(async () => (await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label")).includes("待审计 27"), 10000);
+    assert.equal(await (await element("button[aria-label^='挖掘良品知识']")).getAttribute("aria-label"), "挖掘良品知识", "无近期作业不能推断未曾发布知识，且不能继承另一数据集状态");
     await (await element("summary[aria-label='标注筛选']")).click();
     await (await element("input[aria-label='无标注']")).click();
     await (await element("summary[aria-label='标注筛选']")).click();
@@ -304,8 +331,8 @@ Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
     assert.equal(await driver.executeScript("return document.activeElement?.closest('.iad-sample')?.querySelector('strong')?.textContent"), "sequence-23.png", "关闭详情后焦点回到当前缩略图");
     const browseTop = await driver.executeScript("return document.querySelector('.iad-workbench').scrollTop");
     assert.ok(browseTop > 0, "当前缩略图位于滚动后的浏览位置");
-    await (await element("button[aria-label='数据集管理']")).click();
-    await (await element("button[aria-label='图像浏览']")).click();
+    await (await element("button[aria-label^='数据集管理']")).click();
+    await (await element("button[aria-label^='图像浏览']")).click();
     await element("img[alt='sequence-23.png']");
     await driver.wait(async () => Math.abs(await driver.executeScript("return document.querySelector('.iad-workbench').scrollTop") - browseTop) < 2, 5000, "切页返回恢复当前数据集的浏览位置");
     await (await element("select[aria-label='当前数据集'] option[value='" + dataset.dataset_id + "']")).click();
@@ -338,6 +365,7 @@ Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
     console.error(log.slice(-2200).replace(/(token=)[^\s&]+/g, "$1<redacted>"));
     throw error;
   } finally {
+    releaseKnowledge();
     await driver?.quit(); host.kill("SIGTERM");
     await Promise.race([new Promise(resolve => host.once("exit", resolve)), delay(3000)]);
     if (host.exitCode === null) host.kill("SIGKILL");

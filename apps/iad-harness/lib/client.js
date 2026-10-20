@@ -4795,6 +4795,74 @@ var __IadClientBundle__ = (() => {
     model_audit_retry: "\u91CD\u8BD5\u6A21\u578B\u5BA1\u8BA1"
   };
 
+  // src/client/sidebar-progress.ts
+  var SidebarProgress = class {
+    constructor(workspace) {
+      this.workspace = workspace;
+    }
+    workspace;
+    connect(present) {
+      let datasetId, controller;
+      let timer;
+      const reset = () => {
+        const next = this.workspace.getSnapshot().datasetId;
+        if (next === datasetId) return;
+        datasetId = next;
+        controller?.abort();
+        clearTimeout(timer);
+        for (const page of Object.keys(pages)) present(page, pages[page]);
+        if (!next) return;
+        const current = new AbortController();
+        controller = current;
+        let labels = {}, updatedAt = "";
+        const poll = async () => {
+          try {
+            const [dataset, audit, knowledge] = await Promise.all([
+              request(`/datasets/${encodeURIComponent(next)}`, void 0, void 0, current.signal),
+              ...["audit", "knowledge"].map((kind) => request(`/${kind}/jobs?dataset_id=${encodeURIComponent(next)}`, void 0, void 0, current.signal))
+            ]);
+            if (current.signal.aborted) return;
+            const jobs = [...audit.jobs, ...knowledge.jobs];
+            labels = {};
+            for (const page of Object.keys(pages)) {
+              const kind = page === "industrial-normal" ? "NORMAL_KNOWLEDGE" : page === "industrial-defect" ? "DEFECT_KNOWLEDGE" : page === "industrial-audit" ? "MODEL_AUDIT" : null;
+              const attempts = jobs.filter((job) => job.job_type === kind);
+              const running = attempts.filter((job) => ["PENDING", "RUNNING"].includes(job.status)).length;
+              const roots = new Set(attempts.map((job) => job.root_run_id));
+              const failed = [...roots].filter((root) => {
+                const chain = attempts.filter((job) => job.root_run_id === root);
+                const completed = new Set(chain.flatMap((job) => job.completed_sample_ids));
+                const active = new Set(chain.filter((job) => ["PENDING", "RUNNING"].includes(job.status)).flatMap((job) => job.sample_ids));
+                return chain.some((job) => ["FAILED", "PARTIAL", "INTERRUPTED"].includes(job.status) && job.sample_ids.some((id) => !completed.has(id) && !active.has(id)));
+              }).length;
+              const status = [];
+              if (running) status.push(`\u8FD0\u884C ${running}`);
+              if (failed) status.push(`\u8FD1\u671F\u5931\u8D25 ${failed}`);
+              if ((page === "industrial-images" || page === "industrial-audit") && !running && dataset.total_samples > dataset.vlm_audited_count) status.push(`\u5F85\u5BA1\u8BA1 ${dataset.total_samples - dataset.vlm_audited_count}`);
+              if (page === "industrial-review" && dataset.pending_risk_count) status.push(`\u5F85\u590D\u6838 ${dataset.pending_risk_count}`);
+              if (page === "industrial-datasets" && dataset.technical_quality_issues) status.push(`\u6280\u672F\u95EE\u9898 ${dataset.technical_quality_issues}`);
+              labels[page] = [pages[page], ...status].join(" \xB7 ");
+              present(page, labels[page]);
+            }
+            updatedAt = (/* @__PURE__ */ new Date()).toLocaleTimeString();
+          } catch {
+            if (!current.signal.aborted) for (const page of Object.keys(pages)) present(page, `${labels[page] || pages[page]} \xB7 \u66F4\u65B0\u5931\u8D25${updatedAt ? `\uFF08${updatedAt}\uFF09` : ""}`);
+          } finally {
+            if (!current.signal.aborted) timer = setTimeout(poll, 5e3);
+          }
+        };
+        void poll();
+      };
+      const unsubscribe = this.workspace.subscribe(reset);
+      reset();
+      return () => {
+        unsubscribe();
+        controller?.abort();
+        clearTimeout(timer);
+      };
+    }
+  };
+
   // src/client/index.ts
   var name = "iad-client";
   var inject = ["slots", "layout", "sessions", "conversation", "uiWorkspace"];
@@ -4805,7 +4873,17 @@ var __IadClientBundle__ = (() => {
       for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props) => import_react25.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react25.default.createElement(SessionResult, { ...props, title })));
     });
     ctx.slots.inject("sidebar.panellist", () => {
-      Object.entries(pages).forEach(([id, label], index2) => ctx.slots.register({ name: "sidebar.panellist", id, order: index2 + 1, label }, icons[index2]));
+      const entries = /* @__PURE__ */ new Map();
+      const disconnect = new SidebarProgress(workspace).connect((id, label) => {
+        if (entries.get(id)?.label === label) return;
+        entries.get(id)?.dispose();
+        const index2 = Object.keys(pages).indexOf(id);
+        entries.set(id, { label, dispose: ctx.slots.register({ name: "sidebar.panellist", id, order: index2 + 1, label }, icons[index2]) });
+      });
+      return () => {
+        disconnect();
+        entries.forEach((entry) => entry.dispose());
+      };
     });
     ctx.slots.inject("main", () => {
       for (const id of Object.keys(pages)) {

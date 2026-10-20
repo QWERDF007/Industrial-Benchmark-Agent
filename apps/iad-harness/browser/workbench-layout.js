@@ -25,7 +25,7 @@ export async function verifyWorkbenchLayout(driver, output) {
         for (const [index, label] of pages.entries()) {
           const scope = { theme, zoom, width, height, page: label };
           const name = `${theme.toLowerCase()}-${zoom * 100}-${width}-${index}`;
-          await (await element(`button[aria-label='${label}']`)).click();
+          await (await element(`button[aria-label^='${label}']`)).click();
           await driver.wait(() => driver.executeScript("return document.querySelector('.iad-workbench h1')?.textContent===arguments[0]", label), 10000);
           if (label === "模型审计") await driver.findElement(By.xpath("//button[normalize-space(.)='结果']")).click();
           await driver.wait(() => driver.executeScript("const e=document.querySelector('.iad-workbench');return e.querySelector('.iad-kpis') && !e.textContent.includes('加载中…') && !e.textContent.includes('正在读取知识…')"), 10000);

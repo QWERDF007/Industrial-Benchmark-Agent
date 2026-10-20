@@ -17,7 +17,7 @@ export async function verifyWorkbenchSurfaces(driver, output) {
     if (tab !== null) await driver.wait(async () => (await driver.findElement(locator).getAttribute("aria-pressed")) === "true", 5000);
   };
   const navigate = async label => {
-    await (await element(`button[aria-label='${label}']`)).click();
+    await (await element(`button[aria-label^='${label}']`)).click();
     await driver.wait(() => driver.executeScript("const e=document.querySelector('.iad-workbench');return e?.querySelector('h1')?.textContent===arguments[0] && e.querySelector('.iad-kpis') && !e.textContent.includes('正在读取知识…')", label), 10000);
   };
   await navigate("人工复核"); await button("复核队列");

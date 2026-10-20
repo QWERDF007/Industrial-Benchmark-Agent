@@ -21,16 +21,16 @@ try {
   await fs.mkdir(output, { recursive: true });
   await driver.manage().window().setRect({ width: 1600, height: 1000 });
   await driver.get(url.href);
-  await driver.wait(until.elementLocated(By.css("button[aria-label='数据集管理']")), 20000);
+  await driver.wait(until.elementLocated(By.css("button[aria-label^='数据集管理']")), 20000);
   const configure = await driver.wait(until.elementLocated(By.xpath("//button[.='Configure later']")), 5000).catch(() => null);
   if (configure) await configure.click();
   const notice = await driver.wait(until.elementLocated(By.xpath("//button[.='Continue']")), 2000).catch(() => null);
   if (notice) await notice.click();
-  assert.deepEqual(await driver.executeScript("return [...document.querySelectorAll('button')].map(b=>b.getAttribute('aria-label')).filter(x=>arguments[0].includes(x))", labels), labels);
+  assert.deepEqual(await driver.executeScript("return [...document.querySelectorAll('button')].map(b=>b.getAttribute('aria-label')?.split(' · ')[0]).filter(x=>arguments[0].includes(x))", labels), labels);
   assert.equal((await driver.findElements(By.css(".iad-workbench"))).length, 0, "Do not replace the default DSH conversation on startup");
   verification.defaultConversationPreserved = true;
   const sidebar = async label => {
-    await driver.findElement(By.css(`button[aria-label='${label}']`)).click();
+    await driver.findElement(By.css(`button[aria-label^='${label}']`)).click();
     await driver.wait(async () => (await driver.findElement(By.css(".iad-workbench h1")).getText()) === label, 10000);
   };
   await sidebar("数据集管理");
