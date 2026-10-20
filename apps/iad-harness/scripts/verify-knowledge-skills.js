@@ -17,6 +17,7 @@ const workspace = findWorkspaceRoot();
 const output = path.resolve(process.argv[2] || path.join(workspace, "runs/verification/knowledge-skills", String(Date.now())));
 await fs.mkdir(output, { recursive: true });
 execFileSync(resolvePythonPath(), [fileURLToPath(new URL("../test/fixtures/knowledge_dataset.py", import.meta.url)), output]);
+await fs.copyFile(path.join(output, 'images/part-2.png'), path.join(output, 'images/part-3.png'));
 const ctx = new Context();
 new SystemPrompt(ctx, {});
 new ToolRuntime(ctx);
@@ -84,7 +85,7 @@ try {
   assert.equal(versions.defect.normal_version_id, versions.normal.version_id);
   assert.ok(versions.defect.findings.length);
   let audit = await ctx.iadPythonBridge.execute("audit_start", {
-    dataset_id: dataset.dataset_id, sample_ids: [before.sample.sample_id],
+    dataset_id: dataset.dataset_id, sample_ids: [before.sample.sample_id, dataset.dataset_id + ':part-3.png'],
     normal_version_id: versions.normal.version_id, defect_version_id: versions.defect.version_id,
   });
   console.log(JSON.stringify({ kind: "audit", run_id: audit.run_id, total: audit.total_samples }));
@@ -133,6 +134,47 @@ try {
   assert.ok((await fs.readFile(media.path)).length);
   assert.deepEqual(after.annotations, before.annotations);
   assert.deepEqual(after.review_decision, before.review_decision);
+  const candidate = await ctx.iadPythonBridge.execute('sample_get', { sample_id: dataset.dataset_id + ':part-3.png' });
+  assert.equal(candidate.annotations.length, 0);
+  assert.ok(candidate.suggestion.analysis.findings.length, 'Unannotated synthetic obstruction needs an actual audit finding');
+  for (const kind of ['defect', 'normal']) {
+    const args = { dataset_id: dataset.dataset_id, sample_ids: [candidate.sample.sample_id] };
+    if (kind === 'defect') args.normal_version_id = versions.normal.version_id;
+    let job = (await execute(`knowledge_mine_${kind}`, args)).value;
+    console.log(JSON.stringify({ kind: `feedback_${kind}`, run_id: job.run_id, total: job.total_samples }));
+    const deadline = Date.now() + 300000;
+    while (['PENDING', 'RUNNING'].includes(job.status) && Date.now() < deadline) {
+      await delay(500);
+      job = (await execute('knowledge_job_status', { run_id: job.run_id })).value;
+    }
+    jobs[`feedback_${kind}`] = job;
+    assert.equal(job.status, 'COMPLETED', JSON.stringify(job));
+    const snapshot = (await execute('knowledge_get', { version_id: job.knowledge_version_id })).value.knowledge;
+    versions[`feedback_${kind}`] = snapshot;
+    assert.equal(snapshot.parent_version_id, versions[kind].version_id);
+    const source = snapshot.sources.find(item => item.sample_id === candidate.sample.sample_id);
+    assert.deepEqual(source.audit_suggestion_ids, [candidate.suggestion.suggestion_id]);
+    const findings = snapshot.findings.filter(item => item.origin_suggestion_id === candidate.suggestion.suggestion_id);
+    assert.equal(findings.length, candidate.suggestion.analysis.findings.length);
+    for (const finding of findings) {
+      const original = candidate.suggestion.analysis.findings.find(item => item.finding_id === finding.origin_finding_id);
+      assert.deepEqual(finding.audit_finding, original);
+      assert.ok(finding.judgment.evidence_ids.some(id => finding.regions.some(region => region.image.evidence_id === id)));
+      if (kind === 'normal' && finding.judgment.status !== 'refuted') {
+        const contaminated = new Set(snapshot.evidence.filter(item => item.sample_id === finding.sample_id)
+          .map(item => item.image.evidence_id));
+        for (const check of snapshot.checks.filter(item => finding.affected_check_ids.includes(item.check_id))) {
+          assert.ok(check.support_evidence_ids.every(id => !contaminated.has(id)), 'Unresolved contamination cannot support the affected normal criterion');
+        }
+      }
+    }
+    assert.ok(snapshot.verification_steps.length, 'Feedback must actually be visually reverified');
+    assert.deepEqual((await execute('knowledge_get', { version_id: versions[kind].version_id })).value.knowledge, versions[kind]);
+  }
+  const candidateAfter = await ctx.iadPythonBridge.execute('sample_get', { sample_id: candidate.sample.sample_id });
+  assert.deepEqual(candidateAfter.suggestion, candidate.suggestion);
+  assert.deepEqual(candidateAfter.annotations, candidate.annotations);
+  assert.deepEqual(candidateAfter.review_decision, candidate.review_decision);
   const result = { catalog, jobs, versions, analysis, trace, elapsed_seconds: (Date.now() - started) / 1000,
     quality_evaluation: "unassessed; synthetic native skill workflow only; no autonomous Agent Session tested" };
   await fs.writeFile(path.join(output, "result.json"), JSON.stringify(result, null, 2));

@@ -6,6 +6,7 @@ from typing import List
 from iad_core.advisory.analysis import RegionImage, RegionOrigin
 from iad_core.evidence.images import EvidenceImages, PreparedImage
 from iad_core.knowledge.findings import FindingVerification, VerificationOutcome
+from iad_core.knowledge.candidates import AuditCandidates
 from iad_core.knowledge.mining import KnowledgeInput
 from iad_core.knowledge.models import FindingTarget, KnowledgeDraft, KnowledgeSnapshot
 from iad_core.storage.database import Database
@@ -15,6 +16,7 @@ from iad_core.workbench.vision import VlmClient
 
 DEFECT_VERIFICATION_INSTRUCTION = """依据冻结的良品知识联合核验可能异常。一起观察目标全图、真实ROI、二值标注图和正常比较图，
 结合部件关系、位置和光照分析。标注类别、人工异常和先前疑点只是待核实线索，不是本次视觉结论。
+audit_finding保留历史审计观察，其中evidence_ids不是本轮视觉依据，须重新引用当前实际raw与比较图。
 annotation_mask白色仅定位标注前景，黑色为其外/空洞，不表示产品颜色或外观；必须与同crop_bbox的raw联合观察。
 每个finding_id恰好返回一项，引用其真实raw ROI和正常比较证据。affected_check_titles只用给定正常检查项。
 supported为图像支持异常，refuted为正常变化/反光/错标的解释成立，insufficient为无法排除或缺证。
@@ -33,6 +35,7 @@ class DefectVerification:
     def __init__(self, db: Database, client: VlmClient, context: JobContext):
         self.db, self.client, self.context = db, client, context
         self.images = EvidenceImages(db.db_path)
+        self.candidates = AuditCandidates(db)
 
     def references(self, normal: KnowledgeSnapshot) -> List[KnowledgeInput]:
         support = {eid for check in normal.checks if check.status == 'supported' for eid in check.support_evidence_ids}
@@ -65,14 +68,26 @@ class DefectVerification:
                                math.ceil(annotation.bbox[2]), math.ceil(annotation.bbox[3])])], None)
                           for annotation in annotations if annotation.bbox and annotation.geometry_status != 'INVALID']
             candidates += [(finding.bbox, finding.proposal, finding.origins, finding.finding_id)
-                           for finding in normal.findings if finding.sample_id == sample.sample_id and finding.judgment.status != 'refuted']
-            if not candidates:
+                           for finding in normal.findings if finding.sample_id == sample.sample_id
+                           and not finding.origin_suggestion_id
+                           and finding.is_current_candidate(item.source.sha256, item.source.audit_suggestion_ids)]
+            audit_targets = self.candidates.targets(item.source)
+            if not candidates and not audit_targets:
                 candidates = [([0, 0, sample.width, sample.height], None,
                                [RegionOrigin(source='coverage', label='人工异常待核实', bbox=[0, 0, sample.width, sample.height])], None)]
+            pending = []
             for box, proposal, origins, origin_finding_id in candidates:
                 bbox = [math.floor(box[0]), math.floor(box[1]), math.ceil(box[2]), math.ceil(box[3])]
                 if not origins:
                     origins = [RegionOrigin(source='model', label=proposal.description, bbox=bbox)]
+                identity = json.dumps([sample.sample_id, bbox, [origin.model_dump() for origin in origins], origin_finding_id], sort_keys=True)
+                pending.append(FindingTarget(finding_id='finding_' + hashlib.sha256(identity.encode()).hexdigest(),
+                    sample_id=sample.sample_id, bbox=bbox, proposal=proposal, origins=origins,
+                    origin_finding_id=origin_finding_id, regions=[]))
+            pending.extend(audit_targets)
+            for target in pending:
+                origins = target.origins
+                bbox = target.bbox
                 linked = [annotation for annotation in annotations if annotation.annotation_id in {origin.annotation_id for origin in origins}]
                 regions = []
                 for tile in self.images.tiles(sample, bbox, 0.2):
@@ -86,10 +101,8 @@ class DefectVerification:
                         regions.append(RegionImage(**origins[0].model_dump(), origins=origins, crop_bbox=tile, image=image.evidence))
                         if image.evidence.evidence_id not in {image.evidence.evidence_id for image in item.images}:
                             item.images.append(image)
-                identity = json.dumps([sample.sample_id, bbox, [origin.model_dump() for origin in origins], origin_finding_id], sort_keys=True)
-                targets.append(FindingTarget(finding_id='finding_' + hashlib.sha256(identity.encode()).hexdigest(),
-                    sample_id=sample.sample_id, bbox=bbox, proposal=proposal, origins=origins,
-                    origin_finding_id=origin_finding_id, regions=regions))
+                target.regions = regions
+                targets.append(target)
         outcome = FindingVerification(self.client, self.context).review(targets, inputs + references,
             [image for item in references for image in item.images], by_id,
             [check for check in normal.checks if check.status == 'supported'], model_name,

@@ -260,7 +260,8 @@ export type SampleId = string;
 export type Sha2561 = string;
 export type AnnotationsSha256 = string;
 export type ReviewSha256 = string;
-export type Qualification = "human_pass" | "human_hard_normal" | "manual_selection" | "raw_pass" | "initial_unannotated" | "human_fail" | "annotated_candidate" | "normal_suspect";
+export type AuditSuggestionIds = string[];
+export type Qualification = "human_pass" | "human_hard_normal" | "manual_selection" | "raw_pass" | "initial_unannotated" | "human_fail" | "annotated_candidate" | "normal_suspect" | "audit_suspect";
 export type Sources = KnowledgeSource[];
 export type SampleId1 = string;
 export type Evidence = KnowledgeEvidence[];
@@ -290,6 +291,7 @@ export type SampleId2 = string;
 export type Bbox4 = number[];
 export type Origins1 = RegionOrigin[];
 export type OriginFindingId = string | null;
+export type OriginSuggestionId = string | null;
 export type Source3 = "annotation" | "model" | "coverage";
 export type AnnotationId2 = string | null;
 export type Label2 = string;
@@ -550,6 +552,7 @@ export interface KnowledgeSource {
     sha256: Sha2561;
     annotations_sha256: AnnotationsSha256;
     review_sha256: ReviewSha256;
+    audit_suggestion_ids: AuditSuggestionIds;
     qualification: Qualification;
 }
 export interface KnowledgeEvidence {
@@ -587,6 +590,8 @@ export interface KnowledgeFinding {
     proposal: KnowledgeSuspect | null;
     origins: Origins1;
     origin_finding_id: OriginFindingId;
+    origin_suggestion_id: OriginSuggestionId;
+    audit_finding: AuditFinding | null;
     regions: Regions1;
     judgment: KnowledgeJudgment;
     affected_check_ids: AffectedCheckIds;

@@ -8,6 +8,7 @@ from iad_core.evidence.images import EvidenceImages
 from iad_core.knowledge.mining import KnowledgeInput
 from iad_core.knowledge.models import FindingTarget, KnowledgeDraft, KnowledgeEvidence, KnowledgeFinding, KnowledgeSnapshot
 from iad_core.knowledge.findings import FindingVerification, VerificationOutcome
+from iad_core.knowledge.candidates import AuditCandidates
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import SampleRepository
 from iad_core.workbench.jobs import JobContext
@@ -15,6 +16,7 @@ from iad_core.workbench.vision import VlmClient
 
 VERIFICATION_INSTRUCTION = """联合核验候选良品中的疑点。观察各目标全图、真实ROI和其他来源，关联位置、结构与光照。
 来源资格与先前提议都不是事实。区分可支持的异常、正常变化/反光解释、证据不足。
+audit_finding保留历史审计观察，其中evidence_ids不是本轮视觉依据，须重新引用当前实际raw与比较图。
 目标不能成为其自身结论的唯一正常支持，相同内容哈希不能当作独立来源。
 每个finding_id恰好返回一项，引用其实际ROI和比较证据；affected_check_titles只能使用所给检查项title。
 supported表示图像支持疑点，refuted表示正常解释可支持，insufficient表示无法排除或缺证。
@@ -26,6 +28,7 @@ class NormalVerification:
     def __init__(self, db: Database, client: VlmClient, context: JobContext):
         self.client, self.context = client, context
         self.images, self.samples = EvidenceImages(db.db_path), SampleRepository(db)
+        self.candidates = AuditCandidates(db)
 
     def review(self, draft: KnowledgeDraft, inputs: List[KnowledgeInput], model_name: str,
                parent: Optional[KnowledgeSnapshot] = None) -> VerificationOutcome:
@@ -48,16 +51,19 @@ class NormalVerification:
             target_by_id[finding_id] = FindingTarget(finding_id=finding_id, sample_id=sample.sample_id,
                 bbox=bbox, proposal=proposal, origins=[origin], regions=[])
         by_sample = {item.source.sample_id: item for item in inputs}
+        for item in inputs:
+            for target in self.candidates.targets(item.source):
+                target_by_id[target.finding_id] = target
         for previous in parent.findings if parent else []:
             source = by_sample.get(previous.sample_id)
-            if (previous.judgment.status == 'refuted' or source is None or not previous.regions
-                    or previous.regions[0].image.source_sha256 != source.source.sha256):
+            if source is None or not previous.is_current_candidate(source.source.sha256, source.source.audit_suggestion_ids):
                 continue
             if previous.finding_id not in target_by_id:
                 target_by_id[previous.finding_id] = FindingTarget(finding_id=previous.finding_id,
                     sample_id=previous.sample_id, bbox=previous.bbox, proposal=None, origins=previous.origins,
-                    origin_finding_id=previous.finding_id, regions=[])
-            else:
+                    origin_finding_id=previous.finding_id, origin_suggestion_id=previous.origin_suggestion_id,
+                    audit_finding=previous.audit_finding, regions=[])
+            elif not previous.origin_suggestion_id:
                 target_by_id[previous.finding_id].origin_finding_id = previous.finding_id
         targets = list(target_by_id.values())
         if not targets:

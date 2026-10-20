@@ -2,7 +2,7 @@ from typing import List, Literal, Optional
 
 from pydantic import Field, model_validator
 
-from iad_core.advisory.analysis import AnalysisModel, RegionImage, RegionOrigin, RegionProposal, VisualEvidence
+from iad_core.advisory.analysis import AnalysisModel, AuditFinding, RegionImage, RegionOrigin, RegionProposal, VisualEvidence
 
 KnowledgeKind = Literal["normal", "defect"]
 
@@ -70,8 +70,9 @@ class KnowledgeSource(AnalysisModel):
     sha256: str
     annotations_sha256: str
     review_sha256: str
+    audit_suggestion_ids: List[str] = Field(default_factory=list)
     qualification: Literal["human_pass", "human_hard_normal", "manual_selection", "raw_pass", "initial_unannotated",
-                           "human_fail", "annotated_candidate", "normal_suspect"]
+                           "human_fail", "annotated_candidate", "normal_suspect", "audit_suspect"]
 
 
 class KnowledgeEvidence(AnalysisModel):
@@ -93,6 +94,8 @@ class FindingTarget(AnalysisModel):
     proposal: Optional[KnowledgeSuspect] = None
     origins: List[RegionOrigin] = Field(default_factory=list)
     origin_finding_id: Optional[str] = None
+    origin_suggestion_id: Optional[str] = None
+    audit_finding: Optional[AuditFinding] = None
     regions: List[RegionImage]
 
 
@@ -121,6 +124,11 @@ class VerificationStep(AnalysisModel):
 class KnowledgeFinding(FindingTarget):
     judgment: KnowledgeJudgment
     affected_check_ids: List[str] = Field(default_factory=list)
+
+    def is_current_candidate(self, source_sha256: str, audit_suggestion_ids: List[str]) -> bool:
+        return (self.judgment.status != 'refuted' and bool(self.regions)
+                and self.regions[0].image.source_sha256 == source_sha256
+                and (not self.origin_suggestion_id or self.origin_suggestion_id in audit_suggestion_ids))
 
 
 class KnowledgeSnapshot(AnalysisModel):
