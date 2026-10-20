@@ -79,10 +79,23 @@ test("DSH cancelling a knowledge job preserves unprocessed scope and prevents la
     const dataset = await ctx.iadPythonBridge.execute("dataset_import", { name: "取消验证", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
     const job = await execute("knowledge_mine_normal", { dataset_id: dataset.dataset_id, model_name: "test-mllm" });
     await entered.promise;
+    const invalidWait = await ctx.tools.execute({ name: "knowledge_job_status", arguments: { run_id: job.run_id, wait_seconds: 31 },
+      callId: "invalid-wait", signal: new AbortController().signal });
+    assert.equal(invalidWait.isError, true);
+    assert.equal((await execute("knowledge_job_status", { run_id: job.run_id, wait_seconds: 0 })).status, "RUNNING");
+    const abort = new AbortController();
+    const abortedWait = ctx.tools.execute({ name: "knowledge_job_status", arguments: { run_id: job.run_id }, callId: "aborted-wait", signal: abort.signal });
+    await delay(50);
+    abort.abort();
+    assert.equal((await abortedWait).isError, true);
+    assert.equal((await execute("knowledge_job_status", { run_id: job.run_id, wait_seconds: 0 })).status, "RUNNING");
+    const waiting = execute("knowledge_job_status", { run_id: job.run_id });
+    await delay(50);
     const stopping = await execute("knowledge_job_cancel", { run_id: job.run_id });
     assert.equal(stopping.status, "RUNNING");
     assert.match(stopping.message, /正在停止/);
     release.resolve();
+    assert.equal((await waiting).status, "CANCELLED", "A bounded status wait must observe termination while allowing cancellation");
     let status = stopping;
     const deadline = Date.now() + 5000;
     while (["PENDING", "RUNNING"].includes(status.status) && Date.now() < deadline) {
@@ -116,7 +129,17 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
       .map(item => JSON.parse(item.text.slice("视觉证据：".length)));
     let result;
     if (req.url === "/tokenize") result = { count: 4000, max_model_len: 262144 };
-    else if (body.response_format.json_schema.name === "KnowledgeVerification") {
+    else if (body.response_format.json_schema.name === "JointAnalysis") {
+      const checks = JSON.parse(content[0].text.split("冻结知识：")[1].split("\n")[0]).checks;
+      const regions = evidence.filter(item => item.role === "roi" && item.representation === "raw");
+      const view = { description: regions.length ? "左孔红色遮挡" : "两孔背景可见", position_analysis: "主体左侧", illumination_analysis: "整体亮度均匀" };
+      result = { ...view, suggested_label: regions.length ? "FAIL" : "PASS", reason_category: regions.length ? "OCCLUSION" : "NORMAL", confidence: 0.8,
+        evidence_ids: evidence.map(item => item.evidence_id), global_view: view,
+        check_assessments: checks.map(check => ({ ...view, check_id: check.check_id, status: regions.length ? "anomaly" : "normal", evidence_ids: [evidence[0].evidence_id] })),
+        region_observations: regions.map((_, index) => ({ ...view, region_index: index + 1 })),
+        findings: regions.length ? [{ check_ids: checks.map(check => check.check_id), location: { scope: "local", bbox: [90, 110, 110, 130], description: "主体左孔" },
+          description: "红色区域覆盖背景", hypothesis: "局部遮挡", normal_explanation: "仍需排除有色反光", limitations: ["合成验证"], review_action: "查看左孔", priority: "high", evidence_ids: [regions[0].evidence_id] }] : [] };
+    } else if (body.response_format.json_schema.name === "KnowledgeVerification") {
       const payload = JSON.parse(content[0].text.split("待核验疑点：")[1].split("\n请根据图像")[0]);
       const raw = evidence.find(item => item.role === "roi" && item.representation === "raw");
       const normal = evidence.find(item => item.role === "normal");
@@ -160,7 +183,7 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
   };
   try {
     assert.ok(ctx.tools.get("dataset_list"), "Skills need a registered dataset discovery tool");
-    const dataset = await ctx.iadPythonBridge.execute("dataset_import", { name: "合成部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
+    const dataset = (await execute("dataset_import", { name: "合成部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") })).value;
     const original = await ctx.iadPythonBridge.execute("sample_get", { sample_id: dataset.dataset_id + ":part-2.png" });
     assert.equal((await execute("dataset_list", {})).value.datasets.length, 1);
     const versions = {};
@@ -202,7 +225,35 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
     const unowned = await ctx.tools.execute({ name: "knowledge_evidence", arguments: { version_id: versions.normal.version_id,
       evidence_id: raw.evidence_id }, callId: "unowned", signal: new AbortController().signal });
     assert.equal(unowned.isError, true);
-    const after = await ctx.iadPythonBridge.execute("sample_get", { sample_id: original.sample.sample_id });
+    let audit = (await execute("model_audit_start", { dataset_id: dataset.dataset_id, model_name: "test-mllm",
+      normal_version_id: versions.normal.version_id, defect_version_id: versions.defect.version_id })).value;
+    const auditDeadline = Date.now() + 5000;
+    while (["PENDING", "RUNNING"].includes(audit.status) && Date.now() < auditDeadline) {
+      await delay(20);
+      audit = (await execute("model_audit_status", { run_id: audit.run_id })).value;
+    }
+    assert.equal(audit.status, "COMPLETED", JSON.stringify(audit));
+    assert.equal(audit.completed, 3);
+    assert.equal(audit.failed, 0);
+    assert.equal(audit.normal_version_id, versions.normal.version_id);
+    assert.equal(audit.defect_version_id, versions.defect.version_id);
+    const audited = await execute("model_audit_sample", { sample_id: original.sample.sample_id });
+    assert.ok(!audited.content[0].text.includes('"joint_steps"'), "Chat should read the conclusion and evidence references without repeating every model step");
+    const after = audited.value;
+    assert.equal(after.suggestion.analysis.normal_version_id, versions.normal.version_id);
+    assert.equal(after.suggestion.audit_run_id, audit.run_id);
+    assert.equal(after.suggestion.analysis.conclusion.suggested_label, "FAIL");
+    const roi = after.suggestion.analysis.regions[0].image;
+    const auditMedia = await execute("model_audit_evidence", { suggestion_id: after.suggestion.suggestion_id, evidence_id: roi.evidence_id });
+    const auditBytes = await ctx.attachments.readImage(auditMedia.content.find(item => item.type === "image").attachment);
+    assert.equal(createHash("sha256").update(auditBytes.data).digest("hex"), roi.sha256);
+    const badAuditMedia = await ctx.tools.execute({ name: "model_audit_evidence", arguments: { suggestion_id: after.suggestion.suggestion_id,
+      evidence_id: versions.normal.evidence[0].image.evidence_id }, callId: "unowned-audit", signal: new AbortController().signal });
+    assert.equal(badAuditMedia.isError, true);
+    const report = (await execute("dataset_report", { dataset_id: dataset.dataset_id })).value;
+    assert.equal(report.vlm_audited_count, 3);
+    assert.equal(report.vlm_coverage_pct, 100);
+    assert.equal(report.human_reviewed_count, 0);
     assert.deepEqual(after.annotations, original.annotations);
     assert.deepEqual(after.review_decision, original.review_decision);
   } finally {

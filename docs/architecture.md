@@ -25,6 +25,8 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 后继知识来源积累、检查项身份及拆分/合并/退役 | [KnowledgeService](../python/iad_core/knowledge/service.py)、[KnowledgeEvolution](../python/iad_core/knowledge/evolution.py) |
 | 审计疑点回流、冻结来源与两类挖掘的重新核验 | [AuditCandidates](../python/iad_core/knowledge/candidates.py)、[来源资格](../python/iad_core/knowledge/sources.py)、[知识疑点契约](../python/iad_core/knowledge/models.py) |
 | DSH 两项知识技能、原生执行工具及图像附件 | [技能定义](../apps/iad-harness/src/server/knowledge/skills.ts)、[工具](../apps/iad-harness/src/server/knowledge/index.ts)、[插件生命周期](../apps/iad-harness/src/server/index.ts) |
+| DSH 会话的数据接入、知识审计、结果与报告操作 | [原生工作台工具及流程指引](../apps/iad-harness/src/server/workbench-tools/index.ts)、[统一聊天结果投影](../apps/iad-harness/src/server/tool-output.ts) |
+| 会话知识/审计的有界等待及真实证据附件 | [共享状态等待](../apps/iad-harness/src/server/job-status.ts)、[共享附件读取](../apps/iad-harness/src/server/evidence-attachment.ts) |
 | 全图、局部裁剪及综合判断 | [SampleInspection](../python/iad_core/workbench/inspection.py)、[分析类型](../python/iad_core/advisory/analysis.py) |
 | 视觉证据、原图坐标、无损 ROI 与分块 | [EvidenceImages](../python/iad_core/evidence/images.py) |
 | Mask 像素、内容指纹、二值标注图与显示叠加 | [MaskImages / annotation_overlay](../python/iad_core/evidence/masks.py)、[Labelme 官方格式](https://github.com/wkentaro/labelme/blob/main/labelme/_label_file.py)、[官方坐标映射](https://github.com/wkentaro/labelme/blob/main/labelme/_utils/_shape.py) |
@@ -68,7 +70,10 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 - [复核、置信度和查询一致性测试](../tests/test_workbench_closeout.py)
 - [真实 HTTP / Python 桥接测试](../apps/iad-harness/test/workbench.test.js)
 - [真实 DSH 技能发现、加载、执行、取消及附件测试](../apps/iad-harness/test/knowledge_skills.test.js)
+- [DSH 原生接入与工作台查询一致性测试](../apps/iad-harness/test/dataset_tools.test.js)
+- [真实 DSH Agent/Session 与官方模型适配器测试](../apps/iad-harness/test/agent_session.test.js)
 - [真实 MLLM 与原生知识技能验证](../apps/iad-harness/scripts/verify-knowledge-skills.js)
+- [真实自然语言会话、知识审计与图像追问验证](../apps/iad-harness/scripts/verify-dataset-session.js)
 - [Firefox 用户流程测试](../apps/iad-harness/browser/workbench.test.js)
 - [原生宿主侧栏与页面验收](../apps/iad-harness/scripts/verify-host-browser.js)
 - [真实图像和模型验证](../scripts/verify_workbench_live.py)

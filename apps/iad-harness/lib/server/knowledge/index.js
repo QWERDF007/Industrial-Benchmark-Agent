@@ -1,20 +1,9 @@
-import fs from "node:fs/promises";
 import { defineTool } from "@deepseek-ai/dsh-tools";
-const jsonOutput = {
-    schema: { type: "json" },
-    render(_args, value) {
-        return [{ type: "text", text: JSON.stringify(value, (key, item) => key === "mining_steps" || key === "verification_steps" || key === "model_calls" ? undefined : item) }];
-    },
-};
+import { workbenchJsonOutput } from "../tool-output.js";
+import { evidenceOutput, readEvidenceAttachment } from "../evidence-attachment.js";
+import { jobStatusParameters, waitForJobStatus } from "../job-status.js";
 export function createKnowledgeTools(bridge, ctx) {
     return [
-        defineTool({
-            name: "dataset_list",
-            description: "列出工作台已导入的数据集及稳定 dataset_id，供选择知识挖掘目标。",
-            parameters: {},
-            output: jsonOutput,
-            execute: (_args, exec) => bridge.execute("dataset_list", {}, exec.signal),
-        }),
         defineTool({
             name: "knowledge_mine_normal",
             description: "启动良品知识挖掘，复用工作台的来源资格、联合 MLLM、持久化作业和不可变知识版本。",
@@ -23,7 +12,7 @@ export function createKnowledgeTools(bridge, ctx) {
                 model_name: { type: "string", description: "可选；省略使用项目配置的 MLLM" },
                 sample_ids: { type: "array", items: { type: "string" }, description: "可选新增来源范围，与父版本仍合格来源合并核验；省略覆盖全部合格良品" },
             },
-            output: jsonOutput,
+            output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "normal" }, exec.signal),
         }),
         defineTool({
@@ -35,21 +24,21 @@ export function createKnowledgeTools(bridge, ctx) {
                 model_name: { type: "string", description: "可选；省略使用项目配置的 MLLM" },
                 sample_ids: { type: "array", items: { type: "string" }, description: "可选新增来源范围，与父版本仍合格来源合并核验；省略覆盖全部合格异常候选" },
             },
-            output: jsonOutput,
+            output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "defect" }, exec.signal),
         }),
         defineTool({
             name: "knowledge_job_status",
             description: "读取同一知识作业的真实完成、失败、未处理数量及已发布版本；RUNNING 不表示完成。",
-            parameters: { run_id: { type: "string", required: true } },
-            output: jsonOutput,
-            execute: (args, exec) => bridge.execute("knowledge_status", args, exec.signal),
+            parameters: jobStatusParameters,
+            output: workbenchJsonOutput,
+            execute: (args, exec) => waitForJobStatus(bridge, "knowledge_status", args, exec.signal),
         }),
         defineTool({
             name: "knowledge_job_cancel",
             description: "请求停止知识作业，保留已完成记录；当前模型请求返回后停止，之后查询最终状态。",
             parameters: { run_id: { type: "string", required: true } },
-            output: jsonOutput,
+            output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("knowledge_cancel", args, exec.signal),
         }),
         defineTool({
@@ -60,7 +49,7 @@ export function createKnowledgeTools(bridge, ctx) {
                 dataset_id: { type: "string" },
                 kind: { type: "string", enum: ["normal", "defect"] },
             },
-            output: jsonOutput,
+            output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("knowledge_get", args, exec.signal),
         }),
         defineTool({
@@ -70,22 +59,8 @@ export function createKnowledgeTools(bridge, ctx) {
                 version_id: { type: "string", required: true },
                 evidence_id: { type: "string", required: true },
             },
-            output: {
-                schema: { type: "json" },
-                render(_args, value) {
-                    const media = value;
-                    return [{ type: "text", text: JSON.stringify(media) }, { type: "image", attachment: media.attachment }];
-                },
-            },
-            async execute(args, exec) {
-                if (!ctx.attachments)
-                    throw new Error("Knowledge evidence requires the DSH attachment store");
-                const media = await bridge.execute("knowledge_evidence", args, exec.signal);
-                exec.signal.throwIfAborted();
-                const data = await fs.readFile(media.path, { signal: exec.signal });
-                const attachment = await ctx.attachments.saveImage({ data, mediaType: media.media_type, name: args.evidence_id + ".png" });
-                return { ...args, attachment: { ...attachment } };
-            },
+            output: evidenceOutput,
+            execute: (args, exec) => readEvidenceAttachment(bridge, ctx, "knowledge_evidence", args, exec.signal),
         }),
     ];
 }

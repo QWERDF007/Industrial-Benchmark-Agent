@@ -18,6 +18,13 @@ export const SYSTEM_POLICIES = [
 export const ALLOWED_TOOL_SURFACE = [
   "skill",
   "dataset_list",
+  "dataset_import",
+  "dataset_report",
+  "model_audit_start",
+  "model_audit_status",
+  "model_audit_cancel",
+  "model_audit_sample",
+  "model_audit_evidence",
   "knowledge_mine_normal",
   "knowledge_mine_defect",
   "knowledge_job_status",

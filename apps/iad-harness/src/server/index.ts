@@ -15,6 +15,7 @@ import * as benchmark from "./benchmark/index.js";
 import * as evaluation from "./evaluation/index.js";
 import { KNOWLEDGE_SKILLS } from "./knowledge/skills.js";
 import { createKnowledgeTools } from "./knowledge/index.js";
+import { createWorkbenchTools, DATASET_ANALYSIS_WORKFLOW } from "./workbench-tools/index.js";
 
 export { SYSTEM_POLICIES, ALLOWED_TOOL_SURFACE } from "./policy/index.js";
 export { CoreClient } from "./core-client/index.js";
@@ -26,6 +27,7 @@ export { createVisionTools } from "./vision/index.js";
 export { createBenchmarkTools } from "./benchmark/index.js";
 export { createEvaluationTools } from "./evaluation/index.js";
 export { createKnowledgeTools } from "./knowledge/index.js";
+export { createWorkbenchTools } from "./workbench-tools/index.js";
 
 export interface IADHarnessConfig extends PythonBridgeConfig {
   authorizedMcpTools?: string[];
@@ -79,7 +81,9 @@ export function apply(ctx: any, config: IADHarnessConfig = {}) {
   benchmark.apply(ctx);
   evaluation.apply(ctx);
   for (const tool of createKnowledgeTools(bridge, ctx)) ctx.tools.register(tool);
+  for (const tool of createWorkbenchTools(bridge, ctx)) ctx.tools.register(tool);
   for (const skill of KNOWLEDGE_SKILLS) ctx.skills.register(skill);
+  ctx.systemPrompt.section({ name: "dataset_analysis_workflow", order: 510, text: DATASET_ANALYSIS_WORKFLOW });
 
   ctx.logger?.info?.("Industrial Benchmark Agent Root Harness Bundle initialized successfully.");
 }
