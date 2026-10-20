@@ -7,10 +7,11 @@ export const themeStyles = `
  --iad-text:var(--dsw-alias-label-primary,#1c2a3c);
  --iad-muted:var(--dsw-alias-label-secondary,#53647c);
  --iad-border:var(--dsw-alias-border-l3,#a1adbe);
+ --iad-control-border:color-mix(in srgb,var(--iad-muted) 90%,var(--iad-surface));
  --iad-primary:var(--dsw-alias-brand-primary,#215bd5);
  --iad-on-primary:var(--dsw-alias-label-primary-inverted,#fff);
  --iad-hover:var(--dsw-alias-interactive-bg-hover,#e4eaf4);
- --iad-danger:var(--dsw-alias-state-error-primary,#a22c34);
+ --iad-danger:color-mix(in srgb,var(--dsw-alias-state-error-primary,#a22c34) 85%,var(--iad-text));
  --iad-danger-bg:var(--dsw-alias-state-error-secondary,#ffeded);
  --iad-success:var(--dsw-alias-state-success-primary,#12634b);
  --iad-warning:var(--dsw-alias-state-warn-primary,#af4a12);

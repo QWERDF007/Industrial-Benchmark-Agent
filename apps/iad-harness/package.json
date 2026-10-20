@@ -84,10 +84,12 @@
     "@deepseek-ai/dsh-system-prompt": "0.2.0-rc.2",
     "@deepseek-ai/dsh-tool-skill": "0.2.0-rc.2",
     "@types/react": "^18.3.1",
+    "axe-core": "4.14.0",
     "esbuild": "^0.28.2",
     "json-schema-to-typescript": "^16.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "selenium-webdriver": "^4.51.0"
+    "selenium-webdriver": "^4.51.0",
+    "wcag-contrast": "3.0.0"
   }
 }

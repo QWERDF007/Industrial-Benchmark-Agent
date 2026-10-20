@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Builder, By, Key, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
+import { verifyWorkbenchLayout } from "../browser/workbench-layout.js";
 
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const log = process.env.IAD_WEB_URL ? "" : await fs.readFile(process.env.IAD_WEB_LOG || path.join(workspace, "runs/dsh_web.log"), "utf8");
@@ -15,7 +16,7 @@ if (process.env.FIREFOX_PATH) options.setBinary(process.env.FIREFOX_PATH);
 const driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options)
   .setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH || "geckodriver")).build();
 const output = process.env.IAD_BROWSER_OUTPUT || path.join(workspace, "runs/browser");
-const verification = { navigation: labels, viewports: [], contrasts: [], defaultConversationPreserved: false };
+const verification = { navigation: labels, viewports: [], layoutScenes: 0, defaultConversationPreserved: false };
 try {
   await fs.mkdir(output, { recursive: true });
   await driver.manage().window().setRect({ width: 1600, height: 1000 });
@@ -44,33 +45,6 @@ try {
     await sidebar(label);
     await fs.writeFile(path.join(output, `native-${labels.indexOf(label)}.png`), await driver.takeScreenshot(), "base64");
   }
-  const verifyContrast = async () => {
-    await driver.wait(until.elementLocated(By.css(".iad-reference")), 5000);
-    const contrasts = await driver.executeScript(`
-      const context=document.createElement('canvas').getContext('2d',{willReadFrequently:true});
-      const luminance=color=>{context.clearRect(0,0,1,1);context.fillStyle=color;context.fillRect(0,0,1,1);
-        const rgb=[...context.getImageData(0,0,1,1).data].slice(0,3).map(v=>v/255).map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4);
-        return rgb[0]*0.2126+rgb[1]*0.7152+rgb[2]*0.0722};
-      return ['.iad-workbench','.iad-kpis span','.iad-reference','.iad-badge'].map(selector=>{
-        const element=document.querySelector(selector),style=getComputedStyle(element);
-        const background=selector==='.iad-kpis span'?getComputedStyle(element.parentElement).backgroundColor:style.backgroundColor;
-        const fg=luminance(style.color),bg=luminance(background);return {selector,ratio:(Math.max(fg,bg)+0.05)/(Math.min(fg,bg)+0.05)};
-      });`);
-    for(const {selector,ratio} of contrasts) assert.ok(ratio>=4.5, `${selector} text contrast ${ratio.toFixed(2)}`);
-    verification.contrasts.push({ dark: await driver.executeScript("return document.body.hasAttribute('data-ds-dark-theme')"), values: contrasts });
-  };
-  await sidebar("图像浏览");
-  await verifyContrast();
-  await driver.findElement(By.xpath("//button[normalize-space(.)='Settings']")).click();
-  await driver.wait(until.elementLocated(By.xpath("//button[normalize-space(.)='Dark']")), 10000).click();
-  await driver.actions().sendKeys(Key.ESCAPE).perform();
-  await sidebar("图像浏览");
-  await driver.wait(async () => await driver.executeScript("return document.body.hasAttribute('data-ds-dark-theme')"), 5000);
-  await fs.writeFile(path.join(output, "native-browse-dark.png"), await driver.takeScreenshot(), "base64");
-  await verifyContrast();
-  await driver.findElement(By.xpath("//button[normalize-space(.)='Settings']")).click();
-  await driver.wait(until.elementLocated(By.xpath("//button[normalize-space(.)='Light']")), 10000).click();
-  await driver.actions().sendKeys(Key.ESCAPE).perform();
   await sidebar("图像浏览");
   await driver.wait(until.elementLocated(By.css(".iad-grid img")), 15000);
   assert.equal((await driver.findElements(By.css(".iad-inspector"))).length, 0);
@@ -110,8 +84,9 @@ try {
   }
   await driver.navigate().refresh();
   await driver.wait(until.elementLocated(By.css("[data-page='industrial-images'] .iad-grid img")), 15000);
+  verification.layoutScenes = (await verifyWorkbenchLayout(driver, path.join(output, "layout"))).length;
   await fs.writeFile(path.join(output, "verification.json"), JSON.stringify(verification, null, 2));
-  console.log("Native six-page navigation, directory import, read-only browsing, refresh and four viewport sizes verified");
+  console.log(`Native navigation, directory import, read-only browsing, refresh and ${verification.layoutScenes} theme/viewport/text-zoom scenes verified`);
 } catch (error) {
   await fs.writeFile(path.join(output, "native-failure.png"), await driver.takeScreenshot(), "base64");
   throw error;

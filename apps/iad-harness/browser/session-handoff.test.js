@@ -11,6 +11,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { Builder, By, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
 import { resolvePythonPath } from "../lib/server/python-bridge/index.js";
+import { verifyWorkbenchLayout } from "./workbench-layout.js";
 
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const toolMessages = request => {
@@ -18,7 +19,7 @@ const toolMessages = request => {
   return request.messages.filter(message => message.role === "tool").map(message => ({ ...message, name: names.get(message.tool_call_id) }));
 };
 
-test("native DSH: ask about frozen evidence and return to the original inspection", { timeout: 120000 }, async () => {
+test("native DSH: ask about frozen evidence and return to the original inspection", { timeout: 300000 }, async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-native-handoff-"));
   const app = path.join(workspace, "apps/iad-harness");
   const profile = path.join(root, "home/profiles/web");
@@ -318,6 +319,14 @@ Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
     await stepImage("后一张", "sequence-21.png", 1);
     assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad")).filters.search, "sequence-2");
     assert.equal(agentRequests.length, requestCount, "跨页与筛选切图不启动模型");
+    await button("关闭"); await button("返回图像浏览");
+    await (await element("select[aria-label='当前数据集'] option[value='" + dataset.dataset_id + "']")).click();
+    let defect = await api("/knowledge/start", { dataset_id: dataset.dataset_id, kind: "defect", normal_version_id: knowledgeJob.knowledge_version_id, model_name: "test-mllm" });
+    while (["PENDING", "RUNNING"].includes(defect.status)) { await delay(100); defect = await api(`/knowledge/status/${defect.run_id}`); }
+    assert.equal(defect.status, "COMPLETED", JSON.stringify(defect));
+    await button("刷新");
+    await verifyWorkbenchLayout(driver, path.join(workspace, "runs/browser/native-layout"));
+    assert.equal(agentRequests.length, requestCount, "布局验收不调用Agent模型");
   } catch (error) {
     await fs.mkdir(path.join(workspace, "runs/browser/session-handoff"), { recursive: true });
     if (driver) {
