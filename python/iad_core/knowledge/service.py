@@ -23,7 +23,7 @@ from iad_core.storage.repositories import AnnotationRepository, SampleRepository
 from iad_core.workbench.jobs import JobContext, JobRunner
 from iad_core.workbench.vision import DEFAULT_MODEL, VlmClient
 
-GENERATION_VERSION = "dataset-knowledge-v10"
+GENERATION_VERSION = "dataset-knowledge-v11"
 NORMAL_INSTRUCTION = """联合观察这一数据集的候选良品，发现产品可见的部件、结构关系、位置、纹理、光照与允许变化。
 不要根据数据集名称假设产品或预设缺陷检查表。只归纳可观察、可复用且有图像证据的检查判据。
 人工选取和无标注只是来源资格，不是确认真值。寻找候选良品中的异常与矛盾，将其定位为suspects，
@@ -138,8 +138,9 @@ class KnowledgeService:
             verification = defect.review(normal, inputs, references, payload['model_name'])
             context.update(phase='LEARNING_DEFECT')
             instruction = DEFECT_INSTRUCTION + json.dumps({'normal_version_id': normal.version_id,
-                'normal_checks': [check.model_dump() for check in normal.checks],
-                'findings': [finding.model_dump() for finding in verification.findings]}, ensure_ascii=False) + '\n来源：'
+                'normal_checks': [check.criterion_context() for check in normal.checks],
+                'findings': [finding.model_dump(exclude={'proposal', 'audit_finding'})
+                             for finding in verification.findings]}, ensure_ascii=False) + '\n来源：'
             draft = miner.learn(instruction, inputs + references, payload['model_name'], evolution.instruction).result
             draft = draft.model_copy(deep=True)
             defect.qualify(draft, verification)

@@ -70,6 +70,10 @@ class KnowledgeCheck(LearnedCheck):
     finding_ids: List[str] = Field(default_factory=list)
     normal_check_ids: List[str] = Field(default_factory=list)
 
+    def criterion_context(self) -> dict[str, object]:
+        return self.model_dump(exclude={'support_evidence_ids', 'counter_evidence_ids',
+            'finding_ids', 'normal_check_ids', 'predecessor_check_ids'})
+
 
 class KnowledgeSource(SampleContent):
     review_sha256: str

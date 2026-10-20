@@ -52,7 +52,7 @@ class InspectionKnowledge:
                         images.path(evidence.image)
                         independent.append(evidence)
                 usable = check.status == 'supported' and bool(independent)
-                record = check.model_dump(exclude={'support_evidence_ids', 'counter_evidence_ids', 'finding_ids', 'normal_check_ids', 'predecessor_check_ids'})
+                record = check.criterion_context()
                 checks.append({**record, 'kind': snapshot.kind, 'independent_support': usable})
                 if usable and snapshot.kind == 'normal':
                     references.extend(item.sample_id for item in independent)
