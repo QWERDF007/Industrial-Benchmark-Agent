@@ -3,6 +3,7 @@
 - [使用与验证入口](../README.md)
 - [当前架构与源代码索引](architecture.md)
 - [数据集知识挖掘与证据审计规格](specs/dataset-knowledge-audit.md)
+- [目录图像级异常检测数据集方案](specs/folder-anomaly-dataset.md)
 - [统一 UI 与交互设计](design/workbench-ui.md)
 - [实施票据与依赖](tickets/dataset-knowledge-audit.md)
 - [外部基线接入](external-baselines.md)

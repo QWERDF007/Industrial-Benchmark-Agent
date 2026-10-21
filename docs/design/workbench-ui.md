@@ -87,6 +87,8 @@ DSH 左侧栏             当前页面
 
 ### 数据集管理
 
+图像级异常检测格式的导入预览、目录角色表单和标签展示扩展见[目录数据集方案](../specs/folder-anomaly-dataset.md#导入与管理交互)，共用本页既定布局与组件。
+
 桌面数据集卡片网格占主要空间，右侧为窄幅所选数据集详情，栏宽复用图像工作区规则；两侧面板背景铺满剩余工作区高度并底部对齐，内容从顶部排列，内容较多时可滚动；窄屏按内容高度上下排列。数据集管理页头仅保留标题，不显示数据集选择、刷新和概况统计；由卡片选择数据集，操作成功后同步更新列表与详情。卡片仅展示可编辑名称、图像数量与标注数量，数量以真实导入样本和标注对象计数。点击卡片选择并更新右侧，点击名称处的编辑按钮原位修改；卡片与详情复用同一个名称编辑器和保存接口；回车或点击空白后对比去除首尾空白的新旧文本，仅有变化时保存一次，无变化直接退出，Esc 取消。编辑时仅显示输入框，错误保留输入；回车与取消恢复原入口焦点，失焦保存保留用户的新焦点，成功后所有名称投影同步。详情按名称、数量、服务器目录和导入约定分组，目录保存通过显式“保存并扫描”执行。详情在名称下一行显示数据集 ID。卡片右上角提供与编辑同尺寸的无边框删除图标，点击后弹窗确认，默认聚焦取消；确认删除数据集及其所属项目记录，保留原始图像和标注文件。存在执行中作业时阻止删除并提示先结束作业；失败保留弹窗与错误，成功同步选择与列表，删除后焦点回到添加入口。添加数据集打开表单弹窗，填写数据集名称、服务器图像目录和标注目录；提交前显示扫描范围，失败保留输入，成功选择新数据集。图像浏览使用侧栏入口，良品来源管理遵循本节“图像浏览”，不在详情复制网格。
 
 卡片焦点依据：[Fluent UI 官方卡片](https://fluent2.microsoft.design/components/web/react/core/card/usage)、[对应 GitHub 组件入口](https://github.com/microsoft/fluentui/blob/master/packages/react-components/react-card/library/src/components/Card/Card.tsx)。行内编辑参考 [Blueprint GitHub 实现](https://github.com/palantir/blueprint/blob/develop/packages/core/src/components/editable-text/editableText.tsx)。组件入口见[DatasetManager](../../apps/iad-harness/src/client/components/DatasetManager.tsx)、[名称编辑器](../../apps/iad-harness/src/client/components/DatasetName.tsx)。
