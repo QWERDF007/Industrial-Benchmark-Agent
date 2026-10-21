@@ -38,7 +38,7 @@ export async function readDatasetSessionContext({ endpoint, model, apiKeyEnv }) 
   return capacity.max_model_len;
 }
 
-export async function createDatasetSession({ root, dbPath, endpoint, model, apiKeyEnv, contextWindow = 32768, maxTokens = 8192 }) {
+export async function createDatasetSession({ root, dbPath, endpoint, model, apiKeyEnv, contextWindow = 32768, maxTokens = 8192, seed, sessionId }) {
   const ctx = new Context();
   new SystemPrompt(ctx, { includeHarnessIdentity: false, includeRuntimeContext: false,
     personaPrefix: "你是工业数据集分析助手，使用工具执行用户任务，依据真实结果回答。" });
@@ -65,7 +65,7 @@ export async function createDatasetSession({ root, dbPath, endpoint, model, apiK
     } } }));
     forks.push(await ctx.plugin(AgentLoop, { agents: [] }));
     forks.push(await ctx.plugin(harness, { dbPath }));
-    handle = await ctx.agents.create({ sessionId: SessionId("iad-verification-" + randomUUID()),
+    handle = await ctx.agents.create({ sessionId: SessionId(sessionId || "iad-verification-" + randomUUID()), seed,
       agentOptions: { provider: "iad-verification", model, maxTokens } });
     return { ctx, handle, dispose };
   } catch (error) {

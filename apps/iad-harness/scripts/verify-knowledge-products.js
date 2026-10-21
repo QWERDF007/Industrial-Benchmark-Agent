@@ -11,7 +11,8 @@ assert.ok(process.env.LIVE_VLM_ENDPOINT && process.env.LIVE_VLM_KEY, "Configure 
 const workspace = findWorkspaceRoot();
 const output = path.resolve(process.argv[2] || path.join(workspace, "runs/verification/knowledge-products", String(Date.now())));
 await fs.mkdir(output, { recursive: true });
-execFileSync(resolvePythonPath(), [path.join(workspace, "tests/product_corpus.py"), output]);
+const resuming = process.argv[4] === "--resume";
+if (!resuming) execFileSync(resolvePythonPath(), [path.join(workspace, "tests/product_corpus.py"), output]);
 const corpus = JSON.parse(await fs.readFile(path.join(output, "casebook.json"), "utf8"));
 const model = process.env.LIVE_VLM_MODEL || resolveDatasetSessionModel(workspace);
 const endpoint = process.env.LIVE_VLM_ENDPOINT.replace(/\/chat\/completions\/?$/, "").replace(/\/$/, "");
@@ -21,23 +22,31 @@ const products = corpus.products.filter(product => !process.argv[3] || path.base
 assert.ok(products.length, "Select an actual synthetic corpus directory");
 for (const product of products) {
   const root = path.join(output, path.basename(product.root) + "-session");
-  await fs.mkdir(root);
+  await fs.mkdir(root, { recursive: true });
+  const trace = resuming ? JSON.parse(await fs.readFile(path.join(root, "tool-trace.json"), "utf8")) : [];
+  const seed = resuming ? JSON.parse(await fs.readFile(path.join(root, "session-events.json"), "utf8")) : undefined;
+  const sessionId = trace.find(item => item.name === "knowledge_mine_normal" && !item.result.isError)?.result.value.origin_session_id;
+  if (resuming) await fs.copyFile(path.join(output, "result.json"), path.join(output, `result-before-resume-${Date.now()}.json`));
   const session = await createDatasetSession({ root, dbPath: path.join(output, "verification.db"),
-    endpoint, model, apiKeyEnv: "LIVE_VLM_KEY", contextWindow });
-  const trace = [], result = { form: product.form, session_id: session.handle.agent.id, cases: [], industrial_quality: "unassessed" };
+    endpoint, model, apiKeyEnv: "LIVE_VLM_KEY", contextWindow, seed, sessionId });
+  const result = { form: product.form, session_id: session.handle.agent.id, cases: [], industrial_quality: "unassessed" };
   session.ctx.on("tools/result", async (exec, value) => {
     trace.push({ name: exec.name, arguments: exec.arguments, result: value });
     await fs.appendFile(path.join(root, "tool-trace.jsonl"), JSON.stringify(trace.at(-1)) + "\n");
     console.log(JSON.stringify({ product: path.basename(product.root), tool: exec.name, error: value.isError, status: value.value?.status }));
   });
-  const deadline = setTimeout(() => session.handle.agent.cancel({ kind: "hook", reason: "Cross-product verification deadline" }), 900000);
+  const timeoutMs = Number(process.env.IAD_LIVE_VERIFICATION_TIMEOUT_MS || 1800000);
+  assert.ok(Number.isSafeInteger(timeoutMs) && timeoutMs > 0, "Verification timeout must be a positive integer");
+  const deadline = setTimeout(() => session.handle.agent.cancel({ kind: "hook", reason: "Cross-product verification deadline" }), timeoutMs);
   try {
     session.handle.agent.followup(createUserMessage({ source: { kind: "user" }, content: [{ type: "text",
-      text: `现在有一份数据集，在服务器 ${product.root}。请使用 analyze-dataset 技能完成接入、良品和不良品知识挖掘、全部图像模型审计，并评估此数据集的质量。两种知识均处理实际全部合格来源，每组最多20张，最后不足时按实际剩余；根据实际图像归纳产品知识；读取真实作业终态与报告，不能把标注当真值，也不能写人工裁决。` }] }));
+      text: resuming ? "继续原任务。此前作业已执行，请先核对实际报告与作业终态；已完成的知识和审计不要重跑，也不需要再逐张读取详情。请用简短中文回复技术可用率、审计覆盖率、人工核验覆盖率及主要限制，最多三个复核项。保留此前失败和恢复记录，不把模型结论当真值。" : `现在有一份数据集，在服务器 ${product.root}。请使用 analyze-dataset 技能完成接入、良品和不良品知识挖掘、全部图像模型审计，并评估此数据集的质量。两种知识均处理实际全部合格来源，每组最多20张，最后不足时按实际剩余；根据实际图像归纳产品知识；读取真实作业终态与报告，不能把标注当真值，也不能写人工裁决。` }] }));
     await session.handle.agent.whenIdle();
     result.tool_errors = trace.filter(item => item.result.isError);
     const turns = session.handle.agent.session.snapshotEvents().filter(event => event.type === "turn/end");
-    assert.equal(turns.length, 1); assert.equal(turns[0].data.reason.kind, "completed");
+    if (!resuming) assert.equal(turns.length, 1);
+    result.turn_outcomes = turns.map(turn => turn.data.reason.kind);
+    assert.equal(turns.at(-1).data.reason.kind, "completed");
     for (const name of ["dataset_directory_inspect", "dataset_import", "knowledge_mine_normal", "knowledge_mine_defect", "model_audit_start", "dataset_report"]) {
       assert.ok(trace.some(item => item.name === name), `Actual Session did not execute ${name}`);
     }

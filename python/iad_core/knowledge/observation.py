@@ -69,6 +69,7 @@ class KnowledgeObserver:
         checks = [check for check in version.checks if check.check_id in affected]
         if not checks:
             return
+        self.context.update(phase='RECHECKING_CRITERIA' if proposals else 'COMPARING_KNOWLEDGE')
         selected = {next((eid for eid in check.support_evidence_ids if any(
                     record.image.evidence_id == eid and record.image.representation == 'raw' for record in version.evidence)), None)
                     for check in checks}

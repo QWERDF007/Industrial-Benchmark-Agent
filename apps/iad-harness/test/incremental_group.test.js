@@ -124,6 +124,8 @@ test('explicit image group: three native inputs, exact scope and no implicit pre
     alterCriterion=false;
     const revisionSteps=refined.observation_steps.filter(step=>step.purpose==='revision');
     assert.ok(revisionSteps.length>0,'A changed predicate is visually checked against relevant old support and new images');
+    const revisedJob=(await(await fetch(base+'/knowledge/jobs?'+new URLSearchParams({dataset_id:dataset.dataset_id}))).json()).jobs.find(job=>job.knowledge_version_id===refined.version_id);
+    assert.ok(revisedJob.model_calls.some(call=>call.schema_name==='KnowledgeObservations'&&call.phase==='RECHECKING_CRITERIA'),'Live job phase must distinguish criterion rechecking from earlier contamination verification');
     assert.ok(revisionSteps.some(step=>first.checks[0].support_evidence_ids.some(eid=>step.input_evidence_ids.includes(eid))),'Only actual old visual evidence can ground a changed predicate');
     assert.equal(refined.checks[0].check_id,first.checks[0].check_id);
     assert.deepEqual(refined.checks[0].recheck_sample_ids,[selected[1]],'Old support not observed against the materially revised predicate remains pending');
