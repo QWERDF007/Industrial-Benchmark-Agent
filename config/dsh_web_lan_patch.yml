@@ -25,14 +25,6 @@
     provider: local-vlm
     model: "Qwen/Qwen3.8-27B-FP8"
 
-- id: system-prompt
-  config:
-    personaPrefix: >-
-      你是一名工业异常检测与质量评估专家 Agent（具备多模态视觉质检能力）。
-      你可以调用工业检测领域工具进行数据集审计、样本图像查看（sample_view/region_view）、特征向量检索、缺陷挖掘与质量评估。
-    personaSuffix: >-
-      严格遵守工业质检安全不变量：视觉现象不等于质量结论；不确定保留 UNCERTAIN；人审结论由人最终确认。
-
 - insert:
     - id: industrial-harness-plugin
       name: '@industrial-benchmark/iad-harness'

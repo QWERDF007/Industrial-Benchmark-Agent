@@ -9,6 +9,7 @@ import { IadRemoteService } from "./remote/index.js";
 import { createIadHttpHandler } from "./routes/index.js";
 import * as coreClient from "./core-client/index.js";
 import * as policy from "./policy/index.js";
+import * as prompt from "./prompt/index.js";
 import * as audit from "./audit/index.js";
 import * as vision from "./vision/index.js";
 import * as benchmark from "./benchmark/index.js";
@@ -74,6 +75,7 @@ export function apply(ctx: any, config: IADHarnessConfig = {}) {
 
   // 5. Invariant policies and tool restriction with MCP authorization
   policy.apply(ctx, config);
+  prompt.apply(ctx);
 
   // 6. Register native domain tools and bundled skills.
   audit.apply(ctx);

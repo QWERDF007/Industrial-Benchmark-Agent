@@ -7,6 +7,7 @@
 | 职责 | 唯一入口 |
 | --- | --- |
 | DSH 宿主与原生页面注册 | [服务端生命周期](../apps/iad-harness/src/server/index.ts)、[客户端注册](../apps/iad-harness/src/client/index.ts) |
+| 工业角色及可用工具指导投影 | [提示词组装](../apps/iad-harness/src/server/prompt/index.ts)、[真实 Agent 验收](../apps/iad-harness/test/prompt.test.js) |
 | HTTP / Python 桥接 | [路由](../apps/iad-harness/src/server/routes/index.ts)、[桥接](../apps/iad-harness/src/server/python-bridge/index.ts)、[领域操作](../python/iad_core/entry.py) |
 | 数据集配置、身份、来源、删除与参考资格 | [配置](../python/iad_core/task/config.py)、[注册](../python/iad_core/dataset/registry.py) |
 | 格式适配与原子扫描 | [适配器](../python/iad_core/dataset/adapters/)、[图像枚举](../python/iad_core/dataset/files.py)、[目录角色](../python/iad_core/dataset/folder_rules.py)、[预览确认](../python/iad_core/dataset/folder_preview.py)、[扫描](../python/iad_core/dataset/scanner.py)、[发布](../python/iad_core/dataset/scan_snapshot.py) |
