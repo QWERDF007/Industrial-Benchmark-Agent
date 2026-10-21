@@ -64,6 +64,11 @@ def dataset_import(args, db_path):
     return dataset_get({"dataset_id": config.dataset.id}, db_path)
 
 
+def dataset_delete(args, db_path):
+    DatasetRegistry(Database(db_path)).delete(args['dataset_id'])
+    return {'deleted_dataset_id': args['dataset_id']}
+
+
 def dataset_archive_inspect(args, db_path):
     from iad_core.dataset.archive import DatasetArchive
     return DatasetArchive(args['archive_path']).inspect().model_dump()
@@ -85,7 +90,7 @@ def dataset_update(args, db_path):
         if not isinstance(args["unannotated_is_normal"], bool):
             raise ValueError("unannotated_is_normal must be a boolean")
         config.dataset.unannotated_is_normal = args["unannotated_is_normal"]
-        registry.save(config)
+        registry.save(config, require_existing=True)
     return dataset_get({"dataset_id": args["dataset_id"]}, db_path)
 
 
@@ -295,7 +300,7 @@ def model_call_get(args, db_path):
 
 
 OPERATIONS = {handler.__name__: handler for handler in (
-    tool_call, dataset_list, dataset_get, dataset_import, dataset_archive_inspect, dataset_update, dataset_scan,
+    tool_call, dataset_list, dataset_get, dataset_import, dataset_archive_inspect, dataset_update, dataset_scan, dataset_delete,
     sample_list, sample_get, sample_image_path, sample_thumbnail, sample_mask_path,
     review_queue, review_evidence, review_submit_decision, review_history,
     review_stats, report_get, audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_list, audit_evidence, inspection_context, directory_list,

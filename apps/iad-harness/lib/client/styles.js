@@ -18,7 +18,7 @@ export const workbenchStyles = themeStyles + controlStyles + `
 .iad-tabs {display:flex;gap:8px;margin-bottom:16px;}
 .iad-tabs button {border:none;background:transparent;padding:9px 14px;}
 .iad-tabs button.active {background:var(--iad-hover);color:var(--iad-primary);}
-.iad-main {display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:26px;align-items:start;}
+.iad-main,.iad-settings {display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:26px;align-items:start;}
 .iad-gallery {min-width:0;color:var(--iad-text);background:var(--iad-surface);border:0;border-radius:10px;padding:16px;}.iad-filters {display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:10px;background:var(--iad-surface-muted);border-radius:8px;padding:12px;}
 .iad-filter {font-size:12px;color:var(--iad-muted);display:flex;flex-direction:column;gap:4px;min-width:0;max-width:100%;}
 .iad-filter select {font-size:14px;max-width:180px;color:var(--iad-text);}
@@ -62,20 +62,21 @@ export const workbenchStyles = themeStyles + controlStyles + `
 .iad-table-scroll {max-width:100%;max-height:min(60dvh,480px);overflow:auto;scroll-margin-block:24px;}.iad-review-records table {width:100%;min-width:620px;border-collapse:collapse;text-align:left;font-size:13px;}
 .iad-review-records caption {text-align:left;font-weight:600;margin:12px 0;}.iad-review-records th,.iad-review-records td {padding:12px;vertical-align:top;overflow-wrap:anywhere;max-width:240px;}
 .iad-review-records thead,.iad-review-records tr[data-selected=true] {background:var(--iad-surface-muted);}.iad-review-records time {font-size:12px;color:var(--iad-muted);}
-.iad-settings {display:grid;grid-template-columns:minmax(300px,1fr) minmax(340px,1.2fr);gap:20px;align-items:start;}
+.iad-settings {gap:20px;}
 .iad-settings>section {padding:20px;background:var(--iad-surface);border-radius:8px;min-width:0;}
 .iad-dataset-list {display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:12px;align-items:start;}
-.iad-dataset-card {position:relative;min-width:0;padding:12px;background:var(--iad-surface-muted);border-radius:var(--iad-radius);}
-.iad-workbench .iad-dataset-select {position:absolute;inset:0;width:100%;height:100%;padding:0;background:transparent;border:2px solid transparent;}
-.iad-workbench .iad-dataset-select[aria-pressed=true] {border-color:var(--iad-primary);}
-.iad-dataset-card>.iad-dataset-name {position:relative;z-index:1;}
+.iad-dataset-card {position:relative;min-width:0;padding:10px;border:2px solid transparent;background:var(--iad-surface-muted);border-radius:var(--iad-radius);}
+.iad-workbench .iad-dataset-select {display:block;width:100%;padding:0;background:transparent;border-color:transparent;text-align:left;}
+.iad-dataset-card[data-selected=true] {border-color:var(--iad-primary);}
+.iad-dataset-card-header {display:flex;align-items:start;padding-right:40px;}
+.iad-workbench .iad-card-delete {position:absolute;top:10px;right:6px;border:0;background:transparent;}.iad-dataset-card-header>.iad-dataset-name {flex:1;}
 .iad-dataset-name {min-width:0;margin-bottom:12px;}
-.iad-workbench .iad-name-trigger {display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:0;padding:4px 6px;background:transparent;border-color:transparent;text-align:left;font-weight:600;}
+.iad-workbench .iad-name-trigger {display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:0;padding:4px 6px;background:transparent;border-color:transparent;text-align:left;font-weight:600;min-height:44px;}
 .iad-name-trigger span {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.iad-name-trigger svg {flex-shrink:0;}
-.iad-dataset-name form {display:grid;gap:8px;}.iad-dataset-name input {width:100%;}.iad-dataset-name .iad-row {gap:8px;justify-content:flex-end;}
+.iad-dataset-name input {width:100%;}
 .iad-workbench .iad-dataset-counts {display:flex;flex-wrap:wrap;gap:12px 24px;margin:0;}
 .iad-dataset-counts>div {min-width:0;}.iad-dataset-counts dd {font-size:18px;font-weight:600;}
-.iad-dataset-card>.iad-dataset-counts {position:relative;pointer-events:none;}
+.iad-dataset-counts>span {display:flex;flex-direction:column;}.iad-dataset-counts>span>span {font-size:12px;color:var(--iad-muted);}.iad-dataset-counts strong {font-size:18px;font-weight:600;}
 .iad-detail-dialog:has(.iad-dataset-import) {width:min(640px,calc(100vw - 32px));}
 .iad-dataset-import {max-width:640px;margin:auto;}
 .iad-directory {min-width:0;margin:0;border:0;background:var(--iad-surface-muted);padding:14px;border-radius:8px;}.iad-directory code {overflow-wrap:anywhere;}
@@ -155,10 +156,12 @@ export const workbenchStyles = themeStyles + controlStyles + `
 .iad-model-settings>summary {cursor:pointer;color:var(--iad-muted);}
 .iad-model-settings .iad-field {max-width:360px;}
 .iad-field-group {padding:16px;margin:16px 0;background:var(--iad-surface-muted);border-radius:var(--iad-radius);}
-@media(max-width:1100px) {.iad-workbench {padding:20px;}.iad-main {grid-template-columns:minmax(0,1fr) 300px;}.iad-grid {grid-template-columns:repeat(auto-fill,minmax(165px,1fr));}}
+@media(min-width:761px) {.iad-workbench[data-page=industrial-datasets] {display:flex;flex-direction:column;}.iad-settings {flex:1;align-items:stretch;}}
+@media(max-width:1100px) {.iad-workbench {padding:20px;}.iad-main,.iad-settings {grid-template-columns:minmax(0,1fr) 300px;}.iad-grid {grid-template-columns:repeat(auto-fill,minmax(165px,1fr));}}
 @media(max-width:760px) {.iad-main,.iad-settings {grid-template-columns:1fr;}.iad-kpis {gap:10px;}.iad-inspector {width:100%;}}
 
 .iad-detail-dialog {width:min(1000px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:auto;margin:auto;background:var(--iad-surface);color:var(--iad-text);border:0;border-radius:8px;padding:16px;}
+.iad-detail-dialog.iad-confirm-dialog {width:min(440px,calc(100% - 32px));}
 .iad-detail-dialog.iad-viewer-dialog {width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;padding:0;background:var(--iad-viewer);overflow:hidden;}
 .iad-detail-dialog::backdrop {background:var(--iad-scrim);}
 .iad-detail-dialog>.iad-row {margin-bottom:16px;}

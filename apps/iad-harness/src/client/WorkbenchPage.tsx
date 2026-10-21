@@ -78,10 +78,9 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
   const grid = dataset && <SampleGrid key={datasetId} dataset={dataset} filters={view.filters} onFilters={updateFilters} items={result.query === query ? result.items : []} total={result.query === query ? result.total : 0} page={view.page} onPage={page => workspace.updateView(pageId, { page, selected: "" })} selected={view.selected} onSelect={selected => workspace.updateView(pageId, { selected })} loading={loading} sourceManagement={pageId === "industrial-images" ? { active: view.tab === "sources", onToggle: () => workspace.updateView(pageId, { tab: view.tab === "sources" ? "results" : "sources" }), onChanged: changed } : undefined} />;
   return <div ref={surface} className="iad-workbench" data-page={pageId}><style>{workbenchStyles}</style>
     <header className="iad-header"><h1>{pages[pageId]}</h1>
-      <div className="iad-row"><select aria-label="当前数据集" value={datasetId} onChange={e => workspace.selectDataset(e.target.value)}><option value="" disabled>选择数据集</option>{datasets.map(item => <option key={item.dataset_id} value={item.dataset_id}>{item.name} ({item.total_samples})</option>)}</select><button onClick={changed}>刷新</button></div></header>
+      {pageId !== "industrial-datasets" && <div className="iad-row"><select aria-label="当前数据集" value={datasetId} onChange={e => workspace.selectDataset(e.target.value)}><option value="" disabled>选择数据集</option>{datasets.map(item => <option key={item.dataset_id} value={item.dataset_id}>{item.name} ({item.total_samples})</option>)}</select><button onClick={changed}>刷新</button></div>}</header>
     {(error || audit.error) && <p role="alert" className="iad-error">{error || audit.error}</p>}
-    {dataset && <div className="iad-kpis" aria-label="数据集概况">{(
-      pageId === "industrial-datasets" ? [["图像", dataset.total_samples], ["标注类别", dataset.annotation_categories.length], ["技术问题", dataset.technical_quality_issues]] :
+    {dataset && pageId !== "industrial-datasets" && <div className="iad-kpis" aria-label="数据集概况">{(
       pageId === "industrial-normal" ? [["良品来源", dataset.reference_sample_ids.length], ["图像", dataset.total_samples]] :
       pageId === "industrial-defect" ? [["图像", dataset.total_samples], ["标注类别", dataset.annotation_categories.length]] :
       [["图像", dataset.total_samples], ["模型审计", dataset.vlm_audited_count], ["待审计", dataset.total_samples - dataset.vlm_audited_count], ["待复核", dataset.pending_risk_count], ["已人工复核", dataset.human_reviewed_count]]

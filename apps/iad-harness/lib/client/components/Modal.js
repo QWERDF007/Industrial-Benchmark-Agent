@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useRef } from "react";
 import { CloseIcon } from "../AuditIcon.js";
-export function Modal({ title, onClose, children, className = "", restoreFocus, header = true }) {
+export function Modal({ title, onClose, children, className = "", restoreFocus, initialFocus, header = true }) {
     const dialog = useRef(null);
     const focusTarget = useRef(restoreFocus);
     const pressedOutside = useRef(false);
@@ -10,6 +10,7 @@ export function Modal({ title, onClose, children, className = "", restoreFocus, 
         const previous = document.activeElement;
         const element = dialog.current;
         element.showModal();
+        initialFocus?.current?.focus();
         return () => { element.close(); const target = focusTarget.current ? focusTarget.current() : previous; if (target instanceof HTMLElement && target.isConnected)
             target.focus(); };
     }, []);

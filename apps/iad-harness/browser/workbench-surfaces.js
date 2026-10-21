@@ -20,7 +20,7 @@ export async function verifyWorkbenchSurfaces(driver, output) {
   };
   const navigate = async label => {
     await (await element(`button[aria-label^='${label}']`)).click();
-    await driver.wait(() => driver.executeScript("const e=document.querySelector('.iad-workbench');return e?.querySelector('h1')?.textContent===arguments[0] && e.querySelector('.iad-kpis') && !e.textContent.includes('正在读取知识…')", label), 10000);
+    await driver.wait(() => driver.executeScript("const e=document.querySelector('.iad-workbench');return e?.querySelector('h1')?.textContent===arguments[0] && e.querySelector(arguments[0]==='数据集管理'?'.iad-settings':'.iad-kpis') && !e.textContent.includes('正在读取知识…')", label), 10000);
   };
   await navigate("人工复核"); await button("复核队列");
   await (await element("img[alt='part-2.png']")).click();
@@ -36,9 +36,10 @@ export async function verifyWorkbenchSurfaces(driver, output) {
         const control = await element(focus);
         await driver.wait(until.elementIsVisible(control), 5000);
         await driver.executeScript("arguments[0].focus()", control);
-        await driver.actions().sendKeys(Key.TAB).keyDown(Key.SHIFT).sendKeys(Key.TAB).keyUp(Key.SHIFT).perform();
+        if (name === "dataset-card-name" || name === "dataset-detail-name") await control.sendKeys(Key.ARROW_LEFT);
+        else await driver.actions().sendKeys(Key.TAB).keyDown(Key.SHIFT).sendKeys(Key.TAB).keyUp(Key.SHIFT).perform();
         if (name === "image-status") await element(".iad-tooltip");
-        assert.equal(await driver.executeScript("return document.activeElement===arguments[0]", control), true, `${name}: Tab and Shift+Tab return to the original control`);
+        assert.equal(await driver.executeScript("return document.activeElement===arguments[0]", control), true, `${name}: keyboard focus remains on the active control`);
         const metrics = await driver.executeScript(selector => {
           const root = document.querySelector(selector), focus = document.activeElement;
           const r = root.getBoundingClientRect(), f = focus.getBoundingClientRect(), style = getComputedStyle(focus);
@@ -61,7 +62,7 @@ export async function verifyWorkbenchSurfaces(driver, output) {
           const modal = await driver.executeScript(selector => {
             const dialog = document.querySelector(selector);
             if (!dialog.matches(":modal")) throw new Error("Expected a native modal dialog");
-            document.querySelector(".iad-header select").focus();
+            document.querySelector(".iad-header select,.iad-section-header button").focus();
             return dialog.contains(document.activeElement);
           }, root);
           assert.equal(modal, true, `${name}: native modal blocks focus on background controls`);
@@ -72,11 +73,15 @@ export async function verifyWorkbenchSurfaces(driver, output) {
       await button("取消");
       assert.equal(await driver.executeScript("return document.activeElement.textContent"), "添加数据集");
       await (await element(".iad-dataset-card button[aria-label^='修改数据集名称']")).click();
-      await capture("dataset-card-name", "input[aria-label='卡片数据集名称']"); await button("取消");
+      await capture("dataset-card-name", "input[aria-label='卡片数据集名称']"); await driver.actions().sendKeys(Key.ESCAPE).perform();
       assert.equal(await driver.executeScript("return document.activeElement.classList.contains('iad-name-trigger')"), true);
       await (await element("section[aria-label='当前数据集详情'] button[aria-label^='修改数据集名称']")).click();
-      await capture("dataset-detail-name", "input[aria-label='新的数据集名称']"); await button("取消");
+      await capture("dataset-detail-name", "input[aria-label='新的数据集名称']"); await driver.actions().sendKeys(Key.ESCAPE).perform();
       assert.equal(await driver.executeScript("return document.activeElement.classList.contains('iad-name-trigger')"), true);
+      await (await element(".iad-dataset-card button[aria-label^='删除数据集']")).click();
+      assert.equal(await driver.executeScript("return document.activeElement.getAttribute('aria-label')"), "取消删除", "删除弹窗打开后默认聚焦取消");
+      await capture("dataset-delete", "dialog[open] button[aria-label='取消删除']", "dialog[open]"); await button("取消");
+      assert.ok((await driver.executeScript("return document.activeElement.getAttribute('aria-label')")).startsWith("删除数据集"));
       for (const label of ["挖掘良品知识", "挖掘不良品知识"]) {
         await navigate(label);
         await (await element("select[aria-label='知识版本'] option[value='']")).click();
@@ -131,7 +136,7 @@ export async function verifyWorkbenchSurfaces(driver, output) {
       await button("关闭"); await (await element("button[aria-label='关闭图像详情']")).click();
     }
   }
-  assert.equal(results.length, 176, "Twenty real detail surfaces × four viewports × two themes at 200% text zoom");
+  assert.equal(results.length, 184, "23 real detail surfaces × four viewports × two themes at 200% text zoom");
   await viewport(driver, 1440, 1100); await textZoom(driver, 1);
   for (const label of ["挖掘良品知识", "挖掘不良品知识"]) { await navigate(label); await button("知识条目"); }
   await navigate("人工复核"); await button("复核队列");

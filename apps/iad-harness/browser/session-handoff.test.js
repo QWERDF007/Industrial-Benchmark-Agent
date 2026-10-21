@@ -138,6 +138,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     const notice = await driver.findElements(By.xpath("//button[.='Continue']")); if (notice.length) await notice[0].click();
     await (await element("button[aria-label^='数据集管理']")).click();
     const dataset = await api("/datasets/import", { name: "会话交接", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
+    await (await element("button[aria-label^='图像浏览']")).click();
     await button("刷新");
     await delay(5500);
     assert.equal(await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label"), "图像浏览", "侧栏保留固定名称，不附加待审计统计");

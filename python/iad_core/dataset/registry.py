@@ -30,8 +30,13 @@ class DatasetRegistry:
     def __init__(self, db: Database):
         self.db = db
 
-    def save(self, config: DatasetConfig, connection: Optional[Connection] = None) -> None:
+    def save(self, config: DatasetConfig, connection: Optional[Connection] = None, *, require_existing: bool = False) -> None:
         with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+            if require_existing:
+                if not conn.execute("UPDATE datasets SET config_json=? WHERE dataset_id=? AND task_id=?",
+                        (config.model_dump_json(),config.dataset.id,config.task.task_id)).rowcount:
+                    raise LookupError("数据集不存在或已删除")
+                return
             conn.execute("""
                 INSERT INTO datasets(dataset_id,task_id,config_json) VALUES(?,?,?)
                 ON CONFLICT(dataset_id) DO UPDATE SET config_json=excluded.config_json
@@ -95,8 +100,41 @@ class DatasetRegistry:
             raise ValueError("Dataset name must contain 1–120 characters")
         config = self.get(dataset_id)
         config.dataset.name = name
-        self.save(config)
+        self.save(config, require_existing=True)
         return config
+
+    def delete(self, dataset_id: str) -> None:
+        with self.db.connection() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            dataset = conn.execute("SELECT task_id FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()
+            if not dataset:
+                raise LookupError("数据集不存在或已删除")
+            task_id = dataset['task_id']
+            job_dataset = "COALESCE(json_extract(payload_json,'$.request.dataset_id'),json_extract(payload_json,'$.dataset_id'))"
+            if conn.execute(f"""SELECT 1 FROM job_runs WHERE status IN ('PENDING','RUNNING')
+                AND ({job_dataset}=? OR (task_id=? AND {job_dataset} IS NULL))""", (dataset_id,task_id)).fetchone():
+                raise ValueError("数据集仍有执行中的作业，请先取消或等待作业结束后删除")
+            exclusive_task = not conn.execute("""SELECT 1 FROM datasets WHERE task_id=? AND dataset_id!=?
+                UNION ALL SELECT 1 FROM samples WHERE task_id=? AND dataset_id!=? LIMIT 1""",
+                (task_id,dataset_id,task_id,dataset_id)).fetchone()
+            if exclusive_task and conn.execute("SELECT 1 FROM agent_runs WHERE task_id=? AND status IN ('PENDING','RUNNING')", (task_id,)).fetchone():
+                raise ValueError("数据集仍有执行中的 Agent 作业，请等待作业结束后删除")
+            jobs = f"SELECT job_id FROM job_runs WHERE {job_dataset}=? OR (task_id=? AND ?)"
+            job_scope = (dataset_id,task_id,exclusive_task)
+            conn.execute(f"DELETE FROM model_calls WHERE run_id IN ({jobs})", job_scope)
+            conn.execute(f"DELETE FROM job_runs WHERE job_id IN ({jobs})", job_scope)
+            for table in ('annotations','feature_records','gold_records','split_assignments','review_decisions','audit_suggestions'):
+                conn.execute(f"DELETE FROM {table} WHERE sample_id IN (SELECT sample_id FROM samples WHERE dataset_id=?)", (dataset_id,))
+            conn.execute("DELETE FROM review_sessions WHERE dataset_id=?", (dataset_id,))
+            conn.execute("DELETE FROM import_issues WHERE dataset_id=?", (dataset_id,))
+            conn.execute("DELETE FROM knowledge_heads WHERE dataset_id=?", (dataset_id,))
+            conn.execute("DELETE FROM knowledge_versions WHERE dataset_id=?", (dataset_id,))
+            conn.execute("DELETE FROM samples WHERE dataset_id=?", (dataset_id,))
+            conn.execute("DELETE FROM datasets WHERE dataset_id=?", (dataset_id,))
+            if exclusive_task:
+                conn.execute("DELETE FROM split_assignments WHERE build_id IN (SELECT build_id FROM benchmark_builds WHERE task_id=?)", (task_id,))
+                for table in ('review_sessions','import_issues','audit_suggestions','evaluation_runs','benchmark_builds','agent_runs','inspection_tasks'):
+                    conn.execute(f"DELETE FROM {table} WHERE task_id=?", (task_id,))
 
     def import_labelme(self, request: DatasetImport) -> DatasetConfig:
         from iad_core.dataset.scanner import scan_dataset

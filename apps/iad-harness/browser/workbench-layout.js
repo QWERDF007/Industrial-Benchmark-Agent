@@ -28,8 +28,17 @@ export async function verifyWorkbenchLayout(driver, output) {
           await (await element(`button[aria-label^='${label}']`)).click();
           await driver.wait(() => driver.executeScript("return document.querySelector('.iad-workbench h1')?.textContent===arguments[0]", label), 10000);
           if (label === "模型审计") await driver.findElement(By.xpath("//button[normalize-space(.)='结果']")).click();
-          await driver.wait(() => driver.executeScript("const e=document.querySelector('.iad-workbench');return e.querySelector('.iad-kpis') && !e.textContent.includes('加载中…') && !e.textContent.includes('正在读取知识…')"), 10000);
-          const control = await element(".iad-workbench .iad-header select");
+          await driver.wait(() => driver.executeScript("const e=document.querySelector('.iad-workbench');return e.querySelector(arguments[0]==='数据集管理'?'.iad-settings':'.iad-kpis') && !e.textContent.includes('加载中…') && !e.textContent.includes('正在读取知识…')", label), 10000);
+          if (label === "数据集管理") {
+            assert.equal((await driver.findElements(By.css(".iad-header select,.iad-header button,.iad-kpis"))).length, 0, "数据集管理不重复显示全局选择与统计");
+            const layout = await driver.executeScript("const root=document.querySelector('.iad-workbench');return {bottom:root.getBoundingClientRect().bottom-parseFloat(getComputedStyle(root).paddingBottom),panels:[...document.querySelector('.iad-settings').children].filter(e=>e.tagName==='SECTION').map(e=>{const r=e.getBoundingClientRect();return {width:r.width,top:r.top,bottom:r.bottom}})}");
+            const [cards, details] = layout.panels;
+            if (width >= 1280) {
+              assert.ok(cards.width > details.width * 1.5, "数据集卡片区占主要空间");
+              assert.ok(layout.panels.every(panel=>panel.bottom >= layout.bottom-1) && Math.abs(cards.bottom-details.bottom) < 1, "两侧面板铺满工作区高度且底部对齐");
+            } else assert.ok(details.top > cards.top, "窄屏详情置于列表下方");
+          }
+          const control = await element(label === "数据集管理" ? ".iad-section-header button" : ".iad-workbench .iad-header select");
           await driver.executeScript("arguments[0].focus()", control);
           await driver.actions().sendKeys(Key.TAB).perform();
           const metrics = await driver.executeScript(() => {

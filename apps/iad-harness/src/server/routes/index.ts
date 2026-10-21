@@ -56,6 +56,7 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       if (dataset) {
         const args = { ...body, dataset_id: decodeURIComponent(dataset[1]) };
         if (method === "PATCH") return await call("dataset_update", args);
+        if (method === "DELETE") return await call("dataset_delete", { dataset_id: args.dataset_id });
         if (method === "GET") return await call("dataset_get", { dataset_id: args.dataset_id });
       }
       const samples = pathname.match(/^\/api\/iad\/samples\/([^/]+)$/);

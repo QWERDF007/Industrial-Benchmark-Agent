@@ -103,6 +103,8 @@ class JobRunner:
             if self.closing:
                 raise ValueError('Worker is closing')
             conn.execute("BEGIN IMMEDIATE")
+            if not conn.execute("SELECT 1 FROM datasets WHERE dataset_id=? AND task_id=?", (request["dataset_id"],task_id)).fetchone():
+                raise LookupError("数据集不存在或已删除")
             if payload.get("parent_run_id"):
                 relatives = conn.execute("""SELECT job_id,status,payload_json FROM job_runs
                     WHERE json_extract(payload_json,'$.root_run_id')=?""", (payload["root_run_id"],)).fetchall()

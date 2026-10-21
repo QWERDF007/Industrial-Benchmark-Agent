@@ -3,24 +3,30 @@ import type { Dataset } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 
 export function DatasetName({ dataset, label, onChanged }: { dataset: Dataset; label: string; onChanged(): void }) {
-  const [editing, setEditing] = useState(false), [value, setValue] = useState(dataset.name);
+  const [editing, setEditing] = useState(false), [value, setValue] = useState("");
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const trigger = useRef<HTMLButtonElement>(null), restoreFocus = useRef(false);
-  useEffect(() => setValue(dataset.name), [dataset.name]);
+  const session = useRef<"idle" | "editing" | "saving">("idle");
   useEffect(() => { if (!editing && restoreFocus.current) { trigger.current?.focus(); restoreFocus.current = false; } }, [editing]);
-  async function save(event: React.FormEvent) {
-    event.preventDefault(); setBusy(true); setError("");
-    try { await request(`/datasets/${encodeURIComponent(dataset.dataset_id)}`, { name: value.trim() }, "PATCH"); onChanged(); setEditing(false); }
-    catch (e) { setError(message(e)); } finally { setBusy(false); }
+  function close(restore: boolean) { session.current = "idle"; restoreFocus.current = restore; setEditing(false); }
+  async function save(restore: boolean) {
+    if (session.current !== "editing") return;
+    const name = value.trim();
+    if (name === dataset.name) { close(restore); return; }
+    if (!name) { setError("数据集名称不能为空"); return; }
+    session.current = "saving"; setBusy(true); setError("");
+    try { await request(`/datasets/${encodeURIComponent(dataset.dataset_id)}`, { name }, "PATCH"); onChanged(); close(restore); }
+    catch (e) { session.current = "editing"; setError(message(e)); } finally { setBusy(false); }
   }
-  return <div className="iad-dataset-name">{editing ? <form aria-label={`${label}重命名`} onSubmit={save} onKeyDown={event => {
-    if (event.key === "Escape" && !busy) { event.preventDefault(); event.stopPropagation(); setEditing(false); }
-  }}>
-    <input aria-label={label} autoFocus required maxLength={120} disabled={busy} value={value} onChange={event => setValue(event.target.value)} />
-    <div className="iad-row"><button type="button" disabled={busy} onClick={() => setEditing(false)}>取消</button>
-      <button type="submit" className="iad-primary" disabled={busy || !value.trim() || value.trim() === dataset.name}>{busy ? "保存中…" : "保存名称"}</button></div>
+  return <div className="iad-dataset-name">{editing ? <>
+    <input aria-label={label} aria-busy={busy} autoFocus maxLength={120} disabled={busy} value={value} onChange={event => setValue(event.target.value)}
+      onBlur={() => void save(false)} onKeyDown={event => {
+        if (event.nativeEvent.isComposing) return;
+        if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); void save(true); }
+        if (event.key === "Escape" && !busy) { event.preventDefault(); event.stopPropagation(); close(true); }
+      }} />
     {error && <p role="alert" className="iad-error">{error}</p>}
-  </form> : <button ref={trigger} type="button" className="iad-name-trigger" aria-label={`修改数据集名称 ${dataset.name}`} title="修改数据集名称" onClick={() => {
-    setValue(dataset.name); setError(""); restoreFocus.current = true; setEditing(true);
+  </> : <button ref={trigger} type="button" className="iad-name-trigger" aria-label={`修改数据集名称 ${dataset.name}`} title="修改数据集名称" onClick={() => {
+    session.current = "editing"; setValue(dataset.name); setError(""); setEditing(true);
   }}><span>{dataset.name}</span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m16 3 5 5L8 21H3v-5L16 3Z M13 6l5 5" /></svg></button>}</div>;
 }
