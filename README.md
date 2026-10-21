@@ -20,7 +20,7 @@ Linux x64 的原生图像附件要求 GLIBC ≥ 2.28，见 [Sharp 官方运行�
 - **人工复核**：查看复核明细并提交人工裁决。
 - **插件**：保留 DSH 原生插件管理入口。
 - **知识技能**：[`mine-normal-knowledge` / `mine-defect-knowledge`](apps/iad-harness/src/server/knowledge/skills.ts)，通过同一工作台作业挖掘知识并回读实际证据。
-- **DSH 对话**：例如“服务器上的 `/data1/data/xxx` 数据集，挖掘良品、不良品知识，审计并评估质量”。Agent 检查目录并识别 Labelme 图像、标注位置，调用与数据集管理相同的导入入口；[原生工具与流程指引](apps/iad-harness/src/server/workbench-tools/index.ts)定义目录识别与歧义处理。分项质量报告使用[统一口径与契约](python/iad_core/workbench/report.py)，会话和页面读取同一报告。Labelme 与目录图像级数据共用[统一接入契约](python/iad_core/dataset/registry.py)，验收要求见[规格](docs/specs/dataset-import.md)。
+- **DSH 对话**：例如“服务器上的 `/data1/data/xxx` 数据集，挖掘良品、不良品知识，审计并评估质量”。Agent 检查目录并识别 Labelme 图像、标注位置，调用与数据集管理相同的导入入口；[原生工具与流程指引](apps/iad-harness/src/server/workbench-tools/index.ts)定义目录识别与歧义处理。分项质量报告使用[统一口径与契约](python/iad_core/workbench/report.py)，会话和页面读取同一报告。Labelme 与目录图像级数据共用[统一接入契约](python/iad_core/dataset/registry.py)，现有实现见[源码索引](docs/architecture.md)，图组工具与统一知识页面的目标见[规格](docs/specs/incremental-knowledge-mining.md)。
 
 ## 开发入口
 
@@ -41,7 +41,7 @@ GECKODRIVER_PATH=/path/to/geckodriver pnpm --filter @industrial-benchmark/iad-ha
 FIREFOX_PATH=/path/to/firefox GECKODRIVER_PATH=/path/to/geckodriver pnpm --filter @industrial-benchmark/iad-harness verify:host-browser
 ```
 
-真实模型验证入口为 [verify_workbench_live.py](scripts/verify_workbench_live.py)，使用数据库快照，需可访问数据集目录及项目配置的 VLM。命令行验证前需导出模型环境变量；本地配置模板见 [.env.example](.env.example)，启动器自动加载 `.env.local`。模型服务环境变量及实际上下文检查见 [VlmClient](python/iad_core/workbench/vision.py)；审计需要支持多图输入、结构化 JSON 输出与含图像计数的 `/tokenize` 接口（当前使用 vLLM）。
+真实模型验证入口为 [verify_workbench_live.py](scripts/verify_workbench_live.py)，使用数据库快照，需可访问数据集目录及项目配置的 VLM。命令行验证前需导出模型环境变量；本地配置模板见 [.env.example](.env.example)，启动器自动加载 `.env.local`。模型服务环境变量及实际上下文检查见 [VlmClient](python/iad_core/workbench/vision.py)；现有客户端采用多图、结构化 JSON 输出与含视觉 token 的容量预检；具体服务协议以客户端实现及运行配置为准，不据模型名称推断能力。
 
 原生知识技能与后续审计的合成图真实验证入口为 [verify-knowledge-skills.js](apps/iad-harness/scripts/verify-knowledge-skills.js)，同样先导出模型环境变量，再运行 `node apps/iad-harness/scripts/verify-knowledge-skills.js`；生成独立数据库和本地验证记录。
 

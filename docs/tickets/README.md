@@ -1,15 +1,13 @@
-# 数据集统一接入票据
+# 图组知识挖掘票据
 
-本地票据保存在 docs。测试边界、粒度和依赖已经确认；状态和验收条件以逐票为准，验收通过后才能标记完成。进度仅记录于根 WORKLOG.md。
+[完整规格](../specs/incremental-knowledge-mining.md)为需求唯一来源，测试边界、7 票粒度和依赖已确认；本地 docs 为指定交付位置。逐票均以 ready-for-agent 发布，状态不代表已实施；执行只取全部阻塞已完成的前沿。
 
-需求与验收口径以[完整规格](../specs/dataset-import.md)为准。逐票只定义可交付行为、必要验收与阻塞边，依赖以各票 Blocked by 为唯一来源；实现入口见[源码索引](../architecture.md)。
+1. [统一知识页面与按意图独立触发](knowledge-mining/01-unified-entry.md)
+2. [三输入图组挖掘与真实选图](knowledge-mining/02-explicit-image-group.md)
+3. [可选预设与可追溯知识续用](knowledge-mining/03-preset-evolution.md)
+4. [整图与局部污染核验及复核联动](knowledge-mining/04-contamination-evidence.md)
+5. [按实际能力分组并完整覆盖图像](knowledge-mining/05-capacity-coverage.md)
+6. [冻结图组的取消恢复与历史保护](knowledge-mining/06-frozen-recovery.md)
+7. [Agent连续调用与原生真实验收](knowledge-mining/07-agent-acceptance.md)
 
-1. [统一格式契约并贯通 Labelme 导入](dataset-import/01-labelme-contract.md)
-2. [预览目录角色并导入图像级数据](dataset-import/02-folder-import.md)
-3. [筛选原始标签并修改目录映射](dataset-import/03-browse-rescan.md)
-4. [从目录标签挖掘可追溯知识](dataset-import/04-knowledge-sources.md)
-5. [屏蔽标签联合审计并对照报告](dataset-import/05-joint-audit-report.md)
-6. [通过 DSH 对话完成目录知识审计](dataset-import/06-agent-workflow.md)
-7. [来源变更后恢复知识与重审闭环](dataset-import/07-source-change-close-loop.md)
-
-每票以可演示的用户流程交付其所需契约、存储、领域、HTTP/工具、UI和测试；不按数据库/后端/前端拆水平层。首票包含必要前置整理，后续只从全部阻塞票已完成的前沿推进。既有链路测试和人工裁决边界继续适用。
+每票交付可演示的公开行为及所需契约、领域、存储、工具/HTTP、页面和测试；必要的前置整理随首票完成。各票 Blocked by 是依赖唯一来源；源码入口见[实现索引](../architecture.md)，进度仅进入根任务账本。

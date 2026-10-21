@@ -1,12 +1,12 @@
 # 实现与验收索引
 
-目标行为见[规格](specs/dataset-import.md)，依赖与验收条件见[逐票索引](tickets/README.md)。本页索引源码和验证入口，进度和待裁决事项仅见根 WORKLOG.md。
+目标行为见[规格](specs/incremental-knowledge-mining.md)，依赖与验收条件见[逐票索引](tickets/README.md)。本页索引当前实现与验证入口，不表示目标规格已实施；进度和待裁决事项仅见根 WORKLOG.md。
 
 ## 接入与状态
 
 | 职责 | 唯一入口 |
 | --- | --- |
-| DSH 宿主与原生六页注册 | [服务端生命周期](../apps/iad-harness/src/server/index.ts)、[客户端注册](../apps/iad-harness/src/client/index.ts) |
+| DSH 宿主与原生页面注册 | [服务端生命周期](../apps/iad-harness/src/server/index.ts)、[客户端注册](../apps/iad-harness/src/client/index.ts) |
 | HTTP / Python 桥接 | [路由](../apps/iad-harness/src/server/routes/index.ts)、[桥接](../apps/iad-harness/src/server/python-bridge/index.ts)、[领域操作](../python/iad_core/entry.py) |
 | 数据集配置、身份、来源、删除与参考资格 | [配置](../python/iad_core/task/config.py)、[注册](../python/iad_core/dataset/registry.py) |
 | 格式适配与原子扫描 | [适配器](../python/iad_core/dataset/adapters/)、[图像枚举](../python/iad_core/dataset/files.py)、[目录角色](../python/iad_core/dataset/folder_rules.py)、[预览确认](../python/iad_core/dataset/folder_preview.py)、[扫描](../python/iad_core/dataset/scanner.py)、[发布](../python/iad_core/dataset/scan_snapshot.py) |
@@ -18,7 +18,7 @@
 | 冻结知识、单图联合分析、疑点与作业 | [审计](../python/iad_core/workbench/audit.py)、[单图](../python/iad_core/workbench/inspection.py)、[联合分析](../python/iad_core/workbench/joint.py)、[作业](../python/iad_core/workbench/jobs.py) |
 | 模型传输、容量、结构化输出与调用记录 | [模型客户端](../python/iad_core/workbench/vision.py)、[分析契约](../python/iad_core/advisory/analysis.py)、[调用记录](../python/iad_core/workbench/calls.py) |
 | 人工提交与历史 | [人工复核](../python/iad_core/workbench/review.py)、[人审存储](../python/iad_core/storage/review_repository.py) |
-| 原生工具、技能、状态等待与图像附件 | [工作台工具](../apps/iad-harness/src/server/workbench-tools/index.ts)、[知识技能](../apps/iad-harness/src/server/knowledge/)、[等待](../apps/iad-harness/src/server/job-status.ts)、[附件](../apps/iad-harness/src/server/evidence-attachment.ts) |
+| 原生工具、当前技能注册、状态等待与图像附件 | [工作台工具](../apps/iad-harness/src/server/workbench-tools/index.ts)、[知识技能](../apps/iad-harness/src/server/knowledge/)、[等待](../apps/iad-harness/src/server/job-status.ts)、[附件](../apps/iad-harness/src/server/evidence-attachment.ts) |
 | 生成的客户端契约 | [契约](../apps/iad-harness/src/shared/contracts.ts)、[生成入口](../apps/iad-harness/scripts/generate-contracts.js) |
 | 页面、共享上下文与组件 | [工作台](../apps/iad-harness/src/client/WorkbenchPage.tsx)、[上下文](../apps/iad-harness/src/client/workspace.tsx)、[组件](../apps/iad-harness/src/client/components/)、[目录预览](../apps/iad-harness/src/client/useFolderPreview.ts)、[目录映射](../apps/iad-harness/src/client/components/FolderMapping.tsx) |
 | 主题、控件与模态焦点 | [主题](../apps/iad-harness/src/client/theme.ts)、[共享控件](../apps/iad-harness/src/client/controls.ts)、[布局](../apps/iad-harness/src/client/styles.ts)、[模态](../apps/iad-harness/src/client/components/Modal.tsx) |
@@ -43,4 +43,4 @@
 
 启动、环境配置、命令和验证开关以[项目README](../README.md)、[环境模板](../.env.example)、[客户端](../python/iad_core/workbench/vision.py)及验证入口为准。实际地址、密钥和调用原文只保留在本地配置或运行库。
 
-服务需支持多图、JSON Schema 判别联合和包含视觉 token 的容量预检，预检后允许相同图像继续生成。vLLM 多模态 tokenize 缓存问题的官方修复见[PR #38545](https://github.com/vllm-project/vllm/pull/38545)；无法升级时可使用官方参数 `--mm-processor-cache-gb 0` 禁用该层缓存。此项是运行约束，不改变知识或联合分析行为。usage 缺失表示服务未报告，不能替换成零或估算费用。
+当前模型客户端的既有实现使用多图、JSON Schema 判别联合及包含视觉 token 的容量预检；这不代表所有 MLLM 都具有相同端点或限制，目标能力契约见规格 A09。现有 vLLM 后端的多模态 tokenize 缓存问题官方修复见[PR #38545](https://github.com/vllm-project/vllm/pull/38545)；无法升级时可使用官方参数 `--mm-processor-cache-gb 0` 禁用该层缓存。此项是运行约束，不改变知识或联合分析行为。usage 缺失表示服务未报告，不能替换成零或估算费用。
