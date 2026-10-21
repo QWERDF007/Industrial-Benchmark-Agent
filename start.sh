@@ -15,7 +15,7 @@ if [ -z "$LAN_IP" ]; then
     LAN_IP="127.0.0.1"
 fi
 
-PORT="${PORT:-8001}"
+PORT="${PORT:-5173}"
 
 # 避免本地请求走局域网 HTTP 代理
 export no_proxy="localhost,127.0.0.1,${LAN_IP},${no_proxy:-}"
