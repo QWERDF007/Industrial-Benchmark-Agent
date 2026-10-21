@@ -55,7 +55,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 原子人审命令、不可变记录与当前结果投影 | [HumanReview / ReviewSubmission](../python/iad_core/workbench/review.py)、[ReviewRepository](../python/iad_core/storage/review_repository.py)、[复核表与迁移](../python/iad_core/storage/review_schema.py) |
 | 嵌套模态与焦点恢复 | [Modal](../apps/iad-harness/src/client/components/Modal.tsx) |
 | 筛选与图层菜单的定位、避让和键盘关闭 | [FloatingMenu](../apps/iad-harness/src/client/components/FloatingMenu.tsx)、[Floating UI](https://floating-ui.com/docs/react-dom) |
-| 数据表与迁移 | [Database](../python/iad_core/storage/database.py) |
+| 数据表与迁移 | [Database](../python/iad_core/storage/database.py)、[历史审计作业迁移](../python/iad_core/storage/job_schema.py) |
 
 初始无标注图作为良品参考，是本项目的数据约定；可通过数据集管理调整。自动与人工选定范围、参考资格、人工裁决优先级及目标图排除规则以 `DatasetRegistry.references` 为准。导入质量、模型建议和人工裁决分别保留各自来源。
 
@@ -84,6 +84,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 - [单个大 Mask 的容量分组、原像素配对、综合缺证与真实模型测试](../tests/test_knowledge_capacity.py)
 - [模型原文、用量、错误、并发隔离和取消追踪测试](../tests/test_model_calls.py)
 - [接入目录修改、身份和历史证据保留](../tests/test_dataset_sources.py)
+- [历史审计作业升级、样本状态与记录保留](../tests/test_job_migration.py)
 - [提示及生成参数变更后的恢复边界](../tests/test_audit_generation.py)
 - [显式真实图像验证与临时证据](../tests/test_live_vlm_e2e.py)
 - [部分失败、源变化、知识发布及真实工作进程终止恢复](../tests/test_job_recovery.py)

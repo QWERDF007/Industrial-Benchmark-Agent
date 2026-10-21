@@ -7,6 +7,7 @@ from pathlib import Path
 from filelock import FileLock
 
 from iad_core.storage.review_schema import init_review_schema
+from iad_core.storage.job_schema import migrate_audit_jobs
 
 
 class Database:
@@ -321,6 +322,7 @@ class Database:
                 cursor.execute("ALTER TABLE job_runs ADD COLUMN payload_json TEXT NOT NULL DEFAULT '{}'")
             cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_root
                 ON job_runs(json_extract(payload_json,'$.root_run_id'))""")
+            migrate_audit_jobs(conn)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS datasets (
                     dataset_id TEXT PRIMARY KEY,
