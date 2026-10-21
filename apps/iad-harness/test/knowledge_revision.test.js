@@ -52,6 +52,7 @@ test("workbench and native tools reverify proposed knowledge corrections without
   const base = `http://127.0.0.1:${server.address().port}/api/iad`;
   const api = (url, body, method = "POST") => fetch(base + url, body ? { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : undefined);
   async function complete(job) {
+    assert.ok(job.run_id, JSON.stringify(job));
     for (let attempt = 0; attempt < 100; attempt++) {
       const status = await (await api(`/knowledge/status/${job.run_id}`)).json();
       assert.ok(!["FAILED", "PARTIAL", "CANCELLED"].includes(status.status), JSON.stringify(status.errors));
@@ -61,7 +62,9 @@ test("workbench and native tools reverify proposed knowledge corrections without
     assert.fail("Knowledge job did not complete");
   }
   try {
-    const dataset = await (await api("/datasets/import", { name: "修订验证", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") })).json();
+    const imported = await api("/datasets/import", { format: "labelme", name: "修订验证", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
+    assert.equal(imported.status, 200, await imported.clone().text());
+    const dataset = await imported.json();
     const input = { dataset_id: dataset.dataset_id, kind: "normal", model_name: "test-revision" };
     const first = (await complete(await (await api("/knowledge/start", input)).json())).knowledge;
     const originalImage = await fs.readFile(path.join(root, "images/part-0.png"));

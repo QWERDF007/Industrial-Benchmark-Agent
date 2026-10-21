@@ -121,6 +121,17 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
     const names = requests[0].tools.map(tool => tool.function.name);
     assert.ok(names.includes("model_audit_start"));
     assert.ok(names.includes("knowledge_mine_normal"));
+    for (const name of ["knowledge_mine_normal", "knowledge_mine_defect"]) {
+      const schema = requests[0].tools.find(tool => tool.function.name === name).function.parameters;
+      assert.equal(schema.properties.sample_ids.type, "array", "Native tool parsers must see an explicit array type for sample selection");
+      assert.equal(schema.properties.sample_ids.items.type, "string");
+      assert.ok(!schema.required.includes("sample_ids"), "Omission retains the domain default without a nullable union");
+      assert.equal(schema.properties.base_version_id.type, "string");
+      if (name === "knowledge_mine_defect") {
+        assert.equal(schema.properties.normal_version_id.type, "string");
+        assert.ok(schema.required.includes("normal_version_id"));
+      }
+    }
     assert.ok(!names.includes("review_submit_decision"));
     assert.ok(!names.includes("unrelated_test_tool"), "Agent-scoped policy must filter other registered tools");
     assert.doesNotMatch(requests[0].messages.filter(item => item.role === "system").map(item => item.content).join("\n"), /数据集分析流程|完整流程步骤：/, "Full analysis instructions must be loaded through a skill, never injected into every session");

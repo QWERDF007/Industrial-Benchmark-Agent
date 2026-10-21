@@ -37,7 +37,7 @@
 | 浏览器公开用户链 | [工作台操作](../apps/iad-harness/browser/workbench.test.js) |
 | 真实DSH会话及页面/图像往返 | [原生宿主](../apps/iad-harness/browser/session-handoff.test.js)、[Agent会话](../apps/iad-harness/test/agent_session.test.js) |
 | 明暗、视口、字号、模态与焦点 | [页面布局](../apps/iad-harness/browser/workbench-layout.js)、[详情交互](../apps/iad-harness/browser/workbench-surfaces.js) |
-| 合成图真实MLLM与会话验收 | [技能验证](../apps/iad-harness/scripts/verify-knowledge-skills.js)、[会话验证](../apps/iad-harness/scripts/verify-dataset-session.js)、[接入边界](../apps/iad-harness/scripts/verify-dataset-intake.js)、[单步导入](../apps/iad-harness/scripts/verify-import-scope.js)、[恢复验证](../scripts/verify_job_recovery_live.py) |
+| 合成图真实MLLM与会话验收 | [技能验证](../apps/iad-harness/scripts/verify-knowledge-skills.js)、[会话验证](../apps/iad-harness/scripts/verify-dataset-session.js)、[指定来源挖掘](../apps/iad-harness/scripts/verify-knowledge-selection.js)、[接入边界](../apps/iad-harness/scripts/verify-dataset-intake.js)、[单步导入](../apps/iad-harness/scripts/verify-import-scope.js)、[恢复验证](../scripts/verify_job_recovery_live.py) |
 
 ## 模型服务与运行
 

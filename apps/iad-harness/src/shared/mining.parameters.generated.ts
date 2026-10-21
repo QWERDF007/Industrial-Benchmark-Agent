@@ -6,16 +6,8 @@ export const miningParameters = {
     "required": true
   },
   "origin_session_id": {
-    "oneOf": [
-      {
-        "type": "string"
-      },
-      {
-        "type": "null"
-      }
-    ],
-    "title": "Origin Session Id",
-    "default": null
+    "type": "string",
+    "title": "Origin Session Id"
   },
   "kind": {
     "type": "string",
@@ -27,16 +19,8 @@ export const miningParameters = {
     "required": true
   },
   "normal_version_id": {
-    "oneOf": [
-      {
-        "type": "string"
-      },
-      {
-        "type": "null"
-      }
-    ],
-    "title": "Normal Version Id",
-    "default": null
+    "type": "string",
+    "title": "Normal Version Id"
   },
   "model_name": {
     "type": "string",
@@ -44,33 +28,17 @@ export const miningParameters = {
     "default": "Qwen/Qwen3.8-27B-FP8"
   },
   "sample_ids": {
-    "oneOf": [
-      {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      },
-      {
-        "type": "null"
-      }
-    ],
+    "type": "array",
+    "items": {
+      "type": "string"
+    },
     "description": "新增来源范围，与父版本仍合格来源合并核验；省略覆盖全部合格来源",
-    "title": "Sample Ids",
-    "default": null
+    "title": "Sample Ids"
   },
   "base_version_id": {
-    "oneOf": [
-      {
-        "type": "string"
-      },
-      {
-        "type": "null"
-      }
-    ],
+    "type": "string",
     "description": "人工修订所依据的当前同类型知识版本",
-    "title": "Base Version Id",
-    "default": null
+    "title": "Base Version Id"
   },
   "corrections": {
     "type": "array",

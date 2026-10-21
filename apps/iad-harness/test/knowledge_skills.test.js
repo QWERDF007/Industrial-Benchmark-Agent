@@ -235,6 +235,13 @@ test("DSH standalone knowledge tools execute shared jobs and return actual evide
   try {
     assert.ok(ctx.tools.get("dataset_list"), "Skills need a registered dataset discovery tool");
     const dataset = (await execute("dataset_import", { format: "labelme", name: "合成部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") })).value;
+    for (const sample_ids of [JSON.stringify([dataset.dataset_id + ":part-0.png"]), null, [1]]) {
+      const invalid = await ctx.tools.execute({ name: "knowledge_mine_normal", arguments: { dataset_id: dataset.dataset_id, sample_ids },
+        callId: `invalid-selection-${++call}`, signal: new AbortController().signal });
+      assert.equal(invalid.isError, true, "Malformed selections must not be coerced or expanded to every source");
+      assert.equal(invalid.error.info.code, "INVALID_ARGS");
+    }
+    assert.deepEqual((await ctx.iadPythonBridge.execute("knowledge_list", { dataset_id: dataset.dataset_id })).jobs, []);
     const original = await ctx.iadPythonBridge.execute("sample_get", { sample_id: dataset.dataset_id + ":part-2.png" });
     assert.equal((await execute("dataset_list", {})).value.datasets.length, 1);
     const versions = {};

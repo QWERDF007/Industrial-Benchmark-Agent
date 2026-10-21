@@ -36,16 +36,23 @@ const output = await compile(schema, "WorkbenchDomain", {
   additionalProperties: false, format: true,
 });
 // The native SDK uses per-property required flags and a JSON-value schema DSL.
-function toolSchema(node) {
-  if (node.$ref) return toolSchema(schema.$defs[node.$ref.split("/").at(-1)]);
-  const value = node.anyOf ? { oneOf: node.anyOf.map(toolSchema) } : { type: node.type };
+function toolSchema(node, optional = false) {
+  if (node.$ref) return toolSchema(schema.$defs[node.$ref.split("/").at(-1)], optional);
+  // Optional nullable fields use omission on the tool boundary so native
+  // parsers can read a concrete type without interpreting union schemas.
+  const concrete = optional && node.anyOf?.length === 2 && node.anyOf.some(branch => branch.type === "null")
+    ? node.anyOf.find(branch => branch.type !== "null") : null;
+  const value = concrete ? toolSchema(concrete)
+    : node.anyOf ? { oneOf: node.anyOf.map(branch => toolSchema(branch)) } : { type: node.type };
   if (node.type === "object") {
     value.additionalProperties = node.additionalProperties ?? false;
     value.properties = Object.fromEntries(Object.entries(node.properties || {}).map(([name, property]) => [name,
-      { ...toolSchema(property), ...(node.required?.includes(name) ? { required: true } : {}) }]));
+      { ...toolSchema(property, !node.required?.includes(name)), ...(node.required?.includes(name) ? { required: true } : {}) }]));
   }
   if (node.items) value.items = toolSchema(node.items);
-  for (const key of ["enum", "description", "title", "default"]) if (key in node) value[key] = node[key];
+  for (const key of ["enum", "description", "title", "default"]) {
+    if (key in node && !(concrete && key === "default" && node[key] === null)) value[key] = node[key];
+  }
   return value;
 }
 const parameters = toolSchema(schema.properties.MiningStart).properties;
