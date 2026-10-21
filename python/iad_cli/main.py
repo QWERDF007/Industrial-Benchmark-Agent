@@ -78,11 +78,11 @@ def agent_resume(
 
 @app.command("web")
 def web_start(
-    port: int = typer.Option(5173, "--port", "-p", help="DSH Native Web port"),
+    port: int = typer.Option(8001, "--port", "-p", help="DSH Native Web port"),
     no_open: bool = typer.Option(False, "--no-open", help="Do not automatically open browser"),
 ):
     """
-    Start single native DeepSeek Harness Web Workbench (DS-S01, port 5173).
+    Start single native DeepSeek Harness Web Workbench (DS-S01, port 8001).
     No FastAPI or port 8000 required.
     """
     console.print(f"[bold cyan]Starting DSH Native Industrial Audit Workbench on port {port}...[/bold cyan]")

@@ -3,6 +3,8 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+PORT="${PORT:-8001}"
+
 echo "正在停止 Industrial Benchmark Agent 相关服务..."
 
 # 1. 根据 PID 停止 DSH Web
@@ -15,11 +17,11 @@ if [ -f runs/dsh_web.pid ]; then
     rm -f runs/dsh_web.pid
 fi
 
-# 2. 清理残留 5173 端口与旧 8000 端口
-for PORT in 5173 8000; do
-    PIDS=$(lsof -ti :$PORT 2>/dev/null || true)
+# 2. 清理残留端口 (当前端口 8001、旧 5173、旧 8000)
+for P in "$PORT" 5173 8000; do
+    PIDS=$(lsof -ti :$P 2>/dev/null || true)
     if [ -n "$PIDS" ]; then
-        echo "清理占用端口 :$PORT 的残留进程 ($PIDS)..."
+        echo "清理占用端口 :$P 的残留进程 ($PIDS)..."
         kill -9 $PIDS 2>/dev/null || true
     fi
 done

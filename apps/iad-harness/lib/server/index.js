@@ -45,7 +45,7 @@ export function apply(ctx, config = {}) {
     catch (err) {
         ctx.logger?.warn?.(`IadRemoteService registration skipped: ${err.message}`);
     }
-    // 4. Hook DSH WebServer if present: mount /api/iad routes on port 5173
+    // 4. Hook DSH WebServer if present: mount /api/iad routes
     if (typeof ctx.inject === "function") {
         ctx.inject(["webServer"], (serverCtx) => {
             try {
