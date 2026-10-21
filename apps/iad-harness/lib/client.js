@@ -7320,6 +7320,7 @@ var __IadClientBundle__ = (() => {
     dataset_rescan: "\u91CD\u65B0\u626B\u63CF\u76EE\u5F55",
     dataset_report: "\u6570\u636E\u96C6\u8D28\u91CF\u62A5\u544A",
     knowledge_get: "\u77E5\u8BC6\u7248\u672C",
+    knowledge_sources: "\u67E5\u8BE2\u77E5\u8BC6\u6765\u6E90",
     knowledge_mine_normal: "\u6316\u6398\u826F\u54C1\u77E5\u8BC6",
     knowledge_mine_defect: "\u6316\u6398\u4E0D\u826F\u54C1\u77E5\u8BC6",
     knowledge_job_status: "\u77E5\u8BC6\u4F5C\u4E1A\u72B6\u6001",

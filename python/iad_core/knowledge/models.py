@@ -197,3 +197,29 @@ class KnowledgeQuery(AnalysisModel):
     freshness: Optional[KnowledgeFreshness]
     eligible_source_count: int = Field(ge=0)
     unavailable_source_count: int = Field(ge=0)
+
+
+class KnowledgeSourceQuery(AnalysisModel):
+    dataset_id: str
+    kind: KnowledgeKind
+    normal_version_id: Optional[str] = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=10, ge=1, le=200)
+    search: str = ""
+
+
+class KnowledgeSourceItem(AnalysisModel):
+    sample_id: str
+    relative_path: str
+    qualification: str
+
+
+class KnowledgeSourcePage(AnalysisModel):
+    dataset_id: str
+    kind: KnowledgeKind
+    normal_version_id: Optional[str]
+    total: int = Field(ge=0)
+    unavailable_source_count: int = Field(ge=0)
+    page: int
+    page_size: int
+    items: List[KnowledgeSourceItem]

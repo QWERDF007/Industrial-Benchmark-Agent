@@ -81,8 +81,13 @@ class KnowledgeService:
             raise ValueError('A usable normal knowledge version from the same dataset is required')
         eligible = list(self.sources.eligible(request.dataset_id, request.kind, normal).require_available())
         requested = list(dict.fromkeys(request.sample_ids)) if request.sample_ids is not None else eligible
-        if not requested or not set(requested).issubset(eligible):
-            raise ValueError("Mining requires eligible knowledge sources from the selected dataset")
+        if not requested:
+            raise ValueError("Mining requires at least one selected eligible knowledge source")
+        invalid = sorted(set(requested) - set(eligible))
+        if invalid:
+            raise ValueError("Mining requires eligible knowledge sources from the selected dataset. Invalid sample_ids: "
+                             + json.dumps(invalid[:10], ensure_ascii=False)
+                             + ". Select registered, eligible sample_id values; relative paths are not sample IDs.")
         parent = self.repository.current(request.dataset_id, request.kind)
         if request.base_version_id and (not parent or request.base_version_id != parent.version_id):
             raise ValueError('知识版本已变化，请刷新并基于当前版本重新修订')

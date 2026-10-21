@@ -1,9 +1,11 @@
+import json
 from datetime import datetime, timezone
 from typing import Optional
 
 from iad_core.dataset.path_safety import PathSafetyError
 from iad_core.dataset.registry import DatasetRegistry
-from iad_core.knowledge.models import KnowledgeFreshness, KnowledgeKind, KnowledgeQuery, KnowledgeSnapshot, KnowledgeSourceChange
+from iad_core.knowledge.models import (KnowledgeFreshness, KnowledgeKind, KnowledgeQuery, KnowledgeSnapshot,
+                                      KnowledgeSourceChange, KnowledgeSourcePage, KnowledgeSourceQuery)
 from iad_core.knowledge.repository import KnowledgeRepository
 from iad_core.knowledge.service import KnowledgeService
 from iad_core.knowledge.sources import KnowledgeSources
@@ -15,6 +17,25 @@ class KnowledgeReader:
         self.db = db
         self.repository = KnowledgeRepository(db)
         self.sources = KnowledgeSources(db)
+
+    def source_page(self, query: KnowledgeSourceQuery) -> KnowledgeSourcePage:
+        DatasetRegistry(self.db).get(query.dataset_id)
+        normal = self.repository.get(query.normal_version_id) if query.normal_version_id else (
+            self.repository.current(query.dataset_id, 'normal') if query.kind == 'defect' else None)
+        if normal and (query.kind != 'defect' or normal.kind != 'normal' or normal.dataset_id != query.dataset_id):
+            raise ValueError('Normal knowledge must belong to the selected dataset and defect source query')
+        availability = self.sources.eligible(query.dataset_id, query.kind, normal)
+        with self.db.connection() as conn:
+            rows = conn.execute("""SELECT sample_id,relative_path FROM samples
+                WHERE sample_id IN (SELECT value FROM json_each(?)) AND instr(lower(relative_path),lower(?))>0
+                ORDER BY relative_path,sample_id""",
+                (json.dumps(list(availability.qualifications)), query.search)).fetchall()
+        start = (query.page - 1) * query.page_size
+        return KnowledgeSourcePage(dataset_id=query.dataset_id, kind=query.kind,
+            normal_version_id=normal.version_id if normal else None, total=len(rows),
+            unavailable_source_count=len(availability.unavailable), page=query.page, page_size=query.page_size,
+            items=[dict(row, qualification=availability.qualifications[row['sample_id']])
+                   for row in rows[start:start + query.page_size]])
 
     def read(self, dataset_id: Optional[str] = None, kind: Optional[KnowledgeKind] = None,
              version_id: Optional[str] = None) -> KnowledgeQuery:

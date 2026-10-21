@@ -10,8 +10,8 @@ export const DATASET_ANALYSIS_SKILL = {
 完整流程步骤：
 1. 用 dataset_list 识别数据集；未接入时按用户服务器目录用 dataset_directory_inspect 检查实际结构。Labelme使用真实图像和JSON目录；目录分类先dataset_preview读取items的path/role及preview_fingerprint，再以一致的rules和指纹dataset_import。用户只提供目录时名称取目录名，结构明确直接导入，真实格式/映射冲突才澄清。路径不存在如实报告。已接入复用dataset_id，不重复导入。ZIP仅用于用户明确提供压缩包的情形。
 2. 用户说明来源已修改时，dataset_rescan更新当前来源；根目录或规则变化先重新预览确认，保留身份与历史。重扫不代表模型结果已重新核验。
-3. knowledge_get(kind: "normal")核对共享资格eligible_source_count和已有版本；无合格来源说明缺口。用knowledge_mine_normal启动用户所需范围，knowledge_job_status等待同一run_id终态，再knowledge_get读取实际发布版本。来源较多且用户未明确数量时先确认本次图组，建议从10或20张开始，不默认将所有来源送入模型。遵循实际工具契约，不声称尚未实现的图组/预设能力；当前sample_ids是来源选择，后继作业的实际冻结范围以返回结果为准。
-4. knowledge_get(kind: "defect")核对异常候选；没有则说明并跳过不良知识。依赖满足时knowledge_mine_defect显式传同数据集正常版本，等待终态并读取实际异常知识。当前工具缺少正常依赖时说明；仅在用户范围包含良品挖掘时补齐该阶段，不能擅自扩大局部任务。
+3. knowledge_get(kind: "normal")核对共享资格eligible_source_count和已有版本；无合格来源说明缺口。先用knowledge_sources(kind: "normal", page_size: 用户要求数量)分页取得真实来源，只复制返回的sample_id，不能猜测文件名、用relative_path替换或因错误省略选择。显式sample_ids调用knowledge_mine_normal，knowledge_job_status等待同一run_id终态，再knowledge_get读取实际发布版本。来源较多且用户未明确数量时先确认本次图组，建议从10或20张开始，不默认将所有来源送入模型。遵循实际工具契约，不声称尚未实现的图组/预设能力；当前新增来源仍与父版本合并，启动前核对已有来源与用户范围，不支持的数量约束须说明，不能擅自扩大；实际冻结范围以返回结果为准。
+4. knowledge_get(kind: "defect")核对异常候选；没有则说明并跳过不良知识。依赖满足时先用knowledge_sources(kind: "defect", normal_version_id: 所选正常版本)查询真实引用，再knowledge_mine_defect显式传sample_ids和同数据集正常版本，等待终态并读取实际异常知识。当前工具缺少正常依赖时说明；仅在用户范围包含良品挖掘时补齐该阶段，不能擅自扩大局部任务。
 5. model_audit_start显式传dataset_id、选定normal_version_id及实际可用defect_version_id，按用户要求范围执行。model_audit_status等待真实终态；dataset_audit是技术检查，不能代替MLLM审计。不要因空闲而启动其他未请求操作。
 6. dataset_report读取实际质量统计。分别说明技术可用率、审计覆盖率和人工核验覆盖率的分子/分母、知识版本与范围；零分母为未评估，不编造总分或准确率。简要报告实际疑点、缺证、冲突和最多三个优先复核项。
 

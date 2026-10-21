@@ -4,7 +4,7 @@ import { jobStatuses } from "./job-display.js";
 
 export const workbenchTools = {
   dataset_list: "数据集列表", dataset_import: "接入数据集", dataset_rescan: "重新扫描目录", dataset_report: "数据集质量报告", knowledge_get: "知识版本",
-  knowledge_mine_normal: "挖掘良品知识", knowledge_mine_defect: "挖掘不良品知识",
+  knowledge_sources: "查询知识来源", knowledge_mine_normal: "挖掘良品知识", knowledge_mine_defect: "挖掘不良品知识",
   knowledge_job_status: "知识作业状态", knowledge_job_cancel: "停止知识作业", knowledge_job_retry: "重试知识作业",
   model_audit_start: "启动模型审计", model_audit_status: "审计作业状态", model_audit_cancel: "停止模型审计", model_audit_retry: "重试模型审计",
 } as const;

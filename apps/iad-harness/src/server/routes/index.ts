@@ -92,6 +92,7 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       const audit = pathname.match(/^\/api\/iad\/audit\/(status|cancel|retry)\/([^/]+)$/);
       if (audit && ((audit[1] === "status" && method === "GET") || (audit[1] !== "status" && method === "POST"))) return await call("audit_" + audit[1], { ...body, run_id: decodeURIComponent(audit[2]) });
       if (pathname === "/api/iad/knowledge" && method === "GET") return await call("knowledge_get", query);
+      if (pathname === "/api/iad/knowledge/sources" && method === "GET") return await call("knowledge_sources", query);
       if (pathname === "/api/iad/knowledge/start" && method === "POST") return await call("knowledge_start", body);
       if (pathname === "/api/iad/knowledge/jobs" && method === "GET") return await call("knowledge_list", query);
       const knowledge = pathname.match(/^\/api\/iad\/knowledge\/(status|cancel|retry)\/([^/]+)$/);

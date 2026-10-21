@@ -5,22 +5,32 @@ import { workbenchJsonOutput } from "../tool-output.js";
 import { evidenceOutput, readEvidenceAttachment } from "../evidence-attachment.js";
 import { jobRetryParameters, jobStatusParameters, waitForJobStatus } from "../job-status.js";
 import { miningParameters } from "../../shared/mining.parameters.generated.js";
+import { knowledgeSourceParameters } from "../../shared/knowledge-source.parameters.generated.js";
 
 const { kind: _kind, origin_session_id: _origin, normal_version_id: normalVersion, ...sourceParameters } = miningParameters;
+const selectedSourceParameters = { ...sourceParameters, sample_ids: { ...sourceParameters.sample_ids, required: true,
+  description: "必须显式提供选择的真实sample_id数组，从knowledge_sources查询复制。新增来源仍与父版本合并，先核对已有来源与用户范围。不可猜测、改用relative_path或省略来扩大到全库。" } } as const;
 
 export function createKnowledgeTools(bridge: PythonBridge, ctx: Context): ToolDefinition[] {
   return [
     defineTool({
+      name: "knowledge_sources",
+      description: "只读分页查询知识挖掘合格来源，返回真实sample_id、relative_path和资格；kind选择normal/defect，page_size指定本次候选数量，page继续翻页，search筛选路径。与挖掘共用资格判定，不会启动作业。将返回的sample_id原样传给挖掘工具。",
+      parameters: knowledgeSourceParameters,
+      output: workbenchJsonOutput,
+      execute: (args, exec) => bridge.execute("knowledge_sources", args, exec.signal),
+    }),
+    defineTool({
       name: "knowledge_mine_normal",
-      description: "独立启动用户要求的良品知识挖掘，无需加载技能；先核对来源资格和用户范围，复用工作台联合MLLM、持久化作业与知识版本。",
-      parameters: sourceParameters,
+      description: "独立启动用户要求的良品知识挖掘，无需加载技能；先用knowledge_sources查询真实来源，再按用户数量显式选择sample_ids，不能通过省略选择改为全库。",
+      parameters: selectedSourceParameters,
       output: workbenchJsonOutput,
       execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "normal", origin_session_id: exec.agent?.id || null }, exec.signal),
     }),
     defineTool({
       name: "knowledge_mine_defect",
-      description: "独立启动用户要求的异常知识挖掘，无需加载技能；依据显式同数据集良品版本核验标注/疑点，缺少依赖时说明，不自动启动其他阶段，不改人审或原标签。",
-      parameters: { ...sourceParameters, normal_version_id: { ...normalVersion, required: true } },
+      description: "独立启动用户要求的异常知识挖掘，无需加载技能；先用knowledge_sources查询真实来源，显式选择sample_ids并提供同数据集良品版本，缺依赖时说明，不自动启动其他阶段。",
+      parameters: { ...selectedSourceParameters, normal_version_id: { ...normalVersion, required: true } },
       output: workbenchJsonOutput,
       execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "defect", origin_session_id: exec.agent?.id || null }, exec.signal),
     }),

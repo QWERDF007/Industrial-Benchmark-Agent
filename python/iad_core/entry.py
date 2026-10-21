@@ -269,6 +269,12 @@ def knowledge_get(args, db_path):
     return KnowledgeReader(Database(db_path)).read(**args).model_dump()
 
 
+def knowledge_sources(args, db_path):
+    from iad_core.knowledge.models import KnowledgeSourceQuery
+    from iad_core.knowledge.query import KnowledgeReader
+    return KnowledgeReader(Database(db_path)).source_page(KnowledgeSourceQuery.model_validate(args)).model_dump()
+
+
 def knowledge_start(args, db_path):
     return workbench(db_path).knowledge.start(**args)
 
@@ -319,7 +325,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     sample_list, sample_get, sample_image_path, sample_thumbnail, sample_mask_path,
     review_queue, review_evidence, review_submit_decision, review_history,
     review_stats, report_get, audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_list, audit_evidence, inspection_context, directory_list,
-    knowledge_get, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_retry_options, knowledge_list, model_call_get,
+    knowledge_get, knowledge_sources, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_retry_options, knowledge_list, model_call_get,
 )}
 
 

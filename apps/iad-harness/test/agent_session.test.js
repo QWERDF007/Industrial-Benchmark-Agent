@@ -125,7 +125,7 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
       const schema = requests[0].tools.find(tool => tool.function.name === name).function.parameters;
       assert.equal(schema.properties.sample_ids.type, "array", "Native tool parsers must see an explicit array type for sample selection");
       assert.equal(schema.properties.sample_ids.items.type, "string");
-      assert.ok(!schema.required.includes("sample_ids"), "Omission retains the domain default without a nullable union");
+      assert.ok(schema.required.includes("sample_ids"), "Native mining must require an explicit selection instead of defaulting to the entire dataset");
       assert.equal(schema.properties.base_version_id.type, "string");
       if (name === "knowledge_mine_defect") {
         assert.equal(schema.properties.normal_version_id.type, "string");

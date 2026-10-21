@@ -37,7 +37,7 @@ const started = Date.now();
 const versions = {}, jobs = {};
 try {
   const dataset = await ctx.iadPythonBridge.execute("dataset_import", {
-    name: "Synthetic knowledge skill validation", image_dir: path.join(output, "images"), annotation_dir: path.join(output, "labels"),
+    format: "labelme", name: "Synthetic knowledge skill validation", image_dir: path.join(output, "images"), annotation_dir: path.join(output, "labels"),
   });
   const before = await ctx.iadPythonBridge.execute("sample_get", { sample_id: dataset.dataset_id + ":part-2.png" });
   const catalog = await ctx.skills.list();
@@ -51,6 +51,8 @@ try {
     const args = { dataset_id: dataset.dataset_id };
     if (kind === "normal") args.sample_ids = [dataset.dataset_id + `:part-${sampleIndex}.png`];
     if (kind === "defect") args.normal_version_id = versions.normal.version_id;
+    if (kind === "defect") args.sample_ids = (await execute("knowledge_sources", {
+      dataset_id: dataset.dataset_id, kind, normal_version_id: args.normal_version_id })).value.items.map(item => item.sample_id);
     let job = (await execute(`knowledge_mine_${kind}`, args)).value;
     console.log(JSON.stringify({ key, kind, run_id: job.run_id, total: job.total_samples }));
     const deadline = Date.now() + 300000;

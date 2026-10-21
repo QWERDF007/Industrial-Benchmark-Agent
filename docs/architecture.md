@@ -12,7 +12,7 @@
 | 格式适配与原子扫描 | [适配器](../python/iad_core/dataset/adapters/)、[图像枚举](../python/iad_core/dataset/files.py)、[目录角色](../python/iad_core/dataset/folder_rules.py)、[预览确认](../python/iad_core/dataset/folder_preview.py)、[扫描](../python/iad_core/dataset/scanner.py)、[发布](../python/iad_core/dataset/scan_snapshot.py) |
 | 数据模型、数据库与仓储 | [存储](../python/iad_core/storage/) |
 | 查询、筛选、数量与分项报告 | [查询](../python/iad_core/workbench/query.py)、[报告](../python/iad_core/workbench/report.py) |
-| 知识资格、冻结内容与来源变化 | [资格](../python/iad_core/knowledge/sources.py)、[内容指纹](../python/iad_core/evidence/sources.py)、[变化查询](../python/iad_core/knowledge/query.py) |
+| 知识资格、来源分页、冻结内容与来源变化 | [资格](../python/iad_core/knowledge/sources.py)、[来源契约](../python/iad_core/knowledge/models.py)、[内容指纹](../python/iad_core/evidence/sources.py)、[来源与变化查询](../python/iad_core/knowledge/query.py) |
 | 知识挖掘、版本、污染与标注核验 | [知识领域](../python/iad_core/knowledge/) |
 | 全图/ROI、原图坐标与真实像素 | [图像证据](../python/iad_core/evidence/images.py)、[Mask](../python/iad_core/evidence/masks.py) |
 | 冻结知识、单图联合分析、疑点与作业 | [审计](../python/iad_core/workbench/audit.py)、[单图](../python/iad_core/workbench/inspection.py)、[联合分析](../python/iad_core/workbench/joint.py)、[作业](../python/iad_core/workbench/jobs.py) |
@@ -30,7 +30,7 @@
 | --- | --- |
 | 接入、重扫、删除、身份与源文件保留 | [工作台](../tests/test_dataset_workbench.py)、[来源](../tests/test_dataset_sources.py)、[删除](../tests/test_dataset_deletion.py) |
 | 公开 HTTP 与 DSH 工具状态一致 | [HTTP操作](../apps/iad-harness/test/workbench.test.js)、[原生工具](../apps/iad-harness/test/dataset_tools.test.js) |
-| 正常/异常知识、污染与反馈 | [正常知识](../tests/test_dataset_knowledge.py)、[异常知识](../tests/test_defect_knowledge.py)、[污染](../tests/test_knowledge_contamination.py)、[反馈](../tests/test_knowledge_feedback.py) |
+| 正常/异常知识、来源发现、污染与反馈 | [正常知识](../tests/test_dataset_knowledge.py)、[异常知识](../tests/test_defect_knowledge.py)、[来源发现](../apps/iad-harness/test/knowledge_sources.test.js)、[污染](../tests/test_knowledge_contamination.py)、[反馈](../tests/test_knowledge_feedback.py) |
 | 输入屏蔽与知识独立支持 | [提示边界](../tests/test_knowledge_prompt_scope.py)、[冻结知识审计](../tests/test_knowledge_audit.py) |
 | 规则、疑点、分块与Mask真实证据 | [规则](../tests/test_rule_audit.py)、[疑点](../tests/test_audit_findings.py)、[容量](../tests/test_knowledge_capacity.py)、[Mask](../tests/test_mask_evidence.py) |
 | 口径与中断恢复 | [报告](../tests/test_quality_report.py)、[目录变更闭环](../tests/test_folder_source_change_closed_loop.py)、[恢复](../tests/test_job_recovery.py)、[调用记录](../tests/test_model_calls.py) |

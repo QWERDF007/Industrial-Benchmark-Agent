@@ -57,6 +57,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
         : outputs.length < 3 && image ? { name: "model_audit_evidence", arguments: { suggestion_id: reference.suggestion_id, evidence_id: image.evidence_id } } : null;
       if (outputs.length === 3) tool = { name: "knowledge_get", arguments: { dataset_id: reference.dataset_id, kind: "normal" } };
       if (last?.name === "knowledge_get") tool = { name: "knowledge_mine_normal", arguments: { dataset_id: reference.dataset_id, model_name: "test-mllm",
+        sample_ids: value.knowledge.sources.map(source => source.sample_id),
         base_version_id: value.knowledge.version_id, corrections: [{ check_id: value.knowledge.checks[0].check_id, instruction: "均匀亮度变化可能正常，需结合位置核验" }] } };
       if (["knowledge_mine_normal", "knowledge_job_status"].includes(last?.name)) tool = value?.status === "COMPLETED"
         ? { name: "model_audit_start", arguments: { dataset_id: reference.dataset_id, normal_version_id: value.knowledge_version_id, sample_ids: [reference.sample_id], model_name: "test-mllm" } }

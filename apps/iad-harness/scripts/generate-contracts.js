@@ -10,7 +10,7 @@ const schema = JSON.parse(execFileSync(resolvePythonPath(), ["-c", `
 import json
 from pydantic.json_schema import models_json_schema
 from iad_core.advisory.analysis import AuditAnalysis
-from iad_core.knowledge.models import KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery
+from iad_core.knowledge.models import KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, KnowledgeSourceQuery, KnowledgeSourcePage
 from iad_core.knowledge.service import MiningStart
 from iad_core.workbench.audit import AuditStart
 from iad_core.workbench.calls import ModelCallDetail
@@ -24,8 +24,8 @@ from iad_core.workbench.report import DatasetReport
 from iad_core.storage.models import Annotation, ReviewDecisionRecord
 from iad_core.workbench.review import ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage
 from iad_core.workbench.query import SampleQuery
-models = [AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, AuditStart, ModelCallDetail, JobRetry, JobSnapshot, JobRetryOptions, InspectionReference, InspectionSnapshot, DatasetImport, FolderPreview, ArchiveInspection, ScanResult, DatasetReport, MiningStart, Annotation, ReviewDecisionRecord, ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage, SampleQuery]
-modes = [(model, 'validation' if model in (MiningStart, AuditStart, JobRetry, InspectionReference, DatasetImport, ReviewSubmission, ReviewHistoryQuery) else 'serialization') for model in models]
+models = [AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, KnowledgeSourceQuery, KnowledgeSourcePage, AuditStart, ModelCallDetail, JobRetry, JobSnapshot, JobRetryOptions, InspectionReference, InspectionSnapshot, DatasetImport, FolderPreview, ArchiveInspection, ScanResult, DatasetReport, MiningStart, Annotation, ReviewDecisionRecord, ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage, SampleQuery]
+modes = [(model, 'validation' if model in (MiningStart, KnowledgeSourceQuery, AuditStart, JobRetry, InspectionReference, DatasetImport, ReviewSubmission, ReviewHistoryQuery) else 'serialization') for model in models]
 references, schema = models_json_schema(modes)
 schema.update(title='WorkbenchDomain', type='object', additionalProperties=False,
     properties={model.__name__: references[(model, mode)] for model, mode in modes})
@@ -60,6 +60,7 @@ const targets = {
   "domain.generated.ts": output,
   "dataset.parameters.generated.ts": `/* Generated from Python FolderRule by scripts/generate-contracts.js. */\nexport const folderRulesParameter = ${JSON.stringify({type: "array", items: toolSchema({$ref: "#/$defs/FolderRule"})}, null, 2)} as const;\n`,
   "mining.parameters.generated.ts": `/* Generated from Python MiningStart by scripts/generate-contracts.js. */\nexport const miningParameters = ${JSON.stringify(parameters, null, 2)} as const;\n`,
+  "knowledge-source.parameters.generated.ts": `/* Generated from Python KnowledgeSourceQuery by scripts/generate-contracts.js. */\nexport const knowledgeSourceParameters = ${JSON.stringify(toolSchema(schema.properties.KnowledgeSourceQuery).properties, null, 2)} as const;\n`,
 };
 for (const [name, content] of Object.entries(targets)) {
   const target = fileURLToPath(new URL(`../src/shared/${name}`, import.meta.url));

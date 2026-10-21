@@ -109,7 +109,10 @@ test("workbench and native tools reverify proposed knowledge corrections without
       { base_version_id: second.version_id, corrections: [{ ...proposal, instruction: "  " }] },
     ]) assert.equal((await api("/knowledge/start", { ...input, ...update })).status, 422);
     const correction = { check_id: second.checks[0].check_id, instruction: "只采用相对排列，不作绝对尺寸断言" };
-    const native = await ctx.tools.execute({ name: "knowledge_mine_normal", arguments: { dataset_id: dataset.dataset_id, model_name: "test-revision", base_version_id: second.version_id, corrections: [correction] }, callId: "revise-normal", signal: new AbortController().signal });
+    const sources = await ctx.tools.execute({ name: "knowledge_sources", arguments: { dataset_id: dataset.dataset_id, kind: "normal" }, callId: "revision-sources", signal: new AbortController().signal });
+    assert.equal(sources.isError, false, JSON.stringify(sources));
+    const native = await ctx.tools.execute({ name: "knowledge_mine_normal", arguments: { dataset_id: dataset.dataset_id,
+      sample_ids: sources.value.items.map(item => item.sample_id), model_name: "test-revision", base_version_id: second.version_id, corrections: [correction] }, callId: "revise-normal", signal: new AbortController().signal });
     assert.equal(native.isError, false, JSON.stringify(native));
     const third = (await complete(native.value)).knowledge;
     assert.equal(third.parent_version_id, second.version_id);

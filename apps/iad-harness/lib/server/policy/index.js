@@ -35,6 +35,7 @@ export const ALLOWED_TOOL_SURFACE = [
     "knowledge_job_cancel",
     "knowledge_job_retry",
     "knowledge_get",
+    "knowledge_sources",
     "knowledge_evidence",
     // Audit & Images (7 tools)
     "dataset_audit",

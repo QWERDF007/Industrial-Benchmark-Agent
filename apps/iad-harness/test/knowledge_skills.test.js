@@ -86,7 +86,8 @@ test("DSH cancelling a knowledge job preserves unprocessed scope and prevents la
   };
   try {
     const dataset = await ctx.iadPythonBridge.execute("dataset_import", { format: "labelme", name: "取消验证", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
-    const job = await execute("knowledge_mine_normal", { dataset_id: dataset.dataset_id, model_name: "test-mllm" });
+    const sources = await execute("knowledge_sources", { dataset_id: dataset.dataset_id, kind: "normal" });
+    const job = await execute("knowledge_mine_normal", { dataset_id: dataset.dataset_id, model_name: "test-mllm", sample_ids: sources.items.map(item => item.sample_id) });
     await entered.promise;
     const invalidWait = await ctx.tools.execute({ name: "knowledge_job_status", arguments: { run_id: job.run_id, wait_seconds: 31 },
       callId: "invalid-wait", signal: new AbortController().signal });
@@ -254,6 +255,8 @@ test("DSH standalone knowledge tools execute shared jobs and return actual evide
       const args = { dataset_id: dataset.dataset_id, model_name: "test-mllm" };
       if (kind === "normal") args.sample_ids = [dataset.dataset_id + `:part-${sampleIndex}.png`];
       if (kind === "defect") args.normal_version_id = versions.normal.version_id;
+      if (kind === "defect") args.sample_ids = (await execute("knowledge_sources", {
+        dataset_id: dataset.dataset_id, kind, normal_version_id: args.normal_version_id })).value.items.map(item => item.sample_id);
       if (key === "defect_revised") {
         args.base_version_id = versions.defect.version_id;
         args.corrections = [{ check_id: versions.defect.checks[0].check_id, instruction: "重新排除有色反光，实体遮挡须有独立可见证据" }];
@@ -363,7 +366,8 @@ test("DSH standalone knowledge tools execute shared jobs and return actual evide
     }
     const frozenDefect = (await execute("knowledge_get", { version_id: versions.defect.version_id })).value;
     assert.equal(frozenDefect.freshness.normal_version_changed, false);
-    let successor = (await execute("knowledge_mine_normal", { dataset_id: dataset.dataset_id, model_name: "test-refreshed-normal" })).value;
+    const sources = (await execute("knowledge_sources", { dataset_id: dataset.dataset_id, kind: "normal" })).value;
+    let successor = (await execute("knowledge_mine_normal", { dataset_id: dataset.dataset_id, model_name: "test-refreshed-normal", sample_ids: sources.items.map(item => item.sample_id) })).value;
     const successorDeadline = Date.now() + 10000;
     while (["PENDING", "RUNNING"].includes(successor.status) && Date.now() < successorDeadline) {
       await delay(20);

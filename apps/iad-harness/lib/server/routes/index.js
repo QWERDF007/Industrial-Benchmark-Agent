@@ -114,6 +114,8 @@ export function createIadHttpHandler(bridge) {
                 return await call("audit_" + audit[1], { ...body, run_id: decodeURIComponent(audit[2]) });
             if (pathname === "/api/iad/knowledge" && method === "GET")
                 return await call("knowledge_get", query);
+            if (pathname === "/api/iad/knowledge/sources" && method === "GET")
+                return await call("knowledge_sources", query);
             if (pathname === "/api/iad/knowledge/start" && method === "POST")
                 return await call("knowledge_start", body);
             if (pathname === "/api/iad/knowledge/jobs" && method === "GET")
