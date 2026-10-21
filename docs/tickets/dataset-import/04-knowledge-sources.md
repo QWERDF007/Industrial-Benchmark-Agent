@@ -4,7 +4,7 @@
 
 **Blocked by:** 02：预览目录角色并导入图像级数据。
 
-**Status:** draft
+**Status:** ready-for-agent
 
 - [ ] 对应规格 A04、A07；正常池不吸收原始NG/未知，人工PASS/HARD_NORMAL/FAIL决定资格，UNCERTAIN/SKIP不冒充确认，手动选取不绕过规则。
 - [ ] 无区域NG可直接成为异常候选；MLLM看不出异常时保留不确定/标签可疑，不因目录名直接发布确定缺陷知识。

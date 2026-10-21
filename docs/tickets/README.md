@@ -1,6 +1,6 @@
 # 数据集统一接入票据
 
-本轮按用户要求采用本地票据并保存在 docs。测试边界和拆分确认前为 draft，确认后统一标记 ready-for-agent；无需创建外部 issue。进度仅记录于根 WORKLOG.md。
+本地票据保存在 docs，状态为 ready-for-agent。测试边界、粒度和依赖已经确认；逐票验收通过后才能标记完成。进度仅记录于根 WORKLOG.md。
 
 需求与验收口径以[完整规格](../specs/dataset-import.md)为准。逐票只定义可交付行为、必要验收与阻塞边，依赖以各票 Blocked by 为唯一来源；实现入口见[源码索引](../architecture.md)。
 

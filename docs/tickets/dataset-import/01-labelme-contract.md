@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)。
 
-**Status:** draft
+**Status:** ready-for-agent
 
 - [ ] 对应规格 A01、A02、A05；Labelme 仍支持独立或相同图像/标注目录及矩形、多边形、Mask，原始数量与来源保持真实。
 - [ ] 格式分支字段校验由领域执行，页面/HTTP/DSH 类型一致；需要的整理随本贯通流程交付，不创建平行旧新入口或泛化框架。

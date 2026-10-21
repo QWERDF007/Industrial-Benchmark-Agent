@@ -1,7 +1,7 @@
 # 文档索引
 
 - [Labelme 与图像级异常检测数据集完整规格](specs/dataset-import.md)：问题、用户故事、领域/交互决策、测试边界与范围。
-- [逐票交付与依赖](tickets/README.md)：一票一文件，阻塞边以逐票定义为准；确认前为 draft。
+- [逐票交付与依赖](tickets/README.md)：一票一文件，阻塞边与状态以逐票定义为准。
 - [实现与验收索引](architecture.md)：指向当前代码、既有测试与必要运行约束。
 - [使用与启动](../README.md)。
 - 本地任务账本：根 WORKLOG.md，唯一进度与待裁决记录。
