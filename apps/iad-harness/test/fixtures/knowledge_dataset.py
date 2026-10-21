@@ -19,3 +19,15 @@ for index in range(3):
     image.save(images / f'part-{index}.png')
 (labels / 'part-2.json').write_text(json.dumps({'imageWidth': 320, 'imageHeight': 240,
     'shapes': [{'shape_type': 'rectangle', 'label': '待核实区域', 'points': [[80, 90], [120, 150]]}]}))
+
+if '--folder' in sys.argv[2:]:
+    import shutil
+    folder = root / 'folder-dataset'
+    for directory in ('OK/batch', 'NG', 'unknown'):
+        (folder / directory).mkdir(parents=True)
+    for index in range(3):
+        shutil.copyfile(images / f'part-{index}.png', folder / ('OK/batch' if index < 2 else 'NG') / f'part-{index}.png')
+    Image.new('RGB', (320, 240), '#909090').save(folder / 'unknown/part-3.png')
+    with Image.open(images / 'part-2.png') as image:
+        ImageDraw.Draw(image).rectangle((210, 110, 230, 130), fill=(190, 30, 30))
+        image.save(folder / 'OK/batch/part-4.png')

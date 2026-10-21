@@ -30,8 +30,12 @@ class KnowledgeReader:
                 raise ValueError('Knowledge kind must be normal or defect')
             DatasetRegistry(self.db).get(dataset_id)
             snapshot = self.repository.current(dataset_id, kind)
+        normal = self.repository.current(dataset_id, 'normal') if kind == 'defect' else None
+        availability = self.sources.eligible(dataset_id, kind, normal)
         return KnowledgeQuery(knowledge=snapshot, versions=self.repository.versions(dataset_id, kind),
-                              freshness=self.freshness(snapshot) if snapshot else None)
+                              freshness=self.freshness(snapshot) if snapshot else None,
+                              eligible_source_count=len(availability.qualifications),
+                              unavailable_source_count=len(availability.unavailable))
 
     def freshness(self, snapshot: KnowledgeSnapshot) -> KnowledgeFreshness:
         normal = self.repository.get(snapshot.normal_version_id) if snapshot.normal_version_id else None
@@ -41,7 +45,8 @@ class KnowledgeReader:
         eligible = availability.qualifications
         changes = []
         fields = {'sha256': 'image', 'annotations_sha256': 'annotations', 'review_sha256': 'review',
-                  'audit_suggestion_ids': 'audit_candidates', 'qualification': 'qualification'}
+                  'audit_suggestion_ids': 'audit_candidates', 'qualification': 'qualification',
+                  'quality_status': 'qualification', 'quality_source': 'qualification'}
         for source in snapshot.sources:
             reasons = []
             if source.sample_id in availability.unavailable:
@@ -55,7 +60,7 @@ class KnowledgeReader:
                 if source.sample_id not in eligible:
                     reasons.append('qualification')
             if reasons:
-                changes.append(KnowledgeSourceChange(sample_id=source.sample_id, reasons=reasons))
+                changes.append(KnowledgeSourceChange(sample_id=source.sample_id, reasons=list(dict.fromkeys(reasons))))
         with self.db.connection() as conn:
             row = conn.execute("""SELECT json_extract(payload_json,'$.request.generation_signature') FROM job_runs
                 WHERE json_extract(payload_json,'$.knowledge_version_id')=? ORDER BY id DESC LIMIT 1""",

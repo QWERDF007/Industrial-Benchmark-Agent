@@ -21,9 +21,14 @@ test("real bridge: Labelme import, composed filters and human session submission
   const base = `http://127.0.0.1:${server.address().port}/api/iad`;
   const post = (url, body) => fetch(base + url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   try {
-    const imported = await post("/datasets/import", { name: "Test dataset", image_dir: images, annotation_dir: labels });
+    const invalidFmt = await post("/datasets/import", { format: "invalid", name: "bad", image_dir: images, annotation_dir: labels });
+    assert.equal(invalidFmt.status, 422);
+    const missingFmt = await post("/datasets/import", { name: "no-format", image_dir: images, annotation_dir: labels });
+    assert.equal(missingFmt.status, 422);
+    const imported = await post("/datasets/import", { format: "labelme", name: "Test dataset", image_dir: images, annotation_dir: labels });
     assert.equal(imported.status, 200, await imported.clone().text());
     const dataset = await imported.json();
+    assert.equal(dataset.format, "labelme");
     const response = await fetch(`${base}/samples/${dataset.task_id}?dataset_id=${dataset.dataset_id}&annotation_filters=${encodeURIComponent(JSON.stringify(["none"]))}`);
     const samples = await response.json();
     assert.equal(samples.total, 1);
@@ -86,14 +91,41 @@ conn.commit();conn.close()
     assert.equal(searched.total,1);assert.equal(searched.items[0].decision_id,legacyId);
     assert.equal((await fetch(`${base}/review/history?dataset_id=${dataset.dataset_id}&page=0`)).status,422);
     const otherImages=path.join(root,"other-images");await fs.mkdir(otherImages);await fs.writeFile(path.join(otherImages,"other.png"),png);
-    const otherImport=await post("/datasets/import",{name:"Other dataset",image_dir:otherImages,annotation_dir:labels});
+    const otherImport=await post("/datasets/import",{format:"labelme",name:"Other dataset",image_dir:otherImages,annotation_dir:labels});
     assert.equal(otherImport.status,200,await otherImport.clone().text());
     const other=await otherImport.json();
+    assert.equal(other.format,"labelme");
     const isolated=await (await fetch(`${base}/review/history?dataset_id=${other.dataset_id}`)).json();
     assert.equal(isolated.total,0,"不同数据集不能读取本数据集的人工历史");
-    const badImport = await post("/datasets/import", { name: "broken", image_dir: "/does-not-exist", annotation_dir: labels });
+    const badImport = await post("/datasets/import", { format: "labelme", name: "broken", image_dir: "/does-not-exist", annotation_dir: labels });
     assert.equal(badImport.status, 404);
     assert.equal((await (await fetch(base + "/datasets")).json()).datasets.length, 2);
+
+    // Folder classification preview and import
+    const folderRoot = path.join(root, "folder-test");
+    await fs.mkdir(path.join(folderRoot, "OK"), { recursive: true });
+    await fs.mkdir(path.join(folderRoot, "NG"), { recursive: true });
+    await fs.writeFile(path.join(folderRoot, "OK/1.png"), png);
+    await fs.writeFile(path.join(folderRoot, "NG/2.png"), png);
+    const prevRes = await post("/datasets/preview", { root_dir: folderRoot });
+    assert.equal(prevRes.status, 200);
+    const prevData = await prevRes.json();
+    assert.equal(prevData.format, "folder_classification");
+    assert.equal(prevData.total_images, 2);
+    const folderImport = await post("/datasets/import", {
+      format: "folder_classification",
+      name: "目录异常分类",
+      root_dir: folderRoot,
+      rules: prevData.items.map(i => ({ path: i.path, role: i.suggested_role })),
+      preview_fingerprint: prevData.preview_fingerprint,
+    });
+    assert.equal(folderImport.status, 200, await folderImport.clone().text());
+    const folderDs = await folderImport.json();
+    assert.equal(folderDs.format, "folder_classification");
+    assert.equal(folderDs.total_samples, 2);
+    assert.equal(folderDs.annotation_count, 0);
+    assert.equal(folderDs.labeled_sample_count, 2);
+    assert.equal((await (await fetch(base + "/datasets")).json()).datasets.length, 3);
   } finally {
     bridge.destroy();
     await new Promise(resolve => server.close(resolve));
@@ -135,7 +167,7 @@ test("real bridge: normal mining publishes knowledge and serves its actual visua
   const base = `http://127.0.0.1:${server.address().port}/api/iad`;
   const post = (url, body) => fetch(base + url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   try {
-    const imported = await post("/datasets/import", { name: "Knowledge inputs", image_dir: images, annotation_dir: labels });
+    const imported = await post("/datasets/import", { format: "labelme", name: "Knowledge inputs", image_dir: images, annotation_dir: labels });
     assert.equal(imported.status, 200, await imported.clone().text());
     const dataset = await imported.json();
     assert.equal(dataset.reference_sample_ids.length, 10, "管理页候选必须覆盖全部来源，不能只返回默认4张预览");
@@ -235,7 +267,7 @@ test("real bridge: cancellation stays requested until the model call returns", {
   const base=`http://127.0.0.1:${server.address().port}/api/iad`;
   const post=(url,body)=>fetch(base+url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
   try {
-    const imported=await post("/datasets/import",{name:"Cancellation",image_dir:images,annotation_dir:labels});
+    const imported=await post("/datasets/import",{format:"labelme",name:"Cancellation",image_dir:images,annotation_dir:labels});
     assert.equal(imported.status,200,await imported.clone().text());const dataset=await imported.json();
     const started=await post("/knowledge/start",{dataset_id:dataset.dataset_id,kind:"normal",model_name:"test-model"});
     assert.equal(started.status,200,await started.clone().text());const job=await started.json();
@@ -268,5 +300,138 @@ test("real bridge: cancellation stays requested until the model call returns", {
     if(previousEndpoint===undefined)delete process.env.LIVE_VLM_ENDPOINT;else process.env.LIVE_VLM_ENDPOINT=previousEndpoint;
     await new Promise(resolve=>server.close(resolve));await new Promise(resolve=>model.close(resolve));
     await fs.rm(root,{recursive:true,force:true});
+  }
+});
+
+test("folder classification: raw label filtering, details mapping modification, and atomic rescan", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-folder-"));
+  const datasetRoot = path.join(root, "data");
+  await fs.mkdir(path.join(datasetRoot, "OK/batch"), { recursive: true });
+  await fs.mkdir(path.join(datasetRoot, "NG"), { recursive: true });
+  await fs.mkdir(path.join(datasetRoot, "unknown"), { recursive: true });
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j1ioAAAAASUVORK5CYII=", "base64");
+  await fs.writeFile(path.join(datasetRoot, "OK/batch", "good.png"), png);
+  await fs.writeFile(path.join(datasetRoot, "NG", "bad.PNG"), png);
+  await fs.writeFile(path.join(datasetRoot, "unknown", "sample.png"), png);
+
+  const bridge = new PythonBridge({ cwd: process.cwd().endsWith("iad-harness") ? path.resolve("../..") : process.cwd(), dbPath: path.join(root, "test.db") });
+  const server = http.createServer(createIadHttpHandler(bridge));
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  const base = `http://127.0.0.1:${server.address().port}/api/iad`;
+  const post = (url, body) => fetch(base + url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+  try {
+    // 1. Preview
+    const previewRes = await post("/datasets/preview", { root_dir: datasetRoot });
+    assert.equal(previewRes.status, 200);
+    const preview = await previewRes.json();
+    assert.equal(preview.total_images, 3);
+    assert.deepEqual(preview.items.find(item => item.path === "OK"), {
+      path: "OK", image_count: 1, suggested_role: "normal", role: "normal",
+    }, "预览与导入共同继承确认的父目录规则");
+
+    // 2. Import
+    const importRes = await post("/datasets/import", {
+      format: "folder_classification",
+      name: "产线质检",
+      root_dir: datasetRoot,
+      rules: [
+        { path: "OK", role: "normal" },
+        { path: "NG", role: "anomaly" },
+        { path: "unknown", role: "unlabeled" },
+      ],
+      preview_fingerprint: preview.preview_fingerprint,
+    });
+    assert.equal(importRes.status, 200);
+    const dataset = await importRes.json();
+    assert.equal(dataset.format, "folder_classification");
+    assert.equal(dataset.total_samples, 3);
+    assert.equal(dataset.labeled_sample_count, 2);
+
+    // 3. Raw label filtering
+    const passQuery = await fetch(`${base}/samples/${dataset.task_id}?dataset_id=${dataset.dataset_id}&raw_label_filters=${encodeURIComponent(JSON.stringify(["PASS"]))}`);
+    assert.equal(passQuery.status, 200);
+    const passSamples = await passQuery.json();
+    assert.equal(passSamples.total, 1);
+    assert.equal(passSamples.items[0].relative_path, "OK/batch/good.png");
+
+    const unionQuery = await fetch(`${base}/samples/${dataset.task_id}?dataset_id=${dataset.dataset_id}&raw_label_filters=${encodeURIComponent(JSON.stringify(["PASS", "FAIL"]))}`);
+    assert.equal(unionQuery.status, 200);
+    const unionSamples = await unionQuery.json();
+    assert.equal(unionSamples.total, 2);
+
+    // 4. Submit human review
+    const targetSample = passSamples.items[0];
+    const subRes = await post("/review/submit", {
+      submission_id: randomUUID(),
+      dataset_id: dataset.dataset_id,
+      sample_id: targetSample.sample_id,
+      reviewer: "inspector",
+      decision: "PASS",
+      comment: "human verified normal",
+      duration_ms: 1000,
+    });
+    assert.equal(subRes.status, 200);
+
+    // 5. Modify mapping: map "unknown" to "normal" and rescan
+    const nextRules = [
+        { path: "OK", role: "normal" },
+        { path: "NG", role: "anomaly" },
+        { path: "unknown", role: "normal" },
+    ];
+    const confirmed = await (await post("/datasets/preview", { root_dir: datasetRoot, rules: nextRules })).json();
+    const changedRules = nextRules.map(rule => rule.path === "NG" ? { ...rule, role: "normal" } : rule);
+    const stale = await post(`/datasets/${dataset.dataset_id}/rescan`, {
+      image_dir: datasetRoot, folder_rules: changedRules, preview_fingerprint: confirmed.preview_fingerprint,
+    });
+    assert.equal(stale.status, 422, "不能将确认过的指纹应用于不同规则");
+    const rescanRes = await post(`/datasets/${dataset.dataset_id}/rescan`, {
+      image_dir: datasetRoot, folder_rules: nextRules, preview_fingerprint: confirmed.preview_fingerprint,
+    });
+    assert.equal(rescanRes.status, 200, await rescanRes.clone().text());
+
+    // 6. Verify updated state
+    const dsListRes = await fetch(`${base}/datasets`);
+    const dsList = await dsListRes.json();
+    const updatedDs = dsList.datasets.find(d => d.dataset_id === dataset.dataset_id);
+    assert.equal(updatedDs.labeled_sample_count, 3);
+    assert.equal(updatedDs.folder_rules.length, 3);
+    const conflict = await post(`/datasets/${dataset.dataset_id}/rescan`, {
+      folder_rules: [...nextRules, { path: "NG", role: "normal" }],
+    });
+    assert.equal(conflict.status, 422, "同目录多角色不得发布");
+
+    const rePassQuery = await fetch(`${base}/samples/${dataset.task_id}?dataset_id=${dataset.dataset_id}&raw_label_filters=${encodeURIComponent(JSON.stringify(["PASS"]))}`);
+    const rePassSamples = await rePassQuery.json();
+    assert.equal(rePassSamples.total, 2);
+
+    // Verify sample_id, sample_uuid, and human review decision are preserved
+    const detailRes = await fetch(`${base}/sample/${encodeURIComponent(targetSample.sample_id)}`);
+    const detail = await detailRes.json();
+    assert.equal(detail.sample.sample_uuid, targetSample.sample_uuid);
+    assert.equal(detail.review_decision.decision, "PASS");
+    assert.equal(detail.review_decision.reviewer, "inspector");
+    const excludedRules = nextRules.map(rule => rule.path === "OK" ? { ...rule, role: "excluded" } : rule);
+    const excludedPreview = await (await post("/datasets/preview", { root_dir: datasetRoot, rules: excludedRules })).json();
+    const excluded = await post(`/datasets/${dataset.dataset_id}/rescan`, {
+      folder_rules: excludedRules, preview_fingerprint: excludedPreview.preview_fingerprint,
+    });
+    assert.equal(excluded.status, 200, await excluded.clone().text());
+    assert.equal((await excluded.json()).issue_count, 0, "显式排除不是源文件丢失");
+    const afterExclude = await (await fetch(`${base}/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
+    assert.equal(afterExclude.total_samples, 2, "排除图像退出当前投影但保留历史");
+    const historical = await (await fetch(`${base}/sample/${encodeURIComponent(targetSample.sample_id)}`)).json();
+    assert.equal(historical.review_decision.decision, "PASS");
+    const restoredPreview = await (await post("/datasets/preview", { root_dir: datasetRoot, rules: nextRules })).json();
+    assert.equal((await post(`/datasets/${dataset.dataset_id}/rescan`, {
+      folder_rules: nextRules, preview_fingerprint: restoredPreview.preview_fingerprint,
+    })).status, 200);
+    const restored = await (await fetch(`${base}/sample/${encodeURIComponent(targetSample.sample_id)}`)).json();
+    assert.equal(restored.sample.sample_uuid, targetSample.sample_uuid);
+    assert.equal(restored.review_decision.decision, "PASS");
+  } finally {
+    bridge.destroy();
+    await new Promise(resolve => server.close(resolve));
+    await fs.rm(root, { recursive: true, force: true });
   }
 });

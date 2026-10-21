@@ -180,7 +180,7 @@ class SampleRepository:
     def count_by_task(self, task_id: str) -> int:
         with self.db.connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM samples WHERE task_id = ?", (task_id,))
+            cursor.execute("SELECT COUNT(*) FROM samples WHERE task_id = ? AND is_excluded=0", (task_id,))
             return cursor.fetchone()[0]
 
     def list_by_task(
@@ -188,7 +188,7 @@ class SampleRepository:
     ) -> List[Sample]:
         with self.db.connection() as conn:
             cursor = conn.cursor()
-            query = "SELECT * FROM samples WHERE task_id = ? ORDER BY id ASC"
+            query = "SELECT * FROM samples WHERE task_id = ? AND is_excluded=0 ORDER BY id ASC"
             params: list = [task_id]
             if limit is not None:
                 query += " LIMIT ? OFFSET ?"
@@ -200,7 +200,7 @@ class SampleRepository:
         with self.db.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT * FROM samples WHERE task_id = ? ORDER BY RANDOM() LIMIT ?",
+                "SELECT * FROM samples WHERE task_id = ? AND is_excluded=0 ORDER BY RANDOM() LIMIT ?",
                 (task_id, n),
             )
             return [self._row_to_sample(r) for r in cursor.fetchall()]
@@ -223,6 +223,7 @@ class SampleRepository:
             height=row["height"],
             quality_status=QualityStatus(row["quality_status"]),
             quality_source=row["quality_source"],
+            is_excluded=bool(row['is_excluded']),
         )
 
 

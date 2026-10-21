@@ -85,7 +85,7 @@ test("DSH cancelling a knowledge job preserves unprocessed scope and prevents la
     return result.value;
   };
   try {
-    const dataset = await ctx.iadPythonBridge.execute("dataset_import", { name: "取消验证", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
+    const dataset = await ctx.iadPythonBridge.execute("dataset_import", { format: "labelme", name: "取消验证", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
     const job = await execute("knowledge_mine_normal", { dataset_id: dataset.dataset_id, model_name: "test-mllm" });
     await entered.promise;
     const invalidWait = await ctx.tools.execute({ name: "knowledge_job_status", arguments: { run_id: job.run_id, wait_seconds: 31 },
@@ -234,7 +234,7 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
   };
   try {
     assert.ok(ctx.tools.get("dataset_list"), "Skills need a registered dataset discovery tool");
-    const dataset = (await execute("dataset_import", { name: "合成部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") })).value;
+    const dataset = (await execute("dataset_import", { format: "labelme", name: "合成部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") })).value;
     const original = await ctx.iadPythonBridge.execute("sample_get", { sample_id: dataset.dataset_id + ":part-2.png" });
     assert.equal((await execute("dataset_list", {})).value.datasets.length, 1);
     const versions = {};

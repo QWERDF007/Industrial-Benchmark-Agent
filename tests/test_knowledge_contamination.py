@@ -42,7 +42,7 @@ def test_operator_can_locate_contaminated_normal_source_without_changing_human_t
         (labels/'part-3.json').write_text(json.dumps({'imageWidth':320,'imageHeight':240,'shapes':[
             {'label':'待观察区域','shape_type':'rectangle','points':[[80,90],[120,150]]}]}))
     db = Database(str(tmp_path / 'knowledge.db'))
-    config = DatasetRegistry(db).import_labelme(DatasetImport(name='孔板', image_dir=str(images), annotation_dir=str(labels)))
+    config = DatasetRegistry(db).import_labelme(DatasetImport(format='labelme', name='孔板', image_dir=str(images), annotation_dir=str(labels)))
     target_id = config.dataset.id+':part-3.png'
     if annotated_roi:
         ReviewRepository(db).append_decision(ReviewDecisionRecord(sample_id=target_id, decision='PASS', reviewer='operator'))

@@ -37,7 +37,7 @@ def large_mask_dataset(tmp_path, request):
     if with_reference_mask:
         (labels / 'part-0.json').write_text((labels / 'part-2.json').read_text())
     db_path = str(tmp_path / 'knowledge.db')
-    dataset = dataset_import({'name': '几何部件', 'image_dir': str(images), 'annotation_dir': str(labels)}, db_path)
+    dataset = dataset_import({'format': 'labelme', 'name': '几何部件', 'image_dir': str(images), 'annotation_dir': str(labels)}, db_path)
     target_id = dataset['dataset_id'] + ':part-2.png'
     if with_reference_mask:
         review = HumanReview(Database(db_path))

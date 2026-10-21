@@ -42,9 +42,10 @@ test("DSH directory import and browser queries share one dataset and report", as
     const missing = await execute("dataset_directory_inspect", { path: path.join(root, "missing") });
     assert.equal(missing.isError, true);
     assert.deepEqual((await execute("dataset_list", {})).value.datasets, [], "Directory inspection must not import datasets");
-    const result = await execute("dataset_import", { name: "会话接入的部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
+    const result = await execute("dataset_import", { format: "labelme", name: "会话接入的部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
     assert.equal(result.isError, false, JSON.stringify(result));
     const dataset = result.value;
+    assert.equal(dataset.format, "labelme");
     assert.equal(dataset.total_samples, 3);
     assert.equal(dataset.name, "会话接入的部件");
     const browserDatasets = await (await fetch(base + "/datasets")).json();
@@ -70,7 +71,7 @@ test("DSH directory import and browser queries share one dataset and report", as
     assert.equal(toolTask, null);
     assert.equal(browserTask, dataset.task_id);
     assert.deepEqual(toolReport, browserReport);
-    const duplicate = await execute("dataset_import", { name: "不应重复导入", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
+    const duplicate = await execute("dataset_import", { format: "labelme", name: "不应重复导入", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
     assert.equal(duplicate.isError, true);
     assert.equal((await execute("dataset_list", {})).value.datasets.length, 1);
     const sampleId = dataset.dataset_id + ":part-2.png";

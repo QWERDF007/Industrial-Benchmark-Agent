@@ -1,3 +1,4 @@
+from iad_core.dataset.folder_preview import preview_folder_dataset
 from uuid import uuid4
 import base64
 import io
@@ -184,7 +185,7 @@ def test_defect_mining_keeps_frozen_normal_lineage_when_normal_head_changes(defe
         foreign_images.mkdir()
         foreign_labels.mkdir()
         Image.new('RGB', (100, 100), 'gray').save(foreign_images / 'part.png')
-        foreign = dataset_import({'name': '另一数据集', 'image_dir': str(foreign_images), 'annotation_dir': str(foreign_labels)}, db.db_path)
+        foreign = dataset_import({'format': 'labelme', 'name': '另一数据集', 'image_dir': str(foreign_images), 'annotation_dir': str(foreign_labels)}, db.db_path)
         with pytest.raises(ValueError, match='same dataset'):
             service.start(dataset_id=foreign['dataset_id'], kind='defect', normal_version_id=normal['version_id'])
         with pytest.raises(ValueError, match='normal_version_id'):
@@ -313,5 +314,151 @@ def test_operator_can_mine_unannotated_suspects_without_inventing_annotation_pro
         assert all(item['annotation_id'] is None for item in finding['origins'])
         assert sample_get({'sample_id': target_id}, db.db_path)['review_decision'] == baseline['review_decision']
         assert sample_get({'sample_id': target_id}, db.db_path)['annotations'] == []
+    finally:
+        service.close()
+
+
+def test_folder_classification_defect_and_normal_knowledge(tmp_path):
+    from iad_core.dataset.registry import DatasetRegistry, FolderClassificationImport
+    from iad_core.task.config import FolderRule
+    from iad_core.storage.database import Database
+    from iad_core.storage.review_repository import ReviewRepository
+    from iad_core.storage.models import ReviewDecisionRecord
+    from iad_core.knowledge.sources import KnowledgeSources
+    from iad_core.knowledge.service import KnowledgeService
+    from iad_core.entry import sample_get, knowledge_get
+    from iad_core.workbench.vision import VlmClient
+
+    root = tmp_path / "folder_knowledge_test"
+    (root / "OK").mkdir(parents=True)
+    (root / "NG").mkdir(parents=True)
+    (root / "unknown").mkdir(parents=True)
+    Image.new("RGB", (320, 240), (200, 200, 200)).save(root / "OK/good.png")
+    Image.new("RGB", (320, 240), (255, 0, 0)).save(root / "NG/bad.png")
+    Image.new("RGB", (320, 240), (100, 100, 100)).save(root / "unknown/sample.png")
+
+    db = Database(str(tmp_path / "test.db"))
+    registry = DatasetRegistry(db)
+    rules = [
+        FolderRule(path="OK", role="normal"),
+        FolderRule(path="NG", role="anomaly"),
+        FolderRule(path="unknown", role="unlabeled"),
+    ]
+    config = registry.import_dataset(FolderClassificationImport(
+        format="folder_classification",
+        name="产线质检",
+        root_dir=str(root),
+        rules=rules,
+        preview_fingerprint=preview_folder_dataset(str(root), rules).preview_fingerprint,
+    ))
+    ds_id = config.dataset.id
+    ok_id = f"{ds_id}:OK/good.png"
+    ng_id = f"{ds_id}:NG/bad.png"
+    unk_id = f"{ds_id}:unknown/sample.png"
+
+    sources = KnowledgeSources(db)
+    reviews = ReviewRepository(db)
+
+    # 1. Normal eligibility
+    normal_elig = sources.eligible(ds_id, "normal").qualifications
+    assert ok_id in normal_elig
+    assert normal_elig[ok_id] == "raw_pass"
+    assert ng_id not in normal_elig
+    assert unk_id not in normal_elig
+
+    # Manual selection of unknown without human review is rejected by set_references
+    with pytest.raises(ValueError):
+        registry.set_references(ds_id, [unk_id])
+
+    # Human review PASS on unknown makes it eligible for normal pool
+    reviews.append_decision(ReviewDecisionRecord(sample_id=unk_id, decision="PASS", reviewer="tester"))
+    normal_elig_after = sources.eligible(ds_id, "normal").qualifications
+    assert unk_id in normal_elig_after
+    assert normal_elig_after[unk_id] == "human_pass"
+
+    # Human review FAIL on OK removes it from normal pool
+    reviews.append_decision(ReviewDecisionRecord(sample_id=ok_id, decision="FAIL", reviewer="tester"))
+    normal_elig_fail = sources.eligible(ds_id, "normal").qualifications
+    assert ok_id not in normal_elig_fail
+
+    # Reset review on OK to PASS for normal mining
+    reviews.append_decision(ReviewDecisionRecord(sample_id=ok_id, decision="PASS", reviewer="tester"))
+
+    # 2. Defect eligibility
+    defect_elig = sources.eligible(ds_id, "defect").qualifications
+    assert ng_id in defect_elig
+    assert defect_elig[ng_id] == "raw_fail"
+    from iad_core.knowledge.query import KnowledgeReader
+    assert KnowledgeReader(db).read(dataset_id=ds_id, kind='defect').eligible_source_count == 1
+    for decision in ("SKIP", "UNCERTAIN"):
+        reviews.append_decision(ReviewDecisionRecord(sample_id=ng_id, decision=decision, reviewer="tester"))
+        assert ng_id not in sources.eligible(ds_id, "defect").qualifications
+        assert KnowledgeReader(db).read(dataset_id=ds_id, kind='defect').eligible_source_count == 0
+    reviews.append_decision(ReviewDecisionRecord(sample_id=ng_id, decision="FAIL", reviewer="tester"))
+    # OK has human PASS, so it cannot be defect candidate
+    assert ok_id not in defect_elig
+
+    # Human review PASS on NG removes it from defect candidates
+    reviews.append_decision(ReviewDecisionRecord(sample_id=ng_id, decision="PASS", reviewer="tester"))
+    assert ng_id not in sources.eligible(ds_id, "defect").qualifications
+
+    # Add NG2 to test unannotated raw_fail
+    Image.new("RGB", (320, 240), (250, 50, 50)).save(root / "NG/bad2.png")
+    registry.rescan(ds_id)
+    ng2_id = f"{ds_id}:NG/bad2.png"
+    defect_elig2 = sources.eligible(ds_id, "defect").qualifications
+    assert ng2_id in defect_elig2
+    assert defect_elig2[ng2_id] == "raw_fail"
+
+    # 3. Defect mining with MLLM
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 4000, 'max_model_len': 262144})
+        body = json.loads(request.content)
+        content = body['messages'][0]['content']
+        evidence = [json.loads(item['text'].removeprefix('视觉证据：')) for item in content
+                    if item['type'] == 'text' and item['text'].startswith('视觉证据：')]
+        if body['response_format']['json_schema']['name'] == 'KnowledgeVerification':
+            payload = json.loads(content[0]['text'].split('待核验疑点：', 1)[1].split('\n请根据图像', 1)[0])
+            raw = next(item for item in evidence if item['role'] == 'roi')
+            reference = next(item for item in evidence if item['role'] == 'normal' and item['source_sha256'] != raw['source_sha256'])
+            result = {'findings': [{'finding_id': target['finding_id'], 'status': 'supported',
+                      'affected_check_titles': ['表面外观'], 'description': '异常红色', 'normal_explanation': '非正常颜色',
+                      'limitations': [], 'evidence_ids': [raw['evidence_id'], reference['evidence_id']], 'conflicts': []}
+                      for target in payload['findings']]}
+        else:
+            is_defect = '已核验异常' in content[0]['text']
+            result = {'summary': '表面外观', 'checks': [{
+                'title': '缺陷检查' if is_defect else '表面外观', 'subject': '主体', 'location': '全图',
+                'criterion': '不可出现红色' if is_defect else '表面为灰色',
+                'allowed_variations': [], 'support_evidence_ids': [item['evidence_id'] for item in evidence],
+                'counter_evidence_ids': [], 'limitations': [], 'status': 'supported',
+            }], 'suspects': [], 'limitations': []}
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
+
+    service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        # Mine normal knowledge
+        normal_job = service.start(dataset_id=ds_id, kind='normal', model_name='test-mllm')
+        service.wait(normal_job['run_id'], 5)
+        normal_ver = service.status(normal_job['run_id'])['knowledge_version_id']
+        normal_k = knowledge_get({'version_id': normal_ver}, db.db_path)['knowledge']
+        assert len(normal_k['checks']) > 0
+
+        # Mine defect knowledge using normal version
+        defect_job = service.start(dataset_id=ds_id, kind='defect', normal_version_id=normal_ver, sample_ids=[ng2_id], model_name='test-mllm')
+        service.wait(defect_job['run_id'], 5)
+        defect_status = service.status(defect_job['run_id'])
+        assert defect_status['status'] == 'COMPLETED'
+        defect_k = knowledge_get({'version_id': defect_status['knowledge_version_id']}, db.db_path)['knowledge']
+        assert defect_k['sources'][0]['qualification'] == 'raw_fail'
+        # Verification finding had full-image coverage and no annotation bbox
+        finding, = defect_k['findings']
+        assert finding['bbox'] == [0, 0, 320, 240]
+        assert finding['origins'][0]['source'] == 'coverage'
+        assert finding['origins'][0]['label'] == '目录异常待核实'
+
+        # Ensure no fake annotations were created in samples
+        assert sample_get({'sample_id': ng2_id}, db.db_path)['annotations'] == []
     finally:
         service.close()

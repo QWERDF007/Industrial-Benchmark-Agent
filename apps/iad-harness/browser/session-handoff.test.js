@@ -137,9 +137,51 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     const later = await driver.findElements(By.xpath("//button[.='Configure later']")); if (later.length) await later[0].click();
     const notice = await driver.findElements(By.xpath("//button[.='Continue']")); if (notice.length) await notice[0].click();
     await (await element("button[aria-label^='数据集管理']")).click();
-    const dataset = await api("/datasets/import", { name: "会话交接", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
+    const folderRoot = path.join(root, "classification");
+    for (const directory of ["OK/batch", "NG", "unknown"]) await fs.mkdir(path.join(folderRoot, directory), { recursive: true });
+    for (const [index, directory] of ["OK/batch", "NG", "unknown"].entries())
+      await fs.copyFile(path.join(root, "images", `part-${index}.png`), path.join(folderRoot, directory, `sample-${index}.png`));
+    await button("添加数据集");
+    await (await element("input[value='folder_classification']")).click();
+    const rootInput = await element("input[aria-label='父目录']");
+    await rootInput.sendKeys(folderRoot);
+    assert.equal(await rootInput.getAttribute("value"), folderRoot, "目录输入不被异步预览中断");
+    await element("select[aria-label='目录 OK 角色']");
+    await driver.wait(async () => await (await element("#dataset-name")).getAttribute("value") === "classification", 10000);
+    const importButton = await driver.findElement(By.xpath("//button[normalize-space(.)='导入数据集']"));
+    await driver.wait(until.elementIsEnabled(importButton), 15000); await importButton.click();
+    await driver.wait(async () => (await driver.findElements(By.css("dialog[open]"))).length === 0, 15000);
+    const folders = (await api("/datasets")).datasets;
+    const folder = folders.find(item => item.format === "folder_classification");
+    assert.equal(folder.labeled_sample_count, 2);
+    await (await element("button[aria-label^='图像浏览']")).click();
+    await driver.wait(async () => (await driver.findElements(By.css(".iad-sample"))).length === 3, 15000);
+    assert.equal((await driver.findElements(By.css("summary[aria-label='标注筛选']"))).length, 0, "目录格式不提供区域标注筛选");
+    await (await element("summary[aria-label='原始标签筛选']")).click();
+    await (await element("input[aria-label='原始标签 NG']")).click();
+    await (await element(".iad-header h1")).click();
+    await driver.wait(async () => (await driver.findElements(By.css(".iad-sample"))).length === 1, 15000);
+    assert.equal((await driver.findElements(By.css(".iad-floating-menu[open]"))).length, 0, "点击空白关闭筛选");
+    await (await element(".iad-sample")).click();
+    assert.match(await (await element("dialog [data-field='raw-label']")).getText(), /^NG/);
+    await (await element("button[aria-label='关闭图像详情']")).click();
+    await button("清除筛选");
+    await driver.wait(async () => (await driver.findElements(By.css(".iad-sample"))).length === 3, 15000);
+    await (await element("button[aria-label^='数据集管理']")).click();
+    await (await element("select[aria-label='目录 NG 角色'] option[value='unlabeled']")).click();
+    const saveMapping = await driver.findElement(By.xpath("//button[normalize-space(.)='保存映射并重新扫描']"));
+    await driver.wait(until.elementIsEnabled(saveMapping), 15000); await saveMapping.click();
+    await driver.wait(async () => (await (await api("/datasets")).datasets.find(item => item.dataset_id === folder.dataset_id)).labeled_sample_count === 1, 15000);
+    assert.equal((await driver.findElements(By.css("section[aria-label='当前数据集详情'] [role='alert']"))).length, 0);
+    await verifyWorkbenchLayout(driver, path.join(workspace, "runs/browser/folder-layout"), {
+      pageLabels: ["数据集管理", "图像浏览"], sizes: [[1366, 768], [375, 812]], zoomLevels: [1, 2],
+    });
+    await driver.manage().window().setRect({ width: 1440, height: 1100 });
+    await (await element("button[aria-label^='数据集管理']")).click();
+    const dataset = await api("/datasets/import", { format: "labelme", name: "会话交接", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
     await (await element("button[aria-label^='图像浏览']")).click();
     await button("刷新");
+    await (await element("select[aria-label='当前数据集'] option[value='" + dataset.dataset_id + "']")).click();
     await delay(5500);
     assert.equal(await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label"), "图像浏览", "侧栏保留固定名称，不附加待审计统计");
     let job = await api("/knowledge/start", { dataset_id: dataset.dataset_id, kind: "normal", model_name: "test-mllm" });
@@ -293,7 +335,7 @@ for i in range(26): Image.new('RGB',(320,240),(20+i,80,120)).save(root/f'sequenc
 Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
 (root/'zz-excluded.json').write_text(json.dumps({'imageWidth':320,'imageHeight':240,'shapes':[{'label':'排除标注','shape_type':'rectangle','points':[[10,10],[20,20]]}]}))
 `, path.join(root,"sequence")]);
-    const sequence = await api("/datasets/import", { name: "跨页图像", image_dir: path.join(root,"sequence"), annotation_dir: path.join(root,"sequence") });
+    const sequence = await api("/datasets/import", { format: "labelme", name: "跨页图像", image_dir: path.join(root,"sequence"), annotation_dir: path.join(root,"sequence") });
     await button("刷新");
     await (await element("select[aria-label='当前数据集'] option[value='" + sequence.dataset_id + "']")).click();
     assert.equal(await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label"), "图像浏览", "切换数据集仍使用固定导航名称");

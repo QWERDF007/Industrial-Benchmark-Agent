@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timezone
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.storage.database import Database
@@ -16,6 +16,7 @@ class SampleQuery(BaseModel):
     task_id: Optional[str] = None
     page: int = Field(1, ge=1)
     page_size: int = Field(24, ge=1, le=200)
+    raw_label_filters: List[Literal["PASS", "FAIL", "UNCERTAIN"]] = Field(default_factory=list)
     annotation_filters: List[str] = Field(default_factory=list)
     model_status: Literal["all", "pending", "audited", "risk", "PASS", "FAIL", "UNCERTAIN"] = "all"
     review_status: Literal["all", "pending", "reviewed", "PASS", "HARD_NORMAL", "FAIL", "UNCERTAIN", "SKIP"] = "all"
@@ -23,6 +24,14 @@ class SampleQuery(BaseModel):
     reference_status: Literal["all", "candidate", "excluded"] = "all"
     search: str = ""
     sort_by: Literal["default", "risk", "tech"] = "default"
+
+    @field_validator("raw_label_filters", mode="before")
+    @classmethod
+    def normalize_raw_labels(cls, values):
+        if not values:
+            return []
+        mapping = {"OK": "PASS", "NG": "FAIL", "unlabeled": "UNCERTAIN"}
+        return [mapping.get(v, v) for v in values]
 
     @model_validator(mode="after")
     def require_scope(self):
@@ -42,7 +51,7 @@ WITH advice AS (
 ), decisions AS (
  SELECT *,ROW_NUMBER() OVER(PARTITION BY sample_id ORDER BY COALESCE(submitted_at,updated_at) DESC,id DESC) AS position
  FROM current_review_decisions
-), base AS (
+), sample_history AS (
  SELECT s.*,a.suggestion_id,a.model_route,a.confidence,a.created_at AS audited_at,
  a.reference_sample_ids_json,a.audit_run_id,
  json_extract(a.hypotheses_json,'$[0].label') AS suggested_label,
@@ -62,7 +71,7 @@ WITH advice AS (
       ELSE NULL END AS visual_suspicion_score
  FROM samples s LEFT JOIN advice a ON a.sample_id=s.sample_id AND a.position=1
  LEFT JOIN decisions d ON d.sample_id=s.sample_id AND d.position=1
-)
+) , base AS (SELECT * FROM sample_history WHERE is_excluded=0)
 """
 
 
@@ -72,7 +81,7 @@ class WorkbenchQuery:
 
     def sample_scores(self, sample_id: str) -> dict:
         with self.db.connection() as conn:
-            row = conn.execute(BASE + "SELECT technical_quality_score,visual_suspicion_score FROM base WHERE sample_id=?", (sample_id,)).fetchone()
+            row = conn.execute(BASE + "SELECT technical_quality_score,visual_suspicion_score FROM sample_history WHERE sample_id=?", (sample_id,)).fetchone()
         if row is None:
             raise LookupError("Sample not found")
         return dict(row)
@@ -85,6 +94,9 @@ class WorkbenchQuery:
         if query.task_id:
             clauses.append("task_id=?")
             params.append(query.task_id)
+        if query.raw_label_filters:
+            clauses.append("quality_status IN (SELECT value FROM json_each(?))")
+            params.append(json.dumps(query.raw_label_filters))
         if query.annotation_filters:
             annotations = []
             if "none" in query.annotation_filters:
@@ -169,7 +181,8 @@ class WorkbenchQuery:
             categories = {r[0]: r[1] for r in conn.execute(BASE + f"SELECT COALESCE(reason_category,'UNSPECIFIED'),count(*) FROM base WHERE {where} AND suggestion_id IS NOT NULL GROUP BY COALESCE(reason_category,'UNSPECIFIED')", params)}
             samples = conn.execute(BASE + f"""
                 SELECT b.sample_id,b.width,b.height,b.suggestion_id,b.suggested_label,b.review_decision,
-                    b.reviewed_at,b.audit_run_id,a.analysis_json
+                    b.reviewed_at,b.audit_run_id,a.analysis_json,b.quality_status,
+                    b.source_fingerprint,a.source_fingerprint AS audited_source_fingerprint
                 FROM base b LEFT JOIN audit_suggestions a ON a.suggestion_id=b.suggestion_id
                 WHERE {" AND ".join("b." + clause for clause in clauses)}
             """, params).fetchall()
@@ -188,13 +201,17 @@ class WorkbenchQuery:
             dataset_id = config.dataset.id
             report = self.report(dataset_id=dataset_id, task_id=config.task.task_id)
             with self.db.connection() as conn:
-                annotation_counts = conn.execute("SELECT a.raw_label,count(*) FROM annotations a JOIN samples s ON s.sample_id=a.sample_id WHERE s.dataset_id=? GROUP BY a.raw_label ORDER BY a.raw_label", (dataset_id,)).fetchall()
-                feature_count = conn.execute("SELECT count(DISTINCT f.sample_id) FROM feature_records f JOIN samples s ON s.sample_id=f.sample_id WHERE s.dataset_id=?", (dataset_id,)).fetchone()[0]
+                annotation_counts = conn.execute("SELECT a.raw_label,count(*) FROM annotations a JOIN samples s ON s.sample_id=a.sample_id WHERE s.dataset_id=? AND s.is_excluded=0 GROUP BY a.raw_label ORDER BY a.raw_label", (dataset_id,)).fetchall()
+                feature_count = conn.execute("SELECT count(DISTINCT f.sample_id) FROM feature_records f JOIN samples s ON s.sample_id=f.sample_id WHERE s.dataset_id=? AND s.is_excluded=0", (dataset_id,)).fetchone()[0]
+                explicit_labels = conn.execute("SELECT count(*) FROM samples WHERE dataset_id=? AND is_excluded=0 AND quality_status IN ('PASS', 'FAIL')", (dataset_id,)).fetchone()[0]
                 selected = conn.execute("SELECT reference_selection_set FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()[0]
             items.append({**report, "dataset_id": dataset_id, "name": config.dataset.name or dataset_id,
+                          "format": config.dataset.format,
                           "task_name": config.task.name or config.task.product or config.task.task_id,
                           "product": config.task.product, "image_dir": config.root, "annotation_dir": config.annotations.root,
                           "annotation_categories": [row[0] for row in annotation_counts], "annotation_count": sum(row[1] for row in annotation_counts),
+                          "labeled_sample_count": explicit_labels,
+                          "folder_rules": [r.model_dump() for r in (getattr(config, "folder_rules", []) or [])],
                           "reference_sample_ids": registry.references(dataset_id, limit=None),
                           "reference_mode": "selected" if selected else "automatic",
                           "unannotated_is_normal": config.dataset.unannotated_is_normal,

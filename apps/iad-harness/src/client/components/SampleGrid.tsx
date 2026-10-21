@@ -22,10 +22,15 @@ export function SampleGrid({ dataset, filters, onFilters, items, total, page, on
     reference_status: [["all", "全部"], ["candidate", "良品候选"], ["excluded", "非候选"]],
     sort_by: [["default", "默认"], ["risk", "可疑度优先"], ["tech", "技术问题优先"]],
   } satisfies Record<string, string[][]>;
+  const isFolder = dataset.format === "folder_classification";
+  const rawLabelOptions: [("PASS" | "FAIL" | "UNCERTAIN"), string][] = [["PASS", "OK"], ["FAIL", "NG"], ["UNCERTAIN", "未标记"]];
+  const rawLabelMap: Record<string, string> = { PASS: "OK", FAIL: "NG", UNCERTAIN: "未标记" };
+  const rawFilters = filters.raw_label_filters || [];
   const select = <K extends keyof typeof options>(key: K, label: string) => <label className="iad-filter">{label}<select aria-label={label} disabled={busy} value={filters[key]} onChange={e => onFilters({ ...filters, [key]: e.target.value })}>
     {options[key].map(([value, title]) => <option key={value} value={value}>{title}</option>)}</select></label>;
   const active = [
-    ...filters.annotation_filters.map(value => value === "none" ? "无标注" : value === "present" ? "有标注" : value.slice(9)),
+    ...rawFilters.map(value => `标签：${rawLabelMap[value] || value}`),
+    ...(!isFolder ? filters.annotation_filters.map(value => value === "none" ? "无标注" : value === "present" ? "有标注" : value.slice(9)) : []),
     ...Object.entries(options).filter(([key]) => filters[key as keyof typeof options] !== initialFilters[key as keyof typeof options])
       .flatMap(([key, values]) => { const option = values.find(([value]) => value === filters[key as keyof typeof options]); return option ? [option[1]] : []; }),
     ...(filters.search ? [`文件名：${filters.search}`] : []),
@@ -58,11 +63,16 @@ export function SampleGrid({ dataset, filters, onFilters, items, total, page, on
   }
   const pagination = <Pagination total={total} page={page} unit="张" onPage={onPage} />;
   return <section className="iad-gallery" aria-label="图像列表"><div className="iad-filters">
-    <div className="iad-filter"><span>标注</span><FloatingMenu className="iad-multiselect" label="标注筛选" summary={filters.annotation_filters.length ? `已选 ${filters.annotation_filters.length} 项` : "全部"}>
+    <div className="iad-filter"><span>原始标签</span><FloatingMenu className="iad-multiselect" label="原始标签筛选" summary={rawFilters.length ? `已选 ${rawFilters.length} 项` : "全部"}>
+      {rawLabelOptions.map(([value, title]) =>
+        <label key={value}><input type="checkbox" aria-label={`原始标签 ${title}`} disabled={busy} checked={rawFilters.includes(value)} onChange={e => onFilters({ ...filters, raw_label_filters: e.target.checked ? [...rawFilters, value] : rawFilters.filter(item => item !== value) })} />{title}</label>)}
+      <button disabled={busy} onClick={() => onFilters({ ...filters, raw_label_filters: [] })}>清空</button>
+    </FloatingMenu></div>
+    {!isFolder && <div className="iad-filter"><span>标注</span><FloatingMenu className="iad-multiselect" label="标注筛选" summary={filters.annotation_filters.length ? `已选 ${filters.annotation_filters.length} 项` : "全部"}>
       {[["none", "无标注"], ["present", "有标注"], ...dataset.annotation_categories.map(value => [`category:${value}`, `类别 ${value}`])].map(([value, title]) =>
         <label key={value}><input type="checkbox" aria-label={title} disabled={busy} checked={filters.annotation_filters.includes(value)} onChange={e => onFilters({ ...filters, annotation_filters: e.target.checked ? [...filters.annotation_filters, value] : filters.annotation_filters.filter(item => item !== value) })} />{title}</label>)}
       <button disabled={busy} onClick={() => onFilters({ ...filters, annotation_filters: [] })}>清空</button>
-    </FloatingMenu></div>
+    </FloatingMenu></div>}
     {select("model_status", "模型审计")}{select("review_status", "人工复核")}
     <label className="iad-filter iad-search">搜索<input type="search" aria-label="按文件名搜索" placeholder="文件名" disabled={busy} value={filters.search} onChange={e => onFilters({ ...filters, search: e.target.value })} /></label>
     <FloatingMenu className="iad-multiselect" label="更多筛选" summary="更多筛选">{select("technical", "技术质量")}{select("reference_status", "良品来源")}{select("sort_by", "排序")}</FloatingMenu>

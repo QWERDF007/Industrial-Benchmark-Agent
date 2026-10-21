@@ -16,7 +16,7 @@ for (const source of ["directory", "archive"]) test(`a real DSH Session imports 
   execFileSync(resolvePythonPath(), [fileURLToPath(new URL("fixtures/knowledge_dataset.py", import.meta.url)), root]);
   const requests = [], trace = [];
   let rescanDataset = null, rescanStart = 0;
-  const request = { name: source === "directory" ? path.basename(root) : "会话测试部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") };
+  const request = { format: "labelme", name: source === "directory" ? path.basename(root) : "会话测试部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") };
   const archived = source === "archive";
   const directoryPaths = archived ? [] : [root, request.image_dir, request.annotation_dir];
   const inspectionCount = archived ? 1 : directoryPaths.length;
@@ -141,6 +141,163 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
       assert.deepEqual(sample.annotations, []);
       assert.equal((await session.ctx.iadPythonBridge.execute("dataset_list", {})).datasets.length, 1);
     }
+  } finally {
+    await session?.dispose();
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    if (previousCredential === undefined) delete process.env.IAD_SESSION_TEST_CREDENTIAL;
+    else process.env.IAD_SESSION_TEST_CREDENTIAL = previousCredential;
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test("a real DSH Session previews, imports a folder classification dataset and reads the shared report", { timeout: 15000 }, async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-agent-folder-session-"));
+  await fs.mkdir(path.join(root, "good"), { recursive: true });
+  await fs.mkdir(path.join(root, "bad"), { recursive: true });
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j1ioAAAAASUVORK5CYII=", "base64");
+  await fs.writeFile(path.join(root, "good/part-1.png"), png);
+  await fs.writeFile(path.join(root, "bad/part-2.png"), png);
+
+  const requests = [], trace = [];
+  let rescanDataset = null, rescanStart = 0;
+
+  const server = http.createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const body = JSON.parse(Buffer.concat(chunks).toString());
+    requests.push(body);
+    const tools = body.messages.filter(message => message.role === "tool");
+    let delta, finish;
+
+    if (rescanDataset) {
+      const count = tools.length - rescanStart;
+      if (count < 2) {
+        delta = {
+          role: "assistant",
+          tool_calls: [{
+            index: 0,
+            id: `rescan-${count}`,
+            type: "function",
+            function: {
+              name: count === 0 ? "dataset_rescan" : "dataset_report",
+              arguments: JSON.stringify({ dataset_id: rescanDataset.dataset_id }),
+            },
+          }],
+        };
+        finish = "tool_calls";
+      } else {
+        delta = { role: "assistant", content: "已重新扫描目录，样本数已更新。" };
+        finish = "stop";
+      }
+    } else if (tools.length === 0) {
+      delta = {
+        role: "assistant",
+        tool_calls: [{
+          index: 0,
+          id: "preview",
+          type: "function",
+          function: { name: "dataset_preview", arguments: JSON.stringify({ root_dir: root }) },
+        }],
+      };
+      finish = "tool_calls";
+    } else if (tools.length === 1) {
+      const preview = JSON.parse(tools[0].content);
+      delta = {
+        role: "assistant",
+        tool_calls: [{
+          index: 0,
+          id: "import",
+          type: "function",
+          function: {
+            name: "dataset_import",
+            arguments: JSON.stringify({
+              format: "folder_classification",
+              name: path.basename(root),
+              root_dir: root,
+              rules: preview.items.map(({ path, role }) => ({ path, role })),
+              preview_fingerprint: preview.preview_fingerprint,
+            }),
+          },
+        }],
+      };
+      finish = "tool_calls";
+    } else if (tools.length === 2) {
+      const dataset = JSON.parse(tools[1].content);
+      delta = {
+        role: "assistant",
+        tool_calls: [{
+          index: 0,
+          id: "report",
+          type: "function",
+          function: { name: "dataset_report", arguments: JSON.stringify({ dataset_id: dataset.dataset_id }) },
+        }],
+      };
+      finish = "tool_calls";
+    } else {
+      delta = { role: "assistant", content: "已导入目录异常检测数据集，已登记2张图，包含1张良品和1张异常，尚未开展模型审计。" };
+      finish = "stop";
+    }
+
+    res.writeHead(200, { "Content-Type": "text/event-stream" });
+    for (const choice of [{ index: 0, delta, finish_reason: null }, { index: 0, delta: {}, finish_reason: finish }]) {
+      res.write(`data: ${JSON.stringify({ id: "folder-session-response", object: "chat.completion.chunk", model: "test-agent", choices: [choice] })}\n\n`);
+    }
+    res.end("data: [DONE]\n\n");
+  });
+
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  const previousCredential = process.env.IAD_SESSION_TEST_CREDENTIAL;
+  process.env.IAD_SESSION_TEST_CREDENTIAL = "synthetic-test-credential";
+  let session;
+  try {
+    session = await createDatasetSession({
+      root: path.join(root, "dsh"),
+      dbPath: path.join(root, "test.db"),
+      endpoint: `http://127.0.0.1:${server.address().port}/v1`,
+      model: "test-agent",
+      apiKeyEnv: "IAD_SESSION_TEST_CREDENTIAL",
+    });
+    session.ctx.on("tools/result", (exec, result) => trace.push({ name: exec.name, result }));
+
+    session.handle.agent.followup(createUserMessage({
+      source: { kind: "user" },
+      content: [{ type: "text", text: `导入服务器上的目录分类数据集 ${root} 并查看当前质量报告。` }],
+    }));
+    await session.handle.agent.whenIdle();
+
+    assert.deepEqual(trace.map(item => item.name), ["dataset_preview", "dataset_import", "dataset_report"]);
+    assert.ok(trace.every(item => item.result.isError === false));
+    const imported = trace[1].result.value;
+    assert.equal(imported.format, "folder_classification");
+    assert.equal(imported.name, path.basename(root));
+
+    const report = trace[2].result.value;
+    assert.equal(report.total_samples, 2);
+    assert.equal(report.quality.label_comparison.raw_ok, 1);
+    assert.equal(report.quality.label_comparison.raw_ng, 1);
+    assert.equal(report.quality.label_comparison.unaudited, 2);
+    assert.equal(report.quality.label_comparison.inconsistency_ratio.denominator, 0);
+    assert.equal(report.quality.label_comparison.inconsistency_ratio.percent, null);
+
+    // Rescan followup
+    rescanDataset = imported;
+    rescanStart = requests.at(-1).messages.filter(message => message.role === "tool").length;
+    const beforeRescan = trace.length;
+    await fs.writeFile(path.join(root, "good/part-3.png"), png);
+
+    session.handle.agent.followup(createUserMessage({
+      source: { kind: "user" },
+      content: [{ type: "text", text: "good 目录中新增了图片，请重新扫描原数据集并查看最新报告。" }],
+    }));
+    await session.handle.agent.whenIdle();
+
+    assert.deepEqual(trace.slice(beforeRescan).map(item => item.name), ["dataset_rescan", "dataset_report"]);
+    assert.ok(trace.slice(beforeRescan).every(item => !item.result.isError));
+    const updatedReport = trace.at(-1).result.value;
+    assert.equal(updatedReport.total_samples, 3);
+    assert.equal(updatedReport.quality.label_comparison.raw_ok, 2);
+    assert.equal(updatedReport.quality.label_comparison.raw_ng, 1);
   } finally {
     await session?.dispose();
     server.closeAllConnections();

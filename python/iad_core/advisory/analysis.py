@@ -127,6 +127,9 @@ class VisualEvidence(AnalysisModel):
     annotation_sha256: Optional[str] = Field(default=None, pattern="^[a-f0-9]{64}$")
     media_type: Literal["image/png"] = "image/png"
 
+    def model_context(self) -> dict:
+        return self.model_dump(exclude={'annotation_ids'})
+
 
 class Coverage(AnalysisModel):
     planned_regions: int
@@ -145,11 +148,18 @@ class RegionOrigin(AnalysisModel):
     bbox: List[int]
     check_ids: List[str] = Field(default_factory=list)
 
+    def model_context(self) -> dict:
+        return self.model_dump(exclude={'annotation_id', 'label', 'origins', 'image'})
+
 
 class RegionImage(RegionOrigin):
     origins: List[RegionOrigin]
     image: VisualEvidence
     crop_bbox: List[int]
+
+    def model_context(self) -> dict:
+        return {**super().model_context(), 'origins': [origin.model_context() for origin in self.origins],
+                'image': self.image.model_context()}
 
 
 class RegionEvidence(RegionImage):

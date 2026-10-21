@@ -1,9 +1,11 @@
 from uuid import uuid4
 from pathlib import Path
+import json
 
 from PIL import Image
 
 from iad_core.entry import dataset_import, report_get, review_submit_decision
+from iad_core.storage.database import Database
 
 
 def test_quality_dimensions_include_rejected_images_and_distinguish_human_verification(tmp_path):
@@ -15,7 +17,7 @@ def test_quality_dimensions_include_rejected_images_and_distinguish_human_verifi
     (images / 'unreadable.png').write_bytes(b'not an image')
     (labels / 'invalid-label.json').write_text('broken json')
     db_path = str(tmp_path / 'quality.db')
-    imported = dataset_import({'name': '质量分项', 'image_dir': str(images), 'annotation_dir': str(labels)}, db_path)
+    imported = dataset_import({'format': 'labelme', 'name': '质量分项', 'image_dir': str(images), 'annotation_dir': str(labels)}, db_path)
     scope = {'dataset_id': imported['dataset_id'], 'task_id': imported['task_id']}
     for name, decision in [('valid', 'HARD_NORMAL'), ('skipped', 'SKIP'), ('uncertain', 'UNCERTAIN')]:
         review_submit_decision({'submission_id': str(uuid4()), 'dataset_id': scope['dataset_id'], 'reviewer': '检验员',
@@ -151,5 +153,49 @@ def test_report_discloses_mixed_frozen_versions_instead_of_current_head(dataset,
             original['version_id'], updated['knowledge_version_id']}
         assert [usage['sample_count'] for usage in quality['knowledge_versions']] == [1, 1]
         assert set(quality['audit_run_ids']) == {first['run_id'], second['run_id']}
+    finally:
+        runtime.close()
+
+
+def test_folder_label_comparison_and_inconsistency_ratio(tmp_path, mllm_api):
+    from iad_core.entry import dataset_preview, dataset_scan
+    from iad_core.workbench.runtime import WorkbenchRuntime
+    from iad_core.workbench.vision import VlmClient
+    root = tmp_path / 'folder_ds'
+    for directory in ('good', 'bad', 'unknown'):
+        (root / directory).mkdir(parents=True)
+    for name, color in [('good/s1', 'white'), ('good/s2', (254, 254, 254)), ('bad/s3', 'red'), ('unknown/s4', 'gray')]:
+        Image.new('RGB', (100, 100), color).save(root / (name + '.png'))
+    db_path = str(tmp_path / 'comparison.db')
+    preview = dataset_preview({'root_dir': str(root)}, db_path)
+    imported = dataset_import({'format': 'folder_classification', 'name': '目录对照测试', 'root_dir': str(root),
+        'rules': [{'path': item['path'], 'role': item['role']} for item in preview['items']],
+        'preview_fingerprint': preview['preview_fingerprint']}, db_path)
+    dataset_id = imported['dataset_id']
+    scope = {'dataset_id': dataset_id}
+    before = report_get(scope, db_path)['quality']['label_comparison']
+    assert (before['raw_ok'], before['raw_ng'], before['raw_unlabeled'], before['unaudited']) == (2, 1, 1, 4)
+    assert before['inconsistency_ratio']['percent'] is None
+    client, _, responses = mllm_api
+    runtime = WorkbenchRuntime(Database(db_path), VlmClient(http_client=client))
+    try:
+        mine = runtime.knowledge.start(dataset_id=dataset_id, kind='normal')
+        runtime.knowledge.wait(mine['run_id'], 5)
+        assert runtime.knowledge.status(mine['run_id'])['status'] == 'COMPLETED'
+        for label, paths in [('PASS', ['good/s1', 'bad/s3']), ('FAIL', ['good/s2']), ('UNCERTAIN', ['unknown/s4'])]:
+            responses['VlmResult'].update(suggested_label=label)
+            job = runtime.audit.start(dataset_id=dataset_id, sample_ids=[dataset_id + ':' + path + '.png' for path in paths])
+            runtime.audit.wait(job['run_id'], 5)
+            assert runtime.audit.status(job['run_id'])['status'] == 'COMPLETED'
+        Image.new('RGB', (100, 100), 'blue').save(root / 'good/s1.png')
+        dataset_scan(scope, db_path)
+        lc = report_get(scope, db_path)['quality']['label_comparison']
+        assert (lc['raw_ok'], lc['raw_ng'], lc['raw_unlabeled']) == (2, 1, 1)
+        assert (lc['model_pass'], lc['model_fail'], lc['model_uncertain'], lc['unaudited']) == (2, 1, 1, 0)
+        assert lc['source_changed_count'] == 1
+        assert lc['source_unverified_count'] == 0
+        assert lc['inconsistency_ratio']['denominator'] == 2
+        assert lc['inconsistency_ratio']['numerator'] == 2
+        assert lc['inconsistency_ratio']['percent'] == 100
     finally:
         runtime.close()

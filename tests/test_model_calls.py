@@ -116,7 +116,7 @@ def test_concurrent_jobs_keep_separate_model_call_histories(knowledge_dataset, t
     images.mkdir()
     labels.mkdir()
     Image.new('RGB', (80, 60), 'white').save(images / 'other.png')
-    second = entry.dataset_import({'name': '另一部件', 'image_dir': str(images), 'annotation_dir': str(labels)}, db.db_path)
+    second = entry.dataset_import({'format': 'labelme', 'name': '另一部件', 'image_dir': str(images), 'annotation_dir': str(labels)}, db.db_path)
     arrived = threading.Barrier(2)
 
     def respond(request):

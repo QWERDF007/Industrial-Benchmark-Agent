@@ -10,9 +10,13 @@ import { findWorkspaceRoot, resolvePythonPath } from "../lib/server/python-bridg
 assert.ok(process.env.LIVE_VLM_ENDPOINT && process.env.LIVE_VLM_KEY, "Set the configured LIVE_VLM_ENDPOINT and LIVE_VLM_KEY before verification");
 const workspace = findWorkspaceRoot();
 const archiveMode = process.argv.includes("--archive");
-const output = path.resolve(process.argv.slice(2).find(arg => arg !== "--archive") || path.join(workspace, "runs/verification/dataset-session", String(Date.now())));
+const folderMode = process.argv.includes("--folder");
+assert.ok(!(archiveMode && folderMode), "Choose one dataset format");
+const expectedCount = folderMode ? 5 : 3;
+const output = path.resolve(process.argv.slice(2).find(arg => !["--archive", "--folder"].includes(arg)) || path.join(workspace, "runs/verification/dataset-session", String(Date.now())));
 await fs.mkdir(output, { recursive: true });
-execFileSync(resolvePythonPath(), [fileURLToPath(new URL("../test/fixtures/knowledge_dataset.py", import.meta.url)), output]);
+execFileSync(resolvePythonPath(), [fileURLToPath(new URL("../test/fixtures/knowledge_dataset.py", import.meta.url)), output, ...(folderMode ? ["--folder"] : [])]);
+const sourceRoot = folderMode ? path.join(output, "folder-dataset") : output;
 const model = execFileSync(resolvePythonPath(), ["-c", "from iad_core.workbench.vision import DEFAULT_MODEL; print(DEFAULT_MODEL)"],
   { cwd: workspace, env: { ...process.env, PYTHONPATH: path.join(workspace, "python") }, encoding: "utf8" }).trim();
 const session = await createDatasetSession({ root: path.join(output, "dsh"), dbPath: path.join(output, "verification.db"),
@@ -26,7 +30,7 @@ const started = Date.now();
 const timeout = setTimeout(() => session.handle.agent.cancel({ kind: "hook", reason: "Verification deadline exceeded" }), 900000);
 try {
   const source = archiveMode ? "名称：合成部件会话验证；使用所附 ZIP，包内图像目录 product/images、Labelme 标注目录 product/labels"
-    : `数据集在服务器上的 ${output} 目录。请检查目录，识别图像和 Labelme 标注，名称默认使用该目录名`;
+    : folderMode ? `数据集在服务器上的 ${sourceRoot} 目录，OK及其子目录是正常，NG是异常，unknown未标记。请检查实际目录，按目录图像级格式完成预览导入，名称默认使用该目录名` : `数据集在服务器上的 ${output} 目录。请检查目录，识别图像和 Labelme 标注，名称默认使用该目录名`;
   const content = [{ type: "text", text: `现在有一份数据集，进行良品、不良品知识挖掘，并审计，评估此数据集的质量。${source}。` }];
   let attachment;
   if (archiveMode) {
@@ -54,11 +58,20 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
     assert.ok(trace.some(item => item.name === "skill" && item.arguments.name === name), `Agent did not load ${name}`);
   }
   const dataset = trace.find(item => item.name === "dataset_import").result.value;
-  if (!archiveMode) {
+  if (!archiveMode && !folderMode) {
     assert.ok(trace.some(item => item.name === "dataset_directory_inspect" && item.arguments.path === output && !item.result.isError));
     assert.equal(dataset.image_dir, path.join(output, "images"));
     assert.equal(dataset.annotation_dir, path.join(output, "labels"));
     assert.equal(dataset.name, path.basename(output));
+  }
+  if (folderMode) {
+    assert.ok(trace.some(item => item.name === "dataset_preview"));
+    assert.equal(dataset.format, "folder_classification");
+    assert.equal(dataset.image_dir, sourceRoot);
+    assert.equal(dataset.annotation_dir, null);
+    assert.equal(dataset.name, path.basename(sourceRoot));
+    const imported = trace.find(item => item.name === "dataset_import").arguments;
+    assert.ok(imported.rules.length && imported.preview_fingerprint);
   }
   if (archiveMode) {
     assert.ok(trace.some(item => item.name === "dataset_archive_inspect" && !item.result.isError));
@@ -72,21 +85,21 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
   assert.equal(audits.jobs.length, 1);
   assert.ok([...jobs.jobs, ...audits.jobs].every(job => job.status === "COMPLETED" && job.failed === 0));
   assert.ok([...jobs.jobs, ...audits.jobs].every(job => job.origin_session_id === session.handle.agent.id), "All jobs must retain the actual initiating Session");
-  assert.equal(audits.jobs[0].completed, 3);
+  assert.equal(audits.jobs[0].completed, expectedCount);
   const report = trace.findLast(item => item.name === "dataset_report").result.value;
-  assert.equal(report.vlm_audited_count, 3);
+  assert.equal(report.vlm_audited_count, expectedCount);
   assert.equal(report.human_reviewed_count, 0);
-  assert.equal(report.quality.scope.observed_inputs, 3);
+  assert.equal(report.quality.scope.observed_inputs, expectedCount);
   assert.equal(report.quality.technical_usability.percent, 100);
   assert.equal(report.quality.audit_coverage.percent, 100);
   assert.equal(report.quality.human_verification_coverage.percent, 0);
   assert.equal(report.quality.model.unstructured_samples, 0);
   assert.deepEqual(report.quality.audit_run_ids, [audits.jobs[0].run_id]);
   assert.deepEqual(report.quality.knowledge_versions, [{ normal_version_id: audits.jobs[0].normal_version_id,
-    defect_version_id: audits.jobs[0].defect_version_id, legacy_profile_id: null, sample_count: 3 }]);
+    defect_version_id: audits.jobs[0].defect_version_id, legacy_profile_id: null, sample_count: expectedCount }]);
   assert.ok(report.quality.technical_usability.basis && report.quality.scope.limitations.length);
   assert.ok(!Object.hasOwn(report.quality, "total_score") && !Object.hasOwn(report.quality, "accuracy"));
-  const target = await session.ctx.iadPythonBridge.execute("sample_get", { sample_id: dataset.dataset_id + ":part-2.png" });
+  const target = await session.ctx.iadPythonBridge.execute("sample_get", { sample_id: dataset.dataset_id + (folderMode ? ":NG/part-2.png" : ":part-2.png") });
   const beforeFollowup = trace.length;
   const roi = target.suggestion.analysis.regions[0].image;
   const finding = target.suggestion.analysis.findings.find(item => item.evidence_ids.includes(roi.evidence_id));
@@ -121,7 +134,7 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
   const revisionStart = trace.length;
   session.handle.agent.followup(createUserMessage({ source: { kind: "user" }, content: [{ type: "text", text:
     `请修订本数据集的良品判据。先用knowledge_get核对当前normal版本${beforeRevision.version_id}，将${JSON.stringify(proposal)}作为待核验corrections，明确base_version_id，不能直接当作事实。` +
-    "调用knowledge_mine_normal重新看图核验，等待发布后继；再基于新良品版本挖掘不良品知识并等待完成，然后使用新版本审计本数据集全部3张图，最后读取质量报告。全部复用已有工具与真实作业，不改写原标注、人审或原始质量。" }] }));
+    `调用knowledge_mine_normal重新看图核验，等待发布后继；再基于新良品版本挖掘不良品知识并等待完成，然后使用新版本审计本数据集全部${expectedCount}张图，最后读取质量报告。全部复用已有工具与真实作业，不改写原标注、人审或原始质量。` }] }));
   await session.handle.agent.whenIdle();
   const revisionTrace = trace.slice(revisionStart);
   assert.ok(revisionTrace.every(item => !item.result.isError), "Revision turn had a tool error");
@@ -142,7 +155,7 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
   assert.ok(allJobs.every(job => job.status === "COMPLETED" && job.failed === 0 && job.origin_session_id === session.handle.agent.id));
   assert.equal(revisedAudits.jobs[0].normal_version_id, revised.version_id);
   assert.equal(revisedAudits.jobs[0].defect_version_id, revisedDefect.version_id);
-  assert.equal(revisedAudits.jobs[0].completed, 3);
+  assert.equal(revisedAudits.jobs[0].completed, expectedCount);
   const revisionReport = revisionTrace.findLast(item => item.name === "dataset_report")?.result.value;
   assert.ok(revisionReport, "Agent must report actual post-revision quality");
   assert.equal(revisionReport.human_reviewed_count, 0);
@@ -151,14 +164,33 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
   assert.deepEqual(revisedSample.annotations, target.annotations);
   assert.deepEqual(revisedSample.review_decision, target.review_decision);
   assert.equal(revisedSample.sample.quality_status, target.sample.quality_status);
+  let sourceChangeReport;
+  if (folderMode) {
+    execFileSync(resolvePythonPath(), ["-c", "from PIL import Image, ImageEnhance; import sys; p=sys.argv[1]; im=Image.open(p).convert('RGB'); ImageEnhance.Brightness(im).enhance(0.96).save(p)", path.join(sourceRoot, "OK/batch/part-0.png")]);
+    const start = trace.length;
+    session.handle.agent.followup(createUserMessage({ source: { kind: "user" }, content: [{ type: "text", text:
+      "OK/batch/part-0.png的图像内容已修改，目录角色不变。请复用原数据集先重新扫描，读取知识来源变化，再重新挖掘后继良品与不良品知识，使用新版本审计全部图像并读取最终质量报告。等待所有实际作业终态，不覆盖历史版本。" }] }));
+    await session.handle.agent.whenIdle();
+    const changed = trace.slice(start);
+    assert.ok(changed.every(item => !item.result.isError));
+    for (const name of ["dataset_rescan", "knowledge_get", "knowledge_mine_normal", "knowledge_mine_defect", "model_audit_start", "dataset_report"])
+      assert.ok(changed.some(item => item.name === name), `Source change missing ${name}`);
+    const current = (await session.ctx.iadPythonBridge.execute("knowledge_get", { dataset_id: dataset.dataset_id, kind: "normal" })).knowledge;
+    assert.equal(current.parent_version_id, revised.version_id);
+    sourceChangeReport = changed.findLast(item => item.name === "dataset_report").result.value;
+    assert.equal(sourceChangeReport.quality.audit_coverage.percent, 100);
+    assert.equal(sourceChangeReport.quality.label_comparison.source_changed_count, 0);
+    assert.equal(sourceChangeReport.quality.label_comparison.source_unverified_count, 0);
+    assert.equal(sourceChangeReport.total_samples, expectedCount);
+  }
   const messages = session.handle.agent.session.deriveMessages();
   const turns = session.handle.agent.session.snapshotEvents().filter(event => event.type === "turn/end");
-  assert.equal(turns.length, 3);
+  assert.equal(turns.length, folderMode ? 4 : 3);
   assert.ok(turns.every(event => event.data.reason.kind === "completed"), "All actual Agent turns must finish without a model or tool error");
   assert.ok(messages.filter(message => message.role === "tool").flatMap(message => message.content).filter(block => block.type === "image").length >= 2);
   assert.ok(messages.some(message => message.role === "assistant" && message.content.some(block => block.type === "text" && block.text.length)));
   await fs.writeFile(path.join(output, "result.json"), JSON.stringify({ session_id: session.handle.agent.id, elapsed_ms: Date.now() - started,
-    model, report, revision_report: revisionReport, revision: { parent_version_id: beforeRevision.version_id, version_id: revised.version_id, corrections: [proposal] },
+    model, format: folderMode ? "folder_classification" : "labelme", report, source_change_report: sourceChangeReport, revision_report: revisionReport, revision: { parent_version_id: beforeRevision.version_id, version_id: revised.version_id, corrections: [proposal] },
     jobs: allJobs, actual_tool_calls: trace.length, industrial_quality: "unassessed",
     attachment_upload: archiveMode ? "actual DSH verbatim ZIP file attachment; browser upload not tested" : "not tested",
     sidebar_pages: "not tested", quality_score: "three factual dimensions with explicit counts, scope and frozen knowledge versions; no aggregate or accuracy", evidence_followup: "actual full-image and ROI attachments" }, null, 2));

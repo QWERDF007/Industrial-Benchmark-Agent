@@ -20,12 +20,33 @@ export function QualityReport({ report }: { report: Report }) {
       <dt>人审良品 / 异常</dt><dd>良品 {report.human_pass_count} · 异常 {report.human_fail_count}</dd>
       <dt>人工待定 / 跳过</dt><dd>{report.human_uncertain_count} / {report.human_skipped_count}</dd>
     </dl>
+    {quality.label_comparison && (
+      <dl>
+        <dt>标签不一致比例</dt>
+        <dd>
+          <strong>{quality.label_comparison.inconsistency_ratio.percent === null ? "未评估" : `${quality.label_comparison.inconsistency_ratio.percent}%`}</strong>
+          {" · "}
+          {quality.label_comparison.inconsistency_ratio.numerator} / {quality.label_comparison.inconsistency_ratio.denominator}
+          {quality.label_comparison.source_changed_count > 0 && ` (排除来源变动 ${quality.label_comparison.source_changed_count})`}
+        </dd>
+        {quality.label_comparison.source_unverified_count > 0 && <><dt>来源指纹未记录</dt><dd>{quality.label_comparison.source_unverified_count} 张历史建议不参与标签对照</dd></>}
+        <dt>原始标签分布</dt>
+        <dd>良品 {quality.label_comparison.raw_ok} · 异常 {quality.label_comparison.raw_ng} · 未标记 {quality.label_comparison.raw_unlabeled}</dd>
+        <dt>模型建议分布</dt>
+        <dd>良品 {quality.label_comparison.model_pass} · 异常 {quality.label_comparison.model_fail} · 待定 {quality.label_comparison.model_uncertain} · 未审计 {quality.label_comparison.unaudited}</dd>
+        {quality.label_comparison.source_changed_count > 0 && <>
+          <dt>审计后来源变动</dt>
+          <dd>{quality.label_comparison.source_changed_count} 张图像规则或文件已更新，不可作为当前标签核验依据</dd>
+        </>}
+      </dl>
+    )}
     <details className="iad-analysis"><summary>口径、范围与版本</summary>
       <dl>
         <dt>输入 / 已登记</dt><dd>{quality.scope.observed_inputs} / {quality.scope.registered_samples}，未登记 {quality.scope.unregistered_inputs}</dd>
         <dt>范围</dt><dd>全部已保存图像，每张取最新记录；不受当前网格筛选影响。</dd>
         <dt>统计时间</dt><dd><time dateTime={report.generated_at}>{report.generated_at}</time></dd>
         {dimensions.map(([label, ratio]) => <React.Fragment key={label}><dt>{label}</dt><dd>{ratio.basis}</dd></React.Fragment>)}
+        {quality.label_comparison && <><dt>标签对照口径</dt><dd>{quality.label_comparison.inconsistency_ratio.basis}</dd></>}
       </dl>
       <h3>审计使用的知识组合</h3>
       {quality.knowledge_versions.length ? quality.knowledge_versions.map((usage, index) => <dl key={index}>

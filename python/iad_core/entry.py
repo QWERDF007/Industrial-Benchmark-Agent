@@ -60,8 +60,16 @@ def dataset_get(args, db_path):
 
 def dataset_import(args, db_path):
     registry = DatasetRegistry(Database(db_path))
-    config = registry.import_labelme(DatasetImport.model_validate(args))
+    req = DatasetImport.model_validate(args).root
+    config = registry.import_dataset(req)
     return dataset_get({"dataset_id": config.dataset.id}, db_path)
+
+
+def dataset_preview(args, db_path):
+    from iad_core.dataset.folder_preview import preview_folder_dataset
+    from iad_core.task.config import FolderRule
+    rules = [FolderRule.model_validate(r) for r in args.get("rules", [])] if "rules" in args else None
+    return preview_folder_dataset(args["root_dir"], rules=rules).model_dump()
 
 
 def dataset_delete(args, db_path):
@@ -96,12 +104,19 @@ def dataset_update(args, db_path):
 
 def dataset_scan(args, db_path):
     from iad_core.dataset.scanner import scan_dataset
+    from iad_core.task.config import FolderRule
     if args.get("config_path"):
         return scan_dataset(config_path=args["config_path"], db_path=db_path).model_dump()
     registry = DatasetRegistry(Database(db_path))
     config = registry.resolve(dataset_id=args.get("dataset_id"), task_id=args.get("task_id"))
-    return registry.rescan(config.dataset.id, image_dir=args.get("image_dir"),
-        annotation_dir=args.get("annotation_dir")).model_dump()
+    rules = args.get("folder_rules", args.get("rules"))
+    return registry.rescan(
+        config.dataset.id,
+        image_dir=args.get("image_dir") or args.get("root_dir"),
+        annotation_dir=args.get("annotation_dir"),
+        folder_rules=[FolderRule.model_validate(rule) for rule in rules] if rules is not None else None,
+        preview_fingerprint=args.get("preview_fingerprint"),
+    ).model_dump()
 
 
 def sample_list(args, db_path):
@@ -300,7 +315,7 @@ def model_call_get(args, db_path):
 
 
 OPERATIONS = {handler.__name__: handler for handler in (
-    tool_call, dataset_list, dataset_get, dataset_import, dataset_archive_inspect, dataset_update, dataset_scan, dataset_delete,
+    tool_call, dataset_list, dataset_get, dataset_import, dataset_preview, dataset_archive_inspect, dataset_update, dataset_scan, dataset_delete,
     sample_list, sample_get, sample_image_path, sample_thumbnail, sample_mask_path,
     review_queue, review_evidence, review_submit_decision, review_history,
     review_stats, report_get, audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_list, audit_evidence, inspection_context, directory_list,

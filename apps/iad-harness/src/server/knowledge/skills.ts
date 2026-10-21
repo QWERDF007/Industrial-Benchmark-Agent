@@ -11,7 +11,7 @@ export const KNOWLEDGE_SKILLS: readonly SkillRegistration[] = [
 使用项目已有 MLLM 挖掘作业，不在对话中另写一套视觉分析或固定产品检查表。
 
 1. 使用 dataset_list 确认数据集及 dataset_id；只有一个明确目标时直接使用，否则请用户选择，不能猜测。用户已修改目录中的图像/Labelme文件时先 dataset_rescan 更新原数据集，再开始核验；只读刷新不能代替重新扫描。
-2. 调用 knowledge_mine_normal，传入 dataset_id；用户明确指定新增来源时才传 sample_ids。后继作业合并父版本仍合格来源并重新核验；默认覆盖全部合格良品，不能自行设置数量或 ROI 预算。
+2. 用knowledge_get(kind: "normal")核对eligible_source_count，零来源时说明需要补充合格来源并停止，不发起空作业。来源可用时调用 knowledge_mine_normal，传入 dataset_id；用户明确指定新增来源时才传 sample_ids。后继作业合并父版本仍合格来源并重新核验；默认覆盖全部合格良品，不能自行设置数量或 ROI 预算。
    用户要求修订判据时，先用 knowledge_get 读取当前同类型版本和 check_id；将建议放入 corrections，并传 base_version_id。这是待核验候选，不能当作事实；基准变化时不得静默换版或套用到其他条目。
 3. 保存返回的 run_id，通过 knowledge_job_status 查询同一作业。PENDING/RUNNING 仅表示正在执行；收到停止要求时调用 knowledge_job_cancel。
 4. 只有返回 knowledge_version_id 才使用 knowledge_get 读取该版本。失败、取消或中断时如实报告完成、失败和未处理数量，不能声称发布成功。
@@ -32,7 +32,7 @@ export const KNOWLEDGE_SKILLS: readonly SkillRegistration[] = [
 
 1. 使用 dataset_list 确认 dataset_id。用户已修改目录中的图像/Labelme文件时先 dataset_rescan 更新原数据集。用户指定良品版本时用 knowledge_get 核对；否则读取该数据集当前 normal 知识并展示选用版本，后续明确传 normal_version_id。
 2. 若没有可用良品知识，先执行 mine-normal-knowledge，待其发布后再继续；不能跳过正常知识依据或跨数据集套用规则。
-3. 调用 knowledge_mine_defect，传 dataset_id 与冻结的 normal_version_id；只有用户指定新增来源时传 sample_ids。后继作业合并父版本仍合格来源并重新核验；默认核验全部合格异常候选，不设人为图片/ROI 上限。
+3. 用knowledge_get(kind: "defect")核对eligible_source_count，零来源时报告没有合格异常候选并跳过，不虚构知识或发起空作业；有候选时调用 knowledge_mine_defect，传 dataset_id 与冻结的 normal_version_id；只有用户指定新增来源时传 sample_ids。后继作业合并父版本仍合格来源并重新核验；默认核验全部合格异常候选，不设人为图片/ROI 上限。
    用户要求修订判据时，先用 knowledge_get 读取当前 defect 版本和 check_id；将建议放入 corrections 并传 base_version_id。修订仍须图像核验，不能直接改写已发布知识；基准变化时不得静默换版。
 4. 保存 run_id，通过 knowledge_job_status 查询同一作业，停止时调用 knowledge_job_cancel。运行中不能随良品知识头更新而切换依据。
 5. 用返回的 knowledge_version_id 调用 knowledge_get，检查 freshness 的来源、生成规则、正常依赖及未纳入候选；旧正常版本与当前版本不同须明示，不能静默换版。按需用 knowledge_evidence 读取实际证据。区分 supported、refuted、insufficient，保留正常反光/变化的解释与限制。

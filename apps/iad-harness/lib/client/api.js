@@ -9,9 +9,16 @@ export async function request(path, body, method, signal) {
         throw new Error(data.error?.message || `请求失败 (${response.status})`);
     return data;
 }
-export const initialFilters = { annotation_filters: [], model_status: "all", review_status: "all", technical: "all", reference_status: "all", search: "", sort_by: "default" };
+export const initialFilters = { raw_label_filters: [], annotation_filters: [], model_status: "all", review_status: "all", technical: "all", reference_status: "all", search: "", sort_by: "default" };
 export function sampleQuery(datasetId, filters, page, pageSize) {
-    return new URLSearchParams({ ...filters, annotation_filters: JSON.stringify(filters.annotation_filters), dataset_id: datasetId, page: String(page), page_size: String(pageSize) }).toString();
+    return new URLSearchParams({
+        ...filters,
+        raw_label_filters: JSON.stringify(filters.raw_label_filters || []),
+        annotation_filters: JSON.stringify(filters.annotation_filters || []),
+        dataset_id: datasetId,
+        page: String(page),
+        page_size: String(pageSize),
+    }).toString();
 }
 export const mediaUrl = (sample, view = "image") => `/api/iad/media/sample/${encodeURIComponent(sample.task_id)}/${encodeURIComponent(sample.sample_id)}/${view}${view === "thumbnail" ? "?size=240" : ""}`;
 export const message = (error) => error instanceof Error ? error.message : String(error);

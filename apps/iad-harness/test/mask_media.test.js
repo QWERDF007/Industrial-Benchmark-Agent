@@ -31,7 +31,7 @@ for name in ['part','other']:
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${server.address().port}/api/iad`;
   try {
-    const imported = await fetch(base + "/datasets/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Mask media", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") }) });
+    const imported = await fetch(base + "/datasets/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ format: "labelme", name: "Mask media", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") }) });
     assert.equal(imported.status, 200, await imported.clone().text());
     const dataset = await imported.json();
     const sampleId = dataset.dataset_id + ":part.png";

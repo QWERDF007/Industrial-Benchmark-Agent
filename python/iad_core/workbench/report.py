@@ -45,6 +45,20 @@ class ModelIndicators(AnalysisModel):
     unstructured_samples: int = Field(description='已有建议但未保存结构化证据分析，不能据此断言没有缺证')
 
 
+class LabelComparison(AnalysisModel):
+    raw_ok: int = 0
+    raw_ng: int = 0
+    raw_unlabeled: int = 0
+    model_pass: int = 0
+    model_fail: int = 0
+    model_uncertain: int = 0
+    unaudited: int = 0
+    inconsistent_count: int = 0
+    source_changed_count: int = 0
+    source_unverified_count: int = 0
+    inconsistency_ratio: QualityRatio
+
+
 class QualityAssessment(AnalysisModel):
     version: Literal['quality-dimensions-v1'] = 'quality-dimensions-v1'
     scope: QualityScope
@@ -52,11 +66,14 @@ class QualityAssessment(AnalysisModel):
     audit_coverage: QualityRatio
     human_verification_coverage: QualityRatio
     model: ModelIndicators
+    label_comparison: Optional[LabelComparison] = None
     knowledge_versions: List[KnowledgeUsage]
     audit_run_ids: List[str]
 
     @classmethod
     def from_records(cls, samples, issues):
+        samples = [dict(r) if not isinstance(r, dict) else r for r in samples]
+        issues = [dict(r) if not isinstance(r, dict) else r for r in issues]
         sample_ids = {row['sample_id'] for row in samples}
         issue_ids = {row['sample_id'] for row in issues if row['sample_id'] is not None}
         blocking = {row['sample_id'] for row in issues if row['severity'].upper() in ('ERROR', 'CRITICAL')}
@@ -68,6 +85,52 @@ class QualityAssessment(AnalysisModel):
             for analysis in analyses.values())
         suspects = {row['sample_id'] for row in samples if row['suggested_label'] == 'FAIL'} | {
             sample_id for sample_id, analysis in analyses.items() if analysis.findings}
+
+        raw_ok = sum(row.get('quality_status') == 'PASS' for row in samples)
+        raw_ng = sum(row.get('quality_status') == 'FAIL' for row in samples)
+        raw_unlabeled = sum(row.get('quality_status') not in ('PASS', 'FAIL') for row in samples)
+
+        model_pass = sum(row.get('suggestion_id') is not None and row.get('suggested_label') == 'PASS' for row in samples)
+        model_fail = sum(row.get('suggestion_id') is not None and row.get('suggested_label') == 'FAIL' for row in samples)
+        model_uncertain = sum(row.get('suggestion_id') is not None and row.get('suggested_label') in ('UNCERTAIN', None) for row in samples)
+        unaudited = sum(row.get('suggestion_id') is None for row in samples)
+
+        source_changed_ids = {
+            row['sample_id'] for row in samples
+            if row.get('audited_source_fingerprint') and row.get('source_fingerprint')
+            and row['audited_source_fingerprint'] != row['source_fingerprint']
+        }
+        source_changed_ids.update(row['sample_id'] for row in samples
+                                  if row.get('suggestion_id') is not None and row['sample_id'] in blocking)
+        unverified_ids = {row['sample_id'] for row in samples if row.get('suggestion_id') is not None
+                          and (not row.get('source_fingerprint') or not row.get('audited_source_fingerprint'))}
+
+        comparable = [row for row in samples if row.get('quality_status') in ('PASS', 'FAIL')
+                      and row.get('suggestion_id') is not None and row.get('suggested_label') in ('PASS', 'FAIL')
+                      and row['sample_id'] not in source_changed_ids | unverified_ids]
+        inconsistent = [row for row in comparable if (row['quality_status'] == 'PASS' and row['suggested_label'] == 'FAIL')
+                        or (row['quality_status'] == 'FAIL' and row['suggested_label'] == 'PASS')]
+
+        inconsistency_ratio = QualityRatio(
+            numerator=len(inconsistent),
+            denominator=len(comparable),
+            basis='最新明确建议(PASS/FAIL)与明确原始标签(OK/NG)不一致的样本 / 两者皆明确且未变动的可比较样本；原始未标记、模型不确定与未审计不计入分母，不称为错误率或准确率。'
+        )
+
+        comparison = LabelComparison(
+            raw_ok=raw_ok,
+            raw_ng=raw_ng,
+            raw_unlabeled=raw_unlabeled,
+            model_pass=model_pass,
+            model_fail=model_fail,
+            model_uncertain=model_uncertain,
+            unaudited=unaudited,
+            inconsistent_count=len(inconsistent),
+            source_changed_count=len(source_changed_ids),
+            source_unverified_count=len(unverified_ids),
+            inconsistency_ratio=inconsistency_ratio,
+        )
+
         return cls(
             model=ModelIndicators(
                 suspect_samples=len(suspects),
@@ -78,6 +141,7 @@ class QualityAssessment(AnalysisModel):
                 conflict_samples=sum(bool(analysis.conclusion.conflicts) for analysis in analyses.values()),
                 unstructured_samples=sum(row['suggestion_id'] is not None and row['sample_id'] not in analyses for row in samples),
             ),
+            label_comparison=comparison,
             knowledge_versions=[KnowledgeUsage(normal_version_id=normal, defect_version_id=defect,
                 legacy_profile_id=legacy, sample_count=count) for (normal, defect, legacy), count in
                 sorted(versions.items(), key=lambda item: tuple(value or '' for value in item[0]))],

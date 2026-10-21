@@ -268,9 +268,11 @@ export type Limitations4 = string[];
 export type SampleId = string;
 export type Sha2561 = string;
 export type AnnotationsSha256 = string;
+export type QualityStatus = string | null;
+export type QualitySource = string | null;
 export type ReviewSha256 = string;
 export type AuditSuggestionIds = string[];
-export type Qualification = "human_pass" | "human_hard_normal" | "manual_selection" | "raw_pass" | "initial_unannotated" | "human_fail" | "annotated_candidate" | "normal_suspect" | "audit_suspect";
+export type Qualification = "human_pass" | "human_hard_normal" | "manual_selection" | "raw_pass" | "initial_unannotated" | "human_fail" | "raw_fail" | "annotated_candidate" | "normal_suspect" | "audit_suspect";
 export type Sources = KnowledgeSource[];
 export type SampleId1 = string;
 export type Evidence = KnowledgeEvidence[];
@@ -352,6 +354,8 @@ export type AdditionalSourceIds = string[];
 export type GenerationChanged = boolean | null;
 export type NormalVersionChanged = boolean;
 export type NormalSourcesChanged = boolean;
+export type EligibleSourceCount = number;
+export type UnavailableSourceCount = number;
 export type DatasetId2 = string;
 export type OriginSessionId = string | null;
 export type ModelName2 = string;
@@ -459,8 +463,9 @@ export type TaskId1 = string;
 export type DatasetId6 = string;
 export type ImagePath = string;
 export type RelativePath3 = string;
-export type QualityStatus = "PASS" | "FAIL" | "UNCERTAIN";
-export type QualitySource = string | null;
+export type QualityStatus1 = "PASS" | "FAIL" | "UNCERTAIN";
+export type QualitySource1 = string | null;
+export type IsExcluded = boolean;
 export type DataOrigin = "LEGACY_TRAIN" | "LEGACY_TEST" | "AUGMENTED" | "MISSED_CASE" | "PRODUCTION" | "UNKNOWN";
 export type BatchId = string | null;
 export type PhysicalSampleId = string | null;
@@ -474,22 +479,48 @@ export type Evidence1 = VisualEvidence[];
 export type AuditRunId = string | null;
 export type OriginSessionId2 = string | null;
 export type IsLatest = boolean;
+export type DatasetImport = LabelmeImport | FolderClassificationImport;
+export type Format = "labelme";
 export type Name = string;
 export type ImageDir = string;
 export type AnnotationDir = string;
 export type ArchivePath = string | null;
 export type UnannotatedIsNormal = boolean;
+export type Format1 = "folder_classification";
+export type Name1 = string;
+export type RootDir = string;
+/**
+ * Relative directory path under dataset root, or '.' for root images
+ */
+export type Path = string;
+/**
+ * Role assigned to this directory
+ */
+export type Role1 = "normal" | "anomaly" | "unlabeled" | "excluded";
+export type Rules = FolderRule[];
+export type PreviewFingerprint = string;
+export type Format2 = "folder_classification";
+export type RootDir1 = string;
+export type SuggestedName = string;
+export type TotalImages = number;
+export type Path1 = string;
+export type ImageCount = number;
+export type SuggestedRole = "normal" | "anomaly" | "unlabeled" | "excluded";
+export type Role2 = "normal" | "anomaly" | "unlabeled" | "excluded";
+export type Items = FolderPreviewItem[];
+export type Conflicts3 = string[];
+export type PreviewFingerprint1 = string;
 export type ArchivePath1 = string;
 export type Sha2562 = string;
 export type FileCount = number;
 export type UncompressedBytes = number;
-export type Path = string;
-export type ImageCount = number;
+export type Path2 = string;
+export type ImageCount1 = number;
 export type AnnotationCount = number;
 export type Directories = ArchiveDirectory[];
 export type DatasetId7 = string;
 export type TaskId2 = string;
-export type ImageCount1 = number;
+export type ImageCount2 = number;
 export type AnnotationCount1 = number;
 export type IssueCount = number;
 export type DbPath = string;
@@ -533,6 +564,16 @@ export type ConflictSamples = number;
  * 已有建议但未保存结构化证据分析，不能据此断言没有缺证
  */
 export type UnstructuredSamples = number;
+export type RawOk = number;
+export type RawNg = number;
+export type RawUnlabeled = number;
+export type ModelPass = number;
+export type ModelFail = number;
+export type ModelUncertain = number;
+export type Unaudited = number;
+export type InconsistentCount = number;
+export type SourceChangedCount = number;
+export type SourceUnverifiedCount = number;
 export type NormalVersionId5 = string | null;
 export type DefectVersionId3 = string | null;
 export type LegacyProfileId1 = string | null;
@@ -605,7 +646,7 @@ export type StartedAt5 = string | null;
 export type SubmittedAt1 = string | null;
 export type ReviewDurationMs1 = number;
 export type RelativePath4 = string;
-export type Items = ReviewHistoryRecord[];
+export type Items1 = ReviewHistoryRecord[];
 export type Total = number;
 export type Page1 = number;
 export type PageSize1 = number;
@@ -613,6 +654,7 @@ export type DatasetId12 = string | null;
 export type TaskId4 = string | null;
 export type Page2 = number;
 export type PageSize2 = number;
+export type RawLabelFilters = ("PASS" | "FAIL" | "UNCERTAIN")[];
 export type AnnotationFilters = string[];
 export type ModelStatus = "all" | "pending" | "audited" | "risk" | "PASS" | "FAIL" | "UNCERTAIN";
 export type ReviewStatus = "all" | "pending" | "reviewed" | "PASS" | "HARD_NORMAL" | "FAIL" | "UNCERTAIN" | "SKIP";
@@ -633,6 +675,7 @@ export interface WorkbenchDomain {
     InspectionReference?: InspectionReference;
     InspectionSnapshot?: InspectionSnapshot;
     DatasetImport?: DatasetImport;
+    FolderPreview?: FolderPreview;
     ArchiveInspection?: ArchiveInspection;
     ScanResult?: ScanResult;
     DatasetReport?: DatasetReport;
@@ -868,6 +911,8 @@ export interface KnowledgeSource {
     sample_id: SampleId;
     sha256: Sha2561;
     annotations_sha256: AnnotationsSha256;
+    quality_status: QualityStatus;
+    quality_source: QualitySource;
     review_sha256: ReviewSha256;
     audit_suggestion_ids: AuditSuggestionIds;
     qualification: Qualification;
@@ -957,6 +1002,8 @@ export interface KnowledgeQuery {
     knowledge: KnowledgeSnapshot | null;
     versions: Versions;
     freshness: KnowledgeFreshness | null;
+    eligible_source_count: EligibleSourceCount;
+    unavailable_source_count: UnavailableSourceCount;
 }
 export interface KnowledgeFreshness {
     status: Status4;
@@ -1118,8 +1165,9 @@ export interface Sample {
     dataset_id?: DatasetId6;
     image_path: ImagePath;
     relative_path: RelativePath3;
-    quality_status: QualityStatus;
-    quality_source?: QualitySource;
+    quality_status: QualityStatus1;
+    quality_source?: QualitySource1;
+    is_excluded?: IsExcluded;
     data_origin?: DataOrigin;
     batch_id?: BatchId;
     physical_sample_id?: PhysicalSampleId;
@@ -1130,12 +1178,39 @@ export interface Sample {
     height: Height;
     sample_uuid: SampleUuid3;
 }
-export interface DatasetImport {
+export interface LabelmeImport {
+    format?: Format;
     name: Name;
     image_dir: ImageDir;
     annotation_dir: AnnotationDir;
     archive_path?: ArchivePath;
     unannotated_is_normal?: UnannotatedIsNormal;
+}
+export interface FolderClassificationImport {
+    format?: Format1;
+    name: Name1;
+    root_dir: RootDir;
+    rules: Rules;
+    preview_fingerprint: PreviewFingerprint;
+}
+export interface FolderRule {
+    path: Path;
+    role: Role1;
+}
+export interface FolderPreview {
+    format: Format2;
+    root_dir: RootDir1;
+    suggested_name: SuggestedName;
+    total_images: TotalImages;
+    items: Items;
+    conflicts: Conflicts3;
+    preview_fingerprint: PreviewFingerprint1;
+}
+export interface FolderPreviewItem {
+    path: Path1;
+    image_count: ImageCount;
+    suggested_role: SuggestedRole;
+    role: Role2;
 }
 export interface ArchiveInspection {
     archive_path: ArchivePath1;
@@ -1145,14 +1220,14 @@ export interface ArchiveInspection {
     directories: Directories;
 }
 export interface ArchiveDirectory {
-    path: Path;
-    image_count: ImageCount;
+    path: Path2;
+    image_count: ImageCount1;
     annotation_count: AnnotationCount;
 }
 export interface ScanResult {
     dataset_id: DatasetId7;
     task_id: TaskId2;
-    image_count: ImageCount1;
+    image_count: ImageCount2;
     annotation_count: AnnotationCount1;
     issue_count: IssueCount;
     db_path: DbPath;
@@ -1185,6 +1260,7 @@ export interface QualityAssessment {
     audit_coverage: QualityRatio;
     human_verification_coverage: QualityRatio;
     model: ModelIndicators;
+    label_comparison: LabelComparison | null;
     knowledge_versions: KnowledgeVersions;
     audit_run_ids: AuditRunIds;
 }
@@ -1209,6 +1285,19 @@ export interface ModelIndicators {
     missing_evidence_samples: MissingEvidenceSamples;
     conflict_samples: ConflictSamples;
     unstructured_samples: UnstructuredSamples;
+}
+export interface LabelComparison {
+    raw_ok: RawOk;
+    raw_ng: RawNg;
+    raw_unlabeled: RawUnlabeled;
+    model_pass: ModelPass;
+    model_fail: ModelFail;
+    model_uncertain: ModelUncertain;
+    unaudited: Unaudited;
+    inconsistent_count: InconsistentCount;
+    source_changed_count: SourceChangedCount;
+    source_unverified_count: SourceUnverifiedCount;
+    inconsistency_ratio: QualityRatio;
 }
 export interface KnowledgeUsage {
     normal_version_id: NormalVersionId5;
@@ -1272,7 +1361,7 @@ export interface ReviewHistoryQuery {
     search?: Search;
 }
 export interface ReviewHistoryPage {
-    items: Items;
+    items: Items1;
     total: Total;
     page: Page1;
     page_size: PageSize1;
@@ -1296,6 +1385,7 @@ export interface SampleQuery {
     task_id?: TaskId4;
     page?: Page2;
     page_size?: PageSize2;
+    raw_label_filters?: RawLabelFilters;
     annotation_filters?: AnnotationFilters;
     model_status?: ModelStatus;
     review_status?: ReviewStatus;

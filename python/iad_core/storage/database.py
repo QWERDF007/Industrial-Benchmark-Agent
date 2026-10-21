@@ -88,6 +88,10 @@ class Database:
             )
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_task_id ON samples(task_id)")
+            if 'source_fingerprint' not in {row[1] for row in cursor.execute('PRAGMA table_info(samples)')}:
+                cursor.execute('ALTER TABLE samples ADD COLUMN source_fingerprint TEXT')
+            if 'is_excluded' not in {row[1] for row in cursor.execute('PRAGMA table_info(samples)')}:
+                cursor.execute('ALTER TABLE samples ADD COLUMN is_excluded INTEGER NOT NULL DEFAULT 0 CHECK(is_excluded IN (0,1))')
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_dataset_id ON samples(dataset_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_quality ON samples(quality_status)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_batch_id ON samples(batch_id)")
@@ -313,6 +317,7 @@ class Database:
                 "reference_sample_ids_json": "TEXT NOT NULL DEFAULT '[]'",
                 "audit_run_id": "TEXT",
                 "analysis_json": "TEXT",
+                "source_fingerprint": "TEXT",
             }.items():
                 if column not in columns:
                     cursor.execute(f"ALTER TABLE audit_suggestions ADD COLUMN {column} {definition}")
@@ -337,6 +342,8 @@ class Database:
             if "reference_selection_set" not in dataset_columns:
                 cursor.execute("ALTER TABLE datasets ADD COLUMN reference_selection_set INTEGER NOT NULL DEFAULT 0 CHECK(reference_selection_set IN (0,1))")
                 cursor.execute("UPDATE datasets SET reference_selection_set=1 WHERE json_array_length(reference_sample_ids_json)>0")
+            cursor.execute("""UPDATE datasets SET config_json=json_set(config_json, '$.dataset.format', 'labelme')
+                WHERE json_extract(config_json, '$.dataset.format') IS NULL""")
             cursor.execute("""UPDATE audit_suggestions SET analysis_json=json_set(
                 json_remove(analysis_json,'$.profile_id'),'$.legacy_profile_id',json_extract(analysis_json,'$.profile_id'))
                 WHERE json_type(analysis_json,'$.profile_id') IS NOT NULL""")

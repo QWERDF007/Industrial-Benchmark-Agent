@@ -78,14 +78,17 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
       <dl className="iad-info-group"><dt>图像路径</dt><dd title={detail.sample.image_path}>{detail.sample.image_path}</dd>
         <dt>图像名</dt><dd data-field="image-name">{detail.sample.relative_path.split("/").pop()}</dd>
         <dt>UUID</dt><dd data-field="sample-uuid"><code title={detail.sample.sample_uuid}>{detail.sample.sample_uuid}</code></dd>
-        <dt>原始质量</dt><dd>{detail.sample.quality_status}</dd><dt>分辨率</dt><dd>{detail.sample.width} × {detail.sample.height}</dd>
+        <dt>原始标签</dt><dd data-field="raw-label">{detail.sample.quality_status === "PASS" ? "OK" : detail.sample.quality_status === "FAIL" ? "NG" : "未标记"}{detail.sample.quality_source ? ` · ${detail.sample.quality_source}` : ""}</dd><dt>分辨率</dt><dd>{detail.sample.width} × {detail.sample.height}</dd>
         {mode !== "review" && <><dt>人工结果</dt><dd>{detail.review_decision ? `${reviewLabel(detail.review_decision.decision)} · ${detail.review_decision.reviewer}` : "待人工复核"}</dd></>}
         <dt>数据与技术质量</dt><dd>{detail.technical_quality_score}</dd></dl>
-      <section className="iad-info-group">
-      <h3>Labelme 标注 · {detail.annotations.length}</h3>
-      {detail.annotations.length ? detail.annotations.map(a => <div className="iad-annotation" key={a.annotation_id}><strong>{a.raw_label}</strong><span>{a.bbox?.join(", ")} · {a.geometry_status}</span></div>) : <p className="iad-muted">无标注</p>}
-      {detail.technical_issues.length > 0 && <div className="iad-error">{detail.technical_issues.map((i, index) => <p key={index}>{i.message}</p>)}</div>}
-      </section><section className="iad-info-group"><h3>模型观察</h3>{detail.suggestion ? <><p><strong>{modelLabels[detail.suggestion.suggested_label]}</strong> · {detail.suggestion.reason_category} · 模型自报置信度 {detail.suggestion.confidence === null ? "未记录" : `${Math.round(detail.suggestion.confidence * 100)}%`}</p>
+      {dataset.format !== "folder_classification" && <section className="iad-info-group">
+        <h3>Labelme 标注 · {detail.annotations.length}</h3>
+        {detail.annotations.length ? detail.annotations.map(a => <div className="iad-annotation" key={a.annotation_id}><strong>{a.raw_label}</strong><span>{a.bbox?.join(", ")} · {a.geometry_status}</span></div>) : <p className="iad-muted">无标注</p>}
+        {detail.technical_issues.length > 0 && <div className="iad-error">{detail.technical_issues.map((i, index) => <p key={index}>{i.message}</p>)}</div>}
+      </section>}
+      {dataset.format === "folder_classification" && detail.technical_issues.length > 0 && <section className="iad-info-group">
+        <div className="iad-error">{detail.technical_issues.map((i, index) => <p key={index}>{i.message}</p>)}</div>
+      </section>}<section className="iad-info-group"><h3>模型观察</h3>{detail.suggestion ? <><p><strong>{modelLabels[detail.suggestion.suggested_label]}</strong> · {detail.suggestion.reason_category} · 模型自报置信度 {detail.suggestion.confidence === null ? "未记录" : `${Math.round(detail.suggestion.confidence * 100)}%`}</p>
         <p className="iad-observation">{detail.suggestion.notes}</p><small className="iad-muted">{detail.suggestion.model_name}</small>
         {detail.suggestion.analysis && <AuditFindings key={detail.suggestion.suggestion_id} analysis={detail.suggestion.analysis}
           onEvidence={(image, finding) => setLightbox({ ...evidenceSource(image), initialSelection: { kind: "evidence", id: image.evidence_id, findingId: finding.finding_id } })} onLocate={finding => {

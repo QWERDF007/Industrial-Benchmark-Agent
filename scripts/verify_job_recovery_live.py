@@ -28,7 +28,7 @@ def main():
     fixture = Path(__file__).resolve().parents[1] / 'apps/iad-harness/test/fixtures/knowledge_dataset.py'
     subprocess.run([sys.executable, str(fixture), str(output)], check=True)
     db_path = str(output / 'verification.db')
-    dataset = dataset_import({'name': '合成部件恢复验证', 'image_dir': str(output / 'images'),
+    dataset = dataset_import({'format': 'labelme', 'name': '合成部件恢复验证', 'image_dir': str(output / 'images'),
                               'annotation_dir': str(output / 'labels')}, db_path)
     target_id = dataset['dataset_id'] + ':part-2.png'
     before = sample_get({'sample_id': target_id}, db_path)

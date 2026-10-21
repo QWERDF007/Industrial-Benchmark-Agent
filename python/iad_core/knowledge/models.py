@@ -79,7 +79,7 @@ class KnowledgeSource(SampleContent):
     review_sha256: str
     audit_suggestion_ids: List[str] = Field(default_factory=list)
     qualification: Literal["human_pass", "human_hard_normal", "manual_selection", "raw_pass", "initial_unannotated",
-                           "human_fail", "annotated_candidate", "normal_suspect", "audit_suspect"]
+                           "human_fail", "raw_fail", "annotated_candidate", "normal_suspect", "audit_suspect"]
 
 
 class KnowledgeEvidence(AnalysisModel):
@@ -195,3 +195,5 @@ class KnowledgeQuery(AnalysisModel):
     knowledge: Optional[KnowledgeSnapshot]
     versions: List[KnowledgeVersion]
     freshness: Optional[KnowledgeFreshness]
+    eligible_source_count: int = Field(ge=0)
+    unavailable_source_count: int = Field(ge=0)

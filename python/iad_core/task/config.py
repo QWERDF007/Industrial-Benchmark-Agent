@@ -1,15 +1,35 @@
 import os
 import re
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 import yaml
-from pydantic import BaseModel, Field
+from iad_core.dataset.files import DEFAULT_IMAGE_GLOBS
+from pathlib import PurePosixPath
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 from iad_core.storage.models import QualityStatus, DataOrigin, AnnotationSource
+
+
+FolderRole = Literal["normal", "anomaly", "unlabeled", "excluded"]
+
+
+class FolderRule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    path: str = Field(..., description="Relative directory path under dataset root, or '.' for root images")
+    role: FolderRole = Field(..., description="Role assigned to this directory")
+
+    @field_validator('path')
+    @classmethod
+    def relative_directory(cls, value: str) -> str:
+        path = PurePosixPath(value.strip().replace('\\', '/'))
+        if path.is_absolute() or '..' in path.parts or ':' in value:
+            raise ValueError('Directory rule must stay relative to the dataset root')
+        return path.as_posix()
 
 
 class DatasetInfo(BaseModel):
     id: str = Field(..., description="Dataset identifier")
     name: Optional[str] = Field(None, description="Dataset name")
+    format: Literal["labelme", "folder_classification"] = Field("labelme", description="Dataset format")
     industry: Optional[str] = Field("3c", description="Industry domain")
     description: Optional[str] = Field(None, description="Dataset description")
     unannotated_is_normal: bool = False
@@ -27,7 +47,7 @@ class TaskConfig(BaseModel):
 
 class ImagesConfig(BaseModel):
     glob: List[str] = Field(
-        default_factory=lambda: ["**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.bmp"],
+        default_factory=lambda: list(DEFAULT_IMAGE_GLOBS),
         description="Glob patterns to locate images",
     )
     exclude: List[str] = Field(
@@ -212,6 +232,7 @@ class DatasetConfig(BaseModel):
     gold: GoldPolicyConfig = Field(default_factory=GoldPolicyConfig)
     split: SplitPolicyConfig = Field(default_factory=SplitPolicyConfig)
     review_policy: ReviewPolicyConfig = Field(default_factory=ReviewPolicyConfig)
+    folder_rules: List[FolderRule] = Field(default_factory=list, description="Folder classification rules")
 
 
 def load_config(config_path: str) -> DatasetConfig:

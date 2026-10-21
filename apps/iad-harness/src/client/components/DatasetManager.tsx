@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import type { Dataset, DirectoryListing, ScanResult } from "../../shared/contracts.js";
+import type { Dataset, DirectoryListing, FolderRule, ScanResult } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 import { Modal } from "./Modal.js";
 import { DatasetName } from "./DatasetName.js";
+import { FolderMapping } from "./FolderMapping.js";
+import { useFolderPreview } from "../useFolderPreview.js";
 
 function DirectoryPicker({ label, value, onChange, disabled = false }: { label: string; value: string; onChange(value: string): void; disabled?: boolean }) {
   const [listing, setListing] = useState<DirectoryListing | null>(null);
@@ -22,33 +24,62 @@ function DirectoryPicker({ label, value, onChange, disabled = false }: { label: 
 }
 
 function DatasetSettings({ dataset, onChanged }: { dataset: Dataset; onChanged(): void }) {
+  const isFolder = dataset.format === "folder_classification";
   const [imageDir, setImageDir] = useState(dataset.image_dir);
   const [annotationDir, setAnnotationDir] = useState(dataset.annotation_dir || "");
-  useEffect(() => { setImageDir(dataset.image_dir); setAnnotationDir(dataset.annotation_dir || ""); }, [dataset.image_dir, dataset.annotation_dir]);
-  const directoriesChanged = imageDir !== dataset.image_dir || annotationDir !== (dataset.annotation_dir || "");
+  const savedRules = JSON.stringify(dataset.folder_rules || []);
+  const [folderRules, setFolderRules] = useState<FolderRule[] | undefined>(dataset.folder_rules);
+  const { preview, ready, pending, error: previewError } = useFolderPreview(imageDir, folderRules, isFolder);
+  useEffect(() => {
+    setImageDir(dataset.image_dir); setAnnotationDir(dataset.annotation_dir || "");
+    setFolderRules(JSON.parse(savedRules));
+  }, [dataset.image_dir, dataset.annotation_dir, savedRules]);
+  const rulesChanged = isFolder && JSON.stringify(folderRules) !== savedRules;
+  const directoriesChanged = imageDir !== dataset.image_dir || (!isFolder && annotationDir !== (dataset.annotation_dir || ""));
+  const modified = directoriesChanged || rulesChanged;
+
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
   async function save(patch: { unannotated_is_normal: boolean }) {
     setBusy(true); setError("");
     try { await request(`/datasets/${dataset.dataset_id}`, patch, "PATCH"); onChanged(); }
     catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
+
   async function rescan() {
     setBusy(true); setError(""); setScan(null);
-    try { setScan(await request<ScanResult>(`/datasets/${dataset.dataset_id}/rescan`, directoriesChanged ? { image_dir: imageDir, annotation_dir: annotationDir } : {})); onChanged(); }
-    catch (error) { setError(message(error)); } finally { setBusy(false); }
+    try {
+      const payload = isFolder
+        ? (modified ? { image_dir: imageDir, folder_rules: preview?.items.map(({ path, role }) => ({ path, role })), preview_fingerprint: preview?.preview_fingerprint } : {})
+        : (directoriesChanged ? { image_dir: imageDir, annotation_dir: annotationDir } : {});
+      setScan(await request<ScanResult>(`/datasets/${dataset.dataset_id}/rescan`, payload));
+      onChanged();
+    } catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
+
+
   return <section aria-label="当前数据集详情" aria-busy={busy}><h2>数据集详情</h2>
     <DatasetName dataset={dataset} label="新的数据集名称" onChanged={onChanged} />
     <dl><dt>数据集 ID</dt><dd><code>{dataset.dataset_id}</code></dd></dl>
-    <dl className="iad-dataset-counts"><div><dt>图像数量</dt><dd>{dataset.total_samples}</dd></div><div><dt>标注数量</dt><dd>{dataset.annotation_count}</dd></div></dl>
+    <dl><dt>格式</dt><dd>{isFolder ? "异常检测目录" : "Labelme"}</dd></dl>
+    <dl className="iad-dataset-counts">
+      <div><dt>图像数量</dt><dd>{dataset.total_samples}</dd></div>
+      <div><dt>{isFolder ? "明确标签数量" : "标注数量"}</dt><dd>{isFolder ? (dataset.labeled_sample_count ?? 0) : dataset.annotation_count}</dd></div>
+    </dl>
     <div className="iad-field-group"><h3>服务器目录</h3>
-      <DirectoryPicker label="图像目录" value={imageDir} onChange={setImageDir} disabled={busy} />
-      <DirectoryPicker label="标注目录" value={annotationDir} onChange={setAnnotationDir} disabled={busy} />
-      <div className="iad-form-actions"><button className={directoriesChanged ? "iad-primary" : ""} disabled={busy || (directoriesChanged && (!imageDir.trim() || !annotationDir.trim()))} onClick={() => void rescan()}>{busy ? "正在处理…" : directoriesChanged ? "保存目录并重新扫描" : "重新扫描目录"}</button></div>
+      <DirectoryPicker label={isFolder ? "根目录" : "图像目录"} value={imageDir} onChange={p => { setImageDir(p); if (isFolder) setFolderRules(undefined); }} disabled={busy} />
+      {!isFolder && <DirectoryPicker label="标注目录" value={annotationDir} onChange={setAnnotationDir} disabled={busy} />}
+      {isFolder && <FolderMapping preview={preview} rules={folderRules} pending={pending} disabled={busy} onChange={setFolderRules} />}
+      {previewError && <p role="alert" className="iad-error">{previewError}</p>}
+      <div className="iad-form-actions">
+        <button className={modified ? "iad-primary" : ""} disabled={busy || (isFolder && modified && !ready) || (directoriesChanged && (!imageDir.trim() || (!isFolder && !annotationDir.trim())))} onClick={() => void rescan()}>
+          {busy ? "正在处理…" : modified ? "保存映射并重新扫描" : "重新扫描目录"}
+        </button>
+      </div>
     </div>
-    <label className="iad-row iad-rule"><input type="checkbox" checked={dataset.unannotated_is_normal} disabled={busy} onChange={e => save({ unannotated_is_normal: e.target.checked })} />无标注图作为初始良品来源</label>
+    {!isFolder && <label className="iad-row iad-rule"><input type="checkbox" checked={dataset.unannotated_is_normal} disabled={busy} onChange={e => save({ unannotated_is_normal: e.target.checked })} />无标注图作为初始良品来源</label>}
     {scan && <p role="status" aria-label="扫描结果">扫描完成 · {scan.image_count} 张图像 · {scan.annotation_count} 个标注 · {scan.issue_count} 项问题</p>}
     {error && <p role="alert" className="iad-error">{error}</p>}
   </section>;
@@ -56,16 +87,24 @@ function DatasetSettings({ dataset, onChanged }: { dataset: Dataset; onChanged()
 
 export function DatasetManager({ datasets, selected, onChanged }: { datasets: Dataset[]; selected?: Dataset; onChanged(id?: string): void }) {
   const [importing, setImporting] = useState(false);
+  const [importFormat, setImportFormat] = useState<"labelme" | "folder_classification">("labelme");
   const [deleting, setDeleting] = useState<Dataset | null>(null);
   const [notice, setNotice] = useState("");
   const addButton = useRef<HTMLButtonElement>(null);
   const cancelDeleteButton = useRef<HTMLButtonElement>(null);
   useEffect(() => { if (notice) addButton.current?.focus(); }, [notice]);
+
+  // Form states
   const [name, setName] = useState("");
   const [imageDir, setImageDir] = useState("");
   const [annotationDir, setAnnotationDir] = useState("");
+  const [rootDir, setRootDir] = useState("");
+  const [userRules, setUserRules] = useState<FolderRule[] | undefined>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const { preview, ready, pending, error: previewError } = useFolderPreview(rootDir, userRules, importing && importFormat === "folder_classification");
+  useEffect(() => { if (preview) setName(current => current.trim() ? current : preview.suggested_name); }, [preview?.root_dir]);
+
   async function deleteDataset() {
     if (!deleting || busy) return;
     setBusy(true); setError("");
@@ -74,13 +113,28 @@ export function DatasetManager({ datasets, selected, onChanged }: { datasets: Da
       setNotice(`已删除数据集“${deleting.name}”`); setDeleting(null); onChanged();
     } catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
+
   async function importDataset(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setError("");
     try {
-      const dataset = await request<Dataset>("/datasets/import", { name, image_dir: imageDir, annotation_dir: annotationDir, unannotated_is_normal: true });
-      onChanged(dataset.dataset_id); setName(""); setImageDir(""); setAnnotationDir(""); setImporting(false);
+      let dataset: Dataset;
+      if (importFormat === "labelme") {
+        dataset = await request<Dataset>("/datasets/import", { format: "labelme", name, image_dir: imageDir, annotation_dir: annotationDir, unannotated_is_normal: true });
+      } else {
+        const rules: FolderRule[] = preview ? preview.items.map(({ path, role }) => ({ path, role })) : [];
+        dataset = await request<Dataset>("/datasets/import", {
+          format: "folder_classification",
+          name,
+          root_dir: rootDir,
+          rules,
+          preview_fingerprint: preview?.preview_fingerprint,
+        });
+      }
+      onChanged(dataset.dataset_id);
+      setName(""); setImageDir(""); setAnnotationDir(""); setRootDir(""); setUserRules(undefined); setImporting(false);
     } catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
+
   return <div className="iad-settings">
     <section aria-label="数据集列表"><div className="iad-section-header"><h2>数据集 · {datasets.length}</h2><button ref={addButton} className="iad-primary" onClick={() => { setError(""); setNotice(""); setImporting(true); }}>添加数据集</button></div>
       <div className="iad-dataset-list">{datasets.map(dataset => <article className="iad-dataset-card" key={dataset.dataset_id} data-selected={selected?.dataset_id === dataset.dataset_id}>
@@ -89,9 +143,15 @@ export function DatasetManager({ datasets, selected, onChanged }: { datasets: Da
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7" /></svg>
           </button></div>
         <button type="button" className="iad-dataset-select" aria-label={`选择数据集 ${dataset.name}`} aria-pressed={selected?.dataset_id === dataset.dataset_id} onClick={() => onChanged(dataset.dataset_id)}>
-          <span className="iad-dataset-counts"><span><span>图像数量</span><strong>{dataset.total_samples}</strong></span><span><span>标注数量</span><strong>{dataset.annotation_count}</strong></span></span>
+          <span className="iad-dataset-counts">
+            <span><span>图像数量</span><strong>{dataset.total_samples}</strong></span>
+            <span>
+              <span>{dataset.format === "folder_classification" ? "明确标签" : "标注数量"}</span>
+              <strong>{dataset.format === "folder_classification" ? (dataset.labeled_sample_count ?? 0) : dataset.annotation_count}</strong>
+            </span>
+          </span>
         </button>
-      </article>)}</div>{notice && <p role="status">{notice}</p>}{!datasets.length && <p className="iad-muted">添加服务器上的 Labelme 图像目录与标注目录。</p>}
+      </article>)}</div>{notice && <p role="status">{notice}</p>}{!datasets.length && <p className="iad-muted">添加服务器上的 Labelme 图像目录与标注目录，或异常检测分类目录。</p>}
     </section>
     {selected ? <DatasetSettings key={selected.dataset_id} dataset={selected} onChanged={onChanged} /> : <section><p>选择或添加数据集。</p></section>}
     {deleting && <Modal title="删除数据集" className="iad-confirm-dialog" initialFocus={cancelDeleteButton} onClose={() => { if (!busy) setDeleting(null); }}>
@@ -101,15 +161,35 @@ export function DatasetManager({ datasets, selected, onChanged }: { datasets: Da
       <div className="iad-form-actions"><button ref={cancelDeleteButton} type="button" aria-label="取消删除" disabled={busy} onClick={() => setDeleting(null)}>取消</button>
         <button type="button" className="iad-danger" disabled={busy} onClick={() => void deleteDataset()}>{busy ? "正在删除…" : "确认删除"}</button></div>
     </Modal>}
-    {importing && <Modal title="导入 Labelme 数据集" onClose={() => { if (!busy) setImporting(false); }}>
+    {importing && <Modal title="添加数据集" onClose={() => { if (!busy) setImporting(false); }}>
       <form className="iad-dataset-import" onSubmit={importDataset}>
-        <div className="iad-field"><label htmlFor="dataset-name">数据集名称</label><input id="dataset-name" value={name} onChange={e => setName(e.target.value)} maxLength={120} autoFocus required disabled={busy} /></div>
-        <DirectoryPicker label="图像目录" value={imageDir} onChange={setImageDir} disabled={busy} />
-        <DirectoryPicker label="标注目录" value={annotationDir} onChange={setAnnotationDir} disabled={busy} />
-        <p className="iad-muted">按相对路径匹配同名 JSON，无标注图作为初始良品候选。</p>
+        <div className="iad-field">
+          <label>数据格式</label>
+          <div className="iad-row" role="radiogroup" aria-label="数据格式">
+            <label><input type="radio" name="dataset_format" value="labelme" checked={importFormat === "labelme"} onChange={() => { setImportFormat("labelme"); setError(""); }} />Labelme</label>
+            <label><input type="radio" name="dataset_format" value="folder_classification" checked={importFormat === "folder_classification"} onChange={() => { setImportFormat("folder_classification"); setError(""); }} />异常检测目录</label>
+          </div>
+        </div>
+
+        {importFormat === "labelme" ? <>
+          <div className="iad-field"><label htmlFor="dataset-name">数据集名称</label><input id="dataset-name" value={name} onChange={e => setName(e.target.value)} maxLength={120} autoFocus required disabled={busy} /></div>
+          <DirectoryPicker label="图像目录" value={imageDir} onChange={setImageDir} disabled={busy} />
+          <DirectoryPicker label="标注目录" value={annotationDir} onChange={setAnnotationDir} disabled={busy} />
+          <p className="iad-muted">按相对路径匹配同名 JSON，无标注图作为初始良品候选。</p>
+        </> : <>
+          <DirectoryPicker label="父目录" value={rootDir} onChange={path => { setRootDir(path); setUserRules(undefined); }} disabled={busy} />
+          <div className="iad-field"><label htmlFor="dataset-name">数据集名称</label><input id="dataset-name" value={name} onChange={e => setName(e.target.value)} maxLength={120} required disabled={busy} /></div>
+          <FolderMapping preview={preview} rules={userRules} pending={pending} disabled={busy} onChange={setUserRules} />
+          {previewError && <p role="alert" className="iad-error">{previewError}</p>}
+        </>}
+
         {error && <p role="alert" className="iad-error">{error}</p>}
-        <div className="iad-form-actions"><button type="button" disabled={busy} onClick={() => setImporting(false)}>取消</button>
-          <button className="iad-primary" disabled={busy || !name.trim() || !imageDir || !annotationDir}>{busy ? "正在扫描导入…" : "导入数据集"}</button></div>
+        <div className="iad-form-actions">
+          <button type="button" disabled={busy} onClick={() => setImporting(false)}>取消</button>
+          <button className="iad-primary" disabled={busy || !name.trim() || (importFormat === "labelme" ? (!imageDir || !annotationDir) : (!rootDir || !ready))}>
+            {busy ? "正在扫描导入…" : "导入数据集"}
+          </button>
+        </div>
       </form>
     </Modal>}
   </div>;

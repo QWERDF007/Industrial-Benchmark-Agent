@@ -40,7 +40,7 @@ class KnowledgeSources:
                                                   (dataset_id,)).fetchone()[0])
         else:
             with self.db.connection() as conn:
-                eligible = [row[0] for row in conn.execute("""SELECT s.sample_id FROM samples s WHERE dataset_id=?
+                eligible = [row[0] for row in conn.execute("""SELECT s.sample_id FROM samples s WHERE dataset_id=? AND s.is_excluded=0
                     AND NOT EXISTS(SELECT 1 FROM import_issues i WHERE i.sample_id=s.sample_id
                                    AND i.severity IN ('ERROR','WARNING')) ORDER BY s.relative_path,s.sample_id""", (dataset_id,))]
             selected = []
@@ -58,9 +58,13 @@ class KnowledgeSources:
                     'initial_unannotated')
             elif decision and decision.decision == 'FAIL':
                 qualifications[sample_id] = 'human_fail'
+            elif decision:
+                continue
             elif any(annotation.bbox and annotation.geometry_status != 'INVALID'
                      for annotation in self.annotations.list_by_sample(sample_id)):
                 qualifications[sample_id] = 'annotated_candidate'
+            elif sample.quality_status == 'FAIL':
+                qualifications[sample_id] = 'raw_fail'
             else:
                 try:
                     candidates = self.candidates.matching(sample)

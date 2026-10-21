@@ -1,8 +1,10 @@
 import logging
 import io
 import os
+import hashlib
 from pathlib import Path
 from typing import Optional, List
+from collections import defaultdict
 from PIL import Image
 from pydantic import BaseModel
 
@@ -18,6 +20,7 @@ from iad_core.storage.repositories import AnnotationRepository
 from iad_core.dataset.adapters import get_adapter
 from iad_core.dataset.scan_snapshot import ScanSnapshot
 from iad_core.evidence.masks import MaskImages
+from iad_core.evidence.sources import SampleContent
 
 logger = logging.getLogger("iad_benchmark.scanner")
 
@@ -36,6 +39,7 @@ def scan_dataset(
     db_path: str = "data/benchmark.db",
     batch_size: int = 500,
     config: Optional[DatasetConfig] = None,
+    preview_fingerprint: Optional[str] = None,
 ) -> ScanResult:
     """Scan configured sources and atomically publish current samples, annotations and issues."""
     if config is not None and config_path is not None:
@@ -58,6 +62,7 @@ def scan_dataset(
         ann_batch: List[Annotation] = []
         issue_batch: List[ImportIssue] = []
         sample_ids_batch: List[str] = []
+        source_hashes: dict[str, str] = {}
 
         total_images = 0
         total_annotations = 0
@@ -75,12 +80,15 @@ def scan_dataset(
                 cursor.executemany("DELETE FROM annotations WHERE sample_id = ?", [(sid,) for sid in sample_ids_batch])
 
             if sample_batch:
+                by_sample = defaultdict(list)
+                for annotation in ann_batch:
+                    by_sample[annotation.sample_id].append(annotation)
                 cursor.executemany("""
                     INSERT INTO samples (
                         sample_id, task_id, dataset_id, image_path, relative_path,
                         data_origin, physical_sample_id, capture_sequence_id,
-                        batch_id, station, camera, width, height, quality_status, quality_source
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        batch_id, station, camera, width, height, quality_status, quality_source, source_fingerprint, is_excluded
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                     ON CONFLICT(dataset_id, relative_path) DO UPDATE SET
                         task_id = excluded.task_id,
                         image_path = excluded.image_path,
@@ -94,7 +102,8 @@ def scan_dataset(
                         height = excluded.height,
                         quality_status = excluded.quality_status,
                         quality_source = excluded.quality_source,
-                        updated_at = CURRENT_TIMESTAMP
+                        source_fingerprint = excluded.source_fingerprint,
+                        updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
                 """, [
                     (
                         s.sample_id, s.task_id, s.dataset_id, s.image_path, s.relative_path,
@@ -103,6 +112,7 @@ def scan_dataset(
                         s.station, s.camera, s.width, s.height,
                         s.quality_status.value if hasattr(s.quality_status, "value") else str(s.quality_status),
                         s.quality_source,
+                        SampleContent.describe(s, by_sample[s.sample_id], source_hashes[s.sample_id]).fingerprint,
                     )
                     for s in sample_batch
                 ])
@@ -122,6 +132,7 @@ def scan_dataset(
             ann_batch.clear()
             issue_batch.clear()
             sample_ids_batch.clear()
+            source_hashes.clear()
 
         # 3. Stream images and process in batches
         for raw_img in adapter.scan_images():
@@ -131,8 +142,11 @@ def scan_dataset(
             conn.execute("INSERT INTO scan_seen(sample_id) VALUES(?)", (sample_id,))
 
             try:
-                with Image.open(raw_img.image_path) as img:
+                with open(raw_img.image_path, 'rb') as source:
+                    payload = source.read()
+                with Image.open(io.BytesIO(payload)) as img:
                     width, height = img.size
+                source_hashes[sample_id] = hashlib.sha256(payload).hexdigest()
             except Exception as e:
                 logger.error(f"Cannot decode image: {raw_img.relative_path} ({e})")
                 issue_batch.append(
@@ -294,6 +308,9 @@ def scan_dataset(
 
         flush_batch()
 
+        if preview_fingerprint is not None:
+            from iad_core.dataset.folder_preview import preview_folder_dataset
+            preview_folder_dataset(config.root, config.folder_rules).confirm(preview_fingerprint)
         total_issues += snapshot.publish(db, config)
 
         return ScanResult(

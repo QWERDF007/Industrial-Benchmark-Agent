@@ -87,7 +87,7 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
     ).map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>}
     {pageId === "industrial-datasets" ? <>
       <DatasetManager datasets={datasets} selected={dataset} onChanged={id => { void loadDatasets(id); setRevision(v => v + 1); }} />
-    </> : !dataset ? <section className="iad-job-section"><p>请先添加服务器上的 Labelme 数据集。</p><button onClick={() => workspace.navigate("industrial-datasets")}>前往数据集管理</button></section> : <>
+    </> : !dataset ? <section className="iad-job-section"><p>请先添加服务器上的数据集。</p><button onClick={() => workspace.navigate("industrial-datasets")}>前往数据集管理</button></section> : <>
       {(pageId === "industrial-normal" || pageId === "industrial-defect") && <KnowledgePage key={`${datasetId}:${pageId}`} dataset={dataset} kind={pageId === "industrial-normal" ? "normal" : "defect"} refreshRevision={revision} />}
       {pageId === "industrial-audit" && <nav className="iad-tabs" aria-label="审计视图">{[["results", "结果"], ["jobs", "模型审计作业"], ["reports", "报告"]].map(([tab, label]) => <button key={tab} aria-pressed={view.tab === tab} className={view.tab === tab ? "active" : ""} onClick={() => workspace.updateView(pageId, { tab })}>{label}</button>)}</nav>}
       {pageId === "industrial-review" && <nav className="iad-tabs" aria-label="复核视图">{[["results", "复核队列"], ["records", "复核记录"]].map(([tab, label]) => <button key={tab} aria-pressed={view.tab === tab} className={view.tab === tab ? "active" : ""} onClick={() => workspace.updateView(pageId, { tab })}>{label}</button>)}</nav>}

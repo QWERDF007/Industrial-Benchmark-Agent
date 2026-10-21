@@ -26,7 +26,7 @@ def mask_dataset(tmp_path, points=None, mask=None):
              'mask': base64.b64encode(buffer.getvalue()).decode()}
     (labels / 'part.json').write_text(json.dumps({'imageWidth': 80, 'imageHeight': 60, 'shapes': [shape]}))
     db_path = str(tmp_path / 'workbench.db')
-    config = dataset_import({'name': '部件', 'image_dir': str(images), 'annotation_dir': str(labels)}, db_path)
+    config = dataset_import({'format': 'labelme', 'name': '部件', 'image_dir': str(images), 'annotation_dir': str(labels)}, db_path)
     return db_path, config['dataset_id'], shape
 
 

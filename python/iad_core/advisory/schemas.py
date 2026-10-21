@@ -55,6 +55,7 @@ class AuditSuggestion(BaseModel):
     confidence: Optional[float] = Field(None, ge=0, le=1)
     reference_sample_ids: List[str] = Field(default_factory=list)
     audit_run_id: Optional[str] = None
+    source_fingerprint: Optional[str] = None
     analysis: Optional[AuditAnalysis] = None
     observations: List[ObservationItem] = Field(default_factory=list)
     hypotheses: List[HypothesisItem] = Field(default_factory=list)

@@ -28,7 +28,7 @@ def knowledge_dataset(tmp_path, request):
         image.save(images / f"part-{index}.png")
     db = Database(str(tmp_path / "knowledge.db"))
     config = DatasetRegistry(db).import_labelme(DatasetImport(
-        name="双孔部件", image_dir=str(images), annotation_dir=str(labels),
+        format="labelme", name="双孔部件", image_dir=str(images), annotation_dir=str(labels),
     ))
     return db, config
 
@@ -55,7 +55,7 @@ def defect_dataset(tmp_path):
         'mask': base64.b64encode(buffer.getvalue()).decode(),
     }]}))
     db_path = str(tmp_path / 'workbench.db')
-    dataset = dataset_import({'name': '孔板', 'image_dir': str(images), 'annotation_dir': str(labels)}, db_path)
+    dataset = dataset_import({'format': 'labelme', 'name': '孔板', 'image_dir': str(images), 'annotation_dir': str(labels)}, db_path)
     target_id = dataset['dataset_id'] + ':part-3.png'
     original = sample_get({'sample_id': target_id}, db_path)
     return Database(db_path), dataset, original, images
@@ -76,7 +76,7 @@ def dataset(tmp_path):
         }))
     db = Database(str(tmp_path / "test.db"))
     registry = DatasetRegistry(db)
-    config = registry.import_labelme(DatasetImport(name="生产线 A", image_dir=str(images), annotation_dir=str(labels)))
+    config = registry.import_labelme(DatasetImport(format="labelme", name="生产线 A", image_dir=str(images), annotation_dir=str(labels)))
     return db, registry, config
 
 
@@ -103,6 +103,20 @@ def mllm_api(dataset, finding_response):
         schema = json.loads(body['messages'][0]['content'][0]['text'].split("JSON Schema 的 JSON，不要 Markdown：\n")[1])
         if schema['title'] == 'KnowledgeDraft':
             answer = {**patterns, 'checks': [{**check, 'support_evidence_ids': [json.loads(part['text'][5:])['evidence_id'] for part in body['messages'][0]['content'] if part['type']=='text' and part['text'].startswith('视觉证据：')]} for check in patterns['checks']]}
+        elif schema['title'] == 'KnowledgeVerification':
+            payload = json.loads(body['messages'][0]['content'][0]['text'].split('待核验疑点：', 1)[1].split('\n请根据图像', 1)[0])
+            metadata = [json.loads(part['text'].split('视觉证据：')[1]) for part in body['messages'][0]['content'] if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
+            evidence_ids = [m['evidence_id'] for m in metadata]
+            answer = {'findings': [{
+                'finding_id': target['finding_id'],
+                'status': 'supported',
+                'affected_check_titles': [check['title'] for check in payload.get('checks', patterns['checks'])],
+                'description': '异常表现已核实',
+                'normal_explanation': '非正常外观',
+                'limitations': [],
+                'evidence_ids': evidence_ids if evidence_ids else ['placeholder_evidence'],
+                'conflicts': []
+            } for target in payload.get('findings', [])]}
         elif schema['title'] == 'JointAnalysis':
             metadata=[json.loads(part['text'].split('视觉证据：')[1]) for part in body['messages'][0]['content'] if part['type']=='text' and part['text'].startswith('视觉证据：')]
             answer={**responses['VlmResult'],'global_view':responses['GlobalAnalysis'],

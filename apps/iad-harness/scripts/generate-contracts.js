@@ -17,13 +17,14 @@ from iad_core.workbench.calls import ModelCallDetail
 from iad_core.workbench.job_models import JobRetry, JobSnapshot, JobRetryOptions
 from iad_core.workbench.inspection_context import InspectionReference, InspectionSnapshot
 from iad_core.dataset.registry import DatasetImport
+from iad_core.dataset.folder_preview import FolderPreview
 from iad_core.dataset.archive import ArchiveInspection
 from iad_core.dataset.scanner import ScanResult
 from iad_core.workbench.report import DatasetReport
 from iad_core.storage.models import Annotation, ReviewDecisionRecord
 from iad_core.workbench.review import ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage
 from iad_core.workbench.query import SampleQuery
-models = [AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, AuditStart, ModelCallDetail, JobRetry, JobSnapshot, JobRetryOptions, InspectionReference, InspectionSnapshot, DatasetImport, ArchiveInspection, ScanResult, DatasetReport, MiningStart, Annotation, ReviewDecisionRecord, ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage, SampleQuery]
+models = [AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, AuditStart, ModelCallDetail, JobRetry, JobSnapshot, JobRetryOptions, InspectionReference, InspectionSnapshot, DatasetImport, FolderPreview, ArchiveInspection, ScanResult, DatasetReport, MiningStart, Annotation, ReviewDecisionRecord, ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage, SampleQuery]
 modes = [(model, 'validation' if model in (MiningStart, AuditStart, JobRetry, InspectionReference, DatasetImport, ReviewSubmission, ReviewHistoryQuery) else 'serialization') for model in models]
 references, schema = models_json_schema(modes)
 schema.update(title='WorkbenchDomain', type='object', additionalProperties=False,
@@ -50,6 +51,7 @@ function toolSchema(node) {
 const parameters = toolSchema(schema.properties.MiningStart).properties;
 const targets = {
   "domain.generated.ts": output,
+  "dataset.parameters.generated.ts": `/* Generated from Python FolderRule by scripts/generate-contracts.js. */\nexport const folderRulesParameter = ${JSON.stringify({type: "array", items: toolSchema({$ref: "#/$defs/FolderRule"})}, null, 2)} as const;\n`,
   "mining.parameters.generated.ts": `/* Generated from Python MiningStart by scripts/generate-contracts.js. */\nexport const miningParameters = ${JSON.stringify(parameters, null, 2)} as const;\n`,
 };
 for (const [name, content] of Object.entries(targets)) {

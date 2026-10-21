@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { message, request } from "./api.js";
-const empty = { knowledge: null, versions: [], freshness: null };
+const empty = { knowledge: null, versions: [], freshness: null, eligible_source_count: 0, unavailable_source_count: 0 };
 /** A response belongs to one dataset, kind and version; pending queries never expose another selection. */
 export function useKnowledge(datasetId, kind, versionId = "", revision = 0) {
     const queryIdentity = useMemo(() => ({ scope: JSON.stringify([datasetId, kind, versionId]), revision }), [datasetId, kind, versionId, revision]);

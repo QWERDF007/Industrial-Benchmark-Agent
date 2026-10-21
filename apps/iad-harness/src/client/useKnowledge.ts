@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { KnowledgeQuery, KnowledgeSnapshot } from "../shared/contracts.js";
 import { message, request } from "./api.js";
 
-const empty: KnowledgeQuery = { knowledge: null, versions: [], freshness: null };
+const empty: KnowledgeQuery = { knowledge: null, versions: [], freshness: null, eligible_source_count: 0, unavailable_source_count: 0 };
 
 /** A response belongs to one dataset, kind and version; pending queries never expose another selection. */
 export function useKnowledge(datasetId: string, kind: KnowledgeSnapshot["kind"] | null, versionId = "", revision = 0) {

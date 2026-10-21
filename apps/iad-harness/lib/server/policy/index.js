@@ -17,6 +17,7 @@ export const ALLOWED_TOOL_SURFACE = [
     "skill",
     "dataset_list",
     "dataset_directory_inspect",
+    "dataset_preview",
     "dataset_import",
     "dataset_rescan",
     "dataset_archive_inspect",

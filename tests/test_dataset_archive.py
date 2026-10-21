@@ -21,7 +21,7 @@ def test_uploaded_labelme_archive_preserves_images_annotations_and_mask_pixels(d
     assert inspected['file_count'] == 5
     assert next(d for d in inspected['directories'] if d['path'] == '产品/images')['image_count'] == 4
     assert next(d for d in inspected['directories'] if d['path'] == '产品/labels')['annotation_count'] == 1
-    imported = dataset_import({'name': '附件孔板', 'archive_path': str(archive_path),
+    imported = dataset_import({'format': 'labelme', 'name': '附件孔板', 'archive_path': str(archive_path),
         'image_dir': '产品/images', 'annotation_dir': '产品/labels'}, db.db_path)
     assert imported['total_samples'] == 4
     assert len(dataset_list({}, db.db_path)['datasets']) == 2
@@ -36,7 +36,7 @@ def test_uploaded_labelme_archive_preserves_images_annotations_and_mask_pixels(d
         assert mask.getpixel((90, 110)) == 255
         assert mask.getpixel((80, 90)) == 0
     with pytest.raises(ValueError, match='already been imported'):
-        dataset_import({'name': '重复附件', 'archive_path': str(archive_path),
+        dataset_import({'format': 'labelme', 'name': '重复附件', 'archive_path': str(archive_path),
             'image_dir': '产品/images', 'annotation_dir': '产品/labels'}, db.db_path)
     assert sample_get({'sample_id': original['sample']['sample_id']}, db.db_path) == original
 
@@ -48,7 +48,7 @@ def test_archive_paths_are_rejected_before_any_extraction_or_registration(tmp_pa
         archive.writestr(filename, b'not image data')
     db_path = str(tmp_path / 'db' / 'workbench.db')
     with pytest.raises(ValueError, match='relative'):
-        dataset_import({'name': '无效包', 'archive_path': str(archive_path),
+        dataset_import({'format': 'labelme', 'name': '无效包', 'archive_path': str(archive_path),
             'image_dir': '.', 'annotation_dir': '.'}, db_path)
     assert dataset_list({}, db_path)['datasets'] == []
     assert not (tmp_path / 'db' / 'datasets').exists()
@@ -78,7 +78,7 @@ def test_damaged_archive_never_publishes_partial_extraction_or_dataset(tmp_path)
     archive_path.write_bytes(archive_path.read_bytes().replace(b'deliberate unique payload', b'corrupted!unique payload!'))
     db_path = str(tmp_path / 'workbench.db')
     with pytest.raises(ValueError, match='damaged'):
-        dataset_import({'name': '损坏包', 'archive_path': str(archive_path),
+        dataset_import({'format': 'labelme', 'name': '损坏包', 'archive_path': str(archive_path),
             'image_dir': 'images', 'annotation_dir': 'labels'}, db_path)
     assert dataset_list({}, db_path)['datasets'] == []
     assert not any(path.is_dir() for path in (tmp_path / 'datasets').iterdir())

@@ -205,6 +205,6 @@ Agent 使用页面相同的预览/导入/重扫/资格入口，依次取得正�
 
 ## Further Notes
 
-本规格与独立票据采用本地文档交付；测试边界、拆票粒度和依赖已确认，状态为 ready-for-agent，不表示功能已实现。需求以本规格为准，票据只定义切片与阻塞边，实现与验证入口由源码索引维护，进度只进入根任务账本。
+本规格与独立票据采用本地文档交付；测试边界、拆票粒度和依赖已确认，交付状态以[逐票验收](../tickets/README.md)为准。需求以本规格为准，票据只定义切片与阻塞边，实现与验证入口由源码索引维护，进度只进入根任务账本。
 
 目录分类契约参考 [Anomalib 官方 Folder 文档](https://anomalib.readthedocs.io/en/latest/markdown/guides/reference/data/datamodules/image/folder.html)及[官方 GitHub FolderDataset](https://github.com/open-edge-platform/anomalib/blob/main/src/anomalib/data/datasets/image/folder.py)：正常与异常目录分别声明，分类不要求掩膜。借鉴契约，不引入训练依赖。

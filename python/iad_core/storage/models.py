@@ -99,6 +99,7 @@ class Sample(BaseModel):
     relative_path: str
     quality_status: QualityStatus
     quality_source: Optional[str] = None
+    is_excluded: bool = False
     data_origin: DataOrigin = DataOrigin.UNKNOWN
     batch_id: Optional[str] = None
     physical_sample_id: Optional[str] = None

@@ -1,6 +1,7 @@
 import os
 import re
-import fnmatch
+from pathlib import Path
+from iad_core.dataset.files import ImageFiles, DEFAULT_IMAGE_GLOBS
 from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any, Generator, Iterator
 from pydantic import BaseModel, Field
@@ -40,46 +41,9 @@ class DatasetAdapter(ABC):
 
     def scan_images(self) -> Generator[RawImage, None, None]:
         """Stream images from the dataset root matching glob patterns without loading all into memory."""
-        root = os.path.abspath(self.config.root)
-        if not os.path.exists(root):
-            raise FileNotFoundError(f"Dataset root directory does not exist: {root}")
-
-        globs = self.config.images.glob or ["**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.bmp"]
-        exclude_globs = self.config.images.exclude or []
-
-        # Walk through directory tree efficiently
-        for dirpath, _, filenames in os.walk(root):
-            for filename in sorted(filenames):
-                full_path = os.path.join(dirpath, filename)
-                rel_path = os.path.relpath(full_path, root)
-
-                # Check inclusion globs (support both root and nested paths)
-                matched = any(
-                    fnmatch.fnmatch(rel_path, pat)
-                    or fnmatch.fnmatch(filename, pat)
-                    or fnmatch.fnmatch(rel_path, pat.replace("**/", ""))
-                    or fnmatch.fnmatch(filename, pat.replace("**/", ""))
-                    for pat in globs
-                )
-                if not matched:
-                    continue
-
-                # Check exclusion globs
-                excluded = any(
-                    fnmatch.fnmatch(rel_path, pat)
-                    or fnmatch.fnmatch(filename, pat)
-                    or fnmatch.fnmatch(rel_path, pat.replace("**/", ""))
-                    or fnmatch.fnmatch(filename, pat.replace("**/", ""))
-                    for pat in exclude_globs
-                )
-                if excluded:
-                    continue
-
-                yield RawImage(
-                    image_path=full_path,
-                    relative_path=rel_path,
-                    dataset_id=self.config.dataset.id,
-                )
+        for path in ImageFiles(Path(self.config.root), self.config.images.glob or DEFAULT_IMAGE_GLOBS, self.config.images.exclude):
+            yield RawImage(image_path=str(path), relative_path=path.relative_to(Path(self.config.root).resolve()).as_posix(),
+                           dataset_id=self.config.dataset.id)
 
     def load_origin(self, image: RawImage) -> DataOrigin:
         """Resolve data origin (e.g. LEGACY_TRAIN, LEGACY_TEST, AUGMENTED, MISSED_CASE, PRODUCTION_RAW)."""

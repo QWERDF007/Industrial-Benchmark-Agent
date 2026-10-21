@@ -22,7 +22,7 @@ from iad_core.workbench.inspection import SampleInspection
 from iad_core.workbench.jobs import JobContext, JobRunner
 from iad_core.workbench.knowledge import InspectionKnowledge
 
-AUDIT_GENERATION_VERSION = 'dataset-audit-v1'
+AUDIT_GENERATION_VERSION = 'dataset-audit-v2'
 
 class AuditStart(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -67,6 +67,7 @@ class AuditService:
         suggestion = AuditSuggestion(
             suggestion_id="sug_" + uuid.uuid4().hex, task_id=sample.task_id, sample_id=sample_id,
             session_id=context.payload.get('origin_session_id'),
+            source_fingerprint=SampleContent.model_validate(expected).fingerprint,
             model_route=model_name, analysis=analysis, confidence=result.confidence, reference_sample_ids=refs, audit_run_id=context.run_id,
             observations=[ObservationItem(phenomenon=result.reason_category, description=(result.defect_location + " " + result.description).strip())],
             hypotheses=[HypothesisItem(label=result.suggested_label)],

@@ -40,6 +40,8 @@ export function createIadHttpHandler(bridge) {
                 if (key in query)
                     query[key] = Number(query[key]);
             }
+            if (url.searchParams.has("raw_label_filters"))
+                query.raw_label_filters = JSON.parse(url.searchParams.get("raw_label_filters"));
             if (url.searchParams.has("annotation_filters"))
                 query.annotation_filters = JSON.parse(url.searchParams.get("annotation_filters"));
             const body = ["POST", "PATCH"].includes(method) ? await readJson(req) : {};
@@ -53,6 +55,8 @@ export function createIadHttpHandler(bridge) {
                 return await call("review_history", query);
             if (pathname === "/api/iad/datasets/import" && method === "POST")
                 return await call("dataset_import", body);
+            if (pathname === "/api/iad/datasets/preview" && method === "POST")
+                return await call("dataset_preview", body);
             const rescan = pathname.match(/^\/api\/iad\/datasets\/([^/]+)\/rescan$/);
             if (rescan && method === "POST")
                 return await call("dataset_scan", { ...body, dataset_id: decodeURIComponent(rescan[1]) });

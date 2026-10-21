@@ -16,7 +16,7 @@ def test_controlled_products_import_real_pixels_and_masks_without_exposing_case_
     for product in corpus['products']:
         root = Path(product['root'])
         assert sorted(p.name for p in root.iterdir()) == ['images', 'labels']
-        dataset = dataset_import({'name': root.name, 'image_dir': str(root / 'images'),
+        dataset = dataset_import({'format': 'labelme', 'name': root.name, 'image_dir': str(root / 'images'),
                                   'annotation_dir': str(root / 'labels')}, db_path)
         assert len(product['cases']) == 10
         originals = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file()}

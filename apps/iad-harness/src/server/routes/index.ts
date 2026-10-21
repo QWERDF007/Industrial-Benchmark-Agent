@@ -39,6 +39,7 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       for (const key of ["page", "page_size"]) {
         if (key in query) query[key] = Number(query[key]);
       }
+      if (url.searchParams.has("raw_label_filters")) query.raw_label_filters = JSON.parse(url.searchParams.get("raw_label_filters")!);
       if (url.searchParams.has("annotation_filters")) query.annotation_filters = JSON.parse(url.searchParams.get("annotation_filters")!);
       const body = ["POST", "PATCH"].includes(method) ? await readJson(req) : {};
       const call = async (operation: string, args: Record<string, unknown> = {}) => {
@@ -48,6 +49,7 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       if (pathname === "/api/iad/datasets" && method === "GET") return await call("dataset_list");
       if (pathname === "/api/iad/review/history" && method === "GET") return await call("review_history", query);
       if (pathname === "/api/iad/datasets/import" && method === "POST") return await call("dataset_import", body);
+      if (pathname === "/api/iad/datasets/preview" && method === "POST") return await call("dataset_preview", body);
       const rescan = pathname.match(/^\/api\/iad\/datasets\/([^/]+)\/rescan$/);
       if (rescan && method === "POST") return await call("dataset_scan", { ...body, dataset_id: decodeURIComponent(rescan[1]) });
       if (pathname === "/api/iad/datasets/archive/inspect" && method === "POST") return await call("dataset_archive_inspect", body);

@@ -11,7 +11,7 @@ def get_adapter(config: DatasetConfig) -> DatasetAdapter:
         return LabelmeAdapter(config)
     elif fmt == "yolo":
         return YOLOAdapter(config)
-    elif fmt in ("folder", "none", ""):
+    elif fmt in ("folder", "folder_classification", "none", ""):
         return GenericFolderAdapter(config)
     else:
         raise ValueError(f"Unsupported annotation format: {config.annotations.format}")

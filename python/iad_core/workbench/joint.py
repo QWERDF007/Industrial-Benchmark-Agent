@@ -67,7 +67,7 @@ class JointInspection:
                     instruction += AUDIT_PROMPTS["joint"]
                 instruction += (
                     AUDIT_PROMPTS["evidence"]
-                    + json.dumps([region.model_dump() for region in inputs], ensure_ascii=False)
+                    + json.dumps([region.model_context() for region in inputs], ensure_ascii=False)
                 )
                 phase(InspectionProgress(phase="SYNTHESIS", inspected_regions=len(inspected),
                                          planned_regions=planned_count, completed_batches=len(steps), total_batches=total))

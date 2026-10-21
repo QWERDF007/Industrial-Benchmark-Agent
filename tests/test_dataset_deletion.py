@@ -17,7 +17,7 @@ def test_delete_removes_owned_records_and_preserves_other_dataset_and_sources(da
     images.mkdir(); labels.mkdir()
     Image.new('RGB', (32, 32), 'green').save(images / 'other.png')
     (labels / 'other.json').write_text(json.dumps({'imageWidth':32,'imageHeight':32,'shapes':[{'label':'保留标注','shape_type':'rectangle','points':[[5,5],[10,10]]}]}))
-    other = registry.import_labelme(DatasetImport(name='保留数据集', image_dir=str(images), annotation_dir=str(labels)))
+    other = registry.import_labelme(DatasetImport(format='labelme', name='保留数据集', image_dir=str(images), annotation_dir=str(labels)))
     client, _, _ = mllm_api
     service = AuditService(db, VlmClient(http_client=client))
     target = config.dataset.id + ':dent.png'
@@ -110,7 +110,7 @@ def test_delete_rolls_back_all_records_if_a_dependency_blocks_removal(dataset, t
     images, labels = tmp_path/'linked-images', tmp_path/'linked-labels'
     images.mkdir(); labels.mkdir()
     Image.new('RGB',(32,32),'green').save(images/'linked.png')
-    other = registry.import_labelme(DatasetImport(name='依赖方', image_dir=str(images), annotation_dir=str(labels)))
+    other = registry.import_labelme(DatasetImport(format='labelme', name='依赖方', image_dir=str(images), annotation_dir=str(labels)))
     with db.connection() as conn:
         conn.execute("INSERT INTO knowledge_versions VALUES('normal',?,'normal',NULL,NULL,'sig','{}','now')", (config.dataset.id,))
         conn.execute("INSERT INTO knowledge_versions VALUES('dependent',?,'defect',NULL,'normal','sig','{}','now')", (other.dataset.id,))

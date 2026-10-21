@@ -110,6 +110,7 @@ export class Workspace {
           if (Number.isInteger(route.historyPage) && route.historyPage > 0) view.historyPage = route.historyPage;
           if (route.filters) {
             for (const key of ["search", "model_status", "review_status", "technical", "sort_by", "reference_status"] as const) if (typeof route.filters[key] === "string") view.filters = { ...view.filters, [key]: route.filters[key] };
+            if (Array.isArray(route.filters.raw_label_filters) && route.filters.raw_label_filters.every((item: unknown) => typeof item === "string")) view.filters.raw_label_filters = route.filters.raw_label_filters;
             if (Array.isArray(route.filters.annotation_filters) && route.filters.annotation_filters.every((item: unknown) => typeof item === "string")) view.filters.annotation_filters = route.filters.annotation_filters;
           }
           this.state = { ...this.state, active: true, pageId: route.pageId, datasetId: route.datasetId, views: { ...this.state.views, [`${route.pageId}:${route.datasetId}`]: view } };

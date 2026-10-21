@@ -17,6 +17,7 @@ export function SampleCard({ sample, selected, onSelect, reference, selection }:
         <div><dt>模型分：</dt><dd aria-label={`模型审计分数 ${sample.visual_suspicion_score ?? "未审计"}`}>{sample.visual_suspicion_score ?? "—"}</dd></div></dl>
     </button>
     <Tooltip label={`查看状态 ${sample.relative_path}`} className={`iad-status-trigger is-${status || "pending"}`} content={<>
+      <p>原始标签：{sample.quality_status === "PASS" ? "OK" : sample.quality_status === "FAIL" ? "NG" : "未标记"}</p>
       <p>模型审计：{status ? modelLabels[status] : "未审计"}</p>
       {sample.review_decision && <p>人工复核：{reviewLabel(sample.review_decision)}</p>}
     </>}><span aria-hidden="true" /></Tooltip>

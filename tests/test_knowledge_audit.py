@@ -33,7 +33,7 @@ def test_audit_rejects_cross_dataset_knowledge_and_wrong_kind(dataset, mllm_api,
     images.mkdir()
     labels.mkdir()
     Image.new('RGB', (40, 40), 'gray').save(images / 'other.png')
-    other = dataset_import({'name': '另一产品', 'image_dir': str(images), 'annotation_dir': str(labels)}, db.db_path)
+    other = dataset_import({'format': 'labelme', 'name': '另一产品', 'image_dir': str(images), 'annotation_dir': str(labels)}, db.db_path)
     runtime = WorkbenchRuntime(db, VlmClient(http_client=client))
     try:
         with pytest.raises(ValueError, match='同数据集良品知识'):
@@ -367,3 +367,35 @@ def test_historical_analysis_migration_preserves_evidence_and_human_decision(dat
                 assert image.size == (320, 240)
     finally:
         service.close()
+
+
+def test_joint_requests_hide_current_labels_paths_and_annotation_identifiers(dataset, mllm_api):
+    from iad_core.entry import dataset_scan
+    db, _, config = dataset
+    client, bodies, _ = mllm_api
+    (Path(config.root) / 'NG').mkdir()
+    (Path(config.annotations.root) / 'NG').mkdir()
+    (Path(config.root) / 'dent.png').rename(Path(config.root) / 'NG/known_NG.png')
+    annotation = json.loads((Path(config.annotations.root) / 'dent.json').read_text())
+    annotation['shapes'][0]['label'] = 'ground_truth_FAIL'
+    (Path(config.annotations.root) / 'NG/known_NG.json').write_text(json.dumps(annotation))
+    (Path(config.annotations.root) / 'dent.json').unlink()
+    dataset_scan({'dataset_id': config.dataset.id}, db.db_path)
+    target = config.dataset.id + ':NG/known_NG.png'
+    runtime = WorkbenchRuntime(db, VlmClient(http_client=client))
+    try:
+        job = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[target])
+        runtime.audit.wait(job['run_id'], 5)
+        status = runtime.audit.status(job['run_id'])
+        assert status['status'] == 'COMPLETED', status
+        requests = [body for body in bodies if body['response_format']['json_schema']['name'] == 'JointAnalysis']
+        assert requests
+        for request in requests:
+            content = json.dumps(request['messages'], ensure_ascii=False)
+            for secret_label in ['known_NG.png', 'NG/', 'ground_truth_FAIL', target]:
+                assert secret_label not in content, '待审图标签或标识泄漏到真实送模请求'
+        saved = sample_get({'sample_id': target}, db.db_path)['suggestion']['analysis']
+        assert saved['regions'][0]['annotation_id'] == target + ':ann_0'
+        assert saved['regions'][0]['label'] == 'ground_truth_FAIL'
+    finally:
+        runtime.close()

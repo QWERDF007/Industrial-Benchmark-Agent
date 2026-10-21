@@ -1,7 +1,7 @@
-import type { Annotation, AuditAnalysis, KnowledgeSnapshot, AuditStart, DatasetReport as Report, ReviewDecisionRecord, ReviewSubmission } from "./domain.generated.js";
+import type { Annotation, AuditAnalysis, KnowledgeSnapshot, AuditStart, DatasetReport as Report, FolderRule, ReviewDecisionRecord, ReviewSubmission } from "./domain.generated.js";
 export type { Annotation, ReviewDecisionRecord, ReviewSubmission } from "./domain.generated.js";
 export type { ReviewHistoryQuery, ReviewHistoryPage } from "./domain.generated.js";
-export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot, JobRetry, DatasetImport as DatasetImportRequest, ArchiveInspection, DatasetReport as Report } from "./domain.generated.js";
+export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot, JobRetry, DatasetImport as DatasetImportRequest, LabelmeImport, FolderClassificationImport, FolderRule, FolderPreview, FolderPreviewItem, ArchiveInspection, DatasetReport as Report } from "./domain.generated.js";
 export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
 export type { KnowledgeCheck, KnowledgeCorrection } from "./domain.generated.js";
 export type { KnowledgeQuery, KnowledgeFreshness } from "./domain.generated.js";
@@ -26,10 +26,13 @@ export interface Dataset extends Report {
   dataset_id: string;
   task_id: string;
   name: string;
+  format: "labelme" | "folder_classification";
   image_dir: string;
   annotation_dir: string | null;
   annotation_categories: string[];
   annotation_count: number;
+  labeled_sample_count?: number;
+  folder_rules?: FolderRule[];
   reference_sample_ids: string[];
   reference_mode: "automatic" | "selected";
   unannotated_is_normal: boolean;
@@ -43,6 +46,7 @@ export interface SampleIdentity {
   dataset_id: string;
   relative_path: string;
   quality_status: string;
+  quality_source?: string;
   width: number;
   height: number;
 }

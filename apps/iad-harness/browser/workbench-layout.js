@@ -9,7 +9,7 @@ const pages = ["数据集管理", "图像浏览", "挖掘良品知识", "挖掘�
 const viewports = [[1920, 1080], [1366, 768], [1280, 800], [375, 812]];
 
 /** Real host surfaces, browser text zoom and OS motion preference; no application state substitutes. */
-export async function verifyWorkbenchLayout(driver, output) {
+export async function verifyWorkbenchLayout(driver, output, { pageLabels = pages, sizes = viewports, zoomLevels = [1, 2] } = {}) {
   output = path.join(output, String(Date.now()));
   await fs.mkdir(output, { recursive: true });
   console.log(JSON.stringify({ layoutEvidence: output }));
@@ -18,11 +18,11 @@ export async function verifyWorkbenchLayout(driver, output) {
   const element = selector => driver.wait(until.elementLocated(By.css(selector)), 10000);
   for (const theme of ["Light", "Dark"]) {
     await setTheme(driver, theme);
-    for (const zoom of [1, 2]) {
+    for (const zoom of zoomLevels) {
       await textZoom(driver, zoom);
-      for (const [width, height] of viewports) {
+      for (const [width, height] of sizes) {
         await viewport(driver, width, height);
-        for (const [index, label] of pages.entries()) {
+        for (const [index, label] of pageLabels.entries()) {
           const scope = { theme, zoom, width, height, page: label };
           const name = `${theme.toLowerCase()}-${zoom * 100}-${width}-${index}`;
           await (await element(`button[aria-label^='${label}']`)).click();
@@ -125,7 +125,7 @@ export async function verifyWorkbenchLayout(driver, output) {
     }
   }
   await viewport(driver, 1440, 1100); await textZoom(driver, 1);
-  assert.equal(results.length, 96, "Six pages × four viewports × two themes × two text sizes");
+  assert.equal(results.length, pageLabels.length * sizes.length * zoomLevels.length * 2, "所选页面、视口、主题和字号组合全部执行");
   return results;
 }
 

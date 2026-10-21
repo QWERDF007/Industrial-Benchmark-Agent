@@ -5,25 +5,52 @@ from sqlite3 import Connection
 import uuid
 from collections import Counter
 from pathlib import Path
-from typing import Annotated, List, Optional, TYPE_CHECKING
+from typing import Annotated, Any, List, Literal, Optional, Union, TYPE_CHECKING
 
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, RootModel, StringConstraints, model_validator
 
 from iad_core.storage.database import Database
-from iad_core.task.config import DatasetConfig, load_config
+from iad_core.task.config import DatasetConfig, FolderRule, load_config
+from iad_core.dataset.files import ImageFiles
 
 
 if TYPE_CHECKING:
     from iad_core.dataset.scanner import ScanResult
 
 
-class DatasetImport(BaseModel):
+class LabelmeImport(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    format: Literal["labelme"] = "labelme"
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
     image_dir: str
     annotation_dir: str
     archive_path: Optional[str] = None
     unannotated_is_normal: bool = True
+
+
+class FolderClassificationImport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    format: Literal["folder_classification"] = "folder_classification"
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+    root_dir: str
+    rules: List[FolderRule]
+    preview_fingerprint: str
+
+
+DatasetImportType = Annotated[Union[LabelmeImport, FolderClassificationImport], Field(discriminator="format")]
+
+
+class DatasetImport(RootModel[DatasetImportType]):
+    @model_validator(mode="before")
+    @classmethod
+    def validate_envelope(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            fmt = data.get("format")
+            if not fmt:
+                raise ValueError("Dataset format is required: 'labelme' or 'folder_classification'")
+            if fmt not in ("labelme", "folder_classification"):
+                raise ValueError(f"Unsupported dataset format: '{fmt}'. Expected 'labelme' or 'folder_classification'")
+        return data
 
 
 class DatasetRegistry:
@@ -82,7 +109,7 @@ class DatasetRegistry:
                     paths = [r[0] for r in conn.execute("SELECT image_path FROM samples WHERE dataset_id=?", (dataset_id,))]
                 root = os.path.commonpath([os.path.dirname(p) for p in paths])
                 config = DatasetConfig.model_validate({
-                    "dataset": {"id": dataset_id, "name": dataset_id}, "root": root,
+                    "dataset": {"id": dataset_id, "name": dataset_id, "format": "labelme"}, "root": root,
                     "task": {"task_id": task_id, "inspection_target": "surface"},
                     "annotations": {"format": "labelme"},
                 })
@@ -136,7 +163,66 @@ class DatasetRegistry:
                 for table in ('review_sessions','import_issues','audit_suggestions','evaluation_runs','benchmark_builds','agent_runs','inspection_tasks'):
                     conn.execute(f"DELETE FROM {table} WHERE task_id=?", (task_id,))
 
-    def import_labelme(self, request: DatasetImport) -> DatasetConfig:
+    def import_labelme(self, request: Union[LabelmeImport, DatasetImport, dict]) -> DatasetConfig:
+        if isinstance(request, dict):
+            req = DatasetImport.model_validate(request).root
+        elif isinstance(request, DatasetImport):
+            req = request.root
+        else:
+            req = request
+        if not isinstance(req, LabelmeImport):
+            raise ValueError(f"Expected LabelmeImport, got {type(req).__name__}")
+        return self._import_labelme_impl(req)
+
+    def import_dataset(self, request: Union[DatasetImport, LabelmeImport, FolderClassificationImport, dict]) -> DatasetConfig:
+        if isinstance(request, dict):
+            req = DatasetImport.model_validate(request).root
+        elif isinstance(request, DatasetImport):
+            req = request.root
+        else:
+            req = request
+
+        if isinstance(req, LabelmeImport):
+            return self._import_labelme_impl(req)
+        elif isinstance(req, FolderClassificationImport):
+            return self.import_folder_classification(req)
+        else:
+            raise ValueError(f"Unsupported dataset import request: {type(req)}")
+
+    def import_folder_classification(self, request: FolderClassificationImport) -> DatasetConfig:
+        from iad_core.dataset.folder_preview import preview_folder_dataset
+        from iad_core.dataset.scanner import scan_dataset
+
+        root_path = self.image_root(request.root_dir)
+
+        preview = preview_folder_dataset(str(root_path), rules=request.rules)
+        preview.confirm(request.preview_fingerprint)
+
+        dataset_id = "ds_" + uuid.uuid4().hex
+        config = DatasetConfig.model_validate({
+            "dataset": {
+                "id": dataset_id,
+                "name": request.name.strip(),
+                "format": "folder_classification",
+                "unannotated_is_normal": False,
+            },
+            "root": str(root_path),
+            "task": {"task_id": dataset_id, "inspection_target": "surface"},
+            "annotations": {"format": "folder_classification"},
+            "folder_rules": [r.model_dump() for r in request.rules],
+        })
+        scan_dataset(config=config, db_path=self.db.db_path, preview_fingerprint=request.preview_fingerprint)
+        with self.db.connection() as conn:
+            imported_count = conn.execute("SELECT count(*) FROM samples WHERE dataset_id=?", (dataset_id,)).fetchone()[0]
+        if imported_count == 0:
+            with self.db.connection() as conn:
+                conn.execute("DELETE FROM datasets WHERE dataset_id=?", (dataset_id,))
+                conn.execute("DELETE FROM import_issues WHERE task_id=?", (dataset_id,))
+                conn.execute("DELETE FROM inspection_tasks WHERE task_id=?", (dataset_id,))
+            raise ValueError("No readable images were imported")
+        return config
+
+    def _import_labelme_impl(self, request: LabelmeImport) -> DatasetConfig:
         from iad_core.dataset.scanner import scan_dataset
 
         if request.archive_path:
@@ -149,11 +235,10 @@ class DatasetRegistry:
         image_dir, annotation_dir = self.sources(str(image_dir), str(annotation_dir))
         dataset_id = "ds_" + uuid.uuid4().hex
         config = DatasetConfig.model_validate({
-            "dataset": {"id": dataset_id, "name": request.name.strip(), "unannotated_is_normal": request.unannotated_is_normal},
+            "dataset": {"id": dataset_id, "name": request.name.strip(), "format": "labelme", "unannotated_is_normal": request.unannotated_is_normal},
             "root": str(image_dir),
             "task": {"task_id": dataset_id, "inspection_target": "surface"},
             "annotations": {"format": "labelme", "root": str(annotation_dir)},
-            "images": {"glob": ["**/*.png", "**/*.jpg", "**/*.jpeg", "**/*.bmp", "**/*.webp"]},
         })
         scan_dataset(config=config, db_path=self.db.db_path)
         with self.db.connection() as conn:
@@ -166,29 +251,46 @@ class DatasetRegistry:
             raise ValueError("No readable images were imported")
         return config
 
-    def sources(self, image_dir: str, annotation_dir: str, dataset_id: Optional[str] = None) -> tuple[Path, Path]:
+    def image_root(self, image_dir: str, dataset_id: Optional[str] = None) -> Path:
         images = Path(image_dir).expanduser().resolve(strict=True)
-        annotations = Path(annotation_dir).expanduser().resolve(strict=True)
-        if not images.is_dir() or not annotations.is_dir():
-            raise ValueError("Image and annotation paths must be directories")
-        if not any(p.suffix.lower() in {".png", ".jpg", ".jpeg", ".bmp", ".webp"} for p in images.rglob("*") if p.is_file()):
+        if not images.is_dir():
+            raise ValueError("Image path must be a directory")
+        if next(iter(ImageFiles(images)), None) is None:
             raise ValueError("Image directory contains no supported images")
         for existing in self.list():
-            if (existing.dataset.id != dataset_id and Path(existing.root).resolve() == images
-                    and existing.annotations.root and Path(existing.annotations.root).resolve() == annotations):
-                raise ValueError("These image and annotation directories have already been imported")
+            if existing.dataset.id != dataset_id and Path(existing.root).resolve() == images:
+                raise ValueError("This image directory has already been imported as a dataset")
+        return images
+
+    def sources(self, image_dir: str, annotation_dir: str, dataset_id: Optional[str] = None) -> tuple[Path, Path]:
+        images = self.image_root(image_dir, dataset_id)
+        annotations = Path(annotation_dir).expanduser().resolve(strict=True)
+        if not annotations.is_dir():
+            raise ValueError("Annotation path must be a directory")
         return images, annotations
 
-    def rescan(self, dataset_id: str, image_dir: Optional[str] = None, annotation_dir: Optional[str] = None) -> "ScanResult":
+    def rescan(self, dataset_id: str, image_dir: Optional[str] = None, annotation_dir: Optional[str] = None,
+               folder_rules: Optional[List[FolderRule]] = None, preview_fingerprint: Optional[str] = None) -> "ScanResult":
         from iad_core.dataset.scanner import scan_dataset
 
         config = self.get(dataset_id)
-        if image_dir is not None or annotation_dir is not None:
-            if not image_dir or not annotation_dir:
-                raise ValueError("Changing dataset sources requires both image and annotation directories")
-            images, annotations = self.sources(image_dir, annotation_dir, dataset_id)
-            config.root, config.annotations.root = str(images), str(annotations)
-        return scan_dataset(config=config, db_path=self.db.db_path)
+        if config.dataset.format == "folder_classification":
+            if annotation_dir is not None:
+                raise ValueError('Folder datasets do not accept an annotation directory')
+            if image_dir is not None:
+                config.root = str(self.image_root(image_dir, dataset_id))
+            if folder_rules is not None:
+                config.folder_rules = folder_rules
+            if image_dir is not None or folder_rules is not None:
+                from iad_core.dataset.folder_preview import preview_folder_dataset
+                preview_folder_dataset(config.root, config.folder_rules).confirm(preview_fingerprint)
+        else:
+            if image_dir is not None or annotation_dir is not None:
+                if not image_dir or not annotation_dir:
+                    raise ValueError("Changing dataset sources requires both image and annotation directories")
+                images, annotations = self.sources(image_dir, annotation_dir, dataset_id)
+                config.root, config.annotations.root = str(images), str(annotations)
+        return scan_dataset(config=config, db_path=self.db.db_path, preview_fingerprint=preview_fingerprint)
 
     def references(self, dataset_id: str, exclude: Optional[str] = None, limit: Optional[int] = 4,
                    selected_ids: Optional[List[str]] = None) -> List[str]:
@@ -197,17 +299,28 @@ class DatasetRegistry:
             row = conn.execute("SELECT reference_sample_ids_json,reference_selection_set FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()
             selected = selected_ids if selected_ids is not None else json.loads(row[0])
             explicit_selection = selected_ids is not None or bool(row[1])
-            rows = conn.execute("""
-                SELECT s.sample_id FROM samples s
-                LEFT JOIN current_review_decisions d ON d.id=(SELECT r.id FROM current_review_decisions r
-                    WHERE r.sample_id=s.sample_id ORDER BY COALESCE(r.submitted_at,r.updated_at) DESC,r.id DESC LIMIT 1)
-                WHERE s.dataset_id=? AND s.sample_id!=? AND NOT EXISTS(
-                    SELECT 1 FROM import_issues i WHERE i.sample_id=s.sample_id AND i.severity IN ('ERROR','WARNING'))
-                AND (d.decision IN ('PASS','HARD_NORMAL') OR (d.id IS NULL AND
-                    (s.quality_status='PASS' OR (s.quality_status!='FAIL' AND EXISTS(SELECT 1 FROM json_each(?) WHERE value=s.sample_id))
-                     OR (? AND s.quality_status!='FAIL' AND NOT EXISTS(SELECT 1 FROM annotations a WHERE a.sample_id=s.sample_id)))))
-                ORDER BY s.relative_path,s.sample_id
-            """, (dataset_id, exclude or "", json.dumps(selected), config.dataset.unannotated_is_normal)).fetchall()
+            if config.dataset.format == "folder_classification":
+                rows = conn.execute("""
+                    SELECT s.sample_id FROM samples s
+                    LEFT JOIN current_review_decisions d ON d.id=(SELECT r.id FROM current_review_decisions r
+                        WHERE r.sample_id=s.sample_id ORDER BY COALESCE(r.submitted_at,r.updated_at) DESC,r.id DESC LIMIT 1)
+                    WHERE s.dataset_id=? AND s.is_excluded=0 AND s.sample_id!=? AND NOT EXISTS(
+                        SELECT 1 FROM import_issues i WHERE i.sample_id=s.sample_id AND i.severity IN ('ERROR','WARNING'))
+                    AND (d.decision IN ('PASS','HARD_NORMAL') OR (d.id IS NULL AND s.quality_status='PASS'))
+                    ORDER BY s.relative_path,s.sample_id
+                """, (dataset_id, exclude or "")).fetchall()
+            else:
+                rows = conn.execute("""
+                    SELECT s.sample_id FROM samples s
+                    LEFT JOIN current_review_decisions d ON d.id=(SELECT r.id FROM current_review_decisions r
+                        WHERE r.sample_id=s.sample_id ORDER BY COALESCE(r.submitted_at,r.updated_at) DESC,r.id DESC LIMIT 1)
+                    WHERE s.dataset_id=? AND s.is_excluded=0 AND s.sample_id!=? AND NOT EXISTS(
+                        SELECT 1 FROM import_issues i WHERE i.sample_id=s.sample_id AND i.severity IN ('ERROR','WARNING'))
+                    AND (d.decision IN ('PASS','HARD_NORMAL') OR (d.id IS NULL AND
+                        (s.quality_status='PASS' OR (s.quality_status!='FAIL' AND EXISTS(SELECT 1 FROM json_each(?) WHERE value=s.sample_id))
+                         OR (? AND s.quality_status!='FAIL' AND NOT EXISTS(SELECT 1 FROM annotations a WHERE a.sample_id=s.sample_id)))))
+                    ORDER BY s.relative_path,s.sample_id
+                """, (dataset_id, exclude or "", json.dumps(selected), config.dataset.unannotated_is_normal)).fetchall()
         eligible = [r[0] for r in rows]
         if explicit_selection:
             eligible_ids = set(eligible)

@@ -4,6 +4,8 @@ export declare function useKnowledge(datasetId: string, kind: KnowledgeSnapshot[
     knowledge: KnowledgeSnapshot | null;
     versions: import("../shared/domain.generated.js").Versions;
     freshness: import("../shared/domain.generated.js").KnowledgeFreshness | null;
+    eligible_source_count: import("../shared/domain.generated.js").EligibleSourceCount;
+    unavailable_source_count: import("../shared/domain.generated.js").UnavailableSourceCount;
     loading: boolean;
     error: string;
 };

@@ -73,8 +73,9 @@ class DefectVerification:
                            and finding.is_current_candidate(item.source.sha256, item.source.audit_suggestion_ids)]
             audit_targets = self.candidates.targets(item.source)
             if not candidates and not audit_targets:
+                label = '人工异常待核实' if item.source.qualification == 'human_fail' else '目录异常待核实'
                 candidates = [([0, 0, sample.width, sample.height], None,
-                               [RegionOrigin(source='coverage', label='人工异常待核实', bbox=[0, 0, sample.width, sample.height])], None)]
+                               [RegionOrigin(source='coverage', label=label, bbox=[0, 0, sample.width, sample.height])], None)]
             pending = []
             for box, proposal, origins, origin_finding_id in candidates:
                 bbox = [math.floor(box[0]), math.floor(box[1]), math.ceil(box[2]), math.ceil(box[3])]

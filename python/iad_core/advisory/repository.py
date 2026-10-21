@@ -43,8 +43,8 @@ class AuditSuggestionRepository:
                     suggestion_id, task_id, sample_id, session_id, model_route,
                     observations_json, hypotheses_json, evidence_refs_json,
                     conclusion_status, recommended_action, input_modalities_json, created_at,
-                    confidence, reference_sample_ids_json, audit_run_id, analysis_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    confidence, reference_sample_ids_json, audit_run_id, analysis_json, source_fingerprint
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     suggestion.suggestion_id,
@@ -63,6 +63,7 @@ class AuditSuggestionRepository:
                     json.dumps(suggestion.reference_sample_ids),
                     suggestion.audit_run_id,
                     suggestion.analysis.model_dump_json() if suggestion.analysis else None,
+                    suggestion.source_fingerprint,
                 ),
             )
         return suggestion
@@ -82,6 +83,7 @@ class AuditSuggestionRepository:
             confidence=row["confidence"],
             reference_sample_ids=json.loads(row["reference_sample_ids_json"]),
             audit_run_id=row["audit_run_id"],
+            source_fingerprint=row['source_fingerprint'],
             analysis=json.loads(row["analysis_json"]) if row["analysis_json"] else None,
             observations=[ObservationItem(**o) for o in obs_raw],
             hypotheses=[HypothesisItem(**h) for h in hyp_raw],

@@ -40,7 +40,7 @@ class VlmClient:
                 raise ValueError("Visual input content changed")
             with open(image.path, "rb") as source:
                 encoded = base64.b64encode(source.read()).decode("ascii")
-            content.append({"type": "text", "text": "视觉证据：" + image.evidence.model_dump_json()})
+            content.append({"type": "text", "text": "视觉证据：" + json.dumps(image.evidence.model_context(), ensure_ascii=False)})
             content.append({"type": "image_url", "image_url": {"url": "data:image/png;base64," + encoded}})
         return {
             "model": model_name, "messages": [{"role": "user", "content": content}],
