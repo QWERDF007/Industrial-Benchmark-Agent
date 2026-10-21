@@ -11,4 +11,15 @@ export declare const workbenchJsonOutput: {
         type: "json";
     }>): ContentBlock[];
 };
+export declare const datasetDiscoveryOutput: {
+    schema: {
+        readonly type: "json";
+    };
+    presentationMeta(_args: unknown, value: InferValue<{
+        type: "json";
+    }>): import("../shared/tool-presentation.js").ToolPresentation | null;
+    render(args: unknown, value: InferValue<{
+        type: "json";
+    }>): ContentBlock[];
+};
 //# sourceMappingURL=tool-output.d.ts.map

@@ -204,7 +204,7 @@ class KnowledgeSourceQuery(AnalysisModel):
     kind: KnowledgeKind
     normal_version_id: Optional[str] = None
     page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=10, ge=1, le=200)
+    page_size: int = Field(default=10, ge=1, le=200, description="每页1..200，默认10；仅取本次已确认图组所需引用，不预先枚举全库")
     search: str = ""
 
 

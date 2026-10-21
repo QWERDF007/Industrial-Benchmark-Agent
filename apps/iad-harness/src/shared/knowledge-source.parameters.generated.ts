@@ -25,6 +25,7 @@ export const knowledgeSourceParameters = {
   },
   "page_size": {
     "type": "integer",
+    "description": "每页1..200，默认10；仅取本次已确认图组所需引用，不预先枚举全库",
     "title": "Page Size",
     "default": 10
   },

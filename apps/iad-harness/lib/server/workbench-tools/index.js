@@ -1,15 +1,15 @@
 import { folderRulesParameter } from "../../shared/dataset.parameters.generated.js";
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { workbenchJsonOutput } from "../tool-output.js";
+import { datasetDiscoveryOutput, workbenchJsonOutput } from "../tool-output.js";
 import { evidenceOutput, readEvidenceAttachment } from "../evidence-attachment.js";
 import { jobRetryParameters, jobStatusParameters, waitForJobStatus } from "../job-status.js";
 export function createWorkbenchTools(bridge, ctx) {
     return [
         defineTool({
             name: "dataset_list",
-            description: "列出工作台已导入的数据集及稳定 dataset_id，供选择知识挖掘或审计目标。",
+            description: "列出已导入数据集的名称、稳定dataset_id、格式与数量摘要。真实图像引用用knowledge_sources分页查询，完整质量统计用dataset_report读取。",
             parameters: {},
-            output: workbenchJsonOutput,
+            output: datasetDiscoveryOutput,
             execute: (_args, exec) => bridge.execute("dataset_list", {}, exec.signal),
         }),
         defineTool({
@@ -50,7 +50,7 @@ export function createWorkbenchTools(bridge, ctx) {
                 archive_path: { type: "string", description: "明确提供ZIP时的宿主保存路径" },
                 unannotated_is_normal: { type: "boolean", description: "仅Labelme的无标注初始良品约定" },
             },
-            output: workbenchJsonOutput,
+            output: datasetDiscoveryOutput,
             execute: (args, exec) => bridge.execute("dataset_import", args, exec.signal),
         }),
         defineTool({

@@ -35,6 +35,16 @@ test("DSH discovers real eligible source references through the same paginated H
     const imported = await execute("dataset_import", { format: "labelme", name: "真实引用", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
     assert.equal(imported.isError, false, JSON.stringify(imported));
     const dataset_id = imported.value.dataset_id;
+    const listed = await execute("dataset_list", {});
+    assert.equal(listed.isError, false, JSON.stringify(listed));
+    const discovery = JSON.parse(listed.content[0].text).datasets[0];
+    assert.equal(discovery.dataset_id, dataset_id);
+    assert.equal(discovery.total_samples, 3);
+    assert.equal(discovery.reference_source_count, 2);
+    assert.equal(discovery.reference_sample_ids, undefined, "Dataset discovery must not enumerate all sample IDs into model context");
+    assert.equal(discovery.quality, undefined, "Full reports are requested through dataset_report");
+    assert.equal(JSON.parse(imported.content[0].text).reference_sample_ids, undefined);
+    assert.equal(listed.value.datasets[0].reference_sample_ids.length, 2, "The recorded result remains available to the workbench");
     const first = await query({ dataset_id, kind: "normal", page_size: 1 });
     assert.equal(first.total, 2);
     assert.equal(first.items.length, 1);

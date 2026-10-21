@@ -15,21 +15,21 @@ export function createKnowledgeTools(bridge: PythonBridge, ctx: Context): ToolDe
   return [
     defineTool({
       name: "knowledge_sources",
-      description: "只读分页查询知识挖掘合格来源，返回真实sample_id、relative_path和资格；kind选择normal/defect，page_size指定本次候选数量，page继续翻页，search筛选路径。与挖掘共用资格判定，不会启动作业。将返回的sample_id原样传给挖掘工具。",
+      description: "只读分页查询合格来源，返回真实sample_id、路径和资格。page_size范围1..200，默认10；只查询当前已确认图组所需引用，不预先枚举全库。用户未给图组数量时先建议10或20张并等待确认，不能把未给数量理解为全部来源。kind为normal/defect，search筛选路径。结果资格是候选身份，不是视觉真值；不会启动作业。",
       parameters: knowledgeSourceParameters,
       output: workbenchJsonOutput,
       execute: (args, exec) => bridge.execute("knowledge_sources", args, exec.signal),
     }),
     defineTool({
       name: "knowledge_mine_normal",
-      description: "独立启动用户要求的良品知识挖掘，无需加载技能；先用knowledge_sources查询真实来源，再按用户数量显式选择sample_ids，不能通过省略选择改为全库。",
+      description: "独立启动良品知识挖掘，无需加载完整流程技能。未明确本次图组数量时先建议10或20张并等待用户确认，不自动解释成全部来源或预先枚举全库；明确数量后用knowledge_sources查询真实引用并显式选择sample_ids。已有父版本会合并历史来源，执行前核对范围，不能声称支持尚未实现的逐组续用。",
       parameters: selectedSourceParameters,
       output: workbenchJsonOutput,
       execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "normal", origin_session_id: exec.agent?.id || null }, exec.signal),
     }),
     defineTool({
       name: "knowledge_mine_defect",
-      description: "独立启动用户要求的异常知识挖掘，无需加载技能；先用knowledge_sources查询真实来源，显式选择sample_ids并提供同数据集良品版本，缺依赖时说明，不自动启动其他阶段。",
+      description: "独立启动异常知识挖掘，无需加载完整流程技能。未明确图组数量时先建议10或20张并等待确认，不预先枚举全库；先用knowledge_sources查询真实引用，显式选择sample_ids并提供同数据集良品版本，缺依赖时说明，不自动启动其他阶段。",
       parameters: { ...selectedSourceParameters, normal_version_id: { ...normalVersion, required: true } },
       output: workbenchJsonOutput,
       execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "defect", origin_session_id: exec.agent?.id || null }, exec.signal),

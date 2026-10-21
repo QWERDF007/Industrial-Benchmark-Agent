@@ -360,6 +360,9 @@ export type DatasetId2 = string;
 export type Kind2 = "normal" | "defect";
 export type NormalVersionId3 = string | null;
 export type Page = number;
+/**
+ * 每页1..200，默认10；仅取本次已确认图组所需引用，不预先枚举全库
+ */
 export type PageSize = number;
 export type Search = string;
 export type DatasetId3 = string;

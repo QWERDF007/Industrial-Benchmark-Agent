@@ -21,6 +21,7 @@ export declare const knowledgeSourceParameters: {
     };
     readonly page_size: {
         readonly type: "integer";
+        readonly description: "每页1..200，默认10；仅取本次已确认图组所需引用，不预先枚举全库";
         readonly title: "Page Size";
         readonly default: 10;
     };
