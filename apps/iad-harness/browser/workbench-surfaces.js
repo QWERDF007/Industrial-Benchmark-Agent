@@ -74,16 +74,16 @@ export async function verifyWorkbenchSurfaces(driver, output) {
       assert.equal(await driver.executeScript("return document.activeElement.textContent"), "添加数据集");
       await (await element(".iad-dataset-card button[aria-label^='修改数据集名称']")).click();
       await capture("dataset-card-name", "input[aria-label='卡片数据集名称']"); await driver.actions().sendKeys(Key.ESCAPE).perform();
-      assert.equal(await driver.executeScript("return document.activeElement.classList.contains('iad-name-trigger')"), true);
+      await driver.wait(() => driver.executeScript("return !document.querySelector('input[aria-label=\"卡片数据集名称\"]') && document.activeElement.matches('.iad-dataset-card .iad-name-trigger')"), 5000);
       await (await element("section[aria-label='当前数据集详情'] button[aria-label^='修改数据集名称']")).click();
       await capture("dataset-detail-name", "input[aria-label='新的数据集名称']"); await driver.actions().sendKeys(Key.ESCAPE).perform();
-      assert.equal(await driver.executeScript("return document.activeElement.classList.contains('iad-name-trigger')"), true);
+      await driver.wait(() => driver.executeScript("return !document.querySelector('input[aria-label=\"新的数据集名称\"]') && document.activeElement.matches('section[aria-label=\"当前数据集详情\"] .iad-name-trigger')"), 5000);
       await (await element(".iad-dataset-card button[aria-label^='删除数据集']")).click();
       assert.equal(await driver.executeScript("return document.activeElement.getAttribute('aria-label')"), "取消删除", "删除弹窗打开后默认聚焦取消");
       await capture("dataset-delete", "dialog[open] button[aria-label='取消删除']", "dialog[open]"); await button("取消");
       assert.ok((await driver.executeScript("return document.activeElement.getAttribute('aria-label')")).startsWith("删除数据集"));
-      for (const label of ["挖掘良品知识", "挖掘不良品知识"]) {
-        await navigate(label);
+      for (const label of ["良品", "异常"]) {
+        await navigate("知识挖掘"); await button(label);
         await (await element("select[aria-label='知识版本'] option[value='']")).click();
         await button("知识条目");
         await driver.wait(() => driver.executeScript("return !document.querySelector('.iad-knowledge-page').textContent.includes('正在读取知识…')"), 10000);
@@ -93,7 +93,7 @@ export async function verifyWorkbenchSurfaces(driver, output) {
         await button("取消");
         assert.equal(await driver.executeScript("return document.activeElement.textContent"), "修订判据");
         await button("版本"); await capture(label + "-versions", ".iad-knowledge-content button");
-        await button(label === "挖掘良品知识" ? "待核实" : "标注核验");
+        await button(label === "良品" ? "待核实" : "标注核验");
         await capture(label + "-findings", ".iad-knowledge-content button");
       }
       await navigate("模型审计"); await button("模型审计作业");
@@ -138,7 +138,7 @@ export async function verifyWorkbenchSurfaces(driver, output) {
   }
   assert.equal(results.length, 184, "23 real detail surfaces × four viewports × two themes at 200% text zoom");
   await viewport(driver, 1440, 1100); await textZoom(driver, 1);
-  for (const label of ["挖掘良品知识", "挖掘不良品知识"]) { await navigate(label); await button("知识条目"); }
+  for (const label of ["良品", "异常"]) { await navigate("知识挖掘"); await button(label); await button("知识条目"); }
   await navigate("人工复核"); await button("复核队列");
   await navigate("图像浏览");
   return results;

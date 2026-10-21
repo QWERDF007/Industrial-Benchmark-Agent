@@ -227,6 +227,12 @@ test("DSH standalone knowledge tools execute shared jobs and return actual evide
   const execute = async (name, args) => {
     const result = await ctx.tools.execute({ name, arguments: args, callId: `knowledge-${++call}`, signal: new AbortController().signal });
     assert.equal(result.isError, false, JSON.stringify(result));
+    const knowledgeKind = result.value.kind || result.value.knowledge?.kind;
+    if ((result.value.run_id || result.value.knowledge) && (knowledgeKind === "normal" || knowledgeKind === "defect")) {
+      const links = result.meta.links.filter(link => link.label === "查看作业" || link.label === "查看知识版本");
+      assert.ok(links.length > 0);
+      assert.ok(links.every(link => link.location.pageId === "industrial-knowledge" && link.location.knowledgeKind === knowledgeKind), "Knowledge results preserve type in the unified page");
+    }
     if (name === "knowledge_job_status") {
       assert.ok(Array.isArray(result.value.model_calls));
       assert.ok(!result.content[0].text.includes('"model_calls"'), "Chat polling must not repeat technical call traces");

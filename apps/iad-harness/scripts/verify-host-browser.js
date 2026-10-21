@@ -10,7 +10,7 @@ const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const log = process.env.IAD_WEB_URL ? "" : await fs.readFile(process.env.IAD_WEB_LOG || path.join(workspace, "runs/dsh_web.log"), "utf8");
 const url = new URL(process.env.IAD_WEB_URL || log.match(/https?:\/\/[^\s)]+/)[0]);
 if (!process.env.IAD_WEB_URL) url.hostname = "127.0.0.1";
-const labels = ["数据集管理", "图像浏览", "挖掘良品知识", "挖掘不良品知识", "模型审计", "人工复核"];
+const labels = ["数据集管理", "图像浏览", "知识挖掘", "模型审计", "人工复核"];
 const options = new firefox.Options().addArguments("-headless");
 if (process.env.FIREFOX_PATH) options.setBinary(process.env.FIREFOX_PATH);
 const driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options)

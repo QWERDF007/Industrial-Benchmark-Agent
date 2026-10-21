@@ -5,7 +5,7 @@ import axe from "axe-core";
 import contrast from "wcag-contrast";
 import { By, Key, until } from "selenium-webdriver";
 
-const pages = ["数据集管理", "图像浏览", "挖掘良品知识", "挖掘不良品知识", "模型审计", "人工复核"];
+const pages = ["数据集管理", "图像浏览", "知识挖掘", "模型审计", "人工复核"];
 const viewports = [[1920, 1080], [1366, 768], [1280, 800], [375, 812]];
 
 /** Real host surfaces, browser text zoom and OS motion preference; no application state substitutes. */

@@ -45,7 +45,7 @@ export function AuditSetup({ dataset, filters, jobs, revision, onJobsChanged }: 
     <details className="iad-model-settings"><summary>模型设置</summary><label className="iad-field">模型<input aria-label="模型名称" value={model} placeholder="使用项目配置模型" onChange={e => workspace.updateView("industrial-audit", { model: e.target.value }, true)} /></label></details>
     <p className="iad-muted">范围：当前筛选的全部图像 · 全图与全部适用 ROI 联合分析</p>
     {loading ? <p role="status">正在读取审计知识…</p> : loadError ? <p role="alert" className="iad-error">{loadError}</p> : <>
-    {normal ? <><KnowledgeState freshness={normalQuery.freshness} /><details><summary>良品知识 · {normal.checks.filter(check => check.status === "supported").length} 项有证据支持</summary>{normalDetails}</details></> : <p className="iad-profile iad-muted">请先运行“挖掘良品知识”技能，生成可用版本。<button onClick={() => workspace.navigate("industrial-normal")}>前往挖掘良品知识</button></p>}
+    {normal ? <><KnowledgeState freshness={normalQuery.freshness} /><details><summary>良品知识 · {normal.checks.filter(check => check.status === "supported").length} 项有证据支持</summary>{normalDetails}</details></> : <p className="iad-profile iad-muted">请先挖掘良品知识，生成可用版本。<button onClick={() => workspace.openLocation({ pageId: "industrial-knowledge", datasetId: dataset.dataset_id, knowledgeKind: "normal" })}>前往挖掘良品知识</button></p>}
     {defect ? <><KnowledgeState freshness={defectQuery.freshness} /><details><summary>不良知识 · {defect.checks.length} 项判据</summary><DatasetKnowledge knowledge={defect} /></details></> : <p className="iad-muted">暂无匹配的不良知识，按正常判据筛查。</p>}
     </>}
     {error && <p role="alert" className="iad-error">{error}</p>}

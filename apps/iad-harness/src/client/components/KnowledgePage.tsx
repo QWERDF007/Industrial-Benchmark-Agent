@@ -12,7 +12,7 @@ import { knowledgeStatuses, type KnowledgeStatusFilter } from "../../shared/know
 
 export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dataset; kind: "normal" | "defect"; refreshRevision: number }) {
   const { workspace } = useWorkspace();
-  const pageId = kind === "normal" ? "industrial-normal" : "industrial-defect";
+  const pageId = "industrial-knowledge";
   const view = workspace.view(pageId);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -23,7 +23,7 @@ export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dat
   const normal = reference.knowledge, normalVersions = reference.versions;
   const loading = current.loading || reference.loading, loadError = current.error || reference.error;
   const [lightbox, setLightbox] = useState<ImageSource | null>(null);
-  const [model, setModel] = useState("");
+  const model = view.model;
   const updated = useCallback(() => setRevision(value => value + 1), []);
   const polling = useJobs("knowledge", dataset.dataset_id, updated, view.job);
   const jobs = polling.jobs.filter(job => job.kind === kind);
@@ -36,7 +36,9 @@ export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dat
       const input: KnowledgeStartRequest = { dataset_id: dataset.dataset_id, kind, ...(kind === "defect" ? { normal_version_id: normal?.version_id } : {}), ...(model.trim() ? { model_name: model.trim() } : {}), ...correction };
       await request<JobSnapshot>("/knowledge/start", input);
       setEditing(null);
-      workspace.updateView(pageId, { version: "" }); polling.refresh(); updated();
+      const current = workspace.getSnapshot();
+      if (current.datasetId === dataset.dataset_id && current.knowledgeKind === kind) workspace.updateView(pageId, { version: "" });
+      polling.refresh(); updated();
     } catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
   const term = view.knowledgeSearch.trim().normalize("NFKC").toLocaleLowerCase();
@@ -58,10 +60,10 @@ export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dat
         <label className="iad-field">下次挖掘依据的良品版本<select aria-label="依据良品知识版本" value={view.normalVersion || ""} onChange={event => workspace.updateView(pageId, { normalVersion: event.target.value })} disabled={busy || running}>
           <option value="">当前发布版本</option>{normalVersions.map(version => <option key={version.version_id} value={version.version_id}>{version.version_id} · {version.created_at}</option>)}
         </select></label>
-        {!loading && !normal?.checks.some(check => check.status === "supported") && <p>所选版本没有可用的良品判据。<button onClick={() => workspace.navigate("industrial-normal")}>前往良品知识</button></p>}
+        {!loading && !normal?.checks.some(check => check.status === "supported") && <p>所选版本没有可用的良品判据。<button onClick={() => workspace.openLocation({ pageId, datasetId: dataset.dataset_id, knowledgeKind: "normal" })}>前往良品知识</button></p>}
       </>}
       <button className="iad-primary" disabled={busy || loading || !!loadError || running || (kind === "normal" ? !dataset.reference_sample_ids.length : !normal?.checks.some(check => check.status === "supported") || (!!view.normalVersion && normal.version_id !== view.normalVersion))} onClick={() => void start()}>{busy ? "启动中…" : `开始挖掘${kind === "normal" ? "良品" : "不良品"}知识`}</button></div>
-      <details className="iad-model-settings"><summary>模型设置</summary><label className="iad-field">模型<input aria-label="知识挖掘模型" placeholder="使用项目配置" value={model} onChange={event => setModel(event.target.value)} /></label></details>
+      <details className="iad-model-settings"><summary>模型设置</summary><label className="iad-field">模型<input aria-label="知识挖掘模型" placeholder="使用项目配置" value={model} onChange={event => workspace.updateView(pageId, { model: event.target.value }, true)} /></label></details>
       {loading && <p role="status" className="iad-muted">正在读取知识…</p>}
       {loadError && <p role="alert" className="iad-error">{loadError} <button onClick={updated}>重新读取知识</button></p>}
       {(error || polling.error) && <p role="alert" className="iad-error">{error || polling.error}</p>}

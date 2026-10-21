@@ -23,12 +23,13 @@ export function toolPresentation(value: unknown): ToolPresentation | null {
   if (typeof record.dataset_id === "string") {
     const datasetId = record.dataset_id;
     if (typeof record.run_id === "string") {
-      const pageId = record.job_type === "MODEL_AUDIT" ? "industrial-audit" : record.kind === "normal" ? "industrial-normal" : "industrial-defect";
-      links.push({ label: "查看作业", location: { pageId, datasetId, job: record.run_id, tab: "jobs" } });
+      const pageId = record.job_type === "MODEL_AUDIT" ? "industrial-audit" : "industrial-knowledge";
+      const knowledgeKind = record.kind === "defect" ? "defect" : "normal";
+      links.push({ label: "查看作业", location: { pageId, datasetId, knowledgeKind, job: record.run_id, tab: "jobs" } });
       if (typeof record.status === "string" && record.status in jobStatuses && typeof record.completed === "number" && typeof record.failed === "number" && typeof record.total_samples === "number") {
         job = { status: record.status as JobSnapshot["status"], completed: record.completed, failed: record.failed, total_samples: record.total_samples };
       }
-      if (typeof record.knowledge_version_id === "string") links.push({ label: "查看知识版本", location: { pageId, datasetId, version: record.knowledge_version_id, tab: "results" } });
+      if (typeof record.knowledge_version_id === "string") links.push({ label: "查看知识版本", location: { pageId, datasetId, knowledgeKind, version: record.knowledge_version_id, tab: "results" } });
     }
     links.push({ label: "数据集管理", location: { pageId: "industrial-datasets", datasetId } }, { label: "图像浏览", location: { pageId: "industrial-images", datasetId } }, { label: "质量报告", location: { pageId: "industrial-audit", datasetId, tab: "reports" } });
   }
@@ -37,7 +38,7 @@ export function toolPresentation(value: unknown): ToolPresentation | null {
   }
   const knowledge = record.knowledge;
   if (knowledge && typeof knowledge === "object" && "dataset_id" in knowledge && "version_id" in knowledge && "kind" in knowledge && typeof knowledge.dataset_id === "string" && typeof knowledge.version_id === "string" && (knowledge.kind === "normal" || knowledge.kind === "defect")) {
-    links.push({ label: "查看知识版本", location: { pageId: knowledge.kind === "normal" ? "industrial-normal" : "industrial-defect", datasetId: knowledge.dataset_id, version: knowledge.version_id, tab: "results" } });
+    links.push({ label: "查看知识版本", location: { pageId: "industrial-knowledge", knowledgeKind: knowledge.kind, datasetId: knowledge.dataset_id, version: knowledge.version_id, tab: "results" } });
   }
   return links.length ? { type: "industrial-workbench", links, job } : null;
 }

@@ -16,7 +16,7 @@ const sampleName = (sample: JobSample) => sample.relative_path || sample.sample_
 export function JobCard({ job, onChanged }: { job: JobSnapshot; onChanged(): void }) {
   const { workspace } = useWorkspace();
   const kind = job.job_type === "MODEL_AUDIT" ? "audit" : "knowledge";
-  const page = kind === "audit" ? "industrial-audit" : job.kind === "normal" ? "industrial-normal" : "industrial-defect";
+  const page = kind === "audit" ? "industrial-audit" : "industrial-knowledge";
   const active = job.status === "RUNNING" || job.status === "PENDING";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -25,7 +25,7 @@ export function JobCard({ job, onChanged }: { job: JobSnapshot; onChanged(): voi
   const [selected, setSelected] = useState<string[]>([]);
   const [revision, setRevision] = useState(0);
   const article = useRef<HTMLElement>(null);
-  const focused = workspace.view(page).job === job.run_id;
+  const focused = workspace.view(page, job.kind ?? undefined).job === job.run_id;
   useEffect(() => { if (focused) article.current?.scrollIntoView({ block: "nearest" }); }, [focused]);
   useEffect(() => {
     if (!expanded) return;
@@ -52,7 +52,7 @@ export function JobCard({ job, onChanged }: { job: JobSnapshot; onChanged(): voi
     workspace.navigate(kind === "audit" ? "industrial-audit" : "industrial-images", sampleId);
   }
   function related(runId: string) {
-    workspace.updateView(page, { job: runId, tab: "jobs" }); workspace.navigate(page);
+    workspace.openLocation({ pageId: page, datasetId: job.dataset_id, knowledgeKind: job.kind ?? undefined, job: runId, tab: "jobs" });
   }
   return <article ref={article} className="iad-job" data-job-id={job.run_id} aria-label={`作业 ${job.run_id}`} aria-current={focused || undefined}>
     <div className="iad-row"><strong role="status">{active && job.cancel_requested ? "正在停止" : jobStatuses[job.status]}</strong><span>{job.model_name}</span>
@@ -72,7 +72,7 @@ export function JobCard({ job, onChanged }: { job: JobSnapshot; onChanged(): voi
       catch (error) { setError(message(error)); } finally { setBusy(false); }
     }}>返回发起会话</button></p>}
     {job.parent_run_id && <p className="iad-job-links"><button onClick={() => related(job.parent_run_id!)}>原作业 {job.parent_run_id}</button>{job.root_run_id !== job.parent_run_id && <button onClick={() => related(job.root_run_id)}>起始作业 {job.root_run_id}</button>}</p>}
-    {job.knowledge_version_id && <p><button onClick={() => { workspace.updateView(page, { version: job.knowledge_version_id!, tab: "results" }); workspace.navigate(page); }}>查看已发布版本</button></p>}
+    {job.knowledge_version_id && <p><button onClick={() => { workspace.openLocation({ pageId: page, datasetId: job.dataset_id, knowledgeKind: job.kind ?? undefined, version: job.knowledge_version_id!, tab: "results" }); }}>查看已发布版本</button></p>}
     {!!job.errors.length && <details><summary>失败详情 · {job.errors.length}</summary><ul className="iad-job-errors">{job.errors.map((error, index) => <li key={index}><button onClick={() => locate(error.sample_id)} title={error.sample_uuid}>{sampleName(error)}</button><p className="iad-error">{error.message}</p></li>)}</ul></details>}
     {!active && job.status !== "COMPLETED" && <button aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? "收起重试范围" : "选择重试范围"}</button>}
     {expanded && <section className="iad-retry-scope" aria-label="重试范围">

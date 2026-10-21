@@ -1,4 +1,4 @@
-import type { Filters, InspectionReference } from "../shared/contracts.js";
+import type { Filters, InspectionReference, KnowledgeSnapshot } from "../shared/contracts.js";
 import { type ImageView, type InspectionSelection, type InspectionTransform, type InspectionView } from "./inspection.js";
 import type { InspectionSession } from "./inspection-session.js";
 import { type PageId, type WorkbenchLocation } from "../shared/navigation.js";
@@ -20,7 +20,9 @@ interface ViewState {
     knowledgeStatus: KnowledgeStatusFilter;
     inspection: InspectionView | null;
 }
+type KnowledgeKind = KnowledgeSnapshot["kind"];
 interface WorkspaceState {
+    knowledgeKind: KnowledgeKind;
     active: boolean;
     pageId: PageId;
     datasetId: string;
@@ -51,7 +53,7 @@ export declare class Workspace {
     private defaults;
     getSnapshot: () => WorkspaceState;
     subscribe: (listener: () => void) => () => void;
-    view(page: PageId): {
+    view(page: PageId, kind?: import("../shared/domain.generated.js").Kind): {
         filters: Filters;
         page: number;
         selected: string;
@@ -67,9 +69,11 @@ export declare class Workspace {
         knowledgeStatus: KnowledgeStatusFilter;
         inspection: InspectionView | null;
     };
+    private viewKey;
+    selectKnowledgeKind(knowledgeKind: KnowledgeKind): void;
     connect(layout: Layout): () => void;
     navigate(pageId: PageId, selected?: string): void;
-    openLocation({ pageId, datasetId, ...view }: WorkbenchLocation): void;
+    openLocation({ pageId, datasetId, knowledgeKind, ...view }: WorkbenchLocation): void;
     selectDataset(datasetId: string, replace?: boolean): void;
     updateView(page: PageId, patch: Partial<ViewState>, replace?: boolean): void;
     ask(reference: InspectionReference, selection: InspectionSelection | null, transform: InspectionTransform, question: string): Promise<void>;

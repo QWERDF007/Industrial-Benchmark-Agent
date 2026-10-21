@@ -21,6 +21,7 @@
 | 人工提交与历史 | [人工复核](../python/iad_core/workbench/review.py)、[人审存储](../python/iad_core/storage/review_repository.py) |
 | 原生工具、模型可见结果、当前技能注册、状态等待与图像附件 | [工作台工具](../apps/iad-harness/src/server/workbench-tools/index.ts)、[知识工具](../apps/iad-harness/src/server/knowledge/)、[结果投影](../apps/iad-harness/src/server/tool-output.ts)、[完整分析技能](../apps/iad-harness/src/server/workbench-tools/skill.ts)、[等待](../apps/iad-harness/src/server/job-status.ts)、[附件](../apps/iad-harness/src/server/evidence-attachment.ts) |
 | 生成的客户端契约 | [契约](../apps/iad-harness/src/shared/contracts.ts)、[生成入口](../apps/iad-harness/scripts/generate-contracts.js) |
+| 页面身份、知识类型与结果跳转 | [导航契约](../apps/iad-harness/src/shared/navigation.ts)、[工作区状态](../apps/iad-harness/src/client/workspace.tsx)、[结果链接](../apps/iad-harness/src/shared/tool-presentation.ts) |
 | 页面、共享上下文与组件 | [工作台](../apps/iad-harness/src/client/WorkbenchPage.tsx)、[上下文](../apps/iad-harness/src/client/workspace.tsx)、[组件](../apps/iad-harness/src/client/components/)、[目录预览](../apps/iad-harness/src/client/useFolderPreview.ts)、[目录映射](../apps/iad-harness/src/client/components/FolderMapping.tsx) |
 | 主题、控件与模态焦点 | [主题](../apps/iad-harness/src/client/theme.ts)、[共享控件](../apps/iad-harness/src/client/controls.ts)、[布局](../apps/iad-harness/src/client/styles.ts)、[模态](../apps/iad-harness/src/client/components/Modal.tsx) |
 | Gold、数据划分、基准及外部评估入口 | [Gold](../python/iad_core/gold/)、[划分](../python/iad_core/split/)、[基准](../python/iad_core/benchmark/)、[评估](../python/iad_core/evaluation/) |
@@ -35,6 +36,7 @@
 | 输入屏蔽与知识独立支持 | [提示边界](../tests/test_knowledge_prompt_scope.py)、[冻结知识审计](../tests/test_knowledge_audit.py) |
 | 规则、疑点、分块与Mask真实证据 | [规则](../tests/test_rule_audit.py)、[疑点](../tests/test_audit_findings.py)、[容量](../tests/test_knowledge_capacity.py)、[Mask](../tests/test_mask_evidence.py) |
 | 口径与中断恢复 | [报告](../tests/test_quality_report.py)、[目录变更闭环](../tests/test_folder_source_change_closed_loop.py)、[恢复](../tests/test_job_recovery.py)、[调用记录](../tests/test_model_calls.py) |
+| 知识类型/数据集切换、历史与刷新 | [统一入口浏览器操作](../apps/iad-harness/browser/knowledge-navigation.test.js) |
 | 浏览器公开用户链 | [工作台操作](../apps/iad-harness/browser/workbench.test.js) |
 | 真实DSH会话及页面/图像往返 | [原生宿主](../apps/iad-harness/browser/session-handoff.test.js)、[Agent会话](../apps/iad-harness/test/agent_session.test.js) |
 | 明暗、视口、字号、模态与焦点 | [页面布局](../apps/iad-harness/browser/workbench-layout.js)、[详情交互](../apps/iad-harness/browser/workbench-surfaces.js) |

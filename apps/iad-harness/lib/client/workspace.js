@@ -11,7 +11,7 @@ export class Workspace {
     constructor(conversation) {
         this.conversation = conversation;
     }
-    state = { active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
+    state = { knowledgeKind: "normal", active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
     listeners = new Set();
     layout;
     imageViews = new Map();
@@ -23,7 +23,14 @@ export class Workspace {
     defaults = Object.fromEntries(Object.keys(pages).map(id => [id, defaultView(id)]));
     getSnapshot = () => this.state;
     subscribe = (listener) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
-    view(page) { return { ...this.defaults[page], ...this.state.views[`${page}:${this.state.datasetId}`] }; }
+    view(page, kind = this.state.knowledgeKind) { return { ...this.defaults[page], ...this.state.views[this.viewKey(page, this.state.datasetId, kind)] }; }
+    viewKey(page, datasetId, kind) { return `${page}:${datasetId}${page === "industrial-knowledge" ? `:${kind}` : ""}`; }
+    selectKnowledgeKind(knowledgeKind) {
+        if (knowledgeKind === this.state.knowledgeKind)
+            return;
+        this.state = { ...this.state, knowledgeKind };
+        this.commit();
+    }
     connect(layout) {
         this.layout = layout;
         this.restore();
@@ -45,13 +52,13 @@ export class Workspace {
     navigate(pageId, selected) {
         this.state = { ...this.state, active: true, pageId };
         if (selected !== undefined)
-            this.state = { ...this.state, views: { ...this.state.views, [`${pageId}:${this.state.datasetId}`]: { ...this.view(pageId), selected, tab: "results" } } };
+            this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(pageId, this.state.datasetId, this.state.knowledgeKind)]: { ...this.view(pageId), selected, tab: "results" } } };
         this.commit();
         this.layout?.selectPanel(pageId);
     }
-    openLocation({ pageId, datasetId, ...view }) {
-        this.state = { ...this.state, active: true, pageId, datasetId };
-        this.state = { ...this.state, views: { ...this.state.views, [`${pageId}:${datasetId}`]: { ...this.view(pageId), ...view, inspection: null } } };
+    openLocation({ pageId, datasetId, knowledgeKind = this.state.knowledgeKind, ...view }) {
+        this.state = { ...this.state, active: true, pageId, datasetId, knowledgeKind };
+        this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(pageId, datasetId, knowledgeKind)]: { ...this.view(pageId), ...view, inspection: null } } };
         this.commit();
         this.layout?.selectPanel(pageId);
     }
@@ -62,11 +69,11 @@ export class Workspace {
         this.commit(replace);
     }
     updateView(page, patch, replace = false) {
-        this.state = { ...this.state, views: { ...this.state.views, [`${page}:${this.state.datasetId}`]: { ...this.view(page), ...patch } } };
+        this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(page, this.state.datasetId, this.state.knowledgeKind)]: { ...this.view(page), ...patch } } };
         this.commit(replace);
     }
     async ask(reference, selection, transform, question) {
-        const { pageId, datasetId } = this.state;
+        const { pageId, datasetId, knowledgeKind } = this.state;
         const view = this.view(pageId);
         const snapshot = await request("/inspection/context", reference);
         if (!this.state.active || this.state.pageId !== pageId || this.state.datasetId !== datasetId || this.view(pageId).selected !== reference.sample_id)
@@ -75,16 +82,16 @@ export class Workspace {
             if (!this.state.active || this.state.pageId !== pageId || this.state.datasetId !== datasetId || this.view(pageId).selected !== reference.sample_id)
                 throw new Error("检视位置已切换，请在当前图像重新追问");
             this.updateView(pageId, { inspection: { reference, selection, transform, sessionId } }, true);
-            const route = new URLSearchParams({ iad: JSON.stringify({ pageId, datasetId, ...this.view(pageId) }) });
+            const route = new URLSearchParams({ iad: JSON.stringify({ pageId, datasetId, knowledgeKind, ...this.view(pageId) }) });
             return `${location.origin}${location.pathname}?${route}`;
         }, view.inspection?.reference.sample_id === reference.sample_id ? view.inspection.sessionId : undefined);
     }
     openSession(sessionId) { return this.conversation.open(sessionId); }
     commit(replace = false) {
-        const { pageId, datasetId } = this.state;
+        const { pageId, datasetId, knowledgeKind } = this.state;
         const url = new URL(location.href);
         if (this.state.active)
-            url.searchParams.set("iad", JSON.stringify({ pageId, datasetId, ...this.view(pageId) }));
+            url.searchParams.set("iad", JSON.stringify({ pageId, datasetId, knowledgeKind, ...this.view(pageId) }));
         else
             url.searchParams.delete("iad");
         history[replace ? "replaceState" : "pushState"](history.state, "", url);
@@ -96,7 +103,7 @@ export class Workspace {
         try {
             const saved = JSON.parse(sessionStorage.getItem("iad.workspace") || "null");
             if (!fromHistory && saved?.pageId in pages && typeof saved.datasetId === "string" && typeof saved.active === "boolean") {
-                this.state = { ...saved, views: Object.fromEntries(Object.entries(saved.views || {}).map(([key, value]) => {
+                this.state = { ...saved, knowledgeKind: saved.knowledgeKind === "defect" ? "defect" : "normal", views: Object.fromEntries(Object.entries(saved.views || {}).map(([key, value]) => {
                         const view = value;
                         return [key, { ...view, filters: { ...initialFilters, ...view.filters } }];
                     })) };
@@ -106,6 +113,7 @@ export class Workspace {
             if (raw) {
                 const route = JSON.parse(raw);
                 if (route.pageId in pages && typeof route.datasetId === "string") {
+                    const knowledgeKind = route.knowledgeKind === "defect" ? "defect" : "normal";
                     const view = defaultView(route.pageId);
                     for (const key of ["selected", "tab", "version", "model", "normalVersion", "defectVersion", "job", "historySearch", "knowledgeSearch"])
                         if (typeof route[key] === "string")
@@ -126,7 +134,7 @@ export class Workspace {
                         if (Array.isArray(route.filters.annotation_filters) && route.filters.annotation_filters.every((item) => typeof item === "string"))
                             view.filters.annotation_filters = route.filters.annotation_filters;
                     }
-                    this.state = { ...this.state, active: true, pageId: route.pageId, datasetId: route.datasetId, views: { ...this.state.views, [`${route.pageId}:${route.datasetId}`]: view } };
+                    this.state = { ...this.state, active: true, pageId: route.pageId, datasetId: route.datasetId, knowledgeKind, views: { ...this.state.views, [this.viewKey(route.pageId, route.datasetId, knowledgeKind)]: view } };
                 }
             }
         }

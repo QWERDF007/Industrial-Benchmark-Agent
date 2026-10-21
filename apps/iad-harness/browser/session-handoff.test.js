@@ -186,15 +186,15 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     await delay(5500);
     assert.equal(await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label"), "图像浏览", "侧栏保留固定名称，不附加待审计统计");
     let job = await api("/knowledge/start", { dataset_id: dataset.dataset_id, kind: "normal", model_name: "test-mllm" });
-    assert.equal(await (await element("button[aria-label^='挖掘良品知识']")).getAttribute("aria-label"), "挖掘良品知识");
-    await (await element("button[aria-label^='挖掘良品知识']")).click();
-    await driver.wait(() => driver.executeScript("return document.querySelector('.iad-workbench h1')?.textContent==='挖掘良品知识'"), 5000);
+    assert.equal(await (await element("button[aria-label^='知识挖掘']")).getAttribute("aria-label"), "知识挖掘");
+    await (await element("button[aria-label^='知识挖掘']")).click();
+    await driver.wait(() => driver.executeScript("return document.querySelector('.iad-workbench h1')?.textContent==='知识挖掘'"), 5000);
     await driver.wait(async () => (await (await element(".iad-knowledge-jobs")).getText()).includes("执行中"), 10000, "作业进度在对应页面展示");
     releaseKnowledge();
     while (["PENDING", "RUNNING"].includes(job.status)) { await delay(100); job = await api(`/knowledge/status/${job.run_id}`); }
     assert.equal(job.status, "COMPLETED", JSON.stringify(job));
-    await driver.wait(async () => !(await (await element("button[aria-label^='挖掘良品知识']")).getAttribute("aria-label")).includes("运行"), 10000);
-    assert.ok((await driver.executeScript("return document.activeElement?.getAttribute('aria-label')"))?.startsWith("挖掘良品知识"), "状态更新保留原生导航按钮的键盘焦点");
+    await driver.wait(async () => !(await (await element("button[aria-label^='知识挖掘']")).getAttribute("aria-label")).includes("运行"), 10000);
+    assert.ok((await driver.executeScript("return document.activeElement?.getAttribute('aria-label')"))?.startsWith("知识挖掘"), "状态更新保留原生导航按钮的键盘焦点");
     let audit = await api("/audit/start", { dataset_id: dataset.dataset_id, normal_version_id: job.knowledge_version_id, model_name: "test-mllm" });
     while (["PENDING", "RUNNING"].includes(audit.status)) { await delay(100); audit = await api(`/audit/status/${audit.run_id}`); }
     assert.equal(audit.status, "PARTIAL", JSON.stringify(audit));
@@ -273,7 +273,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     assert.ok((await (await element(".iad-inspector [role='alert']")).getText()).includes("证据引用不存在"));
     assert.equal((await driver.findElements(By.css(".iad-viewer-dialog[open]"))).length, 0);
     await (await element("button[aria-label='关闭图像详情']")).click();
-    for (const [index, label] of ["挖掘良品知识", "模型审计"].entries()) {
+    for (const [index, label] of ["知识挖掘", "模型审计"].entries()) {
       await (await element(`button[aria-label^='${label}']`)).click();
       if (index) await button("模型审计作业");
       if (index) {
@@ -340,7 +340,7 @@ Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
     await button("刷新");
     await (await element("select[aria-label='当前数据集'] option[value='" + sequence.dataset_id + "']")).click();
     assert.equal(await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label"), "图像浏览", "切换数据集仍使用固定导航名称");
-    assert.equal(await (await element("button[aria-label^='挖掘良品知识']")).getAttribute("aria-label"), "挖掘良品知识", "无近期作业不能推断未曾发布知识，且不能继承另一数据集状态");
+    assert.equal(await (await element("button[aria-label^='知识挖掘']")).getAttribute("aria-label"), "知识挖掘", "无近期作业不能推断未曾发布知识，且不能继承另一数据集状态");
     await driver.manage().window().setRect({ width: 1440, height: 768 });
     await (await element("summary[aria-label='标注筛选']")).click();
     await (await element("input[aria-label='无标注']")).click();

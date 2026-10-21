@@ -9,7 +9,7 @@ export const name = "iad-client";
 export const inject = ["slots", "layout", "sessions", "conversation", "uiWorkspace"];
 export function apply(ctx) {
     const workspace = new Workspace(new InspectionSession(ctx));
-    const icons = [DatasetIcon, ImagesIcon, KnowledgeIcon, KnowledgeIcon, AuditIcon, ReviewIcon];
+    const icons = [DatasetIcon, ImagesIcon, KnowledgeIcon, AuditIcon, ReviewIcon];
     ctx.slots.inject("tool.call.toolview", () => {
         for (const [key, title] of Object.entries(workbenchTools))
             ctx.slots.register({ name: "tool.call.toolview", key }, (props) => React.createElement(WorkspaceContext.Provider, { value: workspace }, React.createElement(SessionResult, { ...props, title })));

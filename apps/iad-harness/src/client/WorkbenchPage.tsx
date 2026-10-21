@@ -81,14 +81,16 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
       {pageId !== "industrial-datasets" && <div className="iad-row"><select aria-label="当前数据集" value={datasetId} onChange={e => workspace.selectDataset(e.target.value)}><option value="" disabled>选择数据集</option>{datasets.map(item => <option key={item.dataset_id} value={item.dataset_id}>{item.name} ({item.total_samples})</option>)}</select><button onClick={changed}>刷新</button></div>}</header>
     {(error || audit.error) && <p role="alert" className="iad-error">{error || audit.error}</p>}
     {dataset && pageId !== "industrial-datasets" && <div className="iad-kpis" aria-label="数据集概况">{(
-      pageId === "industrial-normal" ? [["良品来源", dataset.reference_sample_ids.length], ["图像", dataset.total_samples]] :
-      pageId === "industrial-defect" ? [["图像", dataset.total_samples], ["标注类别", dataset.annotation_categories.length]] :
+      pageId === "industrial-knowledge" ? [["图像", dataset.total_samples], ["良品来源", dataset.reference_sample_ids.length]] :
       [["图像", dataset.total_samples], ["模型审计", dataset.vlm_audited_count], ["待审计", dataset.total_samples - dataset.vlm_audited_count], ["待复核", dataset.pending_risk_count], ["已人工复核", dataset.human_reviewed_count]]
     ).map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>}
     {pageId === "industrial-datasets" ? <>
       <DatasetManager datasets={datasets} selected={dataset} onChanged={id => { void loadDatasets(id); setRevision(v => v + 1); }} />
     </> : !dataset ? <section className="iad-job-section"><p>请先添加服务器上的数据集。</p><button onClick={() => workspace.navigate("industrial-datasets")}>前往数据集管理</button></section> : <>
-      {(pageId === "industrial-normal" || pageId === "industrial-defect") && <KnowledgePage key={`${datasetId}:${pageId}`} dataset={dataset} kind={pageId === "industrial-normal" ? "normal" : "defect"} refreshRevision={revision} />}
+      {pageId === "industrial-knowledge" && <>
+        <nav className="iad-tabs" aria-label="知识类型">{([["normal", "良品"], ["defect", "异常"]] as const).map(([kind, label]) => <button key={kind} className={state.knowledgeKind === kind ? "active" : ""} aria-pressed={state.knowledgeKind === kind} onClick={() => workspace.selectKnowledgeKind(kind)}>{label}</button>)}</nav>
+        <KnowledgePage key={`${datasetId}:${state.knowledgeKind}`} dataset={dataset} kind={state.knowledgeKind} refreshRevision={revision} />
+      </>}
       {pageId === "industrial-audit" && <nav className="iad-tabs" aria-label="审计视图">{[["results", "结果"], ["jobs", "模型审计作业"], ["reports", "报告"]].map(([tab, label]) => <button key={tab} aria-pressed={view.tab === tab} className={view.tab === tab ? "active" : ""} onClick={() => workspace.updateView(pageId, { tab })}>{label}</button>)}</nav>}
       {pageId === "industrial-review" && <nav className="iad-tabs" aria-label="复核视图">{[["results", "复核队列"], ["records", "复核记录"]].map(([tab, label]) => <button key={tab} aria-pressed={view.tab === tab} className={view.tab === tab ? "active" : ""} onClick={() => workspace.updateView(pageId, { tab })}>{label}</button>)}</nav>}
       {pageId === "industrial-review" && view.tab === "results" && reviewConfirmation?.datasetId === datasetId && <p role="status" className="iad-review-confirmation">已提交 {reviewConfirmation.name} · {reviewLabel(reviewConfirmation.decision)}</p>}

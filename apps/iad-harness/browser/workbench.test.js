@@ -155,7 +155,7 @@ for name in ['normal','normal2','dent']:
     const gridCount = count => driver.wait(async () => await driver.executeScript("return document.querySelectorAll('.iad-grid .iad-sample').length===arguments[0] && !!document.querySelector('.iad-gallery') && !document.querySelector('.iad-gallery').textContent.includes('加载中');", count), 15000, `Expected ${count} grid images`);
     await element("#test-navigation button");
     assert.deepEqual(await driver.executeScript("return [...document.querySelectorAll('#test-navigation button')].map(b=>b.textContent)"),
-      ["数据集管理", "图像浏览", "挖掘良品知识", "挖掘不良品知识", "模型审计", "人工复核"]);
+      ["数据集管理", "图像浏览", "知识挖掘", "模型审计", "人工复核"]);
     assert.equal((await driver.findElements(By.css(".iad-header select,.iad-header button,.iad-kpis"))).length, 0, "数据集管理由卡片选择数据集，不重复显示头部控件和统计");
     await button("添加数据集");
     await element("dialog[aria-label='导入 Labelme 数据集']");
@@ -242,7 +242,7 @@ for name in ['normal','normal2','dent']:
     await button("数据集管理");
     assert.equal((await driver.findElements(By.css(".iad-gallery,.iad-reference-manager"))).length, 0, "数据集管理不复制图像浏览和来源网格");
     assert.equal((await driver.findElements(By.xpath("//button[normalize-space(.)='浏览图像']"))).length, 0, "移除面板外悬空浏览按钮");
-    await button("挖掘良品知识"); await button("管理来源"); await button("清除筛选"); await gridCount(3);
+    await button("知识挖掘"); await button("良品"); await button("管理来源"); await button("清除筛选"); await gridCount(3);
     assert.equal((await driver.findElements(By.css(".iad-grid .iad-reference"))).length, 2);
     await (await element("img[alt='normal.png']")).click();
     assert.equal((await driver.findElements(By.css("dialog[aria-label='图像详情'] button[aria-label='关闭图像详情']"))).length, 1, "图像详情右上角提供关闭图标");
@@ -271,7 +271,7 @@ for name in ['normal','normal2','dent']:
     await driver.wait(async ()=>(await (await element("[aria-label='良品来源摘要']")).getText()).includes("1 张"),5000);
     await button("恢复自动来源"); await button("完成来源管理");
     assert.equal((await driver.findElements(By.css(".iad-grid input[type=checkbox],.iad-grid .iad-reference"))).length,0);
-    await button("挖掘良品知识");
+    await button("知识挖掘"); await button("良品");
     await button("开始挖掘良品知识");
     await driver.wait(async ()=>(await (await element(".iad-knowledge-jobs")).getText()).includes("已完成"),15000);
     const learned = (await (await fetch(`${base}/api/iad/knowledge/jobs?dataset_id=${dataset.dataset_id}`)).json()).jobs[0];
@@ -296,7 +296,7 @@ for name in ['normal','normal2','dent']:
     await driver.navigate().refresh();
     assert.equal(await (await element("input[aria-label='搜索知识条目']")).getAttribute("value"), "光照");
     assert.equal(await (await element("select[aria-label='知识支持状态']")).getAttribute("value"), "conflicted");
-    await button("图像浏览"); await gridCount(3); await button("挖掘良品知识");
+    await button("图像浏览"); await gridCount(3); await button("知识挖掘"); await button("良品");
     assert.equal(await (await element("input[aria-label='搜索知识条目']")).getAttribute("value"), "光照");
     await viewportSize(375, 812);
     await driver.executeScript("document.querySelector('[aria-label=\"知识条目筛选\"]').scrollIntoView({block:'start'});");
@@ -315,10 +315,10 @@ for name in ['normal','normal2','dent']:
     await (await element("input[aria-label='类别 dent']")).click(); await gridCount(3);
     await (await element("input[aria-label='无标注']")).click(); await gridCount(1);
     await (await element("summary[aria-label='标注筛选']")).click();
-    await button("挖掘良品知识");
-    await element("[data-page='industrial-normal']");
+    await button("知识挖掘"); await button("良品");
+    await element("[data-page='industrial-knowledge']");
     await button("图像浏览"); await gridCount(1);
-    await driver.navigate().back(); await element("[data-page='industrial-normal']");
+    await driver.navigate().back(); await element("[data-page='industrial-knowledge']");
     await driver.navigate().forward(); await element("[data-page='industrial-images']"); await gridCount(1);
     await driver.navigate().refresh(); await gridCount(1);
     assert.equal(new URL(await driver.getCurrentUrl()).searchParams.get("host"), "kept");
@@ -902,7 +902,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await (await element("button[title='显示标注']")).click();
     await element(".iad-viewer-dialog .iad-annotation-mask image");
     await button("关闭");await (await element("button[aria-label='关闭图像详情']")).click();
-    await button("挖掘良品知识");
+    await button("知识挖掘"); await button("良品");
     await button("开始挖掘良品知识");
     await driver.wait(async()=>(await (await element(".iad-knowledge-jobs")).getText()).includes("已完成"),15000);
     await button("模型审计");await gridCount(2);
@@ -967,13 +967,13 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await button("数据集管理");
     await button("添加数据集"); await button("取消");
     assert.equal(await driver.executeScript("return document.activeElement.textContent"),"添加数据集","关闭导入弹窗应返回发起按钮焦点");
-    await button("挖掘良品知识");
+    await button("知识挖掘"); await button("良品");
     await (await driver.findElement(By.xpath("//summary[normalize-space(.)='模型设置']"))).click();
     await (await element("input[aria-label='知识挖掘模型']")).sendKeys("test-next");
     await button("开始挖掘良品知识");
     let nextNormal;
     await driver.wait(async()=>{const response=await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json();nextNormal=response.knowledge;return nextNormal?.version_id!==published.knowledge.version_id;},15000);
-    await button("挖掘不良品知识");
+    await button("知识挖掘"); await button("异常");
     await select("依据良品知识版本",published.knowledge.version_id);
     await button("开始挖掘不良品知识");
     let defect;
@@ -1090,7 +1090,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     const recent=(await(await fetch(`${base}/api/iad/knowledge/jobs?dataset_id=${dataset.dataset_id}`)).json()).jobs;
     assert.equal(recent.length,30);assert.ok(!recent.some(job=>job.run_id===learned.run_id));
     const historicalUrl=new URL(base);
-    historicalUrl.searchParams.set("iad",JSON.stringify({pageId:"industrial-normal",datasetId:dataset.dataset_id,tab:"jobs",job:learned.run_id}));
+    historicalUrl.searchParams.set("iad",JSON.stringify({pageId:"industrial-knowledge",knowledgeKind:"normal",datasetId:dataset.dataset_id,tab:"jobs",job:learned.run_id}));
     await driver.get(historicalUrl.href);
     const historical=await element(`.iad-knowledge-jobs [data-job-id='${learned.run_id}']`);
     assert.equal(await historical.getAttribute("aria-current"),"true");

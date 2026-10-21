@@ -4572,8 +4572,7 @@ var __IadClientBundle__ = (() => {
   var pages = {
     "industrial-datasets": "\u6570\u636E\u96C6\u7BA1\u7406",
     "industrial-images": "\u56FE\u50CF\u6D4F\u89C8",
-    "industrial-normal": "\u6316\u6398\u826F\u54C1\u77E5\u8BC6",
-    "industrial-defect": "\u6316\u6398\u4E0D\u826F\u54C1\u77E5\u8BC6",
+    "industrial-knowledge": "\u77E5\u8BC6\u6316\u6398",
     "industrial-audit": "\u6A21\u578B\u5BA1\u8BA1",
     "industrial-review": "\u4EBA\u5DE5\u590D\u6838"
   };
@@ -4592,7 +4591,7 @@ var __IadClientBundle__ = (() => {
       this.conversation = conversation;
     }
     conversation;
-    state = { active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
+    state = { knowledgeKind: "normal", active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
     listeners = /* @__PURE__ */ new Set();
     layout;
     imageViews = /* @__PURE__ */ new Map();
@@ -4617,8 +4616,16 @@ var __IadClientBundle__ = (() => {
         this.listeners.delete(listener);
       };
     };
-    view(page) {
-      return { ...this.defaults[page], ...this.state.views[`${page}:${this.state.datasetId}`] };
+    view(page, kind = this.state.knowledgeKind) {
+      return { ...this.defaults[page], ...this.state.views[this.viewKey(page, this.state.datasetId, kind)] };
+    }
+    viewKey(page, datasetId, kind) {
+      return `${page}:${datasetId}${page === "industrial-knowledge" ? `:${kind}` : ""}`;
+    }
+    selectKnowledgeKind(knowledgeKind) {
+      if (knowledgeKind === this.state.knowledgeKind) return;
+      this.state = { ...this.state, knowledgeKind };
+      this.commit();
     }
     connect(layout) {
       this.layout = layout;
@@ -4642,13 +4649,13 @@ var __IadClientBundle__ = (() => {
     }
     navigate(pageId, selected) {
       this.state = { ...this.state, active: true, pageId };
-      if (selected !== void 0) this.state = { ...this.state, views: { ...this.state.views, [`${pageId}:${this.state.datasetId}`]: { ...this.view(pageId), selected, tab: "results" } } };
+      if (selected !== void 0) this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(pageId, this.state.datasetId, this.state.knowledgeKind)]: { ...this.view(pageId), selected, tab: "results" } } };
       this.commit();
       this.layout?.selectPanel(pageId);
     }
-    openLocation({ pageId, datasetId, ...view }) {
-      this.state = { ...this.state, active: true, pageId, datasetId };
-      this.state = { ...this.state, views: { ...this.state.views, [`${pageId}:${datasetId}`]: { ...this.view(pageId), ...view, inspection: null } } };
+    openLocation({ pageId, datasetId, knowledgeKind = this.state.knowledgeKind, ...view }) {
+      this.state = { ...this.state, active: true, pageId, datasetId, knowledgeKind };
+      this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(pageId, datasetId, knowledgeKind)]: { ...this.view(pageId), ...view, inspection: null } } };
       this.commit();
       this.layout?.selectPanel(pageId);
     }
@@ -4658,18 +4665,18 @@ var __IadClientBundle__ = (() => {
       this.commit(replace);
     }
     updateView(page, patch, replace = false) {
-      this.state = { ...this.state, views: { ...this.state.views, [`${page}:${this.state.datasetId}`]: { ...this.view(page), ...patch } } };
+      this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(page, this.state.datasetId, this.state.knowledgeKind)]: { ...this.view(page), ...patch } } };
       this.commit(replace);
     }
     async ask(reference, selection, transform, question) {
-      const { pageId, datasetId } = this.state;
+      const { pageId, datasetId, knowledgeKind } = this.state;
       const view = this.view(pageId);
       const snapshot = await request("/inspection/context", reference);
       if (!this.state.active || this.state.pageId !== pageId || this.state.datasetId !== datasetId || this.view(pageId).selected !== reference.sample_id) throw new Error("\u68C0\u89C6\u4F4D\u7F6E\u5DF2\u5207\u6362\uFF0C\u8BF7\u5728\u5F53\u524D\u56FE\u50CF\u91CD\u65B0\u8FFD\u95EE");
       await this.conversation.send(snapshot, question, (sessionId) => {
         if (!this.state.active || this.state.pageId !== pageId || this.state.datasetId !== datasetId || this.view(pageId).selected !== reference.sample_id) throw new Error("\u68C0\u89C6\u4F4D\u7F6E\u5DF2\u5207\u6362\uFF0C\u8BF7\u5728\u5F53\u524D\u56FE\u50CF\u91CD\u65B0\u8FFD\u95EE");
         this.updateView(pageId, { inspection: { reference, selection, transform, sessionId } }, true);
-        const route = new URLSearchParams({ iad: JSON.stringify({ pageId, datasetId, ...this.view(pageId) }) });
+        const route = new URLSearchParams({ iad: JSON.stringify({ pageId, datasetId, knowledgeKind, ...this.view(pageId) }) });
         return `${location.origin}${location.pathname}?${route}`;
       }, view.inspection?.reference.sample_id === reference.sample_id ? view.inspection.sessionId : void 0);
     }
@@ -4677,9 +4684,9 @@ var __IadClientBundle__ = (() => {
       return this.conversation.open(sessionId);
     }
     commit(replace = false) {
-      const { pageId, datasetId } = this.state;
+      const { pageId, datasetId, knowledgeKind } = this.state;
       const url = new URL(location.href);
-      if (this.state.active) url.searchParams.set("iad", JSON.stringify({ pageId, datasetId, ...this.view(pageId) }));
+      if (this.state.active) url.searchParams.set("iad", JSON.stringify({ pageId, datasetId, knowledgeKind, ...this.view(pageId) }));
       else url.searchParams.delete("iad");
       history[replace ? "replaceState" : "pushState"](history.state, "", url);
       sessionStorage.setItem("iad.workspace", JSON.stringify(this.state));
@@ -4690,7 +4697,7 @@ var __IadClientBundle__ = (() => {
       try {
         const saved = JSON.parse(sessionStorage.getItem("iad.workspace") || "null");
         if (!fromHistory && saved?.pageId in pages && typeof saved.datasetId === "string" && typeof saved.active === "boolean") {
-          this.state = { ...saved, views: Object.fromEntries(Object.entries(saved.views || {}).map(([key, value]) => {
+          this.state = { ...saved, knowledgeKind: saved.knowledgeKind === "defect" ? "defect" : "normal", views: Object.fromEntries(Object.entries(saved.views || {}).map(([key, value]) => {
             const view = value;
             return [key, { ...view, filters: { ...initialFilters, ...view.filters } }];
           })) };
@@ -4699,6 +4706,7 @@ var __IadClientBundle__ = (() => {
         if (raw) {
           const route = JSON.parse(raw);
           if (route.pageId in pages && typeof route.datasetId === "string") {
+            const knowledgeKind = route.knowledgeKind === "defect" ? "defect" : "normal";
             const view = defaultView(route.pageId);
             for (const key of ["selected", "tab", "version", "model", "normalVersion", "defectVersion", "job", "historySearch", "knowledgeSearch"]) if (typeof route[key] === "string") view[key] = route[key];
             if (typeof route.knowledgeStatus === "string" && (route.knowledgeStatus === "" || Object.hasOwn(knowledgeStatuses, route.knowledgeStatus))) view.knowledgeStatus = route.knowledgeStatus;
@@ -4710,7 +4718,7 @@ var __IadClientBundle__ = (() => {
               if (Array.isArray(route.filters.raw_label_filters) && route.filters.raw_label_filters.every((item) => typeof item === "string")) view.filters.raw_label_filters = route.filters.raw_label_filters;
               if (Array.isArray(route.filters.annotation_filters) && route.filters.annotation_filters.every((item) => typeof item === "string")) view.filters.annotation_filters = route.filters.annotation_filters;
             }
-            this.state = { ...this.state, active: true, pageId: route.pageId, datasetId: route.datasetId, views: { ...this.state.views, [`${route.pageId}:${route.datasetId}`]: view } };
+            this.state = { ...this.state, active: true, pageId: route.pageId, datasetId: route.datasetId, knowledgeKind, views: { ...this.state.views, [this.viewKey(route.pageId, route.datasetId, knowledgeKind)]: view } };
           }
         }
       } catch {
@@ -4759,7 +4767,7 @@ var __IadClientBundle__ = (() => {
   function JobCard({ job, onChanged }) {
     const { workspace } = useWorkspace();
     const kind = job.job_type === "MODEL_AUDIT" ? "audit" : "knowledge";
-    const page = kind === "audit" ? "industrial-audit" : job.kind === "normal" ? "industrial-normal" : "industrial-defect";
+    const page = kind === "audit" ? "industrial-audit" : "industrial-knowledge";
     const active = job.status === "RUNNING" || job.status === "PENDING";
     const [busy, setBusy] = (0, import_react13.useState)(false);
     const [error2, setError] = (0, import_react13.useState)("");
@@ -4768,7 +4776,7 @@ var __IadClientBundle__ = (() => {
     const [selected, setSelected] = (0, import_react13.useState)([]);
     const [revision, setRevision] = (0, import_react13.useState)(0);
     const article = (0, import_react13.useRef)(null);
-    const focused = workspace.view(page).job === job.run_id;
+    const focused = workspace.view(page, job.kind ?? void 0).job === job.run_id;
     (0, import_react13.useEffect)(() => {
       if (focused) article.current?.scrollIntoView({ block: "nearest" });
     }, [focused]);
@@ -4816,8 +4824,7 @@ var __IadClientBundle__ = (() => {
       workspace.navigate(kind === "audit" ? "industrial-audit" : "industrial-images", sampleId);
     }
     function related(runId) {
-      workspace.updateView(page, { job: runId, tab: "jobs" });
-      workspace.navigate(page);
+      workspace.openLocation({ pageId: page, datasetId: job.dataset_id, knowledgeKind: job.kind ?? void 0, job: runId, tab: "jobs" });
     }
     return /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("article", { ref: article, className: "iad-job", "data-job-id": job.run_id, "aria-label": `\u4F5C\u4E1A ${job.run_id}`, "aria-current": focused || void 0, children: [
       /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "iad-row", children: [
@@ -4887,8 +4894,7 @@ var __IadClientBundle__ = (() => {
         ] })
       ] }),
       job.knowledge_version_id && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("p", { children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("button", { onClick: () => {
-        workspace.updateView(page, { version: job.knowledge_version_id, tab: "results" });
-        workspace.navigate(page);
+        workspace.openLocation({ pageId: page, datasetId: job.dataset_id, knowledgeKind: job.kind ?? void 0, version: job.knowledge_version_id, tab: "results" });
       }, children: "\u67E5\u770B\u5DF2\u53D1\u5E03\u7248\u672C" }) }),
       !!job.errors.length && /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("details", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("summary", { children: [
@@ -6208,8 +6214,8 @@ var __IadClientBundle__ = (() => {
               normalDetails
             ] })
           ] }) : /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("p", { className: "iad-profile iad-muted", children: [
-            "\u8BF7\u5148\u8FD0\u884C\u201C\u6316\u6398\u826F\u54C1\u77E5\u8BC6\u201D\u6280\u80FD\uFF0C\u751F\u6210\u53EF\u7528\u7248\u672C\u3002",
-            /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("button", { onClick: () => workspace.navigate("industrial-normal"), children: "\u524D\u5F80\u6316\u6398\u826F\u54C1\u77E5\u8BC6" })
+            "\u8BF7\u5148\u6316\u6398\u826F\u54C1\u77E5\u8BC6\uFF0C\u751F\u6210\u53EF\u7528\u7248\u672C\u3002",
+            /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("button", { onClick: () => workspace.openLocation({ pageId: "industrial-knowledge", datasetId: dataset.dataset_id, knowledgeKind: "normal" }), children: "\u524D\u5F80\u6316\u6398\u826F\u54C1\u77E5\u8BC6" })
           ] }),
           defect ? /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)(import_jsx_runtime25.Fragment, { children: [
             /* @__PURE__ */ (0, import_jsx_runtime25.jsx)(KnowledgeState, { freshness: defectQuery.freshness }),
@@ -6501,7 +6507,7 @@ var __IadClientBundle__ = (() => {
   var import_jsx_runtime29 = __require("react/jsx-runtime");
   function KnowledgePage({ dataset, kind, refreshRevision }) {
     const { workspace } = useWorkspace();
-    const pageId = kind === "normal" ? "industrial-normal" : "industrial-defect";
+    const pageId = "industrial-knowledge";
     const view = workspace.view(pageId);
     const [error2, setError] = (0, import_react28.useState)("");
     const [busy, setBusy] = (0, import_react28.useState)(false);
@@ -6512,7 +6518,7 @@ var __IadClientBundle__ = (() => {
     const normal = reference.knowledge, normalVersions = reference.versions;
     const loading = current.loading || reference.loading, loadError = current.error || reference.error;
     const [lightbox, setLightbox] = (0, import_react28.useState)(null);
-    const [model, setModel] = (0, import_react28.useState)("");
+    const model = view.model;
     const updated = (0, import_react28.useCallback)(() => setRevision((value) => value + 1), []);
     const polling = useJobs("knowledge", dataset.dataset_id, updated, view.job);
     const jobs = polling.jobs.filter((job) => job.kind === kind);
@@ -6526,7 +6532,8 @@ var __IadClientBundle__ = (() => {
         const input = { dataset_id: dataset.dataset_id, kind, ...kind === "defect" ? { normal_version_id: normal?.version_id } : {}, ...model.trim() ? { model_name: model.trim() } : {}, ...correction };
         await request("/knowledge/start", input);
         setEditing(null);
-        workspace.updateView(pageId, { version: "" });
+        const current2 = workspace.getSnapshot();
+        if (current2.datasetId === dataset.dataset_id && current2.knowledgeKind === kind) workspace.updateView(pageId, { version: "" });
         polling.refresh();
         updated();
       } catch (error3) {
@@ -6586,7 +6593,7 @@ var __IadClientBundle__ = (() => {
             ] }),
             !loading && !normal?.checks.some((check2) => check2.status === "supported") && /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("p", { children: [
               "\u6240\u9009\u7248\u672C\u6CA1\u6709\u53EF\u7528\u7684\u826F\u54C1\u5224\u636E\u3002",
-              /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("button", { onClick: () => workspace.navigate("industrial-normal"), children: "\u524D\u5F80\u826F\u54C1\u77E5\u8BC6" })
+              /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("button", { onClick: () => workspace.openLocation({ pageId, datasetId: dataset.dataset_id, knowledgeKind: "normal" }), children: "\u524D\u5F80\u826F\u54C1\u77E5\u8BC6" })
             ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("button", { className: "iad-primary", disabled: busy || loading || !!loadError || running || (kind === "normal" ? !dataset.reference_sample_ids.length : !normal?.checks.some((check2) => check2.status === "supported") || !!view.normalVersion && normal.version_id !== view.normalVersion), onClick: () => void start(), children: busy ? "\u542F\u52A8\u4E2D\u2026" : `\u5F00\u59CB\u6316\u6398${kind === "normal" ? "\u826F\u54C1" : "\u4E0D\u826F\u54C1"}\u77E5\u8BC6` })
@@ -6595,7 +6602,7 @@ var __IadClientBundle__ = (() => {
           /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("summary", { children: "\u6A21\u578B\u8BBE\u7F6E" }),
           /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("label", { className: "iad-field", children: [
             "\u6A21\u578B",
-            /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("input", { "aria-label": "\u77E5\u8BC6\u6316\u6398\u6A21\u578B", placeholder: "\u4F7F\u7528\u9879\u76EE\u914D\u7F6E", value: model, onChange: (event) => setModel(event.target.value) })
+            /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("input", { "aria-label": "\u77E5\u8BC6\u6316\u6398\u6A21\u578B", placeholder: "\u4F7F\u7528\u9879\u76EE\u914D\u7F6E", value: model, onChange: (event) => workspace.updateView(pageId, { model: event.target.value }, true) })
           ] })
         ] }),
         loading && /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("p", { role: "status", className: "iad-muted", children: "\u6B63\u5728\u8BFB\u53D6\u77E5\u8BC6\u2026" }),
@@ -7182,7 +7189,7 @@ var __IadClientBundle__ = (() => {
         ] })
       ] }),
       (error2 || audit.error) && /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("p", { role: "alert", className: "iad-error", children: error2 || audit.error }),
-      dataset && pageId !== "industrial-datasets" && /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("div", { className: "iad-kpis", "aria-label": "\u6570\u636E\u96C6\u6982\u51B5", children: (pageId === "industrial-normal" ? [["\u826F\u54C1\u6765\u6E90", dataset.reference_sample_ids.length], ["\u56FE\u50CF", dataset.total_samples]] : pageId === "industrial-defect" ? [["\u56FE\u50CF", dataset.total_samples], ["\u6807\u6CE8\u7C7B\u522B", dataset.annotation_categories.length]] : [["\u56FE\u50CF", dataset.total_samples], ["\u6A21\u578B\u5BA1\u8BA1", dataset.vlm_audited_count], ["\u5F85\u5BA1\u8BA1", dataset.total_samples - dataset.vlm_audited_count], ["\u5F85\u590D\u6838", dataset.pending_risk_count], ["\u5DF2\u4EBA\u5DE5\u590D\u6838", dataset.human_reviewed_count]]).map(([label, value]) => /* @__PURE__ */ (0, import_jsx_runtime31.jsxs)("div", { children: [
+      dataset && pageId !== "industrial-datasets" && /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("div", { className: "iad-kpis", "aria-label": "\u6570\u636E\u96C6\u6982\u51B5", children: (pageId === "industrial-knowledge" ? [["\u56FE\u50CF", dataset.total_samples], ["\u826F\u54C1\u6765\u6E90", dataset.reference_sample_ids.length]] : [["\u56FE\u50CF", dataset.total_samples], ["\u6A21\u578B\u5BA1\u8BA1", dataset.vlm_audited_count], ["\u5F85\u5BA1\u8BA1", dataset.total_samples - dataset.vlm_audited_count], ["\u5F85\u590D\u6838", dataset.pending_risk_count], ["\u5DF2\u4EBA\u5DE5\u590D\u6838", dataset.human_reviewed_count]]).map(([label, value]) => /* @__PURE__ */ (0, import_jsx_runtime31.jsxs)("div", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("span", { children: label }),
         /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("strong", { children: value })
       ] }, label)) }),
@@ -7193,7 +7200,10 @@ var __IadClientBundle__ = (() => {
         /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("p", { children: "\u8BF7\u5148\u6DFB\u52A0\u670D\u52A1\u5668\u4E0A\u7684\u6570\u636E\u96C6\u3002" }),
         /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("button", { onClick: () => workspace.navigate("industrial-datasets"), children: "\u524D\u5F80\u6570\u636E\u96C6\u7BA1\u7406" })
       ] }) : /* @__PURE__ */ (0, import_jsx_runtime31.jsxs)(import_jsx_runtime31.Fragment, { children: [
-        (pageId === "industrial-normal" || pageId === "industrial-defect") && /* @__PURE__ */ (0, import_jsx_runtime31.jsx)(KnowledgePage, { dataset, kind: pageId === "industrial-normal" ? "normal" : "defect", refreshRevision: revision }, `${datasetId}:${pageId}`),
+        pageId === "industrial-knowledge" && /* @__PURE__ */ (0, import_jsx_runtime31.jsxs)(import_jsx_runtime31.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("nav", { className: "iad-tabs", "aria-label": "\u77E5\u8BC6\u7C7B\u578B", children: [["normal", "\u826F\u54C1"], ["defect", "\u5F02\u5E38"]].map(([kind, label]) => /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("button", { className: state.knowledgeKind === kind ? "active" : "", "aria-pressed": state.knowledgeKind === kind, onClick: () => workspace.selectKnowledgeKind(kind), children: label }, kind)) }),
+          /* @__PURE__ */ (0, import_jsx_runtime31.jsx)(KnowledgePage, { dataset, kind: state.knowledgeKind, refreshRevision: revision }, `${datasetId}:${state.knowledgeKind}`)
+        ] }),
         pageId === "industrial-audit" && /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("nav", { className: "iad-tabs", "aria-label": "\u5BA1\u8BA1\u89C6\u56FE", children: [["results", "\u7ED3\u679C"], ["jobs", "\u6A21\u578B\u5BA1\u8BA1\u4F5C\u4E1A"], ["reports", "\u62A5\u544A"]].map(([tab, label]) => /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("button", { "aria-pressed": view.tab === tab, className: view.tab === tab ? "active" : "", onClick: () => workspace.updateView(pageId, { tab }), children: label }, tab)) }),
         pageId === "industrial-review" && /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("nav", { className: "iad-tabs", "aria-label": "\u590D\u6838\u89C6\u56FE", children: [["results", "\u590D\u6838\u961F\u5217"], ["records", "\u590D\u6838\u8BB0\u5F55"]].map(([tab, label]) => /* @__PURE__ */ (0, import_jsx_runtime31.jsx)("button", { "aria-pressed": view.tab === tab, className: view.tab === tab ? "active" : "", onClick: () => workspace.updateView(pageId, { tab }), children: label }, tab)) }),
         pageId === "industrial-review" && view.tab === "results" && reviewConfirmation?.datasetId === datasetId && /* @__PURE__ */ (0, import_jsx_runtime31.jsxs)("p", { role: "status", className: "iad-review-confirmation", children: [
@@ -7337,7 +7347,7 @@ var __IadClientBundle__ = (() => {
   var inject = ["slots", "layout", "sessions", "conversation", "uiWorkspace"];
   function apply(ctx) {
     const workspace = new Workspace(new InspectionSession(ctx));
-    const icons = [DatasetIcon, ImagesIcon, KnowledgeIcon, KnowledgeIcon, AuditIcon, ReviewIcon];
+    const icons = [DatasetIcon, ImagesIcon, KnowledgeIcon, AuditIcon, ReviewIcon];
     ctx.slots.inject("tool.call.toolview", () => {
       for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props) => import_react33.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react33.default.createElement(SessionResult, { ...props, title })));
     });
