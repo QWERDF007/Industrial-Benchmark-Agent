@@ -1,13 +1,9 @@
 # 文档索引
 
-- [使用与验证入口](../README.md)
-- [当前架构与源代码索引](architecture.md)
-- [数据集知识挖掘与证据审计规格](specs/dataset-knowledge-audit.md)
-- [目录图像级异常检测数据集方案](specs/folder-anomaly-dataset.md)
-- [统一 UI 与交互设计](design/workbench-ui.md)
-- [实施票据与依赖](tickets/dataset-knowledge-audit.md)
-- [外部基线接入](external-baselines.md)
-- [MLLM 服务契约](operations/mllm.md)
-- 本地任务账本：`WORKLOG.md`
+- [Labelme 与图像级异常检测数据集完整规格](specs/dataset-import.md)：问题、用户故事、领域/交互决策、测试边界与范围。
+- [逐票交付与依赖](tickets/README.md)：一票一文件，阻塞边以逐票定义为准；确认前为 draft。
+- [实现与验收索引](architecture.md)：指向当前代码、既有测试与必要运行约束。
+- [使用与启动](../README.md)。
+- 本地任务账本：根 WORKLOG.md，唯一进度与待裁决记录。
 
-当前运行行为以架构索引指向的代码为准；规格和票据定义目标行为，不能代替实现与验收证据。用户原始方案包仅本地保留，不作为第二套实施规格。
+本目录不保存旧方案副本或压缩包。规格描述目标，不代替实现与真实验收证据；索引不复制代码逻辑，票据不复制规格。
