@@ -16,7 +16,7 @@ import { LocalAttachmentStore } from "@deepseek-ai/dsh-attachment-local";
 import * as harness from "../lib/server/index.js";
 import { resolvePythonPath } from "../lib/server/python-bridge/index.js";
 
-test("workbench and native tools reverify proposed knowledge corrections without rewriting history", { timeout: 30000 }, async () => {
+test("workbench and native tools derive knowledge freshness from actual files, qualifications and human events", { timeout: 30000 }, async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-knowledge-revision-"));
   execFileSync(resolvePythonPath(), [fileURLToPath(new URL("fixtures/knowledge_dataset.py", import.meta.url)), root]);
   const observed = [];
@@ -42,7 +42,8 @@ test("workbench and native tools reverify proposed knowledge corrections without
     res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify(result));
   });
   await new Promise(resolve => model.listen(0, "127.0.0.1", resolve));
-  const priorEndpoint = process.env.LIVE_VLM_ENDPOINT;
+  const priorEndpoint = process.env.LIVE_VLM_ENDPOINT, priorModel=process.env.LIVE_VLM_MODEL, priorCapacity=process.env.LIVE_VLM_CAPACITY_MODE;
+  process.env.LIVE_VLM_MODEL="test-revision";process.env.LIVE_VLM_CAPACITY_MODE="vllm_tokenize";
   process.env.LIVE_VLM_ENDPOINT = `http://127.0.0.1:${model.address().port}/v1`;
   const ctx = new Context(); new SystemPrompt(ctx, {}); new ToolRuntime(ctx); new SkillRegistry(ctx);
   new LocalAttachmentStore(ctx, { dshHome: path.join(root, "dsh") });
@@ -65,7 +66,8 @@ test("workbench and native tools reverify proposed knowledge corrections without
     const imported = await api("/datasets/import", { format: "labelme", name: "修订验证", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
     assert.equal(imported.status, 200, await imported.clone().text());
     const dataset = await imported.json();
-    const input = { dataset_id: dataset.dataset_id, kind: "normal", model_name: "test-revision" };
+    const sources=await(await api(`/knowledge/sources?dataset_id=${dataset.dataset_id}&kind=normal`)).json();
+    const input = { kind: "normal", image_count: sources.items.length, images: sources.items.map(item=>item.sample_id) };
     const first = (await complete(await (await api("/knowledge/start", input)).json())).knowledge;
     const originalImage = await fs.readFile(path.join(root, "images/part-0.png"));
     const freshness = async () => (await (await api(`/knowledge?version_id=${first.version_id}`)).json()).freshness;
@@ -88,40 +90,7 @@ test("workbench and native tools reverify proposed knowledge corrections without
     assert.deepEqual((await freshness()).source_changes, [0, 1].map(index => ({ sample_id: dataset.dataset_id + `:part-${index}.png`, reasons: ["qualification"] })));
     assert.equal((await api(`/datasets/${dataset.dataset_id}`, { reset_references: true }, "PATCH")).status, 200);
     assert.equal((await freshness()).status, "current");
-    const proposal = { check_id: first.checks[0].check_id, instruction: "两个孔必须精确相距100毫米" };
-    const proposed = await api("/knowledge/start", { ...input, base_version_id: first.version_id, corrections: [proposal] });
-    assert.equal(proposed.status, 200, await proposed.clone().text());
-    const second = (await complete(await proposed.json())).knowledge;
-    assert.notEqual(second.version_id, first.version_id);
-    assert.equal(second.parent_version_id, first.version_id);
-    assert.deepEqual(second.corrections, [proposal]);
-    assert.equal(second.checks[0].status, "provisional", "人工建议不能自动升级为已证实知识");
-    assert.ok(second.checks[0].limitations.includes("缺少尺度标定，人工候选尚未证实"));
-    assert.deepEqual(observed.at(-1).corrections, [proposal]);
-    assert.ok(new Set(observed.at(-1).images.map(image => image.source_sha256)).size >= 2, "修订仍须联合观察独立真实图像");
-    assert.deepEqual((await (await api(`/knowledge?version_id=${first.version_id}`)).json()).knowledge, first);
-    assert.equal((await api("/audit/start", { dataset_id: dataset.dataset_id, model_name: "test-revision", normal_version_id: second.version_id })).status, 422);
-    for (const update of [
-      { base_version_id: first.version_id, corrections: [proposal] },
-      { base_version_id: second.version_id, corrections: [{ ...proposal, check_id: "foreign-check" }] },
-      { base_version_id: second.version_id, corrections: [proposal, proposal] },
-      { corrections: [proposal] },
-      { base_version_id: second.version_id, corrections: [{ ...proposal, instruction: "  " }] },
-    ]) assert.equal((await api("/knowledge/start", { ...input, ...update })).status, 422);
-    const correction = { check_id: second.checks[0].check_id, instruction: "只采用相对排列，不作绝对尺寸断言" };
-    const sources = await ctx.tools.execute({ name: "knowledge_sources", arguments: { dataset_id: dataset.dataset_id, kind: "normal" }, callId: "revision-sources", signal: new AbortController().signal });
-    assert.equal(sources.isError, false, JSON.stringify(sources));
-    const native = await ctx.tools.execute({ name: "knowledge_mine_normal", arguments: { dataset_id: dataset.dataset_id,
-      sample_ids: sources.value.items.map(item => item.sample_id), model_name: "test-revision", base_version_id: second.version_id, corrections: [correction] }, callId: "revise-normal", signal: new AbortController().signal });
-    assert.equal(native.isError, false, JSON.stringify(native));
-    const third = (await complete(native.value)).knowledge;
-    assert.equal(third.parent_version_id, second.version_id);
-    assert.deepEqual(third.corrections, [correction]);
-    assert.equal(third.checks[0].status, "supported");
-    const calls = observed.length;
-    const reused = (await complete(await (await api("/knowledge/start", { ...input, base_version_id: third.version_id, corrections: [correction] })).json())).knowledge;
-    assert.equal(reused.version_id, third.version_id);
-    assert.equal(observed.length, calls, "相同修订与图像来源可复用已完成知识");
+    assert.equal((await api("/knowledge/start", { ...input, corrections: [{check_id: first.checks[0].check_id, instruction: "100毫米"}] })).status,422,"Human correction is not a fourth learning input");
     const report = await (await api(`/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
     assert.equal(report.human_reviewed_count, 0);
     assert.equal(report.vlm_audited_count, 0);
@@ -129,8 +98,10 @@ test("workbench and native tools reverify proposed knowledge corrections without
       sample_id: dataset.dataset_id + ":part-0.png", reviewer: "知识核验员", decision: "PASS" });
     assert.equal(review.status, 200, await review.clone().text());
     assert.deepEqual((await freshness()).source_changes, [{ sample_id: dataset.dataset_id + ":part-0.png", reasons: ["review", "qualification"] }]);
-    const renewed = (await complete(await (await api("/knowledge/start", { ...input, base_version_id: third.version_id, corrections: [correction] })).json())).knowledge;
-    assert.notEqual(renewed.version_id, third.version_id, "真实人工反馈变化后不能复用旧输入的版本");
+    assert.equal((await api("/knowledge/start", { ...input, knowledge_preset: [first.version_id] })).status,422,"Changed human qualifications require explicit related conflict recheck, not silent reuse");
+    const renewed = (await complete(await (await api("/knowledge/start", input)).json())).knowledge;
+    assert.notEqual(renewed.version_id, first.version_id);
+    assert.equal(renewed.parent_version_id,null,"Without explicit preset the new group is independent");
     assert.equal((await (await api(`/knowledge?version_id=${renewed.version_id}`)).json()).freshness.status, "current");
     assert.equal((await api("/review/submit", { submission_id: randomUUID(), dataset_id: dataset.dataset_id,
       sample_id: dataset.dataset_id + ":part-2.png", reviewer: "知识核验员", decision: "PASS" })).status, 200);
@@ -148,12 +119,14 @@ test("workbench and native tools reverify proposed knowledge corrections without
     const rescanKnowledge = await (await api(`/knowledge?version_id=${renewed.version_id}`)).json();
     assert.deepEqual(rescanKnowledge.knowledge, renewed);
     assert.deepEqual(rescanKnowledge.freshness.source_changes.find(item => item.sample_id.endsWith(":part-0.png")).reasons, ["annotations"]);
-    const afterRescan = (await complete(await (await api("/knowledge/start", input)).json())).knowledge;
+    const currentSources=await(await api(`/knowledge/sources?dataset_id=${dataset.dataset_id}&kind=normal`)).json();
+    const afterRescan = (await complete(await (await api("/knowledge/start", {kind:"normal",image_count:currentSources.items.length,images:currentSources.items.map(item=>item.sample_id)})).json())).knowledge;
     assert.notEqual(afterRescan.version_id, renewed.version_id);
-    assert.equal(afterRescan.parent_version_id, renewed.version_id);
+    assert.equal(afterRescan.parent_version_id, null);
     assert.equal((await (await api(`/knowledge?version_id=${afterRescan.version_id}`)).json()).freshness.status, "current");
   } finally {
     await new Promise(resolve => server.close(resolve)); await fork.dispose();
+    for(const [key,value] of [["LIVE_VLM_MODEL",priorModel],["LIVE_VLM_CAPACITY_MODE",priorCapacity]]){if(value===undefined)delete process.env[key];else process.env[key]=value;}
     if (priorEndpoint === undefined) delete process.env.LIVE_VLM_ENDPOINT; else process.env.LIVE_VLM_ENDPOINT = priorEndpoint;
     await new Promise(resolve => model.close(resolve)); await fs.rm(root, { recursive: true, force: true });
   }

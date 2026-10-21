@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import type { JobRetryOptions, JobSample, JobSnapshot } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 import { useWorkspace } from "../workspace.js";
+import { KnowledgeJobEvidence } from "./KnowledgeJobEvidence.js";
 import { jobStatuses } from "../../shared/job-display.js";
 
 const phases: Record<string, string> = {
@@ -9,6 +10,7 @@ const phases: Record<string, string> = {
   SYNTHESIS: "全图与 ROI 联合分析", SAMPLE_COMPLETED: "图像审计完成",
   LEARNING_NORMAL: "归纳良品知识", LEARNING_DEFECT: "归纳不良品知识",
   VERIFYING_NORMAL: "核验良品疑点", VERIFYING_DEFECT: "核验标注与异常知识",
+  OBSERVING_PRESET: "观察冻结判据", RECHECKING_HUMAN_KNOWLEDGE: "核验人工知识处置",
   KNOWLEDGE_PUBLISHED: "知识已发布", KNOWLEDGE_REUSED: "复用已核验知识",
 };
 const sampleName = (sample: JobSample) => sample.relative_path || sample.sample_uuid;
@@ -60,6 +62,8 @@ export function JobCard({ job, onChanged }: { job: JobSnapshot; onChanged(): voi
     </div>
     <progress aria-label="作业处理进度" value={job.progress} max={1} />
     <p>完成 {job.completed} · 失败 {job.failed} · 未处理 {job.unprocessed} · 共 {job.total_samples} 张</p>
+    {kind === "knowledge" && job.observation_progress && <p className="iad-muted">已观察 {job.observation_progress.observed_sources} / {job.observation_progress.planned_sources} 张 · 完整视图 {job.observation_progress.complete_sources} 张 · 已发布 {job.observation_progress.published_sources} 张</p>}
+    {kind === "knowledge" && <KnowledgeJobEvidence job={job} />}
     {active && job.cancel_requested ? <p className="iad-muted">等待当前模型请求返回后停止。</p> : <p className="iad-muted">{phases[job.phase || ""] || job.message}</p>}
     {job.current_sample && <p>当前图像 <button onClick={() => locate(job.current_sample!.sample_id)} title={job.current_sample.sample_uuid}>{sampleName(job.current_sample)}</button></p>}
     {!!job.planned_regions && <p className="iad-muted">ROI {job.inspected_regions || 0} / {job.planned_regions}</p>}

@@ -7,7 +7,7 @@ export type { KnowledgeCheck, KnowledgeCorrection } from "./domain.generated.js"
 export type { KnowledgeQuery, KnowledgeFreshness } from "./domain.generated.js";
 export type { JobSnapshot, JobSample, JobRetryOptions, ModelCallSummary } from "./domain.generated.js";
 export type { InspectionReference, InspectionSnapshot } from "./domain.generated.js";
-export type { KnowledgeVersion, MiningStart as KnowledgeStartRequest } from "./domain.generated.js";
+export type { KnowledgeVersion, KnowledgeSourcePage, MiningStart as KnowledgeGroup, MiningRequest as KnowledgeStartRequest } from "./domain.generated.js";
 export type { ScanResult } from "./domain.generated.js";
 export type Decision = ReviewSubmission["decision"];
 export interface Suggestion {

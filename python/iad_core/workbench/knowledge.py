@@ -6,6 +6,7 @@ from typing import List, Optional
 from iad_core.workbench.audit_prompts import AUDIT_PROMPTS
 from iad_core.evidence.images import EvidenceImages
 from iad_core.knowledge.models import KnowledgeSnapshot
+from iad_core.knowledge.support import KnowledgeSupport
 from iad_core.knowledge.repository import KnowledgeRepository
 from iad_core.storage.database import Database
 
@@ -43,6 +44,8 @@ class InspectionKnowledge:
         checks, independent_ids, references = [], set(), []
         limitations = [] if self.defect else ['尚无匹配的不良知识，仅依据正常判据筛查异常']
         images = EvidenceImages(db.db_path)
+        groups = KnowledgeSupport(db).groups([source for snapshot in [self.normal, *([self.defect] if self.defect else [])]
+            for source in snapshot.sources], target_sample_id=sample_id)
         for snapshot in [self.normal, *([self.defect] if self.defect else [])]:
             by_id = {item.image.evidence_id: item for item in snapshot.evidence}
             for check in snapshot.checks:
@@ -50,7 +53,8 @@ class InspectionKnowledge:
                 for evidence_id in check.support_evidence_ids:
                     evidence = by_id[evidence_id]
                     if (evidence.sample_id != sample_id and evidence.image.source_sha256 != source_sha256
-                            and evidence.image.representation == 'raw'):
+                            and evidence.image.representation == 'raw' and sample_id in groups and evidence.sample_id in groups
+                            and groups[evidence.sample_id] != groups[sample_id]):
                         images.path(evidence.image)
                         independent.append(evidence)
                 usable = check.status == 'supported' and bool(independent)

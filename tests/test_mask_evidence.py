@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group
 from uuid import uuid4
 import base64
 import io
@@ -83,7 +84,7 @@ def test_mining_sends_raw_and_binary_mask_evidence_and_retains_prior_pixels(tmp_
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=dataset_id, kind='normal', model_name='test-mllm')
+        job = service.start(request=selected_group(service.db, dataset_id, kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(job['run_id'], 5)
         finished = service.status(job['run_id'])
         assert finished['status']=='COMPLETED', finished
@@ -115,11 +116,11 @@ def test_mining_sends_raw_and_binary_mask_evidence_and_retains_prior_pixels(tmp_
         shape['mask'] = base64.b64encode(buffer.getvalue()).decode()
         (tmp_path/'labels'/'part.json').write_text(json.dumps({'imageWidth':80,'imageHeight':60,'shapes':[shape]}))
         dataset_scan({'dataset_id':dataset_id},db_path)
-        again = service.start(dataset_id=dataset_id,kind='normal',model_name='test-mllm')
+        again = service.start(request=selected_group(service.db, dataset_id, kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(again['run_id'],5)
         assert service.status(again['run_id'])['status']=='COMPLETED'
         successor = knowledge_get({'dataset_id':dataset_id,'kind':'normal'},db_path)['knowledge']
-        assert successor['parent_version_id']==snapshot['version_id']
+        assert successor['parent_version_id'] is None, '未明确选择预设不隐式继承'
         assert successor['version_id']!=snapshot['version_id']
         assert successor['sources'][0]['annotations_sha256']!=snapshot['sources'][0]['annotations_sha256']
         assert Path(media['path']).read_bytes()==previous_pixels
@@ -127,7 +128,7 @@ def test_mining_sends_raw_and_binary_mask_evidence_and_retains_prior_pixels(tmp_
         annotation = sample_get({'sample_id':sample_id},db_path)['annotations'][0]
         Image.new('L',(80,60),255).save(annotation['mask_path'],'PNG')
         with pytest.raises(ValueError, match='Mask pixels changed after import'):
-            service.start(dataset_id=dataset_id,kind='normal',model_name='test-mllm')
+            service.start(request=selected_group(service.db, dataset_id, kind='normal'), kind='normal', model_name='test-mllm')
         assert knowledge_get({'dataset_id':dataset_id,'kind':'normal'},db_path)['knowledge']['version_id']==successor['version_id']
     finally:
         service.close()
@@ -161,7 +162,7 @@ def test_capacity_grouping_keeps_each_raw_region_with_its_binary_mask(tmp_path):
 
     service = KnowledgeService(db,VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=dataset_id,kind='normal',model_name='test-mllm')
+        job = service.start(request=selected_group(service.db, dataset_id, kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(job['run_id'],5)
         assert service.status(job['run_id'])['status']=='COMPLETED'
         viewed = set()
@@ -334,7 +335,7 @@ def test_mining_preserves_the_actual_annotation_shape_in_its_binary_view(tmp_pat
 
     service = KnowledgeService(db,VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job=service.start(dataset_id=dataset_id,kind='normal',model_name='test-mllm')
+        job=service.start(request=selected_group(service.db, dataset_id, kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(job['run_id'],5)
         assert service.status(job['run_id'])['status']=='COMPLETED'
         snapshot=knowledge_get({'dataset_id':dataset_id,'kind':'normal'},db_path)['knowledge']

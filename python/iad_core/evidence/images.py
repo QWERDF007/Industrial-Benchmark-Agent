@@ -26,6 +26,15 @@ def file_sha256(path: str) -> str:
     return digest.hexdigest()
 
 
+def image_pixel_sha256(path: str, expected_sha256: str) -> str:
+    data = Path(path).read_bytes()
+    if hashlib.sha256(data).hexdigest() != expected_sha256:
+        raise ValueError('图像在冻结期间发生变化，请重新选择')
+    with Image.open(io.BytesIO(data)) as original:
+        pixels = original.convert('RGB')
+        return hashlib.sha256(json.dumps(pixels.size).encode() + pixels.tobytes()).hexdigest()
+
+
 @dataclass(frozen=True)
 class PreparedImage:
     evidence: VisualEvidence

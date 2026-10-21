@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group
 import json
 import httpx
 from pathlib import Path
@@ -19,6 +20,7 @@ def test_folder_classification_source_change_and_reaudit_closed_loop(tmp_path, m
     bad.mkdir(parents=True)
 
     Image.new("RGB", (100, 100), "white").save(good / "part-1.png")
+    Image.new("RGB", (100, 100), (254,254,254)).save(good / "part-1b.png")
     Image.new("RGB", (100, 100), "red").save(bad / "part-2.png")
 
     db_path = str(tmp_path / "closed_loop.db")
@@ -51,13 +53,13 @@ def test_folder_classification_source_change_and_reaudit_closed_loop(tmp_path, m
 
     try:
         # 1. 挖掘良品知识与不良品知识
-        mine_norm = runtime.knowledge.start(dataset_id=dataset_id, kind="normal")
+        mine_norm = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, dataset_id, kind="normal"), kind="normal", model_name='test-mllm')
         runtime.knowledge.wait(mine_norm["run_id"], 5)
         status_norm = runtime.knowledge.status(mine_norm["run_id"])
         assert status_norm["status"] == "COMPLETED", status_norm
         normal_v1 = status_norm["knowledge_version_id"]
 
-        mine_def = runtime.knowledge.start(dataset_id=dataset_id, kind="defect", normal_version_id=normal_v1)
+        mine_def = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, dataset_id, kind="defect", knowledge_preset=[normal_v1]), kind="defect", model_name='test-mllm')
         runtime.knowledge.wait(mine_def["run_id"], 5)
         status_def = runtime.knowledge.status(mine_def["run_id"])
         assert status_def["status"] == "COMPLETED", (status_def["status"], status_def.get("errors"))
@@ -70,22 +72,22 @@ def test_folder_classification_source_change_and_reaudit_closed_loop(tmp_path, m
         runtime.audit.wait(first_audit["run_id"], 5)
         audit_status = runtime.audit.status(first_audit["run_id"])
         assert audit_status["status"] == "PARTIAL"
-        assert audit_status["completed"] == 1
+        assert audit_status["completed"] == 2
         assert audit_status["failed"] == 1
         assert "500" in audit_status["errors"][0]["message"]
         assert "NameError" not in audit_status["errors"][0]["message"]
 
         # 3. 初始报告验证
         rep1 = report_get({"dataset_id": dataset_id}, db_path)
-        assert rep1["total_samples"] == 2
-        assert rep1["quality"]["audit_coverage"]["numerator"] == 1
-        assert rep1["quality"]["audit_coverage"]["denominator"] == 2
-        assert rep1["quality"]["audit_coverage"]["percent"] == 50
+        assert rep1["total_samples"] == 3
+        assert rep1["quality"]["audit_coverage"]["numerator"] == 2
+        assert rep1["quality"]["audit_coverage"]["denominator"] == 3
+        assert rep1["quality"]["audit_coverage"]["percent"] == pytest.approx(200/3, abs=0.01)
         assert rep1["quality"]["knowledge_versions"][0]["normal_version_id"] == normal_v1
         assert rep1["quality"]["knowledge_versions"][0]["defect_version_id"] == defect_v1
         lc1 = rep1["quality"]["label_comparison"]
         assert lc1 is not None
-        assert lc1["raw_ok"] == 1
+        assert lc1["raw_ok"] == 2
         assert lc1["raw_ng"] == 1
         assert lc1["source_changed_count"] == 0
 
@@ -104,12 +106,8 @@ def test_folder_classification_source_change_and_reaudit_closed_loop(tmp_path, m
 
         # 7. 挖掘后继良品知识版本
         normal_orig = knowledge_get({"dataset_id": dataset_id, "kind": "normal"}, db_path)["knowledge"]
-        responses["KnowledgeDraft"]["revisions"] = [{
-            "previous_check_id": check["check_id"],
-            "current_check_titles": [check["title"]],
-            "reason": "重新观察变化后的来源，保留同一表面判据"
-        } for check in normal_orig["checks"]]
-        mine_norm_v2 = runtime.knowledge.start(dataset_id=dataset_id, kind="normal")
+        responses["KnowledgeDraft"]["revisions"] = []
+        mine_norm_v2 = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, dataset_id, kind="normal"), kind="normal", model_name='test-mllm')
         runtime.knowledge.wait(mine_norm_v2["run_id"], 5)
         status_norm_v2 = runtime.knowledge.status(mine_norm_v2["run_id"])
         assert status_norm_v2["status"] == "COMPLETED", (status_norm_v2["status"], status_norm_v2.get("errors"))
@@ -178,7 +176,7 @@ def test_folder_classification_rule_mapping_change_preserves_human_review_and_ma
     runtime = WorkbenchRuntime(db, VlmClient(http_client=client))
 
     try:
-        mine = runtime.knowledge.start(dataset_id=dataset_id, kind="normal")
+        mine = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, dataset_id, kind="normal"), kind="normal", model_name='test-mllm')
         runtime.knowledge.wait(mine["run_id"], 5)
         normal_v = runtime.knowledge.status(mine["run_id"])["knowledge_version_id"]
 

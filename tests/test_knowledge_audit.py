@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group
 from uuid import uuid4
 import json
 import threading
@@ -103,7 +104,7 @@ def test_operator_audits_using_frozen_learned_rules_without_relearning(knowledge
 
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        mining = runtime.knowledge.start(dataset_id=config.dataset.id, kind='normal', sample_ids=[config.dataset.id + ':part-0.png', config.dataset.id + ':part-1.png'])
+        mining = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-0.png', config.dataset.id + ':part-1.png']), kind='normal', model_name='test-mllm')
         runtime.knowledge.wait(mining['run_id'], 5)
         normal = knowledge_get({'version_id': runtime.knowledge.status(mining['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
         job = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[target], normal_version_id=normal['version_id'])
@@ -151,16 +152,13 @@ def test_target_cannot_be_its_own_only_knowledge_support(knowledge_dataset, mode
 
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        mining = runtime.knowledge.start(dataset_id=config.dataset.id, kind='normal', sample_ids=[target])
+        mining = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal', images=[target]), kind='normal', model_name='test-mllm')
         runtime.knowledge.wait(mining['run_id'], 5)
-        job = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[target])
-        runtime.audit.wait(job['run_id'], 5)
-        assert runtime.audit.status(job['run_id'])['status'] == 'COMPLETED'
-        analysis = sample_get({'sample_id': target}, db.db_path)['suggestion']['analysis']
-        assert analysis['conclusion']['suggested_label'] == 'UNCERTAIN'
-        assert analysis['conclusion']['missing_evidence']
-        assert analysis['reference_sample_ids'] == []
-        assert analysis['joint_steps'][-1]['result']['suggested_label'] == model_label
+        normal = knowledge_get({'version_id': runtime.knowledge.status(mining['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
+        assert normal['checks'][0]['status'] == 'provisional'
+        with pytest.raises(ValueError, match='请先挖掘可用'):
+            runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[target])
+        assert sample_get({'sample_id': target}, db.db_path)['suggestion'] is None
     finally:
         runtime.close()
 
@@ -210,10 +208,10 @@ def test_defect_version_remains_frozen_in_job_progress_and_analysis(defect_datas
 
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = runtime.knowledge.start(dataset_id=dataset['dataset_id'], kind='normal')
+        first = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, dataset['dataset_id'], kind='normal'), kind='normal', model_name='test-mllm')
         runtime.knowledge.wait(first['run_id'], 5)
         normal = knowledge_get({'version_id': runtime.knowledge.status(first['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
-        second = runtime.knowledge.start(dataset_id=dataset['dataset_id'], kind='defect', normal_version_id=normal['version_id'])
+        second = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, dataset['dataset_id'], kind='defect', knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
         runtime.knowledge.wait(second['run_id'], 5)
         defect_id = runtime.knowledge.status(second['run_id'])['knowledge_version_id']
         job = runtime.audit.start(dataset_id=dataset['dataset_id'], sample_ids=[target], normal_version_id=normal['version_id'], defect_version_id=defect_id)
@@ -308,7 +306,7 @@ def test_audit_keeps_frozen_rules_when_new_knowledge_is_published_mid_batch(data
         scan_dataset(config=config, db_path=db.db_path)
         responses['KnowledgeDraft']['revisions'] = [{'previous_check_id': old['checks'][0]['check_id'],
             'current_check_titles': ['表面外观'], 'reason': '新来源继续支持表面判据'}]
-        mining = runtime.knowledge.start(dataset_id=config.dataset.id, kind='normal', sample_ids=[config.dataset.id + ':new-normal.png'])
+        mining = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':new-normal.png'], knowledge_preset=[old['version_id']]), kind='normal', model_name='test-mllm')
         runtime.knowledge.wait(mining['run_id'], 3)
         current = knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge']
         assert current['version_id'] != old['version_id'], runtime.knowledge.status(mining['run_id'])

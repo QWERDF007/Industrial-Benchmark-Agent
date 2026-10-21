@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group
 from uuid import uuid4
 import base64
 import io
@@ -118,7 +119,7 @@ def large_mask_mining(large_mask_dataset):
 
     service = KnowledgeService(Database(db_path), VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        initial = service.start(dataset_id=dataset['dataset_id'], kind='normal')
+        initial = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(initial['run_id'], 15)
         assert service.status(initial['run_id'])['status'] == 'COMPLETED'
         normal = knowledge_get({'dataset_id': dataset['dataset_id'], 'kind': 'normal'}, db_path)['knowledge']
@@ -132,7 +133,7 @@ def large_mask_mining(large_mask_dataset):
 def test_one_large_mask_finding_is_verified_in_full_without_splitting_mask_from_pixels(large_mask_mining, scenario):
     service, dataset, target_id, original, normal, actual, comparisons, rejected, responses, db_path = large_mask_mining
     responses['scenario'] = scenario
-    mining = service.start(dataset_id=dataset['dataset_id'], kind='defect', sample_ids=[target_id], normal_version_id=normal['version_id'])
+    mining = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='defect', images=[target_id], knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
     service.wait(mining['run_id'], 30)
     status = service.status(mining['run_id'])
     assert status['status'] == 'COMPLETED', status
@@ -157,7 +158,7 @@ def test_one_large_mask_finding_is_verified_in_full_without_splitting_mask_from_
                             and view['crop_bbox'] == item['crop_bbox']} == {'raw', 'annotation_mask'}
     assert len(comparisons) >= 2
     assert any(step['child_step_ids'] for step in snapshot['verification_steps'])
-    assert snapshot['checks'][0]['status'] == ('supported' if scenario == 'complete' else 'provisional')
+    assert snapshot['checks'][0]['status'] == 'provisional', '单个异常来源不形成多来源知识共识'
     assert finding['judgment']['affected_check_titles'] == ['表面形态']
     assert '部分分块未见异常不表示整体已排除' in finding['judgment']['limitations']
     assert comparisons <= set(finding['judgment']['evidence_ids'])
@@ -178,13 +179,13 @@ def test_live_tiled_mask_knowledge_uses_real_joint_evidence(large_mask_dataset):
     db_path, dataset, target_id, original, with_reference_mask = large_mask_dataset
     service = KnowledgeService(Database(db_path))
     try:
-        initial = service.start(dataset_id=dataset['dataset_id'], kind='normal')
+        initial = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(initial['run_id'], 180)
         first_status = service.status(initial['run_id'])
         assert first_status['status'] == 'COMPLETED', first_status
         normal = knowledge_get({'version_id': first_status['knowledge_version_id']}, db_path)['knowledge']
         assert any(check['status'] == 'supported' for check in normal['checks'])
-        job = service.start(dataset_id=dataset['dataset_id'], kind='defect', normal_version_id=normal['version_id'])
+        job = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='defect', knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
         service.wait(job['run_id'], 240)
         status = service.status(job['run_id'])
         assert status['status'] == 'COMPLETED', status
@@ -215,7 +216,7 @@ def test_live_tiled_mask_knowledge_uses_real_joint_evidence(large_mask_dataset):
 def test_uncombinable_partial_mask_observations_are_retained_without_publishing_knowledge(large_mask_mining):
     service, dataset, target_id, original, normal, actual, _, _, responses, db_path = large_mask_mining
     responses['scenario'] = 'no_combine'
-    mining = service.start(dataset_id=dataset['dataset_id'], kind='defect', normal_version_id=normal['version_id'])
+    mining = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='defect', knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
     service.wait(mining['run_id'], 30)
     status = service.status(mining['run_id'])
     assert status['status'] == 'FAILED', status

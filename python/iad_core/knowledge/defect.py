@@ -28,6 +28,7 @@ DEFECT_INSTRUCTION = """从已核验异常及其正常比较中归纳该数据�
 supported规则必须引用status=supported的finding所见真实raw ROI；正常来源仅用于比较/反对。
 没有已核验异常时checks可以为空；假设只可provisional并说明缺证，不能伪造异常类别。
 全图与原生ROI一起解释位置、光照和结构，二值annotation_mask只用于定位，不能将染色当成产品外观。
+来源中的verified_findings是先前核验记录，regions及引用仅含本次实际附图；planned_region_count更大时不可宣称重新看过其余局部。
 冻结知识与已核验异常："""
 
 
@@ -104,7 +105,7 @@ class DefectVerification:
                             item.images.append(image)
                 target.regions = regions
                 targets.append(target)
-        outcome = FindingVerification(self.client, self.context).review(targets, inputs + references,
+        outcome = FindingVerification(self.db, self.client, self.context).review(targets, inputs + references,
             [image for item in references for image in item.images], by_id,
             [check for check in normal.checks if check.status == 'supported'], model_name,
             DEFECT_VERIFICATION_INSTRUCTION, normal.version_id)

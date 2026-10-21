@@ -1,13 +1,14 @@
 import hashlib
 import json
+
 from dataclasses import dataclass
 from typing import List, Optional
 
 from iad_core.dataset.path_safety import PathSafetyError, validate_sample_image_path
 from iad_core.dataset.registry import DatasetRegistry
-from iad_core.evidence.images import file_sha256
+from iad_core.evidence.images import file_sha256, image_pixel_sha256
 from iad_core.evidence.sources import SampleContent
-from iad_core.knowledge.models import KnowledgeFinding, KnowledgeKind, KnowledgeSnapshot, KnowledgeSource
+from iad_core.knowledge.models import KnowledgeFinding, KnowledgeKind, KnowledgeSnapshot, KnowledgeSource, KnowledgeSourceMetadata, KnowledgeSourceItem
 from iad_core.knowledge.candidates import AuditCandidates
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import AnnotationRepository, SampleRepository
@@ -19,9 +20,11 @@ class KnowledgeEligibility:
     qualifications: dict[str, str]
     unavailable: dict[str, Exception]
 
-    def require_available(self) -> dict[str, str]:
-        if self.unavailable:
-            raise next(iter(self.unavailable.values()))
+    def require_available(self, sample_ids: Optional[List[str]] = None) -> dict[str, str]:
+        selected = set(sample_ids) if sample_ids is not None else set(self.unavailable)
+        for sample_id, error in self.unavailable.items():
+            if sample_id in selected:
+                raise error
         return self.qualifications
 
 
@@ -82,21 +85,39 @@ class KnowledgeSources:
                     qualifications[sample_id] = 'audit_suspect'
         return KnowledgeEligibility(qualifications, unavailable)
 
+    def list_candidates(self, dataset_id: str, kind: KnowledgeKind, normal: Optional[KnowledgeSnapshot], search: str = '') -> tuple[KnowledgeEligibility, List[KnowledgeSourceItem]]:
+        availability = self.eligible(dataset_id, kind, normal)
+        with self.db.connection() as conn:
+            rows = conn.execute("""SELECT sample_id,relative_path FROM samples
+                WHERE sample_id IN (SELECT value FROM json_each(?)) AND instr(lower(relative_path),lower(?))>0
+                ORDER BY relative_path,sample_id""", (json.dumps(list(availability.qualifications)), search)).fetchall()
+        return availability, [KnowledgeSourceItem(**dict(row), qualification=availability.qualifications[row['sample_id']]) for row in rows]
+
     def collect(self, dataset_id: str, sample_ids: List[str], kind: KnowledgeKind,
-                normal: Optional[KnowledgeSnapshot] = None) -> List[KnowledgeSource]:
-        eligible = self.eligible(dataset_id, kind, normal).require_available()
+                normal: Optional[KnowledgeSnapshot] = None, *, frozen_sources: Optional[List[KnowledgeSource]] = None) -> List[KnowledgeSource]:
+        eligible = self.eligible(dataset_id, kind, normal).require_available(sample_ids)
         sources = []
+        frozen = {source.sample_id: source for source in frozen_sources or []}
         for sample_id in sample_ids:
             if sample_id not in eligible:
-                raise ValueError('Knowledge source qualification changed during mining')
-            sources.append(self.capture(sample_id, eligible[sample_id]))
+                raise ValueError('知识来源资格已变化，请重新选择或核验')
+            sources.append(self.capture(sample_id, eligible[sample_id], frozen.get(sample_id)))
         return sources
 
-    def capture(self, sample_id: str, qualification: str) -> KnowledgeSource:
+    def capture_metadata(self, sample_id: str, qualification: str) -> KnowledgeSourceMetadata:
         sample = self.samples.get(sample_id)
         content = SampleContent.capture(self.db, sample_id)
         candidates = self.candidates.matching(sample, content.sha256)
         decision = self.reviews.get_decision(sample_id)
-        return KnowledgeSource(**content.model_dump(), qualification=qualification,
+        return KnowledgeSourceMetadata(**content.model_dump(), qualification=qualification,
             audit_suggestion_ids=[item.suggestion_id for item in candidates],
             review_sha256=hashlib.sha256(decision.model_dump_json().encode() if decision else b'null').hexdigest())
+
+    def capture(self, sample_id: str, qualification: str, frozen: Optional[KnowledgeSource] = None) -> KnowledgeSource:
+        sample = self.samples.get(sample_id)
+        content = self.capture_metadata(sample_id, qualification)
+        if frozen and content.sha256 == frozen.sha256 and frozen.pixel_sha256:
+            digest = frozen.pixel_sha256
+        else:
+            digest = image_pixel_sha256(sample.image_path, content.sha256)
+        return KnowledgeSource(**content.model_dump(), pixel_sha256=digest)

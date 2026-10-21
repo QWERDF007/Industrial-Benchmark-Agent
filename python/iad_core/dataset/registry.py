@@ -154,6 +154,7 @@ class DatasetRegistry:
                 conn.execute(f"DELETE FROM {table} WHERE sample_id IN (SELECT sample_id FROM samples WHERE dataset_id=?)", (dataset_id,))
             conn.execute("DELETE FROM review_sessions WHERE dataset_id=?", (dataset_id,))
             conn.execute("DELETE FROM import_issues WHERE dataset_id=?", (dataset_id,))
+            conn.execute("DELETE FROM agent_runs WHERE json_extract(scope_json,'$.dataset_id')=?", (dataset_id,))
             conn.execute("DELETE FROM knowledge_heads WHERE dataset_id=?", (dataset_id,))
             conn.execute("DELETE FROM knowledge_versions WHERE dataset_id=?", (dataset_id,))
             conn.execute("DELETE FROM samples WHERE dataset_id=?", (dataset_id,))

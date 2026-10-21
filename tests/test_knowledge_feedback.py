@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group, frozen_observation_response
 import json
 import threading
 from pathlib import Path
@@ -27,6 +28,9 @@ def feedback_workbench(knowledge_dataset):
     view = {'description': '孔内有色差', 'position_analysis': '主体左孔', 'illumination_analysis': '需排除反光'}
 
     def respond(request):
+        observation = frozen_observation_response(request)
+        if observation is not None:
+            return observation
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200, json={'count': 4000, 'max_model_len': 262144})
         body = json.loads(request.content)
@@ -68,18 +72,19 @@ def feedback_workbench(knowledge_dataset):
                 'support_evidence_ids': [item['evidence_id'] for item in evidence if not defect or item['role'] == 'roi'],
                 'counter_evidence_ids': [], 'limitations': [], 'status': 'supported',
             }], 'suspects': [], 'limitations': []}
-            if normal and not defect:
-                result['revisions'] = [{'previous_check_id': normal['checks'][0]['check_id'],
-                    'current_check_titles': ['孔内外观'], 'reason': '增加来源并重新核验相同判据'}]
+            if not defect:
+                parent = json.loads(content[0]['text'].split('冻结父版本候选：')[1].split('\n')[0])
+                result['revisions'] = [{'previous_check_id': check['check_id'],
+                    'current_check_titles': ['孔内外观'], 'reason': '增加来源并重新核验相同判据'} for check in parent['checks']]
         return httpx.Response(200, json={'choices': [{'message': {'content': json.dumps(result)}}]})
 
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = runtime.knowledge.start(dataset_id=config.dataset.id, kind='normal', sample_ids=sample_ids[:3])
+        job = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal', images=sample_ids[:3]), kind='normal', model_name='test-mllm')
         runtime.knowledge.wait(job['run_id'], 5)
         assert runtime.knowledge.status(job['run_id'])['status'] == 'COMPLETED'
         normal = knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge']
-        audit = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=sample_ids[-1:])
+        audit = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=sample_ids[-1:], normal_version_id=normal['version_id'])
         runtime.audit.wait(audit['run_id'], 5)
         assert runtime.audit.status(audit['run_id'])['status'] == 'COMPLETED'
         advice = sample_get({'sample_id': sample_ids[-1]}, db.db_path)['suggestion']
@@ -94,8 +99,8 @@ def feedback_workbench(knowledge_dataset):
 def test_unannotated_audit_finding_is_reverified_before_supporting_knowledge(feedback_workbench, mining_kind, judgment_status):
     db, config, sample_ids, before, normal, advice, runtime, verified, responses = feedback_workbench
     responses['judgment_status'] = judgment_status
-    args = {'normal_version_id': normal['version_id']} if mining_kind == 'defect' else {'sample_ids': sample_ids[-1:]}
-    job = runtime.knowledge.start(dataset_id=config.dataset.id, kind=mining_kind, **args)
+    job = runtime.knowledge.start(request=selected_group(db, config.dataset.id, kind=mining_kind,
+        images=sample_ids if mining_kind == 'normal' else None, knowledge_preset=[normal['version_id']]), kind=mining_kind)
     runtime.knowledge.wait(job['run_id'], 5)
     status = runtime.knowledge.status(job['run_id'])
     assert status['status'] == 'COMPLETED', status
@@ -112,13 +117,13 @@ def test_unannotated_audit_finding_is_reverified_before_supporting_knowledge(fee
     assert finding['regions'][0]['crop_bbox'] == [79, 99, 121, 141]
     assert finding['judgment']['status'] == judgment_status
     if mining_kind == 'defect':
-        assert snapshot['checks'][0]['status'] == ('supported' if judgment_status == 'supported' else 'provisional')
+        assert snapshot['checks'][0]['status'] == 'provisional', '单个异常来源保留假设，不凑独立支持'
         assert snapshot['checks'][0]['finding_ids'] == ([finding['finding_id']] if judgment_status == 'supported' else [])
         if judgment_status != 'supported':
             assert snapshot['checks'][0]['support_evidence_ids'] == []
     else:
         contaminated = {item['image']['evidence_id'] for item in snapshot['evidence'] if item['sample_id'] == sample_ids[-1]}
-        assert snapshot['checks'][0]['status'] == ('conflicted' if judgment_status == 'insufficient' else 'supported')
+        assert snapshot['checks'][0]['status'] == ('supported' if judgment_status == 'refuted' else 'conflicted')
         if judgment_status == 'refuted':
             assert contaminated.intersection(snapshot['checks'][0]['support_evidence_ids'])
             assert '已结合全图比较光照' in snapshot['checks'][0]['allowed_variations']
@@ -140,26 +145,26 @@ def test_changed_image_cannot_reuse_an_old_audit_as_a_knowledge_candidate(feedba
         image.putpixel((90, 110), (0, 255, 0))
         image.save(path)
     dataset_scan({'dataset_id': config.dataset.id}, db.db_path)
-    with pytest.raises(ValueError, match='eligible knowledge sources'):
-        runtime.knowledge.start(dataset_id=config.dataset.id, kind='defect', normal_version_id=normal['version_id'])
+    with pytest.raises(ValueError, match='不合格知识来源'):
+        runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='defect', images=sample_ids[-1:], knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
     assert sample_get({'sample_id': sample_ids[-1]}, db.db_path)['suggestion'] == advice
     assert knowledge_get({'dataset_id': config.dataset.id, 'kind': 'defect'}, db.db_path)['knowledge'] is None
 
 
 def test_new_audit_omission_cannot_erase_an_unresolved_knowledge_candidate(feedback_workbench):
     db, config, sample_ids, _, normal, advice, runtime, _, responses = feedback_workbench
-    first = runtime.knowledge.start(dataset_id=config.dataset.id, kind='normal', sample_ids=sample_ids[-1:])
+    first = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal', images=sample_ids), kind='normal', model_name='test-mllm')
     runtime.knowledge.wait(first['run_id'], 5)
     initial = knowledge_get({'version_id': runtime.knowledge.status(first['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
     assert len(initial['findings']) == 1
     responses['include_finding'] = False
-    audit = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=sample_ids[-1:])
+    audit = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=sample_ids[-1:], normal_version_id=normal['version_id'])
     runtime.audit.wait(audit['run_id'], 5)
     assert runtime.audit.status(audit['run_id'])['status'] == 'COMPLETED'
     latest = sample_get({'sample_id': sample_ids[-1]}, db.db_path)['suggestion']
     assert latest['suggestion_id'] != advice['suggestion_id']
     assert latest['analysis']['findings'] == []
-    second = runtime.knowledge.start(dataset_id=config.dataset.id, kind='normal', sample_ids=sample_ids[-1:])
+    second = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal', images=sample_ids), kind='normal', model_name='test-mllm')
     runtime.knowledge.wait(second['run_id'], 5)
     status = runtime.knowledge.status(second['run_id'])
     assert status['status'] == 'COMPLETED', status
@@ -183,9 +188,9 @@ def test_new_audit_during_mining_cannot_publish_a_mixed_candidate_snapshot(feedb
 
     runtime.client.client.event_hooks['request'].append(pause_verification)
     try:
-        mining = runtime.knowledge.start(dataset_id=config.dataset.id, kind='defect', normal_version_id=normal['version_id'])
+        mining = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='defect', knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
         assert entered.wait(3)
-        audit = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=sample_ids[-1:])
+        audit = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=sample_ids[-1:], normal_version_id=normal['version_id'])
         runtime.audit.wait(audit['run_id'], 5)
         assert runtime.audit.status(audit['run_id'])['status'] == 'COMPLETED'
     finally:
@@ -198,10 +203,11 @@ def test_new_audit_during_mining_cannot_publish_a_mixed_candidate_snapshot(feedb
 
 
 def test_later_versions_keep_one_audit_candidate_identity_across_both_mining_kinds(feedback_workbench):
-    db, config, sample_ids, _, _, advice, runtime, _, _ = feedback_workbench
+    db, config, sample_ids, _, normal, advice, runtime, _, responses = feedback_workbench
+    responses['judgment_status'] = 'refuted'
     snapshots = []
     for additions in [sample_ids[-1:], sample_ids[3:4]]:
-        job = runtime.knowledge.start(dataset_id=config.dataset.id, kind='normal', sample_ids=additions)
+        job = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal', images=sample_ids if not snapshots else additions, knowledge_preset=[snapshots[-1]['version_id']] if snapshots else None), kind='normal', model_name='test-mllm')
         runtime.knowledge.wait(job['run_id'], 5)
         status = runtime.knowledge.status(job['run_id'])
         assert status['status'] == 'COMPLETED', status
@@ -211,7 +217,7 @@ def test_later_versions_keep_one_audit_candidate_identity_across_both_mining_kin
         assert finding['origin_finding_id'] == advice['analysis']['findings'][0]['finding_id']
         snapshots.append(snapshot)
     assert snapshots[1]['findings'][0]['finding_id'] == snapshots[0]['findings'][0]['finding_id']
-    job = runtime.knowledge.start(dataset_id=config.dataset.id, kind='defect', normal_version_id=snapshots[1]['version_id'])
+    job = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='defect', knowledge_preset=[snapshots[1]['version_id']]), kind='defect', model_name='test-mllm')
     runtime.knowledge.wait(job['run_id'], 5)
     status = runtime.knowledge.status(job['run_id'])
     assert status['status'] == 'COMPLETED', status
@@ -223,19 +229,19 @@ def test_later_versions_keep_one_audit_candidate_identity_across_both_mining_kin
 
 def test_successor_accumulates_new_audit_sources_without_forgetting_existing_candidates(feedback_workbench):
     db, config, sample_ids, _, normal, advice, runtime, _, _ = feedback_workbench
-    first = runtime.knowledge.start(dataset_id=config.dataset.id, kind='normal', sample_ids=sample_ids[-1:])
+    first = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal', images=sample_ids), kind='normal', model_name='test-mllm')
     runtime.knowledge.wait(first['run_id'], 5)
     previous = knowledge_get({'version_id': runtime.knowledge.status(first['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
-    audit = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=sample_ids[-1:])
+    audit = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=sample_ids[-1:], normal_version_id=normal['version_id'])
     runtime.audit.wait(audit['run_id'], 5)
     latest = sample_get({'sample_id': sample_ids[-1]}, db.db_path)['suggestion']
     assert latest['suggestion_id'] != advice['suggestion_id']
-    second = runtime.knowledge.start(dataset_id=config.dataset.id, kind='normal', sample_ids=sample_ids[-1:])
+    second = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal', images=sample_ids), kind='normal', model_name='test-mllm')
     runtime.knowledge.wait(second['run_id'], 5)
     status = runtime.knowledge.status(second['run_id'])
     assert status['status'] == 'COMPLETED', status
     current = knowledge_get({'version_id': status['knowledge_version_id']}, db.db_path)['knowledge']
-    assert current['parent_version_id'] == previous['version_id']
+    assert current['parent_version_id'] is None, '无预设不会隐式继承'
     assert {item['origin_suggestion_id'] for item in current['findings']} == {advice['suggestion_id'], latest['suggestion_id']}
     source = next(item for item in current['sources'] if item['sample_id'] == sample_ids[-1])
     assert set(source['audit_suggestion_ids']) == {advice['suggestion_id'], latest['suggestion_id']}
@@ -245,11 +251,11 @@ def test_successor_accumulates_new_audit_sources_without_forgetting_existing_can
 def test_global_relationship_candidate_keeps_its_scope_during_knowledge_verification(feedback_workbench):
     db, config, sample_ids, _, normal, _, runtime, _, responses = feedback_workbench
     responses['location'] = {'scope': 'global', 'bbox': None, 'description': '双孔与主体的整体关系'}
-    audit = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=sample_ids[-1:])
+    audit = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=sample_ids[-1:], normal_version_id=normal['version_id'])
     runtime.audit.wait(audit['run_id'], 5)
     assert runtime.audit.status(audit['run_id'])['status'] == 'COMPLETED'
     advice = sample_get({'sample_id': sample_ids[-1]}, db.db_path)['suggestion']
-    mining = runtime.knowledge.start(dataset_id=config.dataset.id, kind='defect', normal_version_id=normal['version_id'])
+    mining = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='defect', knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
     runtime.knowledge.wait(mining['run_id'], 5)
     status = runtime.knowledge.status(mining['run_id'])
     assert status['status'] == 'COMPLETED', status

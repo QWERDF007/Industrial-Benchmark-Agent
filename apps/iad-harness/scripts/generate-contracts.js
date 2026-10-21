@@ -10,8 +10,10 @@ const schema = JSON.parse(execFileSync(resolvePythonPath(), ["-c", `
 import json
 from pydantic.json_schema import models_json_schema
 from iad_core.advisory.analysis import AuditAnalysis
-from iad_core.knowledge.models import KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, KnowledgeSourceQuery, KnowledgeSourcePage
-from iad_core.knowledge.service import MiningStart
+from iad_core.knowledge.models import KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, KnowledgeSourceQuery, KnowledgeSourcePage, KnowledgeDetailQuery, KnowledgeCheckPage, KnowledgeCheckEvidencePage
+from iad_core.knowledge.trace import KnowledgeTracePage
+from iad_core.knowledge.requests import MiningStart, MiningRequest
+from iad_core.knowledge.scopes import KnowledgeScopeOpen, KnowledgeScopeSnapshot
 from iad_core.workbench.audit import AuditStart
 from iad_core.workbench.calls import ModelCallDetail
 from iad_core.workbench.job_models import JobRetry, JobSnapshot, JobRetryOptions
@@ -23,9 +25,10 @@ from iad_core.dataset.scanner import ScanResult
 from iad_core.workbench.report import DatasetReport
 from iad_core.storage.models import Annotation, ReviewDecisionRecord
 from iad_core.workbench.review import ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage
+from iad_core.workbench.knowledge_review import KnowledgeReviewContext, KnowledgeReviewSubmission, KnowledgeReviewEvent, KnowledgeReviewItem
 from iad_core.workbench.query import SampleQuery
-models = [AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, KnowledgeSourceQuery, KnowledgeSourcePage, AuditStart, ModelCallDetail, JobRetry, JobSnapshot, JobRetryOptions, InspectionReference, InspectionSnapshot, DatasetImport, FolderPreview, ArchiveInspection, ScanResult, DatasetReport, MiningStart, Annotation, ReviewDecisionRecord, ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage, SampleQuery]
-modes = [(model, 'validation' if model in (MiningStart, KnowledgeSourceQuery, AuditStart, JobRetry, InspectionReference, DatasetImport, ReviewSubmission, ReviewHistoryQuery) else 'serialization') for model in models]
+models = [KnowledgeTracePage, KnowledgeScopeOpen, KnowledgeScopeSnapshot, KnowledgeDetailQuery, KnowledgeCheckPage, KnowledgeCheckEvidencePage, KnowledgeReviewContext, KnowledgeReviewSubmission, KnowledgeReviewEvent, KnowledgeReviewItem, AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, KnowledgeSourceQuery, KnowledgeSourcePage, AuditStart, ModelCallDetail, JobRetry, JobSnapshot, JobRetryOptions, InspectionReference, InspectionSnapshot, DatasetImport, FolderPreview, ArchiveInspection, ScanResult, DatasetReport, MiningStart, MiningRequest, Annotation, ReviewDecisionRecord, ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage, SampleQuery]
+modes = [(model, 'validation' if model in (KnowledgeScopeOpen, KnowledgeDetailQuery, KnowledgeReviewSubmission, MiningStart, MiningRequest, KnowledgeSourceQuery, AuditStart, JobRetry, InspectionReference, DatasetImport, ReviewSubmission, ReviewHistoryQuery) else 'serialization') for model in models]
 references, schema = models_json_schema(modes)
 schema.update(title='WorkbenchDomain', type='object', additionalProperties=False,
     properties={model.__name__: references[(model, mode)] for model, mode in modes})
@@ -60,6 +63,8 @@ const targets = {
   "domain.generated.ts": output,
   "dataset.parameters.generated.ts": `/* Generated from Python FolderRule by scripts/generate-contracts.js. */\nexport const folderRulesParameter = ${JSON.stringify({type: "array", items: toolSchema({$ref: "#/$defs/FolderRule"})}, null, 2)} as const;\n`,
   "mining.parameters.generated.ts": `/* Generated from Python MiningStart by scripts/generate-contracts.js. */\nexport const miningParameters = ${JSON.stringify(parameters, null, 2)} as const;\n`,
+  "knowledge-scope.parameters.generated.ts": `/* Generated from Python KnowledgeScopeOpen by scripts/generate-contracts.js. */\nexport const knowledgeScopeParameters = ${JSON.stringify(toolSchema(schema.properties.KnowledgeScopeOpen).properties, null, 2)} as const;\n`,
+  "knowledge-detail.parameters.generated.ts": `/* Generated from Python KnowledgeDetailQuery by scripts/generate-contracts.js. */\nexport const knowledgeDetailParameters = ${JSON.stringify(toolSchema(schema.properties.KnowledgeDetailQuery).properties, null, 2)} as const;\n`,
   "knowledge-source.parameters.generated.ts": `/* Generated from Python KnowledgeSourceQuery by scripts/generate-contracts.js. */\nexport const knowledgeSourceParameters = ${JSON.stringify(toolSchema(schema.properties.KnowledgeSourceQuery).properties, null, 2)} as const;\n`,
 };
 for (const [name, content] of Object.entries(targets)) {

@@ -1,6 +1,8 @@
+from tests.knowledge_scenarios import selected_group, frozen_observation_response
 import base64
 import io
 import json
+import os
 
 import httpx
 import pytest
@@ -9,6 +11,15 @@ from PIL import Image, ImageDraw
 from iad_core.dataset.registry import DatasetImport, DatasetRegistry
 from iad_core.storage.database import Database
 from iad_core.entry import dataset_import, sample_get
+
+
+@pytest.fixture(autouse=True)
+def configured_test_mllm(monkeypatch):
+    if os.environ.get('IAD_RUN_LIVE_MLLM') == '1':
+        return
+    monkeypatch.setenv('LIVE_VLM_CAPACITY_MODE', 'vllm_tokenize')
+    monkeypatch.setenv('LIVE_VLM_MODEL', 'test-mllm')
+    monkeypatch.setenv('IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES', '2')
 
 
 @pytest.fixture
@@ -25,6 +36,7 @@ def knowledge_dataset(tmp_path, request):
             draw.ellipse((x - 15, 105, x + 15, 135), fill="#cccccc")
         if size[0] > 1800:
             image.putpixel((1800, 220), (255, 0, 0))
+        image.putpixel((0, 0), (180 + index, 190, 200))
         image.save(images / f"part-{index}.png")
     db = Database(str(tmp_path / "knowledge.db"))
     config = DatasetRegistry(db).import_labelme(DatasetImport(
@@ -87,13 +99,17 @@ def finding_response():
 
 
 @pytest.fixture
-def mllm_api(dataset, finding_response):
+def mllm_api(dataset, finding_response, monkeypatch):
+    monkeypatch.setenv('IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES', '2')
     bodies = []
     patterns = {"summary": "可见蓝色表面", "checks": [{"title": "表面外观", "subject": "主体", "location": "全图", "criterion": "可见蓝色表面", "allowed_variations": ["亮度变化"], "support_evidence_ids": [], "counter_evidence_ids": [], "limitations": [], "status": "supported"}], "suspects": [], "limitations": []}
     view = {"description": "可观察证据", "position_analysis": "位置合理", "illumination_analysis": "反光已核实"}
     responses = {"KnowledgeDraft": patterns, "GlobalAnalysis": view, "ViewAnalysis": view,
                  "VlmResult": {**view, "suggested_label": "PASS", "reason_category": "NORMAL", "confidence": 0.8}}
     def respond(request):
+        observation = frozen_observation_response(request)
+        if observation is not None:
+            return observation
         body = json.loads(request.content)
         if request.url.path.endswith('/tokenize'):
             capacity = responses.get('Tokenize', {'count':1000,'max_model_len':262144})
@@ -142,7 +158,7 @@ def mllm_api(dataset, finding_response):
     from iad_core.workbench.vision import VlmClient
     db, _, config = dataset
     mining = KnowledgeService(db, VlmClient(http_client=client))
-    job = mining.start(dataset_id=config.dataset.id, kind='normal')
+    job = mining.start(request=selected_group(mining.db, config.dataset.id, kind='normal'), kind='normal', model_name='test-mllm')
     mining.wait(job['run_id'], 5)
     assert mining.status(job['run_id'])['status'] == 'COMPLETED', mining.status(job['run_id'])
     mining.jobs.close()

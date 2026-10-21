@@ -207,6 +207,21 @@ def review_evidence(args, db_path):
     return EvidenceBuilder(task_id=args["task_id"], db_path=db_path).build(args["sample_id"]).model_dump()
 
 
+def knowledge_review_context(args, db_path):
+    from iad_core.workbench.knowledge_review import KnowledgeReview, KnowledgeReviewReference
+    return KnowledgeReview(Database(db_path)).context(KnowledgeReviewReference.model_validate(args)).model_dump(mode='json')
+
+
+def knowledge_review_queue(args, db_path):
+    from iad_core.workbench.knowledge_review import KnowledgeReview
+    return {'items': [item.model_dump() for item in KnowledgeReview(Database(db_path)).queue(args['dataset_id'])]}
+
+
+def knowledge_review_submit(args, db_path):
+    from iad_core.workbench.knowledge_review import KnowledgeReview, KnowledgeReviewSubmission
+    return KnowledgeReview(Database(db_path)).submit(KnowledgeReviewSubmission.model_validate(args)).model_dump(mode='json')
+
+
 def review_submit_decision(args, db_path):
     return HumanReview(Database(db_path)).submit(ReviewSubmission.model_validate(args))
 
@@ -269,6 +284,35 @@ def knowledge_get(args, db_path):
     return KnowledgeReader(Database(db_path)).read(**args).model_dump()
 
 
+def knowledge_scope_open(args, db_path):
+    from iad_core.knowledge.scopes import KnowledgeScopeOpen, KnowledgeScopes
+    return KnowledgeScopes(Database(db_path)).open(KnowledgeScopeOpen.model_validate(args['request']), args.get('origin_session_id')).model_dump()
+
+
+def knowledge_scope_get(args, db_path):
+    from iad_core.knowledge.scopes import KnowledgeScopes
+    scopes = KnowledgeScopes(Database(db_path))
+    scope_run_id = args.get('scope_run_id') or scopes.active(args.get('origin_session_id'), args.get('dataset_id'), args.get('kind'))
+    if not scope_run_id:
+        raise LookupError('该会话没有匹配的活动连续范围，请提供原范围引用')
+    return scopes.read(scope_run_id).model_dump()
+
+
+def knowledge_scope_stop(args, db_path):
+    return workbench(db_path).knowledge.stop_scope(args['scope_run_id'])
+
+
+def knowledge_scope_resume(args, db_path):
+    from iad_core.knowledge.scopes import KnowledgeScopes
+    return KnowledgeScopes(Database(db_path)).set_active(args['scope_run_id'], True, args.get('origin_session_id')).model_dump()
+
+
+def knowledge_details(args, db_path):
+    from iad_core.knowledge.models import KnowledgeDetailQuery
+    from iad_core.knowledge.query import KnowledgeReader
+    return KnowledgeReader(Database(db_path)).details(KnowledgeDetailQuery.model_validate(args)).model_dump()
+
+
 def knowledge_sources(args, db_path):
     from iad_core.knowledge.models import KnowledgeSourceQuery
     from iad_core.knowledge.query import KnowledgeReader
@@ -276,7 +320,11 @@ def knowledge_sources(args, db_path):
 
 
 def knowledge_start(args, db_path):
-    return workbench(db_path).knowledge.start(**args)
+    from iad_core.knowledge.requests import MiningInvocation, MiningStart
+    invocation = MiningInvocation.model_validate(args)
+    request = invocation.request
+    return workbench(db_path).knowledge.start(request=MiningStart.model_validate(request.model_dump(exclude={'kind'})),
+        kind=request.kind, model_name=invocation.model_name, origin_session_id=invocation.origin_session_id, scope_run_id=invocation.scope_run_id)
 
 
 def knowledge_status(args, db_path):
@@ -301,9 +349,20 @@ def knowledge_list(args, db_path):
     return {"jobs": workbench(db_path).knowledge.list(args["dataset_id"])}
 
 
+def knowledge_observations(args, db_path):
+    from iad_core.knowledge.trace import KnowledgeTrace
+    job = workbench(db_path).knowledge.status(args['run_id'])
+    return KnowledgeTrace.page(job, int(args.get('page', 1)), int(args.get('page_size', 10))).model_dump()
+
+
 def knowledge_evidence(args, db_path):
     from iad_core.evidence.images import EvidenceImages
     from iad_core.knowledge.repository import KnowledgeRepository
+    if bool(args.get('run_id')) == bool(args.get('version_id')):
+        raise ValueError('证据引用须明确选择作业run_id或已发布version_id之一')
+    if args.get('run_id'):
+        from iad_core.knowledge.trace import KnowledgeTrace
+        return KnowledgeTrace.evidence(workbench(db_path).knowledge.status(args['run_id']), args['evidence_id'], db_path)
     snapshot = KnowledgeRepository(Database(db_path)).get(args["version_id"])
     for evidence in snapshot.evidence:
         if evidence.image.evidence_id == args["evidence_id"]:
@@ -324,8 +383,10 @@ OPERATIONS = {handler.__name__: handler for handler in (
     tool_call, dataset_list, dataset_get, dataset_import, dataset_preview, dataset_archive_inspect, dataset_update, dataset_scan, dataset_delete,
     sample_list, sample_get, sample_image_path, sample_thumbnail, sample_mask_path,
     review_queue, review_evidence, review_submit_decision, review_history,
+    knowledge_review_context, knowledge_review_submit, knowledge_review_queue,
     review_stats, report_get, audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_list, audit_evidence, inspection_context, directory_list,
-    knowledge_get, knowledge_sources, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_retry_options, knowledge_list, model_call_get,
+    knowledge_scope_open, knowledge_scope_get, knowledge_scope_stop, knowledge_scope_resume,
+    knowledge_get, knowledge_details, knowledge_sources, knowledge_observations, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_retry_options, knowledge_list, model_call_get,
 )}
 
 

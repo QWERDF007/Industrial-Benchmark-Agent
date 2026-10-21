@@ -1,13 +1,18 @@
 import json
 import uuid
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Literal, Optional
+
+from pydantic import Field, create_model
 
 from iad_core.advisory.analysis import RegionImage
 from iad_core.evidence.images import PreparedImage
+from iad_core.knowledge.trace import KnowledgeTrace
+from iad_core.knowledge.support import KnowledgeSupport
+from iad_core.storage.database import Database
 from iad_core.knowledge.mining import KnowledgeInput, OUTPUT_TOKENS
 from iad_core.knowledge.models import (FindingTarget, LearnedCheck, KnowledgeEvidence, KnowledgeFinding,
-                                      KnowledgeVerification, VerificationStep)
+                                      KnowledgeJudgment, KnowledgeVerification, VerificationStep)
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
 
@@ -32,14 +37,16 @@ class VerificationGroup:
 
 
 class FindingVerification:
-    def __init__(self, client: VlmClient, context: JobContext):
+    def __init__(self, db: Database, client: VlmClient, context: JobContext):
         self.client, self.context = client, context
+        self.support = KnowledgeSupport(db)
         self.steps: List[VerificationStep] = []
 
     def review(self, targets: List[FindingTarget], inputs: List[KnowledgeInput], references: List[PreparedImage],
                images: dict[str, PreparedImage], checks: List[LearnedCheck], model_name: str,
                instruction: str, normal_version_id: Optional[str] = None) -> VerificationOutcome:
         self.inputs, self.by_id, self.checks = inputs, images, checks
+        groups = self.support.groups([item.source for item in inputs])
         self.targets = {target.finding_id: target for target in targets}
         self.owners = {image.evidence.evidence_id: item.source.sample_id for item in inputs for image in item.images}
         self.instruction, self.normal_version_id = EVIDENCE_SCOPE_INSTRUCTION + instruction, normal_version_id
@@ -47,6 +54,9 @@ class FindingVerification:
         self.overviews = {}
         for item in inputs:
             self.overviews.setdefault(item.source.sample_id, item.images[0])
+        trace = KnowledgeTrace(self.context)
+        trace.inputs(inputs)
+        trace.register(KnowledgeEvidence(sample_id=target.sample_id, image=region.image) for target in targets for region in target.regions)
         result = self._evaluate(targets, references, model_name).result
         judgments = {item.finding_id: item.model_copy(deep=True) for item in result.findings}
         findings = []
@@ -61,9 +71,9 @@ class FindingVerification:
             if {'supported', 'refuted'} <= statuses or any(item.conflicts for item in observations):
                 judgment.status = 'insufficient'
                 judgment.conflicts = list(dict.fromkeys([*judgment.conflicts, '核验步骤存在未消解的分歧']))
-            source_sha = self.overviews[target.sample_id].evidence.source_sha256
-            if not any(eid in self.reference_ids and self.by_id[eid].evidence.source_sha256 != source_sha
-                       for eid in judgment.evidence_ids):
+            target_group = groups.get(target.sample_id)
+            if target_group is None or not any(eid in self.reference_ids and self.owners.get(eid) in groups
+                       and groups[self.owners[eid]] != target_group for eid in judgment.evidence_ids):
                 judgment.status = 'insufficient'
                 judgment.limitations.append('缺少独立来源的比较证据')
             findings.append(KnowledgeFinding(**target.model_dump(), judgment=judgment))
@@ -100,7 +110,11 @@ class FindingVerification:
                    'child_results': [child.model_dump() for child in children]}
         prompt = self.instruction + json.dumps(payload, ensure_ascii=False)
         images = list(supplied.values())
-        if not self.client.fits(KnowledgeVerification, prompt, images, model_name, OUTPUT_TOKENS):
+        ids = tuple(target.finding_id for target in targets)
+        judgment = create_model('KnowledgeJudgment', __base__=KnowledgeJudgment, finding_id=(Literal[ids], ...))
+        response_type = create_model('KnowledgeVerification', __base__=KnowledgeVerification,
+            findings=(List[judgment], Field(min_length=len(ids), max_length=len(ids))))
+        if not self.client.fits(response_type, prompt, images, model_name, OUTPUT_TOKENS):
             if children:
                 raise ValueError("Model context cannot combine knowledge verification results")
             if len(targets) > 1:
@@ -128,7 +142,7 @@ class FindingVerification:
                 return self._evaluate(targets, [], model_name, [root for node in nodes for root in node.roots])
             raise ValueError("Model context cannot fit a finding and its visual evidence")
         self.context.checkpoint()
-        result = self.client.generate(KnowledgeVerification, prompt, images, model_name, OUTPUT_TOKENS)
+        result = self.client.generate(response_type, prompt, images, model_name, OUTPUT_TOKENS)
         self.context.checkpoint()
         expected = {target.finding_id for target in targets}
         if len(result.findings) != len(expected) or {item.finding_id for item in result.findings} != expected:

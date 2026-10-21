@@ -1,6 +1,6 @@
 # 实现与验收索引
 
-目标行为见[规格](specs/incremental-knowledge-mining.md)，依赖与验收条件见[逐票索引](tickets/README.md)。本页索引当前实现与验证入口，不表示目标规格已实施；进度和待裁决事项仅见根 WORKLOG.md。
+目标行为见[规格](specs/incremental-knowledge-mining.md)，依赖与验收条件见[逐票索引](tickets/README.md)。本页索引实现与验证入口；验收状态见逐票定义，进度和待裁决事项仅见根 WORKLOG.md。
 
 ## 接入与状态
 
@@ -14,11 +14,15 @@
 | 数据模型、数据库与仓储 | [存储](../python/iad_core/storage/) |
 | 查询、筛选、数量与分项报告 | [查询](../python/iad_core/workbench/query.py)、[报告](../python/iad_core/workbench/report.py) |
 | 知识资格、来源分页、冻结内容与来源变化 | [资格](../python/iad_core/knowledge/sources.py)、[来源契约](../python/iad_core/knowledge/models.py)、[内容指纹](../python/iad_core/evidence/sources.py)、[来源与变化查询](../python/iad_core/knowledge/query.py) |
+| 图组契约、支持策略与继承 | [图组及宿主调用](../python/iad_core/knowledge/requests.py)、[支持分组](../python/iad_core/knowledge/support.py)、[证据继承](../python/iad_core/knowledge/evolution.py)、[选图配置](../apps/iad-harness/src/client/components/KnowledgeSetup.tsx) |
+| 先观察、修订比较、冲突隔离与人审重核验 | [冻结观察](../python/iad_core/knowledge/observation.py)、[冲突](../python/iad_core/knowledge/conflicts.py)、[重核验](../python/iad_core/knowledge/recheck.py)、[输入冻结](../python/iad_core/knowledge/frozen.py) |
+| 连续范围、会话准入与进度 | [冻结范围](../python/iad_core/knowledge/scopes.py)、[范围界面](../apps/iad-harness/src/client/components/KnowledgeScopePanel.tsx)、[宿主会话](../apps/iad-harness/src/client/workbench-session.ts) |
+| 未发布观察、证据分页及发布口径 | [观察追溯](../python/iad_core/knowledge/trace.py)、[作业投影](../python/iad_core/workbench/jobs.py)、[观察界面](../apps/iad-harness/src/client/components/KnowledgeJobEvidence.tsx) |
 | 知识挖掘、版本、污染与标注核验 | [知识领域](../python/iad_core/knowledge/) |
 | 全图/ROI、原图坐标与真实像素 | [图像证据](../python/iad_core/evidence/images.py)、[Mask](../python/iad_core/evidence/masks.py) |
 | 冻结知识、单图联合分析、疑点与作业 | [审计](../python/iad_core/workbench/audit.py)、[单图](../python/iad_core/workbench/inspection.py)、[联合分析](../python/iad_core/workbench/joint.py)、[作业](../python/iad_core/workbench/jobs.py) |
-| 模型传输、容量、结构化输出与调用记录 | [模型客户端](../python/iad_core/workbench/vision.py)、[分析契约](../python/iad_core/advisory/analysis.py)、[调用记录](../python/iad_core/workbench/calls.py) |
-| 人工提交与历史 | [人工复核](../python/iad_core/workbench/review.py)、[人审存储](../python/iad_core/storage/review_repository.py) |
+| 模型传输、容量、结构化输出与调用记录 | [模型配置](../python/iad_core/workbench/model_profile.py)、[模型客户端](../python/iad_core/workbench/vision.py)、[分析契约](../python/iad_core/advisory/analysis.py)、[调用记录](../python/iad_core/workbench/calls.py) |
+| 人工提交与历史 | [人工复核](../python/iad_core/workbench/review.py)、[知识处置](../python/iad_core/workbench/knowledge_review.py)、[冲突复核界面](../apps/iad-harness/src/client/components/KnowledgeConflictReview.tsx)、[人审存储](../python/iad_core/storage/review_repository.py) |
 | 原生工具、模型可见结果、当前技能注册、状态等待与图像附件 | [工作台工具](../apps/iad-harness/src/server/workbench-tools/index.ts)、[知识工具](../apps/iad-harness/src/server/knowledge/)、[结果投影](../apps/iad-harness/src/server/tool-output.ts)、[完整分析技能](../apps/iad-harness/src/server/workbench-tools/skill.ts)、[等待](../apps/iad-harness/src/server/job-status.ts)、[附件](../apps/iad-harness/src/server/evidence-attachment.ts) |
 | 生成的客户端契约 | [契约](../apps/iad-harness/src/shared/contracts.ts)、[生成入口](../apps/iad-harness/scripts/generate-contracts.js) |
 | 页面身份、知识类型与结果跳转 | [导航契约](../apps/iad-harness/src/shared/navigation.ts)、[工作区状态](../apps/iad-harness/src/client/workspace.tsx)、[结果链接](../apps/iad-harness/src/shared/tool-presentation.ts) |
@@ -32,7 +36,10 @@
 | --- | --- |
 | 接入、重扫、删除、身份与源文件保留 | [工作台](../tests/test_dataset_workbench.py)、[来源](../tests/test_dataset_sources.py)、[删除](../tests/test_dataset_deletion.py) |
 | 公开 HTTP 与 DSH 工具状态一致 | [HTTP操作](../apps/iad-harness/test/workbench.test.js)、[原生工具](../apps/iad-harness/test/dataset_tools.test.js) |
+| 三输入、版本继承、支持策略与覆盖查询 | [公开原生/HTTP图组链](../apps/iad-harness/test/incremental_group.test.js) |
 | 正常/异常知识、来源发现、污染与反馈 | [正常知识](../tests/test_dataset_knowledge.py)、[异常知识](../tests/test_defect_knowledge.py)、[来源发现](../apps/iad-harness/test/knowledge_sources.test.js)、[污染](../tests/test_knowledge_contamination.py)、[反馈](../tests/test_knowledge_feedback.py) |
+| 连续范围、恢复与人工重核验 | [HTTP冻结覆盖](../apps/iad-harness/test/knowledge_scope.test.js)、[真实Agent调用链](../apps/iad-harness/test/knowledge_scope_agent.test.js)、[人工处置与取消恢复](../apps/iad-harness/test/knowledge_scope_review.test.js)、[原生知识会话](../apps/iad-harness/browser/knowledge-session.test.js) |
+| 实际视觉输入容量、带图综合及能力未知/超时 | [公开容量链](../apps/iad-harness/test/knowledge_capacity.test.js) |
 | 输入屏蔽与知识独立支持 | [提示边界](../tests/test_knowledge_prompt_scope.py)、[冻结知识审计](../tests/test_knowledge_audit.py) |
 | 规则、疑点、分块与Mask真实证据 | [规则](../tests/test_rule_audit.py)、[疑点](../tests/test_audit_findings.py)、[容量](../tests/test_knowledge_capacity.py)、[Mask](../tests/test_mask_evidence.py) |
 | 口径与中断恢复 | [报告](../tests/test_quality_report.py)、[目录变更闭环](../tests/test_folder_source_change_closed_loop.py)、[恢复](../tests/test_job_recovery.py)、[调用记录](../tests/test_model_calls.py) |
@@ -40,7 +47,7 @@
 | 浏览器公开用户链 | [工作台操作](../apps/iad-harness/browser/workbench.test.js) |
 | 真实DSH会话及页面/图像往返 | [原生宿主](../apps/iad-harness/browser/session-handoff.test.js)、[Agent会话](../apps/iad-harness/test/agent_session.test.js) |
 | 明暗、视口、字号、模态与焦点 | [页面布局](../apps/iad-harness/browser/workbench-layout.js)、[详情交互](../apps/iad-harness/browser/workbench-surfaces.js) |
-| 合成图真实MLLM与会话验收 | [技能验证](../apps/iad-harness/scripts/verify-knowledge-skills.js)、[会话验证](../apps/iad-harness/scripts/verify-dataset-session.js)、[指定来源挖掘](../apps/iad-harness/scripts/verify-knowledge-selection.js)、[接入边界](../apps/iad-harness/scripts/verify-dataset-intake.js)、[单步导入](../apps/iad-harness/scripts/verify-import-scope.js)、[恢复验证](../scripts/verify_job_recovery_live.py) |
+| 合成图真实MLLM与会话验收 | [指定来源挖掘](../apps/iad-harness/scripts/verify-knowledge-selection.js)、[连续范围](../apps/iad-harness/scripts/verify-knowledge-scope.js)、[完整流程](../apps/iad-harness/scripts/verify-knowledge-products.js)、[接入边界](../apps/iad-harness/scripts/verify-dataset-intake.js)、[单步导入](../apps/iad-harness/scripts/verify-import-scope.js)、[恢复验证](../scripts/verify_job_recovery_live.py) |
 
 ## 模型服务与运行
 

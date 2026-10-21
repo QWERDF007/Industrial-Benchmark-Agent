@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group
 import json
 import os
 from pathlib import Path
@@ -25,7 +26,7 @@ def test_updated_generation_refuses_old_job_retry(dataset, mllm_api, tmp_path, c
         service = getattr(runtime, component)
         if component == 'knowledge':
             responses['Tokenize'] = {'count': 262144, 'max_model_len': 262144}
-            job = service.start(dataset_id=config.dataset.id, kind='normal', model_name='updated-install-test')
+            job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal'), kind='normal', model_name='updated-install-test')
         else:
             job = service.start(dataset_id=config.dataset.id, sample_ids=[config.dataset.id + ':dent.png'])
         service.wait(job['run_id'], 5)

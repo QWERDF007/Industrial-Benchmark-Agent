@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
-import { createDatasetSession } from "../test/fixtures/dataset_session.js";
+import { createDatasetSession, resolveDatasetSessionModel } from "../test/fixtures/dataset_session.js";
 import { findWorkspaceRoot, resolvePythonPath } from "../lib/server/python-bridge/index.js";
 
 assert.ok(process.env.LIVE_VLM_ENDPOINT && process.env.LIVE_VLM_KEY, "Configure local model environment");
@@ -11,8 +11,7 @@ const workspace = findWorkspaceRoot();
 const output = path.resolve(process.argv[2] || path.join(workspace, "runs/verification/intake", String(Date.now())));
 await fs.mkdir(output, { recursive: true });
 execFileSync(resolvePythonPath(), [path.join(workspace, "apps/iad-harness/test/fixtures/knowledge_dataset.py"), output]);
-const model = execFileSync(resolvePythonPath(), ["-c", "from iad_core.workbench.vision import DEFAULT_MODEL;print(DEFAULT_MODEL)"],
-  { cwd: workspace, env: { ...process.env, PYTHONPATH: path.join(workspace, "python") }, encoding: "utf8" }).trim();
+const model = process.env.LIVE_VLM_MODEL || resolveDatasetSessionModel(workspace);
 const cases = [
   { name: "custom", directories: ["来源甲", "来源乙"], prompt: "这是目录图像级格式。来源甲明确为良品，来源乙明确为异常。请直接预览、按这两个规则导入并读取当前质量报告；这次不用挖掘或审计。", expected: 2 },
   { name: "normal-only", directories: ["OK", "OK"], prompt: "这是目录图像级格式。请挖掘可用知识、审计全部图像并读取质量报告，无合格异常来源应跳过不良知识。", expected: 2 },

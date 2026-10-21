@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group
 import json
 
 import httpx
@@ -161,7 +162,7 @@ def test_unverified_rule_blocks_only_when_applicable_to_target(dataset, mllm_api
     runtime = WorkbenchRuntime(db, VlmClient(http_client=client))
     target = config.dataset.id + ':dent.png'
     try:
-        mining = runtime.knowledge.start(dataset_id=config.dataset.id, kind='normal', model_name='model-with-additional-rule')
+        mining = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal', knowledge_preset=[old['version_id']]), kind='normal', model_name='model-with-additional-rule')
         runtime.knowledge.wait(mining['run_id'], 5)
         assert runtime.knowledge.status(mining['run_id'])['status'] == 'COMPLETED'
 

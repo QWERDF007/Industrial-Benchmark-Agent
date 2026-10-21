@@ -41,9 +41,10 @@ try {
       session.handle.agent.cancel({ kind: "hook", reason: "Unspecified group must be clarified before enumeration or mining" });
       return "Verification requires clarification of the unspecified image group before execution";
     }
-    if (exec.name === "knowledge_mine_normal" && exec.arguments.dataset_id === dataset.dataset_id
-      && Array.isArray(exec.arguments.sample_ids) && exec.arguments.sample_ids.length === 10
-      && new Set(exec.arguments.sample_ids).size === 10 && exec.arguments.sample_ids.every(id => discovered.has(id))) return;
+    if (exec.name === "knowledge_mine_normal" && exec.arguments.image_count === 10
+      && Array.isArray(exec.arguments.images) && exec.arguments.images.length === 10
+      && new Set(exec.arguments.images).size === 10 && exec.arguments.images.every(id => discovered.has(id))
+      && !(exec.arguments.knowledge_preset || []).length) return;
     if (!/^(knowledge_mine_(normal|defect)|knowledge_job_retry|model_audit_start|model_audit_retry|dataset_import|dataset_rescan|skill)$/.test(exec.name)) return;
     violations.push({ name: exec.name, arguments: exec.arguments });
     session.handle.agent.cancel({ kind: "hook", reason: "Selected-source verification scope violation" });
@@ -92,7 +93,7 @@ try {
     const started = trace.filter(item => item.name === "knowledge_mine_normal");
     assert.equal(started.length, 1);
     assert.ok(trace.findIndex(item => item.name === "knowledge_sources") < trace.indexOf(started[0]), "The Agent must discover references instead of receiving test-supplied sample IDs");
-    const sampleIds = started[0].arguments.sample_ids;
+    const sampleIds = started[0].arguments.images;
     assert.equal(sampleIds.length, 10);
     assert.ok(sampleIds.every(id => discovered.has(id)));
     const status = await session.ctx.iadPythonBridge.execute("knowledge_status", { run_id: started[0].result.value.run_id });

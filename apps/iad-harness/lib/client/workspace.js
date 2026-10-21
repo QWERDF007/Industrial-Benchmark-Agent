@@ -4,7 +4,7 @@ import { restoreInspection } from "./inspection.js";
 import { pages } from "../shared/navigation.js";
 import { knowledgeStatuses } from "../shared/knowledge-presentation.js";
 export { pages } from "../shared/navigation.js";
-const defaultView = (page) => ({ filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", model: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
+const defaultView = (page) => ({ miningSourceMode: "uncovered", scopeRunId: "", scopeSessionId: "", miningContinuous: false, conflictId: "", miningCount: "10", miningImages: [], miningPreset: "", miningSearch: "", miningPage: 1, filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", model: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export class Workspace {
     conversation;
@@ -78,13 +78,23 @@ export class Workspace {
         const snapshot = await request("/inspection/context", reference);
         if (!this.state.active || this.state.pageId !== pageId || this.state.datasetId !== datasetId || this.view(pageId).selected !== reference.sample_id)
             throw new Error("检视位置已切换，请在当前图像重新追问");
-        await this.conversation.send(snapshot, question, sessionId => {
+        await this.conversation.inspect(snapshot, question, sessionId => {
             if (!this.state.active || this.state.pageId !== pageId || this.state.datasetId !== datasetId || this.view(pageId).selected !== reference.sample_id)
                 throw new Error("检视位置已切换，请在当前图像重新追问");
             this.updateView(pageId, { inspection: { reference, selection, transform, sessionId } }, true);
             const route = new URLSearchParams({ iad: JSON.stringify({ pageId, datasetId, knowledgeKind, ...this.view(pageId) }) });
             return `${location.origin}${location.pathname}?${route}`;
         }, view.inspection?.reference.sample_id === reference.sample_id ? view.inspection.sessionId : undefined);
+    }
+    async mineScope(scopeRunId, imageCount, images) {
+        const { datasetId, knowledgeKind } = this.state;
+        const pageId = "industrial-knowledge", view = this.view(pageId);
+        await this.conversation.mine(scopeRunId, knowledgeKind, imageCount, images, sessionId => {
+            if (this.state.datasetId !== datasetId || this.state.knowledgeKind !== knowledgeKind)
+                throw new Error("数据集或知识类型已切换，请在当前范围重新发起");
+            this.updateView(pageId, { scopeRunId, scopeSessionId: sessionId });
+            return `${location.origin}${location.pathname}?${new URLSearchParams({ iad: JSON.stringify({ pageId, datasetId, knowledgeKind, ...this.view(pageId) }) })}`;
+        }, view.scopeSessionId || undefined);
     }
     openSession(sessionId) { return this.conversation.open(sessionId); }
     commit(replace = false) {
@@ -115,11 +125,19 @@ export class Workspace {
                 if (route.pageId in pages && typeof route.datasetId === "string") {
                     const knowledgeKind = route.knowledgeKind === "defect" ? "defect" : "normal";
                     const view = defaultView(route.pageId);
-                    for (const key of ["selected", "tab", "version", "model", "normalVersion", "defectVersion", "job", "historySearch", "knowledgeSearch"])
+                    for (const key of ["selected", "scopeRunId", "scopeSessionId", "conflictId", "tab", "version", "model", "miningCount", "miningPreset", "miningSearch", "normalVersion", "defectVersion", "job", "historySearch", "knowledgeSearch"])
                         if (typeof route[key] === "string")
                             view[key] = route[key];
+                    if (["uncovered", "all", "recheck"].includes(route.miningSourceMode))
+                        view.miningSourceMode = route.miningSourceMode;
+                    if (typeof route.miningContinuous === "boolean")
+                        view.miningContinuous = route.miningContinuous;
                     if (typeof route.knowledgeStatus === "string" && (route.knowledgeStatus === "" || Object.hasOwn(knowledgeStatuses, route.knowledgeStatus)))
                         view.knowledgeStatus = route.knowledgeStatus;
+                    if (Number.isInteger(route.miningPage) && route.miningPage > 0)
+                        view.miningPage = route.miningPage;
+                    if (Array.isArray(route.miningImages) && route.miningImages.every((id) => typeof id === "string"))
+                        view.miningImages = route.miningImages;
                     view.inspection = restoreInspection(route.inspection, route.datasetId, view.selected);
                     if (Number.isInteger(route.page) && route.page > 0)
                         view.page = route.page;

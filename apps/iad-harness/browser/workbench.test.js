@@ -21,12 +21,12 @@ test("browser: import Labelme, filter, select references, review and rename", { 
   execFileSync(bridge.pythonPath, ["-c", `
 import base64,io,json,sys
 from pathlib import Path
-from PIL import Image
+from PIL import Image,ImageDraw
 root=Path(sys.argv[1])
 (root/'images').mkdir(); (root/'labels').mkdir()
 (root/'images-other').mkdir(); (root/'labels-other').mkdir()
 Image.new('RGB',(320,240),'green').save(root/'images-other'/'other.png')
-Image.new('RGB',(320,240),'green').save(root/'images-other'/'reference.png')
+reference=Image.new('RGB',(320,240),'green');ImageDraw.Draw(reference).rectangle((180,120,200,140),fill='yellow');reference.save(root/'images-other'/'reference.png')
 mask=Image.new('L',(11,11),0)
 for point in [(0,0),(2,3),(3,3),(10,10)]:mask.putpixel(point,255)
 buffer=io.BytesIO();mask.save(buffer,'PNG')
@@ -47,7 +47,7 @@ for name in ['normal','normal2','dent']:
       createRoot(document.getElementById('root')).render(<App/>);`, loader: "tsx", resolveDir: app },
     bundle: true, format: "iife", write: false, target: "es2022", define: { "process.env.NODE_ENV": '"production"' },
   });
-  const previousEndpoint = process.env.LIVE_VLM_ENDPOINT;
+  const previousEndpoint = process.env.LIVE_VLM_ENDPOINT, previousModel=process.env.LIVE_VLM_MODEL,previousCapacity=process.env.LIVE_VLM_CAPACITY_MODE,previousPolicy=process.env.IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES;
   const modelRequests = [];
   let includeFilterChecks = true;
   let holdRegion = false, releaseRegion, proposeRegion = false;
@@ -83,6 +83,10 @@ for name in ['normal','normal2','dent']:
         const parent=JSON.parse(parts[0].text.split("冻结父版本候选：")[1].split("\n")[0]);
         answer.revisions=parent.checks.map(check=>({previous_check_id:check.check_id,current_check_titles:["表面外观"],reason:"本轮图像仍支持相同外观判据"}));
       }
+      if (schema.title === "KnowledgeObservations") {
+        const scope=JSON.parse(parts[0].text.split("冻结观察请求：")[1].split("\n请根据图像")[0]);
+        answer={observations:scope.sources.flatMap(source=>scope.checks.map(check=>({sample_id:source.sample_id,check_id:check.check_id,status:"supports",description:"图像符合可观察判据",position_analysis:"主体",illumination_analysis:"均匀",normal_explanation:"亮度变化",evidence_ids:source.raw_evidence_ids,suspects:[]})))};
+      }
       if (schema.title === "KnowledgeVerification") {
         const payload=JSON.parse(parts[0].text.split("待核验疑点：")[1].split("\n请根据图像")[0]);
         answer={findings:payload.findings.map(target=>({finding_id:target.finding_id,status:"insufficient",affected_check_titles:[],description:"当前图像不足以确认异常",normal_explanation:"仍需排除反光",limitations:["需要独立证据"],evidence_ids:[target.regions.find(region=>region.image.representation==="raw").image.evidence_id],conflicts:[]}))};
@@ -117,7 +121,7 @@ for name in ['normal','normal2','dent']:
   });
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
-  process.env.LIVE_VLM_ENDPOINT = base + "/model/v1";
+  process.env.LIVE_VLM_ENDPOINT = base + "/model/v1";process.env.LIVE_VLM_MODEL="test-browser-model";process.env.LIVE_VLM_CAPACITY_MODE="vllm_tokenize";process.env.IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES="2";
   let driver;
   try {
     const options = new firefox.Options().addArguments("-headless");
@@ -158,7 +162,7 @@ for name in ['normal','normal2','dent']:
       ["数据集管理", "图像浏览", "知识挖掘", "模型审计", "人工复核"]);
     assert.equal((await driver.findElements(By.css(".iad-header select,.iad-header button,.iad-kpis"))).length, 0, "数据集管理由卡片选择数据集，不重复显示头部控件和统计");
     await button("添加数据集");
-    await element("dialog[aria-label='导入 Labelme 数据集']");
+    await element("dialog[aria-label='添加数据集']");
     await (await element("#dataset-name")).sendKeys("浏览器验收");
     await (await element(".iad-dataset-import input[aria-label='图像目录']")).sendKeys(path.join(root, "images"));
     await (await element(".iad-dataset-import input[aria-label='标注目录']")).sendKeys(path.join(root, "labels"));
@@ -214,8 +218,8 @@ for name in ['normal','normal2','dent']:
     await driver.actions().sendKeys(Key.ESCAPE).perform();
     await driver.wait(async () => !(await driver.findElements(By.css(".iad-tooltip"))).length, 5000);
     await driver.actions().move({origin:await element(".iad-header h1")}).perform();
-    await driver.executeScript("arguments[0].focus()", firstBadge);
-    await driver.actions().sendKeys(Key.TAB).keyDown(Key.SHIFT).sendKeys(Key.TAB).keyUp(Key.SHIFT).perform();
+    await driver.executeScript("arguments[0].focus()", await element(".iad-sample"));
+    await driver.actions().sendKeys(Key.TAB).perform();
     assert.equal(await driver.executeScript("return document.activeElement===arguments[0]", firstBadge), true);
     await driver.wait(() => driver.executeScript("return !!document.querySelector('.iad-tooltip')"), 5000, "键盘聚焦显示状态提示");
     await driver.actions().sendKeys(Key.ESCAPE).perform();
@@ -272,6 +276,10 @@ for name in ['normal','normal2','dent']:
     await button("恢复自动来源"); await button("完成来源管理");
     assert.equal((await driver.findElements(By.css(".iad-grid input[type=checkbox],.iad-grid .iad-reference"))).length,0);
     await button("知识挖掘"); await button("良品");
+    await select("来源范围","all");
+    const miningCount=await element("input[aria-label='挖掘图像数量']");await miningCount.clear();await miningCount.sendKeys("2");
+    await button("按数量选择");
+    await driver.wait(async()=>await(await element("button[data-action='knowledge-group-run']")).isEnabled(),5000);
     await button("开始挖掘良品知识");
     await driver.wait(async ()=>(await (await element(".iad-knowledge-jobs")).getText()).includes("已完成"),15000);
     const learned = (await (await fetch(`${base}/api/iad/knowledge/jobs?dataset_id=${dataset.dataset_id}`)).json()).jobs[0];
@@ -845,7 +853,7 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await currentImages.clear(); await currentImages.sendKeys(movedImages);
     await currentLabels.clear(); await currentLabels.sendKeys(movedLabels);
     assert.equal((await (await fetch(base + "/api/iad/datasets")).json()).datasets.find(item => item.name === "隔离数据集").image_dir, path.join(root, "images-other"), "编辑目录草稿不能直接写入数据集");
-    await button("保存目录并重新扫描");
+    await button("保存映射并重新扫描");
     await element("[aria-label='扫描结果']");
     const movedDataset = (await (await fetch(base + "/api/iad/datasets")).json()).datasets.find(item => item.name === "隔离数据集");
     assert.equal(movedDataset.image_dir, movedImages);
@@ -902,7 +910,12 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await (await element("button[title='显示标注']")).click();
     await element(".iad-viewer-dialog .iad-annotation-mask image");
     await button("关闭");await (await element("button[aria-label='关闭图像详情']")).click();
+    const maskSourceReview=await fetch(base+"/api/iad/review/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({submission_id:crypto.randomUUID(),dataset_id:otherDataset.dataset_id,sample_id:otherDetail.sample.sample_id,reviewer:"合成Mask核验员",decision:"PASS",comment:"定位标注不代表质量；人工确认此来源可用于结构比较"})});
+    assert.equal(maskSourceReview.status,200,await maskSourceReview.clone().text());
     await button("知识挖掘"); await button("良品");
+    await select("来源范围","all");
+    {const count=await element("input[aria-label='挖掘图像数量']");await count.clear();await count.sendKeys("2");}
+    await button("按数量选择");await driver.wait(async()=>await(await element("button[data-action='knowledge-group-run']")).isEnabled(),5000);
     await button("开始挖掘良品知识");
     await driver.wait(async()=>(await (await element(".iad-knowledge-jobs")).getText()).includes("已完成"),15000);
     await button("模型审计");await gridCount(2);
@@ -968,22 +981,30 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await button("添加数据集"); await button("取消");
     assert.equal(await driver.executeScript("return document.activeElement.textContent"),"添加数据集","关闭导入弹窗应返回发起按钮焦点");
     await button("知识挖掘"); await button("良品");
-    await (await driver.findElement(By.xpath("//summary[normalize-space(.)='模型设置']"))).click();
-    await (await element("input[aria-label='知识挖掘模型']")).sendKeys("test-next");
+    await select("来源范围","all");
+    {const count=await element("input[aria-label='挖掘图像数量']");await count.clear();await count.sendKeys("2");}
+    await button("按数量选择");await driver.wait(async()=>await(await element("button[data-action='knowledge-group-run']")).isEnabled(),5000);
     await button("开始挖掘良品知识");
     let nextNormal;
     await driver.wait(async()=>{const response=await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json();nextNormal=response.knowledge;return nextNormal?.version_id!==published.knowledge.version_id;},15000);
+    const frozenNormal=nextNormal;
+    const followupResponse=await fetch(base+"/api/iad/knowledge/start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({kind:"normal",knowledge_preset:[frozenNormal.version_id],image_count:frozenNormal.observed_source_ids.length,images:frozenNormal.observed_source_ids})});
+    assert.equal(followupResponse.status,200,await followupResponse.clone().text());const followupJob=await followupResponse.json();
+    await driver.wait(async()=>{const job=await(await fetch(`${base}/api/iad/knowledge/status/${followupJob.run_id}`)).json();assert.ok(!["FAILED","PARTIAL"].includes(job.status),JSON.stringify(job.errors));if(job.status==="COMPLETED"){nextNormal=(await(await fetch(`${base}/api/iad/knowledge?version_id=${job.knowledge_version_id}`)).json()).knowledge;return true;}return false;},15000);
+    await button("刷新");
     await button("知识挖掘"); await button("异常");
-    await select("依据良品知识版本",published.knowledge.version_id);
-    await button("开始挖掘不良品知识");
+    await select("依据良品知识版本",frozenNormal.version_id);
+    {const count=await element("input[aria-label='挖掘图像数量']");await count.clear();await count.sendKeys("1");}
+    await button("按数量选择");await driver.wait(async()=>await(await element("button[data-action='knowledge-group-run']")).isEnabled(),5000);
+    await button("开始挖掘异常知识");
     let defect;
     await driver.wait(async()=>{defect=(await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=defect`)).json()).knowledge;return !!defect;},15000);
-    assert.equal(defect.normal_version_id,published.knowledge.version_id);
-    await driver.wait(async()=>(await (await element("[data-field='knowledge-normal-version']")).getText()).includes(published.knowledge.version_id),15000);
+    assert.equal(defect.normal_version_id,frozenNormal.version_id);
+    await driver.wait(async()=>(await (await element("[data-field='knowledge-normal-version']")).getText()).includes(frozenNormal.version_id),15000);
     await select("依据良品知识版本",nextNormal.version_id);
     await driver.navigate().refresh();
     await driver.wait(async()=>await (await element("select[aria-label='依据良品知识版本']")).getAttribute("value")===nextNormal.version_id,10000);
-    assert.ok((await (await element("[data-field='knowledge-normal-version']")).getText()).includes(published.knowledge.version_id),"下次执行的正常版本不能改写已发布不良知识的依赖展示");
+    assert.ok((await (await element("[data-field='knowledge-normal-version']")).getText()).includes(frozenNormal.version_id),"下次执行的正常版本不能改写已发布不良知识的依赖展示");
     await button("标注核验");
     await driver.wait(async()=>(await (await element(".iad-knowledge-content")).getText()).includes("证据不足"),10000);
     await viewportSize(375,812);
@@ -997,7 +1018,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
       const control = await element(query); await driver.wait(() => control.isEnabled(), 5000);
       await (await element(`${query} option[value='${version}']`)).click();
     }
-    await selectAuditKnowledge("良品", published.knowledge.version_id);
+    await selectAuditKnowledge("良品", frozenNormal.version_id);
     await selectAuditKnowledge("不良品", defect.version_id);
     const beforeVersionAudit = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(dent.sample_id)}`)).json();
     async function auditSelectedVersion(model) {
@@ -1016,7 +1037,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
       return job;
     }
     const oldVersionAudit = await auditSelectedVersion("test-old-knowledge");
-    assert.equal(oldVersionAudit.normal_version_id, published.knowledge.version_id);
+    assert.equal(oldVersionAudit.normal_version_id, frozenNormal.version_id);
     assert.equal(oldVersionAudit.defect_version_id, defect.version_id);
     await driver.navigate().refresh();
     await button("结果");
@@ -1030,7 +1051,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
       selectedSingleAudit = result.jobs.find(job => !beforeSingleRuns.has(job.run_id) && job.sample_ids.length === 1 && job.sample_ids[0] === dent.sample_id);
       return selectedSingleAudit?.status === "COMPLETED";
     }, 15000);
-    assert.equal(selectedSingleAudit.normal_version_id, published.knowledge.version_id, "单图审计必须使用页面选择的历史良品版本");
+    assert.equal(selectedSingleAudit.normal_version_id, frozenNormal.version_id, "单图审计必须使用页面选择的历史良品版本");
     assert.equal(selectedSingleAudit.defect_version_id, defect.version_id, "单图审计必须使用页面选择的不良品版本");
     assert.equal(selectedSingleAudit.model_name, "test-old-knowledge", "单图审计与批量审计共享所选模型");
     await button("模型审计作业");
@@ -1077,9 +1098,10 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     assert.equal(reviewedAll.human_reviewed_count,3);
     assert.equal(reviewedAll.quality.human_verification_coverage.numerator,2,"人工不确定不能算成已核验真值");
 
+    const historySources=(await(await fetch(`${base}/api/iad/knowledge/sources?dataset_id=${dataset.dataset_id}&kind=normal`)).json()).items;
     for(let index=0;index<31;index++) {
       const response=await fetch(base+"/api/iad/knowledge/start",{method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({dataset_id:dataset.dataset_id,kind:"normal",model_name:"test-next"})});
+        body:JSON.stringify({kind:"normal",image_count:historySources.length,images:historySources.map(item=>item.sample_id)})});
       assert.equal(response.status,200,await response.clone().text());const created=await response.json();
       await driver.wait(async()=>{
         const current=await(await fetch(`${base}/api/iad/knowledge/status/${created.run_id}`)).json();
@@ -1100,51 +1122,19 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     assert.equal((await driver.findElements(By.xpath("//button[normalize-space(.)='修订判据']"))).length, 0, "固定历史版本只读回看");
     await select("知识版本", "");
     await driver.wait(async () => (await (await element(".iad-knowledge-content")).getText()).includes("可见蓝色表面"), 5000);
-    const beforeCorrection = (await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json()).knowledge;
-    const beforeCorrectionReport = await (await fetch(`${base}/api/iad/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
-    await button("修订判据");
-    const proposedCriterion = "补充核验：均匀光照变化不应判为异常";
-    const correctionInput = await element("textarea[aria-label='判据修订建议']");
-    await correctionInput.clear(); await correctionInput.sendKeys(proposedCriterion);
-    await viewportSize(375, 812);
-    assert.ok(await driver.executeScript("const d=document.querySelector('dialog[aria-label=\"修订判据\"]');return d.scrollWidth<=d.clientWidth+1"), "375px修订表单不能横向溢出");
-    await fs.writeFile(path.join(workspace, "runs/browser/knowledge-correction-375.png"), await driver.takeScreenshot(), "base64");
-    assert.deepEqual((await (await fetch(`${base}/api/iad/knowledge?version_id=${beforeCorrection.version_id}`)).json()).knowledge, beforeCorrection, "输入人工候选不能改写知识事实");
-    await button("提交核验");
-    await viewportSize(1440, 1100);
-    let afterCorrection;
-    await driver.wait(async () => {
-      afterCorrection = (await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json()).knowledge;
-      return afterCorrection.version_id !== beforeCorrection.version_id;
-    }, 10000);
-    assert.equal(afterCorrection.parent_version_id, beforeCorrection.version_id);
-    assert.deepEqual(afterCorrection.corrections, [{ check_id: beforeCorrection.checks[0].check_id, instruction: proposedCriterion }]);
-    assert.equal(afterCorrection.checks[0].criterion, "可见蓝色表面", "实际判据来自模型图像核验结果，不能直接替换成人工文字");
-    await (await driver.wait(until.elementLocated(By.xpath("//summary[normalize-space(.)='人工修订候选']")), 5000)).click();
-    await driver.wait(async () => (await (await element(".iad-knowledge-content")).getText()).includes(proposedCriterion), 5000);
-    const afterCorrectionReport = await (await fetch(`${base}/api/iad/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
-    assert.equal(afterCorrectionReport.human_reviewed_count, beforeCorrectionReport.human_reviewed_count);
-    assert.deepEqual((await (await fetch(`${base}/api/iad/knowledge?version_id=${beforeCorrection.version_id}`)).json()).knowledge, beforeCorrection);
-    const reviseAgain = await driver.findElement(By.xpath("//button[normalize-space(.)='修订判据']"));
-    await driver.wait(() => reviseAgain.isEnabled(), 5000); await reviseAgain.click();
-    const retainedDraft = "保留此候选，等待确认新的基准版本";
-    const retainedInput = await element("textarea[aria-label='判据修订建议']");
-    await retainedInput.clear(); await retainedInput.sendKeys(retainedDraft);
-    const concurrentJob = await (await fetch(`${base}/api/iad/knowledge/start`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataset_id: dataset.dataset_id, kind: "normal", model_name: "test-concurrent-correction" }) })).json();
-    let concurrentVersion;
-    await driver.wait(async () => {
-      const status = await (await fetch(`${base}/api/iad/knowledge/status/${concurrentJob.run_id}`)).json();
-      assert.ok(!["FAILED", "PARTIAL"].includes(status.status), JSON.stringify(status.errors));
-      concurrentVersion = status.knowledge_version_id; return status.status === "COMPLETED";
-    }, 10000);
-    await button("提交核验");
-    await driver.wait(async () => (await (await element("dialog[aria-label='修订判据'] [role='alert']")).getText()).includes("知识版本已变化"), 5000);
-    assert.equal(await retainedInput.getAttribute("value"), retainedDraft, "基准冲突不能丢失人工候选");
-    await driver.wait(async () => (await (await element(".iad-knowledge-content")).getText()).includes(concurrentVersion), 10000);
-    await button("取消");
-    assert.equal(await driver.executeScript("return document.activeElement?.textContent"), "修订判据", "后台刷新后关闭修订表单回到当前入口");
-    assert.equal((await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json()).knowledge.version_id, concurrentVersion);
-    const currentKnowledge = (await (await fetch(`${base}/api/iad/knowledge?version_id=${concurrentVersion}`)).json()).knowledge;
+    const currentKnowledge = (await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json()).knowledge;
+    const concurrentVersion=currentKnowledge.version_id;
+    const beforeSelectionCalls=modelRequests.length;
+    const beforeSelectionReport=await(await fetch(`${base}/api/iad/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
+    await button("作为预设继续选图");
+    assert.equal(await(await element("select[aria-label='知识预设']")).getAttribute("value"),currentKnowledge.version_id);
+    await viewportSize(375,812);
+    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"),"375px选图配置保持可用");
+    await fs.writeFile(path.join(workspace,"runs/browser/knowledge-selection-375.png"),await driver.takeScreenshot(),"base64");
+    await viewportSize(1440,1100);
+    assert.equal(modelRequests.length,beforeSelectionCalls,"选预设不自动运行模型");
+    assert.deepEqual((await(await fetch(`${base}/api/iad/knowledge?version_id=${currentKnowledge.version_id}`)).json()).knowledge,currentKnowledge);
+    assert.equal((await(await fetch(`${base}/api/iad/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json()).human_reviewed_count,beforeSelectionReport.human_reviewed_count,"知识配置不增加人工裁决");
     const sourcePath = path.join(root, "images", currentKnowledge.sources[0].sample_id.slice(dataset.dataset_id.length + 1));
     const sourcePixels = await fs.readFile(sourcePath);
     execFileSync(bridge.pythonPath, ["-c", "from PIL import Image;import sys;Image.new('RGB',(320,240),'purple').save(sys.argv[1])", sourcePath]);
@@ -1215,6 +1205,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     throw error;
   } finally {
     if (releaseRegion) releaseRegion();
+    for(const [key,value] of [["LIVE_VLM_MODEL",previousModel],["LIVE_VLM_CAPACITY_MODE",previousCapacity],["IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES",previousPolicy]]){if(value===undefined)delete process.env[key];else process.env[key]=value;}
     if (previousEndpoint === undefined) delete process.env.LIVE_VLM_ENDPOINT;
     else process.env.LIVE_VLM_ENDPOINT = previousEndpoint;
     if (driver) await driver.quit();

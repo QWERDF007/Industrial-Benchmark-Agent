@@ -12,7 +12,7 @@ import pytest
 from pathlib import Path
 from datetime import datetime, timezone
 from PIL import Image
-from iad_core.workbench.vision import DEFAULT_MODEL
+from iad_core.workbench.vision import VlmClient
 
 from iad_core.storage.database import Database
 from iad_core.storage.models import InspectionTask, Sample
@@ -27,7 +27,7 @@ def test_live_vlm_e2e_pipeline(tmp_path):
     endpoint = os.environ["LIVE_VLM_ENDPOINT"].rstrip("/")
     api_key = os.environ["LIVE_VLM_KEY"]
     image_path = Path(os.environ["IAD_LIVE_IMAGE_PATH"]).resolve(strict=True)
-    model = os.environ.get("LIVE_VLM_MODEL", DEFAULT_MODEL)
+    model = VlmClient.resolve_model()
     sample_id = "live:" + image_path.name
     with Image.open(image_path) as image:
         width, height = image.size

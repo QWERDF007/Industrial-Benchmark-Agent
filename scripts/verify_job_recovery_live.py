@@ -12,6 +12,9 @@ from pathlib import Path
 import httpx
 
 from iad_core.entry import dataset_import, sample_get
+from iad_core.knowledge.models import KnowledgeSourceQuery
+from iad_core.knowledge.query import KnowledgeReader
+from iad_core.knowledge.requests import MiningStart
 from iad_core.storage.database import Database
 from iad_core.workbench.runtime import WorkbenchRuntime
 
@@ -21,32 +24,38 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=Path('runs/verification/job-recovery') / str(time.time_ns()))
     args = parser.parse_args()
-    if not os.environ.get('LIVE_VLM_ENDPOINT') or not os.environ.get('LIVE_VLM_KEY'):
-        parser.error('Export LIVE_VLM_ENDPOINT and LIVE_VLM_KEY before verification')
+    if any(not os.environ.get(name) for name in ('LIVE_VLM_ENDPOINT', 'LIVE_VLM_KEY', 'LIVE_VLM_MODEL')):
+        parser.error('Export LIVE_VLM_ENDPOINT, LIVE_VLM_KEY and LIVE_VLM_MODEL before verification')
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     fixture = Path(__file__).resolve().parents[1] / 'apps/iad-harness/test/fixtures/knowledge_dataset.py'
     subprocess.run([sys.executable, str(fixture), str(output)], check=True)
+    from PIL import Image, ImageDraw
+    for index in range(18):
+        image = Image.new('RGB', (320, 240), (190 + index,) * 3)
+        draw = ImageDraw.Draw(image)
+        draw.rounded_rectangle((40, 60, 280, 180), radius=12, fill=(45 + index,) * 3)
+        for x in (100, 220):
+            draw.ellipse((x-15, 105, x+15, 135), fill=(190 + index,) * 3)
+        image.save(output / 'images' / f'reference-{index:02}.png')
     db_path = str(output / 'verification.db')
     dataset = dataset_import({'format': 'labelme', 'name': '合成部件恢复验证', 'image_dir': str(output / 'images'),
                               'annotation_dir': str(output / 'labels')}, db_path)
     target_id = dataset['dataset_id'] + ':part-2.png'
     before = sample_get({'sample_id': target_id}, db_path)
+    os.environ['IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES'] = '2'  # Isolated synthetic verification policy.
     runtime = WorkbenchRuntime(Database(db_path))
     knowledge_jobs = []
-    normal = None
     try:
-        for kind in ('normal', 'defect'):
-            request = {'dataset_id': dataset['dataset_id'], 'kind': kind}
-            if normal:
-                request['normal_version_id'] = normal
-            job = runtime.knowledge.start(**request)
-            runtime.knowledge.wait(job['run_id'], 300)
-            status = runtime.knowledge.status(job['run_id'])
-            knowledge_jobs.append(status)
-            assert status['status'] == 'COMPLETED', status.get('errors')
-            if kind == 'normal':
-                normal = status['knowledge_version_id']
+        sources = KnowledgeReader(Database(db_path)).source_page(KnowledgeSourceQuery(
+            dataset_id=dataset['dataset_id'], kind='normal', page_size=20))
+        images = [source.sample_id for source in sources.items]
+        job = runtime.knowledge.start(request=MiningStart(image_count=len(images), images=images), kind='normal')
+        runtime.knowledge.wait(job['run_id'], 300)
+        status = runtime.knowledge.status(job['run_id'])
+        knowledge_jobs.append(status)
+        assert status['status'] == 'COMPLETED', status.get('errors')
+        normal = status['knowledge_version_id']
     finally:
         runtime.close()
     endpoint = os.environ['LIVE_VLM_ENDPOINT'].removesuffix('/chat/completions').rstrip('/')
@@ -87,8 +96,8 @@ def main():
         env={**os.environ, 'LIVE_VLM_ENDPOINT': f'http://127.0.0.1:{server.server_port}/v1'})
     runtime = None
     try:
-        request = {'dataset_id': dataset['dataset_id'], 'normal_version_id': normal,
-                   'defect_version_id': knowledge_jobs[-1]['knowledge_version_id']}
+        request = {'dataset_id': dataset['dataset_id'], 'sample_ids': [dataset['dataset_id'] + f':part-{index}.png' for index in range(3)], 'normal_version_id': normal,
+                   'defect_version_id': None}
         worker.stdin.write(json.dumps({'request_id': 'start', 'operation': 'audit_start',
                                        'arguments': request, 'db_path': db_path}) + '\n')
         worker.stdin.flush()

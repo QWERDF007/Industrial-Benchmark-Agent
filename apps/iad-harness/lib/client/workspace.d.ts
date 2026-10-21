@@ -1,10 +1,20 @@
 import type { Filters, InspectionReference, KnowledgeSnapshot } from "../shared/contracts.js";
 import { type ImageView, type InspectionSelection, type InspectionTransform, type InspectionView } from "./inspection.js";
-import type { InspectionSession } from "./inspection-session.js";
+import type { WorkbenchSession } from "./workbench-session.js";
 import { type PageId, type WorkbenchLocation } from "../shared/navigation.js";
 import { type KnowledgeStatusFilter } from "../shared/knowledge-presentation.js";
 export { pages, type PageId } from "../shared/navigation.js";
 interface ViewState {
+    miningSourceMode: "uncovered" | "all" | "recheck";
+    scopeRunId: string;
+    scopeSessionId: string;
+    miningContinuous: boolean;
+    conflictId: string;
+    miningCount: string;
+    miningImages: string[];
+    miningPreset: string;
+    miningSearch: string;
+    miningPage: number;
     filters: Filters;
     page: number;
     selected: string;
@@ -40,7 +50,7 @@ interface Layout {
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export declare class Workspace {
     private readonly conversation;
-    constructor(conversation: InspectionSession);
+    constructor(conversation: WorkbenchSession);
     private state;
     private listeners;
     private layout?;
@@ -53,7 +63,17 @@ export declare class Workspace {
     private defaults;
     getSnapshot: () => WorkspaceState;
     subscribe: (listener: () => void) => () => void;
-    view(page: PageId, kind?: import("../shared/domain.generated.js").Kind): {
+    view(page: PageId, kind?: import("../shared/domain.generated.js").Kind5): {
+        miningSourceMode: "uncovered" | "all" | "recheck";
+        scopeRunId: string;
+        scopeSessionId: string;
+        miningContinuous: boolean;
+        conflictId: string;
+        miningCount: string;
+        miningImages: string[];
+        miningPreset: string;
+        miningSearch: string;
+        miningPage: number;
         filters: Filters;
         page: number;
         selected: string;
@@ -77,6 +97,7 @@ export declare class Workspace {
     selectDataset(datasetId: string, replace?: boolean): void;
     updateView(page: PageId, patch: Partial<ViewState>, replace?: boolean): void;
     ask(reference: InspectionReference, selection: InspectionSelection | null, transform: InspectionTransform, question: string): Promise<void>;
+    mineScope(scopeRunId: string, imageCount: number, images: string[]): Promise<void>;
     openSession(sessionId: string): Promise<void>;
     private commit;
     private restore;

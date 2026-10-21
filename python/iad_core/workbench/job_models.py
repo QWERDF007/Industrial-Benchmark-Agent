@@ -6,6 +6,18 @@ from iad_core.advisory.analysis import AnalysisModel
 from iad_core.storage.models import sample_uuid
 from iad_core.workbench.calls import ModelCallSummary
 
+JobStatus = Literal['PENDING', 'RUNNING', 'COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED', 'INTERRUPTED']
+
+
+class JobObservationProgress(AnalysisModel):
+    planned_sources: int = Field(ge=0)
+    observed_sources: int = Field(ge=0)
+    complete_sources: int = Field(ge=0)
+    planned_visuals: int = Field(ge=0)
+    observed_visuals: int = Field(ge=0)
+    published_sources: int = Field(ge=0)
+
+
 JobKind = Literal['MODEL_AUDIT', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE']
 
 
@@ -51,7 +63,8 @@ class JobSnapshot(AnalysisModel):
     origin_session_id: Optional[str] = None
     root_run_id: str
     parent_run_id: Optional[str] = None
-    status: Literal['PENDING', 'RUNNING', 'COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED', 'INTERRUPTED']
+    status: JobStatus
+    observation_progress: Optional[JobObservationProgress] = None
     cancel_requested: bool = False
     sample_ids: list[str]
     completed_sample_ids: list[str]

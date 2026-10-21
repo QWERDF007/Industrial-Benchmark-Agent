@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group
 import json
 import re
 from pathlib import Path
@@ -30,7 +31,7 @@ def test_defect_mining_separates_frozen_normal_references_from_current_visual_ci
             roi = next(e for e in evidence if e['role'] == 'roi' and e['representation'] == 'raw')
             comparison = next(e for e in evidence if e['role'] == 'normal' and e['source_sha256'] != roi['source_sha256'])
             result = {'findings': [{'finding_id': target['finding_id'], 'status': 'supported',
-                'affected_check_titles': ['孔内外观'], 'description': '孔内出现红色覆盖', 'normal_explanation': '需排除有色反光',
+                'affected_check_titles': ['全图外轮廓'] if payload['normal_version_id'] else ['孔内外观'], 'description': '孔内出现红色覆盖', 'normal_explanation': '需排除有色反光',
                 'limitations': [], 'evidence_ids': [roi['evidence_id'], comparison['evidence_id']], 'conflicts': []}
                 for target in payload['findings']]}
         else:
@@ -48,22 +49,24 @@ def test_defect_mining_separates_frozen_normal_references_from_current_visual_ci
                 'support_evidence_ids': support, 'counter_evidence_ids': [], 'limitations': [], 'status': 'supported',
             }], 'suspects': [] if defect else [{'evidence_id': evidence[-1]['evidence_id'],
                 'bbox_1000': [250, 375, 375, 625], 'description': '孔内红色区域', 'normal_explanation': '可能反光'}], 'limitations': []}
+        if body['response_format']['json_schema']['name'] == 'KnowledgeDraft' and not defect:
+            result['checks'].append(dict(result['checks'][0], title='全图外轮廓', location='外轮廓', criterion='主体轮廓完整', counter_evidence_ids=[]))
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=config.dataset.id, kind='normal', model_name='test-mllm')
+        job = service.start(request=selected_group(db, config.dataset.id, 'normal'), kind='normal', model_name='test-mllm')
         service.wait(job['run_id'], 5)
         assert service.status(job['run_id'])['status'] == 'COMPLETED'
         normal = knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge']
         assert normal['checks'][0]['counter_evidence_ids']
         assert normal['findings'][0]['proposal']['evidence_id']
-        job = service.start(dataset_id=config.dataset.id, kind='defect', normal_version_id=normal['version_id'], model_name='test-mllm')
+        job = service.start(request=selected_group(db, config.dataset.id, 'defect', knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
         service.wait(job['run_id'], 5)
         assert service.status(job['run_id'])['status'] == 'COMPLETED', service.status(job['run_id'])['errors']
         assert observed
         defect = knowledge_get({'dataset_id': config.dataset.id, 'kind': 'defect'}, db.db_path)['knowledge']
-        assert defect['checks'][0]['status'] == 'supported'
+        assert defect['checks'][0]['status'] == 'provisional', '单个异常来源不能提供多来源支持'
         assert defect['findings'][0]['proposal'] == normal['findings'][0]['proposal'], 'Published provenance remains intact'
         assert knowledge_get({'version_id': normal['version_id']}, db.db_path)['knowledge'] == normal
     finally:

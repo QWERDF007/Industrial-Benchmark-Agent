@@ -88,10 +88,10 @@ export async function verifyWorkbenchSurfaces(driver, output) {
         await button("知识条目");
         await driver.wait(() => driver.executeScript("return !document.querySelector('.iad-knowledge-page').textContent.includes('正在读取知识…')"), 10000);
         await capture(label + "-checks", ".iad-knowledge-content input");
-        await button("修订判据");
-        await capture(label + "-revision", "dialog[open] textarea", "dialog[open]");
-        await button("取消");
-        assert.equal(await driver.executeScript("return document.activeElement.textContent"), "修订判据");
+        await capture(label + "-group", "input[aria-label='挖掘图像数量']");
+        await button("作为预设继续选图");
+        assert.ok(await (await element("select[aria-label='知识预设']")).getAttribute("value"));
+        await capture(label + "-preset", "select[aria-label='知识预设']");
         await button("版本"); await capture(label + "-versions", ".iad-knowledge-content button");
         await button(label === "良品" ? "待核实" : "标注核验");
         await capture(label + "-findings", ".iad-knowledge-content button");
@@ -136,7 +136,7 @@ export async function verifyWorkbenchSurfaces(driver, output) {
       await button("关闭"); await (await element("button[aria-label='关闭图像详情']")).click();
     }
   }
-  assert.equal(results.length, 184, "23 real detail surfaces × four viewports × two themes at 200% text zoom");
+  assert.equal(results.length, 200, "25 real detail surfaces × four viewports × two themes at 200% text zoom");
   await viewport(driver, 1440, 1100); await textZoom(driver, 1);
   for (const label of ["良品", "异常"]) { await navigate("知识挖掘"); await button(label); await button("知识条目"); }
   await navigate("人工复核"); await button("复核队列");

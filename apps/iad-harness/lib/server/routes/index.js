@@ -51,6 +51,12 @@ export function createIadHttpHandler(bridge) {
             };
             if (pathname === "/api/iad/datasets" && method === "GET")
                 return await call("dataset_list");
+            if (pathname === "/api/iad/review/knowledge" && method === "GET")
+                return await call("knowledge_review_context", query);
+            if (pathname === "/api/iad/review/knowledge" && method === "POST")
+                return await call("knowledge_review_submit", body);
+            if (pathname === "/api/iad/review/knowledge/queue" && method === "GET")
+                return await call("knowledge_review_queue", query);
             if (pathname === "/api/iad/review/history" && method === "GET")
                 return await call("review_history", query);
             if (pathname === "/api/iad/datasets/import" && method === "POST")
@@ -112,17 +118,40 @@ export function createIadHttpHandler(bridge) {
             const audit = pathname.match(/^\/api\/iad\/audit\/(status|cancel|retry)\/([^/]+)$/);
             if (audit && ((audit[1] === "status" && method === "GET") || (audit[1] !== "status" && method === "POST")))
                 return await call("audit_" + audit[1], { ...body, run_id: decodeURIComponent(audit[2]) });
+            if (pathname === "/api/iad/knowledge/scopes/open" && method === "POST")
+                return await call("knowledge_scope_open", { request: body });
+            const scope = pathname.match(/^\/api\/iad\/knowledge\/scopes\/([^/]+)(?:\/(start|stop|resume))?$/);
+            if (scope) {
+                const scope_run_id = decodeURIComponent(scope[1]);
+                if (!scope[2] && method === "GET")
+                    return await call("knowledge_scope_get", { scope_run_id });
+                if (scope[2] === "start" && method === "POST")
+                    return await call("knowledge_start", { request: body, scope_run_id });
+                if ((scope[2] === "stop" || scope[2] === "resume") && method === "POST")
+                    return await call("knowledge_scope_" + scope[2], { scope_run_id });
+            }
             if (pathname === "/api/iad/knowledge" && method === "GET")
                 return await call("knowledge_get", query);
+            if (pathname === "/api/iad/knowledge/details" && method === "GET")
+                return await call("knowledge_details", query);
             if (pathname === "/api/iad/knowledge/sources" && method === "GET")
                 return await call("knowledge_sources", query);
             if (pathname === "/api/iad/knowledge/start" && method === "POST")
-                return await call("knowledge_start", body);
+                return await call("knowledge_start", { request: body });
             if (pathname === "/api/iad/knowledge/jobs" && method === "GET")
                 return await call("knowledge_list", query);
             const knowledge = pathname.match(/^\/api\/iad\/knowledge\/(status|cancel|retry)\/([^/]+)$/);
             if (knowledge && ((knowledge[1] === "status" && method === "GET") || (knowledge[1] !== "status" && method === "POST"))) {
                 return await call("knowledge_" + knowledge[1], { ...body, run_id: decodeURIComponent(knowledge[2]) });
+            }
+            const observations = pathname.match(/^\/api\/iad\/knowledge\/observations\/([^/]+)(?:\/evidence\/([^/]+))?$/);
+            if (observations && method === "GET") {
+                const run_id = decodeURIComponent(observations[1]);
+                if (!observations[2])
+                    return await call("knowledge_observations", { ...query, run_id });
+                const info = await bridge.execute("knowledge_evidence", { run_id, evidence_id: decodeURIComponent(observations[2]) });
+                await sendMedia(res, info);
+                return;
             }
             const knowledgeEvidence = pathname.match(/^\/api\/iad\/knowledge\/evidence\/([^/]+)\/([^/]+)$/);
             if (knowledgeEvidence && method === "GET") {

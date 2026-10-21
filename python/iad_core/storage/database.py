@@ -287,8 +287,13 @@ class Database:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """)
+            if 'scope_json' not in {row[1] for row in cursor.execute('PRAGMA table_info(agent_runs)')}:
+                cursor.execute('ALTER TABLE agent_runs ADD COLUMN scope_json TEXT')
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_agent_runs_task ON agent_runs(task_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_agent_runs_session ON agent_runs(session_id)")
+            cursor.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_scope_active_session
+                ON agent_runs(session_id,json_extract(scope_json,'$.dataset_id'),json_extract(scope_json,'$.kind'))
+                WHERE scope_json IS NOT NULL AND status='ACTIVE' AND session_id!='workbench'""")
 
             # 14. audit_suggestions (Non-authoritative multimodal LLM advice, Tickets RP-14, S08)
             cursor.execute("""
@@ -360,6 +365,13 @@ class Database:
                 )
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_knowledge_dataset_kind ON knowledge_versions(dataset_id,kind,created_at)")
+            cursor.execute("""CREATE TABLE IF NOT EXISTS knowledge_review_events (
+                submission_id TEXT PRIMARY KEY,
+                version_id TEXT NOT NULL REFERENCES knowledge_versions(version_id) ON DELETE CASCADE,
+                conflict_id TEXT NOT NULL,
+                event_json TEXT NOT NULL
+            )""")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_knowledge_review_conflict ON knowledge_review_events(conflict_id)")
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS knowledge_heads (
                     dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id),

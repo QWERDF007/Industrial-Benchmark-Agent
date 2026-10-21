@@ -56,9 +56,11 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
       let tool = !outputs.length ? { name: "model_audit_context", arguments: reference }
         : outputs.length < 3 && image ? { name: "model_audit_evidence", arguments: { suggestion_id: reference.suggestion_id, evidence_id: image.evidence_id } } : null;
       if (outputs.length === 3) tool = { name: "knowledge_get", arguments: { dataset_id: reference.dataset_id, kind: "normal" } };
-      if (last?.name === "knowledge_get") tool = { name: "knowledge_mine_normal", arguments: { dataset_id: reference.dataset_id, model_name: "test-mllm",
-        sample_ids: value.knowledge.sources.map(source => source.sample_id),
-        base_version_id: value.knowledge.version_id, corrections: [{ check_id: value.knowledge.checks[0].check_id, instruction: "均匀亮度变化可能正常，需结合位置核验" }] } };
+      if (last?.name === "knowledge_get") tool = { name: "knowledge_sources", arguments: { dataset_id: reference.dataset_id, kind: "normal" } };
+      if (last?.name === "knowledge_sources") {
+        const sources = JSON.parse(last.content), previous = JSON.parse(outputs.find(item => item.name === "knowledge_get").content).knowledge;
+        tool = { name: "knowledge_mine_normal", arguments: { image_count: sources.items.length, images: sources.items.map(item => item.sample_id), knowledge_preset: JSON.parse(outputs.find(item=>item.name==="knowledge_get").content).freshness.status==="current"?[previous.version_id]:[] } };
+      }
       if (["knowledge_mine_normal", "knowledge_job_status"].includes(last?.name)) tool = value?.status === "COMPLETED"
         ? { name: "model_audit_start", arguments: { dataset_id: reference.dataset_id, normal_version_id: value.knowledge_version_id, sample_ids: [reference.sample_id], model_name: "test-mllm" } }
         : { name: "knowledge_job_status", arguments: { run_id: value.run_id, wait_seconds: 5 } };
@@ -86,11 +88,15 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
           answer.revisions = parent.checks.map(check => ({ previous_check_id: check.check_id, current_check_titles: ["孔内外观"], reason: "来源仍支持原孔内背景判据" }));
         }
       }
+      else if (body.response_format.json_schema.name === "KnowledgeObservations") {
+        const scope=JSON.parse(content[0].text.split("冻结观察请求：")[1].split("\n请根据图像")[0]);
+        answer={observations:scope.sources.flatMap(source=>scope.checks.map(check=>({sample_id:source.sample_id,check_id:check.check_id,status:"supports",description:"实际图像符合判据",position_analysis:"对应部位",illumination_analysis:"允许亮度变化",normal_explanation:"亮度差异",evidence_ids:source.raw_evidence_ids,suspects:[]})))};
+      }
       else if (body.response_format.json_schema.name === "KnowledgeVerification") {
         const payload = JSON.parse(content[0].text.split("待核验疑点：")[1].split("\n请根据图像")[0]);
-        answer = { findings: payload.findings.map(target => ({ finding_id: target.finding_id, status: "insufficient", affected_check_titles: [],
-          description: "仍需独立证据", normal_explanation: "不能排除反光", limitations: ["合成验证"], conflicts: [],
-          evidence_ids: [target.regions.find(region => region.image.representation === "raw").image.evidence_id] })) };
+        answer = { findings: payload.findings.map(target => ({ finding_id: target.finding_id, status: "refuted", affected_check_titles: ["孔内外观"],
+          description: "独立比较支持正常光照解释", normal_explanation: "允许亮度变化", limitations: ["合成验证"], conflicts: [],
+          evidence_ids: evidence.filter(item=>item.representation==="raw").map(item=>item.evidence_id) })) };
       } else {
         const checks = JSON.parse(content[0].text.split("冻结知识：")[1].split("\n")[0]).checks;
         const regions = evidence.filter(item => item.role === "roi" && item.representation === "raw");
@@ -115,7 +121,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
   const patch = path.join(root, "host.patch.yml");
   await fs.writeFile(patch, `- id: webserver\n  config:\n    host: 127.0.0.1\n    port: ${port}\n- id: llm-pi-ai\n  config:\n    providers:\n      handoff:\n        api: openai-completions\n        baseURL: ${JSON.stringify(endpoint)}\n        apiKeyEnv: IAD_HANDOFF_TEST_KEY\n        models:\n          - id: test-mllm\n            input: [text, image]\n            contextWindow: 262144\n- id: agent-default-model\n  config:\n    provider: handoff\n    model: test-mllm\n- insert:\n    - id: industrial-harness-plugin\n      name: '@industrial-benchmark/iad-harness'\n      config:\n        cwd: ${JSON.stringify(workspace)}\n        dbPath: ${JSON.stringify(path.join(root, "test.db"))}\n`);
   const host = spawn(process.env.IAD_NODE_PATH || process.execPath, [path.join(workspace, "node_modules/@deepseek-ai/dsh/lib/bin.js"), "--profile", "web", "--patch", patch, "--port", String(port), "--no-open"],
-    { cwd: workspace, env: { ...process.env, DSH_HOME: path.join(root, "home"), LIVE_VLM_ENDPOINT: endpoint, LIVE_VLM_KEY: "synthetic-test-credential", IAD_HANDOFF_TEST_KEY: "synthetic-test-credential" }, stdio: ["ignore", "pipe", "pipe"] });
+    { cwd: workspace, env: { ...process.env, DSH_HOME: path.join(root, "home"), LIVE_VLM_ENDPOINT: endpoint, LIVE_VLM_MODEL: "test-mllm", LIVE_VLM_CAPACITY_MODE: "vllm_tokenize", IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES: "2", LIVE_VLM_KEY: "synthetic-test-credential", IAD_HANDOFF_TEST_KEY: "synthetic-test-credential" }, stdio: ["ignore", "pipe", "pipe"] });
   let log = ""; host.stdout.on("data", data => { log += data; }); host.stderr.on("data", data => { log += data; });
   let driver;
   try {
@@ -185,7 +191,8 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     await (await element("select[aria-label='当前数据集'] option[value='" + dataset.dataset_id + "']")).click();
     await delay(5500);
     assert.equal(await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label"), "图像浏览", "侧栏保留固定名称，不附加待审计统计");
-    let job = await api("/knowledge/start", { dataset_id: dataset.dataset_id, kind: "normal", model_name: "test-mllm" });
+    const normalSources=(await api(`/knowledge/sources?dataset_id=${dataset.dataset_id}&kind=normal`)).items;
+    let job = await api("/knowledge/start", { kind: "normal", image_count: normalSources.length, images: normalSources.map(item=>item.sample_id) });
     assert.equal(await (await element("button[aria-label^='知识挖掘']")).getAttribute("aria-label"), "知识挖掘");
     await (await element("button[aria-label^='知识挖掘']")).click();
     await driver.wait(() => driver.executeScript("return document.querySelector('.iad-workbench h1')?.textContent==='知识挖掘'"), 5000);
@@ -238,8 +245,8 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     const revisionBase = JSON.parse(toolMessages(agentRequests.at(-1)).find(message => message.name === "knowledge_get").content).knowledge;
     const revisionJob = await api(`/knowledge/status/${executions[0].run_id}`);
     const revisedKnowledge = (await api(`/knowledge?version_id=${revisionJob.knowledge_version_id}`)).knowledge;
-    assert.equal(revisedKnowledge.parent_version_id, revisionBase.version_id);
-    assert.deepEqual(revisedKnowledge.corrections, [{ check_id: revisionBase.checks[0].check_id, instruction: "均匀亮度变化可能正常，需结合位置核验" }]);
+    assert.equal(revisedKnowledge.parent_version_id, null, "旧来源产生新审计候选后，明确重新归纳不静默沿用失效预设");
+    assert.deepEqual(revisedKnowledge.corrections, [], "Agent续用知识不伪造人工处置事件");
     for (const execution of executions) assert.equal(execution.origin_session_id, sessionId, "Jobs must retain their actual initiating Session");
     const latest = await api(`/sample/${encodeURIComponent(target.sample.sample_id)}`);
     const latestContext = await api("/inspection/context", { dataset_id: dataset.dataset_id, sample_id: target.sample.sample_id, suggestion_id: latest.suggestion.suggestion_id });
@@ -398,7 +405,8 @@ Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
     await button("关闭"); await (await element("button[aria-label='关闭图像详情']")).click();
     await driver.manage().window().setRect({ width: 1440, height: 1100 });
     await (await element("select[aria-label='当前数据集'] option[value='" + dataset.dataset_id + "']")).click();
-    let defect = await api("/knowledge/start", { dataset_id: dataset.dataset_id, kind: "defect", normal_version_id: knowledgeJob.knowledge_version_id, model_name: "test-mllm" });
+    const defectSources=(await api(`/knowledge/sources?dataset_id=${dataset.dataset_id}&kind=defect&normal_version_id=${knowledgeJob.knowledge_version_id}`)).items;
+    let defect = await api("/knowledge/start", { kind: "defect", image_count: defectSources.length, images: defectSources.map(item=>item.sample_id), knowledge_preset: [knowledgeJob.knowledge_version_id] });
     while (["PENDING", "RUNNING"].includes(defect.status)) { await delay(100); defect = await api(`/knowledge/status/${defect.run_id}`); }
     assert.equal(defect.status, "COMPLETED", JSON.stringify(defect));
     await button("刷新");

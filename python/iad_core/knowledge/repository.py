@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Callable, Optional
 from contextlib import nullcontext
 from sqlite3 import Connection
 
@@ -34,13 +34,15 @@ class KnowledgeRepository:
                 (dataset_id, kind)).fetchall()
         return [KnowledgeVersion.model_validate(dict(row)) for row in rows]
 
-    def publish(self, snapshot: KnowledgeSnapshot, connection: Optional[Connection] = None) -> None:
+    def publish(self, snapshot: KnowledgeSnapshot, connection: Optional[Connection] = None, *,
+                expected_head_version_id: Optional[str], validate: Callable[[], None]) -> None:
         with (nullcontext(connection) if connection else self.db.connection()) as conn:
             if not connection:
                 conn.execute("BEGIN IMMEDIATE")
+            validate()
             row = conn.execute("SELECT version_id FROM knowledge_heads WHERE dataset_id=? AND kind=?",
                                (snapshot.dataset_id, snapshot.kind)).fetchone()
-            if (row[0] if row else None) != snapshot.parent_version_id:
+            if (row[0] if row else None) != expected_head_version_id:
                 raise ValueError("Knowledge head changed during mining; restart with the current version")
             conn.execute("""INSERT INTO knowledge_versions(version_id,dataset_id,kind,parent_version_id,normal_version_id,
                 signature,snapshot_json,created_at) VALUES(?,?,?,?,?,?,?,?)""",

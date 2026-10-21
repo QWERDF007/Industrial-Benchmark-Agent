@@ -175,4 +175,7 @@ export const workbenchStyles = themeStyles + controlStyles + `
 .iad-knowledge-split {display:grid;grid-template-columns:minmax(220px,1fr) minmax(0,2fr);gap:24px;align-items:start;}
 .iad-check-list {display:grid;gap:8px;}.iad-check-list>button {display:grid;gap:4px;text-align:left;}.iad-check-list>button[aria-pressed=true] {background:var(--iad-hover);border-color:var(--iad-primary);}.iad-check-list span {color:var(--iad-muted);font-size:12px;}
 @media(max-width:760px) {.iad-knowledge-split {grid-template-columns:minmax(0,1fr);}}
+
+.iad-source-option{flex:0 1 160px;display:flex;flex-direction:column;gap:8px;min-width:0;padding:8px;background:var(--iad-surface-muted);border-radius:var(--iad-radius)}
+.iad-source-option img{width:100%;height:100px;object-fit:contain}.iad-source-option span{overflow-wrap:anywhere}.iad-source-option input{margin-inline-end:8px}
 `;

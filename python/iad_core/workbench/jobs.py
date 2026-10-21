@@ -226,6 +226,9 @@ class JobRunner:
                 "cancel_requested": payload.get("cancel_requested", False),
                 "unprocessed": payload["total_samples"] - payload["completed"] - payload["failed"],
                 "model_calls": [call.model_dump() for call in ModelCalls(self.db).list(run_id)]}
+        if row['job_type'] in ('NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE'):
+            from iad_core.knowledge.trace import observation_progress
+            values['observation_progress'] = observation_progress(values)
         current = payload.get('current_sample_id')
         samples = self._samples(values['dataset_id'], [error['sample_id'] for error in payload['errors']] + ([current] if current else []))
         values['current_sample'] = samples[current] if current else None

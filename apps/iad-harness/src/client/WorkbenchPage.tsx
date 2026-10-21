@@ -6,6 +6,7 @@ import { SampleGrid } from "./components/SampleGrid.js";
 import { SampleInspector } from "./components/SampleInspector.js";
 import { AuditSetup } from "./components/AuditSetup.js";
 import { AuditJobs, AuditReport } from "./components/AuditJobs.js";
+import { KnowledgeConflictReview } from "./components/KnowledgeConflictReview.js";
 import { KnowledgePage } from "./components/KnowledgePage.js";
 import { Modal } from "./components/Modal.js";
 import { ReviewRecords } from "./components/ReviewRecords.js";
@@ -92,7 +93,8 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
         <KnowledgePage key={`${datasetId}:${state.knowledgeKind}`} dataset={dataset} kind={state.knowledgeKind} refreshRevision={revision} />
       </>}
       {pageId === "industrial-audit" && <nav className="iad-tabs" aria-label="审计视图">{[["results", "结果"], ["jobs", "模型审计作业"], ["reports", "报告"]].map(([tab, label]) => <button key={tab} aria-pressed={view.tab === tab} className={view.tab === tab ? "active" : ""} onClick={() => workspace.updateView(pageId, { tab })}>{label}</button>)}</nav>}
-      {pageId === "industrial-review" && <nav className="iad-tabs" aria-label="复核视图">{[["results", "复核队列"], ["records", "复核记录"]].map(([tab, label]) => <button key={tab} aria-pressed={view.tab === tab} className={view.tab === tab ? "active" : ""} onClick={() => workspace.updateView(pageId, { tab })}>{label}</button>)}</nav>}
+      {pageId === "industrial-review" && <nav className="iad-tabs" aria-label="复核视图">{[["results", "复核队列"], ["conflicts", "知识冲突"], ["records", "复核记录"]].map(([tab, label]) => <button key={tab} aria-pressed={view.tab === tab} className={view.tab === tab ? "active" : ""} onClick={() => workspace.updateView(pageId, { tab })}>{label}</button>)}</nav>}
+      {pageId === "industrial-review" && view.tab === "conflicts" && <KnowledgeConflictReview key={datasetId} datasetId={datasetId} />}
       {pageId === "industrial-review" && view.tab === "results" && reviewConfirmation?.datasetId === datasetId && <p role="status" className="iad-review-confirmation">已提交 {reviewConfirmation.name} · {reviewLabel(reviewConfirmation.decision)}</p>}
       {pageId === "industrial-audit" && view.tab === "results" && <AuditSetup key={datasetId} dataset={dataset} filters={view.filters} jobs={audit.jobs} revision={revision} onJobsChanged={audit.refresh} />}
       {gallery && <div className={pageId === "industrial-images" ? "iad-browse" : "iad-main"}>{grid}

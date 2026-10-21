@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group, frozen_observation_response
 from uuid import uuid4
 import json
 
@@ -16,6 +17,9 @@ def test_successor_accumulates_sources_and_keeps_rule_identity_when_wording_chan
     previous = None
 
     def respond(request):
+        observation = frozen_observation_response(request)
+        if observation is not None:
+            return observation
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200, json={'count': 4000, 'max_model_len': 262144})
         content = json.loads(request.content)['messages'][0]['content']
@@ -34,8 +38,9 @@ def test_successor_accumulates_sources_and_keeps_rule_identity_when_wording_chan
         if previous:
             assert previous['checks'][0]['check_id'] in content[0]['text']
             parent_check = json.loads(content[0]['text'].split('冻结父版本候选：')[1].split('\n')[0])['checks'][0]
-            assert 'status' not in parent_check
-            assert 'limitations' not in parent_check
+            assert parent_check['status'] == previous['checks'][0]['status']
+            assert parent_check['limitations'] == previous['checks'][0]['limitations']
+            assert 'support_evidence_ids' not in parent_check
             checks.append({**checks[0], 'title': '主体轮廓', 'subject': '主体',
                            'criterion': '主体可见轮廓为矩形'})
             revisions = [{'previous_check_id': previous['checks'][0]['check_id'],
@@ -45,15 +50,15 @@ def test_successor_accumulates_sources_and_keeps_rule_identity_when_wording_chan
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=sample_ids[:2])
+        first = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=sample_ids[:2]), kind='normal', model_name='test-mllm')
         service.wait(first['run_id'], 5)
         assert service.status(first['run_id'])['status'] == 'COMPLETED', service.status(first['run_id'])
         previous = knowledge_get({'version_id': service.status(first['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
-        successor = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=[sample_ids[2]])
+        successor = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[sample_ids[2]], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm')
         service.wait(successor['run_id'], 5)
         status = service.status(successor['run_id'])
         assert status['status'] == 'COMPLETED', status
-        assert status['completed'] == status['total_samples'] == 3
+        assert status['completed'] == status['total_samples'] == 1
         assert status['requested_sample_ids'] == [sample_ids[2]]
         current = knowledge_get({'version_id': status['knowledge_version_id']}, db.db_path)['knowledge']
         assert {source['sample_id'] for source in current['sources']} == set(sample_ids)
@@ -64,8 +69,8 @@ def test_successor_accumulates_sources_and_keeps_rule_identity_when_wording_chan
         assert current['checks'][0]['predecessor_check_ids'] == [previous['checks'][0]['check_id']]
         assert current['checks'][1]['predecessor_check_ids'] == []
         assert current['revisions'] == current['mining_steps'][-1]['result']['revisions']
-        assert len(observed[1]) == 3
-        again = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=sample_ids[:1])
+        assert len(observed[1]) == 1
+        again = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[sample_ids[2]], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm')
         service.wait(again['run_id'], 5)
         assert service.status(again['run_id'])['knowledge_version_id'] == current['version_id']
         assert len(observed) == 2
@@ -74,7 +79,7 @@ def test_successor_accumulates_sources_and_keeps_rule_identity_when_wording_chan
         service.close()
 
 
-@pytest.mark.parametrize('invalid_revision', ['missing', 'foreign', 'duplicate_parent', 'unknown_title', 'duplicate_title'])
+@pytest.mark.parametrize('invalid_revision', ['foreign', 'duplicate_parent', 'unknown_title', 'duplicate_title'])
 def test_invalid_rule_lineage_cannot_replace_the_published_knowledge(knowledge_dataset, invalid_revision):
     from iad_core.entry import knowledge_get
     from iad_core.knowledge.service import KnowledgeService
@@ -84,6 +89,9 @@ def test_invalid_rule_lineage_cannot_replace_the_published_knowledge(knowledge_d
     previous = None
 
     def respond(request):
+        observation = frozen_observation_response(request)
+        if observation is not None:
+            return observation
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200, json={'count': 4000, 'max_model_len': 262144})
         content = json.loads(request.content)['messages'][0]['content']
@@ -102,23 +110,26 @@ def test_invalid_rule_lineage_cannot_replace_the_published_knowledge(knowledge_d
                 revision['current_check_titles'] = ['不存在的检查项']
             elif invalid_revision == 'duplicate_title':
                 revision['current_check_titles'] = ['孔位', '孔位']
-            result['revisions'] = ([] if invalid_revision == 'missing' else
-                                   [revision, revision] if invalid_revision == 'duplicate_parent' else [revision])
+            result['revisions'] = [revision, revision] if invalid_revision == 'duplicate_parent' else [revision]
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=[config.dataset.id + ':part-0.png'])
+        first = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-0.png']), kind='normal', model_name='test-mllm')
         service.wait(first['run_id'], 5)
         previous = knowledge_get({'version_id': service.status(first['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
-        next_job = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=[config.dataset.id + ':part-1.png'])
+        next_job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-1.png'], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm')
         service.wait(next_job['run_id'], 5)
         failed = service.status(next_job['run_id'])
         assert failed['status'] == 'FAILED', failed
         assert failed['completed'] == 0
-        assert failed['failed'] == 2
-        assert 'Knowledge revision' in failed['errors'][0]['message']
-        assert failed['mining_steps'][-1]['result']['checks']
+        assert failed['failed'] == 1
+        assert ('revisions.0.previous_check_id: literal_error' if invalid_revision == 'foreign' else 'Knowledge revision') in failed['errors'][0]['message']
+        if invalid_revision == 'foreign':
+            assert not failed.get('mining_steps'), 'A schema-invalid draft is not an accepted observation'
+            assert failed['model_calls'][-1]['error']['type'] == 'ValueError'
+        else:
+            assert failed['mining_steps'][-1]['result']['checks']
         assert knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge'] == previous
     finally:
         service.close()
@@ -136,6 +147,9 @@ def test_source_losing_normal_qualification_is_not_carried_into_successor(knowle
     observed = []
 
     def respond(request):
+        observation = frozen_observation_response(request)
+        if observation is not None:
+            return observation
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200, json={'count': 4000, 'max_model_len': 262144})
         content = json.loads(request.content)['messages'][0]['content']
@@ -154,24 +168,25 @@ def test_source_losing_normal_qualification_is_not_carried_into_successor(knowle
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=sample_ids[:2])
+        first = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=sample_ids[:2]), kind='normal', model_name='test-mllm')
         service.wait(first['run_id'], 5)
         previous = knowledge_get({'version_id': service.status(first['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
         human = HumanReview(db)
         human.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=config.dataset.id, reviewer='operator', sample_id=sample_ids[0], decision='FAIL'))
-        job = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=sample_ids[2:])
+        with pytest.raises(ValueError, match='资格|来源'):
+            service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=sample_ids[2:], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm')
+        frozen = previous
+        previous = None
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=sample_ids[1:]), kind='normal', model_name='test-mllm')
         service.wait(job['run_id'], 5)
         status = service.status(job['run_id'])
         assert status['status'] == 'COMPLETED', status
         current = knowledge_get({'version_id': status['knowledge_version_id']}, db.db_path)['knowledge']
         assert {source['sample_id'] for source in current['sources']} == set(sample_ids[1:])
-        assert current['removed_source_ids'] == [sample_ids[0]]
+        assert current['parent_version_id'] is None
         assert {item['sample_id'] for item in current['evidence']} == set(sample_ids[1:])
-        old_eids = {item['image']['evidence_id'] for item in previous['evidence'] if item['sample_id'] == sample_ids[0]}
-        assert not old_eids.intersection(current['checks'][0]['support_evidence_ids'])
         assert len(observed[-1]) == 2
-        assert current['checks'][0]['check_id'] == previous['checks'][0]['check_id']
-        assert knowledge_get({'version_id': previous['version_id']}, db.db_path)['knowledge'] == previous
+        assert knowledge_get({'version_id': frozen['version_id']}, db.db_path)['knowledge'] == frozen
     finally:
         service.close()
 
@@ -186,6 +201,9 @@ def test_split_merge_and_retirement_have_explicit_rule_lineage(knowledge_dataset
     stage = 0
 
     def respond(request):
+        observation = frozen_observation_response(request)
+        if observation is not None:
+            return observation
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200, json={'count': 4000, 'max_model_len': 262144})
         content = json.loads(request.content)['messages'][0]['content']
@@ -213,15 +231,21 @@ def test_split_merge_and_retirement_have_explicit_rule_lineage(knowledge_dataset
         versions = []
         for index in range(3):
             stage = index
-            job = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=[config.dataset.id + f':part-{index}.png'])
+            job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + f':part-{index}.png'], knowledge_preset=[previous['version_id']] if previous else []), kind='normal', model_name='test-mllm')
             service.wait(job['run_id'], 5)
             status = service.status(job['run_id'])
             assert status['status'] == 'COMPLETED', status
             previous = knowledge_get({'version_id': status['knowledge_version_id']}, db.db_path)['knowledge']
             versions.append(previous)
         original, split, merged = versions
-        assert not {check['check_id'] for check in original['checks']} & {check['check_id'] for check in split['checks']}
-        assert all(check['predecessor_check_ids'] == [original['checks'][0]['check_id']] for check in split['checks'])
+        retired = original['checks'][1]['check_id']
+        branches = [check for check in split['checks'] if check['check_id'] != retired]
+        assert len(branches) == 2
+        assert all(check['check_id'] != original['checks'][0]['check_id'] for check in branches)
+        assert all(check['predecessor_check_ids'] == [original['checks'][0]['check_id']] for check in branches)
+        assert next(check for check in split['checks'] if check['check_id'] == retired)['status'] == 'conflicted'
+        assert split['conflicts'][0]['category'] == 'retirement_proposal'
+        assert merged['checks'][0]['status'] == 'conflicted', 'Unconfirmed retirement follows a merged descendant'
         assert split['revisions'][1]['current_check_titles'] == []
         assert merged['checks'][0]['predecessor_check_ids'] == [check['check_id'] for check in split['checks']]
         assert merged['checks'][0]['check_id'] not in merged['checks'][0]['predecessor_check_ids']
@@ -243,11 +267,14 @@ def test_capacity_synthesis_preserves_parent_rules_and_accumulated_visual_suppor
     grouped = []
 
     def respond(request):
+        observation = frozen_observation_response(request)
+        if observation is not None:
+            return observation
         content = json.loads(request.content)['messages'][0]['content']
         images = [json.loads(item['text'].removeprefix('视觉证据：')) for item in content
                   if item['type'] == 'text' and item['text'].startswith('视觉证据：')]
         if request.url.path.endswith('/tokenize'):
-            return httpx.Response(200, json={'count': len(images) * 2000, 'max_model_len': 12700})
+            return httpx.Response(200, json={'count': len(images) * 2000, 'max_model_len': 13000})
         observed.update({image['evidence_id']: image for image in images})
         if previous:
             grouped.append(images)
@@ -265,19 +292,20 @@ def test_capacity_synthesis_preserves_parent_rules_and_accumulated_visual_suppor
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=[config.dataset.id + ':part-0.png'])
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-0.png']), kind='normal', model_name='test-mllm')
         service.wait(job['run_id'], 5)
         previous = knowledge_get({'version_id': service.status(job['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
-        job = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=[config.dataset.id + ':part-1.png', config.dataset.id + ':part-2.png'])
+        observed.clear()
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-1.png', config.dataset.id + ':part-2.png', config.dataset.id + ':part-3.png'], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm')
         service.wait(job['run_id'], 5)
         status = service.status(job['run_id'])
         assert status['status'] == 'COMPLETED', status
         current = knowledge_get({'version_id': status['knowledge_version_id']}, db.db_path)['knowledge']
         assert len(grouped) == 3
-        assert sum(len(images) for images in grouped) == 3
-        assert grouped[-1] == []
+        assert sum(len(images) for images in grouped[:-1]) == 3
+        assert len(grouped[-1]) == 2
         assert current['checks'][0]['check_id'] == previous['checks'][0]['check_id']
-        assert len(current['checks'][0]['support_evidence_ids']) == 3
+        assert len(current['checks'][0]['support_evidence_ids']) == 4
         assert len(current['mining_steps'][-1]['child_step_ids']) == 2
     finally:
         service.close()

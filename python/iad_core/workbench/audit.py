@@ -15,7 +15,7 @@ from iad_core.storage.database import Database
 from iad_core.storage.repositories import SampleRepository
 from iad_core.workbench.query import SampleQuery, WorkbenchQuery
 
-from iad_core.workbench.vision import DEFAULT_MODEL, VlmClient, RESPONSE_INSTRUCTION, GENERATION_PARAMETERS
+from iad_core.workbench.vision import VlmClient, RESPONSE_INSTRUCTION, GENERATION_PARAMETERS
 from iad_core.workbench.audit_prompts import AUDIT_PROMPTS
 from iad_core.workbench.joint import OUTPUT_TOKENS
 from iad_core.workbench.inspection import SampleInspection
@@ -28,7 +28,7 @@ class AuditStart(BaseModel):
     model_config = ConfigDict(extra="forbid")
     dataset_id: str
     origin_session_id: Optional[str] = None
-    model_name: str = DEFAULT_MODEL
+    model_name: Optional[str] = None
     normal_version_id: Optional[str] = None
     defect_version_id: Optional[str] = None
     sample_ids: Optional[List[str]] = None
@@ -83,6 +83,7 @@ class AuditService:
 
     def start(self, **arguments) -> dict:
         request = AuditStart.model_validate(arguments)
+        request.model_name = self.client.resolve_model(request.model_name)
         config = self.registry.resolve(dataset_id=request.dataset_id)
         knowledge = InspectionKnowledge.resolve(self.db, request.dataset_id, request.normal_version_id, request.defect_version_id)
         if request.sample_ids is None:
@@ -104,7 +105,7 @@ class AuditService:
         if not sample_ids:
             raise ValueError("No samples match the audit filters")
         payload = {"dataset_id": request.dataset_id, "model_name": request.model_name, "sample_ids": sample_ids,
-                   "origin_session_id": request.origin_session_id,
+                   "origin_session_id": request.origin_session_id, "model_profile": self.client.profile.model_dump(),
                    "generation_signature": self.generation_signature,
                    "input_sources": [SampleContent.capture(self.db, sid).model_dump() for sid in sample_ids],
                    "normal_version_id": knowledge.normal.version_id,

@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group
 import base64
 import io
 import json
@@ -17,12 +18,12 @@ from iad_core.workbench.vision import VlmClient
 
 
 @pytest.mark.parametrize('judgment_status,independent,expected_status,support_count,has_counter,rule_status,capacity,annotated_roi', [
-    ('supported', True, 'supported', 3, True, 'supported', 262144, False),
+    ('supported', True, 'supported', 3, True, 'conflicted', 262144, False),
     ('refuted', True, 'refuted', 4, False, 'supported', 262144, False),
     ('insufficient', True, 'insufficient', 3, True, 'conflicted', 262144, False),
     ('refuted', False, 'insufficient', 3, True, 'conflicted', 262144, False),
-    ('supported', True, 'supported', 3, True, 'supported', 15600, False),
-    ('supported', True, 'supported', 3, True, 'supported', 262144, True),
+    ('supported', True, 'supported', 3, True, 'conflicted', 15600, False),
+    ('supported', True, 'supported', 3, True, 'conflicted', 262144, True),
 ])
 def test_operator_can_locate_contaminated_normal_source_without_changing_human_truth(
         tmp_path, judgment_status, independent, expected_status, support_count, has_counter, rule_status, capacity, annotated_roi):
@@ -37,6 +38,7 @@ def test_operator_can_locate_contaminated_normal_source_without_changing_human_t
             draw.ellipse((x-15, 105, x+15, 135), fill='#cccccc')
         if index == 3:
             draw.rectangle((90, 110, 110, 130), fill='red')
+        image.putpixel((0, 0), (180 + index, 190, 200))
         image.save(images / f'part-{index}.png')
     if annotated_roi:
         (labels/'part-3.json').write_text(json.dumps({'imageWidth':320,'imageHeight':240,'shapes':[
@@ -99,7 +101,7 @@ def test_operator_can_locate_contaminated_normal_source_without_changing_human_t
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=config.dataset.id, kind='normal', model_name='test-mllm')
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(job['run_id'],5)
         result = service.status(job['run_id'])
         assert result['status']=='COMPLETED', result
@@ -176,29 +178,15 @@ def test_successor_rechecks_unresolved_contamination_even_when_new_draft_omits_i
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=[config.dataset.id + ':part-0.png', config.dataset.id + ':part-1.png'])
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-0.png', config.dataset.id + ':part-1.png']), kind='normal', model_name='test-mllm')
         service.wait(job['run_id'], 5)
         status = service.status(job['run_id'])
         assert status['status'] == 'COMPLETED', status
         previous = knowledge_get({'version_id': status['knowledge_version_id']}, db.db_path)['knowledge']
-        job = service.start(dataset_id=config.dataset.id, kind='normal', sample_ids=[config.dataset.id + ':part-2.png'])
-        service.wait(job['run_id'], 5)
-        status = service.status(job['run_id'])
-        assert status['status'] == 'COMPLETED', status
-        current = knowledge_get({'version_id': status['knowledge_version_id']}, db.db_path)['knowledge']
-        assert len(verifications) == 2
-        finding, = current['findings']
-        assert finding['origin_finding_id'] == previous['findings'][0]['finding_id']
-        assert finding['bbox'] == previous['findings'][0]['bbox']
-        assert finding['judgment']['status'] == later_status
-        affected_source = next(item for item in current['evidence'] if item['sample_id'].endswith(':part-1.png') and item['image']['role'] == 'normal')
-        check, = current['checks']
-        if later_status == 'supported':
-            assert affected_source['image']['evidence_id'] not in check['support_evidence_ids']
-            assert finding['regions'][0]['image']['evidence_id'] in check['counter_evidence_ids']
-        else:
-            assert affected_source['image']['evidence_id'] in check['support_evidence_ids']
-            assert finding['judgment']['normal_explanation'] in check['allowed_variations']
+        before_calls = len(verifications)
+        with pytest.raises(ValueError, match='待人工核实'):
+            service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-2.png'], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm')
+        assert len(verifications) == before_calls
         assert knowledge_get({'version_id': previous['version_id']}, db.db_path)['knowledge'] == previous
     finally:
         service.close()

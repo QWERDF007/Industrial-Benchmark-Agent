@@ -6,6 +6,13 @@ export declare const workbenchTools: {
     readonly dataset_rescan: "重新扫描目录";
     readonly dataset_report: "数据集质量报告";
     readonly knowledge_get: "知识版本";
+    readonly knowledge_scope_open: "建立知识范围";
+    readonly knowledge_scope_get: "知识范围进度";
+    readonly knowledge_scope_stop: "停止知识范围";
+    readonly knowledge_scope_resume: "继续知识范围";
+    readonly knowledge_details: "知识条目";
+    readonly knowledge_conflict_context: "知识冲突";
+    readonly knowledge_job_observations: "知识观察证据";
     readonly knowledge_sources: "查询知识来源";
     readonly knowledge_mine_normal: "挖掘良品知识";
     readonly knowledge_mine_defect: "挖掘不良品知识";

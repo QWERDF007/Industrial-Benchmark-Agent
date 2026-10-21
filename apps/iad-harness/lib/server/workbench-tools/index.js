@@ -77,7 +77,7 @@ export function createWorkbenchTools(bridge, ctx) {
                 sample_ids: { type: "array", items: { type: "string" }, description: "仅用户明确指定子集时传入；省略审计全部图像" },
             },
             output: workbenchJsonOutput,
-            execute: (args, exec) => bridge.execute("audit_start", { ...args, origin_session_id: exec.agent?.id || null }, exec.signal),
+            execute: (args, exec) => bridge.execute("audit_start", { ...args, model_name: args.model_name || process.env.LIVE_VLM_MODEL || exec.agent?.options.model, origin_session_id: exec.agent?.id || null }, exec.signal),
         }),
         defineTool({
             name: "model_audit_status",

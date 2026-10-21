@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group
 from uuid import uuid4
 from pathlib import Path
 import json
@@ -134,10 +135,8 @@ def test_report_discloses_mixed_frozen_versions_instead_of_current_head(dataset,
             image = source.convert('RGB')
         image.putpixel((0, 0), (1, 2, 3))
         image.save(Path(config.root) / 'normal2.png')
-        responses['KnowledgeDraft']['revisions'] = [{'previous_check_id': check['check_id'],
-            'current_check_titles': [check['title']], 'reason': '重新观察变化后的来源，保留同一表面判据'}
-            for check in original['checks']]
-        mining = runtime.knowledge.start(dataset_id=config.dataset.id, kind='normal', sample_ids=[config.dataset.id + ':normal.png', config.dataset.id + ':normal2.png'])
+        responses['KnowledgeDraft']['revisions'] = []
+        mining = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':normal.png', config.dataset.id + ':normal2.png']), kind='normal', model_name='test-mllm')
         runtime.knowledge.wait(mining['run_id'], 5)
         updated = runtime.knowledge.status(mining['run_id'])
         assert updated['status'] == 'COMPLETED', updated['errors']
@@ -179,7 +178,7 @@ def test_folder_label_comparison_and_inconsistency_ratio(tmp_path, mllm_api):
     client, _, responses = mllm_api
     runtime = WorkbenchRuntime(Database(db_path), VlmClient(http_client=client))
     try:
-        mine = runtime.knowledge.start(dataset_id=dataset_id, kind='normal')
+        mine = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, dataset_id, kind='normal'), kind='normal', model_name='test-mllm')
         runtime.knowledge.wait(mine['run_id'], 5)
         assert runtime.knowledge.status(mine['run_id'])['status'] == 'COMPLETED'
         for label, paths in [('PASS', ['good/s1', 'bad/s3']), ('FAIL', ['good/s2']), ('UNCERTAIN', ['unknown/s4'])]:

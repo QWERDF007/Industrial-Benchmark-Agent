@@ -123,14 +123,11 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
     assert.ok(names.includes("knowledge_mine_normal"));
     for (const name of ["knowledge_mine_normal", "knowledge_mine_defect"]) {
       const schema = requests[0].tools.find(tool => tool.function.name === name).function.parameters;
-      assert.equal(schema.properties.sample_ids.type, "array", "Native tool parsers must see an explicit array type for sample selection");
-      assert.equal(schema.properties.sample_ids.items.type, "string");
-      assert.ok(schema.required.includes("sample_ids"), "Native mining must require an explicit selection instead of defaulting to the entire dataset");
-      assert.equal(schema.properties.base_version_id.type, "string");
-      if (name === "knowledge_mine_defect") {
-        assert.equal(schema.properties.normal_version_id.type, "string");
-        assert.ok(schema.required.includes("normal_version_id"));
-      }
+      assert.deepEqual(Object.keys(schema.properties).sort(), ["image_count", "images", "knowledge_preset"]);
+      assert.equal(schema.properties.images.type, "array", "Native tool parsers must see a concrete array type");
+      assert.equal(schema.properties.images.items.type, "string");
+      assert.deepEqual(schema.required.slice().sort(), ["image_count", "images"]);
+      assert.equal(schema.properties.knowledge_preset.type, "array");
     }
     assert.ok(!names.includes("review_submit_decision"));
     assert.ok(!names.includes("unrelated_test_tool"), "Agent-scoped policy must filter other registered tools");

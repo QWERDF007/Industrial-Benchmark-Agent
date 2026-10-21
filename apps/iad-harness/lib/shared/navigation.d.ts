@@ -13,6 +13,12 @@ export type WorkbenchLocation = {
     knowledgeKind?: KnowledgeSnapshot["kind"];
     job?: string;
     version?: string;
+    conflictId?: string;
+    miningPreset?: string;
+    scopeRunId?: string;
+    scopeSessionId?: string;
+    miningContinuous?: boolean;
+    miningSourceMode?: "uncovered" | "all" | "recheck";
     normalVersion?: string;
     defectVersion?: string;
     selected?: string;

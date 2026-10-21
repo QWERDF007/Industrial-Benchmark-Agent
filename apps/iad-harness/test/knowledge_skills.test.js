@@ -67,7 +67,10 @@ test("DSH cancelling a knowledge job preserves unprocessed scope and prevents la
     }));
   });
   await new Promise(resolve => model.listen(0, "127.0.0.1", resolve));
+  const previousCapacity=process.env.LIVE_VLM_CAPACITY_MODE;process.env.LIVE_VLM_CAPACITY_MODE="vllm_tokenize";
   const previousEndpoint = process.env.LIVE_VLM_ENDPOINT;
+  const previousModel = process.env.LIVE_VLM_MODEL, previousPolicy = process.env.IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES;
+  process.env.LIVE_VLM_MODEL = "test-mllm"; process.env.IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES = "2";
   process.env.LIVE_VLM_ENDPOINT = `http://127.0.0.1:${model.address().port}/v1`;
   const ctx = new Context();
   new SystemPrompt(ctx, {});
@@ -87,7 +90,7 @@ test("DSH cancelling a knowledge job preserves unprocessed scope and prevents la
   try {
     const dataset = await ctx.iadPythonBridge.execute("dataset_import", { format: "labelme", name: "取消验证", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
     const sources = await execute("knowledge_sources", { dataset_id: dataset.dataset_id, kind: "normal" });
-    const job = await execute("knowledge_mine_normal", { dataset_id: dataset.dataset_id, model_name: "test-mllm", sample_ids: sources.items.map(item => item.sample_id) });
+    const job = await execute("knowledge_mine_normal", { image_count: sources.items.length, images: sources.items.map(item => item.sample_id) });
     await entered.promise;
     const invalidWait = await ctx.tools.execute({ name: "knowledge_job_status", arguments: { run_id: job.run_id, wait_seconds: 31 },
       callId: "invalid-wait", signal: new AbortController().signal });
@@ -139,8 +142,11 @@ test("DSH cancelling a knowledge job preserves unprocessed scope and prevents la
     await fork.dispose();
     await new Promise(resolve => api.close(resolve));
     await new Promise(resolve => model.close(resolve));
+    if(previousCapacity===undefined)delete process.env.LIVE_VLM_CAPACITY_MODE;else process.env.LIVE_VLM_CAPACITY_MODE=previousCapacity;
     if (previousEndpoint === undefined) delete process.env.LIVE_VLM_ENDPOINT;
     else process.env.LIVE_VLM_ENDPOINT = previousEndpoint;
+    if (previousModel === undefined) delete process.env.LIVE_VLM_MODEL; else process.env.LIVE_VLM_MODEL = previousModel;
+    if (previousPolicy === undefined) delete process.env.IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES; else process.env.IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES = previousPolicy;
     await fs.rm(root, { recursive: true, force: true });
   }
 });
@@ -176,7 +182,11 @@ test("DSH standalone knowledge tools execute shared jobs and return actual evide
       .map(item => JSON.parse(item.text.slice("视觉证据：".length)));
     let result;
     if (req.url === "/tokenize") result = { count: 4000, max_model_len: 262144 };
-    else if (body.response_format.json_schema.name === "JointAnalysis") {
+    else if (body.response_format.json_schema.name === "KnowledgeObservations") {
+      const scope=JSON.parse(content[0].text.split('冻结观察请求：')[1].split('\n请根据图像')[0]);
+      result={observations:scope.sources.flatMap(source=>scope.checks.map(check=>({check_id:check.check_id,sample_id:source.sample_id,
+        status:'supports',description:'可见部件符合旧判据',position_analysis:'主体区域',illumination_analysis:'均匀照明',normal_explanation:'未见冲突',evidence_ids:source.raw_evidence_ids,suspects:[]})))};
+    } else if (body.response_format.json_schema.name === "JointAnalysis") {
       if (failNextAudit) {
         failNextAudit = false;
         res.writeHead(500, { "Content-Type": "application/json" });
@@ -199,7 +209,7 @@ test("DSH standalone knowledge tools execute shared jobs and return actual evide
         affected_check_titles: ["孔内外观"], description: "红色区域覆盖孔内背景", normal_explanation: "需排除反光",
         limitations: ["合成验证"], evidence_ids: [target.regions.find(region => region.image.representation === "raw").image.evidence_id, normal.evidence_id], conflicts: [] })) };
     } else {
-      const defect = content[0].text.includes("已核验异常");
+      const defect = content[0].text.includes("已核验异常") || content[0].text.includes("本组异常候选");
       result = { summary: defect ? "孔内遮挡判据" : "孔内可见背景", checks: [{ title: defect ? "孔内遮挡" : "孔内外观",
         subject: "孔", location: "主体左侧", criterion: defect ? "实体覆盖背景" : "可见背景", allowed_variations: ["整体亮度变化"],
         support_evidence_ids: evidence.filter(item => !defect || (item.role === "roi" && item.representation === "raw")).map(item => item.evidence_id),
@@ -214,7 +224,10 @@ test("DSH standalone knowledge tools execute shared jobs and return actual evide
     res.end(JSON.stringify(req.url === "/tokenize" ? result : { choices: [{ finish_reason: "stop", message: { content: JSON.stringify(result) } }] }));
   });
   await new Promise(resolve => model.listen(0, "127.0.0.1", resolve));
+  const previousCapacity=process.env.LIVE_VLM_CAPACITY_MODE;process.env.LIVE_VLM_CAPACITY_MODE="vllm_tokenize";
   const previousEndpoint = process.env.LIVE_VLM_ENDPOINT;
+  const previousModel = process.env.LIVE_VLM_MODEL, previousPolicy = process.env.IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES;
+  process.env.LIVE_VLM_MODEL = "test-mllm"; process.env.IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES = "2";
   process.env.LIVE_VLM_ENDPOINT = `http://127.0.0.1:${model.address().port}/v1`;
   const ctx = new Context();
   new SystemPrompt(ctx, {});
@@ -243,7 +256,7 @@ test("DSH standalone knowledge tools execute shared jobs and return actual evide
     assert.ok(ctx.tools.get("dataset_list"), "Skills need a registered dataset discovery tool");
     const dataset = (await execute("dataset_import", { format: "labelme", name: "合成部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") })).value;
     for (const sample_ids of [JSON.stringify([dataset.dataset_id + ":part-0.png"]), null, [1]]) {
-      const invalid = await ctx.tools.execute({ name: "knowledge_mine_normal", arguments: { dataset_id: dataset.dataset_id, sample_ids },
+      const invalid = await ctx.tools.execute({ name: "knowledge_mine_normal", arguments: { image_count: 1, images: sample_ids },
         callId: `invalid-selection-${++call}`, signal: new AbortController().signal });
       assert.equal(invalid.isError, true, "Malformed selections must not be coerced or expanded to every source");
       assert.equal(invalid.error.info.code, "INVALID_ARGS");
@@ -256,17 +269,13 @@ test("DSH standalone knowledge tools execute shared jobs and return actual evide
       { key: "initial_normal", kind: "normal", sampleIndex: 0 },
       { key: "normal", kind: "normal", sampleIndex: 1 },
       { key: "defect", kind: "defect" },
-      { key: "defect_revised", kind: "defect" },
+      { key: "defect_successor", kind: "defect" },
     ]) {
-      const args = { dataset_id: dataset.dataset_id, model_name: "test-mllm" };
-      if (kind === "normal") args.sample_ids = [dataset.dataset_id + `:part-${sampleIndex}.png`];
-      if (kind === "defect") args.normal_version_id = versions.normal.version_id;
-      if (kind === "defect") args.sample_ids = (await execute("knowledge_sources", {
-        dataset_id: dataset.dataset_id, kind, normal_version_id: args.normal_version_id })).value.items.map(item => item.sample_id);
-      if (key === "defect_revised") {
-        args.base_version_id = versions.defect.version_id;
-        args.corrections = [{ check_id: versions.defect.checks[0].check_id, instruction: "重新排除有色反光，实体遮挡须有独立可见证据" }];
-      }
+      const images = kind === "normal" ? [dataset.dataset_id + `:part-${sampleIndex}.png`]
+        : (await execute("knowledge_sources", { dataset_id: dataset.dataset_id, kind, normal_version_id: versions.normal.version_id })).value.items.map(item => item.sample_id);
+      const knowledge_preset = kind === "normal" ? (versions.initial_normal ? [versions.initial_normal.version_id] : [])
+        : [versions.normal.version_id, ...(key === "defect_successor" ? [versions.defect.version_id] : [])];
+      const args = { image_count: images.length, images, knowledge_preset };
       let job = (await execute(`knowledge_mine_${kind}`, args)).value;
       const deadline = Date.now() + 5000;
       while (["PENDING", "RUNNING"].includes(job.status) && Date.now() < deadline) {
@@ -279,17 +288,24 @@ test("DSH standalone knowledge tools execute shared jobs and return actual evide
       assert.ok(versions[key].mining_steps.length);
       assert.ok(!read.content[0].text.includes('"mining_steps"'));
       assert.equal(versions[key].kind, kind);
-      assert.equal(job.completed, key === "normal" ? 2 : 1);
+      assert.equal(job.completed, 1);
     }
     assert.equal(versions.normal.parent_version_id, versions.initial_normal.version_id);
     assert.equal(versions.normal.checks[0].check_id, versions.initial_normal.checks[0].check_id);
     assert.deepEqual(versions.normal.checks[0].predecessor_check_ids, [versions.initial_normal.checks[0].check_id]);
     assert.equal(versions.normal.sources.length, 2);
     assert.equal(versions.defect.normal_version_id, versions.normal.version_id);
-    assert.equal(versions.defect_revised.parent_version_id, versions.defect.version_id);
-    assert.equal(versions.defect_revised.normal_version_id, versions.normal.version_id);
-    assert.deepEqual(versions.defect_revised.corrections, [{ check_id: versions.defect.checks[0].check_id, instruction: "重新排除有色反光，实体遮挡须有独立可见证据" }]);
+    assert.equal(versions.defect_successor.parent_version_id, versions.defect.version_id);
+    assert.equal(versions.defect_successor.normal_version_id, versions.normal.version_id);
+    assert.deepEqual(versions.defect_successor.corrections, [], "Agent不能填写人工处置建议作为额外工具输入");
     assert.deepEqual((await execute("knowledge_get", { version_id: versions.defect.version_id })).value.knowledge, versions.defect);
+    const unbasedJob = (await execute("knowledge_mine_defect", { image_count: 1, images: [dataset.dataset_id + ":part-2.png"], knowledge_preset: [versions.defect.version_id] })).value;
+    const unbasedDone = (await execute("knowledge_job_status", { run_id: unbasedJob.run_id })).value;
+    assert.equal(unbasedDone.status, "COMPLETED", JSON.stringify(unbasedDone.errors));
+    const unbased = (await execute("knowledge_get", { version_id: unbasedDone.knowledge_version_id })).value.knowledge;
+    assert.equal(unbased.normal_version_id, null, "只传异常预设不能隐式继承旧良品基准");
+    assert.ok(unbased.checks.every(check => check.status !== "supported"));
+
     assert.equal(versions.defect.findings[0].judgment.status, "supported");
     const raw = versions.defect.evidence.find(item => item.image.role === "roi" && item.image.representation === "raw").image;
     const media = await execute("knowledge_evidence", { version_id: versions.defect.version_id, evidence_id: raw.evidence_id });
@@ -373,7 +389,10 @@ test("DSH standalone knowledge tools execute shared jobs and return actual evide
     const frozenDefect = (await execute("knowledge_get", { version_id: versions.defect.version_id })).value;
     assert.equal(frozenDefect.freshness.normal_version_changed, false);
     const sources = (await execute("knowledge_sources", { dataset_id: dataset.dataset_id, kind: "normal" })).value;
-    let successor = (await execute("knowledge_mine_normal", { dataset_id: dataset.dataset_id, model_name: "test-refreshed-normal", sample_ids: sources.items.map(item => item.sample_id) })).value;
+    const changedPreset = await ctx.tools.execute({ name: "knowledge_mine_normal", arguments: { image_count: sources.items.length,
+      images: sources.items.map(item => item.sample_id), knowledge_preset: [versions.normal.version_id] }, callId: "stale-preset", signal: new AbortController().signal });
+    assert.equal(changedPreset.isError, true, "新增审计疑点改变来源，不能静默续用旧预设");
+    let successor = (await execute("knowledge_mine_normal", { image_count: sources.items.length, images: sources.items.map(item => item.sample_id) })).value;
     const successorDeadline = Date.now() + 10000;
     while (["PENDING", "RUNNING"].includes(successor.status) && Date.now() < successorDeadline) {
       await delay(20);
@@ -388,12 +407,19 @@ test("DSH standalone knowledge tools execute shared jobs and return actual evide
     const unavailable = await ctx.tools.execute({ name: "knowledge_get", arguments: { version_id: versions.defect.version_id }, callId: "missing-source", signal: new AbortController().signal });
     assert.equal(unavailable.isError, false, JSON.stringify(unavailable));
     assert.equal(unavailable.value.freshness.normal_sources_changed, true, "上游来源无法读取时，仍须能查看历史异常知识和依赖状态");
+    const onlyAnnotated = (await execute("knowledge_sources", {dataset_id:dataset.dataset_id,kind:"defect"})).value.items.find(item=>item.qualification==='annotated_candidate');
+    let independentJob=(await execute("knowledge_mine_defect",{image_count:1,images:[onlyAnnotated.sample_id]})).value;
+    while(['PENDING','RUNNING'].includes(independentJob.status)){await delay(20);independentJob=(await execute('knowledge_job_status',{run_id:independentJob.run_id,wait_seconds:0})).value;}
+    assert.equal(independentJob.status,'COMPLETED','An unavailable unselected candidate must not block an explicit valid group');
     await fs.rename(path.join(root, "images/missing-source.png"), path.join(root, "images/part-0.png"));
   } finally {
     await fork.dispose();
     await new Promise(resolve => model.close(resolve));
+    if(previousCapacity===undefined)delete process.env.LIVE_VLM_CAPACITY_MODE;else process.env.LIVE_VLM_CAPACITY_MODE=previousCapacity;
     if (previousEndpoint === undefined) delete process.env.LIVE_VLM_ENDPOINT;
     else process.env.LIVE_VLM_ENDPOINT = previousEndpoint;
+    if (previousModel === undefined) delete process.env.LIVE_VLM_MODEL; else process.env.LIVE_VLM_MODEL = previousModel;
+    if (previousPolicy === undefined) delete process.env.IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES; else process.env.IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES = previousPolicy;
     await fs.rm(root, { recursive: true, force: true });
   }
 });

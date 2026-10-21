@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Any
 from iad_core.storage.database import Database
 from iad_core.storage.models import Sample, Annotation
 from iad_core.storage.repositories import SampleRepository
-from iad_core.benchmark.builder import load_verified_duplicates
+from iad_core.duplicate.repository import load_verified_duplicates
 from iad_core.advisory.schemas import (
     AuditSuggestion,
     ConclusionStatus,

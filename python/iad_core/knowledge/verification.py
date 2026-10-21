@@ -26,7 +26,7 @@ supported表示图像支持疑点，refuted表示正常解释可支持，insuffi
 
 class NormalVerification:
     def __init__(self, db: Database, client: VlmClient, context: JobContext):
-        self.client, self.context = client, context
+        self.db, self.client, self.context = db, client, context
         self.images, self.samples = EvidenceImages(db.db_path), SampleRepository(db)
         self.candidates = AuditCandidates(db)
 
@@ -80,7 +80,7 @@ class NormalVerification:
                 self.by_id[image.evidence.evidence_id] = image
                 extra[image.evidence.evidence_id] = KnowledgeEvidence(sample_id=sample.sample_id, image=image.evidence)
                 target.regions.append(RegionImage(**origin.model_dump(), origins=target.origins, crop_bbox=tile, image=image.evidence))
-        outcome = FindingVerification(self.client, self.context).review(
+        outcome = FindingVerification(self.db, self.client, self.context).review(
             targets, inputs, list(self.overviews.values()), self.by_id, draft.checks, model_name,
             VERIFICATION_INSTRUCTION)
         findings = outcome.findings

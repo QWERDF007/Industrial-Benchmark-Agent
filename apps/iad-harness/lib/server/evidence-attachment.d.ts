@@ -12,10 +12,12 @@ export declare const evidenceOutput: {
 };
 export declare function readEvidenceAttachment(bridge: PythonBridge, ctx: Context, operation: "knowledge_evidence" | "audit_evidence", args: {
     evidence_id: string;
+    run_id?: string;
     version_id?: string;
     suggestion_id?: string;
 }, signal: AbortSignal): Promise<{
     evidence_id: string;
+    run_id?: string;
     version_id?: string;
     suggestion_id?: string;
     attachment: {

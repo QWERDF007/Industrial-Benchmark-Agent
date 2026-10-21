@@ -3,12 +3,12 @@ import json
 import logging
 from typing import Optional, Dict, Any, List
 
+from iad_core.duplicate.repository import load_verified_duplicates
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import BenchmarkRepository, GoldRepository, SampleRepository
 from iad_core.benchmark.builder import (
     run_benchmark_pipeline,
     preview_benchmark_pipeline,
-    load_verified_duplicates,
     generate_build_id,
 )
 from iad_core.task.config import load_config

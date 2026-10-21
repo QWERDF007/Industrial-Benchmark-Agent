@@ -18,6 +18,7 @@ import { resolvePythonPath } from "../lib/server/python-bridge/index.js";
 test("DSH discovers real eligible source references through the same paginated HTTP query", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-source-discovery-"));
   execFileSync(resolvePythonPath(), [fileURLToPath(new URL("fixtures/knowledge_dataset.py", import.meta.url)), root]);
+  const previousModel = process.env.LIVE_VLM_MODEL; process.env.LIVE_VLM_MODEL = "test-source-model";
   const ctx = new Context();
   new SystemPrompt(ctx, {}); new ToolRuntime(ctx); new SkillRegistry(ctx);
   new LocalAttachmentStore(ctx, { dshHome: path.join(root, "dsh") });
@@ -79,13 +80,14 @@ test("DSH discovers real eligible source references through the same paginated H
       { dataset_id, kind: "normal", page: 0 }, { dataset_id, kind: "unknown" }]) {
       assert.equal((await execute("knowledge_sources", args)).isError, true);
     }
-    for (const sample_ids of [undefined, [], ["part-0.png"], ["invented"]]) {
-      const result = await execute("knowledge_mine_normal", { dataset_id, ...(sample_ids === undefined ? {} : { sample_ids }) });
+    for (const images of [undefined, [], ["part-0.png"], ["invented"]]) {
+      const result = await execute("knowledge_mine_normal", { image_count: 1, ...(images === undefined ? {} : { images }) });
       assert.equal(result.isError, true, "Missing or invalid selections must never fall back to every eligible source");
     }
     assert.deepEqual((await ctx.iadPythonBridge.execute("knowledge_list", { dataset_id })).jobs, []);
   } finally {
     await fork.dispose();
+    if (previousModel === undefined) delete process.env.LIVE_VLM_MODEL; else process.env.LIVE_VLM_MODEL = previousModel;
     await new Promise(resolve => api.close(resolve));
     await fs.rm(root, { recursive: true, force: true });
   }

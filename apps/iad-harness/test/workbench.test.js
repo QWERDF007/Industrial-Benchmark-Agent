@@ -160,6 +160,8 @@ test("real bridge: normal mining publishes knowledge and serves its actual visua
   });
   await new Promise(resolve => model.listen(0, "127.0.0.1", resolve));
   const previousEndpoint = process.env.LIVE_VLM_ENDPOINT;
+  const previousCapacity=process.env.LIVE_VLM_CAPACITY_MODE;process.env.LIVE_VLM_CAPACITY_MODE="vllm_tokenize";
+  const previousModel = process.env.LIVE_VLM_MODEL; process.env.LIVE_VLM_MODEL = "test-mllm";
   process.env.LIVE_VLM_ENDPOINT = `http://127.0.0.1:${model.address().port}/v1`;
   const bridge = new PythonBridge({ cwd: process.cwd().endsWith("iad-harness") ? path.resolve("../..") : process.cwd(), dbPath: path.join(root, "test.db") });
   const server = http.createServer(createIadHttpHandler(bridge));
@@ -191,7 +193,8 @@ test("real bridge: normal mining publishes knowledge and serves its actual visua
     const initial = await fetch(`${base}/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`);
     assert.equal(initial.status, 200, await initial.clone().text());
     assert.equal((await initial.json()).knowledge, null);
-    const started = await post("/knowledge/start", { dataset_id: dataset.dataset_id, kind: "normal", model_name: "test-mllm" });
+    const chosen = (await (await fetch(`${base}/knowledge/sources?dataset_id=${dataset.dataset_id}&kind=normal`)).json()).items.map(item => item.sample_id);
+    const started = await post("/knowledge/start", { kind: "normal", image_count: chosen.length, images: chosen });
     assert.equal(started.status, 200, await started.clone().text());
     let job = await started.json();
     const deadline = Date.now() + 5000;
@@ -229,7 +232,7 @@ test("real bridge: normal mining publishes knowledge and serves its actual visua
     const emptyDataset = (await (await fetch(base+"/datasets")).json()).datasets[0];
     assert.equal(emptyDataset.reference_mode,"selected");
     assert.deepEqual(emptyDataset.reference_sample_ids,[]);
-    const noSources = await post("/knowledge/start",{dataset_id:dataset.dataset_id,kind:"normal"});
+    const noSources = await post("/knowledge/start",{kind:"normal",image_count:chosen.length,images:chosen});
     assert.equal(noSources.status,422,"显式空集合不能回退为全部无标注图");
     const reset = await fetch(`${base}/datasets/${dataset.dataset_id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({reset_references:true})});
     assert.equal(reset.status,200,await reset.clone().text());
@@ -239,6 +242,8 @@ test("real bridge: normal mining publishes knowledge and serves its actual visua
     bridge.destroy();
     if (previousEndpoint === undefined) delete process.env.LIVE_VLM_ENDPOINT;
     else process.env.LIVE_VLM_ENDPOINT = previousEndpoint;
+    if(previousCapacity===undefined)delete process.env.LIVE_VLM_CAPACITY_MODE;else process.env.LIVE_VLM_CAPACITY_MODE=previousCapacity;
+    if (previousModel === undefined) delete process.env.LIVE_VLM_MODEL; else process.env.LIVE_VLM_MODEL = previousModel;
     await new Promise(resolve => server.close(resolve));
     await new Promise(resolve => model.close(resolve));
     await fs.rm(root, { recursive: true, force: true });
@@ -260,6 +265,8 @@ test("real bridge: cancellation stays requested until the model call returns", {
   });
   await new Promise(resolve=>model.listen(0,"127.0.0.1",resolve));
   const previousEndpoint=process.env.LIVE_VLM_ENDPOINT;
+  const previousCapacity=process.env.LIVE_VLM_CAPACITY_MODE;process.env.LIVE_VLM_CAPACITY_MODE="vllm_tokenize";
+  const previousModel=process.env.LIVE_VLM_MODEL;process.env.LIVE_VLM_MODEL="test-model";
   process.env.LIVE_VLM_ENDPOINT=`http://127.0.0.1:${model.address().port}/v1`;
   const bridge=new PythonBridge({cwd:process.cwd().endsWith("iad-harness")?path.resolve("../.."):process.cwd(),dbPath:path.join(root,"test.db")});
   const server=http.createServer(createIadHttpHandler(bridge));
@@ -269,7 +276,8 @@ test("real bridge: cancellation stays requested until the model call returns", {
   try {
     const imported=await post("/datasets/import",{format:"labelme",name:"Cancellation",image_dir:images,annotation_dir:labels});
     assert.equal(imported.status,200,await imported.clone().text());const dataset=await imported.json();
-    const started=await post("/knowledge/start",{dataset_id:dataset.dataset_id,kind:"normal",model_name:"test-model"});
+    const chosen=(await(await fetch(`${base}/knowledge/sources?dataset_id=${dataset.dataset_id}&kind=normal`)).json()).items.map(item=>item.sample_id);
+    const started=await post("/knowledge/start",{kind:"normal",image_count:chosen.length,images:chosen});
     assert.equal(started.status,200,await started.clone().text());const job=await started.json();
     await Promise.race([waiting,delay(5000).then(()=>{throw new Error("Model request did not arrive");})]);
     const cancellation=await post(`/knowledge/cancel/${job.run_id}`,{});
@@ -298,6 +306,8 @@ test("real bridge: cancellation stays requested until the model call returns", {
   } finally {
     release?.();bridge.destroy();
     if(previousEndpoint===undefined)delete process.env.LIVE_VLM_ENDPOINT;else process.env.LIVE_VLM_ENDPOINT=previousEndpoint;
+    if(previousCapacity===undefined)delete process.env.LIVE_VLM_CAPACITY_MODE;else process.env.LIVE_VLM_CAPACITY_MODE=previousCapacity;
+    if(previousModel===undefined)delete process.env.LIVE_VLM_MODEL;else process.env.LIVE_VLM_MODEL=previousModel;
     await new Promise(resolve=>server.close(resolve));await new Promise(resolve=>model.close(resolve));
     await fs.rm(root,{recursive:true,force:true});
   }

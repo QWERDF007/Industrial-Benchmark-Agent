@@ -27,7 +27,18 @@ print(next(entry['config']['model'] for entry in entries if entry.get('id') == '
 `, path.join(workspace, "config/dsh_web_lan_patch.yml")], { encoding: "utf8" }).trim();
 }
 
-export async function createDatasetSession({ root, dbPath, endpoint, model, apiKeyEnv }) {
+export async function readDatasetSessionContext({ endpoint, model, apiKeyEnv }) {
+  if (process.env.LIVE_VLM_CAPACITY_MODE !== "vllm_tokenize") throw new Error("Live Session verification requires an explicitly configured capacity protocol");
+  const response = await fetch(endpoint.replace(/\/v1\/?$/, "") + "/tokenize", { method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer " + process.env[apiKeyEnv] },
+    body: JSON.stringify({ model, messages: [{ role: "user", content: "capacity verification" }] }) });
+  if (!response.ok) throw new Error("The configured tokenizer did not report capacity");
+  const capacity = await response.json();
+  if (!Number.isSafeInteger(capacity.max_model_len) || capacity.max_model_len <= 0) throw new Error("Invalid model context capacity");
+  return capacity.max_model_len;
+}
+
+export async function createDatasetSession({ root, dbPath, endpoint, model, apiKeyEnv, contextWindow = 32768, maxTokens = 8192 }) {
   const ctx = new Context();
   new SystemPrompt(ctx, { includeHarnessIdentity: false, includeRuntimeContext: false,
     personaPrefix: "你是工业数据集分析助手，使用工具执行用户任务，依据真实结果回答。" });
@@ -50,12 +61,12 @@ export async function createDatasetSession({ root, dbPath, endpoint, model, apiK
     forks.push(await ctx.plugin(piAi, { providers: { "iad-verification": {
       api: "openai-completions", baseURL: endpoint, apiKeyEnv,
       retryPolicy: { mode: "normal", maxRetries: 0 },
-      models: [{ id: model, input: ["text", "image"], contextWindow: 262144, maxTokens: 8192, reasoningEfforts: false }],
+      models: [{ id: model, input: ["text", "image"], contextWindow, maxTokens, reasoningEfforts: false }],
     } } }));
     forks.push(await ctx.plugin(AgentLoop, { agents: [] }));
     forks.push(await ctx.plugin(harness, { dbPath }));
     handle = await ctx.agents.create({ sessionId: SessionId("iad-verification-" + randomUUID()),
-      agentOptions: { provider: "iad-verification", model, maxTokens: 8192 } });
+      agentOptions: { provider: "iad-verification", model, maxTokens } });
     return { ctx, handle, dispose };
   } catch (error) {
     await dispose();

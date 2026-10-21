@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group
 import base64
 import io
 import json
@@ -32,12 +33,14 @@ def test_operator_can_reopen_actual_model_requests_responses_and_reported_usage(
         actual.append((request.content, response.content))
         return response
 
-    service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond), timeout=httpx.Timeout(7.25, connect=1.5))))
     try:
-        started = service.start(dataset_id=config.dataset.id, kind='normal')
+        started = service.start(request=selected_group(service.db, config.dataset.id, kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(started['run_id'], 5)
         job = service.status(started['run_id'])
         assert job['status'] == 'COMPLETED', job
+        assert job['request']['model_profile']['generation_timeout_seconds'] == 7.25
+        assert job['request']['model_profile']['connect_timeout_seconds'] == 1.5
         calls = job['model_calls']
         assert [call['operation'] for call in calls] == ['tokenize', 'generate']
         assert all(call['schema_name'] == 'KnowledgeDraft' for call in calls)
@@ -84,7 +87,7 @@ def test_failed_calls_preserve_actual_output_and_the_original_error(knowledge_da
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=config.dataset.id, kind='normal')
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(job['run_id'], 5)
         status = service.status(job['run_id'])
         assert status['status'] == 'FAILED', status
@@ -129,8 +132,8 @@ def test_concurrent_jobs_keep_separate_model_call_histories(knowledge_dataset, t
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = service.start(dataset_id=config.dataset.id, kind='normal', model_name='first-model')
-        other = service.start(dataset_id=second['dataset_id'], kind='normal', model_name='second-model')
+        first = service.start(request=selected_group(service.db, config.dataset.id, kind='normal'), kind='normal', model_name='first-model')
+        other = service.start(request=selected_group(service.db, second['dataset_id'], kind='normal'), kind='normal', model_name='second-model')
         for job, model in [(first, 'first-model'), (other, 'second-model')]:
             service.wait(job['run_id'], 5)
             result = service.status(job['run_id'])
@@ -161,7 +164,7 @@ def test_cancelled_job_retains_in_flight_request_and_actual_late_response(knowle
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=config.dataset.id, kind='normal')
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal'), kind='normal', model_name='test-mllm')
         assert entered.wait(3)
         running = service.status(job['run_id'])
         call = running['model_calls'][-1]

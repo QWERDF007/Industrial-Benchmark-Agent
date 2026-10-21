@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group
 from uuid import uuid4
 import json
 
@@ -127,11 +128,11 @@ def test_operator_retries_failed_knowledge_without_publishing_twice(dataset, mll
 
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = runtime.knowledge.start(dataset_id=config.dataset.id, kind='normal', model_name='retry-test-model')
+        first = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal'), kind='normal', model_name='retry-test-model')
         runtime.knowledge.wait(first['run_id'], 5)
         parent = runtime.knowledge.status(first['run_id'])
         assert parent['status'] == 'FAILED'
-        with pytest.raises(ValueError, match='联合.*全部'):
+        with pytest.raises(ValueError, match='同一有序冻结图组'):
             runtime.knowledge.retry(run_id=first['run_id'], sample_ids=parent['sample_ids'][:1])
         assert len(runtime.knowledge.list(config.dataset.id)) == 2
         failing = False
@@ -295,14 +296,14 @@ def test_knowledge_retry_rejects_changed_human_feedback(dataset, mllm_api):
 
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = runtime.knowledge.start(dataset_id=config.dataset.id, kind='normal', model_name='retry-test-model')
+        first = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal'), kind='normal', model_name='retry-test-model')
         runtime.knowledge.wait(first['run_id'], 5)
         assert runtime.knowledge.status(first['run_id'])['status'] == 'FAILED'
         sid = first['sample_ids'][0]
         reviews = HumanReview(db)
         reviews.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=config.dataset.id, reviewer='operator', sample_id=sid, decision='PASS'))
         decision = sample_get({'sample_id': sid}, db.db_path)['review_decision']
-        with pytest.raises(ValueError, match='重新启动挖掘'):
+        with pytest.raises(ValueError, match='重新启动'):
             runtime.knowledge.retry(run_id=first['run_id'])
         assert sample_get({'sample_id': sid}, db.db_path)['review_decision'] == decision
         assert len(runtime.knowledge.list(config.dataset.id)) == 2  # initial normal and failed attempt

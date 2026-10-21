@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group
 from iad_core.dataset.folder_preview import preview_folder_dataset
 from uuid import uuid4
 import base64
@@ -94,16 +95,16 @@ def test_operator_verifies_annotated_defect_against_frozen_normal_knowledge(
 
     service = KnowledgeService(Database(db_path), VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = service.start(dataset_id=dataset['dataset_id'], kind='normal', model_name='test-mllm')
+        first = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(first['run_id'], 5)
         assert service.status(first['run_id'])['status'] == 'COMPLETED'
         normal = knowledge_get({'dataset_id': dataset['dataset_id'], 'kind': 'normal'}, db_path)['knowledge']
-        job = service.start(dataset_id=dataset['dataset_id'], kind='defect', normal_version_id=normal['version_id'], model_name='test-mllm')
+        job = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='defect', knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
         service.wait(job['run_id'], 5)
         finished = service.status(job['run_id'])
         if expected in ('invalid', 'invalid_lineage'):
             assert finished['status'] == 'FAILED', finished
-            assert ('raw ROI' if expected == 'invalid' else 'Knowledge revisions') in finished['errors'][0]['message']
+            assert ('raw ROI' if expected == 'invalid' else '输出格式错误') in finished['errors'][0]['message']
             assert knowledge_get({'dataset_id': dataset['dataset_id'], 'kind': 'defect'}, db_path)['knowledge'] is None
             return
         assert finished['status'] == 'COMPLETED', finished
@@ -120,7 +121,7 @@ def test_operator_verifies_annotated_defect_against_frozen_normal_knowledge(
         if expected == 'supported':
             assert check['finding_ids'] == [finding['finding_id']]
             assert check['normal_check_ids'] == [normal['checks'][0]['check_id']]
-            assert check['status'] == 'supported'
+            assert check['status'] == 'provisional', '单个异常来源不能满足两独立来源支持策略'
         else:
             assert check['support_evidence_ids'] == []
             assert check['status'] == 'provisional'
@@ -178,7 +179,7 @@ def test_defect_mining_keeps_frozen_normal_lineage_when_normal_head_changes(defe
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=dataset['dataset_id'], kind='normal', model_name='test-mllm')
+        job = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(job['run_id'], 5)
         normal = knowledge_get({'dataset_id': dataset['dataset_id'], 'kind': 'normal'}, db.db_path)['knowledge']
         foreign_images, foreign_labels = images.parent / 'other-images', images.parent / 'other-labels'
@@ -186,45 +187,33 @@ def test_defect_mining_keeps_frozen_normal_lineage_when_normal_head_changes(defe
         foreign_labels.mkdir()
         Image.new('RGB', (100, 100), 'gray').save(foreign_images / 'part.png')
         foreign = dataset_import({'format': 'labelme', 'name': '另一数据集', 'image_dir': str(foreign_images), 'annotation_dir': str(foreign_labels)}, db.db_path)
-        with pytest.raises(ValueError, match='same dataset'):
-            service.start(dataset_id=foreign['dataset_id'], kind='defect', normal_version_id=normal['version_id'])
-        with pytest.raises(ValueError, match='normal_version_id'):
-            service.start(dataset_id=dataset['dataset_id'], kind='defect')
-        with pytest.raises(ValueError, match='normal_version_id'):
-            service.start(dataset_id=dataset['dataset_id'], kind='normal', normal_version_id=normal['version_id'])
-        with pytest.raises(ValueError, match='eligible'):
-            service.start(dataset_id=dataset['dataset_id'], kind='defect', normal_version_id=normal['version_id'],
-                          sample_ids=[dataset['dataset_id'] + ':part-0.png'])
-        defect_job = service.start(dataset_id=dataset['dataset_id'], kind='defect', normal_version_id=normal['version_id'], model_name='test-mllm')
+        with pytest.raises(ValueError, match='数据集'):
+            service.start(request=selected_group(service.db, foreign['dataset_id'], kind='defect', images=[foreign['dataset_id'] + ':part.png'], knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
+        with pytest.raises(ValueError, match='不合格知识来源'):
+            service.start(request=selected_group(service.db, dataset['dataset_id'], kind='defect', images=[dataset['dataset_id'] + ':part-0.png'], knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
+        defect_job = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='defect', knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
         assert entered.wait(3)
         Image.new('RGB', (320, 240), 'white').save(images / 'part-0.png')
-        changed_job = service.start(dataset_id=dataset['dataset_id'], kind='normal', model_name='test-mllm')
+        changed_job = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(changed_job['run_id'], 5)
         changed = knowledge_get({'dataset_id': dataset['dataset_id'], 'kind': 'normal'}, db.db_path)['knowledge']
         assert changed['version_id'] != normal['version_id']
         release.set()
         service.wait(defect_job['run_id'], 5)
         status = service.status(defect_job['run_id'])
-        assert status['status'] == 'COMPLETED', status
-        defect = knowledge_get({'version_id': status['knowledge_version_id']}, db.db_path)['knowledge']
-        assert defect['normal_version_id'] == normal['version_id']
-        assert {item['image']['evidence_id'] for item in normal['evidence']} <= {item['image']['evidence_id'] for item in defect['evidence']}
-        previous_count = len(requests)
-        again = service.start(dataset_id=dataset['dataset_id'], kind='defect', normal_version_id=normal['version_id'], model_name='test-mllm')
-        service.wait(again['run_id'], 5)
-        assert service.status(again['run_id'])['knowledge_version_id'] == defect['version_id']
-        assert len(requests) == previous_count
-        next_job = service.start(dataset_id=dataset['dataset_id'], kind='defect', normal_version_id=changed['version_id'], model_name='test-mllm')
+        assert status['status'] == 'FAILED', status
+        assert '来源已变化' in status['errors'][0]['message']
+        assert knowledge_get({'dataset_id': dataset['dataset_id'], 'kind': 'defect'}, db.db_path)['knowledge'] is None
+        with pytest.raises(ValueError, match='来源已变化'):
+            service.retry(defect_job['run_id'])
+        next_job = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='defect', knowledge_preset=[changed['version_id']]), kind='defect', model_name='test-mllm')
         service.wait(next_job['run_id'], 5)
         next_status = service.status(next_job['run_id'])
         assert next_status['status'] == 'COMPLETED', next_status
         successor = knowledge_get({'version_id': next_status['knowledge_version_id']}, db.db_path)['knowledge']
-        assert successor['parent_version_id'] == defect['version_id']
+        assert successor['parent_version_id'] is None
         assert successor['normal_version_id'] == changed['version_id']
-        assert successor['signature'] != defect['signature']
-        assert knowledge_get({'version_id': defect['version_id']}, db.db_path)['knowledge'] == defect
-        with pytest.raises(ValueError, match='usable normal'):
-            service.start(dataset_id=dataset['dataset_id'], kind='defect', normal_version_id=defect['version_id'])
+        assert knowledge_get({'version_id': normal['version_id']}, db.db_path)['knowledge'] == normal
     finally:
         release.set()
         service.close()
@@ -241,12 +230,12 @@ def test_defect_mining_rejects_normal_version_without_usable_checks(defect_datas
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=dataset['dataset_id'], kind='normal', model_name='test-mllm')
+        job = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(job['run_id'], 5)
         status = service.status(job['run_id'])
         assert status['status'] == 'COMPLETED', status
-        with pytest.raises(ValueError, match='usable normal'):
-            service.start(dataset_id=dataset['dataset_id'], kind='defect', normal_version_id=status['knowledge_version_id'])
+        with pytest.raises(ValueError, match='没有可用判据'):
+            service.start(request=selected_group(service.db, dataset['dataset_id'], kind='defect', knowledge_preset=[status['knowledge_version_id']]), kind='defect', model_name='test-mllm')
         assert all(job['kind'] == 'normal' for job in service.list(dataset['dataset_id']))
     finally:
         service.close()
@@ -291,12 +280,17 @@ def test_operator_can_mine_unannotated_suspects_without_inventing_annotation_pro
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        normal_job = service.start(dataset_id=dataset['dataset_id'], kind='normal', model_name='test-mllm')
+        normal_job = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(normal_job['run_id'], 5)
         normal_status = service.status(normal_job['run_id'])
         assert normal_status['status'] == 'COMPLETED', normal_status
         normal = knowledge_get({'version_id': normal_status['knowledge_version_id']}, db.db_path)['knowledge']
-        job = service.start(dataset_id=dataset['dataset_id'], kind='defect', normal_version_id=normal['version_id'], model_name='test-mllm')
+        if source_kind == 'normal_suspect':
+            assert normal['findings'][0]['judgment']['status'] == 'supported'
+            with pytest.raises(ValueError, match='没有可用判据'):
+                service.start(request=selected_group(service.db, dataset['dataset_id'], kind='defect', knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
+            return
+        job = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='defect', knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
         service.wait(job['run_id'], 5)
         status = service.status(job['run_id'])
         assert status['status'] == 'COMPLETED', status
@@ -439,14 +433,14 @@ def test_folder_classification_defect_and_normal_knowledge(tmp_path):
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
         # Mine normal knowledge
-        normal_job = service.start(dataset_id=ds_id, kind='normal', model_name='test-mllm')
+        normal_job = service.start(request=selected_group(service.db, ds_id, kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(normal_job['run_id'], 5)
         normal_ver = service.status(normal_job['run_id'])['knowledge_version_id']
         normal_k = knowledge_get({'version_id': normal_ver}, db.db_path)['knowledge']
         assert len(normal_k['checks']) > 0
 
         # Mine defect knowledge using normal version
-        defect_job = service.start(dataset_id=ds_id, kind='defect', normal_version_id=normal_ver, sample_ids=[ng2_id], model_name='test-mllm')
+        defect_job = service.start(request=selected_group(service.db, ds_id, kind='defect', images=[ng2_id], knowledge_preset=[normal_ver]), kind='defect', model_name='test-mllm')
         service.wait(defect_job['run_id'], 5)
         defect_status = service.status(defect_job['run_id'])
         assert defect_status['status'] == 'COMPLETED'

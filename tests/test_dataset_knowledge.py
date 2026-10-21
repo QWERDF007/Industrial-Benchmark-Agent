@@ -1,3 +1,4 @@
+from tests.knowledge_scenarios import selected_group
 import base64
 import io
 import json
@@ -43,7 +44,7 @@ def test_operator_mines_and_reopens_evidence_backed_normal_knowledge(knowledge_d
 
     service = KnowledgeService(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=config.dataset.id, kind="normal", model_name="test-mllm")
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind="normal"), kind="normal", model_name="test-mllm")
         service.wait(job["run_id"], 5)
         finished = service.status(job["run_id"])
         assert finished["status"] == "COMPLETED", finished
@@ -54,7 +55,7 @@ def test_operator_mines_and_reopens_evidence_backed_normal_knowledge(knowledge_d
         assert snapshot["checks"][0]["criterion"] == "两个圆孔沿主体长边排列，中心位于同一横向带内"
         assert len(snapshot["sources"]) == 6
         assert {source["qualification"] for source in snapshot["sources"]} == {"initial_unannotated"}
-        assert len({image["source_sha256"] for image in sent}) == 1
+        assert len({image["source_sha256"] for image in sent}) == 6, "合成来源使用不同实际内容，不以副本凑支持"
         assert len(sent) == 6
         reopened = knowledge_get({"version_id": snapshot["version_id"]}, db.db_path)["knowledge"]
         assert reopened == snapshot
@@ -89,13 +90,13 @@ def test_cancelling_mining_retains_unprocessed_scope_and_does_not_publish_late_k
 
     service = KnowledgeService(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=config.dataset.id, kind="normal", model_name="test-mllm")
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind="normal"), kind="normal", model_name="test-mllm")
         assert entered.wait(3)
         stopping = service.cancel(job["run_id"])
         assert stopping["status"] == "RUNNING"
         assert "正在停止" in stopping["message"]
         with pytest.raises(ValueError, match="active job"):
-            service.start(dataset_id=config.dataset.id, kind="normal", model_name="test-mllm")
+            service.start(request=selected_group(service.db, config.dataset.id, kind="normal"), kind="normal", model_name="test-mllm")
         release.set()
         service.wait(job["run_id"], 5)
         finished = service.status(job["run_id"])
@@ -125,20 +126,20 @@ def test_mining_reuses_unchanged_knowledge_and_preserves_history_after_source_ch
 
     service = KnowledgeService(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = service.start(dataset_id=config.dataset.id, kind="normal", model_name="test-mllm")
+        first = service.start(request=selected_group(service.db, config.dataset.id, kind="normal"), kind="normal", model_name="test-mllm")
         service.wait(first["run_id"], 5)
         original = knowledge_get({"dataset_id": config.dataset.id, "kind": "normal"}, db.db_path)["knowledge"]
-        again = service.start(dataset_id=config.dataset.id, kind="normal", model_name="test-mllm")
+        again = service.start(request=selected_group(service.db, config.dataset.id, kind="normal"), kind="normal", model_name="test-mllm")
         service.wait(again["run_id"], 5)
         assert service.status(again["run_id"])["knowledge_version_id"] == original["version_id"]
         assert len(generated) == 1
         Image.new("RGB", (320, 240), "white").save(Path(config.root) / "part-0.png")
-        changed = service.start(dataset_id=config.dataset.id, kind="normal", model_name="test-mllm")
+        changed = service.start(request=selected_group(service.db, config.dataset.id, kind="normal"), kind="normal", model_name="test-mllm")
         service.wait(changed["run_id"], 5)
         current = knowledge_get({"dataset_id": config.dataset.id, "kind": "normal"}, db.db_path)["knowledge"]
         assert service.status(changed["run_id"])["status"] == "COMPLETED"
         assert current["version_id"] != original["version_id"]
-        assert current["parent_version_id"] == original["version_id"]
+        assert current["parent_version_id"] is None, "No preset means independent learning, even when a publication head exists"
         assert current["signature"] != original["signature"]
         assert knowledge_get({"version_id": original["version_id"]}, db.db_path)["knowledge"] == original
         assert len(generated) == 2
@@ -167,7 +168,7 @@ def test_invalid_model_localization_cannot_be_published_as_knowledge(knowledge_d
 
     service = KnowledgeService(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=config.dataset.id, kind="normal", model_name="test-mllm")
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind="normal"), kind="normal", model_name="test-mllm")
         service.wait(job["run_id"], 5)
         result = service.status(job["run_id"])
         assert result["status"] == "FAILED", result
@@ -203,7 +204,7 @@ def test_mining_covers_all_sources_when_actual_context_requires_grouping(knowled
 
     service = KnowledgeService(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=config.dataset.id, kind="normal", model_name="test-mllm")
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind="normal"), kind="normal", model_name="test-mllm")
         service.wait(job["run_id"], 5)
         result = service.status(job["run_id"])
         assert result["status"] == "COMPLETED", result
@@ -227,7 +228,7 @@ def test_live_normal_mining_survives_multimodal_capacity_preflight(knowledge_dat
     db, config = knowledge_dataset
     service = KnowledgeService(db)
     try:
-        job = service.start(dataset_id=config.dataset.id, kind="normal")
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind="normal"), kind="normal", model_name='test-mllm')
         service.wait(job["run_id"], 180)
         result = service.status(job["run_id"])
         assert result["status"] == "COMPLETED", result
@@ -259,7 +260,7 @@ def test_cancelling_during_capacity_preflight_does_not_start_generation(knowledg
 
     service = KnowledgeService(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=config.dataset.id, kind="normal", model_name="test-mllm")
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind="normal"), kind="normal", model_name="test-mllm")
         assert entered.wait(3)
         service.cancel(job["run_id"])
         release.set()
@@ -303,18 +304,18 @@ def test_normal_mining_retains_native_detail_and_overview_of_large_sources(knowl
 
     service = KnowledgeService(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(dataset_id=config.dataset.id, kind="normal", model_name="test-mllm")
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind="normal"), kind="normal", model_name="test-mllm")
         service.wait(job["run_id"], 5)
         finished = service.status(job["run_id"])
         assert finished["status"] == "COMPLETED", finished
         snapshot = knowledge_get({"version_id": finished["knowledge_version_id"]}, db.db_path)["knowledge"]
         assert len(snapshot["sources"]) == 6
-        assert len([item for item in observed if item["role"] == "normal"]) == 6
+        assert len({item["evidence_id"] for item in observed if item["role"] == "normal"}) == 6
         native = [item for item in observed if item["role"] == "roi"]
         assert native
         assert any(item["crop_bbox"][0] <= 1800 < item["crop_bbox"][2] for item in native)
-        assert len(snapshot["mining_steps"]) == 1
-        assert len(snapshot["evidence"]) == len(observed)
+        assert len(snapshot["mining_steps"]) == 3
+        assert len(snapshot["evidence"]) == len({item["evidence_id"] for item in observed})
         for item in snapshot["evidence"]:
             media = knowledge_evidence({"version_id": snapshot["version_id"], "evidence_id": item["image"]["evidence_id"]}, db.db_path)
             assert Path(media["path"]).is_file()
@@ -345,13 +346,14 @@ def test_capacity_groups_keep_source_overview_with_each_native_detail_group(know
     service = KnowledgeService(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
     try:
         sample_id = DatasetRegistry(db).references(config.dataset.id)[0]
-        job = service.start(dataset_id=config.dataset.id, kind="normal", sample_ids=[sample_id], model_name="test-mllm")
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind="normal", images=[sample_id]), kind="normal", model_name="test-mllm")
         service.wait(job["run_id"], 5)
         finished = service.status(job["run_id"])
         assert finished["status"] == "COMPLETED", finished
         assert finished["completed"] == 1
         knowledge = knowledge_get({"version_id": finished["knowledge_version_id"]}, db.db_path)["knowledge"]
-        assert len(batches) == 2
+        assert len(batches) == 3
+        assert batches[-1], "Synthesis carries real image evidence"
         assert all(batch[0]["role"] == "normal" and all(item["role"] == "roi" for item in batch[1:]) for batch in batches)
         assert batches[0][0]["evidence_id"] == batches[1][0]["evidence_id"]
         assert {item["evidence_id"] for batch in batches for item in batch} == {

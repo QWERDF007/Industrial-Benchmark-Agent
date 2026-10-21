@@ -1,6 +1,6 @@
 # 图组知识挖掘票据
 
-[完整规格](../specs/incremental-knowledge-mining.md)为需求唯一来源；8票粒度、依赖、公开测试边界与默认冲突继续策略已确认。本地docs为指定交付位置，ready-for-agent不表示已实施；执行只取全部阻塞已完成的前沿。
+[完整规格](../specs/incremental-knowledge-mining.md)为需求唯一来源；8票粒度、依赖、公开测试边界与默认冲突继续策略已确认。本地docs为指定交付位置；执行状态由每票Status和验收勾选声明，进展与验证记录仅见根任务账本。
 
 | 票据 | 交付 |
 | --- | --- |
