@@ -81,11 +81,24 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
   }
   const jobs = await session.ctx.iadPythonBridge.execute("knowledge_list", { dataset_id: dataset.dataset_id });
   const audits = await session.ctx.iadPythonBridge.execute("audit_list", { dataset_id: dataset.dataset_id });
-  assert.equal(jobs.jobs.length, 2);
-  assert.equal(audits.jobs.length, 1);
-  assert.ok([...jobs.jobs, ...audits.jobs].every(job => job.status === "COMPLETED" && job.failed === 0));
+  const normalJobs = jobs.jobs.filter(job => job.kind === "normal");
+  const defectJobs = jobs.jobs.filter(job => job.kind === "defect");
+  assert.equal(normalJobs.length + defectJobs.length, jobs.jobs.length);
+  for (const executions of [normalJobs, defectJobs, audits.jobs]) {
+    const roots = executions.filter(job => !job.parent_run_id);
+    assert.equal(roots.length, 1, "Each requested stage has one root execution and any linked retries");
+    assert.equal(executions[0].status, "COMPLETED", "The final execution must finish successfully, including any required retry");
+    assert.equal(executions[0].failed, 0);
+    for (const job of executions) {
+      assert.equal(job.root_run_id, roots[0].run_id);
+      assert.equal(job.normal_version_id, roots[0].normal_version_id);
+      assert.equal(job.defect_version_id, roots[0].defect_version_id);
+      assert.ok(!["PENDING", "RUNNING"].includes(job.status));
+      if (job.parent_run_id) assert.ok(executions.some(parent => parent.run_id === job.parent_run_id));
+    }
+  }
   assert.ok([...jobs.jobs, ...audits.jobs].every(job => job.origin_session_id === session.handle.agent.id), "All jobs must retain the actual initiating Session");
-  assert.equal(audits.jobs[0].completed, expectedCount);
+  assert.equal(audits.jobs.reduce((total, job) => total + job.completed, 0), expectedCount, "Retries must cover only unfinished samples");
   const report = trace.findLast(item => item.name === "dataset_report").result.value;
   assert.equal(report.vlm_audited_count, expectedCount);
   assert.equal(report.human_reviewed_count, 0);
@@ -94,7 +107,7 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
   assert.equal(report.quality.audit_coverage.percent, 100);
   assert.equal(report.quality.human_verification_coverage.percent, 0);
   assert.equal(report.quality.model.unstructured_samples, 0);
-  assert.deepEqual(report.quality.audit_run_ids, [audits.jobs[0].run_id]);
+  assert.deepEqual([...report.quality.audit_run_ids].sort(), audits.jobs.filter(job => job.completed > 0).map(job => job.run_id).sort());
   assert.deepEqual(report.quality.knowledge_versions, [{ normal_version_id: audits.jobs[0].normal_version_id,
     defect_version_id: audits.jobs[0].defect_version_id, legacy_profile_id: null, sample_count: expectedCount }]);
   assert.ok(report.quality.technical_usability.basis && report.quality.scope.limitations.length);
