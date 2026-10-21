@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import type { Dataset, DirectoryListing, ScanResult } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 import { Modal } from "./Modal.js";
+import { DatasetName } from "./DatasetName.js";
 
 function DirectoryPicker({ label, value, onChange, disabled = false }: { label: string; value: string; onChange(value: string): void; disabled?: boolean }) {
   const [listing, setListing] = useState<DirectoryListing | null>(null);
@@ -21,8 +22,6 @@ function DirectoryPicker({ label, value, onChange, disabled = false }: { label: 
 }
 
 function DatasetSettings({ dataset, onChanged }: { dataset: Dataset; onChanged(): void }) {
-  const [rename, setRename] = useState(dataset.name);
-  useEffect(() => setRename(dataset.name), [dataset.name]);
   const [imageDir, setImageDir] = useState(dataset.image_dir);
   const [annotationDir, setAnnotationDir] = useState(dataset.annotation_dir || "");
   useEffect(() => { setImageDir(dataset.image_dir); setAnnotationDir(dataset.annotation_dir || ""); }, [dataset.image_dir, dataset.annotation_dir]);
@@ -30,7 +29,7 @@ function DatasetSettings({ dataset, onChanged }: { dataset: Dataset; onChanged()
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  async function save(patch: { name?: string; unannotated_is_normal?: boolean }) {
+  async function save(patch: { unannotated_is_normal: boolean }) {
     setBusy(true); setError("");
     try { await request(`/datasets/${dataset.dataset_id}`, patch, "PATCH"); onChanged(); }
     catch (error) { setError(message(error)); } finally { setBusy(false); }
@@ -40,9 +39,9 @@ function DatasetSettings({ dataset, onChanged }: { dataset: Dataset; onChanged()
     try { setScan(await request<ScanResult>(`/datasets/${dataset.dataset_id}/rescan`, directoriesChanged ? { image_dir: imageDir, annotation_dir: annotationDir } : {})); onChanged(); }
     catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
-  return <section aria-label="当前数据集详情" aria-busy={busy}><h2>{dataset.name}</h2>
-    <div className="iad-field"><label htmlFor="dataset-rename">数据集名称</label><div className="iad-row"><input id="dataset-rename" aria-label="新的数据集名称" value={rename} onChange={e => setRename(e.target.value)} maxLength={120} disabled={busy} />
-      <button disabled={busy || !rename.trim() || rename.trim() === dataset.name} onClick={() => save({ name: rename })}>保存名称</button></div></div>
+  return <section aria-label="当前数据集详情" aria-busy={busy}><h2>数据集详情</h2>
+    <DatasetName dataset={dataset} label="新的数据集名称" onChanged={onChanged} />
+    <dl className="iad-dataset-counts"><div><dt>图像数量</dt><dd>{dataset.total_samples}</dd></div><div><dt>标注数量</dt><dd>{dataset.annotation_count}</dd></div></dl>
     <div className="iad-field-group"><h3>服务器目录</h3>
       <DirectoryPicker label="图像目录" value={imageDir} onChange={setImageDir} disabled={busy} />
       <DirectoryPicker label="标注目录" value={annotationDir} onChange={setAnnotationDir} disabled={busy} />
@@ -71,9 +70,11 @@ export function DatasetManager({ datasets, selected, onChanged }: { datasets: Da
   }
   return <div className="iad-settings">
     <section aria-label="数据集列表"><div className="iad-section-header"><h2>数据集 · {datasets.length}</h2><button className="iad-primary" onClick={() => { setError(""); setImporting(true); }}>添加数据集</button></div>
-      <div className="iad-dataset-list">{datasets.map(dataset => <button key={dataset.dataset_id} aria-label={`选择数据集 ${dataset.name}`} aria-pressed={selected?.dataset_id === dataset.dataset_id} onClick={() => onChanged(dataset.dataset_id)}>
-        <strong>{dataset.name}</strong><span>{dataset.total_samples} 张 · 人工复核 {dataset.human_reviewed_count} 张</span>
-      </button>)}</div>{!datasets.length && <p className="iad-muted">添加服务器上的 Labelme 图像目录与标注目录。</p>}
+      <div className="iad-dataset-list">{datasets.map(dataset => <article className="iad-dataset-card" key={dataset.dataset_id} data-selected={selected?.dataset_id === dataset.dataset_id}>
+        <button type="button" className="iad-dataset-select" aria-label={`选择数据集 ${dataset.name}`} aria-pressed={selected?.dataset_id === dataset.dataset_id} onClick={() => onChanged(dataset.dataset_id)} />
+        <DatasetName dataset={dataset} label="卡片数据集名称" onChanged={() => onChanged()} />
+        <dl className="iad-dataset-counts"><div><dt>图像数量</dt><dd>{dataset.total_samples}</dd></div><div><dt>标注数量</dt><dd>{dataset.annotation_count}</dd></div></dl>
+      </article>)}</div>{!datasets.length && <p className="iad-muted">添加服务器上的 Labelme 图像目录与标注目录。</p>}
     </section>
     {selected ? <DatasetSettings key={selected.dataset_id} dataset={selected} onChanged={onChanged} /> : <section><p>选择或添加数据集。</p></section>}
     {importing && <Modal title="导入 Labelme 数据集" onClose={() => { if (!busy) setImporting(false); }}>

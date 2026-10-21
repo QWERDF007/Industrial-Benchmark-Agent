@@ -71,6 +71,12 @@ export async function verifyWorkbenchSurfaces(driver, output) {
       await capture("dataset-import", "dialog[open] #dataset-name", "dialog[open]");
       await button("取消");
       assert.equal(await driver.executeScript("return document.activeElement.textContent"), "添加数据集");
+      await (await element(".iad-dataset-card button[aria-label^='修改数据集名称']")).click();
+      await capture("dataset-card-name", "input[aria-label='卡片数据集名称']"); await button("取消");
+      assert.equal(await driver.executeScript("return document.activeElement.classList.contains('iad-name-trigger')"), true);
+      await (await element("section[aria-label='当前数据集详情'] button[aria-label^='修改数据集名称']")).click();
+      await capture("dataset-detail-name", "input[aria-label='新的数据集名称']"); await button("取消");
+      assert.equal(await driver.executeScript("return document.activeElement.classList.contains('iad-name-trigger')"), true);
       for (const label of ["挖掘良品知识", "挖掘不良品知识"]) {
         await navigate(label);
         await (await element("select[aria-label='知识版本'] option[value='']")).click();
@@ -125,7 +131,7 @@ export async function verifyWorkbenchSurfaces(driver, output) {
       await button("关闭"); await (await element("button[aria-label='关闭图像详情']")).click();
     }
   }
-  assert.equal(results.length, 160, "Twenty real detail surfaces × four viewports × two themes at 200% text zoom");
+  assert.equal(results.length, 176, "Twenty real detail surfaces × four viewports × two themes at 200% text zoom");
   await viewport(driver, 1440, 1100); await textZoom(driver, 1);
   for (const label of ["挖掘良品知识", "挖掘不良品知识"]) { await navigate(label); await button("知识条目"); }
   await navigate("人工复核"); await button("复核队列");

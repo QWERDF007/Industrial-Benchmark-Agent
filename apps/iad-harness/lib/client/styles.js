@@ -24,14 +24,14 @@ export const workbenchStyles = themeStyles + controlStyles + `
 .iad-filter select {font-size:14px;max-width:180px;color:var(--iad-text);}
 .iad-pagination {display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:12px 0;font-size:12px;}
 .iad-pagination button {font-size:12px;}
-.iad-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:14px;}
+.iad-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:14px;}
 .iad-sample-item {position:relative;min-width:0;}
 .iad-workbench button.iad-sample {display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;width:100%;height:100%;padding:0;text-align:left;overflow:hidden;border:2px solid transparent;box-shadow:none;background:var(--iad-surface);}
 .iad-workbench button.iad-sample:hover {background:var(--iad-hover);}
 .iad-workbench button.iad-sample.is-selected {border-color:var(--iad-primary);}
 .iad-sample>strong {display:block;margin:0;padding:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:20px;font-weight:500;}
 .iad-thumb {position:relative;width:100%;aspect-ratio:4/3;flex:none;overflow:hidden;background:var(--iad-surface-muted);}.iad-thumb img {position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain;}
-.iad-workbench .iad-sample-metrics {display:flex;flex-direction:column;gap:4px;margin:0;padding:0 8px 8px;}
+.iad-workbench .iad-sample-metrics {display:flex;flex-direction:row;flex-wrap:wrap;justify-content:space-between;gap:4px 8px;margin:0;padding:0 8px 8px;}
 .iad-sample-metrics>div {display:flex;align-items:baseline;min-width:0;text-align:left;}.iad-sample-metrics dt {font-size:12px;line-height:1.5;white-space:nowrap;}.iad-sample-metrics dd {font-size:12px;line-height:1.5;margin:0;color:var(--iad-text);font-variant-numeric:tabular-nums;}
 .iad-workbench .iad-status-trigger {position:absolute;left:4px;top:4px;z-index:1;display:flex;align-items:start;justify-content:start;min-height:44px;min-width:44px;padding:8px;border:0;background:transparent;}
 .iad-workbench .iad-status-trigger:hover:not(:disabled) {background:transparent;}
@@ -62,12 +62,20 @@ export const workbenchStyles = themeStyles + controlStyles + `
 .iad-table-scroll {max-width:100%;max-height:min(60dvh,480px);overflow:auto;scroll-margin-block:24px;}.iad-review-records table {width:100%;min-width:620px;border-collapse:collapse;text-align:left;font-size:13px;}
 .iad-review-records caption {text-align:left;font-weight:600;margin:12px 0;}.iad-review-records th,.iad-review-records td {padding:12px;vertical-align:top;overflow-wrap:anywhere;max-width:240px;}
 .iad-review-records thead,.iad-review-records tr[data-selected=true] {background:var(--iad-surface-muted);}.iad-review-records time {font-size:12px;color:var(--iad-muted);}
-.iad-settings {display:grid;grid-template-columns:minmax(260px,300px) minmax(0,1fr);gap:20px;align-items:start;}
+.iad-settings {display:grid;grid-template-columns:minmax(300px,1fr) minmax(340px,1.2fr);gap:20px;align-items:start;}
 .iad-settings>section {padding:20px;background:var(--iad-surface);border-radius:8px;min-width:0;}
-.iad-dataset-list {display:flex;flex-direction:column;gap:8px;}
-.iad-dataset-list button {display:flex;flex-direction:column;align-items:start;gap:6px;text-align:start;padding:14px;background:var(--iad-surface-muted);border-color:transparent;overflow-wrap:anywhere;}
-.iad-dataset-list button[aria-pressed=true] {background:color-mix(in srgb,var(--iad-primary) 10%,var(--iad-surface));border-color:var(--iad-primary);}
-.iad-dataset-list span {font-size:13px;color:var(--iad-muted);}
+.iad-dataset-list {display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:12px;align-items:start;}
+.iad-dataset-card {position:relative;min-width:0;padding:12px;background:var(--iad-surface-muted);border-radius:var(--iad-radius);}
+.iad-workbench .iad-dataset-select {position:absolute;inset:0;width:100%;height:100%;padding:0;background:transparent;border:2px solid transparent;}
+.iad-workbench .iad-dataset-select[aria-pressed=true] {border-color:var(--iad-primary);}
+.iad-dataset-card>.iad-dataset-name {position:relative;z-index:1;}
+.iad-dataset-name {min-width:0;margin-bottom:12px;}
+.iad-workbench .iad-name-trigger {display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:0;padding:4px 6px;background:transparent;border-color:transparent;text-align:left;font-weight:600;}
+.iad-name-trigger span {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.iad-name-trigger svg {flex-shrink:0;}
+.iad-dataset-name form {display:grid;gap:8px;}.iad-dataset-name input {width:100%;}.iad-dataset-name .iad-row {gap:8px;justify-content:flex-end;}
+.iad-workbench .iad-dataset-counts {display:flex;flex-wrap:wrap;gap:12px 24px;margin:0;}
+.iad-dataset-counts>div {min-width:0;}.iad-dataset-counts dd {font-size:18px;font-weight:600;}
+.iad-dataset-card>.iad-dataset-counts {position:relative;pointer-events:none;}
 .iad-detail-dialog:has(.iad-dataset-import) {width:min(640px,calc(100vw - 32px));}
 .iad-dataset-import {max-width:640px;margin:auto;}
 .iad-directory {min-width:0;margin:0;border:0;background:var(--iad-surface-muted);padding:14px;border-radius:8px;}.iad-directory code {overflow-wrap:anywhere;}
@@ -147,7 +155,7 @@ export const workbenchStyles = themeStyles + controlStyles + `
 .iad-model-settings>summary {cursor:pointer;color:var(--iad-muted);}
 .iad-model-settings .iad-field {max-width:360px;}
 .iad-field-group {padding:16px;margin:16px 0;background:var(--iad-surface-muted);border-radius:var(--iad-radius);}
-@media(max-width:1100px) {.iad-workbench {padding:20px;}.iad-main {grid-template-columns:minmax(0,1fr) 300px;}.iad-grid {grid-template-columns:repeat(auto-fill,minmax(125px,1fr));}}
+@media(max-width:1100px) {.iad-workbench {padding:20px;}.iad-main {grid-template-columns:minmax(0,1fr) 300px;}.iad-grid {grid-template-columns:repeat(auto-fill,minmax(165px,1fr));}}
 @media(max-width:760px) {.iad-main,.iad-settings {grid-template-columns:1fr;}.iad-kpis {gap:10px;}.iad-inspector {width:100%;}}
 
 .iad-detail-dialog {width:min(1000px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:auto;margin:auto;background:var(--iad-surface);color:var(--iad-text);border:0;border-radius:8px;padding:16px;}

@@ -12,6 +12,10 @@ from iad_core.storage.database import Database
 def test_import_rename_and_dataset_isolation(dataset, tmp_path):
     db, registry, config = dataset
     assert registry.get(config.dataset.id).dataset.name == "生产线 A"
+    from iad_core.workbench.query import WorkbenchQuery
+    summary = WorkbenchQuery(db).datasets()["datasets"][0]
+    assert summary["total_samples"] == 4
+    assert summary["annotation_count"] == 2
     registry.rename(config.dataset.id, "线 A 复检")
     assert registry.get(config.dataset.id).dataset.name == "线 A 复检"
     with db.connection() as conn:

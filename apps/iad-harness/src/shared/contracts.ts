@@ -29,6 +29,7 @@ export interface Dataset extends Report {
   image_dir: string;
   annotation_dir: string | null;
   annotation_categories: string[];
+  annotation_count: number;
   reference_sample_ids: string[];
   reference_mode: "automatic" | "selected";
   unannotated_is_normal: boolean;

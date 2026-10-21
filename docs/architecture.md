@@ -18,7 +18,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 宿主生命周期 | [server/index.ts](../apps/iad-harness/src/server/index.ts) |
 | HTTP / RPC | [routes](../apps/iad-harness/src/server/routes/index.ts)、[remote](../apps/iad-harness/src/server/remote/index.ts) |
 | NDJSON 调度与 worker | [PythonBridge](../apps/iad-harness/src/server/python-bridge/index.ts)、[entry.py](../python/iad_core/entry.py) |
-| 数据集身份、服务器目录检查、名称和良品参考 | [DatasetRegistry](../python/iad_core/dataset/registry.py)、[会话根目录接入](../apps/iad-harness/src/server/workbench-tools/index.ts)、[数据集列表与目录导入](../apps/iad-harness/src/client/components/DatasetManager.tsx) |
+| 数据集身份、服务器目录检查、名称和良品参考 | [DatasetRegistry](../python/iad_core/dataset/registry.py)、[会话根目录接入](../apps/iad-harness/src/server/workbench-tools/index.ts)、[数据集卡片与目录导入](../apps/iad-harness/src/client/components/DatasetManager.tsx)、[共享名称编辑](../apps/iad-harness/src/client/components/DatasetName.tsx)、[真实数量查询](../python/iad_core/workbench/query.py) |
 | Labelme 定位与导入 | [LabelmeAdapter](../python/iad_core/dataset/adapters/labelme.py)、[scanner](../python/iad_core/dataset/scanner.py) |
 | 接入目录修改、重新扫描、原子发布与历史保留 | [扫描临时结果与发布](../python/iad_core/dataset/scan_snapshot.py)、[数据集管理](../apps/iad-harness/src/client/components/DatasetManager.tsx)、[原生工具](../apps/iad-harness/src/server/workbench-tools/index.ts) |
 | Labelme ZIP 目录检查、原样提取及统一导入 | [DatasetArchive](../python/iad_core/dataset/archive.py)、[DatasetImport / DatasetRegistry](../python/iad_core/dataset/registry.py)、[DSH 接入工具](../apps/iad-harness/src/server/workbench-tools/index.ts) |

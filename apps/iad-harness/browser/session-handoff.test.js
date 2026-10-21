@@ -268,7 +268,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     }
     const knowledgeJob = toolMessages(agentRequests.at(-1)).filter(message => message.name === "knowledge_job_status").map(message => JSON.parse(message.content)).at(-1);
     await openToolResult(`button[data-iad-version-id='${knowledgeJob.knowledge_version_id}']`);
-    assert.equal(await (await element("select[aria-label='知识版本']")).getAttribute("value"), knowledgeJob.knowledge_version_id);
+    await driver.wait(async () => (await (await element("select[aria-label='知识版本']")).getAttribute("value")) === knowledgeJob.knowledge_version_id, 10000, "等待异步版本选项加载并选中会话指定版本");
     assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad")).datasetId, dataset.dataset_id);
     await driver.navigate().back();
     await driver.wait(async () => (await driver.findElements(By.css(".iad-workbench"))).length === 0, 5000);
