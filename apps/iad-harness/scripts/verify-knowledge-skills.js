@@ -41,13 +41,13 @@ try {
   });
   const before = await ctx.iadPythonBridge.execute("sample_get", { sample_id: dataset.dataset_id + ":part-2.png" });
   const catalog = await ctx.skills.list();
-  assert.deepEqual(catalog.map(skill => skill.name), ["mine-defect-knowledge", "mine-normal-knowledge"]);
+  assert.deepEqual(catalog.map(skill => skill.name), ["analyze-dataset"]);
+  await execute("skill", { name: "analyze-dataset" });
   for (const { key, kind, sampleIndex } of [
     { key: "initial_normal", kind: "normal", sampleIndex: 0 },
     { key: "normal", kind: "normal", sampleIndex: 1 },
     { key: "defect", kind: "defect" },
   ]) {
-    await execute("skill", { name: `mine-${kind}-knowledge` });
     const args = { dataset_id: dataset.dataset_id };
     if (kind === "normal") args.sample_ids = [dataset.dataset_id + `:part-${sampleIndex}.png`];
     if (kind === "defect") args.normal_version_id = versions.normal.version_id;

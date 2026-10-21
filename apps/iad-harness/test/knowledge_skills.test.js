@@ -19,7 +19,7 @@ import { createDatasetSession } from "./fixtures/dataset_session.js";
 import * as harness from "../lib/server/index.js";
 import { resolvePythonPath } from "../lib/server/python-bridge/index.js";
 
-test("DSH discovers and loads both bundled knowledge skills and removes them with the plugin", async () => {
+test("DSH discovers one full-analysis skill and keeps standalone knowledge tools available", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-skill-registration-"));
   const ctx = new Context();
   new SystemPrompt(ctx, {});
@@ -30,8 +30,8 @@ test("DSH discovers and loads both bundled knowledge skills and removes them wit
   const fork = await ctx.plugin(harness);
   try {
     const catalog = await ctx.skills.list();
-    assert.deepEqual(catalog.map(skill => skill.name), ["mine-defect-knowledge", "mine-normal-knowledge"]);
-    for (const name of ["mine-normal-knowledge", "mine-defect-knowledge"]) {
+    assert.deepEqual(catalog.map(skill => skill.name), ["analyze-dataset"]);
+    for (const name of ["analyze-dataset"]) {
       const result = await ctx.tools.execute({ name: "skill", arguments: { name }, callId: `load-${name}`,
         signal: new AbortController().signal });
       assert.equal(result.isError, false, JSON.stringify(result));
@@ -144,7 +144,7 @@ test("DSH cancelling a knowledge job preserves unprocessed scope and prevents la
   }
 });
 
-test("DSH knowledge skills execute shared jobs and return actual evidence attachments", async () => {
+test("DSH standalone knowledge tools execute shared jobs and return actual evidence attachments", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-skill-"));
   execFileSync(resolvePythonPath(), [fileURLToPath(new URL("fixtures/knowledge_dataset.py", import.meta.url)), root]);
   let failNextAudit = true;
@@ -244,7 +244,6 @@ test("DSH knowledge skills execute shared jobs and return actual evidence attach
       { key: "defect", kind: "defect" },
       { key: "defect_revised", kind: "defect" },
     ]) {
-      await execute("skill", { name: `mine-${kind}-knowledge` });
       const args = { dataset_id: dataset.dataset_id, model_name: "test-mllm" };
       if (kind === "normal") args.sample_ids = [dataset.dataset_id + `:part-${sampleIndex}.png`];
       if (kind === "defect") args.normal_version_id = versions.normal.version_id;

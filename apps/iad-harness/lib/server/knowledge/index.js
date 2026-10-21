@@ -8,14 +8,14 @@ export function createKnowledgeTools(bridge, ctx) {
     return [
         defineTool({
             name: "knowledge_mine_normal",
-            description: "启动良品知识挖掘，复用工作台的来源资格、联合 MLLM、持久化作业和不可变知识版本。",
+            description: "独立启动用户要求的良品知识挖掘，无需加载技能；先核对来源资格和用户范围，复用工作台联合MLLM、持久化作业与知识版本。",
             parameters: sourceParameters,
             output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "normal", origin_session_id: exec.agent?.id || null }, exec.signal),
         }),
         defineTool({
             name: "knowledge_mine_defect",
-            description: "依据显式冻结的同数据集良品版本，联合核验标注/疑点并挖掘不良知识，不改写人审或原始标签。",
+            description: "独立启动用户要求的异常知识挖掘，无需加载技能；依据显式同数据集良品版本核验标注/疑点，缺少依赖时说明，不自动启动其他阶段，不改人审或原标签。",
             parameters: { ...sourceParameters, normal_version_id: { ...normalVersion, required: true } },
             output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("knowledge_start", { ...args, kind: "defect", origin_session_id: exec.agent?.id || null }, exec.signal),

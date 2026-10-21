@@ -1,3 +1,6 @@
+import { execFileSync } from "node:child_process";
+import path from "node:path";
+import { resolvePythonPath } from "../../lib/server/python-bridge/index.js";
 import { randomUUID } from "node:crypto";
 import { Context } from "@deepseek-ai/cordis";
 import { AgentRegistry } from "@deepseek-ai/dsh-agent";
@@ -13,6 +16,16 @@ import { LocalAttachmentStore } from "@deepseek-ai/dsh-attachment-local";
 import { LocalFileSystem } from "@deepseek-ai/dsh-fs-local";
 import * as skillTool from "@deepseek-ai/dsh-tool-skill";
 import * as harness from "../../lib/server/index.js";
+
+export function resolveDatasetSessionModel(workspace) {
+  if (process.env.LIVE_AGENT_MODEL) return process.env.LIVE_AGENT_MODEL;
+  return execFileSync(resolvePythonPath(), ["-c", `
+import sys, yaml
+with open(sys.argv[1]) as source:
+    entries = yaml.load(source, Loader=yaml.BaseLoader)
+print(next(entry['config']['model'] for entry in entries if entry.get('id') == 'agent-default-model'))
+`, path.join(workspace, "config/dsh_web_lan_patch.yml")], { encoding: "utf8" }).trim();
+}
 
 export async function createDatasetSession({ root, dbPath, endpoint, model, apiKeyEnv }) {
   const ctx = new Context();

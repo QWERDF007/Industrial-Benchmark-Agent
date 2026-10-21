@@ -123,7 +123,7 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
     assert.ok(names.includes("knowledge_mine_normal"));
     assert.ok(!names.includes("review_submit_decision"));
     assert.ok(!names.includes("unrelated_test_tool"), "Agent-scoped policy must filter other registered tools");
-    assert.match(requests[0].messages.filter(item => item.role === "system").map(item => item.content).join("\n"), /数据集分析流程/);
+    assert.doesNotMatch(requests[0].messages.filter(item => item.role === "system").map(item => item.content).join("\n"), /数据集分析流程|完整流程步骤：/, "Full analysis instructions must be loaded through a skill, never injected into every session");
     if (!archived) {
       rescanDataset = trace.find(item => item.name === "dataset_import").result.value;
       rescanStart = requests.at(-1).messages.filter(message => message.role === "tool").length;
