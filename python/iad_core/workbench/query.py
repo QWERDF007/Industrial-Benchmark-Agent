@@ -20,6 +20,7 @@ class SampleQuery(BaseModel):
     model_status: Literal["all", "pending", "audited", "risk", "PASS", "FAIL", "UNCERTAIN"] = "all"
     review_status: Literal["all", "pending", "reviewed", "PASS", "HARD_NORMAL", "FAIL", "UNCERTAIN", "SKIP"] = "all"
     technical: Literal["all", "issues"] = "all"
+    reference_status: Literal["all", "candidate", "excluded"] = "all"
     search: str = ""
     sort_by: Literal["default", "risk", "tech"] = "default"
 
@@ -27,6 +28,8 @@ class SampleQuery(BaseModel):
     def require_scope(self):
         if not self.dataset_id and not self.task_id:
             raise ValueError("dataset_id or task_id is required")
+        if self.reference_status != "all" and not self.dataset_id:
+            raise ValueError("Reference filters require dataset_id")
         if any(value not in ("none", "present") and not (value.startswith("category:") and value[9:]) for value in self.annotation_filters):
             raise ValueError("Invalid annotation filter")
         return self
@@ -111,6 +114,10 @@ class WorkbenchQuery:
             params.append(review_status)
         if query.technical == "issues":
             clauses.append("technical_quality_score<70")
+        if query.reference_status != "all":
+            references = DatasetRegistry(self.db).references(query.dataset_id, limit=None)
+            clauses.append("sample_id " + ("NOT IN" if query.reference_status == "excluded" else "IN") + " (SELECT value FROM json_each(?))")
+            params.append(json.dumps(references))
         if query.search:
             clauses.append("instr(lower(relative_path),lower(?))>0")
             params.append(query.search)

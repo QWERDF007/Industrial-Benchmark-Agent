@@ -1,7 +1,7 @@
 import { JobCard } from "./JobCard.js";
 import React, { useCallback, useState } from "react";
 import type { Dataset, JobSnapshot, KnowledgeCheck, KnowledgeCorrection, KnowledgeStartRequest } from "../../shared/contracts.js";
-import { message, request } from "../api.js";
+import { initialFilters, message, request } from "../api.js";
 import { useJobs } from "../useJobs.js";
 import { useWorkspace } from "../workspace.js";
 import { useKnowledge } from "../useKnowledge.js";
@@ -51,8 +51,7 @@ export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dat
     })}</div>;
   }
   return <section className="iad-knowledge-page">
-    <section className="iad-job-section"><div className="iad-row"><strong>全部合格{kind === "normal" ? "良品" : "异常"}候选</strong><label className="iad-field">模型<input aria-label="知识挖掘模型" placeholder="使用项目配置" value={model} onChange={event => setModel(event.target.value)} /></label>
-      <button className="iad-primary" disabled={busy || loading || !!loadError || running || (kind === "normal" ? !dataset.reference_sample_ids.length : !normal?.checks.some(check => check.status === "supported") || (!!view.normalVersion && normal.version_id !== view.normalVersion))} onClick={() => void start()}>{busy ? "启动中…" : `开始挖掘${kind === "normal" ? "良品" : "不良品"}知识`}</button></div>
+    <section className="iad-job-section"><div className="iad-config-bar">
       <label className="iad-field">知识版本<select aria-label="知识版本" value={view.version} onChange={event => workspace.updateView(pageId, { version: event.target.value })}><option value="">当前发布版本{versions.length ? "" : " · 尚未发布"}</option>{versions.map(version => <option key={version.version_id} value={version.version_id}>{version.version_id} · {version.source_count} 张来源 · {version.created_at}</option>)}</select></label>
       {view.version && <p className="iad-muted">正在查看固定版本；新作业从当前已发布版本继续核验。</p>}
       {kind === "defect" && <>
@@ -61,10 +60,12 @@ export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dat
         </select></label>
         {!loading && !normal?.checks.some(check => check.status === "supported") && <p>所选版本没有可用的良品判据。<button onClick={() => workspace.navigate("industrial-normal")}>前往良品知识</button></p>}
       </>}
+      <button className="iad-primary" disabled={busy || loading || !!loadError || running || (kind === "normal" ? !dataset.reference_sample_ids.length : !normal?.checks.some(check => check.status === "supported") || (!!view.normalVersion && normal.version_id !== view.normalVersion))} onClick={() => void start()}>{busy ? "启动中…" : `开始挖掘${kind === "normal" ? "良品" : "不良品"}知识`}</button></div>
+      <details className="iad-model-settings"><summary>模型设置</summary><label className="iad-field">模型<input aria-label="知识挖掘模型" placeholder="使用项目配置" value={model} onChange={event => setModel(event.target.value)} /></label></details>
       {loading && <p role="status" className="iad-muted">正在读取知识…</p>}
       {loadError && <p role="alert" className="iad-error">{loadError} <button onClick={updated}>重新读取知识</button></p>}
       {(error || polling.error) && <p role="alert" className="iad-error">{error || polling.error}</p>}
-      <p className="iad-muted">参考资格与初始无标注约定在数据集管理维护。</p><button onClick={() => workspace.navigate("industrial-datasets")}>维护候选来源</button>
+      <div className="iad-row"><span className="iad-muted">{kind === "normal" ? `良品来源 · ${dataset.reference_sample_ids.length} 张` : "异常候选以实际标注及核验结果为准"}</span><button onClick={() => workspace.openLocation({ pageId: "industrial-images", datasetId: dataset.dataset_id, tab: kind === "normal" ? "sources" : "results", selected: "", page: 1, filters: { ...initialFilters, reference_status: kind === "normal" ? "candidate" : "all", annotation_filters: kind === "defect" ? ["present"] : [] } })}>{kind === "normal" ? "管理来源" : "查看异常候选"}</button></div>
     </section>
     <nav className="iad-tabs" aria-label="知识视图">{[["results", "知识条目"], ["findings", kind === "normal" ? "待核实" : "标注核验"], ["versions", "版本"], ["jobs", "作业记录"]].map(([tab, title]) => <button key={tab} className={view.tab === tab ? "active" : ""} aria-pressed={view.tab === tab} onClick={() => workspace.updateView(pageId, { tab })}>{title}</button>)}</nav>
     <section className="iad-knowledge-content iad-job-section">{knowledge ? <>

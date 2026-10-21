@@ -1,3 +1,4 @@
+import type { Filters } from "./contracts.js";
 export const pages = {
   "industrial-datasets": "数据集管理",
   "industrial-images": "图像浏览",
@@ -16,4 +17,6 @@ export type WorkbenchLocation = {
   defectVersion?: string;
   selected?: string;
   tab?: string;
+  filters?: Filters;
+  page?: number;
 };

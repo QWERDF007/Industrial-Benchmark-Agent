@@ -138,8 +138,8 @@ function ImageCanvas({ image, onClose, navigation, savedView, onRemember }: Imag
     return () => element.removeEventListener("wheel", wheel);
   }, [fit]);
   const fixed = [0, 1, 1.5, 2].includes(view.scale);
-  return <Modal title="原图检视器" className="iad-viewer-dialog" onClose={cancel}><div className="iad-lightbox"><div className="iad-lightbox-toolbar"><strong>{image.title}</strong>
-    <button className="iad-eye" aria-label="缩小" title="缩小" disabled={scale <= minScale} onClick={() => zoomBy(0.5)}><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M5 12h14" /></svg></button>
+  return <Modal title="原图检视器" className="iad-viewer-dialog" header={false} onClose={cancel}><div className="iad-lightbox"><div className="iad-lightbox-toolbar"><strong>{image.title}</strong>
+    <button className="iad-icon-button" aria-label="缩小" title="缩小" disabled={scale <= minScale} onClick={() => zoomBy(0.5)}><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M5 12h14" /></svg></button>
     <select aria-label="缩放" value={fixed ? view.scale : "custom"} onChange={e => {
       const next = Number(e.target.value);
       if (next) zoomBy(next / scale);
@@ -148,8 +148,8 @@ function ImageCanvas({ image, onClose, navigation, savedView, onRemember }: Imag
       <option value={0}>适应窗口</option><option value={1}>100%</option><option value={1.5}>150%</option><option value={2}>200%</option>
       {!fixed && <option value="custom">{Math.round(scale * 100)}%</option>}
     </select>
-    <button className="iad-eye" aria-label="放大" title="放大" disabled={scale >= maxScale} onClick={() => zoomBy(2)}><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M5 12h14M12 5v14" /></svg></button>
-    {(image.annotationLayer || inspection) && <button className="iad-eye" title={layers.annotation ? "隐藏标注" : "显示标注"} aria-label={layers.annotation ? "隐藏标注" : "显示标注"} aria-pressed={layers.annotation} onClick={() => setLayers(previous => ({ ...previous, annotation: !previous.annotation }))}>
+    <button className="iad-icon-button" aria-label="放大" title="放大" disabled={scale >= maxScale} onClick={() => zoomBy(2)}><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M5 12h14M12 5v14" /></svg></button>
+    {(image.annotationLayer || inspection) && <button className="iad-icon-button" title={layers.annotation ? "隐藏标注" : "显示标注"} aria-label={layers.annotation ? "隐藏标注" : "显示标注"} aria-pressed={layers.annotation} onClick={() => setLayers(previous => ({ ...previous, annotation: !previous.annotation }))}>
       <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" />{!layers.annotation && <path d="m3 3 18 18" />}</svg>
     </button>}
     {inspection && <FloatingMenu detailsRef={layerMenu} className="iad-layer-menu" label="可视图层" summary="图层">

@@ -1,0 +1,17 @@
+/** Shared control appearance for workbench pages, dialogs and Agent result cards. */
+export const controlStyles = `
+:is(.iad-workbench,.iad-tool-card) button,:is(.iad-workbench,.iad-tool-card) input,:is(.iad-workbench,.iad-tool-card) select,:is(.iad-workbench,.iad-tool-card) textarea {font:inherit;}
+:is(.iad-workbench,.iad-tool-card) button {cursor:pointer;background:var(--iad-surface);color:var(--iad-text);border:1px solid var(--iad-control-border);border-radius:var(--iad-radius);min-height:var(--iad-control-height);padding:8px 12px;transition:background-color 140ms,border-color 140ms;}
+:is(.iad-workbench,.iad-tool-card) button:hover:not(:disabled) {background:var(--iad-hover);}
+:is(.iad-workbench,.iad-tool-card) button:disabled {cursor:default;opacity:.45;}
+:is(.iad-workbench,.iad-tool-card) button.iad-primary {background:var(--iad-primary-fill);border-color:var(--iad-primary-fill);color:var(--iad-on-primary);}
+:is(.iad-workbench,.iad-tool-card) button.iad-primary:hover:not(:disabled) {background:color-mix(in srgb,var(--iad-primary-fill) 88%,#000);}
+:is(.iad-workbench,.iad-tool-card) button.iad-danger {color:var(--iad-danger);}
+:is(.iad-workbench,.iad-tool-card) input,:is(.iad-workbench,.iad-tool-card) select,:is(.iad-workbench,.iad-tool-card) textarea {min-width:0;max-width:100%;color:var(--iad-text);background:var(--iad-surface);border:1px solid var(--iad-control-border);border-radius:var(--iad-radius);padding:8px 10px;min-height:var(--iad-control-height);}
+:is(.iad-workbench,.iad-tool-card) :is(input,textarea)::placeholder {color:var(--iad-muted);opacity:1;}
+:is(.iad-workbench,.iad-tool-card) textarea {min-height:80px;resize:vertical;}
+:is(.iad-workbench,.iad-tool-card) :is(button,input,select,textarea,summary,[tabindex]):focus-visible {outline:2px solid var(--iad-primary);outline-offset:3px;}
+:is(.iad-workbench,.iad-tool-card) :is(input[type=checkbox],input[type=radio]) {min-height:20px;width:20px;margin:0;accent-color:var(--iad-primary);}
+:is(.iad-workbench,.iad-tool-card) .iad-icon-button {display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:8px;flex-shrink:0;}
+@media(prefers-reduced-motion:reduce) {:is(.iad-workbench,.iad-tool-card) button {transition:none;}}
+`;

@@ -609,6 +609,17 @@ export type Items = ReviewHistoryRecord[];
 export type Total = number;
 export type Page1 = number;
 export type PageSize1 = number;
+export type DatasetId12 = string | null;
+export type TaskId4 = string | null;
+export type Page2 = number;
+export type PageSize2 = number;
+export type AnnotationFilters = string[];
+export type ModelStatus = "all" | "pending" | "audited" | "risk" | "PASS" | "FAIL" | "UNCERTAIN";
+export type ReviewStatus = "all" | "pending" | "reviewed" | "PASS" | "HARD_NORMAL" | "FAIL" | "UNCERTAIN" | "SKIP";
+export type Technical = "all" | "issues";
+export type ReferenceStatus = "all" | "candidate" | "excluded";
+export type Search1 = string;
+export type SortBy = "default" | "risk" | "tech";
 export interface WorkbenchDomain {
     AuditAnalysis?: AuditAnalysis;
     KnowledgeSnapshot?: KnowledgeSnapshot;
@@ -631,6 +642,7 @@ export interface WorkbenchDomain {
     ReviewSubmission?: ReviewSubmission;
     ReviewHistoryQuery?: ReviewHistoryQuery;
     ReviewHistoryPage?: ReviewHistoryPage;
+    SampleQuery?: SampleQuery;
 }
 export interface AuditAnalysis {
     normal_version_id: NormalVersionId;
@@ -1278,5 +1290,18 @@ export interface ReviewHistoryRecord {
     submitted_at: SubmittedAt1;
     review_duration_ms: ReviewDurationMs1;
     relative_path: RelativePath4;
+}
+export interface SampleQuery {
+    dataset_id?: DatasetId12;
+    task_id?: TaskId4;
+    page?: Page2;
+    page_size?: PageSize2;
+    annotation_filters?: AnnotationFilters;
+    model_status?: ModelStatus;
+    review_status?: ReviewStatus;
+    technical?: Technical;
+    reference_status?: ReferenceStatus;
+    search?: Search1;
+    sort_by?: SortBy;
 }
 //# sourceMappingURL=domain.generated.d.ts.map

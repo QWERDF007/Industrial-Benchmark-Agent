@@ -6,7 +6,7 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 
 | 职责 | 唯一实现入口 |
 | --- | --- |
-| 原生侧栏状态投影 | [SidebarProgress](../apps/iad-harness/src/client/sidebar-progress.ts)、[正式 slot 注册](../apps/iad-harness/src/client/index.ts) |
+| 原生固定侧栏与页面进度 | [正式 slot 注册](../apps/iad-harness/src/client/index.ts)、[页面作业查询](../apps/iad-harness/src/client/useJobs.ts) |
 | 原生六页导航与共享页面上下文 | [client/index.ts](../apps/iad-harness/src/client/index.ts)、[workspace](../apps/iad-harness/src/client/workspace.tsx) |
 | 同图视口恢复与当前筛选的前后图 | [ImageViewer](../apps/iad-harness/src/client/components/ImageViewer.tsx)、[SampleNavigation](../apps/iad-harness/src/client/useSampleNavigation.ts) |
 | 知识查询、条目筛选与待审计版本选择 | [useKnowledge](../apps/iad-harness/src/client/useKnowledge.ts)、[KnowledgePage](../apps/iad-harness/src/client/components/KnowledgePage.tsx)、[状态投影](../apps/iad-harness/src/shared/knowledge-presentation.ts)、[AuditJobs](../apps/iad-harness/src/client/components/AuditJobs.tsx) |
@@ -53,11 +53,13 @@ DSH Web 是唯一 Web 宿主。浏览器调用同源 `/api/iad/*`；Node 将请�
 | 知识独立页面、版本、修订候选与真实证据 | [KnowledgePage](../apps/iad-harness/src/client/components/KnowledgePage.tsx)、[修订表单](../apps/iad-harness/src/client/components/KnowledgeRevision.tsx)、[版本投影](../python/iad_core/knowledge/repository.py) |
 | 人工复核、待确认提交、草稿与历史 | [HumanReviewForm](../apps/iad-harness/src/client/components/HumanReviewForm.tsx)、[useReviewDraft](../apps/iad-harness/src/client/useReviewDraft.ts)、[独立复核记录](../apps/iad-harness/src/client/components/ReviewRecords.tsx) |
 | 原子人审命令、不可变记录与当前结果投影 | [HumanReview / ReviewSubmission](../python/iad_core/workbench/review.py)、[ReviewRepository](../python/iad_core/storage/review_repository.py)、[复核表与迁移](../python/iad_core/storage/review_schema.py) |
+| 页面、弹窗与 Agent 卡片统一控件 | [controls](../apps/iad-harness/src/client/controls.ts)、[theme](../apps/iad-harness/src/client/theme.ts) |
+| 缩略图、状态 Badge、分数与提示 | [SampleCard](../apps/iad-harness/src/client/components/SampleCard.tsx)、[Tooltip](../apps/iad-harness/src/client/components/Tooltip.tsx) |
 | 嵌套模态与焦点恢复 | [Modal](../apps/iad-harness/src/client/components/Modal.tsx) |
-| 筛选与图层菜单的定位、避让和键盘关闭 | [FloatingMenu](../apps/iad-harness/src/client/components/FloatingMenu.tsx)、[Floating UI](https://floating-ui.com/docs/react-dom) |
+| 筛选与图层菜单的定位、避让和外部/键盘关闭 | [FloatingMenu](../apps/iad-harness/src/client/components/FloatingMenu.tsx)、[Floating UI useDismiss](https://floating-ui.com/docs/useDismiss) |
 | 数据表与迁移 | [Database](../python/iad_core/storage/database.py)、[历史审计作业迁移](../python/iad_core/storage/job_schema.py) |
 
-初始无标注图作为良品参考，是本项目的数据约定；可通过数据集管理调整。自动与人工选定范围、参考资格、人工裁决优先级及目标图排除规则以 `DatasetRegistry.references` 为准。导入质量、模型建议和人工裁决分别保留各自来源。
+初始无标注约定在数据集管理设置，逐图资格在图像浏览维护，入口职责见[UI 设计](design/workbench-ui.md#d01-导航与信息架构)。自动与人工选定范围、参考资格、人工裁决优先级及目标图排除规则以 `DatasetRegistry.references` 为准。导入质量、模型建议和人工裁决分别保留各自来源。
 
 数据集 ID 为稳定身份，名称是可编辑的显示属性。注册配置以数据库 `datasets` 表为准；YAML 用于命令行导入以及已有数据集的首次注册。显式标注目录的匹配规则以 `LabelmeAdapter` 为准。
 

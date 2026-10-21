@@ -3,7 +3,7 @@ import { v4 as uuid } from "uuid";
 export function useReviewDraft(datasetId, sampleId) {
     const key = `iad.review-draft:${datasetId}:${sampleId}`;
     const [state, setState] = useState(() => {
-        const draft = { reviewer: localStorage.getItem("iad.reviewer") || "auditor_qc", comment: "", pending: null };
+        const draft = { reviewer: localStorage.getItem("iad.reviewer") || "auditor_qc", comment: "", decision: null, pending: null };
         try {
             const stored = JSON.parse(sessionStorage.getItem(key) || "null");
             if (stored && typeof stored.reviewer === "string" && typeof stored.comment === "string")
@@ -31,7 +31,7 @@ export function useReviewDraft(datasetId, sampleId) {
     }
     function discard() {
         sessionStorage.removeItem(key);
-        setState({ draft: { reviewer: localStorage.getItem("iad.reviewer") || "auditor_qc", comment: "", pending: null }, dirty: false });
+        setState({ draft: { reviewer: localStorage.getItem("iad.reviewer") || "auditor_qc", comment: "", decision: null, pending: null }, dirty: false });
     }
     return { ...state.draft, dirty: state.dirty, update, prepare, discard };
 }

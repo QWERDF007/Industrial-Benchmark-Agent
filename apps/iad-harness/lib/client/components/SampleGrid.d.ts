@@ -1,6 +1,6 @@
 import React from "react";
 import type { Dataset, Filters, Sample } from "../../shared/contracts.js";
-export declare function SampleGrid({ dataset, filters, onFilters, items, total, page, onPage, selected, onSelect, loading }: {
+export declare function SampleGrid({ dataset, filters, onFilters, items, total, page, onPage, selected, onSelect, loading, sourceManagement }: {
     dataset: Dataset;
     filters: Filters;
     onFilters(filters: Filters): void;
@@ -11,5 +11,10 @@ export declare function SampleGrid({ dataset, filters, onFilters, items, total, 
     selected: string;
     onSelect(id: string): void;
     loading: boolean;
+    sourceManagement?: {
+        active: boolean;
+        onToggle(): void;
+        onChanged(): void;
+    };
 }): React.JSX.Element;
 //# sourceMappingURL=SampleGrid.d.ts.map

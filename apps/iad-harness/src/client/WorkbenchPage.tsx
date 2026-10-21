@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Dataset, Filters, ReviewDecisionRecord, SamplePage } from "../shared/contracts.js";
-import { message, request, reviewLabel } from "./api.js";
+import { message, request, reviewLabel, sampleQuery } from "./api.js";
 import { DatasetManager } from "./components/DatasetManager.js";
 import { SampleGrid } from "./components/SampleGrid.js";
 import { SampleInspector } from "./components/SampleInspector.js";
@@ -40,8 +40,8 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
   const changed = useCallback(() => { setRevision(v => v + 1); void loadDatasets(); }, [loadDatasets]);
   const audit = useJobs("audit", datasetId, changed, workspace.view("industrial-audit").job);
   useEffect(() => { const controller = new AbortController(); void loadDatasets(undefined, controller.signal); return () => controller.abort(); }, [loadDatasets]);
-  const gallery = pageId === "industrial-datasets" || pageId === "industrial-images" || ((pageId === "industrial-review" || pageId === "industrial-audit") && view.tab === "results");
-  const query = new URLSearchParams({ ...view.filters, annotation_filters: JSON.stringify(view.filters.annotation_filters), dataset_id: datasetId, page: String(view.page), page_size: String(pageSize) }).toString();
+  const gallery = pageId === "industrial-images" || ((pageId === "industrial-review" || pageId === "industrial-audit") && view.tab === "results");
+  const query = sampleQuery(datasetId, view.filters, view.page, pageSize);
   const navigation = useSampleNavigation(pageId, dataset?.task_id, query, result, gallery);
   const surface = usePagePosition(gallery ? JSON.stringify([pageId, view.tab, query]) : null, state.active && state.pageId === pageId && !!dataset && result.query === query && !loading);
   useEffect(() => {
@@ -74,29 +74,31 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
     changed();
   }
   const updateFilters = (filters: Filters) => workspace.updateView(pageId, { filters, page: 1, selected: "" });
-  const inspector = dataset && <SampleInspector key={`${datasetId}:${view.selected}`} dataset={dataset} sampleId={view.selected} mode={pageId === "industrial-review" ? "review" : pageId === "industrial-datasets" ? "dataset" : pageId === "industrial-images" ? "browse" : "model"} revision={revision} onChanged={changed} onReviewed={reviewed} jobs={audit.jobs} onJobsChanged={audit.refresh} navigation={gallery ? navigation : undefined} />;
-  const grid = dataset && <SampleGrid dataset={dataset} filters={view.filters} onFilters={updateFilters} items={result.query === query ? result.items : []} total={result.query === query ? result.total : 0} page={view.page} onPage={page => workspace.updateView(pageId, { page, selected: "" })} selected={view.selected} onSelect={selected => workspace.updateView(pageId, { selected })} loading={loading} />;
+  const inspector = dataset && <SampleInspector key={`${datasetId}:${view.selected}`} dataset={dataset} sampleId={view.selected} mode={pageId === "industrial-review" ? "review" : pageId === "industrial-images" ? "browse" : "model"} revision={revision} onReviewed={reviewed} jobs={audit.jobs} onJobsChanged={audit.refresh} navigation={gallery ? navigation : undefined} />;
+  const grid = dataset && <SampleGrid key={datasetId} dataset={dataset} filters={view.filters} onFilters={updateFilters} items={result.query === query ? result.items : []} total={result.query === query ? result.total : 0} page={view.page} onPage={page => workspace.updateView(pageId, { page, selected: "" })} selected={view.selected} onSelect={selected => workspace.updateView(pageId, { selected })} loading={loading} sourceManagement={pageId === "industrial-images" ? { active: view.tab === "sources", onToggle: () => workspace.updateView(pageId, { tab: view.tab === "sources" ? "results" : "sources" }), onChanged: changed } : undefined} />;
   return <div ref={surface} className="iad-workbench" data-page={pageId}><style>{workbenchStyles}</style>
     <header className="iad-header"><h1>{pages[pageId]}</h1>
       <div className="iad-row"><select aria-label="当前数据集" value={datasetId} onChange={e => workspace.selectDataset(e.target.value)}><option value="" disabled>选择数据集</option>{datasets.map(item => <option key={item.dataset_id} value={item.dataset_id}>{item.name} ({item.total_samples})</option>)}</select><button onClick={changed}>刷新</button></div></header>
     {(error || audit.error) && <p role="alert" className="iad-error">{error || audit.error}</p>}
-    {dataset && <div className="iad-kpis"><div><span>图像</span><strong>{dataset.total_samples}</strong></div><div><span>模型审计</span><strong>{dataset.vlm_audited_count} <small>/ {dataset.total_samples}</small></strong></div><div><span>待复核异常建议</span><strong>{dataset.pending_risk_count}</strong></div><div><span>已人工复核</span><strong>{dataset.human_reviewed_count}</strong></div></div>}
+    {dataset && <div className="iad-kpis" aria-label="数据集概况">{(
+      pageId === "industrial-datasets" ? [["图像", dataset.total_samples], ["标注类别", dataset.annotation_categories.length], ["技术问题", dataset.technical_quality_issues]] :
+      pageId === "industrial-normal" ? [["良品来源", dataset.reference_sample_ids.length], ["图像", dataset.total_samples]] :
+      pageId === "industrial-defect" ? [["图像", dataset.total_samples], ["标注类别", dataset.annotation_categories.length]] :
+      [["图像", dataset.total_samples], ["模型审计", dataset.vlm_audited_count], ["待审计", dataset.total_samples - dataset.vlm_audited_count], ["待复核", dataset.pending_risk_count], ["已人工复核", dataset.human_reviewed_count]]
+    ).map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>}
     {pageId === "industrial-datasets" ? <>
       <DatasetManager datasets={datasets} selected={dataset} onChanged={id => { void loadDatasets(id); setRevision(v => v + 1); }} />
-      {dataset && <button onClick={() => workspace.navigate("industrial-images")}>浏览图像</button>}
-      {dataset && <details className="iad-reference-manager"><summary>良品参考资格 · {dataset.reference_sample_ids.length} 张</summary>{grid}</details>}
-      {dataset && view.selected && <Modal title="良品参考资格" onClose={() => workspace.updateView(pageId, { selected: "" })}><button onClick={() => workspace.updateView(pageId, { selected: "" })}>返回数据集管理</button>{inspector}</Modal>}
     </> : !dataset ? <section className="iad-job-section"><p>请先添加服务器上的 Labelme 数据集。</p><button onClick={() => workspace.navigate("industrial-datasets")}>前往数据集管理</button></section> : <>
       {(pageId === "industrial-normal" || pageId === "industrial-defect") && <KnowledgePage key={`${datasetId}:${pageId}`} dataset={dataset} kind={pageId === "industrial-normal" ? "normal" : "defect"} refreshRevision={revision} />}
       {pageId === "industrial-audit" && <nav className="iad-tabs" aria-label="审计视图">{[["results", "结果"], ["jobs", "模型审计作业"], ["reports", "报告"]].map(([tab, label]) => <button key={tab} aria-pressed={view.tab === tab} className={view.tab === tab ? "active" : ""} onClick={() => workspace.updateView(pageId, { tab })}>{label}</button>)}</nav>}
       {pageId === "industrial-review" && <nav className="iad-tabs" aria-label="复核视图">{[["results", "复核队列"], ["records", "复核记录"]].map(([tab, label]) => <button key={tab} aria-pressed={view.tab === tab} className={view.tab === tab ? "active" : ""} onClick={() => workspace.updateView(pageId, { tab })}>{label}</button>)}</nav>}
       {pageId === "industrial-review" && view.tab === "results" && reviewConfirmation?.datasetId === datasetId && <p role="status" className="iad-review-confirmation">已提交 {reviewConfirmation.name} · {reviewLabel(reviewConfirmation.decision)}</p>}
-      {pageId === "industrial-audit" && view.tab === "results" && <AuditSetup key={datasetId} dataset={dataset} filters={view.filters} jobs={audit.jobs} revision={revision} onJobsChanged={audit.refresh} compact />}
+      {pageId === "industrial-audit" && view.tab === "results" && <AuditSetup key={datasetId} dataset={dataset} filters={view.filters} jobs={audit.jobs} revision={revision} onJobsChanged={audit.refresh} />}
       {gallery && <div className={pageId === "industrial-images" ? "iad-browse" : "iad-main"}>{grid}
         {pageId !== "industrial-images" && inspector}</div>}
       {pageId === "industrial-review" && view.tab === "records" && <div className="iad-main"><ReviewRecords key={datasetId} datasetId={datasetId} page={view.historyPage} search={view.historySearch} selected={view.selected} revision={revision}
         onPage={historyPage => workspace.updateView(pageId, { historyPage })} onSearch={historySearch => workspace.updateView(pageId, { historySearch, historyPage: 1 }, true)} onSelect={selected => workspace.updateView(pageId, { selected })} />{inspector}</div>}
-      {pageId === "industrial-images" && view.selected && <Modal title="图像详情" restoreFocus={() => surface.current?.querySelector<HTMLElement>(`.iad-sample[data-sample-id="${CSS.escape(view.selected)}"]`) || null} onClose={() => workspace.updateView(pageId, { selected: "" })}><div className="iad-row"><button onClick={() => workspace.updateView(pageId, { selected: "" })}>返回图像浏览</button><button onClick={() => workspace.navigate("industrial-audit", view.selected)}>前往模型审计</button><button onClick={() => workspace.navigate("industrial-review", view.selected)}>前往人工复核</button></div>{inspector}</Modal>}
+      {pageId === "industrial-images" && view.selected && <Modal title="图像详情" restoreFocus={() => surface.current?.querySelector<HTMLElement>(`.iad-sample[data-sample-id="${CSS.escape(view.selected)}"]`) || null} onClose={() => workspace.updateView(pageId, { selected: "" })}>{inspector}</Modal>}
       {pageId === "industrial-audit" && view.tab === "jobs" && <AuditJobs key={datasetId} dataset={dataset} filters={view.filters} jobs={audit.jobs} revision={revision} onJobsChanged={audit.refresh} />}
       {pageId === "industrial-audit" && view.tab === "reports" && <AuditReport key={datasetId} dataset={dataset} />}
     </>}

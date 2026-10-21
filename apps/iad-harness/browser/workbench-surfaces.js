@@ -12,7 +12,9 @@ export async function verifyWorkbenchSurfaces(driver, output) {
   const element = selector => driver.wait(until.elementLocated(By.css(selector)), 10000);
   const button = async label => {
     const locator = By.xpath(`//button[normalize-space(.)='${label}']`);
-    const control = await driver.findElement(locator), tab = await control.getAttribute("aria-pressed");
+    const control = await driver.wait(until.elementLocated(locator), 10000);
+    await driver.wait(until.elementIsVisible(control), 5000);
+    const tab = await control.getAttribute("aria-pressed");
     await control.click();
     if (tab !== null) await driver.wait(async () => (await driver.findElement(locator).getAttribute("aria-pressed")) === "true", 5000);
   };
@@ -24,7 +26,7 @@ export async function verifyWorkbenchSurfaces(driver, output) {
   await (await element("img[alt='part-2.png']")).click();
   await (await element(".iad-decision input")).sendKeys("布局验收");
   await (await element(".iad-decision textarea")).sendKeys("仅验证复核记录的显示与操作，未评估工业真值。");
-  await button("跳过");
+  await (await element(".iad-decision input[type=radio][value=SKIP]")).click(); await button("提交复核");
   await driver.wait(() => driver.executeScript("return document.querySelector('.iad-review-confirmation')?.textContent.includes('跳过')"), 10000);
   for (const theme of ["Light", "Dark"]) {
     await setTheme(driver, theme); await textZoom(driver, 2);
@@ -35,6 +37,7 @@ export async function verifyWorkbenchSurfaces(driver, output) {
         await driver.wait(until.elementIsVisible(control), 5000);
         await driver.executeScript("arguments[0].focus()", control);
         await driver.actions().sendKeys(Key.TAB).keyDown(Key.SHIFT).sendKeys(Key.TAB).keyUp(Key.SHIFT).perform();
+        if (name === "image-status") await element(".iad-tooltip");
         assert.equal(await driver.executeScript("return document.activeElement===arguments[0]", control), true, `${name}: Tab and Shift+Tab return to the original control`);
         const metrics = await driver.executeScript(selector => {
           const root = document.querySelector(selector), focus = document.activeElement;
@@ -84,7 +87,9 @@ export async function verifyWorkbenchSurfaces(driver, output) {
       }
       await navigate("模型审计"); await button("模型审计作业");
       await element(".iad-job-panel .iad-profile");
+      await (await element(".iad-model-settings summary")).click();
       await capture("audit-jobs", "input[aria-label='模型名称']");
+      await (await driver.findElement(By.xpath("//summary[starts-with(normalize-space(.),'良品知识 ·')]"))).click();
       await (await element("button[title='放大知识来源图']")).click();
       await capture("audit-source", "dialog[open] select[aria-label='缩放']", "dialog[open]");
       await button("关闭");
@@ -98,6 +103,10 @@ export async function verifyWorkbenchSurfaces(driver, output) {
       await (await element(".iad-review-records tbody button")).click();
       await capture("review-history", ".iad-decision input");
       await navigate("图像浏览");
+      await driver.actions().move({origin:await element(".iad-header h1")}).perform();
+      await capture("image-status", ".iad-status-trigger");
+      assert.equal(await driver.executeScript("const r=document.querySelector('.iad-tooltip').getBoundingClientRect();return r.left>=0 && r.top>=0 && r.right<=innerWidth && r.bottom<=innerHeight"), true, "状态提示保持在视口内");
+      await driver.actions().sendKeys(Key.ESCAPE).perform();
       await (await element("summary[aria-label='标注筛选']")).click();
       await capture("annotation-filters", "input[aria-label='无标注']");
       await driver.actions().sendKeys(Key.ESCAPE).perform();
@@ -113,10 +122,10 @@ export async function verifyWorkbenchSurfaces(driver, output) {
       await driver.actions().sendKeys(Key.ESCAPE).perform();
       await button("向 Agent 追问");
       await capture("image-question", "textarea[aria-label='追问内容']", "dialog.iad-viewer-dialog");
-      await button("关闭"); await button("返回图像浏览");
+      await button("关闭"); await (await element("button[aria-label='关闭图像详情']")).click();
     }
   }
-  assert.equal(results.length, 152, "Nineteen real detail surfaces × four viewports × two themes at 200% text zoom");
+  assert.equal(results.length, 160, "Twenty real detail surfaces × four viewports × two themes at 200% text zoom");
   await viewport(driver, 1440, 1100); await textZoom(driver, 1);
   for (const label of ["挖掘良品知识", "挖掘不良品知识"]) { await navigate(label); await button("知识条目"); }
   await navigate("人工复核"); await button("复核队列");

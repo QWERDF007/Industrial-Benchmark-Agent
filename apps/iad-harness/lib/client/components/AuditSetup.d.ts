@@ -7,7 +7,5 @@ export interface AuditSetupProps {
     revision: number;
     onJobsChanged(): void;
 }
-export declare function AuditSetup({ dataset, filters, jobs, revision, onJobsChanged, compact }: AuditSetupProps & {
-    compact?: boolean;
-}): React.JSX.Element;
+export declare function AuditSetup({ dataset, filters, jobs, revision, onJobsChanged }: AuditSetupProps): React.JSX.Element;
 //# sourceMappingURL=AuditSetup.d.ts.map

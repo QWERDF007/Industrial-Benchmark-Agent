@@ -1,4 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+export function CloseIcon() {
+    return _jsx("svg", { "aria-hidden": "true", width: "20", height: "20", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", children: _jsx("path", { d: "m6 6 12 12M18 6 6 18" }) });
+}
 export function DatasetIcon({ size = 20 }) {
     return _jsxs("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", children: [_jsx("ellipse", { cx: "12", cy: "5", rx: "8", ry: "3" }), _jsx("path", { d: "M4 5v14c0 4 16 4 16 0V5M4 12c0 4 16 4 16 0" })] });
 }

@@ -34,14 +34,7 @@ export interface Dataset extends Report {
     reference_mode: "automatic" | "selected";
     unannotated_is_normal: boolean;
 }
-export interface Filters {
-    annotation_filters: string[];
-    model_status: string;
-    review_status: string;
-    technical: string;
-    search: string;
-    sort_by: string;
-}
+export type Filters = Required<Omit<import("./domain.generated.js").SampleQuery, "dataset_id" | "task_id" | "page" | "page_size">>;
 export interface SampleIdentity {
     sample_id: string;
     sample_uuid: string;

@@ -139,11 +139,13 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     await (await element("button[aria-label^='数据集管理']")).click();
     const dataset = await api("/datasets/import", { name: "会话交接", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
     await button("刷新");
-    await driver.wait(async () => (await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label")).includes("待审计 3"), 10000, "侧栏从当前数据集显示待审计数量");
+    await delay(5500);
+    assert.equal(await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label"), "图像浏览", "侧栏保留固定名称，不附加待审计统计");
     let job = await api("/knowledge/start", { dataset_id: dataset.dataset_id, kind: "normal", model_name: "test-mllm" });
-    await driver.wait(async () => (await (await element("button[aria-label^='挖掘良品知识']")).getAttribute("aria-label")).includes("运行 1"), 10000, "真实作业尚未完成时，侧栏显示运行数量");
+    assert.equal(await (await element("button[aria-label^='挖掘良品知识']")).getAttribute("aria-label"), "挖掘良品知识");
     await (await element("button[aria-label^='挖掘良品知识']")).click();
     await driver.wait(() => driver.executeScript("return document.querySelector('.iad-workbench h1')?.textContent==='挖掘良品知识'"), 5000);
+    await driver.wait(async () => (await (await element(".iad-knowledge-jobs")).getText()).includes("执行中"), 10000, "作业进度在对应页面展示");
     releaseKnowledge();
     while (["PENDING", "RUNNING"].includes(job.status)) { await delay(100); job = await api(`/knowledge/status/${job.run_id}`); }
     assert.equal(job.status, "COMPLETED", JSON.stringify(job));
@@ -155,15 +157,16 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     assert.equal(audit.failed, 2);
     const failedRun = audit.run_id;
     const auditLabel = async () => (await (await element("button[aria-label^='模型审计']")).getAttribute("aria-label"));
-    await driver.wait(async () => (await auditLabel()).includes("近期失败 1"), 10000);
+    assert.equal(await auditLabel(), "模型审计", "作业失败不改写导航名称");
     for (const [index, sample_id] of audit.failed_sample_ids.entries()) {
       const since = await driver.executeScript("return performance.now()");
       let retry = await api(`/audit/retry/${failedRun}`, { sample_ids: [sample_id] });
       while (["PENDING", "RUNNING"].includes(retry.status)) { await delay(100); retry = await api(`/audit/status/${retry.run_id}`); }
       assert.equal(retry.status, "COMPLETED", JSON.stringify(retry));
       await driver.wait(() => driver.executeScript("return performance.getEntriesByType('resource').some(e=>e.name.includes('/api/iad/audit/jobs?') && e.responseEnd>arguments[0])", since), 10000);
-      if (index === 0) assert.ok((await auditLabel()).includes("近期失败 1"), "只补审一张后，原作业尚有失败图，侧栏不能提前清除失败状态");
-      else await driver.wait(async () => !(await auditLabel()).includes("近期失败"), 10000, "全部失败图补审成功后，侧栏不重复统计父失败作业");
+      const remaining = await api(`/audit/retry/${failedRun}`);
+      assert.equal(remaining.samples.length, index === 0 ? 1 : 0, "按真实补审链保留剩余失败范围");
+      assert.equal(await auditLabel(), "模型审计");
     }
     const target = await api(`/sample/${encodeURIComponent(dataset.dataset_id + ":part-2.png")}`);
     await button("刷新"); await (await element("button[aria-label^='图像浏览']")).click();
@@ -225,7 +228,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     invalid.searchParams.set("iad", JSON.stringify(route)); await driver.get(invalid.href);
     assert.ok((await (await element(".iad-inspector [role='alert']")).getText()).includes("证据引用不存在"));
     assert.equal((await driver.findElements(By.css(".iad-viewer-dialog[open]"))).length, 0);
-    await button("返回图像浏览");
+    await (await element("button[aria-label='关闭图像详情']")).click();
     for (const [index, label] of ["挖掘良品知识", "模型审计"].entries()) {
       await (await element(`button[aria-label^='${label}']`)).click();
       if (index) await button("模型审计作业");
@@ -292,8 +295,9 @@ Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
     const sequence = await api("/datasets/import", { name: "跨页图像", image_dir: path.join(root,"sequence"), annotation_dir: path.join(root,"sequence") });
     await button("刷新");
     await (await element("select[aria-label='当前数据集'] option[value='" + sequence.dataset_id + "']")).click();
-    await driver.wait(async () => (await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label")).includes("待审计 27"), 10000);
+    assert.equal(await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label"), "图像浏览", "切换数据集仍使用固定导航名称");
     assert.equal(await (await element("button[aria-label^='挖掘良品知识']")).getAttribute("aria-label"), "挖掘良品知识", "无近期作业不能推断未曾发布知识，且不能继承另一数据集状态");
+    await driver.manage().window().setRect({ width: 1440, height: 768 });
     await (await element("summary[aria-label='标注筛选']")).click();
     await (await element("input[aria-label='无标注']")).click();
     await (await element("summary[aria-label='标注筛选']")).click();
@@ -327,7 +331,7 @@ Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
     assert.equal((await driver.findElements(By.css(".iad-viewer-dialog[open]"))).length, 0);
     assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad")).page, 1, "关闭时取消未完成的跨页请求");
     assert.equal(await (await element("[data-field='image-name']")).getText(), "sequence-23.png");
-    await button("返回图像浏览");
+    await (await element("button[aria-label='关闭图像详情']")).click();
     assert.equal(await driver.executeScript("return document.activeElement?.closest('.iad-sample')?.querySelector('strong')?.textContent"), "sequence-23.png", "关闭详情后焦点回到当前缩略图");
     const browseTop = await driver.executeScript("return document.querySelector('.iad-workbench').scrollTop");
     assert.ok(browseTop > 0, "当前缩略图位于滚动后的浏览位置");
@@ -347,7 +351,8 @@ Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
     await stepImage("后一张", "sequence-21.png", 1);
     assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad")).filters.search, "sequence-2");
     assert.equal(agentRequests.length, requestCount, "跨页与筛选切图不启动模型");
-    await button("关闭"); await button("返回图像浏览");
+    await button("关闭"); await (await element("button[aria-label='关闭图像详情']")).click();
+    await driver.manage().window().setRect({ width: 1440, height: 1100 });
     await (await element("select[aria-label='当前数据集'] option[value='" + dataset.dataset_id + "']")).click();
     let defect = await api("/knowledge/start", { dataset_id: dataset.dataset_id, kind: "defect", normal_version_id: knowledgeJob.knowledge_version_id, model_name: "test-mllm" });
     while (["PENDING", "RUNNING"].includes(defect.status)) { await delay(100); defect = await api(`/knowledge/status/${defect.run_id}`); }

@@ -1,3 +1,4 @@
+import type { Filters } from "./contracts.js";
 export declare const pages: {
     readonly "industrial-datasets": "数据集管理";
     readonly "industrial-images": "图像浏览";
@@ -16,5 +17,7 @@ export type WorkbenchLocation = {
     defectVersion?: string;
     selected?: string;
     tab?: string;
+    filters?: Filters;
+    page?: number;
 };
 //# sourceMappingURL=navigation.d.ts.map

@@ -25,10 +25,13 @@ export function HumanReviewForm({ datasetId, sampleId, detail, onSubmitted }: {
     {draft.pending ? <div className="iad-row"><span role="status">提交结果待确认</span><button disabled={busy} onClick={() => submit(draft.pending!.decision)}>重试提交</button></div>
       : draft.dirty && <div className="iad-row"><span role="status">草稿未提交</span><button disabled={busy} onClick={draft.discard}>放弃草稿</button></div>}
     {detail.review_decision && <p>当前：{reviewLabel(detail.review_decision.decision)} · {detail.review_decision.reviewer}<br />{detail.review_decision.comment}</p>}
-    <label className="iad-field">复核人<input value={draft.reviewer} disabled={busy || !!draft.pending} onChange={e => draft.update({ reviewer: e.target.value })} /></label>
+    <form onSubmit={event => { event.preventDefault(); if (draft.decision) void submit(draft.decision); }}>
+    <label className="iad-field">复核人<input required value={draft.reviewer} disabled={busy || !!draft.pending} onChange={e => draft.update({ reviewer: e.target.value })} /></label>
     <label className="iad-field">复核说明<textarea value={draft.comment} disabled={busy || !!draft.pending} onChange={e => draft.update({ comment: e.target.value })} /></label>
-    <div className="iad-actions">{(Object.entries(reviewLabels) as [Decision,string][]).map(([value,label]) =>
-      <button key={value} className={value === "FAIL" ? "iad-danger" : ""} disabled={busy || !!draft.pending} onClick={() => submit(value)}>{label}</button>)}</div>
+    <fieldset className="iad-review-options" disabled={busy || !!draft.pending}><legend>裁决</legend>{(Object.entries(reviewLabels) as [Decision,string][]).map(([value,label]) =>
+      <label key={value}><input type="radio" name={`decision:${sampleId}`} value={value} checked={(draft.pending?.decision || draft.decision) === value} onChange={() => draft.update({ decision: value })} />{label}</label>)}</fieldset>
+    <div className="iad-form-actions"><button type="submit" className="iad-primary" disabled={busy || !!draft.pending || !draft.decision}>{busy ? "提交中…" : "提交复核"}</button></div>
+    </form>
     <details className="iad-review-history"><summary>复核记录 · {detail.review_history.length} 次</summary><ol>{detail.review_history.map(record =>
       <li key={record.decision_id} data-decision-id={record.decision_id}>
         <strong>{reviewLabel(record.decision)}</strong> · {record.reviewer}<br />

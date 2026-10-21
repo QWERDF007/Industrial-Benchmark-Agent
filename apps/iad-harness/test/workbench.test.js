@@ -143,6 +143,12 @@ test("real bridge: normal mining publishes knowledge and serves its actual visua
     const selectReferences = await fetch(`${base}/datasets/${dataset.dataset_id}`, { method: "PATCH", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ reference_sample_ids: selected }) });
     assert.equal(selectReferences.status, 200, await selectReferences.clone().text());
     assert.deepEqual((await selectReferences.json()).reference_sample_ids, selected);
+    for (const [status, total] of [["candidate", 9], ["excluded", 1]]) {
+      const filtered = await fetch(`${base}/samples/${dataset.task_id}?dataset_id=${dataset.dataset_id}&reference_status=${status}`);
+      assert.equal(filtered.status, 200, await filtered.clone().text());
+      assert.equal((await filtered.json()).total, total, "良品来源筛选使用真实资格而非标注有无");
+    }
+
     execFileSync(bridge.pythonPath, ["-c", "import sqlite3,sys; conn=sqlite3.connect(sys.argv[1]); conn.execute('ALTER TABLE datasets DROP COLUMN reference_selection_set'); conn.commit(); conn.close()", path.join(root,"test.db")]);
     const migrated = (await (await fetch(base+"/datasets")).json()).datasets[0];
     assert.equal(migrated.reference_mode,"selected","旧数据库的人工参考组必须保留其选择语义");

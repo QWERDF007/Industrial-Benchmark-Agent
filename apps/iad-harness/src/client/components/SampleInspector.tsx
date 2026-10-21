@@ -13,10 +13,10 @@ import { useWorkspace } from "../workspace.js";
 import { inspectionImage } from "../inspection.js";
 import type { SampleNavigation } from "../useSampleNavigation.js";
 
-export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, onReviewed, jobs, onJobsChanged, navigation }: {
+export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed, jobs, onJobsChanged, navigation }: {
   navigation?: SampleNavigation;
   jobs: JobSnapshot[]; onJobsChanged(): void;
-  dataset: Dataset; sampleId: string; mode: "model" | "review" | "browse" | "dataset"; revision: number; onChanged(): void;
+  dataset: Dataset; sampleId: string; mode: "model" | "review" | "browse"; revision: number;
   onReviewed(record: ReviewDecisionRecord, relativePath: string): void;
 }) {
   const { workspace, state } = useWorkspace();
@@ -56,12 +56,6 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
       await request<JobSnapshot>("/audit/start", input); onJobsChanged();
     }
     catch (error) { setError(message(error)); } finally { setBusy(false); }
-  }
-  async function setReference() {
-    setBusy(true); setError("");
-    const ids = dataset.reference_sample_ids.includes(sampleId) ? dataset.reference_sample_ids.filter(id => id !== sampleId) : [...dataset.reference_sample_ids, sampleId];
-    try { await request(`/datasets/${dataset.dataset_id}`, { reference_sample_ids: ids }, "PATCH"); onChanged(); }
-    catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
   const evidenceSource = (evidence: VisualEvidence): ImageSource => {
     const suggestion = detail!.suggestion!;
@@ -125,9 +119,8 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onChanged, 
         </details>}
       </> : <p className="iad-muted">尚无模型观察。</p>}</section>
       {mode === "model" && job && <section className="iad-single-job" aria-label="当前样本作业"><JobCard key={job.run_id} job={job} onChanged={onJobsChanged} /></section>}
-      {mode === "review" ? <HumanReviewForm datasetId={dataset.dataset_id} sampleId={sampleId} detail={detail} onSubmitted={record => onReviewed(record, detail.sample.relative_path)} /> : mode !== "browse" && <div className="iad-actions">
-        {mode === "dataset" && <button disabled={busy} onClick={setReference}>{dataset.reference_sample_ids.includes(sampleId) ? "移出良品参考" : "设为良品参考"}</button>}
-        {mode === "model" && <button className="iad-primary" disabled={busy || jobRunning} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按知识审计此图"}</button>}
+      {mode === "review" ? <HumanReviewForm datasetId={dataset.dataset_id} sampleId={sampleId} detail={detail} onSubmitted={record => onReviewed(record, detail.sample.relative_path)} /> : mode === "model" && <div className="iad-actions">
+        <button className="iad-primary" disabled={busy || jobRunning} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按知识审计此图"}</button>
         <button onClick={() => workspace.navigate("industrial-review", sampleId)}>前往人工复核</button>
       </div>}
     </>}

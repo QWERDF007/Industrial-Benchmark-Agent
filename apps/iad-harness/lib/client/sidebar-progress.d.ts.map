@@ -1,1 +1,0 @@
-{"version":3,"file":"sidebar-progress.d.ts","sourceRoot":"","sources":["../../src/client/sidebar-progress.ts"],"names":[],"mappings":"AAEA,OAAO,EAAS,KAAK,MAAM,EAAE,KAAK,SAAS,EAAE,MAAM,gBAAgB,CAAC;AAEpE,8FAA8F;AAC9F,qBAAa,eAAe;IACd,OAAO,CAAC,QAAQ,CAAC,SAAS;IAAtC,YAA6B,SAAS,EAAE,SAAS,EAAI;IACrD,OAAO,CAAC,OAAO,EAAE,CAAC,IAAI,EAAE,MAAM,EAAE,KAAK,EAAE,MAAM,KAAK,IAAI,cAoDrD;CACF"}

@@ -5,7 +5,6 @@ import { pages, Workspace, WorkspaceContext } from "./workspace.js";
 import { InspectionSession } from "./inspection-session.js";
 import { SessionResult } from "./components/SessionResult.js";
 import { workbenchTools } from "../shared/tool-presentation.js";
-import { SidebarProgress } from "./sidebar-progress.js";
 export const name = "iad-client";
 export const inject = ["slots", "layout", "sessions", "conversation", "uiWorkspace"];
 export function apply(ctx) {
@@ -16,15 +15,8 @@ export function apply(ctx) {
             ctx.slots.register({ name: "tool.call.toolview", key }, (props) => React.createElement(WorkspaceContext.Provider, { value: workspace }, React.createElement(SessionResult, { ...props, title })));
     });
     ctx.slots.inject("sidebar.panellist", () => {
-        const entries = new Map();
-        const disconnect = new SidebarProgress(workspace).connect((id, label) => {
-            if (entries.get(id)?.label === label)
-                return;
-            entries.get(id)?.dispose();
-            const index = Object.keys(pages).indexOf(id);
-            entries.set(id, { label, dispose: ctx.slots.register({ name: "sidebar.panellist", id, order: index + 1, label }, icons[index]) });
-        });
-        return () => { disconnect(); entries.forEach(entry => entry.dispose()); };
+        const disposers = Object.entries(pages).map(([id, label], index) => ctx.slots.register({ name: "sidebar.panellist", id, order: index + 1, label }, icons[index]));
+        return () => disposers.forEach(dispose => dispose());
     });
     ctx.slots.inject("main", () => {
         for (const id of Object.keys(pages)) {

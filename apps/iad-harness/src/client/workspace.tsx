@@ -92,7 +92,12 @@ export class Workspace {
     const raw = new URL(location.href).searchParams.get("iad");
     try {
       const saved = JSON.parse(sessionStorage.getItem("iad.workspace") || "null");
-      if (!fromHistory && saved?.pageId in pages && typeof saved.datasetId === "string" && typeof saved.active === "boolean") this.state = saved;
+      if (!fromHistory && saved?.pageId in pages && typeof saved.datasetId === "string" && typeof saved.active === "boolean") {
+        this.state = { ...saved, views: Object.fromEntries(Object.entries(saved.views || {}).map(([key, value]) => {
+          const view = value as ViewState;
+          return [key, { ...view, filters: { ...initialFilters, ...view.filters } }];
+        })) };
+      }
       if (fromHistory) this.state = { ...this.state, active: false };
       if (raw) {
         const route = JSON.parse(raw);
@@ -104,7 +109,7 @@ export class Workspace {
           if (Number.isInteger(route.page) && route.page > 0) view.page = route.page;
           if (Number.isInteger(route.historyPage) && route.historyPage > 0) view.historyPage = route.historyPage;
           if (route.filters) {
-            for (const key of ["search", "model_status", "review_status", "technical", "sort_by"] as const) if (typeof route.filters[key] === "string") view.filters[key] = route.filters[key];
+            for (const key of ["search", "model_status", "review_status", "technical", "sort_by", "reference_status"] as const) if (typeof route.filters[key] === "string") view.filters = { ...view.filters, [key]: route.filters[key] };
             if (Array.isArray(route.filters.annotation_filters) && route.filters.annotation_filters.every((item: unknown) => typeof item === "string")) view.filters.annotation_filters = route.filters.annotation_filters;
           }
           this.state = { ...this.state, active: true, pageId: route.pageId, datasetId: route.datasetId, views: { ...this.state.views, [`${route.pageId}:${route.datasetId}`]: view } };
