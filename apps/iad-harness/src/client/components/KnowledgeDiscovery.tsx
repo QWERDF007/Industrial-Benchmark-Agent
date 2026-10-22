@@ -17,7 +17,7 @@ export function KnowledgeDiscovery({ knowledge, evidence, onPropose }: {
     {discovery && <>
       <details><summary>可见部件 · {discovery.parts.length}</summary>{discovery.parts.map(part => <div key={part.name}><p>{part.name} · {part.location}</p>{evidence(part.evidence_ids)}</div>)}</details>
       {discovery.areas.map((area, index) => <article className="iad-discovery-area iad-info-group" key={index}>
-        <div className="iad-section-header"><h3>{area.direction}</h3><span>{area.status} · {area.direction_id ? "用户所选" : "模型新增"}</span></div>
+        <div className="iad-section-header"><h3>{selected.find(item => item.direction_id === area.direction_id)?.title || area.direction}</h3><span>{area.status} · {area.direction_id ? "用户所选" : "模型新增"}</span></div>
         {!!area.subjects.length && <p>{area.subjects.join("、")}</p>}<p>{area.reason}</p>
         {!!area.check_titles.length && <p className="iad-muted">本次归纳判据：{area.check_titles.join("、")}</p>}
         {!!area.evidence_ids.length && <details><summary>查看图像依据</summary>{evidence(area.evidence_ids)}</details>}

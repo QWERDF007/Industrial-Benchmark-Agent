@@ -7233,7 +7233,7 @@ var __IadClientBundle__ = (() => {
         ] }),
         discovery.areas.map((area, index3) => /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("article", { className: "iad-discovery-area iad-info-group", children: [
           /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { className: "iad-section-header", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("h3", { children: area.direction }),
+            /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("h3", { children: selected.find((item) => item.direction_id === area.direction_id)?.title || area.direction }),
             /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("span", { children: [
               area.status,
               " \xB7 ",

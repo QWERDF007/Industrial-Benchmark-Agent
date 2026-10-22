@@ -65,7 +65,7 @@ class ObservedPart(AnalysisModel):
 
 class DiscoveryArea(AnalysisModel):
     direction_id: Optional[str] = Field(default=None, description='用户选中的方向编号；模型自主发现的新方向填null，不能冒用未选择的方向')
-    direction: NonBlankText
+    direction: NonBlankText = Field(description='本轮观察标题；所选方向身份以direction_id为准，自主发现方向填写新标题')
     subjects: List[str] = Field(description='引用parts内实际可见部件名称；不适用时可为空')
     status: Literal['已形成知识', '证据不足', '不可观察', '不适用']
     reason: NonBlankText

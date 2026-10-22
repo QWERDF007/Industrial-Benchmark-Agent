@@ -40,7 +40,8 @@ def test_mining_freezes_edited_prompt_and_validates_observation_scope(knowledge_
     query = {'dataset_id': config.dataset.id, 'kind': 'normal'}
     original = knowledge_prompt_get(query, db.db_path)
     chosen = knowledge_prompt_save({**query, 'expected_revision': original['revision'],
-                                   'configuration': {'objective': '检查两孔关系以及孔内背景，不分析标识。', 'directions': []}}, db.db_path)
+                                   'configuration': {'objective': '检查两孔关系以及孔内背景，不分析标识。', 'directions': [
+                                       {'direction_id': 'holes', 'title': '两孔关系', 'instruction': '检查孔位与数量'}]}}, db.db_path)
     entered, release = threading.Event(), threading.Event()
     prompts = []
 
@@ -61,11 +62,12 @@ def test_mining_freezes_edited_prompt_and_validates_observation_scope(knowledge_
                        ('闭合外轮廓', '外轮廓闭合'), ('孔周边完整', '孔周边无可见缺口')]]
         result = {'summary': '孔板可见规律', 'checks': checks, 'suspects': [], 'limitations': [],
                   'discovery': {'parts': [{'name': '孔板', 'location': '主体', 'evidence_ids': ids[:2]}],
-                      'areas': [{'direction': '两孔关系', 'subjects': ['孔板'], 'status': '已形成知识',
+                      'areas': [{'direction_id': 'holes', 'direction': '两孔关系：孔位与数量', 'subjects': ['孔板'], 'status': '已形成知识',
                                  'reason': '两个独立来源均可见\n仍需保留成像变化限制', 'check_titles': ['两孔数量', '孔位排列'], 'evidence_ids': ids[:2]},
                                 {'direction': '精密孔径', 'subjects': ['孔板'], 'status': '不可观察',
                                  'reason': '无标尺和标定', 'check_titles': [], 'evidence_ids': []}]}}
         definitions = body['response_format']['json_schema']['schema']['$defs']
+        assert set(definitions['DiscoveryArea']['properties']['direction_id']['enum']) == {None, 'holes'}
         # The deployed grammar backend uses full-string matching for patterns.
         for model, field, value in [('ObservedPart', 'name', '孔板'), ('DiscoveryArea', 'direction', '两孔关系'),
                                     ('DiscoveryArea', 'reason', '两个独立来源均可见\n仍需保留成像变化限制')]:
@@ -105,7 +107,8 @@ def test_mining_freezes_edited_prompt_and_validates_observation_scope(knowledge_
         assert len(snapshot['checks']) == 5, '独立知识不截为固定条数'
         page = knowledge_details({'version_id': snapshot['version_id'], 'section': 'discovery', 'page_size': 1}, db.db_path)
         assert page['recorded'] and page['total'] == 2
-        assert page['items'][0]['direction'] == '两孔关系'
+        assert page['items'][0]['direction_id'] == 'holes'
+        assert page['items'][0]['direction'] == '两孔关系：孔位与数量'
         assert page['items'][0]['reason'] == '两个独立来源均可见\n仍需保留成像变化限制'
         assert knowledge_details({'version_id': snapshot['version_id'], 'section': 'discovery', 'page': 2,
                                   'page_size': 1}, db.db_path)['items'][0]['status'] == '不可观察'

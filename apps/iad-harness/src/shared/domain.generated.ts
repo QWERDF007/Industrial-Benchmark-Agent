@@ -33,6 +33,9 @@ export type PageSize = number;
  * 用户选中的方向编号；模型自主发现的新方向填null，不能冒用未选择的方向
  */
 export type DirectionId1 = string | null;
+/**
+ * 本轮观察标题；所选方向身份以direction_id为准，自主发现方向填写新标题
+ */
 export type Direction = string;
 /**
  * 引用parts内实际可见部件名称；不适用时可为空

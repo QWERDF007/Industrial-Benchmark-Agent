@@ -11,7 +11,7 @@ from iad_core.knowledge.recheck import RECHECK_INSTRUCTION
 from iad_core.knowledge.findings import EVIDENCE_SCOPE_INSTRUCTION
 from iad_core.workbench.vision import RESPONSE_INSTRUCTION, GENERATION_PARAMETERS
 
-GENERATION_VERSION = "dataset-knowledge-v21"
+GENERATION_VERSION = "dataset-knowledge-v22"
 NORMAL_INSTRUCTION = """联合观察这一数据集的候选良品，按本次挖掘目标和选中方向发现可复用知识及新的观察方向。
 不要根据数据集名称假设产品或预设缺陷检查表。只归纳可观察、可复用且有图像证据的检查判据。
 人工选取和无标注只是来源资格，不是确认真值。寻找候选良品中的异常与矛盾，将其定位为suspects，
