@@ -119,6 +119,16 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     await(await element('summary[data-action="mining-directions"]')).click();
     assert.equal(await(await element('input[aria-label="启用方向 整体形态"]')).isSelected(),false);
     assert.equal(await(await element('input[aria-label="启用方向 孔内背景"]')).isSelected(),true);
+    const desktop=await driver.manage().window().getRect();
+    await driver.manage().window().setRect({width:500,height:900});
+    const layout=await driver.executeScript('return {viewport:innerWidth,width:document.scrollingElement.scrollWidth}');
+    assert.ok(layout.width<=layout.viewport,`方向编辑在窄屏溢出：${JSON.stringify(layout)}`);
+    const keyboardDirection=await element('input[aria-label="启用方向 整体形态"]');
+    await keyboardDirection.sendKeys(' ');
+    assert.equal(await keyboardDirection.isSelected(),true,'方向可用键盘切换');
+    await keyboardDirection.sendKeys(' ');
+    assert.equal(await keyboardDirection.isSelected(),false);
+    await driver.manage().window().setRect(desktop);
     await(await count()).clear();await(await count()).sendKeys('1');await click('按数量选择');
     await driver.wait(async()=>await(await element('input[type="checkbox"][aria-label^="选择来源"]')).isSelected(),5000);
     await click('开始挖掘良品知识');
