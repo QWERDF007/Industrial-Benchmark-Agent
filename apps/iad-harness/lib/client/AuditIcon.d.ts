@@ -19,4 +19,7 @@ export declare function AuditIcon({ size }: {
 export declare function ExplorationIcon({ size }: {
     size?: number;
 }): React.JSX.Element;
+export declare function ModelSettingsIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
 //# sourceMappingURL=AuditIcon.d.ts.map

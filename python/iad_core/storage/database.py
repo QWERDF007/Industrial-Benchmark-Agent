@@ -48,6 +48,10 @@ class Database:
             conn.execute("BEGIN IMMEDIATE")
             cursor = conn.cursor()
 
+            cursor.execute('''CREATE TABLE IF NOT EXISTS workbench_model_settings (
+                id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL CHECK(revision>0),
+                selection_json TEXT NOT NULL)''')
+
             cursor.execute('''CREATE TABLE IF NOT EXISTS direction_explorations (
                 version_id TEXT PRIMARY KEY, dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id) ON DELETE CASCADE,
                 run_id TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL, snapshot_json TEXT NOT NULL)''')

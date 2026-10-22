@@ -26,7 +26,6 @@ interface ViewState {
     selected: string;
     tab: string;
     version: string;
-    model: string;
     normalVersion: string;
     defectVersion: string;
     job: string;
@@ -91,7 +90,6 @@ export declare class Workspace {
         selected: string;
         tab: string;
         version: string;
-        model: string;
         normalVersion: string;
         defectVersion: string;
         job: string;

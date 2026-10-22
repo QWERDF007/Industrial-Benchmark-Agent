@@ -25,6 +25,7 @@
 | 全图/ROI、原图坐标与真实像素 | [图像证据](../python/iad_core/evidence/images.py)、[Mask](../python/iad_core/evidence/masks.py) |
 | 冻结知识、单图联合分析、疑点与作业 | [审计](../python/iad_core/workbench/audit.py)、[单图](../python/iad_core/workbench/inspection.py)、[联合分析](../python/iad_core/workbench/joint.py)、[作业](../python/iad_core/workbench/jobs.py) |
 | 模型传输、容量、结构化输出与调用记录 | [模型配置](../python/iad_core/workbench/model_profile.py)、[模型客户端](../python/iad_core/workbench/vision.py)、[分析契约](../python/iad_core/advisory/analysis.py)、[调用记录](../python/iad_core/workbench/calls.py) |
+| 统一工业模型、原生提供商与冻结路由 | [设置契约及存储](../python/iad_core/workbench/model_settings.py)、[设置操作](../python/iad_core/workbench/model_operations.py)、[宿主解析](../apps/iad-harness/src/server/models/)、[独立设置页面](../apps/iad-harness/src/client/components/ModelSettingsPage.tsx)、[按作业运行时](../python/iad_core/workbench/runtime.py) |
 | 人工提交与历史 | [人工复核](../python/iad_core/workbench/review.py)、[知识处置](../python/iad_core/workbench/knowledge_review.py)、[冲突复核界面](../apps/iad-harness/src/client/components/KnowledgeConflictReview.tsx)、[人审存储](../python/iad_core/storage/review_repository.py) |
 | 原生工具、模型可见结果、当前技能注册、状态等待与图像附件 | [工作台工具](../apps/iad-harness/src/server/workbench-tools/index.ts)、[知识工具](../apps/iad-harness/src/server/knowledge/)、[结果投影](../apps/iad-harness/src/server/tool-output.ts)、[完整分析技能](../apps/iad-harness/src/server/workbench-tools/skill.ts)、[等待](../apps/iad-harness/src/server/job-status.ts)、[附件](../apps/iad-harness/src/server/evidence-attachment.ts) |
 | 生成的客户端契约 | [契约](../apps/iad-harness/src/shared/contracts.ts)、[生成入口](../apps/iad-harness/scripts/generate-contracts.js) |
@@ -50,7 +51,7 @@
 | 知识类型/数据集切换、历史与刷新 | [统一入口浏览器操作](../apps/iad-harness/browser/knowledge-navigation.test.js) |
 | 浏览器公开用户链 | [工作台操作](../apps/iad-harness/browser/workbench.test.js) |
 | 真实DSH会话及页面/图像往返 | [原生宿主](../apps/iad-harness/browser/session-handoff.test.js)、[Agent会话](../apps/iad-harness/test/agent_session.test.js) |
-| 局域网提供商设置、保存与会话模型切换 | [原生设置浏览器操作](../apps/iad-harness/browser/model-settings.test.js) |
+| 统一模型、提供商互通、会话独立与冻结重试 | [原生设置及四类任务](../apps/iad-harness/browser/model-settings.test.js)、[独立执行与重试](../tests/test_workbench_models.py) |
 | 明暗、视口、字号、模态与焦点 | [页面布局](../apps/iad-harness/browser/workbench-layout.js)、[详情交互](../apps/iad-harness/browser/workbench-surfaces.js) |
 | 合成图真实MLLM与会话验收 | [指定来源挖掘](../apps/iad-harness/scripts/verify-knowledge-selection.js)、[连续范围](../apps/iad-harness/scripts/verify-knowledge-scope.js)、[完整流程](../apps/iad-harness/scripts/verify-knowledge-products.js)、[接入边界](../apps/iad-harness/scripts/verify-dataset-intake.js)、[单步导入](../apps/iad-harness/scripts/verify-import-scope.js)、[恢复验证](../scripts/verify_job_recovery_live.py) |
 

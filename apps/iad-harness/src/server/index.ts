@@ -18,6 +18,7 @@ import { DATASET_ANALYSIS_SKILL } from "./workbench-tools/skill.js";
 import { createKnowledgeTools } from "./knowledge/index.js";
 import { createExplorationTools, DIRECTION_EXPLORATION_SKILL } from "./exploration/index.js";
 import { createWorkbenchTools } from "./workbench-tools/index.js";
+import { WorkbenchModelRouting } from "./models/index.js";
 
 export { SYSTEM_POLICIES, ALLOWED_TOOL_SURFACE } from "./policy/index.js";
 export { CoreClient } from "./core-client/index.js";
@@ -44,6 +45,9 @@ export function apply(ctx: any, config: IADHarnessConfig = {}) {
   ctx.effect(() => () => bridge.destroy());
   ctx.provide?.("iadPythonBridge", bridge);
   ctx.iadPythonBridge = bridge;
+  if (typeof ctx.inject === 'function') ctx.inject(['llm', 'settings', 'credentials'], (scope: any) => {
+    scope.effect(() => bridge.useModelRouting(new WorkbenchModelRouting(scope)));
+  });
 
   // 2. Initialize shared CoreClient backed by PythonBridge
   coreClient.apply(ctx, { ...config, bridge });

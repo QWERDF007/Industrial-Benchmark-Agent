@@ -28,7 +28,7 @@ export function createExplorationTools(bridge: PythonBridge, ctx: Context) {
   return [
     defineTool({ name: "direction_exploration_start", description: "仅用户明确要求时，一次联合观察已确认的良品与异常图组，提出待选方向；不发布质量知识或自动挖掘。失败后等待用户决定，不自动拆组、减张或重试。",
       parameters: explorationParameters, output: knowledgeJobOutput,
-      execute: (args, exec) => bridge.execute("direction_exploration_start", { request: args, model_name: process.env.LIVE_VLM_MODEL || exec.agent?.options.model, origin_session_id: exec.agent?.id || null }, exec.signal) }),
+      execute: (args, exec) => bridge.execute("direction_exploration_start", { request: args, origin_session_id: exec.agent?.id || null }, exec.signal) }),
     defineTool({ name: "direction_exploration_status", description: "查询并等待同一个方向探索作业的实际状态，RUNNING不代表完成。", parameters: jobStatusParameters,
       output: knowledgeJobOutput, execute: (args, exec) => waitForJobStatus(bridge, "direction_exploration_status", args, exec.signal) }),
     ...(["cancel", "retry"] as const).map(action => defineTool({ name: `direction_exploration_${action}`,

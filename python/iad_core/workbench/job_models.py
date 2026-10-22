@@ -6,6 +6,7 @@ from iad_core.advisory.analysis import AnalysisModel
 from iad_core.storage.models import sample_uuid
 from iad_core.workbench.calls import ModelCallSummary
 from iad_core.knowledge.instructions import FrozenMiningPrompt
+from iad_core.workbench.model_profile import ModelProfile
 
 JobStatus = Literal['PENDING', 'RUNNING', 'COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED', 'INTERRUPTED']
 
@@ -80,6 +81,7 @@ class JobSnapshot(AnalysisModel):
     finished_at: Optional[str]
     deleted_at: Optional[str] = None
     model_name: str
+    model_profile: Optional[ModelProfile] = None
     current_sample: Optional[JobSample] = None
     phase: Optional[str] = None
     normal_version_id: Optional[str] = None

@@ -62,7 +62,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
         tool = { name: "knowledge_mine_normal", arguments: { image_count: sources.items.length, images: sources.items.map(item => item.sample_id), knowledge_preset: JSON.parse(outputs.find(item=>item.name==="knowledge_get").content).freshness.status==="current"?[previous.version_id]:[] } };
       }
       if (["knowledge_mine_normal", "knowledge_job_status"].includes(last?.name)) tool = value?.status === "COMPLETED"
-        ? { name: "model_audit_start", arguments: { dataset_id: reference.dataset_id, normal_version_id: value.knowledge_version_id, sample_ids: [reference.sample_id], model_name: "test-mllm" } }
+        ? { name: "model_audit_start", arguments: { dataset_id: reference.dataset_id, normal_version_id: value.knowledge_version_id, sample_ids: [reference.sample_id] } }
         : { name: "knowledge_job_status", arguments: { run_id: value.run_id, wait_seconds: 5 } };
       if (["model_audit_start", "model_audit_status"].includes(last?.name)) tool = value?.status === "COMPLETED" ? { name: "dataset_report", arguments: { dataset_id: reference.dataset_id } }
         : { name: "model_audit_status", arguments: { run_id: value.run_id, wait_seconds: 5 } };

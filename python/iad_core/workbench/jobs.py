@@ -63,6 +63,7 @@ class JobRunner:
         self.lock = threading.RLock()
         self.threads: dict[str, threading.Thread] = {}
         self.cancelled: dict[str, threading.Event] = {}
+        self.finished_callbacks: dict[str, list[Callable[[], None]]] = {}
         self.closing = False
         self.worker_locks = [FileLock(str(Path(db.db_path).resolve()) + f'.{kind.lower()}.worker.lock', thread_local=False)
                              for kind in sorted(self.job_types)]
@@ -193,9 +194,19 @@ class JobRunner:
                              (status, json.dumps(payload, ensure_ascii=False), datetime.now(timezone.utc).isoformat(), context.run_id))
                 self.threads.pop(context.run_id, None)
                 self.cancelled.pop(context.run_id, None)
+                callbacks = self.finished_callbacks.pop(context.run_id, [])
                 if self.closing and not self.threads:
                     for worker_lock in self.worker_locks:
                         worker_lock.release()
+            for callback in callbacks:
+                callback()
+
+    def after_finished(self, run_id: str, callback: Callable[[], None]):
+        with self.lock:
+            if run_id in self.threads:
+                self.finished_callbacks.setdefault(run_id, []).append(callback)
+                return
+        callback()
 
     def update(self, run_id: str, connection: Optional[Connection] = None, **values):
         with self.lock, (nullcontext(connection) if connection else self.db.connection()) as conn:

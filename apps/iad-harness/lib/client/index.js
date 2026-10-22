@@ -1,15 +1,17 @@
 import React from "react";
-import { AuditIcon, ReviewIcon, DatasetIcon, ImagesIcon, KnowledgeIcon, ExplorationIcon } from "./AuditIcon.js";
+import { AuditIcon, ReviewIcon, DatasetIcon, ImagesIcon, KnowledgeIcon, ExplorationIcon, ModelSettingsIcon } from "./AuditIcon.js";
 import { WorkbenchPage } from "./WorkbenchPage.js";
 import { pages, Workspace, WorkspaceContext } from "./workspace.js";
 import { WorkbenchSession } from "./workbench-session.js";
 import { SessionResult } from "./components/SessionResult.js";
 import { workbenchTools } from "../shared/tool-presentation.js";
+import { ModelSettingsPage } from './components/ModelSettingsPage.js';
+import { WorkbenchModelProvider } from './models.js';
 export const name = "iad-client";
 export const inject = ["slots", "layout", "sessions", "conversation", "uiWorkspace"];
 export function apply(ctx) {
     const workspace = new Workspace(new WorkbenchSession(ctx));
-    const icons = { "industrial-datasets": DatasetIcon, "industrial-images": ImagesIcon, "industrial-exploration": ExplorationIcon, "industrial-knowledge": KnowledgeIcon, "industrial-audit": AuditIcon, "industrial-review": ReviewIcon };
+    const icons = { "industrial-datasets": DatasetIcon, "industrial-images": ImagesIcon, "industrial-exploration": ExplorationIcon, "industrial-knowledge": KnowledgeIcon, "industrial-audit": AuditIcon, "industrial-review": ReviewIcon, 'industrial-model-settings': ModelSettingsIcon };
     ctx.slots.inject("tool.call.toolview", () => {
         for (const [key, title] of Object.entries(workbenchTools))
             ctx.slots.register({ name: "tool.call.toolview", key }, (props) => React.createElement(WorkspaceContext.Provider, { value: workspace }, React.createElement(SessionResult, { ...props, title })));
@@ -20,7 +22,8 @@ export function apply(ctx) {
     });
     ctx.slots.inject("main", () => {
         for (const id of Object.keys(pages)) {
-            ctx.slots.register({ name: "main", key: id }, () => React.createElement(WorkspaceContext.Provider, { value: workspace }, React.createElement(WorkbenchPage, { pageId: id })));
+            ctx.slots.register({ name: "main", key: id }, () => React.createElement(WorkspaceContext.Provider, { value: workspace }, React.createElement(WorkbenchModelProvider, { children: id === 'industrial-model-settings' ? React.createElement(ModelSettingsPage)
+                    : React.createElement(WorkbenchPage, { pageId: id }) })));
         }
         return workspace.connect(ctx.layout);
     });

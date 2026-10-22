@@ -57,14 +57,14 @@ export function createKnowledgeTools(bridge, ctx) {
             description: "独立挖掘明确图组的良品知识。仅提供knowledge_preset、image_count、images；引用从knowledge_sources复制，数量严格一致。无预设不读当前知识，不合并全部历史来源。总范围与每次数量按用户上下文区分，缺少数量建议10或20，不预先枚举全库。" + groupPolicy,
             parameters: miningParameters,
             output: knowledgeJobOutput,
-            execute: (args, exec) => bridge.execute("knowledge_start", { request: { ...args, kind: "normal" }, model_name: process.env.LIVE_VLM_MODEL || exec.agent?.options.model, origin_session_id: exec.agent?.id || null }, exec.signal),
+            execute: (args, exec) => bridge.execute("knowledge_start", { request: { ...args, kind: "normal" }, origin_session_id: exec.agent?.id || null }, exec.signal),
         }),
         defineTool({
             name: "knowledge_mine_defect",
             description: "独立挖掘明确图组的异常候选知识。三输入与良品工具相同，可选良品基准及异常预设。没有正常基准时仅整理待验证假设，不自动挖掘良品或执行审计。images只用真实引用，工具只处理本组。" + groupPolicy,
             parameters: miningParameters,
             output: knowledgeJobOutput,
-            execute: (args, exec) => bridge.execute("knowledge_start", { request: { ...args, kind: "defect" }, model_name: process.env.LIVE_VLM_MODEL || exec.agent?.options.model, origin_session_id: exec.agent?.id || null }, exec.signal),
+            execute: (args, exec) => bridge.execute("knowledge_start", { request: { ...args, kind: "defect" }, origin_session_id: exec.agent?.id || null }, exec.signal),
         }),
         defineTool({
             name: "knowledge_job_observations",

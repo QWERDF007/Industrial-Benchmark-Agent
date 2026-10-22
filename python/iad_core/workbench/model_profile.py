@@ -7,8 +7,7 @@ from pydantic import Field, model_validator
 from iad_core.advisory.analysis import AnalysisModel
 
 
-class ModelProfile(AnalysisModel):
-    endpoint: str
+class ModelLimits(AnalysisModel):
     capacity_mode: Optional[Literal['vllm_tokenize']] = None
     max_visual_inputs: Optional[int] = Field(default=None, ge=1)
     max_request_bytes: Optional[int] = Field(default=None, gt=0)
@@ -25,6 +24,15 @@ class ModelProfile(AnalysisModel):
         if set(self.request_parameters) & {'model', 'messages', 'response_format', 'max_tokens', 'max_completion_tokens', 'stream'}:
             raise ValueError('模型扩展参数不可覆盖请求范围或输出契约')
         return self
+
+
+class ModelProfile(ModelLimits):
+    endpoint: str
+    provider_id: Optional[str] = None
+    provider_name: Optional[str] = None
+    model_id: Optional[str] = None
+    credential_ref: Optional[str] = None
+    api: Literal['openai-completions'] = 'openai-completions'
 
     @classmethod
     def configured(cls, endpoint: str):

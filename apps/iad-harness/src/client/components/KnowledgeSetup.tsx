@@ -3,6 +3,7 @@ import type { Dataset, KnowledgeGroup, KnowledgeSnapshot, KnowledgeSourcePage, K
 import { mediaUrl, message, request } from "../api.js";
 import { useWorkspace } from "../workspace.js";
 import { KnowledgeDirections, type DirectionProposal } from "./KnowledgeDirections.js";
+import {useWorkbenchModel} from '../models.js';
 
 export function KnowledgeSetup({ dataset, kind, versions, normalVersions, busy, onStart, onContinuous, directionProposal, onDirectionProposalUsed }: {
   dataset: Dataset; kind: KnowledgeSnapshot["kind"]; versions: KnowledgeVersion[]; normalVersions: KnowledgeVersion[];
@@ -11,6 +12,7 @@ export function KnowledgeSetup({ dataset, kind, versions, normalVersions, busy, 
   onDirectionProposalUsed(): void;
 }) {
   const { workspace } = useWorkspace(), pageId = "industrial-knowledge";
+  const model = useWorkbenchModel();
   const view = workspace.view(pageId);
   const [sources, setSources] = useState<KnowledgeSourcePage | null>(null), [error, setError] = useState("");
   const [selecting, setSelecting] = useState(false);
@@ -58,7 +60,7 @@ export function KnowledgeSetup({ dataset, kind, versions, normalVersions, busy, 
       </select></label>}
       <label className="iad-field">图像数量<input type="number" min="1" step="1" aria-label="挖掘图像数量" value={view.miningCount} disabled={busy} onChange={e => workspace.updateView(pageId, { miningCount: e.target.value }, true)} /></label>
       <button disabled={busy || selecting || !valid} onClick={() => void choose()}>{selecting ? "选择中…" : "按数量选择"}</button>
-      <button data-action={view.miningContinuous ? "knowledge-agent-run" : "knowledge-group-run"} className="iad-primary" disabled={busy || selecting || !!error || unavailable || directionsPending} onClick={() => {
+      <button data-action={view.miningContinuous ? "knowledge-agent-run" : "knowledge-group-run"} className="iad-primary" disabled={busy || selecting || !!error || unavailable || directionsPending || !model.ready} onClick={() => {
         if (view.miningContinuous) { onContinuous(); return; }
         const [first, ...rest] = view.miningImages;
         if (!first || unavailable) return;

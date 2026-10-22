@@ -37,11 +37,19 @@ export class PythonBridge {
     pendingRequests = new Map();
     stdoutAccum = "";
     stderrAccum = "";
+    modelRouting;
     constructor(config = {}) {
         this.cwd = config.cwd ? path.resolve(config.cwd) : findWorkspaceRoot();
         this.pythonPath = resolvePythonPath(config.pythonPath);
         this.timeoutMs = config.timeoutMs ?? 120000;
         this.dbPath = config.dbPath;
+    }
+    useModelRouting(routing) {
+        if (this.modelRouting)
+            throw new Error('工作台模型解析入口已注册');
+        this.modelRouting = routing;
+        return () => { if (this.modelRouting === routing)
+            this.modelRouting = undefined; };
     }
     ensureWorker() {
         if (this.worker && !this.worker.killed && this.worker.exitCode === null) {
@@ -135,6 +143,11 @@ export class PythonBridge {
      * Achieves sub-millisecond dispatch by avoiding per-call process spawn overhead.
      */
     async execute(operation, argumentsPayload = {}, signal, onProgress) {
+        if (this.modelRouting)
+            return this.modelRouting.execute(operation, argumentsPayload, signal, (name, args, cancellation) => this.dispatch(name, args, cancellation, onProgress));
+        return this.dispatch(operation, argumentsPayload, signal, onProgress);
+    }
+    async dispatch(operation, argumentsPayload = {}, signal, onProgress) {
         const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const worker = this.ensureWorker();
         return new Promise((resolve, reject) => {

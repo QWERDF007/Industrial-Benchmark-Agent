@@ -5,6 +5,7 @@
 - [实现与验收索引](architecture.md)：现有代码、公开操作链及运行约束。
 - [工业知识挖掘方向的外部依据](research/industrial-knowledge-directions.md)：多来源工业观察范围与应用边界。
 - [良品与异常联合方向探索](specs/direction-exploration.md)：独立技能、侧栏页面及探索方向选用的新增行为与验收边界。
+- [工作台模型设置](specs/workbench-model-settings.md)：独立入口、原生提供商复用、统一工作台选择和作业配置冻结的已确认方案。
 - [使用与启动](../README.md)。
 - 根 WORKLOG.md：本地唯一任务账本，不纳入版本控制。
 

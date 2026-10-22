@@ -49,3 +49,7 @@ export function AuditIcon({ size = 20 }: { size?: number }) {
 export function ExplorationIcon({ size = 20 }: { size?: number }) {
   return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="10" cy="10" r="6"/><path d="m14.5 14.5 6 6M7 10h6M10 7v6"/></svg>;
 }
+
+export function ModelSettingsIcon({size = 20}: {size?: number}) {
+  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="var(--iad-surface,currentColor)"/><circle cx="15" cy="12" r="2" fill="var(--iad-surface,currentColor)"/><circle cx="9" cy="18" r="2" fill="var(--iad-surface,currentColor)"/></svg>;
+}

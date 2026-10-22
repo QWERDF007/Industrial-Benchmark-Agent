@@ -16,6 +16,8 @@ from iad_core.knowledge.prompts import MiningPrompt, MiningPromptEdit
 from iad_core.knowledge.trace import KnowledgeTracePage
 from iad_core.knowledge.requests import MiningStart, MiningRequest
 from iad_core.knowledge.scopes import KnowledgeScopeOpen, KnowledgeScopeSnapshot
+from iad_core.workbench.model_settings import WorkbenchModelSelection, WorkbenchModelSettings, WorkbenchModelEdit, WorkbenchProvider, WorkbenchModelView, ModelExecution, ModelConnection, ProviderEdit, ProviderReference, ProviderDiscovery
+from iad_core.workbench.model_profile import ModelLimits, ModelProfile
 from iad_core.workbench.audit import AuditStart
 from iad_core.workbench.calls import ModelCallDetail
 from iad_core.workbench.job_models import JobRetry, JobSnapshot, JobRetryOptions
@@ -29,11 +31,12 @@ from iad_core.storage.models import Annotation, ReviewDecisionRecord
 from iad_core.workbench.review import ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage
 from iad_core.workbench.knowledge_review import KnowledgeReviewContext, KnowledgeReviewSubmission, KnowledgeReviewEvent, KnowledgeReviewItem
 from iad_core.workbench.query import SampleQuery
-models = [DirectionAdoption, ExplorationStart, ExplorationSnapshot, ExplorationCatalog, MiningPrompt, MiningPromptEdit, KnowledgeDiscoveryPage, KnowledgeTracePage, KnowledgeScopeOpen, KnowledgeScopeSnapshot, KnowledgeDetailQuery, KnowledgeCheckPage, KnowledgeCheckEvidencePage, KnowledgeReviewContext, KnowledgeReviewSubmission, KnowledgeReviewEvent, KnowledgeReviewItem, AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, KnowledgeSourceQuery, KnowledgeSourcePage, AuditStart, ModelCallDetail, JobRetry, JobSnapshot, JobRetryOptions, InspectionReference, InspectionSnapshot, DatasetImport, FolderPreview, ArchiveInspection, ScanResult, DatasetReport, MiningStart, MiningRequest, Annotation, ReviewDecisionRecord, ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage, SampleQuery]
-modes = [(model, 'validation' if model in (DirectionAdoption, ExplorationStart, KnowledgeScopeOpen, KnowledgeDetailQuery, KnowledgeReviewSubmission, MiningStart, MiningRequest, KnowledgeSourceQuery, AuditStart, JobRetry, InspectionReference, DatasetImport, ReviewSubmission, ReviewHistoryQuery) else 'serialization') for model in models]
+models = [ProviderEdit, ProviderReference, ProviderDiscovery, ModelConnection, ModelLimits, ModelProfile, ModelExecution, WorkbenchModelSelection, WorkbenchModelSettings, WorkbenchModelEdit, WorkbenchProvider, WorkbenchModelView, DirectionAdoption, ExplorationStart, ExplorationSnapshot, ExplorationCatalog, MiningPrompt, MiningPromptEdit, KnowledgeDiscoveryPage, KnowledgeTracePage, KnowledgeScopeOpen, KnowledgeScopeSnapshot, KnowledgeDetailQuery, KnowledgeCheckPage, KnowledgeCheckEvidencePage, KnowledgeReviewContext, KnowledgeReviewSubmission, KnowledgeReviewEvent, KnowledgeReviewItem, AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, KnowledgeSourceQuery, KnowledgeSourcePage, AuditStart, ModelCallDetail, JobRetry, JobSnapshot, JobRetryOptions, InspectionReference, InspectionSnapshot, DatasetImport, FolderPreview, ArchiveInspection, ScanResult, DatasetReport, MiningStart, MiningRequest, Annotation, ReviewDecisionRecord, ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage, SampleQuery]
+modes = [(model, 'validation' if model in (ProviderEdit, ProviderDiscovery, ModelExecution, WorkbenchModelSelection, WorkbenchModelEdit, DirectionAdoption, ExplorationStart, KnowledgeScopeOpen, KnowledgeDetailQuery, KnowledgeReviewSubmission, MiningStart, MiningRequest, KnowledgeSourceQuery, AuditStart, JobRetry, InspectionReference, DatasetImport, ReviewSubmission, ReviewHistoryQuery) else 'serialization') for model in models]
 references, schema = models_json_schema(modes)
 schema.update(title='WorkbenchDomain', type='object', additionalProperties=False,
     properties={model.__name__: references[(model, mode)] for model, mode in modes})
+schema['x-model-defaults'] = ModelLimits().model_dump()
 print(json.dumps(schema))
 `], { cwd: workspace, env: { ...process.env, PYTHONPATH: path.join(workspace, "python") }, encoding: "utf8" }));
 const output = await compile(schema, "WorkbenchDomain", {
@@ -64,6 +67,7 @@ const parameters = toolSchema(schema.properties.MiningStart).properties;
 const targets = {
   "exploration.parameters.generated.ts": `/* Generated from Python ExplorationStart by scripts/generate-contracts.js. */\nexport const explorationParameters = ${JSON.stringify(toolSchema(schema.properties.ExplorationStart).properties, null, 2)} as const;\nexport const directionAdoptionParameters = ${JSON.stringify(toolSchema(schema.properties.DirectionAdoption).properties, null, 2)} as const;\n`,
   "domain.generated.ts": output,
+  "model-settings.generated.ts": `/* Generated from Python ModelLimits by scripts/generate-contracts.js. */\nimport type { ModelLimits } from "./domain.generated.js";\nexport const defaultModelLimits: ModelLimits = ${JSON.stringify(schema["x-model-defaults"], null, 2)};\n`,
   "dataset.parameters.generated.ts": `/* Generated from Python FolderRule by scripts/generate-contracts.js. */\nexport const folderRulesParameter = ${JSON.stringify({type: "array", items: toolSchema({$ref: "#/$defs/FolderRule"})}, null, 2)} as const;\n`,
   "mining.parameters.generated.ts": `/* Generated from Python MiningStart by scripts/generate-contracts.js. */\nexport const miningParameters = ${JSON.stringify(parameters, null, 2)} as const;\n`,
   "knowledge-scope.parameters.generated.ts": `/* Generated from Python KnowledgeScopeOpen by scripts/generate-contracts.js. */\nexport const knowledgeScopeParameters = ${JSON.stringify(toolSchema(schema.properties.KnowledgeScopeOpen).properties, null, 2)} as const;\n`,

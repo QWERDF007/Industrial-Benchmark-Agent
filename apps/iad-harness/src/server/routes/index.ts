@@ -46,6 +46,13 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         const data = await bridge.execute(operation, args);
         sendJson(res, 200, data);
       };
+      if (pathname === "/api/iad/models" && method === "GET") return await call("model_settings_view");
+      if (pathname === "/api/iad/models" && method === "POST") return await call("model_settings_save", body);
+      if (pathname === "/api/iad/models/check" && method === "POST") return await call("model_connection_check", body);
+      if (pathname === "/api/iad/models/providers" && method === "POST") return await call("model_provider_save", body);
+      if (pathname === "/api/iad/models/providers/discover" && method === "POST") return await call("model_provider_models", body);
+      const provider = pathname.match(/^\/api\/iad\/models\/providers\/([^/]+)$/);
+      if (provider && method === "DELETE") return await call("model_provider_delete", {provider_id: decodeURIComponent(provider[1]), expected_revision: Number(query.expected_revision)});
       if (pathname === "/api/iad/datasets" && method === "GET") return await call("dataset_list");
       if (pathname === "/api/iad/review/knowledge" && method === "GET") return await call("knowledge_review_context", query);
       if (pathname === "/api/iad/review/knowledge" && method === "POST") return await call("knowledge_review_submit", body);

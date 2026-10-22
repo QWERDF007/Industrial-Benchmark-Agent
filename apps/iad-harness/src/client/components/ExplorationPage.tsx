@@ -7,8 +7,10 @@ import { useJobs } from "../useJobs.js";
 import { jobStatuses, jobPhases } from "../../shared/job-display.js";
 import { ExplorationSources } from "./ExplorationSources.js";
 import { ImageViewer, type ImageSource } from "./ImageViewer.js";
+import {useWorkbenchModel} from '../models.js';
 
 export function ExplorationPage({ dataset, refreshRevision }: { dataset: Dataset; refreshRevision: number }) {
+  const model = useWorkbenchModel();
   const { workspace } = useWorkspace(), pageId = "industrial-exploration", view = workspace.view(pageId);
   const [catalog, setCatalog] = useState<ExplorationCatalog | null>(null), [revision, setRevision] = useState(0);
   const [error, setError] = useState(""), [busy, setBusy] = useState(false), [normalSelecting, setNormalSelecting] = useState(false), [defectSelecting, setDefectSelecting] = useState(false);
@@ -37,7 +39,7 @@ export function ExplorationPage({ dataset, refreshRevision }: { dataset: Dataset
   return <div className="iad-exploration-page">
     {(error || jobs.error) && <p role="alert" className="iad-error">{error || jobs.error}</p>}
     <section className="iad-info-group"><div className="iad-section-header"><h2>联合探索检查方向</h2>
-      <button className="iad-primary" disabled={blocked || normalSelecting || defectSelecting || !valid} onClick={() => void run("/exploration/start", {
+      <button className="iad-primary" disabled={blocked || normalSelecting || defectSelecting || !valid || !model.ready} onClick={() => void run("/exploration/start", {
         dataset_id: dataset.dataset_id, normal_images: view.explorationNormalImages, defect_images: view.explorationDefectImages,
         ...(view.explorationObjective.trim() ? { objective: view.explorationObjective } : {}),
       })}>{busy ? "提交中…" : "开始方向探索"}</button></div>
@@ -49,7 +51,7 @@ export function ExplorationPage({ dataset, refreshRevision }: { dataset: Dataset
     </section>
     {active && <p role="status">{active.cancel_requested ? "正在停止方向探索" : "方向探索执行中"} · {jobPhases[active.phase || ""] || active.message} · {active.total_samples} 张</p>}
     <details className="iad-info-group"><summary>探索作业 · {jobs.jobs.length}</summary>{jobs.jobs.map(job => <article className="iad-job" key={job.run_id}>
-      <div className="iad-row"><strong>{jobStatuses[job.status]}</strong><span>{job.model_name}</span><span>{job.completed + job.failed} / {job.total_samples} 张</span>
+      <div className="iad-row"><strong>{jobStatuses[job.status]}</strong><span>{job.model_profile?.provider_name ? `${job.model_profile.provider_name} · ` : ''}{job.model_name}</span><span>{job.completed + job.failed} / {job.total_samples} 张</span>
         {job.status === "RUNNING" || job.status === "PENDING" ? <button disabled={busy || job.cancel_requested} onClick={() => void run(`/exploration/cancel/${job.run_id}`)}>{job.cancel_requested ? "正在停止…" : "取消"}</button> : job.status !== "COMPLETED" && <button disabled={blocked} onClick={() => void run(`/exploration/retry/${job.run_id}`)}>按原图组重试</button>}
       </div><p>{jobPhases[job.phase || ""] || job.message}</p>{job.errors.length > 0 && <details><summary>失败详情</summary>{job.errors.map(item => <p key={item.sample_id}>{item.relative_path}：{item.message}</p>)}</details>}
       {job.exploration_version_id && <button onClick={() => workspace.updateView(pageId, { version: job.exploration_version_id!, job: job.run_id })}>查看探索结果</button>}

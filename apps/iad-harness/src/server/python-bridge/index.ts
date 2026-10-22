@@ -58,6 +58,11 @@ interface PendingRequest<T = any> {
   operation: string;
 }
 
+export type BridgeDispatch = (operation: string, args?: Record<string, any>, signal?: AbortSignal) => Promise<any>;
+export interface ModelRouting {
+  execute(operation: string, args: Record<string, any>, signal: AbortSignal | undefined, dispatch: BridgeDispatch): Promise<any>;
+}
+
 export class PythonBridge {
   readonly pythonPath: string;
   readonly cwd: string;
@@ -68,12 +73,19 @@ export class PythonBridge {
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private stdoutAccum = "";
   private stderrAccum = "";
+  private modelRouting?: ModelRouting;
 
   constructor(config: PythonBridgeConfig = {}) {
     this.cwd = config.cwd ? path.resolve(config.cwd) : findWorkspaceRoot();
     this.pythonPath = resolvePythonPath(config.pythonPath);
     this.timeoutMs = config.timeoutMs ?? 120000;
     this.dbPath = config.dbPath;
+  }
+
+  useModelRouting(routing: ModelRouting): () => void {
+    if (this.modelRouting) throw new Error('工作台模型解析入口已注册');
+    this.modelRouting = routing;
+    return () => { if (this.modelRouting === routing) this.modelRouting = undefined; };
   }
 
   private ensureWorker(): ChildProcess {
@@ -176,6 +188,13 @@ export class PythonBridge {
     signal?: AbortSignal,
     onProgress?: (progressEvent: any) => void
   ): Promise<T> {
+    if (this.modelRouting) return this.modelRouting.execute(operation, argumentsPayload, signal,
+      (name, args, cancellation) => this.dispatch(name, args, cancellation, onProgress));
+    return this.dispatch(operation, argumentsPayload, signal, onProgress);
+  }
+
+  private async dispatch<T = any>(operation: string, argumentsPayload: Record<string, any> = {}, signal?: AbortSignal,
+    onProgress?: (progressEvent: any) => void): Promise<T> {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const worker = this.ensureWorker();
 

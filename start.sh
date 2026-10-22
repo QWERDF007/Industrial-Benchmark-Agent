@@ -21,9 +21,6 @@ PORT="${PORT:-5173}"
 export no_proxy="localhost,127.0.0.1,${LAN_IP},${no_proxy:-}"
 export NO_PROXY="$no_proxy"
 
-# 本地多模态 VLM (Qwen3.8-27B) API Key
-export LIVE_VLM_KEY="${LIVE_VLM_KEY:-sk-123456}"
-
 echo "========================================================"
 echo "  Industrial Benchmark Agent - DSH 原生工作台启动器"
 echo "  单宿主进程架构 (DS-S01): 纯 DSH Web (Port ${PORT})"

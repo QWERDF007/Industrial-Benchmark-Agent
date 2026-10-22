@@ -5,4 +5,5 @@ export const pages = {
     "industrial-knowledge": "知识挖掘",
     "industrial-audit": "模型审计",
     "industrial-review": "人工复核",
+    "industrial-model-settings": "模型设置",
 };

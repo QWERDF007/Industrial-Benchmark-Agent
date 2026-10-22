@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, ValidationError
 from iad_core.evidence.images import PreparedImage, file_sha256
 from iad_core.workbench.calls import ModelCalls
 from iad_core.workbench.model_profile import ModelProfile
+from iad_core.workbench.model_settings import ModelConnection
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -33,17 +34,25 @@ GENERATION_PARAMETERS = {"temperature": 0.1}
 
 
 class VlmClient:
-    def __init__(self, http_client: Optional[httpx.Client] = None):
-        endpoint = os.environ.get("LIVE_VLM_ENDPOINT", "http://127.0.0.1:8000/v1")
+    def __init__(self, http_client: Optional[httpx.Client] = None, *, profile: Optional[ModelProfile] = None,
+                 api_key: Optional[str] = None):
+        endpoint = profile.endpoint if profile else os.environ.get("LIVE_VLM_ENDPOINT", "http://127.0.0.1:8000/v1")
         self.endpoint = endpoint if endpoint.endswith("/chat/completions") else endpoint.rstrip("/") + "/chat/completions"
-        self.profile = ModelProfile.configured(self.endpoint)
+        self.profile = profile.model_copy(update={'endpoint': self.endpoint}) if profile else ModelProfile.configured(self.endpoint)
+        self._api_key = api_key if profile is not None else os.environ.get('LIVE_VLM_KEY')
         self.client = http_client or httpx.Client(timeout=httpx.Timeout(self.profile.generation_timeout_seconds,
-            connect=self.profile.connect_timeout_seconds), trust_env=False)
+            connect=self.profile.connect_timeout_seconds,
+            write=self.profile.write_timeout_seconds if self.profile.write_timeout_seconds is not None else self.profile.generation_timeout_seconds,
+            pool=self.profile.pool_timeout_seconds if self.profile.pool_timeout_seconds is not None else self.profile.generation_timeout_seconds), trust_env=False)
         self.profile = ModelProfile.model_validate(dict(self.profile.model_dump(),
             generation_timeout_seconds=self.client.timeout.read, connect_timeout_seconds=self.client.timeout.connect,
             write_timeout_seconds=self.client.timeout.write, pool_timeout_seconds=self.client.timeout.pool))
 
     def resolve_model(self, model_name: Optional[str] = None) -> str:
+        if self.profile.model_id:
+            if model_name and model_name != self.profile.model_id:
+                raise ValueError('模型名称与工作台已选配置不一致，请使用统一模型设置')
+            return self.profile.model_id
         value = model_name or os.environ.get('LIVE_VLM_MODEL')
         if value and value.strip():
             return value.strip()
@@ -58,11 +67,24 @@ class VlmClient:
         return (self.profile.max_visual_inputs is None or len(images) <= self.profile.max_visual_inputs) and (self.profile.max_request_bytes is None or
             len(json.dumps(body, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode()) <= self.profile.max_request_bytes)
 
+    def check_connection(self) -> dict:
+        model = self.resolve_model()
+        timeout = httpx.Timeout(20, connect=self.profile.connect_timeout_seconds if self.profile.connect_timeout_seconds is not None else 10)
+        response = self.client.get(self.endpoint.removesuffix('/chat/completions') + '/models', headers=self._headers, timeout=timeout)
+        response.raise_for_status()
+        if model not in {item.get('id') for item in response.json()['data']}:
+            raise ValueError('服务模型目录中没有所选模型，请刷新提供商模型列表')
+        root = self.endpoint.removesuffix('/chat/completions').removesuffix('/v1')
+        response = self.client.post(root + '/tokenize', headers=self._headers, timeout=timeout,
+            json={'model': model, 'messages': [{'role': 'user', 'content': '模型容量接口检查'}]})
+        response.raise_for_status()
+        capacity = TokenCapacity.model_validate(response.json())
+        return ModelConnection(model_id=model, capacity_mode='vllm_tokenize', context_tokens=capacity.max_model_len).model_dump()
+
 
     @property
     def _headers(self) -> dict[str, str]:
-        key = os.environ.get("LIVE_VLM_KEY")
-        return {"Authorization": "Bearer " + key} if key else {}
+        return {"Authorization": "Bearer " + self._api_key} if self._api_key else {}
 
     def plan(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str,
              output_reserve: int = 2048) -> GenerationRequest[T]:

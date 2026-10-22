@@ -17,6 +17,7 @@ import { pages, useWorkspace, type PageId } from "./workspace.js";
 import { workbenchStyles } from "./styles.js";
 import { useSampleNavigation, type SampleWindow } from "./useSampleNavigation.js";
 import { usePagePosition } from "./usePagePosition.js";
+import {WorkbenchModelStatus} from './models.js';
 
 export function WorkbenchPage({ pageId }: { pageId: PageId }) {
   const { workspace, state } = useWorkspace();
@@ -86,6 +87,7 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
       pageId === "industrial-knowledge" ? [["图像", dataset.total_samples], ["良品来源", dataset.reference_sample_ids.length]] :
       [["图像", dataset.total_samples], ["模型审计", dataset.vlm_audited_count], ["待审计", dataset.total_samples - dataset.vlm_audited_count], ["待复核", dataset.pending_risk_count], ["已人工复核", dataset.human_reviewed_count]]
     ).map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>}
+    {['industrial-exploration', 'industrial-knowledge', 'industrial-audit'].includes(pageId) && <WorkbenchModelStatus />}
     {pageId === "industrial-datasets" ? <>
       <DatasetManager datasets={datasets} selected={dataset} onChanged={id => { void loadDatasets(id); setRevision(v => v + 1); }} />
     </> : !dataset ? <section className="iad-job-section"><p>请先添加服务器上的数据集。</p><button onClick={() => workspace.navigate("industrial-datasets")}>前往数据集管理</button></section> : <>

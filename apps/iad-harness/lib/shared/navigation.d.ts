@@ -6,6 +6,7 @@ export declare const pages: {
     readonly "industrial-knowledge": "知识挖掘";
     readonly "industrial-audit": "模型审计";
     readonly "industrial-review": "人工复核";
+    readonly "industrial-model-settings": "模型设置";
 };
 export type PageId = keyof typeof pages;
 export type WorkbenchLocation = {

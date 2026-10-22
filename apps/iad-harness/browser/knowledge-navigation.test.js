@@ -76,7 +76,7 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     const element=css=>driver.wait(until.elementLocated(By.css(css)),8000);
     const click=async text=>{await(await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}']`)),8000)).click();};
     await element('nav[aria-label="主导航"]');
-    assert.deepEqual(await driver.executeScript('return [...document.querySelectorAll("nav[aria-label=主导航] button")].map(e=>e.textContent)'),['数据集管理','图像浏览','方向探索','知识挖掘','模型审计','人工复核']);
+    assert.deepEqual(await driver.executeScript('return [...document.querySelectorAll("nav[aria-label=主导航] button")].map(e=>e.textContent)'),['数据集管理','图像浏览','方向探索','知识挖掘','模型审计','人工复核','模型设置']);
     await click('知识挖掘');
     await element('[data-page="industrial-knowledge"]');
     await driver.executeScript('arguments[0].value=arguments[1];arguments[0].dispatchEvent(new Event("change",{bubbles:true}))',await element('select[aria-label="当前数据集"]'),datasets[0].dataset_id);

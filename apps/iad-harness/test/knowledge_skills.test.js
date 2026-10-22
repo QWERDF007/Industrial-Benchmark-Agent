@@ -321,7 +321,7 @@ test("DSH standalone knowledge tools execute shared jobs and return actual evide
     const unowned = await ctx.tools.execute({ name: "knowledge_evidence", arguments: { version_id: versions.normal.version_id,
       evidence_id: raw.evidence_id }, callId: "unowned", signal: new AbortController().signal });
     assert.equal(unowned.isError, true);
-    let audit = (await execute("model_audit_start", { dataset_id: dataset.dataset_id, model_name: "test-mllm",
+    let audit = (await execute("model_audit_start", { dataset_id: dataset.dataset_id,
       normal_version_id: versions.normal.version_id, defect_version_id: versions.defect.version_id })).value;
     const auditDeadline = Date.now() + 5000;
     while (["PENDING", "RUNNING"].includes(audit.status) && Date.now() < auditDeadline) {

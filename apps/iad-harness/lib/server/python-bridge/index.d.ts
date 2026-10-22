@@ -19,6 +19,10 @@ export interface PythonBridgeResponse<T = any> {
 }
 export declare function findWorkspaceRoot(startDir?: string): string;
 export declare function resolvePythonPath(configured?: string): string;
+export type BridgeDispatch = (operation: string, args?: Record<string, any>, signal?: AbortSignal) => Promise<any>;
+export interface ModelRouting {
+    execute(operation: string, args: Record<string, any>, signal: AbortSignal | undefined, dispatch: BridgeDispatch): Promise<any>;
+}
 export declare class PythonBridge {
     readonly pythonPath: string;
     readonly cwd: string;
@@ -28,7 +32,9 @@ export declare class PythonBridge {
     private pendingRequests;
     private stdoutAccum;
     private stderrAccum;
+    private modelRouting?;
     constructor(config?: PythonBridgeConfig);
+    useModelRouting(routing: ModelRouting): () => void;
     private ensureWorker;
     private handleWorkerExit;
     /**
@@ -36,6 +42,7 @@ export declare class PythonBridge {
      * Achieves sub-millisecond dispatch by avoiding per-call process spawn overhead.
      */
     execute<T = any>(operation: string, argumentsPayload?: Record<string, any>, signal?: AbortSignal, onProgress?: (progressEvent: any) => void): Promise<T>;
+    private dispatch;
     destroy(): void;
 }
 //# sourceMappingURL=index.d.ts.map

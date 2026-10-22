@@ -25,6 +25,9 @@ from iad_core.workbench.runtime import workbench, close_workbenches
 from iad_core.exploration.operations import (direction_exploration_start, direction_exploration_status, direction_exploration_list,
     direction_exploration_cancel, direction_exploration_retry, direction_exploration_get, direction_exploration_evidence)
 
+from iad_core.workbench.model_operations import (model_settings_get, model_settings_save, model_settings_view,
+    model_settings_validate, model_environment_get, model_connection_check, model_provider_validate)
+
 DEFAULT_DB_PATH = os.environ.get("IAD_DB_PATH", "data/benchmark.db")
 _output_lock = threading.Lock()
 
@@ -231,7 +234,8 @@ def report_get(args, db_path):
 
 
 def audit_start(args, db_path):
-    return workbench(db_path).audit.start(**args)
+    return workbench(db_path).invoke_model(args.get('_model_execution'), lambda services:
+        services.audit.start(**{key: value for key, value in args.items() if key != '_model_execution'}))
 
 
 def audit_status(args, db_path):
@@ -244,7 +248,8 @@ def audit_cancel(args, db_path):
 
 def audit_retry(args, db_path):
     from iad_core.workbench.job_models import JobRetry
-    return workbench(db_path).audit.retry(**JobRetry.model_validate(args).model_dump())
+    return workbench(db_path).invoke_model(args.get('_model_execution'), lambda services:
+        services.audit.retry(**JobRetry.model_validate({key: value for key, value in args.items() if key != '_model_execution'}).model_dump()), args['run_id'])
 
 
 def audit_retry_options(args, db_path):
@@ -328,10 +333,11 @@ def knowledge_sources(args, db_path):
 
 def knowledge_start(args, db_path):
     from iad_core.knowledge.requests import MiningInvocation, MiningStart
-    invocation = MiningInvocation.model_validate(args)
+    invocation = MiningInvocation.model_validate({key: value for key, value in args.items() if key != '_model_execution'})
     request = invocation.request
-    return workbench(db_path).knowledge.start(request=MiningStart.model_validate(request.model_dump(exclude={'kind'})),
-        kind=request.kind, model_name=invocation.model_name, origin_session_id=invocation.origin_session_id, scope_run_id=invocation.scope_run_id)
+    return workbench(db_path).invoke_model(args.get('_model_execution'), lambda services:
+        services.knowledge.start(request=MiningStart.model_validate(request.model_dump(exclude={'kind'})),
+            kind=request.kind, model_name=invocation.model_name, origin_session_id=invocation.origin_session_id, scope_run_id=invocation.scope_run_id))
 
 
 def knowledge_status(args, db_path):
@@ -344,7 +350,8 @@ def knowledge_cancel(args, db_path):
 
 def knowledge_retry(args, db_path):
     from iad_core.workbench.job_models import JobRetry
-    return workbench(db_path).knowledge.retry(**JobRetry.model_validate(args).model_dump())
+    return workbench(db_path).invoke_model(args.get('_model_execution'), lambda services:
+        services.knowledge.retry(**JobRetry.model_validate({key: value for key, value in args.items() if key != '_model_execution'}).model_dump()), args['run_id'])
 
 
 def knowledge_retry_options(args, db_path):
@@ -398,6 +405,7 @@ def model_call_get(args, db_path):
 
 
 OPERATIONS = {handler.__name__: handler for handler in (
+    model_settings_get, model_settings_save, model_settings_view, model_settings_validate, model_environment_get, model_connection_check, model_provider_validate,
     knowledge_directions_adopt, direction_exploration_start, direction_exploration_status, direction_exploration_list, direction_exploration_cancel,
     direction_exploration_retry, direction_exploration_get, direction_exploration_evidence,
     tool_call, dataset_list, dataset_get, dataset_import, dataset_preview, dataset_archive_inspect, dataset_update, dataset_scan, dataset_delete,

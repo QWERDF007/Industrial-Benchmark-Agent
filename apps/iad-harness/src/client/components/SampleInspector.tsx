@@ -10,6 +10,7 @@ import { AuditEvidence } from "./AuditEvidence.js";
 import { HumanReviewForm } from "./HumanReviewForm.js";
 import { auditEvidenceUrl, regionSources, mediaUrl, message, request, reviewLabel, modelLabels } from "../api.js";
 import { useWorkspace } from "../workspace.js";
+import {useWorkbenchModel} from "../models.js";
 import { inspectionImage } from "../inspection.js";
 import type { SampleNavigation } from "../useSampleNavigation.js";
 
@@ -20,6 +21,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
   onReviewed(record: ReviewDecisionRecord, relativePath: string): void;
 }) {
   const { workspace, state } = useWorkspace();
+  const model = useWorkbenchModel();
   const [detail, setDetail] = useState<SampleDetail | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -52,7 +54,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
     try {
       const view = workspace.view("industrial-audit");
       const input: AuditStartRequest = { dataset_id: dataset.dataset_id, sample_ids: [sampleId],
-        model_name: view.model || undefined, normal_version_id: view.normalVersion || undefined, defect_version_id: view.defectVersion || undefined };
+        normal_version_id: view.normalVersion || undefined, defect_version_id: view.defectVersion || undefined };
       await request<JobSnapshot>("/audit/start", input); onJobsChanged();
     }
     catch (error) { setError(message(error)); } finally { setBusy(false); }
@@ -123,7 +125,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
       </> : <p className="iad-muted">尚无模型观察。</p>}</section>
       {mode === "model" && job && <section className="iad-single-job" aria-label="当前样本作业"><JobCard key={job.run_id} job={job} onChanged={onJobsChanged} /></section>}
       {mode === "review" ? <HumanReviewForm datasetId={dataset.dataset_id} sampleId={sampleId} detail={detail} onSubmitted={record => onReviewed(record, detail.sample.relative_path)} /> : mode === "model" && <div className="iad-actions">
-        <button className="iad-primary" disabled={busy || jobRunning} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按知识审计此图"}</button>
+        <button className="iad-primary" disabled={busy || jobRunning || !model.ready} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按知识审计此图"}</button>
         <button onClick={() => workspace.navigate("industrial-review", sampleId)}>前往人工复核</button>
       </div>}
     </>}

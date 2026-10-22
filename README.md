@@ -16,7 +16,7 @@ cp .env.example .env.local
 
 Linux x64 的原生图像附件要求 GLIBC ≥ 2.28，见 [Sharp 官方运行要求](https://sharp.pixelplumbing.com/install/#prebuilt-binaries)。
 
-会话模型在 DSH【设置 → 模型 → 添加模型提供商】中配置服务地址、协议和实际模型 ID，再通过输入框的模型菜单选择。提供商与默认模型保存在 DSH 当前 profile 的原生设置中；[启动补丁](config/dsh_web_lan_patch.yml)只配置服务监听和工业插件，避免覆盖页面保存的模型设置。视觉作业的环境配置见下文模型验证入口。
+侧栏【模型设置】为方向探索、良品/异常知识挖掘、模型审计统一选择提供商与模型。提供商页与 DSH 原生设置共用资料及凭据；DSH 会话通过输入框的模型菜单独立选择。行为与能力范围见[设置规格](docs/specs/workbench-model-settings.md)，实现和验收见[架构索引](docs/architecture.md)。[启动补丁](config/dsh_web_lan_patch.yml)只配置服务监听和工业插件；独立 Python 验证的环境配置见下文。
 
 - **模型审计**：导入 Labelme 或目录图像级数据并挖掘可用良品知识后，按筛选范围启动审计；执行与证据入口见[架构索引](docs/architecture.md)。
 - **人工复核**：查看复核明细并提交人工裁决。

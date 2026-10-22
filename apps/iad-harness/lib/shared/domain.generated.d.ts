@@ -1,6 +1,104 @@
+export type ExpectedRevision = number;
+export type ProviderId = string;
+export type Name = string;
+export type Endpoint = string;
+/**
+ * @minItems 1
+ */
+export type Models = [ProviderModel, ...ProviderModel[]];
+export type ModelId = string;
+export type Name1 = string;
+export type InputModalities = string[] | null;
+export type ContextTokens = number | null;
+export type MaxOutputTokens = number | null;
+export type ApiKey = string | null;
+export type ExpectedRevision1 = number;
+export type ProviderId1 = string;
+export type Endpoint1 = string;
+export type ProviderId2 = string | null;
+export type ApiKey1 = string | null;
+export type ModelId1 = string;
+export type CapacityMode = "vllm_tokenize";
+export type ContextTokens1 = number;
+export type ImageVerified = false;
+export type CapacityMode1 = "vllm_tokenize" | null;
+export type MaxVisualInputs = number | null;
+export type MaxRequestBytes = number | null;
+export type ContextTokens2 = number | null;
+export type MaxOutputTokens1 = number | null;
+export type GenerationTimeoutSeconds = number | null;
+export type ConnectTimeoutSeconds = number | null;
+export type WriteTimeoutSeconds = number | null;
+export type PoolTimeoutSeconds = number | null;
+export type CapacityMode2 = "vllm_tokenize" | null;
+export type MaxVisualInputs1 = number | null;
+export type MaxRequestBytes1 = number | null;
+export type ContextTokens3 = number | null;
+export type MaxOutputTokens2 = number | null;
+export type GenerationTimeoutSeconds1 = number | null;
+export type ConnectTimeoutSeconds1 = number | null;
+export type WriteTimeoutSeconds1 = number | null;
+export type PoolTimeoutSeconds1 = number | null;
+export type Endpoint2 = string;
+export type ProviderId3 = string | null;
+export type ProviderName = string | null;
+export type ModelId2 = string | null;
+export type CredentialRef = string | null;
+export type Api = "openai-completions";
+export type CapacityMode3 = "vllm_tokenize" | null;
+export type MaxVisualInputs2 = number | null;
+export type MaxRequestBytes2 = number | null;
+export type ContextTokens4 = number | null;
+export type MaxOutputTokens3 = number | null;
+export type GenerationTimeoutSeconds2 = number | null;
+export type ConnectTimeoutSeconds2 = number | null;
+export type WriteTimeoutSeconds2 = number | null;
+export type PoolTimeoutSeconds2 = number | null;
+export type Endpoint3 = string;
+export type ProviderId4 = string | null;
+export type ProviderName1 = string | null;
+export type ModelId3 = string | null;
+export type CredentialRef1 = string | null;
+export type Api1 = "openai-completions";
+export type ApiKey2 = string | null;
+export type ProviderId5 = string;
+export type ModelId4 = string;
+export type CapacityMode4 = "vllm_tokenize" | null;
+export type MaxVisualInputs3 = number | null;
+export type MaxRequestBytes3 = number | null;
+export type ContextTokens5 = number | null;
+export type MaxOutputTokens4 = number | null;
+export type GenerationTimeoutSeconds3 = number | null;
+export type ConnectTimeoutSeconds3 = number | null;
+export type WriteTimeoutSeconds3 = number | null;
+export type PoolTimeoutSeconds3 = number | null;
+export type Revision = number;
+export type ProviderId6 = string;
+export type ModelId5 = string;
+export type ExpectedRevision2 = number;
+export type ProviderId7 = string;
+export type Name2 = string;
+export type Endpoint4 = string | null;
+export type Api2 = string | null;
+export type ModelId6 = string;
+export type Name3 = string;
+export type InputModalities1 = string[] | null;
+export type ContextTokens6 = number | null;
+export type MaxOutputTokens5 = number | null;
+export type Models1 = ProviderModel1[];
+export type Error = string | null;
+export type Editable = boolean;
+export type Removable = boolean;
+export type CredentialConfigured = boolean;
+export type CredentialWritable = boolean;
+export type Revision1 = number;
+export type Providers = WorkbenchProvider[];
+export type Ready = boolean;
+export type Error1 = string | null;
+export type ProviderRevision = number | null;
 export type DatasetId = string;
 export type Kind = "normal" | "defect";
-export type ExpectedRevision = string;
+export type ExpectedRevision3 = string;
 /**
  * @minItems 1
  */
@@ -90,16 +188,16 @@ export type Instruction3 = string;
 export type Enabled1 = boolean;
 export type Origin = "preset" | "dataset" | "explored";
 export type Directions2 = MiningDirection[];
-export type Revision = string;
+export type Revision2 = string;
 export type Customized = boolean;
 export type DatasetId7 = string;
 export type Kind2 = "normal" | "defect";
-export type ExpectedRevision1 = string;
+export type ExpectedRevision4 = string;
 export type VersionId2 = string;
 export type DatasetId8 = string;
 export type Kind3 = "normal" | "defect";
 export type Recorded = boolean;
-export type Name = string;
+export type Name4 = string;
 export type Location = string;
 /**
  * @minItems 1
@@ -818,13 +916,13 @@ export type OriginSessionId2 = string | null;
 export type IsLatest1 = boolean;
 export type DatasetImport = LabelmeImport | FolderClassificationImport;
 export type Format = "labelme";
-export type Name1 = string;
+export type Name5 = string;
 export type ImageDir = string;
 export type AnnotationDir = string;
 export type ArchivePath = string | null;
 export type UnannotatedIsNormal = boolean;
 export type Format1 = "folder_classification";
-export type Name2 = string;
+export type Name6 = string;
 export type RootDir = string;
 /**
  * Relative directory path under dataset root, or '.' for root images
@@ -1001,6 +1099,18 @@ export type ReferenceStatus = "all" | "candidate" | "excluded";
 export type Search4 = string;
 export type SortBy = "default" | "risk" | "tech";
 export interface WorkbenchDomain {
+    ProviderEdit?: ProviderEdit;
+    ProviderReference?: ProviderReference;
+    ProviderDiscovery?: ProviderDiscovery;
+    ModelConnection?: ModelConnection;
+    ModelLimits?: ModelLimits;
+    ModelProfile?: ModelProfile;
+    ModelExecution?: ModelExecution;
+    WorkbenchModelSelection?: WorkbenchModelSelection;
+    WorkbenchModelSettings?: WorkbenchModelSettings;
+    WorkbenchModelEdit?: WorkbenchModelEdit;
+    WorkbenchProvider?: WorkbenchProvider;
+    WorkbenchModelView?: WorkbenchModelView;
     DirectionAdoption?: DirectionAdoption;
     ExplorationStart?: ExplorationStart;
     ExplorationSnapshot?: ExplorationSnapshot;
@@ -1045,10 +1155,161 @@ export interface WorkbenchDomain {
     ReviewHistoryPage?: ReviewHistoryPage;
     SampleQuery?: SampleQuery;
 }
+export interface ProviderEdit {
+    expected_revision: ExpectedRevision;
+    provider_id: ProviderId;
+    name: Name;
+    endpoint: Endpoint;
+    models: Models;
+    api_key?: ApiKey;
+}
+export interface ProviderModel {
+    model_id: ModelId;
+    name: Name1;
+    input_modalities?: InputModalities;
+    context_tokens?: ContextTokens;
+    max_output_tokens?: MaxOutputTokens;
+}
+export interface ProviderReference {
+    expected_revision: ExpectedRevision1;
+    provider_id: ProviderId1;
+}
+export interface ProviderDiscovery {
+    endpoint: Endpoint1;
+    provider_id?: ProviderId2;
+    api_key?: ApiKey1;
+}
+export interface ModelConnection {
+    model_id: ModelId1;
+    capacity_mode: CapacityMode;
+    context_tokens: ContextTokens1;
+    image_verified: ImageVerified;
+}
+export interface ModelLimits {
+    capacity_mode: CapacityMode1;
+    max_visual_inputs: MaxVisualInputs;
+    max_request_bytes: MaxRequestBytes;
+    context_tokens: ContextTokens2;
+    max_output_tokens: MaxOutputTokens1;
+    request_parameters: RequestParameters;
+    generation_timeout_seconds: GenerationTimeoutSeconds;
+    connect_timeout_seconds: ConnectTimeoutSeconds;
+    write_timeout_seconds: WriteTimeoutSeconds;
+    pool_timeout_seconds: PoolTimeoutSeconds;
+}
+export interface RequestParameters {
+    [k: string]: unknown;
+}
+export interface ModelProfile {
+    capacity_mode: CapacityMode2;
+    max_visual_inputs: MaxVisualInputs1;
+    max_request_bytes: MaxRequestBytes1;
+    context_tokens: ContextTokens3;
+    max_output_tokens: MaxOutputTokens2;
+    request_parameters: RequestParameters1;
+    generation_timeout_seconds: GenerationTimeoutSeconds1;
+    connect_timeout_seconds: ConnectTimeoutSeconds1;
+    write_timeout_seconds: WriteTimeoutSeconds1;
+    pool_timeout_seconds: PoolTimeoutSeconds1;
+    endpoint: Endpoint2;
+    provider_id: ProviderId3;
+    provider_name: ProviderName;
+    model_id: ModelId2;
+    credential_ref: CredentialRef;
+    api: Api;
+}
+export interface RequestParameters1 {
+    [k: string]: unknown;
+}
+export interface ModelExecution {
+    profile: ModelProfile1;
+    api_key?: ApiKey2;
+}
+export interface ModelProfile1 {
+    capacity_mode?: CapacityMode3;
+    max_visual_inputs?: MaxVisualInputs2;
+    max_request_bytes?: MaxRequestBytes2;
+    context_tokens?: ContextTokens4;
+    max_output_tokens?: MaxOutputTokens3;
+    request_parameters?: RequestParameters2;
+    generation_timeout_seconds?: GenerationTimeoutSeconds2;
+    connect_timeout_seconds?: ConnectTimeoutSeconds2;
+    write_timeout_seconds?: WriteTimeoutSeconds2;
+    pool_timeout_seconds?: PoolTimeoutSeconds2;
+    endpoint: Endpoint3;
+    provider_id?: ProviderId4;
+    provider_name?: ProviderName1;
+    model_id?: ModelId3;
+    credential_ref?: CredentialRef1;
+    api?: Api1;
+}
+export interface RequestParameters2 {
+    [k: string]: unknown;
+}
+export interface WorkbenchModelSelection {
+    provider_id: ProviderId5;
+    model_id: ModelId4;
+    limits?: ModelLimits1;
+}
+export interface ModelLimits1 {
+    capacity_mode?: CapacityMode4;
+    max_visual_inputs?: MaxVisualInputs3;
+    max_request_bytes?: MaxRequestBytes3;
+    context_tokens?: ContextTokens5;
+    max_output_tokens?: MaxOutputTokens4;
+    request_parameters?: RequestParameters3;
+    generation_timeout_seconds?: GenerationTimeoutSeconds3;
+    connect_timeout_seconds?: ConnectTimeoutSeconds3;
+    write_timeout_seconds?: WriteTimeoutSeconds3;
+    pool_timeout_seconds?: PoolTimeoutSeconds3;
+}
+export interface RequestParameters3 {
+    [k: string]: unknown;
+}
+export interface WorkbenchModelSettings {
+    revision: Revision;
+    selection: WorkbenchModelSelection1 | null;
+}
+export interface WorkbenchModelSelection1 {
+    provider_id: ProviderId6;
+    model_id: ModelId5;
+    limits: ModelLimits;
+}
+export interface WorkbenchModelEdit {
+    expected_revision: ExpectedRevision2;
+    selection: WorkbenchModelSelection;
+}
+export interface WorkbenchProvider {
+    provider_id: ProviderId7;
+    name: Name2;
+    endpoint: Endpoint4;
+    api: Api2;
+    models: Models1;
+    error: Error;
+    editable: Editable;
+    removable: Removable;
+    credential_configured: CredentialConfigured;
+    credential_writable: CredentialWritable;
+}
+export interface ProviderModel1 {
+    model_id: ModelId6;
+    name: Name3;
+    input_modalities: InputModalities1;
+    context_tokens: ContextTokens6;
+    max_output_tokens: MaxOutputTokens5;
+}
+export interface WorkbenchModelView {
+    revision: Revision1;
+    selection: WorkbenchModelSelection1 | null;
+    providers: Providers;
+    ready: Ready;
+    error: Error1;
+    provider_revision: ProviderRevision;
+}
 export interface DirectionAdoption {
     dataset_id: DatasetId;
     kind: Kind;
-    expected_revision: ExpectedRevision;
+    expected_revision: ExpectedRevision3;
     directions: Directions;
 }
 export interface DirectionChoice {
@@ -1139,7 +1400,7 @@ export interface MiningPrompt {
     kind: Kind1;
     instruction: Instruction2;
     configuration: MiningPromptConfiguration;
-    revision: Revision;
+    revision: Revision2;
     customized: Customized;
 }
 export interface MiningPromptConfiguration {
@@ -1156,7 +1417,7 @@ export interface MiningDirection {
 export interface MiningPromptEdit {
     dataset_id: DatasetId7;
     kind: Kind2;
-    expected_revision: ExpectedRevision1;
+    expected_revision: ExpectedRevision4;
     /**
      * 完整替换挖掘目标和方向；null恢复默认
      */
@@ -1174,7 +1435,7 @@ export interface KnowledgeDiscoveryPage {
     items: Items;
 }
 export interface ObservedPart {
-    name: Name;
+    name: Name4;
     location: Location;
     evidence_ids: EvidenceIds1;
 }
@@ -1827,6 +2088,7 @@ export interface JobSnapshot {
     finished_at: FinishedAt1;
     deleted_at: DeletedAt;
     model_name: ModelName4;
+    model_profile: ModelProfile | null;
     current_sample: JobSample | null;
     phase: Phase1;
     normal_version_id: NormalVersionId8;
@@ -1928,7 +2190,7 @@ export interface Sample {
 }
 export interface LabelmeImport {
     format?: Format;
-    name: Name1;
+    name: Name5;
     image_dir: ImageDir;
     annotation_dir: AnnotationDir;
     archive_path?: ArchivePath;
@@ -1936,7 +2198,7 @@ export interface LabelmeImport {
 }
 export interface FolderClassificationImport {
     format?: Format1;
-    name: Name2;
+    name: Name6;
     root_dir: RootDir;
     rules: Rules;
     preview_fingerprint: PreviewFingerprint;
