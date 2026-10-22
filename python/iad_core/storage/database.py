@@ -8,6 +8,7 @@ from filelock import FileLock
 
 from iad_core.storage.review_schema import init_review_schema
 from iad_core.storage.job_schema import migrate_audit_jobs
+from iad_core.storage.knowledge_schema import migrate_knowledge_sources
 
 
 class Database:
@@ -365,6 +366,7 @@ class Database:
                 )
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_knowledge_dataset_kind ON knowledge_versions(dataset_id,kind,created_at)")
+            migrate_knowledge_sources(conn)
             cursor.execute("""CREATE TABLE IF NOT EXISTS knowledge_review_events (
                 submission_id TEXT PRIMARY KEY,
                 version_id TEXT NOT NULL REFERENCES knowledge_versions(version_id) ON DELETE CASCADE,

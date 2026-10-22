@@ -11,7 +11,7 @@
 | HTTP / Python 桥接 | [路由](../apps/iad-harness/src/server/routes/index.ts)、[桥接](../apps/iad-harness/src/server/python-bridge/index.ts)、[领域操作](../python/iad_core/entry.py) |
 | 数据集配置、身份、来源、删除与参考资格 | [配置](../python/iad_core/task/config.py)、[注册](../python/iad_core/dataset/registry.py) |
 | 格式适配与原子扫描 | [适配器](../python/iad_core/dataset/adapters/)、[图像枚举](../python/iad_core/dataset/files.py)、[目录角色](../python/iad_core/dataset/folder_rules.py)、[预览确认](../python/iad_core/dataset/folder_preview.py)、[扫描](../python/iad_core/dataset/scanner.py)、[发布](../python/iad_core/dataset/scan_snapshot.py) |
-| 数据模型、数据库与仓储 | [存储](../python/iad_core/storage/) |
+| 数据模型、数据库与仓储 | [存储](../python/iad_core/storage/)、[知识来源存储迁移](../python/iad_core/storage/knowledge_schema.py) |
 | 查询、筛选、数量与分项报告 | [查询](../python/iad_core/workbench/query.py)、[报告](../python/iad_core/workbench/report.py) |
 | 知识资格、来源分页、冻结内容与来源变化 | [资格](../python/iad_core/knowledge/sources.py)、[来源契约](../python/iad_core/knowledge/models.py)、[内容指纹](../python/iad_core/evidence/sources.py)、[来源与变化查询](../python/iad_core/knowledge/query.py) |
 | 图组契约、支持策略与继承 | [图组及宿主调用](../python/iad_core/knowledge/requests.py)、[支持分组](../python/iad_core/knowledge/support.py)、[证据继承](../python/iad_core/knowledge/evolution.py)、[选图配置](../apps/iad-harness/src/client/components/KnowledgeSetup.tsx) |
