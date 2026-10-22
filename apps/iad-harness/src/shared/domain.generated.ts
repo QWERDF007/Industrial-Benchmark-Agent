@@ -853,6 +853,21 @@ export type StartedAt2 = string | null;
 export type FinishedAt1 = string | null;
 export type DeletedAt = string | null;
 export type ModelName4 = string;
+export type CapacityMode5 = "vllm_tokenize" | null;
+export type MaxVisualInputs4 = number | null;
+export type MaxRequestBytes4 = number | null;
+export type ContextTokens7 = number | null;
+export type MaxOutputTokens6 = number | null;
+export type GenerationTimeoutSeconds4 = number | null;
+export type ConnectTimeoutSeconds4 = number | null;
+export type WriteTimeoutSeconds4 = number | null;
+export type PoolTimeoutSeconds4 = number | null;
+export type Endpoint5 = string;
+export type ProviderId8 = string | null;
+export type ProviderName2 = string | null;
+export type ModelId7 = string | null;
+export type CredentialRef2 = string | null;
+export type Api3 = "openai-completions";
 export type SampleId11 = string;
 export type RelativePath1 = string | null;
 export type SampleUuid = string;
@@ -2103,7 +2118,7 @@ export interface JobSnapshot {
   finished_at: FinishedAt1;
   deleted_at: DeletedAt;
   model_name: ModelName4;
-  model_profile: ModelProfile | null;
+  model_profile: ModelProfileSnapshot | null;
   current_sample: JobSample | null;
   phase: Phase1;
   normal_version_id: NormalVersionId8;
@@ -2118,6 +2133,31 @@ export interface JobSnapshot {
   total_batches: TotalBatches;
   errors: Errors;
   model_calls: ModelCalls;
+  [k: string]: unknown;
+}
+/**
+ * Immutable job metadata preserves fields from the captured execution schema.
+ */
+export interface ModelProfileSnapshot {
+  capacity_mode: CapacityMode5;
+  max_visual_inputs: MaxVisualInputs4;
+  max_request_bytes: MaxRequestBytes4;
+  context_tokens: ContextTokens7;
+  max_output_tokens: MaxOutputTokens6;
+  request_parameters: RequestParameters4;
+  generation_timeout_seconds: GenerationTimeoutSeconds4;
+  connect_timeout_seconds: ConnectTimeoutSeconds4;
+  write_timeout_seconds: WriteTimeoutSeconds4;
+  pool_timeout_seconds: PoolTimeoutSeconds4;
+  endpoint: Endpoint5;
+  provider_id: ProviderId8;
+  provider_name: ProviderName2;
+  model_id: ModelId7;
+  credential_ref: CredentialRef2;
+  api: Api3;
+  [k: string]: unknown;
+}
+export interface RequestParameters4 {
   [k: string]: unknown;
 }
 export interface JobSample {

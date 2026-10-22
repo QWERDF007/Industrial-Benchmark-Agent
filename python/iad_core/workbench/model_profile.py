@@ -2,7 +2,7 @@ import json
 import os
 from typing import Literal, Optional
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel
 
@@ -45,3 +45,8 @@ class ModelProfile(ModelLimits):
             request_parameters=json.loads(os.environ.get('LIVE_VLM_REQUEST_PARAMETERS', '{}')),
             generation_timeout_seconds=os.environ.get('LIVE_VLM_TIMEOUT_SECONDS') or None,
             connect_timeout_seconds=os.environ.get('LIVE_VLM_CONNECT_TIMEOUT_SECONDS') or None)
+
+
+class ModelProfileSnapshot(ModelProfile):
+    """Immutable job metadata preserves fields from the captured execution schema."""
+    model_config = ConfigDict(extra='allow', frozen=True)

@@ -3,6 +3,7 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from pydantic import ValidationError
 
 from iad_core.advisory.repository import AuditSuggestionRepository
 from iad_core.advisory.schemas import AuditSuggestion
@@ -11,6 +12,7 @@ from iad_core.storage.database import Database
 from iad_core.workbench.review import HumanReview, ReviewSubmission
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
+from iad_core.workbench.model_profile import ModelProfile
 
 
 @pytest.mark.parametrize(('status', 'completed_names', 'failed_names'), [
@@ -67,5 +69,46 @@ def test_historical_audit_remains_readable_after_upgrade(dataset, status, comple
             runtime.audit.retry(run_id)
         Database(db.db_path)
         assert runtime.audit.status(run_id) == job
+    finally:
+        runtime.close()
+
+
+@pytest.mark.parametrize('job_type', ['MODEL_AUDIT', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE', 'DIRECTION_EXPLORATION'])
+@pytest.mark.parametrize('profile_location', ['request', 'snapshot'])
+def test_retired_model_limit_does_not_block_historical_job_lists(dataset, job_type, profile_location):
+    db, _, config = dataset
+    run_id = 'retired-limit'
+    sample_id = config.dataset.id + ':normal.png'
+    profile = ModelProfile(endpoint='http://historical-model/v1', request_parameters={'top_p': 0.8}).model_dump()
+    request = {'dataset_id': config.dataset.id, 'sample_ids': [sample_id], 'model_name': 'historical-model', 'model_profile': dict(profile)}
+    payload = {'request': request, 'root_run_id': run_id, 'completed': 0, 'failed': 1,
+        'total_samples': 1, 'completed_sample_ids': [], 'failed_sample_ids': [sample_id],
+        'errors': [{'sample_id': sample_id, 'message': '原始失败记录'}]}
+    if profile_location == 'snapshot':
+        payload['model_profile'] = dict(profile)
+    target = request['model_profile'] if profile_location == 'request' else payload['model_profile']
+    target['max_structured_items'] = 4
+    with db.connection() as conn:
+        conn.execute('''INSERT INTO job_runs(job_id,task_id,job_type,status,progress,message,payload_json)
+            VALUES(?,?,?,'FAILED',1,'原始失败记录',?)''', (run_id, config.task.task_id, job_type, json.dumps(payload)))
+
+    def unexpected_model_call(request):
+        pytest.fail('历史作业迁移和读取不得调用模型')
+
+    runtime = WorkbenchRuntime(Database(db.db_path), VlmClient(httpx.Client(transport=httpx.MockTransport(unexpected_model_call))))
+    try:
+        job = runtime.jobs.list(config.dataset.id, (job_type,))[0]
+        assert job['model_profile'] == {**profile, 'max_structured_items': 4}
+        assert job['status'] == 'FAILED'
+        assert job['errors'][0]['message'] == '原始失败记录'
+        with db.connection() as conn:
+            stored = conn.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (run_id,)).fetchone()[0]
+        assert json.loads(stored) == payload
+        with pytest.raises(ValidationError, match='max_structured_items'):
+            ModelProfile.model_validate(job['model_profile'])
+        Database(db.db_path)
+        assert runtime.jobs.status(run_id) == job
+        with db.connection() as conn:
+            assert conn.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (run_id,)).fetchone()[0] == stored
     finally:
         runtime.close()
