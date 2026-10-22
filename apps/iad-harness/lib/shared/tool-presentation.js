@@ -31,7 +31,7 @@ export function toolPresentation(value) {
                 links.push({ label: "查看知识版本", location: { pageId, datasetId, knowledgeKind, version: record.knowledge_version_id, tab: "results" } });
         }
         if (record.exploration && typeof record.exploration === "object" && "version_id" in record.exploration && typeof record.exploration.version_id === "string")
-            links.push({ label: "查看探索方向", location: { pageId: "industrial-exploration", datasetId, version: record.exploration.version_id } });
+            links.push({ label: "查看探索方向", location: { pageId: "industrial-exploration", datasetId, version: record.exploration.version_id, tab: "results" } });
         links.push({ label: "数据集管理", location: { pageId: "industrial-datasets", datasetId } }, { label: "图像浏览", location: { pageId: "industrial-images", datasetId } }, { label: "质量报告", location: { pageId: "industrial-audit", datasetId, tab: "reports" } });
     }
     if (Array.isArray(record.datasets))

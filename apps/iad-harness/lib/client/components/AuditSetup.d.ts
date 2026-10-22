@@ -6,6 +6,7 @@ export interface AuditSetupProps {
     jobs: JobSnapshot[];
     revision: number;
     onJobsChanged(): void;
+    onStarted?(job: JobSnapshot): void;
 }
-export declare function AuditSetup({ dataset, filters, jobs, revision, onJobsChanged }: AuditSetupProps): React.JSX.Element;
+export declare function AuditSetup({ dataset, filters, jobs, revision, onJobsChanged, onStarted }: AuditSetupProps): React.JSX.Element;
 //# sourceMappingURL=AuditSetup.d.ts.map

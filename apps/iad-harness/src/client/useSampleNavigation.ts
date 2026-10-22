@@ -6,7 +6,7 @@ import type { ImageNavigation } from "./components/ImageViewer.js";
 import { useWorkspace, type PageId } from "./workspace.js";
 
 export type SampleWindow = SamplePage & { query: string };
-export interface SampleNavigation extends ImageNavigation { open: boolean; opened(): void; cancel(): void }
+export interface SampleNavigation extends ImageNavigation { move(offset: -1 | 1, display?: "embedded" | "fullscreen"): void; open: boolean; opened(): void; cancel(): void }
 
 /** Uses the gallery's actual query and pagination; no second ordering or sample index. */
 export function useSampleNavigation(pageId: PageId, taskId: string | undefined, query: string, result: SampleWindow, enabled: boolean): SampleNavigation {
@@ -29,7 +29,7 @@ export function useSampleNavigation(pageId: PageId, taskId: string | undefined, 
     return () => { pending.current?.abort(); pending.current = undefined; };
   }, [query, view.selected, enabled, state.active, state.pageId, state.datasetId, pageId]);
 
-  async function move(offset: -1 | 1) {
+  async function move(offset: -1 | 1, display: "embedded" | "fullscreen" = "fullscreen") {
     if (pending.current || !taskId || (offset < 0 ? !previous : !next)) return;
     const controller = new AbortController(); pending.current = controller;
     setBusy(true); setError("");
@@ -46,7 +46,7 @@ export function useSampleNavigation(pageId: PageId, taskId: string | undefined, 
       const current = workspace.getSnapshot(), selected = workspace.view(pageId);
       if (!current.active || current.pageId !== pageId || current.datasetId !== state.datasetId || selected.selected !== view.selected || selected.page !== view.page || selected.filters !== view.filters) return;
       if (!sample) throw new Error("当前筛选范围已变化，请刷新后重试");
-      setTarget(sample.sample_id);
+      setTarget(display === "fullscreen" ? sample.sample_id : "");
       workspace.updateView(pageId, { page, selected: sample.sample_id, inspection: null });
     } catch (error) { if (!controller.signal.aborted) setError(message(error)); }
     finally { if (pending.current === controller) { pending.current = undefined; setBusy(false); } }

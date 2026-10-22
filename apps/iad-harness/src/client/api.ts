@@ -11,6 +11,7 @@ export async function request<T>(path: string, body?: unknown, method?: string, 
   return data as T;
 }
 export const initialFilters: Filters = { raw_label_filters: [], annotation_filters: [], model_status: "all", review_status: "all", technical: "all", reference_status: "all", search: "", sort_by: "default" };
+export const initialReviewFilters: Filters = { ...initialFilters, review_status: "pending" };
 export function sampleQuery(datasetId: string, filters: Filters, page: number, pageSize: number) {
   return new URLSearchParams({
     ...filters,

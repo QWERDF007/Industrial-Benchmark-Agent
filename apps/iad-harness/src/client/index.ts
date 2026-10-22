@@ -8,6 +8,7 @@ import { workbenchTools } from "../shared/tool-presentation.js";
 import type { ToolCallViewProps } from "@deepseek-ai/dsh-client-ui-tool/client";
 import {ModelSettingsPage} from './components/ModelSettingsPage.js';
 import {WorkbenchModelProvider} from './models.js';
+import {IndustrialSidebar} from './host/IndustrialSidebar.js';
 
 export const name = "iad-client";
 export const inject = ["slots", "layout", "sessions", "conversation", "uiWorkspace"];
@@ -15,6 +16,7 @@ export const inject = ["slots", "layout", "sessions", "conversation", "uiWorkspa
 export function apply(ctx: any) {
   const workspace = new Workspace(new WorkbenchSession(ctx));
   const icons: Record<PageId, React.ComponentType> = { "industrial-datasets": DatasetIcon, "industrial-images": ImagesIcon, "industrial-exploration": ExplorationIcon, "industrial-knowledge": KnowledgeIcon, "industrial-audit": AuditIcon, "industrial-review": ReviewIcon, 'industrial-model-settings': ModelSettingsIcon };
+  ctx.slots.inject('sidebar.content', () => ctx.slots.register({name: 'sidebar.content'}, IndustrialSidebar));
   ctx.slots.inject("tool.call.toolview", () => {
     for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props: ToolCallViewProps) => React.createElement(WorkspaceContext.Provider, { value: workspace }, React.createElement(SessionResult, { ...props, title })));
   });
@@ -28,8 +30,11 @@ export function apply(ctx: any) {
       ctx.slots.register({ name: "main", key: id },
         () =>
           React.createElement(WorkspaceContext.Provider, {value: workspace}, React.createElement(WorkbenchModelProvider, {children:
-            id === 'industrial-model-settings' ? React.createElement(ModelSettingsPage)
-              : React.createElement(WorkbenchPage, {pageId: id})})));
+            React.createElement('div', {className: 'iad-workspace', onFocusCapture: (event: React.FocusEvent<HTMLDivElement>) => {
+              if (event.target instanceof HTMLElement) event.target.scrollIntoView({block: 'nearest', inline: 'nearest'});
+            }, style: {height: '100%', minWidth: 0, containerType: 'inline-size', containerName: 'workbench'}},
+              id === 'industrial-model-settings' ? React.createElement(ModelSettingsPage)
+                : React.createElement(WorkbenchPage, {pageId: id}))})));
     }
     return workspace.connect(ctx.layout);
   });

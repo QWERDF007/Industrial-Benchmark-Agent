@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import type { MiningDirection, MiningPrompt, MiningPromptConfiguration } from "../../shared/domain.generated.js";
 import { message, request } from "../api.js";
 import type { ExplorationCatalog } from "../../shared/domain.generated.js";
+import { useUnsavedChanges } from "../useUnsavedChanges.js";
 import { useWorkspace } from "../workspace.js";
 
 export interface DirectionProposal { id: string; datasetId: string; kind: "normal" | "defect"; title: string; instruction: string }
@@ -48,6 +49,7 @@ export function KnowledgeDirections({ datasetId, kind, proposal, onPending, onPr
       instruction: proposal.instruction, enabled: true, origin: "dataset" }] });
   }, [proposal, draft, saving, datasetId, kind, onProposalUsed]);
   const dirty = !!saved && JSON.stringify(saved.configuration) !== JSON.stringify(draft);
+  useUnsavedChanges(dirty);
   const invalid = !!draft && (!draft.objective.trim() || draft.directions.some(item => !item.title.trim() || !item.instruction.trim())
     || new Set(draft.directions.map(item => item.title.trim().toLocaleLowerCase())).size !== draft.directions.length);
   useEffect(() => onPending(!saved || dirty || saving || invalid || !!error), [saved, dirty, saving, invalid, error, onPending]);

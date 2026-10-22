@@ -1,7 +1,7 @@
 import React from "react";
 import type { JobSnapshot } from "../../shared/contracts.js";
-export declare function JobCard({ job, onChanged }: {
+export declare function JobDetail({ job, onChanged }: {
     job: JobSnapshot;
     onChanged(): void;
 }): React.JSX.Element;
-//# sourceMappingURL=JobCard.d.ts.map
+//# sourceMappingURL=JobDetail.d.ts.map

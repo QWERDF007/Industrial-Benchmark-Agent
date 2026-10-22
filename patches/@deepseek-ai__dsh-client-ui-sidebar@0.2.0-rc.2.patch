@@ -1,0 +1,94 @@
+diff --git a/lib/client.js b/lib/client.js
+index de898631220944a16bfef34dccedbc9a43e33312..e12021fcc2e0b3231a8fd032e7d90cf96d1f71fe 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -375,6 +375,14 @@ window.__ModuleLoader__.load({
+ 							})]
+ 						})
+ 					}),
++					(0, react_jsx_runtime.jsx)("div", {
++                        style: {display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden"},
++                        children: renderSlot("sidebar.content", {
++                            wide,
++                            panels,
++                            renderPanel: ({id, label}) => (0, react_jsx_runtime.jsx)(PanelRow, {id, label, wide, usePanelInfo, selectPanel, renderSlot}, id),
++                            renderWorkspaces: () => renderSlot("sidebar.workspaces", {wide, expandSidebar: () => {if (collapsed) toggleSidebar();}})
++                        }, {fallback: (0, react_jsx_runtime.jsxs)(react.Fragment, {children: [
+ 					panels.length > 0 && (0, react_jsx_runtime.jsx)("nav", {
+ 						className: SidebarRoot_module_css_default.panelList,
+ 						"aria-label": t("panels.label"),
+@@ -395,7 +403,9 @@ window.__ModuleLoader__.load({
+ 								if (collapsed) toggleSidebar();
+ 							}
+ 						})
+-					}),
++					})
++                        ]})})
++                    }),
+ 					(0, react_jsx_runtime.jsxs)("div", {
+ 						className: SidebarRoot_module_css_default.footArea,
+ 						children: [(0, react_jsx_runtime.jsx)("div", {
+@@ -488,6 +498,7 @@ window.__ModuleLoader__.load({
+ 				name: "sidebar",
+ 				locale: NS,
+ 				children: {
++                    "sidebar.content": {kind: "single", scope: "root"},
+ 					"sidebar.brand.mark": {
+ 						kind: "single",
+ 						scope: "root"
+diff --git a/lib/types/client/contract/slots.d.ts b/lib/types/client/contract/slots.d.ts
+index 6c346de384ca2957725ae260772fb4aad2da1c6d..742479f092d606fa468038d78bed905b4f8ba273 100644
+--- a/lib/types/client/contract/slots.d.ts
++++ b/lib/types/client/contract/slots.d.ts
+@@ -7,6 +7,7 @@
+  * `sidebar.settings` registrant's (ui-settings), followed by optional footer
+  * actions in `sidebar.footer.action`.
+  */
++import type { ReactNode } from 'react';
+ import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots';
+ import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store';
+ import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client';
+@@ -14,6 +15,8 @@ import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/cli
+ import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client';
+ declare module '@deepseek-ai/dsh-client-ui-slots' {
+     interface SlotMap {
++        /** Composable navigation and workspace region; the shell retains chrome and settings. */
++        'sidebar.content': {kind: 'single'; scope: 'root'; owner: SidebarContentOwnerProps};
+         /** Non-interactive notification inside the collapsed sidebar expand button. */
+         'sidebar.toggle.badge': {
+             kind: 'single';
+@@ -80,6 +83,14 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
+         };
+     }
+ }
++/** Delegated shell rendering capabilities for one content composition. */
++export interface SidebarContentOwnerProps {
++    wide: boolean;
++    panels: readonly SidebarPanelMetadata[];
++    renderPanel(panel: SidebarPanelMetadata): ReactNode;
++    renderWorkspaces(): ReactNode;
++}
++
+ /** Geometry supplied to the sidebar brand-mark occupant. */
+ export interface SidebarBrandMarkOwnerProps {
+     /** Requested square edge in pixels. */
+@@ -155,5 +166,5 @@ export type SidebarRootInjected = {
+  * render shares, this package's injected callbacks, and the standard locale
+  * seat. Panel metadata arrives through an injected observable.
+  */
+-export type SidebarRootComponentProps = PropsRuntime<'sidebar'> & PropsRenderSlots<'sidebar.brand.mark' | 'sidebar.brand.name' | 'sidebar.toggle.badge' | 'sidebar.panellist' | 'sidebar.workspaces' | 'sidebar.settings' | 'sidebar.footer.action'> & InjectFace<SidebarRootInjected> & PropsLocale<'sidebar'>;
++export type SidebarRootComponentProps = PropsRuntime<'sidebar'> & PropsRenderSlots<'sidebar.content' | 'sidebar.brand.mark' | 'sidebar.brand.name' | 'sidebar.toggle.badge' | 'sidebar.panellist' | 'sidebar.workspaces' | 'sidebar.settings' | 'sidebar.footer.action'> & InjectFace<SidebarRootInjected> & PropsLocale<'sidebar'>;
+ //# sourceMappingURL=slots.d.ts.map
+\ No newline at end of file
+diff --git a/lib/types/client/index.d.ts b/lib/types/client/index.d.ts
+index 59371eb1ad480a310b1fe42cd5bbd2febe45f210..4ff237a9fb1691cd3d0f4a52a432564280611cab 100644
+--- a/lib/types/client/index.d.ts
++++ b/lib/types/client/index.d.ts
+@@ -1,6 +1,6 @@
+ import type { Context as ClientContext } from '@deepseek-ai/cordis';
+ import { type SidebarKey } from './locales.ts';
+-export type { SidebarBrandMarkOwnerProps, SidebarBrandNameOwnerProps, SidebarFooterActionOwnerProps, SidebarPanelIconOwnerProps, SidebarPanelMetadata, SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps, SidebarSettingsOwnerProps, } from './contract/slots.ts';
++export type { SidebarContentOwnerProps, SidebarBrandMarkOwnerProps, SidebarBrandNameOwnerProps, SidebarFooterActionOwnerProps, SidebarPanelIconOwnerProps, SidebarPanelMetadata, SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps, SidebarSettingsOwnerProps, } from './contract/slots.ts';
+ export type { SidebarKey } from './locales.ts';
+ declare module '@deepseek-ai/dsh-client-ui-slots' {
+     interface LocaleNamespaceMap {

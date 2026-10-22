@@ -1,12 +1,14 @@
-import React, { useRef, useState } from "react";
+import React, { useId, useRef, useState } from "react";
 import type { Decision, ReviewDecisionRecord, SampleDetail } from "../../shared/contracts.js";
 import { message, request, reviewLabels, reviewLabel } from "../api.js";
 import { useReviewDraft } from "../useReviewDraft.js";
 
-export function HumanReviewForm({ datasetId, sampleId, detail, onSubmitted }: {
+export function HumanReviewForm({ datasetId, sampleId, detail, onSubmitted, advanceOnSubmit = false }: {
+  advanceOnSubmit?: boolean;
   datasetId: string; sampleId: string; detail: Pick<SampleDetail, "review_decision" | "review_history">; onSubmitted(record: ReviewDecisionRecord): void;
 }) {
   const draft = useReviewDraft(datasetId, sampleId);
+  const formId = useId();
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
   const openedAt = useRef(Date.now());
   async function submit(decision: Decision) {
@@ -21,22 +23,27 @@ export function HumanReviewForm({ datasetId, sampleId, detail, onSubmitted }: {
   }
   return <section className="iad-decision">
     <h3>人工裁决</h3>
-    {error && <p role="alert" className="iad-error">{error}</p>}{notice && <p role="status">{notice}</p>}
-    {draft.pending ? <div className="iad-row"><span role="status">提交结果待确认</span><button disabled={busy} onClick={() => submit(draft.pending!.decision)}>重试提交</button></div>
+    <div className="iad-decision-scroll">
+    {draft.pending ? <p role="status">提交结果待确认</p>
       : draft.dirty && <div className="iad-row"><span role="status">草稿未提交</span><button disabled={busy} onClick={draft.discard}>放弃草稿</button></div>}
     {detail.review_decision && <p>当前：{reviewLabel(detail.review_decision.decision)} · {detail.review_decision.reviewer}<br />{detail.review_decision.comment}</p>}
-    <form onSubmit={event => { event.preventDefault(); if (draft.decision) void submit(draft.decision); }}>
-    <label className="iad-field">复核人<input required value={draft.reviewer} disabled={busy || !!draft.pending} onChange={e => draft.update({ reviewer: e.target.value })} /></label>
-    <label className="iad-field">复核说明<textarea value={draft.comment} disabled={busy || !!draft.pending} onChange={e => draft.update({ comment: e.target.value })} /></label>
+    <form id={formId} onSubmit={event => { event.preventDefault(); if (draft.decision) void submit(draft.decision); }}>
     <fieldset className="iad-review-options" disabled={busy || !!draft.pending}><legend>裁决</legend>{(Object.entries(reviewLabels) as [Decision,string][]).map(([value,label]) =>
       <label key={value}><input type="radio" name={`decision:${sampleId}`} value={value} checked={(draft.pending?.decision || draft.decision) === value} onChange={() => draft.update({ decision: value })} />{label}</label>)}</fieldset>
-    <div className="iad-form-actions"><button type="submit" className="iad-primary" disabled={busy || !!draft.pending || !draft.decision}>{busy ? "提交中…" : "提交复核"}</button></div>
+    <label className="iad-field">复核人<input required value={draft.reviewer} disabled={busy || !!draft.pending} onChange={e => draft.update({ reviewer: e.target.value })} /></label>
+    <label className="iad-field">复核说明<textarea value={draft.comment} disabled={busy || !!draft.pending} onChange={e => draft.update({ comment: e.target.value })} /></label>
     </form>
     <details className="iad-review-history"><summary>复核记录 · {detail.review_history.length} 次</summary><ol>{detail.review_history.map(record =>
       <li key={record.decision_id} data-decision-id={record.decision_id}>
         <strong>{reviewLabel(record.decision)}</strong> · {record.reviewer}<br />
         {record.submitted_at ? <time dateTime={record.submitted_at}>{new Date(record.submitted_at).toLocaleString()}</time> : "未记录提交时间"}
         {record.comment && <p>{record.comment}</p>}
-      </li>)}</ol></details>
+      </li>)}</ol></details></div>
+    <footer className="iad-review-submit">
+      {error && <p role="alert" className="iad-error">{error}</p>}{notice && <p role="status">{notice}</p>}
+      {draft.pending ? <button type="button" className="iad-primary" disabled={busy} onClick={() => submit(draft.pending!.decision)}>重试提交</button>
+        : <button type="submit" form={formId} className="iad-primary" disabled={busy || !draft.decision || !draft.reviewer.trim()}>{busy ? "提交中…" : "提交复核"}</button>}
+      {advanceOnSubmit && <small className="iad-muted">提交成功后进入下一张</small>}
+    </footer>
   </section>;
 }

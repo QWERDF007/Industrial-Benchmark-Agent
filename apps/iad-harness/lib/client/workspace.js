@@ -1,10 +1,10 @@
 import { createContext, useContext, useSyncExternalStore } from "react";
-import { initialFilters, request } from "./api.js";
+import { initialFilters, initialReviewFilters, request } from "./api.js";
 import { restoreInspection } from "./inspection.js";
 import { pages } from "../shared/navigation.js";
 import { knowledgeStatuses } from "../shared/knowledge-presentation.js";
 export { pages } from "../shared/navigation.js";
-const defaultView = (page) => ({ explorationVersion: "", explorationNormalCount: "10", explorationDefectCount: "10", explorationNormalImages: [], explorationDefectImages: [], explorationObjective: "", miningSourceMode: "uncovered", scopeRunId: "", scopeSessionId: "", miningContinuous: false, conflictId: "", miningCount: "10", miningImages: [], miningPreset: "", miningSearch: "", miningPage: 1, filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
+const defaultView = (page) => ({ checkId: "", explorationVersion: "", explorationNormalCount: "10", explorationDefectCount: "10", explorationNormalImages: [], explorationDefectImages: [], explorationObjective: "", miningSourceMode: "uncovered", scopeRunId: "", scopeSessionId: "", miningContinuous: false, conflictId: "", miningCount: "10", miningImages: [], miningPreset: "", miningSearch: "", miningPage: 1, filters: { ...(page === "industrial-review" ? initialReviewFilters : initialFilters) }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export class Workspace {
     conversation;
@@ -13,6 +13,9 @@ export class Workspace {
     }
     state = { knowledgeKind: "normal", active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
     listeners = new Set();
+    leaveGuards = new Set();
+    registerLeaveGuard(guard) { this.leaveGuards.add(guard); return () => { this.leaveGuards.delete(guard); }; }
+    canLeave() { return [...this.leaveGuards].every(guard => guard()); }
     layout;
     imageViews = new Map();
     pagePositions = new Map();
@@ -28,6 +31,8 @@ export class Workspace {
     selectKnowledgeKind(knowledgeKind) {
         if (knowledgeKind === this.state.knowledgeKind)
             return;
+        if (!this.canLeave())
+            return;
         this.state = { ...this.state, knowledgeKind };
         this.commit();
     }
@@ -41,15 +46,26 @@ export class Workspace {
                     this.navigate(id);
             }
             else if (this.state.active) {
+                if (!this.canLeave()) {
+                    this.layout?.selectPanel(this.state.pageId);
+                    return;
+                }
                 this.state = { ...this.state, active: false };
                 this.commit();
             }
         });
-        const restore = () => this.restore(true);
+        const restore = () => { if (this.canLeave())
+            this.restore(true);
+        else
+            this.commit(true); };
         window.addEventListener("popstate", restore);
         return () => { unsubscribe(); window.removeEventListener("popstate", restore); this.layout = undefined; };
     }
     navigate(pageId, selected) {
+        if (pageId !== this.state.pageId && !this.canLeave()) {
+            this.layout?.selectPanel(this.state.pageId);
+            return;
+        }
         this.state = { ...this.state, active: true, pageId };
         if (selected !== undefined)
             this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(pageId, this.state.datasetId, this.state.knowledgeKind)]: { ...this.view(pageId), selected, tab: "results" } } };
@@ -57,6 +73,8 @@ export class Workspace {
         this.layout?.selectPanel(pageId);
     }
     openLocation({ pageId, datasetId, knowledgeKind = this.state.knowledgeKind, ...view }) {
+        if (!this.canLeave())
+            return;
         this.state = { ...this.state, active: true, pageId, datasetId, knowledgeKind };
         this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(pageId, datasetId, knowledgeKind)]: { ...this.view(pageId), ...view, inspection: null } } };
         this.commit();
@@ -65,10 +83,14 @@ export class Workspace {
     selectDataset(datasetId, replace = false) {
         if (datasetId === this.state.datasetId)
             return;
+        if (!this.canLeave())
+            return;
         this.state = { ...this.state, datasetId };
         this.commit(replace);
     }
     updateView(page, patch, replace = false) {
+        if (patch.tab && patch.tab !== this.view(page).tab && !this.canLeave())
+            return;
         this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(page, this.state.datasetId, this.state.knowledgeKind)]: { ...this.view(page), ...patch } } };
         this.commit(replace);
     }
@@ -125,7 +147,7 @@ export class Workspace {
                 if (route.pageId in pages && typeof route.datasetId === "string") {
                     const knowledgeKind = route.knowledgeKind === "defect" ? "defect" : "normal";
                     const view = defaultView(route.pageId);
-                    for (const key of ["explorationVersion", "explorationNormalCount", "explorationDefectCount", "explorationObjective", "selected", "scopeRunId", "scopeSessionId", "conflictId", "tab", "version", "miningCount", "miningPreset", "miningSearch", "normalVersion", "defectVersion", "job", "historySearch", "knowledgeSearch"])
+                    for (const key of ["checkId", "explorationVersion", "explorationNormalCount", "explorationDefectCount", "explorationObjective", "selected", "scopeRunId", "scopeSessionId", "conflictId", "tab", "version", "miningCount", "miningPreset", "miningSearch", "normalVersion", "defectVersion", "job", "historySearch", "knowledgeSearch"])
                         if (typeof route[key] === "string")
                             view[key] = route[key];
                     if (["uncovered", "all", "recheck"].includes(route.miningSourceMode))

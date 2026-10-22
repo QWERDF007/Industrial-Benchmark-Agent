@@ -1,8 +1,10 @@
-import { JobCard } from "./JobCard.js";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { AuditStartRequest, InspectionSnapshot, JobSnapshot, Dataset, ReviewDecisionRecord, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
 import { AnnotatedImage, ImageViewer, type ImageSource } from "./ImageViewer.js";
+import { ImageCanvas } from "./ImageCanvas.js";
+import { ReviewWorkspace } from "./ReviewWorkspace.js";
 import { MediaLoad } from "./MediaLoad.js";
+import { KnowledgeEvidenceGallery } from "./KnowledgeEvidenceGallery.js";
 import { DatasetKnowledge } from "./DatasetKnowledge.js";
 import { RuleAssessments } from "./RuleAssessments.js";
 import { AuditFindings } from "./AuditFindings.js";
@@ -12,9 +14,11 @@ import { auditEvidenceUrl, regionSources, mediaUrl, message, request, reviewLabe
 import { useWorkspace } from "../workspace.js";
 import {useWorkbenchModel} from "../models.js";
 import { inspectionImage } from "../inspection.js";
+import { jobStatuses, jobPhases } from "../../shared/job-display.js";
 import type { SampleNavigation } from "../useSampleNavigation.js";
 
-export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed, jobs, onJobsChanged, navigation }: {
+export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed, jobs, onJobsChanged, navigation, queue, filters, advanceOnSubmit = false }: {
+  queue?: React.ReactNode; filters?: React.ReactNode; advanceOnSubmit?: boolean;
   navigation?: SampleNavigation;
   jobs: JobSnapshot[]; onJobsChanged(): void;
   dataset: Dataset; sampleId: string; mode: "model" | "review" | "browse"; revision: number;
@@ -22,7 +26,8 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
 }) {
   const { workspace, state } = useWorkspace();
   const model = useWorkbenchModel();
-  const [detail, setDetail] = useState<SampleDetail | null>(null);
+  const [loadedDetail, setDetail] = useState<SampleDetail | null>(null);
+  const detail = loadedDetail?.sample.sample_id === sampleId ? loadedDetail : null;
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const job = jobs.find(job => job.sample_ids.includes(sampleId));
@@ -44,7 +49,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
   useEffect(() => {
     if (!sampleId) return;
     const controller = new AbortController();
-    request<SampleDetail>(`/sample/${encodeURIComponent(sampleId)}`, undefined, undefined, controller.signal).then(setDetail).catch(e => {
+    request<SampleDetail>(`/sample/${encodeURIComponent(sampleId)}`, undefined, undefined, controller.signal).then(value => { if (!controller.signal.aborted) setDetail(value); }).catch(e => {
       if (!controller.signal.aborted) setError(message(e));
     });
     return () => controller.abort();
@@ -55,7 +60,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
       const view = workspace.view("industrial-audit");
       const input: AuditStartRequest = { dataset_id: dataset.dataset_id, sample_ids: [sampleId],
         normal_version_id: view.normalVersion || undefined, defect_version_id: view.defectVersion || undefined };
-      await request<JobSnapshot>("/audit/start", input); onJobsChanged();
+      const job = await request<JobSnapshot>("/audit/start", input); workspace.updateView("industrial-audit", {job:job.run_id}); onJobsChanged();
     }
     catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
@@ -73,11 +78,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
       setLightbox({ ...image, initialSelection: null, initialTransform: { zoom: 0, x: 0, y: 0 } }); navigation.opened();
     }
   }, [navigation, image, detail, sampleId]);
-  return <aside className="iad-inspector"><h2>{mode === "review" ? "复核明细" : "样本信息"}</h2>
-    {error && <p role="alert" className="iad-error">{error}</p>}
-    {!sampleId ? <p>选择图像查看。</p> : !detail ? <p>加载中…</p> : <>
-      <MediaLoad key={image!.src}><button ref={imageButton} className="iad-image-button" onClick={() => setLightbox(image)} title="放大图像"><AnnotatedImage image={image!} /></button></MediaLoad>
-      <dl className="iad-info-group"><dt>图像路径</dt><dd title={detail.sample.image_path}>{detail.sample.image_path}</dd>
+  const information = detail && <>      <dl className="iad-info-group"><dt>图像路径</dt><dd title={detail.sample.image_path}>{detail.sample.image_path}</dd>
         <dt>图像名</dt><dd data-field="image-name">{detail.sample.relative_path.split("/").pop()}</dd>
         <dt>UUID</dt><dd data-field="sample-uuid"><code title={detail.sample.sample_uuid}>{detail.sample.sample_uuid}</code></dd>
         <dt>原始标签</dt><dd data-field="raw-label">{detail.sample.quality_status === "PASS" ? "OK" : detail.sample.quality_status === "FAIL" ? "NG" : "未标记"}{detail.sample.quality_source ? ` · ${detail.sample.quality_source}` : ""}</dd><dt>分辨率</dt><dd>{detail.sample.width} × {detail.sample.height}</dd>
@@ -97,11 +98,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
             const overview = detail.suggestion!.analysis!.overview;
             setLightbox({ ...evidenceSource(overview), initialSelection: { kind: "finding", id: finding.finding_id } });
           }} />}
-        <p className="iad-muted">良品知识来源 · {detail.suggestion.reference_sample_ids.length} 张参考图</p>
-        <div className="iad-reference-grid">{detail.normal_knowledge?.evidence.filter(item => item.image.role === "normal" && item.image.representation === "raw" && detail.suggestion!.reference_sample_ids.includes(item.sample_id)).map(item => {
-          const src = `/api/iad/knowledge/evidence/${encodeURIComponent(detail.normal_knowledge!.version_id)}/${encodeURIComponent(item.image.evidence_id)}`;
-          return <button key={item.image.evidence_id} title="放大知识来源证据" onClick={() => setLightbox({ src, title: item.sample_id.split("/").pop()! })}><img alt="本次审计的知识来源" src={src} /></button>;
-        })}</div>
+        <details><summary>良品知识来源 · {detail.suggestion.reference_sample_ids.length} 张</summary>{detail.normal_knowledge && <KnowledgeEvidenceGallery versionId={detail.normal_knowledge.version_id} items={detail.normal_knowledge.evidence.filter(item=>item.image.role === "normal" && item.image.representation === "raw" && detail.suggestion!.reference_sample_ids.includes(item.sample_id))} onOpen={setLightbox} />}</details>
         {detail.suggestion.analysis && <RuleAssessments analysis={detail.suggestion.analysis} knowledge={[...(detail.normal_knowledge ? [detail.normal_knowledge] : []), ...(detail.defect_knowledge ? [detail.defect_knowledge] : [])]} onEvidence={image => setLightbox(evidenceSource(image))} />}
         {detail.suggestion.analysis && <details className="iad-analysis"><summary>审计过程与知识版本</summary>{detail.normal_knowledge ? <DatasetKnowledge knowledge={detail.normal_knowledge} /> : <p className="iad-muted">历史审计，未关联知识版本。</p>}{detail.defect_knowledge && <DatasetKnowledge knowledge={detail.defect_knowledge} />}
           {!!detail.suggestion.analysis.knowledge_limitations.length && <p className="iad-muted">知识限制：{detail.suggestion.analysis.knowledge_limitations.join("；")}</p>}
@@ -123,12 +120,26 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
           <p>位置分析：{detail.suggestion.analysis.conclusion.position_analysis}</p><p>光照分析：{detail.suggestion.analysis.conclusion.illumination_analysis}</p>
         </details>}
       </> : <p className="iad-muted">尚无模型观察。</p>}</section>
-      {mode === "model" && job && <section className="iad-single-job" aria-label="当前样本作业"><JobCard key={job.run_id} job={job} onChanged={onJobsChanged} /></section>}
-      {mode === "review" ? <HumanReviewForm datasetId={dataset.dataset_id} sampleId={sampleId} detail={detail} onSubmitted={record => onReviewed(record, detail.sample.relative_path)} /> : mode === "model" && <div className="iad-actions">
-        <button className="iad-primary" disabled={busy || jobRunning || !model.ready} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按知识审计此图"}</button>
+</>;
+  const decision = detail && <HumanReviewForm key={sampleId} datasetId={dataset.dataset_id} sampleId={sampleId} detail={detail} advanceOnSubmit={advanceOnSubmit} onSubmitted={record => onReviewed(record, detail.sample.relative_path)} />;
+  const lightboxView = <>    {lightbox && <ImageViewer image={lightbox} navigation={navigation} onClose={() => { navigation?.cancel(); setLightbox(null); if (workspace.view(state.pageId).inspection) workspace.updateView(state.pageId, { inspection: null }, true); }} />}
+</>;
+  if (queue !== undefined) return <div className="iad-inspector iad-focused-inspector">
+    {error && <p role="alert" className="iad-error">{error}</p>}
+    <ReviewWorkspace sampleId={sampleId} queue={queue} filters={filters} information={information} decision={decision} image={image && !lightbox ? <ImageCanvas image={image} embedded navigation={navigation ? {...navigation, move: offset => navigation.move(offset,"embedded")} : undefined} onExpand={view => setLightbox({...image,initialSelection:view.selection,initialTransform:view.transform})} /> : !sampleId ? <p className="iad-empty">当前复核队列已处理完成，或没有匹配的样本。</p> : !detail ? <p role="status">正在读取样本…</p> : null} />
+    {lightboxView}
+  </div>;
+  return <aside className="iad-inspector"><h2>{mode === "review" ? "复核明细" : "样本信息"}</h2>
+    {error && <p role="alert" className="iad-error">{error}</p>}
+    {!sampleId ? <p>选择图像查看。</p> : !detail ? <p role="status">加载中…</p> : <>
+      <MediaLoad key={image!.src}><button ref={imageButton} className="iad-image-button" onClick={() => setLightbox(image)} title="放大图像"><AnnotatedImage image={image!} /></button></MediaLoad>
+      {information}
+      {mode === "model" && job && <section className="iad-single-job" aria-label="当前样本作业"><p role="status">{job.cancel_requested && ["PENDING","RUNNING"].includes(job.status) ? "正在停止" : jobStatuses[job.status]} · {jobPhases[job.phase || ""] || job.message}</p><button onClick={() => workspace.updateView("industrial-audit", {tab:"jobs",job:job.run_id})}>查看此图审计作业</button></section>}
+      {mode === "review" ? <HumanReviewForm key={sampleId} datasetId={dataset.dataset_id} sampleId={sampleId} detail={detail} advanceOnSubmit={advanceOnSubmit} onSubmitted={record => onReviewed(record, detail.sample.relative_path)} /> : mode === "model" && <div className="iad-actions">
+        <button disabled={busy || jobRunning || !model.ready} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按知识审计此图"}</button>
         <button onClick={() => workspace.navigate("industrial-review", sampleId)}>前往人工复核</button>
       </div>}
     </>}
-    {lightbox && <ImageViewer image={lightbox} navigation={navigation} onClose={() => { navigation?.cancel(); setLightbox(null); if (workspace.view(state.pageId).inspection) workspace.updateView(state.pageId, { inspection: null }, true); }} />}
+    {lightboxView}
   </aside>;
 }

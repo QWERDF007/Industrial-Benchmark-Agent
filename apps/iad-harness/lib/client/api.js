@@ -10,6 +10,7 @@ export async function request(path, body, method, signal) {
     return data;
 }
 export const initialFilters = { raw_label_filters: [], annotation_filters: [], model_status: "all", review_status: "all", technical: "all", reference_status: "all", search: "", sort_by: "default" };
+export const initialReviewFilters = { ...initialFilters, review_status: "pending" };
 export function sampleQuery(datasetId, filters, page, pageSize) {
     return new URLSearchParams({
         ...filters,

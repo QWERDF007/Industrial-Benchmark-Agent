@@ -1,6 +1,7 @@
 import React from "react";
 import type { Sample } from "../../shared/contracts.js";
-export declare function SampleCard({ sample, selected, onSelect, reference, selection }: {
+export declare function SampleCard({ sample, selected, onSelect, reference, selection, compact }: {
+    compact?: boolean;
     sample: Sample;
     selected: boolean;
     onSelect(): void;

@@ -1,6 +1,7 @@
 import type { AuditAnalysis, Decision, Filters, Sample, VisualEvidence } from "../shared/contracts.js";
 export declare function request<T>(path: string, body?: unknown, method?: string, signal?: AbortSignal): Promise<T>;
 export declare const initialFilters: Filters;
+export declare const initialReviewFilters: Filters;
 export declare function sampleQuery(datasetId: string, filters: Filters, page: number, pageSize: number): string;
 export declare const mediaUrl: (sample: Pick<Sample, "task_id" | "sample_id">, view?: "image" | "thumbnail" | "mask") => string;
 export declare const message: (error: unknown) => string;

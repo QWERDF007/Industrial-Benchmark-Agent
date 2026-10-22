@@ -8,10 +8,10 @@ import { DeleteAction } from "./DeleteAction.js";
 
 const sampleName = (sample: JobSample) => sample.relative_path || sample.sample_uuid;
 
-export function JobCard({ job, onChanged }: { job: JobSnapshot; onChanged(): void }) {
+export function JobDetail({ job, onChanged }: { job: JobSnapshot; onChanged(): void }) {
   const { workspace } = useWorkspace();
-  const kind = job.job_type === "MODEL_AUDIT" ? "audit" : "knowledge";
-  const page = kind === "audit" ? "industrial-audit" : "industrial-knowledge";
+  const kind = job.job_type === "MODEL_AUDIT" ? "audit" : job.job_type === "DIRECTION_EXPLORATION" ? "exploration" : "knowledge";
+  const page = kind === "audit" ? "industrial-audit" : kind === "exploration" ? "industrial-exploration" : "industrial-knowledge";
   const active = job.status === "RUNNING" || job.status === "PENDING";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -23,7 +23,7 @@ export function JobCard({ job, onChanged }: { job: JobSnapshot; onChanged(): voi
   const focused = workspace.view(page, job.kind ?? undefined).job === job.run_id;
   useEffect(() => { if (focused) article.current?.scrollIntoView({ block: "nearest" }); }, [focused]);
   useEffect(() => {
-    if (!expanded) return;
+    if (!expanded || kind === "exploration") return;
     const controller = new AbortController();
     setOptions(null); setError("");
     request<JobRetryOptions>(`/${kind}/retry/${encodeURIComponent(job.run_id)}`, undefined, undefined, controller.signal)
@@ -39,7 +39,8 @@ export function JobCard({ job, onChanged }: { job: JobSnapshot; onChanged(): voi
   async function retry() {
     setBusy(true); setError("");
     try {
-      await request(`/${kind}/retry/${encodeURIComponent(job.run_id)}`, { sample_ids: selected });
+      const next = await request<JobSnapshot>(`/${kind}/retry/${encodeURIComponent(job.run_id)}`, kind === "exploration" ? {} : { sample_ids: selected });
+      workspace.updateView(page, { job: next.run_id });
       setExpanded(false); onChanged();
     } catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
@@ -51,14 +52,14 @@ export function JobCard({ job, onChanged }: { job: JobSnapshot; onChanged(): voi
   }
   return <article ref={article} className="iad-job" data-job-id={job.run_id} aria-label={`作业 ${job.run_id}`} aria-current={focused || undefined}>
     <div className="iad-row"><strong role="status">{active && job.cancel_requested ? "正在停止" : jobStatuses[job.status]}</strong><span>{job.model_profile?.provider_name ? `${job.model_profile.provider_name} · ` : ''}{job.model_name}</span>
-      {active && <button disabled={busy || job.cancel_requested} onClick={cancel}>{job.cancel_requested ? "正在停止…" : kind === "audit" ? "取消审计" : "取消挖掘"}</button>}
+      {active && <button disabled={busy || job.cancel_requested} onClick={cancel}>{job.cancel_requested ? "正在停止…" : kind === "audit" ? "取消审计" : kind === "exploration" ? "取消探索" : "取消挖掘"}</button>}
       {kind === "knowledge" && !active && !job.deleted_at && <DeleteAction title="删除作业" name={job.run_id} className="iad-action-end"
         description="从作业列表删除，保留已发布知识、冻结证据及历史引用。"
         restoreFocus={() => document.querySelector<HTMLElement>(".iad-knowledge-page .iad-tabs button.active")}
         onDelete={async () => { await request(`/knowledge/jobs/${encodeURIComponent(job.run_id)}`, undefined, "DELETE");
           if (focused) workspace.updateView(page, { job: "" }); onChanged(); }} />}
     </div>
-    <progress aria-label="作业处理进度" value={job.progress} max={1} />
+    {job.total_samples > 0 && <progress aria-label="作业处理进度" value={job.progress} max={1} />}
     <p>完成 {job.completed} · 失败 {job.failed} · 未处理 {job.unprocessed} · 共 {job.total_samples} 张</p>
     {kind === "knowledge" && job.observation_progress && <p className="iad-muted">已观察 {job.observation_progress.observed_sources} / {job.observation_progress.planned_sources} 张 · 完整视图 {job.observation_progress.complete_sources} 张 · 已发布 {job.observation_progress.published_sources} 张</p>}
     {kind === "knowledge" && <KnowledgeJobEvidence job={job} />}
@@ -67,7 +68,7 @@ export function JobCard({ job, onChanged }: { job: JobSnapshot; onChanged(): voi
     {!!job.planned_regions && <p className="iad-muted">ROI {job.inspected_regions || 0} / {job.planned_regions}</p>}
     {!!job.total_batches && <p className="iad-muted">联合判断 {job.completed_batches || 0} / {job.total_batches}</p>}
     {job.normal_version_id && <small className="iad-muted">良品版本 {job.normal_version_id}<br />{job.defect_version_id && <>不良版本 {job.defect_version_id}<br /></>}</small>}
-    <small className="iad-muted">{job.run_id}</small>
+    <details><summary>冻结依据与任务标识</summary><dl><dt>任务 ID</dt><dd>{job.run_id}</dd><dt>根任务</dt><dd>{job.root_run_id}</dd><dt>开始时间</dt><dd>{job.started_at || "未提供"}</dd><dt>结束时间</dt><dd>{job.finished_at || "未提供"}</dd><dt>提供商</dt><dd>{job.model_profile?.provider_name || "未记录"}</dd><dt>模型</dt><dd>{job.model_name}</dd></dl></details>
     {job.origin_session_id && <p><button disabled={busy} onClick={async () => {
       setBusy(true); setError("");
       try { await workspace.openSession(job.origin_session_id!); }
@@ -76,7 +77,9 @@ export function JobCard({ job, onChanged }: { job: JobSnapshot; onChanged(): voi
     {job.parent_run_id && <p className="iad-job-links"><button onClick={() => related(job.parent_run_id!)}>原作业 {job.parent_run_id}</button>{job.root_run_id !== job.parent_run_id && <button onClick={() => related(job.root_run_id)}>起始作业 {job.root_run_id}</button>}</p>}
     {job.knowledge_version_id && <p><button onClick={() => { workspace.openLocation({ pageId: page, datasetId: job.dataset_id, knowledgeKind: job.kind ?? undefined, version: job.knowledge_version_id!, tab: "results" }); }}>查看已发布版本</button></p>}
     {!!job.errors.length && <details><summary>失败详情 · {job.errors.length}</summary><ul className="iad-job-errors">{job.errors.map((error, index) => <li key={index}><button onClick={() => locate(error.sample_id)} title={error.sample_uuid}>{sampleName(error)}</button><p className="iad-error">{error.message}</p></li>)}</ul></details>}
-    {!active && !job.deleted_at && job.status !== "COMPLETED" && <button aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? "收起重试范围" : "选择重试范围"}</button>}
+    {kind === "exploration" && job.exploration_version_id && <button onClick={() => workspace.updateView(page,{version:job.exploration_version_id!,tab:"results"})}>查看探索结果</button>}
+    {kind === "exploration" && !active && job.status !== "COMPLETED" && <button disabled={busy} onClick={() => void retry()}>按原图组重试</button>}
+    {kind !== "exploration" && !active && !job.deleted_at && job.status !== "COMPLETED" && <button aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? "收起重试范围" : "选择重试范围"}</button>}
     {expanded && <section className="iad-retry-scope" aria-label="重试范围">
       {options ? <>
         {options.active_run_id && <p role="status">同类作业仍在执行，请结束后重新读取范围。</p>}

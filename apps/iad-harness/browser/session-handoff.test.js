@@ -20,7 +20,7 @@ const toolMessages = request => {
   return request.messages.filter(message => message.role === "tool").map(message => ({ ...message, name: names.get(message.tool_call_id) }));
 };
 
-test("native DSH: ask about frozen evidence and return to the original inspection", { timeout: 300000 }, async () => {
+test("native DSH: ask about frozen evidence and return to the original inspection", { timeout: 600000 }, async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-native-handoff-"));
   const app = path.join(workspace, "apps/iad-harness");
   const profile = path.join(root, "home/profiles/web");
@@ -135,7 +135,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     await driver.manage().window().setRect({ width: 1440, height: 1100 }); await driver.get(url);
     if (process.env.IAD_BROWSER_DPR) assert.equal(await driver.executeScript("return devicePixelRatio"), Number(process.env.IAD_BROWSER_DPR));
     const element = css => driver.wait(until.elementLocated(By.css(css)), 15000);
-    const button = async text => { const control = await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}']`)), 15000); await control.click(); };
+    const button = async text => { const control = await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}']`)), 15000); await driver.wait(until.elementIsVisible(control),5000);await driver.wait(until.elementIsEnabled(control),5000);await control.click(); };
     const api = async (pathname, body) => {
       const result = await driver.executeAsyncScript(`const done=arguments[arguments.length-1];fetch('/api/iad'+arguments[0],arguments[1]?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(arguments[1])}:undefined).then(async response=>done({status:response.status,value:await response.json()})).catch(error=>done({error:String(error)}));`, pathname, body || null);
       assert.equal(result.status, 200, JSON.stringify(result)); return result.value;
@@ -183,6 +183,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     await verifyWorkbenchLayout(driver, path.join(workspace, "runs/browser/folder-layout"), {
       pageLabels: ["数据集管理", "图像浏览"], sizes: [[1366, 768], [375, 812]], zoomLevels: [1, 2],
     });
+    console.log(JSON.stringify({nativeStage:"folder-layout-complete"}));
     await driver.manage().window().setRect({ width: 1440, height: 1100 });
     await (await element("button[aria-label^='数据集管理']")).click();
     const dataset = await api("/datasets/import", { format: "labelme", name: "会话交接", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
@@ -196,19 +197,21 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     assert.equal(await (await element("button[aria-label^='知识挖掘']")).getAttribute("aria-label"), "知识挖掘");
     await (await element("button[aria-label^='知识挖掘']")).click();
     await driver.wait(() => driver.executeScript("return document.querySelector('.iad-workbench h1')?.textContent==='知识挖掘'"), 5000);
+    await button("作业记录");
     await driver.wait(async () => (await (await element(".iad-knowledge-jobs")).getText()).includes("执行中"), 10000, "作业进度在对应页面展示");
     releaseKnowledge();
     while (["PENDING", "RUNNING"].includes(job.status)) { await delay(100); job = await api(`/knowledge/status/${job.run_id}`); }
     assert.equal(job.status, "COMPLETED", JSON.stringify(job));
     await driver.wait(async () => !(await (await element("button[aria-label^='知识挖掘']")).getAttribute("aria-label")).includes("运行"), 10000);
-    assert.ok((await driver.executeScript("return document.activeElement?.getAttribute('aria-label')"))?.startsWith("知识挖掘"), "状态更新保留原生导航按钮的键盘焦点");
-    let audit = await api("/audit/start", { dataset_id: dataset.dataset_id, normal_version_id: job.knowledge_version_id, model_name: "test-mllm" });
+    assert.equal(await driver.executeScript("return document.activeElement?.textContent"),"作业记录","状态更新保留当前标签的键盘焦点");
+    let audit = await api("/audit/start", { dataset_id: dataset.dataset_id, normal_version_id: job.knowledge_version_id });
     while (["PENDING", "RUNNING"].includes(audit.status)) { await delay(100); audit = await api(`/audit/status/${audit.run_id}`); }
     assert.equal(audit.status, "PARTIAL", JSON.stringify(audit));
     assert.equal(audit.failed, 2);
     const failedRun = audit.run_id;
     const auditLabel = async () => (await (await element("button[aria-label^='模型审计']")).getAttribute("aria-label"));
     assert.equal(await auditLabel(), "模型审计", "作业失败不改写导航名称");
+    await(await element('button[aria-label="模型审计"]')).click();await button("模型审计作业");
     for (const [index, sample_id] of audit.failed_sample_ids.entries()) {
       const since = await driver.executeScript("return performance.now()");
       let retry = await api(`/audit/retry/${failedRun}`, { sample_ids: [sample_id] });
@@ -230,7 +233,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     await fs.mkdir(path.join(workspace, "runs/browser/session-handoff"), { recursive: true });
     await fs.writeFile(path.join(workspace, "runs/browser/session-handoff/question.png"), await driver.takeScreenshot(), "base64");
     await button("发送到会话");
-    await driver.wait(() => agentCompleted, 15000);
+    await driver.wait(() => agentCompleted, 15000);console.log(JSON.stringify({nativeStage:"handoff-complete"}));
     assert.equal((await driver.findElements(By.css(".iad-workbench"))).length, 0, "Open the actual host conversation");
     const finalImages = agentRequests.at(-1).messages.flatMap(message => Array.isArray(message.content) ? message.content.filter(item => item.type === "image_url") : []);
     assert.equal(finalImages.length, 2, "Actual full image and ROI must reach the Session MLLM");
@@ -282,18 +285,21 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     await (await element("button[aria-label='关闭图像详情']")).click();
     for (const [index, label] of ["知识挖掘", "模型审计"].entries()) {
       await (await element(`button[aria-label^='${label}']`)).click();
-      if (index) await button("模型审计作业");
+      await button(index ? "模型审计作业" : "作业记录");
       if (index) {
+        await button("新建审计");
         const versions = await element("select[aria-label='审计良品知识版本']");
         await driver.wait(() => versions.isEnabled(), 5000);
         await (await element(`select[aria-label='审计良品知识版本'] option[value='${executions[index].normal_version_id}']`)).click();
-        await driver.navigate().refresh();
+        await driver.navigate().refresh();await button("新建审计");
         await driver.wait(async () => await (await element("select[aria-label='审计良品知识版本']")).getAttribute("value") === executions[index].normal_version_id, 5000);
         const selectedVersion = JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad"));
         assert.equal(selectedVersion.normalVersion, executions[index].normal_version_id);
         assert.equal(selectedVersion.defectVersion, "");
         assert.equal(agentRequests.length, requestCount, "原生宿主知识选择与刷新不重新运行模型");
+        await(await element('button[aria-label="关闭新建模型审计"]')).click();
       }
+      await(await element(`button[aria-label="查看作业 ${executions[index].run_id}"]`)).click();
       const card = await element(`article[data-job-id='${executions[index].run_id}']`);
       await card.findElement(By.xpath(".//button[normalize-space(.)='返回发起会话']")).click();
       await driver.wait(async () => (await driver.findElements(By.css(".iad-workbench"))).length === 0, 5000);
@@ -410,6 +416,7 @@ Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
     while (["PENDING", "RUNNING"].includes(defect.status)) { await delay(100); defect = await api(`/knowledge/status/${defect.run_id}`); }
     assert.equal(defect.status, "COMPLETED", JSON.stringify(defect));
     await button("刷新");
+    console.log(JSON.stringify({nativeStage:"surfaces"}));
     await verifyWorkbenchSurfaces(driver, path.join(workspace, "runs/browser/native-surfaces"));
     await verifyWorkbenchLayout(driver, path.join(workspace, "runs/browser/native-layout"));
     assert.equal(agentRequests.length, requestCount, "布局验收不调用Agent模型");

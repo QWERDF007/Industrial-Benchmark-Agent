@@ -80,30 +80,23 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     await click('知识挖掘');
     await element('[data-page="industrial-knowledge"]');
     await driver.executeScript('arguments[0].value=arguments[1];arguments[0].dispatchEvent(new Event("change",{bubbles:true}))',await element('select[aria-label="当前数据集"]'),datasets[0].dataset_id);
+    assert.equal((await driver.findElements(By.css('[aria-label="知识挖掘配置"]'))).length,0,'知识结果不挂载新建配置');
+    assert.equal((await driver.findElements(By.css('.iad-knowledge-jobs'))).length,0,'作业只在作业标签挂载');
     const count=()=>element('input[aria-label="挖掘图像数量"]');
     const expectCount=expected=>driver.wait(async()=>await(await count()).getAttribute('value')===expected,5000,`Expected persisted count ${expected}`);
-    await(await count()).clear();await(await count()).sendKeys('20');await click('版本');
-    await click('异常');
-    await expectCount('10');
-    await(await count()).clear();await(await count()).sendKeys('5');await click('作业记录');
+    await click('新建挖掘');await(await count()).clear();await(await count()).sendKeys('20');await click('返回知识结果');await click('版本');
+    await click('异常');await click('新建挖掘');await expectCount('10');
+    await(await count()).clear();await(await count()).sendKeys('5');await click('返回知识结果');await click('作业记录');
+    assert.equal((await driver.findElements(By.css('.iad-knowledge-jobs'))).length,1,'没有知识版本也能查询作业');
     await click('良品');
-    assert.equal(await(await count()).getAttribute('value'),'20');
-    assert.equal(await(await element('nav[aria-label="知识视图"] button.active')).getText(),'版本');
-    await driver.navigate().back();
-    await expectCount('5');
-    assert.equal(await(await element('nav[aria-label="知识类型"] button[aria-pressed="true"]')).getText(),'异常');
-    await driver.navigate().refresh();
-    await expectCount('5');
-    const datasetSelect=await element('select[aria-label="当前数据集"]');
-    await driver.executeScript('arguments[0].value=arguments[1];arguments[0].dispatchEvent(new Event("change",{bubbles:true}))',datasetSelect,datasets[1].dataset_id);
-    await expectCount('10');
+    assert.equal(await(await element('[aria-label="知识视图"] button.active')).getText(),'版本');
+    await click('新建挖掘');await expectCount('20');await driver.navigate().refresh();await expectCount('20');
+    await driver.executeScript('arguments[0].value=arguments[1];arguments[0].dispatchEvent(new Event("change",{bubbles:true}))',await element('select[aria-label="当前数据集"]'),datasets[1].dataset_id);
+    await click('新建挖掘');await expectCount('10');
     await driver.executeScript('arguments[0].value=arguments[1];arguments[0].dispatchEvent(new Event("change",{bubbles:true}))',await element('select[aria-label="当前数据集"]'),datasets[0].dataset_id);
-    await expectCount('5');
+    await expectCount('20');
     assert.deepEqual(starts,[],'navigation and refresh must never create jobs');
-    for(const dataset of datasets){
-      const jobs=await(await fetch(base+`/api/iad/knowledge/jobs?dataset_id=${dataset.dataset_id}`)).json();assert.deepEqual(jobs.jobs,[]);
-    }
-    await click('良品');
+    for(const dataset of datasets){const jobs=await(await fetch(base+`/api/iad/knowledge/jobs?dataset_id=${dataset.dataset_id}`)).json();assert.deepEqual(jobs.jobs,[]);}
     await(await element('summary[data-action="mining-directions"]')).click();
     const shape=await element('input[aria-label="启用方向 整体形态"]');
     await driver.wait(()=>shape.isEnabled(),5000);
@@ -130,7 +123,7 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     assert.equal(await keyboardDirection.isSelected(),false);
     await driver.manage().window().setRect(desktop);
     await(await count()).clear();await(await count()).sendKeys('1');await click('按数量选择');
-    await driver.wait(async()=>await(await element('input[type="checkbox"][aria-label^="选择来源"]')).isSelected(),5000);
+    await click('查看全部已选来源');assert.equal(await(await element('input[type="checkbox"][aria-label^="选择来源"]')).isSelected(),true);await click('完成选择');
     await click('开始挖掘良品知识');
     let knowledge;
     await driver.wait(async()=>{knowledge=(await(await fetch(base+`/api/iad/knowledge?dataset_id=${datasets[0].dataset_id}&kind=normal`)).json()).knowledge;return !!knowledge;},10000);
@@ -145,14 +138,13 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     await element('input[aria-label="启用方向 平面蓝色观察"]');
     await click('保存方向');
     await driver.wait(async()=>!(await(await element('button[data-action="save-mining-directions"]')).isEnabled()),5000);
-    await(await element('.iad-knowledge-jobs summary')).click();
+    await click('返回知识结果');await click('作业记录');await element('table[aria-label="作业列表"]');await(await element('.iad-knowledge-jobs summary')).click();
     await element('button[title="放大冻结观察证据"]');
     await(await element('button[title="放大冻结观察证据"]')).click();
     await element('.iad-viewer-world img');await click('关闭');
     assert.equal(starts.length,1,'Inspecting frozen observations never starts another model job');
 
-    await driver.wait(async()=>await(await element('select[aria-label="知识预设"]')).getAttribute('value')==='',5000);
-    await click('作为预设继续选图');
+    await click('知识条目');await click('作为预设继续选图');
     assert.equal(await(await element('select[aria-label="知识预设"]')).getAttribute('value'),knowledge.version_id);
     await driver.wait(async()=>!(await driver.findElements(By.css('input[type="checkbox"][aria-label^="选择来源"]'))).length,5000);
     assert.equal(starts.length,1,'Continue selection must not automatically create the next job');
@@ -163,11 +155,25 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     await driver.wait(async()=>{conflictVersion=(await(await fetch(base+`/api/iad/knowledge?dataset_id=${datasets[0].dataset_id}&kind=normal`)).json()).knowledge;return !!conflictVersion?.conflicts.length;},10000);
     await click('人工复核');await click('知识冲突');
     await element('form[aria-label="知识处置"]');
+    await element('[aria-label="冲突证据"]');await element('aside[aria-label="知识处置面板"]');
+    await driver.manage().window().setRect({width:1920,height:1080});
+    const conflictLayout=await driver.executeScript("const queue=document.querySelector('[aria-label=知识冲突队列]').getBoundingClientRect(),evidence=document.querySelector('[aria-label=冲突证据]').getBoundingClientRect(),decision=document.querySelector('aside[aria-label=知识处置面板]').getBoundingClientRect();return {queueRight:queue.right,evidenceLeft:evidence.left,evidenceRight:evidence.right,decisionLeft:decision.left}");
+    assert.ok(conflictLayout.evidenceLeft>conflictLayout.queueRight && conflictLayout.decisionLeft>conflictLayout.evidenceRight,'宽屏按队列、证据、处置三区排列');
+
     await(await element('input[aria-label="知识复核人"]')).sendKeys('浏览器复核员');
     await(await element('textarea[aria-label="知识复核原因"]')).sendKeys('补充实际比较证据后再核验');
+    const disposition=await element('select[aria-label="知识处置方式"]');
+    assert.deepEqual(await driver.executeScript('return [...arguments[0].options].map(option=>option.value)',disposition),['retain','revise','retire','need_evidence']);
+    await(await element('select[aria-label="知识处置方式"] option[value="revise"]')).click();
+    await(await element('textarea[aria-label="知识修订建议"]')).sendKeys('此处仅是修订草稿，不属于最终保留决定');
+    for(const action of ['retire','need_evidence','retain']){await(await element(`select[aria-label="知识处置方式"] option[value="${action}"]`)).click();assert.equal((await driver.findElements(By.css('textarea[aria-label="知识修订建议"]'))).length,0);}
+
     await click('提交知识处置');
     await driver.wait(async()=>await(await element('[data-field="knowledge-review-state"]')).getText()==='待重核验',5000);
     assert.equal(starts.length,2,'Human confirmation must not create a mining job');
+    const dispositionRecord=await(await fetch(base+'/api/iad/review/knowledge?'+new URLSearchParams({version_id:conflictVersion.version_id,conflict_id:conflictVersion.conflicts[0].conflict_id}))).json();
+    assert.equal(dispositionRecord.events.at(-1).instruction,'','隐藏的修订草稿不能随保留决定提交');
+
     const conflictFilter=await element('select[aria-label="知识冲突状态"]');
     await driver.executeScript('arguments[0].value="pending_review";arguments[0].dispatchEvent(new Event("change",{bubbles:true}))',conflictFilter);
     await driver.wait(async()=>!(await driver.findElements(By.css('form[aria-label="知识处置"]'))).length,5000);
@@ -177,10 +183,10 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     await click('选择图像重核验');
     assert.equal(await(await element('select[aria-label="知识预设"]')).getAttribute('value'),conflictVersion.version_id);
     assert.equal(starts.length,2,'Returning to configuration never starts revalidation');
-    await element('input[type="checkbox"][aria-label^="选择来源"]');
+    await element('button[data-action="knowledge-group-run"]');
     assert.equal(await(await element('select[aria-label="来源范围"]')).getAttribute('value'),'all','Human recheck returns to explicit historical support selection');
     await driver.navigate().refresh();
-    await element('input[type="checkbox"][aria-label^="选择来源"]');
+    await element('button[data-action="knowledge-group-run"]');
     assert.equal(await(await element('select[aria-label="来源范围"]')).getAttribute('value'),'all');
 
     contradict=false;await click('按数量选择');
@@ -207,7 +213,7 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     await click('继续范围');
     await driver.wait(async()=>await(await element('[data-field="knowledge-scope-state"]')).getText()==='待继续',5000);
     assert.equal(starts.length,3,'Resuming authorization never starts a model');
-    const mode=await element('select[aria-label="知识执行方式"]');
+    await click('新建挖掘');const mode=await element('select[aria-label="知识执行方式"]');
     await driver.executeScript('arguments[0].value="continuous";arguments[0].dispatchEvent(new Event("change",{bubbles:true}))',mode);
     await element('button[data-action="knowledge-agent-run"]');
     await driver.navigate().refresh();
@@ -226,15 +232,15 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     const criterionLocation=encodeURIComponent(JSON.stringify({pageId:'industrial-knowledge',datasetId:predicateDataset.dataset_id,knowledgeKind:'normal',scopeRunId:predicateScope.scope_run_id,miningCount:'1'}));
     await driver.get(base+'/?iad='+criterionLocation);
     await click('重核验历史来源 · 1 张');
-    await element('input[type="checkbox"][aria-label^="选择来源"]');
+    await element('button[data-action="knowledge-group-run"]');
     assert.equal(await(await element('select[aria-label="来源范围"]')).getAttribute('value'),'recheck');
-    assert.equal((await driver.findElements(By.css('input[type="checkbox"][aria-label^="选择来源"]'))).length,1);
+    await click('选择来源图像');assert.equal((await driver.findElements(By.css('input[type="checkbox"][aria-label^="选择来源"]'))).length,1);await click('完成选择');
     const runsBefore=(await(await fetch(base+`/api/iad/knowledge/jobs?dataset_id=${predicateDataset.dataset_id}`)).json()).jobs.length;
     await driver.navigate().refresh();
-    await element('input[type="checkbox"][aria-label^="选择来源"]');
+    await element('button[data-action="knowledge-group-run"]');
     assert.equal(await(await element('select[aria-label="来源范围"]')).getAttribute('value'),'recheck');
     assert.equal((await(await fetch(base+`/api/iad/knowledge/jobs?dataset_id=${predicateDataset.dataset_id}`)).json()).jobs.length,runsBefore,'Selecting pending criteria and refreshing never starts learning');
-    await click('按数量选择');await click('开始挖掘良品知识');
+    await click('按数量选择');await driver.wait(async()=>await(await element('button[data-action="knowledge-group-run"]')).isEnabled(),5000);await click('开始挖掘良品知识');
     let verifiedPredicate;
     await driver.wait(async()=>{verifiedPredicate=(await(await fetch(base+`/api/iad/knowledge?dataset_id=${predicateDataset.dataset_id}&kind=normal`)).json()).knowledge;return verifiedPredicate?.version_id!==revisedPredicate.version_id;},10000);
     assert.deepEqual(verifiedPredicate.checks[0].recheck_sample_ids,[]);

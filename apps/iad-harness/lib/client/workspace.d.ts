@@ -5,6 +5,7 @@ import { type PageId, type WorkbenchLocation } from "../shared/navigation.js";
 import { type KnowledgeStatusFilter } from "../shared/knowledge-presentation.js";
 export { pages, type PageId } from "../shared/navigation.js";
 interface ViewState {
+    checkId: string;
     explorationVersion: string;
     explorationNormalCount: string;
     explorationDefectCount: string;
@@ -58,6 +59,9 @@ export declare class Workspace {
     constructor(conversation: WorkbenchSession);
     private state;
     private listeners;
+    private leaveGuards;
+    registerLeaveGuard(guard: () => boolean): () => void;
+    private canLeave;
     private layout?;
     private imageViews;
     private pagePositions;
@@ -69,6 +73,7 @@ export declare class Workspace {
     getSnapshot: () => WorkspaceState;
     subscribe: (listener: () => void) => () => void;
     view(page: PageId, kind?: import("../shared/domain.generated.js").Kind9): {
+        checkId: string;
         explorationVersion: string;
         explorationNormalCount: string;
         explorationDefectCount: string;

@@ -6,6 +6,10 @@ import { DeleteAction } from "./DeleteAction.js";
 import { DatasetName } from "./DatasetName.js";
 import { FolderMapping } from "./FolderMapping.js";
 import { useFolderPreview } from "../useFolderPreview.js";
+import { WorkbenchHeader } from "./layout/WorkbenchHeader.js";
+import { FloatingMenu } from "./FloatingMenu.js";
+import { Pagination } from "./Pagination.js";
+import { useUnsavedChanges } from "../useUnsavedChanges.js";
 
 function DirectoryPicker({ label, value, onChange, disabled = false }: { label: string; value: string; onChange(value: string): void; disabled?: boolean }) {
   const [listing, setListing] = useState<DirectoryListing | null>(null);
@@ -38,6 +42,7 @@ function DatasetSettings({ dataset, onChanged }: { dataset: Dataset; onChanged()
   const rulesChanged = isFolder && JSON.stringify(folderRules) !== savedRules;
   const directoriesChanged = imageDir !== dataset.image_dir || (!isFolder && annotationDir !== (dataset.annotation_dir || ""));
   const modified = directoriesChanged || rulesChanged;
+  useUnsavedChanges(modified);
 
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [busy, setBusy] = useState(false);
@@ -63,7 +68,7 @@ function DatasetSettings({ dataset, onChanged }: { dataset: Dataset; onChanged()
 
   return <section aria-label="当前数据集详情" aria-busy={busy}><h2>数据集详情</h2>
     <DatasetName dataset={dataset} label="新的数据集名称" onChanged={onChanged} />
-    <dl><dt>数据集 ID</dt><dd><code>{dataset.dataset_id}</code></dd></dl>
+    <details><summary>数据集标识</summary><dl><dt>数据集 ID</dt><dd><code>{dataset.dataset_id}</code></dd></dl></details>
     <dl><dt>格式</dt><dd>{isFolder ? "异常检测目录" : "Labelme"}</dd></dl>
     <dl className="iad-dataset-counts">
       <div><dt>图像数量</dt><dd>{dataset.total_samples}</dd></div>
@@ -87,6 +92,10 @@ function DatasetSettings({ dataset, onChanged }: { dataset: Dataset; onChanged()
 }
 
 export function DatasetManager({ datasets, selected, onChanged }: { datasets: Dataset[]; selected?: Dataset; onChanged(id?: string): void }) {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const filtered = datasets.filter(dataset => dataset.name.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 10)));
   const [importing, setImporting] = useState(false);
   const [importFormat, setImportFormat] = useState<"labelme" | "folder_classification">("labelme");
   const [notice, setNotice] = useState("");
@@ -125,23 +134,16 @@ export function DatasetManager({ datasets, selected, onChanged }: { datasets: Da
     } catch (e) { setError(message(e)); } finally { setBusy(false); }
   }
 
-  return <div className="iad-settings">
-    <section aria-label="数据集列表"><div className="iad-section-header"><h2>数据集 · {datasets.length}</h2><button ref={addButton} className="iad-primary" onClick={() => { setError(""); setNotice(""); setImporting(true); }}>添加数据集</button></div>
-      <div className="iad-dataset-list">{datasets.map(dataset => <article className="iad-dataset-card" key={dataset.dataset_id} data-selected={selected?.dataset_id === dataset.dataset_id}>
-        <div className="iad-dataset-card-header"><DatasetName dataset={dataset} label="卡片数据集名称" onChanged={() => onChanged()} />
-          <DeleteAction title="删除数据集" name={dataset.name} className="iad-card-delete"
+  return <><WorkbenchHeader pageId="industrial-datasets"><button ref={addButton} className="iad-primary" onClick={() => { setError(""); setNotice(""); setImporting(true); }}>添加数据集</button></WorkbenchHeader><div className="iad-settings">
+    <section aria-label="数据集列表"><div className="iad-section-header"><h2>数据集 · {datasets.length}</h2><input type="search" aria-label="搜索数据集" placeholder="搜索数据集" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></div>
+      <div className="iad-table-scroll"><table className="iad-resource-table" aria-label="数据集列表"><thead><tr><th>数据集名称</th><th>格式</th><th className="iad-number">图像</th><th className="iad-number">标注 / 标签</th><th>操作</th></tr></thead><tbody>{filtered.slice((currentPage - 1) * 10, currentPage * 10).map(dataset => <tr className="iad-dataset-row" key={dataset.dataset_id} data-selected={selected?.dataset_id === dataset.dataset_id}>
+        <td><DatasetName dataset={dataset} label="列表数据集名称" onChanged={() => onChanged()} /></td>
+        <td>{dataset.format === "folder_classification" ? "异常检测目录" : "Labelme"}</td><td className="iad-number">{dataset.total_samples}</td><td className="iad-number">{dataset.format === "folder_classification" ? (dataset.labeled_sample_count ?? 0) : dataset.annotation_count}</td>
+        <td><div className="iad-row"><button type="button" aria-label={`选择数据集 ${dataset.name}`} aria-pressed={selected?.dataset_id === dataset.dataset_id} onClick={() => onChanged(dataset.dataset_id)}>配置</button>
+          <FloatingMenu label={`更多操作 ${dataset.name}`} summary="更多" className="iad-row-menu"><DeleteAction title="删除数据集" name={dataset.name}
             description="删除其样本记录、知识、审计和复核记录，保留服务器上的原始图像与标注文件。" restoreFocus={() => addButton.current}
-            onDelete={async () => { await request(`/datasets/${encodeURIComponent(dataset.dataset_id)}`, undefined, "DELETE"); setNotice(`已删除数据集“${dataset.name}”`); onChanged(); }} /></div>
-        <button type="button" className="iad-dataset-select" aria-label={`选择数据集 ${dataset.name}`} aria-pressed={selected?.dataset_id === dataset.dataset_id} onClick={() => onChanged(dataset.dataset_id)}>
-          <span className="iad-dataset-counts">
-            <span><span>图像数量</span><strong>{dataset.total_samples}</strong></span>
-            <span>
-              <span>{dataset.format === "folder_classification" ? "明确标签" : "标注数量"}</span>
-              <strong>{dataset.format === "folder_classification" ? (dataset.labeled_sample_count ?? 0) : dataset.annotation_count}</strong>
-            </span>
-          </span>
-        </button>
-      </article>)}</div>{notice && <p role="status">{notice}</p>}{!datasets.length && <p className="iad-muted">添加服务器上的 Labelme 图像目录与标注目录，或异常检测分类目录。</p>}
+            onDelete={async () => { await request(`/datasets/${encodeURIComponent(dataset.dataset_id)}`, undefined, "DELETE"); setNotice(`已删除数据集“${dataset.name}”`); onChanged(); }} /></FloatingMenu></div></td>
+      </tr>)}</tbody></table></div><Pagination total={filtered.length} page={currentPage} size={10} unit="个数据集" onPage={setPage} />{notice && <p role="status">{notice}</p>}{!filtered.length && <p className="iad-muted">{datasets.length ? "没有匹配的数据集。" : "添加服务器上的 Labelme 图像目录与标注目录，或异常检测分类目录。"}</p>}
     </section>
     {selected ? <DatasetSettings key={selected.dataset_id} dataset={selected} onChanged={onChanged} /> : <section><p>选择或添加数据集。</p></section>}
     {importing && <Modal title="添加数据集" onClose={() => { if (!busy) setImporting(false); }}>
@@ -175,5 +177,5 @@ export function DatasetManager({ datasets, selected, onChanged }: { datasets: Da
         </div>
       </form>
     </Modal>}
-  </div>;
+  </div></>;
 }

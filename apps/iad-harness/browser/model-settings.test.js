@@ -179,6 +179,18 @@ test('authenticated LAN browser saves provider settings and switches models', {t
     phase = 'independent model settings page';
     await (await driver.wait(until.elementLocated(By.css('button[aria-label="模型设置"]')), 10000)).click();
     await driver.wait(until.elementLocated(By.css('[data-page="industrial-model-settings"]')), 10000);
+    const chapter = await driver.findElement(By.css('[aria-label="所在章节"]'));
+    assert.equal(await chapter.getText(),'工具');
+    const headingSize = await driver.executeScript('return parseFloat(getComputedStyle(document.querySelector(".iad-workbench h1")).fontSize)');
+    assert.ok(headingSize >= 28, 'shared page title follows the approved type scale');
+    const navigation = await driver.wait(until.elementLocated(By.css('nav[aria-label="工业工作台导航"]')), 5000);
+    const navigationText = await navigation.getText();
+    for (const chapter of ['数据准备','知识构建','质量审核']) assert.ok(navigationText.includes(chapter));
+    const workspaces = await driver.findElement(By.css('details[data-native-workspaces]'));
+    assert.equal(await workspaces.getAttribute('open'),null,'native workspaces start folded on business pages');
+    await workspaces.findElement(By.css('summary')).click();
+    assert.ok((await workspaces.getText()).includes('Default workspace'));
+    await workspaces.findElement(By.css('summary')).click();
     assert.equal((await driver.findElements(By.css('select[aria-label="当前数据集"]'))).length, 0);
     assert.equal(await (await driver.findElement(By.css('select[aria-label="工作台提供商"]'))).getAttribute('value'), 'first-service');
     assert.equal(await (await driver.findElement(By.css('select[aria-label="工作台模型"]'))).getAttribute('value'), 'first-model');

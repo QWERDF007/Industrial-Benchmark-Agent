@@ -1,0 +1,1 @@
+{"version":3,"file":"KnowledgeVersions.d.ts","sourceRoot":"","sources":["../../../src/client/components/KnowledgeVersions.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAmB,MAAM,OAAO,CAAC;AACxC,OAAO,KAAK,EAAE,gBAAgB,EAAE,MAAM,2BAA2B,CAAC;AAGlE,wBAAgB,iBAAiB,CAAC,EAAE,QAAQ,EAAE,QAAQ,EAAE,EAAE;IAAE,QAAQ,EAAE,gBAAgB,EAAE,CAAC;IAAC,QAAQ,CAAC,EAAE,EAAE,MAAM,GAAG,IAAI,CAAA;CAAE,qBAMrH"}

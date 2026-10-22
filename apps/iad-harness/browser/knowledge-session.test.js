@@ -65,6 +65,7 @@ test('native knowledge workbench submits a continuous scope into the actual DSH 
   const dataset=await api('/datasets/import',{format:'labelme',name:'原生连续知识',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')});
   await(await element("button[aria-label^='知识挖掘']")).click();await element('select[aria-label="当前数据集"]');await button('刷新');
   await driver.wait(async()=>!!(await driver.findElements(By.css(`select[aria-label="当前数据集"] option[value="${dataset.dataset_id}"]`))).length,10000);await(await element(`select[aria-label="当前数据集"] option[value="${dataset.dataset_id}"]`)).click();
+  await button("新建挖掘");
   await(await element('input[aria-label="挖掘图像数量"]')).clear();await(await element('input[aria-label="挖掘图像数量"]')).sendKeys('20');
   await driver.executeScript('arguments[0].value="continuous";arguments[0].dispatchEvent(new Event("change",{bubbles:true}))',await element('select[aria-label="知识执行方式"]'));
   await button('在Agent中连续挖掘');await driver.wait(()=>completed,60000,'Native Session must execute all three actual groups');
@@ -75,7 +76,7 @@ test('native knowledge workbench submits a continuous scope into the actual DSH 
   for(const group of await driver.findElements(By.xpath("//button[contains(., 'Completed') and @aria-expanded='false']")))await group.click();
   for(const group of await driver.findElements(By.xpath("//button[contains(., 'Called tools') and @aria-expanded='false']")))await group.click();
   const scopeLink=await element(`button[data-iad-scope-id="${scope.scope_run_id}"]`);await driver.executeScript("arguments[0].scrollIntoView({block:'center'})",scopeLink);await scopeLink.click();await element('[aria-label="连续范围进度"]');assert.match(await(await element('[aria-label="连续范围进度"]')).getText(),/已观察 43.*剩余 0/);
-  assert.ok(await(await element('select[aria-label="知识预设"]')).getAttribute('value'));
+  await button('选择此范围');assert.ok(await(await element('select[aria-label="知识预设"]')).getAttribute('value'));
  }catch(error){if(driver)console.error((await driver.findElement(By.css('body')).getText()).slice(-1600));console.error(log.slice(-1200).replace(/(token=)[^\s&]+/g,'$1<redacted>'));throw error;}
  finally{await driver?.quit();if(host.exitCode===null){host.kill('SIGTERM');await Promise.race([new Promise(resolve=>host.once('exit',resolve)),delay(3000)]);if(host.exitCode===null)host.kill('SIGKILL');}model.closeAllConnections();await new Promise(resolve=>model.close(resolve));await fs.rm(root,{recursive:true,force:true});}
 });

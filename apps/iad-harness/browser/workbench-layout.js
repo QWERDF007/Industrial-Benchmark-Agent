@@ -5,7 +5,7 @@ import axe from "axe-core";
 import contrast from "wcag-contrast";
 import { By, Key, until } from "selenium-webdriver";
 
-const pages = ["数据集管理", "图像浏览", "知识挖掘", "模型审计", "人工复核"];
+const pages = ["数据集管理", "图像浏览", "方向探索", "知识挖掘", "模型审计", "人工复核"];
 const viewports = [[1920, 1080], [1366, 768], [1280, 800], [375, 812]];
 
 /** Real host surfaces, browser text zoom and OS motion preference; no application state substitutes. */
@@ -28,19 +28,17 @@ export async function verifyWorkbenchLayout(driver, output, { pageLabels = pages
           await (await element(`button[aria-label^='${label}']`)).click();
           await driver.wait(() => driver.executeScript("return document.querySelector('.iad-workbench h1')?.textContent===arguments[0]", label), 10000);
           if (label === "模型审计") await driver.findElement(By.xpath("//button[normalize-space(.)='结果']")).click();
-          await driver.wait(() => driver.executeScript("const e=document.querySelector('.iad-workbench');return e.querySelector(arguments[0]==='数据集管理'?'.iad-settings':'.iad-kpis') && !e.textContent.includes('加载中…') && !e.textContent.includes('正在读取知识…')", label), 10000);
+          await driver.wait(() => driver.executeScript("const e=document.querySelector('.iad-workbench');return e && ![...e.querySelectorAll('[role=status]')].some(node=>node.getClientRects().length && /^(加载中|正在读取知识)/.test(node.textContent.trim()))", label), 10000);
           if (label === "数据集管理") {
-            assert.equal((await driver.findElements(By.css(".iad-header select,.iad-header button,.iad-kpis"))).length, 0, "数据集管理不重复显示全局选择与统计");
-            const layout = await driver.executeScript("const root=document.querySelector('.iad-workbench');return {bottom:root.getBoundingClientRect().bottom-parseFloat(getComputedStyle(root).paddingBottom),panels:[...document.querySelector('.iad-settings').children].filter(e=>e.tagName==='SECTION').map(e=>{const r=e.getBoundingClientRect();return {width:r.width,top:r.top,bottom:r.bottom}})}");
-            const [cards, details] = layout.panels;
-            if (width >= 1280) {
-              assert.ok(cards.width > details.width * 1.5, "数据集卡片区占主要空间");
-              assert.ok(layout.panels.every(panel=>panel.bottom >= layout.bottom-1) && Math.abs(cards.bottom-details.bottom) < 1, "两侧面板铺满工作区高度且底部对齐");
-            } else assert.ok(details.top > cards.top, "窄屏详情置于列表下方");
+            assert.equal((await driver.findElements(By.css(".iad-header select,.iad-kpis"))).length, 0, "数据集管理不重复显示全局选择与统计");
+            const layout = await driver.executeScript("const list=document.querySelector('.iad-settings>section').getBoundingClientRect(),details=document.querySelector('[aria-label=当前数据集详情]').getBoundingClientRect();return {list:{top:list.top,bottom:list.bottom,width:list.width},details:{top:details.top,width:details.width}}");
+            assert.ok(layout.details.top >= layout.list.bottom, "数据集配置位于资源表下方");
+            assert.ok(Math.abs(layout.list.width-layout.details.width)<2, "资源表和配置共享完整内容宽度");
           }
-          const control = await element(label === "数据集管理" ? ".iad-section-header button" : ".iad-workbench .iad-header select");
+          const control = await element(label === "数据集管理" ? ".iad-header button" : ".iad-workbench .iad-header select");
           await driver.executeScript("arguments[0].focus()", control);
           await driver.actions().sendKeys(Key.TAB).perform();
+          await driver.wait(() => driver.executeScript("return [...document.querySelectorAll('.iad-workbench .iad-viewer-world')].every(e=>Number(e.dataset.scale)>0 && e.getBoundingClientRect().width>0 && e.getBoundingClientRect().height>0)"), 5000, "画布完成尺寸测量与适应窗口后验收");
           const metrics = await driver.executeScript(() => {
             const root = document.querySelector(".iad-workbench"), focus = document.activeElement;
             const r = root.getBoundingClientRect(), f = focus.getBoundingClientRect(), s = getComputedStyle(focus);
@@ -102,6 +100,10 @@ export async function verifyWorkbenchLayout(driver, output, { pageLabels = pages
           });
           metrics.text = metrics.text.map(item => ({ ...item, ratio: contrast.rgb(item.foreground, item.background) }));
           metrics.borders = metrics.borders.map(item => ({ ...item, ratio: Math.max(contrast.rgb(item.outer, item.fill), contrast.rgb(item.outer, item.border)) }));
+          if(label === "人工复核" && zoom === 1 && width === 1366) {
+            const focused=await driver.executeScript("const canvas=document.querySelector('.iad-review-focused .iad-viewer-viewport'),submit=document.querySelector('.iad-review-submit button');if(!canvas||!submit)return null;const c=canvas.getBoundingClientRect(),s=submit.getBoundingClientRect();return {canvas:[c.width,c.height],submit:[s.top,s.bottom],height:innerHeight}");
+            if(focused)assert.ok(focused.canvas[0]>=200 && focused.canvas[1]>=120 && focused.submit[0]>=0 && focused.submit[1]<=focused.height,`原生1366图像与提交入口同时可见：${JSON.stringify(focused)}`);
+          }
           const accessibility = await driver.executeAsyncScript(`const done=arguments[arguments.length-1];axe.run(document.querySelector('.iad-workbench'),{runOnly:['button-name','image-alt','label','aria-valid-attr','aria-valid-attr-value','aria-roles']}).then(result=>done({violations:result.violations,incomplete:result.incomplete,passes:result.passes.reduce((n,r)=>n+r.nodes.length,0)})).catch(error=>done({error:String(error)}));`);
           results.push({ ...scope, ...metrics, accessibility });
           await fs.writeFile(path.join(output, "verification.json"), JSON.stringify(results, null, 2));

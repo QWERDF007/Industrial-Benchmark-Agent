@@ -5,6 +5,8 @@ import {message, request} from '../api.js';
 import {useWorkbenchModel} from '../models.js';
 import {workbenchStyles} from '../styles.js';
 import {ProviderManager} from './ProviderManager.js';
+import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
+import {PageTabs} from './layout/PageTabs.js';
 
 type Selection = NonNullable<WorkbenchModelSettings['selection']>;
 const numbers = [
@@ -50,9 +52,8 @@ export function ModelSettingsPage() {
     } catch (failure) {setError(message(failure));} finally {setBusy(false);}
   }
   return <div className="iad-workbench" data-page="industrial-model-settings"><style>{workbenchStyles}</style>
-    <header className="iad-header"><h1>模型设置</h1><button disabled={busy || loading} onClick={() => void refresh()}>刷新</button></header>
-    <nav className="iad-tabs" aria-label="模型设置分区"><button className={tab === 'model' ? 'active' : ''} aria-pressed={tab === 'model'} onClick={() => {setTab('model'); void refresh();}}>工作台模型</button>
-      <button className={tab === 'providers' ? 'active' : ''} aria-pressed={tab === 'providers'} onClick={() => setTab('providers')}>提供商</button></nav>
+    <WorkbenchHeader pageId="industrial-model-settings"><button disabled={busy || loading} onClick={() => void refresh()}>刷新</button></WorkbenchHeader>
+    <PageTabs label="模型设置分区" items={[{id: 'model', label: '工作台模型'}, {id: 'providers', label: '提供商'}]} value={tab} onChange={value => {setTab(value); if (value === 'model') void refresh();}}>
     {(loadError || error) && <p role="alert" className="iad-error">{error || loadError}</p>}
     {tab === 'providers' ? <section className="iad-provider-manager" aria-label="提供商管理"><ProviderManager /></section> : <section className="iad-job-section iad-model-configuration">
       <h2>统一工作台模型</h2><p className="iad-muted">方向探索、良品/异常知识挖掘、模型审计共用。DSH会话使用自己的模型选择。</p>
@@ -81,5 +82,6 @@ export function ModelSettingsPage() {
       </form>}
       {notice && <p role="status">{notice}</p>}
     </section>}
+    </PageTabs>
   </div>;
 }

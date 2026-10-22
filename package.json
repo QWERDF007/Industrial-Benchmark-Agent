@@ -18,6 +18,9 @@
     "overrides": {
       "undici": "6.21.1",
       "@deepseek-ai/dsh-client-ui-settings": "0.2.1-rc.2"
+    },
+    "patchedDependencies": {
+      "@deepseek-ai/dsh-client-ui-sidebar@0.2.0-rc.2": "patches/@deepseek-ai__dsh-client-ui-sidebar@0.2.0-rc.2.patch"
     }
   },
   "devDependencies": {

@@ -62,6 +62,7 @@ test('DSH conversation explores mixed examples and adopts directions only when r
   assert.ok(trace.every(v=>!v.result.isError),JSON.stringify(trace));assert.equal(visualCalls.length,1);
   assert.equal(trace[4].result.value.status,'COMPLETED');
   assert.ok(trace[3].result.meta.links.some(v=>v.location.pageId==='industrial-exploration'));
+  assert.equal(trace[5].result.meta.links.find(link=>link.label==='查看探索方向').location.tab,'results','方向结果链接应离开新建视图');
   const prompt=await session.ctx.iadPythonBridge.execute('knowledge_prompt_get',{dataset_id:dataset.dataset_id,kind:'normal'});
   assert.ok(prompt.configuration.directions.some(d=>d.origin==='explored'&&d.title==='孔内局部外观'&&d.enabled));
   assert.equal((await session.ctx.iadPythonBridge.execute('knowledge_get',{dataset_id:dataset.dataset_id,kind:'normal'})).knowledge,null);

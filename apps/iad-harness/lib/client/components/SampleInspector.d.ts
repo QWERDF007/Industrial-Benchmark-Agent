@@ -1,7 +1,10 @@
 import React from "react";
 import type { JobSnapshot, Dataset, ReviewDecisionRecord } from "../../shared/contracts.js";
 import type { SampleNavigation } from "../useSampleNavigation.js";
-export declare function SampleInspector({ dataset, sampleId, mode, revision, onReviewed, jobs, onJobsChanged, navigation }: {
+export declare function SampleInspector({ dataset, sampleId, mode, revision, onReviewed, jobs, onJobsChanged, navigation, queue, filters, advanceOnSubmit }: {
+    queue?: React.ReactNode;
+    filters?: React.ReactNode;
+    advanceOnSubmit?: boolean;
     navigation?: SampleNavigation;
     jobs: JobSnapshot[];
     onJobsChanged(): void;

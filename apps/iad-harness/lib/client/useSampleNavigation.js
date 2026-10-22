@@ -27,7 +27,7 @@ export function useSampleNavigation(pageId, taskId, query, result, enabled) {
         setTarget(target => state.active && state.pageId === pageId && target === view.selected ? target : "");
         return () => { pending.current?.abort(); pending.current = undefined; };
     }, [query, view.selected, enabled, state.active, state.pageId, state.datasetId, pageId]);
-    async function move(offset) {
+    async function move(offset, display = "fullscreen") {
         if (pending.current || !taskId || (offset < 0 ? !previous : !next))
             return;
         const controller = new AbortController();
@@ -51,7 +51,7 @@ export function useSampleNavigation(pageId, taskId, query, result, enabled) {
                 return;
             if (!sample)
                 throw new Error("当前筛选范围已变化，请刷新后重试");
-            setTarget(sample.sample_id);
+            setTarget(display === "fullscreen" ? sample.sample_id : "");
             workspace.updateView(pageId, { page, selected: sample.sample_id, inspection: null });
         }
         catch (error) {

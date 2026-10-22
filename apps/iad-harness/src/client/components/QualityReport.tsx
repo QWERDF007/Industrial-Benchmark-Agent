@@ -9,10 +9,10 @@ export function QualityReport({ report }: { report: Report }) {
     ["人工核验覆盖率", quality.human_verification_coverage],
   ] as const;
   return <>
-    <dl>{dimensions.map(([label, ratio]) => <React.Fragment key={label}>
+    <h3>覆盖与可用性</h3><dl>{dimensions.map(([label, ratio]) => <React.Fragment key={label}>
       <dt>{label}</dt><dd><strong>{ratio.percent === null ? "未评估" : `${ratio.percent}%`}</strong> · {ratio.numerator} / {ratio.denominator}</dd>
     </React.Fragment>)}</dl>
-    <dl>
+    <h3>模型观察与人工核验</h3><dl>
       <dt>疑点图像 / 数</dt><dd>{quality.model.suspect_samples} / {quality.model.finding_count}</dd>
       <dt>缺证 / 冲突图像</dt><dd>{quality.model.missing_evidence_samples} / {quality.model.conflict_samples}</dd>
       <dt>模型不确定</dt><dd>{quality.model.uncertain_samples}</dd>
@@ -21,7 +21,7 @@ export function QualityReport({ report }: { report: Report }) {
       <dt>人工待定 / 跳过</dt><dd>{report.human_uncertain_count} / {report.human_skipped_count}</dd>
     </dl>
     {quality.label_comparison && (
-      <dl>
+      <section><h3>标签对照</h3><dl>
         <dt>标签不一致比例</dt>
         <dd>
           <strong>{quality.label_comparison.inconsistency_ratio.percent === null ? "未评估" : `${quality.label_comparison.inconsistency_ratio.percent}%`}</strong>
@@ -38,7 +38,7 @@ export function QualityReport({ report }: { report: Report }) {
           <dt>审计后来源变动</dt>
           <dd>{quality.label_comparison.source_changed_count} 张图像规则或文件已更新，不可作为当前标签核验依据</dd>
         </>}
-      </dl>
+      </dl></section>
     )}
     <details className="iad-analysis"><summary>口径、范围与版本</summary>
       <dl>

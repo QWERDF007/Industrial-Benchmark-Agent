@@ -5,6 +5,7 @@ export type SampleWindow = SamplePage & {
     query: string;
 };
 export interface SampleNavigation extends ImageNavigation {
+    move(offset: -1 | 1, display?: "embedded" | "fullscreen"): void;
     open: boolean;
     opened(): void;
     cancel(): void;

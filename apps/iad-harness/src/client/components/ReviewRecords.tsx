@@ -23,8 +23,8 @@ export function ReviewRecords({ datasetId, page, search, selected, revision, onP
   return <section className="iad-review-records" aria-label="复核记录">
     <label className="iad-field">搜索复核记录<input aria-label="搜索复核记录" placeholder="图像名、复核人或说明" value={search} onChange={event => onSearch(event.target.value)} /></label>
     {error ? <div role="alert" className="iad-error">{error}<button onClick={() => setRetry(value => value + 1)}>重新加载记录</button></div>
-      : loading ? <p role="status">加载复核记录…</p> : <>{pagination}
-        {result?.items.length ? <div className="iad-table-scroll" role="region" aria-label="复核历史表格" tabIndex={0} onFocus={event => { if (event.target === event.currentTarget) event.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" }); }}><table>
+      : loading ? <p role="status">加载复核记录…</p> : <>
+        {result?.items.length ? <div className="iad-table-scroll" role="region" aria-label="复核历史表格" tabIndex={0} onFocus={event => { if (event.target === event.currentTarget) event.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" }); }}><table className="iad-resource-table">
           <caption>人工裁决历史</caption><thead><tr><th>图像</th><th>人工裁决</th><th>复核人 / 时间</th><th>复核说明</th><th>操作</th></tr></thead>
           <tbody>{result.items.map(record => <tr key={record.decision_id} data-decision-id={record.decision_id} data-selected={record.sample_id === selected}>
             <td title={record.relative_path}>{record.relative_path}</td><td>{reviewLabel(record.decision)}</td>
