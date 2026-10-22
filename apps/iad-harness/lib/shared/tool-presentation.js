@@ -1,5 +1,7 @@
 import { jobStatuses } from "./job-display.js";
 export const workbenchTools = {
+    direction_exploration_start: "探索检查方向", direction_exploration_status: "方向探索状态", direction_exploration_get: "方向探索结果",
+    direction_exploration_cancel: "停止方向探索", direction_exploration_retry: "重试方向探索", knowledge_directions_adopt: "采用探索方向",
     dataset_list: "数据集列表", dataset_import: "接入数据集", dataset_rescan: "重新扫描目录", dataset_report: "数据集质量报告", knowledge_get: "知识版本",
     knowledge_scope_open: "建立知识范围", knowledge_scope_get: "知识范围进度", knowledge_scope_stop: "停止知识范围", knowledge_scope_resume: "继续知识范围",
     knowledge_details: "知识条目", knowledge_conflict_context: "知识冲突", knowledge_job_observations: "知识观察证据",
@@ -20,7 +22,7 @@ export function toolPresentation(value) {
         if (typeof record.scope_run_id === "string")
             links.push({ label: "查看连续范围", location: { pageId: "industrial-knowledge", datasetId, knowledgeKind, scopeRunId: record.scope_run_id, tab: "results" } });
         if (typeof record.run_id === "string") {
-            const pageId = record.job_type === "MODEL_AUDIT" ? "industrial-audit" : "industrial-knowledge";
+            const pageId = record.job_type === "DIRECTION_EXPLORATION" ? "industrial-exploration" : record.job_type === "MODEL_AUDIT" ? "industrial-audit" : "industrial-knowledge";
             links.push({ label: "查看作业", location: { pageId, datasetId, knowledgeKind, job: record.run_id, tab: "jobs" } });
             if (typeof record.status === "string" && record.status in jobStatuses && typeof record.completed === "number" && typeof record.failed === "number" && typeof record.total_samples === "number") {
                 job = { status: record.status, completed: record.completed, failed: record.failed, total_samples: record.total_samples };
@@ -28,6 +30,8 @@ export function toolPresentation(value) {
             if (typeof record.knowledge_version_id === "string")
                 links.push({ label: "查看知识版本", location: { pageId, datasetId, knowledgeKind, version: record.knowledge_version_id, tab: "results" } });
         }
+        if (record.exploration && typeof record.exploration === "object" && "version_id" in record.exploration && typeof record.exploration.version_id === "string")
+            links.push({ label: "查看探索方向", location: { pageId: "industrial-exploration", datasetId, version: record.exploration.version_id } });
         links.push({ label: "数据集管理", location: { pageId: "industrial-datasets", datasetId } }, { label: "图像浏览", location: { pageId: "industrial-images", datasetId } }, { label: "质量报告", location: { pageId: "industrial-audit", datasetId, tab: "reports" } });
     }
     if (Array.isArray(record.datasets))

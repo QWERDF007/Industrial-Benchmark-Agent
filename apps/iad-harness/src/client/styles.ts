@@ -1,6 +1,7 @@
 import { themeStyles } from "./theme.js";
 import { controlStyles } from "./controls.js";
 export const workbenchStyles = themeStyles + controlStyles + `
+.iad-exploration-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.iad-exploration-groups fieldset{border:0;padding:0;min-width:0}.iad-exploration-page{display:grid;gap:20px;min-width:0}.iad-exploration-page>.iad-info-group{min-width:0}.iad-exploration-page textarea{width:100%}@media(max-width:760px){.iad-exploration-groups{grid-template-columns:minmax(0,1fr)}}
 .iad-workbench {height:100%;box-sizing:border-box;overflow:auto;min-width:0;overflow-wrap:anywhere;padding:24px;color:var(--iad-text);background:var(--iad-canvas);font:var(--dsh-content-font-size,14px)/1.55 system-ui,sans-serif;}
 .iad-workbench * {box-sizing:border-box;}
 .iad-field select {width:100%;}

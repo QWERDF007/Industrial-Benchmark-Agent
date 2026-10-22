@@ -12,7 +12,7 @@ class MiningDirection(AnalysisModel):
     title: NonBlankText
     instruction: NonBlankText
     enabled: bool = True
-    origin: Literal['preset', 'dataset'] = 'dataset'
+    origin: Literal['preset', 'dataset', 'explored'] = 'dataset'
 
 
 class MiningPromptConfiguration(AnalysisModel):

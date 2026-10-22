@@ -19,6 +19,7 @@ Linux x64 的原生图像附件要求 GLIBC ≥ 2.28，见 [Sharp 官方运行�
 - **模型审计**：导入 Labelme 或目录图像级数据并挖掘可用良品知识后，按筛选范围启动审计；执行与证据入口见[架构索引](docs/architecture.md)。
 - **人工复核**：查看复核明细并提交人工裁决。
 - **插件**：保留 DSH 原生插件管理入口。
+- **方向探索**：在侧栏【方向探索】联合选择良品、异常图；也可在 DSH 对话中调用 [`explore-inspection-directions`](apps/iad-harness/src/server/exploration/index.ts)。结果在【知识挖掘 → 挖掘方向 → 探索方向】勾选、修改并保存后使用；来源和验收见[独立方向探索](docs/specs/direction-exploration.md)。
 - **知识工具**：[独立良品/异常挖掘工具](apps/iad-harness/src/server/knowledge/index.ts)可直接调用；用户请求完整分析时，按需加载 [`analyze-dataset`](apps/iad-harness/src/server/workbench-tools/skill.ts) 技能。完整流程不注入普通会话系统提示词。
 - **DSH 对话**：例如“服务器上的 `/data1/data/xxx` 数据集，挖掘良品、不良品知识，审计并评估质量”。Agent 检查目录并识别 Labelme 图像、标注位置，调用与数据集管理相同的导入入口；[原生工具与流程指引](apps/iad-harness/src/server/workbench-tools/index.ts)定义目录识别与歧义处理。分项质量报告使用[统一口径与契约](python/iad_core/workbench/report.py)，会话和页面读取同一报告。Labelme 与目录图像级数据共用[统一接入契约](python/iad_core/dataset/registry.py)，现有实现见[源码索引](docs/architecture.md)，图组工具与统一知识页面的目标见[规格](docs/specs/incremental-knowledge-mining.md)。
 

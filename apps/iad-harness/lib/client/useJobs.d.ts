@@ -1,5 +1,5 @@
 import type { JobSnapshot } from "../shared/contracts.js";
-export declare function useJobs(kind: "audit" | "knowledge", datasetId: string, onProgress: () => void, selectedRunId?: string): {
+export declare function useJobs(kind: "audit" | "knowledge" | "exploration", datasetId: string, onProgress: () => void, selectedRunId?: string): {
     jobs: JobSnapshot[];
     error: string;
     refresh: () => void;

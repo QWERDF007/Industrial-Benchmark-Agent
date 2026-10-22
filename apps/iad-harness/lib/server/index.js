@@ -15,6 +15,7 @@ import * as benchmark from "./benchmark/index.js";
 import * as evaluation from "./evaluation/index.js";
 import { DATASET_ANALYSIS_SKILL } from "./workbench-tools/skill.js";
 import { createKnowledgeTools } from "./knowledge/index.js";
+import { createExplorationTools, DIRECTION_EXPLORATION_SKILL } from "./exploration/index.js";
 import { createWorkbenchTools } from "./workbench-tools/index.js";
 export { SYSTEM_POLICIES, ALLOWED_TOOL_SURFACE } from "./policy/index.js";
 export { CoreClient } from "./core-client/index.js";
@@ -73,8 +74,11 @@ export function apply(ctx, config = {}) {
     evaluation.apply(ctx);
     for (const tool of createKnowledgeTools(bridge, ctx))
         ctx.tools.register(tool);
+    for (const tool of createExplorationTools(bridge, ctx))
+        ctx.tools.register(tool);
     for (const tool of createWorkbenchTools(bridge, ctx))
         ctx.tools.register(tool);
     ctx.skills.register(DATASET_ANALYSIS_SKILL);
+    ctx.skills.register(DIRECTION_EXPLORATION_SKILL);
     ctx.logger?.info?.("Industrial Benchmark Agent Root Harness Bundle initialized successfully.");
 }

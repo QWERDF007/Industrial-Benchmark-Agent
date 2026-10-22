@@ -14,6 +14,7 @@
 | 数据模型、数据库与仓储 | [存储](../python/iad_core/storage/)、[知识来源存储迁移](../python/iad_core/storage/knowledge_schema.py) |
 | 查询、筛选、数量与分项报告 | [查询](../python/iad_core/workbench/query.py)、[报告](../python/iad_core/workbench/report.py) |
 | 知识资格、来源分页、冻结内容与来源变化 | [资格](../python/iad_core/knowledge/sources.py)、[来源契约](../python/iad_core/knowledge/models.py)、[内容指纹](../python/iad_core/evidence/sources.py)、[来源与变化查询](../python/iad_core/knowledge/query.py) |
+| 联合方向探索、不可变结果及采用 | [探索领域](../python/iad_core/exploration/)、[独立技能与工具](../apps/iad-harness/src/server/exploration/index.ts)、[探索页面](../apps/iad-harness/src/client/components/ExplorationPage.tsx)、[公开链测试](../tests/test_direction_exploration.py)、[原生会话](../apps/iad-harness/test/exploration-session.test.js)、[浏览器链](../apps/iad-harness/browser/exploration.test.js) |
 | 挖掘方向、业务提示词和冻结 | [方向契约与默认项](../python/iad_core/knowledge/instructions.py)、[配置存储](../python/iad_core/knowledge/prompts.py)、[方向编辑](../apps/iad-harness/src/client/components/KnowledgeDirections.tsx)、[观察范围](../apps/iad-harness/src/client/components/KnowledgeDiscovery.tsx) |
 | 图组契约、支持策略与继承 | [图组及宿主调用](../python/iad_core/knowledge/requests.py)、[支持分组](../python/iad_core/knowledge/support.py)、[证据继承](../python/iad_core/knowledge/evolution.py)、[选图配置](../apps/iad-harness/src/client/components/KnowledgeSetup.tsx) |
 | 先观察、修订比较、冲突隔离与人审重核验 | [冻结观察](../python/iad_core/knowledge/observation.py)、[冲突](../python/iad_core/knowledge/conflicts.py)、[重核验](../python/iad_core/knowledge/recheck.py)、[输入冻结](../python/iad_core/knowledge/frozen.py) |

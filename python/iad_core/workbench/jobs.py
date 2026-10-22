@@ -95,7 +95,7 @@ class JobRunner:
               parent_run_id: Optional[str] = None, root_run_id: Optional[str] = None) -> dict:
         if job_type not in self.job_types or not request["sample_ids"]:
             raise ValueError("Invalid job type or empty sample scope")
-        run_id = ("audit_" if job_type == "MODEL_AUDIT" else "knowledge_") + uuid.uuid4().hex
+        run_id = {'MODEL_AUDIT': 'audit_', 'DIRECTION_EXPLORATION': 'explore_'}.get(job_type, 'knowledge_') + uuid.uuid4().hex
         payload = {"request": request, "root_run_id": root_run_id or run_id, "parent_run_id": parent_run_id,
                    "completed": 0, "failed": 0, "errors": [], "completed_sample_ids": [],
                    "failed_sample_ids": [], "total_samples": len(request["sample_ids"]), "cancel_requested": False}

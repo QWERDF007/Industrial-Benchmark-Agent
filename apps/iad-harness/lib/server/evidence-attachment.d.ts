@@ -10,7 +10,7 @@ export declare const evidenceOutput: {
         type: "json";
     }>): ContentBlock[];
 };
-export declare function readEvidenceAttachment(bridge: PythonBridge, ctx: Context, operation: "knowledge_evidence" | "audit_evidence", args: {
+export declare function readEvidenceAttachment(bridge: PythonBridge, ctx: Context, operation: "knowledge_evidence" | "audit_evidence" | "direction_exploration_evidence", args: {
     evidence_id: string;
     run_id?: string;
     version_id?: string;

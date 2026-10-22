@@ -48,6 +48,11 @@ class Database:
             conn.execute("BEGIN IMMEDIATE")
             cursor = conn.cursor()
 
+            cursor.execute('''CREATE TABLE IF NOT EXISTS direction_explorations (
+                version_id TEXT PRIMARY KEY, dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id) ON DELETE CASCADE,
+                run_id TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL, snapshot_json TEXT NOT NULL)''')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_exploration_dataset ON direction_explorations(dataset_id,created_at)')
+
             # 1. inspection_tasks
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS inspection_tasks (

@@ -1,0 +1,101 @@
+import hashlib
+import json
+from datetime import datetime, timezone
+from uuid import uuid4
+
+from iad_core.dataset.registry import DatasetRegistry
+from iad_core.evidence.images import EvidenceImages
+from iad_core.exploration.models import DirectionDraft, ExploredDirection, ExplorationSnapshot, ExplorationStart
+from iad_core.exploration.repository import ExplorationRepository
+from iad_core.knowledge.models import KnowledgeEvidence
+from iad_core.knowledge.sources import KnowledgeSources
+from iad_core.storage.database import Database
+from iad_core.storage.repositories import SampleRepository
+from iad_core.workbench.jobs import JobContext, JobRunner
+from iad_core.workbench.vision import VlmClient
+
+
+EXPLORATION_JOBS = ('DIRECTION_EXPLORATION',)
+EXPLORATION_INSTRUCTION = '''联合观察全部候选良品与异常图，自行提出这个数据集值得深入挖掘的检查方向。
+从真实可见的共性、差异、结构关系、正常变化与观察限制出发，不套用固定工业分类表或凑方向数量。
+角色是来源线索，不是质量真值；可能有错标、污染或成像差异，不能把NG、标注、外观差异直接当缺陷。
+方向说明应可执行，说明后续应观察或比较什么，适用于良品、异常或两者；不是已证实的质量规则。
+每项引用实际送入的图像evidence_id并说明理由与限制，不虚构尺寸、物理功能、材质或不可见部位。
+允许没有足够依据提出方向，返回空directions并解释限制。相同含义的方向合并，独立方向保留。
+只使用本轮实际图组；不能声称完成知识挖掘、审计或人工确认。
+'''
+
+
+class DirectionExploration:
+    def __init__(self, db: Database, client: VlmClient, jobs: JobRunner):
+        self.db, self.client, self.jobs = db, client, jobs
+        self.sources = KnowledgeSources(db)
+        self.repository = ExplorationRepository(db)
+
+    def freeze(self, request: ExplorationStart) -> dict:
+        config = DatasetRegistry(self.db).resolve(dataset_id=request.dataset_id)
+        samples = SampleRepository(self.db)
+        for sid in request.normal_images + request.defect_images:
+            sample = samples.get(sid)
+            if sample is None or sample.dataset_id != request.dataset_id:
+                raise ValueError('探索图组必须是当前数据集已导入的真实sample_id')
+        return {'normal_sources': [s.model_dump() for s in self.sources.collect(request.dataset_id, request.normal_images, 'normal')],
+                'defect_sources': [s.model_dump() for s in self.sources.collect(request.dataset_id, request.defect_images, 'defect')],
+                'task_id': config.task.task_id}
+
+    def validate(self, payload: dict):
+        current = self.freeze(ExplorationStart.model_validate(payload['exploration_request']))
+        if any(current[key] != payload[key] for key in ('normal_sources', 'defect_sources')):
+            raise ValueError('探索来源已变化，请重新选择图组启动')
+        if payload['instruction'] != EXPLORATION_INSTRUCTION or payload['schema'] != DirectionDraft.model_json_schema():
+            raise ValueError('探索生成契约已变化，请重新启动')
+        if payload['model_profile'] != self.client.profile.model_dump():
+            raise ValueError('模型配置已变化，请重新启动探索')
+
+    def start(self, request: ExplorationStart, model_name: str | None = None, origin_session_id: str | None = None):
+        request = ExplorationStart.model_validate(request)
+        captured = self.freeze(request)
+        payload = {**captured, 'dataset_id': request.dataset_id, 'exploration_request': request.model_dump(),
+                   'sample_ids': request.normal_images + request.defect_images,
+                   'input_sources': captured['normal_sources'] + captured['defect_sources'],
+                   'model_name': self.client.resolve_model(model_name), 'model_profile': self.client.profile.model_dump(),
+                   'instruction': EXPLORATION_INSTRUCTION, 'schema': DirectionDraft.model_json_schema(),
+                   'origin_session_id': origin_session_id}
+        return self.jobs.start('DIRECTION_EXPLORATION', captured['task_id'], payload, self.explore, '准备联合方向探索')
+
+    def explore(self, context: JobContext):
+        payload = context.payload
+        self.validate(payload['request'])
+        request = ExplorationStart.model_validate(payload['exploration_request'])
+        context.update(phase='PREPARING_EXPLORATION')
+        images, metadata = [], []
+        source_by_id = {s['sample_id']: s for s in payload['input_sources']}
+        for role, ids in [('normal', request.normal_images), ('defect', request.defect_images)]:
+            for sid in ids:
+                context.checkpoint()
+                sample = SampleRepository(self.db).get(sid)
+                image = EvidenceImages(self.db.db_path).capture(sample, 'overview', 'global', source_sha256=source_by_id[sid]['sha256'])
+                images.append(image)
+                metadata.append({'sample_id': sid, 'candidate_role': role, 'evidence_id': image.evidence.evidence_id})
+        context.update(phase='EXPLORING_DIRECTIONS')
+        instruction = payload['instruction'] + '\n用户探索目标：' + request.objective + '\n本次图组：' + json.dumps(metadata, ensure_ascii=False)
+        plan = self.client.plan(DirectionDraft, instruction, images, payload['model_name'], output_reserve=8192)
+        context.checkpoint()
+        draft = self.client.generate(plan)
+        available = {i.evidence.evidence_id for i in images}
+        if any(set(d.evidence_ids) - available for d in draft.directions):
+            raise ValueError('探索方向引用了未送入模型的图像')
+        self.validate(payload['request'])
+        snapshot = ExplorationSnapshot(**draft.model_dump(exclude={'directions'}),
+            directions=[ExploredDirection(**d.model_dump(), direction_id='direction_' + uuid4().hex) for d in draft.directions],
+            version_id='exploration_' + uuid4().hex, dataset_id=request.dataset_id, run_id=context.run_id,
+            created_at=datetime.now(timezone.utc).isoformat(), model_name=payload['model_name'],
+            signature=hashlib.sha256(json.dumps(payload['request'], sort_keys=True).encode()).hexdigest(), request=request,
+            normal_sources=payload['normal_sources'], defect_sources=payload['defect_sources'],
+            evidence=[KnowledgeEvidence(sample_id=m['sample_id'], image=i.evidence) for m, i in zip(metadata, images)])
+        context.record(payload['sample_ids'], exploration_version_id=snapshot.version_id, phase='DIRECTIONS_PUBLISHED',
+            persist=lambda conn: conn.execute('''INSERT INTO direction_explorations(version_id,dataset_id,run_id,created_at,snapshot_json)
+                VALUES(?,?,?,?,?)''', (snapshot.version_id, snapshot.dataset_id, snapshot.run_id, snapshot.created_at, snapshot.model_dump_json())))
+
+    def retry(self, run_id: str):
+        return self.jobs.retry(run_id, EXPLORATION_JOBS, self.explore, validate=self.validate)

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { JobSnapshot } from "../shared/contracts.js";
 import { message, request } from "./api.js";
 
-export function useJobs(kind: "audit" | "knowledge", datasetId: string, onProgress: () => void, selectedRunId = "") {
+export function useJobs(kind: "audit" | "knowledge" | "exploration", datasetId: string, onProgress: () => void, selectedRunId = "") {
   const [jobs, setJobs] = useState<JobSnapshot[]>([]);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);

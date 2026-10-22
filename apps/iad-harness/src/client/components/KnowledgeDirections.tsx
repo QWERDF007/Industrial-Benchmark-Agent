@@ -1,17 +1,31 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { MiningDirection, MiningPrompt, MiningPromptConfiguration } from "../../shared/domain.generated.js";
 import { message, request } from "../api.js";
+import type { ExplorationCatalog } from "../../shared/domain.generated.js";
+import { useWorkspace } from "../workspace.js";
 
 export interface DirectionProposal { id: string; datasetId: string; kind: "normal" | "defect"; title: string; instruction: string }
 
 export function KnowledgeDirections({ datasetId, kind, proposal, onPending, onProposalUsed }: {
   datasetId: string; kind: "normal" | "defect"; proposal?: DirectionProposal; onPending(value: boolean): void; onProposalUsed(): void;
 }) {
+  const { workspace } = useWorkspace();
+  const explorationVersion = workspace.view("industrial-knowledge").explorationVersion;
+  const [catalog, setCatalog] = useState<ExplorationCatalog | null>(null), [catalogError, setCatalogError] = useState("");
   const [saved, setSaved] = useState<MiningPrompt | null>(null), [draft, setDraft] = useState<MiningPromptConfiguration | null>(null);
   const [error, setError] = useState(""), [saving, setSaving] = useState(false), [revision, setRevision] = useState(0);
   const [title, setTitle] = useState(""), [instruction, setInstruction] = useState(""), [open, setOpen] = useState(false);
   const applied = useRef(""), alive = useRef(true);
   const query = new URLSearchParams({ dataset_id: datasetId, kind }).toString();
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams({ dataset_id: datasetId });
+    if (explorationVersion) params.set("version_id", explorationVersion);
+    setCatalog(null); setCatalogError("");
+    request<ExplorationCatalog>(`/exploration?${params}`, undefined, undefined, controller.signal)
+      .then(value => { if (!controller.signal.aborted) setCatalog(value); }).catch(e => { if (!controller.signal.aborted) setCatalogError(message(e)); });
+    return () => controller.abort();
+  }, [datasetId, explorationVersion, revision]);
   useEffect(() => {
     alive.current = true;
     return () => { alive.current = false; };
@@ -56,15 +70,26 @@ export function KnowledgeDirections({ datasetId, kind, proposal, onPending, onPr
     {error && <p role="alert" className="iad-error">{error} <button onClick={() => setRevision(value => value + 1)}>重新读取</button></p>}
     {draft && <fieldset disabled={saving} className="iad-directions-form">
       <label className="iad-field">挖掘目标<textarea aria-label="挖掘目标" rows={3} value={draft.objective} onChange={event => { setDraft({ ...draft, objective: event.target.value }); setError(""); }} /></label>
-      {([['preset', '通用方向'], ['dataset', '数据集方向']] as const).map(([origin, label]) => <fieldset key={origin} className="iad-direction-group"><legend>{label}</legend><div className="iad-direction-grid">
+      {([['preset', '通用方向'], ['dataset', '数据集方向'], ['explored', '探索方向']] as const).map(([origin, label]) => <fieldset key={origin} className="iad-direction-group"><legend>{label}</legend>
+        {origin === "explored" && <><label className="iad-field">探索结果版本<select aria-label="选用探索版本" value={catalog?.exploration?.version_id || ""} onChange={e => workspace.updateView("industrial-knowledge", { explorationVersion: e.target.value })}><option value="" disabled>尚无探索结果</option>{catalog?.versions.map(v => <option key={v.version_id} value={v.version_id}>{v.created_at.slice(0, 19).replace("T", " ")} · {v.direction_count} 项</option>)}</select></label>
+          {catalogError && <p role="alert">{catalogError}</p>}</>}
+        <div className="iad-direction-grid">
         {draft.directions.map((item, index) => item.origin !== origin ? null : <div className="iad-direction" key={item.direction_id}>
           <label className="iad-direction-toggle"><input type="checkbox" aria-label={`启用方向 ${item.title}`} checked={item.enabled} onChange={event => change(index, { enabled: event.target.checked })} />{item.title}</label>
+          {origin === "explored" && <button onClick={() => {
+            request<ExplorationCatalog>(`/exploration?${new URLSearchParams({ dataset_id: datasetId, direction_id: item.direction_id })}`)
+              .then(value => { if (value.exploration && workspace.getSnapshot().datasetId === datasetId && workspace.getSnapshot().knowledgeKind === kind) workspace.openLocation({ pageId: "industrial-exploration", datasetId, version: value.exploration.version_id }); })
+              .catch(e => setError(message(e)));
+          }}>查看来源</button>}
           <details><summary aria-label={`编辑方向 ${item.title}`}>编辑</summary>
             <label className="iad-field">名称<input aria-label={`方向名称 ${item.direction_id}`} value={item.title} onChange={event => change(index, { title: event.target.value })} /></label>
             <label className="iad-field">观察说明<textarea aria-label={`方向说明 ${item.direction_id}`} rows={4} value={item.instruction} onChange={event => change(index, { instruction: event.target.value })} /></label>
             <button onClick={() => { setDraft({ ...draft, directions: draft.directions.filter((_, i) => i !== index) }); setError(""); }}>删除方向</button>
           </details>
         </div>)}
+        {origin === "explored" && catalog?.exploration?.directions.filter(item => (item.applies_to === "both" || item.applies_to === kind) && !draft.directions.some(d => d.direction_id === item.direction_id)).map(item => <label className="iad-direction iad-direction-toggle" key={item.direction_id}>
+          <input type="checkbox" aria-label={`启用探索方向 ${item.title}`} checked={false} onChange={() => setDraft({ ...draft, directions: [...draft.directions, { direction_id: item.direction_id, title: item.title, instruction: item.instruction, origin: "explored", enabled: true }] })} />{item.title}
+          <span className="iad-muted">{item.instruction}</span></label>)}
       </div>{origin === "dataset" && !draft.directions.some(item => item.origin === origin) && <p className="iad-muted">尚无数据集专属方向。</p>}</fieldset>)}
       <details className="iad-direction-add"><summary>添加自定义方向</summary>
         <label className="iad-field">名称<input aria-label="新方向名称" value={title} onChange={event => setTitle(event.target.value)} /></label>

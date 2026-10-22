@@ -45,3 +45,7 @@ export function AuditIcon({ size = 20 }: { size?: number }) {
     </svg>
   );
 }
+
+export function ExplorationIcon({ size = 20 }: { size?: number }) {
+  return <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="10" cy="10" r="6"/><path d="m14.5 14.5 6 6M7 10h6M10 7v6"/></svg>;
+}

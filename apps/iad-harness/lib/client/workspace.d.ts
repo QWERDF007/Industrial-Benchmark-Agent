@@ -5,6 +5,12 @@ import { type PageId, type WorkbenchLocation } from "../shared/navigation.js";
 import { type KnowledgeStatusFilter } from "../shared/knowledge-presentation.js";
 export { pages, type PageId } from "../shared/navigation.js";
 interface ViewState {
+    explorationVersion: string;
+    explorationNormalCount: string;
+    explorationDefectCount: string;
+    explorationNormalImages: string[];
+    explorationDefectImages: string[];
+    explorationObjective: string;
     miningSourceMode: "uncovered" | "all" | "recheck";
     scopeRunId: string;
     scopeSessionId: string;
@@ -63,7 +69,13 @@ export declare class Workspace {
     private defaults;
     getSnapshot: () => WorkspaceState;
     subscribe: (listener: () => void) => () => void;
-    view(page: PageId, kind?: import("../shared/domain.generated.js").Kind8): {
+    view(page: PageId, kind?: import("../shared/domain.generated.js").Kind9): {
+        explorationVersion: string;
+        explorationNormalCount: string;
+        explorationDefectCount: string;
+        explorationNormalImages: string[];
+        explorationDefectImages: string[];
+        explorationObjective: string;
         miningSourceMode: "uncovered" | "all" | "recheck";
         scopeRunId: string;
         scopeSessionId: string;

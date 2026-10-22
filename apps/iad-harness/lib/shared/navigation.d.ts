@@ -2,6 +2,7 @@ import type { Filters, KnowledgeSnapshot } from "./contracts.js";
 export declare const pages: {
     readonly "industrial-datasets": "数据集管理";
     readonly "industrial-images": "图像浏览";
+    readonly "industrial-exploration": "方向探索";
     readonly "industrial-knowledge": "知识挖掘";
     readonly "industrial-audit": "模型审计";
     readonly "industrial-review": "人工复核";
@@ -10,6 +11,7 @@ export type PageId = keyof typeof pages;
 export type WorkbenchLocation = {
     pageId: PageId;
     datasetId: string;
+    explorationVersion?: string;
     knowledgeKind?: KnowledgeSnapshot["kind"];
     job?: string;
     version?: string;

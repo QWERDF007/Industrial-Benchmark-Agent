@@ -43,12 +43,16 @@ class VlmClient:
             generation_timeout_seconds=self.client.timeout.read, connect_timeout_seconds=self.client.timeout.connect,
             write_timeout_seconds=self.client.timeout.write, pool_timeout_seconds=self.client.timeout.pool))
 
-    @staticmethod
-    def resolve_model(model_name: Optional[str] = None) -> str:
+    def resolve_model(self, model_name: Optional[str] = None) -> str:
         value = model_name or os.environ.get('LIVE_VLM_MODEL')
-        if not value or not value.strip():
-            raise ValueError('未配置模型，请设置LIVE_VLM_MODEL或宿主有效模型配置')
-        return value.strip()
+        if value and value.strip():
+            return value.strip()
+        response = self.client.get(self.endpoint.removesuffix('/chat/completions') + '/models', headers=self._headers)
+        response.raise_for_status()
+        models = {item['id'] for item in response.json()['data'] if isinstance(item.get('id'), str) and item['id'].strip()}
+        if len(models) != 1:
+            raise ValueError('模型服务未提供唯一模型，请设置LIVE_VLM_MODEL或宿主有效模型配置')
+        return next(iter(models))
 
     def within_limits(self, body: dict, images: List[PreparedImage]) -> bool:
         return (self.profile.max_visual_inputs is None or len(images) <= self.profile.max_visual_inputs) and (self.profile.max_request_bytes is None or

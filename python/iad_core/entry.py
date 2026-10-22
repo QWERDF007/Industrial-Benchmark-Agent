@@ -21,26 +21,18 @@ from iad_core.dataset.registry import DatasetImport, DatasetRegistry
 from iad_core.workbench.projection import suggestion_meta as extract_suggestion_meta
 from iad_core.workbench.query import SampleQuery, WorkbenchQuery
 from iad_core.workbench.review import HumanReview, ReviewSubmission, ReviewHistoryQuery
+from iad_core.workbench.runtime import workbench, close_workbenches
+from iad_core.exploration.operations import (direction_exploration_start, direction_exploration_status, direction_exploration_list,
+    direction_exploration_cancel, direction_exploration_retry, direction_exploration_get, direction_exploration_evidence)
 
 DEFAULT_DB_PATH = os.environ.get("IAD_DB_PATH", "data/benchmark.db")
 _output_lock = threading.Lock()
-_service_lock = threading.Lock()
-_workbenches = {}
 
 
 def emit(payload: Dict[str, Any]) -> None:
     with _output_lock:
         sys.stdout.write(json.dumps(payload, ensure_ascii=False) + "\n")
         sys.stdout.flush()
-
-
-def workbench(db_path):
-    from iad_core.workbench.runtime import WorkbenchRuntime
-    key = os.path.abspath(db_path)
-    with _service_lock:
-        if key not in _workbenches:
-            _workbenches[key] = WorkbenchRuntime(Database(key))
-        return _workbenches[key]
 
 
 def tool_call(args, db_path):
@@ -294,6 +286,11 @@ def knowledge_prompt_save(args, db_path):
     return KnowledgePrompts(Database(db_path)).save(MiningPromptEdit.model_validate(args)).model_dump()
 
 
+def knowledge_directions_adopt(args, db_path):
+    from iad_core.knowledge.prompts import KnowledgePrompts
+    return KnowledgePrompts(Database(db_path)).adopt(args).model_dump()
+
+
 def knowledge_scope_open(args, db_path):
     from iad_core.knowledge.scopes import KnowledgeScopeOpen, KnowledgeScopes
     return KnowledgeScopes(Database(db_path)).open(KnowledgeScopeOpen.model_validate(args['request']), args.get('origin_session_id')).model_dump()
@@ -401,6 +398,8 @@ def model_call_get(args, db_path):
 
 
 OPERATIONS = {handler.__name__: handler for handler in (
+    knowledge_directions_adopt, direction_exploration_start, direction_exploration_status, direction_exploration_list, direction_exploration_cancel,
+    direction_exploration_retry, direction_exploration_get, direction_exploration_evidence,
     tool_call, dataset_list, dataset_get, dataset_import, dataset_preview, dataset_archive_inspect, dataset_update, dataset_scan, dataset_delete,
     sample_list, sample_get, sample_image_path, sample_thumbnail, sample_mask_path,
     review_queue, review_evidence, review_submit_decision, review_history,
@@ -452,8 +451,7 @@ def main():
                 except (ValueError, TypeError) as error:
                     emit({"event": "error", "request_id": "decode", "error": {"code": "JSON_DECODE_ERROR", "message": str(error)}})
     finally:
-        for service in _workbenches.values():
-            service.close()
+        close_workbenches()
 
 
 if __name__ == "__main__":

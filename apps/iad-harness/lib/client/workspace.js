@@ -4,7 +4,7 @@ import { restoreInspection } from "./inspection.js";
 import { pages } from "../shared/navigation.js";
 import { knowledgeStatuses } from "../shared/knowledge-presentation.js";
 export { pages } from "../shared/navigation.js";
-const defaultView = (page) => ({ miningSourceMode: "uncovered", scopeRunId: "", scopeSessionId: "", miningContinuous: false, conflictId: "", miningCount: "10", miningImages: [], miningPreset: "", miningSearch: "", miningPage: 1, filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", model: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
+const defaultView = (page) => ({ explorationVersion: "", explorationNormalCount: "10", explorationDefectCount: "10", explorationNormalImages: [], explorationDefectImages: [], explorationObjective: "", miningSourceMode: "uncovered", scopeRunId: "", scopeSessionId: "", miningContinuous: false, conflictId: "", miningCount: "10", miningImages: [], miningPreset: "", miningSearch: "", miningPage: 1, filters: { ...initialFilters, review_status: page === "industrial-review" ? "pending" : "all" }, page: 1, selected: "", tab: "results", version: "", model: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export class Workspace {
     conversation;
@@ -125,7 +125,7 @@ export class Workspace {
                 if (route.pageId in pages && typeof route.datasetId === "string") {
                     const knowledgeKind = route.knowledgeKind === "defect" ? "defect" : "normal";
                     const view = defaultView(route.pageId);
-                    for (const key of ["selected", "scopeRunId", "scopeSessionId", "conflictId", "tab", "version", "model", "miningCount", "miningPreset", "miningSearch", "normalVersion", "defectVersion", "job", "historySearch", "knowledgeSearch"])
+                    for (const key of ["explorationVersion", "explorationNormalCount", "explorationDefectCount", "explorationObjective", "selected", "scopeRunId", "scopeSessionId", "conflictId", "tab", "version", "model", "miningCount", "miningPreset", "miningSearch", "normalVersion", "defectVersion", "job", "historySearch", "knowledgeSearch"])
                         if (typeof route[key] === "string")
                             view[key] = route[key];
                     if (["uncovered", "all", "recheck"].includes(route.miningSourceMode))
@@ -136,8 +136,9 @@ export class Workspace {
                         view.knowledgeStatus = route.knowledgeStatus;
                     if (Number.isInteger(route.miningPage) && route.miningPage > 0)
                         view.miningPage = route.miningPage;
-                    if (Array.isArray(route.miningImages) && route.miningImages.every((id) => typeof id === "string"))
-                        view.miningImages = route.miningImages;
+                    for (const key of ["miningImages", "explorationNormalImages", "explorationDefectImages"])
+                        if (Array.isArray(route[key]) && route[key].every((id) => typeof id === "string"))
+                            view[key] = route[key];
                     view.inspection = restoreInspection(route.inspection, route.datasetId, view.selected);
                     if (Number.isInteger(route.page) && route.page > 0)
                         view.page = route.page;

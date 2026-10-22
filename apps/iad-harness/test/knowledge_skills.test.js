@@ -19,7 +19,7 @@ import { createDatasetSession } from "./fixtures/dataset_session.js";
 import * as harness from "../lib/server/index.js";
 import { resolvePythonPath } from "../lib/server/python-bridge/index.js";
 
-test("DSH discovers one full-analysis skill and keeps standalone knowledge tools available", async () => {
+test("DSH discovers independent exploration and full-analysis skills with standalone tools", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "iad-skill-registration-"));
   const ctx = new Context();
   new SystemPrompt(ctx, {});
@@ -30,7 +30,12 @@ test("DSH discovers one full-analysis skill and keeps standalone knowledge tools
   const fork = await ctx.plugin(harness);
   try {
     const catalog = await ctx.skills.list();
-    assert.deepEqual(catalog.map(skill => skill.name), ["analyze-dataset"]);
+    assert.deepEqual(catalog.map(skill => skill.name).sort(), ["analyze-dataset", "explore-inspection-directions"]);
+    const exploration = await ctx.tools.execute({ name: "skill", arguments: { name: "explore-inspection-directions" },
+      callId: "load-exploration", signal: new AbortController().signal });
+    assert.equal(exploration.isError, false);
+    assert.match(exploration.content[0].text, /direction_exploration_start/);
+    assert.match(exploration.content[0].text, /direction_exploration_status/);
     for (const name of ["analyze-dataset"]) {
       const result = await ctx.tools.execute({ name: "skill", arguments: { name }, callId: `load-${name}`,
         signal: new AbortController().signal });

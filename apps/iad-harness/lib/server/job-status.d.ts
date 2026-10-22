@@ -30,7 +30,7 @@ type JobStatus = {
         type: "json";
     }>;
 };
-export declare function waitForJobStatus(bridge: PythonBridge, operation: "knowledge_status" | "audit_status", { run_id, wait_seconds }: {
+export declare function waitForJobStatus(bridge: PythonBridge, operation: "knowledge_status" | "audit_status" | "direction_exploration_status", { run_id, wait_seconds }: {
     run_id: string;
     wait_seconds?: number;
 }, signal: AbortSignal): Promise<JobStatus>;

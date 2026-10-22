@@ -27,7 +27,11 @@ def test_live_vlm_e2e_pipeline(tmp_path):
     endpoint = os.environ["LIVE_VLM_ENDPOINT"].rstrip("/")
     api_key = os.environ["LIVE_VLM_KEY"]
     image_path = Path(os.environ["IAD_LIVE_IMAGE_PATH"]).resolve(strict=True)
-    model = VlmClient.resolve_model()
+    client = VlmClient()
+    try:
+        model = client.resolve_model()
+    finally:
+        client.close()
     sample_id = "live:" + image_path.name
     with Image.open(image_path) as image:
         width, height = image.size

@@ -19,7 +19,7 @@ class JobObservationProgress(AnalysisModel):
     published_sources: int = Field(ge=0)
 
 
-JobKind = Literal['MODEL_AUDIT', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE']
+JobKind = Literal['MODEL_AUDIT', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE', 'DIRECTION_EXPLORATION']
 
 
 class JobRetry(BaseModel):
@@ -86,6 +86,7 @@ class JobSnapshot(AnalysisModel):
     defect_version_id: Optional[str] = None
     kind: Optional[Literal['normal', 'defect']] = None
     knowledge_version_id: Optional[str] = None
+    exploration_version_id: Optional[str] = None
     mining_prompt: Optional[FrozenMiningPrompt] = None
     inspected_regions: Optional[int] = None
     planned_regions: Optional[int] = None

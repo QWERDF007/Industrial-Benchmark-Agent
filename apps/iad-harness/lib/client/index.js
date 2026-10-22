@@ -1,5 +1,5 @@
 import React from "react";
-import { AuditIcon, ReviewIcon, DatasetIcon, ImagesIcon, KnowledgeIcon } from "./AuditIcon.js";
+import { AuditIcon, ReviewIcon, DatasetIcon, ImagesIcon, KnowledgeIcon, ExplorationIcon } from "./AuditIcon.js";
 import { WorkbenchPage } from "./WorkbenchPage.js";
 import { pages, Workspace, WorkspaceContext } from "./workspace.js";
 import { WorkbenchSession } from "./workbench-session.js";
@@ -9,13 +9,13 @@ export const name = "iad-client";
 export const inject = ["slots", "layout", "sessions", "conversation", "uiWorkspace"];
 export function apply(ctx) {
     const workspace = new Workspace(new WorkbenchSession(ctx));
-    const icons = [DatasetIcon, ImagesIcon, KnowledgeIcon, AuditIcon, ReviewIcon];
+    const icons = { "industrial-datasets": DatasetIcon, "industrial-images": ImagesIcon, "industrial-exploration": ExplorationIcon, "industrial-knowledge": KnowledgeIcon, "industrial-audit": AuditIcon, "industrial-review": ReviewIcon };
     ctx.slots.inject("tool.call.toolview", () => {
         for (const [key, title] of Object.entries(workbenchTools))
             ctx.slots.register({ name: "tool.call.toolview", key }, (props) => React.createElement(WorkspaceContext.Provider, { value: workspace }, React.createElement(SessionResult, { ...props, title })));
     });
     ctx.slots.inject("sidebar.panellist", () => {
-        const disposers = Object.entries(pages).map(([id, label], index) => ctx.slots.register({ name: "sidebar.panellist", id, order: index + 1, label }, icons[index]));
+        const disposers = Object.entries(pages).map(([id, label], index) => ctx.slots.register({ name: "sidebar.panellist", id, order: index + 1, label }, icons[id]));
         return () => disposers.forEach(dispose => dispose());
     });
     ctx.slots.inject("main", () => {

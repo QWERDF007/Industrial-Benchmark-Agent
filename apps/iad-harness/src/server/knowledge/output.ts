@@ -74,6 +74,7 @@ export const knowledgeJobOutput = {
       requires_user_decision: ["FAILED", "PARTIAL", "INTERRUPTED"].includes(job.status),
       completed: job.completed, failed: job.failed, unprocessed: job.unprocessed, total_samples: job.total_samples,
       observation_progress: job.observation_progress, knowledge_version_id: job.knowledge_version_id,
+      exploration_version_id: job.exploration_version_id,
       normal_version_id: job.normal_version_id, started_at: job.started_at, finished_at: job.finished_at,
       error_count: job.errors.length, priority_errors: job.errors.slice(0, 3),
     }) }];

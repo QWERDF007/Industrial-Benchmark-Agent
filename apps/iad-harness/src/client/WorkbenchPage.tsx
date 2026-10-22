@@ -7,6 +7,7 @@ import { SampleInspector } from "./components/SampleInspector.js";
 import { AuditSetup } from "./components/AuditSetup.js";
 import { AuditJobs, AuditReport } from "./components/AuditJobs.js";
 import { KnowledgeConflictReview } from "./components/KnowledgeConflictReview.js";
+import { ExplorationPage } from "./components/ExplorationPage.js";
 import { KnowledgePage } from "./components/KnowledgePage.js";
 import { Modal } from "./components/Modal.js";
 import { ReviewRecords } from "./components/ReviewRecords.js";
@@ -88,6 +89,7 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
     {pageId === "industrial-datasets" ? <>
       <DatasetManager datasets={datasets} selected={dataset} onChanged={id => { void loadDatasets(id); setRevision(v => v + 1); }} />
     </> : !dataset ? <section className="iad-job-section"><p>请先添加服务器上的数据集。</p><button onClick={() => workspace.navigate("industrial-datasets")}>前往数据集管理</button></section> : <>
+      {pageId === "industrial-exploration" && <ExplorationPage key={datasetId} dataset={dataset} refreshRevision={revision} />}
       {pageId === "industrial-knowledge" && <>
         <nav className="iad-tabs" aria-label="知识类型">{([["normal", "良品"], ["defect", "异常"]] as const).map(([kind, label]) => <button key={kind} className={state.knowledgeKind === kind ? "active" : ""} aria-pressed={state.knowledgeKind === kind} onClick={() => workspace.selectKnowledgeKind(kind)}>{label}</button>)}</nav>
         <KnowledgePage key={`${datasetId}:${state.knowledgeKind}`} dataset={dataset} kind={state.knowledgeKind} refreshRevision={revision} />

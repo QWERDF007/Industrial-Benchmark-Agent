@@ -15,7 +15,7 @@ export const jobRetryParameters = {
 
 type JobStatus = { status: JobSnapshot["status"]; [key: string]: InferValue<{ type: "json" }> };
 
-export async function waitForJobStatus(bridge: PythonBridge, operation: "knowledge_status" | "audit_status",
+export async function waitForJobStatus(bridge: PythonBridge, operation: "knowledge_status" | "audit_status" | "direction_exploration_status",
   { run_id, wait_seconds = 10 }: { run_id: string; wait_seconds?: number }, signal: AbortSignal) {
   if (!Number.isFinite(wait_seconds) || wait_seconds < 0 || wait_seconds > 30) throw new Error("wait_seconds must be between 0 and 30");
   const deadline = performance.now() + wait_seconds * 1000;

@@ -130,6 +130,23 @@ export function createIadHttpHandler(bridge) {
                 if ((scope[2] === "stop" || scope[2] === "resume") && method === "POST")
                     return await call("knowledge_scope_" + scope[2], { scope_run_id });
             }
+            if (pathname === "/api/iad/exploration" && method === "GET")
+                return await call("direction_exploration_get", query);
+            if (pathname === "/api/iad/exploration/start" && method === "POST")
+                return await call("direction_exploration_start", { request: body });
+            if (pathname === "/api/iad/exploration/jobs" && method === "GET")
+                return await call("direction_exploration_list", query);
+            const exploration = pathname.match(/^\/api\/iad\/exploration\/(status|cancel|retry)\/([^/]+)$/);
+            if (exploration && ((exploration[1] === "status" && method === "GET") || (exploration[1] !== "status" && method === "POST")))
+                return await call("direction_exploration_" + exploration[1], { run_id: decodeURIComponent(exploration[2]) });
+            const explorationImage = pathname.match(/^\/api\/iad\/exploration\/evidence\/([^/]+)\/([^/]+)$/);
+            if (explorationImage && method === "GET") {
+                const info = await bridge.execute("direction_exploration_evidence", {
+                    version_id: decodeURIComponent(explorationImage[1]), evidence_id: decodeURIComponent(explorationImage[2]),
+                });
+                await sendMedia(res, info);
+                return;
+            }
             if (pathname === "/api/iad/knowledge" && method === "GET")
                 return await call("knowledge_get", query);
             if (pathname === "/api/iad/knowledge/prompt" && method === "GET")

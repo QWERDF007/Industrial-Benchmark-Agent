@@ -1,6 +1,12 @@
 import type { JobSnapshot } from "./contracts.js";
 import type { WorkbenchLocation } from "./navigation.js";
 export declare const workbenchTools: {
+    readonly direction_exploration_start: "探索检查方向";
+    readonly direction_exploration_status: "方向探索状态";
+    readonly direction_exploration_get: "方向探索结果";
+    readonly direction_exploration_cancel: "停止方向探索";
+    readonly direction_exploration_retry: "重试方向探索";
+    readonly knowledge_directions_adopt: "采用探索方向";
     readonly dataset_list: "数据集列表";
     readonly dataset_import: "接入数据集";
     readonly dataset_rescan: "重新扫描目录";

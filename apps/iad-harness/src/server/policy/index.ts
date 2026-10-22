@@ -16,6 +16,8 @@ export const SYSTEM_POLICIES = [
 ].join("\n");
 
 export const ALLOWED_TOOL_SURFACE = [
+  "direction_exploration_start", "direction_exploration_status", "direction_exploration_get",
+  "direction_exploration_cancel", "direction_exploration_retry", "direction_exploration_evidence", "knowledge_directions_adopt",
   "skill",
   "dataset_list",
   "dataset_directory_inspect",

@@ -3,18 +3,9 @@ import type { JobRetryOptions, JobSample, JobSnapshot } from "../../shared/contr
 import { message, request } from "../api.js";
 import { useWorkspace } from "../workspace.js";
 import { KnowledgeJobEvidence } from "./KnowledgeJobEvidence.js";
-import { jobStatuses } from "../../shared/job-display.js";
+import { jobStatuses, jobPhases as phases } from "../../shared/job-display.js";
 import { DeleteAction } from "./DeleteAction.js";
 
-const phases: Record<string, string> = {
-  PREPARING_KNOWLEDGE: "准备冻结知识", GLOBAL: "全图观察", REGIONS: "ROI 细看",
-  SYNTHESIS: "全图与 ROI 联合分析", SAMPLE_COMPLETED: "图像审计完成",
-  LEARNING_NORMAL: "归纳良品知识", LEARNING_DEFECT: "归纳不良品知识",
-  VERIFYING_NORMAL: "核验良品疑点", VERIFYING_DEFECT: "核验标注与异常知识",
-  OBSERVING_PRESET: "观察冻结判据", RECHECKING_HUMAN_KNOWLEDGE: "核验人工知识处置",
-  COMPARING_KNOWLEDGE: "比较新旧证据", RECHECKING_CRITERIA: "重核验修订判据",
-  KNOWLEDGE_PUBLISHED: "知识已发布", KNOWLEDGE_REUSED: "复用已核验知识",
-};
 const sampleName = (sample: JobSample) => sample.relative_path || sample.sample_uuid;
 
 export function JobCard({ job, onChanged }: { job: JobSnapshot; onChanged(): void }) {

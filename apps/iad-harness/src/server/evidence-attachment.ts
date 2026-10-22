@@ -16,7 +16,7 @@ export const evidenceOutput = {
 };
 
 export async function readEvidenceAttachment(bridge: PythonBridge, ctx: Context,
-  operation: "knowledge_evidence" | "audit_evidence",
+  operation: "knowledge_evidence" | "audit_evidence" | "direction_exploration_evidence",
   args: { evidence_id: string; run_id?: string; version_id?: string; suggestion_id?: string }, signal: AbortSignal) {
   const media = await bridge.execute<{ path: string; media_type: "image/png" }>(operation, args, signal);
   signal.throwIfAborted();
