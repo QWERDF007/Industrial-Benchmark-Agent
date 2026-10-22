@@ -1,6 +1,7 @@
-from typing import List, Literal, Optional
+from typing import Annotated, List, Literal, Optional
+from uuid import UUID
 
-from pydantic import Field, model_validator
+from pydantic import Field, PlainSerializer, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, AuditFinding, RegionImage, RegionOrigin, RegionProposal, VisualEvidence
 from iad_core.evidence.sources import SampleContent
@@ -209,6 +210,11 @@ class KnowledgeSupportPolicy(AnalysisModel):
     min_source_groups: Optional[int] = Field(default=None, ge=2)
 
 
+class KnowledgeCheckRemoval(AnalysisModel):
+    submission_id: Annotated[UUID, PlainSerializer(str, return_type=str)]
+    check_id: str = Field(min_length=1)
+
+
 class KnowledgeSnapshot(AnalysisModel):
     version_id: str
     dataset_id: str
@@ -238,6 +244,7 @@ class KnowledgeSnapshot(AnalysisModel):
     scope_run_id: Optional[str] = None
     observed_source_ids: Optional[List[str]] = None
     knowledge_preset: Optional[List[str]] = None
+    manual_edit: Optional[KnowledgeCheckRemoval] = None
     created_at: str
 
     @property

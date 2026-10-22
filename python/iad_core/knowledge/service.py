@@ -258,6 +258,9 @@ class KnowledgeService:
     def cancel(self, run_id: str) -> dict:
         return self.jobs.cancel(run_id, KNOWLEDGE_JOB_TYPES)
 
+    def delete(self, run_id: str) -> dict:
+        return self.jobs.delete(run_id, KNOWLEDGE_JOB_TYPES)
+
     def wait(self, run_id: str, timeout: float):
         self.jobs.wait(run_id, timeout)
 

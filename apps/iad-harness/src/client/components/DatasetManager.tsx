@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import type { Dataset, DirectoryListing, FolderRule, ScanResult } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 import { Modal } from "./Modal.js";
+import { DeleteAction } from "./DeleteAction.js";
 import { DatasetName } from "./DatasetName.js";
 import { FolderMapping } from "./FolderMapping.js";
 import { useFolderPreview } from "../useFolderPreview.js";
@@ -88,10 +89,8 @@ function DatasetSettings({ dataset, onChanged }: { dataset: Dataset; onChanged()
 export function DatasetManager({ datasets, selected, onChanged }: { datasets: Dataset[]; selected?: Dataset; onChanged(id?: string): void }) {
   const [importing, setImporting] = useState(false);
   const [importFormat, setImportFormat] = useState<"labelme" | "folder_classification">("labelme");
-  const [deleting, setDeleting] = useState<Dataset | null>(null);
   const [notice, setNotice] = useState("");
   const addButton = useRef<HTMLButtonElement>(null);
-  const cancelDeleteButton = useRef<HTMLButtonElement>(null);
   useEffect(() => { if (notice) addButton.current?.focus(); }, [notice]);
 
   // Form states
@@ -104,15 +103,6 @@ export function DatasetManager({ datasets, selected, onChanged }: { datasets: Da
   const [error, setError] = useState("");
   const { preview, ready, pending, error: previewError } = useFolderPreview(rootDir, userRules, importing && importFormat === "folder_classification");
   useEffect(() => { if (preview) setName(current => current.trim() ? current : preview.suggested_name); }, [preview?.root_dir]);
-
-  async function deleteDataset() {
-    if (!deleting || busy) return;
-    setBusy(true); setError("");
-    try {
-      await request(`/datasets/${encodeURIComponent(deleting.dataset_id)}`, undefined, "DELETE");
-      setNotice(`已删除数据集“${deleting.name}”`); setDeleting(null); onChanged();
-    } catch (e) { setError(message(e)); } finally { setBusy(false); }
-  }
 
   async function importDataset(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setError("");
@@ -139,9 +129,9 @@ export function DatasetManager({ datasets, selected, onChanged }: { datasets: Da
     <section aria-label="数据集列表"><div className="iad-section-header"><h2>数据集 · {datasets.length}</h2><button ref={addButton} className="iad-primary" onClick={() => { setError(""); setNotice(""); setImporting(true); }}>添加数据集</button></div>
       <div className="iad-dataset-list">{datasets.map(dataset => <article className="iad-dataset-card" key={dataset.dataset_id} data-selected={selected?.dataset_id === dataset.dataset_id}>
         <div className="iad-dataset-card-header"><DatasetName dataset={dataset} label="卡片数据集名称" onChanged={() => onChanged()} />
-          <button type="button" className="iad-icon-button iad-card-delete" aria-label={`删除数据集 ${dataset.name}`} title="删除数据集" onClick={() => { setError(""); setNotice(""); setDeleting(dataset); }}>
-            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7" /></svg>
-          </button></div>
+          <DeleteAction title="删除数据集" name={dataset.name} className="iad-card-delete"
+            description="删除其样本记录、知识、审计和复核记录，保留服务器上的原始图像与标注文件。" restoreFocus={() => addButton.current}
+            onDelete={async () => { await request(`/datasets/${encodeURIComponent(dataset.dataset_id)}`, undefined, "DELETE"); setNotice(`已删除数据集“${dataset.name}”`); onChanged(); }} /></div>
         <button type="button" className="iad-dataset-select" aria-label={`选择数据集 ${dataset.name}`} aria-pressed={selected?.dataset_id === dataset.dataset_id} onClick={() => onChanged(dataset.dataset_id)}>
           <span className="iad-dataset-counts">
             <span><span>图像数量</span><strong>{dataset.total_samples}</strong></span>
@@ -154,13 +144,6 @@ export function DatasetManager({ datasets, selected, onChanged }: { datasets: Da
       </article>)}</div>{notice && <p role="status">{notice}</p>}{!datasets.length && <p className="iad-muted">添加服务器上的 Labelme 图像目录与标注目录，或异常检测分类目录。</p>}
     </section>
     {selected ? <DatasetSettings key={selected.dataset_id} dataset={selected} onChanged={onChanged} /> : <section><p>选择或添加数据集。</p></section>}
-    {deleting && <Modal title="删除数据集" className="iad-confirm-dialog" initialFocus={cancelDeleteButton} onClose={() => { if (!busy) setDeleting(null); }}>
-      <p>确认删除数据集“{deleting.name}”？</p>
-      <p className="iad-muted">删除其样本记录、知识、审计和复核记录，保留服务器上的原始图像与标注文件。</p>
-      {error && <p role="alert" className="iad-error">{error}</p>}
-      <div className="iad-form-actions"><button ref={cancelDeleteButton} type="button" aria-label="取消删除" disabled={busy} onClick={() => setDeleting(null)}>取消</button>
-        <button type="button" className="iad-danger" disabled={busy} onClick={() => void deleteDataset()}>{busy ? "正在删除…" : "确认删除"}</button></div>
-    </Modal>}
     {importing && <Modal title="添加数据集" onClose={() => { if (!busy) setImporting(false); }}>
       <form className="iad-dataset-import" onSubmit={importDataset}>
         <div className="iad-field">

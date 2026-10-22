@@ -15,7 +15,7 @@ from iad_core.workbench.vision import VlmClient
 @pytest.mark.parametrize(('component', 'old', 'new'), [
     ('audit', '不要预设产品或缺陷清单。', '不要预设产品或缺陷清单。新增判据必须核实。'),
     ('audit', '"temperature": 0.1', '"temperature": 0.2'),
-    ('knowledge', 'OUTPUT_TOKENS = 8192', 'OUTPUT_TOKENS = 4096'),
+    ('knowledge', 'OUTPUT_RESERVE_TOKENS = 8192', 'OUTPUT_RESERVE_TOKENS = 4096'),
 ])
 def test_updated_generation_refuses_old_job_retry(dataset, mllm_api, tmp_path, component, old, new):
     db, _, config = dataset

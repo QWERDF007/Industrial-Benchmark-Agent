@@ -525,6 +525,8 @@ export type SupportGroups = {
 export type ScopeRunId2 = string | null;
 export type ObservedSourceIds = string[] | null;
 export type KnowledgePreset = string[] | null;
+export type SubmissionId3 = string;
+export type CheckId6 = string;
 export type CreatedAt1 = string;
 export type VersionId9 = string;
 export type DatasetId7 = string;
@@ -637,6 +639,7 @@ export type Progress = number;
 export type Message1 = string;
 export type StartedAt2 = string | null;
 export type FinishedAt1 = string | null;
+export type DeletedAt = string | null;
 export type ModelName3 = string;
 export type SampleId11 = string;
 export type RelativePath1 = string | null;
@@ -855,7 +858,7 @@ export type GeometryStatus = "VALID" | "CLIPPED" | "SCALED" | "INVALID";
 export type AnnotationSource = "manual" | "existing_detector" | "production_system" | "imported" | "unknown";
 export type SourceWidth = number | null;
 export type SourceHeight = number | null;
-export type SubmissionId3 = string;
+export type SubmissionId4 = string;
 export type DatasetId17 = string;
 export type SampleId19 = string;
 export type Reviewer3 = string;
@@ -1332,6 +1335,7 @@ export interface KnowledgeSnapshot {
   scope_run_id: ScopeRunId2;
   observed_source_ids: ObservedSourceIds;
   knowledge_preset: KnowledgePreset;
+  manual_edit: KnowledgeCheckRemoval | null;
   created_at: CreatedAt1;
 }
 export interface CheckRevision {
@@ -1450,6 +1454,10 @@ export interface KnowledgeVerification {
 }
 export interface KnowledgeSupportPolicy {
   min_source_groups: MinSourceGroups;
+}
+export interface KnowledgeCheckRemoval {
+  submission_id: SubmissionId3;
+  check_id: CheckId6;
 }
 export interface KnowledgeVersion {
   version_id: VersionId9;
@@ -1582,6 +1590,7 @@ export interface JobSnapshot {
   message: Message1;
   started_at: StartedAt2;
   finished_at: FinishedAt1;
+  deleted_at: DeletedAt;
   model_name: ModelName3;
   current_sample: JobSample | null;
   phase: Phase1;
@@ -1834,7 +1843,7 @@ export interface Annotation {
   source_height?: SourceHeight;
 }
 export interface ReviewSubmission {
-  submission_id: SubmissionId3;
+  submission_id: SubmissionId4;
   dataset_id: DatasetId17;
   sample_id: SampleId19;
   reviewer: Reviewer3;

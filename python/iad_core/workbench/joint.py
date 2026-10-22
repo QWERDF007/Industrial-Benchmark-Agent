@@ -10,7 +10,7 @@ from iad_core.evidence.images import EvidenceImages, PreparedImage
 from iad_core.workbench.vision import VlmClient
 from iad_core.workbench.findings import FindingLedger
 
-OUTPUT_TOKENS = 16384
+OUTPUT_RESERVE_TOKENS = 16384
 
 
 @dataclass(frozen=True)
@@ -71,7 +71,8 @@ class JointInspection:
                 )
                 phase(InspectionProgress(phase="SYNTHESIS", inspected_regions=len(inspected),
                                          planned_regions=planned_count, completed_batches=len(steps), total_batches=total))
-                if not self.client.fits(JointAnalysis, instruction, images, model_name, OUTPUT_TOKENS):
+                plan = self.client.plan(JointAnalysis, instruction, images, model_name, OUTPUT_RESERVE_TOKENS)
+                if plan is None:
                     work = children or batch
                     if len(work) < 2:
                         raise ValueError("MLLM context cannot fit the overview, one ROI and reserved output")
@@ -81,7 +82,7 @@ class JointInspection:
                     continue
                 if cancel and cancel.is_set():
                     raise InterruptedError("Audit cancelled")
-                result = self.client.generate(JointAnalysis, instruction, images, model_name, OUTPUT_TOKENS)
+                result = self.client.generate(plan)
                 available = {image.evidence.evidence_id for image in images} | {
                     eid for child in children for eid in child.step.result.evidence_ids
                 } | {

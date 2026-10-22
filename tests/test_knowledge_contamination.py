@@ -77,6 +77,13 @@ def test_operator_can_locate_contaminated_normal_source_without_changing_human_t
         else:
             assert kind == 'KnowledgeVerification'
             payload = json.loads(content[0]['text'].split('待核验疑点：', 1)[1].split('\n请根据图像', 1)[0])
+            judgment = body['response_format']['json_schema']['schema']['$defs']['KnowledgeJudgment']
+            allowed = {item['evidence_id'] for item in evidence} | {
+                eid for child in payload['child_results'] for finding in child['result']['findings'] for eid in finding['evidence_ids']}
+            reference_schema = judgment['properties']['evidence_ids']['items']
+            assert set(reference_schema.get('enum', [reference_schema.get('const')])) == allowed
+            title_schema = judgment['properties']['affected_check_titles']['items']
+            assert set(title_schema.get('enum', [title_schema.get('const')])) == {'孔内外观'}
             assert len(payload['findings']) == 1
             rois = [e for e in evidence if e['role'] == 'roi']
             assert len(rois) == 1

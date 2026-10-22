@@ -10,7 +10,7 @@ from iad_core.evidence.images import PreparedImage
 from iad_core.knowledge.trace import KnowledgeTrace
 from iad_core.knowledge.support import KnowledgeSupport
 from iad_core.storage.database import Database
-from iad_core.knowledge.mining import KnowledgeInput, OUTPUT_TOKENS
+from iad_core.knowledge.mining import KnowledgeInput, OUTPUT_RESERVE_TOKENS
 from iad_core.knowledge.models import (FindingTarget, LearnedCheck, KnowledgeEvidence, KnowledgeFinding,
                                       KnowledgeJudgment, KnowledgeVerification, VerificationStep)
 from iad_core.workbench.jobs import JobContext
@@ -111,10 +111,15 @@ class FindingVerification:
         prompt = self.instruction + json.dumps(payload, ensure_ascii=False)
         images = list(supplied.values())
         ids = tuple(target.finding_id for target in targets)
-        judgment = create_model('KnowledgeJudgment', __base__=KnowledgeJudgment, finding_id=(Literal[ids], ...))
+        allowed = set(supplied) | {eid for child in children for item in child.result.findings for eid in item.evidence_ids}
+        titles = tuple(check.title for check in self.checks)
+        judgment = create_model('KnowledgeJudgment', __base__=KnowledgeJudgment,
+            finding_id=(Literal[ids], ...), evidence_ids=(List[Literal[tuple(sorted(allowed))]], Field(min_length=1)),
+            affected_check_titles=(List[Literal[titles]] if titles else List[str], Field(..., **({} if titles else {'max_length': 0}))))
         response_type = create_model('KnowledgeVerification', __base__=KnowledgeVerification,
             findings=(List[judgment], Field(min_length=len(ids), max_length=len(ids))))
-        if not self.client.fits(response_type, prompt, images, model_name, OUTPUT_TOKENS):
+        plan = self.client.plan(response_type, prompt, images, model_name, OUTPUT_RESERVE_TOKENS)
+        if plan is None:
             if children:
                 raise ValueError("Model context cannot combine knowledge verification results")
             if len(targets) > 1:
@@ -142,16 +147,14 @@ class FindingVerification:
                 return self._evaluate(targets, [], model_name, [root for node in nodes for root in node.roots])
             raise ValueError("Model context cannot fit a finding and its visual evidence")
         self.context.checkpoint()
-        result = self.client.generate(response_type, prompt, images, model_name, OUTPUT_TOKENS)
+        result = self.client.generate(plan)
         self.context.checkpoint()
         expected = {target.finding_id for target in targets}
         if len(result.findings) != len(expected) or {item.finding_id for item in result.findings} != expected:
             raise ValueError("Knowledge verification must cover each requested finding exactly once")
-        allowed = set(supplied) | {eid for child in children for item in child.result.findings for eid in item.evidence_ids}
-        titles = {check.title for check in self.checks}
         for target in targets:
             judgment = next(item for item in result.findings if item.finding_id == target.finding_id)
-            if not set(judgment.evidence_ids) <= allowed or not set(judgment.affected_check_titles) <= titles:
+            if not set(judgment.evidence_ids) <= allowed or not set(judgment.affected_check_titles) <= set(titles):
                 raise ValueError("Knowledge verification references unknown evidence or checks")
             if not set(judgment.evidence_ids) & {region.image.evidence_id for region in target.regions
                                                 if region.image.representation == 'raw'}:

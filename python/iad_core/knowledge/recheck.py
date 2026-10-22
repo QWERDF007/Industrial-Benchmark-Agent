@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from iad_core.evidence.images import EvidenceImages, PreparedImage
 from iad_core.knowledge.trace import KnowledgeTrace
-from iad_core.knowledge.mining import KnowledgeInput, OUTPUT_TOKENS
+from iad_core.knowledge.mining import KnowledgeInput, OUTPUT_RESERVE_TOKENS
 from iad_core.knowledge.models import (KnowledgeCheck, KnowledgeConflict, KnowledgeDraft, KnowledgeRecheckDecision,
                                       KnowledgeRecheckResult, KnowledgeSnapshot)
 from iad_core.workbench.jobs import JobContext
@@ -58,9 +58,10 @@ class KnowledgeRecheck:
             KnowledgeTrace(context).register(item for item in parent.evidence if item.image.evidence_id in supplied)
             context.checkpoint()
             context.update(phase='RECHECKING_HUMAN_KNOWLEDGE')
-            if not client.fits(KnowledgeRecheckResult, prompt, list(supplied.values()), model_name, OUTPUT_TOKENS):
+            plan = client.plan(KnowledgeRecheckResult, prompt, list(supplied.values()), model_name, OUTPUT_RESERVE_TOKENS)
+            if plan is None:
                 raise ValueError('人工处置重核验的完整证据超出容量，保留待重核验状态')
-            result = client.generate(KnowledgeRecheckResult, prompt, list(supplied.values()), model_name, OUTPUT_TOKENS)
+            result = client.generate(plan)
             context.checkpoint()
             if len(result.decisions) != 1 or result.decisions[0].submission_id != str(event.submission_id):
                 raise ValueError('知识重核验须唯一覆盖冻结人工事件')

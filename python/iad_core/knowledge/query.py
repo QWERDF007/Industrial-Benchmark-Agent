@@ -135,10 +135,13 @@ class KnowledgeReader:
                     reasons.append('qualification')
             if reasons:
                 changes.append(KnowledgeSourceChange(sample_id=source.sample_id, reasons=list(dict.fromkeys(reasons))))
+        generated = snapshot
+        while generated.manual_edit and generated.parent_version_id:
+            generated = self.repository.get(generated.parent_version_id)
         with self.db.connection() as conn:
             row = conn.execute("""SELECT json_extract(payload_json,'$.request.generation_signature') FROM job_runs
                 WHERE json_extract(payload_json,'$.knowledge_version_id')=? ORDER BY id DESC LIMIT 1""",
-                (snapshot.version_id,)).fetchone()
+                (generated.version_id,)).fetchone()
         generation_changed = row[0] != generation_signature() if row and row[0] else None
         normal_version_changed = bool(normal and (not current_normal or current_normal.version_id != normal.version_id))
         normal_sources_changed = bool(normal and self.freshness(normal).status != 'current')

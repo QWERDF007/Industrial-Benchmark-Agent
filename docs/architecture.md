@@ -18,6 +18,7 @@
 | 先观察、修订比较、冲突隔离与人审重核验 | [冻结观察](../python/iad_core/knowledge/observation.py)、[冲突](../python/iad_core/knowledge/conflicts.py)、[重核验](../python/iad_core/knowledge/recheck.py)、[输入冻结](../python/iad_core/knowledge/frozen.py) |
 | 连续范围、会话准入与进度 | [冻结范围](../python/iad_core/knowledge/scopes.py)、[范围界面](../apps/iad-harness/src/client/components/KnowledgeScopePanel.tsx)、[宿主会话](../apps/iad-harness/src/client/workbench-session.ts) |
 | 未发布观察、证据分页及发布口径 | [观察追溯](../python/iad_core/knowledge/trace.py)、[作业投影](../python/iad_core/workbench/jobs.py)、[观察界面](../apps/iad-harness/src/client/components/KnowledgeJobEvidence.tsx) |
+| 作业删除、条目移除与不可变历史 | [作业](../python/iad_core/workbench/jobs.py)、[知识维护](../python/iad_core/knowledge/maintenance.py)、[维护后新鲜度](../python/iad_core/knowledge/query.py)、[共享删除交互](../apps/iad-harness/src/client/components/DeleteAction.tsx) |
 | 知识挖掘、版本、污染与标注核验 | [知识领域](../python/iad_core/knowledge/) |
 | 全图/ROI、原图坐标与真实像素 | [图像证据](../python/iad_core/evidence/images.py)、[Mask](../python/iad_core/evidence/masks.py) |
 | 冻结知识、单图联合分析、疑点与作业 | [审计](../python/iad_core/workbench/audit.py)、[单图](../python/iad_core/workbench/inspection.py)、[联合分析](../python/iad_core/workbench/joint.py)、[作业](../python/iad_core/workbench/jobs.py) |
@@ -39,7 +40,8 @@
 | 三输入、版本继承、支持策略与覆盖查询 | [公开原生/HTTP图组链](../apps/iad-harness/test/incremental_group.test.js) |
 | 正常/异常知识、来源发现、污染与反馈 | [正常知识](../tests/test_dataset_knowledge.py)、[异常知识](../tests/test_defect_knowledge.py)、[来源发现](../apps/iad-harness/test/knowledge_sources.test.js)、[污染](../tests/test_knowledge_contamination.py)、[反馈](../tests/test_knowledge_feedback.py) |
 | 连续范围、恢复与人工重核验 | [HTTP冻结覆盖](../apps/iad-harness/test/knowledge_scope.test.js)、[真实Agent调用链](../apps/iad-harness/test/knowledge_scope_agent.test.js)、[人工处置与取消恢复](../apps/iad-harness/test/knowledge_scope_review.test.js)、[原生知识会话](../apps/iad-harness/browser/knowledge-session.test.js) |
-| 实际视觉输入容量、带图综合及能力未知/超时 | [公开容量链](../apps/iad-harness/test/knowledge_capacity.test.js) |
+| 删除确认、历史证据与维护版本 | [公开HTTP维护链](../apps/iad-harness/test/knowledge_maintenance.test.js)、[知识浏览器操作](../apps/iad-harness/browser/knowledge-navigation.test.js)、[数据集共享交互](../apps/iad-harness/browser/workbench.test.js) |
+| 实际视觉输入容量、带图综合、输出预算及能力未知/超时 | [公开容量链](../apps/iad-harness/test/knowledge_capacity.test.js)、[连续图组输出预算](../tests/test_vlm_output_budget.py) |
 | 输入屏蔽与知识独立支持 | [提示边界](../tests/test_knowledge_prompt_scope.py)、[冻结知识审计](../tests/test_knowledge_audit.py) |
 | 规则、疑点、分块与Mask真实证据 | [规则](../tests/test_rule_audit.py)、[疑点](../tests/test_audit_findings.py)、[容量](../tests/test_knowledge_capacity.py)、[Mask](../tests/test_mask_evidence.py) |
 | 口径与中断恢复 | [报告](../tests/test_quality_report.py)、[目录变更闭环](../tests/test_folder_source_change_closed_loop.py)、[恢复](../tests/test_job_recovery.py)、[调用记录](../tests/test_model_calls.py) |

@@ -331,6 +331,8 @@ class Database:
             job_columns = {row[1] for row in cursor.execute("PRAGMA table_info(job_runs)")}
             if "payload_json" not in job_columns:
                 cursor.execute("ALTER TABLE job_runs ADD COLUMN payload_json TEXT NOT NULL DEFAULT '{}'")
+            if "deleted_at" not in job_columns:
+                cursor.execute("ALTER TABLE job_runs ADD COLUMN deleted_at TEXT")
             cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_root
                 ON job_runs(json_extract(payload_json,'$.root_run_id'))""")
             migrate_audit_jobs(conn)

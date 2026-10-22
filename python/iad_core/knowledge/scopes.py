@@ -140,14 +140,24 @@ class KnowledgeScopes:
         with self.db.connection() as conn:
             row = conn.execute('SELECT scope_json,status,goal,session_id FROM agent_runs WHERE run_id=? AND scope_json IS NOT NULL', (scope_run_id,)).fetchone()
             rows = conn.execute("""SELECT job_id,status,payload_json FROM job_runs
-                WHERE json_extract(payload_json,'$.request.scope_run_id')=? ORDER BY id""", (scope_run_id,)).fetchall()
+                WHERE deleted_at IS NULL AND json_extract(payload_json,'$.request.scope_run_id')=? ORDER BY id""", (scope_run_id,)).fetchall()
+            versions = conn.execute("""SELECT version_id FROM knowledge_versions
+                WHERE json_extract(snapshot_json,'$.scope_run_id')=? ORDER BY created_at,version_id""", (scope_run_id,)).fetchall()
         if not row:
             raise LookupError('连续范围不存在或已删除')
         definition = KnowledgeScopeDefinition.model_validate(dict(json.loads(row['scope_json']), objective=row['goal']))
         DatasetRegistry(self.db).get(definition.dataset_id)
         jobs = [dict(run_id=item['job_id'], status=item['status'], payload=json.loads(item['payload_json'])) for item in rows]
-        version_ids = list(dict.fromkeys(job['payload']['knowledge_version_id'] for job in jobs if job['payload'].get('knowledge_version_id')))
+        version_ids = [version[0] for version in versions]
         current_id = version_ids[-1] if version_ids else definition.starting_version_id
+        head = self.repository.current(definition.dataset_id, definition.kind)
+        edits = []
+        while head and head.manual_edit and head.version_id != current_id:
+            edits.append(head.version_id)
+            head = self.repository.get(head.parent_version_id) if head.parent_version_id else None
+        if head and head.version_id == current_id:
+            version_ids.extend(reversed(edits))
+            current_id = version_ids[-1] if version_ids else current_id
         current = self.repository.get(current_id) if current_id else None
         observed, visited = set(), set()
         ancestor = current

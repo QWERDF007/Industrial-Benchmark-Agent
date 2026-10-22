@@ -130,6 +130,8 @@ class JobRunner:
 
     def _retry_scope(self, run_id: str, job_types: Sequence[JobKind]) -> tuple[dict, dict, list[str]]:
         parent = self.status(run_id, job_types)
+        if parent['deleted_at']:
+            raise ValueError('作业已从列表删除，不可重试')
         if parent["status"] in ("PENDING", "RUNNING"):
             raise ValueError("当前作业仍在执行，请等待结束后重试")
         root = self.status(parent.get("root_run_id", run_id), job_types)
@@ -222,7 +224,7 @@ class JobRunner:
         payload = json.loads(row["payload_json"])
         values = {**payload.get('request', {}), **payload, "run_id": run_id, "task_id": row["task_id"], "job_type": row["job_type"],
                 "status": row["status"], "message": row["message"], "started_at": row["started_at"],
-                "finished_at": row["finished_at"], "progress": row["progress"],
+                "finished_at": row["finished_at"], "progress": row["progress"], "deleted_at": row['deleted_at'],
                 "cancel_requested": payload.get("cancel_requested", False),
                 "unprocessed": payload["total_samples"] - payload["completed"] - payload["failed"],
                 "model_calls": [call.model_dump() for call in ModelCalls(self.db).list(run_id)]}
@@ -238,9 +240,19 @@ class JobRunner:
     def list(self, dataset_id: str, job_types: Sequence[JobKind]) -> list:
         placeholders = ",".join("?" for _ in job_types)
         with self.db.connection() as conn:
-            ids = [row[0] for row in conn.execute(f"""SELECT job_id FROM job_runs WHERE job_type IN ({placeholders})
+            ids = [row[0] for row in conn.execute(f"""SELECT job_id FROM job_runs WHERE job_type IN ({placeholders}) AND deleted_at IS NULL
                 AND COALESCE(json_extract(payload_json,'$.request.dataset_id'),json_extract(payload_json,'$.dataset_id'))=? ORDER BY id DESC LIMIT 30""", (*job_types, dataset_id))]
         return [self.status(run_id, job_types) for run_id in ids]
+
+    def delete(self, run_id: str, job_types: Sequence[JobKind]) -> dict:
+        with self.lock:
+            status = self.status(run_id, job_types)
+            if status['status'] in ('PENDING', 'RUNNING'):
+                raise ValueError('请先取消作业，等待结束后再删除')
+            with self.db.connection() as conn:
+                conn.execute('UPDATE job_runs SET deleted_at=COALESCE(deleted_at,?) WHERE job_id=?',
+                             (datetime.now(timezone.utc).isoformat(), run_id))
+        return {'deleted_run_id': run_id}
 
     def cancel(self, run_id: str, job_types: Sequence[JobKind]) -> dict:
         with self.lock:

@@ -1,7 +1,8 @@
 import base64
 import json
 import os
-from typing import List, Optional, Type, TypeVar
+from dataclasses import dataclass
+from typing import Generic, List, Optional, Type, TypeVar
 
 import httpx
 from pydantic import BaseModel, Field, ValidationError
@@ -15,6 +16,12 @@ T = TypeVar("T", bound=BaseModel)
 class TokenCapacity(BaseModel):
     count: int = Field(ge=0)
     max_model_len: int = Field(gt=0)
+
+
+@dataclass(frozen=True)
+class GenerationRequest(Generic[T]):
+    response_type: Type[T]
+    body: dict
 
 
 RESPONSE_INSTRUCTION = "\n请根据图像和上下文填写实际分析结果；Schema 是格式约束，不是答案，不要复述其定义。\n只输出符合以下 JSON Schema 的 JSON，不要 Markdown：\n"
@@ -49,7 +56,12 @@ class VlmClient:
         key = os.environ.get("LIVE_VLM_KEY")
         return {"Authorization": "Bearer " + key} if key else {}
 
-    def prepare(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str, max_tokens: int = 2048) -> dict:
+    def plan(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str,
+             output_reserve: int = 2048) -> Optional[GenerationRequest[T]]:
+        if self.profile.capacity_mode is None:
+            raise ValueError('模型容量能力未知，请配置LIVE_VLM_CAPACITY_MODE；未发送生成请求')
+        if len(images) > self.profile.max_visual_inputs:
+            return None
         schema = response_type.model_json_schema()
         content = [{"type": "text", "text": instruction + RESPONSE_INSTRUCTION + json.dumps(schema, ensure_ascii=False)}]
         for image in images:
@@ -59,20 +71,13 @@ class VlmClient:
                 encoded = base64.b64encode(source.read()).decode("ascii")
             content.append({"type": "text", "text": "视觉证据：" + json.dumps(image.evidence.model_context(), ensure_ascii=False)})
             content.append({"type": "image_url", "image_url": {"url": "data:image/png;base64," + encoded}})
-        return {
+        body = {
             "model": model_name, "messages": [{"role": "user", "content": content}],
             "response_format": {"type": "json_schema", "json_schema": {"name": response_type.__name__, "strict": True, "schema": schema}},
-            **GENERATION_PARAMETERS, **self.profile.request_parameters, "max_tokens": max_tokens,
+            **GENERATION_PARAMETERS, **self.profile.request_parameters,
         }
-
-    def fits(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str, max_tokens: int = 2048) -> bool:
-        if self.profile.capacity_mode is None:
-            raise ValueError('模型容量能力未知，请配置LIVE_VLM_CAPACITY_MODE；未发送生成请求')
-        if len(images) > self.profile.max_visual_inputs:
-            return False
-        body = self.prepare(response_type, instruction, images, model_name, max_tokens)
         if not self.within_limits(body, images):
-            return False
+            return None
         root = self.endpoint.rsplit('/chat/completions', 1)[0].removesuffix('/v1')
         request = self.client.build_request('POST', root + '/tokenize', headers=self._headers,
                                     json={key: body[key] for key in ('model', 'messages', 'chat_template_kwargs') if key in body})
@@ -80,20 +85,23 @@ class VlmClient:
             response.raise_for_status()
             capacity = TokenCapacity.model_validate(response.json())
             maximum = min(capacity.max_model_len, self.profile.context_tokens or capacity.max_model_len)
-            return capacity.count + max_tokens <= maximum
-
-    def generate(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str, max_tokens: int = 2048) -> T:
-        if len(images) > self.profile.max_visual_inputs:
-            raise ValueError('实际视觉输入数超出配置上限，未发送模型请求')
-        body = self.prepare(response_type, instruction, images, model_name, max_tokens)
+            available = maximum - capacity.count
+            required = min(output_reserve, self.profile.max_output_tokens or output_reserve)
+            if available < required:
+                return None
+            body['max_tokens'] = min(available, self.profile.max_output_tokens or available)
         if not self.within_limits(body, images):
-            raise ValueError('实际模型请求体超出配置容量，未发送生成请求')
-        request = self.client.build_request('POST', self.endpoint, headers=self._headers, json=body)
+            return None
+        return GenerationRequest(response_type, body)
+
+    def generate(self, plan: GenerationRequest[T]) -> T:
+        response_type = plan.response_type
+        request = self.client.build_request('POST', self.endpoint, headers=self._headers, json=plan.body)
         with ModelCalls.exchange(self.client, request, 'generate', response_type.__name__) as response:
             response.raise_for_status()
             choice = response.json()["choices"][0]
             if choice.get("finish_reason") == "length":
-                raise ValueError(f"MLLM {response_type.__name__} 输出达到 token 上限，分析未完整返回")
+                raise ValueError(f"MLLM {response_type.__name__} 输出达到 token 上限（本次输出预算 {plan.body['max_tokens']}），分析未完整返回")
             text = choice["message"].get("content")
             if not isinstance(text, str) or not text.strip():
                 raise ValueError(f"VLM returned no final answer (finish_reason={choice.get('finish_reason')})")

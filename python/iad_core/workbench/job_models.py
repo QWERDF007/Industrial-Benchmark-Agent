@@ -77,6 +77,7 @@ class JobSnapshot(AnalysisModel):
     message: str
     started_at: Optional[str]
     finished_at: Optional[str]
+    deleted_at: Optional[str] = None
     model_name: str
     current_sample: Optional[JobSample] = None
     phase: Optional[str] = None

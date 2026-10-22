@@ -10,7 +10,7 @@ from iad_core.knowledge.models import CheckRevision, KnowledgeDraft, KnowledgeFi
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
 
-OUTPUT_TOKENS = 8192
+OUTPUT_RESERVE_TOKENS = 8192
 SYNTHESIS_INSTRUCTION = """结合子批次观察记录及当前实际附带的代表性全图/ROI综合知识。子记录不是本轮重新看过的图，当前图像不能代替其他已观察局部。
 保留有证据的判据、支持与反对引用、候选异常和限制。不要凭多数票抹去少数异常或冲突；
 不得把某组独有特征推及全部来源，不得编造新的证据或遗漏未解决的疑点。
@@ -91,9 +91,10 @@ class KnowledgeMiner:
                 image_evidence_ids=[image.evidence.evidence_id for image in item.images],
                 verified_findings=findings, prior_observations=observed))
         prompt = evolution_instruction + instruction + json.dumps(source_context, ensure_ascii=False)
-        if self.client.fits(self.response_type, prompt, images, model_name, max_tokens=OUTPUT_TOKENS):
+        plan = self.client.plan(self.response_type, prompt, images, model_name, OUTPUT_RESERVE_TOKENS)
+        if plan is not None:
             self.context.checkpoint()
-            draft = self.client.generate(self.response_type, prompt, images, model_name, max_tokens=OUTPUT_TOKENS)
+            draft = self.client.generate(plan)
             self.context.checkpoint()
             return self.record(draft, images, [])
         if len(inputs) > 1:
@@ -130,9 +131,10 @@ class KnowledgeMiner:
             required.update(image.evidence.evidence_id for image in owner.images
                             if image.evidence.crop_bbox == by_id[eid].evidence.crop_bbox)
         synthesis_images = [image for eid, image in by_id.items() if eid in required]
-        if not self.client.fits(self.response_type, prompt, synthesis_images, model_name, max_tokens=OUTPUT_TOKENS):
+        plan = self.client.plan(self.response_type, prompt, synthesis_images, model_name, OUTPUT_RESERVE_TOKENS)
+        if plan is None:
             raise ValueError("Knowledge synthesis exceeds the model context; partial observations remain in the job")
         self.context.checkpoint()
-        draft = self.client.generate(self.response_type, prompt, synthesis_images, model_name, max_tokens=OUTPUT_TOKENS)
+        draft = self.client.generate(plan)
         self.context.checkpoint()
         return self.record(draft, synthesis_images, children)

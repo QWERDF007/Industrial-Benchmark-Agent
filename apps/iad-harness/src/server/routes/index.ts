@@ -107,6 +107,10 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       if (pathname === "/api/iad/knowledge/sources" && method === "GET") return await call("knowledge_sources", query);
       if (pathname === "/api/iad/knowledge/start" && method === "POST") return await call("knowledge_start", { request: body });
       if (pathname === "/api/iad/knowledge/jobs" && method === "GET") return await call("knowledge_list", query);
+      const knowledgeJob = pathname.match(/^\/api\/iad\/knowledge\/jobs\/([^/]+)$/);
+      if (knowledgeJob && method === "DELETE") return await call("knowledge_job_delete", { run_id: decodeURIComponent(knowledgeJob[1]) });
+      const removeCheck = pathname.match(/^\/api\/iad\/knowledge\/versions\/([^/]+)\/checks\/remove$/);
+      if (removeCheck && method === "POST") return await call("knowledge_check_remove", { version_id: decodeURIComponent(removeCheck[1]), request: body });
       const knowledge = pathname.match(/^\/api\/iad\/knowledge\/(status|cancel|retry)\/([^/]+)$/);
       if (knowledge && ((knowledge[1] === "status" && method === "GET") || (knowledge[1] !== "status" && method === "POST"))) {
         return await call("knowledge_" + knowledge[1], { ...body, run_id: decodeURIComponent(knowledge[2]) });

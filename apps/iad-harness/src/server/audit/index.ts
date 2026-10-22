@@ -189,7 +189,8 @@ export function createAuditTools(ctx: any): ToolDefinition[] {
       "Persist non-authoritative agent audit suggestion (observations, hypotheses, evidence) (S08, RP-14, V2-S01, V2-S06). Never modifies ground truth or human review.",
     parameters: {
       task_id: { type: "string", required: true, description: "Inspection task identifier" },
-      suggestion: { type: "json", required: true, description: "Structured audit suggestion payload" },
+      suggestion: { type: "object", properties: {}, additionalProperties: true, required: true,
+        description: "Structured audit suggestion object with observations, hypotheses, evidence_refs and optional sample_id; pass an object, not an encoded JSON string." },
     },
     output: {
       schema: { type: "json" },

@@ -8,6 +8,7 @@ export const workbenchStyles = themeStyles + controlStyles + `
 .iad-workbench h2 {font-size:17px;margin:0 0 16px;}
 .iad-workbench h3 {font-size:14px;margin:20px 0 9px;overflow:hidden;text-overflow:ellipsis;}
 .iad-header,.iad-row {display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.iad-action-end {margin-inline-start:auto;flex:none;}
 .iad-header {justify-content:space-between;margin-bottom:16px;}
 .iad-eyebrow {font-size:12px;letter-spacing:1.5px;color:var(--iad-primary);}
 .iad-kpis {display:flex;flex-wrap:wrap;gap:8px 24px;margin-bottom:20px;color:var(--iad-muted);}

@@ -3,7 +3,7 @@ import uuid
 from typing import List, Optional
 
 from iad_core.knowledge.trace import KnowledgeTrace
-from iad_core.knowledge.mining import KnowledgeInput, OUTPUT_TOKENS
+from iad_core.knowledge.mining import KnowledgeInput, OUTPUT_RESERVE_TOKENS
 from iad_core.evidence.images import EvidenceImages, PreparedImage
 from iad_core.knowledge.models import KnowledgeCheck, KnowledgeDraft, KnowledgeObservations, KnowledgeObservationStep, KnowledgeSnapshot
 from iad_core.workbench.jobs import JobContext
@@ -112,8 +112,9 @@ class KnowledgeObserver:
             'sources': [{'sample_id': sid, 'raw_evidence_ids': sorted(ids)} for sid, ids in sources.items()],
         }, ensure_ascii=False)
         actual = list(images.values())
-        if (len(checks) * len(inputs) > self.client.profile.max_structured_items
-                or not self.client.fits(KnowledgeObservations, prompt, actual, model_name, OUTPUT_TOKENS)):
+        plan = (self.client.plan(KnowledgeObservations, prompt, actual, model_name, OUTPUT_RESERVE_TOKENS)
+                if len(checks) * len(inputs) <= self.client.profile.max_structured_items else None)
+        if plan is None:
             if len(inputs) > 1:
                 middle = len(inputs) // 2
                 for group in (inputs[:middle], inputs[middle:]):
@@ -134,7 +135,7 @@ class KnowledgeObserver:
                     self.evaluate(version_id, checks, [KnowledgeInput(inputs[0].source,
                         [inputs[0].images[0], *[image for bundle in group for image in bundle]])], model_name, purpose)
             return
-        result = self.client.generate(KnowledgeObservations, prompt, actual, model_name, OUTPUT_TOKENS)
+        result = self.client.generate(plan)
         self.context.checkpoint()
         expected = {(sid, check.check_id) for sid in sources for check in checks}
         observed = [(item.sample_id, item.check_id) for item in result.observations]

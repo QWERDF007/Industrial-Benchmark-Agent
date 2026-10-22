@@ -17,12 +17,12 @@ from iad_core.workbench.query import SampleQuery, WorkbenchQuery
 
 from iad_core.workbench.vision import VlmClient, RESPONSE_INSTRUCTION, GENERATION_PARAMETERS
 from iad_core.workbench.audit_prompts import AUDIT_PROMPTS
-from iad_core.workbench.joint import OUTPUT_TOKENS
+from iad_core.workbench.joint import OUTPUT_RESERVE_TOKENS
 from iad_core.workbench.inspection import SampleInspection
 from iad_core.workbench.jobs import JobContext, JobRunner
 from iad_core.workbench.knowledge import InspectionKnowledge
 
-AUDIT_GENERATION_VERSION = 'dataset-audit-v2'
+AUDIT_GENERATION_VERSION = 'dataset-audit-v3'
 
 class AuditStart(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -47,7 +47,7 @@ class AuditService:
     @property
     def generation_signature(self) -> str:
         return hashlib.sha256(json.dumps([AUDIT_GENERATION_VERSION, AUDIT_PROMPTS, RESPONSE_INSTRUCTION, GENERATION_PARAMETERS,
-            OUTPUT_TOKENS, AuditAnalysis.model_json_schema()], sort_keys=True).encode()).hexdigest()
+            OUTPUT_RESERVE_TOKENS, AuditAnalysis.model_json_schema()], sort_keys=True).encode()).hexdigest()
 
     def audit_sample(self, sample_id: str, model_name: str, knowledge: InspectionKnowledge, context: JobContext):
         samples = SampleRepository(self.db)

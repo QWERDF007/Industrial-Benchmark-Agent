@@ -180,3 +180,36 @@ test("DSH directory import and browser queries share one dataset and report", as
   }
   assert.equal(ctx.tools.get("dataset_import"), undefined);
 });
+
+test('DSH saves nested audit suggestions as objects and rejects encoded JSON strings', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-suggestion-object-'));
+  execFileSync(resolvePythonPath(), [fileURLToPath(new URL('fixtures/knowledge_dataset.py', import.meta.url)), root]);
+  const ctx = new Context();
+  new SystemPrompt(ctx, {}); new ToolRuntime(ctx); new SkillRegistry(ctx);
+  new LocalAttachmentStore(ctx, { dshHome: path.join(root, 'dsh') });
+  const fork = await ctx.plugin(harness, { dbPath: path.join(root, 'test.db') });
+  const execute = (name, args) => ctx.tools.execute({ name, arguments: args, callId: randomUUID(), signal: new AbortController().signal });
+  try {
+    const schema = ctx.tools.schemas().find(tool => tool.name === 'audit_suggestion_save');
+    assert.equal(schema.parameters.properties.suggestion.type, 'object');
+    const imported = await execute('dataset_import', { format: 'labelme', name: '建议对象', image_dir: path.join(root, 'images'), annotation_dir: path.join(root, 'labels') });
+    assert.equal(imported.isError, false, JSON.stringify(imported));
+    const dataset = imported.value;
+    const sample_id = dataset.dataset_id + ':part-0.png';
+    const before = await ctx.iadPythonBridge.execute('sample_get', { sample_id });
+    const suggestion = { sample_id, observations: [{ phenomenon: '结构待核对', description: '需结合原图人工核实' }],
+      hypotheses: [{ label: 'UNCERTAIN' }], conclusion_status: 'INSUFFICIENT_EVIDENCE', recommended_action: 'REVIEW', input_modalities_used: ['text'] };
+    const saved = await execute('audit_suggestion_save', { task_id: dataset.task_id, suggestion });
+    assert.equal(saved.isError, false, JSON.stringify(saved));
+    const after = await ctx.iadPythonBridge.execute('sample_get', { sample_id });
+    assert.equal(after.suggestion.suggestion_id, saved.value.metrics.suggestion_id);
+    assert.deepEqual(after.sample, before.sample);
+    assert.deepEqual(after.review_history, before.review_history);
+    const encoded = await execute('audit_suggestion_save', { task_id: dataset.task_id, suggestion: JSON.stringify(suggestion) });
+    assert.equal(encoded.isError, true);
+    assert.match(encoded.error.message, /invalid arguments/i);
+  } finally {
+    await fork.dispose();
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});

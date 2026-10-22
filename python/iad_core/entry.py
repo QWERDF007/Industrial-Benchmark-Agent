@@ -349,6 +349,17 @@ def knowledge_list(args, db_path):
     return {"jobs": workbench(db_path).knowledge.list(args["dataset_id"])}
 
 
+def knowledge_job_delete(args, db_path):
+    return workbench(db_path).knowledge.delete(args['run_id'])
+
+
+def knowledge_check_remove(args, db_path):
+    from iad_core.knowledge.maintenance import KnowledgeMaintenance
+    from iad_core.knowledge.models import KnowledgeCheckRemoval
+    return KnowledgeMaintenance(Database(db_path)).remove_check(args['version_id'],
+        KnowledgeCheckRemoval.model_validate(args['request'])).model_dump()
+
+
 def knowledge_observations(args, db_path):
     from iad_core.knowledge.trace import KnowledgeTrace
     job = workbench(db_path).knowledge.status(args['run_id'])
@@ -386,7 +397,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     knowledge_review_context, knowledge_review_submit, knowledge_review_queue,
     review_stats, report_get, audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_list, audit_evidence, inspection_context, directory_list,
     knowledge_scope_open, knowledge_scope_get, knowledge_scope_stop, knowledge_scope_resume,
-    knowledge_get, knowledge_details, knowledge_sources, knowledge_observations, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_retry_options, knowledge_list, model_call_get,
+    knowledge_get, knowledge_details, knowledge_sources, knowledge_observations, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_retry_options, knowledge_list, knowledge_job_delete, knowledge_check_remove, model_call_get,
 )}
 
 
