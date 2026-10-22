@@ -8,6 +8,12 @@ export declare const knowledgeDetailParameters: {
         readonly type: "string";
         readonly title: "Check Id";
     };
+    readonly section: {
+        readonly type: "string";
+        readonly enum: readonly ["checks", "discovery"];
+        readonly title: "Section";
+        readonly default: "checks";
+    };
     readonly page: {
         readonly type: "integer";
         readonly title: "Page";

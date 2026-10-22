@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.storage.models import sample_uuid
 from iad_core.workbench.calls import ModelCallSummary
+from iad_core.knowledge.instructions import FrozenMiningPrompt
 
 JobStatus = Literal['PENDING', 'RUNNING', 'COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED', 'INTERRUPTED']
 
@@ -85,6 +86,7 @@ class JobSnapshot(AnalysisModel):
     defect_version_id: Optional[str] = None
     kind: Optional[Literal['normal', 'defect']] = None
     knowledge_version_id: Optional[str] = None
+    mining_prompt: Optional[FrozenMiningPrompt] = None
     inspected_regions: Optional[int] = None
     planned_regions: Optional[int] = None
     completed_batches: Optional[int] = None

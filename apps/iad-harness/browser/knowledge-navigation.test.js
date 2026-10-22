@@ -47,6 +47,10 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
         res.setHeader('Content-Type','application/json');res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({observations})}}]}));return;
       }
       const answer={summary:'可见蓝色平面',checks:[{title:'表面外观',subject:'主体',location:'全图',criterion:alterCriterion?'可见蓝色平面且边缘连续':'可见蓝色平面',allowed_variations:[],support_evidence_ids:evidence.filter(e=>e.representation==='raw').map(e=>e.evidence_id),counter_evidence_ids:[],limitations:[],status:'supported'}],suspects:[],limitations:[],revisions:[]};
+      const raw=evidence.filter(e=>e.representation==='raw').map(e=>e.evidence_id);
+      answer.discovery={parts:[{name:'主体',location:'全图',evidence_ids:raw}],areas:[
+        {direction_id:null,direction:'平面蓝色观察',subjects:['主体'],status:'已形成知识',reason:'输入图中可见蓝色平面',check_titles:['表面外观'],evidence_ids:raw},
+        {direction_id:null,direction:'背面结构',subjects:['主体'],status:'不可观察',reason:'没有背面视图',check_titles:[],evidence_ids:[]}]};
       const parent=value.messages[0].content[0].text.split('冻结父版本候选：')[1]?.split('\n')[0];
       if(parent)answer.revisions=JSON.parse(parent).checks.map(check=>({previous_check_id:check.check_id,current_check_titles:['表面外观'],reason:'同一可见判据'}));
       res.setHeader('Content-Type','application/json');res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify(answer)}}]}));
@@ -100,6 +104,21 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
       const jobs=await(await fetch(base+`/api/iad/knowledge/jobs?dataset_id=${dataset.dataset_id}`)).json();assert.deepEqual(jobs.jobs,[]);
     }
     await click('良品');
+    await(await element('summary[data-action="mining-directions"]')).click();
+    const shape=await element('input[aria-label="启用方向 整体形态"]');
+    await driver.wait(()=>shape.isEnabled(),5000);
+    await shape.click();
+    await(await element('.iad-direction-add>summary')).click();
+    await(await element('input[aria-label="新方向名称"]')).sendKeys('孔内背景');
+    await(await element('textarea[aria-label="新方向说明"]')).sendKeys('观察孔内背景是否清楚可见，区分遮挡与阴影。');
+    await click('添加数据集方向');
+    assert.equal(await(await element('input[aria-label="启用方向 孔内背景"]')).isSelected(),true);
+    await click('保存方向');
+    await driver.wait(async()=>!(await(await element('button[data-action="save-mining-directions"]')).isEnabled()),5000);
+    await driver.navigate().refresh();
+    await(await element('summary[data-action="mining-directions"]')).click();
+    assert.equal(await(await element('input[aria-label="启用方向 整体形态"]')).isSelected(),false);
+    assert.equal(await(await element('input[aria-label="启用方向 孔内背景"]')).isSelected(),true);
     await(await count()).clear();await(await count()).sendKeys('1');await click('按数量选择');
     await driver.wait(async()=>await(await element('input[type="checkbox"][aria-label^="选择来源"]')).isSelected(),5000);
     await click('开始挖掘良品知识');
@@ -107,6 +126,15 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     await driver.wait(async()=>{knowledge=(await(await fetch(base+`/api/iad/knowledge?dataset_id=${datasets[0].dataset_id}&kind=normal`)).json()).knowledge;return !!knowledge;},10000);
     assert.equal(knowledge.sources.length,1);assert.equal(knowledge.observed_source_ids.length,1);
     assert.equal(knowledge.model_name,'test-browser-mllm');assert.equal(starts.length,1);
+    await click('知识条目');
+    await(await element('.iad-knowledge-discovery>summary')).click();
+    await element('.iad-discovery-area');
+    assert.match(await(await element('.iad-knowledge-discovery')).getText(),/模型新增/);
+    assert.equal(knowledge.mining_prompt.configuration.directions.find(item=>item.title==='孔内背景').origin,'dataset');
+    await(await element('.iad-discovery-area>button')).click();
+    await element('input[aria-label="启用方向 平面蓝色观察"]');
+    await click('保存方向');
+    await driver.wait(async()=>!(await(await element('button[data-action="save-mining-directions"]')).isEnabled()),5000);
     await(await element('.iad-knowledge-jobs summary')).click();
     await element('button[title="放大冻结观察证据"]');
     await(await element('button[title="放大冻结观察证据"]')).click();

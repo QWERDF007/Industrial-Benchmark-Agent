@@ -5,7 +5,7 @@ import { workbenchJsonOutput } from "../tool-output.js";
 import { evidenceOutput, readEvidenceAttachment } from "../evidence-attachment.js";
 import { jobRetryParameters, jobStatusParameters, waitForJobStatus } from "../job-status.js";
 import { miningParameters } from "../../shared/mining.parameters.generated.js";
-import { knowledgeOutput, knowledgeScopeOutput, knowledgeJobOutput } from "./output.js";
+import { knowledgeOutput, knowledgeScopeOutput, knowledgeJobOutput, knowledgePromptOutput } from "./output.js";
 import { knowledgeScopeParameters } from "../../shared/knowledge-scope.parameters.generated.js";
 import { knowledgeDetailParameters } from "../../shared/knowledge-detail.parameters.generated.js";
 import { knowledgeSourceParameters } from "../../shared/knowledge-source.parameters.generated.js";
@@ -14,6 +14,13 @@ const groupPolicy = " 用户确认多少张就联合输入完整图组，不自�
 
 export function createKnowledgeTools(bridge: PythonBridge, ctx: Context): ToolDefinition[] {
   return [
+    defineTool({
+      name: "knowledge_prompt_get",
+      description: "只读查阅当前数据集、良品或异常的挖掘目标、已选通用方向和数据集专属方向。图组工具自动冻结并使用这里已保存的配置；不修改配置、不启动作业，仍允许模型发现清单之外的新方向。",
+      parameters: { dataset_id: { type: "string", required: true }, kind: { type: "string", enum: ["normal", "defect"], required: true } },
+      output: knowledgePromptOutput,
+      execute: (args, exec) => bridge.execute("knowledge_prompt_get", args, exec.signal),
+    }),
     defineTool({
       name: "knowledge_scope_open",
       description: "仅在用户明确要求连续处理整个范围时，保存授权任务与当前候选范围；此操作不发模型请求。objective记录实际用户意图，search/seed冻结筛选及顺序，可提供starting_version_id与异常的normal_version_id。只看一组不建立范围。每次数量仍由Agent在三输入图组工具中选择，不增加循环或首批参数。",
@@ -93,7 +100,7 @@ export function createKnowledgeTools(bridge: PythonBridge, ctx: Context): ToolDe
     }),
     defineTool({
       name: "knowledge_get",
-      description: "读取知识版本、真实计数、新鲜度和最多三个优先疑点的紧凑摘要。指定version_id，或dataset_id加kind。判据与证据用knowledge_details按需分页；冲突用knowledge_conflict_context读取。不会展开全库或改写历史。",
+      description: "读取知识版本、真实计数、新鲜度和最多三个优先疑点的紧凑摘要。指定version_id，或dataset_id加kind。判据与证据用knowledge_details按需分页；观察方向用section=discovery查阅，未记录不等于覆盖完整。冲突用knowledge_conflict_context读取。不会展开全库或改写历史。",
       parameters: {
         version_id: { type: "string" },
         dataset_id: { type: "string" },
@@ -104,7 +111,7 @@ export function createKnowledgeTools(bridge: PythonBridge, ctx: Context): ToolDe
     }),
     defineTool({
       name: "knowledge_details",
-      description: "只读分页获取固定版本的完整判据。提供check_id时分页读取该判据真实支持/反对证据元数据，随后knowledge_evidence读取图像。page_size默认10，上限50；不预先枚举全部历史来源。",
+      description: "只读分页获取固定版本的完整判据。section=discovery读取生成时可见部件与各方向观察，direction_id为空是模型新增方向，未记录不等于覆盖完整；不可同时传check_id。默认checks；提供check_id分页读取真实支持/反对证据元数据，再用knowledge_evidence读取图像。page_size默认10，上限50。",
       parameters: knowledgeDetailParameters,
       output: workbenchJsonOutput,
       execute: (args, exec) => bridge.execute("knowledge_details", args, exec.signal),

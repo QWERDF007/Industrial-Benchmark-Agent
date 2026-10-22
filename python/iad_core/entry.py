@@ -284,6 +284,16 @@ def knowledge_get(args, db_path):
     return KnowledgeReader(Database(db_path)).read(**args).model_dump()
 
 
+def knowledge_prompt_get(args, db_path):
+    from iad_core.knowledge.prompts import KnowledgePrompts, MiningPromptQuery
+    return KnowledgePrompts(Database(db_path)).read(MiningPromptQuery.model_validate(args)).model_dump()
+
+
+def knowledge_prompt_save(args, db_path):
+    from iad_core.knowledge.prompts import KnowledgePrompts, MiningPromptEdit
+    return KnowledgePrompts(Database(db_path)).save(MiningPromptEdit.model_validate(args)).model_dump()
+
+
 def knowledge_scope_open(args, db_path):
     from iad_core.knowledge.scopes import KnowledgeScopeOpen, KnowledgeScopes
     return KnowledgeScopes(Database(db_path)).open(KnowledgeScopeOpen.model_validate(args['request']), args.get('origin_session_id')).model_dump()
@@ -397,7 +407,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     knowledge_review_context, knowledge_review_submit, knowledge_review_queue,
     review_stats, report_get, audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_list, audit_evidence, inspection_context, directory_list,
     knowledge_scope_open, knowledge_scope_get, knowledge_scope_stop, knowledge_scope_resume,
-    knowledge_get, knowledge_details, knowledge_sources, knowledge_observations, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_retry_options, knowledge_list, knowledge_job_delete, knowledge_check_remove, model_call_get,
+    knowledge_get, knowledge_prompt_get, knowledge_prompt_save, knowledge_details, knowledge_sources, knowledge_observations, knowledge_evidence, knowledge_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_retry_options, knowledge_list, knowledge_job_delete, knowledge_check_remove, model_call_get,
 )}
 
 

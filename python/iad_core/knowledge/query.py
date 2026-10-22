@@ -11,6 +11,7 @@ from iad_core.knowledge.repository import KnowledgeRepository
 from iad_core.knowledge.generation import generation_signature
 from iad_core.knowledge.sources import KnowledgeSources
 from iad_core.storage.database import Database
+from iad_core.knowledge.models import KnowledgeDiscoveryPage
 
 
 class KnowledgeReader:
@@ -19,11 +20,15 @@ class KnowledgeReader:
         self.repository = KnowledgeRepository(db)
         self.sources = KnowledgeSources(db)
 
-    def details(self, query: KnowledgeDetailQuery) -> KnowledgeCheckPage | KnowledgeCheckEvidencePage:
+    def details(self, query: KnowledgeDetailQuery) -> KnowledgeCheckPage | KnowledgeCheckEvidencePage | KnowledgeDiscoveryPage:
         version = self.repository.get(query.version_id)
         start = (query.page - 1) * query.page_size
         common = dict(version_id=version.version_id, dataset_id=version.dataset_id, kind=version.kind,
                       page=query.page, page_size=query.page_size)
+        if query.section == 'discovery':
+            discovery = version.mining_steps[-1].result.discovery if version.mining_steps else None
+            return KnowledgeDiscoveryPage(**common, recorded=discovery is not None, parts=discovery.parts if discovery else [],
+                total=len(discovery.areas) if discovery else 0, items=discovery.areas[start:start + query.page_size] if discovery else [])
         if query.check_id is None:
             return KnowledgeCheckPage(**common, total=len(version.checks), items=[KnowledgeCheckSummary.from_check(check)
                                       for check in version.checks[start:start + query.page_size]])

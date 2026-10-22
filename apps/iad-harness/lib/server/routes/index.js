@@ -132,6 +132,10 @@ export function createIadHttpHandler(bridge) {
             }
             if (pathname === "/api/iad/knowledge" && method === "GET")
                 return await call("knowledge_get", query);
+            if (pathname === "/api/iad/knowledge/prompt" && method === "GET")
+                return await call("knowledge_prompt_get", query);
+            if (pathname === "/api/iad/knowledge/prompt" && method === "POST")
+                return await call("knowledge_prompt_save", body);
             if (pathname === "/api/iad/knowledge/details" && method === "GET")
                 return await call("knowledge_details", query);
             if (pathname === "/api/iad/knowledge/sources" && method === "GET")

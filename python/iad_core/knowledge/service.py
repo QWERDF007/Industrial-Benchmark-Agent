@@ -18,6 +18,8 @@ from iad_core.knowledge.verification import NormalVerification
 from iad_core.knowledge.findings import VerificationOutcome
 from iad_core.knowledge.trace import KnowledgeTrace
 from iad_core.knowledge.requests import MiningStart
+from iad_core.knowledge.prompts import KnowledgePrompts, MiningPromptQuery
+from iad_core.knowledge.instructions import FrozenMiningPrompt
 from iad_core.knowledge.observation import KnowledgeObserver
 from iad_core.knowledge.support import KnowledgeSupport
 from iad_core.knowledge.frozen import MiningFreeze
@@ -62,6 +64,8 @@ class KnowledgeService:
         if len(dataset_ids) != 1:
             raise ValueError('一个图组必须属于同一数据集')
         dataset_id = samples[0].dataset_id
+        mining_prompt = FrozenMiningPrompt.capture(KnowledgePrompts(self.db).read(
+            MiningPromptQuery(dataset_id=dataset_id, kind=kind)).configuration)
         config = self.registry.resolve(dataset_id=dataset_id)
         captured_presets = self.frozen.presets(request.knowledge_preset or [], dataset_id)
         presets = [item.snapshot for item in captured_presets]
@@ -95,6 +99,7 @@ class KnowledgeService:
                            for source in item.qualified_sources}
         support_sources.update({source.sample_id: source for source in sources})
         payload = {**request.model_dump(), 'request_version': 3, 'dataset_id': dataset_id, 'kind': kind,
+                   'mining_prompt': mining_prompt.model_dump(),
                    'model_name': model_name, 'origin_session_id': origin_session_id, 'scope_run_id': scope_run_id, 'scope_fingerprint': scope_fingerprint, 'model_profile': self.client.profile.model_dump(),
                    'sample_ids': request.images, 'requested_sample_ids': request.images,
                    'preset_signatures': {version.version_id: version.signature for version in presets},
@@ -113,6 +118,7 @@ class KnowledgeService:
 
     def mine(self, context: JobContext):
         payload = context.payload
+        mining_prompt = FrozenMiningPrompt.model_validate(payload['mining_prompt'])
         context.checkpoint()
         self.frozen.validate(payload['request'], self.generation_signature())
         parent = self.repository.get(payload['parent_version_id']) if payload['parent_version_id'] else None
@@ -129,7 +135,7 @@ class KnowledgeService:
         if [source.model_dump() for source in sources] != payload['input_sources']:
             raise ValueError('知识来源已变化，请重新启动挖掘')
         signature = hashlib.sha256(json.dumps([payload['generation_signature'], payload.get("normal_version_id"), payload["kind"],
-            payload["dataset_id"], payload["model_name"], payload.get("scope_run_id"), payload.get("scope_fingerprint"), payload["model_profile"], payload["knowledge_preset"], payload["preset_sources"], payload["comparison_sources"], payload["support_policy"], payload["support_groups"], payload["review_events"], payload['corrections'], [source.model_dump() for source in sources]], sort_keys=True).encode()).hexdigest()
+            payload["dataset_id"], payload["model_name"], mining_prompt.model_dump(), payload.get("scope_run_id"), payload.get("scope_fingerprint"), payload["model_profile"], payload["knowledge_preset"], payload["preset_sources"], payload["comparison_sources"], payload["support_policy"], payload["support_groups"], payload["review_events"], payload['corrections'], [source.model_dump() for source in sources]], sort_keys=True).encode()).hexdigest()
         current = self.repository.current(payload["dataset_id"], payload["kind"])
         if (current.version_id if current else None) != payload['publication_base_version_id']:
             raise ValueError('Knowledge head changed during mining; restart with the current version')
@@ -153,7 +159,7 @@ class KnowledgeService:
         if parent:
             observer.compare(parent, inputs, payload['model_name'], evidence_images)
         evolution_instruction = evolution.instruction
-        miner = KnowledgeMiner(self.client, context, observations, parent)
+        miner = KnowledgeMiner(self.client, context, observations, parent, mining_prompt=mining_prompt)
         if normal:
             verification = defect.review(normal, inputs, references, payload['model_name'])
             inputs = [KnowledgeInput(item.source, item.images,
@@ -230,6 +236,7 @@ class KnowledgeService:
             scope_run_id=payload.get("scope_run_id"), observed_source_ids=payload["sample_ids"], knowledge_preset=payload["knowledge_preset"] or [],
             evidence=list(inherited_evidence.values()),
             mining_steps=miner.steps, observation_steps=observations, conflicts=conflicts,
+            mining_prompt=mining_prompt,
             review_applications=[*(parent.review_applications if parent else []), *applications], findings=list(inherited_findings.values()), verification_steps=verification.steps,
             created_at=datetime.now(timezone.utc).isoformat())
         context.record([source.sample_id for source in sources], persist=lambda conn: self.repository.publish(snapshot, conn, expected_head_version_id=payload['publication_base_version_id'],

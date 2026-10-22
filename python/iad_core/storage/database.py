@@ -347,6 +347,12 @@ class Database:
                 )
             """)
             dataset_columns = {row[1] for row in cursor.execute("PRAGMA table_info(datasets)")}
+            cursor.execute('''CREATE TABLE IF NOT EXISTS knowledge_prompts (
+                dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id) ON DELETE CASCADE,
+                kind TEXT NOT NULL CHECK(kind IN ('normal','defect')),
+                configuration_json TEXT NOT NULL,
+                PRIMARY KEY(dataset_id,kind)
+            )''')
             if "reference_selection_set" not in dataset_columns:
                 cursor.execute("ALTER TABLE datasets ADD COLUMN reference_selection_set INTEGER NOT NULL DEFAULT 0 CHECK(reference_selection_set IN (0,1))")
                 cursor.execute("UPDATE datasets SET reference_selection_set=1 WHERE json_array_length(reference_sample_ids_json)>0")

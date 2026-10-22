@@ -12,6 +12,8 @@ import { KnowledgeSetup } from "./KnowledgeSetup.js";
 import { KnowledgeState } from "./KnowledgeState.js";
 import { knowledgeStatuses, type KnowledgeStatusFilter } from "../../shared/knowledge-presentation.js";
 import { DeleteAction } from "./DeleteAction.js";
+import { KnowledgeDiscovery } from "./KnowledgeDiscovery.js";
+import type { DirectionProposal } from "./KnowledgeDirections.js";
 
 export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dataset; kind: "normal" | "defect"; refreshRevision: number }) {
   const { workspace } = useWorkspace();
@@ -19,6 +21,8 @@ export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dat
   const view = workspace.view(pageId);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [directionProposal, setDirectionProposal] = useState<DirectionProposal>();
+  const consumeDirection = useCallback(() => setDirectionProposal(undefined), []);
   const [revision, setRevision] = useState(0);
   const current = useKnowledge(dataset.dataset_id, kind, view.version, revision + refreshRevision);
   const reference = useKnowledge(dataset.dataset_id, kind === "defect" ? "normal" : null, view.normalVersion, revision + refreshRevision);
@@ -85,7 +89,7 @@ export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dat
       <div className="iad-row"><span className="iad-muted">{kind === "normal" ? `良品来源 · ${dataset.reference_sample_ids.length} 张` : dataset.format === "folder_classification" ? "异常候选以目录标签及核验结果为准" : "异常候选以实际标注及核验结果为准"}</span><button onClick={() => workspace.openLocation({ pageId: "industrial-images", datasetId: dataset.dataset_id, tab: kind === "normal" ? "sources" : "results", selected: "", page: 1, filters: { ...initialFilters, reference_status: kind === "normal" ? "candidate" : "all", raw_label_filters: kind === "defect" && dataset.format === "folder_classification" ? ["FAIL"] : [], annotation_filters: kind === "defect" && dataset.format !== "folder_classification" ? ["present"] : [] } })}>{kind === "normal" ? "管理来源" : "查看异常候选"}</button></div>
     </section>
     {scopeRunId && <KnowledgeScopePanel datasetId={dataset.dataset_id} kind={kind} scopeRunId={scopeRunId} revision={revision + refreshRevision} onScope={scoped} />}
-    <KnowledgeSetup dataset={dataset} kind={kind} versions={versions} normalVersions={normalVersions} busy={busy || running} onStart={group => void start(group)} onContinuous={() => void continuous()} />
+    <KnowledgeSetup dataset={dataset} kind={kind} versions={versions} normalVersions={normalVersions} busy={busy || running} directionProposal={directionProposal} onDirectionProposalUsed={consumeDirection} onStart={group => void start(group)} onContinuous={() => void continuous()} />
     <nav className="iad-tabs" aria-label="知识视图">{[["results", "知识条目"], ["findings", kind === "normal" ? "待核实" : "标注核验"], ["versions", "版本"], ["jobs", "作业记录"]].map(([tab, title]) => <button key={tab} className={view.tab === tab ? "active" : ""} aria-pressed={view.tab === tab} onClick={() => workspace.updateView(pageId, { tab })}>{title}</button>)}</nav>
     <section className="iad-knowledge-content iad-job-section">{knowledge ? <>
       <KnowledgeState freshness={current.freshness} />
@@ -94,6 +98,7 @@ export function KnowledgePage({ dataset, kind, refreshRevision }: { dataset: Dat
       <button onClick={() => workspace.updateView(pageId, { miningPreset: knowledge.version_id, miningSourceMode: "uncovered", miningImages: [], miningPage: 1 })}>作为预设继续选图</button>
       {knowledge.manual_edit && <p className="iad-muted">人工维护版本</p>}
       {knowledge.summary && <p>{knowledge.summary}</p>}<p className="iad-muted"><code>{knowledge.version_id}</code> · {knowledge.sources.length} 张来源 · {knowledge.checks.length} 项判据 · {knowledge.findings.length} 项核验</p>
+      {view.tab === "results" && <KnowledgeDiscovery knowledge={knowledge} evidence={evidence} onPropose={setDirectionProposal} />}
       {view.tab === "results" && <><div className="iad-row" aria-label="知识条目筛选">
         <label className="iad-field">搜索知识条目<input type="search" aria-label="搜索知识条目" value={view.knowledgeSearch} onChange={event => workspace.updateView(pageId, { knowledgeSearch: event.target.value }, true)} /></label>
         <label className="iad-field">支持状态<select aria-label="知识支持状态" value={view.knowledgeStatus} onChange={event => workspace.updateView(pageId, { knowledgeStatus: event.target.value as KnowledgeStatusFilter })}><option value="">全部状态</option>{Object.entries(knowledgeStatuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>

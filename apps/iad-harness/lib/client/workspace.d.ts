@@ -63,7 +63,7 @@ export declare class Workspace {
     private defaults;
     getSnapshot: () => WorkspaceState;
     subscribe: (listener: () => void) => () => void;
-    view(page: PageId, kind?: import("../shared/domain.generated.js").Kind5): {
+    view(page: PageId, kind?: import("../shared/domain.generated.js").Kind8): {
         miningSourceMode: "uncovered" | "all" | "recheck";
         scopeRunId: string;
         scopeSessionId: string;

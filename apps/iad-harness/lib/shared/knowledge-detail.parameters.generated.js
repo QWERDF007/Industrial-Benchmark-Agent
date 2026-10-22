@@ -9,6 +9,15 @@ export const knowledgeDetailParameters = {
         "type": "string",
         "title": "Check Id"
     },
+    "section": {
+        "type": "string",
+        "enum": [
+            "checks",
+            "discovery"
+        ],
+        "title": "Section",
+        "default": "checks"
+    },
     "page": {
         "type": "integer",
         "title": "Page",

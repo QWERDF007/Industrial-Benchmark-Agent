@@ -17,6 +17,7 @@ export function KnowledgeJobEvidence({ job }: { job: JobSnapshot }) {
     return () => controller.abort();
   }, [open, page, job.run_id, job.status, job.observation_progress?.observed_visuals]);
   return <details onToggle={event => setOpen(event.currentTarget.open)}><summary>观察证据</summary>
+    {job.mining_prompt && <details><summary>本次冻结挖掘提示词</summary><pre className="iad-observation">{job.mining_prompt.instruction}</pre></details>}
     {error && <p role="alert" className="iad-error">{error}</p>}
     {open && !result && !error && <p role="status">正在读取冻结观察…</p>}
     {open && result && <><p className="iad-muted">规划 {result.progress.planned_visuals} 个视图 · 已接受观察 {result.progress.observed_visuals} 个 · 已发布 {result.progress.published_sources} 张来源</p>

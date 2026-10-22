@@ -5,6 +5,7 @@ from pydantic import Field, PlainSerializer, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, AuditFinding, RegionImage, RegionOrigin, RegionProposal, VisualEvidence
 from iad_core.evidence.sources import SampleContent
+from iad_core.knowledge.instructions import FrozenMiningPrompt
 
 KnowledgeKind = Literal["normal", "defect"]
 
@@ -56,18 +57,53 @@ class KnowledgeCorrection(AnalysisModel):
     instruction: str = Field(min_length=1, pattern=r'\S', description="待视觉核验的人工修订建议，不是已证实事实")
 
 
+class ObservedPart(AnalysisModel):
+    name: str = Field(min_length=1, pattern=r'\S')
+    location: str
+    evidence_ids: List[str] = Field(min_length=1)
+
+
+class DiscoveryArea(AnalysisModel):
+    direction_id: Optional[str] = Field(default=None, description='用户选中的方向编号；模型自主发现的新方向填null，不能冒用未选择的方向')
+    direction: str = Field(min_length=1, pattern=r'\S')
+    subjects: List[str] = Field(description='引用parts内实际可见部件名称；不适用时可为空')
+    status: Literal['已形成知识', '证据不足', '不可观察', '不适用']
+    reason: str = Field(min_length=1, pattern=r'\S')
+    check_titles: List[str] = Field(description='引用本次checks实际标题；不是预设旧条目的完整性证明')
+    evidence_ids: List[str]
+
+    @model_validator(mode='after')
+    def learned_has_support(self):
+        if self.status == '已形成知识' and (not self.check_titles or not self.evidence_ids):
+            raise ValueError('形成知识的观察方向必须关联判据和实际图像证据')
+        return self
+
+
+class KnowledgeDiscovery(AnalysisModel):
+    parts: List[ObservedPart]
+    areas: List[DiscoveryArea]
+
+
 class KnowledgeDraft(AnalysisModel):
     summary: str
     checks: List[LearnedCheck]
     suspects: List[KnowledgeSuspect]
     limitations: List[str]
     revisions: List[CheckRevision] = Field(default_factory=list)
+    discovery: Optional[KnowledgeDiscovery] = Field(default=None, description='逐部件观察与各挖掘方向的实际结果；未返回时明确未记录，不能据此宣称观察完整')
 
     @model_validator(mode="after")
     def unique_check_titles(self):
         titles = [check.title for check in self.checks]
         if len(titles) != len(set(titles)):
             raise ValueError("Knowledge check titles must identify one criterion")
+        if self.discovery:
+            parts = [item.name for item in self.discovery.parts]
+            if len(parts) != len(set(parts)):
+                raise ValueError('可见部件名称必须唯一')
+            for area in self.discovery.areas:
+                if set(area.subjects) - set(parts) or set(area.check_titles) - set(titles):
+                    raise ValueError('观察方向引用了不存在的部件或本次判据')
         return self
 
 
@@ -245,6 +281,7 @@ class KnowledgeSnapshot(AnalysisModel):
     observed_source_ids: Optional[List[str]] = None
     knowledge_preset: Optional[List[str]] = None
     manual_edit: Optional[KnowledgeCheckRemoval] = None
+    mining_prompt: Optional[FrozenMiningPrompt] = None
     created_at: str
 
     @property
@@ -333,8 +370,27 @@ class KnowledgeSourcePage(AnalysisModel):
 class KnowledgeDetailQuery(AnalysisModel):
     version_id: str = Field(min_length=1)
     check_id: Optional[str] = None
+    section: Literal['checks', 'discovery'] = 'checks'
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=10, ge=1, le=50)
+
+    @model_validator(mode='after')
+    def distinct_sections(self):
+        if self.section == 'discovery' and self.check_id is not None:
+            raise ValueError('观察范围查询不能同时指定判据')
+        return self
+
+
+class KnowledgeDiscoveryPage(AnalysisModel):
+    version_id: str
+    dataset_id: str
+    kind: KnowledgeKind
+    recorded: bool
+    parts: List[ObservedPart]
+    total: int
+    page: int
+    page_size: int
+    items: List[DiscoveryArea]
 
 
 class KnowledgeCheckSummary(KnowledgeCriterion):

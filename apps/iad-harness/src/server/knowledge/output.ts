@@ -1,14 +1,28 @@
 import type { ContentBlock } from "@deepseek-ai/dsh-llm";
 import type { InferValue } from "@deepseek-ai/dsh-tools";
 import type { KnowledgeScopeSnapshot } from "../../shared/domain.generated.js";
+import type { MiningPrompt } from "../../shared/domain.generated.js";
 import type { JobSnapshot, KnowledgeQuery } from "../../shared/contracts.js";
 import { workbenchJsonOutput } from "../tool-output.js";
+
+export const knowledgePromptOutput = {
+  ...workbenchJsonOutput,
+  render(_args: unknown, value: InferValue<{ type: "json" }>): ContentBlock[] {
+    const prompt = value as unknown as MiningPrompt;
+    return [{ type: "text", text: JSON.stringify({ dataset_id: prompt.dataset_id, kind: prompt.kind,
+      revision: prompt.revision, customized: prompt.customized, instruction: prompt.instruction,
+      selected_directions: prompt.configuration.directions.filter(item => item.enabled).map(({ direction_id, title, origin }) => ({ direction_id, title, origin })),
+      disabled_direction_count: prompt.configuration.directions.filter(item => !item.enabled).length }) }];
+  },
+};
 
 export const knowledgeOutput = {
   ...workbenchJsonOutput,
   render(_args: unknown, value: InferValue<{ type: "json" }>): ContentBlock[] {
     const query = value as unknown as KnowledgeQuery;
     const knowledge = query.knowledge, freshness = query.freshness;
+    const discovery = knowledge?.mining_steps.at(-1)?.result.discovery;
+    const coveredDirections = new Set(discovery?.areas.map(item => item.direction_id).filter(Boolean));
     const conflicts = knowledge?.conflicts.filter(item => item.resolution?.status !== "resolved") || [];
     const findings = knowledge?.findings.filter(item => item.judgment.status !== "refuted") || [];
     const priorities = [
@@ -22,6 +36,9 @@ export const knowledgeOutput = {
         model_name: knowledge.model_name, summary: knowledge.summary, limitations: knowledge.limitations,
         source_count: knowledge.sources.length, observed_source_count: knowledge.observed_source_ids?.length ?? null,
         check_count: knowledge.checks.length, supported_check_count: knowledge.checks.filter(item => item.status === "supported").length,
+        discovery: { recorded: !!discovery, area_count: discovery?.areas.length ?? 0,
+          unrecorded_selected_count: knowledge.mining_prompt?.configuration.directions.filter(item => item.enabled && !coveredDirections.has(item.direction_id)).length ?? null,
+          prompt_signature: knowledge.mining_prompt?.signature ?? null },
         provisional_check_count: knowledge.checks.filter(item => item.status === "provisional").length,
         conflicted_check_count: knowledge.checks.filter(item => item.status === "conflicted").length,
         pending_recheck_source_count: new Set(knowledge.checks.flatMap(check => check.recheck_sample_ids)).size, pending_conflict_count: conflicts.length, pending_finding_count: findings.length,

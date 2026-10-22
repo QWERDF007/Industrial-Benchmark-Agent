@@ -37,6 +37,7 @@ export const ALLOWED_TOOL_SURFACE = [
     "knowledge_job_retry",
     "knowledge_get",
     "knowledge_details",
+    "knowledge_prompt_get",
     "knowledge_conflict_context",
     "knowledge_sources",
     "knowledge_scope_open",

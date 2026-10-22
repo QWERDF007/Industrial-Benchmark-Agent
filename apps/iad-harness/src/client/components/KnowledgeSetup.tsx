@@ -2,15 +2,19 @@ import React, { useEffect, useState } from "react";
 import type { Dataset, KnowledgeGroup, KnowledgeSnapshot, KnowledgeSourcePage, KnowledgeVersion } from "../../shared/contracts.js";
 import { mediaUrl, message, request } from "../api.js";
 import { useWorkspace } from "../workspace.js";
+import { KnowledgeDirections, type DirectionProposal } from "./KnowledgeDirections.js";
 
-export function KnowledgeSetup({ dataset, kind, versions, normalVersions, busy, onStart, onContinuous }: {
+export function KnowledgeSetup({ dataset, kind, versions, normalVersions, busy, onStart, onContinuous, directionProposal, onDirectionProposalUsed }: {
   dataset: Dataset; kind: KnowledgeSnapshot["kind"]; versions: KnowledgeVersion[]; normalVersions: KnowledgeVersion[];
   busy: boolean; onStart(input: KnowledgeGroup): void; onContinuous(): void;
+  directionProposal?: DirectionProposal;
+  onDirectionProposalUsed(): void;
 }) {
   const { workspace } = useWorkspace(), pageId = "industrial-knowledge";
   const view = workspace.view(pageId);
   const [sources, setSources] = useState<KnowledgeSourcePage | null>(null), [error, setError] = useState("");
   const [selecting, setSelecting] = useState(false);
+  const [directionsPending, setDirectionsPending] = useState(true);
   const query = new URLSearchParams({ dataset_id: dataset.dataset_id, kind, page: String(view.miningPage), page_size: "10", search: view.miningSearch, include_observed: String(view.miningSourceMode === "all"),
     ...(view.miningSourceMode === "recheck" && view.miningPreset ? { recheck_from_version: view.miningPreset } : {}),
     ...(view.scopeRunId ? { scope_run_id: view.scopeRunId } : view.miningPreset ? { uncovered_from_version: view.miningPreset } : {}),
@@ -54,13 +58,14 @@ export function KnowledgeSetup({ dataset, kind, versions, normalVersions, busy, 
       </select></label>}
       <label className="iad-field">图像数量<input type="number" min="1" step="1" aria-label="挖掘图像数量" value={view.miningCount} disabled={busy} onChange={e => workspace.updateView(pageId, { miningCount: e.target.value }, true)} /></label>
       <button disabled={busy || selecting || !valid} onClick={() => void choose()}>{selecting ? "选择中…" : "按数量选择"}</button>
-      <button data-action={view.miningContinuous ? "knowledge-agent-run" : "knowledge-group-run"} className="iad-primary" disabled={busy || selecting || !!error || unavailable} onClick={() => {
+      <button data-action={view.miningContinuous ? "knowledge-agent-run" : "knowledge-group-run"} className="iad-primary" disabled={busy || selecting || !!error || unavailable || directionsPending} onClick={() => {
         if (view.miningContinuous) { onContinuous(); return; }
         const [first, ...rest] = view.miningImages;
         if (!first || unavailable) return;
         onStart({ image_count: count, images: [first, ...rest], knowledge_preset: [view.miningPreset, ...(kind === "defect" ? [view.normalVersion] : [])].filter(Boolean) });
       }}>{busy ? "启动中…" : view.miningContinuous ? "在Agent中连续挖掘" : `开始挖掘${kind === "normal" ? "良品" : "异常"}知识`}</button>
     </div>
+    <KnowledgeDirections key={`${dataset.dataset_id}:${kind}`} datasetId={dataset.dataset_id} kind={kind} proposal={directionProposal} onPending={setDirectionsPending} onProposalUsed={onDirectionProposalUsed} />
     <div className="iad-row"><label className="iad-field">来源范围<select aria-label="来源范围" value={view.miningSourceMode} disabled={busy} onChange={e => workspace.updateView(pageId, { miningSourceMode: e.target.value as "uncovered" | "all" | "recheck", miningPage: 1, miningImages: [] })}><option value="uncovered">仅未观察</option><option value="all">全部合格 · 含历史来源</option><option value="recheck" disabled={!view.miningPreset}>判据待重核验</option></select></label><label className="iad-field">筛选来源<input type="search" aria-label="筛选挖掘来源" disabled={!!view.scopeRunId} value={view.miningSearch} onChange={e => workspace.updateView(pageId, { miningSearch: e.target.value, miningPage: 1 }, true)} /></label>
       <span role="status">已选 {view.miningImages.length} / {valid ? count : "—"} 张{sources ? ` · 可选 ${sources.total} 张` : ""}</span>
       <button disabled={busy || !view.miningImages.length} onClick={() => workspace.updateView(pageId, { miningImages: [] })}>清空选择</button>

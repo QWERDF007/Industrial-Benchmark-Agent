@@ -178,7 +178,7 @@ def test_invalid_model_localization_cannot_be_published_as_knowledge(knowledge_d
         service.close()
 
 
-def test_mining_covers_all_sources_when_actual_context_requires_grouping(knowledge_dataset):
+def test_mining_waits_for_user_when_complete_group_exceeds_actual_context(knowledge_dataset):
     from iad_core.entry import knowledge_get
     from iad_core.knowledge.service import KnowledgeService
     from iad_core.workbench.vision import VlmClient
@@ -207,15 +207,12 @@ def test_mining_covers_all_sources_when_actual_context_requires_grouping(knowled
         job = service.start(request=selected_group(service.db, config.dataset.id, kind="normal"), kind="normal", model_name="test-mllm")
         service.wait(job["run_id"], 5)
         result = service.status(job["run_id"])
-        assert result["status"] == "COMPLETED", result
-        assert result["completed"] == 6
-        snapshot = knowledge_get({"version_id": result["knowledge_version_id"]}, db.db_path)["knowledge"]
-        leaves = [step for step in snapshot["mining_steps"] if not step["child_step_ids"]]
-        assert len(leaves) > 1
-        assert len(snapshot["sources"]) == 6
-        assert set(observed) == {image["image"]["evidence_id"] for image in snapshot["evidence"]}
-        assert set(snapshot["checks"][0]["support_evidence_ids"]) == set(observed)
-        assert set(snapshot["mining_steps"][-1]["child_step_ids"]) == {step["step_id"] for step in leaves}
+        assert result["status"] == "FAILED", result['errors']
+        assert result["completed"] == 0
+        assert observed == {}, '容量不足不能暗中拆成更小的图组继续生成'
+        assert len([call for call in result['model_calls'] if call['operation'] == 'tokenize']) == 1
+        assert not any(call['operation'] == 'generate' for call in result['model_calls'])
+        assert knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge'] is None
     finally:
         service.close()
 
@@ -314,7 +311,8 @@ def test_normal_mining_retains_native_detail_and_overview_of_large_sources(knowl
         native = [item for item in observed if item["role"] == "roi"]
         assert native
         assert any(item["crop_bbox"][0] <= 1800 < item["crop_bbox"][2] for item in native)
-        assert len(snapshot["mining_steps"]) == 3
+        assert len(snapshot["mining_steps"]) == 1
+        assert snapshot['mining_steps'][0]['child_step_ids'] == []
         assert len(snapshot["evidence"]) == len({item["evidence_id"] for item in observed})
         for item in snapshot["evidence"]:
             media = knowledge_evidence({"version_id": snapshot["version_id"], "evidence_id": item["image"]["evidence_id"]}, db.db_path)
@@ -324,7 +322,7 @@ def test_normal_mining_retains_native_detail_and_overview_of_large_sources(knowl
 
 
 @pytest.mark.parametrize("knowledge_dataset", [(2048, 512)], indirect=True)
-def test_capacity_groups_keep_source_overview_with_each_native_detail_group(knowledge_dataset):
+def test_native_detail_overflow_does_not_discard_details_or_split_source(knowledge_dataset):
     from iad_core.entry import knowledge_get
     from iad_core.knowledge.service import KnowledgeService
     from iad_core.workbench.vision import VlmClient
@@ -349,14 +347,11 @@ def test_capacity_groups_keep_source_overview_with_each_native_detail_group(know
         job = service.start(request=selected_group(service.db, config.dataset.id, kind="normal", images=[sample_id]), kind="normal", model_name="test-mllm")
         service.wait(job["run_id"], 5)
         finished = service.status(job["run_id"])
-        assert finished["status"] == "COMPLETED", finished
-        assert finished["completed"] == 1
-        knowledge = knowledge_get({"version_id": finished["knowledge_version_id"]}, db.db_path)["knowledge"]
-        assert len(batches) == 3
-        assert batches[-1], "Synthesis carries real image evidence"
-        assert all(batch[0]["role"] == "normal" and all(item["role"] == "roi" for item in batch[1:]) for batch in batches)
-        assert batches[0][0]["evidence_id"] == batches[1][0]["evidence_id"]
-        assert {item["evidence_id"] for batch in batches for item in batch} == {
-            item["image"]["evidence_id"] for item in knowledge["evidence"]}
+        assert finished["status"] == "FAILED", finished['errors']
+        assert finished["completed"] == 0
+        assert batches == []
+        assert len([call for call in finished['model_calls'] if call['operation'] == 'tokenize']) == 1
+        assert not any(call['operation'] == 'generate' for call in finished['model_calls'])
+        assert knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge'] is None
     finally:
         service.close()

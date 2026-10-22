@@ -1,6 +1,7 @@
 import React from "react";
 import type { Dataset, KnowledgeGroup, KnowledgeSnapshot, KnowledgeVersion } from "../../shared/contracts.js";
-export declare function KnowledgeSetup({ dataset, kind, versions, normalVersions, busy, onStart, onContinuous }: {
+import { type DirectionProposal } from "./KnowledgeDirections.js";
+export declare function KnowledgeSetup({ dataset, kind, versions, normalVersions, busy, onStart, onContinuous, directionProposal, onDirectionProposalUsed }: {
     dataset: Dataset;
     kind: KnowledgeSnapshot["kind"];
     versions: KnowledgeVersion[];
@@ -8,5 +9,7 @@ export declare function KnowledgeSetup({ dataset, kind, versions, normalVersions
     busy: boolean;
     onStart(input: KnowledgeGroup): void;
     onContinuous(): void;
+    directionProposal?: DirectionProposal;
+    onDirectionProposalUsed(): void;
 }): React.JSX.Element;
 //# sourceMappingURL=KnowledgeSetup.d.ts.map

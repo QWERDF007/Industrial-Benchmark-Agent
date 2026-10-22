@@ -11,6 +11,7 @@ from iad_core.knowledge.scopes import KnowledgeScopes
 from iad_core.storage.database import Database
 from iad_core.storage.review_repository import ReviewRepository
 from iad_core.workbench.vision import VlmClient
+from iad_core.knowledge.instructions import FrozenMiningPrompt
 
 
 class FrozenPreset(AnalysisModel):
@@ -61,9 +62,10 @@ class MiningFreeze:
 
     def validate(self, request: dict, generation_signature: str):
         required = {'model_profile', 'preset_signatures', 'review_events', 'support_policy', 'support_groups',
-                    'publication_base_version_id', 'input_sources', 'knowledge_preset', 'generation_signature', 'preset_sources'}
+                    'publication_base_version_id', 'input_sources', 'knowledge_preset', 'generation_signature', 'preset_sources', 'mining_prompt'}
         if request.get('request_version') != 3 or not required <= request.keys():
             raise ValueError('旧作业缺少完整冻结输入，只能查看；请重新启动')
+        FrozenMiningPrompt.model_validate(request['mining_prompt'])
         if request.get('scope_run_id'):
             self.scopes.validate_group(request['scope_run_id'], request['sample_ids'], request['parent_version_id'], request['scope_fingerprint'], request['normal_version_id'])
         if request['generation_signature'] != generation_signature or request['model_profile'] != self.client.profile.model_dump():

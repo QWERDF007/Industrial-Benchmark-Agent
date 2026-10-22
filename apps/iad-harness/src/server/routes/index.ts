@@ -103,6 +103,8 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         if ((scope[2] === "stop" || scope[2] === "resume") && method === "POST") return await call("knowledge_scope_" + scope[2], { scope_run_id });
       }
       if (pathname === "/api/iad/knowledge" && method === "GET") return await call("knowledge_get", query);
+      if (pathname === "/api/iad/knowledge/prompt" && method === "GET") return await call("knowledge_prompt_get", query);
+      if (pathname === "/api/iad/knowledge/prompt" && method === "POST") return await call("knowledge_prompt_save", body);
       if (pathname === "/api/iad/knowledge/details" && method === "GET") return await call("knowledge_details", query);
       if (pathname === "/api/iad/knowledge/sources" && method === "GET") return await call("knowledge_sources", query);
       if (pathname === "/api/iad/knowledge/start" && method === "POST") return await call("knowledge_start", { request: body });

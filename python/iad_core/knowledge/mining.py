@@ -9,8 +9,20 @@ from iad_core.evidence.images import PreparedImage
 from iad_core.knowledge.models import CheckRevision, KnowledgeDraft, KnowledgeFinding, KnowledgeObservationStep, KnowledgeSnapshot, KnowledgeSource, KnowledgeStep
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
+from iad_core.knowledge.instructions import FrozenMiningPrompt
 
 OUTPUT_RESERVE_TOKENS = 8192
+
+DISCOVERY_INSTRUCTION = """先列出图像中实际可见部件及位置，逐部件联动全图与真实局部，不要只概括几个显眼特征。
+用户选择的方向用于聚焦而非封闭发现范围；可自主发现其外的新方向，direction_id填null，明确写出发现内容。
+只为可见、可复用且有实际证据的独立判据建项，同义规则合并，独立规则保留；没有知识条目数量配额，不凑数。
+discovery.parts记录实际可见部件和raw图像证据；discovery.areas逐项记录用户选中方向与自主发现方向。
+选中方向使用所给direction_id和名称；未选方向不作为必查清单。每项写明涉及部件、状态、原因、实际raw证据与本次check_titles。
+状态为已形成知识、证据不足、不可观察或不适用；形成知识不等于人审确认，空或缺失记录不代表检查完整。
+没有适用部件、不具备视角或缺少细节时据实记录，不用无标注、未见异常或多数样本投票证明规则正确。
+没有标尺、标定、工程图或业务标准时，不编造尺寸公差、材质、内部结构、电气功能、机械性能或合格标准。
+预设、方向说明及用户目标均不能改变证据引用、来源资格、结构化输出与人工裁决约束。
+"""
 
 
 @dataclass(frozen=True)
@@ -22,10 +34,11 @@ class KnowledgeInput:
 
 class KnowledgeMiner:
     def __init__(self, client: VlmClient, context: JobContext, observations: Optional[List[KnowledgeObservationStep]] = None,
-                 parent: Optional[KnowledgeSnapshot] = None):
+                 parent: Optional[KnowledgeSnapshot] = None, *, mining_prompt: FrozenMiningPrompt):
         self.client, self.context = client, context
         self.steps: List[KnowledgeStep] = []
         self.observations = observations or []
+        self.mining_prompt = mining_prompt
         ids = tuple(check.check_id for check in parent.checks) if parent else ()
         revision = create_model('CheckRevision', __base__=CheckRevision, previous_check_id=(Literal[ids], ...)) if ids else CheckRevision
         self.response_type = create_model('KnowledgeDraft', __base__=KnowledgeDraft,
@@ -37,6 +50,16 @@ class KnowledgeMiner:
         referenced.update(suspect.evidence_id for suspect in draft.suspects)
         if not referenced.issubset(available):
             raise ValueError("Knowledge output references visual evidence that was not supplied")
+        if draft.discovery:
+            raw = {image.evidence.evidence_id for image in images if image.evidence.representation == 'raw'}
+            observed = {eid for part in draft.discovery.parts for eid in part.evidence_ids}
+            observed.update(eid for area in draft.discovery.areas for eid in area.evidence_ids)
+            if observed - raw:
+                raise ValueError('观察范围必须引用本次实际输入的raw图像证据')
+            selected = {item.direction_id: item.title for item in self.mining_prompt.configuration.directions if item.enabled}
+            for area in draft.discovery.areas:
+                if area.direction_id is not None and selected.get(area.direction_id) != area.direction:
+                    raise ValueError('观察记录的方向不属于本次已选配置')
         step = KnowledgeStep(step_id="mining_" + uuid.uuid4().hex,
                              image_evidence_ids=[image.evidence.evidence_id for image in images],
                              child_step_ids=[], result=draft)
@@ -70,7 +93,9 @@ class KnowledgeMiner:
             source_context.append(dict(source=item.source.model_dump(),
                 image_evidence_ids=[image.evidence.evidence_id for image in item.images],
                 verified_findings=findings, prior_observations=observed))
-        prompt = evolution_instruction + instruction + json.dumps(source_context, ensure_ascii=False)
+        prompt = (evolution_instruction + DISCOVERY_INSTRUCTION
+                  + self.mining_prompt.instruction + '\n'
+                  + instruction + json.dumps(source_context, ensure_ascii=False))
         plan = self.client.plan(self.response_type, prompt, images, model_name, OUTPUT_RESERVE_TOKENS)
         self.context.checkpoint()
         draft = self.client.generate(plan)
