@@ -20,11 +20,13 @@ import * as harness from "../../lib/server/index.js";
 export function resolveDatasetSessionModel(workspace) {
   if (process.env.LIVE_AGENT_MODEL) return process.env.LIVE_AGENT_MODEL;
   return execFileSync(resolvePythonPath(), ["-c", `
-import sys, yaml
-with open(sys.argv[1]) as source:
-    entries = yaml.load(source, Loader=yaml.BaseLoader)
-print(next(entry['config']['model'] for entry in entries if entry.get('id') == 'agent-default-model'))
-`, path.join(workspace, "config/dsh_web_lan_patch.yml")], { encoding: "utf8" }).trim();
+from iad_core.workbench.vision import VlmClient
+client = VlmClient()
+try:
+    print(client.resolve_model())
+finally:
+    client.close()
+`], { cwd: workspace, encoding: "utf8" }).trim();
 }
 
 export async function readDatasetSessionContext({ endpoint, model, apiKeyEnv }) {

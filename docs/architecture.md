@@ -50,11 +50,14 @@
 | 知识类型/数据集切换、历史与刷新 | [统一入口浏览器操作](../apps/iad-harness/browser/knowledge-navigation.test.js) |
 | 浏览器公开用户链 | [工作台操作](../apps/iad-harness/browser/workbench.test.js) |
 | 真实DSH会话及页面/图像往返 | [原生宿主](../apps/iad-harness/browser/session-handoff.test.js)、[Agent会话](../apps/iad-harness/test/agent_session.test.js) |
+| 局域网提供商设置、保存与会话模型切换 | [原生设置浏览器操作](../apps/iad-harness/browser/model-settings.test.js) |
 | 明暗、视口、字号、模态与焦点 | [页面布局](../apps/iad-harness/browser/workbench-layout.js)、[详情交互](../apps/iad-harness/browser/workbench-surfaces.js) |
 | 合成图真实MLLM与会话验收 | [指定来源挖掘](../apps/iad-harness/scripts/verify-knowledge-selection.js)、[连续范围](../apps/iad-harness/scripts/verify-knowledge-scope.js)、[完整流程](../apps/iad-harness/scripts/verify-knowledge-products.js)、[接入边界](../apps/iad-harness/scripts/verify-dataset-intake.js)、[单步导入](../apps/iad-harness/scripts/verify-import-scope.js)、[恢复验证](../scripts/verify_job_recovery_live.py) |
 
 ## 模型服务与运行
 
 启动、环境配置、命令和验证开关以[项目README](../README.md)、[环境模板](../.env.example)、[客户端](../python/iad_core/workbench/vision.py)及验证入口为准。实际地址、密钥和调用原文只保留在本地配置或运行库。
+
+DSH 设置组件的版本以[依赖覆盖](../package.json)为准；局域网认证浏览器的设置持久化依据[上游修复 #4201](https://github.com/deepseek-ai/deepseek-harness/commit/23c29d067a865107d5157c6924dbbe09c571d4c4)。会话提供商通过原生【设置 → 模型】管理，再由输入框模型菜单选择；独立视觉作业的服务配置由上述模型客户端读取。
 
 当前模型客户端的既有实现使用多图、JSON Schema 判别联合及包含视觉 token 的容量预检；这不代表所有 MLLM 都具有相同端点或限制，目标能力契约见规格 A09。现有 vLLM 后端的多模态 tokenize 缓存问题官方修复见[PR #38545](https://github.com/vllm-project/vllm/pull/38545)；无法升级时可使用官方参数 `--mm-processor-cache-gb 0` 禁用该层缓存。此项是运行约束，不改变知识或联合分析行为。usage 缺失表示服务未报告，不能替换成零或估算费用。

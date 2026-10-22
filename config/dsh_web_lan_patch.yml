@@ -6,25 +6,6 @@
     compressionLevel: 1
     compressionThresholdBytes: 1024
 
-- id: llm-pi-ai
-  config:
-    providers:
-      local-vlm:
-        displayName: "Qwen 3.8 27B (Local VLM)"
-        api: openai-completions
-        baseURL: "http://192.168.2.197:30002/v1"
-        apiKeyEnv: LIVE_VLM_KEY
-        models:
-          - id: "Qwen/Qwen3.8-27B-FP8"
-            name: "Qwen 3.8 27B FP8"
-            input: ["text", "image"]
-            contextWindow: 262144
-
-- id: agent-default-model
-  config:
-    provider: local-vlm
-    model: "Qwen/Qwen3.8-27B-FP8"
-
 - insert:
     - id: industrial-harness-plugin
       name: '@industrial-benchmark/iad-harness'
