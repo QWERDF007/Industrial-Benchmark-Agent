@@ -1,4 +1,5 @@
 import json
+import re
 import threading
 
 import httpx
@@ -61,12 +62,17 @@ def test_mining_freezes_edited_prompt_and_validates_observation_scope(knowledge_
         result = {'summary': '孔板可见规律', 'checks': checks, 'suspects': [], 'limitations': [],
                   'discovery': {'parts': [{'name': '孔板', 'location': '主体', 'evidence_ids': ids[:2]}],
                       'areas': [{'direction': '两孔关系', 'subjects': ['孔板'], 'status': '已形成知识',
-                                 'reason': '两个独立来源均可见', 'check_titles': ['两孔数量', '孔位排列'], 'evidence_ids': ids[:2]},
+                                 'reason': '两个独立来源均可见\n仍需保留成像变化限制', 'check_titles': ['两孔数量', '孔位排列'], 'evidence_ids': ids[:2]},
                                 {'direction': '精密孔径', 'subjects': ['孔板'], 'status': '不可观察',
                                  'reason': '无标尺和标定', 'check_titles': [], 'evidence_ids': []}]}}
+        definitions = body['response_format']['json_schema']['schema']['$defs']
+        # The deployed grammar backend uses full-string matching for patterns.
+        for model, field, value in [('ObservedPart', 'name', '孔板'), ('DiscoveryArea', 'direction', '两孔关系'),
+                                    ('DiscoveryArea', 'reason', '两个独立来源均可见\n仍需保留成像变化限制')]:
+            assert re.fullmatch(definitions[model]['properties'][field]['pattern'], value), f'生成约束无法表达完整的{field}'
         area = result['discovery']['areas'][0]
         if invalid == 'unknown_part':
-            area['subjects'] = ['不存在的部件']
+            area['subjects'] = ['虚构基座']
         elif invalid == 'unknown_check':
             area['check_titles'] = ['未归纳的判据']
         elif invalid == 'unsupplied_image':
@@ -86,6 +92,8 @@ def test_mining_freezes_edited_prompt_and_validates_observation_scope(knowledge_
         assert finished['mining_prompt']['instruction'] == chosen['instruction']
         if invalid:
             assert finished['status'] == 'FAILED'
+            if invalid in ('unknown_part', 'unknown_check'):
+                assert ('虚构基座' if invalid == 'unknown_part' else '未归纳的判据') in finished['errors'][0]['message']
             assert knowledge_get(query, db.db_path)['knowledge'] is None
             return
         assert finished['status'] == 'COMPLETED', finished['errors']
@@ -98,6 +106,7 @@ def test_mining_freezes_edited_prompt_and_validates_observation_scope(knowledge_
         page = knowledge_details({'version_id': snapshot['version_id'], 'section': 'discovery', 'page_size': 1}, db.db_path)
         assert page['recorded'] and page['total'] == 2
         assert page['items'][0]['direction'] == '两孔关系'
+        assert page['items'][0]['reason'] == '两个独立来源均可见\n仍需保留成像变化限制'
         assert knowledge_details({'version_id': snapshot['version_id'], 'section': 'discovery', 'page': 2,
                                   'page_size': 1}, db.db_path)['items'][0]['status'] == '不可观察'
         assert snapshot['mining_steps'][0]['result']['discovery']['parts'][0]['name'] == '孔板'

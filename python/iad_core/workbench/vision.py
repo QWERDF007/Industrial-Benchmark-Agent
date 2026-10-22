@@ -115,8 +115,10 @@ class VlmClient:
             try:
                 return response_type.model_validate_json(text)
             except ValidationError as error:
-                issues = "; ".join(f"{'.'.join(map(str, issue['loc'])) or '$'}: {issue['type']}" for issue in error.errors())
-                syntax = [issue.get('ctx', {}).get('error', issue['msg']) for issue in error.errors() if issue['type'] == 'json_invalid']
+                validation_issues = error.errors(include_input=False)
+                issues = "; ".join(f"{'.'.join(map(str, issue['loc'])) or '$'}: {issue['type']}"
+                    + (f" ({issue['msg']})" if issue['type'] == 'value_error' else '') for issue in validation_issues)
+                syntax = [issue.get('ctx', {}).get('error', issue['msg']) for issue in validation_issues if issue['type'] == 'json_invalid']
                 if syntax:
                     issues += '；JSON语法无效：' + '; '.join(syntax)
                 raise ValueError(f"MLLM {response_type.__name__} 输出格式错误 (finish_reason={choice.get('finish_reason')}): {issues}") from error

@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import Field, model_validator
 
-from iad_core.advisory.analysis import AnalysisModel
+from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.images import EvidenceImages
 from iad_core.evidence.sources import SampleContent
@@ -25,10 +25,10 @@ class KnowledgeReviewReference(AnalysisModel):
 class KnowledgeReviewSubmission(KnowledgeReviewReference):
     submission_id: UUID
     context_signature: str = Field(pattern='^[a-f0-9]{64}$')
-    reviewer: str = Field(min_length=1, pattern=r'\S')
+    reviewer: NonBlankText
     action: Literal['retain', 'revise', 'retire', 'need_evidence']
     instruction: str = ''
-    reason: str = Field(min_length=1, pattern=r'\S')
+    reason: NonBlankText
 
     @model_validator(mode='after')
     def revision_has_instruction(self):

@@ -17,3 +17,5 @@
 | [AnomalyGPT 作者仓库](https://github.com/CASIA-IVA-Lab/AnomalyGPT) | 视觉异常位置与语言解释联动的研究入口 | 本项目复用当前配置的 MLLM，不引入该项目训练权重或假称效果相同 |
 
 这些资料共同支持“开放发现、观察范围记录、证据与限制分开表达”的设计选择；这属于结合项目作出的工程判断，不是论文证明。通用提示可选，数据集方向独立保存；模型自主发现不受方向列表封闭限制。
+
+结构化生成的字符串约束参考 XGrammar 的[匹配语义问题](https://github.com/mlc-ai/xgrammar/issues/838)及[上游修复](https://github.com/mlc-ai/xgrammar/pull/925)。非空文本类型以[分析契约](../../python/iad_core/advisory/analysis.py)为唯一来源，生成约束与入库校验须表达同一文本范围。

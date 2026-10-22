@@ -4,19 +4,19 @@ from typing import List, Literal
 
 from pydantic import Field, model_validator
 
-from iad_core.advisory.analysis import AnalysisModel
+from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 
 
 class MiningDirection(AnalysisModel):
-    direction_id: str = Field(min_length=1, pattern=r'\S')
-    title: str = Field(min_length=1, pattern=r'\S')
-    instruction: str = Field(min_length=1, pattern=r'\S')
+    direction_id: NonBlankText
+    title: NonBlankText
+    instruction: NonBlankText
     enabled: bool = True
     origin: Literal['preset', 'dataset'] = 'dataset'
 
 
 class MiningPromptConfiguration(AnalysisModel):
-    objective: str = Field(min_length=1, pattern=r'\S')
+    objective: NonBlankText
     directions: List[MiningDirection]
 
     @model_validator(mode='after')

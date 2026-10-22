@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import Field, PlainSerializer, model_validator
 
-from iad_core.advisory.analysis import AnalysisModel, AuditFinding, RegionImage, RegionOrigin, RegionProposal, VisualEvidence
+from iad_core.advisory.analysis import AnalysisModel, NonBlankText, AuditFinding, RegionImage, RegionOrigin, RegionProposal, VisualEvidence
 from iad_core.evidence.sources import SampleContent
 from iad_core.knowledge.instructions import FrozenMiningPrompt
 
@@ -54,21 +54,21 @@ class CheckRevision(AnalysisModel):
 
 class KnowledgeCorrection(AnalysisModel):
     check_id: str = Field(min_length=1, description="冻结基准版本中的检查项ID")
-    instruction: str = Field(min_length=1, pattern=r'\S', description="待视觉核验的人工修订建议，不是已证实事实")
+    instruction: NonBlankText = Field(description="待视觉核验的人工修订建议，不是已证实事实")
 
 
 class ObservedPart(AnalysisModel):
-    name: str = Field(min_length=1, pattern=r'\S')
+    name: NonBlankText
     location: str
     evidence_ids: List[str] = Field(min_length=1)
 
 
 class DiscoveryArea(AnalysisModel):
     direction_id: Optional[str] = Field(default=None, description='用户选中的方向编号；模型自主发现的新方向填null，不能冒用未选择的方向')
-    direction: str = Field(min_length=1, pattern=r'\S')
+    direction: NonBlankText
     subjects: List[str] = Field(description='引用parts内实际可见部件名称；不适用时可为空')
     status: Literal['已形成知识', '证据不足', '不可观察', '不适用']
-    reason: str = Field(min_length=1, pattern=r'\S')
+    reason: NonBlankText
     check_titles: List[str] = Field(description='引用本次checks实际标题；不是预设旧条目的完整性证明')
     evidence_ids: List[str]
 
@@ -102,8 +102,10 @@ class KnowledgeDraft(AnalysisModel):
             if len(parts) != len(set(parts)):
                 raise ValueError('可见部件名称必须唯一')
             for area in self.discovery.areas:
-                if set(area.subjects) - set(parts) or set(area.check_titles) - set(titles):
-                    raise ValueError('观察方向引用了不存在的部件或本次判据')
+                unknown_parts = set(area.subjects) - set(parts)
+                unknown_checks = set(area.check_titles) - set(titles)
+                if unknown_parts or unknown_checks:
+                    raise ValueError(f'观察方向「{area.direction}」引用未知部件：{sorted(unknown_parts)}；未知判据：{sorted(unknown_checks)}')
         return self
 
 

@@ -7,7 +7,7 @@ from typing import List, Literal, Optional
 
 from pydantic import Field, model_validator
 
-from iad_core.advisory.analysis import AnalysisModel
+from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.knowledge.models import (KnowledgeCoverage, KnowledgeKind, KnowledgeSnapshot, KnowledgeSourceItem,
                                       KnowledgeSourceMetadata, KnowledgeSourcePage, KnowledgeSourceQuery)
@@ -21,7 +21,7 @@ from iad_core.storage.database import Database
 class KnowledgeScopeOpen(AnalysisModel):
     dataset_id: str
     kind: KnowledgeKind
-    objective: str = Field(min_length=1, pattern=r'\S')
+    objective: NonBlankText
     search: str = ''
     seed: Optional[int] = None
     starting_version_id: Optional[str] = None
@@ -29,7 +29,7 @@ class KnowledgeScopeOpen(AnalysisModel):
 
 
 class KnowledgeScopeDefinition(KnowledgeScopeOpen):
-    objective: str = Field(exclude=True, min_length=1, pattern=r'\S')
+    objective: NonBlankText = Field(exclude=True)
     scope_run_id: str
     origin_session_id: Optional[str]
     sources: List[KnowledgeSourceMetadata]

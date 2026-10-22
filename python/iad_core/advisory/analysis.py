@@ -2,6 +2,9 @@ from typing import Annotated, List, Literal, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+NonBlankText = Annotated[str, Field(min_length=1, pattern=r'^[\s\S]*\S[\s\S]*$')]
+
+
 class AnalysisModel(BaseModel):
     model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
 
