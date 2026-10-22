@@ -112,29 +112,7 @@ class KnowledgeObserver:
             'sources': [{'sample_id': sid, 'raw_evidence_ids': sorted(ids)} for sid, ids in sources.items()],
         }, ensure_ascii=False)
         actual = list(images.values())
-        plan = (self.client.plan(KnowledgeObservations, prompt, actual, model_name, OUTPUT_RESERVE_TOKENS)
-                if len(checks) * len(inputs) <= self.client.profile.max_structured_items else None)
-        if plan is None:
-            if len(inputs) > 1:
-                middle = len(inputs) // 2
-                for group in (inputs[:middle], inputs[middle:]):
-                    self.evaluate(version_id, checks, group, model_name, purpose)
-            elif len(checks) > 1:
-                middle = len(checks) // 2
-                for group in (checks[:middle], checks[middle:]):
-                    self.evaluate(version_id, group, inputs, model_name, purpose)
-            else:
-                details = {}
-                for image in inputs[0].images[1:]:
-                    details.setdefault(tuple(image.evidence.crop_bbox), []).append(image)
-                bundles = list(details.values())
-                if len(bundles) < 2:
-                    raise ValueError('冻结判据与最小完整图像证据超出容量，未发布知识')
-                middle = len(bundles) // 2
-                for group in (bundles[:middle], bundles[middle:]):
-                    self.evaluate(version_id, checks, [KnowledgeInput(inputs[0].source,
-                        [inputs[0].images[0], *[image for bundle in group for image in bundle]])], model_name, purpose)
-            return
+        plan = self.client.plan(KnowledgeObservations, prompt, actual, model_name, OUTPUT_RESERVE_TOKENS)
         result = self.client.generate(plan)
         self.context.checkpoint()
         expected = {(sid, check.check_id) for sid in sources for check in checks}

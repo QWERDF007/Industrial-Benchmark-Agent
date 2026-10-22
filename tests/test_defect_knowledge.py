@@ -69,8 +69,6 @@ def test_operator_verifies_annotated_defect_against_frozen_normal_knowledge(
                             assert sent.getpixel((28, 42)) == (255, 255, 255)
                             assert sent.getpixel((10, 10)) == (0, 0, 0)
             comparison = [item['evidence_id'] for item in evidence if item['role'] == 'normal']
-            comparison += [eid for child in payload['child_results'] for finding in child['result']['findings']
-                           for eid in finding['evidence_ids'] if eid in {item['image']['evidence_id'] for item in normal['evidence']}]
             cited = [binary['evidence_id'] if cite_mask else raw['evidence_id']]
             if independent and comparison:
                 cited.append(comparison[0])
@@ -102,6 +100,12 @@ def test_operator_verifies_annotated_defect_against_frozen_normal_knowledge(
         job = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='defect', knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
         service.wait(job['run_id'], 5)
         finished = service.status(job['run_id'])
+        if capacity != 262144:
+            assert finished['status'] == 'FAILED'
+            assert '未拆组' in finished['errors'][0]['message']
+            assert len(calls) == 1
+            assert finished['knowledge_version_id'] is None
+            return
         if expected in ('invalid', 'invalid_lineage'):
             assert finished['status'] == 'FAILED', finished
             assert ('raw ROI' if expected == 'invalid' else '输出格式错误') in finished['errors'][0]['message']

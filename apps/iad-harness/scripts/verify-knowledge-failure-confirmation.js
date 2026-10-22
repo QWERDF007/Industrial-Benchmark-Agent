@@ -1,0 +1,31 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import http from 'node:http';
+import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
+import {createUserMessage} from '@deepseek-ai/dsh-llm';
+import {createDatasetSession,resolveDatasetSessionModel,readDatasetSessionContext} from '../test/fixtures/dataset_session.js';
+import {findWorkspaceRoot,resolvePythonPath} from '../lib/server/python-bridge/index.js';
+assert.ok(process.env.LIVE_VLM_ENDPOINT && process.env.LIVE_VLM_KEY, 'Configure the local model environment');
+const workspace=findWorkspaceRoot();
+const root=path.resolve(process.argv[2]||path.join(workspace,'runs/verification/knowledge-failure-confirmation',String(Date.now())));await fs.mkdir(root,{mode:0o700,recursive:true});
+execFileSync(resolvePythonPath(),['-c',"from pathlib import Path;from PIL import Image;import sys;p=Path(sys.argv[1]);(p/'images').mkdir();(p/'labels').mkdir();[Image.new('RGB',(100,80),(80+i,120,140)).save(p/'images'/f'{i:02}.png') for i in range(50)]",root]);
+const endpoint=process.env.LIVE_VLM_ENDPOINT.replace(/\/chat\/completions\/?$/,'').replace(/\/$/,'');
+const model=resolveDatasetSessionModel(workspace);const contextWindow=await readDatasetSessionContext({endpoint,model,apiKeyEnv:'LIVE_VLM_KEY'});
+let accepted=false;const generations=[];
+const stub=http.createServer(async(req,res)=>{let raw='';for await(const c of req)raw+=c;const body=JSON.parse(raw);res.setHeader('Content-Type','application/json');if(req.url==='/tokenize'){res.end(JSON.stringify({count:4000,max_model_len:accepted?262144:8000}));return;}generations.push(body);res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({summary:'图组已观察',checks:[],suspects:[],limitations:['合成图外部响应测试']})}}]}));});
+await new Promise(r=>stub.listen(0,'127.0.0.1',r));process.env.LIVE_VLM_ENDPOINT=`http://127.0.0.1:${stub.address().port}/v1`;delete process.env.IAD_VLM_MAX_VISUAL_INPUTS;delete process.env.LIVE_VLM_MAX_IMAGES;
+const session=await createDatasetSession({root:path.join(root,'dsh'),dbPath:path.join(root,'benchmark.db'),endpoint,model,apiKeyEnv:'LIVE_VLM_KEY',contextWindow});const trace=[],violations=[];let failed=false;
+session.ctx.on('tools/result',(exec,result)=>{trace.push({name:exec.name,args:exec.arguments,result});if(exec.name==='knowledge_job_status'&&result.value?.status==='FAILED')failed=true;console.log(JSON.stringify({name:exec.name,status:result.value?.status,error:result.isError}));});
+session.handle.agent.ctx.tools.guard(exec=>{if(failed&&!accepted&&/^(knowledge_mine_|knowledge_job_retry|knowledge_scope_resume)/.test(exec.name)){violations.push(exec.name);session.handle.agent.cancel({kind:'hook',reason:'No user authorization to retry or reduce the failed group'});return 'Wait for the user';}});
+const send=async text=>{session.handle.agent.followup(createUserMessage({source:{kind:'user'},content:[{type:'text',text}]}));await session.handle.agent.whenIdle();};
+const timer=setTimeout(()=>session.handle.agent.cancel({kind:'hook',reason:'Failure confirmation verification deadline'}),360000);
+try{
+ const dataset=await session.ctx.iadPythonBridge.execute('dataset_import',{format:'labelme',name:'失败确认合成验证',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')});
+ await send(`对已导入数据集 ${dataset.dataset_id} 做一次良品知识挖掘，本次用50张图，不使用知识预设。`);
+ assert.deepEqual(violations,[]);const first=trace.filter(x=>x.name==='knowledge_mine_normal');assert.equal(first.length,1);assert.equal(first[0].args.image_count,50);assert.ok(failed);assert.equal(generations.length,0);
+ const answer=session.handle.agent.session.deriveMessages().filter(x=>x.role==='assistant').flatMap(x=>x.content.filter(b=>b.type==='text').map(b=>b.text)).join('\n');assert.match(answer,/是否|要不要|降低|减少/);
+ accepted=true;await send('改为20张，重新选择一个20张图组执行一次，不使用预设。');assert.deepEqual(violations,[]);
+ const groups=trace.filter(x=>x.name==='knowledge_mine_normal');assert.deepEqual(groups.map(x=>x.args.image_count),[50,20]);assert.equal(generations.length,1);assert.equal(generations[0].messages[0].content.filter(p=>p.type==='image_url').length,20);
+ const result={verified:true,model,context_tokens:contextWindow,groups:[50,20],waited_for_user:true,vision_generation_count:1,root};await fs.writeFile(path.join(root,'result.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result));
+}finally{clearTimeout(timer);await fs.writeFile(path.join(root,'trace.json'),JSON.stringify({trace,violations},null,2));await fs.writeFile(path.join(root,'events.json'),JSON.stringify(session.handle.agent.session.snapshotEvents(),null,2));await session.dispose();await new Promise(r=>stub.close(r));}

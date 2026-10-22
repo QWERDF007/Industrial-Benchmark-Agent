@@ -78,8 +78,7 @@ def test_operator_can_locate_contaminated_normal_source_without_changing_human_t
             assert kind == 'KnowledgeVerification'
             payload = json.loads(content[0]['text'].split('待核验疑点：', 1)[1].split('\n请根据图像', 1)[0])
             judgment = body['response_format']['json_schema']['schema']['$defs']['KnowledgeJudgment']
-            allowed = {item['evidence_id'] for item in evidence} | {
-                eid for child in payload['child_results'] for finding in child['result']['findings'] for eid in finding['evidence_ids']}
+            allowed = {item['evidence_id'] for item in evidence}
             reference_schema = judgment['properties']['evidence_ids']['items']
             assert set(reference_schema.get('enum', [reference_schema.get('const')])) == allowed
             title_schema = judgment['properties']['affected_check_titles']['items']
@@ -97,8 +96,6 @@ def test_operator_can_locate_contaminated_normal_source_without_changing_human_t
             if capacity==262144:
                 assert len(normal)==4
             available = [e['evidence_id'] for e in normal if e['source_sha256'] != initial[-1]['source_sha256']]
-            available += [eid for child in payload['child_results'] for item in child['result']['findings']
-                          for eid in item['evidence_ids'] if eid in {e['evidence_id'] for e in initial[:-1]}]
             cited = [rois[0]['evidence_id'], available[0]] if independent and available else [rois[0]['evidence_id']]
             result = {'findings': [{'finding_id': payload['findings'][0]['finding_id'], 'status': judgment_status,
                        'affected_check_titles': ['孔内外观'], 'description': '红色区域遮挡孔内背景',
@@ -111,6 +108,12 @@ def test_operator_can_locate_contaminated_normal_source_without_changing_human_t
         job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(job['run_id'],5)
         result = service.status(job['run_id'])
+        if capacity != 262144:
+            assert result['status'] == 'FAILED'
+            assert '未拆组' in result['errors'][0]['message']
+            assert len(calls) == 1
+            assert result['knowledge_version_id'] is None
+            return
         assert result['status']=='COMPLETED', result
         snapshot = knowledge_get({'version_id':result['knowledge_version_id']},db.db_path)['knowledge']
         if capacity==262144:

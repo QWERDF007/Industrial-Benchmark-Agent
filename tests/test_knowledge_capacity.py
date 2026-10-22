@@ -54,7 +54,7 @@ def large_mask_mining(large_mask_dataset):
     comparisons = set()
     rejected = []
     responses = {'scenario': 'complete'}
-    capacity = 19600 if with_reference_mask else 17200
+    capacity = 262144
 
     def respond(request):
         body = json.loads(request.content)
@@ -64,10 +64,8 @@ def large_mask_mining(large_mask_dataset):
         verification = '待核验疑点：' in content[0]['text']
         if request.url.path.endswith('/tokenize'):
             count = len(evidence) * 2000 if verification else 1000
-            if verification and responses['scenario'] == 'no_combine':
-                payload = json.loads(content[0]['text'].split('待核验疑点：', 1)[1].split('\n请根据图像', 1)[0])
-                if payload['child_results']:
-                    count = capacity
+            if verification and responses['scenario'] == 'no_capacity':
+                count = capacity
             if verification and count + 8192 > capacity:
                 rejected.append(len(evidence))
             return httpx.Response(200, json={'count': count, 'max_model_len': capacity if verification else 262144})
@@ -92,19 +90,14 @@ def large_mask_mining(large_mask_dataset):
             normal = [item for item in evidence if item['source_sha256'] != target_raw[0]['source_sha256']
                       and item['representation'] == 'raw']
             comparisons.update(item['evidence_id'] for item in normal)
-            earlier = [judgment for child in payload['child_results'] for judgment in child['result']['findings']]
-            supported = red is not None or any(item['status'] == 'supported' for item in earlier)
+            supported = red is not None
             cited = [red['evidence_id'] if red else target_raw[0]['evidence_id']]
             cited.extend(item['evidence_id'] for item in normal)
-            cited.extend(eid for judgment in earlier for eid in judgment['evidence_ids'])
             result = {'findings': [{'finding_id': target['finding_id'], 'status': 'supported' if supported else 'insufficient',
                 'affected_check_titles': ['表面形态'], 'description': '右下角有可见红色覆盖' if supported else '当前分块不足以排除其他部位异常',
                 'normal_explanation': '需排除有色反光', 'limitations': ['部分分块未见异常不表示整体已排除'],
                 'evidence_ids': list(dict.fromkeys(cited)), 'conflicts': []}]}
-            if responses['scenario'] == 'lossy_parent' and payload['child_results']:
-                result['findings'][0].update(status='refuted', affected_check_titles=[], limitations=[],
-                    evidence_ids=[target_raw[0]['evidence_id']])
-            if responses['scenario'] == 'child_conflict' and red and not payload['child_results']:
+            if responses['scenario'] == 'conflict' and red:
                 result['findings'][0]['conflicts'] = ['局部颜色与正常比较存在未消解分歧']
         else:
             defect = '已核验异常' in content[0]['text']
@@ -128,8 +121,7 @@ def large_mask_mining(large_mask_dataset):
         service.close()
 
 
-@pytest.mark.parametrize('large_mask_dataset,scenario', [(False, 'complete'), (False, 'lossy_parent'),
-    (False, 'child_conflict'), (True, 'complete')], indirect=['large_mask_dataset'])
+@pytest.mark.parametrize('large_mask_dataset,scenario', [(False, 'complete'), (False, 'conflict'), (True, 'complete')], indirect=['large_mask_dataset'])
 def test_one_large_mask_finding_is_verified_in_full_without_splitting_mask_from_pixels(large_mask_mining, scenario):
     service, dataset, target_id, original, normal, actual, comparisons, rejected, responses, db_path = large_mask_mining
     responses['scenario'] = scenario
@@ -147,8 +139,8 @@ def test_one_large_mask_finding_is_verified_in_full_without_splitting_mask_from_
                 for region in target['regions'] if region['image']['representation'] == 'raw'}
     assert observed == expected
     assert {tuple(region['crop_bbox']) for region in finding['regions']} == expected
-    assert len(rejected) > 0 and len(actual) > 1
-    assert all(len(evidence) <= (5 if normal['sources'][0]['qualification'] == 'human_pass' else 4) for _, evidence in actual)
+    assert not rejected and len(actual) == 1
+    assert len(actual[0][0]['findings'][0]['regions']) == 12
     if normal['sources'][0]['qualification'] == 'human_pass':
         masked_sha = normal['sources'][0]['sha256']
         for _, supplied in actual:
@@ -157,15 +149,14 @@ def test_one_large_mask_finding_is_verified_in_full_without_splitting_mask_from_
                     assert {view['representation'] for view in supplied if view['source_sha256'] == masked_sha
                             and view['crop_bbox'] == item['crop_bbox']} == {'raw', 'annotation_mask'}
     assert len(comparisons) >= 2
-    assert any(step['child_step_ids'] for step in snapshot['verification_steps'])
+    assert len(snapshot['verification_steps']) == 1
+    assert snapshot['verification_steps'][0]['child_step_ids'] == []
     assert snapshot['checks'][0]['status'] == 'provisional', '单个异常来源不形成多来源知识共识'
     assert finding['judgment']['affected_check_titles'] == ['表面形态']
     assert '部分分块未见异常不表示整体已排除' in finding['judgment']['limitations']
     assert comparisons <= set(finding['judgment']['evidence_ids'])
-    if scenario == 'child_conflict':
+    if scenario == 'conflict':
         assert '局部颜色与正常比较存在未消解分歧' in finding['judgment']['conflicts']
-    if scenario == 'lossy_parent':
-        assert snapshot['verification_steps'][-1]['result']['findings'][0]['affected_check_titles'] == []
     for region in finding['regions']:
         assert knowledge_evidence({'version_id': snapshot['version_id'], 'evidence_id': region['image']['evidence_id']}, db_path)['path']
     after = sample_get({'sample_id': target_id}, db_path)
@@ -213,17 +204,17 @@ def test_live_tiled_mask_knowledge_uses_real_joint_evidence(large_mask_dataset):
         service.close()
 
 
-def test_uncombinable_partial_mask_observations_are_retained_without_publishing_knowledge(large_mask_mining):
+def test_full_mask_capacity_failure_does_not_split_evidence_or_publish_knowledge(large_mask_mining):
     service, dataset, target_id, original, normal, actual, _, _, responses, db_path = large_mask_mining
-    responses['scenario'] = 'no_combine'
+    responses['scenario'] = 'no_capacity'
     mining = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='defect', knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
     service.wait(mining['run_id'], 30)
     status = service.status(mining['run_id'])
     assert status['status'] == 'FAILED', status
-    assert any('cannot combine knowledge verification results' in error['message'] for error in status['errors'])
+    assert any('未拆组' in error['message'] for error in status['errors'])
     assert status['completed'] == 0
-    assert len(status['verification_steps']) >= 2
-    assert actual
+    assert not status.get('verification_steps')
+    assert not actual
     assert knowledge_get({'dataset_id': dataset['dataset_id'], 'kind': 'defect'}, db_path)['knowledge'] is None
     assert knowledge_get({'version_id': normal['version_id']}, db_path)['knowledge'] == normal
     after = sample_get({'sample_id': target_id}, db_path)

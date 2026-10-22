@@ -105,3 +105,85 @@ def test_explicit_output_cap_preserves_truncated_response_and_rejects_changed_re
         assert len(calls) == 1
     finally:
         changed.close()
+
+
+def test_fifty_selected_images_stay_together_with_and_without_a_preset(tmp_path, monkeypatch):
+    monkeypatch.delenv('IAD_VLM_MAX_VISUAL_INPUTS', raising=False)
+    monkeypatch.delenv('LIVE_VLM_MAX_IMAGES', raising=False)
+    images, labels = tmp_path / 'images', tmp_path / 'labels'
+    images.mkdir(); labels.mkdir()
+    for index in range(100):
+        Image.new('RGB', (120, 80), (50 + index, 120, 140)).save(images / f'{index}.png')
+    db = Database(str(tmp_path / 'benchmark.db'))
+    dataset = dataset_import(dict(format='labelme', name='完整图组', image_dir=str(images), annotation_dir=str(labels)), db.db_path)
+    ids = [dataset['dataset_id'] + f':{index}.png' for index in range(100)]
+    calls = []
+
+    def respond(request):
+        body = json.loads(request.content)
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 42567, 'max_model_len': 262144})
+        content = body['messages'][0]['content']
+        count = sum(part['type'] == 'image_url' for part in content)
+        calls.append((body['response_format']['json_schema']['name'], count))
+        assert count == 50, 'Do not silently split the user-selected image group'
+        observed = frozen_observation_response(request)
+        if observed is not None:
+            return observed
+        refs = [json.loads(part['text'][5:])['evidence_id'] for part in content
+                if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps({
+            'summary': '图组结构', 'checks': [dict(title=title, subject='主体', location='全图', criterion=title,
+                allowed_variations=[], support_evidence_ids=refs, counter_evidence_ids=[], limitations=[], status='supported')
+                for title in ['完整轮廓', '位置关系', '表面纹理']], 'suspects': [], 'limitations': [],
+        })}}]})
+
+    service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        preset = []
+        for group in (ids[:50], ids[50:]):
+            job = service.start(request=selected_group(db, dataset['dataset_id'], 'normal', group, preset), kind='normal', model_name='configured-mllm')
+            service.wait(job['run_id'], 15)
+            status = service.status(job['run_id'])
+            assert status['status'] == 'COMPLETED', status['errors']
+            preset = [status['knowledge_version_id']]
+        assert calls == [('KnowledgeDraft', 50), ('KnowledgeObservations', 50), ('KnowledgeDraft', 50)]
+    finally:
+        service.close()
+
+
+def test_capacity_failure_keeps_the_whole_group_until_user_selects_a_smaller_one(knowledge_dataset, monkeypatch):
+    monkeypatch.setenv('LIVE_VLM_MAX_IMAGES', '2')
+    db, config = knowledge_dataset
+    generations = []
+
+    def respond(request):
+        body = json.loads(request.content)
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
+        generations.append(body)
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps({
+            'summary': '可观察图组', 'checks': [], 'suspects': [], 'limitations': [],
+        })}}]})
+
+    service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        group = selected_group(db, config.dataset.id, 'normal')
+        first = service.start(request=group, kind='normal', model_name='configured-mllm')
+        service.wait(first['run_id'], 10)
+        failed = service.status(first['run_id'])
+        assert failed['status'] == 'FAILED'
+        assert failed['sample_ids'] == group.images
+        assert failed['knowledge_version_id'] is None
+        assert len(service.list(config.dataset.id)) == 1
+        assert generations == [], 'Do not try smaller groups after the complete group fails'
+        assert '请确认是否减少图像数量' in failed['errors'][0]['message']
+        smaller = selected_group(db, config.dataset.id, 'normal', group.images[:2])
+        accepted = service.start(request=smaller, kind='normal', model_name='configured-mllm')
+        service.wait(accepted['run_id'], 10)
+        assert service.status(accepted['run_id'])['status'] == 'COMPLETED'
+        assert service.status(first['run_id']) == failed
+        assert len(generations) == 1
+        assert sum(p['type'] == 'image_url' for p in generations[0]['messages'][0]['content']) == 2
+    finally:
+        service.close()

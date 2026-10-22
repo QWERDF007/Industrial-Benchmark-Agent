@@ -14,7 +14,7 @@ import {LocalAttachmentStore} from '@deepseek-ai/dsh-attachment-local';
 import * as harness from '../lib/server/index.js';
 import {resolvePythonPath} from '../lib/server/python-bridge/index.js';
 
-for(const {limit,mode='vllm_tokenize',bytes,context,timeout,failure} of [{limit:null},{limit:6},{limit:6,mode:null,failure:'unknown'},{limit:6,bytes:1000,failure:'bytes'},{limit:6,context:4000,failure:'context'},{limit:6,timeout:0.02,failure:'timeout'}])test(`knowledge visual capacity ${failure||limit||'default 20'}`,{timeout:30000},async()=>{
+for(const {limit,mode='vllm_tokenize',bytes,context,timeout,failure} of [{limit:null},{limit:6,failure:'images'},{limit:null,mode:null,failure:'unknown'},{limit:null,bytes:1000,failure:'bytes'},{limit:null,context:4000,failure:'context'},{limit:null,timeout:0.02,failure:'timeout'}])test(`knowledge visual capacity ${failure||limit||'complete group'}`,{timeout:30000},async()=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-visual-capacity-'));
   execFileSync(resolvePythonPath(),['-c',"from PIL import Image,ImageDraw;from pathlib import Path;import sys;p=Path(sys.argv[1]);(p/'images').mkdir();(p/'labels').mkdir();[(lambda im,i:(ImageDraw.Draw(im).rectangle((20,20,400+i*10,800),fill=(100+i,60,70)),im.save(p/'images'/f'part-{i}.png')))(Image.new('RGB',(1800,1200),(180+i,190,200)),i) for i in range(5)]",root]);
   const generations=[];
@@ -30,7 +30,7 @@ for(const {limit,mode='vllm_tokenize',bytes,context,timeout,failure} of [{limit:
   for(const [key,value] of Object.entries(values)){if(value===undefined)delete process.env[key];else process.env[key]=value;}
   const ctx=new Context();new SystemPrompt(ctx,{});new ToolRuntime(ctx);new SkillRegistry(ctx);new LocalAttachmentStore(ctx,{dshHome:path.join(root,'dsh')});
   const fork=await ctx.plugin(harness,{dbPath:path.join(root,'test.db')});
-  const execute=async(name,args)=>{const result=await ctx.tools.execute({name,arguments:args,callId:crypto.randomUUID(),signal:new AbortController().signal});assert.equal(result.isError,false,JSON.stringify(result));return result.value;};
+  const execute=async(name,args)=>{const result=await ctx.tools.execute({name,arguments:args,callId:crypto.randomUUID(),signal:new AbortController().signal});assert.equal(result.isError,false,JSON.stringify(result));if(result.value.status==='FAILED')assert.equal(JSON.parse(result.content[0].text).requires_user_decision,true,'The Agent-visible failure must require a user decision');return result.value;};
   try{
     const dataset=await execute('dataset_import',{format:'labelme',name:'容量',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')});
     const sources=await execute('knowledge_sources',{dataset_id:dataset.dataset_id,kind:'normal'});
@@ -40,23 +40,23 @@ for(const {limit,mode='vllm_tokenize',bytes,context,timeout,failure} of [{limit:
       assert.equal(job.status,'FAILED',JSON.stringify(job));
       assert.equal((await execute('knowledge_get',{dataset_id:dataset.dataset_id,kind:'normal'})).knowledge,null,'Insufficient capacity or failed transport never publishes partial knowledge');
       if(failure==='unknown'){assert.equal(generations.length,0);assert.match(job.errors[0].message,/容量能力未知/);}
-      if(failure==='bytes'||failure==='context')assert.equal(generations.length,0);
-      if(failure==='timeout')assert.ok(job.model_calls.some(call=>call.error?.type==='ReadTimeout'));
+      if(failure==='bytes'||failure==='context'||failure==='images')assert.equal(generations.length,0);
+      if(failure==='timeout')assert.ok(job.model_calls.some(call=>call.error?.type?.endsWith('Timeout')));
       return;
     }
     assert.equal(job.status,'COMPLETED',JSON.stringify(job.errors));
     const knowledge=(await execute('knowledge_get',{version_id:job.knowledge_version_id})).knowledge;
     assert.equal(knowledge.observed_source_ids.length,5);
-    assert.ok(generations.length>1,'The expanded visual evidence must be partitioned, not sent as one oversized request');
-    for(const body of generations){const images=body.messages[0].content.filter(item=>item.type==='image_url');assert.ok(images.length>0&&images.length<=(limit||20),`Actual visual inputs ${images.length} exceed limit or synthesis is text-only`);}
+    assert.equal(generations.length,1,'The selected source group and all its native details remain one request');
+    for(const body of generations){const images=body.messages[0].content.filter(item=>item.type==='image_url');assert.ok(images.length>0&&(!limit||images.length<=limit),`Actual visual inputs ${images.length} exceed limit or synthesis is text-only`);}
     const seen=new Set(generations.flatMap(body=>body.messages[0].content.filter(item=>item.type==='text'&&item.text.startsWith('视觉证据：')).map(item=>JSON.parse(item.text.slice(5)).evidence_id)));
     assert.ok(knowledge.evidence.every(item=>seen.has(item.image.evidence_id)),'Every planned full image and native ROI must really reach the model');
-    assert.equal(job.request.model_profile.max_visual_inputs,limit||20);
+    assert.equal(job.request.model_profile.max_visual_inputs,limit);
     assert.equal(job.request.model_profile.capacity_mode,'vllm_tokenize');
   }finally{await fork.dispose();await new Promise(resolve=>model.close(resolve));for(const [key,value] of Object.entries(previous)){if(value===undefined)delete process.env[key];else process.env[key]=value;}await fs.rm(root,{recursive:true,force:true});}
 });
 
-test('capacity partitions keep verified defect findings with their actual visual inputs',{timeout:30000},async()=>{
+test('joint groups keep verified defect findings with their actual visual inputs',{timeout:30000},async()=>{
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-defect-context-'));
  execFileSync(resolvePythonPath(),['-c',"from PIL import Image;from pathlib import Path;import sys,json;p=Path(sys.argv[1]);(p/'images').mkdir();(p/'labels').mkdir();[Image.new('RGB',(320,240),(100+i*20,120,150)).save(p/'images'/f'part-{i}.png') for i in range(5)];[(p/'labels'/f'part-{i}.json').write_text(json.dumps({'imageWidth':320,'imageHeight':240,'shapes':[{'shape_type':'rectangle','label':'待核实','points':[[60,70],[100,110]]}]})) for i in (3,4)]",root]);
  const leaks=[],calls=[];
@@ -80,7 +80,7 @@ test('capacity partitions keep verified defect findings with their actual visual
   res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify(result)}}]}));
  });
  await new Promise(resolve=>model.listen(0,'127.0.0.1',resolve));
- const env={LIVE_VLM_ENDPOINT:`http://127.0.0.1:${model.address().port}/v1`,LIVE_VLM_MODEL:'defect-context-model',LIVE_VLM_CAPACITY_MODE:'vllm_tokenize',LIVE_VLM_MAX_IMAGES:'6',IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES:'2'};
+ const env={LIVE_VLM_ENDPOINT:`http://127.0.0.1:${model.address().port}/v1`,LIVE_VLM_MODEL:'defect-context-model',LIVE_VLM_CAPACITY_MODE:'vllm_tokenize',LIVE_VLM_MAX_IMAGES:'20',IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES:'2'};
  const previous=Object.fromEntries(Object.keys(env).map(key=>[key,process.env[key]]));Object.assign(process.env,env);
  const ctx=new Context();new SystemPrompt(ctx,{});new ToolRuntime(ctx);new SkillRegistry(ctx);new LocalAttachmentStore(ctx,{dshHome:path.join(root,'dsh')});const fork=await ctx.plugin(harness,{dbPath:path.join(root,'test.db')});
  const execute=async(name,args)=>{const result=await ctx.tools.execute({name,arguments:args,callId:crypto.randomUUID(),signal:new AbortController().signal});assert.equal(result.isError,false,JSON.stringify(result));return result.value;};
@@ -98,7 +98,7 @@ test('capacity partitions keep verified defect findings with their actual visual
    const field=body.response_format.json_schema.schema.$defs.KnowledgeJudgment.properties.finding_id;
    assert.deepEqual((field.enum||[field.const]).sort(),scope.findings.map(item=>item.finding_id).sort(),'Structured finding references must be constrained to the actual requested identities');
   }
-  assert.ok(calls.every(body=>body.messages[0].content.filter(item=>item.type==='image_url').length<=6));
-  const knowledge=(await execute('knowledge_get',{version_id:defect.knowledge_version_id})).knowledge;assert.equal(knowledge.sources.length,2);assert.equal(knowledge.findings.length,2);assert.ok(knowledge.mining_steps.length>1);
+  assert.ok(calls.every(body=>body.messages[0].content.filter(item=>item.type==='image_url').length<=20));
+  const knowledge=(await execute('knowledge_get',{version_id:defect.knowledge_version_id})).knowledge;assert.equal(knowledge.sources.length,2);assert.equal(knowledge.findings.length,2);assert.ok(knowledge.mining_steps.length===1);
  }finally{await fork.dispose();model.closeAllConnections();await new Promise(resolve=>model.close(resolve));for(const[key,value]of Object.entries(previous)){if(value===undefined)delete process.env[key];else process.env[key]=value;}await fs.rm(root,{recursive:true,force:true});}
 });

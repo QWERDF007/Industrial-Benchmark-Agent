@@ -10,8 +10,7 @@ from iad_core.advisory.analysis import AnalysisModel
 class ModelProfile(AnalysisModel):
     endpoint: str
     capacity_mode: Optional[Literal['vllm_tokenize']] = None
-    max_visual_inputs: int = Field(ge=1)
-    max_structured_items: int = Field(default=20, ge=1)
+    max_visual_inputs: Optional[int] = Field(default=None, ge=1)
     max_request_bytes: Optional[int] = Field(default=None, gt=0)
     context_tokens: Optional[int] = Field(default=None, gt=0)
     max_output_tokens: Optional[int] = Field(default=None, gt=0)
@@ -29,10 +28,9 @@ class ModelProfile(AnalysisModel):
 
     @classmethod
     def configured(cls, endpoint: str):
-        project = int(os.environ.get('IAD_VLM_MAX_VISUAL_INPUTS', '20'))
-        provider = int(os.environ['LIVE_VLM_MAX_IMAGES']) if os.environ.get('LIVE_VLM_MAX_IMAGES') else project
+        limits = [int(os.environ[key]) for key in ('IAD_VLM_MAX_VISUAL_INPUTS', 'LIVE_VLM_MAX_IMAGES') if os.environ.get(key)]
         return cls(endpoint=endpoint, capacity_mode=os.environ.get('LIVE_VLM_CAPACITY_MODE') or None,
-            max_visual_inputs=min(project, provider), max_structured_items=int(os.environ.get('IAD_VLM_MAX_STRUCTURED_ITEMS', '20')),
+            max_visual_inputs=min(limits) if limits else None,
             max_request_bytes=os.environ.get('LIVE_VLM_MAX_REQUEST_BYTES') or None,
             context_tokens=os.environ.get('LIVE_VLM_CONTEXT_TOKENS') or None,
             max_output_tokens=os.environ.get('LIVE_VLM_MAX_OUTPUT_TOKENS') or None,

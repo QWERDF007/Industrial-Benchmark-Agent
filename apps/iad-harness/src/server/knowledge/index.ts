@@ -10,6 +10,8 @@ import { knowledgeScopeParameters } from "../../shared/knowledge-scope.parameter
 import { knowledgeDetailParameters } from "../../shared/knowledge-detail.parameters.generated.js";
 import { knowledgeSourceParameters } from "../../shared/knowledge-source.parameters.generated.js";
 
+const groupPolicy = " 用户确认多少张就联合输入完整图组，不自动拆组或减张。失败时说明真实原因并询问用户是否降低数量或按原组重试；收到用户回复前停止后续挖掘，不自行重试、减张或继续下一组。";
+
 export function createKnowledgeTools(bridge: PythonBridge, ctx: Context): ToolDefinition[] {
   return [
     defineTool({
@@ -35,7 +37,7 @@ export function createKnowledgeTools(bridge: PythonBridge, ctx: Context): ToolDe
     }),
     defineTool({
       name: "knowledge_scope_resume",
-      description: "仅用户明确继续原连续任务时重新关联该范围到当前会话；不启动模型，不扩展冻结来源。先查询其真实进度，运行中作业不重复启动，失败组通过关联retry恢复；来源或知识变化不得混用。",
+      description: "仅用户明确继续原连续任务时重新关联该范围到当前会话；不启动模型，不扩展冻结来源。先查询其真实进度，运行中作业不重复启动；来源或知识变化不得混用。" + groupPolicy,
       parameters: { scope_run_id: { type: "string", required: true } },
       output: knowledgeScopeOutput,
       execute: (args, exec) => bridge.execute("knowledge_scope_resume", { ...args, origin_session_id: exec.agent?.id || null }, exec.signal),
@@ -49,14 +51,14 @@ export function createKnowledgeTools(bridge: PythonBridge, ctx: Context): ToolDe
     }),
     defineTool({
       name: "knowledge_mine_normal",
-      description: "独立挖掘明确图组的良品知识。仅提供knowledge_preset、image_count、images；引用从knowledge_sources复制，数量严格一致。无预设不读当前知识，不合并全部历史来源。总范围与每次数量按用户上下文区分，缺少数量建议10或20，不预先枚举全库。",
+      description: "独立挖掘明确图组的良品知识。仅提供knowledge_preset、image_count、images；引用从knowledge_sources复制，数量严格一致。无预设不读当前知识，不合并全部历史来源。总范围与每次数量按用户上下文区分，缺少数量建议10或20，不预先枚举全库。" + groupPolicy,
       parameters: miningParameters,
       output: knowledgeJobOutput,
       execute: (args, exec) => bridge.execute("knowledge_start", { request: { ...args, kind: "normal" }, model_name: process.env.LIVE_VLM_MODEL || exec.agent?.options.model, origin_session_id: exec.agent?.id || null }, exec.signal),
     }),
     defineTool({
       name: "knowledge_mine_defect",
-      description: "独立挖掘明确图组的异常候选知识。三输入与良品工具相同，可选良品基准及异常预设。没有正常基准时仅整理待验证假设，不自动挖掘良品或执行审计。images只用真实引用，工具只处理本组。",
+      description: "独立挖掘明确图组的异常候选知识。三输入与良品工具相同，可选良品基准及异常预设。没有正常基准时仅整理待验证假设，不自动挖掘良品或执行审计。images只用真实引用，工具只处理本组。" + groupPolicy,
       parameters: miningParameters,
       output: knowledgeJobOutput,
       execute: (args, exec) => bridge.execute("knowledge_start", { request: { ...args, kind: "defect" }, model_name: process.env.LIVE_VLM_MODEL || exec.agent?.options.model, origin_session_id: exec.agent?.id || null }, exec.signal),
@@ -70,7 +72,7 @@ export function createKnowledgeTools(bridge: PythonBridge, ctx: Context): ToolDe
     }),
     defineTool({
       name: "knowledge_job_status",
-      description: "读取同一知识作业的真实完成、失败、未处理数量及已发布版本；RUNNING 不表示完成。",
+      description: "读取同一知识作业的真实完成、失败、未处理数量及已发布版本；RUNNING 不表示完成。" + groupPolicy,
       parameters: jobStatusParameters,
       output: knowledgeJobOutput,
       execute: (args, exec) => waitForJobStatus(bridge, "knowledge_status", args, exec.signal),
@@ -84,7 +86,7 @@ export function createKnowledgeTools(bridge: PythonBridge, ctx: Context): ToolDe
     }),
     defineTool({
       name: "knowledge_job_retry",
-      description: "用全部冻结来源重试失败、取消或中断的联合知识挖掘，核验原图、标注、反馈及冻结版本；保留原运行和已发布知识，变化时要求重新启动。",
+      description: "仅用户明确要求后，用全部冻结来源重试失败、取消或中断的联合知识挖掘，核验原图、标注、反馈及冻结版本；保留原运行和已发布知识，变化时要求重新启动。降低数量须用户确认后重新选择图组。",
       parameters: { run_id: jobRetryParameters.run_id },
       output: knowledgeJobOutput,
       execute: (args, exec) => bridge.execute("knowledge_retry", args, exec.signal),

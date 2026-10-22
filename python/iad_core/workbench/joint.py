@@ -7,7 +7,7 @@ from typing import Callable, List, Optional
 from iad_core.workbench.audit_prompts import AUDIT_PROMPTS
 from iad_core.advisory.analysis import GlobalAnalysis, InspectionProgress, JointAnalysis, RegionEvidence, RegionImage, SynthesisStep, ViewAnalysis
 from iad_core.evidence.images import EvidenceImages, PreparedImage
-from iad_core.workbench.vision import VlmClient
+from iad_core.workbench.vision import ModelCapacityError, VlmClient
 from iad_core.workbench.findings import FindingLedger
 
 OUTPUT_RESERVE_TOKENS = 16384
@@ -71,8 +71,9 @@ class JointInspection:
                 )
                 phase(InspectionProgress(phase="SYNTHESIS", inspected_regions=len(inspected),
                                          planned_regions=planned_count, completed_batches=len(steps), total_batches=total))
-                plan = self.client.plan(JointAnalysis, instruction, images, model_name, OUTPUT_RESERVE_TOKENS)
-                if plan is None:
+                try:
+                    plan = self.client.plan(JointAnalysis, instruction, images, model_name, OUTPUT_RESERVE_TOKENS)
+                except ModelCapacityError:
                     work = children or batch
                     if len(work) < 2:
                         raise ValueError("MLLM context cannot fit the overview, one ROI and reserved output")

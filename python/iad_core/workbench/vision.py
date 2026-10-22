@@ -13,6 +13,10 @@ from iad_core.workbench.model_profile import ModelProfile
 T = TypeVar("T", bound=BaseModel)
 
 
+class ModelCapacityError(ValueError):
+    pass
+
+
 class TokenCapacity(BaseModel):
     count: int = Field(ge=0)
     max_model_len: int = Field(gt=0)
@@ -47,7 +51,7 @@ class VlmClient:
         return value.strip()
 
     def within_limits(self, body: dict, images: List[PreparedImage]) -> bool:
-        return len(images) <= self.profile.max_visual_inputs and (self.profile.max_request_bytes is None or
+        return (self.profile.max_visual_inputs is None or len(images) <= self.profile.max_visual_inputs) and (self.profile.max_request_bytes is None or
             len(json.dumps(body, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode()) <= self.profile.max_request_bytes)
 
 
@@ -57,11 +61,11 @@ class VlmClient:
         return {"Authorization": "Bearer " + key} if key else {}
 
     def plan(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str,
-             output_reserve: int = 2048) -> Optional[GenerationRequest[T]]:
+             output_reserve: int = 2048) -> GenerationRequest[T]:
         if self.profile.capacity_mode is None:
             raise ValueError('模型容量能力未知，请配置LIVE_VLM_CAPACITY_MODE；未发送生成请求')
-        if len(images) > self.profile.max_visual_inputs:
-            return None
+        if self.profile.max_visual_inputs is not None and len(images) > self.profile.max_visual_inputs:
+            raise ModelCapacityError(f'完整图组含 {len(images)} 个视觉输入，超过已配置上限 {self.profile.max_visual_inputs}；未拆组，请确认是否减少图像数量')
         schema = response_type.model_json_schema()
         content = [{"type": "text", "text": instruction + RESPONSE_INSTRUCTION + json.dumps(schema, ensure_ascii=False)}]
         for image in images:
@@ -77,7 +81,7 @@ class VlmClient:
             **GENERATION_PARAMETERS, **self.profile.request_parameters,
         }
         if not self.within_limits(body, images):
-            return None
+            raise ModelCapacityError(f'完整图组请求体超过已配置上限 {self.profile.max_request_bytes} 字节；未拆组，请确认是否减少图像数量')
         root = self.endpoint.rsplit('/chat/completions', 1)[0].removesuffix('/v1')
         request = self.client.build_request('POST', root + '/tokenize', headers=self._headers,
                                     json={key: body[key] for key in ('model', 'messages', 'chat_template_kwargs') if key in body})
@@ -88,10 +92,10 @@ class VlmClient:
             available = maximum - capacity.count
             required = min(output_reserve, self.profile.max_output_tokens or output_reserve)
             if available < required:
-                return None
+                raise ModelCapacityError(f'完整图组输入 {capacity.count} token，上下文上限 {maximum}，输出至少预留 {required}；未拆组，请确认是否减少图像数量')
             body['max_tokens'] = min(available, self.profile.max_output_tokens or available)
         if not self.within_limits(body, images):
-            return None
+            raise ModelCapacityError(f'完整图组请求体超过已配置上限 {self.profile.max_request_bytes} 字节；未拆组，请确认是否减少图像数量')
         return GenerationRequest(response_type, body)
 
     def generate(self, plan: GenerationRequest[T]) -> T:

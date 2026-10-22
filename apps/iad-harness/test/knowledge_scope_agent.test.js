@@ -77,7 +77,7 @@ test('DSH keeps the continuous scope when the next user message only confirms 20
   assert.ok(groups.every(item=>Object.keys(item.args).sort().join(',')==='image_count,images,knowledge_preset'));
   const scope=trace.filter(item=>item.name==='knowledge_scope_get').at(-1).result.value;assert.equal(scope.observed,43);assert.equal(scope.remaining,0);assert.equal(scope.version_ids.length,3);
   assert.deepEqual(groups.map(item=>item.args.knowledge_preset),[[],[scope.version_ids[0]],[scope.version_ids[1]]]);
-  assert.ok(observationSizes.length>0&&observationSizes.every(size=>size<=20),'Structured per-source/per-check output is also bounded, not only image count');
+  assert.ok(observationSizes.length>0&&observationSizes.includes(40),'Two frozen criteria and the full 20-image group remain a single observation request');
   assert.ok(visionCalls.every(body=>body.model==='scope-vision-model'&&body.messages[0].content.filter(item=>item.type==='image_url').length<=20));
  }finally{t.signal.removeEventListener('abort',onAbort);await session.dispose();await new Promise(resolve=>model.close(resolve));for(const [key,value] of Object.entries(previous)){if(value===undefined)delete process.env[key];else process.env[key]=value;}await fs.rm(root,{recursive:true,force:true});}
 });

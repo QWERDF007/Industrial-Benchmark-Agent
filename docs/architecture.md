@@ -41,7 +41,7 @@
 | 正常/异常知识、来源发现、污染与反馈 | [正常知识](../tests/test_dataset_knowledge.py)、[异常知识](../tests/test_defect_knowledge.py)、[来源发现](../apps/iad-harness/test/knowledge_sources.test.js)、[污染](../tests/test_knowledge_contamination.py)、[反馈](../tests/test_knowledge_feedback.py) |
 | 连续范围、恢复与人工重核验 | [HTTP冻结覆盖](../apps/iad-harness/test/knowledge_scope.test.js)、[真实Agent调用链](../apps/iad-harness/test/knowledge_scope_agent.test.js)、[人工处置与取消恢复](../apps/iad-harness/test/knowledge_scope_review.test.js)、[原生知识会话](../apps/iad-harness/browser/knowledge-session.test.js) |
 | 删除确认、历史证据与维护版本 | [公开HTTP维护链](../apps/iad-harness/test/knowledge_maintenance.test.js)、[知识浏览器操作](../apps/iad-harness/browser/knowledge-navigation.test.js)、[数据集共享交互](../apps/iad-harness/browser/workbench.test.js) |
-| 实际视觉输入容量、带图综合、输出预算及能力未知/超时 | [公开容量链](../apps/iad-harness/test/knowledge_capacity.test.js)、[连续图组输出预算](../tests/test_vlm_output_budget.py) |
+| 完整图组、实际容量、输出预算与失败决策 | [公开容量链](../apps/iad-harness/test/knowledge_capacity.test.js)、[完整图组及输出预算](../tests/test_vlm_output_budget.py)、[原生Agent失败确认](../apps/iad-harness/scripts/verify-knowledge-failure-confirmation.js) |
 | 输入屏蔽与知识独立支持 | [提示边界](../tests/test_knowledge_prompt_scope.py)、[冻结知识审计](../tests/test_knowledge_audit.py) |
 | 规则、疑点、分块与Mask真实证据 | [规则](../tests/test_rule_audit.py)、[疑点](../tests/test_audit_findings.py)、[容量](../tests/test_knowledge_capacity.py)、[Mask](../tests/test_mask_evidence.py) |
 | 口径与中断恢复 | [报告](../tests/test_quality_report.py)、[目录变更闭环](../tests/test_folder_source_change_closed_loop.py)、[恢复](../tests/test_job_recovery.py)、[调用记录](../tests/test_model_calls.py) |

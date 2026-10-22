@@ -59,8 +59,6 @@ class KnowledgeRecheck:
             context.checkpoint()
             context.update(phase='RECHECKING_HUMAN_KNOWLEDGE')
             plan = client.plan(KnowledgeRecheckResult, prompt, list(supplied.values()), model_name, OUTPUT_RESERVE_TOKENS)
-            if plan is None:
-                raise ValueError('人工处置重核验的完整证据超出容量，保留待重核验状态')
             result = client.generate(plan)
             context.checkpoint()
             if len(result.decisions) != 1 or result.decisions[0].submission_id != str(event.submission_id):

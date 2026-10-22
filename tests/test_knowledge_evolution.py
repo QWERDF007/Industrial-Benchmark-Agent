@@ -256,7 +256,7 @@ def test_split_merge_and_retirement_have_explicit_rule_lineage(knowledge_dataset
         service.close()
 
 
-def test_capacity_synthesis_preserves_parent_rules_and_accumulated_visual_support(knowledge_dataset):
+def test_full_group_preserves_parent_rules_and_accumulated_visual_support(knowledge_dataset):
     from iad_core.entry import knowledge_get
     from iad_core.knowledge.service import KnowledgeService
     from iad_core.workbench.vision import VlmClient
@@ -274,7 +274,7 @@ def test_capacity_synthesis_preserves_parent_rules_and_accumulated_visual_suppor
         images = [json.loads(item['text'].removeprefix('视觉证据：')) for item in content
                   if item['type'] == 'text' and item['text'].startswith('视觉证据：')]
         if request.url.path.endswith('/tokenize'):
-            return httpx.Response(200, json={'count': len(images) * 2000, 'max_model_len': 13000})
+            return httpx.Response(200, json={'count': len(images) * 2000, 'max_model_len': 32768})
         observed.update({image['evidence_id']: image for image in images})
         if previous:
             grouped.append(images)
@@ -301,11 +301,10 @@ def test_capacity_synthesis_preserves_parent_rules_and_accumulated_visual_suppor
         status = service.status(job['run_id'])
         assert status['status'] == 'COMPLETED', status
         current = knowledge_get({'version_id': status['knowledge_version_id']}, db.db_path)['knowledge']
-        assert len(grouped) == 3
-        assert sum(len(images) for images in grouped[:-1]) == 3
-        assert len(grouped[-1]) == 2
+        assert len(grouped) == 1
+        assert len(grouped[0]) == 3
         assert current['checks'][0]['check_id'] == previous['checks'][0]['check_id']
         assert len(current['checks'][0]['support_evidence_ids']) == 4
-        assert len(current['mining_steps'][-1]['child_step_ids']) == 2
+        assert current['mining_steps'][-1]['child_step_ids'] == []
     finally:
         service.close()
