@@ -1,7 +1,12 @@
 import React from "react";
 import type { JobSnapshot, Dataset, ReviewDecisionRecord } from "../../shared/contracts.js";
+import { type ModalPresentation, type ModalProps } from "./Modal.js";
 import type { SampleNavigation } from "../useSampleNavigation.js";
-export declare function SampleInspector({ dataset, sampleId, mode, revision, onReviewed, jobs, onJobsChanged, navigation, queue, filters, advanceOnSubmit }: {
+export declare function SampleInspector({ dataset, sampleId, mode, revision, onReviewed, jobs, onJobsChanged, navigation, queue, filters, advanceOnSubmit, panel }: {
+    panel?: Pick<ModalProps, "onClose" | "restoreFocus"> & {
+        presentation: ModalPresentation;
+        onOpen(open: boolean): void;
+    };
     queue?: React.ReactNode;
     filters?: React.ReactNode;
     advanceOnSubmit?: boolean;

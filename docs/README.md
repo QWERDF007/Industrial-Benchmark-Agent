@@ -1,7 +1,7 @@
 # 文档索引
 
 - [工作台 UI 重构规格](specs/ui-workbench.md)：设计包的当前基线适配、六业务页与模型设置、交互及验收要求。
-- [UI 重构任务](tickets/ui-workbench.md)：11项交付依赖与完成标准。
+- [UI 重构任务](tickets/ui-workbench.md)：V01–V08 交付依赖与完成标准。
 
 - [MLLM 图组知识挖掘与统一工作台规格](specs/incremental-knowledge-mining.md)：当前需求、三输入工具、连续版本链、冲突人工闭环及已确认测试边界的唯一来源。
 - [逐票交付与依赖](tickets/README.md)：8 张已确认的纵向票据，逐票声明阻塞边、验收条件及执行状态。

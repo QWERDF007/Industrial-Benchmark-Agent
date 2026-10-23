@@ -5,6 +5,7 @@ import { type PageId, type WorkbenchLocation } from "../shared/navigation.js";
 import { type KnowledgeStatusFilter } from "../shared/knowledge-presentation.js";
 export { pages, type PageId } from "../shared/navigation.js";
 interface ViewState {
+    datasetSettingsTab: "directories" | "basic";
     checkId: string;
     explorationVersion: string;
     explorationNormalCount: string;
@@ -32,6 +33,7 @@ interface ViewState {
     job: string;
     historyPage: number;
     historySearch: string;
+    historySampleId: string;
     knowledgeSearch: string;
     knowledgeStatus: KnowledgeStatusFilter;
     inspection: InspectionView | null;
@@ -73,6 +75,7 @@ export declare class Workspace {
     getSnapshot: () => WorkspaceState;
     subscribe: (listener: () => void) => () => void;
     view(page: PageId, kind?: import("../shared/domain.generated.js").Kind9): {
+        datasetSettingsTab: "directories" | "basic";
         checkId: string;
         explorationVersion: string;
         explorationNormalCount: string;
@@ -100,6 +103,7 @@ export declare class Workspace {
         job: string;
         historyPage: number;
         historySearch: string;
+        historySampleId: string;
         knowledgeSearch: string;
         knowledgeStatus: KnowledgeStatusFilter;
         inspection: InspectionView | null;

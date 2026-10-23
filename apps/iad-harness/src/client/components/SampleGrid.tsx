@@ -46,13 +46,13 @@ export function SampleGrid({ dataset, filters, onFilters, items, total, page, on
   return <section className={`iad-gallery ${layout === "queue" ? "iad-review-queue" : ""}`} aria-label="图像列表">
   {showFilters && <SampleFilters dataset={dataset} filters={filters} onFilters={onFilters} busy={busy} />}
   {managing && <section className="iad-source-controls" aria-label="良品来源管理" aria-busy={busy}>
-    <div className="iad-row"><strong aria-label="良品来源摘要">{dataset.reference_mode === "automatic" ? "自动来源" : "人工选定"} · {dataset.reference_sample_ids.length} 张</strong><span className="iad-muted">候选来源，非人工裁决</span>
+    <div className="iad-row"><strong aria-label="良品来源摘要">{dataset.reference_mode === "automatic" ? "自动来源" : "人工选定"} · {dataset.reference_sample_ids.length} 张</strong>
       <button disabled={busy || dataset.reference_mode === "automatic"} onClick={() => void save()}>恢复自动来源</button></div>
     <div className="iad-row"><button disabled={busy || loading} onClick={() => setSelection({ scope, ids: items.map(item => item.sample_id) })}>选择当前页</button>
       <button disabled={busy || loading || !total} onClick={() => void selectAll()}>选择筛选全部</button><span>已选 {chosen.length} 张</span>
       <button disabled={busy || !chosen.length} onClick={() => setSelection({ scope, ids: [] })}>取消选择</button>
       <button className="iad-primary" disabled={busy || !chosen.length} onClick={() => void save(true)}>加入良品来源</button>
-      <button disabled={busy || !chosen.length} onClick={() => void save(false)}>移出良品来源</button></div>
+      <button disabled={busy || !chosen.length} onClick={() => void save(false)}>移出良品来源</button><span className="iad-muted">候选来源，非人工裁决</span></div>
   </section>}
   {error && <p role="alert" className="iad-error">{error}</p>}{notice && <p role="status">{notice}</p>}
   {loading ? <p role="status">加载中…</p> : <div className="iad-grid">{items.map(sample => <SampleCard key={sample.sample_id} sample={sample} compact={layout === "queue"} selected={selected === sample.sample_id} onSelect={() => onSelect(sample.sample_id)} reference={!!managing && dataset.reference_sample_ids.includes(sample.sample_id)}

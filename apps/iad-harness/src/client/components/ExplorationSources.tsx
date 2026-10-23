@@ -32,11 +32,9 @@ export function ExplorationSources({ dataset, kind, count, images, disabled, onC
   }
   return <section className="iad-info-group"><h3>{label}样例</h3>
     <fieldset disabled={disabled || selecting}>
-      <div className="iad-row"><label className="iad-field">图像数量<input type="number" min="1" aria-label={`${label}图像数量`} value={count} onChange={e => onCount(e.target.value)} /></label>
-        <button disabled={!Number.isInteger(Number(count)) || Number(count) < 1} onClick={() => void select()}>{selecting ? "选取中…" : `选取${label}图像`}</button>
-        </div>
+      <label className="iad-field iad-short-field">目标数量<input type="number" min="1" aria-label={`${label}图像数量`} value={count} onChange={e => onCount(e.target.value)} /></label>
       {error && <p role="alert" className="iad-error">{error}</p>}
-      <SourcePicker dataset={dataset} label={label} sources={sources} selected={images} target={count} disabled={disabled || selecting} page={page} onPage={setPage} onChange={onImages} search={search} onSearch={value => { setSearch(value); setPage(1); }} />
+      <SourcePicker dataset={dataset} label={label} sources={sources} selected={images} target={count} disabled={disabled} choosing={selecting} canChoose={Number.isInteger(Number(count)) && Number(count) > 0} onChoose={() => void select()} page={page} onPage={setPage} onChange={onImages} search={search} onSearch={value => { setSearch(value); setPage(1); }} />
     </fieldset>
   </section>;
 }

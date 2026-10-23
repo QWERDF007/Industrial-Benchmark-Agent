@@ -14,13 +14,13 @@ export function ProviderManager() {
     <header className="iad-section-header"><h2>提供商</h2><button className="iad-primary" disabled={view?.provider_revision == null}
       onClick={() => setEditing({revision: view!.provider_revision!})}>添加提供商</button></header>
     <p className="iad-muted">与 DSH 设置共用提供商资料和凭据。</p>
-    <div className="iad-provider-list">{view?.providers.map(provider => <article key={provider.provider_id} className="iad-provider-card">
-      <div><h3>{provider.name}</h3><p className="iad-muted">{provider.endpoint || provider.api || '尚未配置'}</p><span>{provider.models.length} 个模型</span>
-        {provider.error && <p className="iad-error">{provider.error}</p>}</div>
-      <div className="iad-row"><button disabled={!provider.editable} onClick={() => setEditing({provider, revision: view!.provider_revision!})}>编辑</button>
+    <div className="iad-table-scroll"><table className="iad-resource-table" aria-label="提供商列表"><thead><tr><th>提供商名称</th><th>服务地址</th><th className="iad-number">模型数</th><th>操作</th></tr></thead><tbody>{view?.providers.map(provider => <tr key={provider.provider_id}>
+      <td><strong>{provider.name}</strong>{provider.error && <p className="iad-error">{provider.error}</p>}</td>
+      <td className="iad-provider-endpoint">{provider.endpoint || provider.api || '尚未配置'}</td><td className="iad-number">{provider.models.length}</td>
+      <td><div className="iad-row"><button disabled={!provider.editable} onClick={() => setEditing({provider, revision: view!.provider_revision!})}>编辑</button>
         {provider.removable && <DeleteAction title="删除提供商" name={provider.name} description="保留历史作业及其凭据引用。正在运行的作业不受影响。"
-          onDelete={async () => {await request(`/models/providers/${encodeURIComponent(provider.provider_id)}?expected_revision=${view!.provider_revision}`, undefined, 'DELETE'); await refresh(); setNotice('已删除提供商');}} />}</div>
-    </article>)}</div>
+          onDelete={async () => {await request(`/models/providers/${encodeURIComponent(provider.provider_id)}?expected_revision=${view!.provider_revision}`, undefined, 'DELETE'); await refresh(); setNotice('已删除提供商');}} />}</div></td>
+    </tr>)}</tbody></table></div>
     {notice && <p role="status">{notice}</p>}
     {editing && <ProviderEditor provider={editing.provider} revision={editing.revision} onClose={() => setEditing(null)}
       onSaved={async () => {await refresh(); setEditing(null); setNotice('提供商已保存');}} />}

@@ -58,7 +58,7 @@ test('mixed exploration is preserved on refresh and directions feed the next min
   const options=new firefox.Options().addArguments('-headless');if(process.env.FIREFOX_PATH)options.setBinary(process.env.FIREFOX_PATH);
   driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
   const el=css=>driver.wait(until.elementLocated(By.css(css)),8000);
-  const click=async text=>{await(await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}']`)),8000)).click();};
+  const click=async text=>{const button=await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}']`)),8000);await driver.wait(until.elementIsEnabled(button),8000);await button.click();};
   const count=async(label,value)=>{const input=await el(`input[aria-label='${label}图像数量']`);await input.clear();await input.sendKeys(value);};
   await driver.get(base);await click('图像浏览');await el('[aria-label="图像视图"]');await click('良品来源');await el('[aria-label="良品来源管理"]');await click('全部图像');
   assert.equal((await driver.findElements(By.css('.iad-grid input[type=checkbox]'))).length,0,'普通浏览和来源选择分开');
@@ -76,6 +76,8 @@ test('mixed exploration is preserved on refresh and directions feed the next min
   await fs.mkdir(path.resolve(app,'../../runs/browser/ui-workbench'),{recursive:true});await fs.writeFile(path.resolve(app,'../../runs/browser/ui-workbench/review-1366.png'),await driver.takeScreenshot(),'base64');
   await viewport(driver,375,812);await textZoom(driver,2);await click('复核记录');
   assert.equal(await(await el('[aria-label="复核视图"] button.active')).getText(),'复核记录','窄屏200%仍能切换标签');
+  await driver.wait(()=>driver.executeScript("return !document.querySelector('.iad-review-records')?.textContent.includes('加载复核记录')"),5000);
+  assert.equal((await driver.findElements(By.css('.iad-inspector,.iad-pagination'))).length,0,'空复核记录不显示分页及队列中遗留的样本详情');
   await click('复核队列');await click('打开人工裁决');await el('dialog.iad-review-drawer');
   await(await el('dialog input[type=radio][value=FAIL]')).click();await(await el('button[aria-label="关闭人工裁决"]')).click();await click('打开人工裁决');
   assert.equal(await(await el('dialog input[type=radio][value=FAIL]')).isSelected(),true,'窄屏裁决面板开关保持未提交草稿');
@@ -85,20 +87,24 @@ test('mixed exploration is preserved on refresh and directions feed the next min
 
   await click('方向探索');await el('[data-page="industrial-exploration"]');
   assert.equal((await driver.findElements(By.css('input[aria-label="良品图像数量"]'))).length,0,'结果视图不挂载长配置');
+  assert.equal(await driver.executeScript("return getComputedStyle(document.querySelector('.iad-exploration-page .iad-empty')).backgroundColor"),'rgb(255, 255, 255)','探索空态沿用 HTML 的白色内容表面');
+  await fs.writeFile(path.resolve(app,'../../runs/browser/ui-workbench/exploration-empty-1366.png'),await driver.takeScreenshot(),'base64');
   await click('新建探索');
-  await count('良品','2');await count('异常','1');await click('选取良品图像');await click('选取异常图像');
+  assert.equal((await driver.findElements(By.xpath('//button[normalize-space(.)="选取良品图像" or normalize-space(.)="选取异常图像"]'))).length,0,'每组只保留一个选图入口，按数量选取位于选择器内');
+  await count('良品','2');await count('异常','1');await click('选择良品图像');await click('按数量选择');await click('完成选择');await click('选择异常图像');await click('按数量选择');await click('完成选择');
   await driver.wait(async()=>await(await el('button.iad-primary')).isEnabled(),8000);
   await driver.navigate().refresh();
   assert.equal(await(await el('input[aria-label="良品图像数量"]')).getAttribute('value'),'2');
   assert.equal(await(await el('input[aria-label="异常图像数量"]')).getAttribute('value'),'1');
   await click('查看全部已选良品');await el('dialog[aria-label="选择良品图像"]');assert.equal((await driver.findElements(By.css('dialog .iad-source-option'))).length,2);await(await el('button[aria-label="关闭选择良品图像"]')).click();
-  await click('开始方向探索');await click('探索结果');await driver.wait(async()=>(await driver.findElements(By.xpath('//h3[contains(.,"孔位与背景对照")]'))).length===1,10000);
+  await click('开始方向探索');await click('探索结果');await driver.wait(async()=>(await driver.findElements(By.css('table[aria-label="探索方向"] tbody tr'))).length===1,10000);
+  assert.equal((await driver.findElements(By.css('table[aria-label="探索方向"] tbody tr'))).length,1,'按 HTML 用紧凑方向表呈现结果');
   assert.equal(generated.length,1);assert.equal(generated[0].messages[0].content.filter(v=>v.type==='image_url').length,3);
-  await click('用于良品知识挖掘');await el('summary[data-action="mining-directions"]');await(await el('summary[data-action="mining-directions"]')).click();
+  await click('查看方向');await click('用于良品知识挖掘');await el('summary[data-action="mining-directions"]');await(await el('summary[data-action="mining-directions"]')).click();
   const choice=await el('input[aria-label="启用探索方向 孔位与背景对照"]');assert.equal(await choice.isSelected(),false);await choice.click();await click('保存方向');
   await driver.wait(async()=>{const p=await(await fetch(base+`/api/iad/knowledge/prompt?dataset_id=${dataset.dataset_id}&kind=normal`)).json();return p.configuration.directions.some(v=>v.origin==='explored'&&v.enabled);},8000);
   await driver.manage().window().setRect({width:500,height:900});assert.equal(await driver.executeScript('return document.documentElement.scrollWidth>innerWidth'),false);await driver.manage().window().setRect({width:1440,height:1000});
-  const mining=await el('input[aria-label="挖掘图像数量"]');await mining.clear();await mining.sendKeys('2');await click('按数量选择');
+  const mining=await el('input[aria-label="挖掘图像数量"]');await mining.clear();await mining.sendKeys('2');await click('选择来源图像');await click('按数量选择');await click('完成选择');
   const start=await el('button[data-action="knowledge-group-run"]');await driver.wait(()=>start.isEnabled(),8000);await start.click();
   await driver.wait(()=>generated.length===2,10000);assert.ok(generated[1].messages[0].content[0].text.includes('结合孔位比较背景遮挡与反光'));
   await driver.wait(async()=>(await(await fetch(base+`/api/iad/knowledge/jobs?dataset_id=${dataset.dataset_id}`)).json()).jobs.every(job=>!['PENDING','RUNNING'].includes(job.status)),10000);
@@ -116,7 +122,7 @@ test('mixed exploration is preserved on refresh and directions feed the next min
   const imported=await fetch(base+'/api/iad/datasets/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({format:'labelme',name:'千图来源',image_dir:path.join(volumeRoot,'images'),annotation_dir:path.join(volumeRoot,'labels')})});assert.equal(imported.status,200,await imported.clone().text());const large=await imported.json();
   await click('刷新');await(await el(`select[aria-label="当前数据集"] option[value="${large.dataset_id}"]`)).click();await click('新建挖掘');
   const mediaBefore=media.length;
-  const volumeCount=await el('input[aria-label="挖掘图像数量"]');await volumeCount.clear();await volumeCount.sendKeys('50');await click('按数量选择');
+  const volumeCount=await el('input[aria-label="挖掘图像数量"]');await volumeCount.clear();await volumeCount.sendKeys('50');await click('选择来源图像');await click('按数量选择');await click('完成选择');
   await driver.wait(()=>driver.executeScript("return document.querySelector('.iad-source-picker [role=status]')?.textContent.includes('已选 50 / 50')"),10000);
   assert.equal((await driver.findElements(By.css('.iad-source-preview img'))).length,4,'50张已选只预览4张');
   await click('选择来源图像');await driver.wait(async()=>(await driver.findElements(By.css('dialog .iad-source-option'))).length===10,5000);
@@ -136,7 +142,7 @@ test('mixed exploration is preserved on refresh and directions feed the next min
   assert.equal((await(await fetch(base+`/api/iad/knowledge/jobs?dataset_id=${large.dataset_id}`)).json()).jobs.length,30,'复用服务既有列表上限');
 
  }catch(error){
-  if(driver)console.error(JSON.stringify({generated:generated.length,counts:generated.reduce((counts,item)=>{const schema=item.response_format.json_schema.name;counts[schema]=(counts[schema]||0)+1;return counts;},{}),page:(await driver.findElement(By.css('body')).getText()).slice(-1800)}));
+  if(driver){await fs.writeFile(path.resolve(app,'../../runs/browser/ui-workbench/exploration-failure.png'),await driver.takeScreenshot(),'base64');console.error(JSON.stringify({location:await driver.getCurrentUrl(),generated:generated.length,counts:generated.reduce((counts,item)=>{const schema=item.response_format.json_schema.name;counts[schema]=(counts[schema]||0)+1;return counts;},{}),page:(await driver.findElement(By.css('body')).getText()).slice(-1800)}));}
   throw error;
  }finally{
   await driver?.quit();bridge.destroy();await new Promise(resolve=>server.close(resolve));for(const k of keys)if(previous[k]===undefined)delete process.env[k];else process.env[k]=previous[k];await fs.rm(root,{recursive:true,force:true});

@@ -25,6 +25,7 @@ export function SampleFilters({dataset, filters, onFilters, busy = false, defaul
     ...(filters.search ? [`文件名：${filters.search}`] : []),
   ];
   return <><div className="iad-filters">
+    <label className="iad-filter iad-search">搜索<input type="search" aria-label="按文件名搜索" placeholder="文件名" disabled={busy} value={filters.search} onChange={e => onFilters({ ...filters, search: e.target.value })} /></label>
     <div className="iad-filter"><span>原始标签</span><FloatingMenu className="iad-multiselect" label="原始标签筛选" summary={rawFilters.length ? `已选 ${rawFilters.length} 项` : "全部"}>
       {rawLabelOptions.map(([value, title]) =>
         <label key={value}><input type="checkbox" aria-label={`原始标签 ${title}`} disabled={busy} checked={rawFilters.includes(value)} onChange={e => onFilters({ ...filters, raw_label_filters: e.target.checked ? [...rawFilters, value] : rawFilters.filter(item => item !== value) })} />{title}</label>)}
@@ -36,7 +37,7 @@ export function SampleFilters({dataset, filters, onFilters, busy = false, defaul
       <button disabled={busy} onClick={() => onFilters({ ...filters, annotation_filters: [] })}>清空</button>
     </FloatingMenu></div>}
     {select("model_status", "模型审计")}{select("review_status", "人工复核")}
-    <label className="iad-filter iad-search">搜索<input type="search" aria-label="按文件名搜索" placeholder="文件名" disabled={busy} value={filters.search} onChange={e => onFilters({ ...filters, search: e.target.value })} /></label>
+
     <FloatingMenu className="iad-multiselect" label="更多筛选" summary="更多筛选">{select("technical", "技术质量")}{select("reference_status", "良品来源")}{select("sort_by", "排序")}</FloatingMenu>
 
   </div>

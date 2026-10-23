@@ -6,5 +6,5 @@ export declare function Pagination({ total, page, unit, onPage, size }: {
     unit: string;
     onPage(page: number): void;
     size?: number;
-}): React.JSX.Element;
+}): React.JSX.Element | null;
 //# sourceMappingURL=Pagination.d.ts.map

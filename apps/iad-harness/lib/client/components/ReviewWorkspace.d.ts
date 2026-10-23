@@ -1,6 +1,5 @@
 import React from "react";
-export declare function ReviewWorkspace({ sampleId, queue, filters, image, decision, information }: {
-    sampleId: string;
+export declare function ReviewWorkspace({ queue, filters, image, decision, information }: {
     queue: React.ReactNode;
     filters: React.ReactNode;
     image: React.ReactNode;

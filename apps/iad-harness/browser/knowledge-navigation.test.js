@@ -74,7 +74,7 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
     await driver.get(base);
     const element=css=>driver.wait(until.elementLocated(By.css(css)),8000);
-    const click=async text=>{await(await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}']`)),8000)).click();};
+    const click=async text=>{const button=await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}']`)),8000);await driver.wait(until.elementIsEnabled(button),8000);await button.click();};
     await element('nav[aria-label="主导航"]');
     assert.deepEqual(await driver.executeScript('return [...document.querySelectorAll("nav[aria-label=主导航] button")].map(e=>e.textContent)'),['数据集管理','图像浏览','方向探索','知识挖掘','模型审计','人工复核','模型设置']);
     await click('知识挖掘');
@@ -82,6 +82,7 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     await driver.executeScript('arguments[0].value=arguments[1];arguments[0].dispatchEvent(new Event("change",{bubbles:true}))',await element('select[aria-label="当前数据集"]'),datasets[0].dataset_id);
     assert.equal((await driver.findElements(By.css('[aria-label="知识挖掘配置"]'))).length,0,'知识结果不挂载新建配置');
     assert.equal((await driver.findElements(By.css('.iad-knowledge-jobs'))).length,0,'作业只在作业标签挂载');
+    assert.equal((await driver.findElements(By.css('.iad-knowledge-context [aria-label="知识类型"],.iad-knowledge-context select[aria-label="知识版本"]'))).length,2,'类型与版本位于同一紧凑上下文行');
     const count=()=>element('input[aria-label="挖掘图像数量"]');
     const expectCount=expected=>driver.wait(async()=>await(await count()).getAttribute('value')===expected,5000,`Expected persisted count ${expected}`);
     await click('新建挖掘');await(await count()).clear();await(await count()).sendKeys('20');await click('返回知识结果');await click('版本');
@@ -122,7 +123,7 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     await keyboardDirection.sendKeys(' ');
     assert.equal(await keyboardDirection.isSelected(),false);
     await driver.manage().window().setRect(desktop);
-    await(await count()).clear();await(await count()).sendKeys('1');await click('按数量选择');
+    await(await count()).clear();await(await count()).sendKeys('1');await click('选择来源图像');await click('按数量选择');await click('完成选择');
     await click('查看全部已选来源');assert.equal(await(await element('input[type="checkbox"][aria-label^="选择来源"]')).isSelected(),true);await click('完成选择');
     await click('开始挖掘良品知识');
     let knowledge;
@@ -189,7 +190,7 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     await element('button[data-action="knowledge-group-run"]');
     assert.equal(await(await element('select[aria-label="来源范围"]')).getAttribute('value'),'all');
 
-    contradict=false;await click('按数量选择');
+    contradict=false;await click('选择来源图像');await click('按数量选择');await click('完成选择');
     await driver.wait(async()=>await(await element('button[data-action="knowledge-group-run"]')).isEnabled(),5000);
     await click('开始挖掘良品知识');
     let recheckedVersion;
@@ -240,7 +241,7 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     await element('button[data-action="knowledge-group-run"]');
     assert.equal(await(await element('select[aria-label="来源范围"]')).getAttribute('value'),'recheck');
     assert.equal((await(await fetch(base+`/api/iad/knowledge/jobs?dataset_id=${predicateDataset.dataset_id}`)).json()).jobs.length,runsBefore,'Selecting pending criteria and refreshing never starts learning');
-    await click('按数量选择');await driver.wait(async()=>await(await element('button[data-action="knowledge-group-run"]')).isEnabled(),5000);await click('开始挖掘良品知识');
+    await click('选择来源图像');await click('按数量选择');await click('完成选择');await driver.wait(async()=>await(await element('button[data-action="knowledge-group-run"]')).isEnabled(),5000);await click('开始挖掘良品知识');
     let verifiedPredicate;
     await driver.wait(async()=>{verifiedPredicate=(await(await fetch(base+`/api/iad/knowledge?dataset_id=${predicateDataset.dataset_id}&kind=normal`)).json()).knowledge;return verifiedPredicate?.version_id!==revisedPredicate.version_id;},10000);
     assert.deepEqual(verifiedPredicate.checks[0].recheck_sample_ids,[]);

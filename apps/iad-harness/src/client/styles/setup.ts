@@ -1,4 +1,4 @@
-export const setupStyles = `.iad-setup {max-width:1040px;min-width:0;}
+export const setupStyles = `.iad-setup {max-width:1040px;min-width:0;padding:24px;background:var(--iad-surface);border-radius:var(--iad-radius);}.iad-workbench .iad-short-field{flex:none;width:88px;margin:0 0 16px}.iad-short-field input{width:100%}.iad-form-footer{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;padding-top:20px;margin-top:24px;border-top:1px solid var(--iad-border)}.iad-form-footer>.iad-muted{margin-right:auto}.iad-workbench:has(.iad-exploration-page>.iad-setup){display:flex;flex-direction:column;overflow:hidden}.iad-exploration-page:has(>.iad-setup){display:flex;flex-direction:column;flex:1;min-height:0}.iad-exploration-page>.iad-setup{display:flex;flex-direction:column;flex:0 1 auto;min-height:0}.iad-setup-fields{overflow:auto;min-height:0;scroll-padding:16px;padding:4px}.iad-setup>.iad-form-footer{flex:none;}
 .iad-setup-section {padding:var(--iad-space-6) 0;border-bottom:1px solid var(--iad-border);}
 .iad-setup-section:first-of-type {padding-top:0;}.iad-setup-section:last-child {border:0;}
 .iad-setup-section>h3 {margin:0 0 var(--iad-space-4);}
@@ -6,8 +6,8 @@ export const setupStyles = `.iad-setup {max-width:1040px;min-width:0;}
 .iad-source-candidates {border:0;min-width:0;padding:0;margin:16px 0;}
 .iad-source-candidates>legend {font-weight:600;margin-bottom:16px;}
 .iad-source-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,160px),1fr));gap:16px;}
-.iad-source-preview {display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,112px),1fr));gap:12px;margin-top:16px;}
-.iad-source-preview>div {min-width:0;}.iad-source-preview button {width:100%;padding:0;}.iad-source-preview img {width:100%;aspect-ratio:4/3;object-fit:contain;display:block;}
+.iad-source-preview {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:16px 0;}
+.iad-source-preview>div {min-width:0;}.iad-source-preview button {width:100%;padding:0;}.iad-source-preview img {width:100%;aspect-ratio:1/1;object-fit:contain;display:block;}
 .iad-source-preview span {display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.75rem;}
 .iad-source-grid .iad-source-option {padding:0;background:transparent;}.iad-source-grid .iad-source-option button {width:100%;padding:0;}.iad-source-grid .iad-source-option img {display:block;aspect-ratio:4/3;height:auto;}
 .iad-source-option label {display:flex;gap:8px;align-items:center;min-width:0;}.iad-source-option label span {min-width:0;}

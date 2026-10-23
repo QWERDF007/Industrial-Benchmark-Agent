@@ -1,1 +1,1 @@
-{"version":3,"file":"ModelSettingsPage.d.ts","sourceRoot":"","sources":["../../../src/client/components/ModelSettingsPage.tsx"],"names":[],"mappings":"AAAA,OAAO,KAA4B,MAAM,OAAO,CAAC;AAiBjD,wBAAgB,iBAAiB,sBAqEhC"}
+{"version":3,"file":"ModelSettingsPage.d.ts","sourceRoot":"","sources":["../../../src/client/components/ModelSettingsPage.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAmC,MAAM,OAAO,CAAC;AAkBxD,wBAAgB,iBAAiB,sBA8EhC"}

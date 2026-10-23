@@ -61,8 +61,7 @@ export function KnowledgeSetup({ dataset, kind, versions, normalVersions, busy, 
       </select></label>}
     </div></section>
     <section className="iad-setup-section"><h3>2. 挖掘方向</h3>    <KnowledgeDirections key={`${dataset.dataset_id}:${kind}`} datasetId={dataset.dataset_id} kind={kind} proposal={directionProposal} onPending={setDirectionsPending} onProposalUsed={onDirectionProposalUsed} /></section>
-    <section className="iad-setup-section"><h3>3. 图像范围</h3><div className="iad-config-bar">      <label className="iad-field">图像数量<input type="number" min="1" step="1" aria-label="挖掘图像数量" value={view.miningCount} disabled={busy} onChange={e => workspace.updateView(pageId, { miningCount: e.target.value }, true)} /></label>
-      <button disabled={busy || selecting || !valid} onClick={() => void choose()}>{selecting ? "选择中…" : "按数量选择"}</button>
+    <section className="iad-setup-section"><h3>3. 图像范围</h3><div className="iad-config-bar">      <label className="iad-field iad-short-field">图像数量<input type="number" min="1" step="1" aria-label="挖掘图像数量" value={view.miningCount} disabled={busy || selecting} onChange={e => workspace.updateView(pageId, { miningCount: e.target.value }, true)} /></label>
 </div>
     <div className="iad-row"><label className="iad-field">来源范围<select aria-label="来源范围" value={view.miningSourceMode} disabled={busy} onChange={e => workspace.updateView(pageId, { miningSourceMode: e.target.value as "uncovered" | "all" | "recheck", miningPage: 1, miningImages: [] })}><option value="uncovered">仅未观察</option><option value="all">全部合格 · 含历史来源</option><option value="recheck" disabled={!view.miningPreset}>判据待重核验</option></select></label><label className="iad-field">筛选来源<input type="search" aria-label="筛选挖掘来源" disabled={!!view.scopeRunId} value={view.miningSearch} onChange={e => workspace.updateView(pageId, { miningSearch: e.target.value, miningPage: 1 }, true)} /></label>
 
@@ -70,7 +69,7 @@ export function KnowledgeSetup({ dataset, kind, versions, normalVersions, busy, 
     {sources?.coverage && <p className="iad-muted">已观察 {sources.coverage.observed} · 剩余 {sources.coverage.remaining} · 待核实 {sources.coverage.pending_review} · 来源失效 {sources.coverage.stale} · 判据待重核验 {sources.coverage.recheck}</p>}
     {error && <p role="alert" className="iad-error">{error}</p>}
     {!valid && <p role="alert">请输入正整数图像数量。</p>}
-    <SourcePicker dataset={dataset} label="来源" sources={sources} selected={view.miningImages} target={valid ? count : "—"} disabled={busy || selecting} page={view.miningPage} onPage={miningPage => workspace.updateView(pageId,{miningPage})} onChange={miningImages => {setError("");workspace.updateView(pageId,{miningImages});}} search={view.miningSearch} onSearch={miningSearch => workspace.updateView(pageId,{miningSearch,miningPage:1},true)} />
+    <SourcePicker dataset={dataset} label="来源" sources={sources} selected={view.miningImages} target={valid ? count : "—"} disabled={busy} choosing={selecting} canChoose={valid} onChoose={() => void choose()} page={view.miningPage} onPage={miningPage => workspace.updateView(pageId,{miningPage})} onChange={miningImages => {setError("");workspace.updateView(pageId,{miningImages});}} search={view.miningSearch} onSearch={miningSearch => workspace.updateView(pageId,{miningSearch,miningPage:1},true)} />
     </section><section className="iad-setup-section"><h3>4. 运行确认</h3><WorkbenchModelStatus />
       <p>{view.miningContinuous ? `连续范围 · 每组 ${valid ? count : "—"} 张` : `当前图组 · ${view.miningImages.length} 张`} · {view.miningPreset ? "使用所选知识预设" : "不使用知识预设"}</p>
       {(unavailable || directionsPending) && <p className="iad-muted">{directionsPending ? "请先保存有效的挖掘方向。" : "请按目标数量选择图像。"}</p>}

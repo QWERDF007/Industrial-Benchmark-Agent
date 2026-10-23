@@ -134,9 +134,13 @@ for name in ['normal','normal2','dent']:
     if (process.env.IAD_BROWSER_DPR) assert.equal(await driver.executeScript("return devicePixelRatio"),Number(process.env.IAD_BROWSER_DPR));
     const element = css => driver.wait(until.elementLocated(By.css(css)), 15000);
     const button = async text => {
-      const dialog = await driver.executeScript("return [...document.querySelectorAll('dialog[open]')].at(-1)||null");
+      const dialog = await driver.executeScript("return [...document.querySelectorAll('dialog:modal')].at(-1)||null");
       const control = await driver.wait(async () => (await (dialog || driver).findElements(By.xpath(`.//button[normalize-space(.)='${text}']`)))[0], 15000, `Button ${text}`);
       await driver.wait(until.elementIsEnabled(control),15000); await control.click();
+    };
+    const auditDetails = async () => {
+      const panels = await driver.findElements(By.css('.iad-audit-details'));
+      if (panels.length && !(await panels[0].getAttribute('open'))) await panels[0].findElement(By.css('summary')).click();
     };
     const select = async (label, value) => {
       const el = await element(`select[aria-label='${label}']`);
@@ -174,11 +178,14 @@ for name in ['normal','normal2','dent']:
     assert.equal((await driver.findElements(By.css("dialog[open]"))).length,0,"成功导入后返回管理列表");
     await element("button[aria-label='选择数据集 浏览器验收']");
     await element('table[aria-label="数据集列表"]');
+    assert.equal((await driver.findElements(By.css('.iad-settings>.iad-dataset-list .iad-pagination button'))).length, 0, '单页资源表没有无效翻页操作');
+    assert.equal(await (await element('section[aria-label="当前数据集详情"] h2')).getText(), '浏览器验收', '所选对象名称直接作为详情标题');
+    assert.equal((await driver.findElements(By.css('.iad-dataset-counts'))).length, 0, '详情不重复资源表数量');
     assert.deepEqual(await driver.executeScript('return [...document.querySelector(".iad-dataset-row").querySelectorAll("td")].slice(1,4).map(cell=>cell.textContent.trim())'),['Labelme','3','1']);
     assert.equal((await driver.findElements(By.css(".iad-kpis"))).length, 0, "已选数据集后仍不重复显示页首统计");
     const datasetLayout = await driver.executeScript("const list=document.querySelector('[aria-label=数据集列表]').getBoundingClientRect(), details=document.querySelector('[aria-label=当前数据集详情]').getBoundingClientRect();return {list:{top:list.top,bottom:list.bottom,width:list.width},details:{top:details.top,width:details.width},root:document.querySelector('.iad-workbench').clientWidth}");
     assert.ok(datasetLayout.details.top > datasetLayout.list.bottom, '数据集配置位于资源表下方');
-    assert.ok(datasetLayout.details.width > datasetLayout.root * .85, '配置使用完整内容宽度');
+    assert.ok(Math.abs(datasetLayout.details.width - datasetLayout.list.width) <= 2 && datasetLayout.details.width <= 1160, '资源表与配置共享原型限定的阅读宽度');
     assert.equal((await driver.findElements(By.css('.iad-dataset-row button[aria-label^="删除数据集"]'))).length, 0, '删除位于按需打开的更多菜单');
     await(await element('summary[aria-label="更多操作 浏览器验收"]')).click();
     await(await element('.iad-dataset-row button[aria-label^="删除数据集"]')).click();await element('dialog[aria-label="删除数据集"]');await button("取消");
@@ -200,12 +207,15 @@ for name in ['normal','normal2','dent']:
     assert.equal((await driver.findElements(By.css("input[aria-label='列表数据集名称']"))).length, 1);
     await cardName.sendKeys(Key.ENTER);
     await element("button[aria-label='选择数据集 卡片改名']");
+    await button("基本信息");
     assert.equal(await (await element("section[aria-label='当前数据集详情'] button[aria-label^='修改数据集名称']")).getText(), "卡片改名");
     await (await element("section[aria-label='当前数据集详情'] button[aria-label^='修改数据集名称']")).click();
     const detailName = await element("input[aria-label='新的数据集名称']");
     await detailName.clear(); await detailName.sendKeys("浏览器验收"); await (await element(".iad-header h1")).click();
     await element("button[aria-label='选择数据集 浏览器验收']");
     assert.equal(datasetPatches.length, 2, "回车和失焦各保存一次");
+    await driver.navigate().refresh();
+    assert.equal(await (await element('[aria-label="数据集配置"] button.active')).getText(),'基本信息','刷新恢复所选数据集的配置页签');
     await (await element(".iad-dataset-row button[aria-label^='修改数据集名称']")).click();
     assert.equal((await driver.findElements(By.xpath("//button[normalize-space(.)='保存名称' or normalize-space(.)='取消']"))).length, 0, "名称编辑不附加操作按钮");
     await (await element(".iad-header h1")).click();
@@ -289,7 +299,7 @@ for name in ['normal','normal2','dent']:
     await button("知识挖掘"); await button("良品");
     await knowledgeSetup();await select("来源范围","all");
     const miningCount=await element("input[aria-label='挖掘图像数量']");await miningCount.clear();await miningCount.sendKeys("2");
-    await button("按数量选择");
+    await button("选择来源图像");await button("按数量选择");await button("完成选择");
     await driver.wait(async()=>await(await element("button[data-action='knowledge-group-run']")).isEnabled(),5000);
     await button("开始挖掘良品知识");
     await driver.wait(async ()=>(await (await element(".iad-knowledge-jobs")).getText()).includes("已完成"),15000);
@@ -347,7 +357,21 @@ for name in ['normal','normal2','dent']:
     await (await element("img[alt='dent.png']")).click();
     await (await element("button[aria-label='关闭图像详情']")).click();
     await button("模型审计"); await gridCount(3);
+    assert.equal((await driver.findElements(By.css('.iad-main .iad-filters'))).length,0,'审计筛选栏横跨网格与侧栏，位于两栏布局上方');
     await (await element("img[alt='dent.png']")).click();
+    await viewportSize(375,812);
+    await (await element("img[alt='dent.png']")).click();
+    await element('dialog[aria-label="样本详情"]');
+    assert.equal((await driver.findElements(By.css('.iad-inspector'))).length,1,'窄屏审计只挂载一个详情面板');
+    await fs.writeFile(path.join(workspace,'runs/browser/audit-details-375.png'),await driver.takeScreenshot(),'base64');
+    await (await element('button[aria-label="关闭样本详情"]')).click();
+    assert.ok(await driver.executeScript("return document.activeElement.matches('.iad-sample') && document.activeElement.textContent.includes('dent.png')"),'关闭详情回到原图像卡片');
+    await viewportSize(1366,768);
+    await element('.iad-inspector .iad-actions');
+    const inspectorAction = await driver.findElement(By.xpath("//button[normalize-space(.)='前往人工复核']"));
+    assert.ok(await driver.executeScript("return arguments[0].getBoundingClientRect().bottom <= innerHeight", inspectorAction), '审计侧栏的人工复核入口与当前图像同屏');
+    await fs.writeFile(path.join(workspace,'runs/browser/audit-results-1366.png'),await driver.takeScreenshot(),'base64');
+    await viewportSize(1440,1100);
     await (await element("button[title='放大图像']")).click();
     await element(".iad-viewer-dialog .iad-annotation-layer rect");
     const viewport = await element(".iad-viewer-viewport");
@@ -394,7 +418,7 @@ for name in ['normal','normal2','dent']:
     await expectCenter(savedCenter, "同图关闭重开保留原图中心位置");
     const beforeImageNavigation = modelRequests.length;
     await button("后一张");
-    await driver.wait(async () => (await (await element("[data-field='image-name']")).getText()) === "normal.png", 5000);
+    await driver.wait(() => driver.executeScript('return JSON.parse(new URL(location.href).searchParams.get("iad")).selected.endsWith(":normal.png")'), 5000);
     await driver.wait(async () => (await (await element(".iad-lightbox-toolbar strong")).getText()) === "normal.png", 5000);
     assert.equal(await (await element("select[aria-label='缩放']")).getAttribute("value"), "0", "换图默认适应窗口");
     await expectCenter([160,120], "新图默认居中");
@@ -404,6 +428,7 @@ for name in ['normal','normal2','dent']:
     assert.equal(await (await driver.findElement(By.xpath("//button[normalize-space(.)='前一张']"))).isEnabled(), false, "当前筛选第一张不能再前移");
     assert.equal(modelRequests.length, beforeImageNavigation, "切图只读取现有结果，不调用模型");
     await button("关闭");
+    await auditDetails();
     assert.match(await (await element("[data-field='sample-uuid']")).getText(), /^[0-9a-f]{8}-[0-9a-f-]{27}$/);
     assert.equal(await (await element("[data-field='image-name']")).getText(), "dent.png");
     assert.equal((await driver.findElements(By.css('select[aria-label="审计良品知识版本"]'))).length,0,'结果不挂载完整配置');
@@ -419,12 +444,14 @@ for name in ['normal','normal2','dent']:
     assert.equal(await driver.executeScript("return [...document.querySelectorAll('.iad-workbench button.iad-primary')].filter(e=>e.getClientRects().length).length"),1,"审计结果页只保留新建审计一个主要动作");
     await button("按知识审计此图");
     await driver.wait(async () => (await (await element(".iad-single-job")).getText()).includes("已完成"),15000);
+    await auditDetails();
     await driver.wait(async()=>(await driver.findElements(By.css(".iad-findings li"))).length===3,5000,"等待样本详情展示三项优先疑点");
     assert.doesNotMatch(await (await element(".iad-grid")).getText(), /模型 ·|技术问题/, "卡片不追加结论和技术问题文字");
     const cardGeometry = await driver.executeScript("return [...document.querySelectorAll('.iad-sample')].map(e=>{const r=e.getBoundingClientRect(),t=e.querySelector('.iad-thumb').getBoundingClientRect(),n=e.querySelector('strong').getBoundingClientRect();return {top:t.top-r.top,height:t.height,label:n.top-r.top}})");
     assert.ok(cardGeometry.every(e=>Math.abs(e.top-cardGeometry[0].top)<1&&Math.abs(e.height-cardGeometry[0].height)<1&&Math.abs(e.label-cardGeometry[0].label)<1), "不同审计状态的缩略图与文件名应对齐");
     await driver.executeScript("document.querySelector('.iad-findings').scrollIntoView({block:'start'});");
     await fs.writeFile(path.join(workspace, "runs/browser/audit-findings.png"), await driver.takeScreenshot(), "base64");
+    await auditDetails();
     await (await element(".iad-findings li button")).click();
     await element(".iad-viewer-dialog .iad-finding-layer rect");
     assert.equal(await (await element(".iad-finding-layer rect")).getAttribute("x"),"10");
@@ -561,6 +588,7 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     assert.equal(await (await element("input[aria-label='细节覆盖图层']")).isSelected(),false,"跨图保留图层偏好");
     await (await element("input[aria-label='细节覆盖图层']")).click();
     await button("关闭");
+    await auditDetails();
     await (await element(".iad-rule-assessments summary")).click();
     assert.ok((await (await element(".iad-rule-assessments")).getText()).includes("表面外观"));
     assert.ok((await (await element(".iad-rule-assessments")).getText()).includes("发现偏离"));
@@ -580,6 +608,7 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await button("关闭");
     await (await element("button[aria-label='数据集管理']")).click();
     await (await element("button[aria-label='模型审计']")).click();
+    await auditDetails();
     await (await element(".iad-rule-assessments summary")).click();
     await (await element(".iad-rule-assessments button")).click();
     await element(".iad-inspection-region");
@@ -841,6 +870,7 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     assert.ok(scopeText.includes("不代表准确率"));
     await fs.writeFile(path.join(workspace, "runs/browser/quality-report.png"), await driver.takeScreenshot(), "base64");
     await button("数据集管理");
+    await button("基本信息");
     await (await element("section[aria-label='当前数据集详情'] button[aria-label^='修改数据集名称']")).click();
     await (await element("input[aria-label='新的数据集名称']")).clear();
     await (await element("input[aria-label='新的数据集名称']")).sendKeys("验收后改名", Key.ENTER);
@@ -927,7 +957,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await button("知识挖掘"); await button("良品");
     await knowledgeSetup();await select("来源范围","all");
     {const count=await element("input[aria-label='挖掘图像数量']");await count.clear();await count.sendKeys("2");}
-    await button("按数量选择");await driver.wait(async()=>await(await element("button[data-action='knowledge-group-run']")).isEnabled(),5000);
+    await button("选择来源图像");await button("按数量选择");await button("完成选择");await driver.wait(async()=>await(await element("button[data-action='knowledge-group-run']")).isEnabled(),5000);
     await button("开始挖掘良品知识");
     await driver.wait(async()=>(await (await element(".iad-knowledge-jobs")).getText()).includes("已完成"),15000);
     await button("模型审计");await gridCount(2);
@@ -942,6 +972,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await driver.wait(async()=>(await (await element(".iad-single-job")).getText()).includes("已完成"),15000);
     const maskDataset=await (await element("select[aria-label='当前数据集']")).getAttribute("value");
     const maskAudit=await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(maskDataset+':other.png')}`)).json();
+    await auditDetails();
     await (await element(".iad-findings li button")).click();
     await select("缩放","2");
     const frozenMask=await element(".iad-viewer-dialog .iad-annotation-mask image");
@@ -995,7 +1026,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await button("知识挖掘"); await button("良品");
     await knowledgeSetup();await select("来源范围","all");
     {const count=await element("input[aria-label='挖掘图像数量']");await count.clear();await count.sendKeys("2");}
-    await button("按数量选择");await driver.wait(async()=>await(await element("button[data-action='knowledge-group-run']")).isEnabled(),5000);
+    await button("选择来源图像");await button("按数量选择");await button("完成选择");await driver.wait(async()=>await(await element("button[data-action='knowledge-group-run']")).isEnabled(),5000);
     await button("开始挖掘良品知识");
     let nextNormal;
     await driver.wait(async()=>{const response=await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json();nextNormal=response.knowledge;return nextNormal?.version_id!==published.knowledge.version_id;},15000);
@@ -1007,7 +1038,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await button("知识挖掘"); await button("异常");
     await knowledgeSetup();await select("依据良品知识版本",frozenNormal.version_id);
     {const count=await element("input[aria-label='挖掘图像数量']");await count.clear();await count.sendKeys("1");}
-    await button("按数量选择");await driver.wait(async()=>await(await element("button[data-action='knowledge-group-run']")).isEnabled(),5000);
+    await button("选择来源图像");await button("按数量选择");await button("完成选择");await driver.wait(async()=>await(await element("button[data-action='knowledge-group-run']")).isEnabled(),5000);
     await button("开始挖掘异常知识");
     let defect;
     await driver.wait(async()=>{defect=(await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=defect`)).json()).knowledge;return !!defect;},15000);
@@ -1164,6 +1195,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     updatedLabelme.shapes[0].points = [[40, 40], [70, 70]];
     await fs.writeFile(path.join(root, "labels/dent.json"), JSON.stringify(updatedLabelme));
     await fs.copyFile(path.join(root, "images/normal.png"), path.join(root, "images/new-image.png"));
+    await button("目录与映射");
     await button("重新扫描目录");
     await driver.wait(async () => (await (await element("[aria-label='扫描结果']")).getText()).includes("4 张图像"), 10000);
     await viewportSize(375, 812);
@@ -1195,7 +1227,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     assert.equal((await (await fetch(base+"/api/iad/datasets")).json()).datasets.length, 2, "取消不删除记录");
     await deleteOther.click(); await button("确认删除");
     await driver.wait(async()=> !(await driver.findElements(By.css("button[aria-label='选择数据集 隔离数据集']"))).length, 10000);
-    assert.equal(await (await element("section[aria-label='当前数据集详情'] button[aria-label^='修改数据集名称']")).getText(), "验收后改名", "删除非当前数据集保留当前选择");
+    assert.equal(await (await element("section[aria-label='当前数据集详情'] h2")).getText(), "验收后改名", "删除非当前数据集保留当前选择");
     await (await element("summary[aria-label='更多操作 验收后改名']")).click();
     await (await element("button[aria-label='删除数据集 验收后改名']")).click(); await button("确认删除");
     await driver.wait(async()=> !(await driver.findElements(By.css(".iad-dataset-row"))).length, 10000);

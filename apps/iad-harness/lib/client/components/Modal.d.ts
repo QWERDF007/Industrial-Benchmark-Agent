@@ -1,5 +1,6 @@
 import React from "react";
-export declare function Modal({ title, onClose, children, className, restoreFocus, initialFocus, header }: {
+export type ModalPresentation = "modal" | "inline" | "closed";
+export interface ModalProps {
     title: string;
     onClose(): void;
     children: React.ReactNode;
@@ -7,5 +8,7 @@ export declare function Modal({ title, onClose, children, className, restoreFocu
     restoreFocus?(): HTMLElement | null;
     initialFocus?: React.RefObject<HTMLElement>;
     header?: boolean;
-}): React.JSX.Element;
+    presentation?: ModalPresentation;
+}
+export declare function Modal({ title, onClose, children, className, restoreFocus, initialFocus, header, presentation }: ModalProps): React.JSX.Element;
 //# sourceMappingURL=Modal.d.ts.map

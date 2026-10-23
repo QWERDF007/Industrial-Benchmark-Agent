@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useId, useState} from 'react';
 import type {ModelConnection, ModelLimits, WorkbenchModelSettings} from '../../shared/domain.generated.js';
 import {defaultModelLimits} from '../../shared/model-settings.generated.js';
 import {message, request} from '../api.js';
@@ -7,6 +7,7 @@ import {workbenchStyles} from '../styles.js';
 import {ProviderManager} from './ProviderManager.js';
 import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {PageTabs} from './layout/PageTabs.js';
+import {useUnsavedChanges} from '../useUnsavedChanges.js';
 
 type Selection = NonNullable<WorkbenchModelSettings['selection']>;
 const numbers = [
@@ -17,23 +18,30 @@ const numbers = [
 
 export function ModelSettingsPage() {
   const {view, loading, error: loadError, refresh} = useWorkbenchModel();
+  const savedSelection = view?.selection || {provider_id: '', model_id: '', limits: {...defaultModelLimits}};
+  const parametersId = useId();
   const [tab, setTab] = useState<'model' | 'providers'>('model');
   const [draft, setDraft] = useState<Selection | null>(null), [expectedRevision, setExpectedRevision] = useState(0);
   const [parameters, setParameters] = useState('{}'), [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const reset = () => {
     if (!view) return;
-    const selected = view.selection || {provider_id: '', model_id: '', limits: {...defaultModelLimits}};
-    setDraft(structuredClone(selected)); setExpectedRevision(view.revision);
-    setParameters(JSON.stringify(selected.limits.request_parameters, null, 2)); setError(''); setNotice('');
+    setDraft(structuredClone(savedSelection)); setExpectedRevision(view.revision);
+    setParameters(JSON.stringify(savedSelection.limits.request_parameters, null, 2)); setError(''); setNotice('');
   };
   useEffect(() => {if (view && !draft) reset();}, [view, draft]);
   const provider = view?.providers.find(row => row.provider_id === draft?.provider_id);
-  const changed = !!draft && (JSON.stringify(draft) !== JSON.stringify(view?.selection) || parameters !== JSON.stringify(view?.selection?.limits.request_parameters || {}, null, 2));
+  const changed = !!draft && (JSON.stringify(draft) !== JSON.stringify(savedSelection) || parameters !== JSON.stringify(savedSelection.limits.request_parameters, null, 2));
+  useUnsavedChanges(changed && !busy);
+  let parsedParameters: Record<string, unknown> = {}, parametersError = '';
+  try {
+    const parsed: unknown = JSON.parse(parameters);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) parametersError = '服务扩展参数必须是 JSON 对象';
+    else parsedParameters = parsed as Record<string, unknown>;
+  } catch {parametersError = '请输入有效的 JSON 对象';}
   const input = (): Selection => {
     if (!draft?.provider_id || !draft.model_id) throw new Error('请选择提供商和模型');
-    const parsed: unknown = JSON.parse(parameters);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('服务扩展参数必须是 JSON 对象');
-    return {...draft, limits: {...draft.limits, request_parameters: parsed as Record<string, unknown>}};
+    if (parametersError) throw new Error(parametersError);
+    return {...draft, limits: {...draft.limits, request_parameters: parsedParameters}};
   };
   async function save(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setError(''); setNotice('');
@@ -55,11 +63,11 @@ export function ModelSettingsPage() {
     <WorkbenchHeader pageId="industrial-model-settings"><button disabled={busy || loading} onClick={() => void refresh()}>刷新</button></WorkbenchHeader>
     <PageTabs label="模型设置分区" items={[{id: 'model', label: '工作台模型'}, {id: 'providers', label: '提供商'}]} value={tab} onChange={value => {setTab(value); if (value === 'model') void refresh();}}>
     {(loadError || error) && <p role="alert" className="iad-error">{error || loadError}</p>}
-    {tab === 'providers' ? <section className="iad-provider-manager" aria-label="提供商管理"><ProviderManager /></section> : <section className="iad-job-section iad-model-configuration">
-      <h2>统一工作台模型</h2><p className="iad-muted">方向探索、良品/异常知识挖掘、模型审计共用。DSH会话使用自己的模型选择。</p>
+    {tab === 'providers' ? <section className="iad-provider-manager" aria-label="提供商管理"><ProviderManager /></section> : <section className="iad-model-configuration">
+      <h2>工作台模型</h2><p className="iad-muted">探索、挖掘和审计共用此配置；会话模型独立选择。</p>
       {view?.error && <p role="status" className="iad-muted">已保存配置：{view.error}</p>}
-      {!draft ? <p role="status">正在读取配置…</p> : <form onSubmit={save}>
-        <fieldset disabled={busy || loading}><div className="iad-model-fields">
+      {!draft ? <p role="status">正在读取配置…</p> : <form className="iad-model-form" onSubmit={save}>
+        <fieldset disabled={busy || loading}><section className="iad-section-layout"><div><h3>模型选择</h3></div><div><div className="iad-model-fields">
           <label className="iad-field">提供商<select aria-label="工作台提供商" value={draft.provider_id} onChange={event => {
             setDraft({provider_id: event.target.value, model_id: '', limits: {...defaultModelLimits}}); setParameters('{}'); setError(''); setNotice('');
           }}><option value="">选择提供商</option>{draft.provider_id && !provider && <option value={draft.provider_id}>已失效 · {draft.provider_id}</option>}
@@ -68,16 +76,18 @@ export function ModelSettingsPage() {
             <option value="">选择模型</option>{draft.model_id && !provider?.models.some(row => row.model_id === draft.model_id) && <option value={draft.model_id}>已失效 · {draft.model_id}</option>}
             {provider?.models.map(row => <option key={row.model_id} value={row.model_id} disabled={!row.input_modalities?.includes('image')}>{row.name}{row.input_modalities?.includes('image') ? '' : ' · 未声明图像能力'}</option>)}</select></label>
         </div>
-        {provider && <p className="iad-muted">{provider.endpoint || provider.error}</p>}
-        <details className="iad-model-advanced"><summary>高级设置</summary><div className="iad-model-fields">
+        {provider && <div className="iad-model-endpoint"><span className="iad-muted">服务地址</span><p>{provider.endpoint || provider.error}</p></div>}
+        </div></section>
+        <section className="iad-section-layout"><div><h3>高级设置</h3><p className="iad-muted">未填写时使用服务声明值</p></div>
+        <details className="iad-model-advanced"><summary>容量与超时</summary><div className="iad-model-fields">
           <label className="iad-field">容量预检<select aria-label="容量预检协议" value={draft.limits.capacity_mode || ''} onChange={event => setDraft({...draft, limits: {...draft.limits, capacity_mode: event.target.value === 'vllm_tokenize' ? 'vllm_tokenize' : null}})}>
             <option value="">尚未确认</option><option value="vllm_tokenize">vLLM /tokenize</option></select></label>
           {numbers.map(([key, label]) => <label key={key} className="iad-field">{label}<input type="number" aria-label={label} min={key.endsWith('_seconds') ? 0 : 1} step={key.endsWith('_seconds') ? 'any' : '1'}
             value={draft.limits[key] ?? ''} placeholder="使用服务声明值" onChange={event => setDraft({...draft, limits: {...draft.limits, [key]: event.target.value === '' ? null : Number(event.target.value)}})} /></label>)}
-        </div><label className="iad-field">服务扩展参数（JSON）<textarea aria-label="服务扩展参数" rows={4} value={parameters} onChange={event => setParameters(event.target.value)} /></label></details>
-        <div className="iad-row"><button type="button" disabled={!draft.provider_id || !draft.model_id} onClick={() => void check()}>检查连接</button>
-          <button className="iad-primary" type="submit" disabled={!changed || !draft.provider_id || !draft.model_id}>{busy ? '处理中…' : '保存'}</button>
-          <button type="button" disabled={!changed} onClick={reset}>重置</button>{changed && <span className="iad-muted">有未保存的更改</span>}</div>
+        </div><label className="iad-field">服务扩展参数（JSON）<textarea aria-label="服务扩展参数" aria-invalid={parametersError ? true : undefined} aria-describedby={parametersError ? parametersId : undefined} rows={4} value={parameters} onChange={event => setParameters(event.target.value)} /></label>{parametersError && <p id={parametersId} role="alert" className="iad-error">{parametersError}</p>}</details></section>
+        <div className="iad-form-footer">{changed && <span className="iad-muted">有未保存的更改</span>}<button type="button" disabled={!draft.provider_id || !draft.model_id || !!parametersError} onClick={() => void check()}>检查连接</button>
+          <button className="iad-primary" type="submit" disabled={!changed || !draft.provider_id || !draft.model_id || !!parametersError}>{busy ? '处理中…' : '保存配置'}</button>
+          <button type="button" disabled={!changed} onClick={reset}>重置</button></div>
         </fieldset>
       </form>}
       {notice && <p role="status">{notice}</p>}

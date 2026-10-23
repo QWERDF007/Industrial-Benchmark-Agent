@@ -10,6 +10,8 @@ import { WorkbenchHeader } from "./layout/WorkbenchHeader.js";
 import { FloatingMenu } from "./FloatingMenu.js";
 import { Pagination } from "./Pagination.js";
 import { useUnsavedChanges } from "../useUnsavedChanges.js";
+import { useWorkspace } from "../workspace.js";
+import { PageTabs } from "./layout/PageTabs.js";
 
 function DirectoryPicker({ label, value, onChange, disabled = false }: { label: string; value: string; onChange(value: string): void; disabled?: boolean }) {
   const [listing, setListing] = useState<DirectoryListing | null>(null);
@@ -29,6 +31,8 @@ function DirectoryPicker({ label, value, onChange, disabled = false }: { label: 
 }
 
 function DatasetSettings({ dataset, onChanged }: { dataset: Dataset; onChanged(): void }) {
+  const { workspace } = useWorkspace();
+  const tab = workspace.view("industrial-datasets").datasetSettingsTab;
   const isFolder = dataset.format === "folder_classification";
   const [imageDir, setImageDir] = useState(dataset.image_dir);
   const [annotationDir, setAnnotationDir] = useState(dataset.annotation_dir || "");
@@ -66,15 +70,14 @@ function DatasetSettings({ dataset, onChanged }: { dataset: Dataset; onChanged()
   }
 
 
-  return <section aria-label="当前数据集详情" aria-busy={busy}><h2>数据集详情</h2>
-    <DatasetName dataset={dataset} label="新的数据集名称" onChanged={onChanged} />
-    <details><summary>数据集标识</summary><dl><dt>数据集 ID</dt><dd><code>{dataset.dataset_id}</code></dd></dl></details>
-    <dl><dt>格式</dt><dd>{isFolder ? "异常检测目录" : "Labelme"}</dd></dl>
-    <dl className="iad-dataset-counts">
-      <div><dt>图像数量</dt><dd>{dataset.total_samples}</dd></div>
-      <div><dt>{isFolder ? "明确标签数量" : "标注数量"}</dt><dd>{isFolder ? (dataset.labeled_sample_count ?? 0) : dataset.annotation_count}</dd></div>
-    </dl>
-    <div className="iad-field-group"><h3>服务器目录</h3>
+  return <section className="iad-dataset-detail" aria-label="当前数据集详情" aria-busy={busy}><h2>{dataset.name}</h2>
+    <PageTabs<typeof tab> label="数据集配置" items={[{id:"directories",label:"目录与映射"},{id:"basic",label:"基本信息"}]} value={tab} onChange={datasetSettingsTab => workspace.updateView("industrial-datasets", {datasetSettingsTab})}>
+    {tab === "basic" ? <div className="iad-section-layout"><div><h3>基本信息</h3></div><div>
+      <DatasetName dataset={dataset} label="新的数据集名称" onChanged={onChanged} />
+      <dl><dt>格式</dt><dd>{isFolder ? "异常检测目录" : "Labelme"}</dd></dl>
+      <details><summary>数据集标识</summary><code>{dataset.dataset_id}</code></details>
+    </div></div> : <>
+    <div className="iad-section-layout"><div><h3>服务器目录</h3></div><div>
       <DirectoryPicker label={isFolder ? "根目录" : "图像目录"} value={imageDir} onChange={p => { setImageDir(p); if (isFolder) setFolderRules(undefined); }} disabled={busy} />
       {!isFolder && <DirectoryPicker label="标注目录" value={annotationDir} onChange={setAnnotationDir} disabled={busy} />}
       {isFolder && <FolderMapping preview={preview} rules={folderRules} pending={pending} disabled={busy} onChange={setFolderRules} />}
@@ -84,10 +87,12 @@ function DatasetSettings({ dataset, onChanged }: { dataset: Dataset; onChanged()
           {busy ? "正在处理…" : modified ? "保存映射并重新扫描" : "重新扫描目录"}
         </button>
       </div>
-    </div>
+    </div></div>
     {!isFolder && <label className="iad-row iad-rule"><input type="checkbox" checked={dataset.unannotated_is_normal} disabled={busy} onChange={e => save({ unannotated_is_normal: e.target.checked })} />无标注图作为初始良品来源</label>}
     {scan && <p role="status" aria-label="扫描结果">扫描完成 · {scan.image_count} 张图像 · {scan.annotation_count} 个标注 · {scan.issue_count} 项问题</p>}
+    </>}
     {error && <p role="alert" className="iad-error">{error}</p>}
+    </PageTabs>
   </section>;
 }
 
@@ -135,7 +140,7 @@ export function DatasetManager({ datasets, selected, onChanged }: { datasets: Da
   }
 
   return <><WorkbenchHeader pageId="industrial-datasets"><button ref={addButton} className="iad-primary" onClick={() => { setError(""); setNotice(""); setImporting(true); }}>添加数据集</button></WorkbenchHeader><div className="iad-settings">
-    <section aria-label="数据集列表"><div className="iad-section-header"><h2>数据集 · {datasets.length}</h2><input type="search" aria-label="搜索数据集" placeholder="搜索数据集" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></div>
+    <section className="iad-dataset-list" aria-label="数据集列表"><div className="iad-section-header"><h2>数据集 <span className="iad-muted">{datasets.length}</span></h2><input type="search" aria-label="搜索数据集" placeholder="搜索数据集" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></div>
       <div className="iad-table-scroll"><table className="iad-resource-table" aria-label="数据集列表"><thead><tr><th>数据集名称</th><th>格式</th><th className="iad-number">图像</th><th className="iad-number">标注 / 标签</th><th>操作</th></tr></thead><tbody>{filtered.slice((currentPage - 1) * 10, currentPage * 10).map(dataset => <tr className="iad-dataset-row" key={dataset.dataset_id} data-selected={selected?.dataset_id === dataset.dataset_id}>
         <td><DatasetName dataset={dataset} label="列表数据集名称" onChanged={() => onChanged()} /></td>
         <td>{dataset.format === "folder_classification" ? "异常检测目录" : "Labelme"}</td><td className="iad-number">{dataset.total_samples}</td><td className="iad-number">{dataset.format === "folder_classification" ? (dataset.labeled_sample_count ?? 0) : dataset.annotation_count}</td>
@@ -143,7 +148,7 @@ export function DatasetManager({ datasets, selected, onChanged }: { datasets: Da
           <FloatingMenu label={`更多操作 ${dataset.name}`} summary="更多" className="iad-row-menu"><DeleteAction title="删除数据集" name={dataset.name}
             description="删除其样本记录、知识、审计和复核记录，保留服务器上的原始图像与标注文件。" restoreFocus={() => addButton.current}
             onDelete={async () => { await request(`/datasets/${encodeURIComponent(dataset.dataset_id)}`, undefined, "DELETE"); setNotice(`已删除数据集“${dataset.name}”`); onChanged(); }} /></FloatingMenu></div></td>
-      </tr>)}</tbody></table></div><Pagination total={filtered.length} page={currentPage} size={10} unit="个数据集" onPage={setPage} />{notice && <p role="status">{notice}</p>}{!filtered.length && <p className="iad-muted">{datasets.length ? "没有匹配的数据集。" : "添加服务器上的 Labelme 图像目录与标注目录，或异常检测分类目录。"}</p>}
+      </tr>)}</tbody></table></div>{filtered.length > 10 && <Pagination total={filtered.length} page={currentPage} size={10} unit="个数据集" onPage={setPage} />}{notice && <p role="status">{notice}</p>}{!filtered.length && <p className="iad-muted">{datasets.length ? "没有匹配的数据集。" : "添加服务器上的 Labelme 图像目录与标注目录，或异常检测分类目录。"}</p>}
     </section>
     {selected ? <DatasetSettings key={selected.dataset_id} dataset={selected} onChanged={onChanged} /> : <section><p>选择或添加数据集。</p></section>}
     {importing && <Modal title="添加数据集" onClose={() => { if (!busy) setImporting(false); }}>

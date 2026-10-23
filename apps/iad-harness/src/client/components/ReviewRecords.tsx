@@ -3,9 +3,9 @@ import type { ReviewHistoryPage } from "../../shared/contracts.js";
 import { message, request, reviewLabel } from "../api.js";
 import { Pagination, pageSize } from "./Pagination.js";
 
-export function ReviewRecords({ datasetId, page, search, selected, revision, onPage, onSearch, onSelect }: {
+export function ReviewRecords({ datasetId, page, search, selected, revision, onPage, onSearch, onSelect, onQueue, detail }: {
   datasetId: string; page: number; search: string; selected: string; revision: number;
-  onPage(page: number): void; onSearch(search: string): void; onSelect(sampleId: string): void;
+  onPage(page: number): void; onSearch(search: string): void; onSelect(sampleId: string): void; onQueue(): void; detail: React.ReactNode;
 }) {
   const [result, setResult] = useState<ReviewHistoryPage | null>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState("");
@@ -20,7 +20,8 @@ export function ReviewRecords({ datasetId, page, search, selected, revision, onP
     return () => controller.abort();
   }, [datasetId, page, search, revision, retry]);
   const pagination = result && <Pagination total={result.total} page={page} unit="条记录" onPage={onPage} />;
-  return <section className="iad-review-records" aria-label="复核记录">
+  const showingDetail = !loading && !error && result?.items.some(record => record.sample_id === selected);
+  return <div className={showingDetail ? "iad-main" : ""}><section className="iad-review-records" aria-label="复核记录">
     <label className="iad-field">搜索复核记录<input aria-label="搜索复核记录" placeholder="图像名、复核人或说明" value={search} onChange={event => onSearch(event.target.value)} /></label>
     {error ? <div role="alert" className="iad-error">{error}<button onClick={() => setRetry(value => value + 1)}>重新加载记录</button></div>
       : loading ? <p role="status">加载复核记录…</p> : <>
@@ -30,6 +31,6 @@ export function ReviewRecords({ datasetId, page, search, selected, revision, onP
             <td title={record.relative_path}>{record.relative_path}</td><td>{reviewLabel(record.decision)}</td>
             <td>{record.reviewer}<br />{record.submitted_at ? <time dateTime={record.submitted_at}>{new Date(record.submitted_at).toLocaleString()}</time> : "未记录提交时间"}</td>
             <td>{record.comment || "—"}</td><td><button onClick={() => onSelect(record.sample_id)}>查看样本</button></td>
-          </tr>)}</tbody></table></div> : <p className="iad-empty">没有符合条件的复核记录。</p>}{pagination}</>}
-  </section>;
+          </tr>)}</tbody></table></div> : <div className="iad-empty"><h2>{search ? "没有匹配的复核记录" : "暂无复核记录"}</h2><p>{search ? "请调整搜索关键词。" : "完成一次人工裁决后，记录会出现在这里。"}</p><button onClick={onQueue}>前往复核队列</button></div>}{pagination}</>}
+  </section>{showingDetail && detail}</div>;
 }
