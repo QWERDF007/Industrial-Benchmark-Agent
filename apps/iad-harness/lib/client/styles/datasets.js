@@ -1,7 +1,6 @@
 export const datasetsStyles = `
 .iad-workbench[data-page="industrial-datasets"]{padding-top:28px}
-.iad-workbench[data-page="industrial-datasets"]>.iad-header{max-width:1160px}
-.iad-settings{display:grid;gap:28px;min-width:0;max-width:1160px}
+.iad-settings{display:grid;gap:28px;min-width:0}
 .iad-settings>section{min-width:0}
 .iad-dataset-list>.iad-table-scroll,.iad-dataset-detail>.iad-tab-panel{background:var(--iad-surface);border:1px solid var(--iad-panel-border);border-radius:var(--iad-radius)}
 .iad-dataset-list .iad-section-header input{width:240px;max-width:100%}
@@ -29,15 +28,12 @@ export const datasetsStyles = `
 .iad-workbench .iad-dataset-basic dl{grid-template-columns:150px minmax(0,1fr);gap:14px 28px;align-items:center;font-size:.8125rem;margin:0}
 .iad-dataset-basic dd{min-height:40px;display:flex;align-items:center;gap:12px}
 .iad-dataset-basic dd:last-child{flex-wrap:wrap}
-.iad-workbench .iad-dataset-basic dd>button{background:transparent;border-color:transparent;color:var(--iad-primary)}
 .iad-dataset-basic dd code{overflow-wrap:anywhere;white-space:normal;overflow:visible;background:var(--iad-surface-muted);color:var(--iad-muted);padding:8px 10px;border-radius:var(--iad-radius)}
 .iad-dataset-name{min-width:0;flex:1;margin:0}
 .iad-workbench .iad-name-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:0;padding:4px 0;background:transparent;border-color:transparent;text-align:left;font-weight:600;min-height:40px}
 .iad-name-trigger span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .iad-name-trigger svg{flex-shrink:0;color:var(--iad-muted)}
 .iad-dataset-name input{width:100%}
-.iad-row-menu summary{cursor:pointer;display:flex;align-items:center;gap:8px;min-height:40px;padding:8px}
-.iad-row-menu .iad-floating-menu-panel{min-width:64px}
 .iad-preview-table{width:100%;min-width:480px;border-collapse:collapse;table-layout:fixed;text-align:left;font-size:.8125rem}
 .iad-preview-table th,.iad-preview-table td{padding:10px 16px;height:60px;border-bottom:1px solid var(--iad-border)}
 .iad-preview-table th{height:44px;background:var(--iad-surface-muted);color:var(--iad-muted);font-weight:500;font-size:.75rem}

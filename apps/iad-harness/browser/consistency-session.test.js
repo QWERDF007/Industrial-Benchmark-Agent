@@ -10,7 +10,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {Builder,By,until} from 'selenium-webdriver';
 import firefox from 'selenium-webdriver/firefox.js';
 import {resolvePythonPath} from '../lib/server/python-bridge/index.js';
-import {viewport,setTheme} from './workbench-layout.js';
+import {viewport,setTheme,verifySidebarLayout} from './workbench-layout.js';
 
 const workspace=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
 
@@ -101,6 +101,13 @@ for name,label in [('left','scratch'),('right','dent')]:
     await button('在 DSH 中解释');
     await driver.wait(()=>driver.findElement(By.css('body')).getText().then(text=>text.includes('原像素完全相同，双方标注类别不同。')),30000);
     assert.ok(requests.length>=2);
+    await verifySidebarLayout(driver,'/tmp/iad-consistency-sidebar-layout');
+    await viewport(driver,1920,900);
+    const workspaceRegion=await driver.findElement(By.css('.iad-native-workspace-content'));
+    await driver.actions().scroll(0,0,0,400,workspaceRegion).perform();
+    await driver.wait(()=>driver.executeScript('const content=document.querySelector(".iad-native-workspace-content"),title=[...content.querySelectorAll("*")].find(e=>!e.children.length&&e.textContent.trim()==="比较证据解释");if(!title)return false;const r=title.getBoundingClientRect(),hit=document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2);return title===hit||title.contains(hit)'),5000,'滚轮可以在受限会话区中找到当前会话，底部工具不遮挡条目');
+    await fs.writeFile('/tmp/iad-consistency-sidebar-layout/sidebar-scrolled-900.png',await driver.takeScreenshot(),'base64');
+    await viewport(driver,1920,1080);
     const images=requests.at(-1).messages.flatMap(message=>Array.isArray(message.content) ? message.content.filter(block=>block.type==='image_url') : []);
     assert.ok(images.length>=3,'实际模型请求必须携带真实图片附件');
     await button('Chat');

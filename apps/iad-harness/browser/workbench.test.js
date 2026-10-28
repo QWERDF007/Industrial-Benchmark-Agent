@@ -135,7 +135,7 @@ for name in ['normal','normal2','dent']:
     const element = css => driver.wait(until.elementLocated(By.css(css)), 15000);
     const button = async text => {
       const dialog = await driver.executeScript("return [...document.querySelectorAll('dialog:modal')].at(-1)||null");
-      const control = await driver.wait(async () => (await (dialog || driver).findElements(By.xpath(`.//button[normalize-space(.)='${text}']`)))[0], 15000, `Button ${text}`);
+      const control = await driver.wait(async () => (await (dialog || driver).findElements(By.xpath(`.//button[normalize-space(.)='${text}' or @aria-label='${text}']`)))[0], 15000, `Button ${text}`);
       await driver.wait(until.elementIsEnabled(control),15000); await control.click();
     };
     const auditDetails = async () => {
@@ -162,7 +162,7 @@ for name in ['normal','normal2','dent']:
     const gridCount = count => driver.wait(async () => await driver.executeScript("return document.querySelectorAll('.iad-grid .iad-sample').length===arguments[0] && !!document.querySelector('.iad-gallery') && !document.querySelector('.iad-gallery').textContent.includes('加载中');", count), 15000, `Expected ${count} grid images`);
     await element("#test-navigation button");
     assert.deepEqual(await driver.executeScript("return [...document.querySelectorAll('#test-navigation button')].map(b=>b.textContent)"),
-      ["数据集管理", "图像浏览", "方向探索", "知识挖掘", "模型审计", "人工复核", "模型设置"]);
+      ["数据集管理", "图像浏览", "方向探索", "知识挖掘", "数据一致性", "模型审计", "人工复核", "模型设置"]);
     assert.equal((await driver.findElements(By.css(".iad-header select,.iad-kpis"))).length, 0, "数据集管理由卡片选择数据集，不重复显示头部控件和统计");
     await button("添加数据集");
     await element("dialog[aria-label='添加数据集']");
@@ -170,9 +170,9 @@ for name in ['normal','normal2','dent']:
     await (await element(".iad-dataset-import input[aria-label='图像目录']")).sendKeys(path.join(root, "images"));
     await (await element(".iad-dataset-import input[aria-label='标注目录']")).sendKeys(path.join(root, "labels"));
     await button("导入数据集");
-    await element("button[aria-label='选择数据集 浏览器验收']");
+    await element("button[aria-label='配置数据集 浏览器验收']");
     assert.equal((await driver.findElements(By.css("dialog[open]"))).length,0,"成功导入后返回管理列表");
-    await element("button[aria-label='选择数据集 浏览器验收']");
+    await element("button[aria-label='配置数据集 浏览器验收']");
     await element('table[aria-label="数据集列表"]');
     assert.equal((await driver.findElements(By.css('.iad-settings>.iad-dataset-list .iad-pagination button'))).length, 0, '单页资源表没有无效翻页操作');
     assert.equal(await (await element('section[aria-label="当前数据集详情"] h2')).getText(), '浏览器验收', '所选对象名称直接作为详情标题');
@@ -181,9 +181,8 @@ for name in ['normal','normal2','dent']:
     assert.equal((await driver.findElements(By.css(".iad-kpis"))).length, 0, "已选数据集后仍不重复显示页首统计");
     const datasetLayout = await driver.executeScript("const list=document.querySelector('[aria-label=数据集列表]').getBoundingClientRect(), details=document.querySelector('[aria-label=当前数据集详情]').getBoundingClientRect();return {list:{top:list.top,bottom:list.bottom,width:list.width},details:{top:details.top,width:details.width},root:document.querySelector('.iad-workbench').clientWidth}");
     assert.ok(datasetLayout.details.top > datasetLayout.list.bottom, '数据集配置位于资源表下方');
-    assert.ok(Math.abs(datasetLayout.details.width - datasetLayout.list.width) <= 2 && datasetLayout.details.width <= 1160, '资源表与配置共享原型限定的阅读宽度');
-    assert.equal((await driver.findElements(By.css('.iad-dataset-row button[aria-label^="删除数据集"]'))).length, 0, '删除位于按需打开的更多菜单');
-    await(await element('summary[aria-label="更多操作 浏览器验收"]')).click();
+    assert.ok(Math.abs(datasetLayout.details.width - datasetLayout.list.width) <= 2 && datasetLayout.details.width > 1160, '资源表与配置共享完整桌面内容宽度');
+    assert.equal((await driver.findElements(By.css('.iad-dataset-row button[aria-label^="删除数据集"]'))).length, 1, '删除直接位于操作列');
     await(await element('.iad-dataset-row button[aria-label^="删除数据集"]')).click();await element('dialog[aria-label="删除数据集"]');await button("取消");
     await driver.actions().sendKeys(Key.ESCAPE).perform();
     const dirtyDirectory = await element("section[aria-label='当前数据集详情'] input[aria-label='图像目录']");
@@ -202,13 +201,13 @@ for name in ['normal','normal2','dent']:
     assert.equal(datasetPatches.length, 0, "中文输入法确认候选字不会提交名称");
     assert.equal((await driver.findElements(By.css("input[aria-label='列表数据集名称']"))).length, 1);
     await cardName.sendKeys(Key.ENTER);
-    await element("button[aria-label='选择数据集 卡片改名']");
+    await element("button[aria-label='配置数据集 卡片改名']");
     await button("基本信息");
     assert.equal(await (await element("section[aria-label='当前数据集详情'] button[aria-label^='修改数据集名称']")).getText(), "卡片改名");
     await (await element("section[aria-label='当前数据集详情'] button[aria-label^='修改数据集名称']")).click();
     const detailName = await element("input[aria-label='新的数据集名称']");
     await detailName.clear(); await detailName.sendKeys("浏览器验收"); await (await element(".iad-header h1")).click();
-    await element("button[aria-label='选择数据集 浏览器验收']");
+    await element("button[aria-label='配置数据集 浏览器验收']");
     assert.equal(datasetPatches.length, 2, "回车和失焦各保存一次");
     await driver.navigate().refresh();
     assert.equal(await (await element('[aria-label="数据集配置"] button.active')).getText(),'基本信息','刷新恢复所选数据集的配置页签');
@@ -869,8 +868,8 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await (await element("section[aria-label='当前数据集详情'] button[aria-label^='修改数据集名称']")).click();
     await (await element("input[aria-label='新的数据集名称']")).clear();
     await (await element("input[aria-label='新的数据集名称']")).sendKeys("验收后改名", Key.ENTER);
-    await element("button[aria-label='选择数据集 验收后改名']");
-    await driver.navigate().refresh(); await element("button[aria-label='选择数据集 验收后改名']");
+    await element("button[aria-label='配置数据集 验收后改名']");
+    await driver.navigate().refresh(); await element("button[aria-label='配置数据集 验收后改名']");
     const reloaded = await (await fetch(base + "/api/iad/datasets")).json();
     assert.equal(reloaded.datasets[0].name, "验收后改名");
     assert.equal(reloaded.datasets[0].dataset_id, dataset.dataset_id);
@@ -880,7 +879,7 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await (await element(".iad-dataset-import input[aria-label='图像目录']")).sendKeys(path.join(root,"images-other"));
     await (await element(".iad-dataset-import input[aria-label='标注目录']")).sendKeys(path.join(root,"labels-other"));
     await button("导入数据集");
-    await element("button[aria-label='选择数据集 隔离数据集']");
+    await element("button[aria-label='配置数据集 隔离数据集']");
     assert.equal((await driver.findElements(By.css(".iad-dataset-row button[aria-label^='选择数据集']"))).length,2);
     const movedImages = path.join(root, "moved-images-other"), movedLabels = path.join(root, "moved-labels-other");
     await fs.cp(path.join(root, "images-other"), movedImages, { recursive: true });
@@ -1009,8 +1008,8 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await driver.wait(async () => await ratioValue("技术可用率") === "100% · 2 / 2", 10000);
     await button("图像浏览"); await gridCount(2);
     await button("数据集管理");
-    await (await element("button[aria-label='选择数据集 验收后改名']")).click();
-    await driver.wait(async () => await (await element("button[aria-label='选择数据集 验收后改名']")).getAttribute("aria-pressed") === "true", 5000);
+    await (await element("button[aria-label='配置数据集 验收后改名']")).click();
+    await driver.wait(async () => await (await element("button[aria-label='配置数据集 验收后改名']")).getAttribute("aria-pressed") === "true", 5000);
     await button("图像浏览"); await gridCount(1);
     await element("img[alt='dent.png']");
     assert.equal((await driver.findElements(By.css("img[alt='other.png']"))).length,0);
@@ -1210,7 +1209,6 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await (await element("summary[aria-label='标注筛选']")).click();
     await gridCount(4);
     await button("数据集管理");
-    await (await element("summary[aria-label='更多操作 隔离数据集']")).click();
     const deleteOther = await element("button[aria-label='删除数据集 隔离数据集']");
     await deleteOther.click();
     const confirmation = await element("dialog[aria-label='删除数据集']");
@@ -1221,9 +1219,8 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     assert.equal(await driver.executeScript("return document.activeElement.getAttribute('aria-label')"), "删除数据集 隔离数据集");
     assert.equal((await (await fetch(base+"/api/iad/datasets")).json()).datasets.length, 2, "取消不删除记录");
     await deleteOther.click(); await button("确认删除");
-    await driver.wait(async()=> !(await driver.findElements(By.css("button[aria-label='选择数据集 隔离数据集']"))).length, 10000);
+    await driver.wait(async()=> !(await driver.findElements(By.css("button[aria-label='配置数据集 隔离数据集']"))).length, 10000);
     assert.equal(await (await element("section[aria-label='当前数据集详情'] h2")).getText(), "验收后改名", "删除非当前数据集保留当前选择");
-    await (await element("summary[aria-label='更多操作 验收后改名']")).click();
     await (await element("button[aria-label='删除数据集 验收后改名']")).click(); await button("确认删除");
     await driver.wait(async()=> !(await driver.findElements(By.css(".iad-dataset-row"))).length, 10000);
     assert.equal((await (await fetch(base+"/api/iad/datasets")).json()).datasets.length, 0, "删除最后一个数据集后保持空列表，不重新发现旧记录");

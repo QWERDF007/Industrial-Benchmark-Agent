@@ -1,3 +1,4 @@
+import {EditIcon} from "../AuditIcon.js";
 import React, { useEffect, useRef, useState } from "react";
 import type { Dataset } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
@@ -28,5 +29,5 @@ export function DatasetName({ dataset, label, onChanged }: { dataset: Dataset; l
     {error && <p role="alert" className="iad-error">{error}</p>}
   </> : <button ref={trigger} type="button" className="iad-name-trigger" aria-label={`修改数据集名称 ${dataset.name}`} title="修改数据集名称" onClick={() => {
     session.current = "editing"; setValue(dataset.name); setError(""); setEditing(true);
-  }}><span>{dataset.name}</span><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m16 3 5 5L8 21H3v-5L16 3Z M13 6l5 5" /></svg></button>}</div>;
+  }}><span>{dataset.name}</span><EditIcon /></button>}</div>;
 }

@@ -1,3 +1,5 @@
+import {IconButton} from "./IconButton.js";
+import {RefreshIcon} from "../AuditIcon.js";
 import React,{useEffect,useState} from 'react';
 import type {ConsistencyBatch,ConsistencyQuery,ConsistencyReport,Dataset} from '../../shared/contracts.js';
 import {imageRelations} from '../../shared/consistency-presentation.js';
@@ -60,7 +62,7 @@ export function ConsistencyScopeResults({datasets,tab}:{datasets:Dataset[];tab:'
       {tab==='conflicts' && <label className="iad-filter">差异筛选<select aria-label="差异筛选" value={conflict} onChange={event=>setConflict(event.target.value)}><option value="confirmed">已确认冲突</option><option value="all">全部比较与待确认</option></select></label>}
       <label className="iad-filter">处置状态<select aria-label="处置状态筛选" value={review} onChange={event=>setReview(event.target.value as typeof review)}><option value="">全部处置状态</option><option value="OPEN">待复核</option><option value="NEEDS_CONTEXT">待补充依据</option><option value="RESOLVED">已裁决</option></select></label>
       <button className="iad-primary" type="button" disabled={!datasets.length||actions.busy||!!batchId&&!batch||!!batch&&['PENDING','RUNNING'].includes(batch.status)} onClick={()=>void actions.start('/consistency/start',{subjects:subject==='all' ? {kind:'all_registered'} : {kind:'datasets',dataset_ids:[subject]},corpus_scope:scope,mode:'exact'})}>{actions.busy ? '正在启动…' : '开始批量检查'}</button>
-      <button type="submit">刷新结果</button>
+      <IconButton type="submit" label="刷新结果"><RefreshIcon /></IconButton>
     </div></fieldset></form>
     {(error||actions.error) && <p role="alert" className="iad-error">{error||actions.error}</p>}{actions.notice && <p role="status">{actions.notice}</p>}{busy && <p role="status">正在读取范围结果…</p>}
     {batchId && (batchError||!batch||batch.status!=='COMPLETED') && <div className="iad-consistency-status" role="status"><strong>{batchError ? '批次状态未核实' : batch ? jobStatuses[batch.status] : '正在读取批次状态'}</strong>{batch && <span>完成 {batch.completed} / {batch.total} · 失败 {batch.failed} · 未处理 {batch.unprocessed}</span>}{batchError && <span className="iad-error" role="alert">{batchError}</span>}<button onClick={()=>workspace.updateConsistency({tab:'jobs',batchId},true)}>查看作业</button></div>}

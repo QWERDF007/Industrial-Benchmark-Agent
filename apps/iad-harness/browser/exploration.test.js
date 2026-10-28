@@ -73,7 +73,7 @@ test('mixed exploration is preserved on refresh and directions feed the next min
   const options=new firefox.Options().addArguments('-headless').setPreference('browser.cache.disk.enable',false).setPreference('browser.cache.memory.enable',false);if(process.env.FIREFOX_PATH)options.setBinary(process.env.FIREFOX_PATH);
   driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
   const el=css=>driver.wait(until.elementLocated(By.css(css)),8000);
-  const click=async text=>{const button=await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}']`)),8000);await driver.wait(until.elementIsEnabled(button),8000);await button.click();};
+  const click=async text=>{const button=await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}' or @aria-label='${text}']`)),8000);await driver.wait(until.elementIsEnabled(button),8000);await button.click();};
   const responsiveEvidence=[];
   const checkResponsive=async(name,selector)=>{
     for(const [width,height,zoom,theme] of [[1920,1080,1,'light'],[1920,1080,1,'dark']]){

@@ -3,6 +3,7 @@ import { v4 as uuid } from "uuid";
 import { DeleteIcon } from "../AuditIcon.js";
 import { message } from "../api.js";
 import { Modal } from "./Modal.js";
+import { IconButton } from "./IconButton.js";
 
 export function DeleteAction({ title, name, description, onDelete, disabled, className = "", restoreFocus }: {
   title: string; name: string; description: string; onDelete(submissionId: string): Promise<void>;
@@ -19,8 +20,8 @@ export function DeleteAction({ title, name, description, onDelete, disabled, cla
     finally { setBusy(false); }
   }
   return <>
-    <button ref={trigger} type="button" className={`iad-icon-button ${className}`} aria-label={`${title} ${name}`} title={title} disabled={disabled || busy}
-      onClick={() => { submission.current = uuid(); actionStarted.current = false; setError(""); setOpen(true); }}><DeleteIcon /></button>
+    <IconButton ref={trigger} className={className} label={`${title} ${name}`} title={title} disabled={disabled || busy}
+      onClick={() => { submission.current = uuid(); actionStarted.current = false; setError(""); setOpen(true); }}><DeleteIcon /></IconButton>
     {open && <Modal title={title} className="iad-confirm-dialog" initialFocus={cancel}
       restoreFocus={() => actionStarted.current ? restoreFocus?.() || trigger.current : trigger.current}
       onClose={() => { if (!busy) setOpen(false); }}>

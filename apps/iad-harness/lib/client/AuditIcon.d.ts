@@ -1,4 +1,7 @@
 import React from "react";
+export declare function EditIcon(): React.JSX.Element;
+export declare function RefreshIcon(): React.JSX.Element;
+export declare function CopyIcon(): React.JSX.Element;
 export declare function DeleteIcon(): React.JSX.Element;
 export declare function CloseIcon(): React.JSX.Element;
 export declare function DatasetIcon({ size }: {

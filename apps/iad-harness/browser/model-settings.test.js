@@ -117,7 +117,7 @@ test('authenticated LAN browser saves provider settings and switches models', {t
     await driver.manage().window().setRect({width: 1440, height: 1000});
     await driver.get(url.href);
     const api = async (body, route='/models') => driver.executeAsyncScript(`const done=arguments[arguments.length-1];fetch('/api/iad'+arguments[1],arguments[0]?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(arguments[0])}:undefined).then(async response=>done({status:response.status,data:await response.json()})).catch(error=>done({error:String(error)}));`, body || null, route);
-    const click = async text => (await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}']`)), 15000)).click();
+    const click = async text => (await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}' or @aria-label='${text}']`)), 15000)).click();
     const openModels = async () => {
       await driver.wait(async () => {
         const tabs = await driver.findElements(By.xpath("//button[normalize-space(.)='Models']"));
@@ -180,6 +180,8 @@ test('authenticated LAN browser saves provider settings and switches models', {t
     phase = 'independent model settings page';
     await (await driver.wait(until.elementLocated(By.css('button[aria-label="模型设置"]')), 10000)).click();
     await driver.wait(until.elementLocated(By.css('[data-page="industrial-model-settings"]')), 10000);
+    const width=await driver.executeScript('const root=document.querySelector(".iad-workbench"),panel=document.querySelector(".iad-model-configuration"),s=getComputedStyle(root);return {available:root.clientWidth-parseFloat(s.paddingLeft)-parseFloat(s.paddingRight),panel:panel.getBoundingClientRect().width}');
+    assert.ok(Math.abs(width.available-width.panel)<2,`模型设置使用完整桌面宽度：${JSON.stringify(width)}`);
     phase = 'independent image encoder settings';
     await viewport(driver,1920,1080);
     const invalidWeights=path.join(root,'invalid-encoder.pt');await fs.writeFile(invalidWeights,'invalid-encoder');
@@ -263,11 +265,11 @@ test('authenticated LAN browser saves provider settings and switches models', {t
     const navigationText = await navigation.getText();
     for (const chapter of ['数据准备','知识构建','质量审核']) assert.ok(navigationText.includes(chapter));
     assert.ok(await driver.executeScript('return [...arguments[0].querySelectorAll("button")].every(button=>button.getBoundingClientRect().height>=44)',navigation),'业务导航满足 HTML 的 44px 点击目标');
-    const workspaces = await driver.findElement(By.css('details[data-native-workspaces]'));
-    assert.equal(await workspaces.getAttribute('open'),null,'native workspaces start folded on business pages');
-    await workspaces.findElement(By.css('summary')).click();
+    const workspaces = await driver.findElement(By.css('[data-native-workspaces]'));
+    assert.equal(await workspaces.findElement(By.css('button[aria-controls]')).getAttribute('aria-expanded'),'false','native workspaces start folded on business pages');
+    await workspaces.findElement(By.css('button[aria-controls]')).click();
     assert.ok((await workspaces.getText()).includes('Default workspace'));
-    await workspaces.findElement(By.css('summary')).click();
+    await workspaces.findElement(By.css('button[aria-controls]')).click();
     assert.equal((await driver.findElements(By.css('select[aria-label="当前数据集"]'))).length, 0);
     assert.equal(await (await driver.findElement(By.css('select[aria-label="工作台提供商"]'))).getAttribute('value'), 'first-service');
     assert.equal(await (await driver.findElement(By.css('select[aria-label="工作台模型"]'))).getAttribute('value'), 'first-model');
@@ -362,6 +364,8 @@ test('authenticated LAN browser saves provider settings and switches models', {t
     await driver.wait(until.elementLocated(By.css('[data-page="industrial-consistency"]')),10000);
     const beforeRetrievalCalls=calls.length;
     await click('查找同图');
+    await driver.wait(until.elementLocated(By.css('[aria-label="候选图像详情"]')),10000);
+    await driver.findElement(By.xpath('//*[@aria-label="候选图像详情"]//button[normalize-space(.)="查看原图对比"]')).click();
     await driver.wait(until.elementLocated(By.css('[data-difference="CATEGORY"]')),10000).click();
     await driver.wait(()=>driver.executeScript('const images=[...document.querySelectorAll(".iad-consistency-comparison .iad-image-frame img")];return images.length===2&&images.every(image=>image.complete&&image.naturalWidth>0)'),5000);
     assert.equal(calls.length,beforeRetrievalCalls,'exact retrieval sends no request to the unavailable chat model');

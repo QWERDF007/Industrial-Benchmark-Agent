@@ -12,7 +12,9 @@ export const controlStyles = `
 :is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) textarea {min-height:80px;resize:vertical;}
 :is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) :is(button,input,select,textarea,summary,[tabindex]):focus-visible {outline:2px solid var(--iad-primary);outline-offset:3px;}
 :is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) :is(input[type=checkbox],input[type=radio]) {min-height:20px;width:20px;margin:0;accent-color:var(--iad-primary);}
-:is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) .iad-icon-button {display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:8px;flex-shrink:0;}
+:is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) button.iad-icon-button {display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-height:32px;padding:7px;flex-shrink:0;background:transparent;border-color:transparent;color:var(--iad-muted);}
+:is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) button.iad-icon-button:disabled{background:transparent;border-color:transparent;opacity:.5}
+.iad-icon-button svg{display:block;width:16px;height:16px;flex:none}
 :is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) button.iad-primary:disabled{background:var(--iad-surface-muted);color:var(--iad-muted);border-color:var(--iad-border)}
 @media(prefers-reduced-motion:reduce) {:is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) button {transition:none;}}
 `;

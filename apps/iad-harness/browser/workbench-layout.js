@@ -13,6 +13,33 @@ export async function waitForWorkbenchPage(driver, label) {
 const pages = ["数据集管理", "图像浏览", "方向探索", "知识挖掘", "模型审计", "人工复核", "模型设置"];
 const viewports = [[1920, 1080]];
 
+export async function verifySidebarLayout(driver, output) {
+  await fs.mkdir(output, {recursive: true});
+  const toggle = await driver.findElement(By.css('[data-native-workspaces] button[aria-controls]'));
+  const wasOpen = await toggle.getAttribute('aria-expanded') === 'true';
+  if (!wasOpen) await toggle.click();
+  const results = [];
+  for (const height of [1080, 900]) {
+    await viewport(driver, 1920, height);
+    const metrics = await driver.executeScript(() => {
+      const content = document.querySelector('.iad-native-workspace-content').getBoundingClientRect();
+      const tools = document.querySelector('.iad-sidebar-tools').getBoundingClientRect();
+      return {contentBottom: content.bottom, toolsTop: tools.top, toolsBottom: tools.bottom,
+        toolsAccessible: [...document.querySelectorAll('.iad-sidebar-tools button')].every(button => {
+          const r = button.getBoundingClientRect();
+          return button.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
+        })};
+    });
+    await fs.writeFile(path.join(output, `sidebar-${height}.png`), await driver.takeScreenshot(), 'base64');
+    assert.ok(metrics.contentBottom <= metrics.toolsTop, `会话内容与插件/设置区域分离：${JSON.stringify(metrics)}`);
+    assert.ok(metrics.toolsBottom <= height && metrics.toolsAccessible, `底部工具可直接点击：${JSON.stringify(metrics)}`);
+    results.push({height, ...metrics});
+  }
+  await viewport(driver, 1920, 1080);
+  if (!wasOpen) await toggle.click();
+  return results;
+}
+
 /** Real host surfaces, browser text zoom and OS motion preference; no application state substitutes. */
 export async function verifyWorkbenchLayout(driver, output, { pageLabels = pages, sizes = viewports, zoomLevels = [1] } = {}) {
   output = path.join(output, String(Date.now()));

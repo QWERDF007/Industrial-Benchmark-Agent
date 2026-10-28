@@ -1,3 +1,5 @@
+import {IconButton} from "./IconButton.js";
+import {RefreshIcon} from "../AuditIcon.js";
 import { ExplorationProgress } from "./ExplorationProgress.js";
 import React, { useEffect, useRef, useState } from "react";
 import type { JobRetryOptions, JobSample, JobSnapshot } from "../../shared/contracts.js";
@@ -99,7 +101,7 @@ export function JobDetail({ job, onChanged, stale = false, lastSyncedAt, onCopy 
           <button className="iad-primary" disabled={busy || !selected.length || !!options.active_run_id} onClick={retry}>{busy ? "启动重试中…" : `重试所选 ${selected.length} 张`}</button>
         </>}
       </> : !error && <p role="status">正在读取可重试范围…</p>}
-      <button disabled={busy} onClick={() => setRevision(value => value + 1)}>重新读取范围</button>
+      <IconButton label="重新读取范围" disabled={busy} onClick={() => setRevision(value => value + 1)}><RefreshIcon /></IconButton>
     </section>}
     {error && <p role="alert" className="iad-error">{error}</p>}
   </article>;

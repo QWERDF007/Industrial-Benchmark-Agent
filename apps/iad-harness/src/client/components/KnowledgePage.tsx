@@ -1,3 +1,5 @@
+import {IconButton} from "./IconButton.js";
+import {RefreshIcon} from "../AuditIcon.js";
 import { JobTable } from "./JobTable.js";
 import { KnowledgeVersions } from "./KnowledgeVersions.js";
 import React, { useCallback, useState } from "react";
@@ -86,7 +88,7 @@ export function KnowledgePage({ dataset, kind, refreshRevision, headerActions }:
       <label className="iad-field"><span className="iad-visually-hidden">知识版本</span><select aria-label="知识版本" value={view.version} onChange={event => workspace.updateView(pageId, { version: event.target.value, checkId: "" })}><option value="">当前发布版本{versions.length ? "" : " · 尚未发布"}</option>{versions.map(version => <option key={version.version_id} value={version.version_id}>{version.version_id} · {version.source_count} 张来源 · {version.created_at}</option>)}</select></label>
       {view.version && <p className="iad-muted">正在查看固定历史版本。</p>}
       {loading && <p role="status" className="iad-muted">正在读取知识…</p>}
-      {loadError && <p role="alert" className="iad-error">{loadError} <button onClick={updated}>重新读取知识</button></p>}
+      {loadError && <p role="alert" className="iad-error">{loadError} <IconButton label="重新读取知识" onClick={updated}><RefreshIcon /></IconButton></p>}
       <div className="iad-row"><span className="iad-muted">{kind === "normal" ? `良品来源 · ${dataset.reference_sample_ids.length} 张` : dataset.format === "folder_classification" ? "异常候选以目录标签及核验结果为准" : "异常候选以实际标注及核验结果为准"}</span><button onClick={() => workspace.openLocation({ pageId: "industrial-images", datasetId: dataset.dataset_id, tab: kind === "normal" ? "sources" : "results", selected: "", page: 1, filters: { ...initialFilters, reference_status: kind === "normal" ? "candidate" : "all", raw_label_filters: kind === "defect" && dataset.format === "folder_classification" ? ["FAIL"] : [], annotation_filters: kind === "defect" && dataset.format !== "folder_classification" ? ["present"] : [] } })}>{kind === "normal" ? "管理来源" : "查看异常候选"}</button></div>
     </>}</section>
     {(error || polling.error) && <p role="alert" className="iad-error">{error || polling.error}</p>}

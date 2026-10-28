@@ -1,4 +1,5 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { EditIcon } from "../AuditIcon.js";
 import { useEffect, useRef, useState } from "react";
 import { message, request } from "../api.js";
 export function DatasetName({ dataset, label, onChanged }) {
@@ -57,5 +58,5 @@ export function DatasetName({ dataset, label, onChanged }) {
                 setValue(dataset.name);
                 setError("");
                 setEditing(true);
-            }, children: [_jsx("span", { children: dataset.name }), _jsx("svg", { "aria-hidden": "true", width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", children: _jsx("path", { d: "m16 3 5 5L8 21H3v-5L16 3Z M13 6l5 5" }) })] }) });
+            }, children: [_jsx("span", { children: dataset.name }), _jsx(EditIcon, {})] }) });
 }

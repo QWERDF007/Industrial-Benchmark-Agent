@@ -1,4 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { IconButton } from "./IconButton.js";
+import { RefreshIcon } from "../AuditIcon.js";
 import { useEffect, useId, useState } from 'react';
 import { defaultModelLimits } from '../../shared/model-settings.generated.js';
 import { message, request } from '../api.js';
@@ -90,7 +92,7 @@ export function ModelSettingsPage() {
             setBusy(false);
         }
     }
-    return _jsxs("div", { className: "iad-workbench", "data-page": "industrial-model-settings", children: [_jsx("style", { children: workbenchStyles }), _jsx(WorkbenchHeader, { pageId: "industrial-model-settings", children: _jsx("button", { disabled: busy || loading || imageState.busy, onClick: () => tab === 'images' ? setImageRefresh(value => value + 1) : void refresh(), children: "\u5237\u65B0" }) }), _jsxs(PageTabs, { label: "\u6A21\u578B\u8BBE\u7F6E\u5206\u533A", items: [{ id: 'model', label: '工作台模型' }, { id: 'providers', label: '提供商' }, { id: 'images', label: '图像检索' }], value: tab, onChange: value => {
+    return _jsxs("div", { className: "iad-workbench", "data-page": "industrial-model-settings", children: [_jsx("style", { children: workbenchStyles }), _jsx(WorkbenchHeader, { pageId: "industrial-model-settings", children: _jsx(IconButton, { label: "\u5237\u65B0", disabled: busy || loading || imageState.busy, onClick: () => tab === 'images' ? setImageRefresh(value => value + 1) : void refresh(), children: _jsx(RefreshIcon, {}) }) }), _jsxs(PageTabs, { label: "\u6A21\u578B\u8BBE\u7F6E\u5206\u533A", items: [{ id: 'model', label: '工作台模型' }, { id: 'providers', label: '提供商' }, { id: 'images', label: '图像检索' }], value: tab, onChange: value => {
                     if (tab === 'images' && (imageState.busy || (imageState.dirty && !window.confirm('有未保存的图像配置，确认放弃修改？'))))
                         return;
                     setTab(value);

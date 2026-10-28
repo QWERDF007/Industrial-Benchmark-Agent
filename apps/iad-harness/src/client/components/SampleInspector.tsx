@@ -144,7 +144,6 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
     {error && <p role="alert" className="iad-error">{error}</p>}
     {!sampleId ? <p>选择图像查看。</p> : !detail ? <p role="status">加载中…</p> : <>
       <MediaLoad key={image!.src}><button ref={imageButton} className="iad-image-button" onClick={() => setLightbox(image)} title="放大图像"><AnnotatedImage image={image!} /></button></MediaLoad>
-      <div className="iad-actions"><button onClick={()=>workspace.openLocation({pageId:'industrial-consistency',tab:'search',query:{kind:'sample',sample_id:sampleId},scope:{kind:'all_registered'},returnPage:mode==='model' ? 'industrial-audit' : mode==='review' ? 'industrial-review' : 'industrial-images'})}>查找同图</button></div>
       {consistency}
       {mode === "model" ? <>
         <strong className="iad-inspector-filename" data-field="image-name" title={detail.sample.relative_path}>{detail.sample.relative_path.split("/").pop()}</strong>

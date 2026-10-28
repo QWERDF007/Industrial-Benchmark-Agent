@@ -1,3 +1,5 @@
+import {IconButton} from "./components/IconButton.js";
+import {RefreshIcon} from "./AuditIcon.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Dataset, Filters, ReviewDecisionRecord, SamplePage } from "../shared/contracts.js";
 import { initialReviewFilters, message, request, reviewLabel, sampleQuery } from "./api.js";
@@ -96,7 +98,7 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
   const inspector = dataset && <SampleInspector key={pageId === "industrial-review" && view.tab === "results" ? datasetId : `${datasetId}:${inspectedSample}`} dataset={dataset} sampleId={inspectedSample} mode={pageId === "industrial-review" ? "review" : pageId === "industrial-images" ? "browse" : "model"} queue={pageId === "industrial-review" && view.tab === "results" ? grid : undefined} filters={<SampleFilters defaults={initialReviewFilters} dataset={dataset} filters={view.filters} onFilters={updateFilters} />} advanceOnSubmit={view.tab === "results" && view.filters.review_status === "pending"} panel={pageId === "industrial-audit" ? {presentation: auditWidth === null ? "closed" : auditModalOpen ? "modal" : auditCompact ? "closed" : "inline", onOpen: setAuditDetailOpen,
     onClose: () => {setAuditDetailOpen(false);workspace.updateView(pageId,{inspection:null},true);}, restoreFocus: () => surface.current?.querySelector<HTMLElement>(`.iad-sample[data-sample-id="${CSS.escape(view.selected)}"]`) || null} : undefined} revision={revision} onReviewed={reviewed} jobs={audit.jobs} onJobsChanged={audit.refresh} navigation={gallery ? navigation : undefined} />;
 
-  const datasetControls = <><select aria-label="当前数据集" value={datasetId} onChange={event => workspace.selectDataset(event.target.value)}><option value="" disabled>选择数据集</option>{datasets.map(item => <option key={item.dataset_id} value={item.dataset_id}>{item.name} ({item.total_samples})</option>)}</select><button onClick={changed}>刷新</button></>;
+  const datasetControls = <><select aria-label="当前数据集" value={datasetId} onChange={event => workspace.selectDataset(event.target.value)}><option value="" disabled>选择数据集</option>{datasets.map(item => <option key={item.dataset_id} value={item.dataset_id}>{item.name} ({item.total_samples})</option>)}</select><IconButton label="刷新" onClick={changed}><RefreshIcon /></IconButton></>;
 
   return <div ref={surface} className="iad-workbench" data-page={pageId}><style>{workbenchStyles}</style>
     {pageId !== "industrial-datasets" && (!dataset || (pageId !== "industrial-exploration" && pageId !== "industrial-knowledge")) && <WorkbenchHeader pageId={pageId}>

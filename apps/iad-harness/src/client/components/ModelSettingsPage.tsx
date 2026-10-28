@@ -1,3 +1,5 @@
+import {IconButton} from "./IconButton.js";
+import {RefreshIcon} from "../AuditIcon.js";
 import React, {useEffect, useId, useState} from 'react';
 import type {ModelConnection, ModelLimits, WorkbenchModelSettings} from '../../shared/domain.generated.js';
 import {defaultModelLimits} from '../../shared/model-settings.generated.js';
@@ -62,7 +64,7 @@ export function ModelSettingsPage() {
     } catch (failure) {setError(message(failure));} finally {setBusy(false);}
   }
   return <div className="iad-workbench" data-page="industrial-model-settings"><style>{workbenchStyles}</style>
-    <WorkbenchHeader pageId="industrial-model-settings"><button disabled={busy || loading || imageState.busy} onClick={() => tab==='images' ? setImageRefresh(value=>value+1) : void refresh()}>刷新</button></WorkbenchHeader>
+    <WorkbenchHeader pageId="industrial-model-settings"><IconButton label="刷新" disabled={busy || loading || imageState.busy} onClick={() => tab==='images' ? setImageRefresh(value=>value+1) : void refresh()}><RefreshIcon /></IconButton></WorkbenchHeader>
     <PageTabs label="模型设置分区" items={[{id: 'model', label: '工作台模型'}, {id: 'providers', label: '提供商'}, {id:'images',label:'图像检索'}]} value={tab} onChange={value => {
       if (tab==='images' && (imageState.busy || (imageState.dirty && !window.confirm('有未保存的图像配置，确认放弃修改？')))) return;
       setTab(value);setImageState({dirty:false,busy:false});if (value === 'model') void refresh();

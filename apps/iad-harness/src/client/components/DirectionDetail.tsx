@@ -1,3 +1,5 @@
+import {IconButton} from "./IconButton.js";
+import {RefreshIcon} from "../AuditIcon.js";
 import React, { useEffect, useRef, useState } from "react";
 import type {
   ExploredDirection,
@@ -368,11 +370,7 @@ export function DirectionDetail({
               ) : (
                 <p>
                   {promptError || "未记录"}
-                  <button
-                    onClick={() => setPromptRevision((value) => value + 1)}
-                  >
-                    重新读取提示词
-                  </button>
+                  <IconButton label="重新读取提示词" onClick={() => setPromptRevision((value) => value + 1)}><RefreshIcon /></IconButton>
                 </p>
               )}
             </details>

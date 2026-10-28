@@ -1,3 +1,5 @@
+import {IconButton} from "./IconButton.js";
+import {EditIcon, DeleteIcon} from "../AuditIcon.js";
 import React, { useEffect, useRef, useState } from "react";
 import { v4 as uuid } from "uuid";
 import type {
@@ -203,8 +205,8 @@ export function MiningDirectionList({
                     查看来源
                   </button>
                 )}
-                <button
-                  aria-label={`编辑方向 ${item.title}`}
+                <IconButton
+                  label={`编辑方向 ${item.title}`}
                   disabled={
                     !!editing &&
                     editing.original.direction_id !== item.direction_id
@@ -218,8 +220,8 @@ export function MiningDirectionList({
                     })
                   }
                 >
-                  编辑
-                </button>
+                  <EditIcon />
+                </IconButton>
               </div>
             </div>
             {editing?.original.direction_id === item.direction_id && (
@@ -269,8 +271,8 @@ export function MiningDirectionList({
                   {draft.directions.some(
                     (row) => row.direction_id === item.direction_id,
                   ) && (
-                    <button
-                      className="iad-danger"
+                    <IconButton
+                      label={`删除方向 ${item.title}`} title="删除方向"
                       onClick={() => {
                         onChange({
                           ...draft,
@@ -281,8 +283,8 @@ export function MiningDirectionList({
                         setEditing(null);
                       }}
                     >
-                      删除方向
-                    </button>
+                      <DeleteIcon />
+                    </IconButton>
                   )}
                 </div>
               </div>

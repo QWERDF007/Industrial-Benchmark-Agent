@@ -70,7 +70,7 @@ for name,label in [('query','scratch'),('copy','dent')]:
     const output=process.env.IAD_CONSISTENCY_BROWSER_OUTPUT||'/tmp/iad-consistency-browser';
     await fs.mkdir(output,{recursive:true});
     await driver.wait(until.elementLocated(By.css('[data-page="industrial-consistency"]')),5000);
-    const click=async text=>(await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}']`)),5000)).click();
+    const click=async text=>(await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}' or @aria-label='${text}']`)),5000)).click();
     await driver.wait(until.elementLocated(By.css('.iad-consistency-empty')),5000);
     await fs.writeFile(path.join(output,'search-empty-1920.png'),await driver.takeScreenshot(),'base64');
     await click('标注冲突');
@@ -275,13 +275,9 @@ for name,label in [('other-a','hole'),('other-b','dent')]:
     await driver.wait(()=>calls.some(route=>route.startsWith('/api/iad/images/temporary/image_')),3000);
     await driver.get(`http://${host}:${server.address().port}/?${new URLSearchParams({iad:JSON.stringify({pageId:'industrial-images',datasetId:dataset.dataset_id,selected:dataset.dataset_id+':query.png',filters:{search:'query'}})})}`);
     await driver.wait(until.elementLocated(By.css('.iad-inspector')),5000);
-    await click('查找同图');
-    await driver.wait(until.elementLocated(By.css('[data-page="industrial-consistency"]')),5000);
-    await driver.findElement(By.xpath('//button[normalize-space(.)="返回图像"]')).sendKeys(Key.ENTER);
-    await driver.wait(until.elementLocated(By.css('[data-page="industrial-images"]')),5000);
-    const restored=await driver.executeScript('return JSON.parse(new URL(location.href).searchParams.get("iad"))');
-    assert.equal(restored.selected,dataset.dataset_id+':query.png');assert.equal(restored.filters.search,'query');
-    await click('查找同图');
+    assert.equal((await driver.findElements(By.xpath('//aside[contains(@class,"iad-inspector")]//button[normalize-space(.)="查找同图" or normalize-space(.)="查看同图"]'))).length,0,'样本详情不添加同图检索入口');
+    await fs.writeFile(path.join(output,'sample-details-1920.png'),await driver.takeScreenshot(),'base64');
+    await driver.get(`http://${host}:${server.address().port}/?${new URLSearchParams({iad:JSON.stringify(route)})}`);
     await driver.wait(until.elementLocated(By.css('[data-page="industrial-consistency"]')),5000);
     await click('查找同图');
     await driver.wait(until.elementLocated(By.css('[aria-label="候选图像详情"]')),10000);

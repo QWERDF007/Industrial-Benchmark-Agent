@@ -83,7 +83,6 @@ export async function verifyWorkbenchSurfaces(driver, output) {
       await capture("dataset-detail-name", "input[aria-label='新的数据集名称']"); await driver.actions().sendKeys(Key.ESCAPE).perform();
       await driver.wait(() => driver.executeScript("return !document.querySelector('input[aria-label=\"新的数据集名称\"]') && document.activeElement.matches('section[aria-label=\"当前数据集详情\"] .iad-name-trigger')"), 5000);
       await button("目录与映射");
-      await(await element(".iad-dataset-row summary[aria-label^='更多操作']")).click();
       await (await element(".iad-dataset-row button[aria-label^='删除数据集']")).click();
       assert.equal(await driver.executeScript("return document.activeElement.getAttribute('aria-label')"), "取消删除", "删除弹窗打开后默认聚焦取消");
       await capture("dataset-delete", "dialog[open] button[aria-label='取消删除']", "dialog[open]"); await button("取消");

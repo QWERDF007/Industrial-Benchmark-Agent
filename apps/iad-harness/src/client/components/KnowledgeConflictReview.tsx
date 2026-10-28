@@ -1,3 +1,5 @@
+import {IconButton} from "./IconButton.js";
+import {RefreshIcon} from "../AuditIcon.js";
 import React, { useEffect, useState } from "react";
 import { v4 as uuid } from "uuid";
 import type { KnowledgeReviewContext, KnowledgeReviewItem, KnowledgeReviewSubmission } from "../../shared/domain.generated.js";
@@ -46,7 +48,7 @@ export function KnowledgeConflictReview({ datasetId }: { datasetId: string }) {
     catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
   return <section className="iad-job-section" aria-label="知识冲突复核">
-    {error && <p role="alert" className="iad-error">{error} <button onClick={() => setRevision(value => value + 1)}>重新读取</button></p>}
+    {error && <p role="alert" className="iad-error">{error} <IconButton label="重新读取知识冲突" onClick={() => setRevision(value => value + 1)}><RefreshIcon /></IconButton></p>}
     <label className="iad-field">状态<select aria-label="知识冲突状态" value={state} onChange={event => {setState(event.target.value as typeof state);setPage(1);}}><option value="">全部状态</option>{Object.entries(states).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
     <div className="iad-conflict-workspace"><div><div className="iad-check-list" aria-label="知识冲突队列">{filtered.slice((page-1)*10,page*10).map(item => <button key={item.conflict_id} aria-pressed={selected?.conflict_id === item.conflict_id}
       onClick={() => workspace.updateView("industrial-review", { conflictId: item.conflict_id, version: item.version_id })}>
