@@ -24,15 +24,24 @@ export async function verifySidebarLayout(driver, output) {
     const metrics = await driver.executeScript(() => {
       const content = document.querySelector('.iad-native-workspace-content').getBoundingClientRect();
       const tools = document.querySelector('.iad-sidebar-tools').getBoundingClientRect();
-      return {contentBottom: content.bottom, toolsTop: tools.top, toolsBottom: tools.bottom,
+      const navigation=document.querySelector('.iad-sidebar-content>nav'), sessions=document.querySelector('.iad-sidebar-sessions');
+      return {navigationHeight:navigation.getBoundingClientRect().height,sessionsHeight:sessions.getBoundingClientRect().height,navigationScrollHeight:navigation.scrollHeight,navigationClientHeight:navigation.clientHeight,contentBottom: content.bottom, toolsTop: tools.top, toolsBottom: tools.bottom,
         toolsAccessible: [...document.querySelectorAll('.iad-sidebar-tools button')].every(button => {
           const r = button.getBoundingClientRect();
           return button.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2));
         })};
     });
     await fs.writeFile(path.join(output, `sidebar-${height}.png`), await driver.takeScreenshot(), 'base64');
+    assert.ok(Math.abs(metrics.navigationHeight-metrics.sessionsHeight)<=1,`导航与会话各占一半：${JSON.stringify(metrics)}`);
+    assert.ok(metrics.navigationScrollHeight>metrics.navigationClientHeight,'上方导航具有独立滚动范围');
     assert.ok(metrics.contentBottom <= metrics.toolsTop, `会话内容与插件/设置区域分离：${JSON.stringify(metrics)}`);
     assert.ok(metrics.toolsBottom <= height && metrics.toolsAccessible, `底部工具可直接点击：${JSON.stringify(metrics)}`);
+    const navigationRegion=await driver.findElement(By.css('.iad-sidebar-content>nav'));
+    const beforeScroll=await driver.executeScript('return arguments[0].scrollTop',navigationRegion);
+    await driver.actions().scroll(0,0,0,500,navigationRegion).perform();
+    await driver.wait(()=>driver.executeScript('return arguments[0].scrollTop>arguments[1]',navigationRegion,beforeScroll),3000,'上半导航可独立滚动');
+    await fs.writeFile(path.join(output,`sidebar-upper-scrolled-${height}.png`),await driver.takeScreenshot(),'base64');
+    await driver.actions().scroll(0,0,0,-500,navigationRegion).perform();
     results.push({height, ...metrics});
   }
   await viewport(driver, 1920, 1080);

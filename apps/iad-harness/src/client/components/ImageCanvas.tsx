@@ -178,8 +178,7 @@ function CanvasViewport({ image, onClose, navigation, savedView, onRemember, emb
           onChange={event => setLayers(previous => ({ ...previous, [source]: event.target.checked }))} />{label}</label>;
       })}
     </FloatingMenu>}
-    {navigation && embedded && <div className="iad-viewer-navigation" role="group" aria-label="图像切换"><button className="iad-image-step" disabled={navigation.busy || !navigation.previous} onClick={() => navigation.move(-1)}>前一张</button><button className="iad-image-step" disabled={navigation.busy || !navigation.next} onClick={() => navigation.move(1)}>后一张</button>{navigation.busy && <span role="status">正在切换图像…</span>}</div>}
-    {navigation && !embedded && navigation.busy && <span className="iad-visually-hidden" role="status">正在切换图像…</span>}
+    {navigation && navigation.busy && <span className="iad-visually-hidden" role="status">正在切换图像…</span>}
     {onExpand && <button className="iad-icon-button" aria-label="全屏检视" title="全屏检视" onClick={() => {onRemember(remembered.current.view);onExpand(remembered.current.view);}}><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" /></svg></button>}
     {!context && closeButton}</div>
     {navigation?.error && <p role="alert" className="iad-error">{navigation.error}</p>}
@@ -212,7 +211,7 @@ function CanvasViewport({ image, onClose, navigation, savedView, onRemember, emb
         {regionSources[hint.source]} · {hint.label.slice(0,80)}{hint.label.length > 80 ? "…" : ""}{hoveredRegions.length > 1 ? ` · ${hoveredRegions.length} 个重叠区域` : ""}
       </div>}
     </div>
-    {!embedded && navigation && <nav className="iad-viewer-edge-nav" aria-label="图片切换">
+    {navigation && <nav className="iad-viewer-edge-nav" aria-label="图片切换">
       {([-1,1] as const).map(offset => <button key={offset} type="button" className="iad-viewer-edge-button" aria-label={offset === -1 ? "上一张图像" : "下一张图像"} title={offset === -1 ? "上一张" : "下一张"}
         disabled={navigation.busy || !(offset === -1 ? navigation.previous : navigation.next)} onClick={() => navigation.move(offset)}>
         <span className="iad-viewer-edge-disc" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d={offset === -1 ? "m15 4-8 8 8 8" : "m9 4 8 8-8 8"} /></svg></span>

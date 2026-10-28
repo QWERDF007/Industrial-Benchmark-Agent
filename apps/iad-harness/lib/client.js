@@ -5768,12 +5768,7 @@ var __IadClientBundle__ = (() => {
             label
           ] }, source);
         }) }),
-        navigation2 && embedded && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "iad-viewer-navigation", role: "group", "aria-label": "\u56FE\u50CF\u5207\u6362", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: "iad-image-step", disabled: navigation2.busy || !navigation2.previous, onClick: () => navigation2.move(-1), children: "\u524D\u4E00\u5F20" }),
-          /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: "iad-image-step", disabled: navigation2.busy || !navigation2.next, onClick: () => navigation2.move(1), children: "\u540E\u4E00\u5F20" }),
-          navigation2.busy && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { role: "status", children: "\u6B63\u5728\u5207\u6362\u56FE\u50CF\u2026" })
-        ] }),
-        navigation2 && !embedded && navigation2.busy && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "iad-visually-hidden", role: "status", children: "\u6B63\u5728\u5207\u6362\u56FE\u50CF\u2026" }),
+        navigation2 && navigation2.busy && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "iad-visually-hidden", role: "status", children: "\u6B63\u5728\u5207\u6362\u56FE\u50CF\u2026" }),
         onExpand && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("button", { className: "iad-icon-button", "aria-label": "\u5168\u5C4F\u68C0\u89C6", title: "\u5168\u5C4F\u68C0\u89C6", onClick: () => {
           onRemember(remembered.current.view);
           onExpand(remembered.current.view);
@@ -5855,7 +5850,7 @@ var __IadClientBundle__ = (() => {
               ]
             }
           ),
-          !embedded && navigation2 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("nav", { className: "iad-viewer-edge-nav", "aria-label": "\u56FE\u7247\u5207\u6362", children: [-1, 1].map((offset4) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
+          navigation2 && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("nav", { className: "iad-viewer-edge-nav", "aria-label": "\u56FE\u7247\u5207\u6362", children: [-1, 1].map((offset4) => /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
             "button",
             {
               type: "button",
@@ -7020,8 +7015,8 @@ var __IadClientBundle__ = (() => {
   // src/client/components/KnowledgeJobEvidence.tsx
   var import_react32 = __require("react");
   var import_jsx_runtime36 = __require("react/jsx-runtime");
-  function KnowledgeJobEvidence({ job }) {
-    const [open, setOpen] = (0, import_react32.useState)(false), [page, setPage] = (0, import_react32.useState)(1);
+  function KnowledgeJobEvidence({ job, initiallyOpen = false }) {
+    const [open, setOpen] = (0, import_react32.useState)(initiallyOpen), [page, setPage] = (0, import_react32.useState)(1);
     const [result, setResult] = (0, import_react32.useState)(null), [error2, setError] = (0, import_react32.useState)("");
     const [image, setImage] = (0, import_react32.useState)(null);
     (0, import_react32.useEffect)(() => {
@@ -7035,7 +7030,7 @@ var __IadClientBundle__ = (() => {
       });
       return () => controller.abort();
     }, [open, page, job.run_id, job.status, job.observation_progress?.observed_visuals]);
-    return /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("details", { onToggle: (event) => setOpen(event.currentTarget.open), children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("details", { open, onToggle: (event) => setOpen(event.currentTarget.open), children: [
       /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("summary", { children: "\u89C2\u5BDF\u8BC1\u636E" }),
       job.mining_prompt && /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("details", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("summary", { children: "\u672C\u6B21\u51BB\u7ED3\u6316\u6398\u63D0\u793A\u8BCD" }),
@@ -7079,7 +7074,7 @@ var __IadClientBundle__ = (() => {
   // src/client/components/JobDetail.tsx
   var import_jsx_runtime37 = __require("react/jsx-runtime");
   var sampleName = (sample) => sample.relative_path || sample.sample_uuid;
-  function JobDetail({ job, onChanged, stale = false, lastSyncedAt, onCopy }) {
+  function JobDetail({ job, onChanged, stale = false, lastSyncedAt, onCopy, onClose, presentation = "inline" }) {
     const { workspace } = useWorkspace();
     const kind = job.job_type === "MODEL_AUDIT" ? "audit" : job.job_type === "DIRECTION_EXPLORATION" ? "exploration" : "knowledge";
     const page = kind === "audit" ? "industrial-audit" : kind === "exploration" ? "industrial-exploration" : "industrial-knowledge";
@@ -7091,12 +7086,14 @@ var __IadClientBundle__ = (() => {
     const [selected, setSelected] = (0, import_react33.useState)([]);
     const [revision, setRevision] = (0, import_react33.useState)(0);
     const article = (0, import_react33.useRef)(null);
+    const drawer = presentation === "drawer";
+    const [tab, setTab] = (0, import_react33.useState)("overview");
     const focused = workspace.view(page, job.kind ?? void 0).job === job.run_id;
     (0, import_react33.useEffect)(() => {
-      if (focused) article.current?.scrollIntoView({ block: "nearest" });
-    }, [focused]);
+      if (focused && !drawer) article.current?.scrollIntoView({ block: "nearest" });
+    }, [focused, drawer]);
     (0, import_react33.useEffect)(() => {
-      if (!expanded || kind === "exploration") return;
+      if (!expanded || kind === "exploration" || active || job.status === "COMPLETED") return;
       const controller = new AbortController();
       setOptions(null);
       setError("");
@@ -7109,7 +7106,7 @@ var __IadClientBundle__ = (() => {
         if (!controller.signal.aborted) setError(message(error3));
       });
       return () => controller.abort();
-    }, [expanded, revision, job.run_id, kind]);
+    }, [expanded, revision, job.run_id, kind, active, job.status]);
     async function cancel() {
       setBusy(true);
       setError("");
@@ -7142,144 +7139,149 @@ var __IadClientBundle__ = (() => {
     function related(runId) {
       workspace.openLocation({ pageId: page, datasetId: job.dataset_id, knowledgeKind: job.kind ?? void 0, job: runId, tab: "jobs" });
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("article", { ref: article, className: "iad-job", "data-job-id": job.run_id, "aria-label": `\u4F5C\u4E1A ${job.run_id}`, "aria-current": focused || void 0, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("div", { className: "iad-row", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("strong", { role: "status", children: active && job.cancel_requested ? "\u6B63\u5728\u505C\u6B62" : jobStatuses[job.status] }),
-        /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("span", { children: [
-          job.model_profile?.provider_name ? `${job.model_profile.provider_name} \xB7 ` : "",
-          job.model_name
+    const body = /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("div", { className: "iad-job-detail-body", children: [
+      (!drawer || tab === "overview") && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("section", { "aria-label": "\u8FD0\u884C\u6982\u89C8", children: [
+        kind !== "exploration" && !drawer && job.total_samples > 0 && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("progress", { "aria-label": "\u4F5C\u4E1A\u5904\u7406\u8FDB\u5EA6", value: job.progress, max: 1 }),
+        drawer && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("section", { className: "iad-job-progress-card", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { children: [
+            "\u4F5C\u4E1A\u5B8C\u6210\u8FDB\u5EA6",
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("strong", { children: [
+              job.completed,
+              " / ",
+              job.total_samples
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("progress", { "aria-label": "\u4F5C\u4E1A\u5B8C\u6210\u8FDB\u5EA6", value: job.completed, max: job.total_samples || 1 })
         ] }),
-        active && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { disabled: busy || job.cancel_requested, onClick: cancel, children: job.cancel_requested ? "\u6B63\u5728\u505C\u6B62\u2026" : kind === "audit" ? "\u53D6\u6D88\u5BA1\u8BA1" : kind === "exploration" ? job.status === "PENDING" ? "\u53D6\u6D88\u6392\u961F" : "\u53D6\u6D88\u63A2\u7D22" : "\u53D6\u6D88\u6316\u6398" }),
-        kind === "knowledge" && !active && !job.deleted_at && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(
-          DeleteAction,
-          {
-            title: "\u5220\u9664\u4F5C\u4E1A",
-            name: job.run_id,
-            className: "iad-action-end",
-            description: "\u4ECE\u4F5C\u4E1A\u5217\u8868\u5220\u9664\uFF0C\u4FDD\u7559\u5DF2\u53D1\u5E03\u77E5\u8BC6\u3001\u51BB\u7ED3\u8BC1\u636E\u53CA\u5386\u53F2\u5F15\u7528\u3002",
-            restoreFocus: () => document.querySelector(".iad-knowledge-page .iad-tabs button.active"),
-            onDelete: async () => {
-              await request(`/knowledge/jobs/${encodeURIComponent(job.run_id)}`, void 0, "DELETE");
-              if (focused) workspace.updateView(page, { job: "" });
-              onChanged();
-            }
-          }
-        )
-      ] }),
-      kind !== "exploration" && job.total_samples > 0 && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("progress", { "aria-label": "\u4F5C\u4E1A\u5904\u7406\u8FDB\u5EA6", value: job.progress, max: 1 }),
-      kind === "exploration" ? /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(ExplorationProgress, { job, stale, lastSyncedAt }) : /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { children: [
-        "\u5B8C\u6210 ",
-        job.completed,
-        " \xB7 \u5931\u8D25 ",
-        job.failed,
-        " \xB7 \u672A\u5904\u7406 ",
-        job.unprocessed,
-        " \xB7 \u5171 ",
-        job.total_samples,
-        " \u5F20"
-      ] }),
-      kind === "exploration" && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(import_jsx_runtime37.Fragment, { children: [
+        drawer && job.observation_progress && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("section", { className: "iad-job-progress-card", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { children: [
+            "\u56FE\u50CF\u89C2\u5BDF\u8FDB\u5EA6\uFF08\u4E0D\u4EE3\u8868\u5B8C\u6210\u6216\u53D1\u5E03\uFF09",
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("strong", { children: [
+              job.observation_progress.observed_sources,
+              " / ",
+              job.observation_progress.planned_sources
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("progress", { "aria-label": "\u56FE\u50CF\u89C2\u5BDF\u8FDB\u5EA6", value: job.observation_progress.observed_sources, max: job.observation_progress.planned_sources || 1 })
+        ] }),
+        kind === "exploration" ? /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(ExplorationProgress, { job, stale, lastSyncedAt }) : !drawer && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { children: [
+          "\u5B8C\u6210 ",
+          job.completed,
+          " \xB7 \u5931\u8D25 ",
+          job.failed,
+          " \xB7 \u672A\u5904\u7406 ",
+          job.unprocessed,
+          " \xB7 \u5171 ",
+          job.total_samples,
+          " \u5F20"
+        ] }),
+        kind === "exploration" && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(import_jsx_runtime37.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("details", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("summary", { children: "\u4EFB\u52A1\u51BB\u7ED3\u63D0\u793A\u8BCD" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("pre", { className: "iad-observation", children: job.exploration_prompt?.text || "\u672A\u8BB0\u5F55" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { children: job.exploration_request?.objective })
+          ] }),
+          onCopy && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { onClick: () => onCopy(job), children: "\u590D\u5236\u4E3A\u65B0\u914D\u7F6E" })
+        ] }),
+        kind === "knowledge" && job.observation_progress && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { className: "iad-muted", children: [
+          "\u5DF2\u89C2\u5BDF ",
+          job.observation_progress.observed_sources,
+          " / ",
+          job.observation_progress.planned_sources,
+          " \u5F20 \xB7 \u5B8C\u6574\u89C6\u56FE ",
+          job.observation_progress.complete_sources,
+          " \u5F20 \xB7 \u5DF2\u53D1\u5E03 ",
+          job.observation_progress.published_sources,
+          " \u5F20"
+        ] }),
+        active && job.cancel_requested ? /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { className: "iad-muted", children: "\u7B49\u5F85\u5F53\u524D\u6A21\u578B\u8BF7\u6C42\u8FD4\u56DE\u540E\u505C\u6B62\u3002" }) : /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { className: "iad-muted", children: jobPhases[job.phase || ""] || job.message }),
+        job.current_sample && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { children: [
+          "\u5F53\u524D\u56FE\u50CF ",
+          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { onClick: () => locate(job.current_sample.sample_id), title: job.current_sample.sample_uuid, children: sampleName(job.current_sample) })
+        ] }),
+        !!job.planned_regions && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { className: "iad-muted", children: [
+          "ROI ",
+          job.inspected_regions || 0,
+          " / ",
+          job.planned_regions
+        ] }),
+        !!job.total_batches && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { className: "iad-muted", children: [
+          "\u8054\u5408\u5224\u65AD ",
+          job.completed_batches || 0,
+          " / ",
+          job.total_batches
+        ] }),
+        job.normal_version_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("small", { className: "iad-muted", children: [
+          "\u826F\u54C1\u7248\u672C ",
+          job.normal_version_id,
+          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("br", {}),
+          job.defect_version_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(import_jsx_runtime37.Fragment, { children: [
+            "\u4E0D\u826F\u7248\u672C ",
+            job.defect_version_id,
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("br", {})
+          ] })
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("details", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("summary", { children: "\u4EFB\u52A1\u51BB\u7ED3\u63D0\u793A\u8BCD" }),
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("pre", { className: "iad-observation", children: job.exploration_prompt?.text || "\u672A\u8BB0\u5F55" }),
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { children: job.exploration_request?.objective })
+          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("summary", { children: "\u51BB\u7ED3\u4F9D\u636E\u4E0E\u4EFB\u52A1\u6807\u8BC6" }),
+          /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("dl", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dt", { children: "\u4EFB\u52A1 ID" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dd", { children: job.run_id }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dt", { children: "\u6839\u4EFB\u52A1" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dd", { children: job.root_run_id }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dt", { children: "\u5F00\u59CB\u65F6\u95F4" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dd", { children: job.started_at || "\u672A\u63D0\u4F9B" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dt", { children: "\u7ED3\u675F\u65F6\u95F4" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dd", { children: job.finished_at || "\u672A\u63D0\u4F9B" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dt", { children: "\u63D0\u4F9B\u5546" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dd", { children: job.model_profile?.provider_name || "\u672A\u8BB0\u5F55" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dt", { children: "\u6A21\u578B" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dd", { children: job.model_name })
+          ] })
         ] }),
-        onCopy && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { onClick: () => onCopy(job), children: "\u590D\u5236\u4E3A\u65B0\u914D\u7F6E" })
-      ] }),
-      kind === "knowledge" && job.observation_progress && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { className: "iad-muted", children: [
-        "\u5DF2\u89C2\u5BDF ",
-        job.observation_progress.observed_sources,
-        " / ",
-        job.observation_progress.planned_sources,
-        " \u5F20 \xB7 \u5B8C\u6574\u89C6\u56FE ",
-        job.observation_progress.complete_sources,
-        " \u5F20 \xB7 \u5DF2\u53D1\u5E03 ",
-        job.observation_progress.published_sources,
-        " \u5F20"
-      ] }),
-      kind === "knowledge" && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(KnowledgeJobEvidence, { job }),
-      active && job.cancel_requested ? /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { className: "iad-muted", children: "\u7B49\u5F85\u5F53\u524D\u6A21\u578B\u8BF7\u6C42\u8FD4\u56DE\u540E\u505C\u6B62\u3002" }) : /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { className: "iad-muted", children: jobPhases[job.phase || ""] || job.message }),
-      job.current_sample && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { children: [
-        "\u5F53\u524D\u56FE\u50CF ",
-        /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { onClick: () => locate(job.current_sample.sample_id), title: job.current_sample.sample_uuid, children: sampleName(job.current_sample) })
-      ] }),
-      !!job.planned_regions && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { className: "iad-muted", children: [
-        "ROI ",
-        job.inspected_regions || 0,
-        " / ",
-        job.planned_regions
-      ] }),
-      !!job.total_batches && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { className: "iad-muted", children: [
-        "\u8054\u5408\u5224\u65AD ",
-        job.completed_batches || 0,
-        " / ",
-        job.total_batches
-      ] }),
-      job.normal_version_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("small", { className: "iad-muted", children: [
-        "\u826F\u54C1\u7248\u672C ",
-        job.normal_version_id,
-        /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("br", {}),
-        job.defect_version_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(import_jsx_runtime37.Fragment, { children: [
-          "\u4E0D\u826F\u7248\u672C ",
-          job.defect_version_id,
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("br", {})
-        ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("details", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("summary", { children: "\u51BB\u7ED3\u4F9D\u636E\u4E0E\u4EFB\u52A1\u6807\u8BC6" }),
-        /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("dl", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dt", { children: "\u4EFB\u52A1 ID" }),
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dd", { children: job.run_id }),
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dt", { children: "\u6839\u4EFB\u52A1" }),
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dd", { children: job.root_run_id }),
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dt", { children: "\u5F00\u59CB\u65F6\u95F4" }),
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dd", { children: job.started_at || "\u672A\u63D0\u4F9B" }),
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dt", { children: "\u7ED3\u675F\u65F6\u95F4" }),
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dd", { children: job.finished_at || "\u672A\u63D0\u4F9B" }),
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dt", { children: "\u63D0\u4F9B\u5546" }),
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dd", { children: job.model_profile?.provider_name || "\u672A\u8BB0\u5F55" }),
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dt", { children: "\u6A21\u578B" }),
-          /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("dd", { children: job.model_name })
-        ] })
-      ] }),
-      job.origin_session_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { children: /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { disabled: busy, onClick: async () => {
-        setBusy(true);
-        setError("");
-        try {
-          await workspace.openSession(job.origin_session_id);
-        } catch (error3) {
-          setError(message(error3));
-        } finally {
-          setBusy(false);
-        }
-      }, children: "\u8FD4\u56DE\u53D1\u8D77\u4F1A\u8BDD" }) }),
-      job.parent_run_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { className: "iad-job-links", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("button", { onClick: () => related(job.parent_run_id), children: [
-          "\u539F\u4F5C\u4E1A ",
-          job.parent_run_id
+        job.origin_session_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { children: /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { disabled: busy, onClick: async () => {
+          setBusy(true);
+          setError("");
+          try {
+            await workspace.openSession(job.origin_session_id);
+            onClose?.();
+          } catch (error3) {
+            setError(message(error3));
+          } finally {
+            setBusy(false);
+          }
+        }, children: "\u8FD4\u56DE\u53D1\u8D77\u4F1A\u8BDD" }) }),
+        job.parent_run_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { className: "iad-job-links", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("button", { onClick: () => related(job.parent_run_id), children: [
+            "\u539F\u4F5C\u4E1A ",
+            job.parent_run_id
+          ] }),
+          job.root_run_id !== job.parent_run_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("button", { onClick: () => related(job.root_run_id), children: [
+            "\u8D77\u59CB\u4F5C\u4E1A ",
+            job.root_run_id
+          ] })
         ] }),
-        job.root_run_id !== job.parent_run_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("button", { onClick: () => related(job.root_run_id), children: [
-          "\u8D77\u59CB\u4F5C\u4E1A ",
-          job.root_run_id
-        ] })
+        job.knowledge_version_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { children: /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { onClick: () => {
+          workspace.openLocation({ pageId: page, datasetId: job.dataset_id, knowledgeKind: job.kind ?? void 0, version: job.knowledge_version_id, tab: "results" });
+        }, children: "\u67E5\u770B\u5DF2\u53D1\u5E03\u7248\u672C" }) })
       ] }),
-      job.knowledge_version_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { children: /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { onClick: () => {
-        workspace.openLocation({ pageId: page, datasetId: job.dataset_id, knowledgeKind: job.kind ?? void 0, version: job.knowledge_version_id, tab: "results" });
-      }, children: "\u67E5\u770B\u5DF2\u53D1\u5E03\u7248\u672C" }) }),
-      !!job.errors.length && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("details", { children: [
+      kind === "knowledge" && (!drawer || tab === "evidence") && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(KnowledgeJobEvidence, { job, initiallyOpen: drawer }),
+      (drawer && tab === "failures" || !drawer && !!job.errors.length) && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("details", { open: drawer, children: [
         /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("summary", { children: [
-          "\u5931\u8D25\u8BE6\u60C5 \xB7 ",
+          drawer ? "\u5931\u8D25\u8BB0\u5F55" : "\u5931\u8D25\u8BE6\u60C5",
+          " \xB7 ",
           job.errors.length
         ] }),
+        !job.errors.length && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { className: "iad-muted", children: "\u6682\u65E0\u53EF\u7528\u660E\u7EC6\u3002" }),
         /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("ul", { className: "iad-job-errors", children: job.errors.map((error3, index3) => /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("li", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { onClick: () => locate(error3.sample_id), title: error3.sample_uuid, children: sampleName(error3) }),
           /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { className: "iad-error", children: error3.message })
         ] }, index3)) })
       ] }),
-      kind === "exploration" && job.exploration_version_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { onClick: () => workspace.updateView(page, { version: job.exploration_version_id, tab: "results" }), children: "\u67E5\u770B\u63A2\u7D22\u7ED3\u679C" }),
+      (!drawer || tab === "overview") && kind === "exploration" && job.exploration_version_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { onClick: () => workspace.updateView(page, { version: job.exploration_version_id, tab: "results" }), children: "\u67E5\u770B\u63A2\u7D22\u7ED3\u679C" }),
       kind === "exploration" && !active && job.status !== "COMPLETED" && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { disabled: busy, onClick: () => void retry(), children: "\u6309\u539F\u56FE\u7EC4\u91CD\u8BD5" }),
-      kind !== "exploration" && !active && !job.deleted_at && job.status !== "COMPLETED" && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { "aria-expanded": expanded, onClick: () => setExpanded((value) => !value), children: expanded ? "\u6536\u8D77\u91CD\u8BD5\u8303\u56F4" : "\u9009\u62E9\u91CD\u8BD5\u8303\u56F4" }),
-      expanded && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("section", { className: "iad-retry-scope", "aria-label": "\u91CD\u8BD5\u8303\u56F4", children: [
+      (!drawer || tab === "retry") && kind !== "exploration" && !active && !job.deleted_at && job.status !== "COMPLETED" && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { "aria-expanded": expanded, onClick: () => setExpanded((value) => !value), children: expanded ? "\u6536\u8D77\u91CD\u8BD5\u8303\u56F4" : "\u9009\u62E9\u91CD\u8BD5\u8303\u56F4" }),
+      drawer && tab === "retry" && (active || job.status === "COMPLETED") && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { className: "iad-muted", children: active ? "\u4F5C\u4E1A\u4ECD\u5728\u6267\u884C\uFF0C\u7EC8\u6001\u540E\u53EF\u67E5\u770B\u91CD\u8BD5\u8303\u56F4\u3002" : "\u4F5C\u4E1A\u5DF2\u5B8C\u6210\uFF0C\u65E0\u9700\u91CD\u8BD5\u3002" }),
+      expanded && !active && job.status !== "COMPLETED" && (!drawer || tab === "retry") && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("section", { className: "iad-retry-scope", "aria-label": "\u91CD\u8BD5\u8303\u56F4", children: [
         options ? /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(import_jsx_runtime37.Fragment, { children: [
           options.active_run_id && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { role: "status", children: "\u540C\u7C7B\u4F5C\u4E1A\u4ECD\u5728\u6267\u884C\uFF0C\u8BF7\u7ED3\u675F\u540E\u91CD\u65B0\u8BFB\u53D6\u8303\u56F4\u3002" }),
           !options.samples.length ? /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { children: "\u5173\u8054\u4F5C\u4E1A\u5DF2\u5B8C\u6210\u5168\u90E8\u56FE\u50CF\uFF0C\u65E0\u9700\u91CD\u8BD5\u3002" }) : /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(import_jsx_runtime37.Fragment, { children: [
@@ -7311,6 +7313,75 @@ var __IadClientBundle__ = (() => {
       ] }),
       error2 && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { role: "alert", className: "iad-error", children: error2 })
     ] });
+    return /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("article", { ref: article, className: "iad-job", "data-job-id": job.run_id, "aria-label": `\u4F5C\u4E1A ${job.run_id}`, "aria-current": focused || void 0, children: [
+      drawer && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { className: "iad-job-identifier", children: job.run_id }),
+      /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("div", { className: "iad-row", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("strong", { role: "status", children: active && job.cancel_requested ? "\u6B63\u5728\u505C\u6B62" : jobStatuses[job.status] }),
+        /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("span", { children: [
+          job.model_profile?.provider_name ? `${job.model_profile.provider_name} \xB7 ` : "",
+          job.model_name
+        ] }),
+        active && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { disabled: busy || job.cancel_requested, onClick: cancel, children: job.cancel_requested ? "\u6B63\u5728\u505C\u6B62\u2026" : kind === "audit" ? "\u53D6\u6D88\u5BA1\u8BA1" : kind === "exploration" ? job.status === "PENDING" ? "\u53D6\u6D88\u6392\u961F" : "\u53D6\u6D88\u63A2\u7D22" : "\u53D6\u6D88\u6316\u6398" })
+      ] }),
+      drawer && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)(import_jsx_runtime37.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("div", { className: "iad-job-metrics", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("span", { children: "\u5B8C\u6210" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("strong", { children: job.completed }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("small", { children: [
+              "/ ",
+              job.total_samples
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("span", { children: "\u5931\u8D25" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("strong", { children: job.failed }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("small", { children: "\u5F20" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("span", { children: "\u672A\u5904\u7406" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("strong", { children: job.unprocessed }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("small", { children: "\u5F20" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("span", { children: "\u5DF2\u89C2\u5BDF" }),
+            /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("strong", { children: job.observation_progress?.observed_sources ?? "\u672A\u63D0\u4F9B" }),
+            job.observation_progress && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("small", { children: [
+              "/ ",
+              job.observation_progress.planned_sources
+            ] })
+          ] })
+        ] }),
+        stale && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { role: "alert", className: "iad-error", children: "\u540C\u6B65\u5DF2\u8FC7\u671F\uFF0C\u4EE5\u4E0B\u4FDD\u7559\u6700\u8FD1\u4E00\u6B21\u4F5C\u4E1A\u72B6\u6001\u3002" })
+      ] }),
+      drawer ? /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(PageTabs, { label: "\u4F5C\u4E1A\u8BE6\u60C5\u5206\u533A", value: tab, onChange: (value) => {
+        setTab(value);
+        setExpanded(value === "retry");
+      }, items: [{ id: "overview", label: "\u8FD0\u884C\u6982\u89C8" }, { id: "evidence", label: "\u89C2\u5BDF\u8BC1\u636E" }, { id: "failures", label: "\u5931\u8D25\u8BB0\u5F55" }, { id: "retry", label: "\u91CD\u8BD5\u8303\u56F4" }], children: body }) : body,
+      /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("footer", { className: "iad-job-footer", children: [
+        drawer && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { onClick: onClose, children: "\u5173\u95ED" }),
+        kind === "knowledge" && !active && !job.deleted_at && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)(
+          DeleteAction,
+          {
+            title: "\u5220\u9664\u4F5C\u4E1A",
+            name: job.run_id,
+            className: "iad-action-end",
+            description: "\u4ECE\u4F5C\u4E1A\u5217\u8868\u5220\u9664\uFF0C\u4FDD\u7559\u5DF2\u53D1\u5E03\u77E5\u8BC6\u3001\u51BB\u7ED3\u8BC1\u636E\u53CA\u5386\u53F2\u5F15\u7528\u3002",
+            restoreFocus: () => document.querySelector(".iad-knowledge-page .iad-tabs button.active"),
+            onDelete: async () => {
+              await request(`/knowledge/jobs/${encodeURIComponent(job.run_id)}`, void 0, "DELETE");
+              if (focused) workspace.updateView(page, { job: "" });
+              onClose?.();
+              onChanged();
+            }
+          }
+        ),
+        drawer && !active && job.status !== "COMPLETED" && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { className: "iad-primary", onClick: () => {
+          setTab("retry");
+          setExpanded(true);
+        }, children: "\u9009\u62E9\u91CD\u8BD5\u8303\u56F4" })
+      ] })
+    ] });
   }
 
   // src/client/components/JobTable.tsx
@@ -7334,24 +7405,32 @@ var __IadClientBundle__ = (() => {
   }) {
     const { workspace } = useWorkspace(), selected = workspace.view(pageId).job;
     const [page, setPage] = (0, import_react34.useState)(1), [status, setStatus] = (0, import_react34.useState)("");
+    const [search, setSearch] = (0, import_react34.useState)(""), [drawerOpen, setDrawerOpen] = (0, import_react34.useState)(false);
+    const rows = (0, import_react34.useRef)(/* @__PURE__ */ new Map()), filter = (0, import_react34.useRef)(null);
     const exploration = pageId === "industrial-exploration";
-    const filtered = jobs.filter((job2) => !status || job2.status === status);
+    const knowledge = pageId === "industrial-knowledge";
+    const filtered = jobs.filter((job2) => (!status || job2.status === status) && (!knowledge || `${job2.run_id} ${job2.model_name}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())));
     const index3 = filtered.findIndex((job2) => job2.run_id === selected);
     (0, import_react34.useEffect)(() => {
       if (index3 >= 0) setPage(Math.floor(index3 / 10) + 1);
     }, [selected, index3]);
     const current = Math.min(page, Math.max(1, Math.ceil(filtered.length / 10))), visible = filtered.slice((current - 1) * 10, current * 10);
-    const job = jobs.find((job2) => job2.run_id === selected) || visible[0];
+    const job = jobs.find((job2) => job2.run_id === selected) || (!knowledge ? visible[0] : void 0);
+    function open(item) {
+      workspace.updateView(pageId, { job: item.run_id });
+      setDrawerOpen(true);
+    }
     return /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)(
       "div",
       {
-        className: `iad-job-table ${exploration && job ? "iad-exploration-jobs-layout" : ""}`,
+        className: `iad-job-table ${knowledge ? "iad-knowledge-job-table" : exploration && job ? "iad-exploration-jobs-layout" : ""}`,
         children: [
           /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("label", { className: "iad-field iad-job-filter", children: [
             "\u4EFB\u52A1\u72B6\u6001",
             /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)(
               "select",
               {
+                ref: filter,
                 "aria-label": "\u4EFB\u52A1\u72B6\u6001",
                 value: status,
                 onChange: (event) => {
@@ -7364,6 +7443,13 @@ var __IadClientBundle__ = (() => {
                 ]
               }
             )
+          ] }),
+          knowledge && /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("label", { className: "iad-field iad-job-search", children: [
+            "\u641C\u7D22\u4EFB\u52A1",
+            /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("input", { type: "search", "aria-label": "\u641C\u7D22\u4EFB\u52A1", placeholder: "\u4EFB\u52A1 ID / \u6A21\u578B\u540D\u79F0", value: search, onChange: (event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            } })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("div", { className: "iad-table-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("table", { className: "iad-resource-table", "aria-label": "\u4F5C\u4E1A\u5217\u8868", children: [
@@ -7379,12 +7465,29 @@ var __IadClientBundle__ = (() => {
                   /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("th", { className: "iad-number", children: "\u5931\u8D25" })
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("th", { className: "iad-job-time", children: exploration ? "\u63D0\u4EA4\u65F6\u95F4" : "\u5F00\u59CB\u65F6\u95F4" }),
-                /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("th", { children: "\u64CD\u4F5C" })
+                !knowledge && /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("th", { children: "\u64CD\u4F5C" })
               ] }) }),
               /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("tbody", { children: visible.map((item) => /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)(
                 "tr",
                 {
                   "data-selected": job?.run_id === item.run_id,
+                  ref: (row) => {
+                    if (row) rows.current.set(item.run_id, row);
+                    else rows.current.delete(item.run_id);
+                  },
+                  tabIndex: knowledge ? 0 : void 0,
+                  "aria-selected": knowledge ? selected === item.run_id : void 0,
+                  "aria-haspopup": knowledge ? "dialog" : void 0,
+                  onClick: knowledge ? () => open(item) : void 0,
+                  onKeyDown: knowledge ? (event) => {
+                    if (event.key === "Enter" || event.key === " ") event.preventDefault();
+                  } : void 0,
+                  onKeyUp: knowledge ? (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      open(item);
+                    }
+                  } : void 0,
                   children: [
                     /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("td", { title: item.run_id, children: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("span", { className: "iad-identifier", children: item.run_id }) }),
                     !exploration && /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("td", { children: types[item.job_type] }),
@@ -7417,7 +7520,7 @@ var __IadClientBundle__ = (() => {
                         ).toLocaleString() : "\u672A\u63D0\u4F9B"
                       }
                     ) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(
+                    !knowledge && /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(
                       "button",
                       {
                         "aria-label": `\u67E5\u770B\u4F5C\u4E1A ${item.run_id}`,
@@ -7445,7 +7548,7 @@ var __IadClientBundle__ = (() => {
             ] }),
             !filtered.length && /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("p", { role: "status", children: "\u6CA1\u6709\u5339\u914D\u7684\u4F5C\u4E1A\u3002" })
           ] }),
-          job && /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("section", { "aria-label": "\u4F5C\u4E1A\u8BE6\u60C5", children: [
+          job && !knowledge && /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("section", { "aria-label": "\u4F5C\u4E1A\u8BE6\u60C5", children: [
             /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("h3", { children: "\u4F5C\u4E1A\u8BE6\u60C5" }),
             /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(
               JobDetail,
@@ -7458,7 +7561,8 @@ var __IadClientBundle__ = (() => {
               },
               job.run_id
             )
-          ] })
+          ] }),
+          knowledge && drawerOpen && job && /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(Modal, { title: "\u4F5C\u4E1A\u8BE6\u60C5", className: "iad-drawer iad-knowledge-job-drawer", onClose: () => setDrawerOpen(false), restoreFocus: () => rows.current.get(selected) || filter.current, children: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(JobDetail, { job, onChanged, stale, lastSyncedAt, onClose: () => setDrawerOpen(false), presentation: "drawer" }, job.run_id) })
         ]
       }
     );
@@ -9130,6 +9234,8 @@ var __IadClientBundle__ = (() => {
     const { workspace } = useWorkspace(), pageId = "industrial-exploration", view = workspace.view(pageId);
     const [catalog, setCatalog] = (0, import_react44.useState)(null), [revision, setRevision] = (0, import_react44.useState)(0);
     const [error2, setError] = (0, import_react44.useState)("");
+    const [summaryVersion, setSummaryVersion] = (0, import_react44.useState)("");
+    const summaryId = (0, import_react44.useId)();
     const [detail, setDetail] = (0, import_react44.useState)(null);
     const changed = (0, import_react44.useCallback)(() => setRevision((value) => value + 1), []);
     const jobs = useJobs(
@@ -9262,9 +9368,12 @@ var __IadClientBundle__ = (() => {
                 {
                   "aria-label": "\u63A2\u7D22\u7ED3\u679C\u7248\u672C",
                   value: result.version_id,
-                  onChange: (event) => workspace.updateView(pageId, {
-                    version: event.target.value
-                  }),
+                  onChange: (event) => {
+                    setSummaryVersion("");
+                    workspace.updateView(pageId, {
+                      version: event.target.value
+                    });
+                  },
                   children: catalog.versions.map((version) => /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("option", { value: version.version_id, children: [
                     version.created_at.slice(0, 19).replace("T", " "),
                     " \xB7",
@@ -9282,7 +9391,10 @@ var __IadClientBundle__ = (() => {
                 children: "\u67E5\u770B\u65B0\u53D1\u5E03\u7ED3\u679C"
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("p", { className: "iad-muted", children: result.summary }),
+            result.summary.trim() && /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "iad-exploration-summary", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("p", { id: summaryId, "aria-label": "\u63A2\u7D22\u6458\u8981", className: "iad-muted", "data-expanded": summaryVersion === result.version_id, children: result.summary }),
+              /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("button", { "aria-controls": summaryId, "aria-expanded": summaryVersion === result.version_id, onClick: () => setSummaryVersion((value) => value === result.version_id ? "" : result.version_id), children: summaryVersion === result.version_id ? "\u6536\u8D77\u63A2\u7D22\u6458\u8981" : "\u5C55\u5F00\u63A2\u7D22\u6458\u8981" })
+            ] }),
             result.directions.length ? /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("div", { className: "iad-table-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("table", { className: "iad-resource-table", "aria-label": "\u63A2\u7D22\u65B9\u5411", children: [
               /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("tr", { children: [
                 /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("th", { children: "\u65B9\u5411" }),
@@ -9303,10 +9415,18 @@ var __IadClientBundle__ = (() => {
                 ) })
               ] }, direction.direction_id)) })
             ] }) }) : /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("p", { children: "\u672C\u6279\u6837\u4F8B\u672A\u5F62\u6210\u53EF\u7528\u63A2\u7D22\u65B9\u5411\u3002" }),
-            !!result.limitations.length && /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("details", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("summary", { children: "\u6574\u4F53\u9650\u5236" }),
-              result.limitations.map((text, index3) => /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("p", { children: text }, index3))
-            ] })
+            !!result.limitations.length && /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("details", { className: "iad-exploration-limitations", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("summary", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("svg", { className: "iad-limit-chevron", "aria-hidden": "true", width: "17", height: "17", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", children: /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("path", { d: "m9 5 7 7-7 7" }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("strong", { children: "\u6574\u4F53\u9650\u5236" }),
+                /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("span", { className: "iad-muted", children: "\u63A2\u7D22\u7ED3\u8BBA\u7684\u9002\u7528\u8FB9\u754C\u4E0E\u5F85\u786E\u8BA4\u4E8B\u9879" }),
+                /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("span", { className: "iad-limit-count", children: [
+                  result.limitations.length,
+                  " \u9879"
+                ] })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("ol", { className: "iad-limit-list", children: result.limitations.map((text, index3) => /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("li", { children: text }, index3)) })
+            ] }, result.version_id)
           ] })
         }
       ),
@@ -9399,7 +9519,7 @@ var __IadClientBundle__ = (() => {
         setBusy(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("section", { className: "iad-job-section", "aria-label": "\u8FDE\u7EED\u6765\u6E90\u8303\u56F4", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("section", { className: "iad-job-section iad-knowledge-scope", "aria-label": "\u8FDE\u7EED\u6765\u6E90\u8303\u56F4", children: [
       /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("div", { className: "iad-row", children: [
         /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("h2", { children: "\u8FDE\u7EED\u8303\u56F4" }),
         scope && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("span", { "data-field": "knowledge-scope-state", children: scope.status === "STOPPED" ? "\u5DF2\u505C\u6B62" : scope.active_run_ids.length ? "\u6267\u884C\u4E2D" : !scope.unprocessed ? "\u89C2\u5BDF\u5B8C\u6210" : "\u5F85\u7EE7\u7EED" })
@@ -9407,17 +9527,20 @@ var __IadClientBundle__ = (() => {
       error2 && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
       !scope && !error2 && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u8303\u56F4\u2026" }),
       scope && /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)(import_jsx_runtime51.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("p", { role: "status", "aria-atomic": "true", "aria-label": "\u8FDE\u7EED\u8303\u56F4\u8FDB\u5EA6", children: [
-          "\u5DF2\u89C2\u5BDF ",
-          scope.observed,
-          " / ",
-          scope.total,
-          " \xB7 \u5269\u4F59 ",
-          scope.remaining,
-          !!scope.pending_review && ` \xB7 \u5F85\u4EBA\u5BA1 ${scope.pending_review}`,
-          !!scope.stale && ` \xB7 \u6765\u6E90\u5931\u6548 ${scope.stale}`,
-          !!scope.recheck && ` \xB7 \u5224\u636E\u5F85\u91CD\u6838\u9A8C ${scope.recheck}`,
-          !!scope.excluded && ` \xB7 \u5DF2\u79FB\u51FA\u652F\u6301 ${scope.excluded}`
+        /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("div", { className: "iad-scope-progress", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("p", { role: "status", "aria-atomic": "true", "aria-label": "\u8FDE\u7EED\u8303\u56F4\u8FDB\u5EA6", children: [
+            "\u5DF2\u89C2\u5BDF ",
+            scope.observed,
+            " / ",
+            scope.total,
+            " \xB7 \u5269\u4F59 ",
+            scope.remaining,
+            !!scope.pending_review && ` \xB7 \u5F85\u4EBA\u5BA1 ${scope.pending_review}`,
+            !!scope.stale && ` \xB7 \u6765\u6E90\u5931\u6548 ${scope.stale}`,
+            !!scope.recheck && ` \xB7 \u5224\u636E\u5F85\u91CD\u6838\u9A8C ${scope.recheck}`,
+            !!scope.excluded && ` \xB7 \u5DF2\u79FB\u51FA\u652F\u6301 ${scope.excluded}`
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("progress", { "aria-label": "\u6765\u6E90\u89C2\u5BDF\u8FDB\u5EA6", max: scope.total || 1, value: scope.observed })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("div", { className: "iad-row", children: [
           /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("button", { disabled: busy, onClick: () => void change(scope.status === "STOPPED" ? "resume" : "stop"), children: scope.status === "STOPPED" ? "\u7EE7\u7EED\u8303\u56F4" : "\u505C\u6B62\u8303\u56F4" }),
@@ -10555,7 +10678,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
         ] }) }),
         view.tab === "jobs" && /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)("section", { className: "iad-knowledge-jobs iad-job-section", children: [
           /* @__PURE__ */ (0, import_jsx_runtime56.jsx)("h2", { children: "\u6316\u6398\u4F5C\u4E1A" }),
-          /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(JobTable, { jobs, pageId, onChanged: polling.refresh })
+          /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(JobTable, { jobs, pageId, onChanged: polling.refresh, stale: polling.syncState === "stale", lastSyncedAt: polling.lastSyncedAt }, dataset.dataset_id + kind)
         ] })
       ] }),
       lightbox && /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(ImageViewer, { image: lightbox, onClose: () => setLightbox(null) })
@@ -10662,6 +10785,9 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
 .iad-exploration-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.iad-exploration-groups>section+section{border-left:1px solid var(--iad-border);padding-left:24px!important}.iad-exploration-groups h3{margin:0 0 14px}.iad-exploration-groups fieldset{border:0;padding:0;min-width:0}.iad-exploration-page textarea{width:100%}.iad-prompt-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.iad-prompt-controls>.iad-field{flex:1 1 220px;margin:0}.iad-prompt-controls+label{margin-top:20px}
 .iad-exploration-page .iad-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:280px;padding:40px 24px;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:var(--iad-radius)}.iad-exploration-page .iad-empty h2{margin:0;color:var(--iad-text)}.iad-exploration-page .iad-empty p{max-width:480px}.iad-exploration-page .iad-empty button{margin-top:8px}
 .iad-exploration-results{min-width:0}.iad-exploration-results>.iad-muted{margin-bottom:20px}.iad-exploration-results>.iad-table-scroll{background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:var(--iad-radius)}
+.iad-exploration-summary{margin-bottom:20px}.iad-exploration-summary>p{line-height:1.8;overflow-wrap:anywhere}.iad-exploration-summary>p[data-expanded=false]{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}.iad-exploration-summary>button{min-height:28px;padding:4px 0;border:0;background:transparent;color:var(--iad-primary);font-size:.8125rem}
+.iad-exploration-results .iad-section-header>select{min-width:260px;max-width:100%}.iad-exploration-results .iad-resource-table th:nth-child(2){width:20%}.iad-exploration-results .iad-resource-table th:nth-child(3){width:80px}.iad-exploration-results .iad-resource-table th:last-child{width:160px}.iad-exploration-results .iad-resource-table td{padding:12px 16px}.iad-exploration-results .iad-resource-table td:first-child{overflow-wrap:anywhere}
+.iad-exploration-limitations{margin-top:18px;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:var(--iad-radius);overflow:hidden}.iad-exploration-limitations>summary{list-style:none;display:flex;align-items:center;gap:13px;min-height:54px;padding:0 18px;cursor:pointer;user-select:none}.iad-exploration-limitations>summary::-webkit-details-marker{display:none}.iad-exploration-limitations>summary:hover{background:var(--iad-hover)}.iad-exploration-limitations>summary:focus-visible{outline:2px solid var(--iad-primary);outline-offset:-2px}.iad-exploration-limitations>summary>.iad-muted,.iad-limit-count{font-size:.75rem;color:var(--iad-muted)}.iad-limit-count{margin-left:auto;white-space:nowrap}.iad-limit-chevron{flex:none;color:var(--iad-muted);transition:transform .15s ease}.iad-exploration-limitations[open] .iad-limit-chevron{transform:rotate(90deg)}.iad-limit-list{list-style:none;counter-reset:iad-limitation;margin:0;padding:0 18px;border-top:1px solid var(--iad-border)}.iad-limit-list>li{counter-increment:iad-limitation;display:grid;grid-template-columns:115px minmax(0,1fr);gap:14px;padding:13px 0;line-height:1.8;color:var(--iad-muted);overflow-wrap:anywhere}.iad-limit-list>li::before{content:counter(iad-limitation,decimal-leading-zero);font-weight:600}.iad-limit-list>li+li{border-top:1px solid var(--iad-border)}
 .iad-exploration-jobs-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,38%);gap:24px;align-items:start}.iad-exploration-jobs-layout>.iad-job-filter{grid-column:1/-1}.iad-job-stage{display:block;white-space:normal;margin-top:6px;color:var(--iad-muted)}.iad-execution-stages{list-style:none;display:grid;gap:20px;padding:0;margin:24px 0}.iad-execution-stages li{display:flex;gap:12px;color:var(--iad-muted);align-items:start}.iad-execution-stages li>span{display:grid;place-items:center;width:24px;height:24px;flex:none;border:1px solid var(--iad-border);border-radius:50%;font-size:12px}.iad-execution-stages strong{display:block;font-weight:500}.iad-execution-stages small{display:block;margin-top:4px}.iad-execution-stages li[data-state=current]{color:var(--iad-text)}.iad-execution-stages li[data-state=current]>span{background:var(--iad-primary-fill);color:var(--iad-on-primary);border-color:var(--iad-primary-fill)}.iad-execution-stages li[data-state=done]>span{color:var(--iad-success);border-color:var(--iad-success)}
 .iad-indeterminate{height:4px;overflow:hidden;border-radius:3px;background:var(--iad-border);margin:20px 0}.iad-indeterminate span{display:block;width:30%;height:100%;background:var(--iad-primary-fill);animation:iad-exploration-wait 1.8s linear infinite}.iad-indeterminate.is-stale span{animation-play-state:paused;background:var(--iad-muted)}@keyframes iad-exploration-wait{from{transform:translateX(-100%)}to{transform:translateX(433%)}}
 @container workbench (max-width:1180px){.iad-exploration-setup-layout{grid-template-columns:minmax(0,1fr) 320px}.iad-exploration-jobs-layout{grid-template-columns:minmax(0,1fr)}.iad-execution-stages{grid-template-columns:repeat(4,minmax(0,1fr))}.iad-execution-stages li{flex-direction:column}}
@@ -10769,10 +10895,14 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
 .iad-retry-scope {margin-top:12px;display:grid;gap:10px;}.iad-retry-scope fieldset {min-width:0;border:0;padding:0;margin:0;}.iad-retry-scope legend {margin-bottom:8px;}
 .iad-retry-samples {max-height:260px;overflow:auto;display:grid;gap:8px;}.iad-retry-samples label {display:flex;align-items:center;gap:8px;padding:8px;background:var(--iad-surface);border-radius:6px;}.iad-retry-samples input {flex:0 0 auto;}.iad-retry-samples span {flex:1;min-width:0;overflow-wrap:anywhere;}
 .iad-job progress {width:100%;height:7px;accent-color:var(--iad-primary);}.iad-job small {overflow-wrap:anywhere;}
+
+.iad-knowledge-job-table{display:grid;grid-template-columns:180px minmax(200px,340px) minmax(0,1fr);gap:0 14px}.iad-knowledge-job-table>.iad-field{margin:0 0 18px}.iad-job-search input{width:100%}.iad-knowledge-job-table>div{grid-column:1/-1;min-width:0}.iad-knowledge-job-table table{table-layout:fixed;width:100%}.iad-knowledge-job-table th:first-child{width:31%}.iad-knowledge-job-table th:nth-child(2){width:13%}.iad-knowledge-job-table th:nth-child(3){width:13%}.iad-knowledge-job-table th:nth-child(4){width:15%}.iad-knowledge-job-table th:nth-child(5){width:10%}.iad-knowledge-job-table th:last-child{width:18%}.iad-knowledge-job-table .iad-identifier{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.iad-knowledge-job-table tbody tr{cursor:pointer}.iad-knowledge-job-table tbody tr:hover{background:var(--iad-hover)}.iad-knowledge-job-table tr[aria-selected=true]{background:var(--iad-hover);box-shadow:inset 3px 0 var(--iad-primary)}.iad-knowledge-job-table tr:focus-visible{outline:2px solid var(--iad-primary);outline-offset:-2px}
+.iad-detail-dialog.iad-drawer.iad-knowledge-job-drawer{position:fixed;inset:0 0 0 auto;margin:0;max-width:100vw;max-height:100dvh;display:flex;flex-direction:column;width:min(620px,100vw);padding:0;overflow:hidden}.iad-knowledge-job-drawer>.iad-dialog-header{position:static;flex:none;margin:0;padding:20px 24px;border-bottom:1px solid var(--iad-border)}.iad-knowledge-job-drawer>.iad-job{flex:1;min-height:0;display:flex;flex-direction:column;margin:0;padding:20px 24px 0;background:var(--iad-surface);outline:none;border-radius:0}.iad-job-identifier{font-size:.75rem;color:var(--iad-muted);margin-bottom:14px!important}.iad-job-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--iad-border);border-radius:var(--iad-radius);margin:20px 0}.iad-job-metrics>div{display:grid;gap:8px;padding:12px 14px;min-width:0}.iad-job-metrics>div+div{border-left:1px solid var(--iad-border)}.iad-job-metrics span,.iad-job-metrics small{font-size:.75rem;color:var(--iad-muted)}.iad-job-metrics strong{font-size:1.375rem}.iad-knowledge-job-drawer .iad-tabs{margin-bottom:16px}.iad-job-detail-body{min-height:0}.iad-knowledge-job-drawer .iad-job>.iad-tab-panel{display:flex;flex-direction:column;min-height:0;flex:1}.iad-knowledge-job-drawer .iad-job-detail-body{flex:1;overflow:auto;overscroll-behavior:contain;padding-bottom:20px}.iad-knowledge-job-drawer .iad-job-detail-body>section>progress{margin:12px 0}.iad-job-detail-body dl{display:grid;grid-template-columns:90px minmax(0,1fr);gap:12px}.iad-job-detail-body dd{margin:0;overflow-wrap:anywhere}.iad-job-progress-card{padding:14px 16px;border:1px solid var(--iad-border);border-radius:var(--iad-radius);margin:0 0 14px}.iad-job-progress-card>p{display:flex;justify-content:space-between;gap:12px;font-size:.8125rem}.iad-job-progress-card progress{margin-top:10px}.iad-job-footer{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}.iad-knowledge-job-drawer .iad-job-footer{flex:none;padding:16px 0;border-top:1px solid var(--iad-border)}.iad-job-footer .iad-action-end{margin-left:0}
+.iad-knowledge-scope{display:flex;align-items:center;flex-wrap:wrap;gap:16px 24px}.iad-knowledge-scope h2{margin:0;font-size:1rem}.iad-knowledge-scope>.iad-row:last-child{margin-left:auto}.iad-scope-progress{flex:1;min-width:220px}.iad-scope-progress p{font-size:.8125rem;color:var(--iad-muted)}.iad-scope-progress progress{width:100%;height:5px;accent-color:var(--iad-primary)}
 `;
 
   // src/client/styles/overlays.ts
-  var overlaysStyles = `.iad-viewer-hint{margin:0;padding:8px 20px;flex:none;border-top:1px solid var(--iad-control-border);color:color-mix(in srgb,var(--iad-on-viewer) 75%,var(--iad-viewer));font-size:.75rem;background:var(--iad-viewer)}.iad-viewer-zoom,.iad-viewer-navigation{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.iad-viewer-evidence-group h4{font-size:.75rem;color:var(--iad-muted);font-weight:500;margin:16px 0 8px}.iad-viewer-heading{flex:1;min-width:160px;overflow:hidden}.iad-viewer-heading strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.iad-viewer-heading small{display:block;margin-top:4px;font-size:.75rem;color:var(--iad-muted)}
+  var overlaysStyles = `.iad-viewer-hint{margin:0;padding:8px 20px;flex:none;border-top:1px solid var(--iad-control-border);color:color-mix(in srgb,var(--iad-on-viewer) 75%,var(--iad-viewer));font-size:.75rem;background:var(--iad-viewer)}.iad-viewer-zoom{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.iad-viewer-evidence-group h4{font-size:.75rem;color:var(--iad-muted);font-weight:500;margin:16px 0 8px}.iad-viewer-heading{flex:1;min-width:160px;overflow:hidden}.iad-viewer-heading strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.iad-viewer-heading small{display:block;margin-top:4px;font-size:.75rem;color:var(--iad-muted)}
 .iad-viewer-dialog .iad-lightbox{padding:0}.iad-lightbox>.iad-lightbox-toolbar{padding:12px 20px;gap:12px;border-bottom:1px solid var(--iad-control-border);background:var(--iad-surface);color:var(--iad-text)}.iad-lightbox>.iad-viewer-body{margin:0;gap:0}.iad-viewer-body.has-context{grid-template-columns:minmax(0,1fr) 288px}.iad-viewer-aux{min-width:0;min-height:0;overflow:auto}.iad-viewer-aux>.iad-inspection-panel{height:100%;border-radius:0}.iad-viewer-context{padding:24px 20px;background:var(--iad-surface);color:var(--iad-text);height:100%;border-left:1px solid var(--iad-control-border);overflow:auto}.iad-viewer-context h3{font-size:.875rem;margin:0 0 10px}.iad-viewer-context p{font-size:.75rem;line-height:1.8;overflow-wrap:anywhere;color:var(--iad-muted)}.iad-viewer-context section,.iad-viewer-context details{margin-top:20px;padding-top:20px;border-top:1px solid var(--iad-border)}.iad-viewer-context dl{font-size:.75rem;overflow-wrap:anywhere}.iad-viewer-context dd{margin-left:0}.iad-viewer-thumbnails{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0 20px}.iad-viewer-thumbnails button{display:grid;gap:5px;padding:3px;min-width:0;font-size:.6875rem}.iad-viewer-thumbnails img{width:100%;height:80px;object-fit:contain;background:var(--iad-surface-muted)}.iad-viewer-thumbnails button[aria-current=true]{outline:2px solid var(--iad-primary);outline-offset:1px;background:var(--iad-hover)}
 
 .iad-lightbox {position:fixed;inset:0;z-index:10000;background:var(--iad-viewer);display:flex;flex-direction:column;padding:20px;}
@@ -12146,11 +12276,9 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
   // src/client/host/IndustrialSidebar.tsx
   var import_react58 = __toESM(__require("react"), 1);
   var import_jsx_runtime63 = __require("react/jsx-runtime");
-  function IndustrialSidebar({ wide, panels, renderPanel, renderWorkspaces, usePanelInfo }) {
-    const active = usePanelInfo((info) => info.activePanelId);
-    const [sessionsOpen, setSessionsOpen] = (0, import_react58.useState)(!active);
+  function IndustrialSidebar({ wide, panels, renderPanel, renderWorkspaces }) {
+    const [sessionsOpen, setSessionsOpen] = (0, import_react58.useState)(true);
     const workspacesId = (0, import_react58.useId)();
-    (0, import_react58.useEffect)(() => setSessionsOpen(!active), [active]);
     const business = panels.filter((panel) => panel.id in navigation && navigation[panel.id].chapter !== "\u5DE5\u5177");
     const auxiliary = panels.filter((panel) => !business.includes(panel));
     return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: `iad-sidebar-content ${wide ? "iad-sidebar-wide" : "iad-sidebar-rail"}`, children: [
@@ -12163,6 +12291,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
       .iad-sidebar-disclosure{display:flex;align-items:center;gap:6px;flex:none;min-height:36px;padding:8px 10px;cursor:pointer;background:transparent;border:0;text-align:left;font:inherit;color:var(--dsw-alias-label-secondary)}
       .iad-sidebar-disclosure:focus-visible{outline:2px solid var(--dsw-focus-ring-color);outline-offset:-2px}
       .iad-native-workspace-content{min-height:0;overflow:hidden;flex:1}.iad-native-workspace-content:not([hidden]){display:flex;flex-direction:column}
+      .iad-sidebar-wide>nav{flex:1 1 0;overscroll-behavior:contain}.iad-sidebar-wide>nav>section{flex:none}.iad-sidebar-wide>.iad-sidebar-sessions[data-open=true]{flex:1 1 0}
       .iad-sidebar-tools{margin-top:auto;flex:none}.iad-sidebar-rail{gap:12px}.iad-sidebar-rail>nav{gap:12px}
     ` }),
       /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("nav", { "aria-label": "\u5DE5\u4E1A\u5DE5\u4F5C\u53F0\u5BFC\u822A", children: ["\u6570\u636E\u51C6\u5907", "\u77E5\u8BC6\u6784\u5EFA", "\u8D28\u91CF\u5BA1\u6838"].map((chapter) => /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { "aria-label": chapter, children: [

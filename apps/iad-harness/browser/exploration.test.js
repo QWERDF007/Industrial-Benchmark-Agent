@@ -7,7 +7,7 @@ import http from 'node:http';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
-import {Builder,By,until} from 'selenium-webdriver';
+import {Builder,By,Key,until} from 'selenium-webdriver';
 import firefox from 'selenium-webdriver/firefox.js';
 import {viewport,textZoom} from './workbench-layout.js';
 import {PythonBridge,createIadHttpHandler} from '../lib/server/index.js';
@@ -47,7 +47,7 @@ test('mixed exploration is preserved on refresh and directions feed the next min
    else{
     generated.push(b);const ids=b.messages[0].content.filter(v=>v.type==='text'&&v.text.startsWith('视觉证据：')).map(v=>JSON.parse(v.text.slice(5)).evidence_id);
     if(b.response_format.json_schema.name==='DirectionDraft')await waitingExploration;
-    answer=b.response_format.json_schema.name==='DirectionDraft'?{summary:'两组样例提出方向',directions:[{title:'孔位与背景对照',instruction:'结合孔位比较背景遮挡与反光',applies_to:'both',rationale:`对照 ${ids[0]} 与 ${ids[20]}，保留未知引用 unknown-evidence-id。`,evidence_ids:[...ids.slice(0,3),...ids.slice(20,25)],limitations:['合成图']},{title:'异常局部破损',instruction:'观察异常样例的局部破损',applies_to:'defect',rationale:'异常组的可见线索',evidence_ids:[ids[20]],limitations:['仅适用于异常知识']}],limitations:[]}
+    answer=b.response_format.json_schema.name==='DirectionDraft'?{summary:'两组样例的完整探索摘要。'.repeat(100),directions:[{title:'孔位与背景对照',instruction:'结合孔位比较背景遮挡与反光',applies_to:'both',rationale:`对照 ${ids[0]} 与 ${ids[20]}，保留未知引用 unknown-evidence-id。`,evidence_ids:[...ids.slice(0,3),...ids.slice(20,25)],limitations:['合成图']},{title:'异常局部破损',instruction:'观察异常样例的局部破损',applies_to:'defect',rationale:'异常组的可见线索',evidence_ids:[ids[20]],limitations:['仅适用于异常知识']}],limitations:['合成样例不代表质量真值','成像条件需要核对','标注规范待确认','只依据可见区域','需要人工确认方向']}
     :{summary:'孔内背景知识',checks:[{title:'孔内背景',subject:'孔',location:'主体',criterion:'可见背景',allowed_variations:[],limitations:[],status:'supported',support_evidence_ids:ids,counter_evidence_ids:[]}],suspects:[],limitations:[]};
     if(b.response_format.json_schema.name==='JointAnalysis'){
       const view={description:'当前图像支持可见结构',position_analysis:'主体位置',illumination_analysis:'均匀照明'};
@@ -70,7 +70,7 @@ test('mixed exploration is preserved on refresh and directions feed the next min
  let driver;
  try{
   const response=await fetch(base+'/api/iad/datasets/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({format:'labelme',name:'方向探索浏览器',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')})});assert.equal(response.status,200);const dataset=await response.json();
-  const options=new firefox.Options().addArguments('-headless').setPreference('browser.cache.disk.enable',false).setPreference('browser.cache.memory.enable',false);if(process.env.FIREFOX_PATH)options.setBinary(process.env.FIREFOX_PATH);
+  const options=new firefox.Options().addArguments('-headless').setPreference('ui.primaryPointerCapabilities',6).setPreference('browser.cache.disk.enable',false).setPreference('browser.cache.memory.enable',false);if(process.env.FIREFOX_PATH)options.setBinary(process.env.FIREFOX_PATH);
   driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
   const el=css=>driver.wait(until.elementLocated(By.css(css)),8000);
   const click=async text=>{const button=await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}' or @aria-label='${text}']`)),8000);await driver.wait(until.elementIsEnabled(button),8000);await button.click();};
@@ -97,7 +97,18 @@ test('mixed exploration is preserved on refresh and directions feed the next min
   await(await el('button[aria-label="关闭新建模型审计"]')).click();
   await viewport(driver,1366,768);await click('人工复核');await el('.iad-review-focused .iad-viewer-viewport');
   assert.equal((await driver.findElements(By.css('dialog[open]'))).length,0,'复核直接使用嵌入画布');
+  assert.equal((await driver.findElements(By.css('.iad-review-focused .iad-viewer-edge-button'))).length,2,'人工复核画布也使用边缘悬浮切图');
+  assert.equal((await driver.findElements(By.css('.iad-review-focused .iad-image-step'))).length,0,'人工复核画布移除顶部文字切图');
   assert.equal((await driver.findElements(By.css('.iad-decision input[type=radio]'))).length,5,'保留五种人工裁决');
+  const reviewImage=()=>driver.findElement(By.css('.iad-review-focused .iad-image-frame img')).getAttribute('src');
+  const beforeReview=await reviewImage();
+  const nextImage=await el('.iad-review-focused button[aria-label="下一张图像"]');
+  await driver.actions().move({origin:nextImage}).perform();
+  await fs.mkdir(path.resolve(app,'../../runs/browser/ui-workbench'),{recursive:true});
+  await fs.writeFile(path.resolve(app,'../../runs/browser/ui-workbench/review-edge-right-1920.png'),await driver.takeScreenshot(),'base64');
+  await nextImage.click();await driver.wait(async()=>(await reviewImage())!==beforeReview,5000);
+  await(await el('.iad-review-focused button[aria-label="上一张图像"]')).click();await driver.wait(async()=>(await reviewImage())===beforeReview,5000);
+
   const focusLayout=await driver.executeScript("const c=document.querySelector('.iad-review-focused .iad-viewer-viewport').getBoundingClientRect(),b=document.querySelector('.iad-decision button[type=submit]').getBoundingClientRect();return {canvas:[c.width,c.height],submit:[b.top,b.bottom],height:innerHeight}");
   assert.ok(focusLayout.canvas[0]>300&&focusLayout.canvas[1]>200,JSON.stringify(focusLayout));assert.ok(focusLayout.submit[0]>=0&&focusLayout.submit[1]<=focusLayout.height,'1366×768当前图和提交入口同时可见');
   await fs.mkdir(path.resolve(app,'../../runs/browser/ui-workbench'),{recursive:true});await fs.writeFile(path.resolve(app,'../../runs/browser/ui-workbench/review-1366.png'),await driver.takeScreenshot(),'base64');
@@ -174,6 +185,25 @@ test('mixed exploration is preserved on refresh and directions feed the next min
   assert.equal(await(await el('textarea[aria-label="提示词正文"]')).getAttribute('value'),newDraft,'旧任务完成不覆盖新草稿或切换视图');
   await click('返回探索结果');await driver.wait(async()=>(await driver.findElements(By.css('table[aria-label="探索方向"] tbody tr'))).length===2,10000);
   assert.equal((await driver.findElements(By.css('table[aria-label="探索方向"] tbody tr'))).length,2,'按 HTML 用紧凑方向表呈现结果');
+  const limits=await el('details.iad-exploration-limitations');
+  assert.equal(await limits.getAttribute('open'),null,'整体限制默认收起');
+  assert.match(await limits.findElement(By.css('summary')).getText(),/5 项/);
+  await limits.findElement(By.css('summary')).sendKeys(Key.ENTER);
+  assert.equal((await limits.findElements(By.css('ol li'))).length,5);
+  await limits.findElement(By.css('summary')).sendKeys(Key.SPACE);
+  await driver.wait(async()=>!(await limits.getAttribute('open')),2000);
+  const summary=await el('[aria-label="探索摘要"]');
+  assert.ok((await summary.getText()).length>200);
+  const collapsed=await summary.getRect();await click('展开探索摘要');
+  assert.ok((await summary.getRect()).height>collapsed.height);await click('收起探索摘要');
+  for(const width of [1366,1792,1920]){
+    await viewport(driver,width,1080);
+    assert.ok(await driver.executeScript('const e=document.querySelector(".iad-exploration-results");return e.scrollWidth<=e.clientWidth+1'));
+    await fs.writeFile(path.resolve(app,`../../runs/browser/ui-workbench/exploration-results-${width}.png`),await driver.takeScreenshot(),'base64');
+  }
+  await limits.findElement(By.css('summary')).click();
+  await fs.writeFile(path.resolve(app,'../../runs/browser/ui-workbench/exploration-limits-1920.png'),await driver.takeScreenshot(),'base64');
+  await limits.findElement(By.css('summary')).click();
   assert.equal(generated.length,1);assert.equal(generated[0].messages[0].content.filter(v=>v.type==='image_url').length,40);assert.ok(generated[0].messages[0].content[0].text.startsWith(executionText));
   const originalExploration=(await(await fetch(base+`/api/iad/exploration?dataset_id=${dataset.dataset_id}`)).json()).exploration;
   unavailableEvidence=`/api/iad/exploration/evidence/${originalExploration.version_id}/${originalExploration.directions[0].evidence_ids[0]}`;
@@ -257,8 +287,23 @@ test('mixed exploration is preserved on refresh and directions feed the next min
   assert.equal(media.slice(mediaBefore).filter(url=>url.split('?')[0].endsWith('/image')).length,0,'分页选图不下载整库原图');assert.equal(generated.length,beforeVolumeCalls,'查看来源不发起模型调用');
   execFileSync(bridge.pythonPath,[path.join(app,'test/fixtures/ui_history.py'),path.join(root,'test.db'),large.dataset_id]);
   await click('返回知识结果');await click('作业记录');await driver.wait(async()=>(await driver.findElements(By.css('table[aria-label="作业列表"] tbody tr'))).length===10,10000);
-  assert.equal((await driver.findElements(By.css('.iad-job[data-job-id]'))).length,1,'千条历史只挂载一份详情');
+  assert.equal((await driver.findElements(By.css('.iad-job[data-job-id]'))).length,0,'千条历史不自动打开详情');
   assert.equal((await(await fetch(base+`/api/iad/knowledge/jobs?dataset_id=${large.dataset_id}`)).json()).jobs.length,30,'复用服务既有列表上限');
+  await click('下一页');
+  const firstVolume=await el('table[aria-label="作业列表"] tbody td[title]');
+  const volumeJobId=await firstVolume.getAttribute('title');
+  await firstVolume.click();await el('dialog[aria-label="作业详情"]');
+  await driver.actions().sendKeys(Key.ESCAPE).perform();
+  assert.equal(await(await el('table[aria-label="作业列表"] tbody td[title]')).getAttribute('title'),volumeJobId,'关闭抽屉保留当前分页');
+  const jobSearch=await el('input[aria-label="搜索任务"]');await jobSearch.sendKeys(volumeJobId);
+  await driver.wait(async()=>(await driver.findElements(By.css('table[aria-label="作业列表"] tbody tr'))).length===1,5000);
+  await(await el('table[aria-label="作业列表"] tbody td[title]')).click();await el('dialog[aria-label="作业详情"]');
+  await driver.actions().sendKeys(Key.ESCAPE).perform();
+  assert.equal(await jobSearch.getAttribute('value'),volumeJobId,'关闭抽屉保留搜索');
+  await(await el('select[aria-label="任务状态"] option[value="COMPLETED"]')).click();
+  await driver.wait(async()=>(await driver.findElements(By.css('table[aria-label="作业列表"] tbody tr'))).length===0,5000);
+  await fs.writeFile(path.resolve(app,'../../runs/browser/ui-workbench/knowledge-jobs-filter-empty.png'),await driver.takeScreenshot(),'base64');
+
 
  }catch(error){
   if(driver){await fs.writeFile(path.resolve(app,'../../runs/browser/ui-workbench/exploration-failure.png'),await driver.takeScreenshot(),'base64');console.error(JSON.stringify({location:await driver.getCurrentUrl(),generated:generated.length,counts:generated.reduce((counts,item)=>{const schema=item.response_format.json_schema.name;counts[schema]=(counts[schema]||0)+1;return counts;},{}),page:(await driver.findElement(By.css('body')).getText()).slice(-1800)}));}

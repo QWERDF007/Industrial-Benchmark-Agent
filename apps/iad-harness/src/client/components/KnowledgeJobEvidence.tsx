@@ -4,8 +4,8 @@ import type { KnowledgeTracePage } from "../../shared/domain.generated.js";
 import { message, request } from "../api.js";
 import { ImageViewer, type ImageSource } from "./ImageViewer.js";
 
-export function KnowledgeJobEvidence({ job }: { job: JobSnapshot }) {
-  const [open, setOpen] = useState(false), [page, setPage] = useState(1);
+export function KnowledgeJobEvidence({ job, initiallyOpen = false }: { job: JobSnapshot; initiallyOpen?: boolean }) {
+  const [open, setOpen] = useState(initiallyOpen), [page, setPage] = useState(1);
   const [result, setResult] = useState<KnowledgeTracePage | null>(null), [error, setError] = useState("");
   const [image, setImage] = useState<ImageSource | null>(null);
   useEffect(() => {
@@ -16,7 +16,7 @@ export function KnowledgeJobEvidence({ job }: { job: JobSnapshot }) {
       .catch(error => { if (!controller.signal.aborted) setError(message(error)); });
     return () => controller.abort();
   }, [open, page, job.run_id, job.status, job.observation_progress?.observed_visuals]);
-  return <details onToggle={event => setOpen(event.currentTarget.open)}><summary>观察证据</summary>
+  return <details open={open} onToggle={event => setOpen(event.currentTarget.open)}><summary>观察证据</summary>
     {job.mining_prompt && <details><summary>本次冻结挖掘提示词</summary><pre className="iad-observation">{job.mining_prompt.instruction}</pre></details>}
     {error && <p role="alert" className="iad-error">{error}</p>}
     {open && !result && !error && <p role="status">正在读取冻结观察…</p>}

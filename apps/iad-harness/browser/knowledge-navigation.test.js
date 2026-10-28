@@ -7,8 +7,9 @@ import http from 'node:http';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
-import { Builder, By, until } from 'selenium-webdriver';
+import { Builder, By, Key, until } from 'selenium-webdriver';
 import firefox from 'selenium-webdriver/firefox.js';
+import {viewport} from './workbench-layout.js';
 import { PythonBridge, createIadHttpHandler } from '../lib/server/index.js';
 
 const app = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -27,7 +28,7 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     createRoot(document.getElementById('root')).render(<App/>);
   `,loader:'tsx',resolveDir:app},bundle:true,format:'iife',write:false,target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
   const api = createIadHttpHandler(bridge);
-  const starts=[]; let contradict=false, alterCriterion=false;
+  const starts=[]; let contradict=false, alterCriterion=false, failGeneration=false;
   let delaySavedResponse=false,savedResponseReady=false,releaseSavedResponse;
   const previous={capacity:process.env.LIVE_VLM_CAPACITY_MODE,endpoint:process.env.LIVE_VLM_ENDPOINT,model:process.env.LIVE_VLM_MODEL};
   const server=http.createServer(async(req,res)=>{
@@ -39,6 +40,7 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
       for await(const chunk of req){}res.setHeader('Content-Type','application/json');res.end(JSON.stringify({count:1000,max_model_len:32768}));
     }else if(req.url==='/model/v1/chat/completions'){
       let body='';for await(const chunk of req)body+=chunk;const value=JSON.parse(body);
+      if(failGeneration){res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:{message:'本机验收模型请求失败'}}));return;}
       const evidence=value.messages[0].content.filter(p=>p.type==='text'&&p.text.startsWith('视觉证据：')).map(p=>JSON.parse(p.text.slice(5)));
       if(value.response_format.json_schema.name==='KnowledgeRecheckResult'){
         const scope=JSON.parse(value.messages[0].content[0].text.split('人工处置重核验：')[1].split('\n请根据图像')[0]);
@@ -159,13 +161,29 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     await element('input[aria-label="启用方向 平面蓝色观察"]');
     await click('保存方向');
     await driver.wait(async()=>!(await(await element('button[data-action="save-mining-directions"]')).isEnabled()),5000);
-    await click('返回知识结果');await click('作业记录');await element('table[aria-label="作业列表"]');await(await element('.iad-knowledge-jobs summary')).click();
+    await click('返回知识结果');await click('作业记录');await element('table[aria-label="作业列表"]');
+    const headers=await driver.findElements(By.css('table[aria-label="作业列表"] thead th'));
+    assert.deepEqual(await Promise.all(headers.map(e=>e.getText())),['任务','类型','状态','完成 / 总数','失败','开始时间']);
+    assert.equal((await driver.findElements(By.css('[aria-label="作业详情"]'))).length,0,'默认无作业详情');
+    const jobRow=await element('table[aria-label="作业列表"] tbody tr');
+    await jobRow.sendKeys(Key.ENTER);await element('dialog[aria-label="作业详情"]');
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    assert.equal(await driver.executeScript('return document.activeElement.tagName'),'TR');
+    await jobRow.sendKeys(Key.SPACE);await element('dialog[aria-label="作业详情"]');
+    await fs.mkdir(path.resolve(app,'../../runs/browser/ui-workbench'),{recursive:true});
+    for(const width of [1366,1792,1920]){
+      await viewport(driver,width,1080);
+      const size=await driver.executeScript('const e=document.querySelector("dialog[aria-label=作业详情]"),r=e.getBoundingClientRect();return {width:r.width,right:r.right,viewport:document.documentElement.clientWidth,overflow:e.scrollWidth-e.clientWidth}');
+      assert.ok(size.width>=520&&size.width<=620&&Math.abs(size.right-size.viewport)<=1&&size.overflow<=1,JSON.stringify(size));
+      await fs.writeFile(path.resolve(app,`../../runs/browser/ui-workbench/knowledge-drawer-${width}.png`),await driver.takeScreenshot(),"base64");
+    }
+    await click('观察证据');
     await element('button[title="放大冻结观察证据"]');
     await(await element('button[title="放大冻结观察证据"]')).click();
     await element('.iad-viewer-world img');await click('关闭');
     assert.equal(starts.length,1,'Inspecting frozen observations never starts another model job');
 
-    await click('知识条目');await click('作为预设继续选图');
+    await driver.actions().sendKeys(Key.ESCAPE).perform();await click('知识条目');await click('作为预设继续选图');
     assert.equal(await(await element('select[aria-label="知识预设"]')).getAttribute('value'),knowledge.version_id);
     await driver.wait(async()=>!(await driver.findElements(By.css('input[type="checkbox"][aria-label^="选择来源"]'))).length,5000);
     assert.equal(starts.length,1,'Continue selection must not automatically create the next job');
@@ -269,6 +287,7 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     assert.equal(finishedScope.observed,3,'Re-observing a predicate never double-counts scope coverage');assert.equal(finishedScope.remaining,0);assert.equal(finishedScope.recheck,0);
     assert.deepEqual((await(await fetch(base+'/api/iad/knowledge?version_id='+revisedPredicate.version_id)).json()).knowledge,revisedPredicate);
     await click('作业记录');
+    await(await element('table[aria-label="作业列表"] tbody tr td:first-child')).click();await element('dialog[aria-label="作业详情"]');
     const deletable=await element('.iad-job button[aria-label^="删除作业 "]');
     const deletingJob=await deletable.findElement(By.xpath('ancestor::article')).getAttribute('data-job-id');
     await deletable.click();
@@ -323,6 +342,24 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad')).datasetId,otherDataset);
     assert.equal(await(await element('textarea[aria-label="挖掘目标"]')).getAttribute('value'),otherPrompt.configuration.objective,'迟到保存响应不能覆盖新数据集');
     assert.equal((await(await fetch(base+`/api/iad/knowledge/prompt?dataset_id=${conflictDataset}&kind=normal`)).json()).configuration.objective,lateGoal);
+    await click('返回知识结果');
+    failGeneration=true;
+    const retrySources=datasets[1].reference_sample_ids.slice(0,1);
+    assert.equal(retrySources.length,1);
+    const failedStart=await fetch(base+'/api/iad/knowledge/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind:'normal',knowledge_preset:[],image_count:1,images:retrySources})});
+    assert.equal(failedStart.status,200,await failedStart.clone().text());const failedJob=await failedStart.json();
+    await driver.wait(async()=>(await(await fetch(base+'/api/iad/knowledge/status/'+failedJob.run_id)).json()).status==='FAILED',10000);
+    await click('作业记录');
+    await(await element(`table[aria-label="作业列表"] td[title="${failedJob.run_id}"]`)).click();await element('dialog[aria-label="作业详情"]');
+    await click('失败记录');assert.match(await(await element('.iad-job-errors')).getText(),/503/);
+    failGeneration=false;await click('重试范围');await element('.iad-retry-samples input');
+    assert.equal(await(await element('.iad-retry-samples input')).isEnabled(),false,'整组重试不能擅自缩减来源');
+    await click('重试所选 1 张');
+    await driver.wait(()=>driver.executeScript('const job=JSON.parse(new URL(location.href).searchParams.get("iad")).job;return job&&job!==arguments[0]',failedJob.run_id),5000);
+    const retryId=JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad')).job;
+    let retried;await driver.wait(async()=>{retried=await(await fetch(base+'/api/iad/knowledge/status/'+retryId)).json();return retried.status==='COMPLETED';},10000);
+    assert.equal(retried.parent_run_id,failedJob.run_id);assert.equal(retried.completed,1);
+
   }catch(error){
     if(driver){await fs.mkdir(path.resolve(app,'../../runs/browser/ui-workbench'),{recursive:true});await fs.writeFile(path.resolve(app,'../../runs/browser/ui-workbench/knowledge-failure.png'),await driver.takeScreenshot(),'base64');console.error(await driver.executeScript("return {dialogs:[...document.querySelectorAll('dialog:modal')].map(e=>e.getAttribute('aria-label')),text:document.querySelector('.iad-workbench')?.innerText.slice(-1800)}"));}
     throw error;

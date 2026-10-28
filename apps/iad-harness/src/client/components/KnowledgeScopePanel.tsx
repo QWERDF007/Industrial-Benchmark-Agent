@@ -19,11 +19,11 @@ export function KnowledgeScopePanel({ scopeRunId, datasetId, kind, revision, onS
     try { update(await request<KnowledgeScopeSnapshot>(`/knowledge/scopes/${encodeURIComponent(scopeRunId)}/${action}`, {})); }
     catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
-  return <section className="iad-job-section" aria-label="连续来源范围">
+  return <section className="iad-job-section iad-knowledge-scope" aria-label="连续来源范围">
     <div className="iad-row"><h2>连续范围</h2>{scope && <span data-field="knowledge-scope-state">{scope.status === "STOPPED" ? "已停止" : scope.active_run_ids.length ? "执行中" : !scope.unprocessed ? "观察完成" : "待继续"}</span>}</div>
     {error && <p role="alert" className="iad-error">{error}</p>}
     {!scope && !error && <p role="status">正在读取范围…</p>}
-    {scope && <><p role="status" aria-atomic="true" aria-label="连续范围进度">已观察 {scope.observed} / {scope.total} · 剩余 {scope.remaining}{!!scope.pending_review && ` · 待人审 ${scope.pending_review}`}{!!scope.stale && ` · 来源失效 ${scope.stale}`}{!!scope.recheck && ` · 判据待重核验 ${scope.recheck}`}{!!scope.excluded && ` · 已移出支持 ${scope.excluded}`}</p>
+    {scope && <><div className="iad-scope-progress"><p role="status" aria-atomic="true" aria-label="连续范围进度">已观察 {scope.observed} / {scope.total} · 剩余 {scope.remaining}{!!scope.pending_review && ` · 待人审 ${scope.pending_review}`}{!!scope.stale && ` · 来源失效 ${scope.stale}`}{!!scope.recheck && ` · 判据待重核验 ${scope.recheck}`}{!!scope.excluded && ` · 已移出支持 ${scope.excluded}`}</p><progress aria-label="来源观察进度" max={scope.total || 1} value={scope.observed} /></div>
       <div className="iad-row"><button disabled={busy} onClick={() => void change(scope.status === "STOPPED" ? "resume" : "stop")}>{scope.status === "STOPPED" ? "继续范围" : "停止范围"}</button>
         <button disabled={busy} onClick={() => workspace.updateView("industrial-knowledge", { tab:"setup", scopeRunId, scopeSessionId: view.scopeRunId === scopeRunId ? view.scopeSessionId : "", miningPreset: scope.current_version_id || "", normalVersion: scope.normal_version_id || "", miningImages: [], miningPage: 1 })}>选择此范围</button>
         {scope.current_version_id && <button onClick={() => workspace.updateView("industrial-knowledge", { version: scope.current_version_id || "", tab: "results" })}>查看范围知识</button>}

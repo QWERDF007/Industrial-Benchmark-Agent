@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { JobSnapshot } from "../../shared/contracts.js";
 import { jobPhases, jobStatuses } from "../../shared/job-display.js";
 import { useWorkspace, type PageId } from "../workspace.js";
 import { JobDetail } from "./JobDetail.js";
 import { Pagination } from "./Pagination.js";
+import { Modal } from "./Modal.js";
 
 const types: Record<JobSnapshot["job_type"], string> = {
   MODEL_AUDIT: "模型审计",
@@ -34,22 +35,27 @@ export function JobTable({
     selected = workspace.view(pageId).job;
   const [page, setPage] = useState(1),
     [status, setStatus] = useState("");
+  const [search, setSearch] = useState(""), [drawerOpen, setDrawerOpen] = useState(false);
+  const rows = useRef(new Map<string, HTMLTableRowElement>()), filter = useRef<HTMLSelectElement>(null);
   const exploration = pageId === "industrial-exploration";
-  const filtered = jobs.filter((job) => !status || job.status === status);
+  const knowledge = pageId === "industrial-knowledge";
+  const filtered = jobs.filter((job) => (!status || job.status === status) && (!knowledge || `${job.run_id} ${job.model_name}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())));
   const index = filtered.findIndex((job) => job.run_id === selected);
   useEffect(() => {
     if (index >= 0) setPage(Math.floor(index / 10) + 1);
   }, [selected, index]);
   const current = Math.min(page, Math.max(1, Math.ceil(filtered.length / 10))),
     visible = filtered.slice((current - 1) * 10, current * 10);
-  const job = jobs.find((job) => job.run_id === selected) || visible[0];
+  const job = jobs.find((job) => job.run_id === selected) || (!knowledge ? visible[0] : undefined);
+  function open(item: JobSnapshot) { workspace.updateView(pageId, { job: item.run_id }); setDrawerOpen(true); }
   return (
     <div
-      className={`iad-job-table ${exploration && job ? "iad-exploration-jobs-layout" : ""}`}
+      className={`iad-job-table ${knowledge ? "iad-knowledge-job-table" : exploration && job ? "iad-exploration-jobs-layout" : ""}`}
     >
       <label className="iad-field iad-job-filter">
         任务状态
         <select
+          ref={filter}
           aria-label="任务状态"
           value={status}
           onChange={(event) => {
@@ -65,6 +71,7 @@ export function JobTable({
           ))}
         </select>
       </label>
+      {knowledge && <label className="iad-field iad-job-search">搜索任务<input type="search" aria-label="搜索任务" placeholder="任务 ID / 模型名称" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></label>}
       <div>
         <div className="iad-table-scroll">
           <table className="iad-resource-table" aria-label="作业列表">
@@ -84,7 +91,7 @@ export function JobTable({
                 <th className="iad-job-time">
                   {exploration ? "提交时间" : "开始时间"}
                 </th>
-                <th>操作</th>
+                {!knowledge && <th>操作</th>}
               </tr>
             </thead>
             <tbody>
@@ -92,6 +99,13 @@ export function JobTable({
                 <tr
                   key={item.run_id}
                   data-selected={job?.run_id === item.run_id}
+                  ref={row => { if (row) rows.current.set(item.run_id, row); else rows.current.delete(item.run_id); }}
+                  tabIndex={knowledge ? 0 : undefined}
+                  aria-selected={knowledge ? selected === item.run_id : undefined}
+                  aria-haspopup={knowledge ? "dialog" : undefined}
+                  onClick={knowledge ? () => open(item) : undefined}
+                  onKeyDown={knowledge ? event => { if (event.key === "Enter" || event.key === " ") event.preventDefault(); } : undefined}
+                  onKeyUp={knowledge ? event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(item); } } : undefined}
                 >
                   <td title={item.run_id}>
                     <span className="iad-identifier">{item.run_id}</span>
@@ -142,7 +156,7 @@ export function JobTable({
                         : "未提供"}
                     </time>
                   </td>
-                  <td>
+                  {!knowledge && <td>
                     <button
                       aria-label={`查看作业 ${item.run_id}`}
                       onClick={() =>
@@ -151,7 +165,7 @@ export function JobTable({
                     >
                       详情
                     </button>
-                  </td>
+                  </td>}
                 </tr>
               ))}
             </tbody>
@@ -172,7 +186,7 @@ export function JobTable({
         )}
         {!filtered.length && <p role="status">没有匹配的作业。</p>}
       </div>
-      {job && (
+      {job && !knowledge && (
         <section aria-label="作业详情">
           <h3>作业详情</h3>
           <JobDetail
@@ -185,6 +199,9 @@ export function JobTable({
           />
         </section>
       )}
+      {knowledge && drawerOpen && job && <Modal title="作业详情" className="iad-drawer iad-knowledge-job-drawer" onClose={() => setDrawerOpen(false)} restoreFocus={() => rows.current.get(selected) || filter.current}>
+        <JobDetail key={job.run_id} job={job} onChanged={onChanged} stale={stale} lastSyncedAt={lastSyncedAt} onClose={() => setDrawerOpen(false)} presentation="drawer" />
+      </Modal>}
     </div>
   );
 }

@@ -135,7 +135,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     await driver.manage().window().setRect({ width: 1440, height: 1100 }); await driver.get(url);
     if (process.env.IAD_BROWSER_DPR) assert.equal(await driver.executeScript("return devicePixelRatio"), Number(process.env.IAD_BROWSER_DPR));
     const element = css => driver.wait(until.elementLocated(By.css(css)), 15000);
-    const button = async text => { const control = await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}']`)), 15000); await driver.wait(until.elementIsVisible(control),5000);await driver.wait(until.elementIsEnabled(control),5000);await control.click(); };
+    const button = async text => { const control = await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${text}' or @aria-label='${text}']`)), 15000); await driver.wait(until.elementIsVisible(control),5000);await driver.wait(until.elementIsEnabled(control),5000);await control.click(); };
     const api = async (pathname, body) => {
       const result = await driver.executeAsyncScript(`const done=arguments[arguments.length-1];fetch('/api/iad'+arguments[0],arguments[1]?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(arguments[1])}:undefined).then(async response=>done({status:response.status,value:await response.json()})).catch(error=>done({error:String(error)}));`, pathname, body || null);
       assert.equal(result.status, 200, JSON.stringify(result)); return result.value;
@@ -299,7 +299,8 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
         assert.equal(agentRequests.length, requestCount, "原生宿主知识选择与刷新不重新运行模型");
         await(await element('button[aria-label="关闭新建模型审计"]')).click();
       }
-      await(await element(`button[aria-label="查看作业 ${executions[index].run_id}"]`)).click();
+      if(index) await(await element(`button[aria-label="查看作业 ${executions[index].run_id}"]`)).click();
+      else await(await element(`table[aria-label="作业列表"] td[title="${executions[index].run_id}"]`)).findElement(By.xpath('ancestor::tr')).sendKeys(Key.ENTER);
       const card = await element(`article[data-job-id='${executions[index].run_id}']`);
       await card.findElement(By.xpath(".//button[normalize-space(.)='返回发起会话']")).click();
       await driver.wait(async () => (await driver.findElements(By.css(".iad-workbench"))).length === 0, 5000);
@@ -317,6 +318,12 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     }
     for (const execution of executions) {
       await openToolResult(`button[data-iad-run-id='${execution.run_id}']`);
+      if (execution === executions[0]) {
+        const row = await element(`table[aria-label="作业列表"] td[title="${execution.run_id}"]`);
+        assert.equal(await row.findElement(By.xpath("ancestor::tr")).getAttribute("aria-selected"), "true", "会话入口保留选中作业");
+        assert.equal((await driver.findElements(By.css(".iad-knowledge-job-drawer[open]"))).length, 0, "进入列表不自动展开详情");
+        await row.click();
+      }
       const card = await element(`article[data-job-id='${execution.run_id}']`);
       assert.equal(await card.getAttribute("aria-current"), "true");
       await card.findElement(By.xpath(".//button[normalize-space(.)='返回发起会话']")).click();

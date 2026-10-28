@@ -26,8 +26,8 @@ export async function verifyWorkbenchSurfaces(driver, output) {
   await navigate("人工复核"); await button("复核队列");
   await (await element("img[alt='part-2.png']")).click();
   await (await element(".iad-decision input[required]")).sendKeys("布局验收");
-  assert.equal((await driver.findElements(By.css('.iad-embedded-canvas .iad-image-step'))).length,2,'嵌入式复核保留顶栏切图');
-  assert.equal((await driver.findElements(By.css('.iad-embedded-canvas .iad-viewer-edge-nav'))).length,0,'边缘切图只用于全屏窗口');
+  assert.equal((await driver.findElements(By.css('.iad-embedded-canvas .iad-image-step'))).length,0,'嵌入式复核移除顶栏文字切图');
+  assert.equal((await driver.findElements(By.css('.iad-embedded-canvas .iad-viewer-edge-nav'))).length,1,'嵌入式复核复用边缘切图');
   await (await element(".iad-decision textarea")).sendKeys("仅验证复核记录的显示与操作，未评估工业真值。");
   await (await element(".iad-decision input[type=radio][value=SKIP]")).click(); await button("提交复核");
   await driver.wait(() => driver.executeScript("return document.querySelector('.iad-review-confirmation')?.textContent.includes('跳过')"), 10000);

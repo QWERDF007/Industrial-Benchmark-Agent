@@ -118,7 +118,7 @@ export function KnowledgePage({ dataset, kind, refreshRevision, headerActions }:
       {view.tab === "results" && <button onClick={() => workspace.updateView(pageId, { tab:"setup", miningPreset: knowledge.version_id, miningSourceMode: "uncovered", miningImages: [], miningPage: 1 })}>作为预设继续选图</button>}
       {view.tab === "versions" && <KnowledgeVersions versions={versions} onSelect={version => workspace.updateView(pageId,{version,checkId:"",tab:"results"})} />}
     </> : <p>尚无{kind === "normal" ? "良品" : "不良品"}知识版本。</p>}</section>}
-    {view.tab === "jobs" && <section className="iad-knowledge-jobs iad-job-section"><h2>挖掘作业</h2><JobTable jobs={jobs} pageId={pageId} onChanged={polling.refresh} /></section>}</PageTabs>}
+    {view.tab === "jobs" && <section className="iad-knowledge-jobs iad-job-section"><h2>挖掘作业</h2><JobTable key={dataset.dataset_id+kind} jobs={jobs} pageId={pageId} onChanged={polling.refresh} stale={polling.syncState === "stale"} lastSyncedAt={polling.lastSyncedAt} /></section>}</PageTabs>}
     {lightbox && <ImageViewer image={lightbox} onClose={() => setLightbox(null)} />}
 
   </section>;

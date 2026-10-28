@@ -1,14 +1,12 @@
-import React, {useEffect, useId, useState} from 'react';
+import React, {useId, useState} from 'react';
 import type {PropsRuntime} from '@deepseek-ai/dsh-client-ui-slots';
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client';
 import {themeStyles} from '../theme.js';
 import {navigation, type PageId} from '../../shared/navigation.js';
 
-export function IndustrialSidebar({wide, panels, renderPanel, renderWorkspaces, usePanelInfo}: PropsRuntime<'sidebar.content'>) {
-  const active = usePanelInfo(info => info.activePanelId);
-  const [sessionsOpen, setSessionsOpen] = useState(!active);
+export function IndustrialSidebar({wide, panels, renderPanel, renderWorkspaces}: PropsRuntime<'sidebar.content'>) {
+  const [sessionsOpen, setSessionsOpen] = useState(true);
   const workspacesId = useId();
-  useEffect(() => setSessionsOpen(!active), [active]);
   const business = panels.filter(panel => panel.id in navigation && navigation[panel.id as PageId].chapter !== '工具');
   const auxiliary = panels.filter(panel => !business.includes(panel));
   return <div className={`iad-sidebar-content ${wide ? 'iad-sidebar-wide' : 'iad-sidebar-rail'}`}>
@@ -21,6 +19,7 @@ export function IndustrialSidebar({wide, panels, renderPanel, renderWorkspaces, 
       .iad-sidebar-disclosure{display:flex;align-items:center;gap:6px;flex:none;min-height:36px;padding:8px 10px;cursor:pointer;background:transparent;border:0;text-align:left;font:inherit;color:var(--dsw-alias-label-secondary)}
       .iad-sidebar-disclosure:focus-visible{outline:2px solid var(--dsw-focus-ring-color);outline-offset:-2px}
       .iad-native-workspace-content{min-height:0;overflow:hidden;flex:1}.iad-native-workspace-content:not([hidden]){display:flex;flex-direction:column}
+      .iad-sidebar-wide>nav{flex:1 1 0;overscroll-behavior:contain}.iad-sidebar-wide>nav>section{flex:none}.iad-sidebar-wide>.iad-sidebar-sessions[data-open=true]{flex:1 1 0}
       .iad-sidebar-tools{margin-top:auto;flex:none}.iad-sidebar-rail{gap:12px}.iad-sidebar-rail>nav{gap:12px}
     `}</style>
     <nav aria-label="工业工作台导航">{(['数据准备', '知识构建', '质量审核'] as const).map(chapter => <section key={chapter} aria-label={chapter}>

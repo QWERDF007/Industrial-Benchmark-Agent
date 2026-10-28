@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useId, useState } from "react";
 import type { Dataset, JobSnapshot } from "../../shared/contracts.js";
 import type {
   ExploredDirection,
@@ -30,6 +30,8 @@ export function ExplorationPage({
   const [catalog, setCatalog] = useState<ExplorationCatalog | null>(null),
     [revision, setRevision] = useState(0);
   const [error, setError] = useState("");
+  const [summaryVersion, setSummaryVersion] = useState("");
+  const summaryId = useId();
   const [detail, setDetail] = useState<{
     snapshot: ExplorationSnapshot;
     direction: ExploredDirection;
@@ -173,9 +175,9 @@ export function ExplorationPage({
                   aria-label="探索结果版本"
                   value={result.version_id}
                   onChange={(event) =>
-                    workspace.updateView(pageId, {
+                    { setSummaryVersion(""); workspace.updateView(pageId, {
                       version: event.target.value,
-                    })
+                    }); }
                   }
                 >
                   {catalog.versions.map((version) => (
@@ -195,7 +197,10 @@ export function ExplorationPage({
                   查看新发布结果
                 </button>
               )}
-              <p className="iad-muted">{result.summary}</p>
+              {result.summary.trim() && <div className="iad-exploration-summary">
+                <p id={summaryId} aria-label="探索摘要" className="iad-muted" data-expanded={summaryVersion === result.version_id}>{result.summary}</p>
+                <button aria-controls={summaryId} aria-expanded={summaryVersion === result.version_id} onClick={() => setSummaryVersion(value => value === result.version_id ? "" : result.version_id)}>{summaryVersion === result.version_id ? "收起探索摘要" : "展开探索摘要"}</button>
+              </div>}
               {result.directions.length ? (
                 <div className="iad-table-scroll">
                   <table className="iad-resource-table" aria-label="探索方向">
@@ -241,11 +246,12 @@ export function ExplorationPage({
                 <p>本批样例未形成可用探索方向。</p>
               )}
               {!!result.limitations.length && (
-                <details>
-                  <summary>整体限制</summary>
-                  {result.limitations.map((text, index) => (
-                    <p key={index}>{text}</p>
-                  ))}
+                <details key={result.version_id} className="iad-exploration-limitations">
+                  <summary>
+                    <svg className="iad-limit-chevron" aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m9 5 7 7-7 7" /></svg>
+                    <strong>整体限制</strong><span className="iad-muted">探索结论的适用边界与待确认事项</span><span className="iad-limit-count">{result.limitations.length} 项</span>
+                  </summary>
+                  <ol className="iad-limit-list">{result.limitations.map((text, index) => <li key={index}>{text}</li>)}</ol>
                 </details>
               )}
             </section>
