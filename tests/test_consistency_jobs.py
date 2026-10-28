@@ -1,7 +1,41 @@
 import time
+import pytest
 
 from iad_core.consistency.models import ConsistencyStart
 from iad_core.workbench.runtime import WorkbenchRuntime
+
+
+@pytest.mark.parametrize('mode', ['exact', 'combined', 'visual', 'index'])
+def test_missing_pixel_index_rejects_batch_before_creating_jobs(dataset, tmp_path, mode):
+    from iad_core.consistency.errors import ConsistencyError
+    from iad_core.consistency.models import ImageIndexPrepare
+    from tests.feature_fixtures import configure_test_encoder
+
+    db, registry, config = dataset
+    configure_test_encoder(db, tmp_path)
+    with db.connection() as connection:
+        connection.execute('DELETE FROM sample_pixel_index WHERE sample_id=?', (config.dataset.id + ':dent.png',))
+    runtime = WorkbenchRuntime(db)
+    try:
+        with pytest.raises(ConsistencyError, match='重扫') as failure:
+            if mode == 'index':
+                runtime.consistency.prepare(ImageIndexPrepare(request_id='missing-pixels'))
+            else:
+                runtime.consistency.start(ConsistencyStart(subjects={'kind': 'all_registered'}, mode=mode, request_id='missing-pixels'))
+        assert failure.value.code == 'INDEX_NOT_READY'
+        assert runtime.consistency.list().items == []
+        registry.rescan(config.dataset.id)
+        started = runtime.consistency.start(ConsistencyStart(subjects={'kind': 'all_registered'}, mode='exact', request_id='after-rescan'))
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            batch = runtime.consistency.status(started.batch_id)
+            if batch.status not in ('PENDING', 'RUNNING'):
+                break
+            time.sleep(.01)
+        assert batch.status == 'COMPLETED'
+        assert (batch.completed, batch.failed, batch.unprocessed) == (4, 0, 0)
+    finally:
+        runtime.close()
 
 
 def test_exact_batch_uses_real_dataset_children_and_frozen_pair_evidence(dataset):

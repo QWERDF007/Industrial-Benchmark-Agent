@@ -1,6 +1,8 @@
 import hashlib
 import io
+import json
 import uuid
+from collections.abc import Iterable
 from collections import OrderedDict
 from contextlib import nullcontext
 from datetime import datetime, timezone
@@ -13,6 +15,7 @@ from pydantic import AwareDatetime, Field
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.models import Count, CoverageCount, Identifier, PixelDescriptor
+from iad_core.consistency.errors import ConsistencyError
 from iad_core.duplicate.pixels import PixelContent
 from iad_core.storage.database import Database
 
@@ -73,6 +76,14 @@ class DecodedPixels:
 class PixelIndex:
     def __init__(self, db: Database):
         self.db = db
+
+    def assert_indexed(self, sample_ids: Iterable[str]) -> None:
+        with self.db.connection() as connection:
+            missing = connection.execute('''SELECT COUNT(*) FROM json_each(?) requested
+                LEFT JOIN sample_pixel_index pixels ON pixels.sample_id=requested.value
+                WHERE pixels.sample_id IS NULL''', (json.dumps(sorted(set(sample_ids))),)).fetchone()[0]
+        if missing:
+            raise ConsistencyError('INDEX_NOT_READY', f'原始像素索引未就绪：{missing} 张图片尚未扫描。请在数据集管理中重扫相关数据集，再开始检查或准备索引。')
 
     def get(self, sample_id: str, connection: Optional[Connection] = None) -> Optional[PixelIndexEntry]:
         with nullcontext(connection) if connection is not None else self.db.connection() as connection:

@@ -14,6 +14,7 @@ from iad_core.consistency.job_worker import ConsistencyWorker
 from iad_core.consistency.models import ConsistencyCoverage,ConsistencyStart,CoverageCount,ImageIndexPrepare
 from iad_core.consistency.scopes import ConsistencyScopes
 from iad_core.feature.profiles import ImageEncoderConfig,ImageEncoders
+from iad_core.duplicate.index import PixelIndex
 
 if TYPE_CHECKING:
     from iad_core.workbench.runtime import WorkbenchRuntime
@@ -35,6 +36,8 @@ class ConsistencyJobs:
             existing=self.repository.request(request.request_id,fingerprint)
             if existing:return self._start_result(existing)
             scopes=ConsistencyScopes(self.db).freeze(request.subjects,request.corpus_scope)
+            if scopes.subjects.samples:
+                PixelIndex(self.db).assert_indexed(sample.sample_id for scope in (scopes.subjects,scopes.corpus) for sample in scope.samples)
             steps=[]
             encoder=None
             if scopes.subjects.samples and request.mode!='exact':
@@ -67,6 +70,7 @@ class ConsistencyJobs:
             existing=self.repository.request(request.request_id,fingerprint)
             if existing:return self._start_result(existing)
             scopes=ConsistencyScopes(self.db).freeze(request.corpus_scope,request.corpus_scope)
+            PixelIndex(self.db).assert_indexed(sample.sample_id for sample in scopes.corpus.samples)
             encoder=self.encoder(request.profile_id) if scopes.corpus.samples else None
             steps=[]
             for dataset_id in scopes.corpus.dataset_ids:
