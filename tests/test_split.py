@@ -86,6 +86,91 @@ def test_group_transitive_union():
     assert len(groups) == 2
 
 
+def test_published_strict_content_group_blocks_cross_split_without_near_mining(dataset):
+    from iad_core.duplicate.repository import load_leakage_relations
+    db, _, config = dataset
+    from iad_core.storage.repositories import SampleRepository
+    samples = SampleRepository(db).list_by_task(config.task.task_id)
+    relations = load_leakage_relations(db, config.task.task_id)
+    left, right = [config.dataset.id + ':' + name + '.png' for name in ('dent', 'scratch')]
+    groups, mapping = build_split_groups(samples, verified_groups=relations.groups)
+    assert mapping[left] == mapping[right]
+    assert len(relations.strict_content_groups) == 3
+    assert relations.near_leakage_pairs == []
+    report = check_leakage(samples, {left: 'train', right: 'test'}, strict_content_groups=relations.strict_content_groups)
+    assert not report.is_passed
+    assert report.strict_content_leakages[0]['relation'] == 'STRICT_CONTENT'
+
+
+def test_near_constraint_through_unexported_content_member_still_blocks_leakage():
+    from iad_core.duplicate.relations import StrictContentGroup
+    samples = [create_sample('selected-a'), create_sample('selected-b')]
+    strict = StrictContentGroup(group_id='strict-a', sample_ids=['selected-a', 'unexported-copy'])
+    groups, mapping = build_split_groups(samples, verified_pairs=[('unexported-copy', 'selected-b')],
+        verified_groups=[strict.sample_ids])
+    assert mapping['selected-a'] == mapping['selected-b']
+    assert sorted(groups[0].sample_ids) == ['selected-a', 'selected-b']
+    report = check_leakage(samples, {'selected-a': 'train', 'selected-b': 'test'},
+        strict_content_groups=[strict], verified_pairs=[('unexported-copy', 'selected-b')])
+    assert not report.is_passed
+    assert report.component_leakages[0]['relation'] == 'LEAKAGE_COMPONENT'
+
+
+def test_formal_benchmark_rejects_unpublished_content_without_implicit_scan(tmp_path):
+    from PIL import Image
+    import yaml
+    from iad_core.benchmark.builder import run_benchmark_pipeline
+    from iad_core.consistency.errors import ConsistencyError
+    from iad_core.dataset.registry import DatasetRegistry
+    from iad_core.storage.database import Database
+    from iad_core.storage.repositories import SampleRepository
+    from iad_core.task.config import DatasetConfig
+    db = Database(str(tmp_path / 'unpublished.db'))
+    source = tmp_path / 'unpublished.png'
+    Image.new('RGB', (24, 24), 'blue').save(source)
+    config = DatasetConfig.model_validate({'dataset': {'id': 'unpublished'}, 'root': str(tmp_path),
+        'task': {'task_id': 'unpublished-task', 'inspection_target': 'surface'}, 'gold': {'trusted_quality_sources': []}})
+    DatasetRegistry(db).save(config)
+    SampleRepository(db).upsert(Sample(sample_id='unpublished:unpublished.png', task_id=config.task.task_id,
+        dataset_id=config.dataset.id, image_path=str(source), relative_path=source.name, width=24, height=24,
+        quality_status='PASS', quality_source='imported'))
+    cfg = tmp_path / 'benchmark.yaml'
+    cfg.write_text(yaml.safe_dump(config.model_dump(mode='json')))
+    with pytest.raises(ConsistencyError, match='published'):
+        run_benchmark_pipeline(config.task.task_id, config_path=str(cfg), db_path=db.db_path, output_dir=str(tmp_path / 'out'))
+    from iad_core.storage.repositories import GoldRepository
+    assert GoldRepository(db).list_by_task(config.task.task_id) == []
+    assert not (tmp_path / 'out').exists()
+
+
+def test_accepted_near_candidates_remain_leakage_constraints_without_becoming_strict(dataset, tmp_path, monkeypatch):
+    import numpy as np
+    from PIL import Image
+    from pathlib import Path
+    from iad_core.duplicate.repository import load_leakage_relations
+    from iad_core.duplicate.verify import PairVerifier
+    from iad_core.storage.repositories import SampleRepository
+    db, registry, config = dataset
+    y, x = np.indices((240, 320))
+    pixels = np.stack([x % 255, y % 255, np.full_like(x, 70)], axis=-1).astype(np.uint8)
+    left, right = [config.dataset.id + ':' + name + '.png' for name in ('dent', 'scratch')]
+    image = Image.fromarray(pixels)
+    image.save(Path(config.root) / 'dent.png')
+    pixels[0, 0, 0] ^= 1
+    Image.fromarray(pixels).save(Path(config.root) / 'scratch.png')
+    registry.rescan(config.dataset.id)
+    from iad_core.duplicate.pair_repository import PairObservations
+    checked = PairObservations(db).verify(left, right, verifier=PairVerifier()).verification
+    assert checked.relation == 'NEAR_CANDIDATE'
+    monkeypatch.chdir(tmp_path)
+    relations = load_leakage_relations(db, config.task.task_id)
+    assert (left, right) in relations.near_leakage_pairs
+    assert not any({left, right}.issubset(group.sample_ids) for group in relations.strict_content_groups)
+    _, mapping = build_split_groups(SampleRepository(db).list_by_task(config.task.task_id),
+        verified_pairs=relations.near_leakage_pairs, verified_groups=relations.groups)
+    assert mapping[left] == mapping[right]
+
+
 def test_split_deterministic():
     samples = [
         create_sample(f"s_{i:02d}", physical_sample_id=f"phys_{i // 3}", quality_status=QualityStatus.PASS if i % 2 == 0 else QualityStatus.FAIL)

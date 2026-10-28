@@ -1,31 +1,30 @@
-import json
-import os
-from typing import List, Tuple
+from iad_core.advisory.analysis import AnalysisModel
+from iad_core.duplicate.pair_repository import PairObservations
+from iad_core.duplicate.relations import ContentRelations, StrictContentGroup
+from iad_core.storage.database import Database
+from iad_core.consistency.errors import ConsistencyError
 
 
-def load_verified_duplicates(task_id: str) -> Tuple[List[Tuple[str, str]], List[List[str]]]:
-    """Helper to load verified pairs and groups for a task if existing."""
-    verified_pairs: List[Tuple[str, str]] = []
-    verified_groups: List[List[str]] = []
+class LeakageRelations(AnalysisModel):
+    strict_content_groups: list[StrictContentGroup]
+    near_leakage_pairs: list[tuple[str, str]]
 
-    pairs_file = os.path.join("runs", "near_duplicate", task_id, "verified_pairs.json")
-    if os.path.exists(pairs_file):
-        with open(pairs_file, "r", encoding="utf-8") as f:
-            pair_data = json.load(f)
-            pairs_list = pair_data.get("pairs", []) if isinstance(pair_data, dict) else pair_data
-            for p in pairs_list:
-                if isinstance(p, dict) and (p.get("verified", False) or p.get("is_verified", False)):
-                    verified_pairs.append((p["sample_id_a"], p["sample_id_b"]))
+    @property
+    def groups(self) -> list[list[str]]:
+        return [group.sample_ids for group in self.strict_content_groups]
 
-    groups_file = os.path.join("runs", "near_duplicate", task_id, "verified_groups.json")
-    if os.path.exists(groups_file):
-        with open(groups_file, "r", encoding="utf-8") as f:
-            grp_data = json.load(f)
-            groups_list = grp_data.get("groups", []) if isinstance(grp_data, dict) else grp_data
-            for g in groups_list:
-                if isinstance(g, dict):
-                    s_ids = g.get("sample_ids", [])
-                    if len(s_ids) > 1:
-                        verified_groups.append(s_ids)
+    def assert_covered(self, sample_ids: list[str]) -> None:
+        indexed = {identity for group in self.strict_content_groups for identity in group.sample_ids}
+        if not set(sample_ids).issubset(indexed):
+            raise ConsistencyError('INDEX_NOT_READY', 'Formal benchmark requires current published content for every exported sample; rescan first')
 
-    return verified_pairs, verified_groups
+
+def load_leakage_relations(db: Database, task_id: str, *, sample_ids: list[str] | None = None) -> LeakageRelations:
+    if sample_ids is None:
+        with db.connection() as connection:
+            sample_ids = [row[0] for row in connection.execute('SELECT sample_id FROM samples WHERE task_id=? AND is_excluded=0', (task_id,))]
+    pairs = [(item.sample_id_a, item.sample_id_b) for item in PairObservations(db).current(task_id)
+        if item.verification.relation == 'NEAR_CANDIDATE']
+    related = sorted({*sample_ids, *(identity for pair in pairs for identity in pair)})
+    strict = ContentRelations(db).groups(related)
+    return LeakageRelations(strict_content_groups=strict, near_leakage_pairs=pairs)

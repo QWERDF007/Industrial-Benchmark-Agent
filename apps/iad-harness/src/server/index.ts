@@ -19,6 +19,9 @@ import { createKnowledgeTools } from "./knowledge/index.js";
 import { createExplorationTools, DIRECTION_EXPLORATION_SKILL } from "./exploration/index.js";
 import { createWorkbenchTools } from "./workbench-tools/index.js";
 import { WorkbenchModelRouting } from "./models/index.js";
+import { NativeImageQueries, createImageTools } from './images/native.js';
+import {createConsistencyTools} from './consistency/index.js';
+import {AUDIT_DATA_CONSISTENCY_SKILL} from './consistency/skill.js';
 
 export { SYSTEM_POLICIES, ALLOWED_TOOL_SURFACE } from "./policy/index.js";
 export { CoreClient } from "./core-client/index.js";
@@ -90,8 +93,15 @@ export function apply(ctx: any, config: IADHarnessConfig = {}) {
   for (const tool of createKnowledgeTools(bridge, ctx)) ctx.tools.register(tool);
   for (const tool of createExplorationTools(bridge, ctx)) ctx.tools.register(tool);
   for (const tool of createWorkbenchTools(bridge, ctx)) ctx.tools.register(tool);
+  const imageQueries = new NativeImageQueries(bridge, ctx);
+  for (const tool of createImageTools(imageQueries)) ctx.tools.register(tool);
+  for (const tool of createConsistencyTools(bridge,ctx)) ctx.tools.register(tool);
+  ctx.on('session/disposed', (session: Parameters<NativeImageQueries['dispose']>[0]) => {
+    void imageQueries.dispose(session).catch(error => ctx.logger?.warn?.(`临时检索图回收失败: ${error.message}`));
+  });
   ctx.skills.register(DATASET_ANALYSIS_SKILL);
   ctx.skills.register(DIRECTION_EXPLORATION_SKILL);
+  ctx.skills.register(AUDIT_DATA_CONSISTENCY_SKILL);
 
   ctx.logger?.info?.("Industrial Benchmark Agent Root Harness Bundle initialized successfully.");
 }

@@ -1,8 +1,9 @@
 export async function request(path, body, method, signal) {
+    const multipart = body instanceof FormData;
     const response = await fetch("/api/iad" + path, {
         method: method || (body === undefined ? "GET" : "POST"),
-        headers: body === undefined ? undefined : { "Content-Type": "application/json" },
-        body: body === undefined ? undefined : JSON.stringify(body), signal,
+        headers: body === undefined || multipart ? undefined : { "Content-Type": "application/json" },
+        body: body === undefined ? undefined : multipart ? body : JSON.stringify(body), signal,
     });
     const data = await response.json();
     if (!response.ok)

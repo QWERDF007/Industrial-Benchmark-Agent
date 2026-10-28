@@ -8,10 +8,10 @@ import { spawn, execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
-import { Builder, By, until } from "selenium-webdriver";
+import { Builder, By, Key, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
 import { resolvePythonPath } from "../lib/server/python-bridge/index.js";
-import { verifyWorkbenchLayout } from "./workbench-layout.js";
+import { verifyWorkbenchLayout, viewport, setTheme } from "./workbench-layout.js";
 import { verifyWorkbenchSurfaces } from "./workbench-surfaces.js";
 
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -129,7 +129,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     while (!log.match(/http:\/\/127\.0\.0\.1:[^\s)]+/) && host.exitCode === null && Date.now() < deadline) await delay(100);
     const url = log.match(/http:\/\/127\.0\.0\.1:[^\s)]+/)?.[0];
     assert.ok(url, log.replace(/(token=)[^\s&]+/g, "$1<redacted>"));
-    const options = new firefox.Options().addArguments("-headless"); if (process.env.FIREFOX_PATH) options.setBinary(process.env.FIREFOX_PATH);
+    const options = new firefox.Options().addArguments("-headless").setPreference('ui.primaryPointerCapabilities',6); if (process.env.FIREFOX_PATH) options.setBinary(process.env.FIREFOX_PATH);
     if (process.env.IAD_BROWSER_DPR) options.setPreference("layout.css.devPixelsPerPx", process.env.IAD_BROWSER_DPR);
     driver = await new Builder().forBrowser("firefox").setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH || "geckodriver")).build();
     await driver.manage().window().setRect({ width: 1440, height: 1100 }); await driver.get(url);
@@ -181,7 +181,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     await driver.wait(async () => (await (await api("/datasets")).datasets.find(item => item.dataset_id === folder.dataset_id)).labeled_sample_count === 1, 15000);
     assert.equal((await driver.findElements(By.css("section[aria-label='当前数据集详情'] [role='alert']"))).length, 0);
     await verifyWorkbenchLayout(driver, path.join(workspace, "runs/browser/folder-layout"), {
-      pageLabels: ["数据集管理", "图像浏览"], sizes: [[1366, 768], [375, 812]], zoomLevels: [1, 2],
+      pageLabels: ["数据集管理", "图像浏览"], sizes: [[1920, 1080]], zoomLevels: [1],
     });
     console.log(JSON.stringify({nativeStage:"folder-layout-complete"}));
     await driver.manage().window().setRect({ width: 1440, height: 1100 });
@@ -354,33 +354,81 @@ Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
     await (await element("select[aria-label='当前数据集'] option[value='" + sequence.dataset_id + "']")).click();
     assert.equal(await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label"), "图像浏览", "切换数据集仍使用固定导航名称");
     assert.equal(await (await element("button[aria-label^='知识挖掘']")).getAttribute("aria-label"), "知识挖掘", "无近期作业不能推断未曾发布知识，且不能继承另一数据集状态");
+    await setTheme(driver,'Light');
     await driver.manage().window().setRect({ width: 1440, height: 768 });
     await (await element("summary[aria-label='标注筛选']")).click();
     await (await element("input[aria-label='无标注']")).click();
     await (await element("summary[aria-label='标注筛选']")).click();
     await (await element("img[alt='sequence-23.png']")).click();
     await (await element("button[title='放大图像']")).click();
+    const viewerSize=await driver.executeScript('return [innerWidth,innerHeight]');
+    await viewport(driver,1920,1080);
+    const edgePrevious=await element('dialog.iad-viewer-dialog button[aria-label="上一张图像"]');
+    const edgeNext=await element('dialog.iad-viewer-dialog button[aria-label="下一张图像"]');
+    const imageViewport=await element('dialog.iad-viewer-dialog .iad-viewer-viewport');
+    assert.equal((await driver.findElements(By.css('dialog.iad-viewer-dialog .iad-lightbox-toolbar .iad-image-step'))).length,0);
+    await driver.actions().move({origin:imageViewport}).click().perform();
+    const edgeState=()=>driver.executeScript("return [...document.querySelectorAll('dialog.iad-viewer-dialog .iad-viewer-edge-button')].map(e=>Number(getComputedStyle(e).opacity))");
+    await driver.wait(async()=>JSON.stringify(await edgeState())==='[0,0]',3000,'画布中间不显示切图按钮');
+    assert.equal(await driver.executeScript("const v=arguments[0],r=v.getBoundingClientRect();return !!document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('.iad-viewer-viewport')",imageViewport),true,'导航覆盖层不拦截画布中间的指针');
+    await fs.writeFile(path.join(workspace,'runs/browser/session-handoff/edge-default-1920.png'),await driver.takeScreenshot(),'base64');
+    for(const [control,expected,side] of [[edgePrevious,[1,0],'left'],[edgeNext,[0,1],'right']]){
+      await driver.actions().move({origin:control}).perform();
+      await driver.wait(async()=>JSON.stringify(await edgeState())===JSON.stringify(expected),3000,'左右感应区域独立显隐');
+      const box=await driver.executeScript("const e=arguments[0],d=e.firstElementChild,r=e.getBoundingClientRect(),c=d.getBoundingClientRect();return {width:r.width,height:r.height,disc:c.width,background:getComputedStyle(e).backgroundColor,insideViewport:!!e.closest('.iad-viewer-viewport')}",control);
+      assert.deepEqual(box,{width:80,height:216,disc:52,background:'rgba(0, 0, 0, 0)',insideViewport:false});
+      await fs.writeFile(path.join(workspace,`runs/browser/session-handoff/edge-${side}-1920.png`),await driver.takeScreenshot(),'base64');
+    }
+    await driver.actions().move({origin:imageViewport}).click().sendKeys(Key.TAB).perform();
+    assert.equal(await driver.executeScript('return document.activeElement===arguments[0] && document.activeElement.matches(":focus-visible") && getComputedStyle(document.activeElement).opacity==="1"',edgePrevious),true,'Tab聚焦时显示边缘按钮与焦点');
+    await fs.writeFile(path.join(workspace,'runs/browser/session-handoff/edge-keyboard-1920.png'),await driver.takeScreenshot(),'base64');
+    const imageBeforePan=await(await element('dialog.iad-viewer-dialog .iad-viewer-world')).getRect();
+    await imageViewport.sendKeys(Key.ARROW_RIGHT);
+    const imageAfterPan=await(await element('dialog.iad-viewer-dialog .iad-viewer-world')).getRect();
+    assert.ok(Math.abs(imageAfterPan.x-imageBeforePan.x+20)<2,'方向键继续平移而非切图');
+    assert.equal(await(await element('.iad-lightbox-toolbar strong')).getText(),'sequence-23.png');
+    try{
+      await driver.setContext('chrome');await driver.executeScript("Services.prefs.setIntPref('ui.primaryPointerCapabilities',1)");await driver.setContext('content');
+      await driver.wait(()=>driver.executeScript('return matchMedia("(hover:none)").matches'),3000,'浏览器实际进入无悬浮能力状态');
+      await driver.actions().move({origin:imageViewport}).click().perform();
+      assert.deepEqual(await edgeState(),[1,1],'无hover能力时可用切图入口默认可见');
+      await fs.writeFile(path.join(workspace,'runs/browser/session-handoff/edge-no-hover-1920.png'),await driver.takeScreenshot(),'base64');
+    }finally{
+      await driver.setContext('chrome');await driver.executeScript("Services.prefs.setIntPref('ui.primaryPointerCapabilities',6)");await driver.setContext('content');
+    }
     async function stepImage(label, name, page) {
-      const control = await driver.findElement(By.xpath(`//button[normalize-space(.)='${label}']`));
-      await driver.wait(() => control.isEnabled(), 5000); await control.click();
+      const control = await driver.findElement(By.css(`dialog.iad-viewer-dialog button[aria-label="${label}"]`));
+      await driver.wait(() => control.isEnabled(), 5000);await driver.actions().move({origin:control}).perform();await control.click();
       await driver.wait(async () => (await (await element(".iad-lightbox-toolbar strong")).getText()) === name, 5000);
       const route = JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad"));
       assert.equal(route.page, page); assert.deepEqual(route.filters.annotation_filters, ["none"]);
       assert.equal(route.datasetId, sequence.dataset_id);
       assert.equal(await (await element("select[aria-label='缩放']")).getAttribute("value"), "0");
     }
-    await stepImage("后一张", "sequence-24.png", 2);
+    await driver.executeScript(`const original=window.fetch;let requests=0,release;const gate=new Promise(resolve=>release=resolve);
+      window.__iadEdgeRequests=()=>requests;window.__iadEdgeRelease=()=>{window.fetch=original;release();delete window.__iadEdgeRequests;delete window.__iadEdgeRelease;};
+      window.fetch=(...args)=>{const url=new URL(args[0],location.href),response=original(...args);if(url.pathname===arguments[0] && url.searchParams.get('page')==='2'){requests++;return Promise.all([response,gate]).then(([value])=>value);}return response;};`, `/api/iad/samples/${sequence.task_id}`);
+    await Promise.all([stepImage("下一张图像", "sequence-24.png", 2),(async()=>{
+      try{
+        await driver.wait(()=>driver.executeScript('return window.__iadEdgeRequests()===1'),5000);
+        await driver.wait(async()=>!(await edgePrevious.isEnabled()) && !(await edgeNext.isEnabled()),5000,'真实跨页请求期间双侧禁用');
+        assert.equal(await driver.executeScript("return document.querySelector('.iad-lightbox-toolbar [role=status]')?.textContent"),'正在切换图像…');
+        assert.equal(await driver.executeScript("arguments[0].click();arguments[0].click();return window.__iadEdgeRequests()",edgeNext),1,'忙碌时重复点击不发起第二个相邻页请求');
+        assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad')).page,1);
+      }finally{await driver.executeScript('window.__iadEdgeRelease()');}
+    })()]);
     await driver.wait(async () => await driver.executeScript("return document.querySelector('.iad-viewer-world img').naturalWidth===320"),5000);
     assert.deepEqual(await driver.executeScript("const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const c=canvas.getContext('2d');c.drawImage(document.querySelector('.iad-viewer-world img'),0,0);return [...c.getImageData(0,0,1,1).data]"), [44,80,120,255], "跨页必须展示当前图的真实像素");
-    await stepImage("后一张", "sequence-25.png", 2);
-    assert.equal(await (await driver.findElement(By.xpath("//button[normalize-space(.)='后一张']"))).isEnabled(), false, "标注过滤后的最后一张不能进入被排除图像");
-    await stepImage("前一张", "sequence-24.png", 2);
-    await stepImage("前一张", "sequence-23.png", 1);
+    await stepImage("下一张图像", "sequence-25.png", 2);
+    assert.equal(await (await driver.findElement(By.css('dialog.iad-viewer-dialog button[aria-label="下一张图像"]'))).isEnabled(), false, "标注过滤后的最后一张不能进入被排除图像");
+    await stepImage("上一张图像", "sequence-24.png", 2);
+    await stepImage("上一张图像", "sequence-23.png", 1);
     await fs.writeFile(path.join(workspace, "runs/browser/session-handoff/image-sequence.png"), await driver.takeScreenshot(), "base64");
+    await viewport(driver,...viewerSize);
     await button("关闭");
     assert.equal(await driver.executeScript("return document.activeElement?.getAttribute('title')"), "放大图像", "跨页后关闭查看器回到当前图的来源按钮");
     await (await element("button[title='放大图像']")).click();
-    const nextImage = await driver.findElement(By.xpath("//button[normalize-space(.)='后一张']"));
+    const nextImage = await driver.findElement(By.css('dialog.iad-viewer-dialog button[aria-label="下一张图像"]'));
     await driver.wait(() => nextImage.isEnabled(), 5000);
     const closeImage = await driver.findElement(By.xpath("//dialog[contains(@class,'iad-viewer-dialog')]//button[normalize-space(.)='关闭']"));
     await driver.executeScript("arguments[0].click();arguments[1].click()", nextImage, closeImage);
@@ -404,8 +452,8 @@ Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
     await (await element("input[aria-label='按文件名搜索']")).sendKeys("sequence-2");
     await (await element("img[alt='sequence-20.png']")).click();
     await (await element("button[title='放大图像']")).click();
-    assert.equal(await (await driver.findElement(By.xpath("//button[normalize-space(.)='前一张']"))).isEnabled(), false, "按当前搜索范围定位第一张");
-    await stepImage("后一张", "sequence-21.png", 1);
+    assert.equal(await (await driver.findElement(By.css('dialog.iad-viewer-dialog button[aria-label="上一张图像"]'))).isEnabled(), false, "按当前搜索范围定位第一张");
+    await stepImage("下一张图像", "sequence-21.png", 1);
     assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad")).filters.search, "sequence-2");
     assert.equal(agentRequests.length, requestCount, "跨页与筛选切图不启动模型");
     await button("关闭"); await (await element("button[aria-label='关闭图像详情']")).click();

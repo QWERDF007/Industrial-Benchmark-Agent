@@ -3,15 +3,33 @@ import type {} from "@deepseek-ai/dsh-api-session-controller/client";
 import type {} from "@deepseek-ai/dsh-client-ui-conversation/client";
 import type {} from "@deepseek-ai/dsh-client-ui-workspace/client";
 import { SessionId } from "@deepseek-ai/dsh-session/types";
-import type { InspectionSnapshot } from "../shared/contracts.js";
+import type { ConsistencyContextRequest,InspectionSnapshot } from "../shared/contracts.js";
 
 declare module "@deepseek-ai/dsh-api-session-controller/client" {
-  interface SessionReferenceSourceMap { iadInspection: unknown; iadKnowledge: unknown }
+  interface SessionReferenceSourceMap { iadInspection: unknown; iadKnowledge: unknown; iadConsistency:unknown }
 }
 
 /** Uses host admission and the retained Session scope; never touches the composer draft. */
 export class WorkbenchSession {
   constructor(private host: Pick<Context, "sessions" | "uiWorkspace">) {}
+
+  async explainConsistency(context:ConsistencyContextRequest,returnLink:(sessionId:string)=>string,previousSessionId?:string){
+    const id=previousSessionId ? SessionId(previousSessionId) : await this.host.sessions.create();
+    const link=returnLink(id);
+    context={...context,return_location:{pageId:'industrial-consistency',...context.return_location,sessionId:id}};
+    await this.host.sessions.using(id,{source:'iadConsistency'},async reference=>{
+      const binding=await reference.ready;
+      const text=[
+        '请解释这份冻结的一致性证据及所选差异，区分原图事实、双方标注、规范、人工复核、推断和待确认事项。',
+        `一致性证据引用：${JSON.stringify(context)}`,
+        `返回比较证据：${link}`,
+        '先用 consistency_context 校验引用并实际读取它返回的图片附件，按 next_cursor 继续所选差异；说明剩余和未选择范围。保留返回链接，不启动全库检查、知识挖掘、模型审计或人工裁决。',
+      ].join('\n');
+      const submission=binding.ctx.inject(['conversation'],scoped=>scoped.conversation.send(text));
+      try{await submission;}finally{await submission.dispose();}
+      this.host.uiWorkspace.openSession(id);
+    });
+  }
 
   async inspect(snapshot: InspectionSnapshot, question: string, returnLink: (sessionId: string) => string, previousSessionId?: string) {
     const existing = previousSessionId || snapshot.origin_session_id;

@@ -1,6 +1,7 @@
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Literal, Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from iad_core.candidate.schemas import CandidateSignals
+from iad_core.duplicate.models import PairObservation
 
 
 class NormalReferenceEvidence(BaseModel):
@@ -22,45 +23,20 @@ class NeighborEvidence(BaseModel):
     physical_sample_id: Optional[str] = None
 
 
-class DirectVerifiedPairEvidence(BaseModel):
-    """
-    Evidence for an image pair that was DIRECTLY verified by PairVerifier V2.
-    Metrics reflect real pairwise calculation.
-    """
+class DirectPairEvidence(PairObservation):
     sample_id: str
     image_path: str
-    dino_cosine: float
-    pixel_cosine: float
-    ncc: float
-    mean_abs_diff: float
-    high_diff_ratio: float
-    best_shift: Tuple[int, int] = (0, 0)
-    verified: bool = True
     data_origin: str = "UNKNOWN"
 
 
-class VerifiedComponentMemberEvidence(BaseModel):
-    """
-    Evidence for a transitive connected component member from Union-Find.
-    Represents component connectivity rather than direct verified pairwise edge.
-    """
+class StrictContentMemberEvidence(BaseModel):
+    relation: Literal['EXACT'] = 'EXACT'
     group_id: str
     sample_id: str
     image_path: str
     data_origin: str = "UNKNOWN"
     is_cross_origin: bool = False
-    group_size: int = 1
-
-
-class DuplicateEvidence(BaseModel):
-    group_id: str
-    sample_id: str
-    image_path: str
-    verified: bool
-    pixel_similarity: float
-    feature_similarity: float
-    is_cross_origin: bool
-    data_origin: str
+    group_size: int
 
 
 class AnnotationEvidence(BaseModel):
@@ -78,7 +54,7 @@ class EvidencePackage(BaseModel):
     """
     Evidence Package for a candidate sample under human review.
     Contains query sample metadata, score breakdown, nearest normal references,
-    similar history neighbors, direct verified duplicate pairs, verified component members,
+    similar history neighbors, versioned pair observations, published strict content members,
     and annotations.
     """
     sample_id: str
@@ -89,9 +65,8 @@ class EvidencePackage(BaseModel):
     signals: CandidateSignals
     nearest_normal: List[NormalReferenceEvidence] = Field(default_factory=list)
     nearest_neighbors: List[NeighborEvidence] = Field(default_factory=list)
-    direct_verified_pairs: List[DirectVerifiedPairEvidence] = Field(default_factory=list)
-    verified_component_members: List[VerifiedComponentMemberEvidence] = Field(default_factory=list)
-    verified_duplicates: List[DuplicateEvidence] = Field(default_factory=list)
+    direct_pair_observations: List[DirectPairEvidence] = Field(default_factory=list)
+    strict_content_members: List[StrictContentMemberEvidence] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
     annotations: List[AnnotationEvidence] = Field(default_factory=list)
     evidence_status: str = Field("COMPLETE", description="'COMPLETE' or 'INCOMPLETE'")

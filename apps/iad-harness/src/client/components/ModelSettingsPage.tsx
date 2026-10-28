@@ -5,6 +5,7 @@ import {message, request} from '../api.js';
 import {useWorkbenchModel} from '../models.js';
 import {workbenchStyles} from '../styles.js';
 import {ProviderManager} from './ProviderManager.js';
+import {ImageEncoderSettings} from './ImageEncoderSettings.js';
 import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {PageTabs} from './layout/PageTabs.js';
 import {useUnsavedChanges} from '../useUnsavedChanges.js';
@@ -20,7 +21,8 @@ export function ModelSettingsPage() {
   const {view, loading, error: loadError, refresh} = useWorkbenchModel();
   const savedSelection = view?.selection || {provider_id: '', model_id: '', limits: {...defaultModelLimits}};
   const parametersId = useId();
-  const [tab, setTab] = useState<'model' | 'providers'>('model');
+  const [tab, setTab] = useState<'model' | 'providers' | 'images'>('model');
+  const [imageRefresh,setImageRefresh]=useState(0), [imageState,setImageState]=useState({dirty:false,busy:false});
   const [draft, setDraft] = useState<Selection | null>(null), [expectedRevision, setExpectedRevision] = useState(0);
   const [parameters, setParameters] = useState('{}'), [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
   const reset = () => {
@@ -60,10 +62,13 @@ export function ModelSettingsPage() {
     } catch (failure) {setError(message(failure));} finally {setBusy(false);}
   }
   return <div className="iad-workbench" data-page="industrial-model-settings"><style>{workbenchStyles}</style>
-    <WorkbenchHeader pageId="industrial-model-settings"><button disabled={busy || loading} onClick={() => void refresh()}>刷新</button></WorkbenchHeader>
-    <PageTabs label="模型设置分区" items={[{id: 'model', label: '工作台模型'}, {id: 'providers', label: '提供商'}]} value={tab} onChange={value => {setTab(value); if (value === 'model') void refresh();}}>
+    <WorkbenchHeader pageId="industrial-model-settings"><button disabled={busy || loading || imageState.busy} onClick={() => tab==='images' ? setImageRefresh(value=>value+1) : void refresh()}>刷新</button></WorkbenchHeader>
+    <PageTabs label="模型设置分区" items={[{id: 'model', label: '工作台模型'}, {id: 'providers', label: '提供商'}, {id:'images',label:'图像检索'}]} value={tab} onChange={value => {
+      if (tab==='images' && (imageState.busy || (imageState.dirty && !window.confirm('有未保存的图像配置，确认放弃修改？')))) return;
+      setTab(value);setImageState({dirty:false,busy:false});if (value === 'model') void refresh();
+    }}>
     {(loadError || error) && <p role="alert" className="iad-error">{error || loadError}</p>}
-    {tab === 'providers' ? <section className="iad-provider-manager" aria-label="提供商管理"><ProviderManager /></section> : <section className="iad-model-configuration">
+    {tab === 'images' ? <ImageEncoderSettings refreshVersion={imageRefresh} onStateChange={setImageState} /> : tab === 'providers' ? <section className="iad-provider-manager" aria-label="提供商管理"><ProviderManager /></section> : <section className="iad-model-configuration">
       <h2>工作台模型</h2><p className="iad-muted">探索、挖掘和审计共用此配置；会话模型独立选择。</p>
       {view?.error && <p role="status" className="iad-muted">已保存配置：{view.error}</p>}
       {!draft ? <p role="status">正在读取配置…</p> : <form className="iad-model-form" onSubmit={save}>

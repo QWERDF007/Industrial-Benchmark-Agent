@@ -61,7 +61,9 @@ def build_split_groups(
     """
     sample_map = {s.sample_id: s for s in samples}
     sample_ids = list(sample_map.keys())
-    dsu = DisjointSetUnion(sample_ids)
+    relation_ids = {identity for pair in verified_pairs or [] for identity in pair}
+    relation_ids.update(identity for group in verified_groups or [] for identity in group)
+    dsu = DisjointSetUnion(sorted(set(sample_ids) | relation_ids))
 
     # 1. Union by physical_sample_id considering physical_sample_scope
     phys_map: Dict[str, List[str]] = {}
@@ -91,13 +93,12 @@ def build_split_groups(
     # 3. Union by verified duplicate pairs
     if verified_pairs:
         for a, b in verified_pairs:
-            if a in sample_map and b in sample_map:
-                dsu.union(a, b)
+            dsu.union(a, b)
 
     # 4. Union by verified duplicate components
     if verified_groups:
         for comp in verified_groups:
-            valid_comp = [sid for sid in comp if sid in sample_map]
+            valid_comp = comp
             if len(valid_comp) > 1:
                 first = valid_comp[0]
                 for other in valid_comp[1:]:

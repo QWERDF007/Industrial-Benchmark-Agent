@@ -1,164 +1,73 @@
-import os
-import logging
-from typing import Optional, List, Dict, Any, Set
-from collections import defaultdict
-import numpy as np
-import faiss
 from pydantic import BaseModel
 
+from iad_core.consistency.errors import ConsistencyError, ConsistencyErrorCode
+from iad_core.consistency.models import ImageRetrieve, SampleImageQuery, CoverageCount, Relation
 from iad_core.storage.database import Database
-from iad_core.storage.repositories import FeatureRepository, SampleRepository
-from iad_core.feature.index import load_faiss_index
-
-logger = logging.getLogger("iad_core.feature.search")
+from iad_core.storage.repositories import SampleRepository
 
 
 class SearchResult(BaseModel):
     rank: int
+    group_id: str
+    group_rank: int
     sample_id: str
     score: float
     image_path: str
     relative_path: str
     quality_status: str
     data_origin: str
-    batch_id: Optional[str] = None
-    physical_sample_id: Optional[str] = None
-    phenomenon_summary: Optional[str] = None
+    batch_id: str | None = None
+    physical_sample_id: str | None = None
+    phenomenon_summary: str | None = None
+    relation: Relation
+    error_code: ConsistencyErrorCode | None = None
 
 
-def search_by_sample(
-    sample_id: str,
-    task_id: str,
-    top_k: int = 20,
-    exclude_self: bool = True,
-    index_dir: Optional[str] = None,
-    db_path: str = "data/benchmark.db",
-    filter_data_origin: Optional[str] = None,
-    filter_quality_status: Optional[str] = None,
-) -> List[SearchResult]:
-    """
-    Perform visual search in FAISS index given a query sample_id.
-    Implements Progressive Over-Fetch to avoid missing sparse classes.
-    """
-    idx_dir = index_dir or os.path.join("runs", "features", task_id)
-    index, sample_ids, metadata = load_faiss_index(idx_dir)
+class VisualMatches(BaseModel):
+    items: list[SearchResult]
+    scope_id: str
+    profile_id: str
+    coverage: CoverageCount
+    verification: CoverageCount
+    annotation: CoverageCount
 
-    total_samples = len(sample_ids)
-    if total_samples == 0:
-        return []
 
-    model_id = metadata.get("model_id", "dinov2_vitb14_reg")
-    preprocess_key = metadata.get("preprocess_key", "dinov2_224_norm")
-
+def search_by_sample(sample_id: str, *, corpus_scope=None, profile_id: str | None = None,
+                     top_k: int = 50, exclude_self: bool = True, db_path: str = 'data/benchmark.db',
+                     filter_data_origin: str | None = None, filter_quality_status: str | None = None) -> VisualMatches:
+    from iad_core.consistency.service import ConsistencyService
+    request = ImageRetrieve(query=SampleImageQuery(sample_id=sample_id),
+        corpus_scope=corpus_scope or {'kind': 'all_registered'}, profile_id=profile_id,
+        top_k=top_k, mode='visual')
+    if filter_data_origin or filter_quality_status:
+        request = request.model_copy(update={'top_k': max(top_k, 64)})
     db = Database(db_path)
-    feat_repo = FeatureRepository(db)
-    query_record = feat_repo.get(sample_id, model_id, preprocess_key)
-    if not query_record:
-        raise ValueError(
-            f"Query sample '{sample_id}' not found in feature cache for model '{model_id}' and preprocess '{preprocess_key}'"
-        )
-
-    np_dtype = np.float16 if query_record["dtype"] == "fp16" else np.float32
-    query_vec = np.frombuffer(query_record["embedding_blob"], dtype=np_dtype).astype(np.float32)
-    query_vec = np.expand_dims(query_vec, axis=0)
-    faiss.normalize_L2(query_vec)
-
-    needs_filter = bool(filter_data_origin or filter_quality_status)
-    if not needs_filter:
-        fetch_tiers = [min(total_samples, top_k + (1 if exclude_self else 0))]
-    else:
-        fetch_tiers = [
-            min(total_samples, max(64, top_k)),
-            min(total_samples, max(256, top_k * 4)),
-            min(total_samples, max(1024, top_k * 16)),
-            total_samples,
-        ]
-        seen_tiers = set()
-        dedup_tiers = []
-        for t in fetch_tiers:
-            if t not in seen_tiers:
-                seen_tiers.add(t)
-                dedup_tiers.append(t)
-        fetch_tiers = dedup_tiers
-
-    sample_repo = SampleRepository(db)
-    results: List[SearchResult] = []
-    already_evaluated_indices: Set[int] = set()
-
-    for fetch_k in fetch_tiers:
-        scores, indices = index.search(query_vec, fetch_k)
-        scores = scores[0]
-        indices = indices[0]
-
-        new_indices = []
-        new_scores = []
-        for s, idx in zip(scores, indices):
-            if 0 <= idx < total_samples and idx not in already_evaluated_indices:
-                new_indices.append(idx)
-                new_scores.append(s)
-                already_evaluated_indices.add(idx)
-
-        if not new_indices:
-            continue
-
-        cand_ids = [sample_ids[idx] for idx in new_indices]
-        samples_map = {s.sample_id: s for s in sample_repo.get_many(cand_ids)}
-
-        phenomenon_map: Dict[str, str] = defaultdict(str)
-        if cand_ids:
-            with db.connection() as conn:
-                cursor = conn.cursor()
-                placeholders = ",".join("?" for _ in cand_ids)
-                cursor.execute(
-                    f"""
-                    SELECT sample_id, phenomenon, COUNT(*) 
-                    FROM annotations 
-                    WHERE sample_id IN ({placeholders}) 
-                    GROUP BY sample_id, phenomenon
-                    """,
-                    cand_ids,
-                )
-                phenom_counts: Dict[str, List[str]] = defaultdict(list)
-                for s_id, phenom, cnt in cursor.fetchall():
-                    tag = phenom or "unspecified"
-                    phenom_counts[s_id].append(f"{tag}({cnt})")
-                for s_id, tags in phenom_counts.items():
-                    phenomenon_map[s_id] = ", ".join(tags)
-
-        for score, idx in zip(new_scores, new_indices):
-            cand_id = sample_ids[idx]
-            if exclude_self and cand_id == sample_id:
+    matches = ConsistencyService(db).retrieve_full(request, exclude_self=exclude_self)
+    if matches.visual.status == 'NOT_READY':
+        raise ConsistencyError(matches.visual.error_code or 'INDEX_NOT_READY',
+            matches.visual.reason or 'Visual retrieval is not ready')
+    members = {sample.sample_id: sample for sample in SampleRepository(db).get_many(
+        [member.sample_id for group in matches.visual.groups for member in group.members])}
+    results = []
+    used = 0
+    for group in matches.visual.groups:
+        origin = next(origin for origin in group.origins if origin.branch == 'visual')
+        selected = []
+        for member in sorted(group.members, key=lambda value: (value.sample_id != sample_id, value.sample_id)):
+            sample = members[member.sample_id]
+            if filter_data_origin and sample.data_origin.value != filter_data_origin:
                 continue
-
-            sample_obj = samples_map.get(cand_id)
-            if not sample_obj:
+            if filter_quality_status and sample.quality_status.value != filter_quality_status:
                 continue
-
-            if filter_data_origin and sample_obj.data_origin.value != filter_data_origin:
-                continue
-
-            if filter_quality_status and sample_obj.quality_status.value != filter_quality_status:
-                continue
-
-            results.append(
-                SearchResult(
-                    rank=len(results) + 1,
-                    sample_id=cand_id,
-                    score=round(float(score), 4),
-                    image_path=sample_obj.image_path,
-                    relative_path=sample_obj.relative_path,
-                    quality_status=sample_obj.quality_status.value,
-                    data_origin=sample_obj.data_origin.value,
-                    batch_id=sample_obj.batch_id,
-                    physical_sample_id=sample_obj.physical_sample_id,
-                    phenomenon_summary=phenomenon_map.get(cand_id),
-                )
-            )
-
-            if len(results) >= top_k:
+            selected.append(SearchResult(rank=len(results) + len(selected) + 1, group_id=group.content_group_id,
+                group_rank=origin.rank, sample_id=sample.sample_id, score=origin.score,
+                image_path=sample.image_path, relative_path=sample.relative_path, quality_status=sample.quality_status.value,
+                data_origin=sample.data_origin.value, batch_id=sample.batch_id, physical_sample_id=sample.physical_sample_id,
+                relation=member.relation, error_code=member.error_code))
+        if selected:
+            results.extend(selected)
+            used += 1
+            if used == top_k:
                 break
-
-        if len(results) >= top_k:
-            break
-
-    return results[:top_k]
+    return VisualMatches(items=results, scope_id=matches.scope_id, profile_id=matches.profile_id,
+        coverage=matches.visual.corpus_coverage, verification=matches.coverage.verification, annotation=matches.coverage.annotation)

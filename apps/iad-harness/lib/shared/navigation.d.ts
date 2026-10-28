@@ -16,6 +16,10 @@ export declare const navigation: {
         readonly label: '知识挖掘';
         readonly chapter: '知识构建';
     };
+    readonly 'industrial-consistency': {
+        readonly label: '数据一致性';
+        readonly chapter: '质量审核';
+    };
     readonly 'industrial-audit': {
         readonly label: '模型审计';
         readonly chapter: '质量审核';
@@ -31,10 +35,40 @@ export declare const navigation: {
 };
 export type PageId = keyof typeof navigation;
 export declare const pages: Record<PageId, string>;
-export type WorkbenchLocation = {
-    pageId: PageId;
+export declare const consistencyTabs: readonly [{
+    readonly id: 'conflicts';
+    readonly label: '标注冲突';
+}, {
+    readonly id: 'search';
+    readonly label: '图像检索';
+}, {
+    readonly id: 'groups';
+    readonly label: '重复图组';
+}, {
+    readonly id: 'jobs';
+    readonly label: '索引与作业';
+}];
+export type ConsistencyTab = typeof consistencyTabs[number]['id'];
+type RouteValue<T extends {
+    kind?: string;
+}> = T extends unknown ? {
+    [K in keyof T]: T[K];
+} & Required<Pick<T, 'kind'>> : never;
+type RouteFields<T> = {
+    [K in keyof T]: Exclude<T[K], null>;
+};
+export type ConsistencyLocation = RouteFields<Omit<import('./domain.generated.js').ConsistencyReturnLocation, 'pageId' | 'scope' | 'query' | 'returnPage'>> & {
+    pageId: 'industrial-consistency';
+    scope?: RouteValue<import('./domain.generated.js').CorpusScope>;
+    query?: RouteValue<import('./domain.generated.js').SampleImageQuery>;
+    returnPage?: DatasetPageId;
+};
+export type DatasetPageId = Exclude<PageId, 'industrial-consistency'>;
+export type WorkbenchLocation = ConsistencyLocation | {
+    pageId: DatasetPageId;
     datasetId: string;
     explorationVersion?: string;
+    directionFocus?: string;
     knowledgeKind?: KnowledgeSnapshot["kind"];
     job?: string;
     version?: string;
@@ -51,4 +85,5 @@ export type WorkbenchLocation = {
     filters?: Filters;
     page?: number;
 };
+export {};
 //# sourceMappingURL=navigation.d.ts.map

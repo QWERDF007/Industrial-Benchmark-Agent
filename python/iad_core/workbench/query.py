@@ -8,14 +8,11 @@ from iad_core.dataset.registry import DatasetRegistry
 from iad_core.storage.database import Database
 from iad_core.storage.models import sample_uuid
 from iad_core.workbench.report import DatasetReport, QualityAssessment
+from iad_core.consistency.policy import AnnotationPolicy
 
 
-class SampleQuery(BaseModel):
+class SampleFilters(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    dataset_id: Optional[str] = None
-    task_id: Optional[str] = None
-    page: int = Field(1, ge=1)
-    page_size: int = Field(24, ge=1, le=200)
     raw_label_filters: List[Literal["PASS", "FAIL", "UNCERTAIN"]] = Field(default_factory=list)
     annotation_filters: List[str] = Field(default_factory=list)
     model_status: Literal["all", "pending", "audited", "risk", "PASS", "FAIL", "UNCERTAIN"] = "all"
@@ -35,12 +32,23 @@ class SampleQuery(BaseModel):
 
     @model_validator(mode="after")
     def require_scope(self):
+        if any(value not in ("none", "present") and not (value.startswith("category:") and value[9:]) for value in self.annotation_filters):
+            raise ValueError("Invalid annotation filter")
+        return self
+
+
+class SampleQuery(SampleFilters):
+    dataset_id: Optional[str] = None
+    task_id: Optional[str] = None
+    page: int = Field(1, ge=1)
+    page_size: int = Field(24, ge=1, le=200)
+
+    @model_validator(mode="after")
+    def require_query_scope(self):
         if not self.dataset_id and not self.task_id:
             raise ValueError("dataset_id or task_id is required")
         if self.reference_status != "all" and not self.dataset_id:
             raise ValueError("Reference filters require dataset_id")
-        if any(value not in ("none", "present") and not (value.startswith("category:") and value[9:]) for value in self.annotation_filters):
-            raise ValueError("Invalid annotation filter")
         return self
 
 
@@ -86,7 +94,7 @@ class WorkbenchQuery:
             raise LookupError("Sample not found")
         return dict(row)
 
-    def samples(self, query: SampleQuery) -> dict:
+    def selection(self, query: SampleQuery, connection=None) -> tuple[str, list, str]:
         clauses, params = [], []
         if query.dataset_id:
             clauses.append("dataset_id=?")
@@ -127,7 +135,7 @@ class WorkbenchQuery:
         if query.technical == "issues":
             clauses.append("technical_quality_score<70")
         if query.reference_status != "all":
-            references = DatasetRegistry(self.db).references(query.dataset_id, limit=None)
+            references = DatasetRegistry(self.db).references(query.dataset_id, limit=None, connection=connection)
             clauses.append("sample_id " + ("NOT IN" if query.reference_status == "excluded" else "IN") + " (SELECT value FROM json_each(?))")
             params.append(json.dumps(references))
         if query.search:
@@ -135,7 +143,18 @@ class WorkbenchQuery:
             params.append(query.search)
         where = " AND ".join(clauses)
         order = {"default": "id", "risk": "visual_suspicion_score DESC,id", "tech": "technical_quality_score,id"}[query.sort_by]
+        return where, params, order
+
+    def matching_ids(self, query: SampleQuery, connection=None) -> list[str]:
+        from contextlib import nullcontext
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+            where, params, order = self.selection(query, conn)
+            return [row[0] for row in conn.execute(BASE + f"SELECT sample_id FROM base WHERE {where} ORDER BY {order}", params)]
+
+    def samples(self, query: SampleQuery) -> dict:
         with self.db.connection() as conn:
+            conn.execute('BEGIN')
+            where, params, order = self.selection(query, conn)
             count = conn.execute(BASE + f"SELECT count(*) FROM base WHERE {where}", params).fetchone()[0]
             rows = conn.execute(BASE + f"SELECT * FROM base WHERE {where} ORDER BY {order} LIMIT ? OFFSET ?",
                                 [*params, query.page_size, (query.page - 1) * query.page_size]).fetchall()
@@ -202,7 +221,7 @@ class WorkbenchQuery:
             report = self.report(dataset_id=dataset_id, task_id=config.task.task_id)
             with self.db.connection() as conn:
                 annotation_counts = conn.execute("SELECT a.raw_label,count(*) FROM annotations a JOIN samples s ON s.sample_id=a.sample_id WHERE s.dataset_id=? AND s.is_excluded=0 GROUP BY a.raw_label ORDER BY a.raw_label", (dataset_id,)).fetchall()
-                feature_count = conn.execute("SELECT count(DISTINCT f.sample_id) FROM feature_records f JOIN samples s ON s.sample_id=f.sample_id WHERE s.dataset_id=? AND s.is_excluded=0", (dataset_id,)).fetchone()[0]
+                feature_count = conn.execute("SELECT count(DISTINCT f.sample_id) FROM sample_features f JOIN samples s ON s.sample_id=f.sample_id WHERE s.dataset_id=? AND s.is_excluded=0 AND f.view_key='full' AND f.profile_id=(SELECT profile_id FROM workbench_image_settings WHERE id=1)", (dataset_id,)).fetchone()[0]
                 explicit_labels = conn.execute("SELECT count(*) FROM samples WHERE dataset_id=? AND is_excluded=0 AND quality_status IN ('PASS', 'FAIL')", (dataset_id,)).fetchone()[0]
                 selected = conn.execute("SELECT reference_selection_set FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()[0]
             items.append({**report, "dataset_id": dataset_id, "name": config.dataset.name or dataset_id,
@@ -215,5 +234,6 @@ class WorkbenchQuery:
                           "reference_sample_ids": registry.references(dataset_id, limit=None),
                           "reference_mode": "selected" if selected else "automatic",
                           "unannotated_is_normal": config.dataset.unannotated_is_normal,
+                          "annotation_policy": config.annotations.model_dump(include=set(AnnotationPolicy.model_fields)),
                           "feature_coverage_pct": round(100 * feature_count / report["total_samples"], 2) if report["total_samples"] else 0})
         return {"datasets": items}

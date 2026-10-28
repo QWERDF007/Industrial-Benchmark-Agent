@@ -10,6 +10,51 @@ from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
 
 
+@pytest.mark.parametrize('kind', ['IMAGE_INDEX', 'DATA_CONSISTENCY'])
+def test_non_mllm_jobs_recover_committed_progress_and_retry_without_chat_configuration(dataset, kind):
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+    db, _, config = dataset
+    sample_ids = [config.dataset.id + ':' + name for name in ('normal.png', 'normal2.png')]
+    code = '''
+import json,os,sys
+from iad_core.storage.database import Database
+from iad_core.workbench.runtime import WorkbenchRuntime
+runtime=WorkbenchRuntime(Database(sys.argv[1]))
+samples=json.loads(sys.argv[4])
+def execute(context):
+    context.record(samples[0])
+    print(context.run_id,flush=True)
+    os._exit(17)
+started=runtime.jobs.start(sys.argv[2],sys.argv[3],{'dataset_id':sys.argv[3],'sample_ids':samples},execute,'CPU progress')
+runtime.jobs.wait(started['run_id'],20)
+'''
+    child = subprocess.run([sys.executable, '-c', code, db.db_path, kind, config.dataset.id, json.dumps(sample_ids)],
+        env={**os.environ, 'PYTHONPATH':str(Path(__file__).resolve().parents[1] / 'python'),
+            'LIVE_VLM_REQUEST_PARAMETERS':'invalid-json'}, capture_output=True, text=True, timeout=30)
+    assert child.returncode == 17, child.stderr
+    run_id = child.stdout.strip()
+    runtime = WorkbenchRuntime(db)
+    try:
+        interrupted = runtime.jobs.status(run_id)
+        assert (interrupted['status'], interrupted['completed'], interrupted['unprocessed']) == ('INTERRUPTED', 1, 1)
+        assert interrupted['completed_sample_ids'] == sample_ids[:1]
+        options = runtime.jobs.retry_options(run_id, (kind,))
+        assert options['selection_mode'] == 'subset'
+        assert [sample['sample_id'] for sample in options['samples']] == sample_ids[1:]
+        retry = runtime.jobs.retry(run_id, (kind,), lambda context:context.record(sample_ids[1]))
+        runtime.jobs.wait(retry['run_id'], 5)
+        completed = runtime.jobs.status(retry['run_id'])
+        assert completed['status'] == 'COMPLETED' and completed['completed'] == 1
+        assert completed['parent_run_id'] == run_id and completed['sample_ids'] == sample_ids[1:]
+        assert completed['model_name'] is None and completed['model_calls'] == []
+        assert runtime.jobs.status(run_id)['completed_sample_ids'] == sample_ids[:1]
+    finally:
+        runtime.close()
+
+
 def test_operator_retries_only_failed_samples_and_preserves_completed_results(dataset, mllm_api):
     db, _, config = dataset
     external, _, _ = mllm_api
@@ -309,3 +354,86 @@ def test_knowledge_retry_rejects_changed_human_feedback(dataset, mllm_api):
         assert len(runtime.knowledge.list(config.dataset.id)) == 2  # initial normal and failed attempt
     finally:
         runtime.close()
+
+
+def test_killed_exploration_worker_interrupts_running_and_pending_without_automatic_replay(dataset, monkeypatch):
+    import os
+    import subprocess
+    import sys
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    db, _, config = dataset
+    entered, release = threading.Event(), threading.Event()
+    generations = []
+
+    class Model(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def do_POST(self):
+            body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+            if self.path.endswith('/tokenize'):
+                response = {'count': 1000, 'max_model_len': 32768}
+            else:
+                generations.append(body)
+                if len(generations) == 1:
+                    entered.set()
+                    assert release.wait(10)
+                response = {'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(
+                    {'summary': '联合探索', 'directions': [], 'limitations': []})}}]}
+            content = json.dumps(response).encode()
+            self.send_response(200); self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(content))); self.end_headers()
+            try:
+                self.wfile.write(content)
+            except BrokenPipeError:
+                pass
+
+    server = ThreadingHTTPServer(('127.0.0.1', 0), Model)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    endpoint = f'http://127.0.0.1:{server.server_port}/v1'
+    monkeypatch.setenv('LIVE_VLM_ENDPOINT', endpoint)
+    worker = subprocess.Popen([sys.executable, '-m', 'iad_core.entry'], stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env={**os.environ})
+    runtime = None
+
+    def submit(text):
+        worker.stdin.write(json.dumps({'request_id': text, 'operation': 'direction_exploration_start',
+            'arguments': {'request': {'dataset_id': config.dataset.id,
+                'normal_images': [config.dataset.id + ':normal.png'], 'defect_images': [config.dataset.id + ':dent.png'],
+                'prompt': {'text': text}}}, 'db_path': db.db_path}) + '\n')
+        worker.stdin.flush()
+        result = json.loads(worker.stdout.readline())
+        assert result['event'] == 'result', result
+        return result['data']
+
+    try:
+        a = submit('正在运行的原始正文。'); assert entered.wait(5)
+        b = submit('排队任务必须保留的原始正文。')
+        assert b['status'] == 'PENDING' and b['started_at'] is None
+        worker.kill(); worker.communicate(timeout=5); release.set()
+        runtime = WorkbenchRuntime(db, VlmClient())
+        interrupted = runtime.jobs.status(a['run_id'])
+        pending = runtime.jobs.status(b['run_id'])
+        assert interrupted['status'] == pending['status'] == 'INTERRUPTED'
+        assert interrupted['model_calls'][-1]['error']['type'] == 'WorkerInterrupted'
+        assert pending['model_calls'] == [] and pending['queue_position'] is None
+        assert len(generations) == 1, '重启查询不能自动重放排队或运行请求'
+        retried = runtime.exploration.retry(b['run_id'])
+        runtime.jobs.wait(retried['run_id'], 5)
+        completed = runtime.jobs.status(retried['run_id'])
+        assert completed['status'] == 'COMPLETED', completed['errors']
+        assert completed['parent_run_id'] == b['run_id']
+        assert completed['exploration_prompt']['text'] == '排队任务必须保留的原始正文。'
+        assert len(generations) == 2
+        assert generations[-1]['messages'][0]['content'][0]['text'].startswith(completed['exploration_prompt']['text'])
+        assert runtime.jobs.status(a['run_id']) == interrupted
+        assert runtime.jobs.status(b['run_id']) == pending
+    finally:
+        release.set()
+        if worker.poll() is None:
+            worker.kill(); worker.communicate(timeout=5)
+        if runtime:
+            runtime.close()
+        server.shutdown(); server.server_close()

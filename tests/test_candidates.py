@@ -1,3 +1,4 @@
+from tests.feature_fixtures import configure_test_encoder, seed_test_vector
 import os
 import tempfile
 import numpy as np
@@ -7,11 +8,9 @@ from iad_core.storage.database import Database
 from iad_core.storage.repositories import (
     TaskRepository,
     SampleRepository,
-    FeatureRepository,
     AnnotationRepository,
 )
 from iad_core.storage.models import (
-    FeatureRecord,
     InspectionTask,
     Sample,
     QualityStatus,
@@ -53,7 +52,7 @@ def candidate_test_env():
     )
 
     sample_repo = SampleRepository(db)
-    feat_repo = FeatureRepository(db)
+    config=configure_test_encoder(db,temp_dir)
     anno_repo = AnnotationRepository(db)
 
     # Create 10 synthetic samples:
@@ -75,7 +74,7 @@ def candidate_test_env():
                 sample_id=s_id,
                 task_id=task_id,
                 dataset_id="ds_test",
-                image_path=f"/fake/{s_id}.png",
+                image_path=os.path.join(temp_dir,f"{s_id}.png"),
                 relative_path=f"{s_id}.png",
                 data_origin=DataOrigin.LEGACY_TRAIN,
                 quality_status=QualityStatus.PASS,
@@ -86,16 +85,7 @@ def candidate_test_env():
         )
         vec = base_normal + rng.normal(0, 0.05, dim).astype(np.float32)
         vec /= np.linalg.norm(vec)
-        feat_repo.upsert(
-            FeatureRecord(
-                sample_id=s_id,
-                model_id="dinov2_vitb14_reg",
-                preprocess_key="dinov2_224_norm",
-                dim=dim,
-                dtype="fp16",
-                embedding_blob=vec.astype(np.float16).tobytes(),
-            )
-        )
+        seed_test_vector(db,s_id,vec,config.profile)
 
     # Sample 2..9: UNCERTAIN
     for i in range(2, 10):
@@ -106,7 +96,7 @@ def candidate_test_env():
                 sample_id=s_id,
                 task_id=task_id,
                 dataset_id="ds_test",
-                image_path=f"/fake/{s_id}.png",
+                image_path=os.path.join(temp_dir,f"{s_id}.png"),
                 relative_path=f"{s_id}.png",
                 data_origin=DataOrigin.LEGACY_TEST,
                 quality_status=QualityStatus.UNCERTAIN,
@@ -121,16 +111,7 @@ def candidate_test_env():
         perturb /= np.linalg.norm(perturb)
         vec = (1.0 - dist_factor) * base_normal + dist_factor * perturb
         vec /= np.linalg.norm(vec)
-        feat_repo.upsert(
-            FeatureRecord(
-                sample_id=s_id,
-                model_id="dinov2_vitb14_reg",
-                preprocess_key="dinov2_224_norm",
-                dim=dim,
-                dtype="fp16",
-                embedding_blob=vec.astype(np.float16).tobytes(),
-            )
-        )
+        seed_test_vector(db,s_id,vec,config.profile)
 
     # Add annotations for a few candidates
     anno_repo.upsert(
@@ -175,13 +156,11 @@ def test_normal_reference_and_distance(candidate_test_env):
     ref_ids, ref_embeds, is_low = get_normal_reference_set(
         task_id=task_id,
         db=db,
-        model_id="dinov2_vitb14_reg",
-        preprocess_key="dinov2_224_norm",
     )
 
     assert len(ref_ids) == 2
     assert is_low is True  # 2 < 20
-    assert ref_embeds.shape == (2, env["dim"])
+    assert ref_embeds.shape == (2, 768)
 
     # Test distance computation
     queries = np.stack([ref_embeds[0], -ref_embeds[0]], axis=0)

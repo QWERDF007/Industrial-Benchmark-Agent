@@ -3,7 +3,8 @@ export const jobStatuses = {
     FAILED: "失败", CANCELLED: "已取消", INTERRUPTED: "已中断",
 };
 export const jobPhases = {
-    PREPARING_EXPLORATION: "准备探索图组", EXPLORING_DIRECTIONS: "联合探索方向", DIRECTIONS_PUBLISHED: "方向已保存",
+    WAITING_RESOURCE: '等待执行资源', ENCODING: '准备图像特征', INDEXING: '发布共享索引', COMPARING: '比较图像与标注',
+    PREPARING_EXPLORATION: "准备图像", CHECKING_CAPACITY: "容量检查", EXPLORING_DIRECTIONS: "模型联合分析", PUBLISHING_DIRECTIONS: "校验并发布方向", DIRECTIONS_PUBLISHED: "方向已保存",
     PREPARING_KNOWLEDGE: "准备冻结知识", GLOBAL: "全图观察", REGIONS: "ROI 细看",
     SYNTHESIS: "全图与 ROI 联合分析", SAMPLE_COMPLETED: "图像审计完成",
     LEARNING_NORMAL: "归纳良品知识", LEARNING_DEFECT: "归纳不良品知识",

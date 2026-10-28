@@ -9,6 +9,7 @@ import {fileURLToPath} from 'node:url';
 import {setTimeout as delay} from 'node:timers/promises';
 import {Builder, By, until} from 'selenium-webdriver';
 import firefox from 'selenium-webdriver/firefox.js';
+import {viewport, setTheme} from './workbench-layout.js';
 
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -179,11 +180,85 @@ test('authenticated LAN browser saves provider settings and switches models', {t
     phase = 'independent model settings page';
     await (await driver.wait(until.elementLocated(By.css('button[aria-label="模型设置"]')), 10000)).click();
     await driver.wait(until.elementLocated(By.css('[data-page="industrial-model-settings"]')), 10000);
+    phase = 'independent image encoder settings';
+    await viewport(driver,1920,1080);
+    const invalidWeights=path.join(root,'invalid-encoder.pt');await fs.writeFile(invalidWeights,'invalid-encoder');
+    await click('图像检索');
+    await driver.wait(until.elementLocated(By.css('form[aria-label="图像检索配置"]')),10000);
+    assert.equal((await driver.findElements(By.css('input[aria-label="图像编码权重路径"]'))).length,0);
+    const decodeWorkers=await driver.findElement(By.css('input[aria-label="图像解码线程"]'));
+    const decodeMemory=await driver.findElement(By.css('input[aria-label="图像解码内存预算"]'));
+    assert.equal(await decodeWorkers.getAttribute('value'),'2');assert.equal(await decodeMemory.getAttribute('value'),'512');
+    await decodeWorkers.clear();await decodeWorkers.sendKeys('3');
+    await decodeMemory.clear();await decodeMemory.sendKeys('64');
+    await click('保存图像配置');
+    await driver.wait(()=>driver.executeScript("return document.querySelector('[aria-label=\"图像检索设置\"] [role=\"status\"]')?.textContent.includes('已保存')"),10000);
+    const decodingOnly=await api(null,'/images/settings');
+    assert.equal(decodingOnly.data.selection,null);assert.equal(decodingOnly.data.resources.decode_workers,3);
+    assert.equal(decodingOnly.data.resources.decode_memory_mb,64);
+    await fs.writeFile(path.join(os.tmpdir(),'iad-image-decode-only-1920.png'),await driver.takeScreenshot(),'base64');
+    await driver.findElement(By.css('select[aria-label="图像编码器"]')).sendKeys('sscd_disc_mixup');
+    await driver.findElement(By.css('input[aria-label="图像编码权重路径"]')).sendKeys(invalidWeights);
+    await driver.findElement(By.css('input[aria-label="图像编码设备"]')).clear();
+    await driver.findElement(By.css('input[aria-label="图像编码设备"]')).sendKeys('cpu');
+    await click('检查加载');
+    await driver.wait(()=>driver.executeScript("return document.querySelector('[aria-label=\"图像检索设置\"] [role=\"alert\"]')?.textContent.includes('sscd_disc_mixup')"),20000);
+    await click('保存图像配置');
+    await driver.wait(()=>driver.executeScript("return document.querySelector('[aria-label=\"图像检索设置\"] [role=\"status\"]')?.textContent.includes('已保存')"),10000);
+    const imageSettings=await api(null,'/images/settings');
+    assert.equal(imageSettings.status,200);assert.equal(imageSettings.data.selection.profile.model_id,'sscd_disc_mixup');
+    assert.equal(imageSettings.data.selection.profile.dim,512);assert.equal(imageSettings.data.selection.device,'cpu');
+    assert.equal(imageSettings.data.selection.decode_workers,3);assert.equal(imageSettings.data.selection.decode_memory_mb,64);
+    assert.equal((await api()).data.selection.model_id,'first-model','image configuration must not change the chat model');
+    await driver.findElement(By.css('select[aria-label="图像编码器"]')).sendKeys('dinov3_vitb16');
+    await driver.findElement(By.css('input[aria-label="图像编码权重路径"]')).sendKeys('/tmp/local-dinov3-snapshot');
+    assert.equal(await driver.findElement(By.xpath("//button[normalize-space(.)='检查加载']")).isEnabled(),true,
+      'local DINOv3 snapshots do not require a separate source checkout');
+    await click('重置图像配置');
+    assert.equal(await driver.executeScript('return document.documentElement.scrollWidth > innerWidth'),false);
+    await fs.writeFile(path.join(os.tmpdir(),'iad-image-encoder-settings-1920.png'),await driver.takeScreenshot(),'base64');
+    await setTheme(driver,'Dark');
+    assert.equal(await driver.executeScript('return document.documentElement.scrollWidth > innerWidth'),false);
+    await fs.writeFile(path.join(os.tmpdir(),'iad-image-encoder-settings-dark-1920.png'),await driver.takeScreenshot(),'base64');
+    await setTheme(driver,'Light');
+    const imageBatch=await driver.findElement(By.css('input[aria-label="图像编码批量"]'));
+    await imageBatch.clear();await imageBatch.sendKeys('9');
+    await click('工作台模型');
+    await driver.wait(until.alertIsPresent(),5000);await driver.switchTo().alert().dismiss();
+    assert.equal(await driver.findElement(By.css('[role="tab"][aria-selected="true"]')).getText(),'图像检索');
+    await click('工作台模型');
+    await driver.wait(until.alertIsPresent(),5000);await driver.switchTo().alert().accept();
+    await click('图像检索');
+    await driver.wait(until.elementLocated(By.css('input[aria-label="图像编码批量"]')),10000);
+    await driver.wait(async()=>await driver.findElement(By.css('input[aria-label="图像编码批量"]')).getAttribute('value')==='8',10000);
+    await driver.navigate().refresh();
+    await driver.wait(until.elementLocated(By.css('[data-page="industrial-model-settings"]')),10000);
+    await click('图像检索');
+    await driver.wait(until.elementLocated(By.css('input[aria-label="图像编码权重路径"]')),10000);
+    await driver.wait(async()=>await driver.findElement(By.css('input[aria-label="图像编码权重路径"]')).getAttribute('value')===invalidWeights,10000);
+    if (process.env.IAD_TEST_DINOV3_SNAPSHOT) {
+      phase='real local DINOv3 settings';
+      await driver.findElement(By.css('select[aria-label="图像编码器"]')).sendKeys('dinov3_vitb16');
+      await driver.findElement(By.css('input[aria-label="图像编码权重路径"]')).sendKeys(process.env.IAD_TEST_DINOV3_SNAPSHOT);
+      await click('检查加载');
+      await driver.wait(()=>driver.executeScript("return document.querySelector('[aria-label=\"图像检索设置\"] [role=\"status\"]')?.textContent.includes('加载正常 · dinov3_vitb16 · 768 维 · cpu')"),30000);
+      await click('保存图像配置');
+      await driver.wait(()=>driver.executeScript("return document.querySelector('[aria-label=\"图像检索设置\"] [role=\"status\"]')?.textContent.includes('已保存')"),10000);
+      const local=await api(null,'/images/settings');
+      assert.equal(local.data.selection.profile.backend,'transformers');
+      assert.equal(local.data.selection.profile.input_size,224);
+      assert.equal(local.data.selection.profile.source_ref,null);
+      assert.equal((await api()).data.selection.model_id,'first-model');
+      assert.equal(await driver.executeScript('return document.documentElement.scrollWidth > innerWidth'),false);
+      await fs.writeFile(path.join(os.tmpdir(),'iad-local-dinov3-settings-1920.png'),await driver.takeScreenshot(),'base64');
+    }
+    await click('工作台模型');
+    phase = 'independent model settings page';
     const chapter = await driver.findElement(By.css('[aria-label="所在章节"]'));
     assert.equal(await chapter.getText(),'工具');
     const headingSize = await driver.executeScript('return parseFloat(getComputedStyle(document.querySelector(".iad-workbench h1")).fontSize)');
     assert.ok(headingSize >= 28, 'shared page title follows the approved type scale');
-    assert.equal(await driver.executeScript('return getComputedStyle(document.querySelector(".iad-workbench")).backgroundColor'),'rgb(247, 248, 250)','原生宿主使用 HTML 指定的工作台背景');
+    assert.equal(await driver.executeScript('return getComputedStyle(document.querySelector(".iad-workbench")).backgroundColor'),'rgb(238, 241, 245)','原生宿主使用 HTML 指定的工作台背景');
     const navigation = await driver.wait(until.elementLocated(By.css('nav[aria-label="工业工作台导航"]')), 5000);
     const navigationText = await navigation.getText();
     for (const chapter of ['数据准备','知识构建','质量审核']) assert.ok(navigationText.includes(chapter));
@@ -272,8 +347,40 @@ test('authenticated LAN browser saves provider settings and switches models', {t
     const rejected=await api({dataset_id:dataset,normal_images:[dataset+':part-0.png'],defect_images:[dataset+':part-2.png']},'/exploration/start');
     assert.equal(rejected.status,422);
 
-    await driver.manage().window().setRect({width:390,height:844});
-    assert.equal(await driver.executeScript('return document.documentElement.scrollWidth > innerWidth'),false,'settings must fit narrow screens');
+    phase='native consistency remains independent of unavailable chat model';
+    await fs.mkdir(path.join(root,'retrieval-images'));await fs.mkdir(path.join(root,'retrieval-labels'));
+    for(const [name,label] of [['query','scratch'],['copy','dent']]) {
+      await fs.copyFile(path.join(root,'images/part-0.png'),path.join(root,`retrieval-images/${name}.png`));
+      await fs.writeFile(path.join(root,`retrieval-labels/${name}.json`),JSON.stringify({imageWidth:320,imageHeight:240,shapes:[{label,shape_type:'rectangle',points:[[10,10],[30,30]]}]}));
+    }
+    const retrievalDataset=await api({format:'labelme',name:'Native comparison',image_dir:path.join(root,'retrieval-images'),annotation_dir:path.join(root,'retrieval-labels'),annotation_policy:{policy_id:'native-same',annotation_role:'REFERENCE',annotation_coverage:'EXHAUSTIVE'}},'/datasets/import');
+    assert.equal(retrievalDataset.status,200,JSON.stringify(retrievalDataset));
+    const retrievalId=retrievalDataset.data.dataset_id;
+    const retrievalRoute={pageId:'industrial-consistency',tab:'search',query:{kind:'sample',sample_id:retrievalId+':query.png'},scope:{kind:'datasets',dataset_ids:[retrievalId]}};
+    const retrievalUrl=new URL(await driver.getCurrentUrl());retrievalUrl.search='';retrievalUrl.searchParams.set('iad',JSON.stringify(retrievalRoute));
+    await driver.get(retrievalUrl.href);
+    await driver.wait(until.elementLocated(By.css('[data-page="industrial-consistency"]')),10000);
+    const beforeRetrievalCalls=calls.length;
+    await click('查找同图');
+    await driver.wait(until.elementLocated(By.css('[data-difference="CATEGORY"]')),10000).click();
+    await driver.wait(()=>driver.executeScript('const images=[...document.querySelectorAll(".iad-consistency-comparison .iad-image-frame img")];return images.length===2&&images.every(image=>image.complete&&image.naturalWidth>0)'),5000);
+    assert.equal(calls.length,beforeRetrievalCalls,'exact retrieval sends no request to the unavailable chat model');
+    const saveEvidence=await driver.wait(until.elementLocated(By.xpath("//button[normalize-space(.)='保存比较证据']")),5000);
+    await driver.wait(until.elementIsEnabled(saveEvidence),5000);await saveEvidence.click();
+    await driver.wait(until.elementLocated(By.css('[data-evidence-id]')),10000);
+    await fs.rm(path.join(root,'retrieval-images'),{recursive:true});
+    await driver.navigate().refresh();
+    await driver.wait(until.elementLocated(By.css('[data-difference="CATEGORY"]')),10000).click();
+    await driver.wait(()=>driver.executeScript('const images=[...document.querySelectorAll(".iad-consistency-comparison .iad-image-frame img")];return images.length===2&&images.every(image=>image.complete&&image.naturalWidth>0&&image.src.includes("/consistency/evidence/"))'),5000);
+    assert.match(await driver.findElement(By.css('[data-evidence-id]')).getText(),/来源已移除/);
+    for(const theme of ['Dark','Light']) {
+      await setTheme(driver,theme);
+      assert.equal(await driver.executeScript('const root=document.querySelector(".iad-workbench");return root.scrollWidth>root.clientWidth'),false);
+      await fs.writeFile(path.join(os.tmpdir(),`iad-native-consistency-${theme.toLowerCase()}-1920.png`),await driver.takeScreenshot(),'base64');
+    }
+
+    await driver.manage().window().setRect({width:1920,height:1080});
+    assert.equal(await driver.executeScript('return document.documentElement.scrollWidth > innerWidth'),false,'settings must fit the desktop');
   } catch (error) {
     if (driver) {
       console.error(phase + '\n' + (await driver.findElement(By.css('body')).getText()).slice(-4500));

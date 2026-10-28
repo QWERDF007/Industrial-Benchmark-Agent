@@ -28,8 +28,13 @@ echo "  局域网主机 IP: ${LAN_IP}"
 echo "========================================================"
 
 # 1. 查找并配置 Python 3.12 (iad_agent) 环境
-PYTHON_EXEC=""
-if [ -x "/home/dell/anaconda3/envs/iad_agent/bin/python" ]; then
+PYTHON_EXEC="${IAD_PYTHON_PATH:-}"
+if [ -n "$PYTHON_EXEC" ]; then
+    if [ ! -x "$PYTHON_EXEC" ]; then
+        echo "IAD_PYTHON_PATH 不是可执行的 Python 路径: ${PYTHON_EXEC}" >&2
+        exit 1
+    fi
+elif [ -x "/home/dell/anaconda3/envs/iad_agent/bin/python" ]; then
     PYTHON_EXEC="/home/dell/anaconda3/envs/iad_agent/bin/python"
 elif command -v conda >/dev/null 2>&1 && [ -x "$(conda info --base)/envs/iad_agent/bin/python" ]; then
     PYTHON_EXEC="$(conda info --base)/envs/iad_agent/bin/python"
@@ -43,8 +48,13 @@ fi
 export IAD_PYTHON_PATH="${PYTHON_EXEC}"
 
 # 查找 Node.js (推荐 v22+)
-NODE_EXEC=""
-if [ -x "/home/dell/.local/node-v24.22.0/bin/node" ]; then
+NODE_EXEC="${IAD_NODE_PATH:-}"
+if [ -n "$NODE_EXEC" ]; then
+    if [ ! -x "$NODE_EXEC" ]; then
+        echo "IAD_NODE_PATH 不是可执行的 Node 路径: ${NODE_EXEC}" >&2
+        exit 1
+    fi
+elif [ -x "/home/dell/.local/node-v24.22.0/bin/node" ]; then
     NODE_EXEC="/home/dell/.local/node-v24.22.0/bin/node"
 elif [ -x "/home/dell/anaconda3/envs/iad_agent/bin/node" ]; then
     NODE_EXEC="/home/dell/anaconda3/envs/iad_agent/bin/node"
@@ -53,6 +63,9 @@ elif [ -x "/home/dell/.local/bin/node" ]; then
 else
     NODE_EXEC="node"
 fi
+NODE_EXEC="$(command -v "$NODE_EXEC")"
+export IAD_NODE_PATH="$NODE_EXEC"
+export PATH="$(dirname "$NODE_EXEC"):$PATH"
 
 echo "[1/2] Python 环境: ${PYTHON_EXEC} ($(${PYTHON_EXEC} --version 2>&1))"
 echo "      Node.js 环境: ${NODE_EXEC} ($(${NODE_EXEC} --version 2>&1))"

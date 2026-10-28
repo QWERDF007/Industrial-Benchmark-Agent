@@ -36,35 +36,20 @@ export const collectionsStyles = `.iad-main {display:grid;grid-template-columns:
 .iad-observation {white-space:pre-wrap;font-size:13px;}.iad-actions {display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
 .iad-field {display:flex;flex-direction:column;gap:7px;margin:16px 0;}.iad-field>.iad-row {flex-wrap:nowrap;}.iad-field input {flex:1;}
 .iad-row>.iad-field {flex:1 1 280px;min-width:0;}
-.iad-error {color:var(--iad-danger);background:var(--iad-danger-bg);padding:10px;border-radius:6px;overflow-wrap:anywhere;}
+.iad-error {color:var(--iad-danger);background:color-mix(in srgb,var(--iad-danger) 12%,var(--iad-surface));padding:10px;border-radius:6px;overflow-wrap:anywhere;}
 .iad-muted {color:var(--iad-muted);font-size:.75rem;}
 .iad-empty {padding:40px;text-align:center;color:var(--iad-muted);}
 .iad-review-records {min-width:0;padding:18px;background:var(--iad-surface);border-radius:var(--iad-radius);}
-.iad-preview-table {width:100%;border-collapse:collapse;text-align:left;font-size:13px;}.iad-preview-table th,.iad-preview-table td {padding:10px 16px;height:56px;border-bottom:1px solid var(--iad-border);}.iad-preview-table th {height:44px;background:var(--iad-surface-muted);color:var(--iad-muted);font-weight:500}.iad-preview-table .iad-number {text-align:right;font-variant-numeric:tabular-nums}.iad-preview-table select {width:150px;max-width:100%;}
 .iad-table-scroll {max-width:100%;overflow:auto;scroll-margin-block:24px;}.iad-review-records table {width:100%;min-width:620px;border-collapse:collapse;text-align:left;font-size:13px;}
 .iad-review-records .iad-table-scroll {max-height:min(60dvh,480px);}
 .iad-review-records caption {text-align:left;font-weight:600;margin:12px 0;}.iad-review-records th,.iad-review-records td {padding:12px;vertical-align:top;overflow-wrap:anywhere;max-width:240px;}
 .iad-review-records thead,.iad-review-records tr[data-selected=true] {background:var(--iad-surface-muted);}.iad-review-records time {font-size:12px;color:var(--iad-muted);}
-.iad-settings {display:grid;gap:28px;min-width:0;max-width:1160px;}
-.iad-settings>section {min-width:0;}.iad-dataset-list>.iad-table-scroll,.iad-dataset-detail>.iad-tab-panel {background:var(--iad-surface);border-radius:var(--iad-radius)}.iad-dataset-detail>.iad-tab-panel{padding:24px}.iad-dataset-list .iad-section-header input{width:240px;max-width:65%}.iad-dataset-detail>h2{overflow-wrap:anywhere}.iad-dataset-detail .iad-rule{margin-top:20px}.iad-dataset-detail .iad-section-layout .iad-field{margin-bottom:20px;}
 .iad-job-table {min-width:0;}.iad-job-table>.iad-field {max-width:240px;}.iad-identifier {display:block;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .iad-resource-table {width:100%;border-collapse:collapse;text-align:left;font-size:.875rem;}
 .iad-resource-table th,.iad-resource-table td {padding:8px 16px;height:56px;border-bottom:1px solid var(--iad-border);vertical-align:middle;}
 .iad-resource-table th {height:44px;background:var(--iad-surface-muted);font-weight:500;color:var(--iad-muted);white-space:nowrap;}
 .iad-resource-table .iad-number {text-align:right;font-variant-numeric:tabular-nums;}
 .iad-resource-table tr[data-selected=true] {background:var(--iad-hover);}
-.iad-resource-table .iad-dataset-name {margin:0;min-width:140px;max-width:360px;}
-.iad-row-menu summary {cursor:pointer;display:flex;align-items:center;gap:8px;min-height:40px;padding:8px;}
-.iad-row-menu .iad-floating-menu-panel {min-width:64px;}
-.iad-dataset-name {flex:1;}
-.iad-dataset-name {min-width:0;margin-bottom:12px;}
-.iad-workbench .iad-name-trigger {display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-width:0;padding:4px 6px;background:transparent;border-color:transparent;text-align:left;font-weight:600;min-height:44px;}
-.iad-name-trigger span {min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.iad-name-trigger svg {flex-shrink:0;}
-.iad-dataset-name input {width:100%;}
-.iad-detail-dialog:has(.iad-dataset-import) {width:min(640px,calc(100vw - 32px));}
-.iad-dataset-import {max-width:640px;margin:auto;}
-.iad-directory {min-width:0;margin:0;border:0;background:var(--iad-surface-muted);padding:14px;border-radius:8px;}.iad-directory code {overflow-wrap:anywhere;}
-.iad-directory-list {display:flex;flex-direction:column;max-height:230px;overflow:auto;gap:5px;margin-top:10px;}
 .iad-rule {margin-top:20px;}.iad-reference-grid {display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
 .iad-reference-grid img {width:90px;height:68px;object-fit:contain;background:var(--iad-surface-muted);border-radius:5px;}
 .iad-reference-grid small {display:block;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;}

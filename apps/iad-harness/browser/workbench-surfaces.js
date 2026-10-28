@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { By, Key, until } from "selenium-webdriver";
-import { setTheme, textZoom, viewport } from "./workbench-layout.js";
+import { setTheme, textZoom, viewport, waitForWorkbenchPage } from "./workbench-layout.js";
 
 export async function verifyWorkbenchSurfaces(driver, output) {
   output = path.join(output, String(Date.now()));
@@ -20,18 +20,20 @@ export async function verifyWorkbenchSurfaces(driver, output) {
   };
   const navigate = async label => {
     await (await element(`button[aria-label^='${label}']`)).click();
-    await driver.wait(() => driver.executeScript("const e=document.querySelector('.iad-workbench');return e?.querySelector('h1')?.textContent===arguments[0] && !e.textContent.includes('正在读取知识…')", label), 10000);
+    await waitForWorkbenchPage(driver,label);
   };
   await viewport(driver,1920,1080);await textZoom(driver,1);
   await navigate("人工复核"); await button("复核队列");
   await (await element("img[alt='part-2.png']")).click();
   await (await element(".iad-decision input[required]")).sendKeys("布局验收");
+  assert.equal((await driver.findElements(By.css('.iad-embedded-canvas .iad-image-step'))).length,2,'嵌入式复核保留顶栏切图');
+  assert.equal((await driver.findElements(By.css('.iad-embedded-canvas .iad-viewer-edge-nav'))).length,0,'边缘切图只用于全屏窗口');
   await (await element(".iad-decision textarea")).sendKeys("仅验证复核记录的显示与操作，未评估工业真值。");
   await (await element(".iad-decision input[type=radio][value=SKIP]")).click(); await button("提交复核");
   await driver.wait(() => driver.executeScript("return document.querySelector('.iad-review-confirmation')?.textContent.includes('跳过')"), 10000);
   for (const theme of ["Light", "Dark"]) {
-    await setTheme(driver, theme); await textZoom(driver, 2);
-    for (const [width, height] of [[375, 812], [1920, 1080], [1366, 768], [1280, 800]]) {
+    await setTheme(driver, theme); await textZoom(driver, 1);
+    for (const [width, height] of [[1920, 1080]]) {
       await viewport(driver, width, height);
       const capture = async (name, focus, root = ".iad-workbench") => {
         const control = await element(focus);
@@ -51,7 +53,7 @@ export async function verifyWorkbenchSurfaces(driver, output) {
               unobscured: f.top >= Math.max(0, r.top) && f.bottom <= Math.min(innerHeight, r.bottom) && (hit === focus || focus.contains(hit)) },
             overflowing: [...root.querySelectorAll('*')].filter(e => e.getBoundingClientRect().right > r.right + 1).map(e => ({ tag: e.tagName, css: e.className, text: e.textContent.slice(0, 90) })) };
         }, root);
-        const scope = { theme, width, height, zoom: 2, name };
+        const scope = { theme, width, height, zoom: 1, name };
         results.push({ ...scope, ...metrics });
         await fs.writeFile(path.join(output, "verification.json"), JSON.stringify(results, null, 2));
         await fs.writeFile(path.join(output, `${theme.toLowerCase()}-${width}-${name}.png`), await driver.takeScreenshot(), "base64");
@@ -140,7 +142,7 @@ export async function verifyWorkbenchSurfaces(driver, output) {
       await button("关闭"); await (await element("button[aria-label='关闭图像详情']")).click();
     }
   }
-  assert.equal(results.length, 208, "26个实际交互表面 × 四视口 × 明暗主题，均使用200%文字缩放");
+  assert.equal(results.length, 52, "26个实际交互表面 × 1920×1080 × 明暗主题");
   await viewport(driver, 1440, 1100); await textZoom(driver, 1);
   for (const label of ["良品", "异常"]) { await navigate("知识挖掘"); await button(label); await button("知识条目"); }
   await navigate("人工复核"); await button("复核队列");

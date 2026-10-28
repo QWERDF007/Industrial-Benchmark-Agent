@@ -68,10 +68,10 @@ def inspect_task_summary(task_id: str, db_path: str = "data/benchmark.db") -> Di
     annotation_counts = dict(cursor.fetchall())
 
     cursor.execute("""
-        SELECT COUNT(f.id)
-        FROM feature_records f
+        SELECT COUNT(f.sample_id)
+        FROM sample_features f
         JOIN samples s ON f.sample_id = s.sample_id
-        WHERE s.task_id = ?
+        WHERE s.task_id = ? AND f.view_key='full' AND f.profile_id=(SELECT profile_id FROM workbench_image_settings WHERE id=1)
     """, (task_id,))
     feature_count = cursor.fetchone()[0]
 

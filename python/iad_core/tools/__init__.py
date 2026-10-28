@@ -1,67 +1,31 @@
 import inspect
-from typing import Dict, Any, Callable, Optional
+from importlib import import_module
+from typing import Dict, Any, Optional
 
-from iad_core.tools.task_tools import task_inspect
-from iad_core.tools.dataset_tools import dataset_audit
-from iad_core.tools.audit_tools import (
-    audit_issue_query,
-    audit_recheck,
-    audit_suggestion_save,
-)
-from iad_core.tools.image_tools import (
-    sample_view,
-    region_view,
-    samples_compare,
-)
-from iad_core.tools.feature_tools import feature_prepare, visual_search
-from iad_core.tools.duplicate_tools import duplicate_audit
-from iad_core.tools.candidate_tools import (
-    candidate_mine,
-    candidate_merge,
-    evidence_get,
-)
-from iad_core.tools.review_tools import review_status
-from iad_core.tools.benchmark_tools import (
-    benchmark_preview,
-    benchmark_build,
-    benchmark_status,
-    leakage_check,
-)
-from iad_core.tools.evaluation_tools import (
-    evaluation_plan,
-    baseline_run,
-    evaluation_compare,
-)
-
-INTERNAL_TOOL_MAP: Dict[str, Callable] = {
-    # Audit & Images
-    "dataset_audit": dataset_audit,
-    "audit_issue_query": audit_issue_query,
-    "audit_recheck": audit_recheck,
-    "audit_suggestion_save": audit_suggestion_save,
-    "sample_view": sample_view,
-    "region_view": region_view,
-    "samples_compare": samples_compare,
-    # Vision & Feature
-    "task_inspect": task_inspect,
-    "feature_prepare": feature_prepare,
-    "visual_search": visual_search,
-    "duplicate_audit": duplicate_audit,
-    "candidate_mine": candidate_mine,
-    "candidate_merge": candidate_merge,
-    "evidence_get": evidence_get,
-    # Benchmark
-    "review_status": review_status,
-    "benchmark_preview": benchmark_preview,
-    "benchmark_build": benchmark_build,
-    "benchmark_status": benchmark_status,
-    "leakage_check": leakage_check,
-    # Evaluation
-    "evaluation_plan": evaluation_plan,
-    "baseline_run": baseline_run,
-    "evaluation_compare": evaluation_compare,
+INTERNAL_TOOL_MAP: dict[str, str] = {
+    "task_inspect": "task_tools",
+    "dataset_audit": "dataset_tools",
+    "audit_issue_query": "audit_tools",
+    "audit_recheck": "audit_tools",
+    "audit_suggestion_save": "audit_tools",
+    "sample_view": "image_tools",
+    "region_view": "image_tools",
+    "samples_compare": "image_tools",
+    "feature_prepare": "feature_tools",
+    "visual_search": "feature_tools",
+    "duplicate_audit": "duplicate_tools",
+    "candidate_mine": "candidate_tools",
+    "candidate_merge": "candidate_tools",
+    "evidence_get": "candidate_tools",
+    "review_status": "review_tools",
+    "benchmark_preview": "benchmark_tools",
+    "benchmark_build": "benchmark_tools",
+    "benchmark_status": "benchmark_tools",
+    "leakage_check": "benchmark_tools",
+    "evaluation_plan": "evaluation_tools",
+    "baseline_run": "evaluation_tools",
+    "evaluation_compare": "evaluation_tools",
 }
-
 
 class ToolContractError(Exception):
     def __init__(self, message: str, status_code: int = 422):
@@ -80,10 +44,11 @@ def execute_internal_tool(tool_name: str, arguments: Dict[str, Any] = None, db_p
     if arguments is None:
         arguments = {}
 
-    handler = INTERNAL_TOOL_MAP.get(tool_name)
-    if not handler:
+    module_name = INTERNAL_TOOL_MAP.get(tool_name)
+    if not module_name:
         raise ToolContractError(f"Tool '{tool_name}' is not registered or not permitted.", status_code=404)
 
+    handler = getattr(import_module("iad_core.tools." + module_name), tool_name)
     sig = inspect.signature(handler)
     call_args = dict(arguments)
 
@@ -137,30 +102,4 @@ def execute_internal_tool(tool_name: str, arguments: Dict[str, Any] = None, db_p
     return {"result": res}
 
 
-__all__ = [
-    "INTERNAL_TOOL_MAP",
-    "execute_internal_tool",
-    "ToolContractError",
-    "task_inspect",
-    "dataset_audit",
-    "audit_issue_query",
-    "audit_recheck",
-    "audit_suggestion_save",
-    "sample_view",
-    "region_view",
-    "samples_compare",
-    "feature_prepare",
-    "visual_search",
-    "duplicate_audit",
-    "candidate_mine",
-    "candidate_merge",
-    "evidence_get",
-    "review_status",
-    "benchmark_preview",
-    "benchmark_build",
-    "benchmark_status",
-    "leakage_check",
-    "evaluation_plan",
-    "baseline_run",
-    "evaluation_compare",
-]
+__all__ = ["INTERNAL_TOOL_MAP", "execute_internal_tool", "ToolContractError"]

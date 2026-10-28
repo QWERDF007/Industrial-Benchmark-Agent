@@ -10,16 +10,21 @@ export declare const evidenceOutput: {
         type: "json";
     }>): ContentBlock[];
 };
-export declare function readEvidenceAttachment(bridge: PythonBridge, ctx: Context, operation: "knowledge_evidence" | "audit_evidence" | "direction_exploration_evidence", args: {
+export declare function readEvidenceAttachment(bridge: PythonBridge, ctx: Context, operation: "knowledge_evidence" | "audit_evidence" | "direction_exploration_evidence" | 'consistency_evidence_media', args: {
     evidence_id: string;
     run_id?: string;
     version_id?: string;
     suggestion_id?: string;
-}, signal: AbortSignal): Promise<{
+    media_id?: string;
+}, signal: AbortSignal, expected?: {
+    byte_count: number;
+    sha256: string;
+}): Promise<{
     evidence_id: string;
     run_id?: string;
     version_id?: string;
     suggestion_id?: string;
+    media_id?: string;
     attachment: {
         attachmentId: import("@deepseek-ai/dsh-attachment").AttachmentId;
         mediaType: import("@deepseek-ai/dsh-attachment").ImageMediaType;

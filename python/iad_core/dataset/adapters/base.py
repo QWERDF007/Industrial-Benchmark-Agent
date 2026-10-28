@@ -25,6 +25,7 @@ class RawQuality(BaseModel):
 class RawAnnotation(BaseModel):
     annotation_type: AnnotationType
     raw_label: str
+    is_ignored: bool = Field(default=False, strict=True)
     phenomenon: Optional[str] = None
     bbox: Optional[List[float]] = None
     polygon: Optional[List[List[float]]] = None

@@ -30,7 +30,7 @@ test("DSH discovers independent exploration and full-analysis skills with standa
   const fork = await ctx.plugin(harness);
   try {
     const catalog = await ctx.skills.list();
-    assert.deepEqual(catalog.map(skill => skill.name).sort(), ["analyze-dataset", "explore-inspection-directions"]);
+    assert.deepEqual(catalog.map(skill => skill.name).sort(), ["analyze-dataset", "audit-data-consistency", "explore-inspection-directions"]);
     const exploration = await ctx.tools.execute({ name: "skill", arguments: { name: "explore-inspection-directions" },
       callId: "load-exploration", signal: new AbortController().signal });
     assert.equal(exploration.isError, false);

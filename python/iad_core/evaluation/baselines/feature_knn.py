@@ -8,7 +8,9 @@ from iad_core.storage.models import Sample
 from iad_core.storage.repositories import FeatureRepository
 from iad_core.evaluation.contracts import PredictionRecord
 from iad_core.evaluation.baselines.base import BaselineRunner, BaselineProtocol, validate_predictions
-from iad_core.feature.dino import DINOFeatureExtractor
+from iad_core.feature.cache import ContentFeatureCache
+from iad_core.feature.profiles import ImageEncoders
+from iad_core.consistency.errors import ConsistencyError
 
 logger = logging.getLogger("iad_core.evaluation.baselines.feature_knn")
 
@@ -29,67 +31,45 @@ class FeatureMemoryBankRunner(BaselineRunner):
     def __init__(
         self,
         name: str = "feature_knn_dinov2",
-        model_id: str = "dinov2_vitb14_reg",
-        preprocess_key: str = "dinov2_224_norm",
+        profile_id: Optional[str] = None,
         db_path: str = "data/benchmark.db",
         **kwargs,
     ):
         super().__init__(name=name, **kwargs)
-        self.model_id = model_id
-        self.preprocess_key = preprocess_key
+        self.profile_id = profile_id
         self.implementation_name = name
         self.runtime_config = {
-            "model_id": model_id,
-            "preprocess_key": preprocess_key,
+            "profile_id": profile_id,
             **kwargs,
         }
         self.db = Database(db_path)
         self.feat_repo = FeatureRepository(self.db)
-        self.extractor: Optional[DINOFeatureExtractor] = None
         self.normal_bank: Optional[np.ndarray] = None
 
     def _get_features(self, samples: List[Sample]) -> np.ndarray:
+        profile=ImageEncoders(self.db).profile(self.profile_id)
+        self.profile_id=profile.profile_id
+        self.implementation_revision=profile.profile_id
+        self.implementation_source=('huggingface/transformers' if profile.backend=='transformers' else
+            'facebookresearch/sscd-copy-detection' if profile.backend=='torchscript' else 'facebookresearch/'+profile.model_id.split('_')[0])
+        self.runtime_config.update(profile_id=profile.profile_id,model_id=profile.model_id)
         if not samples:
-            return np.empty((0, 768), dtype=np.float32)
-
-        features = []
-        missing_samples = []
-        missing_indices = []
-
-        for idx, s in enumerate(samples):
-            rec = self.feat_repo.get(s.sample_id, self.model_id, self.preprocess_key)
-            if rec and rec.get("embedding_blob"):
-                dtype = np.float16 if rec.get("dtype") == "fp16" else np.float32
-                arr = np.frombuffer(rec["embedding_blob"], dtype=dtype).astype(np.float32)
-                features.append(arr)
-            else:
-                features.append(None)
-                missing_samples.append(s)
-                missing_indices.append(idx)
-
-        if missing_samples:
-            if self.extractor is None:
-                self.extractor = DINOFeatureExtractor(
-                    model_id=self.model_id,
-                    preprocess_key=self.preprocess_key,
-                )
-            paths = [s.image_path for s in missing_samples]
-            try:
-                extracted = self.extractor.encode_batch(paths)
-                for i, arr in enumerate(extracted):
-                    orig_idx = missing_indices[i]
-                    features[orig_idx] = arr.astype(np.float32)
-            except Exception as e:
-                logger.error(f"Could not extract DINO features for {len(missing_samples)} samples: {e}")
-                raise RuntimeError(
-                    f"DINO visual feature extraction failed for {len(missing_samples)} samples: {e}"
-                )
-
-        matrix = np.stack(features, axis=0)
-        # Normalize rows to unit vectors
-        norms = np.linalg.norm(matrix, axis=1, keepdims=True)
-        norms = np.maximum(norms, 1e-8)
-        return matrix / norms
+            return np.empty((0,profile.dim),dtype=np.float32)
+        missing=[sample.sample_id for sample in samples if self.feat_repo.get_for_sample(sample.sample_id,profile.profile_id) is None]
+        if missing:
+            selection=ImageEncoders(self.db).read().selection
+            if selection is None or selection.profile.profile_id!=profile.profile_id:
+                raise ConsistencyError('PROFILE_NOT_CONFIGURED','Evaluation must use its configured immutable embedding profile')
+            from iad_core.workbench.runtime import workbench
+            ContentFeatureCache(self.db,workbench(self.db.db_path).images).prepare(missing,selection)
+        vectors=[]
+        for sample in samples:
+            record=self.feat_repo.get_for_sample(sample.sample_id,profile.profile_id)
+            if record is None:
+                raise ConsistencyError('INDEX_NOT_READY','Feature preparation did not cover '+sample.sample_id)
+            vectors.append(np.frombuffer(record['embedding_blob'],dtype=record['dtype']).astype(np.float32))
+        matrix=np.stack(vectors)
+        return matrix/np.linalg.norm(matrix,axis=1,keepdims=True)
 
     def prepare(
         self,
@@ -120,12 +100,14 @@ class FeatureMemoryBankRunner(BaselineRunner):
                 f"prepare() must be called with training normal samples prior to predict()."
             )
 
+        started=time.perf_counter()
         query_feats = self._get_features(samples)
 
         sims = np.matmul(query_feats, self.normal_bank.T)  # (M, N)
         max_sims = np.max(sims, axis=1)  # (M,)
         # Anomaly score: 1.0 - max_cosine_sim
         scores = 1.0 - max_sims
+        latency_ms=(time.perf_counter()-started)*1000/len(samples)
 
         preds = []
         for i, s in enumerate(samples):
@@ -134,7 +116,7 @@ class FeatureMemoryBankRunner(BaselineRunner):
                     sample_id=s.sample_id,
                     image_score=float(scores[i]),
                     pixel_score_path=None,
-                    latency_ms=5.0,
+                    latency_ms=latency_ms,
                     split_name=split_name,
                 )
             )

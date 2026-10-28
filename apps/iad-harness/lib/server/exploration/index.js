@@ -1,5 +1,5 @@
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { explorationParameters, directionAdoptionParameters } from "../../shared/exploration.parameters.generated.js";
+import { explorationParameters, explorationPresetParameters, directionAdoptionParameters } from "../../shared/exploration.parameters.generated.js";
 import { workbenchJsonOutput } from "../tool-output.js";
 import { knowledgeJobOutput, knowledgePromptOutput } from "../knowledge/output.js";
 import { jobStatusParameters, waitForJobStatus } from "../job-status.js";
@@ -12,7 +12,7 @@ export const DIRECTION_EXPLORATION_SKILL = {
     content: `用户要求探索检查方向时才执行本技能。它独立于导入、知识挖掘和审计，不因导入完成自动启动。
 1. dataset_list确认数据集。用knowledge_sources分别按kind:normal和defect查询真实候选sample_id，两组都需要。
 2. 用户指定数量就按该数量选取；未指定时先建议各10张并等待确认，不默认全库。图组必须同数据集、无重复，角色是候选来源，不是质量真值。
-3. direction_exploration_start传dataset_id、normal_images、defect_images及可选objective。全部两组一次联合输入，不拆组或按图逐个归纳，不把当前通用方向当固定答案。
+3. direction_exploration_presets读取可编辑正文；用户可另存自定义预设。direction_exploration_start传dataset_id、normal_images、defect_images、可选prompt完整正文及补充objective；未指定prompt时由服务端冻结默认正文。全部两组一次联合输入，不拆组或按图逐个归纳，不把当前通用方向当固定答案。
 4. 用direction_exploration_status等待同一run_id的终态；失败先报告真实原因并等用户决定重试或降低数量，不能自行重试。用户要求停止调用direction_exploration_cancel。
 5. 成功后direction_exploration_get读取实际版本、方向与限制，可分页；必要时direction_exploration_evidence查看原图。方向只是候选检查议题，不是已证实知识。
 6. 告知用户在侧栏方向探索查阅结果，在知识挖掘的探索方向组选用。只有用户明确要求采用时，先knowledge_prompt_get读取当前配置及revision，用knowledge_directions_adopt传所选direction_id和可选名称/说明，服务端保留其他配置；可按用户要求修改名称和说明。遵守applies_to的normal/defect/both适用范围。
@@ -20,6 +20,10 @@ export const DIRECTION_EXPLORATION_SKILL = {
 };
 export function createExplorationTools(bridge, ctx) {
     return [
+        defineTool({ name: "direction_exploration_presets", description: "读取可编辑的方向探索提示词预设目录，不启动模型。", parameters: {}, output: workbenchJsonOutput,
+            execute: (args, exec) => bridge.execute("direction_exploration_presets", args, exec.signal) }),
+        defineTool({ name: "direction_exploration_preset_save", description: "将完整提示词正文另存为新预设，不覆盖内置预设或已提交作业。", parameters: explorationPresetParameters, output: workbenchJsonOutput,
+            execute: (args, exec) => bridge.execute("direction_exploration_preset_save", args, exec.signal) }),
         defineTool({ name: "direction_exploration_start", description: "仅用户明确要求时，一次联合观察已确认的良品与异常图组，提出待选方向；不发布质量知识或自动挖掘。失败后等待用户决定，不自动拆组、减张或重试。",
             parameters: explorationParameters, output: knowledgeJobOutput,
             execute: (args, exec) => bridge.execute("direction_exploration_start", { request: args, origin_session_id: exec.agent?.id || null }, exec.signal) }),

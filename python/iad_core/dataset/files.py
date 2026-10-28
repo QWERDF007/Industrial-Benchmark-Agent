@@ -3,7 +3,7 @@ import os
 from pathlib import Path, PurePosixPath
 from typing import Iterator, Sequence
 
-DEFAULT_IMAGE_GLOBS = ('**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.bmp', '**/*.webp')
+DEFAULT_IMAGE_GLOBS = ('**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.bmp', '**/*.webp', '**/*.tif', '**/*.tiff')
 
 
 class ImageFiles:

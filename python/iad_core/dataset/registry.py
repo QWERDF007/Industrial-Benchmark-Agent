@@ -12,26 +12,29 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel, StringConstraints,
 from iad_core.storage.database import Database
 from iad_core.task.config import DatasetConfig, FolderRule, load_config
 from iad_core.dataset.files import ImageFiles
+from iad_core.consistency.policy import AnnotationPolicy
 
 
 if TYPE_CHECKING:
     from iad_core.dataset.scanner import ScanResult
 
 
-class LabelmeImport(BaseModel):
+class DatasetImportOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    format: Literal["labelme"] = "labelme"
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+    annotation_policy: AnnotationPolicy = Field(default_factory=AnnotationPolicy)
+
+
+class LabelmeImport(DatasetImportOptions):
+    format: Literal["labelme"] = "labelme"
     image_dir: str
     annotation_dir: str
     archive_path: Optional[str] = None
     unannotated_is_normal: bool = True
 
 
-class FolderClassificationImport(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class FolderClassificationImport(DatasetImportOptions):
     format: Literal["folder_classification"] = "folder_classification"
-    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
     root_dir: str
     rules: List[FolderRule]
     preview_fingerprint: str
@@ -65,12 +68,12 @@ class DatasetRegistry:
                     raise LookupError("数据集不存在或已删除")
                 return
             conn.execute("""
-                INSERT INTO datasets(dataset_id,task_id,config_json) VALUES(?,?,?)
+                INSERT INTO datasets(dataset_id,task_id,config_json,scan_ref) VALUES(?,?,?,?)
                 ON CONFLICT(dataset_id) DO UPDATE SET config_json=excluded.config_json
-            """, (config.dataset.id, config.task.task_id, config.model_dump_json()))
+            """, (config.dataset.id, config.task.task_id, config.model_dump_json(), 'scan_' + uuid.uuid4().hex))
 
-    def get(self, dataset_id: str) -> DatasetConfig:
-        with self.db.connection() as conn:
+    def get(self, dataset_id: str, connection: Optional[Connection] = None) -> DatasetConfig:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
             row = conn.execute("SELECT config_json FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()
         if not row:
             raise LookupError(f"Dataset '{dataset_id}' not found")
@@ -146,11 +149,12 @@ class DatasetRegistry:
                 (task_id,dataset_id,task_id,dataset_id)).fetchone()
             if exclusive_task and conn.execute("SELECT 1 FROM agent_runs WHERE task_id=? AND status IN ('PENDING','RUNNING')", (task_id,)).fetchone():
                 raise ValueError("数据集仍有执行中的 Agent 作业，请等待作业结束后删除")
-            jobs = f"SELECT job_id FROM job_runs WHERE {job_dataset}=? OR (task_id=? AND ?)"
+            jobs = f"""SELECT job_id FROM job_runs WHERE ({job_dataset}=? OR (task_id=? AND ?))
+                AND NOT EXISTS (SELECT 1 FROM consistency_children c WHERE c.run_id=job_runs.job_id)"""
             job_scope = (dataset_id,task_id,exclusive_task)
             conn.execute(f"DELETE FROM model_calls WHERE run_id IN ({jobs})", job_scope)
             conn.execute(f"DELETE FROM job_runs WHERE job_id IN ({jobs})", job_scope)
-            for table in ('annotations','feature_records','gold_records','split_assignments','review_decisions','audit_suggestions'):
+            for table in ('annotations','gold_records','split_assignments','review_decisions','audit_suggestions'):
                 conn.execute(f"DELETE FROM {table} WHERE sample_id IN (SELECT sample_id FROM samples WHERE dataset_id=?)", (dataset_id,))
             conn.execute("DELETE FROM review_sessions WHERE dataset_id=?", (dataset_id,))
             conn.execute("DELETE FROM import_issues WHERE dataset_id=?", (dataset_id,))
@@ -158,6 +162,8 @@ class DatasetRegistry:
             conn.execute("DELETE FROM knowledge_heads WHERE dataset_id=?", (dataset_id,))
             conn.execute("DELETE FROM knowledge_versions WHERE dataset_id=?", (dataset_id,))
             conn.execute("DELETE FROM samples WHERE dataset_id=?", (dataset_id,))
+            from iad_core.duplicate.index import PixelIndex
+            PixelIndex.collect_unused_groups(conn)
             conn.execute("DELETE FROM datasets WHERE dataset_id=?", (dataset_id,))
             if exclusive_task:
                 conn.execute("DELETE FROM split_assignments WHERE build_id IN (SELECT build_id FROM benchmark_builds WHERE task_id=?)", (task_id,))
@@ -209,7 +215,7 @@ class DatasetRegistry:
             },
             "root": str(root_path),
             "task": {"task_id": dataset_id, "inspection_target": "surface"},
-            "annotations": {"format": "folder_classification"},
+            "annotations": {"format": "folder_classification", **request.annotation_policy.model_dump()},
             "folder_rules": [r.model_dump() for r in request.rules],
         })
         scan_dataset(config=config, db_path=self.db.db_path, preview_fingerprint=request.preview_fingerprint)
@@ -239,7 +245,7 @@ class DatasetRegistry:
             "dataset": {"id": dataset_id, "name": request.name.strip(), "format": "labelme", "unannotated_is_normal": request.unannotated_is_normal},
             "root": str(image_dir),
             "task": {"task_id": dataset_id, "inspection_target": "surface"},
-            "annotations": {"format": "labelme", "root": str(annotation_dir)},
+            "annotations": {"format": "labelme", "root": str(annotation_dir), **request.annotation_policy.model_dump()},
         })
         scan_dataset(config=config, db_path=self.db.db_path)
         with self.db.connection() as conn:
@@ -271,7 +277,8 @@ class DatasetRegistry:
         return images, annotations
 
     def rescan(self, dataset_id: str, image_dir: Optional[str] = None, annotation_dir: Optional[str] = None,
-               folder_rules: Optional[List[FolderRule]] = None, preview_fingerprint: Optional[str] = None) -> "ScanResult":
+               folder_rules: Optional[List[FolderRule]] = None, preview_fingerprint: Optional[str] = None,
+               force_pixels: bool = False) -> "ScanResult":
         from iad_core.dataset.scanner import scan_dataset
 
         config = self.get(dataset_id)
@@ -291,12 +298,12 @@ class DatasetRegistry:
                     raise ValueError("Changing dataset sources requires both image and annotation directories")
                 images, annotations = self.sources(image_dir, annotation_dir, dataset_id)
                 config.root, config.annotations.root = str(images), str(annotations)
-        return scan_dataset(config=config, db_path=self.db.db_path, preview_fingerprint=preview_fingerprint)
+        return scan_dataset(config=config, db_path=self.db.db_path, preview_fingerprint=preview_fingerprint, force_pixels=force_pixels)
 
     def references(self, dataset_id: str, exclude: Optional[str] = None, limit: Optional[int] = 4,
-                   selected_ids: Optional[List[str]] = None) -> List[str]:
-        config = self.get(dataset_id)
-        with self.db.connection() as conn:
+                   selected_ids: Optional[List[str]] = None, connection: Optional[Connection] = None) -> List[str]:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+            config = self.get(dataset_id, connection=conn)
             row = conn.execute("SELECT reference_sample_ids_json,reference_selection_set FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()
             selected = selected_ids if selected_ids is not None else json.loads(row[0])
             explicit_selection = selected_ids is not None or bool(row[1])

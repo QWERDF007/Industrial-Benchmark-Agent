@@ -10,6 +10,7 @@ from filelock import FileLock
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.evidence.images import file_sha256
+from iad_core.dataset.files import DEFAULT_IMAGE_GLOBS, ImageFiles
 
 
 class ArchiveDirectory(AnalysisModel):
@@ -73,7 +74,7 @@ class DatasetArchive:
                 for parent in parents:
                     directory = directories.setdefault(parent, ArchiveDirectory(path=str(parent)))
                     if not item.is_dir():
-                        directory.image_count += path.suffix.lower() in {'.png', '.jpg', '.jpeg', '.bmp', '.webp'}
+                        directory.image_count += ImageFiles.matches(path.as_posix(), DEFAULT_IMAGE_GLOBS)
                         directory.annotation_count += path.suffix.lower() == '.json'
                 if not item.is_dir():
                     file_count += 1

@@ -1,4 +1,4 @@
-/* Generated from Python FolderRule by scripts/generate-contracts.js. */
+/* Generated from Python dataset models by scripts/generate-contracts.js. */
 export const folderRulesParameter = {
   "type": "array",
   "items": {
@@ -26,4 +26,41 @@ export const folderRulesParameter = {
     },
     "title": "FolderRule"
   }
+} as const;
+export const annotationPolicyParameter = {
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "policy_id": {
+      "type": "string",
+      "title": "Policy Id"
+    },
+    "annotation_role": {
+      "type": "string",
+      "enum": [
+        "REFERENCE",
+        "PREDICTION",
+        "UNKNOWN"
+      ],
+      "title": "Annotation Role",
+      "default": "UNKNOWN"
+    },
+    "annotation_coverage": {
+      "type": "string",
+      "enum": [
+        "EXHAUSTIVE",
+        "PARTIAL",
+        "UNKNOWN"
+      ],
+      "title": "Annotation Coverage",
+      "default": "UNKNOWN"
+    },
+    "category_mapping": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {},
+      "title": "Category Mapping"
+    }
+  },
+  "title": "AnnotationPolicy"
 } as const;

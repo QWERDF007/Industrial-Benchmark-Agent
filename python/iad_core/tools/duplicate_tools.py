@@ -2,7 +2,7 @@ import os
 import logging
 from typing import Optional, Dict, Any
 
-from iad_core.duplicate.miner import mine_near_duplicates
+from iad_core.consistency.errors import ConsistencyError
 from iad_core.duplicate.verify import PairVerifier
 from iad_core.contracts import ToolResult, ToolStatus, MutationType, ArtifactRef
 
@@ -22,19 +22,21 @@ def duplicate_audit(
     """
     verifier = PairVerifier() if verify_duplicates else None
     try:
+        from iad_core.duplicate.miner import mine_near_duplicates
         res = mine_near_duplicates(
             task_id=task_id,
             similarity_threshold=similarity_threshold,
             output_dir=output_dir,
             db_path=db_path,
             verifier=verifier,
+            verify_duplicates=verify_duplicates,
         )
-    except FileNotFoundError as fnf:
+    except (FileNotFoundError,ConsistencyError) as fnf:
         return ToolResult(
             status=ToolStatus.NOT_READY,
             summary=f"Near-duplicate mining cannot run for task '{task_id}': {str(fnf)}",
             warnings=[str(fnf)],
-            next_actions=["Call feature_prepare first to generate visual features and index."],
+            next_actions=["Use image_index_prepare to prepare the requested retrieval corpus, then retry duplicate_audit."],
             mutation=MutationType.NONE,
         )
 
@@ -46,7 +48,7 @@ def duplicate_audit(
                 artifact_type="candidate_groups_json",
                 uri=f"iad://task/{task_id}/duplicates/candidate_groups.json",
                 path=os.path.abspath(res.candidate_groups_json_path),
-                summary="DINO candidate duplicate groups in JSON",
+                summary="Visual candidate graph components in JSON",
             )
         )
     if res.verified_groups_json_path and os.path.exists(res.verified_groups_json_path):
@@ -56,7 +58,7 @@ def duplicate_audit(
                 artifact_type="verified_groups_json",
                 uri=f"iad://task/{task_id}/duplicates/verified_groups.json",
                 path=os.path.abspath(res.verified_groups_json_path),
-                summary="Pixel-verified duplicate groups and connected components in JSON",
+                summary="Exact original-pixel content groups in JSON",
             )
         )
     if res.report_md_path and os.path.exists(res.report_md_path):
@@ -69,8 +71,16 @@ def duplicate_audit(
                 summary="Duplicate audit executive report in Markdown",
             )
         )
+    artifacts.append(ArtifactRef(artifact_id=f'near_candidates_{task_id}',artifact_type='near_candidate_pairs_json',
+        uri=f'iad://task/{task_id}/duplicates/near_candidates.json',path=os.path.abspath(res.near_pairs_json_path),
+        summary='Direct near-candidate relations; not strict equivalence groups'))
 
     warnings = []
+    if res.verification_failed_count:
+        warnings.append(f'{res.verification_failed_count} candidate pair sources could not be verified; restore sources or rescan before retrying.')
+    if res.corpus_coverage.completed<res.corpus_coverage.total:
+        warnings.append('Corpus vectors are incomplete; candidate coverage is partial.')
+    if not verify_duplicates:warnings.append('Pair verification was not requested; candidate groups are not exact equivalence groups.')
     if res.verified_cross_origin_group_count > 0:
         warnings.append(
             f"Detected {res.verified_cross_origin_group_count} cross-origin verified duplicate groups! "
@@ -78,7 +88,7 @@ def duplicate_audit(
         )
 
     return ToolResult(
-        status=ToolStatus.OK,
+        status=ToolStatus.PARTIAL if res.verification_failed_count or res.corpus_coverage.completed<res.corpus_coverage.total else ToolStatus.OK,
         summary=(
             f"Duplicate audit for '{task_id}': {res.candidate_group_count} candidate groups, "
             f"{res.verified_group_count} pixel-verified groups ({res.verified_sample_count} samples)."
@@ -91,6 +101,8 @@ def duplicate_audit(
             "verified_sample_count": res.verified_sample_count,
             "verified_cross_origin_groups": res.verified_cross_origin_group_count,
             "elapsed_seconds": res.elapsed_seconds,
+            'verification_requested':res.verification_requested,'near_candidate_pair_count':res.near_candidate_pair_count,
+            'verification_failed_count':res.verification_failed_count,'corpus_coverage':res.corpus_coverage.model_dump(mode='json'),
         },
         artifacts=artifacts,
         warnings=warnings,

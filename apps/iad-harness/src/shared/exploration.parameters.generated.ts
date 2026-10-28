@@ -25,6 +25,38 @@ export const explorationParameters = {
     "type": "string",
     "title": "Objective",
     "default": "联合比较候选良品和异常样例，自行提出适合此数据集的可观察检查方向。"
+  },
+  "prompt": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "preset_id": {
+        "type": "string",
+        "title": "Preset Id"
+      },
+      "preset_name": {
+        "type": "string",
+        "title": "Preset Name"
+      },
+      "text": {
+        "type": "string",
+        "title": "Text",
+        "required": true
+      }
+    },
+    "title": "FrozenExplorationPrompt"
+  }
+} as const;
+export const explorationPresetParameters = {
+  "name": {
+    "type": "string",
+    "title": "Name",
+    "required": true
+  },
+  "text": {
+    "type": "string",
+    "title": "Text",
+    "required": true
   }
 } as const;
 export const directionAdoptionParameters = {

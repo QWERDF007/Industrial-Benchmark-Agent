@@ -134,7 +134,8 @@ def test_mining_sends_raw_and_binary_mask_evidence_and_retains_prior_pixels(tmp_
         service.close()
 
 
-def test_capacity_grouping_keeps_each_raw_region_with_its_binary_mask(tmp_path):
+@pytest.mark.parametrize('context_limit', [20000, 40000])
+def test_complete_joint_group_keeps_raw_mask_pairs_and_reports_insufficient_capacity(tmp_path, context_limit):
     import httpx
     from iad_core.knowledge.service import KnowledgeService
     from iad_core.storage.database import Database
@@ -149,13 +150,15 @@ def test_capacity_grouping_keeps_each_raw_region_with_its_binary_mask(tmp_path):
     review = HumanReview(db)
     review.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=dataset_id, reviewer='operator', sample_id=dataset_id+':part.png',decision='PASS'))
     sent = []
+    planned = []
 
     def respond(request):
         content = json.loads(request.content)['messages'][0]['content']
         evidence = [json.loads(item['text'].removeprefix('视觉证据：')) for item in content
                     if item['type']=='text' and item['text'].startswith('视觉证据：')]
         if request.url.path.endswith('/tokenize'):
-            return httpx.Response(200,json={'count':len(evidence)*2000,'max_model_len':20000})
+            planned.append(evidence)
+            return httpx.Response(200,json={'count':len(evidence)*2000,'max_model_len':context_limit})
         sent.append(evidence)
         result = {'summary':'按标注范围观察','checks':[],'suspects':[],'limitations':['仅一个来源']}
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
@@ -164,9 +167,17 @@ def test_capacity_grouping_keeps_each_raw_region_with_its_binary_mask(tmp_path):
     try:
         job = service.start(request=selected_group(service.db, dataset_id, kind='normal'), kind='normal', model_name='test-mllm')
         service.wait(job['run_id'],5)
-        assert service.status(job['run_id'])['status']=='COMPLETED'
+        finished=service.status(job['run_id'])
+        if context_limit==20000:
+            assert finished['status']=='FAILED', finished['errors']
+            assert finished['completed']==0 and finished['failed']==finished['total_samples']==1
+            assert sent==[], 'An oversized group must not dispatch or split model requests'
+            assert any('完整图组' in item['message'] for item in finished['errors'])
+        else:
+            assert finished['status']=='COMPLETED', finished['errors']
+            assert len(sent)==1, 'All observations must use one complete joint request'
         viewed = set()
-        for evidence in sent:
+        for evidence in planned:
             if not evidence:
                 continue
             assert any(item['role']=='normal' for item in evidence)

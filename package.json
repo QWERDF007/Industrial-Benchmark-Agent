@@ -20,7 +20,8 @@
       "@deepseek-ai/dsh-client-ui-settings": "0.2.1-rc.2"
     },
     "patchedDependencies": {
-      "@deepseek-ai/dsh-client-ui-sidebar@0.2.0-rc.2": "patches/@deepseek-ai__dsh-client-ui-sidebar@0.2.0-rc.2.patch"
+      "@deepseek-ai/dsh-client-ui-sidebar@0.2.0-rc.2": "patches/@deepseek-ai__dsh-client-ui-sidebar@0.2.0-rc.2.patch",
+      "@deepseek-ai/dsh-llm-pi-ai@0.2.0-rc.2": "patches/@deepseek-ai__dsh-llm-pi-ai@0.2.0-rc.2.patch"
     }
   },
   "devDependencies": {

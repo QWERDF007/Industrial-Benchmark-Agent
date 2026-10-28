@@ -8,7 +8,7 @@ export const formsStyles = `.iad-info-group {background:var(--iad-surface-muted)
 .iad-floating-menu summary::marker {content:"";}
 .iad-floating-menu[open]>summary {border-color:var(--iad-primary);}
 .iad-reference-grid button {padding:0;border:0;line-height:0;}
-.iad-job-section {padding:20px;margin-bottom:18px;background:var(--iad-surface);border:0;border-radius:var(--iad-radius);}
+.iad-job-section {padding:20px;margin-bottom:18px;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:var(--iad-radius);}
 .iad-job-section h2 {margin-top:0;}
 .iad-evidence-preview {display:flex;align-items:center;gap:10px;width:100%;margin:10px 0;text-align:left;font-size:12px!important;}
 .iad-evidence-preview img {width:90px;height:70px;object-fit:contain;background:var(--iad-surface-muted);}
@@ -33,18 +33,9 @@ export const formsStyles = `.iad-info-group {background:var(--iad-surface-muted)
 .iad-config-bar select {width:100%;}
 .iad-config-bar>.iad-primary {margin-left:auto;}
 
+.iad-discovery-area {margin:12px 0;}.iad-discovery-area h3 {margin:0 0 8px;}
 
-.iad-mining-directions {margin:16px 0;}.iad-mining-directions>summary {cursor:pointer;padding:8px 0;min-height:44px;}
-.iad-directions-form,.iad-direction-group {border:0;padding:0;margin:12px 0;min-width:0;}.iad-direction-group>legend {font-weight:600;margin:8px 0;}
-.iad-direction-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:8px;align-items:start;}
-.iad-direction {display:flex;align-items:start;flex-wrap:wrap;gap:8px;padding:8px 12px;background:var(--iad-surface-muted);border-radius:var(--iad-radius);min-width:0;}
-.iad-direction-toggle {display:flex;align-items:center;flex:1;gap:8px;cursor:pointer;min-height:44px;}.iad-direction>details {min-width:0;}.iad-direction>details[open] {flex-basis:100%;}.iad-direction>details>summary {cursor:pointer;min-height:44px;display:flex;align-items:center;color:var(--iad-muted);}
-.iad-direction-add {margin:12px 0;}.iad-direction-add>summary {cursor:pointer;min-height:44px;display:flex;align-items:center;}
-.iad-mining-directions pre {overflow-wrap:anywhere;}.iad-discovery-area {margin:12px 0;}.iad-discovery-area h3 {margin:0 0 8px;}
-
-@media(max-width:760px) {.iad-main {grid-template-columns:1fr;}.iad-inspector {width:100%;}}
-
-.iad-detail-dialog {width:min(1000px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:auto;margin:auto;background:var(--iad-surface);color:var(--iad-text);border:0;border-radius:8px;padding:16px;}
+.iad-detail-dialog {width:min(1000px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:auto;margin:auto;background:var(--iad-surface);color:var(--iad-text);border:1px solid var(--iad-control-border);border-radius:6px;padding:16px;}
 .iad-detail-dialog.iad-inline-dialog {position:sticky;inset:auto;top:0;width:100%;max-width:none;max-height:none;margin:0;padding:0;overflow:visible;background:transparent;}.iad-inline-dialog .iad-inspector{position:static}
 .iad-detail-dialog.iad-drawer {width:min(560px,100%);max-width:100%;height:100dvh;max-height:100dvh;margin:0 0 0 auto;border-radius:0;padding:24px;}.iad-drawer .iad-config-bar {display:grid;gap:16px;}.iad-drawer .iad-config-bar>.iad-field {margin:0;}.iad-drawer .iad-job-panel {min-width:0;}
 .iad-detail-dialog.iad-confirm-dialog {width:min(440px,calc(100% - 32px));}
@@ -54,9 +45,8 @@ export const formsStyles = `.iad-info-group {background:var(--iad-surface-muted)
 .iad-detail-dialog .iad-inspector {border:0;box-shadow:none;}
 .iad-browse {min-width:0;}
 
-@media(max-width:760px) {.iad-header {align-items:start;}.iad-header>.iad-row {width:100%;}.iad-header select {flex:1;max-width:100%;}.iad-tabs {flex-wrap:wrap;}.iad-settings {width:100%;}.iad-pagination {flex-wrap:wrap;}.iad-lightbox {padding:12px;}.iad-lightbox-toolbar strong {flex-basis:100%;}.iad-workbench dl {grid-template-columns:80px minmax(0,1fr);}}
 @container workbench (max-width:959px){.iad-workbench{--iad-page-padding:var(--iad-space-6)}}
-@container workbench (max-width:639px){.iad-workbench{--iad-page-padding:var(--iad-space-4)}.iad-header{align-items:start}.iad-header-actions{width:100%}.iad-header-actions select{flex:1}.iad-model-fields{grid-template-columns:minmax(0,1fr)}}
+
 @media(prefers-reduced-motion:reduce) {.iad-workbench * {scroll-behavior:auto;transition:none;animation:none;}}
 
 .iad-knowledge-content>p,.iad-knowledge-content [data-field] {overflow-wrap:anywhere;}

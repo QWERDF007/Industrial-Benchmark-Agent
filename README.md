@@ -5,16 +5,27 @@
 ## 使用
 
 ```bash
+conda activate iad_agent
 pnpm install
-pip install -e '.[dev]'
+python -m pip install -e '.[dev]'
 cp .env.example .env.local
 # 编辑 .env.local 配置本地模型服务
 ./start.sh
 ```
 
-访问启动器输出的认证地址。运行环境和依赖声明见 [package.json](package.json)、[pyproject.toml](pyproject.toml)；启停入口为 [start.sh](start.sh)、[stop.sh](stop.sh)、[status.sh](status.sh)。
+访问启动器输出的认证地址。Python 环境选择见[桥接入口](apps/iad-harness/src/server/python-bridge/index.ts)；运行依赖见 [package.json](package.json)、[pyproject.toml](pyproject.toml)；启停入口为 [start.sh](start.sh)、[stop.sh](stop.sh)、[status.sh](status.sh)。
 
 Linux x64 的原生图像附件要求 GLIBC ≥ 2.28，见 [Sharp 官方运行要求](https://sharp.pixelplumbing.com/install/#prebuilt-binaries)。
+
+使用独立 Node 运行环境时，在 `.env.local` 指定 `IAD_NODE_PATH`；[启动入口](start.sh)让服务与构建共用该可执行文件，不设置全局 `LD_LIBRARY_PATH`。
+
+基础 Python 安装支持原始像素内容索引，无需 torch、FAISS 或模型服务。CPU 向量检索使用 `pip install -e '.[retrieval]'`；编码器依赖见 [pyproject.toml](pyproject.toml) 的 `encoders` 组合，CPU torch 轮子按 [PyTorch 官方安装入口](https://pytorch.org/get-started/locally/)选择。每个环境只安装一种 FAISS 发行包；已有 GPU FAISS 的环境不要叠加 CPU 包。
+
+【模型设置 → 图像检索】独立配置图像编码器、实际权重、官方源码目录与运行资源。支持的骨干和预处理以[配置契约](python/iad_core/feature/profiles.py)为准；加载检查实际编码一张检查图，不代表工业召回率。真实权重验证入口为[verify_image_encoders.py](scripts/verify_image_encoders.py)，参数见脚本帮助。
+
+DINO 源码目录使用官方 [DINOv2](https://github.com/facebookresearch/dinov2) 或 [DINOv3](https://github.com/facebookresearch/dinov3) 仓库根目录；SSCD 使用官方 TorchScript 权重。公开接口的实际加载验证见[verify_image_encoder_http.mjs](scripts/verify_image_encoder_http.mjs)。
+
+在仅有基础依赖的独立虚拟环境运行 `python scripts/verify_image_index_cpu.py`，可验证真实导入、严格同图分组、16位TIFF、单像素alpha差异、增量复用及无模型运行时。
 
 侧栏【模型设置】为方向探索、良品/异常知识挖掘、模型审计统一选择提供商与模型。提供商页与 DSH 原生设置共用资料及凭据；DSH 会话通过输入框的模型菜单独立选择。行为与能力范围见[设置规格](docs/specs/workbench-model-settings.md)，实现和验收见[架构索引](docs/architecture.md)。[启动补丁](config/dsh_web_lan_patch.yml)只配置服务监听和工业插件；独立 Python 验证的环境配置见下文。
 
@@ -45,6 +56,12 @@ FIREFOX_PATH=/path/to/firefox GECKODRIVER_PATH=/path/to/geckodriver pnpm --filte
 ```
 
 真实模型验证入口为 [verify_workbench_live.py](scripts/verify_workbench_live.py)，使用数据库快照，需可访问数据集目录及项目配置的 VLM。命令行验证前需导出模型环境变量；本地配置模板见 [.env.example](.env.example)，启动器自动加载 `.env.local`。模型服务环境变量及实际上下文检查见 [VlmClient](python/iad_core/workbench/vision.py)；现有客户端采用多图、结构化 JSON 输出与含视觉 token 的容量预检；具体服务协议以客户端实现及运行配置为准，不据模型名称推断能力。
+
+同图标注的真实 DSH 验证见 [verify-consistency-session.js](apps/iad-harness/scripts/verify-consistency-session.js)：提供 `--env-file`、`--image` 和全新 `--output` 目录；`--case missing-instances --verify-corrections` 验证 B/E/F 证据解释及临时标注副本的建议、改源、重扫闭环。构造标签仅用于流程验证，不是工业缺陷真值。
+
+自然语言单图查询、全库检查及原批次恢复见 [verify-consistency-intents.js](apps/iad-harness/scripts/verify-consistency-intents.js)，公开 CLI 验证见 [consistency-intents.test.js](apps/iad-harness/test/consistency-intents.test.js)。
+
+[verify_gold_consistency.py](scripts/verify_gold_consistency.py) 的 `--live-audit` 将实际模型审核接入批次、人审与正式导出验证；模型输入包含指定图片及两张合成对照图，产物保存于全新 `--output-dir`。合成知识仅用于流程对照，不作为工业正常判据验收。
 
 独立图组验证见 [verify-knowledge-selection.js](apps/iad-harness/scripts/verify-knowledge-selection.js)，连续自然语言会话验证见 [verify-knowledge-scope.js](apps/iad-harness/scripts/verify-knowledge-scope.js)。真实模型验证先配置 [本地环境模板](.env.example) 对应环境变量，再运行相应 Node 脚本并提供新的输出目录；仅创建合成图、隔离库和本地轨迹。公开原生工具与完整流程技能的行为验收见 [knowledge_skills.test.js](apps/iad-harness/test/knowledge_skills.test.js)，会话与侧栏往返见 [knowledge-session.test.js](apps/iad-harness/browser/knowledge-session.test.js)。验证结果不代表工业准确率。
 

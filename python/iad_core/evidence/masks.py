@@ -1,12 +1,17 @@
 import hashlib
 import io
-import uuid
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Protocol
 
 from PIL import Image, ImageChops, ImageDraw
 
 from iad_core.storage.models import Annotation, AnnotationType, Sample
+from iad_core.evidence.files import ImageFiles
+
+
+class ImageDimensions(Protocol):
+    width: int
+    height: int
 
 
 class MaskImages:
@@ -23,21 +28,18 @@ class MaskImages:
         return buffer.getvalue()
 
     def store(self, payload: bytes) -> tuple[str, str]:
-        sha = hashlib.sha256(payload).hexdigest()
-        self.root.mkdir(parents=True, exist_ok=True)
-        path = self.root / (sha + ".png")
-        if not path.exists() or hashlib.sha256(path.read_bytes()).hexdigest() != sha:
-            temporary = path.with_suffix("." + uuid.uuid4().hex + ".tmp")
-            temporary.write_bytes(payload)
-            temporary.replace(path)
-        return str(path), sha
+        return ImageFiles(self.root).store(payload)
 
     @staticmethod
-    def load(annotation: Annotation, sample: Sample) -> Image.Image:
+    def load(annotation: Annotation, sample: ImageDimensions) -> Image.Image:
         if not annotation.mask_path or not annotation.mask_sha256:
             raise ValueError("Mask pixels or their fingerprint are missing; rescan the annotation")
         payload = Path(annotation.mask_path).read_bytes()
-        if hashlib.sha256(payload).hexdigest() != annotation.mask_sha256:
+        return MaskImages.decode(payload,annotation.mask_sha256,sample)
+
+    @staticmethod
+    def decode(payload: bytes, expected_sha256: str, sample: ImageDimensions) -> Image.Image:
+        if hashlib.sha256(payload).hexdigest() != expected_sha256:
             raise ValueError("Mask pixels changed after import")
         with Image.open(io.BytesIO(payload)) as image:
             if image.format != "PNG" or image.mode != "L" or image.size != (sample.width, sample.height):

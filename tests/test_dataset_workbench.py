@@ -324,6 +324,7 @@ def test_real_audit_job_uses_references_and_persists_confidence(dataset, monkeyp
         expected = expected_url if request.url.path.endswith('/chat/completions') else expected_url.removesuffix('/v1/chat/completions') + '/tokenize'
         assert str(request.url) == expected
     http_client.event_hooks['request'].append(check_endpoint)
+    monkeypatch.setenv('LIVE_VLM_REQUEST_PARAMETERS', json.dumps({'chat_template_kwargs': {'enable_thinking': False}}))
     client = VlmClient(http_client=http_client)
     service = AuditService(db, client)
     target = f"{config.dataset.id}:scratch.png"
@@ -336,7 +337,8 @@ def test_real_audit_job_uses_references_and_persists_confidence(dataset, monkeyp
     content = bodies[0]["messages"][0]["content"]
     assert sum(item["type"] == "image_url" for item in content) == 2
     assert "可见蓝色表面" in bodies[1]["messages"][0]["content"][0]["text"]
-    assert bodies[0]["chat_template_kwargs"] == {"enable_thinking": False}
+    audit_body = next(body for body in bodies if body['response_format']['json_schema']['name'] == 'JointAnalysis')
+    assert audit_body["chat_template_kwargs"] == {"enable_thinking": False}
     from iad_core.advisory.repository import AuditSuggestionRepository
     suggestion = AuditSuggestionRepository(db).list_by_sample(target)[0]
     assert suggestion.confidence == 0.61
@@ -600,6 +602,7 @@ def test_audit_uses_server_enforced_schema_for_roi_results(dataset, mllm_api, in
 
 
 def test_default_audit_includes_every_filtered_image_across_query_pages(dataset, mllm_api):
+    from iad_core.entry import sample_get
     from pathlib import Path
     from iad_core.dataset.scanner import scan_dataset
     from iad_core.workbench.audit import AuditService, VlmClient
@@ -616,6 +619,10 @@ def test_default_audit_includes_every_filtered_image_across_query_pages(dataset,
         result=service.status(job['run_id'])
         assert result['status']=='COMPLETED',result['errors']
         assert result['completed']==203
+        detail = sample_get({'sample_id': config.dataset.id + ':all-00.png'}, db.db_path)
+        assert detail['consistency']['coverage']['verification']['total'] == 202
+        assert detail['consistency']['coverage']['verification']['completed'] == 202
+        assert detail['consistency']['results'] == []
     finally:
         service.close()
 

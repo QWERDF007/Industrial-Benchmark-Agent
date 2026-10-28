@@ -1,7 +1,16 @@
-import React from "react";
-import type { Report } from "../../shared/contracts.js";
+import React, {useEffect,useState} from "react";
+import type { Report, ConsistencyReport } from "../../shared/contracts.js";
+import {message,request} from '../api.js';
+import {ConsistencyReportSummary} from './ConsistencyReportSummary.js';
 
 export function QualityReport({ report }: { report: Report }) {
+  const [consistency,setConsistency]=useState<ConsistencyReport|null>(null),[consistencyError,setConsistencyError]=useState('');
+  useEffect(()=>{
+    const controller=new AbortController();setConsistency(null);setConsistencyError('');
+    if(report.dataset_id)request<ConsistencyReport>('/consistency/report',{selection:{kind:'scope',subjects:{kind:'datasets',dataset_ids:[report.dataset_id]}},page_size:1},undefined,controller.signal)
+      .then(value=>{if(!controller.signal.aborted)setConsistency(value);}).catch(error=>{if(!controller.signal.aborted)setConsistencyError(message(error));});
+    return()=>controller.abort();
+  },[report.dataset_id,report.generated_at]);
   const quality = report.quality;
   const dimensions = [
     ["技术可用率", quality.technical_usability],
@@ -9,6 +18,7 @@ export function QualityReport({ report }: { report: Report }) {
     ["人工核验覆盖率", quality.human_verification_coverage],
   ] as const;
   return <>
+    {report.dataset_id && <section><h3>数据一致性与 Gold</h3>{consistency ? <ConsistencyReportSummary report={consistency} /> : <p className="iad-muted">{consistencyError || '正在读取一致性与 Gold 范围…'}</p>}</section>}
     <h3>覆盖与可用性</h3><dl>{dimensions.map(([label, ratio]) => <React.Fragment key={label}>
       <dt>{label}</dt><dd><strong>{ratio.percent === null ? "未评估" : `${ratio.percent}%`}</strong> · {ratio.numerator} / {ratio.denominator}</dd>
     </React.Fragment>)}</dl>

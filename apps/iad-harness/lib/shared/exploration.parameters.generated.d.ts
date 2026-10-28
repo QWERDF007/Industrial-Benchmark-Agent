@@ -25,6 +25,38 @@ export declare const explorationParameters: {
         readonly title: "Objective";
         readonly default: "联合比较候选良品和异常样例，自行提出适合此数据集的可观察检查方向。";
     };
+    readonly prompt: {
+        readonly type: "object";
+        readonly additionalProperties: false;
+        readonly properties: {
+            readonly preset_id: {
+                readonly type: "string";
+                readonly title: "Preset Id";
+            };
+            readonly preset_name: {
+                readonly type: "string";
+                readonly title: "Preset Name";
+            };
+            readonly text: {
+                readonly type: "string";
+                readonly title: "Text";
+                readonly required: true;
+            };
+        };
+        readonly title: "FrozenExplorationPrompt";
+    };
+};
+export declare const explorationPresetParameters: {
+    readonly name: {
+        readonly type: "string";
+        readonly title: "Name";
+        readonly required: true;
+    };
+    readonly text: {
+        readonly type: "string";
+        readonly title: "Text";
+        readonly required: true;
+    };
 };
 export declare const directionAdoptionParameters: {
     readonly dataset_id: {

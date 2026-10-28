@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
+import { ImageHttpQueries } from '../images/http.js';
 function sendJson(res, statusCode, data) {
     const body = JSON.stringify(data);
     res.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8", "Content-Length": Buffer.byteLength(body), "Cache-Control": "no-store" });
@@ -25,6 +26,7 @@ async function sendMedia(res, info) {
     fs.createReadStream(info.path).on("error", () => res.destroy()).pipe(res);
 }
 export function createIadHttpHandler(bridge) {
+    const images = new ImageHttpQueries(bridge);
     return async function iadHttpHandler(req, res) {
         try {
             const url = new URL(req.url || "/", "http://localhost");
@@ -34,6 +36,13 @@ export function createIadHttpHandler(bridge) {
                 res.writeHead(204);
                 res.end();
                 return;
+            }
+            if (pathname === '/api/iad/images/temporary' && method === 'POST') {
+                return sendJson(res, 200, await images.upload(req, res));
+            }
+            const temporary = pathname.match(/^\/api\/iad\/images\/temporary\/([^/]+)$/);
+            if (temporary && method === 'DELETE') {
+                return sendJson(res, 200, await images.release(req, res, decodeURIComponent(temporary[1])));
             }
             const query = Object.fromEntries(url.searchParams);
             for (const key of ["page", "page_size"]) {
@@ -49,6 +58,66 @@ export function createIadHttpHandler(bridge) {
                 const data = await bridge.execute(operation, args);
                 sendJson(res, 200, data);
             };
+            if (pathname === "/api/iad/images/settings" && method === "GET")
+                return await call("feature_settings_view");
+            if (pathname === '/api/iad/images/index/prepare' && method === 'POST')
+                return await call('image_index_prepare', body);
+            if (pathname === '/api/iad/consistency/start' && method === 'POST')
+                return await call('consistency_start', body);
+            if (pathname === '/api/iad/consistency/query' && method === 'POST')
+                return await call('consistency_query', body);
+            if (pathname === '/api/iad/consistency/report' && method === 'POST')
+                return await call('consistency_report', body);
+            if (pathname === '/api/iad/consistency/context' && method === 'POST')
+                return await call('consistency_context', body);
+            if (pathname === '/api/iad/consistency/review/context' && method === 'POST')
+                return await call('consistency_review_context', body);
+            if (pathname === '/api/iad/consistency/review/submit' && method === 'POST')
+                return await call('consistency_review_submit', body);
+            if (pathname === '/api/iad/consistency/review/verify' && method === 'POST')
+                return await call('consistency_correction_verify', body);
+            if (pathname === '/api/iad/consistency/groups' && method === 'POST')
+                return await call('consistency_groups', body);
+            if (pathname === '/api/iad/consistency/groups/members' && method === 'POST')
+                return await call('consistency_group_members', body);
+            if (pathname === '/api/iad/consistency/runs' && method === 'GET')
+                return await call('consistency_list');
+            const consistencyRun = pathname.match(/^\/api\/iad\/consistency\/runs\/([^/]+)(?:\/(cancel|retry))?$/);
+            if (consistencyRun) {
+                const batch_id = decodeURIComponent(consistencyRun[1]);
+                if (!consistencyRun[2] && method === 'GET')
+                    return await call('consistency_status', { batch_id });
+                if (consistencyRun[2] === 'cancel' && method === 'POST')
+                    return await call('consistency_cancel', { batch_id });
+                if (consistencyRun[2] === 'retry' && method === 'POST')
+                    return await call('consistency_retry', { ...body, batch_id });
+            }
+            if (pathname === '/api/iad/consistency/compare' && method === 'POST')
+                return await call('consistency_compare', body);
+            const consistencyEvidence = pathname.match(/^\/api\/iad\/consistency\/evidence\/([^/]+)(?:\/(export|media)(?:\/([^/]+))?)?$/);
+            if (consistencyEvidence && method === 'GET') {
+                const reference = { evidence_id: decodeURIComponent(consistencyEvidence[1]) };
+                if (!consistencyEvidence[2])
+                    return await call('consistency_evidence', reference);
+                if (consistencyEvidence[2] === 'export' && !consistencyEvidence[3]) {
+                    const artifact = await bridge.execute('consistency_evidence_export', reference);
+                    res.setHeader('Content-Disposition', `attachment; filename="${reference.evidence_id}.zip"`);
+                    return await sendMedia(res, { path: artifact.path, media_type: 'application/zip' });
+                }
+                if (consistencyEvidence[2] === 'media' && consistencyEvidence[3]) {
+                    const media = await bridge.execute('consistency_evidence_media', { ...reference, media_id: decodeURIComponent(consistencyEvidence[3]) });
+                    return await sendMedia(res, media);
+                }
+            }
+            if (pathname === '/api/iad/images/retrieve' && method === 'POST') {
+                return sendJson(res, 200, await images.retrieve(req, res, body));
+            }
+            if (pathname === "/api/iad/images/settings" && method === "POST")
+                return await call("feature_settings_save", body);
+            if (pathname === "/api/iad/images/settings/check" && method === "POST")
+                return await call("feature_connection_check", body);
+            if (pathname === "/api/iad/images/profiles" && method === "POST")
+                return await call("feature_profile_create", body);
             if (pathname === "/api/iad/models" && method === "GET")
                 return await call("model_settings_view");
             if (pathname === "/api/iad/models" && method === "POST")
@@ -145,6 +214,10 @@ export function createIadHttpHandler(bridge) {
             }
             if (pathname === "/api/iad/exploration" && method === "GET")
                 return await call("direction_exploration_get", query);
+            if (pathname === "/api/iad/exploration/presets" && method === "GET")
+                return await call("direction_exploration_presets", query);
+            if (pathname === "/api/iad/exploration/presets" && method === "POST")
+                return await call("direction_exploration_preset_save", body);
             if (pathname === "/api/iad/exploration/start" && method === "POST")
                 return await call("direction_exploration_start", { request: body });
             if (pathname === "/api/iad/exploration/jobs" && method === "GET")
@@ -217,7 +290,7 @@ export function createIadHttpHandler(bridge) {
         catch (error) {
             const err = error;
             const status = err.details?.status_code || err.statusCode || (error instanceof SyntaxError ? 400 : 500);
-            sendJson(res, status, { error: { message: err.message } });
+            sendJson(res, status, { error: { ...(err.code ? { code: err.code } : {}), message: err.message } });
         }
     };
 }

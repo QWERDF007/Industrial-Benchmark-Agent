@@ -12,7 +12,9 @@ def direction_exploration_status(args, db_path):
 
 
 def direction_exploration_list(args, db_path):
-    return {'jobs': workbench(db_path).jobs.list(args['dataset_id'], ('DIRECTION_EXPLORATION',))}
+    jobs = workbench(db_path).jobs
+    return {'jobs': jobs.list(args['dataset_id'], ('DIRECTION_EXPLORATION',)),
+            'pending_count': jobs.queue_size(args['dataset_id'], 'DIRECTION_EXPLORATION')}
 
 
 def direction_exploration_cancel(args, db_path):
@@ -37,3 +39,14 @@ def direction_exploration_evidence(args, db_path):
     if image is None:
         raise LookupError('该探索版本不存在指定证据')
     return {'path': EvidenceImages(db_path).path(image), 'media_type': image.media_type}
+
+
+def direction_exploration_presets(args, db_path):
+    from iad_core.exploration.prompts import ExplorationPrompts
+    return {'presets': [p.model_dump() for p in ExplorationPrompts(Database(db_path)).list()]}
+
+
+def direction_exploration_preset_save(args, db_path):
+    from iad_core.exploration.prompts import ExplorationPrompts
+    from iad_core.exploration.models import ExplorationPresetEdit
+    return ExplorationPrompts(Database(db_path)).create(ExplorationPresetEdit.model_validate(args)).model_dump()

@@ -2,7 +2,7 @@ import json
 import time
 import uuid
 import zlib
-from contextlib import contextmanager
+from contextlib import contextmanager,nullcontext
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from sqlite3 import Connection
@@ -102,8 +102,8 @@ class ModelCalls:
                     (summary.model_dump_json(), zlib.compress(request.content),
                      zlib.compress(response.content) if response is not None else None, summary.call_id))
 
-    def list(self, run_id: str) -> List[ModelCallSummary]:
-        with self.db.connection() as conn:
+    def list(self, run_id: str, connection: Optional[Connection] = None) -> List[ModelCallSummary]:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
             rows = conn.execute('SELECT summary_json FROM model_calls WHERE run_id=? ORDER BY rowid', (run_id,)).fetchall()
         return [ModelCallSummary.model_validate_json(row[0]) for row in rows]
 

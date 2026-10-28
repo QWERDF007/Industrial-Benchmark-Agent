@@ -1,0 +1,29 @@
+diff --git a/lib/index.js b/lib/index.js
+index 0c74b3ab2b556f4b0e656a304e1242ffceb8c288..da15b2ba2768554ab4efdbea9595f3f10587f42c 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -1226,12 +1226,23 @@ async function prepareRequestImages(messages, attachments, budget, signal) {
+ 	for (const [index, ref] of orderedRefs.entries()) versions.set(ref.attachmentId, prepared[index]);
+ 	return versions;
+ }
++function toolParameterTypes(schema) {
++	const value = { ...schema };
++	if (schema.properties) value.properties = Object.fromEntries(Object.entries(schema.properties).map(([key, child]) => [key, toolParameterTypes(child)]));
++	if (schema.items) value.items = toolParameterTypes(schema.items);
++	if (schema.oneOf) {
++		value.oneOf = schema.oneOf.map(toolParameterTypes);
++		const types = new Set(value.oneOf.map(branch => branch.type));
++		if (value.type === void 0 && types.size === 1 && !types.has(void 0)) value.type = value.oneOf[0].type;
++	}
++	return value;
++}
+ function toolsOf(options) {
+ 	if (options.tools?.some((tool) => tool.deferLoading === true)) throw new LlmError("Deferred tool loading is not supported yet", "UNSUPPORTED_CONTENT");
+ 	return options.tools?.map((tool) => ({
+ 		name: tool.name,
+ 		description: tool.description,
+-		parameters: tool.parameters
++		parameters: toolParameterTypes(tool.parameters)
+ 	}));
+ }
+ /**

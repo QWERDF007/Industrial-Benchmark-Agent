@@ -18,6 +18,7 @@ export const SYSTEM_POLICIES = [
 export const ALLOWED_TOOL_SURFACE = [
   "direction_exploration_start", "direction_exploration_status", "direction_exploration_get",
   "direction_exploration_cancel", "direction_exploration_retry", "direction_exploration_evidence", "knowledge_directions_adopt",
+  "direction_exploration_presets", "direction_exploration_preset_save",
   "skill",
   "dataset_list",
   "dataset_directory_inspect",
@@ -57,10 +58,12 @@ export const ALLOWED_TOOL_SURFACE = [
   "sample_view",
   "region_view",
   "samples_compare",
-  // Vision & Mining (7 tools)
+  // Vision & Mining
   "task_inspect",
-  "feature_prepare",
-  "visual_search",
+  "image_retrieve",
+  'image_index_prepare','consistency_start','consistency_status','consistency_cancel','consistency_retry',
+  'consistency_query','consistency_report','consistency_groups','consistency_group_members','consistency_compare',
+  'consistency_context','consistency_evidence','consistency_evidence_media','consistency_evidence_export',
   "duplicate_audit",
   "candidate_mine",
   "candidate_merge",

@@ -1,3 +1,5 @@
+from tests.feature_fixtures import configure_test_encoder, seed_test_vector, index_test_samples
+import shutil
 import os
 import json
 import tempfile
@@ -8,12 +10,10 @@ from iad_core.storage.database import Database
 from iad_core.storage.repositories import (
     TaskRepository,
     SampleRepository,
-    FeatureRepository,
     AnnotationRepository,
 )
 from iad_core.storage.review_repository import ReviewRepository
 from iad_core.storage.models import (
-    FeatureRecord,
     InspectionTask,
     Sample,
     QualityStatus,
@@ -51,7 +51,7 @@ def review_test_env():
     )
 
     sample_repo = SampleRepository(db)
-    feat_repo = FeatureRepository(db)
+    config=configure_test_encoder(db,temp_dir)
     anno_repo = AnnotationRepository(db)
 
     dim = 32
@@ -78,16 +78,7 @@ def review_test_env():
 
     v_pass = rng.standard_normal(dim).astype(np.float32)
     v_pass /= np.linalg.norm(v_pass)
-    feat_repo.upsert(
-        FeatureRecord(
-            sample_id=pass_id,
-            model_id="dinov2_vitb14_reg",
-            preprocess_key="dinov2_224_norm",
-            dim=dim,
-            dtype="fp16",
-            embedding_blob=v_pass.astype(np.float16).tobytes(),
-        )
-    )
+    seed_test_vector(db,pass_id,v_pass,config.profile)
 
     # 3 UNCERTAIN candidates
     cand_ids = ["cand_01", "cand_02", "cand_03"]
@@ -112,16 +103,7 @@ def review_test_env():
 
         v_cand = v_pass + rng.normal(0, 0.2, dim).astype(np.float32)
         v_cand /= np.linalg.norm(v_cand)
-        feat_repo.upsert(
-            FeatureRecord(
-                sample_id=c_id,
-                model_id="dinov2_vitb14_reg",
-                preprocess_key="dinov2_224_norm",
-                dim=dim,
-                dtype="fp16",
-                embedding_blob=v_cand.astype(np.float16).tobytes(),
-            )
-        )
+        seed_test_vector(db,c_id,v_cand,config.profile)
 
     # Add annotation for cand_01
     anno_repo.upsert(
@@ -137,24 +119,8 @@ def review_test_env():
         )
     )
 
-    # Create dummy verified_groups.json
-    groups_path = os.path.join(temp_dir, "verified_groups.json")
-    with open(groups_path, "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "task_id": task_id,
-                "groups": [
-                    {
-                        "group_id": "ver_grp_01",
-                        "sample_ids": ["cand_01", "cand_02"],
-                        "avg_similarity": 0.99,
-                        "is_verified": True,
-                        "is_cross_origin": False,
-                    }
-                ],
-            },
-            f,
-        )
+    shutil.copyfile(os.path.join(temp_dir, 'cand_01.png'), os.path.join(temp_dir, 'cand_02.png'))
+    index_test_samples(db)
 
     return {
         "db": db,
@@ -163,7 +129,6 @@ def review_test_env():
         "task_id": task_id,
         "cand_ids": cand_ids,
         "pass_id": pass_id,
-        "groups_path": groups_path,
     }
 
 
@@ -172,7 +137,6 @@ def test_evidence_package_completeness(review_test_env):
     builder = EvidenceBuilder(
         task_id=env["task_id"],
         db=env["db"],
-        verified_groups_path=env["groups_path"],
     )
 
     ev = builder.build_evidence("cand_01")
@@ -201,12 +165,11 @@ def test_evidence_package_completeness(review_test_env):
     neighbor_ids = [n.sample_id for n in ev.nearest_neighbors]
     assert "cand_01" not in neighbor_ids  # Should not include query itself
 
-    # Verified duplicates & component members
-    assert len(ev.verified_duplicates) == 1
-    assert ev.verified_duplicates[0].sample_id == "cand_02"
-    assert ev.verified_duplicates[0].group_id == "ver_grp_01"
-    assert len(ev.verified_component_members) == 1
-    assert ev.verified_component_members[0].sample_id == "cand_02"
+    assert len(ev.strict_content_members) == 1
+    assert ev.strict_content_members[0].sample_id == "cand_02"
+    assert ev.strict_content_members[0].relation == 'EXACT'
+    assert ev.strict_content_members[0].group_size == 2
+    assert ev.direct_pair_observations == []
 
 
 def test_review_decision_persistence_and_isolated_quality(review_test_env):

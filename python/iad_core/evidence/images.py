@@ -2,37 +2,39 @@ import hashlib
 import io
 import json
 import math
-import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Literal, Optional
 
 from PIL import Image
+import numpy as np
 
 from iad_core.advisory.analysis import VisualEvidence, RegionProposal, RegionOrigin, RegionImage
 from iad_core.evidence.views import padded_bbox
 from iad_core.evidence.masks import annotation_mask, annotation_overlay
 from iad_core.storage.models import Sample, Annotation
+from iad_core.evidence.files import ImageFiles, file_sha256
 
 OVERVIEW_MAX_SIDE = 1280
 ROI_MAX_SIDE = 1024
 
 
-def file_sha256(path: str) -> str:
-    digest = hashlib.sha256()
-    with Path(path).open("rb") as source:
-        for chunk in iter(lambda: source.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def normalized_preview(image: Image.Image) -> Image.Image:
+    if image.mode.startswith('I;16') or (image.mode=='I' and image.format=='PNG'):
+        return Image.fromarray(np.rint(np.clip(np.asarray(image,dtype=np.float32)/257,0,255)).astype(np.uint8)).convert('RGB')
+    return image.copy() if image.mode=='RGBA' else image.convert('RGB')
 
 
 def image_pixel_sha256(path: str, expected_sha256: str) -> str:
     data = Path(path).read_bytes()
     if hashlib.sha256(data).hexdigest() != expected_sha256:
         raise ValueError('图像在冻结期间发生变化，请重新选择')
+    from iad_core.duplicate.pixels import PixelContent
     with Image.open(io.BytesIO(data)) as original:
-        pixels = original.convert('RGB')
-        return hashlib.sha256(json.dumps(pixels.size).encode() + pixels.tobytes()).hexdigest()
+        pixels = PixelContent.read(original)
+        if pixels.descriptor.decode_status != 'COMPLETE':
+            raise ValueError(pixels.descriptor.reason)
+        return pixels.descriptor.pixel_key
 
 
 @dataclass(frozen=True)
@@ -52,7 +54,8 @@ class EvidenceImages:
 
     def capture(self, sample: Sample, role: str, source: str, bbox: Optional[List[int]] = None,
                 source_sha256: Optional[str] = None, annotations: Optional[List[Annotation]] = None,
-                annotation_mode: Literal["annotation_mask", "annotation_overlay"] = "annotation_overlay") -> PreparedImage:
+                annotation_mode: Literal["annotation_mask", "annotation_overlay"] = "annotation_overlay",
+                max_side: Optional[int] = None) -> PreparedImage:
         box = bbox or [0, 0, sample.width, sample.height]
         original_bytes = Path(sample.image_path).read_bytes()
         source_sha = hashlib.sha256(original_bytes).hexdigest()
@@ -61,11 +64,14 @@ class EvidenceImages:
         with Image.open(io.BytesIO(original_bytes)) as original:
             if original.size != (sample.width, sample.height):
                 raise ValueError("Image dimensions changed; rescan the dataset")
-            image = original.convert("RGB").crop(tuple(box))
-            if annotations:
+            image = normalized_preview(original).crop(tuple(box))
+            if annotations is not None:
                 image = (annotation_mask(sample, annotations, box).convert("RGB") if annotation_mode == "annotation_mask"
                          else annotation_overlay(sample, image, annotations, box))
-            if role != "roi":
+            if max_side is not None:
+                if not 1<=max_side<=OVERVIEW_MAX_SIDE:raise ValueError('Invalid preview size budget')
+                image.thumbnail((max_side,max_side),Image.Resampling.LANCZOS)
+            elif role != "roi":
                 image.thumbnail((OVERVIEW_MAX_SIDE, OVERVIEW_MAX_SIDE), Image.Resampling.LANCZOS)
             elif max(image.size) > ROI_MAX_SIDE:
                 raise ValueError("ROI must be tiled before encoding")
@@ -73,17 +79,11 @@ class EvidenceImages:
             image.save(buffer, "PNG")
             sent_size = list(image.size)
         payload = buffer.getvalue()
-        sha = hashlib.sha256(payload).hexdigest()
-        self.root.mkdir(parents=True, exist_ok=True)
-        path = self.root / (sha + ".png")
-        if not path.exists():
-            temporary = path.with_suffix("." + uuid.uuid4().hex + ".tmp")
-            temporary.write_bytes(payload)
-            temporary.replace(path)
-        representation = annotation_mode if annotations else "raw"
+        path,sha = ImageFiles(self.root).store(payload)
+        representation = annotation_mode if annotations is not None else "raw"
         annotation_ids = [annotation.annotation_id for annotation in annotations or []]
         annotation_sha = hashlib.sha256(json.dumps([annotation.model_dump(mode="json") for annotation in annotations],
-                                                    sort_keys=True).encode()).hexdigest() if annotations else None
+                                                    sort_keys=True).encode()).hexdigest() if annotations is not None else None
         identity = json.dumps([sample.sample_id, role, source, box, sha, source_sha, representation, annotation_ids, annotation_sha])
         evidence = VisualEvidence(evidence_id="img_" + hashlib.sha256(identity.encode()).hexdigest(), role=role, source=source,
                                   original_size=[sample.width, sample.height], crop_bbox=box, sent_size=sent_size,

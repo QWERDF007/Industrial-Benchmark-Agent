@@ -1,0 +1,71 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import http from 'node:http';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {PythonBridge,createIadHttpHandler} from '../lib/server/index.js';
+import {resolvePythonPath} from '../lib/server/python-bridge/index.js';
+
+test('consistency batches expose real progress, idempotency and frozen results through HTTP',async()=>{
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-batch-http-'));
+  execFileSync(resolvePythonPath(),[fileURLToPath(new URL('fixtures/knowledge_dataset.py',import.meta.url)),root]);
+  await fs.copyFile(path.join(root,'images/part-0.png'),path.join(root,'images/copy.png'));
+  const bridge=new PythonBridge({dbPath:path.join(root,'test.db')});
+  const server=http.createServer(createIadHttpHandler(bridge));
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  const base=`http://127.0.0.1:${server.address().port}/api/iad`;
+  const post=(route,body)=>fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  try {
+    const dataset=await bridge.execute('dataset_import',{format:'labelme',name:'批次入口',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')});
+    const request={subjects:{kind:'all_registered'},mode:'exact',request_id:'http-batch'};
+    const response=await post('/consistency/start',request);
+    assert.equal(response.status,200,await response.clone().text());
+    const started=await response.json();assert.equal(started.kind,'started');
+    assert.equal((await (await post('/consistency/start',request)).json()).batch_id,started.batch_id);
+    const endpoint='/consistency/runs/'+started.batch_id;
+    let state;
+    for(let attempts=0;attempts<300;attempts++){
+      const response=await fetch(base+endpoint);assert.equal(response.status,200,await response.clone().text());
+      state=await response.json();
+      assert.equal(state.completed+state.failed+state.unprocessed,state.total);
+      if(!['PENDING','RUNNING'].includes(state.status))break;
+      await new Promise(resolve=>setTimeout(resolve,20));
+    }
+    assert.equal(state.status,'COMPLETED');assert.equal(state.completed,state.total);assert.equal(state.total,4);
+    assert.equal(state.children[0].dataset_id,dataset.dataset_id);assert.equal(state.children[0].model_profile,null);
+    const resultResponse=await post('/consistency/query',{selection:{kind:'batch',batch_id:started.batch_id},page_size:1});assert.equal(resultResponse.status,200);
+    const results=await resultResponse.json();assert.equal(results.total,1);assert.equal(results.items[0].result.verification.relation,'EXACT');
+    assert.equal(results.items[0].facts_state,'CURRENT');assert.equal(results.execution.completed,4);
+    const reportResponse=await post('/consistency/report',{selection:{kind:'scope',subjects:{kind:'all_registered'}}});
+    assert.equal(reportResponse.status,200,await reportResponse.clone().text());
+    const report=await reportResponse.json();assert.equal(report.page.execution.total,4);assert.equal(report.page.execution.completed,4);
+    assert.equal(report.statistics.current.pairs,1);assert.equal(report.statistics.current.strict_groups,1);assert.equal(report.statistics.current.strict_members,2);
+    assert.equal(report.page.retrieval_completeness,'EXACT_SCOPE');assert.equal(report.gold_excluded,4);
+    assert.equal(report.gold.total,4);assert.equal(report.gold.confirmed,0);
+    const groupResponse=await post('/consistency/groups',{query_id:report.page.query_id});assert.equal(groupResponse.status,200);
+    const groups=await groupResponse.json();assert.equal(groups.total,1);assert.equal(groups.items[0].member_count,2);
+    const groupMembers=await post('/consistency/groups/members',{query_id:report.page.query_id,group_id:groups.items[0].group_id,page_size:1});
+    assert.equal(groupMembers.status,200);const members=await groupMembers.json();assert.equal(members.total,2);assert.equal(members.items.length,1);
+    assert.equal((await post('/consistency/groups/members',{query_id:report.page.query_id,group_id:'missing'})).status,404);
+    assert.equal((await fetch(base+'/consistency/evidence/'+results.items[0].result.evidence_id)).status,200);
+    const listed=await fetch(base+'/consistency/runs');assert.equal(listed.status,200);assert.equal((await listed.json()).items[0].batch_id,started.batch_id);
+    assert.equal((await (await post(endpoint+'/cancel',{})).json()).status,'COMPLETED');
+    const retried=await post(endpoint+'/retry',{request_id:'http-retry'});assert.equal(retried.status,200);assert.equal((await retried.json()).kind,'no_work');
+    assert.equal((await post('/consistency/start',{...request,request_id:'http-retry'})).status,400);
+    const conflict=await post('/consistency/start',{...request,mode:'combined'});assert.equal(conflict.status,400);assert.equal((await conflict.json()).error.code,'INVALID_SCOPE');
+    assert.equal((await post('/consistency/start',{...request,request_id:'bad-scope',subjects:{kind:'samples',sample_ids:['missing']}})).status,404);
+    const prepared=await post('/images/index/prepare',{request_id:'unconfigured'});assert.equal(prepared.status,409);assert.equal((await prepared.json()).error.code,'PROFILE_NOT_CONFIGURED');
+    assert.equal((await fetch(base+'/consistency/runs/missing')).status,404);
+    assert.equal((await post('/consistency/query',{selection:{kind:'batch',batch_id:started.batch_id},cursor:'garbage'})).status,400);
+    assert.equal((await post('/consistency/query',{selection:{kind:'scope',subjects:{kind:'samples',sample_ids:['missing']}}})).status,404);
+    assert.equal((await post('/consistency/query',{selection:{kind:'scope',subjects:{kind:'all_registered'},facts:'ALL'}})).status,422);
+    await bridge.execute('dataset_scan',{dataset_id:dataset.dataset_id});
+    const refreshed=await post('/consistency/report',{selection:{kind:'scope',subjects:{kind:'all_registered'}}});
+    const fresh=await refreshed.json();assert.equal(fresh.page.total,0);assert.equal(fresh.page.execution.pending,4);
+    const history=await post('/consistency/query',{selection:{kind:'scope',subjects:{kind:'all_registered'},facts:'HISTORICAL'}});
+    const historical=await history.json();assert.equal(historical.total,1);assert.equal(historical.items[0].facts_state,'HISTORICAL');
+  } finally {await new Promise(resolve=>server.close(resolve));bridge.destroy();await fs.rm(root,{recursive:true,force:true});}
+});

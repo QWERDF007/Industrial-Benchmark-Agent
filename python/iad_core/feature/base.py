@@ -1,14 +1,16 @@
 from abc import ABC, abstractmethod
-from typing import List, Union
+from typing import List, Union, Literal
 import numpy as np
 from PIL import Image
+
+EmbeddingPrecision = Literal['float32', 'float16']
 
 
 class FeatureExtractor(ABC):
     """Abstract base class for vision feature extractors."""
 
     model_id: str
-    preprocess_key: str
+    profile_id: str
     dim: int
 
     @abstractmethod

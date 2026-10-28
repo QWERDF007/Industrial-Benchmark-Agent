@@ -1,36 +1,11 @@
-from enum import Enum
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
-
-
-class GoldQuality(str, Enum):
-    PASS = "PASS"
-    HARD_NORMAL = "HARD_NORMAL"
-    FAIL = "FAIL"
-    CONFLICT = "CONFLICT"
-    EXCLUDED = "EXCLUDED"
-
-
-class BinaryLabel(str, Enum):
-    NORMAL = "NORMAL"
-    ANOMALY = "ANOMALY"
-
-
-class GoldStatus(str, Enum):
-    CONFIRMED = "CONFIRMED"
-    CONFLICT = "CONFLICT"
-    EXCLUDED = "EXCLUDED"
-
-
-class GoldSource(str, Enum):
-    HUMAN_REVIEW = "HUMAN_REVIEW"
-    PRODUCTION_QA = "PRODUCTION_QA"
-    EXISTING_QUALITY = "EXISTING_QUALITY"
-    UNCERTAIN = "UNCERTAIN"
+from iad_core.storage.models import AnnotationType, GoldQuality, BinaryLabel, GoldStatus, GoldSource
 
 
 class GoldAnnotation(BaseModel):
     annotation_id: str
+    annotation_type: AnnotationType
     raw_label: str
     phenomenon: Optional[str] = None
     bbox: Optional[List[float]] = None

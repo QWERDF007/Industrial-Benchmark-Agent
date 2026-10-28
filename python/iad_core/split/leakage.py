@@ -4,6 +4,8 @@ from typing import List, Dict, Any, Optional, Tuple, Set
 from pydantic import BaseModel, Field
 
 from iad_core.storage.models import Sample, DataOrigin
+from iad_core.duplicate.relations import StrictContentGroup
+from iad_core.split.group import build_split_groups
 
 
 class LeakageReport(BaseModel):
@@ -14,6 +16,7 @@ class LeakageReport(BaseModel):
     duplicate_leakages: List[Dict[str, Any]] = Field(default_factory=list)
     component_leakages: List[Dict[str, Any]] = Field(default_factory=list)
     augmented_leakages: List[Dict[str, Any]] = Field(default_factory=list)
+    strict_content_leakages: List[Dict[str, Any]] = Field(default_factory=list)
 
 
 def check_leakage(
@@ -22,6 +25,7 @@ def check_leakage(
     verified_pairs: Optional[List[Tuple[str, str]]] = None,
     verified_components: Optional[List[List[str]]] = None,
     physical_sample_scope: str = "batch",
+    strict_content_groups: Optional[List[StrictContentGroup]] = None,
 ) -> LeakageReport:
     """
     Blocking Leakage Gate (R212).
@@ -32,13 +36,17 @@ def check_leakage(
     4. Verified component leakage (component members across multiple splits)
     5. Augmented sample leakage (AUGMENTED samples in test split)
     """
-    sample_map = {s.sample_id: s for s in samples}
-
     physical_leakages = []
     capture_leakages = []
     duplicate_leakages = []
     component_leakages = []
     augmented_leakages = []
+    strict_leakages = []
+    for group in strict_content_groups or []:
+        splits = {assignments[identity] for identity in group.sample_ids if identity in assignments}
+        if len(splits) > 1:
+            strict_leakages.append({'relation': 'STRICT_CONTENT', 'content_group_id': group.group_id,
+                'sample_ids': [identity for identity in group.sample_ids if identity in assignments], 'splits': sorted(splits)})
 
     # 1. Physical Sample Leakage Check
     phys_to_splits: Dict[str, Dict[str, List[str]]] = {}
@@ -86,21 +94,20 @@ def check_leakage(
                         "sample_id_b": b,
                         "split_a": split_a,
                         "split_b": split_b,
+                        "relation": "NEAR_LEAKAGE",
                     })
 
-    # 4. Verified Component Leakage Check
-    if verified_components:
-        for comp in verified_components:
-            comp_splits: Dict[str, List[str]] = {}
-            for sid in comp:
-                if sid in assignments:
-                    sp = assignments[sid]
-                    comp_splits.setdefault(sp, []).append(sid)
-            if len(comp_splits) > 1:
-                component_leakages.append({
-                    "splits": sorted(list(comp_splits.keys())),
-                    "sample_counts": {sp: len(s_ids) for sp, s_ids in comp_splits.items()},
-                })
+    # Components include constraint members that are not exported themselves.
+    components, _ = build_split_groups(samples, verified_pairs=verified_pairs,
+        verified_groups=[*(verified_components or []), *[group.sample_ids for group in strict_content_groups or []]])
+    for component in components:
+        by_split: Dict[str, List[str]] = {}
+        for identity in component.sample_ids:
+            if identity in assignments:
+                by_split.setdefault(assignments[identity], []).append(identity)
+        if len(by_split) > 1:
+            component_leakages.append({'relation': 'LEAKAGE_COMPONENT', 'group_id': component.group_id,
+                'splits': sorted(by_split), 'sample_counts': {split: len(members) for split, members in by_split.items()}})
 
     # 5. Augmented Sample Policy Check (AUGMENTED must not enter test)
     for s in samples:
@@ -120,6 +127,7 @@ def check_leakage(
         + len(duplicate_leakages)
         + len(component_leakages)
         + len(augmented_leakages)
+        + len(strict_leakages)
     )
 
     is_passed = (total_violations == 0)
@@ -132,6 +140,7 @@ def check_leakage(
         duplicate_leakages=duplicate_leakages,
         component_leakages=component_leakages,
         augmented_leakages=augmented_leakages,
+        strict_content_leakages=strict_leakages,
     )
 
 
@@ -156,6 +165,7 @@ def save_leakage_reports(report: LeakageReport, output_dir: str):
         "|---|:---:|:---:|",
         f"| Physical Sample Leakage | {len(report.physical_leakages)} | {'PASS' if not report.physical_leakages else 'FAIL'} |",
         f"| Capture Sequence Leakage | {len(report.capture_leakages)} | {'PASS' if not report.capture_leakages else 'FAIL'} |",
+        f"| Strict Content Leakage | {len(report.strict_content_leakages)} | {'PASS' if not report.strict_content_leakages else 'FAIL'} |",
         f"| Direct Verified Pair Leakage | {len(report.duplicate_leakages)} | {'PASS' if not report.duplicate_leakages else 'FAIL'} |",
         f"| Verified Component Leakage | {len(report.component_leakages)} | {'PASS' if not report.component_leakages else 'FAIL'} |",
         f"| Augmented Origin Policy | {len(report.augmented_leakages)} | {'PASS' if not report.augmented_leakages else 'FAIL'} |",
@@ -173,6 +183,10 @@ def save_leakage_reports(report: LeakageReport, output_dir: str):
             md_lines.append("### Capture Leakages")
             for item in report.capture_leakages:
                 md_lines.append(f"- Capture ID `{item['capture_sequence_id']}` across splits {item['splits']}: {item['sample_counts']}")
+        if report.strict_content_leakages:
+            md_lines.append("### Strict Content Leakages")
+            for item in report.strict_content_leakages:
+                md_lines.append(f"- Content group `{item['content_group_id']}` across splits {item['splits']}: {item['sample_ids']}")
         if report.duplicate_leakages:
             md_lines.append("### Duplicate Leakages")
             for item in report.duplicate_leakages:

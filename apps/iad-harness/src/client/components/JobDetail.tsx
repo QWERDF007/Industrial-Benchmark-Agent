@@ -1,3 +1,4 @@
+import { ExplorationProgress } from "./ExplorationProgress.js";
 import React, { useEffect, useRef, useState } from "react";
 import type { JobRetryOptions, JobSample, JobSnapshot } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
@@ -8,7 +9,7 @@ import { DeleteAction } from "./DeleteAction.js";
 
 const sampleName = (sample: JobSample) => sample.relative_path || sample.sample_uuid;
 
-export function JobDetail({ job, onChanged }: { job: JobSnapshot; onChanged(): void }) {
+export function JobDetail({ job, onChanged, stale = false, lastSyncedAt, onCopy }: { job: JobSnapshot; onChanged(): void; stale?: boolean; lastSyncedAt?: number | null; onCopy?(job: JobSnapshot): void }) {
   const { workspace } = useWorkspace();
   const kind = job.job_type === "MODEL_AUDIT" ? "audit" : job.job_type === "DIRECTION_EXPLORATION" ? "exploration" : "knowledge";
   const page = kind === "audit" ? "industrial-audit" : kind === "exploration" ? "industrial-exploration" : "industrial-knowledge";
@@ -52,15 +53,16 @@ export function JobDetail({ job, onChanged }: { job: JobSnapshot; onChanged(): v
   }
   return <article ref={article} className="iad-job" data-job-id={job.run_id} aria-label={`作业 ${job.run_id}`} aria-current={focused || undefined}>
     <div className="iad-row"><strong role="status">{active && job.cancel_requested ? "正在停止" : jobStatuses[job.status]}</strong><span>{job.model_profile?.provider_name ? `${job.model_profile.provider_name} · ` : ''}{job.model_name}</span>
-      {active && <button disabled={busy || job.cancel_requested} onClick={cancel}>{job.cancel_requested ? "正在停止…" : kind === "audit" ? "取消审计" : kind === "exploration" ? "取消探索" : "取消挖掘"}</button>}
+      {active && <button disabled={busy || job.cancel_requested} onClick={cancel}>{job.cancel_requested ? "正在停止…" : kind === "audit" ? "取消审计" : kind === "exploration" ? job.status === "PENDING" ? "取消排队" : "取消探索" : "取消挖掘"}</button>}
       {kind === "knowledge" && !active && !job.deleted_at && <DeleteAction title="删除作业" name={job.run_id} className="iad-action-end"
         description="从作业列表删除，保留已发布知识、冻结证据及历史引用。"
         restoreFocus={() => document.querySelector<HTMLElement>(".iad-knowledge-page .iad-tabs button.active")}
         onDelete={async () => { await request(`/knowledge/jobs/${encodeURIComponent(job.run_id)}`, undefined, "DELETE");
           if (focused) workspace.updateView(page, { job: "" }); onChanged(); }} />}
     </div>
-    {job.total_samples > 0 && <progress aria-label="作业处理进度" value={job.progress} max={1} />}
-    <p>完成 {job.completed} · 失败 {job.failed} · 未处理 {job.unprocessed} · 共 {job.total_samples} 张</p>
+    {kind !== "exploration" && job.total_samples > 0 && <progress aria-label="作业处理进度" value={job.progress} max={1} />}
+    {kind === "exploration" ? <ExplorationProgress job={job} stale={stale} lastSyncedAt={lastSyncedAt} /> : <p>完成 {job.completed} · 失败 {job.failed} · 未处理 {job.unprocessed} · 共 {job.total_samples} 张</p>}
+    {kind === "exploration" && <><details><summary>任务冻结提示词</summary><pre className="iad-observation">{job.exploration_prompt?.text || "未记录"}</pre><p>{job.exploration_request?.objective}</p></details>{onCopy && <button onClick={() => onCopy(job)}>复制为新配置</button>}</>}
     {kind === "knowledge" && job.observation_progress && <p className="iad-muted">已观察 {job.observation_progress.observed_sources} / {job.observation_progress.planned_sources} 张 · 完整视图 {job.observation_progress.complete_sources} 张 · 已发布 {job.observation_progress.published_sources} 张</p>}
     {kind === "knowledge" && <KnowledgeJobEvidence job={job} />}
     {active && job.cancel_requested ? <p className="iad-muted">等待当前模型请求返回后停止。</p> : <p className="iad-muted">{phases[job.phase || ""] || job.message}</p>}

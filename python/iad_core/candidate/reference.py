@@ -3,6 +3,7 @@ from typing import List, Tuple, Optional, Set
 import numpy as np
 
 from iad_core.storage.database import Database
+from iad_core.feature.profiles import ImageEncoders
 from iad_core.storage.repositories import FeatureRepository
 
 logger = logging.getLogger("iad_core.candidate.reference")
@@ -13,8 +14,7 @@ MIN_RECOMMENDED_REFERENCES = 30
 def get_normal_reference_set(
     task_id: str,
     db: Database,
-    model_id: str = "dinov2_vitb14_reg",
-    preprocess_key: str = "dinov2_224_norm",
+    profile_id: Optional[str] = None,
     include_raw_pass: bool = True,
     include_review_pass: bool = True,
     include_hard_normal: bool = False,
@@ -24,6 +24,8 @@ def get_normal_reference_set(
     Retrieve reference normal samples and their feature embeddings.
     Derived dynamically from confirmed PASS samples and review decisions (including Hard Normal feedback loop).
     """
+    selection=ImageEncoders(db).read().selection
+    dim=ImageEncoders(db).profile(profile_id).dim if profile_id else selection.profile.dim if selection else 0
     raw_pass_ids: Set[str] = set()
     review_pass_ids: Set[str] = set()
     hard_normal_ids: Set[str] = set()
@@ -78,17 +80,17 @@ def get_normal_reference_set(
     empty_breakdown = {"raw_pass": 0, "review_pass": 0, "hard_normal": 0, "total": 0}
     if not ref_ids:
         if return_breakdown:
-            return [], np.empty((0, 768), dtype=np.float32), True, empty_breakdown
-        return [], np.empty((0, 768), dtype=np.float32), True
+            return [], np.empty((0, dim), dtype=np.float32), True, empty_breakdown
+        return [], np.empty((0, dim), dtype=np.float32), True
 
     feat_repo = FeatureRepository(db)
     vectors = []
     valid_ids = []
 
     for s_id in ref_ids:
-        rec = feat_repo.get(s_id, model_id, preprocess_key)
+        rec = feat_repo.get_for_sample(s_id, profile_id)
         if rec:
-            np_dtype = np.float16 if rec["dtype"] == "fp16" else np.float32
+            np_dtype = np.float16 if rec["dtype"] == "float16" else np.float32
             v = np.frombuffer(rec["embedding_blob"], dtype=np_dtype).astype(np.float32)
             norm = np.linalg.norm(v)
             if norm > 0:
@@ -106,8 +108,8 @@ def get_normal_reference_set(
 
     if not vectors:
         if return_breakdown:
-            return [], np.empty((0, 768), dtype=np.float32), True, breakdown
-        return [], np.empty((0, 768), dtype=np.float32), True
+            return [], np.empty((0, dim), dtype=np.float32), True, breakdown
+        return [], np.empty((0, dim), dtype=np.float32), True
 
     ref_embeddings = np.stack(vectors, axis=0)
     if return_breakdown:

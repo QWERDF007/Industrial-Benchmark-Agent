@@ -1,186 +1,112 @@
-import os
-import logging
-from typing import Tuple, Dict, Any, Optional
+from dataclasses import dataclass
+from threading import Lock
+from typing import Sequence
+
 import numpy as np
 from PIL import Image
-from pydantic import BaseModel, Field
 
-logger = logging.getLogger("iad_core.duplicate.verify")
+from iad_core.duplicate.pixels import PixelContent
+from iad_core.duplicate.verification_models import NearComparisonConfig, VerificationResult
 
 
-class VerificationResult(BaseModel):
-    """
-    Detailed verification metrics for an image pair evaluated by PairVerifier V2.
-    """
-    verified: bool
-    dino_cosine: Optional[float] = None
-    pixel_cosine: float
-    ncc: float
-    mean_abs_diff: float
-    high_diff_ratio: float
-    best_shift: Tuple[int, int] = (0, 0)
-    details: Dict[str, Any] = Field(default_factory=dict)
+@dataclass(frozen=True)
+class PreparedPixels:
+    values: np.ndarray
+    crop: np.ndarray
+    norm: float
+    mean: float
+    std: float
+    fitted_size: tuple[int,int]
+    padding: tuple[int,int]
+
+    @classmethod
+    def from_content(cls, content: PixelContent, target: tuple[int,int]):
+        original=content.image()
+        gray=(Image.fromarray((np.asarray(original,dtype=np.float32)/257).astype(np.uint8))
+            if content.descriptor.dtype=='uint16' else original.convert('L'))
+        width,height=gray.size
+        scale=min(target[0]/width,target[1]/height)
+        fitted=(max(1,int(width*scale)),max(1,int(height*scale)))
+        padding=((target[0]-fitted[0])//2,(target[1]-fitted[1])//2)
+        canvas=Image.new('L',target,0)
+        canvas.paste(gray.resize(fitted,Image.Resampling.BICUBIC),padding)
+        values=np.asarray(canvas,dtype=np.float32)/255
+        crop=values[3:-3,3:-3]
+        return cls(values,crop,float(np.linalg.norm(crop)),float(crop.mean()),float(crop.std()),fitted,padding)
+
+
+@dataclass(frozen=True)
+class VerificationStats:
+    thumbnail_preparations: int
+    retained_thumbnail_bytes: int
 
 
 class PairVerifier:
-    """
-    Deterministic pixel-level PairVerifier V2 for near-duplicate candidates.
-    Evaluates:
-    - Normalized Cross Correlation (NCC)
-    - Pixel Cosine Similarity
-    - Mean Absolute Difference (MAD)
-    - High Difference Pixel Ratio (HDR)
-    - ±3px translation search to compensate for micro-jitter
-    Uses 256x256 input resolution with in-memory array cache for sub-millisecond execution.
-    """
+    def __init__(self, config: NearComparisonConfig | None = None):
+        self.config=config or NearComparisonConfig()
+        self._thumbnail_source: PixelContent | None = None
+        self._thumbnail: PreparedPixels | None = None
+        self._thumbnail_preparations = 0
+        self._thumbnail_lock = Lock()
 
-    def __init__(
-        self,
-        target_size: Tuple[int, int] = (256, 256),
-        pixel_cosine_threshold: float = 0.990,
-        ncc_threshold: float = 0.980,
-        max_mean_abs_diff: float = 0.0060,
-        max_high_diff_ratio: float = 0.0015,
-        diff_pixel_threshold: float = 0.08,
-        enable_translation_search: bool = True,
-    ):
-        self.target_size = target_size
-        self.pixel_cosine_threshold = pixel_cosine_threshold
-        self.ncc_threshold = ncc_threshold
-        self.max_mean_abs_diff = max_mean_abs_diff
-        self.max_high_diff_ratio = max_high_diff_ratio
-        self.diff_pixel_threshold = diff_pixel_threshold
-        self.enable_translation_search = enable_translation_search
-        self._cache: Dict[str, Tuple[np.ndarray, np.ndarray, float, float, float]] = {}
+    def stats(self) -> VerificationStats:
+        with self._thumbnail_lock:
+            return VerificationStats(self._thumbnail_preparations,self._thumbnail.values.nbytes if self._thumbnail else 0)
 
-    def _get_image_data(self, image_path: str) -> Tuple[np.ndarray, np.ndarray, float, float, float]:
-        if image_path in self._cache:
-            return self._cache[image_path]
+    def verify(self, path_a: str, path_b: str, dino_cosine: float | None = None,
+               *, regions: Sequence[Sequence[float]] | None = None) -> VerificationResult:
+        return self.verify_pixels(PixelContent.read(path_a),PixelContent.read(path_b),dino_cosine,regions=regions)
 
-        if not os.path.exists(image_path):
-            raise FileNotFoundError(f"Image not found: {image_path}")
-
-        with Image.open(image_path) as img:
-            img = img.convert("L")
-            w, h = img.size
-            tw, th = self.target_size
-            scale = min(tw / w, th / h)
-            nw, nh = max(1, int(w * scale)), max(1, int(h * scale))
-            resample = getattr(getattr(Image, "Resampling", Image), "BICUBIC", Image.BICUBIC)
-            resized = img.resize((nw, nh), resample)
-
-            canvas = Image.new("L", (tw, th), color=0)
-            pad_left = (tw - nw) // 2
-            pad_top = (th - nh) // 2
-            canvas.paste(resized, (pad_left, pad_top))
-            arr = np.asarray(canvas, dtype=np.float32) / 255.0
-
-        center_crop = arr[3:-3, 3:-3]
-        norm = float(np.linalg.norm(center_crop))
-        mean = float(np.mean(center_crop))
-        std = float(np.std(center_crop))
-
-        item = (arr, center_crop, norm, mean, std)
-        self._cache[image_path] = item
-        return item
-
-    def verify(
-        self, path_a: str, path_b: str, dino_cosine: Optional[float] = None
-    ) -> VerificationResult:
-        try:
-            arr_a, crop_a, norm_a, mean_a, std_a = self._get_image_data(path_a)
-            arr_b, crop_b, norm_b, mean_b, std_b = self._get_image_data(path_b)
-        except Exception as e:
-            logger.warning(f"Failed to load pair ({path_a}, {path_b}): {e}")
-            return VerificationResult(
-                verified=False,
-                dino_cosine=dino_cosine,
-                pixel_cosine=0.0,
-                ncc=0.0,
-                mean_abs_diff=1.0,
-                high_diff_ratio=1.0,
-                best_shift=(0, 0),
-                details={"error": str(e)},
-            )
-
-        base_diff = np.abs(crop_a - crop_b)
-        base_mad = float(np.mean(base_diff))
-        best_mad = base_mad
-        best_shift = (0, 0)
-
-        if self.enable_translation_search and (0.001 <= base_mad <= 0.05):
-            for dy in range(-3, 4):
-                for dx in range(-3, 4):
-                    shifted_b = arr_b[3 + dy : 3 + dy + 250, 3 + dx : 3 + dx + 250]
-                    m = float(np.mean(np.abs(crop_a - shifted_b)))
-                    if m < best_mad:
-                        best_mad = m
-                        best_shift = (dy, dx)
-
-        dy, dx = best_shift
-        opt_b = arr_b[3 + dy : 3 + dy + 250, 3 + dx : 3 + dx + 250]
-        final_diff = np.abs(crop_a - opt_b)
-        mad = float(np.mean(final_diff))
-        hdr = float(np.mean(final_diff > self.diff_pixel_threshold))
-
-        norm_opt_b = float(np.linalg.norm(opt_b))
-        if norm_a == 0 or norm_opt_b == 0:
-            cos_sim = 1.0 if norm_a == norm_opt_b else 0.0
-        else:
-            cos_sim = float(np.dot(crop_a.flatten(), opt_b.flatten()) / (norm_a * norm_opt_b))
-
-        std_opt_b = float(np.std(opt_b))
-        mean_opt_b = float(np.mean(opt_b))
-        if std_a < 1e-6 or std_opt_b < 1e-6:
-            ncc = 1.0 if abs(mean_a - mean_opt_b) < 1e-3 else 0.0
-        else:
-            centered_a = crop_a - mean_a
-            centered_b = opt_b - mean_opt_b
-            ncc = float(np.mean(centered_a * centered_b) / (std_a * std_opt_b))
-
-        cos_sim = float(np.clip(cos_sim, -1.0, 1.0))
-        ncc = float(np.clip(ncc, -1.0, 1.0))
-
-        is_verified = (
-            (cos_sim >= self.pixel_cosine_threshold)
-            and (ncc >= self.ncc_threshold)
-            and (mad <= self.max_mean_abs_diff)
-            and (hdr <= self.max_high_diff_ratio)
-        )
-
-        return VerificationResult(
-            verified=is_verified,
-            dino_cosine=dino_cosine,
-            pixel_cosine=round(cos_sim, 4),
-            ncc=round(ncc, 4),
-            mean_abs_diff=round(mad, 4),
-            high_diff_ratio=round(hdr, 4),
-            best_shift=best_shift,
-            details={
-                "target_size": list(self.target_size),
-                "pixel_cosine_threshold": self.pixel_cosine_threshold,
-                "ncc_threshold": self.ncc_threshold,
-                "max_mean_abs_diff": self.max_mean_abs_diff,
-                "max_high_diff_ratio": self.max_high_diff_ratio,
-            },
-        )
+    def verify_pixels(self, left: PixelContent, right: PixelContent, dino_cosine: float | None = None,
+                      *, regions: Sequence[Sequence[float]] | None = None) -> VerificationResult:
+        pixel=left.identity_comparison(right) or left.compare(right)
+        local=left.region_statistics(right,regions) if regions is not None else None
+        if pixel.exact_equal:
+            return VerificationResult(verified=True,relation='EXACT',pixel=pixel,local=local,dino_cosine=dino_cosine,
+                pixel_cosine=1,ncc=1,mean_abs_diff=0,high_diff_ratio=0,best_shift=(0,0),
+                details={'basis':'Original pixels are identical; thumbnail identity metrics are implied, not separately measured'})
+        if pixel.exact_equal is None:
+            return VerificationResult(verified=False,relation='UNCHECKED',pixel=pixel,local=local,
+                dino_cosine=dino_cosine,details={'error':pixel.reason})
+        config=self.config
+        with self._thumbnail_lock:
+            if self._thumbnail_source is not left or self._thumbnail.values.shape != config.target_size[::-1]:
+                self._thumbnail=PreparedPixels.from_content(left,config.target_size)
+                self._thumbnail_source=left
+                self._thumbnail_preparations+=1
+            a=self._thumbnail
+            self._thumbnail_preparations+=1
+        b=PreparedPixels.from_content(right,config.target_size)
+        best_mad=float(np.abs(a.crop-b.crop).mean())
+        best_shift=(0,0)
+        height,width=a.crop.shape
+        if config.enable_translation_search and .001<=best_mad<=.05:
+            for dy in range(-3,4):
+                for dx in range(-3,4):
+                    shifted=b.values[3+dy:3+dy+height,3+dx:3+dx+width]
+                    mad=float(np.abs(a.crop-shifted).mean())
+                    if mad<best_mad:best_mad,best_shift=mad,(dy,dx)
+        dy,dx=best_shift
+        other=b.values[3+dy:3+dy+height,3+dx:3+dx+width]
+        difference=np.abs(a.crop-other)
+        mad=float(difference.mean())
+        hdr=float((difference>config.diff_pixel_threshold).mean())
+        norm=float(np.linalg.norm(other))
+        cosine=(1. if a.norm==norm else 0.) if not a.norm or not norm else float(np.sum(a.crop*other)/(a.norm*norm))
+        mean,std=float(other.mean()),float(other.std())
+        ncc=(1. if abs(a.mean-mean)<1e-3 else 0.) if a.std<1e-6 or std<1e-6 else float(np.mean((a.crop-a.mean)*(other-mean))/(a.std*std))
+        cosine,ncc=float(np.clip(cosine,-1,1)),float(np.clip(ncc,-1,1))
+        accepted=(cosine>=config.pixel_cosine_threshold and ncc>=config.ncc_threshold
+            and mad<=config.max_mean_abs_diff and hdr<=config.max_high_diff_ratio)
+        return VerificationResult(verified=accepted,relation='NEAR_CANDIDATE' if accepted else 'VISUAL_REFERENCE',
+            pixel=pixel,local=local,dino_cosine=dino_cosine,pixel_cosine=cosine,ncc=ncc,
+            mean_abs_diff=mad,high_diff_ratio=hdr,best_shift=best_shift,details={
+                'config':config.model_dump(mode='json'),'conversion':'luminance; alpha discarded; uint16 scaled by 1/257',
+                'resampling':'BICUBIC','padding':'zero','border_excluded':3,'shift_coordinates':'thumbnail dy,dx',
+                'left':{'original_size':[left.descriptor.width,left.descriptor.height],'fitted_size':list(a.fitted_size),'padding':list(a.padding)},
+                'right':{'original_size':[right.descriptor.width,right.descriptor.height],'fitted_size':list(b.fitted_size),'padding':list(b.padding)}})
 
 
-def verify_pair(
-    path_a: str,
-    path_b: str,
-    target_size: Tuple[int, int] = (256, 256),
-    pixel_cosine_threshold: float = 0.990,
-    ncc_threshold: float = 0.980,
-    max_mean_abs_diff: float = 0.0060,
-    max_high_diff_ratio: float = 0.0015,
-    dino_cosine: Optional[float] = None,
-) -> VerificationResult:
-    verifier = PairVerifier(
-        target_size=target_size,
-        pixel_cosine_threshold=pixel_cosine_threshold,
-        ncc_threshold=ncc_threshold,
-        max_mean_abs_diff=max_mean_abs_diff,
-        max_high_diff_ratio=max_high_diff_ratio,
-    )
-    return verifier.verify(path_a, path_b, dino_cosine=dino_cosine)
+def verify_pair(path_a: str, path_b: str, *, config: NearComparisonConfig | None = None,
+                dino_cosine: float | None = None) -> VerificationResult:
+    return PairVerifier(config).verify(path_a,path_b,dino_cosine)

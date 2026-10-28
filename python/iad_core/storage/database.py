@@ -9,6 +9,7 @@ from filelock import FileLock
 from iad_core.storage.review_schema import init_review_schema
 from iad_core.storage.job_schema import migrate_audit_jobs
 from iad_core.storage.knowledge_schema import migrate_knowledge_sources
+from iad_core.storage.consistency_schema import init_content_index_schema
 
 
 class Database:
@@ -56,6 +57,9 @@ class Database:
                 version_id TEXT PRIMARY KEY, dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id) ON DELETE CASCADE,
                 run_id TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL, snapshot_json TEXT NOT NULL)''')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_exploration_dataset ON direction_explorations(dataset_id,created_at)')
+            cursor.execute('''CREATE TABLE IF NOT EXISTS exploration_prompt_presets (
+                id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                text TEXT NOT NULL, created_at TEXT NOT NULL)''')
 
             # 1. inspection_tasks
             cursor.execute("""
@@ -135,6 +139,8 @@ class Database:
             annotation_columns = {row[1] for row in cursor.execute("PRAGMA table_info(annotations)")}
             if "mask_sha256" not in annotation_columns:
                 cursor.execute("ALTER TABLE annotations ADD COLUMN mask_sha256 TEXT")
+            if 'is_ignored' not in annotation_columns:
+                cursor.execute('ALTER TABLE annotations ADD COLUMN is_ignored INTEGER NOT NULL DEFAULT 0 CHECK(is_ignored IN (0,1))')
 
             # 4. import_issues
             cursor.execute("""
@@ -157,26 +163,6 @@ class Database:
             existing_issue_cols = {col[1] for col in cursor.fetchall()}
             if "dataset_id" not in existing_issue_cols:
                 cursor.execute("ALTER TABLE import_issues ADD COLUMN dataset_id TEXT DEFAULT 'UNKNOWN'")
-
-            # 5. feature_records
-            cursor.execute("""
-            CREATE TABLE IF NOT EXISTS feature_records (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                sample_id TEXT NOT NULL,
-                model_id TEXT NOT NULL,
-                preprocess_key TEXT NOT NULL,
-                dim INTEGER NOT NULL,
-                dtype TEXT NOT NULL,
-                embedding_blob BLOB NOT NULL,
-                source_file_size INTEGER,
-                source_mtime_ns INTEGER,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(sample_id, model_id, preprocess_key)
-            )
-            """)
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_features_sample_id ON feature_records(sample_id)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_features_lookup ON feature_records(sample_id, model_id, preprocess_key)")
 
             init_review_schema(conn)
 
@@ -344,6 +330,8 @@ class Database:
                 cursor.execute("ALTER TABLE job_runs ADD COLUMN deleted_at TEXT")
             cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_root
                 ON job_runs(json_extract(payload_json,'$.root_run_id'))""")
+            cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_queue
+                ON job_runs(job_type,json_extract(payload_json,'$.request.dataset_id'),status,id)""")
             migrate_audit_jobs(conn)
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS datasets (
@@ -356,6 +344,7 @@ class Database:
                 )
             """)
             dataset_columns = {row[1] for row in cursor.execute("PRAGMA table_info(datasets)")}
+            init_content_index_schema(conn)
             cursor.execute('''CREATE TABLE IF NOT EXISTS knowledge_prompts (
                 dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id) ON DELETE CASCADE,
                 kind TEXT NOT NULL CHECK(kind IN ('normal','defect')),

@@ -69,7 +69,7 @@ def dataset_audit(
     if audit_res.samples.get("pass", 0) < 10:
         warnings.append("Confirmed normal samples count is critically low. Hard normal review required.")
 
-    next_actions = ["Call feature_prepare to extract representations."]
+    next_actions = ["Use image_index_prepare for the explicitly requested retrieval corpus."]
     if status == ToolStatus.PARTIAL:
         next_actions.append("Mine hard normal candidates with candidate_mine to expand normal pool.")
 

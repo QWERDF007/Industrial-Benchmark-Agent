@@ -1,0 +1,8 @@
+import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+export function ConsistencyScopePicker({ datasets, value, onChange }) {
+    return _jsxs(_Fragment, { children: [_jsxs("label", { className: "iad-filter", children: ["\u68C0\u7D22\u8303\u56F4", _jsxs("select", { "aria-label": "\u68C0\u7D22\u8303\u56F4", value: value.kind === 'all_registered' ? 'all' : 'selected', onChange: event => onChange(event.target.value === 'all' ? { kind: 'all_registered' } : { kind: 'datasets', dataset_ids: [datasets[0].dataset_id] }), children: [_jsx("option", { value: "all", children: "\u5168\u90E8\u5DF2\u6CE8\u518C\u6570\u636E\u96C6" }), _jsx("option", { value: "selected", disabled: !datasets.length, children: "\u6307\u5B9A\u6570\u636E\u96C6" })] })] }), value.kind === 'datasets' && _jsxs("details", { className: "iad-consistency-scope", children: [_jsxs("summary", { children: ["\u5DF2\u9009 ", value.dataset_ids.length, " \u4E2A\u6570\u636E\u96C6"] }), datasets.map(row => _jsxs("label", { children: [_jsx("input", { type: "checkbox", checked: value.dataset_ids.includes(row.dataset_id), disabled: value.dataset_ids.length === 1 && value.dataset_ids.includes(row.dataset_id), onChange: event => {
+                                    const ids = event.target.checked ? [...value.dataset_ids, row.dataset_id] : value.dataset_ids.filter(id => id !== row.dataset_id);
+                                    if (ids.length)
+                                        onChange({ kind: 'datasets', dataset_ids: [ids[0], ...ids.slice(1)] });
+                                } }), row.name] }, row.dataset_id))] })] });
+}

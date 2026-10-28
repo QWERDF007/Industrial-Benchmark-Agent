@@ -7,6 +7,7 @@ export type AnnotationLayerSource = {
   kind: "sample";
   annotations: Annotation[];
   sample: Pick<SampleIdentity, "task_id" | "sample_id" | "width" | "height">;
+  maskUrls?:Record<string,string>;
 } | {
   kind: "audit";
   analysis: AuditAnalysis;
@@ -20,7 +21,7 @@ export function AnnotationLayer({ source }: { source: AnnotationLayerSource }) {
   const masks = source.kind === "sample"
     ? annotations.filter(annotation => annotation.annotation_type === "mask").map(annotation => ({
       id: annotation.annotation_id, bbox: [0, 0, width, height],
-      url: `${mediaUrl(source.sample, "mask")}?${new URLSearchParams({ annotation_id: annotation.annotation_id, sha256: annotation.mask_sha256 || "" })}`,
+      url: source.maskUrls?.[annotation.annotation_id] || `${mediaUrl(source.sample, "mask")}?${new URLSearchParams({ annotation_id: annotation.annotation_id, sha256: annotation.mask_sha256 || "" })}`,
     }))
     : source.analysis.auxiliary_evidence.filter(image => image.representation === "annotation_mask").map(image => ({
       id: image.evidence_id, bbox: image.crop_bbox, url: auditEvidenceUrl(source.suggestionId, image),

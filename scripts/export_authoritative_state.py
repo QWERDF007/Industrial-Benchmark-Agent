@@ -84,7 +84,7 @@ def export_authoritative_state(db_path: str = "data/benchmark.db"):
 
 ## Derived / Rebuildable Assets (Safe to regenerate)
 1. SQLite Feature Records (`feature_records`)
-2. FAISS Vector Index (`runs/features/.../index.faiss`)
+2. CPU FAISS Corpus Indexes (location and lifecycle: `python/iad_core/feature/index.py`)
 3. Near-Duplicate Candidates and Components (`runs/near_duplicate/...`)
 4. Candidate Mining Outputs (`runs/candidate_mining/...`)
 5. Gold Records and Conflicts (`gold_records`, `gold.jsonl`, `conflicts.json`)

@@ -9,6 +9,11 @@ export type { JobSnapshot, JobSample, JobRetryOptions, ModelCallSummary } from "
 export type { InspectionReference, InspectionSnapshot } from "./domain.generated.js";
 export type { KnowledgeVersion, KnowledgeSourcePage, MiningStart as KnowledgeGroup, MiningRequest as KnowledgeStartRequest } from "./domain.generated.js";
 export type { ScanResult } from "./domain.generated.js";
+export type { ImageRetrieve, RetrievalPage, RetrievalGroup, RetrievalMember, RetrievalBranchPage, RetrievalOrigin, TemporaryImageRef } from "./domain.generated.js";
+export type { ConsistencyCompare, ConsistencyResult, EvidenceBundle, ArtifactRef } from './domain.generated.js';
+export type { ConsistencyBatch, ConsistencyBatchList, StartResultResponse, ConsistencyQuery, ResultPage, ConsistencyReport } from './domain.generated.js';
+export type { StrictGroupPage, GroupMemberPage } from './domain.generated.js';
+export type { ConsistencyContextRequest, ConsistencyContext, ConsistencyReturnLocation } from './domain.generated.js';
 export type Decision = ReviewSubmission["decision"];
 export interface Suggestion {
     suggestion_id: string;
@@ -37,8 +42,9 @@ export interface Dataset extends Report {
     reference_sample_ids: string[];
     reference_mode: "automatic" | "selected";
     unannotated_is_normal: boolean;
+    annotation_policy: Required<import("./domain.generated.js").AnnotationPolicy>;
 }
-export type Filters = Required<Omit<import("./domain.generated.js").SampleQuery, "dataset_id" | "task_id" | "page" | "page_size">>;
+export type Filters = Required<import("./domain.generated.js").SampleFilters>;
 export interface SampleIdentity {
     sample_id: string;
     sample_uuid: string;
@@ -66,6 +72,7 @@ export interface SamplePage {
     total: number;
 }
 export interface SampleDetail {
+    consistency: import('./domain.generated.js').AuditConsistencyView | null;
     normal_knowledge: KnowledgeSummary | null;
     defect_knowledge: KnowledgeSummary | null;
     sample: SampleIdentity;

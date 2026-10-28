@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
+from sqlite3 import Connection
+from contextlib import nullcontext
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -55,9 +57,10 @@ class HumanReview:
         items, total = self.repo.history_page(query.dataset_id, (query.page - 1) * query.page_size, query.page_size, query.search)
         return ReviewHistoryPage(items=items, total=total, page=query.page, page_size=query.page_size)
 
-    def submit(self, request: ReviewSubmission) -> dict:
-        with self.db.connection() as conn:
-            conn.execute("BEGIN IMMEDIATE")
+    def submit(self, request: ReviewSubmission, *, connection: Connection | None = None) -> dict:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+            if not conn.in_transaction:
+                conn.execute("BEGIN IMMEDIATE")
             sample = conn.execute("SELECT task_id,dataset_id FROM samples WHERE sample_id=?", (request.sample_id,)).fetchone()
             if not sample:
                 raise LookupError("Sample not found")

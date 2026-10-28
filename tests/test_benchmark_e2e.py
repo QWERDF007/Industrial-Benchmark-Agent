@@ -16,9 +16,21 @@ def test_benchmark_e2e_synthetic(tmp_path):
 
     task_id = "task_synthetic_01"
 
+    from PIL import Image
+    import hashlib
+    from iad_core.dataset.registry import DatasetRegistry
+    from iad_core.task.config import DatasetConfig
+    from iad_core.duplicate.index import PixelScan
+    image_root = tmp_path / 'images'
+    image_root.mkdir()
+    DatasetRegistry(Database(db_path)).save(DatasetConfig.model_validate({'dataset': {'id': 'ds_synth'},
+        'root': str(image_root), 'task': {'task_id': task_id, 'inspection_target': 'surface'}}))
+
     # Insert 30 synthetic samples
     for i in range(30):
         sid = f"s_{i:02d}"
+        path = image_root / (sid + '.png')
+        Image.new('RGB', (100, 100), (i * 7, 20, 30)).save(path)
         phys_id = f"phys_{i // 3}" if i < 15 else None
         seq_id = f"seq_{i // 2}" if 15 <= i < 20 else None
         origin = "AUGMENTED" if 20 <= i < 24 else "LEGACY_TRAIN"
@@ -31,7 +43,7 @@ def test_benchmark_e2e_synthetic(tmp_path):
                 capture_sequence_id, width, height
             ) VALUES (?, ?, 'ds_synth', ?, ?, ?, ?, ?, ?, 100, 100)
         """, (
-            sid, task_id, f"/img/{sid}.jpg", f"{sid}.jpg",
+            sid, task_id, str(path), path.name,
             quality, origin, phys_id, seq_id,
         ))
 
@@ -68,6 +80,13 @@ def test_benchmark_e2e_synthetic(tmp_path):
 
     conn.commit()
     conn.close()
+    db = Database(db_path)
+    with db.connection() as connection:
+        scan = PixelScan(connection)
+        for row in connection.execute('SELECT sample_id,image_path FROM samples WHERE task_id=?', (task_id,)):
+            path = image_root / (row['sample_id'] + '.png')
+            scan.stage(row['sample_id'], str(path), hashlib.sha256(path.read_bytes()).hexdigest())
+        scan.publish('ds_synth')
 
     out_dir = str(tmp_path / "benchmark_run")
     build_id = "test_build_synthetic_001"

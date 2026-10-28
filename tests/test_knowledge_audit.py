@@ -13,6 +13,25 @@ from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
 
 
+def test_independent_support_preserves_raw_16bit_content_identity(tmp_path):
+    import numpy as np
+    from iad_core.dataset.registry import DatasetImport, DatasetRegistry
+    from iad_core.storage.database import Database
+    from iad_core.knowledge.sources import KnowledgeSources
+    from iad_core.knowledge.support import KnowledgeSupport
+    root = tmp_path / 'sensor'
+    root.mkdir()
+    pixels = np.array([[1000, 2000], [3000, 4000]], dtype=np.uint16)
+    Image.fromarray(pixels).save(root / 'first.tiff')
+    pixels[0, 0] += 1
+    Image.fromarray(pixels).save(root / 'second.tiff')
+    db = Database(str(tmp_path / 'sensor.db'))
+    config = DatasetRegistry(db).import_labelme(DatasetImport(format='labelme', name='16位来源', image_dir=str(root), annotation_dir=str(root)))
+    sources = [KnowledgeSources(db).capture(config.dataset.id + ':' + name + '.tiff', 'initial_unannotated') for name in ('first', 'second')]
+    groups = KnowledgeSupport(db).groups(sources)
+    assert len(set(groups.values())) == 2
+
+
 def test_audit_requires_learned_knowledge_before_creating_a_job(knowledge_dataset):
     db, config = knowledge_dataset
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(

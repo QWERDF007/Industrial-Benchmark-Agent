@@ -1,0 +1,1 @@
+{"version":3,"file":"ImageEncoderSettings.d.ts","sourceRoot":"","sources":["../../../src/client/components/ImageEncoderSettings.tsx"],"names":[],"mappings":"AAAA,OAAO,KAA4B,MAAM,OAAO,CAAC;AAkBjD,wBAAgB,oBAAoB,CAAC,EAAC,cAAc,EAAE,aAAa,EAAC,EAAE;IACpE,cAAc,EAAE,MAAM,CAAC;IAAC,aAAa,CAAC,KAAK,EAAE;QAAC,KAAK,EAAE,OAAO,CAAC;QAAC,IAAI,EAAE,OAAO,CAAA;KAAC,GAAG,IAAI,CAAC;CACrF,qBAgFA"}

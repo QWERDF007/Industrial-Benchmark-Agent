@@ -88,16 +88,21 @@ class ReviewRepository:
             conn.execute(f"INSERT INTO review_decisions ({','.join(values)}) VALUES ({','.join('?' for _ in values)})", tuple(values.values()))
             return decision
 
-    def get_decision(self, sample_id: str, reviewer: Optional[str] = None) -> Optional[ReviewDecisionRecord]:
-        with self.db.connection() as conn:
+    def get_decision(self, sample_id: str, reviewer: Optional[str] = None, connection: Optional[sqlite3.Connection] = None) -> Optional[ReviewDecisionRecord]:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
             row = conn.execute("""SELECT * FROM current_review_decisions WHERE sample_id=?"""
                 + (" AND reviewer=?" if reviewer else "")
                 + " ORDER BY COALESCE(submitted_at,updated_at) DESC,id DESC LIMIT 1",
                 (sample_id,reviewer) if reviewer else (sample_id,)).fetchone()
             return ReviewDecisionRecord.model_validate(dict(row)) if row else None
 
-    def list_decisions(self, task_id: Optional[str] = None) -> List[ReviewDecisionRecord]:
-        with self.db.connection() as conn:
+    def get_event(self, decision_id: str, connection: Optional[sqlite3.Connection] = None) -> Optional[ReviewDecisionRecord]:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+            row = conn.execute('SELECT * FROM review_decisions WHERE decision_id=?', (decision_id,)).fetchone()
+            return ReviewDecisionRecord.model_validate(dict(row)) if row else None
+
+    def list_decisions(self, task_id: Optional[str] = None, *, connection: Optional[sqlite3.Connection] = None) -> List[ReviewDecisionRecord]:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
             rows = conn.execute("SELECT d.* FROM current_review_decisions d"
                 + (" JOIN samples s ON d.sample_id=s.sample_id WHERE s.task_id=?" if task_id else "")
                 + " ORDER BY d.id ASC", (task_id,) if task_id else ()).fetchall()

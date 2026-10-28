@@ -156,11 +156,7 @@ for name in ['normal','normal2','dent']:
       await driver.setContext("content");
       const chrome=await driver.executeScript("return {width:outerWidth-innerWidth,height:outerHeight-innerHeight}");
       await driver.manage().window().setRect({width:width+chrome.width,height:height+chrome.height});
-      if(width<450){
-        await driver.setContext("chrome");
-        await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth=arguments[0];gBrowser.selectedBrowser.style.width=arguments[0];gBrowser.selectedBrowser.style.flex='none'",`${width}px`);
-        await driver.setContext("content");
-      }
+
       assert.equal(await driver.executeScript("return innerWidth"),width);
     };
     const gridCount = count => driver.wait(async () => await driver.executeScript("return document.querySelectorAll('.iad-grid .iad-sample').length===arguments[0] && !!document.querySelector('.iad-gallery') && !document.querySelector('.iad-gallery').textContent.includes('加载中');", count), 15000, `Expected ${count} grid images`);
@@ -328,10 +324,10 @@ for name in ['normal','normal2','dent']:
     assert.equal(await (await element("select[aria-label='知识支持状态']")).getAttribute("value"), "conflicted");
     await button("图像浏览"); await gridCount(3); await button("知识挖掘"); await button("良品");
     assert.equal(await (await element("input[aria-label='搜索知识条目']")).getAttribute("value"), "光照");
-    await viewportSize(375, 812);
+    await viewportSize(1920,1080);
     await driver.executeScript("document.querySelector('[aria-label=\"知识条目筛选\"]').scrollIntoView({block:'start'});");
-    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"), "375px知识筛选及判据列表不能横向溢出");
-    await fs.writeFile(path.join(workspace, "runs/browser/knowledge-filters-375.png"), await driver.takeScreenshot(), "base64");
+    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"), "1920px知识筛选及判据列表不能横向溢出");
+    await fs.writeFile(path.join(workspace, "runs/browser/knowledge-filters-1920.png"), await driver.takeScreenshot(), "base64");
     await viewportSize(1440, 1100);
     await button("清除知识筛选");
     assert.deepEqual((await (await fetch(`${base}/api/iad/knowledge?dataset_id=${dataset.dataset_id}&kind=normal`)).json()).knowledge, published.knowledge, "筛选不能修改已发布知识");
@@ -359,13 +355,11 @@ for name in ['normal','normal2','dent']:
     await button("模型审计"); await gridCount(3);
     assert.equal((await driver.findElements(By.css('.iad-main .iad-filters'))).length,0,'审计筛选栏横跨网格与侧栏，位于两栏布局上方');
     await (await element("img[alt='dent.png']")).click();
-    await viewportSize(375,812);
+    await viewportSize(1920,1080);
     await (await element("img[alt='dent.png']")).click();
-    await element('dialog[aria-label="样本详情"]');
-    assert.equal((await driver.findElements(By.css('.iad-inspector'))).length,1,'窄屏审计只挂载一个详情面板');
-    await fs.writeFile(path.join(workspace,'runs/browser/audit-details-375.png'),await driver.takeScreenshot(),'base64');
-    await (await element('button[aria-label="关闭样本详情"]')).click();
-    assert.ok(await driver.executeScript("return document.activeElement.matches('.iad-sample') && document.activeElement.textContent.includes('dent.png')"),'关闭详情回到原图像卡片');
+    await element('.iad-audit-sample.iad-inline-dialog .iad-inspector');
+    assert.equal((await driver.findElements(By.css('.iad-inspector'))).length,1,'桌面审计只挂载一个详情面板');
+    await fs.writeFile(path.join(workspace,'runs/browser/audit-details-1920.png'),await driver.takeScreenshot(),'base64');
     await viewportSize(1366,768);
     await element('.iad-inspector .iad-actions');
     const inspectorAction = await driver.findElement(By.xpath("//button[normalize-space(.)='前往人工复核']"));
@@ -374,6 +368,7 @@ for name in ['normal','normal2','dent']:
     await viewportSize(1440,1100);
     await (await element("button[title='放大图像']")).click();
     await element(".iad-viewer-dialog .iad-annotation-layer rect");
+    assert.equal((await driver.findElements(By.css('.iad-viewer-dialog .iad-lightbox-toolbar .iad-image-step'))).length,0,'全屏顶栏不再显示前后切图文字按钮');
     const viewport = await element(".iad-viewer-viewport");
     await select("缩放", "2");
     assert.ok(await driver.executeScript(`const v=arguments[0].getBoundingClientRect(),i=document.querySelector('.iad-viewer-world').getBoundingClientRect();return Math.abs(v.x+v.width/2-i.x-i.width/2)<2&&Math.abs(v.y+v.height/2-i.y-i.height/2)<2`, viewport), "fixed zoom stays centered");
@@ -417,15 +412,17 @@ for name in ['normal','normal2','dent']:
     assert.ok(Math.abs(Number(await (await element(".iad-viewer-world")).getAttribute("data-scale")) - savedScale) < 1e-9, "同图关闭重开保留缩放");
     await expectCenter(savedCenter, "同图关闭重开保留原图中心位置");
     const beforeImageNavigation = modelRequests.length;
-    await button("后一张");
+    await driver.actions().move({origin:await element('button[aria-label="下一张图像"]')}).perform();
+    await (await element('button[aria-label="下一张图像"]')).click();
     await driver.wait(() => driver.executeScript('return JSON.parse(new URL(location.href).searchParams.get("iad")).selected.endsWith(":normal.png")'), 5000);
     await driver.wait(async () => (await (await element(".iad-lightbox-toolbar strong")).getText()) === "normal.png", 5000);
     assert.equal(await (await element("select[aria-label='缩放']")).getAttribute("value"), "0", "换图默认适应窗口");
     await expectCenter([160,120], "新图默认居中");
-    await button("前一张");
+    await driver.actions().move({origin:await element('button[aria-label="上一张图像"]')}).perform();
+    await (await element('button[aria-label="上一张图像"]')).click();
     await driver.wait(async () => (await (await element(".iad-lightbox-toolbar strong")).getText()) === "dent.png", 5000);
     assert.equal(await (await element("select[aria-label='缩放']")).getAttribute("value"), "0", "换回上一图仍默认适应窗口");
-    assert.equal(await (await driver.findElement(By.xpath("//button[normalize-space(.)='前一张']"))).isEnabled(), false, "当前筛选第一张不能再前移");
+    assert.equal(await (await driver.findElement(By.css('button[aria-label="上一张图像"]'))).isEnabled(), false, "当前筛选第一张不能再前移");
     assert.equal(modelRequests.length, beforeImageNavigation, "切图只读取现有结果，不调用模型");
     await button("关闭");
     await auditDetails();
@@ -522,10 +519,10 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await inspectionViewport.sendKeys(Key.ARROW_RIGHT);
     const afterKeyPan=await (await element(".iad-viewer-world")).getRect();
     assert.ok(Math.abs(afterKeyPan.x-beforeKeyPan.x+20)<2,"支持键盘平移代替拖拽");
-    await viewportSize(375,812);
+    await viewportSize(1920,1080);
     await (await element("button[aria-label='定位 ROI 1']")).click();
-    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-viewer-dialog'),v=document.querySelector('.iad-viewer-viewport'),p=document.querySelector('.iad-inspection-panel');return e.scrollWidth<=e.clientWidth+1&&v.clientHeight>=160&&p.clientHeight>=160&&p.scrollWidth<=p.clientWidth+1"),"窄屏全图与ROI证据面板均可见且不能横向溢出");
-    await fs.writeFile(path.join(workspace,"runs/browser/audit-roi-375.png"),await driver.takeScreenshot(),"base64");
+    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-viewer-dialog'),v=document.querySelector('.iad-viewer-viewport'),p=document.querySelector('.iad-inspection-panel');return e.scrollWidth<=e.clientWidth+1&&v.clientHeight>=160&&p.clientHeight>=160&&p.scrollWidth<=p.clientWidth+1"),"桌面全图与ROI证据面板均可见且不能横向溢出");
+    await fs.writeFile(path.join(workspace,"runs/browser/audit-roi-1920.png"),await driver.takeScreenshot(),"base64");
     await viewportSize(1440,1100);
 
     await button("关闭");
@@ -577,12 +574,12 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await (await relatedFindings.findElement(By.css(`button[data-finding-id='${globalId}']`))).click();
     assert.equal(await (await element(".iad-inspection-finding")).getAttribute("data-finding-id"),globalId);
     assert.equal((await driver.findElements(By.css(".iad-roi-layer [data-locked='true']"))).length,0);
-    await viewportSize(375,812);
+    await viewportSize(1920,1080);
     await (await element(".iad-inspection-finding .iad-actions button:nth-child(2)")).click();
     assert.equal(await (await element(".iad-inspection-finding")).getAttribute("data-finding-id"),globalId);
-    assert.ok(await driver.executeScript("const v=document.querySelector('.iad-viewer-viewport'),p=document.querySelector('.iad-inspection-panel');return v.clientHeight>=160&&p.clientHeight>=160&&p.scrollWidth<=p.clientWidth+1"),"375px的疑点、真实ROI和全图检视不能横向溢出");
+    assert.ok(await driver.executeScript("const v=document.querySelector('.iad-viewer-viewport'),p=document.querySelector('.iad-inspection-panel');return v.clientHeight>=160&&p.clientHeight>=160&&p.scrollWidth<=p.clientWidth+1"),"1920px的疑点、真实ROI和全图检视不能横向溢出");
     await driver.executeScript("document.querySelector('.iad-inspection-region img').scrollIntoView({block:'center'})");
-    await fs.writeFile(path.join(workspace,"runs/browser/finding-roi-375.png"),await driver.takeScreenshot(),"base64");
+    await fs.writeFile(path.join(workspace,"runs/browser/finding-roi-1920.png"),await driver.takeScreenshot(),"base64");
     await viewportSize(1440,1100);
     await (await element("summary[aria-label='可视图层']")).click();
     assert.equal(await (await element("input[aria-label='细节覆盖图层']")).isSelected(),false,"跨图保留图层偏好");
@@ -729,10 +726,10 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await button("仅未处理");assert.equal(await choices[0].isSelected(),false);
     assert.equal(await driver.findElement(By.xpath("//button[normalize-space()='重试所选 0 张']")).isEnabled(),false);
     await button("仅失败");assert.equal(await choices[0].isSelected(),true);
-    await viewportSize(375,812);
+    await viewportSize(1920,1080);
     await driver.executeScript("arguments[0].scrollIntoView({block:'center'})",await element(".iad-retry-scope"));
-    assert.ok(await driver.executeScript("return document.documentElement.scrollWidth<=window.innerWidth+1"),"375px重试范围不能导致页面横向溢出");
-    await fs.writeFile(path.join(workspace,"runs/browser/job-retry-375.png"),await driver.takeScreenshot(),"base64");
+    assert.ok(await driver.executeScript("return document.documentElement.scrollWidth<=window.innerWidth+1"),"1920px重试范围不能导致页面横向溢出");
+    await fs.writeFile(path.join(workspace,"runs/browser/job-retry-1920.png"),await driver.takeScreenshot(),"base64");
     await viewportSize(1440,1100);
     await button("重试所选 1 张");
     await driver.wait(async()=>{
@@ -839,16 +836,14 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await driver.wait(async()=>(await (await element(".iad-review-history")).getText()).includes("复核记录 · 2 次"),5000);
     await driver.executeScript("arguments[0].scrollIntoView({block:'end'})",await element(".iad-review-history"));
     await fs.writeFile(path.join(workspace, "runs/browser/human-review.png"), await driver.takeScreenshot(), "base64");
-    await viewportSize(375,812);
-    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"),"复核记录窄屏不造成页面横向溢出");
+    await viewportSize(1920,1080);
+    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"),"复核记录桌面不造成页面横向溢出");
     const recordsRegion=await element("[aria-label='复核历史表格']");
     await (await element("input[aria-label='搜索复核记录']")).click();
     await driver.actions().sendKeys(Key.TAB).perform();
     assert.ok(await driver.executeScript("return document.activeElement===arguments[0]",recordsRegion),"Tab按页面顺序进入历史表格");
-    await driver.actions().sendKeys(Key.ARROW_RIGHT).perform();
-    await driver.wait(async()=>await driver.executeScript("return arguments[0].scrollLeft>0",recordsRegion),5000,"键盘可查看表格右侧内容");
     await driver.executeScript("document.querySelector('.iad-workbench').scrollTop=0");
-    await fs.writeFile(path.join(workspace,"runs/browser/review-records-375.png"),await driver.takeScreenshot(),"base64");
+    await fs.writeFile(path.join(workspace,"runs/browser/review-records-1920.png"),await driver.takeScreenshot(),"base64");
     await viewportSize(1440,1100);
     await button("模型审计");
     const readOnlyReview=await driver.wait(until.elementLocated(By.xpath("//dt[normalize-space(.)='人工结果']/following-sibling::dd[1]")),5000);
@@ -1051,9 +1046,9 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     assert.ok((await (await element("[data-field='knowledge-normal-version']")).getText()).includes(frozenNormal.version_id),"下次执行的正常版本不能改写已发布不良知识的依赖展示");
     await button("标注核验");
     await driver.wait(async()=>(await (await element(".iad-knowledge-content")).getText()).includes("证据不足"),10000);
-    await viewportSize(375,812);
-    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"),"带真实知识版本和核验记录的窄屏页面不能横向溢出");
-    await fs.writeFile(path.join(workspace,"runs/browser/knowledge-versions-375.png"),await driver.takeScreenshot(),"base64");
+    await viewportSize(1920,1080);
+    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"),"带真实知识版本和核验记录的桌面页面不能横向溢出");
+    await fs.writeFile(path.join(workspace,"runs/browser/knowledge-versions-1920.png"),await driver.takeScreenshot(),"base64");
 
     await viewportSize(1440,1100);
     await button("模型审计");await auditSetup();
@@ -1090,9 +1085,9 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     assert.equal(selectedSingleAudit.defect_version_id, defect.version_id, "单图审计必须使用页面选择的不良品版本");
     assert.equal(selectedSingleAudit.model_name, "test-browser-model", "单图审计与批量审计共享所选模型");
     await auditSetup();
-    await viewportSize(375, 812);
-    await fs.writeFile(path.join(workspace, "runs/browser/audit-version-selectors-375.png"), await driver.takeScreenshot(), "base64");
-    assert.ok(await driver.executeScript("const element=document.querySelector('.iad-workbench');return element.scrollWidth<=element.clientWidth+1"), "长版本号的审计知识选择在375px不应造成横向滚动");
+    await viewportSize(1920,1080);
+    await fs.writeFile(path.join(workspace, "runs/browser/audit-version-selectors-1920.png"), await driver.takeScreenshot(), "base64");
+    assert.ok(await driver.executeScript("const element=document.querySelector('.iad-workbench');return element.scrollWidth<=element.clientWidth+1"), "长版本号的审计知识选择在1920px不应造成横向滚动");
     await viewportSize(1440, 1100);
     await selectAuditKnowledge("良品", nextNormal.version_id);
     await driver.wait(async () => (await (await element(".iad-job-panel")).getText()).includes("暂无匹配的不良知识"), 5000);
@@ -1163,9 +1158,9 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     const beforeSelectionReport=await(await fetch(`${base}/api/iad/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`)).json();
     await button("作为预设继续选图");
     assert.equal(await(await element("select[aria-label='知识预设']")).getAttribute("value"),currentKnowledge.version_id);
-    await viewportSize(375,812);
-    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"),"375px选图配置保持可用");
-    await fs.writeFile(path.join(workspace,"runs/browser/knowledge-selection-375.png"),await driver.takeScreenshot(),"base64");
+    await viewportSize(1920,1080);
+    assert.ok(await driver.executeScript("const e=document.querySelector('.iad-workbench');return e.scrollWidth<=e.clientWidth+1"),"1920px选图配置保持可用");
+    await fs.writeFile(path.join(workspace,"runs/browser/knowledge-selection-1920.png"),await driver.takeScreenshot(),"base64");
     await viewportSize(1440,1100);
     assert.equal(modelRequests.length,beforeSelectionCalls,"选预设不自动运行模型");
     assert.deepEqual((await(await fetch(`${base}/api/iad/knowledge?version_id=${currentKnowledge.version_id}`)).json()).knowledge,currentKnowledge);
@@ -1198,10 +1193,10 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     await button("目录与映射");
     await button("重新扫描目录");
     await driver.wait(async () => (await (await element("[aria-label='扫描结果']")).getText()).includes("4 张图像"), 10000);
-    await viewportSize(375, 812);
+    await viewportSize(1920,1080);
     await driver.executeScript("document.querySelector('[aria-label=\"扫描结果\"]').scrollIntoView({block:'center'})");
-    assert.ok(await driver.executeScript("const e=document.querySelector('[aria-label=\"当前数据集详情\"]');return e.scrollWidth<=e.clientWidth+1"), "375px重新扫描详情与实际结果不应横向溢出");
-    await fs.writeFile(path.join(workspace, "runs/browser/dataset-rescan-375.png"), await driver.takeScreenshot(), "base64");
+    assert.ok(await driver.executeScript("const e=document.querySelector('[aria-label=\"当前数据集详情\"]');return e.scrollWidth<=e.clientWidth+1"), "1920px重新扫描详情与实际结果不应横向溢出");
+    await fs.writeFile(path.join(workspace, "runs/browser/dataset-rescan-1920.png"), await driver.takeScreenshot(), "base64");
     await viewportSize(1440, 1100);
     const afterRescan = await (await fetch(`${base}/api/iad/sample/${encodeURIComponent(rescanSampleId)}`)).json();
     assert.equal(afterRescan.sample.sample_uuid, beforeRescan.sample.sample_uuid);

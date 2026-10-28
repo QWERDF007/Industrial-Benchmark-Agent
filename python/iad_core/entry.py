@@ -23,10 +23,17 @@ from iad_core.workbench.query import SampleQuery, WorkbenchQuery
 from iad_core.workbench.review import HumanReview, ReviewSubmission, ReviewHistoryQuery
 from iad_core.workbench.runtime import workbench, close_workbenches
 from iad_core.exploration.operations import (direction_exploration_start, direction_exploration_status, direction_exploration_list,
-    direction_exploration_cancel, direction_exploration_retry, direction_exploration_get, direction_exploration_evidence)
+    direction_exploration_cancel, direction_exploration_retry, direction_exploration_get, direction_exploration_evidence,
+    direction_exploration_presets, direction_exploration_preset_save)
 
 from iad_core.workbench.model_operations import (model_settings_get, model_settings_save, model_settings_view,
     model_settings_validate, model_environment_get, model_connection_check, model_provider_validate)
+from iad_core.feature.operations import feature_settings_view, feature_settings_save, feature_profile_create, feature_connection_check
+from iad_core.consistency.errors import ConsistencyError
+from iad_core.consistency.operations import (consistency_review_context, consistency_review_submit, consistency_correction_verify, image_retrieve, temporary_image_accept,
+    temporary_image_release, temporary_image_release_owner,consistency_compare,consistency_evidence,
+    consistency_evidence_media,consistency_evidence_export,image_index_prepare,consistency_start,consistency_status,
+    consistency_list,consistency_cancel,consistency_retry,consistency_query,consistency_report,consistency_groups,consistency_group_members,consistency_context)
 
 DEFAULT_DB_PATH = os.environ.get("IAD_DB_PATH", "data/benchmark.db")
 _output_lock = threading.Lock()
@@ -101,7 +108,7 @@ def dataset_scan(args, db_path):
     from iad_core.dataset.scanner import scan_dataset
     from iad_core.task.config import FolderRule
     if args.get("config_path"):
-        return scan_dataset(config_path=args["config_path"], db_path=db_path).model_dump()
+        return scan_dataset(config_path=args["config_path"], db_path=db_path, force_pixels=args.get('force_pixels', False)).model_dump()
     registry = DatasetRegistry(Database(db_path))
     config = registry.resolve(dataset_id=args.get("dataset_id"), task_id=args.get("task_id"))
     rules = args.get("folder_rules", args.get("rules"))
@@ -111,6 +118,7 @@ def dataset_scan(args, db_path):
         annotation_dir=args.get("annotation_dir"),
         folder_rules=[FolderRule.model_validate(rule) for rule in rules] if rules is not None else None,
         preview_fingerprint=args.get("preview_fingerprint"),
+        force_pixels=args.get('force_pixels', False),
     ).model_dump()
 
 
@@ -119,6 +127,7 @@ def sample_list(args, db_path):
 
 
 def sample_get(args, db_path):
+    from iad_core.consistency.audit_repository import AuditConsistencyRepository
     db = Database(db_path)
     sample = SampleRepository(db).get(args["sample_id"])
     if not sample:
@@ -130,10 +139,13 @@ def sample_get(args, db_path):
     from iad_core.knowledge.repository import KnowledgeRepository
     repository = KnowledgeRepository(db)
     analysis = suggestion.analysis if suggestion else None
+    consistency = AuditConsistencyRepository(db).latest(sample.sample_id)
     knowledge = {kind + '_knowledge': repository.get(version_id).model_dump(exclude={'mining_steps', 'verification_steps'}) if version_id else None
         for kind, version_id in [('normal', analysis.normal_version_id if analysis else None),
                                  ('defect', analysis.defect_version_id if analysis else None)]}
-    return {"sample": sample.model_dump(), **knowledge, "suggestion": meta, **WorkbenchQuery(db).sample_scores(sample.sample_id),
+    return {"sample": sample.model_dump(), **knowledge, "suggestion": meta,
+            "consistency": consistency.model_dump(mode='json') if consistency else None,
+            **WorkbenchQuery(db).sample_scores(sample.sample_id),
             "annotations": [a.model_dump() for a in AnnotationRepository(db).list_by_sample(sample.sample_id)],
             "technical_issues": [i.model_dump() for i in issues], "review_decision": decision.model_dump() if decision else None,
             "review_history": [record.model_dump() for record in ReviewRepository(db).list_history(sample.sample_id)]}
@@ -405,7 +417,13 @@ def model_call_get(args, db_path):
 
 
 OPERATIONS = {handler.__name__: handler for handler in (
+    consistency_review_context, consistency_review_submit, consistency_correction_verify,
+    image_retrieve, temporary_image_accept, temporary_image_release, temporary_image_release_owner,
+    consistency_compare,consistency_evidence,consistency_evidence_media,consistency_evidence_export,
+    image_index_prepare,consistency_start,consistency_status,consistency_list,consistency_cancel,consistency_retry,consistency_query,consistency_report,consistency_groups,consistency_group_members,consistency_context,
+    feature_settings_view, feature_settings_save, feature_profile_create, feature_connection_check,
     model_settings_get, model_settings_save, model_settings_view, model_settings_validate, model_environment_get, model_connection_check, model_provider_validate,
+    direction_exploration_presets, direction_exploration_preset_save,
     knowledge_directions_adopt, direction_exploration_start, direction_exploration_status, direction_exploration_list, direction_exploration_cancel,
     direction_exploration_retry, direction_exploration_get, direction_exploration_evidence,
     tool_call, dataset_list, dataset_get, dataset_import, dataset_preview, dataset_archive_inspect, dataset_update, dataset_scan, dataset_delete,
@@ -435,6 +453,8 @@ def dispatch_request(req_data: Dict[str, Any], default_db_path: str = DEFAULT_DB
         if isinstance(error, PathSafetyError):
             status = error.status_code
         code = "INVALID_ARGUMENT" if status == 422 else "NOT_FOUND" if status == 404 else "EXECUTION_ERROR"
+        if isinstance(error, ConsistencyError):
+            code, status = error.code, error.status_code
         if error.__class__.__name__ == "ToolContractError":
             code, status = "CONTRACT_ERROR", error.status_code
         if status == 500:

@@ -1,4 +1,5 @@
-import { folderRulesParameter } from "../../shared/dataset.parameters.generated.js";
+import { annotationPolicyParameter, folderRulesParameter } from "../../shared/dataset.parameters.generated.js";
+import {auditStartParameters} from '../../shared/audit.parameters.generated.js';
 import type { Context } from "@deepseek-ai/cordis";
 import { defineTool, type ToolDefinition } from "@deepseek-ai/dsh-tools";
 import { PythonBridge } from "../python-bridge/index.js";
@@ -52,6 +53,7 @@ export function createWorkbenchTools(bridge: PythonBridge, ctx: Context): ToolDe
         preview_fingerprint: { type: "string", description: "目录格式必须：与确认规则相符的预览指纹" },
         archive_path: { type: "string", description: "明确提供ZIP时的宿主保存路径" },
         unannotated_is_normal: { type: "boolean", description: "仅Labelme的无标注初始良品约定" },
+        annotation_policy: { ...annotationPolicyParameter, description: "仅按明确来源提供规范、角色、覆盖与类别映射；缺省保持未知" },
       },
       output: datasetDiscoveryOutput,
       execute: (args, exec) => bridge.execute("dataset_import", args, exec.signal),
@@ -71,13 +73,8 @@ export function createWorkbenchTools(bridge: PythonBridge, ctx: Context): ToolDe
     }),
     defineTool({
       name: "model_audit_start",
-      description: "用显式冻结的良品知识及可选不良知识启动 MLLM 联合审计。默认审计该数据集全部图像、每张全图和全部适用 ROI；这是知识审计，与 dataset_audit 技术检查不同。",
-      parameters: {
-        dataset_id: { type: "string", required: true },
-        normal_version_id: { type: "string", required: true },
-        defect_version_id: { type: "string" },
-        sample_ids: { type: "array", items: { type: "string" }, description: "仅用户明确指定子集时传入；省略审计全部图像" },
-      },
+      description: "用冻结良品知识及可选不良知识独立进行 MLLM 联合审计，再附加同图检查。默认所选数据集全部图像、全图及适用 ROI，检索库为全部已注册数据集；仅用户明确指定时传 sample_ids、filters 或 corpus_scope。默认 consistency_mode=exact；仅用户明确开启视觉候选时用 combined/visual，只查询已有向量，不隐式建库。模型失败不抹除一致性证据，确定性冲突不交给模型消解。",
+      parameters: auditStartParameters,
       output: workbenchJsonOutput,
       execute: (args, exec) => bridge.execute("audit_start", { ...args, origin_session_id: exec.agent?.id || null }, exec.signal),
     }),

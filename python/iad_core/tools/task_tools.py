@@ -55,7 +55,7 @@ def task_inspect(
     anno_count = anno_repo.count_by_task(task_id)
 
     # Feature coverage
-    feat_count = feat_repo.count_by_task(task_id, "dinov2_vitb14_reg", "dinov2_224_norm")
+    feat_count = feat_repo.count_by_task(task_id)
     feat_coverage = feat_count / total_samples if total_samples > 0 else 0.0
 
     # Review status
@@ -89,7 +89,7 @@ def task_inspect(
 
     if feat_coverage < 1.0:
         warnings.append(f"Feature coverage is {feat_coverage * 100:.1f}%. Extraction required.")
-        next_actions.append("Call feature_prepare to extract representations.")
+        next_actions.append("Use image_index_prepare for the explicitly requested retrieval corpus.")
     elif review_stats.get("total_decisions", 0) == 0:
         warnings.append("No human review decisions found. Hard normal candidate review is recommended.")
         next_actions.append("Call candidate_mine to discover challenging normal candidates.")

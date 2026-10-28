@@ -62,6 +62,8 @@ export const knowledgeJobOutput = {
                     parent_run_id: job.parent_run_id, scope_run_id: job.scope_run_id, dataset_id: job.dataset_id,
                     kind: job.kind, job_type: job.job_type, model_name: job.model_name, origin_session_id: job.origin_session_id,
                     status: job.status, cancel_requested: job.cancel_requested, phase: job.phase,
+                    phase_started_at: job.phase_started_at, prepared_sources: job.prepared_sources, queue_position: job.queue_position,
+                    submitted_at: job.submitted_at, exploration_prompt: job.exploration_prompt,
                     requires_user_decision: ["FAILED", "PARTIAL", "INTERRUPTED"].includes(job.status),
                     completed: job.completed, failed: job.failed, unprocessed: job.unprocessed, total_samples: job.total_samples,
                     observation_progress: job.observation_progress, knowledge_version_id: job.knowledge_version_id,

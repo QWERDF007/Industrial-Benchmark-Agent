@@ -5,11 +5,16 @@ import axe from "axe-core";
 import contrast from "wcag-contrast";
 import { By, Key, until } from "selenium-webdriver";
 
+export async function waitForWorkbenchPage(driver, label) {
+  const titles = label === "知识挖掘" ? [label,"新建知识挖掘"] : label === "方向探索" ? [label,"新建探索"] : [label];
+  await driver.wait(() => driver.executeScript("const root=document.querySelector('.iad-workbench');return root && arguments[0].includes(root.querySelector('h1')?.textContent) && !root.textContent.includes('正在读取知识…')", titles), 10000);
+}
+
 const pages = ["数据集管理", "图像浏览", "方向探索", "知识挖掘", "模型审计", "人工复核", "模型设置"];
-const viewports = [[1920, 1080], [1366, 768], [1280, 800], [375, 812]];
+const viewports = [[1920, 1080]];
 
 /** Real host surfaces, browser text zoom and OS motion preference; no application state substitutes. */
-export async function verifyWorkbenchLayout(driver, output, { pageLabels = pages, sizes = viewports, zoomLevels = [1, 2] } = {}) {
+export async function verifyWorkbenchLayout(driver, output, { pageLabels = pages, sizes = viewports, zoomLevels = [1] } = {}) {
   output = path.join(output, String(Date.now()));
   await fs.mkdir(output, { recursive: true });
   console.log(JSON.stringify({ layoutEvidence: output }));
@@ -26,7 +31,7 @@ export async function verifyWorkbenchLayout(driver, output, { pageLabels = pages
           const scope = { theme, zoom, width, height, page: label };
           const name = `${theme.toLowerCase()}-${zoom * 100}-${width}-${index}`;
           await (await element(`button[aria-label^='${label}']`)).click();
-          await driver.wait(() => driver.executeScript("return document.querySelector('.iad-workbench h1')?.textContent===arguments[0]", label), 10000);
+          await waitForWorkbenchPage(driver,label);
           if (label === "模型审计") await driver.findElement(By.xpath("//button[normalize-space(.)='结果']")).click();
           await driver.wait(() => driver.executeScript("const e=document.querySelector('.iad-workbench');return e && ![...e.querySelectorAll('[role=status]')].some(node=>node.getClientRects().length && /^(加载中|正在读取知识)/.test(node.textContent.trim()))", label), 10000);
           if (label === "数据集管理") {
@@ -138,11 +143,7 @@ export async function viewport(driver, width, height) {
   await driver.executeAsyncScript("const done=arguments[arguments.length-1];requestAnimationFrame(()=>requestAnimationFrame(()=>done()))");
   const chrome = await driver.executeScript("return {width:outerWidth-innerWidth,height:outerHeight-innerHeight}");
   await driver.manage().window().setRect({ width: width + chrome.width, height: height + chrome.height });
-  if (width < 450) {
-    await driver.setContext("chrome");
-    await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth=arguments[0];gBrowser.selectedBrowser.style.width=arguments[0];gBrowser.selectedBrowser.style.flex='none'", `${width}px`);
-    await driver.setContext("content");
-  }
+
   await driver.wait(() => driver.executeScript("return innerWidth===arguments[0] && innerHeight===arguments[1]", width, height), 5000, `Actual viewport ${width}×${height}`);
 }
 

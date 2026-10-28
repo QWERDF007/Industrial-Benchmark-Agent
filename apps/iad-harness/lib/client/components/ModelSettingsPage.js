@@ -5,6 +5,7 @@ import { message, request } from '../api.js';
 import { useWorkbenchModel } from '../models.js';
 import { workbenchStyles } from '../styles.js';
 import { ProviderManager } from './ProviderManager.js';
+import { ImageEncoderSettings } from './ImageEncoderSettings.js';
 import { WorkbenchHeader } from './layout/WorkbenchHeader.js';
 import { PageTabs } from './layout/PageTabs.js';
 import { useUnsavedChanges } from '../useUnsavedChanges.js';
@@ -18,6 +19,7 @@ export function ModelSettingsPage() {
     const savedSelection = view?.selection || { provider_id: '', model_id: '', limits: { ...defaultModelLimits } };
     const parametersId = useId();
     const [tab, setTab] = useState('model');
+    const [imageRefresh, setImageRefresh] = useState(0), [imageState, setImageState] = useState({ dirty: false, busy: false });
     const [draft, setDraft] = useState(null), [expectedRevision, setExpectedRevision] = useState(0);
     const [parameters, setParameters] = useState('{}'), [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('');
     const reset = () => {
@@ -88,8 +90,14 @@ export function ModelSettingsPage() {
             setBusy(false);
         }
     }
-    return _jsxs("div", { className: "iad-workbench", "data-page": "industrial-model-settings", children: [_jsx("style", { children: workbenchStyles }), _jsx(WorkbenchHeader, { pageId: "industrial-model-settings", children: _jsx("button", { disabled: busy || loading, onClick: () => void refresh(), children: "\u5237\u65B0" }) }), _jsxs(PageTabs, { label: "\u6A21\u578B\u8BBE\u7F6E\u5206\u533A", items: [{ id: 'model', label: '工作台模型' }, { id: 'providers', label: '提供商' }], value: tab, onChange: value => { setTab(value); if (value === 'model')
-                    void refresh(); }, children: [(loadError || error) && _jsx("p", { role: "alert", className: "iad-error", children: error || loadError }), tab === 'providers' ? _jsx("section", { className: "iad-provider-manager", "aria-label": "\u63D0\u4F9B\u5546\u7BA1\u7406", children: _jsx(ProviderManager, {}) }) : _jsxs("section", { className: "iad-model-configuration", children: [_jsx("h2", { children: "\u5DE5\u4F5C\u53F0\u6A21\u578B" }), _jsx("p", { className: "iad-muted", children: "\u63A2\u7D22\u3001\u6316\u6398\u548C\u5BA1\u8BA1\u5171\u7528\u6B64\u914D\u7F6E\uFF1B\u4F1A\u8BDD\u6A21\u578B\u72EC\u7ACB\u9009\u62E9\u3002" }), view?.error && _jsxs("p", { role: "status", className: "iad-muted", children: ["\u5DF2\u4FDD\u5B58\u914D\u7F6E\uFF1A", view.error] }), !draft ? _jsx("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u914D\u7F6E\u2026" }) : _jsx("form", { className: "iad-model-form", onSubmit: save, children: _jsxs("fieldset", { disabled: busy || loading, children: [_jsxs("section", { className: "iad-section-layout", children: [_jsx("div", { children: _jsx("h3", { children: "\u6A21\u578B\u9009\u62E9" }) }), _jsxs("div", { children: [_jsxs("div", { className: "iad-model-fields", children: [_jsxs("label", { className: "iad-field", children: ["\u63D0\u4F9B\u5546", _jsxs("select", { "aria-label": "\u5DE5\u4F5C\u53F0\u63D0\u4F9B\u5546", value: draft.provider_id, onChange: event => {
+    return _jsxs("div", { className: "iad-workbench", "data-page": "industrial-model-settings", children: [_jsx("style", { children: workbenchStyles }), _jsx(WorkbenchHeader, { pageId: "industrial-model-settings", children: _jsx("button", { disabled: busy || loading || imageState.busy, onClick: () => tab === 'images' ? setImageRefresh(value => value + 1) : void refresh(), children: "\u5237\u65B0" }) }), _jsxs(PageTabs, { label: "\u6A21\u578B\u8BBE\u7F6E\u5206\u533A", items: [{ id: 'model', label: '工作台模型' }, { id: 'providers', label: '提供商' }, { id: 'images', label: '图像检索' }], value: tab, onChange: value => {
+                    if (tab === 'images' && (imageState.busy || (imageState.dirty && !window.confirm('有未保存的图像配置，确认放弃修改？'))))
+                        return;
+                    setTab(value);
+                    setImageState({ dirty: false, busy: false });
+                    if (value === 'model')
+                        void refresh();
+                }, children: [(loadError || error) && _jsx("p", { role: "alert", className: "iad-error", children: error || loadError }), tab === 'images' ? _jsx(ImageEncoderSettings, { refreshVersion: imageRefresh, onStateChange: setImageState }) : tab === 'providers' ? _jsx("section", { className: "iad-provider-manager", "aria-label": "\u63D0\u4F9B\u5546\u7BA1\u7406", children: _jsx(ProviderManager, {}) }) : _jsxs("section", { className: "iad-model-configuration", children: [_jsx("h2", { children: "\u5DE5\u4F5C\u53F0\u6A21\u578B" }), _jsx("p", { className: "iad-muted", children: "\u63A2\u7D22\u3001\u6316\u6398\u548C\u5BA1\u8BA1\u5171\u7528\u6B64\u914D\u7F6E\uFF1B\u4F1A\u8BDD\u6A21\u578B\u72EC\u7ACB\u9009\u62E9\u3002" }), view?.error && _jsxs("p", { role: "status", className: "iad-muted", children: ["\u5DF2\u4FDD\u5B58\u914D\u7F6E\uFF1A", view.error] }), !draft ? _jsx("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u914D\u7F6E\u2026" }) : _jsx("form", { className: "iad-model-form", onSubmit: save, children: _jsxs("fieldset", { disabled: busy || loading, children: [_jsxs("section", { className: "iad-section-layout", children: [_jsx("div", { children: _jsx("h3", { children: "\u6A21\u578B\u9009\u62E9" }) }), _jsxs("div", { children: [_jsxs("div", { className: "iad-model-fields", children: [_jsxs("label", { className: "iad-field", children: ["\u63D0\u4F9B\u5546", _jsxs("select", { "aria-label": "\u5DE5\u4F5C\u53F0\u63D0\u4F9B\u5546", value: draft.provider_id, onChange: event => {
                                                                                 setDraft({ provider_id: event.target.value, model_id: '', limits: { ...defaultModelLimits } });
                                                                                 setParameters('{}');
                                                                                 setError('');

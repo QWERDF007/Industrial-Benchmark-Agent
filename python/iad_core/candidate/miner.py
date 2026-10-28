@@ -38,8 +38,7 @@ def mine_candidates(
     config_path: Optional[str] = None,
     db_path: str = "data/benchmark.db",
     output_dir: Optional[str] = None,
-    model_id: str = "dinov2_vitb14_reg",
-    preprocess_key: str = "dinov2_224_norm",
+    profile_id: Optional[str] = None,
 ) -> CandidateMiningResult:
     """
     Mine hard normal candidates from the candidate pool using existing cached visual features.
@@ -155,7 +154,7 @@ def mine_candidates(
 
     logger.info(f"Loaded {pool_size} candidate pool samples for task {task_id}")
 
-    raw_feats = feat_repo.list_by_task(task_id, model_id, preprocess_key)
+    raw_feats = feat_repo.list_by_task(task_id, profile_id)
     feat_map = {r["sample_id"]: r for r in raw_feats}
 
     valid_indices = []
@@ -164,7 +163,7 @@ def mine_candidates(
     for idx, s_id in enumerate(pool_sample_ids):
         r = feat_map.get(s_id)
         if r:
-            np_dtype = np.float16 if r["dtype"] == "fp16" else np.float32
+            np_dtype = np.float16 if r["dtype"] == "float16" else np.float32
             vec = np.frombuffer(r["embedding_blob"], dtype=np_dtype).astype(np.float32)
             norm = np.linalg.norm(vec)
             if norm > 0:
@@ -188,8 +187,7 @@ def mine_candidates(
     ref_ids, ref_embeddings, is_low_ref, ref_breakdown = get_normal_reference_set(
         task_id=task_id,
         db=db,
-        model_id=model_id,
-        preprocess_key=preprocess_key,
+        profile_id=profile_id,
         include_raw_pass=include_raw_pass,
         include_review_pass=include_review_pass,
         include_hard_normal=active_include_hard_normal,

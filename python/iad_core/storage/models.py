@@ -1,8 +1,9 @@
 from enum import Enum
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, Union, Literal
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 from uuid import NAMESPACE_URL, uuid4, uuid5
+from iad_core.feature.base import EmbeddingPrecision
 
 
 def sample_uuid(sample_id: str) -> str:
@@ -131,6 +132,7 @@ class Annotation(BaseModel):
     sample_id: str
     annotation_type: AnnotationType
     raw_label: str
+    is_ignored: bool = Field(default=False, strict=True)
     phenomenon: Optional[str] = None
     bbox: Optional[List[float]] = None
     polygon: Optional[List[List[float]]] = None
@@ -175,15 +177,16 @@ class ImportIssue(BaseModel):
 
 # 5. FeatureRecord
 class FeatureRecord(BaseModel):
-    model_config = {"protected_namespaces": ()}
-    sample_id: str
-    model_id: str
-    preprocess_key: str
-    dim: int
-    dtype: str
+    model_config = ConfigDict(extra='forbid',frozen=True)
+    content_group_id: str
+    profile_id: str
+    view_key: str = Field(default='full',min_length=1)
+    dim: int = Field(gt=0)
+    dtype: EmbeddingPrecision
     embedding_blob: Optional[bytes] = None
-    source_file_size: Optional[int] = None
-    source_mtime_ns: Optional[int] = None
+    status: Literal['COMPLETE','FAILED'] = 'COMPLETE'
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None
 
 
 # 6. ReviewSession

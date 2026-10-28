@@ -2,23 +2,18 @@ import os
 import json
 import time
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional
 
 from iad_core.storage.database import Database
-from iad_core.storage.models import Sample, Annotation, ReviewDecisionRecord, GoldRecord as StorageGoldRecord
-from iad_core.storage.repositories import SampleRepository, AnnotationRepository, GoldRepository
-from iad_core.storage.review_repository import ReviewRepository
+from iad_core.storage.models import GoldRecord as StorageGoldRecord
+from iad_core.storage.repositories import GoldRepository
 from iad_core.task.config import GoldPolicyConfig, load_config
 from iad_core.gold.schemas import (
-    GoldRecord,
-    GoldConflictRecord,
     GoldBuildResult,
     GoldStatus,
-    GoldQuality,
     BinaryLabel,
 )
-from iad_core.gold.resolver import resolve_gold_for_sample
-from iad_core.gold.annotation import filter_and_convert_gold_annotations
+from iad_core.gold.projection import GoldProjection
 
 logger = logging.getLogger("iad_core.gold.builder")
 
@@ -58,55 +53,9 @@ def build_gold(
         gold_jsonl_path = os.path.join(output_dir, "gold.jsonl")
         conflicts_json_path = os.path.join(output_dir, "conflicts.json")
 
-    sample_repo = SampleRepository(db)
-    review_repo = ReviewRepository(db)
-    anno_repo = AnnotationRepository(db)
     gold_repo = GoldRepository(db)
-
-
-    samples = sample_repo.list_by_task(task_id)
-
-    review_records = review_repo.list_decisions(task_id)
-    reviews_by_sample: Dict[str, List[ReviewDecisionRecord]] = {}
-    for r in review_records:
-        reviews_by_sample.setdefault(r.sample_id, []).append(r)
-
-    with db.connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT a.* FROM annotations a
-            JOIN samples s ON a.sample_id = s.sample_id
-            WHERE s.task_id = ?
-            """,
-            (task_id,),
-        )
-        anno_rows = cursor.fetchall()
-
-    annos_by_sample: Dict[str, List[Annotation]] = {}
-    for r in anno_rows:
-        anno = AnnotationRepository._row_to_annotation(r)
-        annos_by_sample.setdefault(anno.sample_id, []).append(anno)
-
-    all_gold_records: List[GoldRecord] = []
-    conflict_records: List[GoldConflictRecord] = []
-
-    for sample in samples:
-        revs = reviews_by_sample.get(sample.sample_id, [])
-        gold_rec, conflict = resolve_gold_for_sample(sample, revs, policy)
-
-        sample_annos = annos_by_sample.get(sample.sample_id, [])
-        valid_gold_annos = filter_and_convert_gold_annotations(sample_annos)
-        gold_rec.annotations = valid_gold_annos
-        gold_rec.phenomena = sorted(list({
-            a.phenomenon for a in valid_gold_annos if a.phenomenon
-        } or {
-            a.raw_label for a in valid_gold_annos if a.raw_label
-        }))
-
-        all_gold_records.append(gold_rec)
-        if conflict:
-            conflict_records.append(conflict)
+    projection = GoldProjection.capture(db, task_id, policy)
+    all_gold_records, conflict_records = projection.records, projection.conflicts
 
     if persist_to_db:
         storage_records = []
@@ -169,7 +118,7 @@ def build_gold(
     return GoldBuildResult(
         task_id=task_id,
         policy_name=policy_name,
-        total_samples=len(samples),
+        total_samples=len(all_gold_records),
         gold_confirmed_count=len(confirmed_records),
         normal_count=normal_count,
         hard_normal_count=hard_normal_count,

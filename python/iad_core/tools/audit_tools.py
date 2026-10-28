@@ -8,7 +8,7 @@ from typing import Optional, List, Dict, Any
 from iad_core.storage.database import Database
 from iad_core.storage.models import Sample, Annotation
 from iad_core.storage.repositories import SampleRepository
-from iad_core.duplicate.repository import load_verified_duplicates
+from iad_core.duplicate.repository import load_leakage_relations
 from iad_core.advisory.schemas import (
     AuditSuggestion,
     ConclusionStatus,
@@ -296,7 +296,8 @@ def audit_recheck(
                     })
 
             elif kind == "verified_duplicate_scope":
-                verified_pairs, verified_groups = load_verified_duplicates(task_id)
+                relations = load_leakage_relations(Database(db_path), task_id)
+                verified_pairs, verified_groups = relations.near_leakage_pairs, relations.groups
                 connected_ids = set()
                 for a, b in verified_pairs:
                     if a == s_id:

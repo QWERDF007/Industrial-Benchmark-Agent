@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any
 
 from iad_core.storage.database import Database
 from iad_core.storage.models import Sample, QualityStatus, DataOrigin
-from iad_core.storage.repositories import SampleRepository, GoldRepository
+from iad_core.storage.repositories import SampleRepository
 from iad_core.task.config import DatasetConfig, load_config, GoldPolicyConfig, SplitPolicyConfig
 from iad_core.gold.schemas import GoldRecord, GoldConflictRecord, GoldStatus
 from iad_core.gold.builder import build_gold
@@ -17,7 +17,7 @@ from iad_core.benchmark.readiness import evaluate_track_readiness, BenchmarkRead
 from iad_core.benchmark.exporter import export_benchmark, BenchmarkExportResult
 
 
-from iad_core.duplicate.repository import load_verified_duplicates
+from iad_core.duplicate.repository import load_leakage_relations
 
 
 def generate_build_id(task_id: str, db_path: str = "data/benchmark.db") -> str:
@@ -64,7 +64,6 @@ def run_benchmark_pipeline(
 
     if not output_dir:
         output_dir = os.path.join("runs", "benchmark", build_id)
-    os.makedirs(output_dir, exist_ok=True)
 
     if not config_path:
         for candidate_path in [f"configs/{task_id}.yaml", "configs/kuangjiao.yaml"]:
@@ -84,49 +83,17 @@ def run_benchmark_pipeline(
     gold_res = build_gold(
         task_id=task_id,
         policy=cfg.gold,
-        output_dir=output_dir,
         db_path=db_path,
+        persist_to_db=False,
     )
 
     db = Database(db_path)
     sample_repo = SampleRepository(db)
-    gold_repo = GoldRepository(db)
-
     samples = sample_repo.list_by_task(task_id)
-    samples_map = {s.sample_id: s for s in samples}
-
-    storage_gold_records = gold_repo.list_by_task(task_id, cfg.gold.policy_name)
-    gold_records: List[GoldRecord] = []
-    gold_dict: Dict[str, GoldRecord] = {}
-
-    for r in storage_gold_records:
-        g = GoldRecord(
-            sample_id=r.sample_id,
-            task_id=r.task_id,
-            policy_name=r.policy_name,
-            gold_quality=r.gold_quality,
-            binary_label=r.binary_label,
-            hard_normal=r.hard_normal,
-            gold_source=r.gold_source,
-            gold_source_ref=r.gold_source_ref,
-            gold_status=r.gold_status,
-            provenance=r.provenance,
-            physical_sample_id=r.physical_sample_id,
-            capture_sequence_id=r.capture_sequence_id,
-            batch_id=r.batch_id,
-            data_origin=r.data_origin,
-            image_path=r.image_path,
-            relative_path=r.relative_path,
-        )
-        gold_records.append(g)
-        gold_dict[g.sample_id] = g
-
-    conflicts_path = os.path.join(output_dir, "conflicts.json")
-    conflict_records: List[GoldConflictRecord] = []
-    if os.path.exists(conflicts_path):
-        with open(conflicts_path, "r", encoding="utf-8") as f:
-            c_data = json.load(f)
-            conflict_records = [GoldConflictRecord.model_validate(c) for c in c_data]
+    samples_map = {sample.sample_id: sample for sample in samples}
+    gold_records = gold_res.records
+    gold_dict = {record.sample_id: record for record in gold_records}
+    conflict_records = gold_res.conflicts
 
     confirmed_samples = [
         samples_map[r.sample_id]
@@ -134,7 +101,9 @@ def run_benchmark_pipeline(
         if r.gold_status == GoldStatus.CONFIRMED.value and r.sample_id in samples_map
     ]
 
-    verified_pairs, verified_groups = load_verified_duplicates(task_id)
+    relations = load_leakage_relations(db, task_id, sample_ids=[sample.sample_id for sample in confirmed_samples])
+    relations.assert_covered([sample.sample_id for sample in confirmed_samples])
+    verified_pairs, verified_groups = relations.near_leakage_pairs, relations.groups
 
     physical_scope = "batch"
     if cfg.metadata_semantics:
@@ -162,7 +131,7 @@ def run_benchmark_pipeline(
         samples=confirmed_samples,
         assignments=split_result.assignments,
         verified_pairs=verified_pairs,
-        verified_components=verified_groups,
+        strict_content_groups=relations.strict_content_groups,
         physical_sample_scope=physical_scope,
     )
 
@@ -283,7 +252,9 @@ def preview_benchmark_pipeline(
         if r.sample_id in samples_map
     ]
 
-    verified_pairs, verified_groups = load_verified_duplicates(task_id)
+    relations = load_leakage_relations(db, task_id, sample_ids=[sample.sample_id for sample in confirmed_samples])
+    relations.assert_covered([sample.sample_id for sample in confirmed_samples])
+    verified_pairs, verified_groups = relations.near_leakage_pairs, relations.groups
 
     physical_scope = "batch"
     if cfg.metadata_semantics:

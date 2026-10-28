@@ -7,7 +7,6 @@ from iad_core.storage.database import Database
 from iad_core.storage.models import EvaluationRunRecord
 from iad_core.storage.repositories import BenchmarkRepository, EvaluationRepository
 from iad_core.evaluation.contracts import ThresholdStrategy, EvaluationPlan
-from iad_core.evaluation.evaluator import EvaluationService
 from iad_core.evaluation.report import generate_comparison_report
 from iad_core.contracts import ToolResult, ToolStatus, MutationType, ArtifactRef
 
@@ -91,6 +90,7 @@ def baseline_run(
     except ValueError:
         strat = ThresholdStrategy.F1_MAX
 
+    from iad_core.evaluation.evaluator import EvaluationService
     eval_service = EvaluationService(db_path=db_path)
     try:
         eval_run = eval_service.evaluate_model(

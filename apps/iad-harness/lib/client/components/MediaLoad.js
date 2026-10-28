@@ -1,14 +1,18 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { createContext, useContext, useState } from "react";
 const RetryContext = createContext(0);
-export function MediaLoad({ children, className = "" }) {
+export function MediaLoad({ children, className = "", primarySource }) {
     const [attempt, setAttempt] = useState(0);
     const [failures, setFailures] = useState(new Map());
+    const [settledSource, setSettledSource] = useState("");
+    const loading = !!primarySource && primarySource !== settledSource;
     function capture(event) {
         const target = event.target;
         const source = target.getAttribute?.("data-media-source");
         if (!source)
             return;
+        if (source === primarySource)
+            setSettledSource(source);
         setFailures(previous => {
             const next = new Map(previous);
             if (event.type === "error")
@@ -18,7 +22,7 @@ export function MediaLoad({ children, className = "" }) {
             return next;
         });
     }
-    return _jsx(RetryContext.Provider, { value: attempt, children: _jsxs("div", { className: `iad-media-load ${className}`, onErrorCapture: capture, onLoadCapture: capture, children: [children, !!failures.size && _jsxs("div", { className: "iad-media-error", role: "alert", children: [[...new Set(failures.values())].map(label => _jsxs("span", { children: [label, "\u65E0\u6CD5\u52A0\u8F7D\uFF0C\u8BF7\u68C0\u67E5\u8D44\u6E90\u662F\u5426\u5B58\u5728\u6216\u5B8C\u6574\u3002"] }, label)), _jsx("button", { type: "button", "aria-label": "\u91CD\u65B0\u52A0\u8F7D\u56FE\u50CF", onClick: () => setAttempt(previous => previous + 1), children: "\u91CD\u65B0\u52A0\u8F7D" })] })] }) });
+    return _jsx(RetryContext.Provider, { value: attempt, children: _jsxs("div", { className: `iad-media-load ${className}`, "aria-busy": primarySource ? loading : undefined, onErrorCapture: capture, onLoadCapture: capture, children: [children, loading && _jsx("div", { className: "iad-media-loading", role: "status", children: "\u6B63\u5728\u52A0\u8F7D\u56FE\u50CF\u2026" }), !!failures.size && _jsxs("div", { className: "iad-media-error", role: "alert", children: [[...new Set(failures.values())].map(label => _jsxs("span", { children: [label, "\u65E0\u6CD5\u52A0\u8F7D\uFF0C\u8BF7\u68C0\u67E5\u8D44\u6E90\u662F\u5426\u5B58\u5728\u6216\u5B8C\u6574\u3002"] }, label)), _jsx("button", { type: "button", "aria-label": "\u91CD\u65B0\u52A0\u8F7D\u56FE\u50CF", onClick: () => { setSettledSource(""); setFailures(new Map()); setAttempt(previous => previous + 1); }, children: "\u91CD\u65B0\u52A0\u8F7D" })] })] }) });
 }
 function useRetryUrl(source) {
     const attempt = useContext(RetryContext);

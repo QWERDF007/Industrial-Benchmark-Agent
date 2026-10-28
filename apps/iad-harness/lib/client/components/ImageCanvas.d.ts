@@ -4,6 +4,7 @@ import { type ImageView, type InspectionContext, type InspectionSelection, type 
 export interface ImageSource {
     src: string;
     title: string;
+    caption?: string;
     width?: number;
     height?: number;
     annotationLayer?: AnnotationLayerSource;
@@ -23,13 +24,24 @@ type ImageCanvasProps = {
     onClose?(): void;
     navigation?: ImageNavigation;
     embedded?: boolean;
+    context?: React.ReactNode;
+    closeLabel?: string;
     onExpand?(view: ImageView): void;
+    control?: {
+        transform: InspectionTransform;
+        onChange(transform: React.SetStateAction<InspectionTransform>): void;
+    };
+    focusRegion?: {
+        id: string;
+        bbox: number[];
+    };
+    overlay?: React.ReactNode;
 };
 export declare function AnnotatedImage({ image, visible, onLoad }: {
     image: ImageSource;
     visible?: boolean;
     onLoad?: React.ReactEventHandler<HTMLImageElement>;
 }): React.JSX.Element;
-export declare function ImageCanvas({ image, onClose, navigation, embedded, onExpand }: ImageCanvasProps): React.JSX.Element;
+export declare function ImageCanvas({ image, onClose, navigation, embedded, onExpand, context, closeLabel, control, focusRegion, overlay }: ImageCanvasProps): React.JSX.Element;
 export {};
 //# sourceMappingURL=ImageCanvas.d.ts.map

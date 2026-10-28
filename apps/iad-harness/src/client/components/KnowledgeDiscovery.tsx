@@ -1,4 +1,5 @@
 import React from "react";
+import { v4 as uuid } from "uuid";
 import type { KnowledgeSnapshot } from "../../shared/contracts.js";
 import type { DirectionProposal } from "./KnowledgeDirections.js";
 
@@ -21,7 +22,7 @@ export function KnowledgeDiscovery({ knowledge, evidence, onPropose }: {
         {!!area.subjects.length && <p>{area.subjects.join("、")}</p>}<p>{area.reason}</p>
         {!!area.check_titles.length && <p className="iad-muted">本次归纳判据：{area.check_titles.join("、")}</p>}
         {!!area.evidence_ids.length && <details><summary>查看图像依据</summary>{evidence(area.evidence_ids)}</details>}
-        {!area.direction_id && <button onClick={() => onPropose({ id: crypto.randomUUID(), datasetId: knowledge.dataset_id, kind: knowledge.kind, title: area.direction,
+        {!area.direction_id && <button onClick={() => onPropose({ id: uuid(), datasetId: knowledge.dataset_id, kind: knowledge.kind, title: area.direction,
           instruction: `观察${area.direction}${area.subjects.length ? `，关注${area.subjects.join("、")}` : ""}；结合原图核验相关规律、正常变化及证据限制。` })}>加入数据集方向</button>}
       </article>)}
     </>}

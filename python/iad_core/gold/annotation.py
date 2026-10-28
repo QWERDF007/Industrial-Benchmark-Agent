@@ -18,6 +18,7 @@ def filter_and_convert_gold_annotations(
             gold_annos.append(
                 GoldAnnotation(
                     annotation_id=a.annotation_id,
+                    annotation_type=a.annotation_type,
                     raw_label=a.raw_label,
                     phenomenon=a.phenomenon,
                     bbox=a.bbox,

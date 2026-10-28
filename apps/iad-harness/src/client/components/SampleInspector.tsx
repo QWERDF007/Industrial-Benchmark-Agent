@@ -10,6 +10,7 @@ import { DatasetKnowledge } from "./DatasetKnowledge.js";
 import { RuleAssessments } from "./RuleAssessments.js";
 import { AuditFindings } from "./AuditFindings.js";
 import { AuditEvidence } from "./AuditEvidence.js";
+import { AuditConsistency } from "./AuditConsistency.js";
 import { HumanReviewForm } from "./HumanReviewForm.js";
 import { auditEvidenceUrl, regionSources, mediaUrl, message, request, reviewLabel, modelLabels } from "../api.js";
 import { useWorkspace } from "../workspace.js";
@@ -63,7 +64,8 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
     try {
       const view = workspace.view("industrial-audit");
       const input: AuditStartRequest = { dataset_id: dataset.dataset_id, sample_ids: [sampleId],
-        normal_version_id: view.normalVersion || undefined, defect_version_id: view.defectVersion || undefined };
+        normal_version_id: view.normalVersion || undefined, defect_version_id: view.defectVersion || undefined,
+        consistency_mode:view.auditConsistencyMode };
       const job = await request<JobSnapshot>("/audit/start", input); workspace.updateView("industrial-audit", {job:job.run_id}); onJobsChanged();
     }
     catch (error) { setError(message(error)); } finally { setBusy(false); }
@@ -125,18 +127,25 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
         </details>}
       </> : <p className="iad-muted">尚无模型观察。</p>}</section>
 </>;
+  const consistency = detail?.consistency && <AuditConsistency record={detail.consistency} onEvidence={result => workspace.openLocation({
+    pageId:'industrial-consistency', tab:'search', query:{kind:'sample',sample_id:sampleId},
+    evidenceId:result.evidence_id, resultId:result.result_id,
+    returnPage:mode === 'model' ? 'industrial-audit' : mode === 'review' ? 'industrial-review' : 'industrial-images',
+  })} />;
   const decision = detail && <HumanReviewForm key={sampleId} datasetId={dataset.dataset_id} sampleId={sampleId} detail={detail} advanceOnSubmit={advanceOnSubmit} onSubmitted={record => onReviewed(record, detail.sample.relative_path)} />;
   const lightboxView = <>    {lightbox && <ImageViewer image={lightbox} navigation={navigation} onClose={() => { navigation?.cancel(); setLightbox(null); if (workspace.view(state.pageId).inspection) workspace.updateView(state.pageId, { inspection: null }, true); }} />}
 </>;
   if (queue !== undefined) return <div className="iad-inspector iad-focused-inspector">
     {error && <p role="alert" className="iad-error">{error}</p>}
-    <ReviewWorkspace key={sampleId} queue={queue} filters={filters} information={information} decision={decision} image={image && !lightbox ? <ImageCanvas image={image} embedded navigation={navigation ? {...navigation, move: offset => navigation.move(offset,"embedded")} : undefined} onExpand={view => setLightbox({...image,initialSelection:view.selection,initialTransform:view.transform})} /> : !sampleId ? <p className="iad-empty">当前复核队列已处理完成，或没有匹配的样本。</p> : !detail ? <p role="status">正在读取样本…</p> : null} />
+    <ReviewWorkspace key={sampleId} queue={queue} filters={filters} information={<>{consistency}{information}</>} decision={decision} image={image && !lightbox ? <ImageCanvas image={image} embedded navigation={navigation ? {...navigation, move: offset => navigation.move(offset,"embedded")} : undefined} onExpand={view => setLightbox({...image,initialSelection:view.selection,initialTransform:view.transform})} /> : !sampleId ? <p className="iad-empty">当前复核队列已处理完成，或没有匹配的样本。</p> : !detail ? <p role="status">正在读取样本…</p> : null} />
     {lightboxView}
   </div>;
   const body = <aside className="iad-inspector"><h2>{mode === "review" ? "复核明细" : "样本详情"}</h2>
     {error && <p role="alert" className="iad-error">{error}</p>}
     {!sampleId ? <p>选择图像查看。</p> : !detail ? <p role="status">加载中…</p> : <>
       <MediaLoad key={image!.src}><button ref={imageButton} className="iad-image-button" onClick={() => setLightbox(image)} title="放大图像"><AnnotatedImage image={image!} /></button></MediaLoad>
+      <div className="iad-actions"><button onClick={()=>workspace.openLocation({pageId:'industrial-consistency',tab:'search',query:{kind:'sample',sample_id:sampleId},scope:{kind:'all_registered'},returnPage:mode==='model' ? 'industrial-audit' : mode==='review' ? 'industrial-review' : 'industrial-images'})}>查找同图</button></div>
+      {consistency}
       {mode === "model" ? <>
         <strong className="iad-inspector-filename" data-field="image-name" title={detail.sample.relative_path}>{detail.sample.relative_path.split("/").pop()}</strong>
         <dl><dt>原始标签</dt><dd>{detail.sample.quality_status === "PASS" ? "OK" : detail.sample.quality_status === "FAIL" ? "NG" : "未标记"}</dd>

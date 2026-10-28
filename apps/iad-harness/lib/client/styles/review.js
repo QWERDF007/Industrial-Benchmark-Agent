@@ -41,5 +41,5 @@ export const reviewStyles = `.iad-workbench[data-page=industrial-review]:has(.ia
 .iad-disposition-fields {border:0;min-width:0;margin:0;padding:0;}
 @container workbench (max-width:1180px){.iad-conflict-detail {grid-template-columns:minmax(0,1fr);}.iad-conflict-workspace {grid-template-columns:220px minmax(0,1fr);}}
 @container workbench (max-width:900px){.iad-conflict-workspace {grid-template-columns:minmax(0,1fr);}}
-@container workbench (max-width:639px) {.iad-workbench[data-page=industrial-review]:has(.iad-review-focused){overflow:auto}.iad-workbench[data-page=industrial-review]:has(.iad-review-focused)>.iad-tab-panel {flex:none}.iad-embedded-canvas {min-height:360px;}.iad-embedded-canvas .iad-lightbox-toolbar>strong,.iad-embedded-canvas select[aria-label="缩放"],.iad-embedded-canvas .iad-image-step {display:none}.iad-review-focused>.iad-filters {max-height:120px;overflow:auto;}.iad-review-drawer {width:100%;}.iad-lightbox-toolbar strong {flex-basis:100%;}}
+
 `;

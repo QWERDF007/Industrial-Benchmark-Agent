@@ -6,8 +6,10 @@ export const workbenchJsonOutput = {
   schema: { type: "json" } as const,
   presentationMeta(_args: unknown, value: InferValue<{ type: "json" }>) { return toolPresentation(value); },
   render(_args: unknown, value: InferValue<{ type: "json" }>): ContentBlock[] {
-    return [{ type: "text", text: JSON.stringify(value, (key, item) =>
-      ["planned_evidence", "comparison_sources", "mining_steps", "verification_steps", "observation_steps", "support_groups", "preset_sources", "joint_steps", "model_calls", "request", "input_sources", "generation_signature"].includes(key) ? undefined : item) }];
+    return [{ type: "text", text: JSON.stringify(value, function (this: Record<string, unknown>, key, item) {
+      if (key === "request" && typeof this.run_id === "string" && typeof this.job_type === "string") return undefined;
+      return ["planned_evidence", "comparison_sources", "mining_steps", "verification_steps", "observation_steps", "support_groups", "preset_sources", "joint_steps", "model_calls", "input_sources", "generation_signature"].includes(key) ? undefined : item;
+    }) }];
   },
 };
 

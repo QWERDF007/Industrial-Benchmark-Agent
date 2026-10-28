@@ -42,12 +42,14 @@ test("DSH directory import and browser queries share one dataset and report", as
     const missing = await execute("dataset_directory_inspect", { path: path.join(root, "missing") });
     assert.equal(missing.isError, true);
     assert.deepEqual((await execute("dataset_list", {})).value.datasets, [], "Directory inspection must not import datasets");
-    const result = await execute("dataset_import", { format: "labelme", name: "会话接入的部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
+    const annotationPolicy = { policy_id: "line-a", annotation_role: "REFERENCE", annotation_coverage: "EXHAUSTIVE", category_mapping: { dent: "凹陷" } };
+    const result = await execute("dataset_import", { format: "labelme", name: "会话接入的部件", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels"), annotation_policy: annotationPolicy });
     assert.equal(result.isError, false, JSON.stringify(result));
     const dataset = result.value;
     assert.equal(dataset.format, "labelme");
     assert.equal(dataset.total_samples, 3);
     assert.equal(dataset.name, "会话接入的部件");
+    assert.deepEqual(dataset.annotation_policy, annotationPolicy);
     const browserDatasets = await (await fetch(base + "/datasets")).json();
     assert.equal(browserDatasets.datasets.length, 1);
     const { generated_at: browserTime, ...browserDataset } = browserDatasets.datasets[0];

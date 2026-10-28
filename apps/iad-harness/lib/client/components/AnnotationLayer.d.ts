@@ -4,6 +4,7 @@ export type AnnotationLayerSource = {
     kind: "sample";
     annotations: Annotation[];
     sample: Pick<SampleIdentity, "task_id" | "sample_id" | "width" | "height">;
+    maskUrls?: Record<string, string>;
 } | {
     kind: "audit";
     analysis: AuditAnalysis;

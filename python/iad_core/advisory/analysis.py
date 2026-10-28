@@ -176,7 +176,18 @@ class SynthesisStep(AnalysisModel):
     result: Union[VlmResult, JointAnalysis]
 
 
+class AuditConsistencyEvidenceReference(AnalysisModel):
+    result_id: NonBlankText
+    evidence_id: NonBlankText
+
+
+class AuditConsistencyReference(AnalysisModel):
+    check_id: NonBlankText
+    results: List[AuditConsistencyEvidenceReference]
+
+
 class AuditAnalysis(AnalysisModel):
+    consistency: Optional[AuditConsistencyReference] = None
     normal_version_id: Optional[str] = None
     defect_version_id: Optional[str] = None
     legacy_profile_id: Optional[str] = None

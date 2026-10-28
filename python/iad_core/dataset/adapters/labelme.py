@@ -118,11 +118,20 @@ class LabelmeAdapter(DatasetAdapter):
             shape_type = shape.get("shape_type", "rectangle")
             points = shape.get("points", [])
             phenomenon = self.config.annotations.labels.get(raw_label, raw_label if not self.config.annotations.labels else None)
+            flags = shape.get('flags')
+            if flags is None:
+                flags = {}
+            if not isinstance(flags, dict):
+                raise ValueError('Labelme shape flags must be an object')
+            is_ignored = flags.get('ignore', False)
+            if type(is_ignored) is not bool:
+                raise ValueError('Labelme ignore flag must be an explicit boolean')
 
             if shape_type == "mask":
                 pixels, bbox = decode_labelme_mask(shape.get("mask"), points,
                     (source_width if source_width is not None else width, source_height if source_height is not None else height))
                 annotations.append(RawAnnotation(annotation_type=AnnotationType.MASK, raw_label=raw_label,
+                    is_ignored=is_ignored,
                     phenomenon=phenomenon, bbox=bbox, mask_png=pixels, source_width=source_width,
                     source_height=source_height, source=self.config.annotations.source))
             elif shape_type == "rectangle" and len(points) == 2:
@@ -132,6 +141,7 @@ class LabelmeAdapter(DatasetAdapter):
                 annotations.append(
                     RawAnnotation(
                         annotation_type=AnnotationType.BBOX,
+                        is_ignored=is_ignored,
                         raw_label=raw_label,
                         phenomenon=phenomenon,
                         bbox=bbox,
@@ -148,6 +158,7 @@ class LabelmeAdapter(DatasetAdapter):
                 annotations.append(
                     RawAnnotation(
                         annotation_type=AnnotationType.POLYGON,
+                        is_ignored=is_ignored,
                         raw_label=raw_label,
                         phenomenon=phenomenon,
                         bbox=bbox,

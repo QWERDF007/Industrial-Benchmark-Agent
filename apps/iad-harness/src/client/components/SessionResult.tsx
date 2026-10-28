@@ -18,7 +18,7 @@ export function SessionResult(props: ToolCallViewProps & { title: string }) {
     `}</style>
     <strong>{props.title}</strong>
     {props.phase !== "result" ? <p role="status">{props.phase === "preparing" ? "准备调用…" : "工具执行中…"}</p> : props.block.isError ? <p role="alert">调用失败，请查看调用详情。</p> : result?.job && <p>调用时状态：{jobStatuses[result.job.status]} · 完成 {result.job.completed} · 失败 {result.job.failed} · 共 {result.job.total_samples} 张</p>}
-    <nav aria-label="查看工具结果">{result?.links.map((link, index) => <button key={index} data-iad-page={link.location.pageId} data-iad-scope-id={link.location.scopeRunId} data-iad-run-id={link.location.job} data-iad-version-id={link.location.version} onClick={() => workspace.openLocation(link.location)}>{link.label}</button>)}
+    <nav aria-label="查看工具结果">{result?.links.map((link, index) => <button key={index} data-iad-page={link.location.pageId} data-iad-scope-id={link.location.pageId==='industrial-consistency' ? undefined : link.location.scopeRunId} data-iad-run-id={link.location.pageId==='industrial-consistency' ? link.location.batchId : link.location.job} data-iad-version-id={link.location.pageId==='industrial-consistency' ? undefined : link.location.version} onClick={() => workspace.openLocation(link.location)}>{link.label}</button>)}
       {props.inspect && <button onClick={props.inspect}>调用详情</button>}
     </nav>
   </section>;

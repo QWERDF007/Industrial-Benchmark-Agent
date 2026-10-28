@@ -1,0 +1,1 @@
+{"version":3,"file":"ConsistencyScopeResults.d.ts","sourceRoot":"","sources":["../../../src/client/components/ConsistencyScopeResults.tsx"],"names":[],"mappings":"AAAA,OAAO,KAA0B,MAAM,OAAO,CAAC;AAC/C,OAAO,KAAK,EAAqD,OAAO,EAAC,MAAM,2BAA2B,CAAC;AAY3G,wBAAgB,uBAAuB,CAAC,EAAC,QAAQ,EAAC,GAAG,EAAC,EAAC;IAAC,QAAQ,EAAC,OAAO,EAAE,CAAC;IAAA,GAAG,EAAC,WAAW,GAAC,QAAQ,CAAA;CAAC,qBAuEnG"}

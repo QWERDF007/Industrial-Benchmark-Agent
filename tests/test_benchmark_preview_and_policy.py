@@ -9,44 +9,60 @@ from iad_core.contracts import ToolStatus
 from iad_core.candidate.schemas import CandidateRecord, CandidateSignals
 
 
-def test_preview_benchmark_matches_build_counts():
-    """NV-12 / NS-09: Benchmark Preview uses unified Core logic and matches build split counts."""
-    task_id = "kuangjiao_inspection_01"
-    config_path = "configs/kuangjiao.yaml"
-    db_path = "data/benchmark.db"
-
-    if not os.path.exists(config_path) or not os.path.exists(db_path):
-        pytest.skip("Kuangjiao config or DB not found")
-
-    # Call preview directly
-    preview_res = preview_benchmark_pipeline(
-        task_id=task_id,
-        config_path=config_path,
-        seed=42,
-        db_path=db_path,
-    )
-
-    assert preview_res.status == "OK"
-    assert preview_res.projected_train == 67
-    assert preview_res.projected_val == 23
-    assert preview_res.projected_test == 24
-    assert preview_res.normal == 8  # 5 PASS + 3 Hard Normal
-    assert preview_res.hard_normal == 3
-    assert preview_res.anomaly == 106
-
-    # Call tool benchmark_preview
-    tool_res = benchmark_preview(
-        task_id=task_id,
-        config_path=config_path,
-        seed=42,
-        db_path=db_path,
-    )
-    assert tool_res.status == ToolStatus.OK
-    assert tool_res.metrics["train_samples"] == 67
-    assert tool_res.metrics["val_samples"] == 23
-    assert tool_res.metrics["test_samples"] == 24
-    assert tool_res.metrics["normal_gold"] == 8
-    assert tool_res.metrics["anomaly_gold"] == 106
+def test_preview_benchmark_matches_build_counts(tmp_path):
+    import yaml
+    from PIL import Image
+    from uuid import uuid4
+    from iad_core.dataset.registry import DatasetRegistry, DatasetImport
+    from iad_core.storage.repositories import SampleRepository
+    from iad_core.workbench.review import HumanReview, ReviewSubmission
+    root = tmp_path / 'images'
+    root.mkdir()
+    for index in range(12):
+        Image.new('RGB', (24, 24), (index * 15, 20, 30)).save(root / f'{index}.png')
+    import json
+    (root / '6.json').write_text(json.dumps({'imageWidth':24,'imageHeight':24,
+        'shapes':[{'label':'dent','shape_type':'rectangle','points':[[2,2],[10,10]]}]}))
+    db = Database(str(tmp_path / 'benchmark.db'))
+    config = DatasetRegistry(db).import_labelme(DatasetImport(format='labelme', name='预览与构建', image_dir=str(root), annotation_dir=str(root)))
+    config.gold.trusted_quality_sources = ['fixture']
+    config.gold.trusted_reviewers = ['preview-reviewer']
+    samples = SampleRepository(db)
+    for index in range(12):
+        sample = samples.get(config.dataset.id + ':' + str(index) + '.png')
+        sample.quality_status, sample.quality_source = ('PASS' if index < 6 else 'FAIL'), 'fixture'
+        samples.upsert(sample)
+        if index < 2:
+            HumanReview(db).submit(ReviewSubmission(submission_id=uuid4(), dataset_id=config.dataset.id,
+                sample_id=sample.sample_id, reviewer='preview-reviewer', decision='HARD_NORMAL'))
+    config_path = tmp_path / 'benchmark.yaml'
+    config_path.write_text(yaml.safe_dump(config.model_dump(mode='json')))
+    args = dict(task_id=config.task.task_id, config_path=str(config_path), seed=42, db_path=db.db_path)
+    preview = preview_benchmark_pipeline(**args)
+    assert preview.status == 'OK'
+    assert (preview.normal, preview.anomaly, preview.hard_normal, preview.groups_count) == (6, 6, 2, 12)
+    assert preview.projected_train + preview.projected_val + preview.projected_test == 12
+    tool = benchmark_preview(**args)
+    assert tool.status == ToolStatus.OK
+    assert (tool.metrics['normal_gold'], tool.metrics['anomaly_gold']) == (6, 6)
+    built = run_benchmark_pipeline(**args, output_dir=str(tmp_path / 'export'))
+    assert (built.train_count, built.val_count, built.test_count) == (preview.projected_train, preview.projected_val, preview.projected_test)
+    with open(built.gold_jsonl) as exported:
+        anomaly = next(json.loads(line) for line in exported if json.loads(line)['sample_id'] == config.dataset.id + ':6.png')
+    assert anomaly['annotations'][0]['annotation_type'] == 'bbox'
+    assert anomaly['annotations'][0]['mask_path'] is None
+    from iad_core.tools.benchmark_tools import benchmark_status
+    partial = benchmark_build(**args, build_id='partial-track', output_dir=str(tmp_path / 'partial'))
+    assert partial.status == ToolStatus.PARTIAL
+    assert partial.metrics['status'] == 'PARTIAL'
+    assert benchmark_status('partial-track', db_path=db.db_path).status == ToolStatus.PARTIAL
+    from iad_core.task.config import ReadinessPolicyConfig, StandardADReadinessPolicy
+    config.readiness_policy = ReadinessPolicyConfig(standard_ad=StandardADReadinessPolicy(min_pass=1, min_fail=1))
+    config_path.write_text(yaml.safe_dump(config.model_dump(mode='json')))
+    ready = benchmark_build(**args, build_id='ready-track', output_dir=str(tmp_path / 'ready'))
+    assert ready.status == ToolStatus.OK
+    assert ready.metrics['status'] == 'READY'
+    assert benchmark_status('ready-track', db_path=db.db_path).status == ToolStatus.OK
 
 
 def test_review_gate_non_required_candidates_do_not_block(tmp_path):
@@ -99,11 +115,32 @@ def test_review_gate_non_required_candidates_do_not_block(tmp_path):
     with open(cfg_path, "w", encoding="utf-8") as f:
         yaml.dump(cfg_data, f)
 
+    from PIL import Image
+    from pathlib import Path
+    from iad_core.dataset.registry import DatasetRegistry
+    from iad_core.task.config import load_config
+    from iad_core.duplicate.index import PixelScan
+    import hashlib
+    DatasetRegistry(db).save(load_config(cfg_path))
+    for index, sample in enumerate(samples):
+        path = tmp_path / (sample.sample_id + '.png')
+        Image.new('RGB', (10, 10), (index * 20, 30, 50)).save(path)
+        sample.image_path = str(path)
+    sample_repo.upsert_batch(samples)
+    with db.connection() as connection:
+        scan = PixelScan(connection)
+        for sample in samples:
+            path = Path(sample.image_path)
+            scan.stage(sample.sample_id, str(path), hashlib.sha256(path.read_bytes()).hexdigest())
+        scan.publish('ds')
+
     res = benchmark_build(
         task_id=task_id,
         config_path=cfg_path,
         db_path=db_path,
         output_dir=str(tmp_path / "build_out"),
     )
-    assert res.status == ToolStatus.OK
+    assert res.status == ToolStatus.NOT_READY
+    assert res.metrics['status'] == 'NOT_READY'
+    assert res.artifacts
     assert "Benchmark build" in res.summary

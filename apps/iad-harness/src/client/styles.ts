@@ -10,6 +10,8 @@ import { formsStyles } from "./styles/forms.js";
 import { reviewStyles } from "./styles/review.js";
 import { knowledgeStyles } from "./styles/knowledge.js";
 import { setupStyles } from "./styles/setup.js";
+import { datasetsStyles } from "./styles/datasets.js";
+import {consistencyStyles} from './styles/consistency.js';
 
 export const workbenchStyles = themeStyles + controlStyles
   + modelsStyles
@@ -22,4 +24,6 @@ export const workbenchStyles = themeStyles + controlStyles
   + reviewStyles
   + knowledgeStyles
   + setupStyles
+  + datasetsStyles
+  + consistencyStyles
 ;

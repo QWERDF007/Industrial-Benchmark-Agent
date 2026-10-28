@@ -3,7 +3,6 @@ import json
 import logging
 from typing import Optional, Dict, Any, List
 
-from iad_core.duplicate.repository import load_verified_duplicates
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import BenchmarkRepository, GoldRepository, SampleRepository
 from iad_core.benchmark.builder import (
@@ -11,6 +10,7 @@ from iad_core.benchmark.builder import (
     preview_benchmark_pipeline,
     generate_build_id,
 )
+from iad_core.benchmark.readiness import TrackStatus
 from iad_core.task.config import load_config
 from iad_core.gold.builder import build_gold
 from iad_core.split.group import build_split_groups
@@ -19,6 +19,17 @@ from iad_core.split.leakage import check_leakage
 from iad_core.contracts import ToolResult, ToolStatus, MutationType, ArtifactRef
 
 logger = logging.getLogger("iad_core.tools.benchmark")
+
+
+def _benchmark_readiness(status: str) -> tuple[ToolStatus, List[str], List[str]]:
+    readiness = TrackStatus(status)
+    if readiness == TrackStatus.READY:
+        return ToolStatus.OK, [], ["Call evaluation_plan or baseline_run to evaluate models on this build."]
+    return (
+        ToolStatus.PARTIAL if readiness == TrackStatus.PARTIAL else ToolStatus.NOT_READY,
+        [f"Standard AD readiness is {readiness.value}; exported artifacts do not establish evaluation readiness."],
+        ["Read benchmark_report.md and satisfy the reported track requirements before evaluation."],
+    )
 
 
 def benchmark_preview(
@@ -201,13 +212,11 @@ def benchmark_build(
         warnings = ["Leakage gate check failed! See leakage.md for specific violated sample pairs."]
         next_actions=["Resolve group leakage in config or component isolation before rebuilding."]
     else:
-        status = ToolStatus.OK
+        status, warnings, next_actions = _benchmark_readiness(res.status)
         summary = (
-            f"Benchmark build '{res.build_id}' SUCCESS: {res.gold_count} Gold records, "
+            f"Benchmark build '{res.build_id}' exported; readiness {res.status}: {res.gold_count} Gold records, "
             f"Train: {res.train_count}, Val: {res.val_count}, Test: {res.test_count}. Leakage: PASS."
         )
-        warnings = []
-        next_actions=["Call evaluation_plan or baseline_run to evaluate models on this build."]
 
     return ToolResult(
         status=status,
@@ -252,9 +261,10 @@ def benchmark_status(
     train_c = sum(1 for a in assignments if a.split_name == "train")
     val_c = sum(1 for a in assignments if a.split_name == "val")
     test_c = sum(1 for a in assignments if a.split_name == "test")
+    status, warnings, next_actions = _benchmark_readiness(build.status)
 
     return ToolResult(
-        status=ToolStatus.OK if build.status == "READY" else ToolStatus.PARTIAL,
+        status=status,
         summary=f"Benchmark build '{build_id}': status {build.status}, Train: {train_c}, Val: {val_c}, Test: {test_c}.",
         metrics={
             "build_id": build.build_id,
@@ -269,7 +279,8 @@ def benchmark_status(
             "seed": build.seed,
             "output_dir": build.output_dir,
         },
-        next_actions=["Call baseline_run to evaluate on this benchmark build."],
+        warnings=warnings,
+        next_actions=next_actions,
         mutation=MutationType.NONE,
     )
 

@@ -1,8 +1,12 @@
 import type { JobSnapshot } from "./contracts.js";
-import type { WorkbenchLocation } from "./navigation.js";
+import type { ConsistencyLocation,WorkbenchLocation } from "./navigation.js";
 import { jobStatuses } from "./job-display.js";
 
 export const workbenchTools = {
+  image_retrieve:'查找同图',image_index_prepare:'准备检索索引',consistency_start:'开始一致性检查',consistency_status:'一致性批次状态',
+  consistency_cancel:'停止一致性检查',consistency_retry:'继续一致性检查',consistency_query:'一致性结果',consistency_report:'一致性报告',
+  consistency_groups:'严格同图组',consistency_group_members:'同图组成员',consistency_compare:'保存比较证据',
+  consistency_context:'解释比较证据',consistency_evidence:'查看冻结事实',consistency_evidence_media:'读取冻结图片',consistency_evidence_export:'导出比较证据',
   direction_exploration_start: "探索检查方向", direction_exploration_status: "方向探索状态", direction_exploration_get: "方向探索结果",
   direction_exploration_cancel: "停止方向探索", direction_exploration_retry: "重试方向探索", knowledge_directions_adopt: "采用探索方向",
   dataset_list: "数据集列表", dataset_import: "接入数据集", dataset_rescan: "重新扫描目录", dataset_report: "数据集质量报告", knowledge_get: "知识版本",
@@ -24,6 +28,24 @@ export function toolPresentation(value: unknown): ToolPresentation | null {
   const record = value as Record<string, unknown>;
   const links: ToolPresentation["links"] = [];
   let job: ToolPresentation["job"] = null;
+  if(typeof record.batch_id==='string'){
+    links.push({label:'查看一致性批次',location:{pageId:'industrial-consistency',tab:'jobs',batchId:record.batch_id}});
+    if(typeof record.status==='string' && record.status in jobStatuses && typeof record.completed==='number' && typeof record.failed==='number' && typeof record.total==='number'){
+      job={status:record.status as JobSnapshot['status'],completed:record.completed,failed:record.failed,total_samples:record.total};
+    }
+  }
+  const context=record.context && typeof record.context==='object' ? record.context as Record<string,unknown> : record;
+  const result=context.result && typeof context.result==='object' ? context.result as Record<string,unknown> : context;
+  if(typeof result.evidence_id==='string' && typeof result.result_id==='string'){
+    const returnLocation=context.return_location as ConsistencyLocation | undefined;
+    links.push({label:'查看比较证据',location:returnLocation?.pageId==='industrial-consistency' && returnLocation.evidenceId===result.evidence_id
+      ? returnLocation : {pageId:'industrial-consistency',tab:'conflicts',evidenceId:result.evidence_id,resultId:result.result_id}});
+  }
+  const page=record.page && typeof record.page==='object' ? record.page as Record<string,unknown> : record;
+  if(typeof page.query_id==='string' && Array.isArray(page.items))for(const [index,item] of page.items.slice(0,3).entries()){
+    const evidence=item?.result || item;
+    if(typeof evidence?.evidence_id==='string')links.push({label:`查看比较证据 ${index+1}`,location:{pageId:'industrial-consistency',tab:'conflicts',evidenceId:evidence.evidence_id,resultId:typeof evidence.result_id==='string' ? evidence.result_id : undefined}});
+  }
   if (typeof record.dataset_id === "string") {
     const datasetId = record.dataset_id;
     const knowledgeKind = record.kind === "defect" ? "defect" : "normal";

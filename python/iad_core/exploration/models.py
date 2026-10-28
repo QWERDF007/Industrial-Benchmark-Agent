@@ -6,11 +6,28 @@ from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.knowledge.models import KnowledgeEvidence, KnowledgeSource
 
 
+class ExplorationPresetEdit(AnalysisModel):
+    name: NonBlankText
+    text: NonBlankText
+
+
+class ExplorationPromptPreset(ExplorationPresetEdit):
+    id: str
+    builtin: bool
+
+
+class FrozenExplorationPrompt(AnalysisModel):
+    preset_id: Optional[str] = None
+    preset_name: Optional[str] = None
+    text: NonBlankText
+
+
 class ExplorationStart(AnalysisModel):
     dataset_id: str
     normal_images: list[str] = Field(min_length=1)
     defect_images: list[str] = Field(min_length=1)
     objective: NonBlankText = '联合比较候选良品和异常样例，自行提出适合此数据集的可观察检查方向。'
+    prompt: Optional[FrozenExplorationPrompt] = None
 
     @model_validator(mode='after')
     def unique_images(self):

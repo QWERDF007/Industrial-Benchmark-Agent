@@ -7,6 +7,7 @@ from typing import Optional, List
 from collections import defaultdict
 from PIL import Image
 from pydantic import BaseModel
+from filelock import FileLock
 
 from iad_core.task.config import DatasetConfig, load_config
 from iad_core.storage.models import (
@@ -21,6 +22,7 @@ from iad_core.dataset.adapters import get_adapter
 from iad_core.dataset.scan_snapshot import ScanSnapshot
 from iad_core.evidence.masks import MaskImages
 from iad_core.evidence.sources import SampleContent
+from iad_core.duplicate.index import PixelScanSummary
 
 logger = logging.getLogger("iad_benchmark.scanner")
 
@@ -32,6 +34,7 @@ class ScanResult(BaseModel):
     annotation_count: int
     issue_count: int
     db_path: str
+    pixel_index: PixelScanSummary
 
 
 def scan_dataset(
@@ -40,11 +43,15 @@ def scan_dataset(
     batch_size: int = 500,
     config: Optional[DatasetConfig] = None,
     preview_fingerprint: Optional[str] = None,
+    force_pixels: bool = False,
+    pixel_cache_bytes: int = 256 * 1024 * 1024,
 ) -> ScanResult:
     """Scan configured sources and atomically publish current samples, annotations and issues."""
     if config is not None and config_path is not None:
         raise ValueError("Specify config or config_path, not both")
     config = config or load_config(config_path)
+    if not isinstance(force_pixels, bool):
+        raise ValueError('force_pixels must be a boolean')
     roots = [config.root, *([config.annotations.root] if config.annotations.root else [])]
     for root in roots:
         if not Path(root).is_dir():
@@ -52,8 +59,8 @@ def scan_dataset(
         with os.scandir(root):
             pass
     db = Database(db_path)
-    with db.connection() as conn:
-        snapshot = ScanSnapshot(conn, config)
+    with FileLock(str(Path(db_path).resolve()) + '.pixels.lock'), db.connection() as conn:
+        snapshot = ScanSnapshot(conn, config, force_pixels=force_pixels, pixel_cache_bytes=pixel_cache_bytes)
 
         # 2. Get adapter
         adapter = get_adapter(config)
@@ -141,14 +148,16 @@ def scan_dataset(
             sample_ids_batch.append(sample_id)
             conn.execute("INSERT INTO scan_seen(sample_id) VALUES(?)", (sample_id,))
 
+            payload = None
             try:
                 with open(raw_img.image_path, 'rb') as source:
                     payload = source.read()
+                source_hashes[sample_id] = hashlib.sha256(payload).hexdigest()
                 with Image.open(io.BytesIO(payload)) as img:
                     width, height = img.size
-                source_hashes[sample_id] = hashlib.sha256(payload).hexdigest()
             except Exception as e:
                 logger.error(f"Cannot decode image: {raw_img.relative_path} ({e})")
+                snapshot.pixels.stage(sample_id, raw_img.image_path, source_hashes.get(sample_id), unavailable_reason=str(e))
                 issue_batch.append(
                     ImportIssue(
                         task_id=config.task.task_id,
@@ -163,6 +172,9 @@ def scan_dataset(
                 if len(sample_batch) >= batch_size or len(issue_batch) >= batch_size:
                     flush_batch()
                 continue
+
+            with Image.open(io.BytesIO(payload)) as img:
+                snapshot.pixels.stage(sample_id, raw_img.image_path, source_hashes[sample_id], image=img)
 
             quality_info = adapter.load_quality(raw_img)
             data_origin = adapter.load_origin(raw_img)
@@ -290,6 +302,7 @@ def scan_dataset(
                     sample_id=sample_id,
                     annotation_type=raw_ann.annotation_type,
                     raw_label=raw_label,
+                    is_ignored=raw_ann.is_ignored,
                     phenomenon=phenomenon,
                     bbox=raw_ann.bbox,
                     polygon=raw_ann.polygon,
@@ -320,4 +333,5 @@ def scan_dataset(
             annotation_count=total_annotations,
             issue_count=total_issues,
             db_path=db_path,
+            pixel_index=snapshot.pixel_index,
         )

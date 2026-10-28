@@ -7,6 +7,7 @@ from pathlib import PurePosixPath
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 from iad_core.storage.models import QualityStatus, DataOrigin, AnnotationSource
+from iad_core.consistency.policy import AnnotationPolicy
 
 
 FolderRole = Literal["normal", "anomaly", "unlabeled", "excluded"]
@@ -105,7 +106,7 @@ class BBoxPolicyConfig(BaseModel):
     )
 
 
-class AnnotationsConfig(BaseModel):
+class AnnotationsConfig(AnnotationPolicy):
     root: Optional[str] = Field(None, description="Labelme root; mirrors image-relative paths")
     format: str = Field(
         "none",

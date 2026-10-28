@@ -147,7 +147,7 @@ TOOL_CONTRACT_SPECS = [
         "region_view",
         {"task_id": "t_contract", "sample_id": "t_contract:s1", "bbox_xyxy": [10, 10, 40, 40]},
         {"task_id": "t_contract", "sample_id": "t_contract:s1", "bbox_xyxy": [10, 10, 40, 40], "padding_ratio": 0.15},
-        {"task_id": "t_contract", "sample_id": "t_contract:s1"},
+        {"sample_id": "t_contract:s1"},
     ),
     (
         "samples_compare",
@@ -165,14 +165,14 @@ TOOL_CONTRACT_SPECS = [
     (
         "feature_prepare",
         {"task_id": "t_contract"},
-        {"task_id": "t_contract", "model_id": "dinov2_vitb14_reg", "preprocess_key": "dinov2_224_norm", "batch_size": 32, "device": "cpu"},
+        {"task_id": "t_contract", "batch_size": 32, "device": "cpu"},
         {},
     ),
     (
         "visual_search",
-        {"task_id": "t_contract", "sample_id": "t_contract:s1"},
-        {"task_id": "t_contract", "sample_id": "t_contract:s1", "top_k": 5, "exclude_self": True},
-        {"task_id": "t_contract"},
+        {"sample_id": "t_contract:s1"},
+        {"sample_id": "t_contract:s1", "top_k": 5, "exclude_self": True},
+        {},
     ),
     (
         "duplicate_audit",

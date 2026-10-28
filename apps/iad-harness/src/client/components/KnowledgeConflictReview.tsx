@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { v4 as uuid } from "uuid";
 import type { KnowledgeReviewContext, KnowledgeReviewItem, KnowledgeReviewSubmission } from "../../shared/domain.generated.js";
 import { message, request } from "../api.js";
 import { useWorkspace } from "../workspace.js";
@@ -39,7 +40,7 @@ export function KnowledgeConflictReview({ datasetId }: { datasetId: string }) {
   }, [selected?.conflict_id, selected?.version_id, revision]);
   async function submit() {
     if (!context) return;
-    const submission = pending || { ...context.reference, submission_id: crypto.randomUUID(), context_signature: context.context_signature, reviewer, action, instruction: action === "revise" ? instruction : "", reason };
+    const submission = pending || { ...context.reference, submission_id: uuid(), context_signature: context.context_signature, reviewer, action, instruction: action === "revise" ? instruction : "", reason };
     setPending(submission); setBusy(true); setError("");
     try { await request("/review/knowledge", submission); setReason(""); setInstruction(""); setRevision(value => value + 1); }
     catch (error) { setError(message(error)); } finally { setBusy(false); }
