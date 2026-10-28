@@ -81,6 +81,15 @@ export class Workspace {
     this.commit();
     this.layout?.selectPanel(pageId);
   }
+  forgetDataset(datasetId: string) {
+    const views = { ...this.state.views };
+    for (const page of Object.keys(pages) as PageId[]) {
+      for (const kind of ["normal", "defect"] as const) delete views[this.viewKey(page, datasetId, kind)];
+    }
+    this.state = { ...this.state, views, datasetId: this.state.datasetId === datasetId ? "" : this.state.datasetId,
+      consistency: { tab: this.state.consistency.tab, scope: { kind: "all_registered" } } };
+    this.commit(true);
+  }
   selectDataset(datasetId: string, replace = false) {
     if (datasetId === this.state.datasetId) return;
     if (!this.canLeave()) return;

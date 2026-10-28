@@ -783,6 +783,19 @@ var __IadClientBundle__ = (() => {
       this.commit();
       this.layout?.selectPanel(pageId);
     }
+    forgetDataset(datasetId) {
+      const views = { ...this.state.views };
+      for (const page of Object.keys(pages)) {
+        for (const kind of ["normal", "defect"]) delete views[this.viewKey(page, datasetId, kind)];
+      }
+      this.state = {
+        ...this.state,
+        views,
+        datasetId: this.state.datasetId === datasetId ? "" : this.state.datasetId,
+        consistency: { tab: this.state.consistency.tab, scope: { kind: "all_registered" } }
+      };
+      this.commit(true);
+    }
     selectDataset(datasetId, replace = false) {
       if (datasetId === this.state.datasetId) return;
       if (!this.canLeave()) return;
@@ -1135,6 +1148,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
   function DatasetManager({ datasets, selected, onChanged }) {
+    const { workspace } = useWorkspace();
     const settingsRef = (0, import_react9.useRef)(null);
     const [requested, setRequested] = (0, import_react9.useState)(null);
     (0, import_react9.useEffect)(() => {
@@ -1249,6 +1263,7 @@ var __IadClientBundle__ = (() => {
                     restoreFocus: () => addButton.current,
                     onDelete: async () => {
                       await request(`/datasets/${encodeURIComponent(dataset.dataset_id)}`, void 0, "DELETE");
+                      workspace.forgetDataset(dataset.dataset_id);
                       setNotice(`\u5DF2\u5220\u9664\u6570\u636E\u96C6\u201C${dataset.name}\u201D`);
                       onChanged();
                     }

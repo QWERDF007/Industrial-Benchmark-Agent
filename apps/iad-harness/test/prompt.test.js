@@ -40,6 +40,16 @@ test("industrial Agent prompt follows actual tool availability instead of the co
     assert.match(text, /Annotation != Quality/);
     assert.match(text, /Never Write Review/);
     assert.doesNotMatch(text, /完整流程步骤/);
+    const loaded = await session.ctx.tools.execute({ name: "skill", arguments: { name: "audit-data-consistency" },
+      callId: "load-consistency", signal: new AbortController().signal });
+    assert.equal(loaded.isError, false);
+    const consistency = {content: loaded.content[0].text};
+    assert.match(consistency.content, /多个.*目录|多目录/);
+    assert.match(consistency.content, /模型.*发现|自行.*识别/);
+    assert.match(consistency.content, /dataset_directory_inspect/);
+    assert.match(consistency.content, /dataset_import/);
+    assert.match(consistency.content, /dataset_preview/);
+    assert.match(consistency.content, /dataset_ids/);
     // Later registration and removal must be reflected without caching the tool surface.
     agent.ctx.systemPrompt.section({ name: "tool:knowledge_get", order: 2000, text: "Guidance for the available knowledge reader" });
     assert.match(renderPrompt(await session.ctx.systemPrompt.assemble(assembleContextFor(agent))), /Guidance for the available knowledge reader/);

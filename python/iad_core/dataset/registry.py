@@ -149,8 +149,9 @@ class DatasetRegistry:
                 (task_id,dataset_id,task_id,dataset_id)).fetchone()
             if exclusive_task and conn.execute("SELECT 1 FROM agent_runs WHERE task_id=? AND status IN ('PENDING','RUNNING')", (task_id,)).fetchone():
                 raise ValueError("数据集仍有执行中的 Agent 作业，请等待作业结束后删除")
-            jobs = f"""SELECT job_id FROM job_runs WHERE ({job_dataset}=? OR (task_id=? AND ?))
-                AND NOT EXISTS (SELECT 1 FROM consistency_children c WHERE c.run_id=job_runs.job_id)"""
+            from iad_core.consistency.deletion import ConsistencyDeletion
+            ConsistencyDeletion(conn).delete_dataset(dataset_id)
+            jobs = f"SELECT job_id FROM job_runs WHERE ({job_dataset}=? OR (task_id=? AND ?))"
             job_scope = (dataset_id,task_id,exclusive_task)
             conn.execute(f"DELETE FROM model_calls WHERE run_id IN ({jobs})", job_scope)
             conn.execute(f"DELETE FROM job_runs WHERE job_id IN ({jobs})", job_scope)
@@ -355,11 +356,17 @@ class DatasetRegistry:
             conn.execute("UPDATE datasets SET reference_sample_ids_json='[]',reference_selection_set=0 WHERE dataset_id=?", (dataset_id,))
 
     @staticmethod
-    def directories(directory: str) -> dict:
+    def directories(directory: str, *, file_offset: int = 0, file_limit: int = 40) -> dict:
         current = Path(directory).expanduser().resolve(strict=True)
         if not current.is_dir():
             raise ValueError("Path is not a directory")
+        if type(file_offset) is not int or file_offset < 0 or type(file_limit) is not int or not 1 <= file_limit <= 100:
+            raise ValueError("file_offset must be nonnegative and file_limit must be between 1 and 100")
         entries = sorted(current.iterdir(), key=lambda p: p.name)
+        files = [p for p in entries if p.is_file()]
+        end = file_offset + file_limit
         return {"path": str(current), "parent": str(current.parent), "directories": [
             {"name": p.name, "path": str(p)} for p in entries if p.is_dir() and not p.name.startswith(".")
-        ], "file_counts": dict(Counter(p.suffix.lower() for p in entries if p.is_file()))}
+        ], "file_counts": dict(Counter(p.suffix.lower() for p in files)),
+            "files": [{"name": p.name, "path": str(p)} for p in files[file_offset:end]],
+            "total_files": len(files), "next_file_offset": end if end < len(files) else None}

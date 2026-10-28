@@ -102,6 +102,7 @@ function DatasetSettings({ dataset, onChanged, sectionRef }: { dataset: Dataset;
 }
 
 export function DatasetManager({ datasets, selected, onChanged }: { datasets: Dataset[]; selected?: Dataset; onChanged(id?: string): void }) {
+  const { workspace } = useWorkspace();
   const settingsRef = useRef<HTMLElement>(null);
   const [requested, setRequested] = useState<string | null>(null);
   useEffect(() => {
@@ -161,7 +162,7 @@ export function DatasetManager({ datasets, selected, onChanged }: { datasets: Da
         <td><div className="iad-row"><IconButton label={`配置数据集 ${dataset.name}`} title="配置数据集" aria-pressed={selected?.dataset_id === dataset.dataset_id} onClick={() => { setRequested(dataset.dataset_id); onChanged(dataset.dataset_id); }}><ModelSettingsIcon size={16} /></IconButton>
           <DeleteAction title="删除数据集" name={dataset.name}
             description="删除其样本记录、知识、审计和复核记录，保留服务器上的原始图像与标注文件。" restoreFocus={() => addButton.current}
-            onDelete={async () => { await request(`/datasets/${encodeURIComponent(dataset.dataset_id)}`, undefined, "DELETE"); setNotice(`已删除数据集“${dataset.name}”`); onChanged(); }} /></div></td>
+            onDelete={async () => { await request(`/datasets/${encodeURIComponent(dataset.dataset_id)}`, undefined, "DELETE"); workspace.forgetDataset(dataset.dataset_id); setNotice(`已删除数据集“${dataset.name}”`); onChanged(); }} /></div></td>
       </tr>)}</tbody></table></div>{filtered.length > 10 && <Pagination total={filtered.length} page={currentPage} size={10} unit="个数据集" onPage={setPage} />}{notice && <p role="status">{notice}</p>}{!filtered.length && <p className="iad-muted">{datasets.length ? "没有匹配的数据集。" : "添加服务器上的 Labelme 图像目录与标注目录，或异常检测分类目录。"}</p>}
     </section>
     {selected ? <DatasetSettings key={selected.dataset_id} dataset={selected} onChanged={onChanged} sectionRef={settingsRef} /> : <section><p>选择或添加数据集。</p></section>}

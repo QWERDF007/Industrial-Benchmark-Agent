@@ -38,6 +38,13 @@ test("DSH directory import and browser queries share one dataset and report", as
     const labels = await execute("dataset_directory_inspect", { path: path.join(root, "labels") });
     assert.deepEqual(images.value.file_counts, { ".png": 3 });
     assert.deepEqual(labels.value.file_counts, { ".json": 1 });
+    assert.deepEqual(images.value.files.map(item => item.name), ["part-0.png", "part-1.png", "part-2.png"], "模型能读取真实文件名，不依赖固定目录名推测配对");
+    const first = await execute("dataset_directory_inspect", {path: path.join(root, "images"), file_offset: 0, file_limit: 2});
+    assert.equal(first.value.next_file_offset, 2);
+    const last = await execute("dataset_directory_inspect", {path: path.join(root, "images"), file_offset: first.value.next_file_offset, file_limit: 2});
+    assert.deepEqual(last.value.files.map(item => item.name), ["part-2.png"]);
+    assert.equal(last.value.next_file_offset, null);
+    assert.equal((await execute("dataset_directory_inspect", {path: root, file_limit: 1000})).isError, true);
     assert.deepEqual((await (await fetch(base + "/directories?path=" + encodeURIComponent(root))).json()), rootListing.value);
     const missing = await execute("dataset_directory_inspect", { path: path.join(root, "missing") });
     assert.equal(missing.isError, true);

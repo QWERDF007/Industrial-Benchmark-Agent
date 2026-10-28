@@ -1,3 +1,4 @@
+import json
 from sqlite3 import Connection
 from contextlib import nullcontext
 
@@ -40,6 +41,11 @@ class BatchRepository:
     def save(self, plan: BatchPlan) -> BatchPlan:
         with self.db.connection() as connection:
             connection.execute('BEGIN IMMEDIATE')
+            dataset_ids = sorted(set(plan.scopes.subjects.dataset_ids + plan.scopes.corpus.dataset_ids))
+            if connection.execute("""SELECT 1 FROM json_each(?) required
+                    WHERE NOT EXISTS (SELECT 1 FROM datasets WHERE dataset_id=required.value) LIMIT 1""",
+                    (json.dumps(dataset_ids),)).fetchone():
+                raise ConsistencyError('REFERENCE_NOT_FOUND', '批次引用的数据集已删除，请重新选择范围')
             connection.execute('''INSERT INTO consistency_runs(batch_id,request_id,fingerprint,root_batch_id,parent_batch_id,plan_json)
                 VALUES(?,?,?,?,?,?) ON CONFLICT(request_id) DO NOTHING''',
                 (plan.batch_id,plan.request.request_id,plan.fingerprint,plan.root_batch_id,plan.parent_batch_id,plan.model_dump_json()))

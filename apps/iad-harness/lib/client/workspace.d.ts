@@ -123,6 +123,7 @@ export declare class Workspace {
     navigate(pageId: PageId, selected?: string): void;
     updateConsistency(patch: Partial<WorkspaceState['consistency']>, replace?: boolean): void;
     openLocation(location: WorkbenchLocation): void;
+    forgetDataset(datasetId: string): void;
     selectDataset(datasetId: string, replace?: boolean): void;
     updateView(page: PageId, patch: Partial<ViewState>, replace?: boolean): void;
     ask(reference: InspectionReference, selection: InspectionSelection | null, transform: InspectionTransform, question: string): Promise<void>;

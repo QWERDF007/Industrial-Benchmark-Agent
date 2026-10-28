@@ -2,8 +2,10 @@ import type {SkillRegistration} from '@deepseek-ai/dsh-skill';
 
 export const AUDIT_DATA_CONSISTENCY_SKILL:SkillRegistration={
   name:'audit-data-consistency',source:'bundled',provider:'iad-harness',
-  description:'查当前图的全库候选、执行用户指定的数据一致性范围、继续原批次，或解释冻结图像与标注差异。',
+  description:'从一个或多个服务器目录由模型发现不同数据集结构、规划导入及跨集一致性检查；也可查当前图候选、执行指定范围、继续原批次或解释冻结差异。',
   content:`先区分用户意图，所有结论以实际引用、覆盖及图片为依据。
+0. 用户给出多个目录，或父目录下含多个数据集时，由模型自行发现实际结构并规划，不预设目录名称、层级、图像/标注配对规则或数据集数量。先 dataset_list 读取已登记来源，再逐层 dataset_directory_inspect 读取真实子目录、文件类型和分页文件名，必要时沿 next_file_offset 继续检查；不同路径可以是不同格式，同一路径也可能包含多套独立数据集。根据实际证据识别边界、图像和标注关系；Labelme 使用实际 image_dir/annotation_dir（可相同），目录分类用 dataset_preview 读取实际 items、角色与冲突，再用一致的 rules 和 preview_fingerprint 导入。不得仅因父目录下有多个子目录就将其各导入一套，或将全部数据递归混成一套；无法确认配对或角色才澄清。逐套 dataset_import，名称取实际数据集边界目录或明确的用户名称；已登记来源复用 dataset_id，导入失败明确逐项报告，不静默跳过，也不说全部接入成功。
+仅用户请求导入就到导入结束；用户明确同时要求一致性检查时，收集本轮实际导入或复用的 dataset_ids，再以 subjects={kind:"datasets",dataset_ids:[...]}、corpus_scope={kind:"datasets",dataset_ids:[...]} 调用 consistency_start，默认只在本轮指定数据集内互查，不把无关已登记集混入；用户另有范围时依其要求。完整接入后再启动一个跨集批次，不在每导入一套后重复检查半成品范围。用同一个 batch_id 调用 consistency_status 等待终态，再用 consistency_report(selection:{kind:"batch",batch_id}) 读取真实覆盖、失败/未处理、同图与冲突统计；必要时分页读取一致性结果。只请求添加和一致性检查时不自行挖掘知识、启动 MLLM 审计或模型图组分析，不把像素一致或标注差异当成缺陷真值。
 1. 当前图查询：dataset_list/图像引用确认来源，image_retrieve 使用真实 sample_id 或当前会话附件，检索库默认全部登记集。只查询时不启动全库建库或批次；缺索引报告覆盖，用户要求准备时 image_index_prepare。
 2. 全库/范围检查：用户明确要求时 consistency_start；subjects 和 corpus_scope 独立，默认 exact。request_id 固定到同一请求，双击/重发不得换 ID 制造重复任务。consistency_status 读取真实完成/失败/未处理，RUNNING/PENDING 不是完成。用户要求停止用 consistency_cancel，继续原任务用 consistency_retry，沿原引用，不自行扩展范围或重扫。
 3. 查看结果：consistency_query/report 的 selection 为 batch 或 scope。当前、历史、未知分别呈现；TOP_K 只覆盖实际召回候选，不说全库没有冲突。consistency_groups/group_members 按同一个 query_id 分页，不能只读首批就说全组无差异。

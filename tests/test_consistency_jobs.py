@@ -100,7 +100,7 @@ def test_visual_batch_prepares_query_subjects_outside_the_corpus_before_comparin
         runtime.close()
 
 
-def test_combined_batch_prepares_corpus_before_comparing_and_survives_source_deletion(dataset,tmp_path):
+def test_combined_batch_prepares_corpus_and_dataset_deletion_removes_its_history(dataset,tmp_path):
     from tests.feature_fixtures import configure_test_encoder,MockFeatureExtractor
     from iad_core.feature.cache import ContentFeatureCache
     from iad_core.storage.repositories import SampleRepository
@@ -140,10 +140,12 @@ def test_combined_batch_prepares_corpus_before_comparing_and_survives_source_del
         assert len(identities)==len(set(identities))==6
         assert queries.query(ConsistencyQuery(selection={'kind':'batch','batch_id':batch.batch_id},relation='EXACT')).total==1
         registry.delete(config.dataset.id)
-        assert runtime.consistency.status(batch.batch_id).completed==4
-        assert runtime.consistency.results(batch.batch_id)==results
+        assert runtime.consistency.list().items == []
+        with pytest.raises(ConsistencyError, match='does not exist'):
+            runtime.consistency.status(batch.batch_id)
         from iad_core.consistency.service import ConsistencyService
-        assert ConsistencyService(db).evidence(results[0].evidence_id).source_states.left=='MISSING'
+        with pytest.raises(ConsistencyError, match='does not exist'):
+            ConsistencyService(db).evidence(results[0].evidence_id)
     finally:runtime.close()
 
 

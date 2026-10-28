@@ -408,7 +408,7 @@ def knowledge_evidence(args, db_path):
 
 
 def directory_list(args, db_path):
-    return DatasetRegistry.directories(args.get("path", "/data1"))
+    return DatasetRegistry.directories(args.get("path", "/data1"), file_offset=args.get("file_offset", 0), file_limit=args.get("file_limit", 40))
 
 
 def model_call_get(args, db_path):

@@ -160,10 +160,30 @@ for directory,count in [('公头NG',2),('公头OK',3),('母头NG',1),('母头OK'
     stage='configure dataset';
     await(await element('button[aria-label="配置数据集 真实名称已修改"]')).click();
     await driver.wait(()=>driver.executeScript('return document.activeElement?.getAttribute("aria-label")==="当前数据集详情" && document.activeElement.querySelector("h2")?.textContent==="真实名称已修改"'),10000);
+    stage='quality history before delete';
+    const check=await api('/consistency/start',{subjects:{kind:'datasets',dataset_ids:[created.dataset_id]},corpus_scope:{kind:'datasets',dataset_ids:[dataset.dataset_id]},mode:'exact',request_id:'delete-quality'});
+    await driver.wait(async()=>!['PENDING','RUNNING'].includes((await api('/consistency/runs/'+check.batch_id)).status),15000);
+    const report=await api('/consistency/report',{selection:{kind:'batch',batch_id:check.batch_id}});
+    assert.ok(report.page.total>0,'删除前有真实跨数据集同图证据');
+    await(await element('button[aria-label="数据一致性"]')).click();await button('索引与作业');
+    await element('[data-batch-id="'+check.batch_id+'"]');
+    await button("查看结果");
+    await(await element('button[aria-label="数据集管理"]')).click();
     stage='direct delete';
     await(await element('button[aria-label="删除数据集 Labelme真实导入"]')).click();
     await element('dialog[aria-label="删除数据集"]');await button('确认删除');
     await driver.wait(async()=>(await api('/datasets')).datasets.length===1,10000);
+    assert.deepEqual((await api('/consistency/runs')).items,[],'删除后批次及索引作业同步清除');
+    await(await element('button[aria-label="数据一致性"]')).click();await button('索引与作业');
+    await driver.wait(()=>driver.executeScript("return document.querySelector('.iad-consistency')?.textContent.includes('尚无检查作业')"),10000);
+    assert.equal((await driver.findElements(By.css('[data-batch-id]'))).length,0);
+    await button('重复图组');
+    await driver.wait(()=>driver.executeScript("return !document.querySelector('[aria-label=范围一致性结果] [aria-busy=true]') && document.querySelector('[aria-label=范围一致性结果]')?.textContent.includes('尚未执行一致性检查')"),10000);
+    assert.equal((await driver.findElements(By.css('.iad-consistency [role=alert]'))).length,0,'已删除批次不残留失效引用');
+    for(const label of ['模型审计','人工复核']){
+      await(await element('button[aria-label="'+label+'"]')).click();
+      await driver.wait(async()=>!(await(await element('select[aria-label="当前数据集"]')).getText()).includes('Labelme真实导入'),10000);
+    }
     await fs.access(path.join(root,'images/sample.png'));await fs.access(path.join(root,'labels/sample.json'));
     console.log(JSON.stringify({output,layout:measured,contentWidth,responsiveCases:results.length,realImports:2,realDeletes:1,modelJobsStarted:0}));
   } catch(error) {

@@ -80,5 +80,5 @@ export interface SampleDetail {
   review_decision: ReviewDecisionRecord | null;
   review_history: ReviewDecisionRecord[];
 }
-export interface DirectoryListing { path: string; parent: string; directories: Array<{ name: string; path: string }>; file_counts: Record<string, number> }
+export interface DirectoryListing { path: string; parent: string; directories: Array<{ name: string; path: string }>; file_counts: Record<string, number>; files: Array<{name: string; path: string}>; total_files: number; next_file_offset: number | null }
 export type AuditStartRequest = Omit<AuditStart, "filters"> & { filters?: Partial<Filters> };

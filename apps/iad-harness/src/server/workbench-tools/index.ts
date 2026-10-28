@@ -18,8 +18,10 @@ export function createWorkbenchTools(bridge: PythonBridge, ctx: Context): ToolDe
     }),
     defineTool({
       name: "dataset_directory_inspect",
-      description: "只读检查服务器数据集目录，返回真实子目录和当前层文件扩展名数量 file_counts（不递归，不等于有效样本数）；按需逐层识别图像与 Labelme JSON 所在目录，二者可为同一目录。不会导入或修改数据。",
-      parameters: { path: { type: "string", required: true, description: "用户给出的服务器目录或已列出的子目录绝对路径" } },
+      description: "只读检查服务器数据集目录，返回真实子目录和当前层文件扩展名数量 file_counts、分页真实文件名 files/next_file_offset（不递归，不等于有效样本数）；多个路径或父目录含多套数据时按需逐层发现真实边界与格式，图像与 Labelme JSON 可在同一目录；不按固定目录名称或层级匹配。不会导入或修改数据。",
+      parameters: { path: { type: "string", required: true, description: "用户给出的服务器目录或已列出的子目录绝对路径" },
+        file_offset: {type: "integer", description: "文件名分页起点，默认0；继续时使用next_file_offset"},
+        file_limit: {type: "integer", description: "每页文件名数，默认40，最多100"} },
       output: workbenchJsonOutput,
       execute: (args, exec) => bridge.execute("directory_list", args, exec.signal),
     }),
@@ -42,7 +44,7 @@ export function createWorkbenchTools(bridge: PythonBridge, ctx: Context): ToolDe
     }),
     defineTool({
       name: "dataset_import",
-      description: "独立导入服务器数据集：Labelme指定image_dir、annotation_dir；目录格式先预览，再指定root_dir、一致的rules和preview_fingerprint。名称未指定时取用户根目录名。导入本身不启动知识挖掘或审计。",
+      description: "独立导入服务器数据集：Labelme指定image_dir、annotation_dir；目录格式先预览，再指定root_dir、一致的rules和preview_fingerprint。名称未指定时取用户根目录名。每次仅导入一套数据；多套数据先由模型检查目录分别规划、逐套导入并收集真实dataset_id。导入本身不启动知识挖掘或审计，用户另请求一致性检查时在全部接入后调用consistency_start。",
       parameters: {
         format: { type: "string", enum: ["labelme", "folder_classification"], required: true },
         name: { type: "string", required: true },
