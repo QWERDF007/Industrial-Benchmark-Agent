@@ -1,5 +1,5 @@
 import { NativeProviders } from './providers.js';
-const starts = new Set(['direction_exploration_start', 'knowledge_start', 'audit_start']);
+const starts = new Set(['direction_exploration_start', 'knowledge_start', 'audit_start', 'consistency_group_analyze']);
 const retries = { direction_exploration_retry: 'direction_exploration_status', knowledge_retry: 'knowledge_status', audit_retry: 'audit_status' };
 const normalized = (endpoint) => endpoint.replace(/\/$/, '').replace(/\/chat\/completions$/, '');
 export class WorkbenchModelRouting {

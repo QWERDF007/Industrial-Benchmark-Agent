@@ -873,7 +873,8 @@ export type JobType =
   | "DEFECT_KNOWLEDGE"
   | "DIRECTION_EXPLORATION"
   | "IMAGE_INDEX"
-  | "DATA_CONSISTENCY";
+  | "DATA_CONSISTENCY"
+  | "CONSISTENCY_ANALYSIS";
 export type OriginSessionId1 = string | null;
 export type RootRunId = string;
 export type ParentRunId = string | null;
@@ -1644,6 +1645,15 @@ export type Memberid = string | null;
 export type Differenceid = string | null;
 export type Returnpage = string | null;
 export type Sessionid = string | null;
+export type Queryid = string | null;
+export type Gallerysearch = string | null;
+export type Galleryorder = ("recent" | "members") | null;
+export type Differencefilter = ("all" | "annotation" | "quality" | "policy" | "unavailable") | null;
+export type Gallerypage = number | null;
+export type Detailtab = ("summary" | "evidence" | "review") | null;
+export type Subjectid = string | null;
+export type Conflictfilter = ("confirmed" | "all") | null;
+export type Reviewfilter = ("OPEN" | "NEEDS_CONTEXT" | "RESOLVED") | null;
 export type Grouppage = number | null;
 export type Memberpage = number | null;
 export type Cursor1 = string | null;
@@ -1677,6 +1687,15 @@ export type Memberid1 = string | null;
 export type Differenceid1 = string | null;
 export type Returnpage1 = string | null;
 export type Sessionid1 = string | null;
+export type Queryid1 = string | null;
+export type Gallerysearch1 = string | null;
+export type Galleryorder1 = ("recent" | "members") | null;
+export type Differencefilter1 = ("all" | "annotation" | "quality" | "policy" | "unavailable") | null;
+export type Gallerypage1 = number | null;
+export type Detailtab1 = ("summary" | "evidence" | "review") | null;
+export type Subjectid1 = string | null;
+export type Conflictfilter1 = ("confirmed" | "all") | null;
+export type Reviewfilter1 = ("OPEN" | "NEEDS_CONTEXT" | "RESOLVED") | null;
 export type Grouppage1 = number | null;
 export type Memberpage1 = number | null;
 export type NormalizationNote = string;
@@ -1803,6 +1822,88 @@ export type RelativePath6 = string;
 export type EvidenceId15 = string;
 export type Items10 = GroupMember[];
 export type Total13 = number;
+export type QueryId5 = string;
+export type Kind39 = "conflicts" | "groups";
+export type GroupId3 = string;
+export type FactsState4 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
+export type QueryId6 = string;
+export type Kind40 = "conflicts" | "groups";
+export type Page12 = number;
+export type PageSize13 = number;
+export type Search6 = string;
+export type Order = "recent" | "members";
+export type DifferenceFilter = "all" | "annotation" | "quality" | "policy" | "unavailable";
+export type QueryId7 = string;
+export type Kind41 = "conflicts" | "groups";
+export type GroupId4 = string;
+export type FactsState5 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
+export type Page13 = number;
+export type PageSize14 = number;
+export type QueryId8 = string;
+export type Kind42 = "conflicts" | "groups";
+export type Value = "all" | "annotation" | "quality" | "policy" | "unavailable";
+export type Label3 = string;
+export type Count = number;
+export type Filters = GalleryFilterCount[];
+export type GroupId5 = string;
+export type FactsState6 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
+export type EvidenceId16 = string;
+export type Side1 = "left" | "right";
+export type Available1 = boolean;
+export type MemberCount4 = number;
+export type CandidateCount = number;
+export type DatasetCount1 = number;
+export type PairCount2 = number;
+export type DifferenceTypes = (
+  | "QUALITY_LABEL"
+  | "CATEGORY"
+  | "ONE_SIDED_REGION"
+  | "GEOMETRY"
+  | "SPLIT_MERGE"
+  | "AMBIGUOUS_MATCH"
+  | "POLICY_UNCONFIRMED"
+  | "ANNOTATION_UNREADABLE"
+)[];
+export type ConfirmedConflict3 = boolean;
+export type Items11 = GalleryItem[];
+export type Total14 = number;
+export type QueryId9 = string;
+export type GroupId6 = string;
+export type EvidenceId17 = string;
+export type ResultId7 = string;
+export type AnchorSide = "left" | "right";
+export type Items12 = GalleryMember[];
+export type Total15 = number;
+export type QueryId10 = string;
+export type Kind43 = "conflicts" | "groups";
+export type GroupId7 = string;
+export type FactsState7 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
+export type RequestId3 = string;
+export type GroupId8 = string;
+export type Status20 =
+  ("PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED") | "NOT_ANALYZED";
+export type RunId9 = string | null;
+export type ModelName5 = string | null;
+/**
+ * @minItems 1
+ * @maxItems 100
+ */
+export type Conclusions = [GroupAnalysisConclusion, ...GroupAnalysisConclusion[]];
+export type Text4 = string;
+/**
+ * @minItems 1
+ * @maxItems 100
+ */
+export type References1 = [GroupAnalysisReference, ...GroupAnalysisReference[]];
+export type CandidateId = string;
+export type ResultId8 = string;
+export type EvidenceId18 = string;
+export type DifferenceId3 = string | null;
+/**
+ * @maxItems 100
+ */
+export type Limitations14 = string[];
+export type Error2 = string | null;
 export type Device = string;
 export type BatchSize = number;
 export type GpuMemoryMb = number;
@@ -1963,6 +2064,13 @@ export interface WorkbenchDomain {
   GroupMemberQuery?: GroupMemberQuery;
   StrictGroupPage?: StrictGroupPage;
   GroupMemberPage?: GroupMemberPage;
+  GalleryReference?: GalleryReference;
+  GalleryQuery?: GalleryQuery;
+  GalleryMemberQuery?: GalleryMemberQuery;
+  GalleryPage?: GalleryPage;
+  GalleryMemberPage?: GalleryMemberPage;
+  GroupAnalysisStart?: GroupAnalysisStart;
+  GroupAnalysisView?: GroupAnalysisView;
   EmbeddingProfile?: EmbeddingProfile;
   ImageEncoderConfig?: ImageEncoderConfig;
   ImageEncoderSettings?: ImageEncoderSettings;
@@ -3877,6 +3985,15 @@ export interface ConsistencyReturnLocation {
   differenceId?: Differenceid;
   returnPage?: Returnpage;
   sessionId?: Sessionid;
+  queryId?: Queryid;
+  gallerySearch?: Gallerysearch;
+  galleryOrder?: Galleryorder;
+  differenceFilter?: Differencefilter;
+  galleryPage?: Gallerypage;
+  detailTab?: Detailtab;
+  subjectId?: Subjectid;
+  conflictFilter?: Conflictfilter;
+  reviewFilter?: Reviewfilter;
   groupPage?: Grouppage;
   memberPage?: Memberpage;
 }
@@ -3927,6 +4044,15 @@ export interface ConsistencyReturnLocation1 {
   differenceId: Differenceid1;
   returnPage: Returnpage1;
   sessionId: Sessionid1;
+  queryId: Queryid1;
+  gallerySearch: Gallerysearch1;
+  galleryOrder: Galleryorder1;
+  differenceFilter: Differencefilter1;
+  galleryPage: Gallerypage1;
+  detailTab: Detailtab1;
+  subjectId: Subjectid1;
+  conflictFilter: Conflictfilter1;
+  reviewFilter: Reviewfilter1;
   groupPage: Grouppage1;
   memberPage: Memberpage1;
 }
@@ -4092,6 +4218,110 @@ export interface GroupMember {
   dataset_id: DatasetId35;
   relative_path: RelativePath6;
   evidence_id: EvidenceId15;
+}
+export interface GalleryReference {
+  query_id: QueryId5;
+  kind: Kind39;
+  group_id: GroupId3;
+  facts_state?: FactsState4;
+}
+export interface GalleryQuery {
+  query_id: QueryId6;
+  kind: Kind40;
+  page?: Page12;
+  page_size?: PageSize13;
+  search?: Search6;
+  order?: Order;
+  difference_filter?: DifferenceFilter;
+}
+export interface GalleryMemberQuery {
+  query_id: QueryId7;
+  kind: Kind41;
+  group_id: GroupId4;
+  facts_state?: FactsState5;
+  page?: Page13;
+  page_size?: PageSize14;
+}
+export interface GalleryPage {
+  query_id: QueryId8;
+  kind: Kind42;
+  filters: Filters;
+  items: Items11;
+  total: Total14;
+}
+export interface GalleryFilterCount {
+  value: Value;
+  label: Label3;
+  count: Count;
+}
+export interface GalleryItem {
+  group_id: GroupId5;
+  facts_state: FactsState6;
+  anchor: GalleryImage;
+  member_count: MemberCount4;
+  candidate_count: CandidateCount;
+  dataset_count: DatasetCount1;
+  pair_count: PairCount2;
+  difference_types: DifferenceTypes;
+  confirmed_conflict: ConfirmedConflict3;
+}
+export interface GalleryImage {
+  sample: Sample;
+  evidence_id: EvidenceId16;
+  side: Side1;
+  available: Available1;
+}
+export interface GalleryMemberPage {
+  query_id: QueryId9;
+  group_id: GroupId6;
+  anchor: GalleryImage;
+  items: Items12;
+  total: Total15;
+}
+export interface GalleryMember {
+  image: GalleryImage;
+  comparison: GalleryComparison | null;
+}
+export interface GalleryComparison {
+  evidence_id: EvidenceId17;
+  result_id: ResultId7;
+  anchor_side: AnchorSide;
+}
+export interface GroupAnalysisStart {
+  query_id: QueryId10;
+  kind: Kind43;
+  group_id: GroupId7;
+  facts_state?: FactsState7;
+  request_id: RequestId3;
+}
+export interface GroupAnalysisView {
+  group_id: GroupId8;
+  status: Status20;
+  run_id: RunId9;
+  model_name: ModelName5;
+  result: GroupAnalysisDraft | null;
+  error: Error2;
+  candidate_offsets: CandidateOffsets;
+}
+export interface GroupAnalysisDraft {
+  conclusions: Conclusions;
+  limitations: Limitations14;
+}
+export interface GroupAnalysisConclusion {
+  text: Text4;
+  references: References1;
+}
+export interface GroupAnalysisReference {
+  candidate_id: CandidateId;
+  comparison: GroupAnalysisComparison | null;
+}
+export interface GroupAnalysisComparison {
+  result_id: ResultId8;
+  evidence_id: EvidenceId18;
+  difference_id: DifferenceId3;
+}
+export interface CandidateOffsets {
+  [k: string]: number;
 }
 export interface ImageEncoderConfig {
   device: Device;

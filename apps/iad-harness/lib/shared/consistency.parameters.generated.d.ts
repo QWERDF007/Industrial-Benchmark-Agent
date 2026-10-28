@@ -1,3 +1,66 @@
+export declare const consistencyRouteEnums: {
+    readonly pageId: readonly ["industrial-consistency"];
+    readonly tab: readonly ["conflicts", "search", "groups", "jobs"];
+    readonly facts: readonly ["CURRENT", "HISTORICAL", "UNKNOWN"];
+    readonly galleryOrder: readonly ["recent", "members"];
+    readonly differenceFilter: readonly ["all", "annotation", "quality", "policy", "unavailable"];
+    readonly detailTab: readonly ["summary", "evidence", "review"];
+    readonly conflictFilter: readonly ["confirmed", "all"];
+    readonly reviewFilter: readonly ["OPEN", "NEEDS_CONTEXT", "RESOLVED"];
+};
+export declare const groupAnalysisStartParameters: {
+    readonly query_id: {
+        readonly type: "string";
+        readonly title: "Query Id";
+        readonly required: true;
+    };
+    readonly kind: {
+        readonly type: "string";
+        readonly enum: readonly ["conflicts", "groups"];
+        readonly title: "Kind";
+        readonly required: true;
+    };
+    readonly group_id: {
+        readonly type: "string";
+        readonly title: "Group Id";
+        readonly required: true;
+    };
+    readonly facts_state: {
+        readonly type: "string";
+        readonly enum: readonly ["CURRENT", "HISTORICAL", "UNKNOWN"];
+        readonly title: "Facts State";
+        readonly default: "CURRENT";
+    };
+    readonly request_id: {
+        readonly type: "string";
+        readonly title: "Request Id";
+        readonly required: true;
+    };
+};
+export declare const galleryReferenceParameters: {
+    readonly query_id: {
+        readonly type: "string";
+        readonly title: "Query Id";
+        readonly required: true;
+    };
+    readonly kind: {
+        readonly type: "string";
+        readonly enum: readonly ["conflicts", "groups"];
+        readonly title: "Kind";
+        readonly required: true;
+    };
+    readonly group_id: {
+        readonly type: "string";
+        readonly title: "Group Id";
+        readonly required: true;
+    };
+    readonly facts_state: {
+        readonly type: "string";
+        readonly enum: readonly ["CURRENT", "HISTORICAL", "UNKNOWN"];
+        readonly title: "Facts State";
+        readonly default: "CURRENT";
+    };
+};
 export declare const consistencyStartParameters: {
     readonly subjects: {
         readonly oneOf: readonly [{
@@ -850,6 +913,47 @@ export declare const consistencyContextParameters: {
             readonly sessionId: {
                 readonly type: "string";
                 readonly title: "Sessionid";
+            };
+            readonly queryId: {
+                readonly type: "string";
+                readonly title: "Queryid";
+            };
+            readonly gallerySearch: {
+                readonly type: "string";
+                readonly title: "Gallerysearch";
+            };
+            readonly galleryOrder: {
+                readonly type: "string";
+                readonly enum: readonly ["recent", "members"];
+                readonly title: "Galleryorder";
+            };
+            readonly differenceFilter: {
+                readonly type: "string";
+                readonly enum: readonly ["all", "annotation", "quality", "policy", "unavailable"];
+                readonly title: "Differencefilter";
+            };
+            readonly galleryPage: {
+                readonly type: "integer";
+                readonly title: "Gallerypage";
+            };
+            readonly detailTab: {
+                readonly type: "string";
+                readonly enum: readonly ["summary", "evidence", "review"];
+                readonly title: "Detailtab";
+            };
+            readonly subjectId: {
+                readonly type: "string";
+                readonly title: "Subjectid";
+            };
+            readonly conflictFilter: {
+                readonly type: "string";
+                readonly enum: readonly ["confirmed", "all"];
+                readonly title: "Conflictfilter";
+            };
+            readonly reviewFilter: {
+                readonly type: "string";
+                readonly enum: readonly ["OPEN", "NEEDS_CONTEXT", "RESOLVED"];
+                readonly title: "Reviewfilter";
             };
             readonly groupPage: {
                 readonly type: "integer";

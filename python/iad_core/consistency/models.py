@@ -202,3 +202,5 @@ class RetrievalCandidate(AnalysisModel):
     profile_id: Optional[Identifier] = None
     relation: Relation
     evidence_id: Optional[Identifier] = None
+
+GalleryFilterKind = Literal['all','annotation','quality','policy','unavailable']

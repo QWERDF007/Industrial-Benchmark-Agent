@@ -8,6 +8,7 @@ from iad_core.consistency.models import Identifier, ImageRetrieve,ImageIndexPrep
 from iad_core.consistency.job_models import ConsistencyBatchReference,ConsistencyBatchRetry
 from iad_core.consistency.result_queries import ConsistencyQuery,ResultQueries
 from iad_core.consistency.reports import ConsistencyReports
+from iad_core.consistency.gallery import GalleryQueries,GalleryQuery,GalleryMemberQuery
 from iad_core.consistency.group_queries import GroupQueries,GroupQuery,GroupMemberQuery
 from iad_core.consistency.context import ConsistencyContexts,ConsistencyContextRequest
 from iad_core.consistency.review import ConsistencyReview
@@ -141,3 +142,29 @@ def temporary_image_release_owner(args: dict, db_path: str) -> dict:
     owner = TemporaryImageOwner.model_validate(args)
     workbench(db_path).temporary_images.release_owner(owner.owner_id)
     return {'released': True}
+
+
+def consistency_gallery(args: dict, db_path: str) -> dict:
+    return GalleryQueries(workbench(db_path).db).query(GalleryQuery.model_validate(args)).model_dump(mode='json')
+
+
+def consistency_gallery_members(args: dict, db_path: str) -> dict:
+    return GalleryQueries(workbench(db_path).db).members(GalleryMemberQuery.model_validate(args)).model_dump(mode='json')
+
+
+def consistency_report_saved(args: dict, db_path: str) -> dict:
+    return ConsistencyReports(workbench(db_path).db).saved(args['query_id']).model_dump(mode='json')
+
+
+def consistency_group_analysis(args: dict, db_path: str) -> dict:
+    from iad_core.consistency.gallery import GalleryReference
+    from iad_core.consistency.group_analysis import GroupAnalyses
+    return GroupAnalyses(workbench(db_path)).read(GalleryReference.model_validate(args)).model_dump(mode='json')
+
+
+def consistency_group_analyze(args: dict, db_path: str) -> dict:
+    from iad_core.consistency.group_analysis import GroupAnalyses
+    from iad_core.consistency.group_analysis_models import GroupAnalysisStart
+    runtime=workbench(db_path)
+    return runtime.invoke_model(args.get('_model_execution'), lambda services:
+        GroupAnalyses(runtime,services.client).start(GroupAnalysisStart.model_validate(args['request']),args.get('origin_session_id')).model_dump(mode='json'))

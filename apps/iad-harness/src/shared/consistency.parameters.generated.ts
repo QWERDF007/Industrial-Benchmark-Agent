@@ -1,4 +1,112 @@
 /* Generated from Python consistency models by scripts/generate-contracts.js. */
+export const consistencyRouteEnums = {
+  "pageId": [
+    "industrial-consistency"
+  ],
+  "tab": [
+    "conflicts",
+    "search",
+    "groups",
+    "jobs"
+  ],
+  "facts": [
+    "CURRENT",
+    "HISTORICAL",
+    "UNKNOWN"
+  ],
+  "galleryOrder": [
+    "recent",
+    "members"
+  ],
+  "differenceFilter": [
+    "all",
+    "annotation",
+    "quality",
+    "policy",
+    "unavailable"
+  ],
+  "detailTab": [
+    "summary",
+    "evidence",
+    "review"
+  ],
+  "conflictFilter": [
+    "confirmed",
+    "all"
+  ],
+  "reviewFilter": [
+    "OPEN",
+    "NEEDS_CONTEXT",
+    "RESOLVED"
+  ]
+} as const;
+export const groupAnalysisStartParameters = {
+  "query_id": {
+    "type": "string",
+    "title": "Query Id",
+    "required": true
+  },
+  "kind": {
+    "type": "string",
+    "enum": [
+      "conflicts",
+      "groups"
+    ],
+    "title": "Kind",
+    "required": true
+  },
+  "group_id": {
+    "type": "string",
+    "title": "Group Id",
+    "required": true
+  },
+  "facts_state": {
+    "type": "string",
+    "enum": [
+      "CURRENT",
+      "HISTORICAL",
+      "UNKNOWN"
+    ],
+    "title": "Facts State",
+    "default": "CURRENT"
+  },
+  "request_id": {
+    "type": "string",
+    "title": "Request Id",
+    "required": true
+  }
+} as const;
+export const galleryReferenceParameters = {
+  "query_id": {
+    "type": "string",
+    "title": "Query Id",
+    "required": true
+  },
+  "kind": {
+    "type": "string",
+    "enum": [
+      "conflicts",
+      "groups"
+    ],
+    "title": "Kind",
+    "required": true
+  },
+  "group_id": {
+    "type": "string",
+    "title": "Group Id",
+    "required": true
+  },
+  "facts_state": {
+    "type": "string",
+    "enum": [
+      "CURRENT",
+      "HISTORICAL",
+      "UNKNOWN"
+    ],
+    "title": "Facts State",
+    "default": "CURRENT"
+  }
+} as const;
 export const consistencyStartParameters = {
   "subjects": {
     "oneOf": [
@@ -1047,6 +1155,67 @@ export const consistencyContextParameters = {
       "sessionId": {
         "type": "string",
         "title": "Sessionid"
+      },
+      "queryId": {
+        "type": "string",
+        "title": "Queryid"
+      },
+      "gallerySearch": {
+        "type": "string",
+        "title": "Gallerysearch"
+      },
+      "galleryOrder": {
+        "type": "string",
+        "enum": [
+          "recent",
+          "members"
+        ],
+        "title": "Galleryorder"
+      },
+      "differenceFilter": {
+        "type": "string",
+        "enum": [
+          "all",
+          "annotation",
+          "quality",
+          "policy",
+          "unavailable"
+        ],
+        "title": "Differencefilter"
+      },
+      "galleryPage": {
+        "type": "integer",
+        "title": "Gallerypage"
+      },
+      "detailTab": {
+        "type": "string",
+        "enum": [
+          "summary",
+          "evidence",
+          "review"
+        ],
+        "title": "Detailtab"
+      },
+      "subjectId": {
+        "type": "string",
+        "title": "Subjectid"
+      },
+      "conflictFilter": {
+        "type": "string",
+        "enum": [
+          "confirmed",
+          "all"
+        ],
+        "title": "Conflictfilter"
+      },
+      "reviewFilter": {
+        "type": "string",
+        "enum": [
+          "OPEN",
+          "NEEDS_CONTEXT",
+          "RESOLVED"
+        ],
+        "title": "Reviewfilter"
       },
       "groupPage": {
         "type": "integer",

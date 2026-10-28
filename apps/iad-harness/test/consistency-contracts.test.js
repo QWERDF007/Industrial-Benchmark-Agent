@@ -7,10 +7,10 @@ import { miningParameters } from '../lib/shared/mining.parameters.generated.js';
 import { knowledgeScopeParameters } from '../lib/shared/knowledge-scope.parameters.generated.js';
 import { knowledgeDetailParameters } from '../lib/shared/knowledge-detail.parameters.generated.js';
 import { knowledgeSourceParameters } from '../lib/shared/knowledge-source.parameters.generated.js';
-import {consistencyStartParameters, imageRetrieveParameters, imageIndexPrepareParameters,consistencyCompareParameters,consistencyEvidenceParameters,consistencyQueryParameters,consistencyGroupParameters,consistencyGroupMemberParameters} from '../lib/shared/consistency.parameters.generated.js';
+import {groupAnalysisStartParameters,galleryReferenceParameters,consistencyStartParameters, imageRetrieveParameters, imageIndexPrepareParameters,consistencyCompareParameters,consistencyEvidenceParameters,consistencyQueryParameters,consistencyGroupParameters,consistencyGroupMemberParameters} from '../lib/shared/consistency.parameters.generated.js';
 
 test('generated parameters register with the installed native SDK', () => {
-  for (const parameters of [knowledgeScopeParameters, miningParameters, explorationParameters,
+  for (const parameters of [groupAnalysisStartParameters,galleryReferenceParameters,knowledgeScopeParameters, miningParameters, explorationParameters,
     explorationPresetParameters, directionAdoptionParameters, knowledgeDetailParameters,
     knowledgeSourceParameters, consistencyStartParameters, imageRetrieveParameters, imageIndexPrepareParameters,consistencyCompareParameters,consistencyEvidenceParameters,consistencyQueryParameters,consistencyGroupParameters,consistencyGroupMemberParameters,
     {annotation_policy:annotationPolicyParameter}]) {

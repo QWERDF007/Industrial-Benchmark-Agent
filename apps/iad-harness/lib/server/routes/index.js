@@ -68,6 +68,15 @@ export function createIadHttpHandler(bridge) {
                 return await call('consistency_query', body);
             if (pathname === '/api/iad/consistency/report' && method === 'POST')
                 return await call('consistency_report', body);
+            const savedReport = pathname.match(/^\/api\/iad\/consistency\/report\/([^/]+)$/);
+            if (savedReport && method === 'GET')
+                return await call('consistency_report_saved', { query_id: decodeURIComponent(savedReport[1]) });
+            if (pathname === '/api/iad/consistency/gallery' && method === 'POST')
+                return await call('consistency_gallery', body);
+            if (pathname === '/api/iad/consistency/gallery/members' && method === 'POST')
+                return await call('consistency_gallery_members', body);
+            if (pathname === '/api/iad/consistency/gallery/analysis' && method === 'POST')
+                return await call('consistency_group_analysis', body);
             if (pathname === '/api/iad/consistency/context' && method === 'POST')
                 return await call('consistency_context', body);
             if (pathname === '/api/iad/consistency/review/context' && method === 'POST')

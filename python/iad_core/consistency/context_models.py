@@ -5,7 +5,7 @@ from pydantic import Field
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.annotation_models import AnnotationDifference
 from iad_core.consistency.evidence_models import EvidenceMedia,EvidenceSourceStates
-from iad_core.consistency.models import CorpusScope,Count,Identifier,SampleImageQuery
+from iad_core.consistency.models import CorpusScope,Count,GalleryFilterKind,Identifier,SampleImageQuery
 from iad_core.consistency.policy import AnnotationPolicy
 from iad_core.consistency.result_models import FactState
 from iad_core.duplicate.verification_models import VerificationResult
@@ -27,6 +27,15 @@ class ConsistencyReturnLocation(AnalysisModel):
     differenceId: Identifier | None = None
     returnPage: Identifier | None = None
     sessionId: Identifier | None = None
+    queryId: Identifier | None = None
+    gallerySearch: str | None = Field(default=None,max_length=500)
+    galleryOrder: Literal['recent','members'] | None = None
+    differenceFilter: GalleryFilterKind | None = None
+    galleryPage: int | None = Field(default=None,ge=1,strict=True)
+    detailTab: Literal['summary','evidence','review'] | None = None
+    subjectId: Identifier | None = None
+    conflictFilter: Literal['confirmed','all'] | None = None
+    reviewFilter: Literal['OPEN','NEEDS_CONTEXT','RESOLVED'] | None = None
     groupPage: int | None = Field(default=None,ge=1,strict=True)
     memberPage: int | None = Field(default=None,ge=1,strict=True)
 

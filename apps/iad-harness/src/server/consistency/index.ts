@@ -4,7 +4,7 @@ import type {ContentBlock} from '@deepseek-ai/dsh-llm';
 import type {ImageAttachmentRef} from '@deepseek-ai/dsh-attachment';
 import type {Session} from '@deepseek-ai/dsh-session';
 import type {ConsistencyContext} from '../../shared/domain.generated.js';
-import {consistencyStartParameters,imageIndexPrepareParameters,consistencyCompareParameters,consistencyContextParameters,
+import {groupAnalysisStartParameters,galleryReferenceParameters,consistencyStartParameters,imageIndexPrepareParameters,consistencyCompareParameters,consistencyContextParameters,
   consistencyBatchParameters,consistencyRetryParameters,consistencyMediaParameters,consistencyQueryParameters,
   consistencyGroupParameters,consistencyGroupMemberParameters,consistencyEvidenceParameters} from '../../shared/consistency.parameters.generated.js';
 import type {PythonBridge} from '../python-bridge/index.js';
@@ -16,6 +16,8 @@ type Attachment={media_id:string;attachment:ImageAttachmentRef};
 export function createConsistencyTools(bridge:PythonBridge,ctx:Context){
   const knownImages=new WeakMap<Session,Map<string,ImageAttachmentRef>>();
   return [
+    defineTool({name:'consistency_group_analyze',description:'仅明确要求解释当前冻结图组时执行模型分析，复用既有作业与模型配置。完整读取组成员和冻结证据，结论引用经核验后保存；不写人审、原标注或Gold。相同request_id重用原作业。',parameters:groupAnalysisStartParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('consistency_group_analyze',{request:args,origin_session_id:exec.agent?.session.id},exec.signal)}),
+    defineTool({name:'consistency_group_analysis',description:'只读当前冻结图组的真实模型分析状态与已保存结构化引用。没有完成结果时不得宣称已分析。',parameters:galleryReferenceParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('consistency_group_analysis',args,exec.signal)}),
     defineTool({name:'image_index_prepare',description:'仅用户要求建库或完整检查时准备共享图像索引。corpus_scope 独立于检查/质量筛选，使用已配置图像编码器，返回真实批次引用。',parameters:imageIndexPrepareParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('image_index_prepare',args,exec.signal)}),
     defineTool({name:'consistency_start',description:'按明确请求冻结检查范围与独立检索库，默认严格同图。相同 request_id 重用原批次；不启动聊天模型、知识挖掘或人工复核。',parameters:consistencyStartParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('consistency_start',args,exec.signal)}),
     defineTool({name:'consistency_status',description:'只读查看真实批次状态、样本分区计数与子作业错误，不自动重跑。',parameters:consistencyBatchParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('consistency_status',args,exec.signal)}),

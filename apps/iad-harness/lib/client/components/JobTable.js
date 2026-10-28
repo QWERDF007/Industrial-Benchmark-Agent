@@ -11,6 +11,7 @@ const types = {
     DIRECTION_EXPLORATION: "方向探索",
     IMAGE_INDEX: "图像索引",
     DATA_CONSISTENCY: "数据一致性",
+    CONSISTENCY_ANALYSIS: "图组模型分析",
 };
 export function JobTable({ jobs, pageId, onChanged, stale = false, lastSyncedAt, onCopy, }) {
     const { workspace } = useWorkspace(), selected = workspace.view(pageId).job;

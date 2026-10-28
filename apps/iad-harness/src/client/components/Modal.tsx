@@ -2,9 +2,9 @@ import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { CloseIcon } from "../AuditIcon.js";
 
 export type ModalPresentation = "modal" | "inline" | "closed";
-export interface ModalProps { title: string; onClose(): void; children: React.ReactNode; className?: string; restoreFocus?(): HTMLElement | null; initialFocus?: React.RefObject<HTMLElement>; header?: boolean; presentation?: ModalPresentation }
+export interface ModalProps { title: string; onClose(): void; children: React.ReactNode; className?: string; restoreFocus?(): HTMLElement | null; initialFocus?: React.RefObject<HTMLElement>; header?: boolean; presentation?: ModalPresentation; onKeyDown?: React.KeyboardEventHandler<HTMLDialogElement> }
 
-export function Modal({ title, onClose, children, className = "", restoreFocus, initialFocus, header = true, presentation = "modal" }: ModalProps) {
+export function Modal({ title, onClose, children, className = "", restoreFocus, initialFocus, header = true, presentation = "modal", onKeyDown }: ModalProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const focusTarget = useRef(restoreFocus);
   const pressedOutside = useRef(false);
@@ -35,7 +35,7 @@ export function Modal({ title, onClose, children, className = "", restoreFocus, 
     const rect = event.currentTarget.getBoundingClientRect();
     return event.target === event.currentTarget && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom);
   };
-  return <dialog ref={dialog} aria-label={title} role={presentation === "inline" ? "region" : undefined} className={`iad-detail-dialog ${presentation === "inline" ? "iad-inline-dialog" : ""} ${className}`} onCancel={event => { event.preventDefault(); event.stopPropagation(); onClose(); }}
+  return <dialog ref={dialog} onKeyDown={onKeyDown} aria-label={title} role={presentation === "inline" ? "region" : undefined} className={`iad-detail-dialog ${presentation === "inline" ? "iad-inline-dialog" : ""} ${className}`} onCancel={event => { event.preventDefault(); event.stopPropagation(); onClose(); }}
     onPointerDown={event => { pressedOutside.current = outside(event); }} onPointerUp={event => { if (pressedOutside.current && outside(event)) onClose(); pressedOutside.current = false; }}>
     {header && presentation === "modal" && <header className="iad-dialog-header"><h2>{title}</h2><button type="button" className="iad-icon-button" aria-label={`关闭${title}`} title="关闭" onClick={onClose}><CloseIcon /></button></header>}
     {children}

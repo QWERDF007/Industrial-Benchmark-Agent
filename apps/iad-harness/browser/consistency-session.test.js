@@ -121,6 +121,33 @@ for name,label in [('left','scratch'),('right','dent')]:
     assert.equal(restored.evidenceId,result.evidence_id);assert.equal(restored.differenceId,differenceId);
     assert.equal(restored.groupPage,2);assert.equal(restored.memberPage,3);
     for(const theme of ['Light','Dark']){await setTheme(driver,theme);await fs.writeFile(`/tmp/iad-consistency-session-${theme.toLowerCase()}-1920.png`,await driver.takeScreenshot(),'base64');}
+    await setTheme(driver,'Light');
+    const report=await post('/consistency/report',{selection:{kind:'scope',subjects:{kind:'all_registered'}},relation:'EXACT'});
+    const gallery=await post('/consistency/gallery',{query_id:report.page.query_id,kind:'groups'});
+    const groupRoute={pageId:'industrial-consistency',tab:'groups',queryId:report.page.query_id,groupId:gallery.items[0].group_id};
+    await driver.get(base+'/?'+new URLSearchParams({iad:JSON.stringify(groupRoute)}));
+    await driver.wait(until.elementLocated(By.css('dialog[aria-label="图组详情"]')),10000);
+    await driver.wait(()=>driver.executeScript('return document.querySelector("dialog[aria-label=图组详情] button.iad-primary")?.disabled===false'),5000);
+    const groupBefore=await driver.executeScript('return JSON.parse(new URL(location.href).searchParams.get("iad"))');
+    const beforeRequests=requests.length;await button('在 DSH 中解释');
+    await driver.wait(()=>requests.length>=beforeRequests+2,30000);
+    await driver.wait(()=>driver.findElement(By.css('body')).getText().then(text=>text.includes('原像素完全相同，双方标注类别不同。')),10000);
+    const referenceBody=requests.at(-1).messages.filter(message=>message.role==='user').flatMap(message=>typeof message.content==='string'?[message.content]:message.content.filter(block=>block.type==='text').map(block=>block.text)).join('\n');
+    assert.ok(referenceBody.includes('consistency_group_analyze'),'图组解释请求包含完整组模型验证意图');
+    let returnLink;
+    for(const anchor of await driver.findElements(By.css('a[href*="iad="]'))){
+      const href=await anchor.getAttribute('href');const restoredRoute=JSON.parse(new URL(href).searchParams.get('iad'));
+      if(restoredRoute.queryId===groupBefore.queryId&&restoredRoute.groupId===groupBefore.groupId&&!restoredRoute.evidenceId)returnLink=anchor;
+    }
+    assert.ok(returnLink,'模型返回链接应保留图组位置而非强制离开到独立证据页');
+    const originalWindows=await driver.getAllWindowHandles();
+    await driver.executeScript("arguments[0].scrollIntoView({block:'center'})",returnLink);await returnLink.click();
+    const windows=await driver.getAllWindowHandles();
+    if(windows.length>originalWindows.length)await driver.switchTo().window(windows.find(handle=>!originalWindows.includes(handle)));
+    await driver.wait(until.elementLocated(By.css('dialog[aria-label="图组详情"]')),10000);
+    const groupAfter=await driver.executeScript('return JSON.parse(new URL(location.href).searchParams.get("iad"))');
+    assert.equal(groupAfter.groupId,groupBefore.groupId);assert.equal(groupAfter.memberId,groupBefore.memberId);
+    await fs.writeFile('/tmp/iad-consistency-group-session-return-1920.png',await driver.takeScreenshot(),'base64');
   }catch(error){if(driver)console.error((await driver.findElement(By.css('body')).getText()).slice(-3000));console.error(JSON.stringify({modelRequests:requests.length}));console.error(log.slice(-1500).replace(/([?&]token=)[^&\s]+/g,'$1[redacted]'));throw error;}
   finally{if(driver)await driver.quit();if(host.exitCode===null){host.kill('SIGTERM');await new Promise(resolve=>host.once('exit',resolve));}await new Promise(resolve=>model.close(resolve));await fs.rm(root,{recursive:true,force:true});}
 });

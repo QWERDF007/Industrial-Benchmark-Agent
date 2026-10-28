@@ -22,7 +22,7 @@ class JobObservationProgress(AnalysisModel):
     published_sources: int = Field(ge=0)
 
 
-JobKind = Literal['MODEL_AUDIT', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE', 'DIRECTION_EXPLORATION', 'IMAGE_INDEX', 'DATA_CONSISTENCY']
+JobKind = Literal['MODEL_AUDIT', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE', 'DIRECTION_EXPLORATION', 'IMAGE_INDEX', 'DATA_CONSISTENCY', 'CONSISTENCY_ANALYSIS']
 
 
 class JobRetry(BaseModel):

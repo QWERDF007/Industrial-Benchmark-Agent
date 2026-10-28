@@ -26,17 +26,22 @@ class ResultQueries:
             if snapshot.query_hash!=fingerprint:raise ConsistencyError('INVALID_SCOPE','Result cursor belongs to a different query')
             after=cursor.after
         else:snapshot=ResultSnapshots(self.db).create(request,fingerprint)
+        return self.page(snapshot.query_id, after=after, page_size=request.page_size)
+
+    def page(self, query_id: str, *, after: int = 0, page_size: int = 50) -> ResultPage:
+        snapshot = ResultSnapshots(self.db).get(query_id)
+        fingerprint = snapshot.query_hash
         with self.db.connection() as connection:
             rows=connection.execute('''SELECT position,evidence_id,facts_state,source_states_json,evidence_available
                 FROM consistency_query_items WHERE query_id=? AND position>? ORDER BY position LIMIT ?''',
-                (snapshot.query_id,after,request.page_size+1)).fetchall()
-        items=[];selected=rows[:request.page_size]
+                (snapshot.query_id,after,page_size+1)).fetchall()
+        items=[];selected=rows[:page_size]
         for row in selected:
             saved=ConsistencyRepository(self.db).get(row['evidence_id'])
             items.append(ResultSummary(sample_a=saved.parameters.sample_a,sample_b=saved.parameters.sample_b,result=saved.result,
                 checked_at=saved.checked_at,facts_state=row['facts_state'],source_states=EvidenceSourceStates.model_validate_json(row['source_states_json']),evidence_available=bool(row['evidence_available'])))
         next_cursor=None
-        if len(rows)>request.page_size:
+        if len(rows)>page_size:
             next_cursor=base64.urlsafe_b64encode(ResultCursor(query_id=snapshot.query_id,query_hash=fingerprint,after=selected[-1]['position']).model_dump_json().encode()).decode().rstrip('=')
         return ResultPage(query_id=snapshot.query_id,scopes=snapshot.scopes,observed_at=snapshot.observed_at,facts=snapshot.facts,items=items,total=snapshot.total,next_cursor=next_cursor,
             execution=snapshot.execution,corpus=snapshot.corpus,mode=snapshot.mode,profile_id=snapshot.profile_id,retrieval_completeness=snapshot.retrieval_completeness)

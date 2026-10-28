@@ -22,6 +22,10 @@ export class WorkbenchSession {
       const text=[
         '请解释这份冻结的一致性证据及所选差异，区分原图事实、双方标注、规范、人工复核、推断和待确认事项。',
         `一致性证据引用：${JSON.stringify(context)}`,
+        ...(context.return_location?.queryId && context.return_location.groupId ? [
+          `同时解释当前完整图组：${JSON.stringify({query_id:context.return_location.queryId,kind:context.return_location.tab,group_id:context.return_location.groupId,facts_state:context.return_location.facts||'CURRENT'})}`,
+          '用 consistency_group_analyze 启动当前图组的结构化模型验证，同一请求固定request_id；用 consistency_group_analysis读取真实状态和结论引用。仅当作业完成并保存结果后说已分析；失败或超预算明确说明，不将首批候选代表全组。',
+        ] : []),
         `返回比较证据：${link}`,
         '先用 consistency_context 校验引用并实际读取它返回的图片附件，按 next_cursor 继续所选差异；说明剩余和未选择范围。保留返回链接，不启动全库检查、知识挖掘、模型审计或人工裁决。',
       ].join('\n');

@@ -118,15 +118,18 @@ for name,label in [('query','scratch'),('copy','dent')]:
     const hiddenSearchRequests=calls.slice(beforeRefresh).filter(url=>url.startsWith('/api/iad/samples/') || url.startsWith('/api/iad/sample/'));
     assert.deepEqual(hiddenSearchRequests,[],'非检索页不得读取隐藏检索页的样本列表和详情');
     assert.equal(await driver.findElement(By.css('[data-batch-id]')).getAttribute('data-batch-id'),batchLocation.batchId);
+    const jobSummary=await driver.wait(until.elementLocated(By.css('[aria-label="作业概览"]')),5000);
+    assert.match(await jobSummary.getText(),/作业总数[\s\S]*最近索引作业[\s\S]*最近一致性检查/);
     await fs.writeFile(path.join(output,'batch-jobs-1920.png'),await driver.takeScreenshot(),'base64');
     await click('标注冲突');
     await driver.wait(until.elementLocated(By.css('[aria-label="范围检查报告"]')),5000);
     await driver.wait(()=>driver.findElement(By.css('[aria-label="范围检查报告"]')).getText().then(text=>/已检查 2 \/ 2/.test(text)),5000);
-    await driver.wait(until.elementLocated(By.css('[aria-label="范围比较结果"] [data-facts-state="CURRENT"]')),5000);
-    await driver.wait(until.elementLocated(By.css('[aria-label="选中图组证据"] .iad-consistency-comparison')),5000);
-    assert.equal(await driver.findElement(By.css('[aria-label="冲突比较列表"] button[aria-pressed="true"]')).getAttribute('data-facts-state'),'CURRENT');
-    await driver.wait(()=>driver.executeScript('const images=[...document.querySelectorAll("[aria-label=选中图组证据] .iad-image-frame img")];return images.length===2&&images.every(image=>image.complete&&image.naturalWidth>0)'),5000);
+    await driver.wait(until.elementLocated(By.css('[aria-label="冲突图像"] .iad-consistency-image-card[data-facts-state="CURRENT"]')),5000);
+    assert.equal((await driver.findElements(By.css('dialog[aria-label="图组详情"]'))).length,0,'网格默认不展开详情');
+    await driver.findElement(By.css('[aria-label="冲突图像"] .iad-consistency-image-card')).click();
+    await driver.wait(()=>driver.executeScript('const images=[...document.querySelectorAll("dialog[aria-label=图组详情] .iad-image-frame img")];return images.length===2&&images.every(image=>image.complete&&image.naturalWidth>0)'),5000);
     await fs.writeFile(path.join(output,'scope-conflicts-1920.png'),await driver.takeScreenshot(),'base64');
+    await click('关闭图组详情');
     execFileSync(bridge.pythonPath,['-c',`import json,sys
 from pathlib import Path
 from PIL import Image
@@ -137,28 +140,26 @@ for name,label in [('other-a','hole'),('other-b','dent')]:
     const other=await bridge.execute('dataset_import',{format:'labelme',name:'第二个真实内容组',image_dir:path.join(root,'other'),annotation_dir:path.join(root,'other'),annotation_policy:{policy_id:'same-policy',annotation_role:'REFERENCE',annotation_coverage:'EXHAUSTIVE'}});
     await bridge.execute('consistency_compare',{sample_a:other.dataset_id+':other-a.png',sample_b:other.dataset_id+':other-b.png'});
     await click('刷新结果');
-    await driver.wait(async()=> (await driver.findElements(By.css('[aria-label="冲突比较列表"] button'))).length===2,5000);
-    await driver.findElement(By.xpath('//*[@aria-label="冲突比较列表"]//button[contains(.,"other-a.png")]')).click();
-    await driver.wait(()=>driver.findElement(By.css('[aria-label="选中图组证据"]')).getText().then(text=>text.includes('other-a.png')),5000);
-    await driver.findElement(By.xpath('//*[@aria-label="冲突比较列表"]//button[contains(.,"query.png")]')).click();
-    await driver.wait(()=>driver.findElement(By.css('[aria-label="选中图组证据"]')).getText().then(text=>text.includes('query.png')),5000);
+    await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="冲突图像"] .iad-consistency-image-card'))).length===2,5000);
+    await driver.findElement(By.xpath('//*[@aria-label="冲突图像"]//button[contains(.,"other-a.png")]')).click();
+    await driver.wait(()=>driver.findElement(By.css('dialog[aria-label="图组详情"]')).getText().then(text=>text.includes('other-a.png')),5000);
+    await click('关闭图组详情');
     await click('重复图组');
-    await driver.wait(()=>driver.findElement(By.css('[aria-label="范围检查报告"]')).getText().then(text=>/严格同图 2 组.*4 成员/.test(text)),5000);
-    await driver.wait(until.elementLocated(By.css('[aria-label="范围重复图组"] tbody tr')),5000);
-    assert.equal((await driver.findElements(By.css('[aria-label="范围重复图组"] tbody tr'))).length,2);
-    const firstName=await driver.findElement(By.css('[aria-label="范围重复图组"] tbody tr td:first-child')).getText();
-    const groupButtons=await driver.findElements(By.css('[aria-label="严格同图组"] .iad-consistency-list-scroll>button'));
-    assert.equal(groupButtons.length,2);await groupButtons[1].click();
-    await driver.wait(()=>driver.findElement(By.css('[aria-label="范围重复图组"] tbody tr td:first-child')).getText().then(text=>text!==firstName),5000);
-    if(!firstName.startsWith('other-')){
-      await groupButtons[0].click();
-      await driver.wait(()=>driver.findElement(By.css('[aria-label="范围重复图组"] tbody tr td:first-child')).getText().then(text=>!text.startsWith('other-')),5000);
-    }
+    await driver.wait(()=>driver.findElement(By.css('[aria-label="范围检查报告"]')).getText().then(text=>/严格同图\s+2 组.*4 成员/.test(text)),5000);
+    await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="重复图组"] .iad-consistency-image-card'))).length===2,5000);
+    const groupCards=await driver.findElements(By.css('[aria-label="重复图组"] .iad-consistency-image-card'));
+    const firstName=await groupCards[0].getText();await groupCards[0].click();
+    await driver.wait(until.elementLocated(By.css('dialog[aria-label="图组详情"]')),5000);
+    const firstTitle=await driver.findElement(By.css('.iad-group-header h2')).getText();
+    await click('下一组');await driver.wait(()=>driver.findElement(By.css('.iad-group-header h2')).getText().then(text=>text!==firstTitle),5000);
+    await click('关闭图组详情');
+    await (firstName.includes('other-') ? groupCards[1] : groupCards[0]).click();
+    await driver.wait(until.elementLocated(By.css('dialog[aria-label="图组详情"] .iad-consistency-canvases')),5000);
     await fs.writeFile(path.join(output,'scope-groups-1920.png'),await driver.takeScreenshot(),'base64');
-    await driver.findElement(By.xpath('//*[@aria-label="范围重复图组"]//tbody//button[normalize-space(.)="打开比较证据"]')).click();
-    await driver.wait(until.elementLocated(By.css('[data-evidence-id]')),5000);
-    await click('返回结果');
-    await driver.wait(until.elementLocated(By.css('[aria-label="范围重复图组"] tbody tr')),5000);
+    await driver.wait(async()=>{const button=await driver.findElement(By.xpath('//button[normalize-space(.)="查看比较证据"]'));return button.isEnabled();},5000);
+    await click('查看比较证据');await driver.wait(until.elementLocated(By.css('[data-evidence-id]')),5000);
+    await click('返回结果');await driver.wait(until.elementLocated(By.css('dialog[aria-label="图组详情"]')),5000);
+    await click('关闭图组详情');
     await click('索引与作业');
     await driver.wait(until.elementLocated(By.css('[aria-label="批次比较结果"] button')),5000).click();
     await driver.wait(until.elementLocated(By.css('[data-evidence-id]')),5000);

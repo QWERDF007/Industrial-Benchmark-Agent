@@ -100,7 +100,7 @@ function RetrievalWorkspace() {
     <WorkbenchHeader pageId="industrial-consistency">{queryDetail && <button onClick={()=>{
       const page=location.returnPage || 'industrial-images';workspace.openLocation({pageId:page,datasetId:queryDetail.sample.dataset_id,...workspace.view(page,undefined,queryDetail.sample.dataset_id),selected:queryDetail.sample.sample_id});
     }}>返回图像</button>}<button onClick={()=>workspace.navigate('industrial-model-settings')}>图像检索设置</button></WorkbenchHeader>
-    <PageTabs label="数据一致性分区" items={consistencyTabs} value={tab} onChange={value=>workspace.updateConsistency({tab:value})}>
+    <PageTabs label="数据一致性分区" items={consistencyTabs} value={tab} onChange={value=>workspace.updateConsistency({tab:value,differenceFilter:undefined,queryId:undefined,groupId:undefined,memberId:undefined,memberPage:1,galleryPage:1,detailTab:undefined,differenceId:undefined})}>
       {error && <p role="alert" className="iad-error">{error}</p>}
       {tab==='search' && <form className="iad-consistency-query" onSubmit={event=>{event.preventDefault();void retrieve();}}>
         <fieldset disabled={busy || uploading}><legend className="iad-visually-hidden">查询图像与检索范围</legend>

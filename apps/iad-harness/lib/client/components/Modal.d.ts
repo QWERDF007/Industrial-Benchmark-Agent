@@ -9,6 +9,7 @@ export interface ModalProps {
     initialFocus?: React.RefObject<HTMLElement>;
     header?: boolean;
     presentation?: ModalPresentation;
+    onKeyDown?: React.KeyboardEventHandler<HTMLDialogElement>;
 }
-export declare function Modal({ title, onClose, children, className, restoreFocus, initialFocus, header, presentation }: ModalProps): React.JSX.Element;
+export declare function Modal({ title, onClose, children, className, restoreFocus, initialFocus, header, presentation, onKeyDown }: ModalProps): React.JSX.Element;
 //# sourceMappingURL=Modal.d.ts.map

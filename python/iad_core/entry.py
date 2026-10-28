@@ -33,7 +33,7 @@ from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.operations import (consistency_review_context, consistency_review_submit, consistency_correction_verify, image_retrieve, temporary_image_accept,
     temporary_image_release, temporary_image_release_owner,consistency_compare,consistency_evidence,
     consistency_evidence_media,consistency_evidence_export,image_index_prepare,consistency_start,consistency_status,
-    consistency_list,consistency_cancel,consistency_retry,consistency_query,consistency_report,consistency_groups,consistency_group_members,consistency_context)
+    consistency_list,consistency_cancel,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_group_analyze,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context)
 
 DEFAULT_DB_PATH = os.environ.get("IAD_DB_PATH", "data/benchmark.db")
 _output_lock = threading.Lock()
@@ -420,7 +420,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     consistency_review_context, consistency_review_submit, consistency_correction_verify,
     image_retrieve, temporary_image_accept, temporary_image_release, temporary_image_release_owner,
     consistency_compare,consistency_evidence,consistency_evidence_media,consistency_evidence_export,
-    image_index_prepare,consistency_start,consistency_status,consistency_list,consistency_cancel,consistency_retry,consistency_query,consistency_report,consistency_groups,consistency_group_members,consistency_context,
+    image_index_prepare,consistency_start,consistency_status,consistency_list,consistency_cancel,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_group_analyze,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context,
     feature_settings_view, feature_settings_save, feature_profile_create, feature_connection_check,
     model_settings_get, model_settings_save, model_settings_view, model_settings_validate, model_environment_get, model_connection_check, model_provider_validate,
     direction_exploration_presets, direction_exploration_preset_save,
