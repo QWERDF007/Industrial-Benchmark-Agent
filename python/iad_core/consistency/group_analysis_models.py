@@ -1,10 +1,12 @@
+import hashlib
+import json
 from typing import Literal
 
 from pydantic import Field
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.gallery import GalleryReference, GalleryImage, GalleryMember
-from iad_core.consistency.models import Identifier
+from iad_core.consistency.models import Identifier, ModelAssessmentVerdict
 from iad_core.consistency.result_models import FactState
 from iad_core.workbench.job_models import JobStatus
 
@@ -29,9 +31,27 @@ class GroupAnalysisConclusion(AnalysisModel):
     references: list[GroupAnalysisReference] = Field(min_length=1, max_length=100)
 
 
+class GroupPairAssessment(GroupAnalysisReference):
+    verdict: ModelAssessmentVerdict
+    explanation: str = Field(min_length=1,max_length=8000)
+    findings: list[str] = Field(default_factory=list,max_length=100,
+        description='自由描述实际发现的问题，不受程序差异分类限制；视觉基本一致时可为空')
+
+
+class GroupOverallConclusion(GroupAnalysisConclusion):
+    verdict: ModelAssessmentVerdict
+
+
 class GroupAnalysisDraft(AnalysisModel):
+    overall: GroupOverallConclusion = Field(description='在整组联合分析之后给出的唯一整体结论；明确覆盖全部候选和主要依据')
+    assessments: list[GroupPairAssessment] = Field(min_length=1,max_length=10000,
+        description='覆盖全部候选且每个候选恰好一次；未获得固定主图直接证据时只能UNCERTAIN')
     conclusions: list[GroupAnalysisConclusion] = Field(min_length=1, max_length=100)
     limitations: list[str] = Field(default_factory=list, max_length=100)
+
+
+GROUP_ANALYSIS_SCHEMA = hashlib.sha256(json.dumps([GroupAnalysisDraft.model_json_schema(),
+    'raw-originals-and-annotation-rois'],sort_keys=True).encode()).hexdigest()
 
 
 class FrozenAnalysisGroup(AnalysisModel):
@@ -49,4 +69,3 @@ class GroupAnalysisView(AnalysisModel):
     model_name: str | None = None
     result: GroupAnalysisDraft | None = None
     error: str | None = None
-    candidate_offsets: dict[str,int] = Field(default_factory=dict)

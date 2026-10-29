@@ -27,9 +27,23 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
         requests.append(body)
         instruction = body['messages'][0]['content'][0]['text']
         assert '不限于工具已报出的差异' in instruction
+        import base64,io
+        from PIL import Image
+        descriptors=[json.loads(item['text'].split('视觉证据：',1)[1]) for item in body['messages'][0]['content']
+            if item['type']=='text' and item['text'].startswith('视觉证据：')]
+        assert descriptors and all(item['representation']=='raw' for item in descriptors)
+        assert any(item['role']=='roi' for item in descriptors)
+        assert '"annotations"' in instruction
+        for item in body['messages'][0]['content']:
+            if item['type']=='image_url':
+                with Image.open(io.BytesIO(base64.b64decode(item['image_url']['url'].split(',',1)[1]))) as actual:
+                    assert actual.convert('RGB').getextrema()==((0,0),(0,0),(255,255)), '模型只接收原图/原始裁剪像素，不得绘制框或文字'
         entered.set()
         assert release.wait(10)
-        result = {'conclusions': [{'text': '像素一致，类别定义需要人工核对。', 'references': [citation.copy()]}], 'limitations': ['未进行人工质量裁决']}
+        result = {'assessments': [{'candidate_id':citation['candidate_id'], 'comparison':citation['comparison'].copy(),
+            'verdict':'EQUIVALENT','explanation':'视觉对象与覆盖一致，类别名称需核对。','findings':[]}],
+            'overall':{'verdict':'EQUIVALENT','text':'整组视觉基本一致，保留标注差异待核对。','references':[citation.copy()]},
+            'conclusions': [{'text': '像素一致，类别定义需要人工核对。', 'references': [citation.copy()]}], 'limitations': ['未进行人工质量裁决']}
         return httpx.Response(200, json={'id': 'real-protocol-test', 'model': 'test-mllm', 'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
     runtime = WorkbenchRuntime(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
     try:
@@ -43,6 +57,7 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
         assert analyses.read(request).status == 'NOT_ANALYZED'
         started = analyses.start(request)
         assert entered.wait(5), analyses.read(request).model_dump()
+        assert GalleryQueries(db).query(GalleryQuery(query_id=snapshot.query_id,kind='conflicts')).items[0].model_state=='RUNNING'
         running = analyses.read(request)
         assert running.status == 'RUNNING' and running.result is None
         assert analyses.start(request).run_id == started.run_id
@@ -55,6 +70,14 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
             time.sleep(.01)
         assert result.status == 'COMPLETED'
         assert result.result.conclusions[0].references[0].comparison.evidence_id == compared.evidence_id
+        assert result.result.assessments[0].verdict == 'EQUIVALENT'
+        assert result.result.overall.verdict == 'EQUIVALENT'
+        gallery = GalleryQueries(db)
+        query = GalleryQuery(query_id=snapshot.query_id,kind='conflicts')
+        assert gallery.query(query).total == 1, 'MLLM基本一致不得从默认问题网格删除'
+        assert gallery.query(query).items[0].model_state == 'EQUIVALENT'
+        assert gallery.query(query.model_copy(update={'model_filter':'EQUIVALENT'})).total == 1
+        assert gallery.query(query.model_copy(update={'model_filter':'MATERIAL'})).total == 0
         assert result.model_name == 'test-mllm'
         assert len(requests) == 1
         assert any(part['type'] == 'image_url' for part in requests[0]['messages'][0]['content'])
@@ -84,3 +107,42 @@ def test_group_reference_schema_requires_complete_comparison():
     assert set(comparison_schema['required']) == {'result_id','evidence_id'}
     with pytest.raises(ValidationError):
         GroupAnalysisReference.model_validate({'candidate_id':'candidate', 'comparison':{'evidence_id':'evidence'}})
+
+
+@pytest.mark.parametrize('mode',['missing','duplicate','wrong_comparison'])
+def test_group_assessments_require_full_unique_candidates_and_their_direct_evidence(dataset,tmp_path,mode):
+    from shutil import copyfile
+    from iad_core.consistency.group_analysis import GroupAnalyses
+    from iad_core.consistency.group_analysis_models import GroupAnalysisStart
+    db,registry,config=dataset
+    copyfile(tmp_path/'images/dent.png',tmp_path/'images/third.png')
+    registry.rescan(config.dataset.id)
+    responses=[]
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200,json={'count':1000,'max_model_len':262144})
+        return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(responses[0])}}]})
+    runtime=WorkbenchRuntime(db,VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        anchor=config.dataset.id+':dent.png'
+        pairs=[runtime.consistency_service.compare(ConsistencyCompare(sample_a=anchor,sample_b=config.dataset.id+':'+name+'.png')) for name in ['scratch','third']]
+        assessments=[{'candidate_id':config.dataset.id+':'+name+'.png','comparison':None,
+            'verdict':'UNCERTAIN','explanation':'需核对','findings':[]} for name in ['scratch','third']]
+        for item,pair in zip(assessments,pairs):
+            item['comparison']={'result_id':pair.result_id,'evidence_id':pair.evidence_id}
+        conclusions=[{'text':'需逐图核对','references':[{'candidate_id':assessments[0]['candidate_id'],'comparison':assessments[0]['comparison']}]}]
+        if mode=='missing':assessments.pop()
+        elif mode=='duplicate':assessments[1]=assessments[0].copy()
+        else:assessments[0]['comparison']=assessments[1]['comparison']
+        responses.append({'assessments':assessments,'overall':{'verdict':'UNCERTAIN','text':'整组需核对','references':conclusions[0]['references']},'conclusions':conclusions,'limitations':[]})
+        page=ResultQueries(db).query(ConsistencyQuery(selection={'kind':'scope','subjects':{'kind':'all_registered'}}))
+        group=GalleryQueries(db).query(GalleryQuery(query_id=page.query_id,kind='groups')).items[0]
+        request=GroupAnalysisStart(query_id=page.query_id,kind='groups',group_id=group.group_id,request_id=mode)
+        analyses=GroupAnalyses(runtime,runtime.client);job=analyses.start(request)
+        runtime.jobs.wait(job.run_id,5)
+        view=analyses.read(request)
+        assert view.status=='FAILED' and view.result is None
+        assert 'every frozen candidate exactly once' in view.error or 'direct candidate comparison' in view.error
+        filtered=GalleryQueries(db).query(GalleryQuery(query_id=page.query_id,kind='groups',model_filter='FAILED'))
+        assert filtered.total==1
+    finally:runtime.close()

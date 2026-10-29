@@ -1,9 +1,18 @@
+export declare const modelAssessmentLabels: {
+    readonly NOT_ANALYZED: "未分析";
+    readonly RUNNING: "分析中";
+    readonly FAILED: "分析失败";
+    readonly EQUIVALENT: "视觉基本一致";
+    readonly MATERIAL: "存在实质差异";
+    readonly UNCERTAIN: "证据不足";
+};
 export declare const consistencyRouteEnums: {
     readonly pageId: readonly ["industrial-consistency"];
     readonly tab: readonly ["conflicts", "search", "groups", "jobs"];
     readonly facts: readonly ["CURRENT", "HISTORICAL", "UNKNOWN"];
     readonly galleryOrder: readonly ["recent", "members"];
     readonly differenceFilter: readonly ["all", "category", "geometry", "presence", "instances", "multiple"];
+    readonly modelFilter: readonly ["all", "NOT_ANALYZED", "RUNNING", "FAILED", "EQUIVALENT", "MATERIAL", "UNCERTAIN"];
     readonly detailTab: readonly ["summary", "evidence", "review"];
     readonly reviewFilter: readonly ["OPEN", "NEEDS_CONTEXT", "RESOLVED"];
 };
@@ -936,6 +945,11 @@ export declare const consistencyContextParameters: {
                 readonly type: "string";
                 readonly enum: readonly ["all", "category", "geometry", "presence", "instances", "multiple"];
                 readonly title: "Differencefilter";
+            };
+            readonly modelFilter: {
+                readonly type: "string";
+                readonly enum: readonly ["all", "NOT_ANALYZED", "RUNNING", "FAILED", "EQUIVALENT", "MATERIAL", "UNCERTAIN"];
+                readonly title: "Modelfilter";
             };
             readonly galleryPage: {
                 readonly type: "integer";

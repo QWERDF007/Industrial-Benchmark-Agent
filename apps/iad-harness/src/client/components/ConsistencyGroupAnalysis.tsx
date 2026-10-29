@@ -1,9 +1,10 @@
 import React,{useEffect,useState} from 'react';
-import type {GalleryReference,GroupAnalysisReference,GroupAnalysisView} from '../../shared/domain.generated.js';
+import type {GalleryReference,GroupAnalysisView} from '../../shared/domain.generated.js';
 import {jobStatuses} from '../../shared/job-display.js';
+import {modelAssessmentLabels} from '../../shared/consistency.parameters.generated.js';
 import {message,request} from '../api.js';
 
-export function ConsistencyGroupAnalysis({reference,onLocate}:{reference:GalleryReference;onLocate(citation:GroupAnalysisReference,offset:number):void}) {
+export function ConsistencyGroupAnalysis({reference}:{reference:GalleryReference}) {
   const [analysis,setAnalysis]=useState<GroupAnalysisView|null>(null),[error,setError]=useState('');
   const key=JSON.stringify(reference);
   useEffect(()=>{
@@ -27,10 +28,9 @@ export function ConsistencyGroupAnalysis({reference,onLocate}:{reference:Gallery
     {analysis?.error && <p role="alert" className="iad-error">{analysis.error}</p>}
     {analysis?.status==='COMPLETED' && analysis.result && <>
       <p className="iad-muted">{analysis.model_name}</p>
-      <div className="iad-group-conclusions">{analysis.result.conclusions.map((conclusion,index)=><article key={index}><p>{conclusion.text}</p><div className="iad-row">{conclusion.references.map((citation,position)=><React.Fragment key={position}>
-        <button className="iad-consistency-text-button" onClick={()=>onLocate(citation,analysis.candidate_offsets[citation.candidate_id])}>定位候选 {citation.candidate_id.split(':').slice(1).join(':')}</button>
-      </React.Fragment>)}</div></article>)}</div>
+      <div className="iad-group-conclusions">{analysis.result.conclusions.map((conclusion,index)=><p key={index}>{conclusion.text}</p>)}</div>
       {!!analysis.result.limitations.length && <div className="iad-group-limitations">{analysis.result.limitations.map((limit,index)=><p key={index}>{limit}</p>)}</div>}
+      <div className="iad-group-overall"><h4>整体结论 · {modelAssessmentLabels[analysis.result.overall.verdict]}</h4><p>{analysis.result.overall.text}</p></div>
     </>}
   </section>;
 }

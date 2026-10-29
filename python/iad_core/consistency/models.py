@@ -213,3 +213,10 @@ class RetrievalCandidate(AnalysisModel):
 
 GalleryDifferenceKind = Literal['category','geometry','presence','instances','multiple']
 GalleryFilterKind = Literal['all','category','geometry','presence','instances','multiple']
+ModelAssessmentState = Literal['NOT_ANALYZED','RUNNING','FAILED','EQUIVALENT','MATERIAL','UNCERTAIN']
+ModelAssessmentVerdict = Literal['EQUIVALENT','MATERIAL','UNCERTAIN']
+GalleryModelFilter = Literal['all','NOT_ANALYZED','RUNNING','FAILED','EQUIVALENT','MATERIAL','UNCERTAIN']
+MODEL_ASSESSMENT_LABELS: dict[ModelAssessmentState,str] = {
+    'NOT_ANALYZED':'未分析','RUNNING':'分析中','FAILED':'分析失败',
+    'EQUIVALENT':'视觉基本一致','MATERIAL':'存在实质差异','UNCERTAIN':'证据不足',
+}

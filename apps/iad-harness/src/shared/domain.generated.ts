@@ -1659,6 +1659,8 @@ export type Queryid = string | null;
 export type Gallerysearch = string | null;
 export type Galleryorder = ("recent" | "members") | null;
 export type Differencefilter = ("all" | "category" | "geometry" | "presence" | "instances" | "multiple") | null;
+export type Modelfilter =
+  ("all" | "NOT_ANALYZED" | "RUNNING" | "FAILED" | "EQUIVALENT" | "MATERIAL" | "UNCERTAIN") | null;
 export type Gallerypage = number | null;
 export type Detailtab = ("summary" | "evidence" | "review") | null;
 export type Subjectid = string | null;
@@ -1700,6 +1702,8 @@ export type Queryid1 = string | null;
 export type Gallerysearch1 = string | null;
 export type Galleryorder1 = ("recent" | "members") | null;
 export type Differencefilter1 = ("all" | "category" | "geometry" | "presence" | "instances" | "multiple") | null;
+export type Modelfilter1 =
+  ("all" | "NOT_ANALYZED" | "RUNNING" | "FAILED" | "EQUIVALENT" | "MATERIAL" | "UNCERTAIN") | null;
 export type Gallerypage1 = number | null;
 export type Detailtab1 = ("summary" | "evidence" | "review") | null;
 export type Subjectid1 = string | null;
@@ -1875,6 +1879,7 @@ export type PageSize13 = number;
 export type Search6 = string;
 export type Order = "recent" | "members";
 export type DifferenceFilter = "all" | "category" | "geometry" | "presence" | "instances" | "multiple";
+export type ModelFilter = "all" | "NOT_ANALYZED" | "RUNNING" | "FAILED" | "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
 export type QueryId7 = string;
 export type Kind42 = "conflicts" | "groups";
 export type GroupId4 = string;
@@ -1887,6 +1892,10 @@ export type Value = "all" | "category" | "geometry" | "presence" | "instances" |
 export type Label3 = string;
 export type Count = number;
 export type Filters = GalleryFilterCount[];
+export type Value1 = "all" | "NOT_ANALYZED" | "RUNNING" | "FAILED" | "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
+export type Label4 = string;
+export type Count1 = number;
+export type ModelFilters = GalleryModelFilterCount[];
 export type GroupId5 = string;
 export type FactsState6 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
 export type EvidenceId16 = string;
@@ -1907,6 +1916,7 @@ export type DifferenceTypes = (
   | "ANNOTATION_UNREADABLE"
 )[];
 export type ConfirmedConflict3 = boolean;
+export type ModelState = "NOT_ANALYZED" | "RUNNING" | "FAILED" | "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
 export type Items11 = GalleryItem[];
 export type Total15 = number;
 export type QueryId9 = string;
@@ -1926,11 +1936,6 @@ export type Status22 =
   ("PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED") | "NOT_ANALYZED";
 export type RunId10 = string | null;
 export type ModelName5 = string | null;
-/**
- * @minItems 1
- * @maxItems 100
- */
-export type Conclusions = [GroupAnalysisConclusion, ...GroupAnalysisConclusion[]];
 export type Text4 = string;
 /**
  * @minItems 1
@@ -1941,6 +1946,34 @@ export type CandidateId = string;
 export type ResultId8 = string;
 export type EvidenceId18 = string;
 export type DifferenceId3 = string | null;
+export type Verdict = "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
+/**
+ * 覆盖全部候选且每个候选恰好一次；未获得固定主图直接证据时只能UNCERTAIN
+ *
+ * @minItems 1
+ * @maxItems 10000
+ */
+export type Assessments = [GroupPairAssessment, ...GroupPairAssessment[]];
+export type CandidateId1 = string;
+export type Verdict1 = "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
+export type Explanation = string;
+/**
+ * 自由描述实际发现的问题，不受程序差异分类限制；视觉基本一致时可为空
+ *
+ * @maxItems 100
+ */
+export type Findings4 = string[];
+/**
+ * @minItems 1
+ * @maxItems 100
+ */
+export type Conclusions = [GroupAnalysisConclusion, ...GroupAnalysisConclusion[]];
+export type Text5 = string;
+/**
+ * @minItems 1
+ * @maxItems 100
+ */
+export type References2 = [GroupAnalysisReference, ...GroupAnalysisReference[]];
 /**
  * @maxItems 100
  */
@@ -4032,6 +4065,7 @@ export interface ConsistencyReturnLocation {
   gallerySearch?: Gallerysearch;
   galleryOrder?: Galleryorder;
   differenceFilter?: Differencefilter;
+  modelFilter?: Modelfilter;
   galleryPage?: Gallerypage;
   detailTab?: Detailtab;
   subjectId?: Subjectid;
@@ -4090,6 +4124,7 @@ export interface ConsistencyReturnLocation1 {
   gallerySearch: Gallerysearch1;
   galleryOrder: Galleryorder1;
   differenceFilter: Differencefilter1;
+  modelFilter: Modelfilter1;
   galleryPage: Gallerypage1;
   detailTab: Detailtab1;
   subjectId: Subjectid1;
@@ -4313,6 +4348,7 @@ export interface GalleryQuery {
   search?: Search6;
   order?: Order;
   difference_filter?: DifferenceFilter;
+  model_filter?: ModelFilter;
 }
 export interface GalleryMemberQuery {
   query_id: QueryId7;
@@ -4326,6 +4362,7 @@ export interface GalleryPage {
   query_id: QueryId8;
   kind: Kind43;
   filters: Filters;
+  model_filters: ModelFilters;
   items: Items11;
   total: Total15;
 }
@@ -4333,6 +4370,11 @@ export interface GalleryFilterCount {
   value: Value;
   label: Label3;
   count: Count;
+}
+export interface GalleryModelFilterCount {
+  value: Value1;
+  label: Label4;
+  count: Count1;
 }
 export interface GalleryItem {
   group_id: GroupId5;
@@ -4344,6 +4386,7 @@ export interface GalleryItem {
   pair_count: PairCount3;
   difference_types: DifferenceTypes;
   confirmed_conflict: ConfirmedConflict3;
+  model_state: ModelState;
 }
 export interface GalleryImage {
   sample: Sample;
@@ -4381,15 +4424,20 @@ export interface GroupAnalysisView {
   model_name: ModelName5;
   result: GroupAnalysisDraft | null;
   error: Error2;
-  candidate_offsets: CandidateOffsets;
 }
 export interface GroupAnalysisDraft {
+  overall: GroupOverallConclusion;
+  assessments: Assessments;
   conclusions: Conclusions;
   limitations: Limitations14;
 }
-export interface GroupAnalysisConclusion {
+/**
+ * 在整组联合分析之后给出的唯一整体结论；明确覆盖全部候选和主要依据
+ */
+export interface GroupOverallConclusion {
   text: Text4;
   references: References1;
+  verdict: Verdict;
 }
 export interface GroupAnalysisReference {
   candidate_id: CandidateId;
@@ -4400,8 +4448,16 @@ export interface GroupAnalysisComparison {
   evidence_id: EvidenceId18;
   difference_id: DifferenceId3;
 }
-export interface CandidateOffsets {
-  [k: string]: number;
+export interface GroupPairAssessment {
+  candidate_id: CandidateId1;
+  comparison: GroupAnalysisComparison | null;
+  verdict: Verdict1;
+  explanation: Explanation;
+  findings: Findings4;
+}
+export interface GroupAnalysisConclusion {
+  text: Text5;
+  references: References2;
 }
 export interface ImageEncoderConfig {
   device: Device;

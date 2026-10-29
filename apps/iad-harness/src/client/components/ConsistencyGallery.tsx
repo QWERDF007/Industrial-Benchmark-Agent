@@ -1,6 +1,7 @@
 import React,{useEffect,useRef,useState} from 'react';
 import type {GalleryItem,GalleryPage,GalleryQuery} from '../../shared/domain.generated.js';
 import {differenceLabels} from '../../shared/consistency-presentation.js';
+import {modelAssessmentLabels} from '../../shared/consistency.parameters.generated.js';
 import {galleryImageUrl} from '../consistency-images.js';
 import {ApiError,message,request} from '../api.js';
 import {useWorkspace} from '../workspace.js';
@@ -14,16 +15,17 @@ export function ConsistencyGallery({queryId,kind,onExpired}:{queryId:string;kind
   const pendingMove=useRef<-1|1|null>(null);
   const cards=useRef(new Map<string,HTMLButtonElement>()),focus=useRef<HTMLButtonElement|null>(null);
   const search=location.gallerySearch||'',order=location.galleryOrder||'recent',number=location.galleryPage||1,differenceFilter=location.differenceFilter||'all';
+  const modelFilter=location.modelFilter||'all';
   useEffect(()=>{
     const controller=new AbortController();setPage(null);setError('');
-    const query:GalleryQuery={query_id:queryId,kind,page:number,page_size:15,search,order,difference_filter:differenceFilter};
+    const query:GalleryQuery={query_id:queryId,kind,page:number,page_size:15,search,order,difference_filter:differenceFilter,model_filter:modelFilter};
     request<GalleryPage>('/consistency/gallery',query,undefined,controller.signal).then(value=>{if(!controller.signal.aborted){setPage(value);if(pendingMove.current){const item=pendingMove.current===1 ? value.items[0] : value.items.at(-1);pendingMove.current=null;if(item)open(item);}}})
       .catch(failure=>{if(!controller.signal.aborted){
         if(failure instanceof ApiError&&failure.code==='REFERENCE_NOT_FOUND'){pendingMove.current=null;onExpired();}
         else setError(message(failure));
       }});
     return()=>controller.abort();
-  },[queryId,kind,number,search,order,differenceFilter,onExpired]);
+  },[queryId,kind,number,search,order,differenceFilter,modelFilter,onExpired]);
   const selected=page?.items.find(item=>item.group_id===location.groupId && item.facts_state===(location.facts||'CURRENT'));
   function open(item:GalleryItem) {
     focus.current=cards.current.get(item.group_id)||null;
@@ -38,6 +40,9 @@ export function ConsistencyGallery({queryId,kind,onExpired}:{queryId:string;kind
   return <section className="iad-consistency-gallery-panel" aria-label={kind==='conflicts' ? '冲突图像' : '重复图组'}>
     <header className="iad-consistency-panel-header"><strong>{kind==='conflicts' ? '同图标注差异' : '重复图组 · 代表图像'} <span className="iad-muted">{page?.total ?? '—'} {kind==='conflicts' ? '张' : '组'}</span></strong>
       <div className="iad-row"><input type="search" aria-label="搜索图像" placeholder="搜索文件名" value={search} onChange={event=>workspace.updateConsistency({gallerySearch:event.target.value,galleryPage:1,groupId:undefined},true)} />
+        <select aria-label="MLLM结论筛选" value={modelFilter} onChange={event=>workspace.updateConsistency({modelFilter:event.target.value as NonNullable<typeof location.modelFilter>,galleryPage:1,groupId:undefined},true)}>
+          {(page?.model_filters||[{value:modelFilter,label:modelFilter==='all' ? '全部模型结论' : modelAssessmentLabels[modelFilter],count:0}]).map(filter=><option key={filter.value} value={filter.value}>{filter.label}{page ? ` ${filter.count}` : ''}</option>)}
+        </select>
         <select aria-label="排序方式" value={order} onChange={event=>workspace.updateConsistency({galleryOrder:event.target.value as NonNullable<typeof location.galleryOrder>,galleryPage:1,groupId:undefined},true)}><option value="recent">最近比较</option><option value="members">{kind==='conflicts' ? '候选数量从多到少' : '成员数量从多到少'}</option></select></div>
     </header>
     {error && <p role="alert" className="iad-error">{error}</p>}
@@ -50,6 +55,7 @@ export function ConsistencyGallery({queryId,kind,onExpired}:{queryId:string;kind
         <span className="iad-consistency-card-count">{kind==='groups' ? `${item.member_count} 张成员` : `${item.candidate_count} 张候选`}</span></div>
       <div className="iad-consistency-card-caption"><strong title={item.anchor.sample.relative_path}>{item.anchor.sample.relative_path.split('/').pop()}</strong>
         <div><span className="iad-consistency-badge">{kind==='groups' ? '严格同图' : item.difference_types.map(type=>differenceLabels[type]).join('、')||'未发现标注差异'}</span><span>{kind==='groups' ? `${item.dataset_count} 个数据集` : ''}</span></div></div>
+      <span className="iad-consistency-model-state">MLLM · {modelAssessmentLabels[item.model_state]}</span>
     </button>)}</div></MediaLoad>
     <Pagination total={page?.total||0} page={number} size={15} unit={kind==='groups' ? '组' : '张'} onPage={galleryPage=>workspace.updateConsistency({galleryPage,groupId:undefined},true)} />
     {selected && !location.evidenceId && <ConsistencyGroupDialog key={selected.group_id+selected.facts_state} queryId={queryId} kind={kind} item={selected} position={(number-1)*15+(page?.items.indexOf(selected)||0)+1} total={page?.total||0}

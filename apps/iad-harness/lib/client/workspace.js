@@ -204,6 +204,8 @@ export class Workspace {
                             consistency[key] = route[key];
                     if (consistencyRouteEnums.differenceFilter.includes(route.differenceFilter))
                         consistency.differenceFilter = route.differenceFilter;
+                    if (consistencyRouteEnums.modelFilter.includes(route.modelFilter))
+                        consistency.modelFilter = route.modelFilter;
                     if (consistencyRouteEnums.galleryOrder.includes(route.galleryOrder))
                         consistency.galleryOrder = route.galleryOrder;
                     if (consistencyRouteEnums.detailTab.includes(route.detailTab))

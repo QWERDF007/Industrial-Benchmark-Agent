@@ -20,7 +20,7 @@ test('HTTP group analysis saves real model conclusions against frozen candidate 
     if(req.url==='/v1/chat/completions'){
       const chunks=[];for await(const chunk of req)chunks.push(chunk);
       const request=JSON.parse(Buffer.concat(chunks));assert.ok(request.messages[0].content.some(part=>part.type==='image_url'));generated++;
-      res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({conclusions:[{text:'标注对应关系需要核对。',references:[citation]}],limitations:[]})}}]}));
+      res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({assessments:[{...citation,verdict:'UNCERTAIN',explanation:'标注对应关系需要核对。',findings:[]}],overall:{verdict:'UNCERTAIN',text:'整组证据不足。',references:[citation]},conclusions:[{text:'标注对应关系需要核对。',references:[citation]}],limitations:[]})}}]}));
     }
     return api(req,res);
   });

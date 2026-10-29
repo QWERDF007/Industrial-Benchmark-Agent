@@ -1,3 +1,4 @@
+import hashlib
 import json
 from collections import Counter
 from typing import Literal
@@ -7,9 +8,10 @@ from pydantic import Field
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.annotation_models import AnnotationComparison, ANNOTATION_DIFFERENCE_CATEGORIES
-from iad_core.consistency.models import Count, DifferenceType, GalleryFilterKind, Identifier
+from iad_core.consistency.models import MODEL_ASSESSMENT_LABELS, Count, DifferenceType, GalleryFilterKind, GalleryModelFilter, Identifier, ModelAssessmentState
 from iad_core.consistency.result_models import FactState
 from iad_core.consistency.result_snapshot import ResultSnapshots
+from iad_core.consistency.group_analysis_states import GroupAnalysisStates
 from iad_core.storage.database import Database
 from iad_core.storage.models import Sample
 
@@ -22,6 +24,7 @@ class GalleryQuery(AnalysisModel):
     search: str = Field(default='', max_length=500)
     order: Literal['recent', 'members'] = 'recent'
     difference_filter: GalleryFilterKind = 'all'
+    model_filter: GalleryModelFilter = 'all'
 
 
 class GalleryReference(AnalysisModel):
@@ -57,6 +60,7 @@ class GalleryItem(AnalysisModel):
     pair_count: Count
     difference_types: list[DifferenceType]
     confirmed_conflict: bool
+    model_state: ModelAssessmentState
 
 
 class GalleryFilterCount(AnalysisModel):
@@ -65,10 +69,17 @@ class GalleryFilterCount(AnalysisModel):
     count: Count
 
 
+class GalleryModelFilterCount(AnalysisModel):
+    value: GalleryModelFilter
+    label: str
+    count: Count
+
+
 class GalleryPage(AnalysisModel):
     query_id: Identifier
     kind: Literal['conflicts', 'groups']
     filters: list[GalleryFilterCount]
+    model_filters: list[GalleryModelFilterCount]
     items: list[GalleryItem]
     total: Count
 
@@ -103,6 +114,7 @@ class GalleryQueries:
         ('instances','实例标注不同'),
         ('multiple','多项差异'),
     )
+    MODEL_FILTERS = (('all','全部模型结论'),*MODEL_ASSESSMENT_LABELS.items())
 
     PAIRS = '''WITH pairs AS MATERIALIZED (
         SELECT i.position,i.facts_state,i.evidence_available,r.evidence_id,r.result_id,
@@ -125,6 +137,20 @@ class GalleryQueries:
 
     def __init__(self, db: Database):
         self.db = db
+
+    @staticmethod
+    def analysis_fingerprint(reference: GalleryReference, anchor: GalleryImage, evidence_ids: list[str]) -> str:
+        from iad_core.consistency.group_analysis_models import GROUP_ANALYSIS_SCHEMA
+        return hashlib.sha256(json.dumps({'schema':GROUP_ANALYSIS_SCHEMA,
+            'group':reference.model_dump(include={'kind','group_id','facts_state'}),
+            'anchor':{'evidence_id':anchor.evidence_id,'side':anchor.side},'evidence_ids':sorted(set(evidence_ids))},
+            sort_keys=True).encode()).hexdigest()
+
+    def analysis_evidence_ids(self, reference: GalleryReference) -> list[str]:
+        with self.db.connection() as connection:
+            connection.create_function('annotation_difference_types',1,AnnotationComparison.json_difference_types,deterministic=True)
+            return [row[0] for row in connection.execute(self.PAIRS+''' SELECT evidence_id FROM edges
+                WHERE group_id=? AND facts_state=?''',(reference.query_id,reference.kind,reference.kind,reference.group_id,reference.facts_state))]
 
     @staticmethod
     def image(row) -> GalleryImage:
@@ -150,24 +176,34 @@ class GalleryQueries:
         with self.db.connection() as connection:
             connection.create_function('annotation_difference_types', 1, AnnotationComparison.json_difference_types, deterministic=True)
             rows = connection.execute(cte + """ SELECT g.*,a.source,a.evidence_id,a.side,a.evidence_available,c.pair_count,c.confirmed,
-                COALESCE((SELECT json_group_array(type) FROM types t WHERE t.group_id=g.group_id AND t.facts_state=g.facts_state),'[]') difference_types
+                COALESCE((SELECT json_group_array(type) FROM types t WHERE t.group_id=g.group_id AND t.facts_state=g.facts_state),'[]') difference_types,
+                (SELECT json_group_array(e.evidence_id) FROM edges e WHERE e.group_id=g.group_id AND e.facts_state=g.facts_state) evidence_ids
                 FROM matching g JOIN anchors a ON a.group_id=g.group_id AND a.facts_state=g.facts_state AND a.rank=1
                 JOIN counts c ON c.group_id=g.group_id AND c.facts_state=g.facts_state ORDER BY """ + order, args).fetchall()
-        counts = Counter()
+        counts, model_counts = Counter(), Counter()
+        fingerprints={row['group_id']+'@'+row['facts_state']:self.analysis_fingerprint(
+            GalleryReference(query_id=request.query_id,kind=request.kind,group_id=row['group_id'],facts_state=row['facts_state']),
+            self.image(row),json.loads(row['evidence_ids'])) for row in rows}
+        group_states=GroupAnalysisStates(self.db).read(set(fingerprints.values()))
         selected = []
         for row in rows:
             categories = {ANNOTATION_DIFFERENCE_CATEGORIES[kind] for kind in json.loads(row['difference_types'])}
             category = next(iter(categories)) if len(categories) == 1 else 'multiple'
-            counts[category] += 1
-            if request.difference_filter in ('all', category):
-                selected.append(row)
+            model_state=group_states.get(fingerprints[row['group_id']+'@'+row['facts_state']],'NOT_ANALYZED')
+            category_matches=request.difference_filter in ('all', category)
+            model_matches=request.model_filter in ('all',model_state)
+            if model_matches:counts[category] += 1
+            if category_matches:model_counts[model_state] += 1
+            if category_matches and model_matches:
+                selected.append((row,model_state))
         total = len(selected)
         rows = selected[(request.page - 1) * request.page_size:request.page * request.page_size]
         filters = [GalleryFilterCount(value=value,label=label,count=sum(counts.values()) if value=='all' else counts[value]) for value,label in self.FILTERS]
-        return GalleryPage(query_id=request.query_id,kind=request.kind,total=total,filters=filters,items=[
+        model_filters=[GalleryModelFilterCount(value=value,label=label,count=sum(model_counts.values()) if value=='all' else model_counts[value]) for value,label in self.MODEL_FILTERS]
+        return GalleryPage(query_id=request.query_id,kind=request.kind,total=total,filters=filters,model_filters=model_filters,items=[
             GalleryItem(group_id=row['group_id'],facts_state=row['facts_state'],anchor=self.image(row),
                 member_count=row['member_count'],candidate_count=row['member_count']-1,dataset_count=row['dataset_count'],
-                pair_count=row['pair_count'],difference_types=json.loads(row['difference_types']),confirmed_conflict=bool(row['confirmed'])) for row in rows])
+                pair_count=row['pair_count'],difference_types=json.loads(row['difference_types']),confirmed_conflict=bool(row['confirmed']),model_state=model_state) for row,model_state in rows])
 
     def members(self, request: GalleryMemberQuery) -> GalleryMemberPage:
         ResultSnapshots(self.db).get(request.query_id)

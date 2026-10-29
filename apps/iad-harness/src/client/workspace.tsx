@@ -169,6 +169,7 @@ export class Workspace {
           for(const key of ['batchId','resultId','evidenceId','groupId','memberId','differenceId','sessionId','queryId','gallerySearch','subjectId'] as const)if(typeof route[key]==='string')consistency[key]=route[key];
           for(const key of ['groupPage','memberPage','galleryPage'] as const)if(Number.isSafeInteger(route[key]) && route[key]>0)consistency[key]=route[key];
           if(consistencyRouteEnums.differenceFilter.includes(route.differenceFilter))consistency.differenceFilter=route.differenceFilter;
+          if(consistencyRouteEnums.modelFilter.includes(route.modelFilter))consistency.modelFilter=route.modelFilter;
           if(consistencyRouteEnums.galleryOrder.includes(route.galleryOrder))consistency.galleryOrder=route.galleryOrder;
           if(consistencyRouteEnums.detailTab.includes(route.detailTab))consistency.detailTab=route.detailTab;
           if(consistencyRouteEnums.reviewFilter.includes(route.reviewFilter))consistency.reviewFilter=route.reviewFilter;

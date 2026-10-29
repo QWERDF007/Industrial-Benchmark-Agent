@@ -1,4 +1,12 @@
 /* Generated from Python consistency models by scripts/generate-contracts.js. */
+export const modelAssessmentLabels = {
+    "NOT_ANALYZED": "未分析",
+    "RUNNING": "分析中",
+    "FAILED": "分析失败",
+    "EQUIVALENT": "视觉基本一致",
+    "MATERIAL": "存在实质差异",
+    "UNCERTAIN": "证据不足"
+};
 export const consistencyRouteEnums = {
     "pageId": [
         "industrial-consistency"
@@ -25,6 +33,15 @@ export const consistencyRouteEnums = {
         "presence",
         "instances",
         "multiple"
+    ],
+    "modelFilter": [
+        "all",
+        "NOT_ANALYZED",
+        "RUNNING",
+        "FAILED",
+        "EQUIVALENT",
+        "MATERIAL",
+        "UNCERTAIN"
     ],
     "detailTab": [
         "summary",
@@ -1186,6 +1203,19 @@ export const consistencyContextParameters = {
                     "multiple"
                 ],
                 "title": "Differencefilter"
+            },
+            "modelFilter": {
+                "type": "string",
+                "enum": [
+                    "all",
+                    "NOT_ANALYZED",
+                    "RUNNING",
+                    "FAILED",
+                    "EQUIVALENT",
+                    "MATERIAL",
+                    "UNCERTAIN"
+                ],
+                "title": "Modelfilter"
             },
             "galleryPage": {
                 "type": "integer",
