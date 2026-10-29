@@ -1,15 +1,20 @@
 # 文档索引
 
-- [工作台 UI 重构规格](specs/ui-workbench.md)：设计包的当前基线适配、六业务页与模型设置、交互及验收要求。
-- [UI 重构任务](tickets/ui-workbench.md)：V01–V08 交付依赖与完成标准。
+- 图像检索与标注一致性：[方案](research/image-consistency.md)、[规格](specs/image-consistency.md)、[票据](tickets/image-consistency.md)。
+- [数据一致性网格与宽屏弹窗](95E6AEB8E8B480E58C95E6B9A1E585_9CE788B2E78089%2588.zip)：当前专项方案、HTML、效果图与UI01–07验收；覆盖此前常驻详情布局。
+- 数据一致性页面布局与交互：[优化方案、HTML 和效果图](95E6AEB8E8B480E8BEAEE48EBAE4928EE58B_AEE6B4BAE498.zip)；仅调整四页签视图，沿用既有业务规则与接口。
 
-- [MLLM 图组知识挖掘与统一工作台规格](specs/incremental-knowledge-mining.md)：当前需求、三输入工具、连续版本链、冲突人工闭环及已确认测试边界的唯一来源。
-- [逐票交付与依赖](tickets/README.md)：8 张已确认的纵向票据，逐票声明阻塞边、验收条件及执行状态。
-- [实现与验收索引](architecture.md)：现有代码、公开操作链及运行约束。
-- [工业知识挖掘方向的外部依据](research/industrial-knowledge-directions.md)：多来源工业观察范围与应用边界。
-- [良品与异常联合方向探索](specs/direction-exploration.md)：独立技能、侧栏页面及探索方向选用的新增行为与验收边界。
-- [工作台模型设置](specs/workbench-model-settings.md)：独立入口、原生提供商复用、统一工作台选择和作业配置冻结的已确认方案。
+- [方向探索与知识作业专项](96E5918EE7A2_9FE8868CE698_UIBCE596_AEE6B496E688_90E5B689%2588.zip)：摘要与限制折叠、整行作业选择及覆盖抽屉的视觉/交互依据。
+- [大图边缘切图](A4E5BE9FE78B99E6ACB5E5A68FE5879BE58C95E4A4BB%2598.zip)：当前大图窗口切图入口的专项方案、HTML 与截图。
+- [数据集管理调整](Industrial_Benchmark_95E6AE9BE6BF94E6A796E688.zip)：当前数据集管理原型、说明与截图，沿用既有 UI，仅覆盖数据集页面。
+- [七页 UI 基线](Industrial_Benchmark_UI_20261023.zip)：HTML 与设计附件；视觉和行为优先级见包内 README。
+- [工作台 UI](specs/ui-workbench.md)：页面结构、共享方向详情、大图与知识配置。
+- [联合方向探索](specs/direction-exploration.md)：联合输入、队列、生命周期、同步与提示词契约。
+- [实施票据](tickets/ui-workbench.md)：E01–E07、U01–U05 的依赖与验收入口。
+- [图组知识挖掘](specs/incremental-knowledge-mining.md)：三输入、版本链、冲突人工闭环及连续范围。
+- [工作台模型](specs/workbench-model-settings.md)：原生提供商、统一选择与执行冻结。
+- [实现与验收](architecture.md)：源代码和公开测试索引。
+- [工业观察范围依据](research/industrial-knowledge-directions.md)、[联合探索依据](research/direction-exploration.md)：外部研究来源。
 - [使用与启动](../README.md)。
-- 根 WORKLOG.md：本地唯一任务账本，不纳入版本控制。
 
-规格描述目标，不等于功能已经实现；票据不复制完整需求，索引不重述代码逻辑。这里不保留旧规格、旧票据或压缩包副本。
+根 WORKLOG.md 是本地唯一任务账本；文档不维护第二份进度或复制代码参数表。

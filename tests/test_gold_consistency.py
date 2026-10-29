@@ -201,3 +201,21 @@ def test_batch_audit_human_review_gold_split_and_reports_share_the_same_facts(co
         assert ConsistencyService(db).evidence(original.evidence_id).result == original
     finally:
         runtime.close()
+
+
+def test_unknown_annotation_policy_gold_does_not_read_unrelated_image_bytes(dataset, monkeypatch):
+    from iad_core.gold.projection import GoldProjection
+    from iad_core.consistency.retrieval_sources import SourceImage
+    db, _, config = dataset
+    reads = []
+    original = SourceImage.read
+
+    def record(path, published=None):
+        reads.append(path)
+        return original(path, published)
+
+    monkeypatch.setattr(SourceImage, 'read', record)
+    value = GoldProjection.capture(db, config.task.task_id, GoldPolicyConfig())
+    assert len(value.records) == 4
+    assert value.conflicts == []
+    assert reads == [], '没有可比较规范或区域裁决时，Gold概览不应重读全库原图'

@@ -28,7 +28,7 @@ for group,count,color in [('a',23,'#bdc8d2'),('b',3,'#e4d4b1')]:
   name=f'{group}-{i:02d}';im.save(r/'images'/f'{name}.png')
   (r/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':640,'imageHeight':480,'shapes':[{'label':f'category-{min(i,2)}','shape_type':'rectangle','points':[[180,180],[260,260]]}]}))
 `,root]);
-  const dataset=await bridge.execute('dataset_import',{format:'labelme',name:'固定主图核验',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels'),annotation_policy:{policy_id:'one-policy',annotation_role:'REFERENCE',annotation_coverage:'EXHAUSTIVE'}});
+  const dataset=await bridge.execute('dataset_import',{format:'labelme',name:'固定主图核验',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')});
   const comparisons=new Map();
   for(const [group,count] of [['a',23],['b',3]])for(let i=1;i<count;i++)comparisons.set(`${group}-${String(i).padStart(2,'0')}`,await bridge.execute('consistency_compare',{sample_a:`${dataset.dataset_id}:${group}-00.png`,sample_b:`${dataset.dataset_id}:${group}-${String(i).padStart(2,'0')}.png`}));
   const bundle=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';import {apply} from './src/client/index.ts';
@@ -68,6 +68,13 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     assert.equal((await driver.findElements(By.css('.iad-consistency-master-detail'))).length,0);
     await click('质量差异 0');await driver.wait(async()=>(await cards()).length===0,5000);
     await click('全部 2');await driver.wait(async()=>(await cards()).length===2,5000);
+    const conflictFilter=await element('select[aria-label="差异筛选"]');
+    assert.equal(await conflictFilter.getAttribute('value'),'all','默认呈现真实待核对差异，不将未知规范误认为没有数据');
+    await (await element('select[aria-label="差异筛选"] option[value="confirmed"]')).click();
+    await driver.wait(async()=>(await cards()).length===0,5000);
+    assert.ok((await driver.findElement(By.css('[aria-label="范围一致性结果"]')).getText()).includes('已确认冲突'),'已确认筛选保留真实空态');
+    await (await element('select[aria-label="差异筛选"] option[value="all"]')).click();
+    await driver.wait(async()=>(await cards()).length===2,5000);
     const first=(await cards())[0];assert.match(await first.getText(),/22.*候选/);assert.doesNotMatch(await first.getText(),/点击查看|查询图像 ·/);
     await first.sendKeys(Key.ENTER);
     const modal=await element('dialog[aria-label="图组详情"]');
