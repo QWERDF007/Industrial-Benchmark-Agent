@@ -54,8 +54,11 @@ class ConsistencyWorker:
                             if self.repository.has_pair(plan.batch_id,*pair):continue
                             result=service.compare(ConsistencyCompare(sample_a=pair[0],sample_b=pair[1]),checkpoint=context.checkpoint,frozen_scopes=plan.scopes)
                             results.append(BatchResultReference(sample_a=pair[0],sample_b=pair[1],result_id=result.result_id,evidence_id=result.evidence_id))
-                if page.retrieval_completeness=='PARTIAL' or page.coverage.annotation.failed:
-                    failure=ConsistencyError('INDEX_NOT_READY','Selected-mode retrieval or annotation comparison was incomplete')
+                if page.retrieval_completeness=='PARTIAL':
+                    failure=ConsistencyError('INDEX_NOT_READY','Selected-mode image retrieval was incomplete')
+                elif page.coverage.annotation.failed:
+                    failure=ConsistencyError('ANNOTATION_UNREADABLE',
+                        f'图像检索已完成，但 {page.coverage.annotation.failed} 个候选的标注未完成比较；请查看比较证据中的标注问题。')
             except ConsistencyError as error:failure=error
             context.checkpoint()
             context.record(sample_id,error=failure,persist=lambda connection:self.repository.record_results(plan.batch_id,results,connection))

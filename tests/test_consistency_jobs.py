@@ -71,6 +71,28 @@ def test_exact_batch_uses_real_dataset_children_and_frozen_pair_evidence(dataset
     finally:runtime.close()
 
 
+def test_invalid_annotations_do_not_report_a_missing_image_index(dataset):
+    import json
+    from pathlib import Path
+    db, registry, config = dataset
+    label = Path(config.annotations.root) / 'dent.json'
+    value = json.loads(label.read_text())
+    value['shapes'][0]['points'] = [[-1, 10], [30, 30]]
+    label.write_text(json.dumps(value))
+    registry.rescan(config.dataset.id)
+    runtime = WorkbenchRuntime(db)
+    try:
+        started = runtime.consistency.start(ConsistencyStart(subjects={'kind':'all_registered'}, mode='exact', request_id='invalid-annotation'))
+        runtime.jobs.wait(runtime.consistency.status(started.batch_id).children[0].run_id, 10)
+        batch = runtime.consistency.status(started.batch_id)
+        assert (batch.status, batch.completed, batch.failed, batch.unprocessed) == ('PARTIAL', 2, 2, 0)
+        errors = [error for child in batch.children for error in child.errors]
+        assert errors and all(error.code == 'ANNOTATION_UNREADABLE' for error in errors)
+        assert all('图像检索已完成' in error.message for error in errors)
+    finally:
+        runtime.close()
+
+
 def test_visual_batch_prepares_query_subjects_outside_the_corpus_before_comparing(dataset, tmp_path, monkeypatch):
     from tests.feature_fixtures import configure_test_encoder, MockFeatureExtractor
     from iad_core.dataset.registry import DatasetImport, DatasetRegistry
