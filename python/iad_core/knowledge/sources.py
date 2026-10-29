@@ -2,9 +2,10 @@ import hashlib
 import json
 
 from dataclasses import dataclass
+from sqlite3 import Connection
 from typing import List, Optional
 
-from iad_core.dataset.path_safety import PathSafetyError, validate_sample_image_path
+from iad_core.dataset.path_safety import AuthorizedDatasetPaths, PathSafetyError, validate_sample_image_path
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.images import file_sha256, image_pixel_sha256
 from iad_core.evidence.sources import SampleContent
@@ -99,24 +100,29 @@ class KnowledgeSources:
         eligible = self.eligible(dataset_id, kind, normal).require_available(sample_ids)
         sources = []
         frozen = {source.sample_id: source for source in frozen_sources or []}
-        for sample_id in sample_ids:
-            if sample_id not in eligible:
-                raise ValueError('知识来源资格已变化，请重新选择或核验')
-            sources.append(self.capture(sample_id, eligible[sample_id], frozen.get(sample_id)))
+        paths = AuthorizedDatasetPaths(self.db.db_path)
+        with self.db.connection() as connection:
+            connection.execute('BEGIN')
+            for sample_id in sample_ids:
+                if sample_id not in eligible:
+                    raise ValueError('知识来源资格已变化，请重新选择或核验')
+                sources.append(self.capture(sample_id, eligible[sample_id], frozen.get(sample_id), paths=paths, connection=connection))
         return sources
 
-    def capture_metadata(self, sample_id: str, qualification: str) -> KnowledgeSourceMetadata:
-        sample = self.samples.get(sample_id)
-        content = SampleContent.capture(self.db, sample_id)
-        candidates = self.candidates.matching(sample, content.sha256)
-        decision = self.reviews.get_decision(sample_id)
+    def capture_metadata(self, sample_id: str, qualification: str, *, paths: Optional[AuthorizedDatasetPaths] = None,
+                         connection: Optional[Connection] = None) -> KnowledgeSourceMetadata:
+        sample = self.samples.get(sample_id, connection=connection)
+        content = SampleContent.capture(self.db, sample_id, paths=paths, connection=connection)
+        candidates = self.candidates.matching(sample, content.sha256, connection=connection)
+        decision = self.reviews.get_decision(sample_id, connection=connection)
         return KnowledgeSourceMetadata(**content.model_dump(), qualification=qualification,
             audit_suggestion_ids=[item.suggestion_id for item in candidates],
             review_sha256=hashlib.sha256(decision.model_dump_json().encode() if decision else b'null').hexdigest())
 
-    def capture(self, sample_id: str, qualification: str, frozen: Optional[KnowledgeSource] = None) -> KnowledgeSource:
-        sample = self.samples.get(sample_id)
-        content = self.capture_metadata(sample_id, qualification)
+    def capture(self, sample_id: str, qualification: str, frozen: Optional[KnowledgeSource] = None, *,
+                paths: Optional[AuthorizedDatasetPaths] = None, connection: Optional[Connection] = None) -> KnowledgeSource:
+        sample = self.samples.get(sample_id, connection=connection)
+        content = self.capture_metadata(sample_id, qualification, paths=paths, connection=connection)
         if frozen and content.sha256 == frozen.sha256 and frozen.pixel_sha256:
             digest = frozen.pixel_sha256
         else:

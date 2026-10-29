@@ -50,23 +50,23 @@ def get_authorized_dataset_roots(db_path: Optional[str] = None) -> List[str]:
     return allowed_roots
 
 
+class AuthorizedDatasetPaths:
+    def __init__(self, db_path: Optional[str] = None):
+        self.roots = tuple(get_authorized_dataset_roots(db_path))
+
+    def image(self, sample: Sample) -> str:
+        if not sample or not sample.image_path or not os.path.exists(sample.image_path):
+            path_str = sample.image_path if sample else "None"
+            raise PathSafetyError(f"Image file for sample '{getattr(sample, 'sample_id', 'unknown')}' not found on disk: {path_str}", status_code=404)
+        real_path = os.path.realpath(sample.image_path)
+        for root in self.roots:
+            try:
+                if os.path.commonpath([real_path, root]) == root:
+                    return real_path
+            except ValueError:
+                continue
+        raise PathSafetyError("Forbidden: Image path is outside authorized dataset root.", status_code=403)
+
+
 def validate_sample_image_path(sample: Sample, db_path: Optional[str] = None) -> str:
-    """
-    Strictly validate that a sample's image path exists on disk and is within authorized dataset roots.
-    Prevents path traversal, symlink escapes, and unauthorized file reads (DS-S15).
-    """
-    if not sample or not sample.image_path or not os.path.exists(sample.image_path):
-        path_str = sample.image_path if sample else "None"
-        raise PathSafetyError(f"Image file for sample '{getattr(sample, 'sample_id', 'unknown')}' not found on disk: {path_str}", status_code=404)
-
-    real_path = os.path.realpath(sample.image_path)
-    allowed_roots = get_authorized_dataset_roots(db_path=db_path)
-
-    for root in allowed_roots:
-        try:
-            if os.path.commonpath([real_path, root]) == root:
-                return real_path
-        except ValueError:
-            continue
-
-    raise PathSafetyError("Forbidden: Image path is outside authorized dataset root.", status_code=403)
+    return AuthorizedDatasetPaths(db_path).image(sample)

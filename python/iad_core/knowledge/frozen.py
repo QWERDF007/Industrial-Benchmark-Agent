@@ -83,15 +83,11 @@ class MiningFreeze:
         if events != request['review_events']:
             raise ValueError('冻结人工处置已变化，请重新启动重核验')
         frozen_sources = [KnowledgeSource.model_validate(item) for item in request['input_sources']]
-        for source in frozen_sources:
-            try:
-                actual_metadata = self.sources.capture_metadata(source.sample_id, source.qualification)
-            except (OSError, LookupError) as error:
-                raise ValueError('冻结图组来源无法核验，请重新启动：' + str(error)) from error
-            if actual_metadata.model_dump() != source.model_dump(exclude={'pixel_sha256'}):
-                raise ValueError('冻结图组来源已变化，请重新启动')
-        sources = self.sources.collect(request['dataset_id'], request['sample_ids'], request['kind'], normal,
-                                       frozen_sources=frozen_sources)
+        try:
+            sources = self.sources.collect(request['dataset_id'], request['sample_ids'], request['kind'], normal,
+                                           frozen_sources=frozen_sources)
+        except (OSError, LookupError) as error:
+            raise ValueError('冻结图组来源无法核验，请重新启动：' + str(error)) from error
         if [source.model_dump() for source in sources] != request['input_sources']:
             raise ValueError('冻结图组来源已变化，请重新启动')
         inherited = {source.sample_id: source for item in captured if parent and item.snapshot.version_id == parent.version_id

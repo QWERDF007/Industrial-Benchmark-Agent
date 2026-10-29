@@ -1,9 +1,10 @@
 import hashlib
 import json
+from sqlite3 import Connection
 from typing import Optional
 
 from iad_core.advisory.analysis import AnalysisModel
-from iad_core.dataset.path_safety import validate_sample_image_path
+from iad_core.dataset.path_safety import AuthorizedDatasetPaths
 from iad_core.evidence.images import file_sha256
 from iad_core.evidence.masks import MaskImages
 from iad_core.storage.database import Database
@@ -30,15 +31,23 @@ class SampleContent(AnalysisModel):
             quality_status=sample.quality_status, quality_source=sample.quality_source)
 
     @classmethod
-    def capture(cls, db: Database, sample_id: str) -> "SampleContent":
-        sample = SampleRepository(db).get(sample_id)
+    def capture(cls, db: Database, sample_id: str, *, paths: Optional[AuthorizedDatasetPaths] = None,
+                connection: Optional[Connection] = None) -> "SampleContent":
+        sample = SampleRepository(db).get(sample_id, connection=connection)
         if not sample:
             raise LookupError("Sample not found")
         if sample.is_excluded:
             raise ValueError('Sample is excluded from the current dataset scope')
-        annotations = AnnotationRepository(db).list_by_sample(sample_id)
+        annotations = AnnotationRepository(db).list_by_sample(sample_id, connection=connection)
         for annotation in annotations:
             if annotation.annotation_type == 'mask' and annotation.geometry_status != 'INVALID':
                 MaskImages.load(annotation, sample)
-        validate_sample_image_path(sample, db.db_path)
-        return cls.describe(sample, annotations, file_sha256(sample.image_path))
+        path = (paths if paths is not None else AuthorizedDatasetPaths(db.db_path)).image(sample)
+        return cls.describe(sample, annotations, file_sha256(path))
+
+    @classmethod
+    def capture_many(cls, db: Database, sample_ids: list[str]) -> list['SampleContent']:
+        paths = AuthorizedDatasetPaths(db.db_path)
+        with db.connection() as connection:
+            connection.execute('BEGIN')
+            return [cls.capture(db, sample_id, paths=paths, connection=connection) for sample_id in sample_ids]

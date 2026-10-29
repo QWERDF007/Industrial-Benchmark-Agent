@@ -9,6 +9,7 @@ from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.dataset.registry import DatasetRegistry
+from iad_core.dataset.path_safety import AuthorizedDatasetPaths
 from iad_core.knowledge.models import (KnowledgeCoverage, KnowledgeKind, KnowledgeSnapshot, KnowledgeSourceItem,
                                       KnowledgeSourceMetadata, KnowledgeSourcePage, KnowledgeSourceQuery)
 from iad_core.knowledge.repository import KnowledgeRepository
@@ -111,7 +112,10 @@ class KnowledgeScopes:
         _, items = self.sources.list_candidates(request.dataset_id, request.kind, normal, request.search)
         if request.seed is not None:
             items.sort(key=lambda item: hashlib.sha256(f'{request.seed}:{item.sample_id}'.encode()).digest())
-        sources = [self.sources.capture_metadata(item.sample_id, item.qualification) for item in items]
+        paths = AuthorizedDatasetPaths(self.db.db_path)
+        with self.db.connection() as connection:
+            connection.execute('BEGIN')
+            sources = [self.sources.capture_metadata(item.sample_id, item.qualification, paths=paths, connection=connection) for item in items]
         if not sources:
             raise ValueError('当前范围没有合格候选，未建立连续任务')
         scope_run_id = 'scope_' + uuid.uuid4().hex
@@ -176,15 +180,18 @@ class KnowledgeScopes:
         available = self.sources.eligible(definition.dataset_id, definition.kind, normal)
         stale, excluded = set(), set()
         comparison = {source.sample_id for source in current.comparison_sources} if current else set()
-        for sample_id, source in expected.items():
-            try:
-                qualification = available.qualifications.get(sample_id, source.qualification)
-                if self.sources.capture_metadata(sample_id, qualification) != source:
+        paths = AuthorizedDatasetPaths(self.db.db_path)
+        with self.db.connection() as connection:
+            connection.execute('BEGIN')
+            for sample_id, source in expected.items():
+                try:
+                    qualification = available.qualifications.get(sample_id, source.qualification)
+                    if self.sources.capture_metadata(sample_id, qualification, paths=paths, connection=connection) != source:
+                        stale.add(sample_id)
+                    elif sample_id not in available.qualifications:
+                        (excluded if sample_id in comparison else stale).add(sample_id)
+                except (OSError, LookupError, ValueError):
                     stale.add(sample_id)
-                elif sample_id not in available.qualifications:
-                    (excluded if sample_id in comparison else stale).add(sample_id)
-            except (OSError, LookupError, ValueError):
-                stale.add(sample_id)
         return ScopeState(definition, row['status'], current, observed, stale, excluded,
             [source for source in definition.sources if source.sample_id not in observed | stale | excluded], jobs, version_ids, row['session_id'])
 
@@ -213,8 +220,11 @@ class KnowledgeScopes:
         if query.include_observed or query.recheck_from_version:
             normal = self.repository.get(definition.normal_version_id) if definition.normal_version_id else None
             eligible = self.sources.eligible(definition.dataset_id, definition.kind, normal).qualifications
-            candidates = [self.sources.capture_metadata(source.sample_id, eligible[source.sample_id])
-                          for source in definition.sources if source.sample_id in eligible]
+            paths = AuthorizedDatasetPaths(self.db.db_path)
+            with self.db.connection() as connection:
+                connection.execute('BEGIN')
+                candidates = [self.sources.capture_metadata(source.sample_id, eligible[source.sample_id], paths=paths, connection=connection)
+                              for source in definition.sources if source.sample_id in eligible]
         if query.recheck_from_version:
             if not state.current or query.recheck_from_version != state.current.version_id:
                 raise ValueError('连续范围仅重核验当前冻结判据，不得换用其他版本')

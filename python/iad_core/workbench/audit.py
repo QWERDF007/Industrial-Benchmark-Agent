@@ -167,7 +167,7 @@ class AuditService:
                    "consistency_scopes": scopes.model_dump(mode='json'),
                    "consistency_mode": request.consistency_mode,
                    "consistency_profile_id": request.consistency_profile_id,
-                   "input_sources": [SampleContent.capture(self.db, sid).model_dump() for sid in sample_ids],
+                   "input_sources": [source.model_dump() for source in SampleContent.capture_many(self.db, sample_ids)],
                    "normal_version_id": knowledge.normal.version_id,
                    "defect_version_id": knowledge.defect.version_id if knowledge.defect else None}
         return self.jobs.start("MODEL_AUDIT", config.task.task_id, payload, self.run, "准备冻结知识审计")
@@ -202,7 +202,7 @@ class AuditService:
     def retry(self, run_id: str, sample_ids: Optional[List[str]] = None) -> dict:
         def validate(request):
             try:
-                current = [SampleContent.capture(self.db, sid).model_dump() for sid in request['sample_ids']]
+                current = [source.model_dump() for source in SampleContent.capture_many(self.db, request['sample_ids'])]
                 if current != request['input_sources'] or request['generation_signature'] != self.generation_signature:
                     raise ValueError('源图像或标注内容已变化')
                 scopes = ConsistencyScopesSnapshot.model_validate(request['consistency_scopes'])
