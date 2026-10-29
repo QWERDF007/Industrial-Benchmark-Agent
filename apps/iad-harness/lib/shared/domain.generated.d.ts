@@ -228,7 +228,7 @@ export type DirectionId3 = string | null;
  */
 export type Direction = string;
 /**
- * 仅本次checks包含对应判据且有实际图像证据时可填已形成知识；仅有观察、无可用判据时填证据不足或不可观察
+ * 最终状态；仅关联本次checks的实际判据且有图像证据时可填已形成知识。没有对应本次判据时保留观察，状态为证据不足、不可观察或不适用，不得用无关判据填充引用
  */
 export type Status = "已形成知识" | "证据不足" | "不可观察" | "不适用";
 export type Reason = string;

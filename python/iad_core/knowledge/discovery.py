@@ -4,19 +4,21 @@ from typing import List, Literal
 from pydantic import Field, create_model
 
 from iad_core.advisory.analysis import AnalysisModel
-from iad_core.knowledge.models import KnowledgeDraft, KnowledgeLearning
+from iad_core.knowledge.models import DiscoveryArea, DiscoveryStatus, KnowledgeDraft, KnowledgeLearning
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
 
-LINK_INSTRUCTION = """仅为已经完成的视觉观察建立部件与判据引用，不进行新的图像判断，不改写观察或知识。
+LINK_INSTRUCTION = """为已经完成的视觉观察建立部件与判据引用，并依据实际关联确定每个方向的最终status；不进行新的图像判断，不改写观察事实、reason、图像证据或知识判据。
 输入areas按顺序对应area_0、area_1等输出字段，每项都必须返回。
 subjects从已观察parts名称中选择，check_titles从本次checks标题中选择，准确关联该项reason所描述的观察。
-没有对应项时留空，不用近义词新造引用，不以关联结果宣称人审确认或检查完整。
-已形成知识的观察须有实际关联判据；若提取内容不足以建立关联，不能凭空补造知识。
+没有对应项时引用留空，不用近义词新造引用，不以关联结果宣称人审确认或检查完整。
+提取阶段的status是候选判断，不能直接照抄。已形成知识必须关联本次checks中的对应判据并有实际图像证据；没有对应判据时按观察事实确定证据不足、不可观察或不适用。
+仅复核已有规则、但本轮增量checks未形成对应判据时保留全部观察，不能强行关联无关的新判据，也不能复制旧判据凑引用。
 冻结视觉提取："""
 
 
 class DiscoveryLinks(AnalysisModel):
+    status: DiscoveryStatus = Field(description=DiscoveryArea.model_fields['status'].description)
     subjects: List[str]
     check_titles: List[str]
 

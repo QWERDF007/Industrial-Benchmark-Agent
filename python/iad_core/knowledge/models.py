@@ -8,6 +8,7 @@ from iad_core.evidence.sources import SampleContent
 from iad_core.knowledge.instructions import FrozenMiningPrompt
 
 KnowledgeKind = Literal["normal", "defect"]
+DiscoveryStatus = Literal['已形成知识', '证据不足', '不可观察', '不适用']
 
 
 class KnowledgeCriterion(AnalysisModel):
@@ -61,12 +62,13 @@ class ObservedPart(AnalysisModel):
 class ObservedArea(AnalysisModel):
     direction_id: Optional[str] = Field(default=None, description='用户选中的方向编号；模型自主发现的新方向填null，不能冒用未选择的方向')
     direction: NonBlankText = Field(description='本轮观察标题；所选方向身份以direction_id为准，自主发现方向填写新标题')
-    status: Literal['已形成知识', '证据不足', '不可观察', '不适用'] = Field(description='仅本次checks包含对应判据且有实际图像证据时可填已形成知识；仅有观察、无可用判据时填证据不足或不可观察')
+    status: DiscoveryStatus = Field(description='提取阶段的候选状态，最终结合实际判据引用确认；仅本次checks包含对应判据且有实际图像证据时可填已形成知识，沿用历史观察不等于本轮形成新判据')
     reason: NonBlankText
     evidence_ids: List[str]
 
 
 class DiscoveryArea(ObservedArea):
+    status: DiscoveryStatus = Field(description='最终状态；仅关联本次checks的实际判据且有图像证据时可填已形成知识。没有对应本次判据时保留观察，状态为证据不足、不可观察或不适用，不得用无关判据填充引用')
     subjects: List[str] = Field(description='引用parts内实际可见部件名称；不适用时可为空')
     check_titles: List[str] = Field(description='引用本次checks实际标题；不是预设旧条目的完整性证明')
 

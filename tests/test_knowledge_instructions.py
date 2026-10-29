@@ -52,9 +52,9 @@ def test_mining_freezes_edited_prompt_and_validates_observation_scope(knowledge_
         content = body['messages'][0]['content']
         prompts.append(content[0]['text'])
         if body['response_format']['json_schema']['name'] == 'KnowledgeDiscoveryLinks':
-            result = {'area_0': {'subjects': ['虚构基座' if invalid == 'unknown_part' else '孔板'],
+            result = {'area_0': {'status': '已形成知识', 'subjects': ['虚构基座' if invalid == 'unknown_part' else '孔板'],
                 'check_titles': ['未归纳的判据'] if invalid == 'unknown_check' else ['两孔数量', '孔位排列']},
-                'area_1': {'subjects': ['孔板'], 'check_titles': []}}
+                'area_1': {'status': '不可观察', 'subjects': ['孔板'], 'check_titles': []}}
             return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
         entered.set()
         assert release.wait(5)
@@ -150,7 +150,7 @@ def test_stop_with_incomplete_json_is_reported_without_repair_or_retry(knowledge
         service.close()
 
 
-@pytest.mark.parametrize('invalid_link', [False, True])
+@pytest.mark.parametrize('invalid_link', [None, 'unknown_part', 'empty_formed'])
 def test_mining_links_visual_observations_using_frozen_name_enumerations(knowledge_dataset, invalid_link):
     from iad_core.entry import knowledge_get
     from iad_core.knowledge.service import KnowledgeService
@@ -180,15 +180,20 @@ def test_mining_links_visual_observations_using_frozen_name_enumerations(knowled
                 'counter_evidence_ids': []}], 'suspects': [], 'limitations': [],
                 'discovery': {'parts': [{'name': '圆孔', 'location': '主体', 'evidence_ids': supplied[:3]}],
                     'areas': [{'direction_id': None, 'direction': '开口内部外观', 'status': '已形成知识',
-                        'reason': '三个来源均可见开口内背景', 'evidence_ids': supplied[:3]}]}}
+                        'reason': '三个来源均可见开口内背景', 'evidence_ids': supplied[:3]},
+                        {'direction_id': None, 'direction': '圆孔外缘完整性', 'status': '已形成知识',
+                         'reason': '三个来源可见外缘，但本次增量未建立外缘判据', 'evidence_ids': supplied[:3]}]}}
         else:
             assert not any(item['type'] == 'image_url' for item in content), '关联只使用已冻结的文本，不重复读取图像'
             links = schema['$defs']['DiscoveryLinks']['properties']
             assert links['subjects']['items']['const'] == '圆孔'
             assert links['check_titles']['items']['const'] == '孔内背景可见'
+            assert set(links['status']['enum']) == {'已形成知识', '证据不足', '不可观察', '不适用'}
             assert all(eid in content[0]['text'] for eid in supplied[:3])
-            result = {'area_0': {'subjects': ['圆形开口' if invalid_link else '圆孔'],
-                                 'check_titles': ['孔内背景可见']}}
+            result = {'area_0': {'status': '已形成知识', 'subjects': ['圆形开口' if invalid_link == 'unknown_part' else '圆孔'],
+                                 'check_titles': ['孔内背景可见']},
+                      'area_1': {'status': '已形成知识' if invalid_link == 'empty_formed' else '证据不足',
+                                 'subjects': ['圆孔'], 'check_titles': []}}
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
@@ -201,12 +206,16 @@ def test_mining_links_visual_observations_using_frozen_name_enumerations(knowled
         snapshot = knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge']
         if invalid_link:
             assert finished['status'] == 'FAILED' and snapshot is None
-            assert 'literal_error' in finished['errors'][0]['message']
+            assert ('literal_error' if invalid_link == 'unknown_part' else '形成知识的观察方向必须关联判据') in finished['errors'][0]['message']
         else:
             assert finished['status'] == 'COMPLETED', finished['errors']
             area = snapshot['mining_steps'][0]['result']['discovery']['areas'][0]
             assert area['subjects'] == ['圆孔'] and area['check_titles'] == ['孔内背景可见']
             assert area['evidence_ids'] == supplied[:3]
+            unresolved = snapshot['mining_steps'][0]['result']['discovery']['areas'][1]
+            assert unresolved['status'] == '证据不足' and unresolved['check_titles'] == []
+            assert unresolved['reason'] == '三个来源可见外缘，但本次增量未建立外缘判据'
+            assert unresolved['evidence_ids'] == supplied[:3]
             assert snapshot['checks'][0]['subject'] == '圆形开口', '关联不得篡改已经提取的图像知识'
     finally:
         service.close()
