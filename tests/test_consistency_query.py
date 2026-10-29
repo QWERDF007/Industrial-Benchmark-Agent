@@ -18,6 +18,9 @@ def test_scope_results_distinguish_rescanned_history_and_keep_existing_pages_fro
     assert page.total==2 and page.next_cursor
     assert page.items[0].facts_state=='CURRENT'
     assert page.scopes.subjects.sample_count==4
+    assert 'samples' not in page.model_dump(mode='json')['scopes']['subjects']
+    from iad_core.consistency.result_snapshot import ResultSnapshots
+    assert len(ResultSnapshots(db).get(page.query_id).scopes.subjects.samples) == 4
     registry.rescan(config.dataset.id)
     current=queries.query(request)
     assert current.total==0

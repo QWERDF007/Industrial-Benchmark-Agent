@@ -1,8 +1,8 @@
 import React,{useEffect,useRef,useState} from 'react';
-import type {ConsistencyBatch,ConsistencyBatchList,Dataset,ImageRetrieve,ResultPage} from '../../shared/contracts.js';
+import type {ConsistencyBatch,ConsistencyBatchSummary,ConsistencyBatchList,Dataset,ImageRetrieve,ResultPage} from '../../shared/contracts.js';
 import type {ImageEncoderSettings} from '../../shared/domain.generated.js';
 import {jobPhases,jobStatuses} from '../../shared/job-display.js';
-import {imageRelations} from '../../shared/consistency-presentation.js';
+import {imageRelations,annotationSummary} from '../../shared/consistency-presentation.js';
 import {message,request} from '../api.js';
 import {useWorkspace} from '../workspace.js';
 import {ConsistencyScopePicker} from './ConsistencyScopePicker.js';
@@ -13,7 +13,7 @@ import {ConsistencyEmpty} from './ConsistencyEmpty.js';
 export function ConsistencyJobsPanel({datasets}:{datasets:Dataset[]}) {
   const {state,workspace}=useWorkspace(),location=state.consistency;
   const [subject,setSubject]=useState('all'),[mode,setMode]=useState<NonNullable<ImageRetrieve['mode']>>('exact');
-  const [batches,setBatches]=useState<ConsistencyBatch[]>([]),[revision,setRevision]=useState(0);
+  const [batches,setBatches]=useState<ConsistencyBatchSummary[]>([]),[revision,setRevision]=useState(0);
   const [cancelling,setCancelling]=useState(false),[error,setError]=useState('');
   const actions=useConsistencyStart(batchId=>{workspace.updateConsistency({batchId},true);setRevision(value=>value+1);});
   const busy=actions.busy||cancelling;
@@ -97,7 +97,7 @@ export function ConsistencyJobsPanel({datasets}:{datasets:Dataset[]}) {
           <td>{jobStatuses[child.status]}{child.phase && ['PENDING','RUNNING'].includes(child.status) ? ` · ${jobPhases[child.phase] || child.phase}` : ''}</td><td>{child.completed} / {child.failed} / {child.unprocessed}</td></tr>)}</tbody></table></div>
         {selected.children.flatMap(child=>child.errors.map((failure,index)=><p className="iad-error" key={child.run_id+index}>{failure.relative_path || failure.sample_id}：{failure.code ? `${failure.code} · ` : ''}{failure.message}</p>))}</details>
         <section aria-label="批次比较结果"><h3>比较结果{results ? ` · ${results.total} 对` : ''}</h3>
-          {results?.items.map(item=><div className="iad-row" key={item.result.result_id}><span>{imageRelations[item.result.verification.relation]} · {item.result.annotation.confirmed_conflict ? '已确认差异' : item.result.annotation.differences.length ? '存在待核对差异' : '未发现差异'}</span>
+          {results?.items.map(item=><div className="iad-row" key={item.result.result_id}><span>{imageRelations[item.result.verification.relation]} · {annotationSummary(item.result.annotation)}</span>
             <span>{item.sample_a.split(':').slice(1).join(':')} ↔ {item.sample_b.split(':').slice(1).join(':')}</span>
             <button onClick={()=>workspace.updateConsistency({batchId:selected.batch_id,evidenceId:item.result.evidence_id,resultId:item.result.result_id},true)}>打开比较证据</button></div>)}
           {results?.next_cursor && <button onClick={()=>setCursor(results.next_cursor!)}>下一页结果</button>}{cursor && <button onClick={()=>setCursor(undefined)}>返回首批结果</button>}

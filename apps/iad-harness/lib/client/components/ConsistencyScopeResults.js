@@ -14,7 +14,7 @@ export function ConsistencyScopeResults({ datasets, tab }) {
     const { state, workspace } = useWorkspace();
     const scope = state.consistency.scope || { kind: 'all_registered' };
     const facts = state.consistency.facts || 'CURRENT';
-    const subject = state.consistency.subjectId || 'all', conflict = state.consistency.conflictFilter || 'confirmed', review = state.consistency.reviewFilter || '';
+    const subject = state.consistency.subjectId || 'all', conflict = state.consistency.conflictFilter || 'all', review = state.consistency.reviewFilter || '';
     const [report, setReport] = useState(null), [busy, setBusy] = useState(false), [error, setError] = useState('');
     const [revision, setRevision] = useState(0);
     const reset = (patch) => workspace.updateConsistency({ ...patch, queryId: undefined, groupId: undefined, memberId: undefined, galleryPage: 1, memberPage: 1 }, true);

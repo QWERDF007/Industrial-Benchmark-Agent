@@ -12,7 +12,7 @@ export function ConsistencyReportSummary({report,facts='CURRENT',children}:{repo
           <div><span>检查状态</span><strong>{execution.total===0 ? '当前范围没有图像' : notStarted ? '尚未执行检查' : complete ? '检查完成' : '范围检查不完整'}</strong><small>{execution.failed ? `失败 ${execution.failed} · ` : ''}{execution.unsupported ? `不支持 ${execution.unsupported} · ` : ''}未处理 {execution.pending}</small></div>
           <div><span>图像检查范围</span><strong>{execution.total} 张</strong><small>已检查 {execution.completed} / {execution.total}</small></div>
           <div><span>严格同图</span><strong>{statistics.strict_groups} 组 · {statistics.strict_members} 成员</strong><small>原始像素关系</small></div>
-          <div><span>标注差异</span><strong>{statistics.differences}</strong><small>当前筛选的冻结差异</small></div>
+          <div><span>比较事项</span><strong>{statistics.differences}</strong><small>差异及规范待确认</small></div>
           <div><span>规范 / 依据不足</span><strong>{statistics.policy_unknown}</strong><small>仍需核对适用规范</small></div>
           <div><span>人工复核</span><strong>待复核 {statistics.pending_review}</strong><small>待修正 {statistics.pending_correction}</small></div>
         </div><div className="iad-consistency-report-tools">

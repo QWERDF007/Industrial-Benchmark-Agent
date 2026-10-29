@@ -67,14 +67,17 @@ class ScanReference(AnalysisModel):
     scan_ref: Identifier
 
 
-class FrozenScope(AnalysisModel):
+class ScopeSummary(AnalysisModel):
     scope_id: Identifier
-    selector: ScopeSelector
     dataset_ids: list[Identifier]
-    samples: list[FrozenSample]
-    scans: list[ScanReference]
     frozen_at: AwareDatetime
     sample_count: Count
+
+
+class FrozenScope(ScopeSummary):
+    selector: ScopeSelector
+    samples: list[FrozenSample]
+    scans: list[ScanReference]
 
     @model_validator(mode='after')
     def complete_membership(self):
@@ -88,7 +91,12 @@ class FrozenScope(AnalysisModel):
         return self
 
 
-class ConsistencyScopesSnapshot(AnalysisModel):
+class ConsistencyScopesSummary(AnalysisModel):
+    subjects: ScopeSummary
+    corpus: ScopeSummary
+
+
+class ConsistencyScopesSnapshot(ConsistencyScopesSummary):
     subjects: FrozenScope
     corpus: FrozenScope
 

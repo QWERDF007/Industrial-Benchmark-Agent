@@ -11,7 +11,7 @@ export type { KnowledgeVersion, KnowledgeSourcePage, MiningStart as KnowledgeGro
 export type { ScanResult } from "./domain.generated.js";
 export type { ImageRetrieve, RetrievalPage, RetrievalGroup, RetrievalMember, RetrievalBranchPage, RetrievalOrigin, TemporaryImageRef } from "./domain.generated.js";
 export type {ConsistencyCompare,ConsistencyResult,EvidenceBundle,ArtifactRef} from './domain.generated.js';
-export type {ConsistencyBatch,ConsistencyBatchList,StartResultResponse,ConsistencyQuery,ResultPage,ConsistencyReport} from './domain.generated.js';
+export type {ConsistencyBatch,ConsistencyBatchSummary,ConsistencyBatchList,StartResultResponse,ConsistencyQuery,ResultPage,ConsistencyReport} from './domain.generated.js';
 export type {StrictGroupPage,GroupMemberPage} from './domain.generated.js';
 export type {ConsistencyContextRequest,ConsistencyContext,ConsistencyReturnLocation} from './domain.generated.js';
 

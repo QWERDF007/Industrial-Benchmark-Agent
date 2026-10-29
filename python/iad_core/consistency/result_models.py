@@ -4,7 +4,7 @@ from pydantic import AwareDatetime,Field,computed_field
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.evidence_models import ConsistencyResult,EvidenceSourceStates
-from iad_core.consistency.models import AllRegisteredScope,ConsistencyScopesSnapshot,CorpusScope,Count,CoverageCount,DifferenceType,Identifier,Mode,Relation,ScopeSelector
+from iad_core.consistency.models import AllRegisteredScope,ConsistencyScopesSnapshot,ConsistencyScopesSummary,CorpusScope,Count,CoverageCount,DifferenceType,Identifier,Mode,Relation,ScopeSelector
 from iad_core.consistency.review_models import ReviewState, CorrectionState
 from iad_core.gold.readiness import GoldAvailability
 
@@ -76,7 +76,7 @@ class ResultSnapshot(AnalysisModel):
 
 class ResultPage(AnalysisModel):
     query_id: Identifier
-    scopes: ConsistencyScopesSnapshot
+    scopes: ConsistencyScopesSummary
     observed_at: AwareDatetime
     facts: FactCounts
     items: list[ResultSummary]

@@ -207,6 +207,8 @@ def test_unknown_annotation_policy_gold_does_not_read_unrelated_image_bytes(data
     from iad_core.gold.projection import GoldProjection
     from iad_core.consistency.retrieval_sources import SourceImage
     db, _, config = dataset
+    ConsistencyService(db).compare(ConsistencyCompare(
+        sample_a=config.dataset.id + ":dent.png", sample_b=config.dataset.id + ":scratch.png"))
     reads = []
     original = SourceImage.read
 

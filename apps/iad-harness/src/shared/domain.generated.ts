@@ -1242,13 +1242,16 @@ export type CorpusScope3 = AllRegisteredScope | DatasetScope;
 export type ProfileId3 = string | null;
 export type RequestId1 = string;
 export type ScopeId = string;
+export type DatasetIds1 = string[];
+export type FrozenAt = string;
+export type SampleCount1 = number;
 export type Selector = AllRegisteredScope1 | DatasetScope1 | SampleScope1 | FilteredScope1;
 export type Kind21 = "all_registered";
 export type Kind22 = "datasets";
 /**
  * @minItems 1
  */
-export type DatasetIds1 = [string, ...string[]];
+export type DatasetIds2 = [string, ...string[]];
 export type Kind23 = "samples";
 /**
  * @minItems 1
@@ -1256,7 +1259,6 @@ export type Kind23 = "samples";
 export type SampleIds4 = [string, ...string[]];
 export type Kind24 = "filtered";
 export type DatasetId30 = string;
-export type DatasetIds2 = string[];
 export type SampleId22 = string;
 export type DatasetId31 = string;
 export type TaskId5 = string;
@@ -1266,8 +1268,6 @@ export type Samples1 = FrozenSample[];
 export type DatasetId32 = string;
 export type ScanRef1 = string;
 export type Scans = ScanReference[];
-export type FrozenAt = string;
-export type SampleCount1 = number;
 export type CompareProfile = "raw-decoded-v1";
 export type Width1 = number | null;
 export type Height1 = number | null;
@@ -1721,23 +1721,56 @@ export type Completed2 = number;
 export type Failed2 = number;
 export type Unprocessed2 = number;
 export type PairCount = number;
-export type Children = JobSnapshot[];
 export type CreatedAt5 = string;
+export type Children = JobSnapshot[];
 export type BatchId2 = string;
 export type BatchId3 = string;
 export type RequestId2 = string;
 export type SampleIds5 = [string, ...string[]] | null;
-export type Items7 = ConsistencyBatch[];
-export type StartResultResponse = Started | NoWork;
-export type Kind35 = "started";
 export type BatchId4 = string;
+export type RootBatchId1 = string;
+export type ParentBatchId1 = string | null;
+export type Kind35 = "index" | "consistency";
+export type ScopeId3 = string;
+export type DatasetIds3 = string[];
+export type FrozenAt1 = string;
+export type SampleCount2 = number;
 export type Status19 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
-export type Kind36 = "no_work";
+export type CancelRequested2 = boolean;
+export type Total10 = number;
+export type Completed3 = number;
+export type Failed3 = number;
+export type Unprocessed3 = number;
+export type PairCount1 = number;
+export type CreatedAt6 = string;
+export type RunId9 = string;
+export type DatasetId35 = string;
+export type JobType1 =
+  | "MODEL_AUDIT"
+  | "NORMAL_KNOWLEDGE"
+  | "DEFECT_KNOWLEDGE"
+  | "DIRECTION_EXPLORATION"
+  | "IMAGE_INDEX"
+  | "DATA_CONSISTENCY"
+  | "CONSISTENCY_ANALYSIS";
+export type Status20 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
+export type Phase3 = string | null;
+export type Completed4 = number;
+export type Failed4 = number;
+export type Unprocessed4 = number;
+export type Errors2 = JobFailure[];
+export type Children1 = ConsistencyChildSummary[];
+export type Items7 = ConsistencyBatchSummary[];
+export type StartResultResponse = Started | NoWork;
+export type Kind36 = "started";
+export type BatchId5 = string;
+export type Status21 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
+export type Kind37 = "no_work";
 export type Reason14 = string;
 export type Selection1 = BatchSelection | ScopeSelection;
-export type Kind37 = "batch";
-export type BatchId5 = string;
-export type Kind38 = "scope";
+export type Kind38 = "batch";
+export type BatchId6 = string;
+export type Kind39 = "scope";
 export type Subjects2 = AllRegisteredScope | DatasetScope | SampleScope | FilteredScope;
 export type CorpusScope4 = AllRegisteredScope | DatasetScope;
 export type Facts3 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
@@ -1772,7 +1805,7 @@ export type CheckedAt3 = string;
 export type FactsState = "CURRENT" | "HISTORICAL" | "UNKNOWN";
 export type EvidenceAvailable = boolean;
 export type Items8 = ResultSummary[];
-export type Total10 = number;
+export type Total11 = number;
 export type NextCursor2 = string | null;
 export type Mode5 = ("exact" | "visual" | "combined") | null;
 export type ProfileId9 = string | null;
@@ -1790,7 +1823,7 @@ export type PendingReview2 = number;
 export type PendingCorrection = number;
 export type PendingReview3 = number;
 export type PendingCorrection1 = number;
-export type Total11 = number;
+export type Total12 = number;
 export type Confirmed = number | null;
 export type Conflicts5 = number | null;
 export type Excluded1 = number | null;
@@ -1810,37 +1843,37 @@ export type GroupId1 = string;
 export type FactsState2 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
 export type MemberCount3 = number;
 export type DatasetCount = number;
-export type PairCount1 = number;
+export type PairCount2 = number;
 export type Items9 = StrictGroup[];
-export type Total12 = number;
+export type Total13 = number;
 export type QueryId4 = string;
 export type GroupId2 = string;
 export type FactsState3 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
 export type SampleId34 = string;
-export type DatasetId35 = string;
+export type DatasetId36 = string;
 export type RelativePath6 = string;
 export type EvidenceId15 = string;
 export type Items10 = GroupMember[];
-export type Total13 = number;
+export type Total14 = number;
 export type QueryId5 = string;
-export type Kind39 = "conflicts" | "groups";
+export type Kind40 = "conflicts" | "groups";
 export type GroupId3 = string;
 export type FactsState4 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
 export type QueryId6 = string;
-export type Kind40 = "conflicts" | "groups";
+export type Kind41 = "conflicts" | "groups";
 export type Page12 = number;
 export type PageSize13 = number;
 export type Search6 = string;
 export type Order = "recent" | "members";
 export type DifferenceFilter = "all" | "annotation" | "quality" | "policy" | "unavailable";
 export type QueryId7 = string;
-export type Kind41 = "conflicts" | "groups";
+export type Kind42 = "conflicts" | "groups";
 export type GroupId4 = string;
 export type FactsState5 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
 export type Page13 = number;
 export type PageSize14 = number;
 export type QueryId8 = string;
-export type Kind42 = "conflicts" | "groups";
+export type Kind43 = "conflicts" | "groups";
 export type Value = "all" | "annotation" | "quality" | "policy" | "unavailable";
 export type Label3 = string;
 export type Count = number;
@@ -1853,7 +1886,7 @@ export type Available1 = boolean;
 export type MemberCount4 = number;
 export type CandidateCount = number;
 export type DatasetCount1 = number;
-export type PairCount2 = number;
+export type PairCount3 = number;
 export type DifferenceTypes = (
   | "QUALITY_LABEL"
   | "CATEGORY"
@@ -1866,23 +1899,23 @@ export type DifferenceTypes = (
 )[];
 export type ConfirmedConflict3 = boolean;
 export type Items11 = GalleryItem[];
-export type Total14 = number;
+export type Total15 = number;
 export type QueryId9 = string;
 export type GroupId6 = string;
 export type EvidenceId17 = string;
 export type ResultId7 = string;
 export type AnchorSide = "left" | "right";
 export type Items12 = GalleryMember[];
-export type Total15 = number;
+export type Total16 = number;
 export type QueryId10 = string;
-export type Kind43 = "conflicts" | "groups";
+export type Kind44 = "conflicts" | "groups";
 export type GroupId7 = string;
 export type FactsState7 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
 export type RequestId3 = string;
 export type GroupId8 = string;
-export type Status20 =
+export type Status22 =
   ("PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED") | "NOT_ANALYZED";
-export type RunId9 = string | null;
+export type RunId10 = string | null;
 export type ModelName5 = string | null;
 /**
  * @minItems 1
@@ -3490,19 +3523,19 @@ export interface ConsistencyScopesSnapshot {
 }
 export interface FrozenScope {
   scope_id: ScopeId;
-  selector: Selector;
-  dataset_ids: DatasetIds2;
-  samples: Samples1;
-  scans: Scans;
+  dataset_ids: DatasetIds1;
   frozen_at: FrozenAt;
   sample_count: SampleCount1;
+  selector: Selector;
+  samples: Samples1;
+  scans: Scans;
 }
 export interface AllRegisteredScope1 {
   kind: Kind21;
 }
 export interface DatasetScope1 {
   kind: Kind22;
-  dataset_ids: DatasetIds1;
+  dataset_ids: DatasetIds2;
 }
 export interface SampleScope1 {
   kind: Kind23;
@@ -4070,8 +4103,8 @@ export interface ConsistencyBatch {
   failed: Failed2;
   unprocessed: Unprocessed2;
   pair_count: PairCount;
-  children: Children;
   created_at: CreatedAt5;
+  children: Children;
 }
 export interface BatchFailure {
   code: Code1;
@@ -4088,13 +4121,51 @@ export interface ConsistencyBatchRetry {
 export interface ConsistencyBatchList {
   items: Items7;
 }
-export interface Started {
-  kind: Kind35;
+export interface ConsistencyBatchSummary {
   batch_id: BatchId4;
+  root_batch_id: RootBatchId1;
+  parent_batch_id: ParentBatchId1;
+  kind: Kind35;
+  scopes: ConsistencyScopesSummary;
   status: Status19;
+  cancel_requested: CancelRequested2;
+  error: BatchFailure | null;
+  total: Total10;
+  completed: Completed3;
+  failed: Failed3;
+  unprocessed: Unprocessed3;
+  pair_count: PairCount1;
+  created_at: CreatedAt6;
+  children: Children1;
+}
+export interface ConsistencyScopesSummary {
+  subjects: ScopeSummary;
+  corpus: ScopeSummary;
+}
+export interface ScopeSummary {
+  scope_id: ScopeId3;
+  dataset_ids: DatasetIds3;
+  frozen_at: FrozenAt1;
+  sample_count: SampleCount2;
+}
+export interface ConsistencyChildSummary {
+  run_id: RunId9;
+  dataset_id: DatasetId35;
+  job_type: JobType1;
+  status: Status20;
+  phase: Phase3;
+  completed: Completed4;
+  failed: Failed4;
+  unprocessed: Unprocessed4;
+  errors: Errors2;
+}
+export interface Started {
+  kind: Kind36;
+  batch_id: BatchId5;
+  status: Status21;
 }
 export interface NoWork {
-  kind: Kind36;
+  kind: Kind37;
   reason: Reason14;
   coverage: ConsistencyCoverage;
 }
@@ -4109,11 +4180,11 @@ export interface ConsistencyQuery {
   page_size?: PageSize10;
 }
 export interface BatchSelection {
-  kind?: Kind37;
-  batch_id: BatchId5;
+  kind?: Kind38;
+  batch_id: BatchId6;
 }
 export interface ScopeSelection {
-  kind?: Kind38;
+  kind?: Kind39;
   subjects: Subjects2;
   corpus_scope?: CorpusScope4;
   facts?: Facts3;
@@ -4122,11 +4193,11 @@ export interface ScopeSelection {
 }
 export interface ResultPage {
   query_id: QueryId;
-  scopes: ConsistencyScopesSnapshot;
+  scopes: ConsistencyScopesSummary;
   observed_at: ObservedAt;
   facts: FactCounts;
   items: Items8;
-  total: Total10;
+  total: Total11;
   next_cursor: NextCursor2;
   execution: CoverageCount;
   corpus: CoverageCount;
@@ -4175,7 +4246,7 @@ export interface FactStatistics {
   pending_correction: PendingCorrection;
 }
 export interface GoldAvailability {
-  total: Total11;
+  total: Total12;
   confirmed: Confirmed;
   conflicts: Conflicts5;
   excluded: Excluded1;
@@ -4197,37 +4268,37 @@ export interface GroupMemberQuery {
 export interface StrictGroupPage {
   query_id: QueryId3;
   items: Items9;
-  total: Total12;
+  total: Total13;
 }
 export interface StrictGroup {
   group_id: GroupId1;
   facts_state: FactsState2;
   member_count: MemberCount3;
   dataset_count: DatasetCount;
-  pair_count: PairCount1;
+  pair_count: PairCount2;
 }
 export interface GroupMemberPage {
   query_id: QueryId4;
   group_id: GroupId2;
   facts_state: FactsState3;
   items: Items10;
-  total: Total13;
+  total: Total14;
 }
 export interface GroupMember {
   sample_id: SampleId34;
-  dataset_id: DatasetId35;
+  dataset_id: DatasetId36;
   relative_path: RelativePath6;
   evidence_id: EvidenceId15;
 }
 export interface GalleryReference {
   query_id: QueryId5;
-  kind: Kind39;
+  kind: Kind40;
   group_id: GroupId3;
   facts_state?: FactsState4;
 }
 export interface GalleryQuery {
   query_id: QueryId6;
-  kind: Kind40;
+  kind: Kind41;
   page?: Page12;
   page_size?: PageSize13;
   search?: Search6;
@@ -4236,7 +4307,7 @@ export interface GalleryQuery {
 }
 export interface GalleryMemberQuery {
   query_id: QueryId7;
-  kind: Kind41;
+  kind: Kind42;
   group_id: GroupId4;
   facts_state?: FactsState5;
   page?: Page13;
@@ -4244,10 +4315,10 @@ export interface GalleryMemberQuery {
 }
 export interface GalleryPage {
   query_id: QueryId8;
-  kind: Kind42;
+  kind: Kind43;
   filters: Filters;
   items: Items11;
-  total: Total14;
+  total: Total15;
 }
 export interface GalleryFilterCount {
   value: Value;
@@ -4261,7 +4332,7 @@ export interface GalleryItem {
   member_count: MemberCount4;
   candidate_count: CandidateCount;
   dataset_count: DatasetCount1;
-  pair_count: PairCount2;
+  pair_count: PairCount3;
   difference_types: DifferenceTypes;
   confirmed_conflict: ConfirmedConflict3;
 }
@@ -4276,7 +4347,7 @@ export interface GalleryMemberPage {
   group_id: GroupId6;
   anchor: GalleryImage;
   items: Items12;
-  total: Total15;
+  total: Total16;
 }
 export interface GalleryMember {
   image: GalleryImage;
@@ -4289,15 +4360,15 @@ export interface GalleryComparison {
 }
 export interface GroupAnalysisStart {
   query_id: QueryId10;
-  kind: Kind43;
+  kind: Kind44;
   group_id: GroupId7;
   facts_state?: FactsState7;
   request_id: RequestId3;
 }
 export interface GroupAnalysisView {
   group_id: GroupId8;
-  status: Status20;
-  run_id: RunId9;
+  status: Status22;
+  run_id: RunId10;
   model_name: ModelName5;
   result: GroupAnalysisDraft | null;
   error: Error2;

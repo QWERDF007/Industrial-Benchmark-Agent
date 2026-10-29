@@ -101,7 +101,7 @@ class GalleryQueries:
         ('unavailable','待补依据',('ANNOTATION_UNREADABLE','POLICY_UNCONFIRMED')),
     )
 
-    PAIRS = '''WITH pairs AS (
+    PAIRS = '''WITH pairs AS MATERIALIZED (
         SELECT i.position,i.facts_state,i.evidence_available,r.evidence_id,r.result_id,
             json_extract(r.snapshot_json,'$.sources.left') left_source,
             json_extract(r.snapshot_json,'$.sources.right') right_source,

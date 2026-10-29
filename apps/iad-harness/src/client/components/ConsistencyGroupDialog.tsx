@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import type {GalleryItem,GalleryMemberPage} from '../../shared/domain.generated.js';
-import {imageRelations} from '../../shared/consistency-presentation.js';
+import {imageRelations,annotationState,annotationSummary} from '../../shared/consistency-presentation.js';
 import {CloseIcon} from '../AuditIcon.js';
 import {message,request} from '../api.js';
 import {galleryImageUrl,frozenConsistencyImage,frozenConsistencyMember} from '../consistency-images.js';
@@ -44,7 +44,7 @@ export function ConsistencyGroupDialog({queryId,kind,item,position,total,onMove,
     if(event.key==='ArrowLeft' && position>1){event.preventDefault();onMove(-1);}
     if(event.key==='ArrowRight' && position<total){event.preventDefault();onMove(1);}
   }}>
-    <header className="iad-group-header"><div><span className="iad-muted">{kind==='groups' ? '严格同图成员' : '候选集合核验'}</span><h2>{kind==='groups' ? '重复图组' : '冲突图像'} · {item.anchor.sample.relative_path.split('/').pop()}</h2><p>{kind==='groups' ? `${item.member_count} 张成员` : `查询图像 1 张 · ${item.candidate_count} 张候选`}</p></div>
+    <header className="iad-group-header"><div><span className="iad-muted">{kind==='groups' ? '严格同图成员' : '候选集合核验'}</span><h2>{kind==='groups' ? '重复图组' : annotationState(item.difference_types,item.confirmed_conflict)} · {item.anchor.sample.relative_path.split('/').pop()}</h2><p>{kind==='groups' ? `${item.member_count} 张成员` : `查询图像 1 张 · ${item.candidate_count} 张候选`}</p></div>
       <div className="iad-row"><button disabled={position<=1} onClick={()=>onMove(-1)}>上一组</button><span className="iad-muted">{position} / {total}</span><button disabled={position>=total} onClick={()=>onMove(1)}>下一组</button><IconButton label="关闭图组详情" onClick={onClose}><CloseIcon /></IconButton></div></header>
     <div className="iad-group-scroll">
       {(error||anchor.error||candidate.error) && <p className="iad-error" role="alert">{error||anchor.error||candidate.error}</p>}
@@ -60,7 +60,7 @@ export function ConsistencyGroupDialog({queryId,kind,item,position,total,onMove,
         </section>
         <div className="iad-group-analysis"><PageTabs label="图组详情页签" items={tabs} value={tab} onChange={detailTab=>workspace.updateConsistency({detailTab},true)}>
           {tab==='summary' && <><ConsistencyGroupAnalysis reference={{query_id:queryId,kind,group_id:item.group_id,facts_state:item.facts_state}} onLocate={(citation,offset)=>workspace.updateConsistency({memberPage:Math.floor(offset/20)+1,memberId:citation.candidate_id,differenceId:citation.comparison?.difference_id??undefined,detailTab:'evidence'},true)} />
-            {comparison && <div className="iad-group-fact"><strong>确定性事实</strong><span>{imageRelations[comparison.result.verification.relation]} · {comparison.result.annotation.differences.length} 项标注差异</span><button className="iad-consistency-text-button" onClick={()=>workspace.updateConsistency({detailTab:'evidence'},true)}>查看当前候选证据</button></div>}</>}
+            {comparison && <div className="iad-group-fact"><strong>确定性事实</strong><span>{imageRelations[comparison.result.verification.relation]} · {annotationSummary(comparison.result.annotation)}</span><button className="iad-consistency-text-button" onClick={()=>workspace.updateConsistency({detailTab:'evidence'},true)}>查看当前候选证据</button></div>}</>}
           {tab==='evidence' && (comparison ? <><dl className="iad-group-references"><dt>比较</dt><dd>{comparison.result.result_id}</dd><dt>证据</dt><dd>{comparison.result.evidence_id}</dd></dl><ConsistencyDifferences member={frozenConsistencyMember(comparison)} differenceId={location.differenceId} onDifference={differenceId=>workspace.updateConsistency({differenceId},true)} anchorSide={selected?.comparison?.anchor_side} /></> : <p className="iad-muted">当前成员与固定主图之间没有已保存的直接比较证据。</p>)}
           {tab==='review' && (comparison ? <ConsistencyReviewPanel key={comparison.result.evidence_id} bundle={comparison} /> : <p className="iad-muted">取得当前双图的比较证据后可人工复核。</p>)}
         </PageTabs></div>

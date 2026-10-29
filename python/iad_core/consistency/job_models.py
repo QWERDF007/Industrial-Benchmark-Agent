@@ -4,9 +4,9 @@ from dataclasses import dataclass
 from pydantic import AwareDatetime, Field, RootModel, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel
-from iad_core.consistency.models import ConsistencyCoverage, ConsistencyScopesSnapshot, ConsistencyStart, Count, Identifier, ImageIndexPrepare
+from iad_core.consistency.models import ConsistencyCoverage, ConsistencyScopesSnapshot, ConsistencyScopesSummary, ConsistencyStart, Count, Identifier, ImageIndexPrepare
 from iad_core.feature.profiles import ImageEncoderConfig
-from iad_core.workbench.job_models import JobSnapshot, JobStatus
+from iad_core.workbench.job_models import JobSnapshot, JobStatus, JobKind, JobFailure
 from iad_core.consistency.errors import ConsistencyErrorCode
 
 
@@ -53,12 +53,24 @@ class BatchFailure(AnalysisModel):
     message: str
 
 
-class ConsistencyBatch(AnalysisModel):
+class ConsistencyChildSummary(AnalysisModel):
+    run_id: Identifier
+    dataset_id: Identifier
+    job_type: JobKind
+    status: JobStatus
+    phase: str | None
+    completed: Count
+    failed: Count
+    unprocessed: Count
+    errors: list[JobFailure]
+
+
+class ConsistencyBatchProgress(AnalysisModel):
     batch_id: Identifier
     root_batch_id: Identifier
     parent_batch_id: Identifier | None
     kind: Literal['index','consistency']
-    scopes: ConsistencyScopesSnapshot
+    scopes: ConsistencyScopesSummary
     status: JobStatus
     cancel_requested: bool
     error: BatchFailure | None = None
@@ -67,13 +79,24 @@ class ConsistencyBatch(AnalysisModel):
     failed: Count
     unprocessed: Count
     pair_count: Count
-    children: list[JobSnapshot]
     created_at: AwareDatetime
 
     @model_validator(mode='after')
     def partition(self):
         if self.completed+self.failed+self.unprocessed!=self.total:raise ValueError('Batch progress must partition its frozen subjects')
         return self
+
+
+class ConsistencyBatchSummary(ConsistencyBatchProgress):
+    children: list[ConsistencyChildSummary]
+
+
+class ConsistencyBatch(ConsistencyBatchProgress):
+    scopes: ConsistencyScopesSnapshot
+    children: list[JobSnapshot]
+
+    def summary(self) -> ConsistencyBatchSummary:
+        return ConsistencyBatchSummary.model_validate(self, from_attributes=True)
 
 
 class Started(AnalysisModel):
@@ -104,7 +127,7 @@ class ConsistencyBatchRetry(ConsistencyBatchReference):
 
 
 class ConsistencyBatchList(AnalysisModel):
-    items: list[ConsistencyBatch]
+    items: list[ConsistencyBatchSummary]
 
 
 class BatchResultReference(AnalysisModel):

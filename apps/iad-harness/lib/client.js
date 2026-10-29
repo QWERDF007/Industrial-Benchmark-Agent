@@ -6126,6 +6126,20 @@ var __IadClientBundle__ = (() => {
     POLICY_UNCONFIRMED: "\u6807\u6CE8\u89C4\u8303\u672A\u786E\u8BA4",
     ANNOTATION_UNREADABLE: "\u6807\u6CE8\u4E0D\u53EF\u8BFB\u53D6"
   };
+  function annotationState(types2, confirmed) {
+    if (confirmed) return "\u5DF2\u786E\u8BA4\u6807\u6CE8\u51B2\u7A81";
+    if (types2.some((type) => type !== "POLICY_UNCONFIRMED" && type !== "ANNOTATION_UNREADABLE")) return "\u6807\u6CE8\u5DEE\u5F02\u5F85\u6838\u5BF9";
+    if (types2.includes("ANNOTATION_UNREADABLE")) return "\u6807\u6CE8\u8BFB\u53D6\u5F85\u6838\u5BF9";
+    return types2.includes("POLICY_UNCONFIRMED") ? "\u89C4\u8303\u5F85\u786E\u8BA4" : "\u672A\u53D1\u73B0\u6807\u6CE8\u5DEE\u5F02";
+  }
+  function annotationSummary(annotation) {
+    const count2 = annotation.differences.filter((row) => row.type !== "POLICY_UNCONFIRMED" && row.type !== "ANNOTATION_UNREADABLE").length;
+    return [
+      count2 ? `${count2} \u9879\u6807\u6CE8\u5DEE\u5F02` : annotation.status === "COMPLETE" ? "\u672A\u53D1\u73B0\u6807\u6CE8\u5DEE\u5F02" : "\u6807\u6CE8\u6BD4\u8F83\u4E0D\u5B8C\u6574",
+      annotation.differences.some((row) => row.type === "POLICY_UNCONFIRMED") ? "\u89C4\u8303\u5F85\u786E\u8BA4" : "",
+      annotation.confirmed_conflict ? "\u5DF2\u786E\u8BA4\u51B2\u7A81" : ""
+    ].filter(Boolean).join(" \xB7 ");
+  }
 
   // src/client/components/AuditConsistency.tsx
   var import_jsx_runtime29 = __require("react/jsx-runtime");
@@ -6169,7 +6183,7 @@ var __IadClientBundle__ = (() => {
           /* @__PURE__ */ (0, import_jsx_runtime29.jsxs)("span", { children: [
             imageRelations[result.verification.relation],
             " \xB7 ",
-            result.annotation.confirmed_conflict ? "\u786E\u8BA4\u51B2\u7A81" : result.annotation.policy_relation === "UNKNOWN" && result.annotation.differences.length ? "\u89C4\u8303\u5F85\u786E\u8BA4" : result.annotation.differences.length ? "\u5B58\u5728\u5DEE\u5F02" : "\u672A\u53D1\u73B0\u6807\u6CE8\u5DEE\u5F02"
+            annotationSummary(result.annotation)
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime29.jsx)("button", { onClick: () => onEvidence(result), children: "\u67E5\u770B\u6BD4\u8F83\u8BC1\u636E" })
         ] }, result.result_id))
@@ -7629,9 +7643,9 @@ var __IadClientBundle__ = (() => {
           /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("small", { children: "\u539F\u59CB\u50CF\u7D20\u5173\u7CFB" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("span", { children: "\u6807\u6CE8\u5DEE\u5F02" }),
+          /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("span", { children: "\u6BD4\u8F83\u4E8B\u9879" }),
           /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("strong", { children: statistics.differences }),
-          /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("small", { children: "\u5F53\u524D\u7B5B\u9009\u7684\u51BB\u7ED3\u5DEE\u5F02" })
+          /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("small", { children: "\u5DEE\u5F02\u53CA\u89C4\u8303\u5F85\u786E\u8BA4" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("div", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("span", { children: "\u89C4\u8303 / \u4F9D\u636E\u4E0D\u8DB3" }),
@@ -13213,7 +13227,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
               /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("span", { children: [
                 imageRelations[item.result.verification.relation],
                 " \xB7 ",
-                item.result.annotation.confirmed_conflict ? "\u5DF2\u786E\u8BA4\u5DEE\u5F02" : item.result.annotation.differences.length ? "\u5B58\u5728\u5F85\u6838\u5BF9\u5DEE\u5F02" : "\u672A\u53D1\u73B0\u5DEE\u5F02"
+                annotationSummary(item.result.annotation)
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("span", { children: [
                 item.sample_a.split(":").slice(1).join(":"),
@@ -13362,7 +13376,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
         /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("div", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("span", { className: "iad-muted", children: kind === "groups" ? "\u4E25\u683C\u540C\u56FE\u6210\u5458" : "\u5019\u9009\u96C6\u5408\u6838\u9A8C" }),
           /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("h2", { children: [
-            kind === "groups" ? "\u91CD\u590D\u56FE\u7EC4" : "\u51B2\u7A81\u56FE\u50CF",
+            kind === "groups" ? "\u91CD\u590D\u56FE\u7EC4" : annotationState(item.difference_types, item.confirmed_conflict),
             " \xB7 ",
             item.anchor.sample.relative_path.split("/").pop()
           ] }),
@@ -13423,8 +13437,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
                 /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("span", { children: [
                   imageRelations[comparison.result.verification.relation],
                   " \xB7 ",
-                  comparison.result.annotation.differences.length,
-                  " \u9879\u6807\u6CE8\u5DEE\u5F02"
+                  annotationSummary(comparison.result.annotation)
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("button", { className: "iad-consistency-text-button", onClick: () => workspace.updateConsistency({ detailTab: "evidence" }, true), children: "\u67E5\u770B\u5F53\u524D\u5019\u9009\u8BC1\u636E" })
               ] })
@@ -13507,7 +13520,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
     return /* @__PURE__ */ (0, import_jsx_runtime76.jsxs)("section", { className: "iad-consistency-gallery-panel", "aria-label": kind === "conflicts" ? "\u51B2\u7A81\u56FE\u50CF" : "\u91CD\u590D\u56FE\u7EC4", children: [
       /* @__PURE__ */ (0, import_jsx_runtime76.jsxs)("header", { className: "iad-consistency-panel-header", children: [
         /* @__PURE__ */ (0, import_jsx_runtime76.jsxs)("strong", { children: [
-          kind === "conflicts" ? "\u51B2\u7A81\u56FE\u50CF" : "\u91CD\u590D\u56FE\u7EC4 \xB7 \u4EE3\u8868\u56FE\u50CF",
+          kind === "conflicts" ? "\u6BD4\u8F83\u56FE\u50CF\u4E0E\u5F85\u786E\u8BA4" : "\u91CD\u590D\u56FE\u7EC4 \xB7 \u4EE3\u8868\u56FE\u50CF",
           " ",
           /* @__PURE__ */ (0, import_jsx_runtime76.jsxs)("span", { className: "iad-muted", children: [
             page?.total ?? "\u2014",
@@ -13550,8 +13563,8 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
             /* @__PURE__ */ (0, import_jsx_runtime76.jsxs)("div", { className: "iad-consistency-card-caption", children: [
               /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("strong", { title: item.anchor.sample.relative_path, children: item.anchor.sample.relative_path.split("/").pop() }),
               /* @__PURE__ */ (0, import_jsx_runtime76.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("span", { className: "iad-consistency-badge", children: kind === "groups" ? "\u4E25\u683C\u540C\u56FE" : item.difference_types.map((type) => differenceLabels[type]).join("\u3001") || "\u5F85\u6838\u5B9E" }),
-                /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("span", { children: kind === "groups" ? `${item.dataset_count} \u4E2A\u6570\u636E\u96C6` : item.confirmed_conflict ? "\u5DF2\u786E\u8BA4\u5DEE\u5F02" : "\u5F85\u6838\u5B9E" })
+                /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("span", { className: "iad-consistency-badge", children: kind === "groups" ? "\u4E25\u683C\u540C\u56FE" : item.difference_types.map((type) => differenceLabels[type]).join("\u3001") || "\u672A\u53D1\u73B0\u6807\u6CE8\u5DEE\u5F02" }),
+                /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("span", { children: kind === "groups" ? `${item.dataset_count} \u4E2A\u6570\u636E\u96C6` : annotationState(item.difference_types, item.confirmed_conflict) })
               ] })
             ] })
           ]
@@ -13582,7 +13595,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
     const { state, workspace } = useWorkspace();
     const scope = state.consistency.scope || { kind: "all_registered" };
     const facts = state.consistency.facts || "CURRENT";
-    const subject = state.consistency.subjectId || "all", conflict = state.consistency.conflictFilter || "confirmed", review = state.consistency.reviewFilter || "";
+    const subject = state.consistency.subjectId || "all", conflict = state.consistency.conflictFilter || "all", review = state.consistency.reviewFilter || "";
     const [report, setReport] = (0, import_react70.useState)(null), [busy, setBusy] = (0, import_react70.useState)(false), [error2, setError] = (0, import_react70.useState)("");
     const [revision, setRevision] = (0, import_react70.useState)(0);
     const reset = (patch) => workspace.updateConsistency({ ...patch, queryId: void 0, groupId: void 0, memberId: void 0, galleryPage: 1, memberPage: 1 }, true);

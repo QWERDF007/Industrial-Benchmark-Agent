@@ -1,6 +1,6 @@
 import React from 'react';
 import type {AuditConsistencyView, ConsistencyResult} from '../../shared/domain.generated.js';
-import {imageRelations} from '../../shared/consistency-presentation.js';
+import {imageRelations,annotationSummary} from '../../shared/consistency-presentation.js';
 
 export function AuditConsistency({record, onEvidence}: {
   record: AuditConsistencyView;
@@ -17,7 +17,7 @@ export function AuditConsistency({record, onEvidence}: {
     {record.reason && <p className="iad-error">{record.reason}</p>}
     <details><summary>检查证据 · {record.results.length}</summary>{record.results.map(result =>
       <div className="iad-annotation" key={result.result_id}>
-        <span>{imageRelations[result.verification.relation]} · {result.annotation.confirmed_conflict ? '确认冲突' : result.annotation.policy_relation === 'UNKNOWN' && result.annotation.differences.length ? '规范待确认' : result.annotation.differences.length ? '存在差异' : '未发现标注差异'}</span>
+        <span>{imageRelations[result.verification.relation]} · {annotationSummary(result.annotation)}</span>
         <button onClick={() => onEvidence(result)}>查看比较证据</button>
       </div>)}</details>
   </section>;

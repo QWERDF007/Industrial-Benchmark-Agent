@@ -140,7 +140,7 @@ class ConsistencyJobs:
     def results(self,batch_id: str):return self.repository.results(batch_id)
 
     def list(self) -> ConsistencyBatchList:
-        return ConsistencyBatchList(items=[self.status(identity) for identity in self.repository.recent()])
+        return ConsistencyBatchList(items=[self.status(identity).summary() for identity in self.repository.recent()])
 
     def retry(self,batch_id: str,*,request_id: str,sample_ids: list[str] | None = None) -> StartResult:
         fingerprint=hashlib.sha256(json.dumps({'retry':batch_id,'request_id':request_id,'sample_ids':sample_ids},sort_keys=True).encode()).hexdigest()

@@ -45,6 +45,11 @@ def test_exact_batch_uses_real_dataset_children_and_frozen_pair_evidence(dataset
         request=ConsistencyStart(subjects={'kind':'all_registered'},mode='exact',request_id='exact-first')
         started=runtime.consistency.start(request)
         assert started.kind=='started'
+        catalog = runtime.consistency.list().model_dump(mode='json')
+        listed = next(item for item in catalog['items'] if item['batch_id'] == started.batch_id)
+        assert listed['scopes']['subjects']['sample_count'] == 4
+        assert 'samples' not in listed['scopes']['subjects']
+        assert all('sample_ids' not in child and 'request' not in child for child in listed['children'])
         assert runtime.consistency.start(request).batch_id==started.batch_id
         deadline=time.monotonic()+10
         while time.monotonic()<deadline:

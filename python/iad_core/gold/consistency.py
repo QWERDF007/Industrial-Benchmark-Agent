@@ -25,6 +25,13 @@ class GoldConsistency:
                 connection.execute('BEGIN')
                 return self.conflicts(records, policy, connection)
         targets = {record.sample_id for record in records}
+        target_samples = SampleRepository(self.db).get_many(sorted(targets), connection)
+        policies = {dataset_id: DatasetRegistry(self.db).get(dataset_id, connection).annotations
+            for dataset_id in {sample.dataset_id for sample in target_samples}}
+        targets = {sample.sample_id for sample in target_samples
+            if policies[sample.dataset_id].policy_id is not None and policies[sample.dataset_id].annotation_role == 'REFERENCE'}
+        if not targets:
+            return {}
         groups = ContentRelations(self.db).groups(list(targets), connection)
         identities = sorted({identity for group in groups for identity in group.sample_ids})
         samples = {sample.sample_id: sample for sample in SampleRepository(self.db).get_many(identities, connection)}
@@ -72,18 +79,20 @@ class GoldConsistency:
         for row in rows:
             saved = ConsistencyRepository.deserialize(row['snapshot_json'], row['snapshot_sha256'])
             sources = (saved.sources.left, saved.sources.right)
-            for source in sources:
-                identity = source.sample.sample_id
-                if identity not in current:
-                    current[identity] = CurrentSource.capture(self.db, identity, connection)
-            if not all(current[source.sample.sample_id].state(source, include_review=False) == 'CURRENT' for source in sources):
-                continue
             differences = [difference.difference_id for difference in saved.result.annotation.differences
                 if difference.confirmed_conflict and difference.type != 'QUALITY_LABEL']
             targets = selected.intersection(source.sample.sample_id for source in sources) if differences else set()
             for decision in ConsistencyDecisionRepository(self.db).history(saved.result.evidence_id, connection):
                 if decision.request.action.kind == 'PROPOSE_REGION_CHANGE':
                     targets.update(change.sample_id for change in decision.request.action.changes if change.sample_id in selected)
+            if not targets:
+                continue
+            for source in sources:
+                identity = source.sample.sample_id
+                if identity not in current:
+                    current[identity] = CurrentSource.capture(self.db, identity, connection)
+            if not all(current[source.sample.sample_id].state(source, include_review=False) == 'CURRENT' for source in sources):
+                continue
             for identity in targets:
                 entry = blocked.setdefault(identity, {'localization_state': 'UNRESOLVED', 'evidence_ids': [], 'difference_ids': []})
                 entry['evidence_ids'].append(saved.result.evidence_id)

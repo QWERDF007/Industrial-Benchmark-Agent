@@ -26,7 +26,7 @@ for group,count,color in [('a',23,'#bdc8d2'),('b',3,'#e4d4b1')]:
  im=Image.new('RGB',(640,480),color);d=ImageDraw.Draw(im);d.rectangle((100,80,540,400),fill='#314257');d.ellipse((180,180,260,260),fill=color)
  for i in range(count):
   name=f'{group}-{i:02d}';im.save(r/'images'/f'{name}.png')
-  (r/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':640,'imageHeight':480,'shapes':[{'label':f'category-{min(i,2)}','shape_type':'rectangle','points':[[180,180],[260,260]]}]}))
+  (r/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':640,'imageHeight':480,'shapes':[{'label':f'category-{min(i,2) if group=="a" else 0}','shape_type':'rectangle','points':[[180,180],[260,260]]}]}))
 `,root]);
   const dataset=await bridge.execute('dataset_import',{format:'labelme',name:'固定主图核验',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')});
   const comparisons=new Map();
@@ -75,6 +75,12 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     assert.ok((await driver.findElement(By.css('[aria-label="范围一致性结果"]')).getText()).includes('已确认冲突'),'已确认筛选保留真实空态');
     await (await element('select[aria-label="差异筛选"] option[value="all"]')).click();
     await driver.wait(async()=>(await cards()).length===2,5000);
+    await (await cards())[1].click();
+    const sameModal=await element('dialog[aria-label="图组详情"]');
+    await driver.wait(()=>sameModal.getText().then(text=>text.includes('未发现标注差异')),5000);
+    assert.match(await sameModal.getText(),/规范待确认/);
+    assert.doesNotMatch(await sameModal.getText(),/冲突图像|1 项标注差异/);
+    await click('关闭图组详情');
     const first=(await cards())[0];assert.match(await first.getText(),/22.*候选/);assert.doesNotMatch(await first.getText(),/点击查看|查询图像 ·/);
     await first.sendKeys(Key.ENTER);
     const modal=await element('dialog[aria-label="图组详情"]');
