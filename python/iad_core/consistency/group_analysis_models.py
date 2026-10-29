@@ -40,8 +40,8 @@ class GroupPairAssessment(AnalysisModel):
 
 
 class GroupOverallConclusion(GroupAnalysisConclusion):
-    text: str = Field(min_length=1, max_length=80, pattern=r'^[^\r\n]+$',
-        description='一句简短的整组差异结论，如标注类别不同、标注位置或范围不同、缺少或多出标注；详细依据写入conclusions，不限制其他实际发现')
+    text: str = Field(min_length=1, max_length=40, pattern=r'^[^\r\n。！？!?]+。?$',
+        description='仅用一句短语概括整组差异类型，如标注类别不同、标注位置或范围不同、缺少或多出标注；多种差异短语合并，其他发现据实概括。不写位置、数值、依据、建议或verdict，详细分析写入conclusions')
     verdict: ModelAssessmentVerdict
 
 

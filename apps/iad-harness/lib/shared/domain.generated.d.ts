@@ -1832,7 +1832,7 @@ export type Status22 = ("PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILE
 export type RunId10 = string | null;
 export type ModelName5 = string | null;
 /**
- * 一句简短的整组差异结论，如标注类别不同、标注位置或范围不同、缺少或多出标注；详细依据写入conclusions，不限制其他实际发现
+ * 仅用一句短语概括整组差异类型，如标注类别不同、标注位置或范围不同、缺少或多出标注；多种差异短语合并，其他发现据实概括。不写位置、数值、依据、建议或verdict，详细分析写入conclusions
  */
 export type Text4 = string;
 /**
