@@ -22,9 +22,9 @@ def frozen_observation_response(request):
         return None
     prompt = body['messages'][0]['content'][0]['text']
     scope = json.loads(prompt.split('冻结观察请求：')[1].split('\n请根据图像')[0])
-    observations = [dict(check_id=check['check_id'], sample_id=source['sample_id'], status='supports',
+    matrix = {source['source_key']: {check['check_key']: dict(status='supports',
         description='所见结构符合冻结判据', position_analysis='主体区域', illumination_analysis='均匀照明',
-        normal_explanation='未观察到反例', evidence_ids=source['raw_evidence_ids'], suspects=[])
-        for source in scope['sources'] for check in scope['checks']]
+        normal_explanation='未观察到反例', evidence_ids=source['raw_evidence_keys'], suspects=[])
+        for check in scope['checks']} for source in scope['sources']}
     return httpx.Response(200, json={'choices': [{'finish_reason': 'stop',
-        'message': {'content': json.dumps({'observations': observations}, ensure_ascii=False)}}]})
+        'message': {'content': json.dumps(matrix, ensure_ascii=False)}}]})

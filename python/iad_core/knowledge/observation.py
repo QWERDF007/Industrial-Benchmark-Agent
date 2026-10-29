@@ -5,12 +5,14 @@ from typing import List, Optional
 from iad_core.knowledge.trace import KnowledgeTrace
 from iad_core.knowledge.mining import KnowledgeInput, OUTPUT_RESERVE_TOKENS
 from iad_core.evidence.images import EvidenceImages, PreparedImage
-from iad_core.knowledge.models import KnowledgeCheck, KnowledgeDraft, KnowledgeObservations, KnowledgeObservationStep, KnowledgeSnapshot
+from iad_core.knowledge.models import KnowledgeCheck, KnowledgeDraft, KnowledgeObservationStep, KnowledgeSnapshot
+from iad_core.knowledge.observation_contract import ObservationContract
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
 
 OBSERVATION_INSTRUCTION = """按purpose观察所给判据与实际图像：current核对冻结旧判据与新图，comparison比较相关新旧图，revision核验拟修订判据在新旧图上的适用性。记录独立观察，不直接修改判据。
-每个sources.sample_id与每个checks.check_id组合恰好返回一项；无法观察时明确unobservable。
+输出固定完整矩阵：每个sources.source_key为行，每个checks.check_key为该行必填单元。每个来源×判据恰好一项；无法观察时明确unobservable。
+单元内只写观察内容，evidence_ids及suspects.evidence_id只使用该来源raw_evidence_keys中的短引用。不输出长sample_id或check_id；真实引用由冻结映射还原。
 supports仅说明所见符合旧判据，不证明样本正常；contradicts仅说明与旧判据不一致，不裁决知识或图片哪方错误。
 结合全图结构、局部、位置、光照和正常替代解释。只引用本轮该样本实际raw图像，Mask只用于定位。
 不要凭候选资格、数量、多数票或随后生成的规则消除矛盾。局部疑点用实际图像归一化坐标定位到suspects。
@@ -105,15 +107,14 @@ class KnowledgeObserver:
         images = {image.evidence.evidence_id: image for item in inputs for image in item.images}
         sources = {item.source.sample_id: {image.evidence.evidence_id for image in item.images
                    if image.evidence.representation == 'raw'} for item in inputs}
+        contract = ObservationContract(checks, inputs)
         prompt = OBSERVATION_INSTRUCTION + json.dumps({
-            'version_id': version_id, 'purpose': purpose, 'checks': [check.criterion_context() for check in checks],
+            **contract.context, 'version_id': version_id, 'purpose': purpose,
             'previous_checks': [check.criterion_context() for check in self.parent.checks if purpose == 'revision'
                                 and any(check.check_id in value.predecessor_check_ids for value in checks)] if self.parent else [],
-            'sources': [{'sample_id': sid, 'raw_evidence_ids': sorted(ids)} for sid, ids in sources.items()],
         }, ensure_ascii=False)
-        actual = list(images.values())
-        plan = self.client.plan(KnowledgeObservations, prompt, actual, model_name, OUTPUT_RESERVE_TOKENS)
-        result = self.client.generate(plan)
+        plan = self.client.plan(contract.response_type, prompt, contract.images, model_name, OUTPUT_RESERVE_TOKENS)
+        result = contract.bind(self.client.generate(plan))
         self.context.checkpoint()
         expected = {(sid, check.check_id) for sid in sources for check in checks}
         observed = [(item.sample_id, item.check_id) for item in result.observations]

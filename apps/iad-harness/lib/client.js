@@ -13341,7 +13341,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
         !!analysis.result.limitations.length && /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("div", { className: "iad-group-limitations", children: analysis.result.limitations.map((limit, index3) => /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { children: limit }, index3)) }),
         /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("div", { className: "iad-group-overall", children: [
           /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("h4", { children: [
-            "\u6574\u4F53\u7ED3\u8BBA \xB7 ",
+            "\u6A21\u578B\u7ED3\u8BBA \xB7 ",
             modelAssessmentLabels[analysis.result.overall.verdict]
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { children: analysis.result.overall.text })

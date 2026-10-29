@@ -214,7 +214,7 @@ class KnowledgeScopes:
                 or (query.uncovered_from_version and query.uncovered_from_version != (state.current.version_id if state.current else None))):
             raise ValueError('查询不得改变已冻结连续范围的类型、筛选或比较基准')
         with self.db.connection() as conn:
-            paths = {row['sample_id']: row['relative_path'] for row in conn.execute(
+            relative_paths = {row['sample_id']: row['relative_path'] for row in conn.execute(
                 'SELECT sample_id,relative_path FROM samples WHERE dataset_id=?', (definition.dataset_id,))}
         candidates = state.remaining
         if query.include_observed or query.recheck_from_version:
@@ -235,7 +235,7 @@ class KnowledgeScopes:
             pending_review=len(state.pending_review), recheck=len(state.recheck))
         return KnowledgeSourcePage(dataset_id=definition.dataset_id, kind=definition.kind, normal_version_id=definition.normal_version_id,
             total=len(candidates), unavailable_source_count=len(state.stale), page=query.page, page_size=query.page_size,
-            coverage=coverage, items=[KnowledgeSourceItem(sample_id=source.sample_id, relative_path=paths[source.sample_id],
+            coverage=coverage, items=[KnowledgeSourceItem(sample_id=source.sample_id, relative_path=relative_paths[source.sample_id],
                 qualification=source.qualification) for source in candidates[start:start + query.page_size]])
 
     def validate_group(self, scope_run_id: str, sample_ids: List[str], parent_version_id: Optional[str], fingerprint: Optional[str] = None, normal_version_id: Optional[str] = None) -> str:

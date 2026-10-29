@@ -40,11 +40,13 @@ class GroupPairAssessment(AnalysisModel):
 
 
 class GroupOverallConclusion(GroupAnalysisConclusion):
+    text: str = Field(min_length=1, max_length=80, pattern=r'^[^\r\n]+$',
+        description='一句简短的整组差异结论，如标注类别不同、标注位置或范围不同、缺少或多出标注；详细依据写入conclusions，不限制其他实际发现')
     verdict: ModelAssessmentVerdict
 
 
 class GroupAnalysisDraft(AnalysisModel):
-    overall: GroupOverallConclusion = Field(description='在整组联合分析之后给出的唯一整体结论；明确覆盖全部候选和主要依据')
+    overall: GroupOverallConclusion = Field(description='整组唯一简短结论；详细分析保留在conclusions')
     assessments: list[GroupPairAssessment] = Field(min_length=1,max_length=10000,
         description='覆盖全部候选且每个候选恰好一次；未获得固定主图直接证据时只能UNCERTAIN')
     conclusions: list[GroupAnalysisConclusion] = Field(min_length=1, max_length=100)

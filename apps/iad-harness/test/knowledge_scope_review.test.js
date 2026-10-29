@@ -1,3 +1,4 @@
+import {observationMatrix} from './fixtures/knowledge-observations.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -23,7 +24,7 @@ test('continuous range rechecks human dispositions without counting historical i
   let result;
   if(body.response_format.json_schema.name==='KnowledgeObservations'){
    const scope=JSON.parse(prompt.split('冻结观察请求：')[1].split('\n请根据图像')[0]);
-   result={observations:scope.sources.flatMap(source=>scope.checks.map(check=>({sample_id:source.sample_id,check_id:check.check_id,status:source.sample_id===contradiction?'contradicts':'supports',description:'图像与判据的实际对照',position_analysis:'主体',illumination_analysis:'均匀',normal_explanation:'可能为允许变化',evidence_ids:source.raw_evidence_ids,suspects:[]})))};
+   result=observationMatrix(scope,source=>({status:source.sample_id===contradiction?'contradicts':'supports',description:'图像与判据的实际对照',position_analysis:'主体',illumination_analysis:'均匀',normal_explanation:'可能为允许变化',evidence_ids:source.raw_evidence_keys,suspects:[]}));
   }else if(body.response_format.json_schema.name==='KnowledgeRecheckResult'){
    const scope=JSON.parse(prompt.split('人工处置重核验：')[1].split('\n请根据图像')[0]);
    result={decisions:scope.events.map(event=>({submission_id:event.submission_id,status:recheckStatus,description:'真实新旧证据支持人工建议，异常图移出正常支持',evidence_ids:images.filter(item=>item.representation==='raw').map(item=>item.evidence_id),limitations:[]}))};

@@ -1,3 +1,4 @@
+import {observationMatrix} from './fixtures/knowledge-observations.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -41,8 +42,8 @@ test('explicit image group: three native inputs, exact scope and no implicit pre
     }
     if(body.response_format.json_schema.name==='KnowledgeObservations'){
       const scope=JSON.parse(parts[0].text.split('冻结观察请求：')[1].split('\n请根据图像')[0]);
-      const observations=scope.sources.flatMap(source=>scope.checks.map(check=>({check_id:check.check_id,sample_id:source.sample_id,status:observationMode==='missing'?'supports':observationMode,description:'新图与冻结判据的实际观察',position_analysis:'位于主体范围',illumination_analysis:'光照可见',normal_explanation:'未见反例',evidence_ids:source.raw_evidence_ids,suspects:localized?[{evidence_id:source.raw_evidence_ids[0],bbox_1000:[250,375,375,625],description:'局部轮廓偏离冻结知识',normal_explanation:'也可能是光照'}]:[]})));
-      res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({observations:observationMode==='missing'?[]:observations})}}]}));return;
+      const observations=observationMatrix(scope,source=>({status:observationMode==='missing'?'supports':observationMode,description:'新图与冻结判据的实际观察',position_analysis:'位于主体范围',illumination_analysis:'光照可见',normal_explanation:'未见反例',evidence_ids:source.raw_evidence_keys,suspects:localized?[{evidence_id:source.raw_evidence_keys[0],bbox_1000:[250,375,375,625],description:'局部轮廓偏离冻结知识',normal_explanation:'也可能是光照'}]:[]}));
+      res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify(observationMode==='missing'?{}:observations)}}]}));return;
     }
     if(holdLearning){const hold=holdLearning;holdLearning=null;hold.entered.resolve();await hold.release.promise;}
     const result={summary:'可见主体轮廓',checks:[{title:'主体轮廓',subject:'主体',location:'全图',criterion:'存在连续的主体轮廓',allowed_variations:[],support_evidence_ids:images.filter(e=>e.representation==='raw').map(e=>e.evidence_id),counter_evidence_ids:[],limitations:[],status:'supported'}],suspects:[],limitations:[],revisions:[]};

@@ -214,9 +214,7 @@ class KnowledgeFinding(FindingTarget):
                 and (not self.origin_suggestion_id or self.origin_suggestion_id in audit_suggestion_ids))
 
 
-class KnowledgeObservation(AnalysisModel):
-    check_id: str
-    sample_id: str
+class KnowledgeObservationContent(AnalysisModel):
     status: Literal['supports', 'contradicts', 'unobservable']
     description: str = Field(min_length=1)
     position_analysis: str
@@ -224,6 +222,11 @@ class KnowledgeObservation(AnalysisModel):
     normal_explanation: str
     evidence_ids: List[str] = Field(min_length=1)
     suspects: List[KnowledgeSuspect]
+
+
+class KnowledgeObservation(KnowledgeObservationContent):
+    check_id: str
+    sample_id: str
 
 
 class KnowledgeObservations(AnalysisModel):

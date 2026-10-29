@@ -696,8 +696,6 @@ export type VersionId11 = string;
 export type Purpose = "current" | "comparison" | "revision";
 export type Checks3 = KnowledgeCheck[];
 export type InputEvidenceIds1 = string[];
-export type CheckId6 = string;
-export type SampleId6 = string;
 export type Status8 = "supports" | "contradicts" | "unobservable";
 export type Description15 = string;
 export type PositionAnalysis6 = string;
@@ -708,6 +706,8 @@ export type NormalExplanation5 = string;
  */
 export type EvidenceIds10 = [string, ...string[]];
 export type Suspects2 = KnowledgeSuspect[];
+export type CheckId6 = string;
+export type SampleId6 = string;
 export type Observations = KnowledgeObservation[];
 export type ObservationSteps = KnowledgeObservationStep[];
 export type Conflicts2 = KnowledgeConflict[];
@@ -1936,6 +1936,9 @@ export type Status22 =
   ("PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED") | "NOT_ANALYZED";
 export type RunId10 = string | null;
 export type ModelName5 = string | null;
+/**
+ * 一句简短的整组差异结论，如标注类别不同、标注位置或范围不同、缺少或多出标注；详细依据写入conclusions，不限制其他实际发现
+ */
 export type Text4 = string;
 /**
  * @minItems 1
@@ -2919,8 +2922,6 @@ export interface KnowledgeObservations {
   observations: Observations;
 }
 export interface KnowledgeObservation {
-  check_id: CheckId6;
-  sample_id: SampleId6;
   status: Status8;
   description: Description15;
   position_analysis: PositionAnalysis6;
@@ -2928,6 +2929,8 @@ export interface KnowledgeObservation {
   normal_explanation: NormalExplanation5;
   evidence_ids: EvidenceIds10;
   suspects: Suspects2;
+  check_id: CheckId6;
+  sample_id: SampleId6;
 }
 export interface KnowledgeFinding {
   finding_id: FindingId1;
@@ -4432,7 +4435,7 @@ export interface GroupAnalysisDraft {
   limitations: Limitations14;
 }
 /**
- * 在整组联合分析之后给出的唯一整体结论；明确覆盖全部候选和主要依据
+ * 整组唯一简短结论；详细分析保留在conclusions
  */
 export interface GroupOverallConclusion {
   text: Text4;

@@ -1,3 +1,4 @@
+import {observationMatrix} from './fixtures/knowledge-observations.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -22,7 +23,7 @@ test('continuous workbench range: 43 frozen images in groups of 20 / 20 / 3',{ti
   let result;
   if(body.response_format.json_schema.name==='KnowledgeObservations'){
    const scope=JSON.parse(prompt.split('冻结观察请求：')[1].split('\n请根据图像')[0]);
-   result={observations:scope.sources.flatMap(source=>scope.checks.map(check=>({sample_id:source.sample_id,check_id:check.check_id,status:'supports',description:'结构可见',position_analysis:'主体',illumination_analysis:'均匀',normal_explanation:'允许亮度变化',evidence_ids:source.raw_evidence_ids,suspects:[]})))};
+   result=observationMatrix(scope,source=>({status:'supports',description:'结构可见',position_analysis:'主体',illumination_analysis:'均匀',normal_explanation:'允许亮度变化',evidence_ids:source.raw_evidence_keys,suspects:[]}));
   }else{
    const previous=JSON.parse(prompt.split('冻结父版本候选：')[1].split('\n')[0]);
    result={summary:'可见主体结构',checks:[{title:'结构',subject:'主体',location:'中部',criterion:'存在完整轮廓',allowed_variations:[],support_evidence_ids:images.map(image=>image.evidence_id),counter_evidence_ids:[],limitations:[],status:'supported'}],suspects:[],limitations:[],revisions:previous.checks.map(check=>({previous_check_id:check.check_id,current_check_titles:['结构'],reason:'同一判据的新增证据'}))};

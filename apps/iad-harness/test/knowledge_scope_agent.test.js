@@ -1,3 +1,4 @@
+import {observationMatrix} from './fixtures/knowledge-observations.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -50,7 +51,7 @@ test('DSH keeps the continuous scope when the next user message only confirms 20
   let result;
   if(body.response_format.json_schema.name==='KnowledgeObservations'){
    const scope=JSON.parse(prompt.split('冻结观察请求：')[1].split('\n请根据图像')[0]);observationSizes.push(scope.sources.length*scope.checks.length);
-   result={observations:scope.sources.flatMap(source=>scope.checks.map(check=>({sample_id:source.sample_id,check_id:check.check_id,status:'supports',description:'可见结构符合判据',position_analysis:'主体',illumination_analysis:'均匀',normal_explanation:'允许亮度变化',evidence_ids:source.raw_evidence_ids,suspects:[]})))};
+   result=observationMatrix(scope,source=>({status:'supports',description:'可见结构符合判据',position_analysis:'主体',illumination_analysis:'均匀',normal_explanation:'允许亮度变化',evidence_ids:source.raw_evidence_keys,suspects:[]}));
   }else{
    const parent=JSON.parse(prompt.split('冻结父版本候选：')[1].split('\n')[0]);
    const checks=['轮廓','位置'].map(title=>({title,subject:'主体',location:'全图',criterion:title==='轮廓'?'存在完整轮廓':'主体在完整画幅内',allowed_variations:[],support_evidence_ids:images.map(image=>image.evidence_id),counter_evidence_ids:[],limitations:[],status:'supported'}));

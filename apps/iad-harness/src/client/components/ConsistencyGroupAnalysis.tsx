@@ -30,7 +30,7 @@ export function ConsistencyGroupAnalysis({reference}:{reference:GalleryReference
       <p className="iad-muted">{analysis.model_name}</p>
       <div className="iad-group-conclusions">{analysis.result.conclusions.map((conclusion,index)=><p key={index}>{conclusion.text}</p>)}</div>
       {!!analysis.result.limitations.length && <div className="iad-group-limitations">{analysis.result.limitations.map((limit,index)=><p key={index}>{limit}</p>)}</div>}
-      <div className="iad-group-overall"><h4>整体结论 · {modelAssessmentLabels[analysis.result.overall.verdict]}</h4><p>{analysis.result.overall.text}</p></div>
+      <div className="iad-group-overall"><h4>模型结论 · {modelAssessmentLabels[analysis.result.overall.verdict]}</h4><p>{analysis.result.overall.text}</p></div>
     </>}
   </section>;
 }

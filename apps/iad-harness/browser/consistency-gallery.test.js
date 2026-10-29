@@ -123,7 +123,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     assert.equal(modelRequests.length,1);
     assert.ok(modelRequests[0].messages[0].content.some(part=>part.type==='image_url'));
     assert.doesNotMatch(await driver.findElement(By.css('[aria-label="MLLM 组级分析"]')).getText(),/定位候选|定位核对图像|当前候选核对/);
-    assert.match(await driver.findElement(By.css('[aria-label="MLLM 组级分析"]>div:last-child')).getText(),/整体结论.*视觉基本一致[\s\S]*整组视觉基本一致/);
+    assert.match(await driver.findElement(By.css('[aria-label="MLLM 组级分析"]>div:last-child')).getText(),/模型结论.*视觉基本一致[\s\S]*整组视觉基本一致/);
     await driver.findElement(By.css('[aria-label="候选图像"] button[data-sample-id="'+dataset.dataset_id+':a-22.png"]')).click();
     await driver.wait(()=>driver.findElement(By.css('[aria-label="候选图像"] button[aria-pressed=true]')).getAttribute('data-sample-id').then(value=>value===dataset.dataset_id+':a-22.png'),5000);
     assert.equal((await images())[0],groupImage);

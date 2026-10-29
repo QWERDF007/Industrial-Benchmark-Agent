@@ -1,3 +1,4 @@
+import {observationMatrix} from './fixtures/knowledge-observations.js';
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs/promises";
@@ -189,8 +190,8 @@ test("DSH standalone knowledge tools execute shared jobs and return actual evide
     if (req.url === "/tokenize") result = { count: 4000, max_model_len: 262144 };
     else if (body.response_format.json_schema.name === "KnowledgeObservations") {
       const scope=JSON.parse(content[0].text.split('冻结观察请求：')[1].split('\n请根据图像')[0]);
-      result={observations:scope.sources.flatMap(source=>scope.checks.map(check=>({check_id:check.check_id,sample_id:source.sample_id,
-        status:'supports',description:'可见部件符合旧判据',position_analysis:'主体区域',illumination_analysis:'均匀照明',normal_explanation:'未见冲突',evidence_ids:source.raw_evidence_ids,suspects:[]})))};
+      result=observationMatrix(scope,source=>({
+        status:'supports',description:'可见部件符合旧判据',position_analysis:'主体区域',illumination_analysis:'均匀照明',normal_explanation:'未见冲突',evidence_ids:source.raw_evidence_keys,suspects:[]}));
     } else if (body.response_format.json_schema.name === "JointAnalysis") {
       if (failNextAudit) {
         failNextAudit = false;

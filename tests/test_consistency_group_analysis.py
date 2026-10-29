@@ -27,6 +27,9 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
         requests.append(body)
         instruction = body['messages'][0]['content'][0]['text']
         assert '不限于工具已报出的差异' in instruction
+        assert 'overall.text只写一句简短的差异结论' in instruction
+        schema = body['response_format']['json_schema']['schema']
+        assert schema['$defs']['GroupOverallConclusion']['properties']['text']['maxLength'] == 80
         import base64,io
         from PIL import Image
         descriptors=[json.loads(item['text'].split('视觉证据：',1)[1]) for item in body['messages'][0]['content']
