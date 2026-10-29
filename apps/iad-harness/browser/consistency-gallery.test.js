@@ -44,7 +44,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     if(req.url==='/v1/chat/completions'){
       const chunks=[];for await(const chunk of req)chunks.push(chunk);modelRequests.push(JSON.parse(Buffer.concat(chunks)));
       const compared=comparisons.get('a-22');
-      const assessments=[...comparisons].filter(([name])=>name.startsWith('a-')).map(([name,value])=>({candidate_id:dataset.dataset_id+':'+name+'.png',comparison:{result_id:value.result_id,evidence_id:value.evidence_id},verdict:'EQUIVALENT',explanation:'仍作为问题展示；视觉对象一致，类别含义需核对。',findings:[]}));
+      const assessments=[...comparisons].filter(([name])=>name.startsWith('a-')).map(([name])=>({candidate_id:dataset.dataset_id+':'+name+'.png',verdict:'EQUIVALENT',explanation:'仍作为问题展示；视觉对象一致，类别含义需核对。',findings:[]}));
       const references=[{candidate_id:dataset.dataset_id+':a-22.png',comparison:{result_id:compared.result_id,evidence_id:compared.evidence_id,difference_id:compared.annotation.differences[0].difference_id}}];
       const result={assessments,overall:{verdict:'EQUIVALENT',text:'整组视觉基本一致，保留标注差异待核对。',references},conclusions:[{text:'固定主图与末页候选的标注类别不同，仍需人工核对适用规范。',references}],limitations:['模型解释不写入人工裁决。']};
       res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({id:'local-group-analysis',model:'local-protocol-model',choices:[{finish_reason:'stop',message:{content:JSON.stringify(result)}}]}));

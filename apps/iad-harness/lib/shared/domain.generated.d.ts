@@ -4344,7 +4344,6 @@ export interface GroupAnalysisComparison {
 }
 export interface GroupPairAssessment {
     candidate_id: CandidateId1;
-    comparison: GroupAnalysisComparison | null;
     verdict: Verdict1;
     explanation: Explanation;
     findings: Findings4;

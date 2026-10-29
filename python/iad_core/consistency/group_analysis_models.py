@@ -31,7 +31,8 @@ class GroupAnalysisConclusion(AnalysisModel):
     references: list[GroupAnalysisReference] = Field(min_length=1, max_length=100)
 
 
-class GroupPairAssessment(GroupAnalysisReference):
+class GroupPairAssessment(AnalysisModel):
+    candidate_id: Identifier
     verdict: ModelAssessmentVerdict
     explanation: str = Field(min_length=1,max_length=8000)
     findings: list[str] = Field(default_factory=list,max_length=100,

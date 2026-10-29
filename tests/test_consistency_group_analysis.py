@@ -40,7 +40,7 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
                     assert actual.convert('RGB').getextrema()==((0,0),(0,0),(255,255)), '模型只接收原图/原始裁剪像素，不得绘制框或文字'
         entered.set()
         assert release.wait(10)
-        result = {'assessments': [{'candidate_id':citation['candidate_id'], 'comparison':citation['comparison'].copy(),
+        result = {'assessments': [{'candidate_id':citation['candidate_id'],
             'verdict':'EQUIVALENT','explanation':'视觉对象与覆盖一致，类别名称需核对。','findings':[]}],
             'overall':{'verdict':'EQUIVALENT','text':'整组视觉基本一致，保留标注差异待核对。','references':[citation.copy()]},
             'conclusions': [{'text': '像素一致，类别定义需要人工核对。', 'references': [citation.copy()]}], 'limitations': ['未进行人工质量裁决']}
@@ -126,14 +126,13 @@ def test_group_assessments_require_full_unique_candidates_and_their_direct_evide
     try:
         anchor=config.dataset.id+':dent.png'
         pairs=[runtime.consistency_service.compare(ConsistencyCompare(sample_a=anchor,sample_b=config.dataset.id+':'+name+'.png')) for name in ['scratch','third']]
-        assessments=[{'candidate_id':config.dataset.id+':'+name+'.png','comparison':None,
+        assessments=[{'candidate_id':config.dataset.id+':'+name+'.png',
             'verdict':'UNCERTAIN','explanation':'需核对','findings':[]} for name in ['scratch','third']]
-        for item,pair in zip(assessments,pairs):
-            item['comparison']={'result_id':pair.result_id,'evidence_id':pair.evidence_id}
-        conclusions=[{'text':'需逐图核对','references':[{'candidate_id':assessments[0]['candidate_id'],'comparison':assessments[0]['comparison']}]}]
+        conclusions=[{'text':'需逐图核对','references':[{'candidate_id':assessments[0]['candidate_id'],
+            'comparison':{'result_id':pairs[0].result_id,'evidence_id':pairs[0].evidence_id}}]}]
         if mode=='missing':assessments.pop()
         elif mode=='duplicate':assessments[1]=assessments[0].copy()
-        else:assessments[0]['comparison']=assessments[1]['comparison']
+        else:conclusions[0]['references'][0]['comparison']={'result_id':pairs[1].result_id,'evidence_id':pairs[1].evidence_id}
         responses.append({'assessments':assessments,'overall':{'verdict':'UNCERTAIN','text':'整组需核对','references':conclusions[0]['references']},'conclusions':conclusions,'limitations':[]})
         page=ResultQueries(db).query(ConsistencyQuery(selection={'kind':'scope','subjects':{'kind':'all_registered'}}))
         group=GalleryQueries(db).query(GalleryQuery(query_id=page.query_id,kind='groups')).items[0]
@@ -142,7 +141,7 @@ def test_group_assessments_require_full_unique_candidates_and_their_direct_evide
         runtime.jobs.wait(job.run_id,5)
         view=analyses.read(request)
         assert view.status=='FAILED' and view.result is None
-        assert 'every frozen candidate exactly once' in view.error or 'direct candidate comparison' in view.error
+        assert 'every frozen candidate exactly once' in view.error or 'does not match this candidate' in view.error
         filtered=GalleryQueries(db).query(GalleryQuery(query_id=page.query_id,kind='groups',model_filter='FAILED'))
         assert filtered.total==1
     finally:runtime.close()

@@ -143,7 +143,7 @@ class GroupAnalyses(GroupAnalysisQueries):
             '对完整图组联合分析后，在overall中给出唯一整体结论和理由，不得仅罗列逐候选结论。'
             'assessments必须对每个candidate_id恰好给出一次核对：EQUIVALENT表示视觉基本一致或仅轻微标注浮动，'
             'MATERIAL表示有图像依据的实质标注差异，UNCERTAIN表示证据不足；findings自由描述问题，不受工具分类限制。'
-            '每个核对的comparison必须引用该候选相对固定主图的完整直接证据；没有直接比较时comparison=null且只能UNCERTAIN。'
+            'assessments通过candidate_id绑定已提供的固定主图比较证据，不重复输出comparison；没有直接比较证据的候选只能UNCERTAIN。'
             '说明每个候选实际属于类别变化、位置/范围变化、实例划分、疑似缺多标注或无法判断，并引用对应差异证据。'
             '没有固定主图直接比较证据的成员只能保留未知。不得编造引用；明确未核实规范和任何覆盖限制。\n'
             + json.dumps({'anchor': {'sample_id':group.anchor.sample.sample_id,'evidence_id':group.anchor.evidence_id,'side':group.anchor.side},
@@ -160,12 +160,9 @@ class GroupAnalyses(GroupAnalysisQueries):
             raise ValueError('Model assessments must cover every frozen candidate exactly once')
         for assessment in result.assessments:
             member=references[assessment.candidate_id]
-            if member.comparison is None:
-                if assessment.comparison is not None or assessment.verdict!='UNCERTAIN':
-                    raise ValueError('A candidate without direct evidence must remain uncertain')
-            elif assessment.comparison is None or assessment.comparison.evidence_id!=member.comparison.evidence_id:
-                raise ValueError('Model assessment must reference its direct candidate comparison')
-        for reference in [*result.assessments,*result.overall.references,*[ref for conclusion in result.conclusions for ref in conclusion.references]]:
+            if member.comparison is None and assessment.verdict!='UNCERTAIN':
+                raise ValueError('A candidate without direct evidence must remain uncertain')
+        for reference in [*result.overall.references,*[ref for conclusion in result.conclusions for ref in conclusion.references]]:
             member = references.get(reference.candidate_id)
             if member is None:
                 raise ValueError('Model reference points outside the frozen group')
