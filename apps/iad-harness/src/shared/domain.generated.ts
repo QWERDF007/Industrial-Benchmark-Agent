@@ -442,7 +442,7 @@ export type Status6 = "normal" | "anomaly" | "insufficient" | "not_applicable";
 export type EvidenceIds4 = [string, ...string[]];
 export type Limitations6 = string[];
 /**
- * 图像归一化坐标 [x1,y1,x2,y2]，范围 0..1000
+ * 相对当前图像的归一化矩形ROI [x1,y1,x2,y2]，坐标0..1000，必须x1<x2且y1<y2、有面积；细线或点状疑点也用其周围矩形包围，不能输出线段或中心点
  *
  * @minItems 4
  * @maxItems 4
@@ -656,7 +656,7 @@ export type Corrections = KnowledgeCorrection[];
 export type ComparisonSources = KnowledgeSource[];
 export type EvidenceId2 = string;
 /**
- * 相对evidence_id对应图像的归一化坐标0..1000
+ * 相对当前图像的归一化矩形ROI [x1,y1,x2,y2]，坐标0..1000，必须x1<x2且y1<y2、有面积；细线或点状疑点也用其周围矩形包围，不能输出线段或中心点
  *
  * @minItems 4
  * @maxItems 4

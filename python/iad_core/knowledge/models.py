@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import Field, PlainSerializer, model_validator
 
-from iad_core.advisory.analysis import AnalysisModel, NonBlankText, AuditFinding, RegionImage, RegionOrigin, RegionProposal, VisualEvidence
+from iad_core.advisory.analysis import AnalysisModel, NonBlankText, NormalizedBBox, AuditFinding, RegionImage, RegionOrigin, VisualEvidence
 from iad_core.evidence.sources import SampleContent
 from iad_core.knowledge.instructions import FrozenMiningPrompt
 
@@ -36,14 +36,9 @@ class LearnedCheck(KnowledgeCriterion):
 
 class KnowledgeSuspect(AnalysisModel):
     evidence_id: str
-    bbox_1000: List[int] = Field(min_length=4, max_length=4, description="相对evidence_id对应图像的归一化坐标0..1000")
+    bbox_1000: NormalizedBBox
     description: str
     normal_explanation: str
-
-    @model_validator(mode="after")
-    def valid_region(self):
-        RegionProposal(bbox_1000=self.bbox_1000, reason=self.description)
-        return self
 
 
 class CheckRevision(AnalysisModel):

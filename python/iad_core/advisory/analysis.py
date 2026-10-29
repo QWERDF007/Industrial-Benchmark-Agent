@@ -1,8 +1,20 @@
 from typing import Annotated, List, Literal, Optional, Union
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
 
 NonBlankText = Annotated[str, Field(min_length=1, pattern=r'^[\s\S]*\S[\s\S]*$')]
+
+
+def validate_normalized_bbox(value: List[int]) -> List[int]:
+    x1, y1, x2, y2 = value
+    if not (x1 < x2 and y1 < y2):
+        raise ValueError('Invalid normalized region')
+    return value
+
+
+NormalizedBBox = Annotated[List[Annotated[int, Field(ge=0, le=1000)]],
+    Field(min_length=4, max_length=4, description='相对当前图像的归一化矩形ROI [x1,y1,x2,y2]，坐标0..1000，必须x1<x2且y1<y2、有面积；细线或点状疑点也用其周围矩形包围，不能输出线段或中心点'),
+    AfterValidator(validate_normalized_bbox)]
 
 
 class AnalysisModel(BaseModel):
@@ -10,16 +22,9 @@ class AnalysisModel(BaseModel):
 
 
 class RegionProposal(AnalysisModel):
-    bbox_1000: List[int] = Field(min_length=4, max_length=4, description="图像归一化坐标 [x1,y1,x2,y2]，范围 0..1000")
+    bbox_1000: NormalizedBBox
     reason: str
     check_ids: List[str] = Field(default_factory=list)
-
-    @model_validator(mode="after")
-    def valid_box(self):
-        x1, y1, x2, y2 = self.bbox_1000
-        if not (0 <= x1 < x2 <= 1000 and 0 <= y1 < y2 <= 1000):
-            raise ValueError("Invalid normalized region")
-        return self
 
 
 class ViewAnalysis(AnalysisModel):
