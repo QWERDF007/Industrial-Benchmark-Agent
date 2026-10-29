@@ -13,10 +13,19 @@ from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
 
 
-def test_group_model_analysis_is_completed_only_after_saved_valid_citations(dataset):
+@pytest.mark.parametrize('labels,verdict', [(('15', '18'), 'MATERIAL'), (('OK', 'NG'), 'MATERIAL'), (('14', '14'), 'EQUIVALENT')])
+def test_group_model_analysis_is_completed_only_after_saved_valid_citations(dataset, tmp_path, labels, verdict):
     from iad_core.consistency.group_analysis import GroupAnalyses
     from iad_core.consistency.group_analysis_models import GroupAnalysisStart
-    db, _, config = dataset
+    db, registry, config = dataset
+    for name, label in zip(('dent', 'scratch'), labels):
+        path = tmp_path / 'labels' / (name + '.json')
+        content = json.loads(path.read_text())
+        content['shapes'][0]['label'] = label
+        if verdict == 'EQUIVALENT' and name == 'scratch':
+            content['shapes'][0]['points'][0][0] = 10.2
+        path.write_text(json.dumps(content))
+    registry.rescan(config.dataset.id)
     entered, release = threading.Event(), threading.Event()
     requests = []
     citation = {}
@@ -28,8 +37,16 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
         instruction = body['messages'][0]['content'][0]['text']
         assert '不限于工具已报出的差异' in instruction
         assert 'overall.text只写一句简短的差异结论' in instruction
+        assert '类别值不同就是标注类别不同' in instruction
+        assert '不判断哪一侧标注正确' in instruction
+        assert '不得预设类别映射或语义相近' in instruction
+        assert '视觉相近可以写入详细分析，但不能否定类别差异' in instruction
+        assert '明确未核实规范' not in instruction
+        for label in labels:
+            assert f'"raw_label":"{label}"' in instruction
         schema = body['response_format']['json_schema']['schema']
         assert schema['$defs']['GroupOverallConclusion']['properties']['text']['maxLength'] == 40
+        assert '类别值不同' in schema['$defs']['GroupPairAssessment']['properties']['verdict']['description']
         import base64,io
         from PIL import Image
         descriptors=[json.loads(item['text'].split('视觉证据：',1)[1]) for item in body['messages'][0]['content']
@@ -43,10 +60,11 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
                     assert actual.convert('RGB').getextrema()==((0,0),(0,0),(255,255)), '模型只接收原图/原始裁剪像素，不得绘制框或文字'
         entered.set()
         assert release.wait(10)
+        text = '标注类别不同' if verdict == 'MATERIAL' else '标注视觉基本一致'
         result = {'assessments': [{'candidate_id':citation['candidate_id'],
-            'verdict':'EQUIVALENT','explanation':'视觉对象与覆盖一致，类别名称需核对。','findings':[]}],
-            'overall':{'verdict':'EQUIVALENT','text':'整组视觉基本一致，保留标注差异待核对。','references':[citation.copy()]},
-            'conclusions': [{'text': '像素一致，类别定义需要人工核对。', 'references': [citation.copy()]}], 'limitations': ['未进行人工质量裁决']}
+            'verdict':verdict,'explanation':text,'findings':[text] if verdict == 'MATERIAL' else []}],
+            'overall':{'verdict':verdict,'text':text,'references':[citation.copy()]},
+            'conclusions': [{'text': text, 'references': [citation.copy()]}], 'limitations': []}
         return httpx.Response(200, json={'id': 'real-protocol-test', 'model': 'test-mllm', 'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
     runtime = WorkbenchRuntime(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
     try:
@@ -73,14 +91,14 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
             time.sleep(.01)
         assert result.status == 'COMPLETED'
         assert result.result.conclusions[0].references[0].comparison.evidence_id == compared.evidence_id
-        assert result.result.assessments[0].verdict == 'EQUIVALENT'
-        assert result.result.overall.verdict == 'EQUIVALENT'
+        assert result.result.assessments[0].verdict == verdict
+        assert result.result.overall.verdict == verdict
         gallery = GalleryQueries(db)
         query = GalleryQuery(query_id=snapshot.query_id,kind='conflicts')
         assert gallery.query(query).total == 1, 'MLLM基本一致不得从默认问题网格删除'
-        assert gallery.query(query).items[0].model_state == 'EQUIVALENT'
-        assert gallery.query(query.model_copy(update={'model_filter':'EQUIVALENT'})).total == 1
-        assert gallery.query(query.model_copy(update={'model_filter':'MATERIAL'})).total == 0
+        assert gallery.query(query).items[0].model_state == verdict
+        assert gallery.query(query.model_copy(update={'model_filter':verdict})).total == 1
+        assert gallery.query(query.model_copy(update={'model_filter':'UNCERTAIN'})).total == 0
         assert result.model_name == 'test-mllm'
         assert len(requests) == 1
         assert any(part['type'] == 'image_url' for part in requests[0]['messages'][0]['content'])

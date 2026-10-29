@@ -1949,6 +1949,9 @@ export type CandidateId = string;
 export type ResultId8 = string;
 export type EvidenceId18 = string;
 export type DifferenceId3 = string | null;
+/**
+ * 综合整组差异；确认存在类别值不同时应保留类别差异，不能以缺少映射或视觉相近降为EQUIVALENT或UNCERTAIN；不判断哪一侧正确
+ */
 export type Verdict = "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
 /**
  * 覆盖全部候选且每个候选恰好一次；未获得固定主图直接证据时只能UNCERTAIN
@@ -1958,6 +1961,9 @@ export type Verdict = "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
  */
 export type Assessments = [GroupPairAssessment, ...GroupPairAssessment[]];
 export type CandidateId1 = string;
+/**
+ * 比较标注差异，不判断哪一侧正确。对应标注的原始类别值不同（包括图像级良/不良标签）就是类别不同，判MATERIAL；不以类别映射、语义定义或视觉相近为等价或无法确认的理由。仅同类别的轻微几何浮动可判EQUIVALENT，实际证据不足才判UNCERTAIN
+ */
 export type Verdict1 = "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
 export type Explanation = string;
 /**

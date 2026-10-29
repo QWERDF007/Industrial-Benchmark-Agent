@@ -136,6 +136,10 @@ class GroupAnalyses(GroupAnalysisQueries):
             '像素/几何事实、模型视觉解释、标注规范和人工质量裁决必须区分；相似度不能证明缺陷，不能写Gold或人工裁决。'
             '标注匹配工具输出是待核对的候选解释，不是漏标结论。必须联合查看完整原图、原始标注数据和无叠加的局部原始像素裁剪，'
             '逐项核对单侧标注是否其实对应另一侧位置微移、范围变化或拆分合并的标注；不得照抄工具分类作为视觉结论。'
+            '本任务只比较标注差异，不判断哪一侧标注正确。对应标注的原始类别值不同就是标注类别不同，'
+            '例如15变为18，或图像级OK与NG不同，均属于MATERIAL类别差异；不需要先确认类别语义或等价性。'
+            '不得预设类别映射或语义相近，不得用缺少映射、类别定义未知或两图像素相同将已确认的类别差异降为EQUIVALENT或UNCERTAIN。'
+            '若独立查看原图和局部后发现两类所指对象视觉相近，视觉相近可以写入详细分析，但不能否定类别差异。'
             '不限于工具已报出的差异，也不限于现有分类：独立检查完整原图与标注，主动发现漏检差异、标错对象、'
             '无关背景、忽略区域、边界约定及其他有图像依据的问题。细微坐标变化不能直接等同标注错误；'
             '区分视觉基本一致、可能合理的标注浮动、实质差异与证据不足，未知公差不得自行编造。'
@@ -145,10 +149,11 @@ class GroupAnalyses(GroupAnalysisQueries):
             '例如“标注类别不同”“标注位置或范围不同”“缺少或多出标注”“标注视觉基本一致”“标注差异证据不足”；'
             '多种差异用短语合并，其他实际发现据实概括，不局限于这些示例。详细依据、位置、数值、解释和限制写入conclusions与limitations。'
             'assessments必须对每个candidate_id恰好给出一次核对：EQUIVALENT表示视觉基本一致或仅轻微标注浮动，'
-            'MATERIAL表示有图像依据的实质标注差异，UNCERTAIN表示证据不足；findings自由描述问题，不受工具分类限制。'
+            'MATERIAL表示已确认的类别差异或其他实质标注差异，UNCERTAIN表示比较证据不足；findings自由描述问题，不受工具分类限制。'
             'assessments通过candidate_id绑定已提供的固定主图比较证据，不重复输出comparison；没有直接比较证据的候选只能UNCERTAIN。'
             '说明每个候选实际属于类别变化、位置/范围变化、实例划分、疑似缺多标注或无法判断，并引用对应差异证据。'
-            '没有固定主图直接比较证据的成员只能保留未知。不得编造引用；明确未核实规范和任何覆盖限制。\n'
+            '没有固定主图直接比较证据的成员只能保留未知。不得编造引用；仅记录实际影响差异判断的证据或覆盖限制，'
+            '不要求裁决标注正误，不将缺少类别映射或语义定义列为已确认类别差异的判断限制。\n'
             + json.dumps({'anchor': {'sample_id':group.anchor.sample.sample_id,'evidence_id':group.anchor.evidence_id,'side':group.anchor.side},
                 'candidates': {identity:{'evidence_id':member.image.evidence_id,'side':member.image.side,
                     'comparison':member.comparison.model_dump(mode='json') if member.comparison else None}
