@@ -44,9 +44,9 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     if(req.url==='/v1/chat/completions'){
       const chunks=[];for await(const chunk of req)chunks.push(chunk);modelRequests.push(JSON.parse(Buffer.concat(chunks)));
       const compared=comparisons.get('a-22');
-      const assessments=[...comparisons].filter(([name])=>name.startsWith('a-')).map(([name])=>({candidate_id:dataset.dataset_id+':'+name+'.png',verdict:'EQUIVALENT',explanation:'仍作为问题展示；视觉对象一致，类别含义需核对。',findings:[]}));
+      const assessments=[...comparisons].filter(([name])=>name.startsWith('a-')).map(([name])=>({candidate_id:dataset.dataset_id+':'+name+'.png',verdict:'MATERIAL',explanation:'对应标注的原始类别值不同。',findings:['标注类别不同']}));
       const references=[{candidate_id:dataset.dataset_id+':a-22.png',comparison:{result_id:compared.result_id,evidence_id:compared.evidence_id,difference_id:compared.annotation.differences[0].difference_id}}];
-      const result={assessments,overall:{verdict:'EQUIVALENT',text:'整组视觉基本一致，保留标注差异待核对。',references},conclusions:[{text:'固定主图与末页候选的标注类别不同，仍需人工核对适用规范。',references}],limitations:['模型解释不写入人工裁决。']};
+      const result={assessments,overall:{verdict:'MATERIAL',text:'标注类别不同',references},conclusions:[{text:'固定主图与候选的像素相同，对应标注的原始类别值不同。',references}],limitations:[]};
       res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({id:'local-group-analysis',model:'local-protocol-model',choices:[{finish_reason:'stop',message:{content:JSON.stringify(result)}}]}));
     }
     if(req.url==='/browser.js'){res.setHeader('Content-Type','application/javascript');return res.end(bundle.outputFiles[0].contents);}
@@ -123,7 +123,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     assert.equal(modelRequests.length,1);
     assert.ok(modelRequests[0].messages[0].content.some(part=>part.type==='image_url'));
     assert.doesNotMatch(await driver.findElement(By.css('[aria-label="MLLM 组级分析"]')).getText(),/定位候选|定位核对图像|当前候选核对/);
-    assert.match(await driver.findElement(By.css('[aria-label="MLLM 组级分析"]>div:last-child')).getText(),/模型结论.*视觉基本一致[\s\S]*整组视觉基本一致/);
+    assert.match(await driver.findElement(By.css('[aria-label="MLLM 组级分析"]>div:last-child')).getText(),/模型结论.*存在实质差异[\s\S]*标注类别不同/);
     await driver.findElement(By.css('[aria-label="候选图像"] button[data-sample-id="'+dataset.dataset_id+':a-22.png"]')).click();
     await driver.wait(()=>driver.findElement(By.css('[aria-label="候选图像"] button[aria-pressed=true]')).getAttribute('data-sample-id').then(value=>value===dataset.dataset_id+':a-22.png'),5000);
     assert.equal((await images())[0],groupImage);
@@ -134,12 +134,12 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     await fs.writeFile(path.join(output,'saved-model-analysis-1920.png'),await driver.takeScreenshot(),'base64');
     await driver.actions().sendKeys(Key.ESCAPE).perform();
     const modelFilter=await element('select[aria-label="MLLM结论筛选"]');
-    await modelFilter.findElement(By.css('option[value="EQUIVALENT"]')).click();
+    await modelFilter.findElement(By.css('option[value="MATERIAL"]')).click();
     await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="重复图组"] .iad-consistency-image-card'))).length===1,5000);
-    assert.match(await driver.findElement(By.css('.iad-consistency-model-state')).getText(),/视觉基本一致/);
+    assert.match(await driver.findElement(By.css('.iad-consistency-model-state')).getText(),/存在实质差异/);
     await driver.navigate().refresh();await element('select[aria-label="MLLM结论筛选"]');
     await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="重复图组"] .iad-consistency-image-card'))).length===1,5000);
-    assert.equal(await driver.findElement(By.css('select[aria-label="MLLM结论筛选"]')).getAttribute('value'),'EQUIVALENT');
+    assert.equal(await driver.findElement(By.css('select[aria-label="MLLM结论筛选"]')).getAttribute('value'),'MATERIAL');
     await driver.findElement(By.css('select[aria-label="MLLM结论筛选"] option[value="all"]')).click();
     await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="重复图组"] .iad-consistency-image-card'))).length===3,5000);
     failMembers=true;await driver.findElement(By.css('[aria-label="重复图组"] .iad-consistency-image-card')).click();
