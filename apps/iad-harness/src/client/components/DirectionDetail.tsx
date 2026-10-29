@@ -12,7 +12,7 @@ import { Modal } from "./Modal.js";
 import { ImageViewer, type EvidenceCollection } from "./ImageViewer.js";
 import { MediaImage, MediaLoad } from "./MediaLoad.js";
 
-type EvidenceReference = { id: string; label: string; title: string; filename: string };
+type EvidenceReference = { id: string; label: string };
 
 function ReferencedText({
   text,
@@ -42,7 +42,6 @@ function ReferencedText({
             key={index}
             type="button"
             className="iad-evidence-ref"
-            title={reference.title}
             aria-label={`定位证据 ${reference.label}`}
             onClick={() => onReference(reference.id)}
             onMouseEnter={() => onPreview(reference.id, true)}
@@ -50,7 +49,7 @@ function ReferencedText({
             onFocus={() => onPreview(reference.id, true)}
             onBlur={() => onPreview(reference.id, false)}
           >
-            {reference.filename}
+            {reference.label}
           </button>
         ) : (
           <React.Fragment key={index}>{part}</React.Fragment>

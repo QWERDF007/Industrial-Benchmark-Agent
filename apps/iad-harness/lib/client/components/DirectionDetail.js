@@ -15,7 +15,7 @@ function ReferencedText({ text, references, onReference, onPreview, }) {
     const pattern = new RegExp(`(?<![A-Za-z0-9_:/.-])(${ids.join("|")})(?![A-Za-z0-9_:/.-])`, "g");
     return (_jsx(_Fragment, { children: text.split(pattern).map((part, index) => {
             const reference = references.get(part);
-            return reference ? (_jsx("button", { type: "button", className: "iad-evidence-ref", title: reference.title, "aria-label": `定位证据 ${reference.label}`, onClick: () => onReference(reference.id), onMouseEnter: () => onPreview(reference.id, true), onMouseLeave: () => onPreview(reference.id, false), onFocus: () => onPreview(reference.id, true), onBlur: () => onPreview(reference.id, false), children: reference.filename }, index)) : (_jsx(React.Fragment, { children: part }, index));
+            return reference ? (_jsx("button", { type: "button", className: "iad-evidence-ref", "aria-label": `定位证据 ${reference.label}`, onClick: () => onReference(reference.id), onMouseEnter: () => onPreview(reference.id, true), onMouseLeave: () => onPreview(reference.id, false), onFocus: () => onPreview(reference.id, true), onBlur: () => onPreview(reference.id, false), children: reference.label }, index)) : (_jsx(React.Fragment, { children: part }, index));
         }) }));
 }
 export function DirectionDetail({ snapshot, direction, onClose, onGo, }) {

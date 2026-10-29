@@ -11,7 +11,7 @@ import {viewport} from './workbench-layout.js';
 
 const app=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 
-test('direction citations resolve filenames and unique short IDs and link pointer and keyboard selection', {timeout:60000}, async()=>{
+test('direction citations display compact labels and link pointer and keyboard selection', {timeout:60000}, async()=>{
   const prefixes=['24503e','01f90a','1d642f','9a1ff8','abcdef1','abcdef2'];
   const files=['normal/good-a.png','normal/good-b.png','normal/good-c.png','abnormal/ng-a.png','abnormal/duplicate.png','outside/duplicate.png'];
   const evidence=prefixes.map((prefix,index)=>({sample_id:`ds_refs:${files[index]}`,image:{evidence_id:'img_'+prefix.padEnd(64,'0'),original_size:[160,100],sent_size:[160,100]}}));
@@ -45,10 +45,11 @@ test('direction citations resolve filenames and unique short IDs and link pointe
     await el('dialog.iad-direction-dialog[open]');
     await driver.wait(()=>driver.executeScript('return [...document.querySelectorAll(".iad-direction-evidence-item img")].every(img=>img.complete&&img.naturalWidth>0)'),5000,'真实缩略图已加载后验收引用联动');
     const rationale=await el('.iad-direction-text-grid>section:first-child');
-    assert.deepEqual(await driver.executeScript('return [...arguments[0].querySelectorAll(".iad-evidence-ref")].map(e=>e.textContent)',rationale),['good-a.png','good-b.png','good-c.png','ng-a.png'],'正文中的真实唯一缩写应显示为可交互文件名');
+    assert.deepEqual(await driver.executeScript('return [...arguments[0].querySelectorAll(".iad-evidence-ref")].map(e=>e.textContent)',rationale),['良品 N1','良品 N2','良品 N3','异常 A1'],'正文引用应显示与缩略图一致的短标签');
     assert.equal((await driver.findElements(By.css('.iad-direction-objective .iad-evidence-ref'))).length,4,'完整ID、sample_id、相对路径和唯一文件名均可引用');
     assert.match(await rationale.getText(),/img_abcdef、duplicate\.png 和 img_deadbeef/,'歧义缩写、重名文件及未知引用保留原文');
     const links=await rationale.findElements(By.css('.iad-evidence-ref'));
+    assert.deepEqual(await Promise.all(links.map(link=>link.getDomAttribute('title'))),[null,null,null,null],'正文不重复展示完整文件名悬浮提示');
     const selected=()=>driver.executeScript('return [...document.querySelectorAll(".iad-direction-evidence-item[data-focused=true]")].map(e=>e.getAttribute("aria-label"))');
     const focusBefore=await driver.executeScript('return document.activeElement.getAttribute("aria-label")');
     await driver.actions().move({origin:links[1]}).perform();

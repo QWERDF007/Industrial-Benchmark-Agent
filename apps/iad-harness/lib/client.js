@@ -8324,14 +8324,13 @@ var __IadClientBundle__ = (() => {
         {
           type: "button",
           className: "iad-evidence-ref",
-          title: reference.title,
           "aria-label": `\u5B9A\u4F4D\u8BC1\u636E ${reference.label}`,
           onClick: () => onReference(reference.id),
           onMouseEnter: () => onPreview(reference.id, true),
           onMouseLeave: () => onPreview(reference.id, false),
           onFocus: () => onPreview(reference.id, true),
           onBlur: () => onPreview(reference.id, false),
-          children: reference.filename
+          children: reference.label
         },
         index3
       ) : /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(import_react39.default.Fragment, { children: part }, index3);
