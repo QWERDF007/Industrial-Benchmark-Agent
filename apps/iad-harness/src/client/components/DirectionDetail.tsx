@@ -12,14 +12,18 @@ import { Modal } from "./Modal.js";
 import { ImageViewer, type EvidenceCollection } from "./ImageViewer.js";
 import { MediaImage, MediaLoad } from "./MediaLoad.js";
 
+type EvidenceReference = { id: string; label: string; title: string; filename: string };
+
 function ReferencedText({
   text,
   references,
   onReference,
+  onPreview,
 }: {
   text: string;
-  references: Map<string, string>;
+  references: Map<string, EvidenceReference>;
   onReference(id: string): void;
+  onPreview(id: string, active: boolean): void;
 }) {
   if (!references.size) return <>{text}</>;
   const ids = [...references.keys()]
@@ -31,20 +35,27 @@ function ReferencedText({
   );
   return (
     <>
-      {text.split(pattern).map((part, index) =>
-        references.has(part) ? (
+      {text.split(pattern).map((part, index) => {
+        const reference = references.get(part);
+        return reference ? (
           <button
             key={index}
+            type="button"
             className="iad-evidence-ref"
-            aria-label={`定位证据 ${references.get(part)}`}
-            onClick={() => onReference(part)}
+            title={reference.title}
+            aria-label={`定位证据 ${reference.label}`}
+            onClick={() => onReference(reference.id)}
+            onMouseEnter={() => onPreview(reference.id, true)}
+            onMouseLeave={() => onPreview(reference.id, false)}
+            onFocus={() => onPreview(reference.id, true)}
+            onBlur={() => onPreview(reference.id, false)}
           >
-            {references.get(part)}
+            {reference.filename}
           </button>
         ) : (
           <React.Fragment key={index}>{part}</React.Fragment>
-        ),
-      )}
+        );
+      })}
     </>
   );
 }
@@ -62,7 +73,8 @@ export function DirectionDetail({
 }) {
   const [imageIndex, setImageIndex] = useState<number | null>(null),
     [expanded, setExpanded] = useState(false),
-    [focused, setFocused] = useState("");
+    [focused, setFocused] = useState<{ id: string } | null>(null),
+    [previewed, setPreviewed] = useState("");
   const [destination, setDestination] = useState<"normal" | "defect">(
     direction.applies_to === "defect" ? "defect" : "normal",
   );
@@ -107,17 +119,24 @@ export function DirectionDetail({
       snapshot.defect_sources.map((source) => source.sample_id),
     );
   const counters = { normal: 0, defect: 0, unknown: 0 };
+  const allEvidence = snapshot.evidence.map((evidence) => {
+    const title = evidence.sample_id.startsWith(snapshot.dataset_id + ":")
+      ? evidence.sample_id.slice(snapshot.dataset_id.length + 1)
+      : evidence.sample_id;
+    return { id: evidence.image.evidence_id, evidence, title, filename: title.split("/").at(-1)! };
+  });
   const entries = direction.evidence_ids.map((id) => {
-    const evidence = snapshot.evidence.find(
-      (item) => item.image.evidence_id === id,
-    );
-    if (!evidence)
+    const item = allEvidence.find((item) => item.id === id);
+    if (!item)
       return {
         id,
         evidence: null,
         label: "证据缺失",
         kind: "unknown" as const,
+        title: id,
+        filename: id,
       };
+    const { evidence } = item;
     const kind = normals.has(evidence.sample_id)
       ? "normal"
       : defects.has(evidence.sample_id)
@@ -126,22 +145,31 @@ export function DirectionDetail({
     const label =
       { normal: "良品 N", defect: "异常 A", unknown: "证据 E" }[kind] +
       ++counters[kind];
-    return { id, evidence, label, kind };
+    return { ...item, label, kind };
   });
-  const references = new Map<string, string>(),
-    referenceTargets = new Map<string, string>();
-  for (const entry of entries) {
-    if (!entry.evidence) continue;
-    references.set(entry.id, entry.label);
-    referenceTargets.set(entry.id, entry.id);
-    if (
-      entries.filter(
-        (item) => item.evidence?.sample_id === entry.evidence!.sample_id,
-      ).length === 1
-    ) {
-      references.set(entry.evidence.sample_id, entry.label);
-      referenceTargets.set(entry.evidence.sample_id, entry.id);
+  const referencesById = new Map<string, EvidenceReference>(
+    entries.filter((entry) => entry.evidence).map((entry) => [entry.id, entry]),
+  );
+  const owners = new Map<string, Set<string>>();
+  for (const item of allEvidence) {
+    for (const alias of [item.id, item.evidence.sample_id, item.title, item.filename]) {
+      const ids = owners.get(alias) || new Set<string>();
+      ids.add(item.id);
+      owners.set(alias, ids);
     }
+  }
+  const references = new Map<string, EvidenceReference>();
+  for (const [alias, ids] of owners) {
+    if (ids.size !== 1) continue;
+    const reference = referencesById.get([...ids][0]);
+    if (reference) references.set(alias, reference);
+  }
+  const text = [direction.instruction, direction.rationale, ...direction.limitations].join("\n");
+  for (const [alias] of text.matchAll(/\bimg_[a-f0-9]{6,64}\b/g)) {
+    const matches = allEvidence.filter((item) => item.id.startsWith(alias));
+    if (matches.length !== 1) continue;
+    const reference = referencesById.get(matches[0].id);
+    if (reference) references.set(alias, reference);
   }
   const collection: EvidenceCollection = {
     title: direction.title,
@@ -162,13 +190,7 @@ export function DirectionDetail({
                     : "其他证据",
               image: {
                 src: `/api/iad/exploration/evidence/${encodeURIComponent(snapshot.version_id)}/${encodeURIComponent(entry.id)}`,
-                title: entry.evidence.sample_id.startsWith(
-                  snapshot.dataset_id + ":",
-                )
-                  ? entry.evidence.sample_id.slice(
-                      snapshot.dataset_id.length + 1,
-                    )
-                  : entry.evidence.sample_id,
+                title: entry.title,
                 width: entry.evidence.image.sent_size[0],
                 height: entry.evidence.image.sent_size[1],
               },
@@ -179,14 +201,18 @@ export function DirectionDetail({
   };
   useEffect(() => {
     if (focused) {
-      const element = buttons.current.get(focused);
+      const element = buttons.current.get(focused.id);
       element?.scrollIntoView({ block: "nearest" });
       element?.focus({ preventScroll: true });
     }
   }, [focused, expanded]);
   const locate = (id: string) => {
     setExpanded(true);
-    setFocused(referenceTargets.get(id) || id);
+    setFocused({ id });
+  };
+  const preview = (id: string, active: boolean) => {
+    if (active) setExpanded(true);
+    setPreviewed((current) => active ? id : current === id ? "" : current);
   };
   return (
     <>
@@ -216,6 +242,7 @@ export function DirectionDetail({
                 text={direction.instruction}
                 references={references}
                 onReference={locate}
+                onPreview={preview}
               />
             </p>
           </section>
@@ -227,6 +254,7 @@ export function DirectionDetail({
                   text={direction.rationale}
                   references={references}
                   onReference={locate}
+                  onPreview={preview}
                 />
               </p>
             </section>
@@ -240,6 +268,7 @@ export function DirectionDetail({
                         text={text}
                         references={references}
                         onReference={locate}
+                        onPreview={preview}
                       />
                     </li>
                   ))}
@@ -300,7 +329,7 @@ export function DirectionDetail({
                                     else buttons.current.delete(entry.id);
                                   }}
                                   className="iad-direction-evidence-item"
-                                  data-focused={focused === entry.id}
+                                  data-focused={(previewed || focused?.id) === entry.id}
                                   aria-label={`查看证据 ${entry.label}`}
                                   onClick={() =>
                                     setImageIndex(

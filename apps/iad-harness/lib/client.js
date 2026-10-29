@@ -8308,7 +8308,8 @@ var __IadClientBundle__ = (() => {
   function ReferencedText({
     text,
     references,
-    onReference
+    onReference,
+    onPreview
   }) {
     if (!references.size) return /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(import_jsx_runtime43.Fragment, { children: text });
     const ids = [...references.keys()].sort((a, b) => b.length - a.length).map((id) => id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
@@ -8316,18 +8317,25 @@ var __IadClientBundle__ = (() => {
       `(?<![A-Za-z0-9_:/.-])(${ids.join("|")})(?![A-Za-z0-9_:/.-])`,
       "g"
     );
-    return /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(import_jsx_runtime43.Fragment, { children: text.split(pattern).map(
-      (part, index3) => references.has(part) ? /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(import_jsx_runtime43.Fragment, { children: text.split(pattern).map((part, index3) => {
+      const reference = references.get(part);
+      return reference ? /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(
         "button",
         {
+          type: "button",
           className: "iad-evidence-ref",
-          "aria-label": `\u5B9A\u4F4D\u8BC1\u636E ${references.get(part)}`,
-          onClick: () => onReference(part),
-          children: references.get(part)
+          title: reference.title,
+          "aria-label": `\u5B9A\u4F4D\u8BC1\u636E ${reference.label}`,
+          onClick: () => onReference(reference.id),
+          onMouseEnter: () => onPreview(reference.id, true),
+          onMouseLeave: () => onPreview(reference.id, false),
+          onFocus: () => onPreview(reference.id, true),
+          onBlur: () => onPreview(reference.id, false),
+          children: reference.filename
         },
         index3
-      ) : /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(import_react39.default.Fragment, { children: part }, index3)
-    ) });
+      ) : /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(import_react39.default.Fragment, { children: part }, index3);
+    }) });
   }
   function DirectionDetail({
     snapshot,
@@ -8335,7 +8343,7 @@ var __IadClientBundle__ = (() => {
     onClose,
     onGo
   }) {
-    const [imageIndex, setImageIndex] = (0, import_react39.useState)(null), [expanded, setExpanded] = (0, import_react39.useState)(false), [focused, setFocused] = (0, import_react39.useState)("");
+    const [imageIndex, setImageIndex] = (0, import_react39.useState)(null), [expanded, setExpanded] = (0, import_react39.useState)(false), [focused, setFocused] = (0, import_react39.useState)(null), [previewed, setPreviewed] = (0, import_react39.useState)("");
     const [destination, setDestination] = (0, import_react39.useState)(
       direction.applies_to === "defect" ? "defect" : "normal"
     );
@@ -8372,32 +8380,49 @@ var __IadClientBundle__ = (() => {
       snapshot.defect_sources.map((source) => source.sample_id)
     );
     const counters = { normal: 0, defect: 0, unknown: 0 };
+    const allEvidence = snapshot.evidence.map((evidence) => {
+      const title = evidence.sample_id.startsWith(snapshot.dataset_id + ":") ? evidence.sample_id.slice(snapshot.dataset_id.length + 1) : evidence.sample_id;
+      return { id: evidence.image.evidence_id, evidence, title, filename: title.split("/").at(-1) };
+    });
     const entries = direction.evidence_ids.map((id) => {
-      const evidence = snapshot.evidence.find(
-        (item) => item.image.evidence_id === id
-      );
-      if (!evidence)
+      const item = allEvidence.find((item2) => item2.id === id);
+      if (!item)
         return {
           id,
           evidence: null,
           label: "\u8BC1\u636E\u7F3A\u5931",
-          kind: "unknown"
+          kind: "unknown",
+          title: id,
+          filename: id
         };
+      const { evidence } = item;
       const kind = normals.has(evidence.sample_id) ? "normal" : defects.has(evidence.sample_id) ? "defect" : "unknown";
       const label = { normal: "\u826F\u54C1 N", defect: "\u5F02\u5E38 A", unknown: "\u8BC1\u636E E" }[kind] + ++counters[kind];
-      return { id, evidence, label, kind };
+      return { ...item, label, kind };
     });
-    const references = /* @__PURE__ */ new Map(), referenceTargets = /* @__PURE__ */ new Map();
-    for (const entry of entries) {
-      if (!entry.evidence) continue;
-      references.set(entry.id, entry.label);
-      referenceTargets.set(entry.id, entry.id);
-      if (entries.filter(
-        (item) => item.evidence?.sample_id === entry.evidence.sample_id
-      ).length === 1) {
-        references.set(entry.evidence.sample_id, entry.label);
-        referenceTargets.set(entry.evidence.sample_id, entry.id);
+    const referencesById = new Map(
+      entries.filter((entry) => entry.evidence).map((entry) => [entry.id, entry])
+    );
+    const owners = /* @__PURE__ */ new Map();
+    for (const item of allEvidence) {
+      for (const alias of [item.id, item.evidence.sample_id, item.title, item.filename]) {
+        const ids = owners.get(alias) || /* @__PURE__ */ new Set();
+        ids.add(item.id);
+        owners.set(alias, ids);
       }
+    }
+    const references = /* @__PURE__ */ new Map();
+    for (const [alias, ids] of owners) {
+      if (ids.size !== 1) continue;
+      const reference = referencesById.get([...ids][0]);
+      if (reference) references.set(alias, reference);
+    }
+    const text = [direction.instruction, direction.rationale, ...direction.limitations].join("\n");
+    for (const [alias] of text.matchAll(/\bimg_[a-f0-9]{6,64}\b/g)) {
+      const matches2 = allEvidence.filter((item) => item.id.startsWith(alias));
+      if (matches2.length !== 1) continue;
+      const reference = referencesById.get(matches2[0].id);
+      if (reference) references.set(alias, reference);
     }
     const collection = {
       title: direction.title,
@@ -8412,11 +8437,7 @@ var __IadClientBundle__ = (() => {
             group: entry.kind === "normal" ? "\u5019\u9009\u826F\u54C1" : entry.kind === "defect" ? "\u5019\u9009\u5F02\u5E38" : "\u5176\u4ED6\u8BC1\u636E",
             image: {
               src: `/api/iad/exploration/evidence/${encodeURIComponent(snapshot.version_id)}/${encodeURIComponent(entry.id)}`,
-              title: entry.evidence.sample_id.startsWith(
-                snapshot.dataset_id + ":"
-              ) ? entry.evidence.sample_id.slice(
-                snapshot.dataset_id.length + 1
-              ) : entry.evidence.sample_id,
+              title: entry.title,
               width: entry.evidence.image.sent_size[0],
               height: entry.evidence.image.sent_size[1]
             }
@@ -8426,14 +8447,18 @@ var __IadClientBundle__ = (() => {
     };
     (0, import_react39.useEffect)(() => {
       if (focused) {
-        const element = buttons.current.get(focused);
+        const element = buttons.current.get(focused.id);
         element?.scrollIntoView({ block: "nearest" });
         element?.focus({ preventScroll: true });
       }
     }, [focused, expanded]);
     const locate = (id) => {
       setExpanded(true);
-      setFocused(referenceTargets.get(id) || id);
+      setFocused({ id });
+    };
+    const preview = (id, active) => {
+      if (active) setExpanded(true);
+      setPreviewed((current) => active ? id : current === id ? "" : current);
     };
     return /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)(import_jsx_runtime43.Fragment, { children: [
       /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)(
@@ -8459,7 +8484,8 @@ var __IadClientBundle__ = (() => {
                   {
                     text: direction.instruction,
                     references,
-                    onReference: locate
+                    onReference: locate,
+                    onPreview: preview
                   }
                 ) })
               ] }),
@@ -8471,18 +8497,20 @@ var __IadClientBundle__ = (() => {
                     {
                       text: direction.rationale,
                       references,
-                      onReference: locate
+                      onReference: locate,
+                      onPreview: preview
                     }
                   ) })
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("section", { children: [
                   /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("h3", { children: "\u9650\u5236\u4E0E\u5F85\u786E\u8BA4" }),
-                  direction.limitations.length ? /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("ul", { children: direction.limitations.map((text, index3) => /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(
+                  direction.limitations.length ? /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("ul", { children: direction.limitations.map((text2, index3) => /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(
                     ReferencedText,
                     {
-                      text,
+                      text: text2,
                       references,
-                      onReference: locate
+                      onReference: locate,
+                      onPreview: preview
                     }
                   ) }, index3)) }) : /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("p", { className: "iad-muted", children: "\u672A\u8BB0\u5F55\u9650\u5236\u3002" })
                 ] })
@@ -8537,7 +8565,7 @@ var __IadClientBundle__ = (() => {
                                     else buttons.current.delete(entry.id);
                                   },
                                   className: "iad-direction-evidence-item",
-                                  "data-focused": focused === entry.id,
+                                  "data-focused": (previewed || focused?.id) === entry.id,
                                   "aria-label": `\u67E5\u770B\u8BC1\u636E ${entry.label}`,
                                   onClick: () => setImageIndex(
                                     collection.images.indexOf(item)
@@ -10842,7 +10870,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
 @container workbench (max-width:960px){.iad-exploration-setup-layout{grid-template-columns:minmax(0,1fr)}.iad-exploration-side{position:static;grid-template-columns:repeat(2,minmax(0,1fr))}.iad-execution-stages{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 .iad-execution-rail .iad-execution-stages{grid-template-columns:minmax(0,1fr)}.iad-execution-rail .iad-execution-stages li{flex-direction:row}
-.iad-detail-dialog.iad-direction-dialog{width:min(1280px,calc(100vw - 64px));height:fit-content;max-height:calc(100dvh - 64px);overflow:hidden;padding:0;display:flex;flex-direction:column}.iad-direction-dialog .iad-dialog-header{position:static;flex:none;padding:22px 28px 14px;margin:0;top:0}.iad-direction-dialog .iad-dialog-header h2{font-size:1.3125rem}.iad-direction-body{min-height:0;overflow:auto;padding:0 28px 20px}.iad-direction-meta{display:flex;gap:16px;flex-wrap:wrap;color:var(--iad-muted);font-size:.75rem;padding:14px 0 20px}.iad-direction-objective{padding-bottom:20px;border-bottom:1px solid var(--iad-border)}.iad-detail-dialog.iad-direction-dialog h3{margin:0 0 12px}.iad-direction-body p{white-space:pre-line;overflow-wrap:anywhere;line-height:1.8}.iad-direction-text-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:32px;padding:20px 0;border-bottom:1px solid var(--iad-border)}.iad-direction-text-grid>section+section{padding-left:28px;border-left:1px solid var(--iad-border)}.iad-direction-text-grid ul{margin:0;padding-left:18px;display:grid;gap:10px}.iad-direction-evidence{padding-top:20px}.iad-evidence-groups{display:grid;grid-template-columns:minmax(0,var(--iad-normal-width,3fr)) minmax(0,var(--iad-defect-width,5fr));gap:24px}.iad-evidence-group{min-width:0}.iad-evidence-group h4{display:flex;justify-content:space-between;gap:8px;margin:0 0 10px;font-size:.75rem;font-weight:500;color:var(--iad-muted)}.iad-evidence-thumbnails>div:first-child{display:grid;grid-template-columns:repeat(var(--iad-evidence-columns),minmax(0,1fr));gap:10px}.iad-direction-evidence-item{display:grid;gap:6px;text-align:left;min-width:0;padding:5px!important;border-color:var(--iad-border)!important}.iad-direction-evidence-item img{width:100%;height:104px;object-fit:contain;background:var(--iad-surface-muted)}.iad-direction-evidence-item strong{font-size:.75rem;font-weight:500}.iad-direction-evidence-item>span{font-size:.625rem;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.iad-direction-evidence-item[data-focused=true]{outline:2px solid var(--iad-primary);outline-offset:2px;border-color:var(--iad-primary)!important}.iad-detail-dialog button.iad-evidence-ref{display:inline;min-height:0;padding:1px 5px;vertical-align:baseline;font-size:.75rem;color:var(--iad-primary);background:var(--iad-hover);border-color:var(--iad-border)}.iad-direction-trace{margin-top:16px;padding-top:12px;border-top:1px solid var(--iad-border);overflow-wrap:anywhere}.iad-direction-trace summary{cursor:pointer;min-height:32px}.iad-direction-footer{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:none;padding:14px 28px;border-top:1px solid var(--iad-border)}.iad-direction-destination{display:flex;align-items:center;gap:12px;color:var(--iad-muted);font-size:.75rem}.iad-direction-destination select{width:112px}.iad-missing-evidence{overflow-wrap:anywhere;font-size:.75rem}.iad-missing-evidence code{display:block}
+.iad-detail-dialog.iad-direction-dialog{width:min(1280px,calc(100vw - 64px));height:fit-content;max-height:calc(100dvh - 64px);overflow:hidden;padding:0;display:flex;flex-direction:column}.iad-direction-dialog .iad-dialog-header{position:static;flex:none;padding:22px 28px 14px;margin:0;top:0}.iad-direction-dialog .iad-dialog-header h2{font-size:1.3125rem}.iad-direction-body{min-height:0;overflow:auto;padding:0 28px 20px}.iad-direction-meta{display:flex;gap:16px;flex-wrap:wrap;color:var(--iad-muted);font-size:.75rem;padding:14px 0 20px}.iad-direction-objective{padding-bottom:20px;border-bottom:1px solid var(--iad-border)}.iad-detail-dialog.iad-direction-dialog h3{margin:0 0 12px}.iad-direction-body p{white-space:pre-line;overflow-wrap:anywhere;line-height:1.8}.iad-direction-text-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:32px;padding:20px 0;border-bottom:1px solid var(--iad-border)}.iad-direction-text-grid>section+section{padding-left:28px;border-left:1px solid var(--iad-border)}.iad-direction-text-grid ul{margin:0;padding-left:18px;display:grid;gap:10px}.iad-direction-evidence{padding-top:20px}.iad-evidence-groups{display:grid;grid-template-columns:minmax(0,var(--iad-normal-width,3fr)) minmax(0,var(--iad-defect-width,5fr));gap:24px}.iad-evidence-group{min-width:0}.iad-evidence-group h4{display:flex;justify-content:space-between;gap:8px;margin:0 0 10px;font-size:.75rem;font-weight:500;color:var(--iad-muted)}.iad-evidence-thumbnails>div:first-child{display:grid;grid-template-columns:repeat(var(--iad-evidence-columns),minmax(0,1fr));gap:10px}.iad-direction-evidence-item{display:grid;gap:6px;text-align:left;min-width:0;padding:5px!important;border-color:var(--iad-border)!important}.iad-direction-evidence-item img{width:100%;height:104px;object-fit:contain;background:var(--iad-surface-muted)}.iad-direction-evidence-item strong{font-size:.75rem;font-weight:500}.iad-direction-evidence-item>span{font-size:.625rem;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.iad-direction-evidence-item[data-focused=true]{outline:2px solid var(--iad-primary);outline-offset:2px;border-color:var(--iad-primary)!important}.iad-detail-dialog button.iad-evidence-ref{display:inline-block;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left;min-height:0;padding:1px 5px;vertical-align:baseline;font-size:.75rem;color:var(--iad-primary);background:var(--iad-hover);border-color:var(--iad-border)}.iad-direction-trace{margin-top:16px;padding-top:12px;border-top:1px solid var(--iad-border);overflow-wrap:anywhere}.iad-direction-trace summary{cursor:pointer;min-height:32px}.iad-direction-footer{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:none;padding:14px 28px;border-top:1px solid var(--iad-border)}.iad-direction-destination{display:flex;align-items:center;gap:12px;color:var(--iad-muted);font-size:.75rem}.iad-direction-destination select{width:112px}.iad-missing-evidence{overflow-wrap:anywhere;font-size:.75rem}.iad-missing-evidence code{display:block}
 @media(max-width:1050px){.iad-evidence-groups{grid-template-columns:minmax(0,1fr)}.iad-evidence-thumbnails>div:first-child{grid-template-columns:repeat(5,minmax(0,1fr))}}
 
 @media(prefers-reduced-motion:reduce){.iad-indeterminate span{animation:none;margin:auto}}
