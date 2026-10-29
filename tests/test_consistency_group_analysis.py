@@ -25,6 +25,8 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200, json={'count': 1000, 'max_model_len': 262144})
         requests.append(body)
+        instruction = body['messages'][0]['content'][0]['text']
+        assert '不限于工具已报出的差异' in instruction
         entered.set()
         assert release.wait(10)
         result = {'conclusions': [{'text': '像素一致，类别定义需要人工核对。', 'references': [citation.copy()]}], 'limitations': ['未进行人工质量裁决']}
