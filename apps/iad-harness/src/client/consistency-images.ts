@@ -19,4 +19,4 @@ export function frozenConsistencyMember(bundle:EvidenceBundle):RetrievalMember {
     registration:result.verification.registration,annotation:result.annotation,error_code:null,reason:null};
 }
 
-export const galleryImageUrl=(image:GalleryImage)=>`/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-preview`;
+export const galleryImageUrl=(image:GalleryImage)=>`/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-preview?max_side=360`;

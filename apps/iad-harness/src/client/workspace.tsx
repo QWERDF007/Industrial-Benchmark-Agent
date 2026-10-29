@@ -171,7 +171,6 @@ export class Workspace {
           if(consistencyRouteEnums.differenceFilter.includes(route.differenceFilter))consistency.differenceFilter=route.differenceFilter;
           if(consistencyRouteEnums.galleryOrder.includes(route.galleryOrder))consistency.galleryOrder=route.galleryOrder;
           if(consistencyRouteEnums.detailTab.includes(route.detailTab))consistency.detailTab=route.detailTab;
-          if(consistencyRouteEnums.conflictFilter.includes(route.conflictFilter))consistency.conflictFilter=route.conflictFilter;
           if(consistencyRouteEnums.reviewFilter.includes(route.reviewFilter))consistency.reviewFilter=route.reviewFilter;
           if(route.returnPage in pages && route.returnPage!=='industrial-consistency')consistency.returnPage=route.returnPage;
           this.state={...this.state,active:true,pageId:route.pageId,consistency};

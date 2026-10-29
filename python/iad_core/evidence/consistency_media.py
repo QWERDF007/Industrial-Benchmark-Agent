@@ -52,7 +52,7 @@ class ConsistencyMedia:
                         reason=None if available else 'Annotations were incomplete or unreadable at capture'))
         return media
 
-    def render(self, evidence: FrozenEvidence, media: EvidenceMedia) -> dict:
+    def render(self, evidence: FrozenEvidence, media: EvidenceMedia, *, max_side: int | None = None) -> dict:
         if not media.available:raise ConsistencyError('ANNOTATION_UNREADABLE',media.reason)
         source=getattr(evidence.sources,media.side)
         original=self.images.path(source.image)
@@ -62,7 +62,7 @@ class ConsistencyMedia:
         sample=source.sample.model_copy(update={'image_path':original})
         prepared=self.previews.capture(sample,'overview' if tuple(media.bbox)==(0,0,sample.width,sample.height) else 'roi',
             'annotation' if annotations is not None else 'coverage',bbox=list(media.bbox),source_sha256=source.image.sha256,
-            annotations=annotations,annotation_mode='annotation_mask' if media.representation=='annotation_mask' else 'annotation_overlay',max_side=OVERVIEW_MAX_SIDE)
+            annotations=annotations,annotation_mode='annotation_mask' if media.representation=='annotation_mask' else 'annotation_overlay',max_side=max_side if max_side is not None else OVERVIEW_MAX_SIDE)
         path=self.previews.path(prepared.evidence)
         if media.representation=='reference_overlay':
             difference=next(value for value in evidence.result.annotation.differences if value.difference_id==media.difference_id)

@@ -59,8 +59,8 @@ class ConsistencyService:
     def evidence(self, evidence_id: str) -> EvidenceBundle:
         return self.evidence_store.get(evidence_id)
 
-    def evidence_media(self, evidence_id: str, media_id: str) -> dict:
-        return self.evidence_store.media(evidence_id,media_id)
+    def evidence_media(self, evidence_id: str, media_id: str, *, max_side: int | None = None) -> dict:
+        return self.evidence_store.media(evidence_id,media_id,max_side=max_side)
 
     def evidence_export(self, evidence_id: str) -> ArtifactRef:
         return self.evidence_store.export(evidence_id)

@@ -20,7 +20,10 @@ type TemporaryQuery = TemporaryImageRef & {preview:string; name:string};
 
 export function ConsistencyPage() {
   const {state}=useWorkspace();
-  return state.consistency.evidenceId ? <ConsistencyEvidencePage evidenceId={state.consistency.evidenceId} /> : <RetrievalWorkspace />;
+  const evidenceId=state.consistency.evidenceId;
+  const [visited,setVisited]=useState(!evidenceId);
+  useEffect(()=>{if(!evidenceId)setVisited(true);},[evidenceId]);
+  return <>{visited && <div hidden={!!evidenceId} style={{height:"100%"}}><RetrievalWorkspace /></div>}{evidenceId && <ConsistencyEvidencePage evidenceId={evidenceId} />}</>;
 }
 
 function RetrievalWorkspace() {

@@ -5,7 +5,7 @@ from PIL import Image
 from iad_core.consistency.service import ConsistencyService
 
 
-def test_exact_evidence_survives_source_and_dataset_deletion(dataset):
+def test_exact_evidence_survives_source_deletion_until_dataset_is_deleted(dataset):
     from iad_core.consistency.evidence_models import ConsistencyCompare
 
     db,registry,config=dataset
@@ -19,13 +19,17 @@ def test_exact_evidence_survives_source_and_dataset_deletion(dataset):
     assert bundle.sources.right.annotations.annotations[0].raw_label=='scratch'
     assert service.compare(request).result_id==result.result_id
     for path in Path(config.root).glob('*.png'):path.unlink()
-    registry.delete(config.dataset.id)
     reopened=ConsistencyService(db).evidence(result.evidence_id)
     assert reopened.result==result
     assert reopened.source_states.left==reopened.source_states.right=='MISSING'
     original=service.evidence_media(result.evidence_id,'left-original')
     from iad_core.duplicate.pixels import PixelContent
     assert PixelContent.read(original['path']).descriptor.width==320
+    import pytest
+    from iad_core.consistency.errors import ConsistencyError
+    registry.delete(config.dataset.id)
+    with pytest.raises(ConsistencyError, match='does not exist'):
+        service.evidence(result.evidence_id)
 
 
 def test_16bit_original_is_lossless_and_preview_uses_the_full_value_range(tmp_path):
@@ -278,3 +282,25 @@ def test_unreadable_annotation_remains_unavailable_in_export(defect_dataset):
         manifest=json.loads(archive.read('evidence.json'))
         assert 'left-annotation_overlay' not in manifest['files']
         assert manifest['evidence']['sources']['left']['issues']
+
+
+def test_frozen_gallery_thumbnail_does_not_replace_full_resolution_evidence(dataset, monkeypatch):
+    from iad_core.consistency.evidence_models import ConsistencyCompare
+    db, _, config = dataset
+    service = ConsistencyService(db)
+    result = service.compare(ConsistencyCompare(sample_a=config.dataset.id + ':dent.png', sample_b=config.dataset.id + ':scratch.png'))
+    from iad_core.consistency.retrieval_sources import SourceImage
+    reads = []
+    original = SourceImage.read
+    def record(path, published=None):
+        reads.append(path)
+        return original(path, published)
+    monkeypatch.setattr(SourceImage, 'read', record)
+    thumbnail = service.evidence_media(result.evidence_id, 'left-preview', max_side=96)
+    full = service.evidence_media(result.evidence_id, 'left-original')
+    assert reads == [], '冻结媒体不应重读当前来源，当前来源状态由证据详情单独核验'
+    with Image.open(thumbnail['path']) as image:
+        assert image.size == (96, 72)
+    with Image.open(full['path']) as image:
+        assert image.size == (320, 240)
+    assert service.evidence(result.evidence_id).result == result

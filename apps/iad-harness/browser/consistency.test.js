@@ -156,12 +156,15 @@ for name,label in [('other-a','hole'),('other-b','dent')]:
     await (firstName.includes('other-') ? groupCards[1] : groupCards[0]).click();
     await driver.wait(until.elementLocated(By.css('dialog[aria-label="图组详情"] .iad-consistency-canvases')),5000);
     await fs.writeFile(path.join(output,'scope-groups-1920.png'),await driver.takeScreenshot(),'base64');
-    await driver.wait(async()=>{const button=await driver.findElement(By.xpath('//button[normalize-space(.)="查看比较证据"]'));return button.isEnabled();},5000);
-    await click('查看比较证据');await driver.wait(until.elementLocated(By.css('[data-evidence-id]')),5000);
-    await click('返回结果');await driver.wait(until.elementLocated(By.css('dialog[aria-label="图组详情"]')),5000);
+    assert.equal((await driver.findElements(By.xpath('//button[normalize-space(.)="查看比较证据"]'))).length,0);
     await click('关闭图组详情');
     await click('索引与作业');
     await driver.wait(until.elementLocated(By.css('[aria-label="批次比较结果"] button')),5000).click();
+    await driver.wait(until.elementLocated(By.css('[data-evidence-id]')),5000);
+    const beforeReturn=calls.length;
+    await click('返回批次');await driver.wait(until.elementLocated(By.css('[data-batch-id]')),5000);
+    assert.equal(calls.slice(beforeReturn).filter(url=>url==='/api/iad/datasets'||url.startsWith('/api/iad/consistency/report')||url==='/api/iad/consistency/query').length,0,'返回保留已加载工作区，不重查整页');
+    await driver.findElement(By.css('[aria-label="批次比较结果"] button')).click();
     await driver.wait(until.elementLocated(By.css('[data-evidence-id]')),5000);
     await fs.writeFile(path.join(output,'batch-evidence-1920.png'),await driver.takeScreenshot(),'base64');
     const reviewPanel=await driver.wait(until.elementLocated(By.css('[aria-label="一致性人工处置"]')),5000);

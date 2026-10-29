@@ -20,11 +20,11 @@ class GoldProjection:
 
     @classmethod
     def capture(cls, db: Database, task_id: str, policy: GoldPolicyConfig, connection: Connection | None = None,
-                *, sample_ids: list[str] | None = None) -> 'GoldProjection':
+                *, sample_ids: list[str] | None = None, include_annotations: bool = True) -> 'GoldProjection':
         if connection is None:
             with db.connection() as connection:
                 connection.execute('BEGIN')
-                return cls.capture(db, task_id, policy, connection, sample_ids=sample_ids)
+                return cls.capture(db, task_id, policy, connection, sample_ids=sample_ids, include_annotations=include_annotations)
         samples = SampleRepository(db).list_by_task(task_id, connection=connection)
         if sample_ids is not None:
             requested = set(sample_ids)
@@ -33,23 +33,25 @@ class GoldProjection:
         reviews, annotations = defaultdict(list), defaultdict(list)
         for review in ReviewRepository(db).list_decisions(task_id, connection=connection):
             reviews[review.sample_id].append(review)
-        rows = connection.execute('SELECT * FROM annotations WHERE sample_id IN (SELECT value FROM json_each(?))', (json.dumps(sorted(identities)),))
-        for row in rows:
-            annotation = AnnotationRepository._row_to_annotation(row)
-            annotations[annotation.sample_id].append(annotation)
+        if include_annotations:
+            rows = connection.execute('SELECT * FROM annotations WHERE sample_id IN (SELECT value FROM json_each(?))', (json.dumps(sorted(identities)),))
+            for row in rows:
+                annotation = AnnotationRepository._row_to_annotation(row)
+                annotations[annotation.sample_id].append(annotation)
         records, conflicts = [], []
         for sample in samples:
             record, conflict = resolve_gold_for_sample(sample, reviews[sample.sample_id], policy)
-            record.annotations = filter_and_convert_gold_annotations(annotations[sample.sample_id])
-            record.phenomena = sorted({annotation.phenomenon for annotation in record.annotations if annotation.phenomenon}
-                or {annotation.raw_label for annotation in record.annotations if annotation.raw_label})
+            if include_annotations:
+                record.annotations = filter_and_convert_gold_annotations(annotations[sample.sample_id])
+                record.phenomena = sorted({annotation.phenomenon for annotation in record.annotations if annotation.phenomenon}
+                    or {annotation.raw_label for annotation in record.annotations if annotation.raw_label})
             records.append(record)
             if conflict:
                 conflicts.append(conflict)
         constraints = GoldConsistency(db)
         consistency = constraints.conflicts(records, policy, connection)
         conflicts = [conflict for conflict in conflicts if conflict.sample_id not in consistency]
-        localization = constraints.localization_blocks(sorted(identities), connection)
+        localization = constraints.localization_blocks(sorted(identities), connection) if include_annotations else {}
         for record in records:
             if record.sample_id in consistency:
                 conflict = consistency[record.sample_id]

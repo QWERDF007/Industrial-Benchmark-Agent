@@ -8,6 +8,7 @@ from iad_core.consistency.annotations import AnnotationSet
 from iad_core.consistency.models import Count, Digest, Identifier, PixelDescriptor
 from iad_core.duplicate.verification_models import NearComparisonConfig, VerificationResult
 from iad_core.storage.models import ReviewDecisionRecord, Sample
+from iad_core.evidence.images import OVERVIEW_MAX_SIDE
 
 
 class ConsistencyCompare(AnalysisModel):
@@ -23,6 +24,7 @@ class ConsistencyEvidenceReference(AnalysisModel):
 
 class ConsistencyEvidenceMediaReference(ConsistencyEvidenceReference):
     media_id: Identifier
+    max_side: int = Field(default=OVERVIEW_MAX_SIDE, ge=1, le=OVERVIEW_MAX_SIDE, strict=True)
 
 
 class EvidenceBlob(AnalysisModel):

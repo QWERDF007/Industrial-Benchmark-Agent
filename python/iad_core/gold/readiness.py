@@ -33,7 +33,7 @@ class GoldAvailability(AnalysisModel):
             from iad_core.task.config import GoldPolicyConfig
             records = []
             for (task_id, policy), identities in selected.items():
-                records.extend(GoldProjection.capture(db, task_id, GoldPolicyConfig.model_validate_json(policy), connection, sample_ids=identities).records)
+                records.extend(GoldProjection.capture(db, task_id, GoldPolicyConfig.model_validate_json(policy), connection, sample_ids=identities, include_annotations=False).records)
             if len(records) != scope.sample_count:
                 raise ConsistencyError('SOURCE_UNAVAILABLE', 'Gold source membership changed during projection')
             result.confirmed = sum(record.gold_status == 'CONFIRMED' for record in records)

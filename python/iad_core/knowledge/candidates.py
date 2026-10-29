@@ -1,5 +1,6 @@
 import hashlib
 import json
+from sqlite3 import Connection
 from typing import List, Optional
 
 from iad_core.advisory.analysis import RegionOrigin
@@ -17,8 +18,8 @@ class AuditCandidates:
         self.repository = AuditSuggestionRepository(db)
         self.db_path = db.db_path
 
-    def matching(self, sample: Sample, source_sha256: Optional[str] = None) -> List[AuditSuggestion]:
-        candidates = [suggestion for suggestion in self.repository.list_by_sample(sample.sample_id)
+    def matching(self, sample: Sample, source_sha256: Optional[str] = None, *, connection: Optional[Connection] = None) -> List[AuditSuggestion]:
+        candidates = [suggestion for suggestion in self.repository.list_by_sample(sample.sample_id, connection=connection)
                       if suggestion.analysis and suggestion.analysis.findings]
         if not candidates:
             return []

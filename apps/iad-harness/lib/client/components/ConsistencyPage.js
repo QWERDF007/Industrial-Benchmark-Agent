@@ -17,7 +17,11 @@ import { ConsistencyEmpty } from './ConsistencyEmpty.js';
 import { ConsistencyCandidates } from './ConsistencyCandidates.js';
 export function ConsistencyPage() {
     const { state } = useWorkspace();
-    return state.consistency.evidenceId ? _jsx(ConsistencyEvidencePage, { evidenceId: state.consistency.evidenceId }) : _jsx(RetrievalWorkspace, {});
+    const evidenceId = state.consistency.evidenceId;
+    const [visited, setVisited] = useState(!evidenceId);
+    useEffect(() => { if (!evidenceId)
+        setVisited(true); }, [evidenceId]);
+    return _jsxs(_Fragment, { children: [visited && _jsx("div", { hidden: !!evidenceId, style: { height: "100%" }, children: _jsx(RetrievalWorkspace, {}) }), evidenceId && _jsx(ConsistencyEvidencePage, { evidenceId: evidenceId })] });
 }
 function RetrievalWorkspace() {
     const { workspace, state } = useWorkspace(), location = state.consistency;

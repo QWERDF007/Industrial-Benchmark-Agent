@@ -4,6 +4,7 @@ from datetime import datetime,timedelta,timezone
 from uuid import uuid4
 
 from iad_core.consistency.batch_repository import BatchRepository
+from iad_core.consistency.annotation_models import AnnotationComparison
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.evidence_models import EvidenceBlob,EvidenceSourceStates
 from iad_core.consistency.repository import ConsistencyRepository
@@ -38,10 +39,14 @@ class ResultSnapshots:
         selection=request.selection
         with self.db.connection() as connection:
             connection.execute('BEGIN')
+            connection.create_function('annotation_difference_types', 1, AnnotationComparison.json_difference_types, deterministic=True)
             watermark=connection.execute('SELECT COALESCE(MAX(rowid),0) FROM consistency_results').fetchone()[0]
             decision_watermark=connection.execute('SELECT COALESCE(MAX(id),0) FROM consistency_decisions').fetchone()[0]
             correction_watermark=connection.execute('SELECT COALESCE(MAX(id),0) FROM consistency_correction_checks').fetchone()[0]
             clauses=['r.rowid<=?'];args=[watermark]
+            if request.annotation_differences_only:
+                clauses.extend(["json_extract(r.snapshot_json,'$.result.verification.relation')='EXACT'",
+                    "json_array_length(annotation_difference_types(json_extract(r.snapshot_json,'$.result.annotation')))>0"])
             if isinstance(selection,BatchSelection):
                 plan,_=BatchRepository(self.db).get(selection.batch_id,connection)
                 scopes=plan.scopes
@@ -76,12 +81,16 @@ class ResultSnapshots:
             except ConsistencyError:return False
         with self.db.connection() as connection:
             connection.execute('PRAGMA temp_store=FILE')
+            connection.create_function('annotation_difference_types', 1, AnnotationComparison.json_difference_types, deterministic=True)
             connection.execute('CREATE TEMP TABLE selected_items(position INTEGER PRIMARY KEY,evidence_id TEXT,facts_state TEXT,source_states_json TEXT,evidence_available INTEGER)')
             connection.execute('CREATE TEMP TABLE current_pairs(sample_a TEXT,sample_b TEXT,PRIMARY KEY(sample_a,sample_b))')
             statistics=ResultStatistics(connection)
             rows=connection.execute("SELECT r.snapshot_json,r.snapshot_sha256 "+source+" ORDER BY json_extract(r.snapshot_json,'$.checked_at') DESC,r.rowid DESC",args)
             for row in rows:
                 saved=ConsistencyRepository.deserialize(row['snapshot_json'],row['snapshot_sha256'])
+                if request.annotation_differences_only and (saved.result.verification.relation != 'EXACT'
+                        or not saved.result.annotation.factual_difference_types):
+                    continue
                 states=EvidenceSourceStates(**{side:current[getattr(saved.sources,side).sample.sample_id].state(getattr(saved.sources,side)) for side in ('left','right')})
                 available=True
                 for frozen in (saved.sources.left,saved.sources.right):

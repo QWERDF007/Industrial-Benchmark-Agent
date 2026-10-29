@@ -34,7 +34,6 @@ class ConsistencyReturnLocation(AnalysisModel):
     galleryPage: int | None = Field(default=None,ge=1,strict=True)
     detailTab: Literal['summary','evidence','review'] | None = None
     subjectId: Identifier | None = None
-    conflictFilter: Literal['confirmed','all'] | None = None
     reviewFilter: Literal['OPEN','NEEDS_CONTEXT','RESOLVED'] | None = None
     groupPage: int | None = Field(default=None,ge=1,strict=True)
     memberPage: int | None = Field(default=None,ge=1,strict=True)

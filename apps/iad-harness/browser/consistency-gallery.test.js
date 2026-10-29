@@ -22,15 +22,15 @@ import json,sys
 from pathlib import Path
 from PIL import Image,ImageDraw
 r=Path(sys.argv[1]);(r/'images').mkdir();(r/'labels').mkdir()
-for group,count,color in [('a',23,'#bdc8d2'),('b',3,'#e4d4b1')]:
+for group,count,color in [('a',23,'#bdc8d2'),('b',3,'#e4d4b1'),('c',3,'#a7ccd9')]:
  im=Image.new('RGB',(640,480),color);d=ImageDraw.Draw(im);d.rectangle((100,80,540,400),fill='#314257');d.ellipse((180,180,260,260),fill=color)
  for i in range(count):
   name=f'{group}-{i:02d}';im.save(r/'images'/f'{name}.png')
-  (r/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':640,'imageHeight':480,'shapes':[{'label':f'category-{min(i,2) if group=="a" else 0}','shape_type':'rectangle','points':[[180,180],[260,260]]}]}))
+  (r/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':640,'imageHeight':480,'shapes':[{'label':f'category-{min(i,2) if group!="c" else 0}','shape_type':'rectangle','points':[[180,180],[260,260]]}]}))
 `,root]);
   const dataset=await bridge.execute('dataset_import',{format:'labelme',name:'固定主图核验',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')});
   const comparisons=new Map();
-  for(const [group,count] of [['a',23],['b',3]])for(let i=1;i<count;i++)comparisons.set(`${group}-${String(i).padStart(2,'0')}`,await bridge.execute('consistency_compare',{sample_a:`${dataset.dataset_id}:${group}-00.png`,sample_b:`${dataset.dataset_id}:${group}-${String(i).padStart(2,'0')}.png`}));
+  for(const [group,count] of [['a',23],['b',3],['c',3]])for(let i=1;i<count;i++)comparisons.set(`${group}-${String(i).padStart(2,'0')}`,await bridge.execute('consistency_compare',{sample_a:`${dataset.dataset_id}:${group}-00.png`,sample_b:`${dataset.dataset_id}:${group}-${String(i).padStart(2,'0')}.png`}));
   const bundle=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';import {apply} from './src/client/index.ts';
 const entries=[],mains=new Map(),listeners=new Set();let panel=null;
 const layout={panelInfo:{getSnapshot:()=>({activePanelId:panel}),subscribe:f=>{listeners.add(f);return()=>listeners.delete(f)}},selectPanel:id=>{panel=id;listeners.forEach(f=>f())}};
@@ -66,24 +66,14 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     const cards=()=>driver.findElements(By.css('[aria-label="冲突图像"] .iad-consistency-image-card'));
     await driver.wait(async()=>(await cards()).length===2,10000);
     assert.equal((await driver.findElements(By.css('.iad-consistency-master-detail'))).length,0);
-    await click('质量差异 0');await driver.wait(async()=>(await cards()).length===0,5000);
-    await click('全部 2');await driver.wait(async()=>(await cards()).length===2,5000);
-    const conflictFilter=await element('select[aria-label="差异筛选"]');
-    assert.equal(await conflictFilter.getAttribute('value'),'all','默认呈现真实待核对差异，不将未知规范误认为没有数据');
-    await (await element('select[aria-label="差异筛选"] option[value="confirmed"]')).click();
-    await driver.wait(async()=>(await cards()).length===0,5000);
-    assert.ok((await driver.findElement(By.css('[aria-label="范围一致性结果"]')).getText()).includes('已确认冲突'),'已确认筛选保留真实空态');
-    await (await element('select[aria-label="差异筛选"] option[value="all"]')).click();
-    await driver.wait(async()=>(await cards()).length===2,5000);
-    await (await cards())[1].click();
-    const sameModal=await element('dialog[aria-label="图组详情"]');
-    await driver.wait(()=>sameModal.getText().then(text=>text.includes('未发现标注差异')),5000);
-    assert.match(await sameModal.getText(),/规范待确认/);
-    assert.doesNotMatch(await sameModal.getText(),/冲突图像|1 项标注差异/);
-    await click('关闭图组详情');
+    await click('良/不良标签不同 0');await driver.wait(async()=>(await cards()).length===0,5000);
+    await click('全部差异 2');await driver.wait(async()=>(await cards()).length===2,5000);
+    assert.equal((await driver.findElements(By.css('select[aria-label="差异筛选"]'))).length,0);
+    assert.ok((await Promise.all((await cards()).map(card=>card.getText()))).every(text=>!text.includes('c-00.png')&&!text.includes('待核对')&&!text.includes('规范未确认')));
     const first=(await cards())[0];assert.match(await first.getText(),/22.*候选/);assert.doesNotMatch(await first.getText(),/点击查看|查询图像 ·/);
     await first.sendKeys(Key.ENTER);
     const modal=await element('dialog[aria-label="图组详情"]');
+    assert.equal((await modal.findElements(By.xpath('.//button[normalize-space(.)="查看比较证据"]'))).length,0);
     const images=()=>driver.executeScript('return [...document.querySelectorAll("dialog[aria-label=图组详情] .iad-consistency-canvases .iad-image-frame img")].map(e=>e.src)');
     await driver.wait(async()=>(await images()).length===2,5000);const initial=await images();
     await driver.wait(()=>driver.executeScript('return [...document.querySelectorAll("dialog[aria-label=图组详情] .iad-image-frame img")].every(e=>e.complete&&e.naturalWidth>0)'),5000);
@@ -112,7 +102,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     await driver.actions().sendKeys(Key.ESCAPE).perform();await driver.wait(async()=>(await driver.findElements(By.css('dialog[aria-label="图组详情"]'))).length===0,5000);
     assert.equal(await driver.executeScript('return document.activeElement.classList.contains("iad-consistency-image-card")'),true);
     await fs.writeFile(path.join(output,'conflicts-grid-1920.png'),await driver.takeScreenshot(),'base64');
-    await click('重复图组');await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="重复图组"] .iad-consistency-image-card'))).length===2,5000);
+    await click('重复图组');await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="重复图组"] .iad-consistency-image-card'))).length===3,5000);
     assert.match(await driver.findElement(By.css('[aria-label="重复图组"] .iad-consistency-image-card')).getText(),/23.*成员/);
     await driver.findElement(By.css('[aria-label="重复图组"] .iad-consistency-image-card')).click();await element('dialog[aria-label="图组详情"]');
     await driver.wait(async()=>(await images()).length===2,5000);const groupImage=(await images())[0];await click('下一页候选');
@@ -128,10 +118,8 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     await click('定位候选 a-22.png');
     await driver.wait(()=>driver.findElement(By.css('[aria-label="候选图像"] button[aria-pressed=true]')).getAttribute('data-sample-id').then(value=>value===dataset.dataset_id+':a-22.png'),5000);
     assert.equal((await images())[0],groupImage);
-    await click('MLLM 分析');await click('查看冻结证据');
-    await element('[data-evidence-id="'+comparisons.get('a-22').evidence_id+'"]');
-    await click('返回结果');await element('dialog[aria-label="图组详情"]');
-    await driver.wait(()=>driver.executeScript('const images=[...document.querySelectorAll("dialog[aria-label=图组详情] .iad-consistency-canvases .iad-image-frame img")];return images.length===2&&images.every(e=>e.complete&&e.naturalWidth>0)'),5000);
+    assert.equal((await driver.findElements(By.xpath('//button[normalize-space(.)="查看冻结证据"]'))).length,0);
+    await click('MLLM 分析');
     await driver.wait(()=>driver.findElement(By.css('[aria-label="MLLM 组级分析"]')).getText().then(text=>text.includes('MLLM 已分析')),5000);
     await driver.executeScript('arguments[0].scrollIntoView({block:"end"})',await driver.findElement(By.css('[aria-label="MLLM 组级分析"]')));
     await fs.writeFile(path.join(output,'saved-model-analysis-1920.png'),await driver.takeScreenshot(),'base64');

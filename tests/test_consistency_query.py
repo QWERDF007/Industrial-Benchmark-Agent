@@ -88,7 +88,8 @@ def test_scope_deduplicates_pair_orientation_and_reports_corrupt_evidence_as_unk
     assert report.page.items[0].result.result_id==latest.result_id
     assert report.page.execution.pending==4 and report.page.execution.completed==0
     assert report.page.retrieval_completeness=='PARTIAL'
-    assert report.pending_review == len(latest.annotation.differences) and report.pending_correction == 0 and report.gold_excluded == 4
+    assert report.pending_review == len(latest.annotation.factual_differences) == 1
+    assert report.pending_correction == 0 and report.gold_excluded == 4
     path=service.evidence_media(latest.evidence_id,'left-original')['path'];Path(path).write_bytes(b'corrupt retained image')
     unavailable=ConsistencyReports(db).report(request.model_copy(update={'selection':request.selection.model_copy(update={'facts':'UNKNOWN'})}))
     assert unavailable.statistics.unknown.pairs==2

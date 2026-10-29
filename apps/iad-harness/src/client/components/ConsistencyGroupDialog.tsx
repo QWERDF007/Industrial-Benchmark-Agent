@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import type {GalleryItem,GalleryMemberPage} from '../../shared/domain.generated.js';
-import {imageRelations,annotationState,annotationSummary} from '../../shared/consistency-presentation.js';
+import {imageRelations,annotationSummary} from '../../shared/consistency-presentation.js';
 import {CloseIcon} from '../AuditIcon.js';
 import {message,request} from '../api.js';
 import {galleryImageUrl,frozenConsistencyImage,frozenConsistencyMember} from '../consistency-images.js';
@@ -38,13 +38,12 @@ export function ConsistencyGroupDialog({queryId,kind,item,position,total,onMove,
   const comparison=selected?.comparison&&candidate.bundle?.result.evidence_id===selected.comparison.evidence_id ? candidate.bundle : null;
   const sources:[ImageSource|null,ImageSource|null]=[anchor.bundle&&members ? frozenConsistencyImage(anchor.bundle,members.anchor.side) : null,candidate.bundle&&selected ? frozenConsistencyImage(candidate.bundle,selected.image.side) : null];
   const difference=comparison?.result.annotation.differences.find(row=>row.difference_id===location.differenceId);
-  const openEvidence=()=>{if(comparison)workspace.updateConsistency({batchId:undefined,evidenceId:comparison.result.evidence_id,resultId:comparison.result.result_id},true);};
   return <Modal title="图组详情" header={false} className="iad-consistency-group-dialog" onClose={onClose} restoreFocus={restoreFocus} onKeyDown={event=>{
     if(event.defaultPrevented || (event.target as HTMLElement).closest('input,textarea,select,[role=tablist],.iad-image-canvas'))return;
     if(event.key==='ArrowLeft' && position>1){event.preventDefault();onMove(-1);}
     if(event.key==='ArrowRight' && position<total){event.preventDefault();onMove(1);}
   }}>
-    <header className="iad-group-header"><div><span className="iad-muted">{kind==='groups' ? '严格同图成员' : '候选集合核验'}</span><h2>{kind==='groups' ? '重复图组' : annotationState(item.difference_types,item.confirmed_conflict)} · {item.anchor.sample.relative_path.split('/').pop()}</h2><p>{kind==='groups' ? `${item.member_count} 张成员` : `查询图像 1 张 · ${item.candidate_count} 张候选`}</p></div>
+    <header className="iad-group-header"><div><span className="iad-muted">{kind==='groups' ? '严格同图成员' : '候选集合核验'}</span><h2>{kind==='groups' ? '重复图组' : '标注差异'} · {item.anchor.sample.relative_path.split('/').pop()}</h2><p>{kind==='groups' ? `${item.member_count} 张成员` : `查询图像 1 张 · ${item.candidate_count} 张候选`}</p></div>
       <div className="iad-row"><button disabled={position<=1} onClick={()=>onMove(-1)}>上一组</button><span className="iad-muted">{position} / {total}</span><button disabled={position>=total} onClick={()=>onMove(1)}>下一组</button><IconButton label="关闭图组详情" onClick={onClose}><CloseIcon /></IconButton></div></header>
     <div className="iad-group-scroll">
       {(error||anchor.error||candidate.error) && <p className="iad-error" role="alert">{error||anchor.error||candidate.error}</p>}
@@ -66,7 +65,7 @@ export function ConsistencyGroupDialog({queryId,kind,item,position,total,onMove,
         </PageTabs></div>
       </>}
     </div>
-    <footer className="iad-group-footer"><div className="iad-row"><button disabled={!comparison} onClick={openEvidence}>查看比较证据</button><button disabled={!comparison||asking} onClick={async()=>{if(!comparison)return;setAsking(true);try{await workspace.explainConsistency(comparison.result);}catch(failure){setError(message(failure));}finally{setAsking(false);}}}>{asking ? '正在打开会话…' : '在 DSH 中解释'}</button></div><button className="iad-primary" disabled={!comparison} onClick={()=>workspace.updateConsistency({detailTab:'review'},true)}>人工复核</button></footer>
+    <footer className="iad-group-footer"><div className="iad-row"><button disabled={!comparison||asking} onClick={async()=>{if(!comparison)return;setAsking(true);try{await workspace.explainConsistency(comparison.result);}catch(failure){setError(message(failure));}finally{setAsking(false);}}}>{asking ? '正在打开会话…' : '在 DSH 中解释'}</button></div><button className="iad-primary" disabled={!comparison} onClick={()=>workspace.updateConsistency({detailTab:'review'},true)}>人工复核</button></footer>
     {lightbox && <ImageViewer image={lightbox} onClose={()=>setLightbox(null)} />}
   </Modal>;
 }

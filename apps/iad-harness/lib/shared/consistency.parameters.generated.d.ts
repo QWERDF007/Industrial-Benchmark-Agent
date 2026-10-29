@@ -3,9 +3,8 @@ export declare const consistencyRouteEnums: {
     readonly tab: readonly ["conflicts", "search", "groups", "jobs"];
     readonly facts: readonly ["CURRENT", "HISTORICAL", "UNKNOWN"];
     readonly galleryOrder: readonly ["recent", "members"];
-    readonly differenceFilter: readonly ["all", "annotation", "quality", "policy", "unavailable"];
+    readonly differenceFilter: readonly ["all", "category", "geometry", "presence", "instances", "quality", "multiple"];
     readonly detailTab: readonly ["summary", "evidence", "review"];
-    readonly conflictFilter: readonly ["confirmed", "all"];
     readonly reviewFilter: readonly ["OPEN", "NEEDS_CONTEXT", "RESOLVED"];
 };
 export declare const groupAnalysisStartParameters: {
@@ -711,6 +710,11 @@ export declare const consistencyQueryParameters: {
         readonly title: "Selection";
         readonly required: true;
     };
+    readonly annotation_differences_only: {
+        readonly type: "boolean";
+        readonly title: "Annotation Differences Only";
+        readonly default: false;
+    };
     readonly relation: {
         readonly type: "string";
         readonly enum: readonly ["EXACT", "NEAR_CANDIDATE", "VISUAL_REFERENCE", "DIFFERENT", "UNCHECKED"];
@@ -929,7 +933,7 @@ export declare const consistencyContextParameters: {
             };
             readonly differenceFilter: {
                 readonly type: "string";
-                readonly enum: readonly ["all", "annotation", "quality", "policy", "unavailable"];
+                readonly enum: readonly ["all", "category", "geometry", "presence", "instances", "quality", "multiple"];
                 readonly title: "Differencefilter";
             };
             readonly galleryPage: {
@@ -944,11 +948,6 @@ export declare const consistencyContextParameters: {
             readonly subjectId: {
                 readonly type: "string";
                 readonly title: "Subjectid";
-            };
-            readonly conflictFilter: {
-                readonly type: "string";
-                readonly enum: readonly ["confirmed", "all"];
-                readonly title: "Conflictfilter";
             };
             readonly reviewFilter: {
                 readonly type: "string";
@@ -1027,6 +1026,11 @@ export declare const consistencyMediaParameters: {
         readonly type: "string";
         readonly title: "Media Id";
         readonly required: true;
+    };
+    readonly max_side: {
+        readonly type: "integer";
+        readonly title: "Max Side";
+        readonly default: 1280;
     };
 };
 export declare const temporaryImageLimits: {

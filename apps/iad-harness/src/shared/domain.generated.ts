@@ -242,16 +242,19 @@ export type DirectionId3 = string | null;
  */
 export type Direction = string;
 /**
+ * 仅本次checks包含对应判据且有实际图像证据时可填已形成知识；仅有观察、无可用判据时填证据不足或不可观察
+ */
+export type Status = "已形成知识" | "证据不足" | "不可观察" | "不适用";
+export type Reason = string;
+export type EvidenceIds2 = string[];
+/**
  * 引用parts内实际可见部件名称；不适用时可为空
  */
 export type Subjects = string[];
-export type Status = "已形成知识" | "证据不足" | "不可观察" | "不适用";
-export type Reason = string;
 /**
  * 引用本次checks实际标题；不是预设旧条目的完整性证明
  */
 export type CheckTitles = string[];
-export type EvidenceIds2 = string[];
 export type Items = DiscoveryArea[];
 export type RunId2 = string;
 export type Status1 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
@@ -1613,6 +1616,7 @@ export type Media = EvidenceMedia[];
 export type EvidenceId11 = string;
 export type EvidenceId12 = string;
 export type MediaId1 = string;
+export type MaxSide = number;
 export type ArtifactId = string;
 /**
  * e.g. 'audit_report', 'benchmark_bundle', 'metrics_report', 'evidence'
@@ -1648,11 +1652,11 @@ export type Sessionid = string | null;
 export type Queryid = string | null;
 export type Gallerysearch = string | null;
 export type Galleryorder = ("recent" | "members") | null;
-export type Differencefilter = ("all" | "annotation" | "quality" | "policy" | "unavailable") | null;
+export type Differencefilter =
+  ("all" | "category" | "geometry" | "presence" | "instances" | "quality" | "multiple") | null;
 export type Gallerypage = number | null;
 export type Detailtab = ("summary" | "evidence" | "review") | null;
 export type Subjectid = string | null;
-export type Conflictfilter = ("confirmed" | "all") | null;
 export type Reviewfilter = ("OPEN" | "NEEDS_CONTEXT" | "RESOLVED") | null;
 export type Grouppage = number | null;
 export type Memberpage = number | null;
@@ -1690,11 +1694,11 @@ export type Sessionid1 = string | null;
 export type Queryid1 = string | null;
 export type Gallerysearch1 = string | null;
 export type Galleryorder1 = ("recent" | "members") | null;
-export type Differencefilter1 = ("all" | "annotation" | "quality" | "policy" | "unavailable") | null;
+export type Differencefilter1 =
+  ("all" | "category" | "geometry" | "presence" | "instances" | "quality" | "multiple") | null;
 export type Gallerypage1 = number | null;
 export type Detailtab1 = ("summary" | "evidence" | "review") | null;
 export type Subjectid1 = string | null;
-export type Conflictfilter1 = ("confirmed" | "all") | null;
 export type Reviewfilter1 = ("OPEN" | "NEEDS_CONTEXT" | "RESOLVED") | null;
 export type Grouppage1 = number | null;
 export type Memberpage1 = number | null;
@@ -1776,6 +1780,7 @@ export type CorpusScope4 = AllRegisteredScope | DatasetScope;
 export type Facts3 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
 export type Mode4 = "exact" | "visual" | "combined";
 export type ProfileId8 = string | null;
+export type AnnotationDifferencesOnly = boolean;
 export type Relation3 = ("EXACT" | "NEAR_CANDIDATE" | "VISUAL_REFERENCE" | "DIFFERENT" | "UNCHECKED") | null;
 export type ConfirmedConflict2 = boolean | null;
 export type DifferenceType =
@@ -1865,7 +1870,7 @@ export type Page12 = number;
 export type PageSize13 = number;
 export type Search6 = string;
 export type Order = "recent" | "members";
-export type DifferenceFilter = "all" | "annotation" | "quality" | "policy" | "unavailable";
+export type DifferenceFilter = "all" | "category" | "geometry" | "presence" | "instances" | "quality" | "multiple";
 export type QueryId7 = string;
 export type Kind42 = "conflicts" | "groups";
 export type GroupId4 = string;
@@ -1874,7 +1879,7 @@ export type Page13 = number;
 export type PageSize14 = number;
 export type QueryId8 = string;
 export type Kind43 = "conflicts" | "groups";
-export type Value = "all" | "annotation" | "quality" | "policy" | "unavailable";
+export type Value = "all" | "category" | "geometry" | "presence" | "instances" | "quality" | "multiple";
 export type Label3 = string;
 export type Count = number;
 export type Filters = GalleryFilterCount[];
@@ -2419,11 +2424,11 @@ export interface ObservedPart {
 export interface DiscoveryArea {
   direction_id: DirectionId3;
   direction: Direction;
-  subjects: Subjects;
   status: Status;
   reason: Reason;
-  check_titles: CheckTitles;
   evidence_ids: EvidenceIds2;
+  subjects: Subjects;
+  check_titles: CheckTitles;
 }
 export interface KnowledgeTracePage {
   run_id: RunId2;
@@ -3985,6 +3990,7 @@ export interface ConsistencyEvidenceReference {
 export interface ConsistencyEvidenceMediaReference {
   evidence_id: EvidenceId12;
   media_id: MediaId1;
+  max_side?: MaxSide;
 }
 export interface ArtifactRef {
   artifact_id: ArtifactId;
@@ -4025,7 +4031,6 @@ export interface ConsistencyReturnLocation {
   galleryPage?: Gallerypage;
   detailTab?: Detailtab;
   subjectId?: Subjectid;
-  conflictFilter?: Conflictfilter;
   reviewFilter?: Reviewfilter;
   groupPage?: Grouppage;
   memberPage?: Memberpage;
@@ -4084,7 +4089,6 @@ export interface ConsistencyReturnLocation1 {
   galleryPage: Gallerypage1;
   detailTab: Detailtab1;
   subjectId: Subjectid1;
-  conflictFilter: Conflictfilter1;
   reviewFilter: Reviewfilter1;
   groupPage: Grouppage1;
   memberPage: Memberpage1;
@@ -4171,6 +4175,7 @@ export interface NoWork {
 }
 export interface ConsistencyQuery {
   selection: Selection1;
+  annotation_differences_only?: AnnotationDifferencesOnly;
   relation?: Relation3;
   confirmed_conflict?: ConfirmedConflict2;
   difference_type?: DifferenceType;

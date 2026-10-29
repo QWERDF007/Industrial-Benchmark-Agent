@@ -20,19 +20,17 @@ export const consistencyRouteEnums = {
   ],
   "differenceFilter": [
     "all",
-    "annotation",
+    "category",
+    "geometry",
+    "presence",
+    "instances",
     "quality",
-    "policy",
-    "unavailable"
+    "multiple"
   ],
   "detailTab": [
     "summary",
     "evidence",
     "review"
-  ],
-  "conflictFilter": [
-    "confirmed",
-    "all"
   ],
   "reviewFilter": [
     "OPEN",
@@ -905,6 +903,11 @@ export const consistencyQueryParameters = {
     "title": "Selection",
     "required": true
   },
+  "annotation_differences_only": {
+    "type": "boolean",
+    "title": "Annotation Differences Only",
+    "default": false
+  },
   "relation": {
     "type": "string",
     "enum": [
@@ -1176,10 +1179,12 @@ export const consistencyContextParameters = {
         "type": "string",
         "enum": [
           "all",
-          "annotation",
+          "category",
+          "geometry",
+          "presence",
+          "instances",
           "quality",
-          "policy",
-          "unavailable"
+          "multiple"
         ],
         "title": "Differencefilter"
       },
@@ -1199,14 +1204,6 @@ export const consistencyContextParameters = {
       "subjectId": {
         "type": "string",
         "title": "Subjectid"
-      },
-      "conflictFilter": {
-        "type": "string",
-        "enum": [
-          "confirmed",
-          "all"
-        ],
-        "title": "Conflictfilter"
       },
       "reviewFilter": {
         "type": "string",
@@ -1289,6 +1286,11 @@ export const consistencyMediaParameters = {
     "type": "string",
     "title": "Media Id",
     "required": true
+  },
+  "max_side": {
+    "type": "integer",
+    "title": "Max Side",
+    "default": 1280
   }
 } as const;
 export const temporaryImageLimits = {

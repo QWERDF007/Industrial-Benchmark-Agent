@@ -6,10 +6,11 @@ from typing import List, Literal, Optional
 from pydantic import Field, create_model
 
 from iad_core.evidence.images import PreparedImage
-from iad_core.knowledge.models import CheckRevision, DiscoveryArea, KnowledgeDiscovery, KnowledgeDraft, KnowledgeFinding, KnowledgeObservationStep, KnowledgeSnapshot, KnowledgeSource, KnowledgeStep
+from iad_core.knowledge.models import CheckRevision, ObservedPart, ObservedArea, ObservedDiscovery, KnowledgeLearning, KnowledgeDraft, KnowledgeFinding, KnowledgeObservationStep, KnowledgeSnapshot, KnowledgeSource, KnowledgeStep
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
 from iad_core.knowledge.instructions import FrozenMiningPrompt
+from iad_core.knowledge.discovery import KnowledgeDiscoveryLinker
 
 OUTPUT_RESERVE_TOKENS = 8192
 
@@ -17,7 +18,7 @@ DISCOVERY_INSTRUCTION = """先列出图像中实际可见部件及位置，逐�
 用户选择的方向用于聚焦而非封闭发现范围；可自主发现其外的新方向，direction_id填null，明确写出发现内容。
 只为可见、可复用且有实际证据的独立判据建项，同义规则合并，独立规则保留；没有知识条目数量配额，不凑数。
 discovery.parts记录实际可见部件和raw图像证据；discovery.areas逐项记录用户选中方向与自主发现方向。
-选中方向以所给direction_id引用，direction填写本轮观察标题；自主发现方向的direction_id为null。未选方向不作为必查清单。每项写明涉及部件、状态、原因、实际raw证据与本次check_titles。
+选中方向以所给direction_id引用，direction填写本轮观察标题；自主发现方向的direction_id为null。未选方向不作为必查清单。每项在reason中写明实际观察到的部件特征、状态依据与限制，并记录实际raw证据。部件与判据引用在后续关联阶段填写，不在视觉提取时生成自由文本交叉引用。
 状态为已形成知识、证据不足、不可观察或不适用；形成知识不等于人审确认，空或缺失记录不代表检查完整。
 没有适用部件、不具备视角或缺少细节时据实记录，不用无标注、未见异常或多数样本投票证明规则正确。
 没有标尺、标定、工程图或业务标准时，不编造尺寸公差、材质、内部结构、电气功能、机械性能或合格标准。
@@ -42,9 +43,10 @@ class KnowledgeMiner:
         ids = tuple(check.check_id for check in parent.checks) if parent else ()
         revision = create_model('CheckRevision', __base__=CheckRevision, previous_check_id=(Literal[ids], ...)) if ids else CheckRevision
         selected = tuple(item.direction_id for item in mining_prompt.configuration.directions if item.enabled)
-        area = create_model('DiscoveryArea', __base__=DiscoveryArea, direction_id=(Literal[tuple([None, *selected])], None))
-        discovery = create_model('KnowledgeDiscovery', __base__=KnowledgeDiscovery, areas=(List[area], ...))
-        self.response_type = create_model('KnowledgeDraft', __base__=KnowledgeDraft,
+        area = create_model('ObservedArea', __base__=ObservedArea, direction_id=(Literal[tuple([None, *selected])], None))
+        self.area_type = area
+        discovery = create_model('ObservedDiscovery', __base__=ObservedDiscovery, areas=(List[area], ...))
+        self.response_type = create_model('KnowledgeDraft', __base__=KnowledgeLearning,
             discovery=(Optional[discovery], Field(default=None)),
             revisions=(List[revision], Field(default_factory=list, **({} if ids else {'max_length': 0}))))
 
@@ -100,8 +102,19 @@ class KnowledgeMiner:
         prompt = (evolution_instruction + DISCOVERY_INSTRUCTION
                   + self.mining_prompt.instruction + '\n'
                   + instruction + json.dumps(source_context, ensure_ascii=False))
-        plan = self.client.plan(self.response_type, prompt, images, model_name, OUTPUT_RESERVE_TOKENS)
+        raw = tuple(sorted(image.evidence.evidence_id for image in images if image.evidence.representation == 'raw'))
+        references = List[Literal[raw]] if raw else List[str]
+        part = create_model('ObservedPart', __base__=ObservedPart,
+            evidence_ids=(references, Field(min_length=1)))
+        area = create_model('ObservedArea', __base__=self.area_type,
+            evidence_ids=(references, Field(**({} if raw else {'max_length': 0}))))
+        discovery = create_model('ObservedDiscovery', __base__=ObservedDiscovery,
+            parts=(List[part], ...), areas=(List[area], ...))
+        response = create_model('KnowledgeDraft', __base__=self.response_type,
+            discovery=(Optional[discovery], Field(default=None)))
+        plan = self.client.plan(response, prompt, images, model_name, OUTPUT_RESERVE_TOKENS)
         self.context.checkpoint()
         draft = self.client.generate(plan)
         self.context.checkpoint()
-        return self.record(draft, images)
+        linked = KnowledgeDiscoveryLinker(self.client, self.context).link(draft, model_name)
+        return self.record(linked, images)

@@ -16,8 +16,8 @@ export function ConsistencyDifferences({member,differenceId,onDifference,anchorS
       {member.reason && <p className="iad-error">{member.reason}</p>}
       {member.annotation?.differences.map(difference=><button key={difference.difference_id} data-difference={difference.type} className={selected===difference ? 'is-selected' : ''} aria-pressed={selected===difference} onClick={()=>onDifference(difference.difference_id)}>
         <strong>{differenceLabels[difference.type]} · {difference.confirmed_conflict ? '已确认冲突' : '待定'}</strong>
-        <span>{anchorSide==='left' ? '查询' : '候选'}：{difference.type==='QUALITY_LABEL' ? String(difference.facts.left_quality) : difference.left.map(annotation=>annotation.raw_label).join('、') || '无对应标注'}</span>
-        <span>{anchorSide==='left' ? '候选' : '查询'}：{difference.type==='QUALITY_LABEL' ? String(difference.facts.right_quality) : difference.right.map(annotation=>annotation.raw_label).join('、') || '无对应标注'}</span>
+        {difference.type!=='POLICY_UNCONFIRMED' && <><span>{anchorSide==='left' ? '查询' : '候选'}：{difference.type==='QUALITY_LABEL' ? String(difference.facts.left_quality) : difference.left.map(annotation=>annotation.raw_label).join('、') || '无对应标注'}</span>
+        <span>{anchorSide==='left' ? '候选' : '查询'}：{difference.type==='QUALITY_LABEL' ? String(difference.facts.right_quality) : difference.right.map(annotation=>annotation.raw_label).join('、') || '无对应标注'}</span></>}
         {difference.reference_from_other && <small>虚线位置来自{difference.reference_from_other===anchorSide ? '候选' : '查询'}图像标注，仅作参考</small>}
         {difference.pending.map((reason,index)=><small key={index}>{reason}</small>)}
       </button>)}

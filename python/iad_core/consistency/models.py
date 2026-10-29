@@ -211,4 +211,5 @@ class RetrievalCandidate(AnalysisModel):
     relation: Relation
     evidence_id: Optional[Identifier] = None
 
-GalleryFilterKind = Literal['all','annotation','quality','policy','unavailable']
+GalleryDifferenceKind = Literal['category','geometry','presence','instances','quality','multiple']
+GalleryFilterKind = Literal['all','category','geometry','presence','instances','quality','multiple']

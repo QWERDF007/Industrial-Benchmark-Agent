@@ -1,11 +1,19 @@
+import json
+from collections import Counter
 from typing import Literal, Optional
 
 from pydantic import Field, FiniteFloat, JsonValue
 
 from iad_core.advisory.analysis import AnalysisModel
-from iad_core.consistency.models import Count, DifferenceType, Identifier
+from iad_core.consistency.models import Count, DifferenceType, GalleryDifferenceKind, Identifier
 from iad_core.consistency.policy import PolicyRelation
 from iad_core.storage.models import Annotation
+
+
+ANNOTATION_DIFFERENCE_CATEGORIES: dict[DifferenceType, GalleryDifferenceKind] = {
+    'CATEGORY': 'category', 'GEOMETRY': 'geometry', 'ONE_SIDED_REGION': 'presence',
+    'SPLIT_MERGE': 'instances', 'AMBIGUOUS_MATCH': 'instances', 'QUALITY_LABEL': 'quality',
+}
 
 
 class AnnotationDifference(AnalysisModel):
@@ -49,6 +57,29 @@ class AnnotationComparison(AnalysisModel):
     confirmed_conflict: bool
     ignore_regions: list[Annotation] = Field(default_factory=list)
     masking: list[AnnotationMasking] = Field(default_factory=list)
+
+    @property
+    def factual_differences(self) -> list[AnnotationDifference]:
+        differences = []
+        for difference in self.differences:
+            if difference.type not in ANNOTATION_DIFFERENCE_CATEGORIES:
+                continue
+            if difference.type == 'AMBIGUOUS_MATCH':
+                sides = [Counter(json.dumps(annotation.model_dump(mode='json', include={
+                    'annotation_type','raw_label','bbox','polygon','mask_sha256','is_ignored'}), sort_keys=True)
+                    for annotation in annotations) for annotations in (difference.left, difference.right)]
+                if sides[0] == sides[1]:
+                    continue
+            differences.append(difference)
+        return differences
+
+    @property
+    def factual_difference_types(self) -> list[DifferenceType]:
+        return sorted({difference.type for difference in self.factual_differences})
+
+    @classmethod
+    def json_difference_types(cls, annotation_json: str) -> str:
+        return json.dumps(cls.model_validate_json(annotation_json).factual_difference_types)
 
 
 class AnnotationMatchingConfig(AnalysisModel):

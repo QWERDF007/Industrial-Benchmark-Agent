@@ -94,11 +94,11 @@ class ConsistencyEvidence:
             states[side]=current.state(frozen)
         return EvidenceBundle(**saved.model_dump(),source_states=EvidenceSourceStates(**states))
 
-    def media(self, evidence_id: str, media_id: str) -> dict:
-        bundle=self.get(evidence_id)
+    def media(self, evidence_id: str, media_id: str, *, max_side: int | None = None) -> dict:
+        bundle=self.repository.get(evidence_id)
         descriptor=next((value for value in bundle.media if value.media_id==media_id),None)
         if descriptor is None:raise ConsistencyError('REFERENCE_NOT_FOUND','Evidence media does not exist')
-        return ConsistencyMedia(self.db).render(bundle,descriptor)
+        return ConsistencyMedia(self.db).render(bundle,descriptor,max_side=max_side)
 
     def export(self, evidence_id: str):
         return ConsistencyExport(self.db).create(self.get(evidence_id))

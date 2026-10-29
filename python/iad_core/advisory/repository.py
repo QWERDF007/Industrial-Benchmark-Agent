@@ -113,8 +113,8 @@ class AuditSuggestionRepository:
             rows = cursor.fetchall()
             return [self._row_to_suggestion(r) for r in rows]
 
-    def list_by_sample(self, sample_id: str) -> List[AuditSuggestion]:
-        with self.db.connection() as conn:
+    def list_by_sample(self, sample_id: str, connection: Optional[sqlite3.Connection] = None) -> List[AuditSuggestion]:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT * FROM audit_suggestions WHERE sample_id = ? ORDER BY created_at DESC,id DESC",

@@ -36,54 +36,55 @@ class KnowledgeSources:
         self.candidates = AuditCandidates(db)
 
     def eligible(self, dataset_id: str, kind: KnowledgeKind, normal: Optional[KnowledgeSnapshot] = None) -> KnowledgeEligibility:
-        if kind == 'normal':
-            eligible = self.registry.references(dataset_id, limit=None)
-            with self.db.connection() as conn:
-                selected = json.loads(conn.execute('SELECT reference_sample_ids_json FROM datasets WHERE dataset_id=?',
-                                                  (dataset_id,)).fetchone()[0])
-        else:
-            with self.db.connection() as conn:
-                eligible = [row[0] for row in conn.execute("""SELECT s.sample_id FROM samples s WHERE dataset_id=? AND s.is_excluded=0
+        with self.db.connection() as connection:
+            connection.execute('BEGIN')
+            if kind == 'normal':
+                eligible = self.registry.references(dataset_id, limit=None, connection=connection)
+                selected = json.loads(connection.execute('SELECT reference_sample_ids_json FROM datasets WHERE dataset_id=?',
+                                                         (dataset_id,)).fetchone()[0])
+            else:
+                eligible = [row[0] for row in connection.execute("""SELECT s.sample_id FROM samples s WHERE dataset_id=? AND s.is_excluded=0
                     AND NOT EXISTS(SELECT 1 FROM import_issues i WHERE i.sample_id=s.sample_id
                                    AND i.severity IN ('ERROR','WARNING')) ORDER BY s.relative_path,s.sample_id""", (dataset_id,))]
-            selected = []
-        suspects: dict[str, List[KnowledgeFinding]] = {}
-        for finding in normal.findings if normal else []:
-            suspects.setdefault(finding.sample_id, []).append(finding)
-        qualifications, unavailable = {}, {}
-        for sample_id in eligible:
-            sample = self.samples.get(sample_id)
-            decision = self.reviews.get_decision(sample_id)
-            if kind == 'normal':
-                qualifications[sample_id] = ('human_pass' if decision and decision.decision == 'PASS' else
-                    'human_hard_normal' if decision and decision.decision == 'HARD_NORMAL' else
-                    'manual_selection' if sample_id in selected else 'raw_pass' if sample.quality_status == 'PASS' else
-                    'initial_unannotated')
-            elif decision and decision.decision == 'FAIL':
-                qualifications[sample_id] = 'human_fail'
-            elif decision:
-                continue
-            elif any(annotation.bbox and annotation.geometry_status != 'INVALID'
-                     for annotation in self.annotations.list_by_sample(sample_id)):
-                qualifications[sample_id] = 'annotated_candidate'
-            elif sample.quality_status == 'FAIL':
-                qualifications[sample_id] = 'raw_fail'
-            else:
-                try:
-                    candidates = self.candidates.matching(sample)
-                    current_suspects = []
-                    if sample_id in suspects:
-                        sha256 = file_sha256(validate_sample_image_path(sample, self.db.db_path))
-                        current_suspects = [finding for finding in suspects[sample_id]
-                            if finding.is_current_candidate(sha256, [item.suggestion_id for item in candidates])]
-                except (OSError, PathSafetyError) as error:
-                    unavailable[sample_id] = error
+                selected = []
+            suspects: dict[str, List[KnowledgeFinding]] = {}
+            for finding in normal.findings if normal else []:
+                suspects.setdefault(finding.sample_id, []).append(finding)
+            qualifications, unavailable = {}, {}
+            samples = {sample.sample_id: sample for sample in self.samples.get_many(eligible, connection=connection)}
+            for sample_id in eligible:
+                sample = samples[sample_id]
+                decision = self.reviews.get_decision(sample_id, connection=connection)
+                if kind == 'normal':
+                    qualifications[sample_id] = ('human_pass' if decision and decision.decision == 'PASS' else
+                        'human_hard_normal' if decision and decision.decision == 'HARD_NORMAL' else
+                        'manual_selection' if sample_id in selected else 'raw_pass' if sample.quality_status == 'PASS' else
+                        'initial_unannotated')
+                elif decision and decision.decision == 'FAIL':
+                    qualifications[sample_id] = 'human_fail'
+                elif decision:
                     continue
-                if current_suspects:
-                    qualifications[sample_id] = 'normal_suspect'
-                elif candidates:
-                    qualifications[sample_id] = 'audit_suspect'
-        return KnowledgeEligibility(qualifications, unavailable)
+                elif any(annotation.bbox and annotation.geometry_status != 'INVALID'
+                         for annotation in self.annotations.list_by_sample(sample_id, connection=connection)):
+                    qualifications[sample_id] = 'annotated_candidate'
+                elif sample.quality_status == 'FAIL':
+                    qualifications[sample_id] = 'raw_fail'
+                else:
+                    try:
+                        candidates = self.candidates.matching(sample, connection=connection)
+                        current_suspects = []
+                        if sample_id in suspects:
+                            sha256 = file_sha256(validate_sample_image_path(sample, self.db.db_path))
+                            current_suspects = [finding for finding in suspects[sample_id]
+                                if finding.is_current_candidate(sha256, [item.suggestion_id for item in candidates])]
+                    except (OSError, PathSafetyError) as error:
+                        unavailable[sample_id] = error
+                        continue
+                    if current_suspects:
+                        qualifications[sample_id] = 'normal_suspect'
+                    elif candidates:
+                        qualifications[sample_id] = 'audit_suspect'
+            return KnowledgeEligibility(qualifications, unavailable)
 
     def list_candidates(self, dataset_id: str, kind: KnowledgeKind, normal: Optional[KnowledgeSnapshot], search: str = '') -> tuple[KnowledgeEligibility, List[KnowledgeSourceItem]]:
         availability = self.eligible(dataset_id, kind, normal)

@@ -31,6 +31,7 @@ ResultSelection=Annotated[BatchSelection | ScopeSelection,Field(discriminator='k
 
 class ConsistencyQuery(AnalysisModel):
     selection: ResultSelection
+    annotation_differences_only: bool = False
     relation: Relation | None = None
     confirmed_conflict: bool | None = None
     difference_type: DifferenceType | None = None

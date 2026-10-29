@@ -208,8 +208,6 @@ export class Workspace {
                         consistency.galleryOrder = route.galleryOrder;
                     if (consistencyRouteEnums.detailTab.includes(route.detailTab))
                         consistency.detailTab = route.detailTab;
-                    if (consistencyRouteEnums.conflictFilter.includes(route.conflictFilter))
-                        consistency.conflictFilter = route.conflictFilter;
                     if (consistencyRouteEnums.reviewFilter.includes(route.reviewFilter))
                         consistency.reviewFilter = route.reviewFilter;
                     if (route.returnPage in pages && route.returnPage !== 'industrial-consistency')

@@ -15,7 +15,7 @@ export function ConsistencyScopeResults({datasets,tab}:{datasets:Dataset[];tab:'
   const {state,workspace}=useWorkspace();
   const scope=state.consistency.scope || {kind:'all_registered' as const};
   const facts=state.consistency.facts || 'CURRENT';
-  const subject=state.consistency.subjectId||'all',conflict=state.consistency.conflictFilter||'all',review=state.consistency.reviewFilter||'';
+  const subject=state.consistency.subjectId||'all',review=state.consistency.reviewFilter||'';
   const [report,setReport]=useState<ConsistencyReport|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const [revision,setRevision]=useState(0);
   const reset=(patch:Partial<typeof state.consistency>)=>workspace.updateConsistency({...patch,queryId:undefined,groupId:undefined,memberId:undefined,galleryPage:1,memberPage:1},true);
@@ -41,21 +41,20 @@ export function ConsistencyScopeResults({datasets,tab}:{datasets:Dataset[];tab:'
   useEffect(()=>{
     const controller=new AbortController();setBusy(true);setError('');setReport(null);
     const input:ConsistencyQuery={selection:{kind:'scope',subjects:subject==='all' ? {kind:'all_registered'} : {kind:'datasets',dataset_ids:[subject]},corpus_scope:scope,facts,mode:'exact'},
-      relation:tab==='groups' ? 'EXACT' : undefined,confirmed_conflict:tab==='conflicts' && conflict==='confirmed' ? true : undefined,
+      relation:'EXACT',annotation_differences_only:tab==='conflicts',
       review_state:review||undefined,page_size:1};
     const saved=state.consistency.queryId;
     request<ConsistencyReport>(saved ? `/consistency/report/${encodeURIComponent(saved)}` : '/consistency/report',saved ? undefined : input,undefined,controller.signal)
       .then(data=>{if(!controller.signal.aborted)setReport(data);}).catch(failure=>{if(!controller.signal.aborted)setError(message(failure));})
       .finally(()=>{if(!controller.signal.aborted)setBusy(false);});
     return()=>controller.abort();
-  },[scopeKey,subject,conflict,facts,tab,revision,review]);
+  },[scopeKey,subject,facts,tab,revision,review]);
   return <section aria-label="范围一致性结果">
     <form className="iad-consistency-query" onSubmit={event=>{event.preventDefault();reset({});setRevision(value=>value+1);}}><fieldset disabled={busy}><legend className="iad-visually-hidden">结果范围</legend><div className="iad-row">
       <label className="iad-filter">检查范围<select aria-label="结果检查范围" value={subject} onChange={event=>reset({subjectId:event.target.value==='all' ? undefined : event.target.value})}><option value="all">全部已注册数据集</option>{datasets.map(item=><option key={item.dataset_id} value={item.dataset_id}>{item.name}</option>)}</select></label>
       <ConsistencyScopePicker datasets={datasets} value={scope} onChange={scope=>reset({scope})} />
       <label className="iad-filter">事实来源<select aria-label="事实来源" value={facts} onChange={event=>reset({facts:event.target.value as 'CURRENT'|'HISTORICAL'|'UNKNOWN'})}>
         <option value="CURRENT">当前来源</option><option value="HISTORICAL">历史来源</option><option value="UNKNOWN">无法核实</option></select></label>
-      {tab==='conflicts' && <label className="iad-filter">差异筛选<select aria-label="差异筛选" value={conflict} onChange={event=>reset({conflictFilter:event.target.value as 'confirmed'|'all'})}><option value="confirmed">已确认冲突</option><option value="all">全部比较与待确认</option></select></label>}
       <label className="iad-filter">处置状态<select aria-label="处置状态筛选" value={review} onChange={event=>reset({reviewFilter:(event.target.value||undefined) as typeof state.consistency.reviewFilter})}><option value="">全部处置状态</option><option value="OPEN">待复核</option><option value="NEEDS_CONTEXT">待补充依据</option><option value="RESOLVED">已裁决</option></select></label>
       <button className="iad-primary" type="button" disabled={!datasets.length||actions.busy||!!batchId&&!batch||!!batch&&['PENDING','RUNNING'].includes(batch.status)} onClick={()=>void actions.start('/consistency/start',{subjects:subject==='all' ? {kind:'all_registered'} : {kind:'datasets',dataset_ids:[subject]},corpus_scope:scope,mode:'exact'})}>{actions.busy ? '正在启动…' : '开始批量检查'}</button>
       <IconButton type="submit" label="刷新结果"><RefreshIcon /></IconButton>

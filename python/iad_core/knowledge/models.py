@@ -63,14 +63,17 @@ class ObservedPart(AnalysisModel):
     evidence_ids: List[str] = Field(min_length=1)
 
 
-class DiscoveryArea(AnalysisModel):
+class ObservedArea(AnalysisModel):
     direction_id: Optional[str] = Field(default=None, description='用户选中的方向编号；模型自主发现的新方向填null，不能冒用未选择的方向')
     direction: NonBlankText = Field(description='本轮观察标题；所选方向身份以direction_id为准，自主发现方向填写新标题')
-    subjects: List[str] = Field(description='引用parts内实际可见部件名称；不适用时可为空')
-    status: Literal['已形成知识', '证据不足', '不可观察', '不适用']
+    status: Literal['已形成知识', '证据不足', '不可观察', '不适用'] = Field(description='仅本次checks包含对应判据且有实际图像证据时可填已形成知识；仅有观察、无可用判据时填证据不足或不可观察')
     reason: NonBlankText
-    check_titles: List[str] = Field(description='引用本次checks实际标题；不是预设旧条目的完整性证明')
     evidence_ids: List[str]
+
+
+class DiscoveryArea(ObservedArea):
+    subjects: List[str] = Field(description='引用parts内实际可见部件名称；不适用时可为空')
+    check_titles: List[str] = Field(description='引用本次checks实际标题；不是预设旧条目的完整性证明')
 
     @model_validator(mode='after')
     def learned_has_support(self):
@@ -79,28 +82,49 @@ class DiscoveryArea(AnalysisModel):
         return self
 
 
-class KnowledgeDiscovery(AnalysisModel):
+class ObservedDiscovery(AnalysisModel):
     parts: List[ObservedPart]
+    areas: List[ObservedArea]
+
+    @model_validator(mode='after')
+    def unique_parts(self):
+        names = [part.name for part in self.parts]
+        if len(names) != len(set(names)):
+            raise ValueError('可见部件名称必须唯一')
+        return self
+
+
+class KnowledgeDiscovery(ObservedDiscovery):
     areas: List[DiscoveryArea]
 
 
-class KnowledgeDraft(AnalysisModel):
+class KnowledgeDraftContent(AnalysisModel):
     summary: str
     checks: List[LearnedCheck]
     suspects: List[KnowledgeSuspect]
     limitations: List[str]
     revisions: List[CheckRevision] = Field(default_factory=list)
-    discovery: Optional[KnowledgeDiscovery] = Field(default=None, description='逐部件观察与各挖掘方向的实际结果；未返回时明确未记录，不能据此宣称观察完整')
 
     @model_validator(mode="after")
     def unique_check_titles(self):
         titles = [check.title for check in self.checks]
         if len(titles) != len(set(titles)):
             raise ValueError("Knowledge check titles must identify one criterion")
+        return self
+
+
+class KnowledgeLearning(KnowledgeDraftContent):
+    discovery: Optional[ObservedDiscovery] = Field(default=None, description='实际可见部件与逐方向观察，不包含部件或判据的交叉引用')
+
+
+class KnowledgeDraft(KnowledgeDraftContent):
+    discovery: Optional[KnowledgeDiscovery] = Field(default=None, description='逐部件观察与各挖掘方向的实际结果；未返回时明确未记录，不能据此宣称观察完整')
+
+    @model_validator(mode='after')
+    def valid_discovery_references(self):
+        titles = [check.title for check in self.checks]
         if self.discovery:
             parts = [item.name for item in self.discovery.parts]
-            if len(parts) != len(set(parts)):
-                raise ValueError('可见部件名称必须唯一')
             for area in self.discovery.areas:
                 unknown_parts = set(area.subjects) - set(parts)
                 unknown_checks = set(area.check_titles) - set(titles)

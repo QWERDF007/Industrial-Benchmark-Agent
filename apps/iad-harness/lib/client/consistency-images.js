@@ -13,4 +13,4 @@ export function frozenConsistencyMember(bundle) {
         near: result.verification.relation === 'EXACT' ? null : result.verification, local: result.verification.local,
         registration: result.verification.registration, annotation: result.annotation, error_code: null, reason: null };
 }
-export const galleryImageUrl = (image) => `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-preview`;
+export const galleryImageUrl = (image) => `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-preview?max_side=360`;

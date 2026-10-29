@@ -1,8 +1,9 @@
 import hashlib
 import json
 
-from iad_core.knowledge.models import KnowledgeDraft, KnowledgeVerification, KnowledgeSnapshot
+from iad_core.knowledge.models import KnowledgeDraft, KnowledgeLearning, KnowledgeVerification, KnowledgeSnapshot
 from iad_core.knowledge.mining import OUTPUT_RESERVE_TOKENS, DISCOVERY_INSTRUCTION
+from iad_core.knowledge.discovery import LINK_INSTRUCTION
 from iad_core.knowledge.verification import VERIFICATION_INSTRUCTION
 from iad_core.knowledge.defect import DEFECT_INSTRUCTION, DEFECT_VERIFICATION_INSTRUCTION
 from iad_core.knowledge.evolution import EVOLUTION_INSTRUCTION
@@ -11,7 +12,7 @@ from iad_core.knowledge.recheck import RECHECK_INSTRUCTION
 from iad_core.knowledge.findings import EVIDENCE_SCOPE_INSTRUCTION
 from iad_core.workbench.vision import RESPONSE_INSTRUCTION, GENERATION_PARAMETERS
 
-GENERATION_VERSION = "dataset-knowledge-v23"
+GENERATION_VERSION = "dataset-knowledge-v24"
 NORMAL_INSTRUCTION = """联合观察这一数据集的候选良品，按本次挖掘目标和选中方向发现可复用知识及新的观察方向。
 不要根据数据集名称假设产品或预设缺陷检查表。只归纳可观察、可复用且有图像证据的检查判据。
 人工选取和无标注只是来源资格，不是确认真值。寻找候选良品中的异常与矛盾，将其定位为suspects，
@@ -24,7 +25,7 @@ annotation_mask是纯二值定位图：白色只表示标注覆盖、黑色表�
 来源："""
 
 def generation_signature() -> str:
-    return hashlib.sha256(json.dumps([GENERATION_VERSION, RESPONSE_INSTRUCTION, GENERATION_PARAMETERS, OUTPUT_RESERVE_TOKENS, NORMAL_INSTRUCTION, DISCOVERY_INSTRUCTION,
+    return hashlib.sha256(json.dumps([GENERATION_VERSION, RESPONSE_INSTRUCTION, GENERATION_PARAMETERS, OUTPUT_RESERVE_TOKENS, NORMAL_INSTRUCTION, DISCOVERY_INSTRUCTION, LINK_INSTRUCTION, KnowledgeLearning.model_json_schema(),
         VERIFICATION_INSTRUCTION, DEFECT_INSTRUCTION, DEFECT_VERIFICATION_INSTRUCTION,
         EVOLUTION_INSTRUCTION, OBSERVATION_INSTRUCTION, RECHECK_INSTRUCTION, EVIDENCE_SCOPE_INSTRUCTION, KnowledgeDraft.model_json_schema(),
         KnowledgeVerification.model_json_schema(), KnowledgeSnapshot.model_json_schema()], sort_keys=True).encode()).hexdigest()

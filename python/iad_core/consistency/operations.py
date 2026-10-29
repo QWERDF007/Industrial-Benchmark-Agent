@@ -115,7 +115,7 @@ def consistency_evidence(args: dict, db_path: str) -> dict:
 
 def consistency_evidence_media(args: dict, db_path: str) -> dict:
     reference=ConsistencyEvidenceMediaReference.model_validate(args)
-    return ConsistencyService(workbench(db_path).db).evidence_media(reference.evidence_id,reference.media_id)
+    return ConsistencyService(workbench(db_path).db).evidence_media(reference.evidence_id,reference.media_id,max_side=reference.max_side)
 
 
 def consistency_evidence_export(args: dict, db_path: str) -> dict:

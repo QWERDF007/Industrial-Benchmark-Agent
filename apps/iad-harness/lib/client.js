@@ -645,19 +645,17 @@ var __IadClientBundle__ = (() => {
     ],
     "differenceFilter": [
       "all",
-      "annotation",
+      "category",
+      "geometry",
+      "presence",
+      "instances",
       "quality",
-      "policy",
-      "unavailable"
+      "multiple"
     ],
     "detailTab": [
       "summary",
       "evidence",
       "review"
-    ],
-    "conflictFilter": [
-      "confirmed",
-      "all"
     ],
     "reviewFilter": [
       "OPEN",
@@ -884,7 +882,6 @@ var __IadClientBundle__ = (() => {
             if (consistencyRouteEnums.differenceFilter.includes(route.differenceFilter)) consistency.differenceFilter = route.differenceFilter;
             if (consistencyRouteEnums.galleryOrder.includes(route.galleryOrder)) consistency.galleryOrder = route.galleryOrder;
             if (consistencyRouteEnums.detailTab.includes(route.detailTab)) consistency.detailTab = route.detailTab;
-            if (consistencyRouteEnums.conflictFilter.includes(route.conflictFilter)) consistency.conflictFilter = route.conflictFilter;
             if (consistencyRouteEnums.reviewFilter.includes(route.reviewFilter)) consistency.reviewFilter = route.reviewFilter;
             if (route.returnPage in pages && route.returnPage !== "industrial-consistency") consistency.returnPage = route.returnPage;
             this.state = { ...this.state, active: true, pageId: route.pageId, consistency };
@@ -6126,12 +6123,6 @@ var __IadClientBundle__ = (() => {
     POLICY_UNCONFIRMED: "\u6807\u6CE8\u89C4\u8303\u672A\u786E\u8BA4",
     ANNOTATION_UNREADABLE: "\u6807\u6CE8\u4E0D\u53EF\u8BFB\u53D6"
   };
-  function annotationState(types2, confirmed) {
-    if (confirmed) return "\u5DF2\u786E\u8BA4\u6807\u6CE8\u51B2\u7A81";
-    if (types2.some((type) => type !== "POLICY_UNCONFIRMED" && type !== "ANNOTATION_UNREADABLE")) return "\u6807\u6CE8\u5DEE\u5F02\u5F85\u6838\u5BF9";
-    if (types2.includes("ANNOTATION_UNREADABLE")) return "\u6807\u6CE8\u8BFB\u53D6\u5F85\u6838\u5BF9";
-    return types2.includes("POLICY_UNCONFIRMED") ? "\u89C4\u8303\u5F85\u786E\u8BA4" : "\u672A\u53D1\u73B0\u6807\u6CE8\u5DEE\u5F02";
-  }
   function annotationSummary(annotation) {
     const count2 = annotation.differences.filter((row) => row.type !== "POLICY_UNCONFIRMED" && row.type !== "ANNOTATION_UNREADABLE").length;
     return [
@@ -6403,6 +6394,7 @@ var __IadClientBundle__ = (() => {
     SAMPLE_COMPLETED: "\u56FE\u50CF\u5BA1\u8BA1\u5B8C\u6210",
     LEARNING_NORMAL: "\u5F52\u7EB3\u826F\u54C1\u77E5\u8BC6",
     LEARNING_DEFECT: "\u5F52\u7EB3\u4E0D\u826F\u54C1\u77E5\u8BC6",
+    LINKING_KNOWLEDGE_DISCOVERY: "\u5173\u8054\u89C2\u5BDF\u4E0E\u77E5\u8BC6",
     VERIFYING_NORMAL: "\u6838\u9A8C\u826F\u54C1\u7591\u70B9",
     VERIFYING_DEFECT: "\u6838\u9A8C\u6807\u6CE8\u4E0E\u5F02\u5E38\u77E5\u8BC6",
     OBSERVING_PRESET: "\u89C2\u5BDF\u51BB\u7ED3\u5224\u636E",
@@ -7643,9 +7635,9 @@ var __IadClientBundle__ = (() => {
           /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("small", { children: "\u539F\u59CB\u50CF\u7D20\u5173\u7CFB" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("span", { children: "\u6BD4\u8F83\u4E8B\u9879" }),
+          /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("span", { children: "\u6807\u6CE8\u5DEE\u5F02" }),
           /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("strong", { children: statistics.differences }),
-          /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("small", { children: "\u5DEE\u5F02\u53CA\u89C4\u8303\u5F85\u786E\u8BA4" })
+          /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("small", { children: "\u5F53\u524D\u7B5B\u9009\u7684\u771F\u5B9E\u5DEE\u5F02" })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("div", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("span", { children: "\u89C4\u8303 / \u4F9D\u636E\u4E0D\u8DB3" }),
@@ -12378,7 +12370,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
       reason: null
     };
   }
-  var galleryImageUrl = (image) => `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-preview`;
+  var galleryImageUrl = (image) => `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-preview?max_side=360`;
 
   // src/client/components/ConsistencyCanvasPair.tsx
   var import_react59 = __require("react");
@@ -12448,15 +12440,17 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
           " \xB7 ",
           difference.confirmed_conflict ? "\u5DF2\u786E\u8BA4\u51B2\u7A81" : "\u5F85\u5B9A"
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("span", { children: [
-          anchorSide === "left" ? "\u67E5\u8BE2" : "\u5019\u9009",
-          "\uFF1A",
-          difference.type === "QUALITY_LABEL" ? String(difference.facts.left_quality) : difference.left.map((annotation) => annotation.raw_label).join("\u3001") || "\u65E0\u5BF9\u5E94\u6807\u6CE8"
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("span", { children: [
-          anchorSide === "left" ? "\u5019\u9009" : "\u67E5\u8BE2",
-          "\uFF1A",
-          difference.type === "QUALITY_LABEL" ? String(difference.facts.right_quality) : difference.right.map((annotation) => annotation.raw_label).join("\u3001") || "\u65E0\u5BF9\u5E94\u6807\u6CE8"
+        difference.type !== "POLICY_UNCONFIRMED" && /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(import_jsx_runtime65.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("span", { children: [
+            anchorSide === "left" ? "\u67E5\u8BE2" : "\u5019\u9009",
+            "\uFF1A",
+            difference.type === "QUALITY_LABEL" ? String(difference.facts.left_quality) : difference.left.map((annotation) => annotation.raw_label).join("\u3001") || "\u65E0\u5BF9\u5E94\u6807\u6CE8"
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("span", { children: [
+            anchorSide === "left" ? "\u5019\u9009" : "\u67E5\u8BE2",
+            "\uFF1A",
+            difference.type === "QUALITY_LABEL" ? String(difference.facts.right_quality) : difference.right.map((annotation) => annotation.raw_label).join("\u3001") || "\u65E0\u5BF9\u5E94\u6807\u6CE8"
+          ] })
         ] }),
         difference.reference_from_other && /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("small", { children: [
           "\u865A\u7EBF\u4F4D\u7F6E\u6765\u81EA",
@@ -13277,7 +13271,6 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
   var import_react67 = __toESM(__require("react"), 1);
   var import_jsx_runtime74 = __require("react/jsx-runtime");
   function ConsistencyGroupAnalysis({ reference, onLocate }) {
-    const { workspace } = useWorkspace();
     const [analysis, setAnalysis] = (0, import_react67.useState)(null), [error2, setError] = (0, import_react67.useState)("");
     const key = JSON.stringify(reference);
     (0, import_react67.useEffect)(() => {
@@ -13318,13 +13311,10 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
         /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { className: "iad-muted", children: analysis.model_name }),
         /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("div", { className: "iad-group-conclusions", children: analysis.result.conclusions.map((conclusion, index3) => /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("article", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { children: conclusion.text }),
-          /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("div", { className: "iad-row", children: conclusion.references.map((citation, position) => /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)(import_react67.default.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("button", { className: "iad-consistency-text-button", onClick: () => onLocate(citation, analysis.candidate_offsets[citation.candidate_id]), children: [
-              "\u5B9A\u4F4D\u5019\u9009 ",
-              citation.candidate_id.split(":").slice(1).join(":")
-            ] }),
-            citation.comparison && /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("button", { className: "iad-consistency-text-button", onClick: () => workspace.updateConsistency({ batchId: void 0, evidenceId: citation.comparison.evidence_id, resultId: citation.comparison.result_id, differenceId: citation.comparison.difference_id ?? void 0 }, true), children: "\u67E5\u770B\u51BB\u7ED3\u8BC1\u636E" })
-          ] }, position)) })
+          /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("div", { className: "iad-row", children: conclusion.references.map((citation, position) => /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(import_react67.default.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("button", { className: "iad-consistency-text-button", onClick: () => onLocate(citation, analysis.candidate_offsets[citation.candidate_id]), children: [
+            "\u5B9A\u4F4D\u5019\u9009 ",
+            citation.candidate_id.split(":").slice(1).join(":")
+          ] }) }, position)) })
         ] }, index3)) }),
         !!analysis.result.limitations.length && /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("div", { className: "iad-group-limitations", children: analysis.result.limitations.map((limit, index3) => /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { children: limit }, index3)) })
       ] })
@@ -13358,9 +13348,6 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
     const comparison = selected?.comparison && candidate.bundle?.result.evidence_id === selected.comparison.evidence_id ? candidate.bundle : null;
     const sources = [anchor.bundle && members ? frozenConsistencyImage(anchor.bundle, members.anchor.side) : null, candidate.bundle && selected ? frozenConsistencyImage(candidate.bundle, selected.image.side) : null];
     const difference = comparison?.result.annotation.differences.find((row) => row.difference_id === location2.differenceId);
-    const openEvidence = () => {
-      if (comparison) workspace.updateConsistency({ batchId: void 0, evidenceId: comparison.result.evidence_id, resultId: comparison.result.result_id }, true);
-    };
     return /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)(Modal, { title: "\u56FE\u7EC4\u8BE6\u60C5", header: false, className: "iad-consistency-group-dialog", onClose, restoreFocus, onKeyDown: (event) => {
       if (event.defaultPrevented || event.target.closest("input,textarea,select,[role=tablist],.iad-image-canvas")) return;
       if (event.key === "ArrowLeft" && position > 1) {
@@ -13376,7 +13363,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
         /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("div", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("span", { className: "iad-muted", children: kind === "groups" ? "\u4E25\u683C\u540C\u56FE\u6210\u5458" : "\u5019\u9009\u96C6\u5408\u6838\u9A8C" }),
           /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("h2", { children: [
-            kind === "groups" ? "\u91CD\u590D\u56FE\u7EC4" : annotationState(item.difference_types, item.confirmed_conflict),
+            kind === "groups" ? "\u91CD\u590D\u56FE\u7EC4" : "\u6807\u6CE8\u5DEE\u5F02",
             " \xB7 ",
             item.anchor.sample.relative_path.split("/").pop()
           ] }),
@@ -13456,20 +13443,17 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("footer", { className: "iad-group-footer", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("button", { disabled: !comparison, onClick: openEvidence, children: "\u67E5\u770B\u6BD4\u8F83\u8BC1\u636E" }),
-          /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("button", { disabled: !comparison || asking, onClick: async () => {
-            if (!comparison) return;
-            setAsking(true);
-            try {
-              await workspace.explainConsistency(comparison.result);
-            } catch (failure) {
-              setError(message(failure));
-            } finally {
-              setAsking(false);
-            }
-          }, children: asking ? "\u6B63\u5728\u6253\u5F00\u4F1A\u8BDD\u2026" : "\u5728 DSH \u4E2D\u89E3\u91CA" })
-        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("div", { className: "iad-row", children: /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("button", { disabled: !comparison || asking, onClick: async () => {
+          if (!comparison) return;
+          setAsking(true);
+          try {
+            await workspace.explainConsistency(comparison.result);
+          } catch (failure) {
+            setError(message(failure));
+          } finally {
+            setAsking(false);
+          }
+        }, children: asking ? "\u6B63\u5728\u6253\u5F00\u4F1A\u8BDD\u2026" : "\u5728 DSH \u4E2D\u89E3\u91CA" }) }),
         /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("button", { className: "iad-primary", disabled: !comparison, onClick: () => workspace.updateConsistency({ detailTab: "review" }, true), children: "\u4EBA\u5DE5\u590D\u6838" })
       ] }),
       lightbox && /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(ImageViewer, { image: lightbox, onClose: () => setLightbox(null) })
@@ -13520,7 +13504,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
     return /* @__PURE__ */ (0, import_jsx_runtime76.jsxs)("section", { className: "iad-consistency-gallery-panel", "aria-label": kind === "conflicts" ? "\u51B2\u7A81\u56FE\u50CF" : "\u91CD\u590D\u56FE\u7EC4", children: [
       /* @__PURE__ */ (0, import_jsx_runtime76.jsxs)("header", { className: "iad-consistency-panel-header", children: [
         /* @__PURE__ */ (0, import_jsx_runtime76.jsxs)("strong", { children: [
-          kind === "conflicts" ? "\u6BD4\u8F83\u56FE\u50CF\u4E0E\u5F85\u786E\u8BA4" : "\u91CD\u590D\u56FE\u7EC4 \xB7 \u4EE3\u8868\u56FE\u50CF",
+          kind === "conflicts" ? "\u540C\u56FE\u6807\u6CE8\u5DEE\u5F02" : "\u91CD\u590D\u56FE\u7EC4 \xB7 \u4EE3\u8868\u56FE\u50CF",
           " ",
           /* @__PURE__ */ (0, import_jsx_runtime76.jsxs)("span", { className: "iad-muted", children: [
             page?.total ?? "\u2014",
@@ -13564,7 +13548,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
               /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("strong", { title: item.anchor.sample.relative_path, children: item.anchor.sample.relative_path.split("/").pop() }),
               /* @__PURE__ */ (0, import_jsx_runtime76.jsxs)("div", { children: [
                 /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("span", { className: "iad-consistency-badge", children: kind === "groups" ? "\u4E25\u683C\u540C\u56FE" : item.difference_types.map((type) => differenceLabels[type]).join("\u3001") || "\u672A\u53D1\u73B0\u6807\u6CE8\u5DEE\u5F02" }),
-                /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("span", { children: kind === "groups" ? `${item.dataset_count} \u4E2A\u6570\u636E\u96C6` : annotationState(item.difference_types, item.confirmed_conflict) })
+                /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("span", { children: kind === "groups" ? `${item.dataset_count} \u4E2A\u6570\u636E\u96C6` : "" })
               ] })
             ] })
           ]
@@ -13572,7 +13556,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
         item.group_id + item.facts_state
       )) }) }),
       /* @__PURE__ */ (0, import_jsx_runtime76.jsx)(Pagination, { total: page?.total || 0, page: number, size: 15, unit: kind === "groups" ? "\u7EC4" : "\u5F20", onPage: (galleryPage) => workspace.updateConsistency({ galleryPage, groupId: void 0 }, true) }),
-      selected && /* @__PURE__ */ (0, import_jsx_runtime76.jsx)(
+      selected && !location2.evidenceId && /* @__PURE__ */ (0, import_jsx_runtime76.jsx)(
         ConsistencyGroupDialog,
         {
           queryId,
@@ -13595,7 +13579,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
     const { state, workspace } = useWorkspace();
     const scope = state.consistency.scope || { kind: "all_registered" };
     const facts = state.consistency.facts || "CURRENT";
-    const subject = state.consistency.subjectId || "all", conflict = state.consistency.conflictFilter || "all", review = state.consistency.reviewFilter || "";
+    const subject = state.consistency.subjectId || "all", review = state.consistency.reviewFilter || "";
     const [report, setReport] = (0, import_react70.useState)(null), [busy, setBusy] = (0, import_react70.useState)(false), [error2, setError] = (0, import_react70.useState)("");
     const [revision, setRevision] = (0, import_react70.useState)(0);
     const reset = (patch) => workspace.updateConsistency({ ...patch, queryId: void 0, groupId: void 0, memberId: void 0, galleryPage: 1, memberPage: 1 }, true);
@@ -13643,8 +13627,8 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
       setReport(null);
       const input = {
         selection: { kind: "scope", subjects: subject === "all" ? { kind: "all_registered" } : { kind: "datasets", dataset_ids: [subject] }, corpus_scope: scope, facts, mode: "exact" },
-        relation: tab === "groups" ? "EXACT" : void 0,
-        confirmed_conflict: tab === "conflicts" && conflict === "confirmed" ? true : void 0,
+        relation: "EXACT",
+        annotation_differences_only: tab === "conflicts",
         review_state: review || void 0,
         page_size: 1
       };
@@ -13657,7 +13641,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
         if (!controller.signal.aborted) setBusy(false);
       });
       return () => controller.abort();
-    }, [scopeKey, subject, conflict, facts, tab, revision, review]);
+    }, [scopeKey, subject, facts, tab, revision, review]);
     return /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("section", { "aria-label": "\u8303\u56F4\u4E00\u81F4\u6027\u7ED3\u679C", children: [
       /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("form", { className: "iad-consistency-query", onSubmit: (event) => {
         event.preventDefault();
@@ -13680,13 +13664,6 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
               /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("option", { value: "CURRENT", children: "\u5F53\u524D\u6765\u6E90" }),
               /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("option", { value: "HISTORICAL", children: "\u5386\u53F2\u6765\u6E90" }),
               /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("option", { value: "UNKNOWN", children: "\u65E0\u6CD5\u6838\u5B9E" })
-            ] })
-          ] }),
-          tab === "conflicts" && /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("label", { className: "iad-filter", children: [
-            "\u5DEE\u5F02\u7B5B\u9009",
-            /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("select", { "aria-label": "\u5DEE\u5F02\u7B5B\u9009", value: conflict, onChange: (event) => reset({ conflictFilter: event.target.value }), children: [
-              /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("option", { value: "confirmed", children: "\u5DF2\u786E\u8BA4\u51B2\u7A81" }),
-              /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("option", { value: "all", children: "\u5168\u90E8\u6BD4\u8F83\u4E0E\u5F85\u786E\u8BA4" })
             ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("label", { className: "iad-filter", children: [
@@ -13785,7 +13762,15 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
   var import_jsx_runtime79 = __require("react/jsx-runtime");
   function ConsistencyPage() {
     const { state } = useWorkspace();
-    return state.consistency.evidenceId ? /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(ConsistencyEvidencePage, { evidenceId: state.consistency.evidenceId }) : /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(RetrievalWorkspace, {});
+    const evidenceId = state.consistency.evidenceId;
+    const [visited, setVisited] = (0, import_react71.useState)(!evidenceId);
+    (0, import_react71.useEffect)(() => {
+      if (!evidenceId) setVisited(true);
+    }, [evidenceId]);
+    return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)(import_jsx_runtime79.Fragment, { children: [
+      visited && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { hidden: !!evidenceId, style: { height: "100%" }, children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(RetrievalWorkspace, {}) }),
+      evidenceId && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(ConsistencyEvidencePage, { evidenceId })
+    ] });
   }
   function RetrievalWorkspace() {
     const { workspace, state } = useWorkspace(), location2 = state.consistency;

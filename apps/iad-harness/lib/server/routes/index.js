@@ -20,9 +20,9 @@ async function readJson(req) {
         throw new Error("Expected a JSON object");
     return body;
 }
-async function sendMedia(res, info) {
+async function sendMedia(res, info, immutable = false) {
     const stat = await fsp.stat(info.path);
-    res.writeHead(200, { "Content-Type": info.media_type, "Content-Length": stat.size, "Cache-Control": "private, max-age=60" });
+    res.writeHead(200, { "Content-Type": info.media_type, "Content-Length": stat.size, "Cache-Control": immutable ? "private, max-age=31536000, immutable" : "private, max-age=60" });
     fs.createReadStream(info.path).on("error", () => res.destroy()).pipe(res);
 }
 export function createIadHttpHandler(bridge) {
@@ -114,8 +114,8 @@ export function createIadHttpHandler(bridge) {
                     return await sendMedia(res, { path: artifact.path, media_type: 'application/zip' });
                 }
                 if (consistencyEvidence[2] === 'media' && consistencyEvidence[3]) {
-                    const media = await bridge.execute('consistency_evidence_media', { ...reference, media_id: decodeURIComponent(consistencyEvidence[3]) });
-                    return await sendMedia(res, media);
+                    const media = await bridge.execute('consistency_evidence_media', { ...reference, media_id: decodeURIComponent(consistencyEvidence[3]), ...(query.max_side === undefined ? {} : { max_side: Number(query.max_side) }) });
+                    return await sendMedia(res, media, true);
                 }
             }
             if (pathname === '/api/iad/images/retrieve' && method === 'POST') {
