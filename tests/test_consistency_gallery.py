@@ -92,7 +92,7 @@ def test_conflict_gallery_excludes_equal_annotations_and_partitions_every_card_o
     assert all(p.total == 3 for p in pages)
     assert {item.anchor.sample_id for item in page.items} == {sid('dent'), sid('shifted'), sid('multiple')}
     assert all(item.candidate_count == 1 for item in page.items)
-    assert {item.value for item in page.filters} == {'all', 'category', 'geometry', 'presence', 'instances', 'quality', 'multiple'}
+    assert {item.value for item in page.filters} == {'all', 'category', 'geometry', 'presence', 'instances', 'multiple'}
     assert sum(item.count for item in page.filters if item.value != 'all') == page.total
     memberships = []
     for category in page.filters:
@@ -102,3 +102,25 @@ def test_conflict_gallery_excludes_equal_annotations_and_partitions_every_card_o
         assert selected.total == category.count
         memberships += [item.group_id for item in selected.items]
     assert len(memberships) == len(set(memberships)) == page.total
+
+
+def test_image_quality_labels_share_category_filter_with_region_labels(dataset, tmp_path):
+    from shutil import copyfile
+    from iad_core.consistency.gallery import GalleryQueries, GalleryQuery
+    from iad_core.storage.repositories import SampleRepository
+    db, registry, config = dataset
+    copyfile(tmp_path/'images/normal.png',tmp_path/'images/normal2.png')
+    registry.rescan(config.dataset.id)
+    samples = SampleRepository(db)
+    first = samples.get(config.dataset.id + ':normal.png')
+    second = samples.get(config.dataset.id + ':normal2.png')
+    second.quality_status = 'FAIL'
+    samples.upsert(second)
+    ConsistencyService(db).compare(ConsistencyCompare(sample_a=first.sample_id,sample_b=second.sample_id))
+    snapshot = ResultQueries(db).query(ConsistencyQuery(selection={'kind':'scope','subjects':{'kind':'all_registered'}}))
+    gallery = GalleryQueries(db)
+    page = gallery.query(GalleryQuery(query_id=snapshot.query_id,kind='conflicts',difference_filter='category'))
+    assert page.total == 1
+    assert page.items[0].difference_types == ['QUALITY_LABEL']
+    assert {row.value:row.count for row in page.filters} == {
+        'all':1,'category':1,'geometry':0,'presence':0,'instances':0,'multiple':0}

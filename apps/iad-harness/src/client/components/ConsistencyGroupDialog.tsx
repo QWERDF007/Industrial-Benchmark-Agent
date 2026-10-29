@@ -2,7 +2,7 @@ import React,{useEffect,useState} from 'react';
 import type {GalleryItem,GalleryMemberPage} from '../../shared/domain.generated.js';
 import {imageRelations,annotationSummary} from '../../shared/consistency-presentation.js';
 import {CloseIcon} from '../AuditIcon.js';
-import {message,request} from '../api.js';
+import {ApiError,message,request} from '../api.js';
 import {galleryImageUrl,frozenConsistencyImage,frozenConsistencyMember} from '../consistency-images.js';
 import {useConsistencyEvidence} from '../useConsistencyEvidence.js';
 import {useWorkspace} from '../workspace.js';
@@ -18,9 +18,9 @@ import {ConsistencyReviewPanel} from './ConsistencyReviewPanel.js';
 
 const tabs=[{id:'summary',label:'MLLM 分析'},{id:'evidence',label:'证据清单'},{id:'review',label:'人工复核'}] as const;
 
-export function ConsistencyGroupDialog({queryId,kind,item,position,total,onMove,onClose,restoreFocus}:{
+export function ConsistencyGroupDialog({queryId,kind,item,position,total,onMove,onClose,onExpired,restoreFocus}:{
   queryId:string;kind:'conflicts'|'groups';item:GalleryItem;position:number;total:number;
-  onMove(offset:-1|1):void;onClose():void;restoreFocus():HTMLElement|null;
+  onMove(offset:-1|1):void;onClose():void;onExpired():void;restoreFocus():HTMLElement|null;
 }) {
   const {state,workspace}=useWorkspace(),location=state.consistency;
   const [members,setMembers]=useState<GalleryMemberPage|null>(null),[error,setError]=useState(''),[asking,setAsking]=useState(false);
@@ -30,9 +30,12 @@ export function ConsistencyGroupDialog({queryId,kind,item,position,total,onMove,
     const controller=new AbortController();setMembers(null);setError('');
     request<GalleryMemberPage>('/consistency/gallery/members',{query_id:queryId,kind,group_id:item.group_id,facts_state:item.facts_state,page:memberPage,page_size:20},undefined,controller.signal)
       .then(value=>{if(!controller.signal.aborted){setMembers(value);if(!value.items.some(row=>row.image.sample.sample_id===location.memberId))workspace.updateConsistency({memberId:value.items[0]?.image.sample.sample_id,differenceId:undefined},true);}})
-      .catch(failure=>{if(!controller.signal.aborted)setError(message(failure));});
+      .catch(failure=>{if(!controller.signal.aborted){
+        if(failure instanceof ApiError&&failure.code==='REFERENCE_NOT_FOUND')onExpired();
+        else setError(message(failure));
+      }});
     return()=>controller.abort();
-  },[queryId,kind,item.group_id,item.facts_state,memberPage,workspace]);
+  },[queryId,kind,item.group_id,item.facts_state,memberPage,workspace,onExpired]);
   const selected=members?.items.find(row=>row.image.sample.sample_id===location.memberId)||members?.items[0];
   const anchor=useConsistencyEvidence(members?.anchor.evidence_id),candidate=useConsistencyEvidence(selected?.image.evidence_id);
   const comparison=selected?.comparison&&candidate.bundle?.result.evidence_id===selected.comparison.evidence_id ? candidate.bundle : null;
@@ -49,6 +52,7 @@ export function ConsistencyGroupDialog({queryId,kind,item,position,total,onMove,
       {(error||anchor.error||candidate.error) && <p className="iad-error" role="alert">{error||anchor.error||candidate.error}</p>}
       {!members&&!error && <p role="status">正在读取候选图像…</p>}
       {members && <>
+        <div className="iad-group-visuals">
         <ConsistencyCanvasPair sources={sources} labels={[kind==='groups' ? '组代表图像（固定）' : '查询图像（固定）',kind==='groups' ? '组内成员' : '当前候选']} selected={difference} anchorSide={selected?.comparison?.anchor_side} onExpand={setLightbox} />
         <div className="iad-group-image-names">{sources.map((source,index)=><span key={index} title={source?.title}>{source?.title}</span>)}</div>
         <section className="iad-group-candidates" aria-label="候选图像"><div className="iad-row"><h3>{kind==='groups' ? '同图组成员' : '相似候选'}（{members.total} 张{kind==='groups' ? ' · 不含固定代表图' : ''}）</h3>
@@ -57,6 +61,7 @@ export function ConsistencyGroupDialog({queryId,kind,item,position,total,onMove,
           <MediaLoad><div className="iad-group-candidate-strip">{members.items.map((row,index)=><button key={row.image.sample.sample_id} data-sample-id={row.image.sample.sample_id} aria-pressed={selected===row} onClick={()=>workspace.updateConsistency({memberId:row.image.sample.sample_id,differenceId:undefined},true)}>
             {row.image.available ? <MediaImage src={galleryImageUrl(row.image)} alt={row.image.sample.relative_path} loading="lazy" /> : <span>原图不可恢复</span>}<strong>{kind==='groups' ? '成员' : '候选'} {(memberPage-1)*20+index+1}</strong><span title={row.image.sample.relative_path}>{row.image.sample.relative_path.split('/').pop()}</span></button>)}</div></MediaLoad>
         </section>
+        </div>
         <div className="iad-group-analysis"><PageTabs label="图组详情页签" items={tabs} value={tab} onChange={detailTab=>workspace.updateConsistency({detailTab},true)}>
           {tab==='summary' && <><ConsistencyGroupAnalysis reference={{query_id:queryId,kind,group_id:item.group_id,facts_state:item.facts_state}} onLocate={(citation,offset)=>workspace.updateConsistency({memberPage:Math.floor(offset/20)+1,memberId:citation.candidate_id,differenceId:citation.comparison?.difference_id??undefined,detailTab:'evidence'},true)} />
             {comparison && <div className="iad-group-fact"><strong>确定性事实</strong><span>{imageRelations[comparison.result.verification.relation]} · {annotationSummary(comparison.result.annotation)}</span><button className="iad-consistency-text-button" onClick={()=>workspace.updateConsistency({detailTab:'evidence'},true)}>查看当前候选证据</button></div>}</>}

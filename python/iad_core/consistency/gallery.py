@@ -101,7 +101,6 @@ class GalleryQueries:
         ('geometry','标注位置或范围不同'),
         ('presence','缺少或多出标注'),
         ('instances','实例标注不同'),
-        ('quality','良/不良标签不同'),
         ('multiple','多项差异'),
     )
 

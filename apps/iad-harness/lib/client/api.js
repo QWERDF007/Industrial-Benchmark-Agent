@@ -1,3 +1,13 @@
+export class ApiError extends Error {
+    code;
+    status;
+    constructor(code, message, status) {
+        super(message);
+        this.code = code;
+        this.status = status;
+        this.name = "ApiError";
+    }
+}
 export async function request(path, body, method, signal) {
     const multipart = body instanceof FormData;
     const response = await fetch("/api/iad" + path, {
@@ -7,7 +17,7 @@ export async function request(path, body, method, signal) {
     });
     const data = await response.json();
     if (!response.ok)
-        throw new Error(data.error?.message || `请求失败 (${response.status})`);
+        throw new ApiError(data.error?.code, data.error?.message || `请求失败 (${response.status})`, response.status);
     return data;
 }
 export const initialFilters = { raw_label_filters: [], annotation_filters: [], model_status: "all", review_status: "all", technical: "all", reference_status: "all", search: "", sort_by: "default" };

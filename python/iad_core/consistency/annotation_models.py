@@ -12,7 +12,7 @@ from iad_core.storage.models import Annotation
 
 ANNOTATION_DIFFERENCE_CATEGORIES: dict[DifferenceType, GalleryDifferenceKind] = {
     'CATEGORY': 'category', 'GEOMETRY': 'geometry', 'ONE_SIDED_REGION': 'presence',
-    'SPLIT_MERGE': 'instances', 'AMBIGUOUS_MATCH': 'instances', 'QUALITY_LABEL': 'quality',
+    'SPLIT_MERGE': 'instances', 'AMBIGUOUS_MATCH': 'instances', 'QUALITY_LABEL': 'category',
 }
 
 
@@ -83,7 +83,8 @@ class AnnotationComparison(AnalysisModel):
 
 
 class AnnotationMatchingConfig(AnalysisModel):
-    minimum_iou: float = Field(default=.5, gt=0, le=1, allow_inf_nan=False)
+    minimum_iou: float = Field(default=.5, gt=0, le=1, allow_inf_nan=False,
+        description='Minimum overlap for confident instance correspondence; lower positive overlap remains a geometry difference requiring correspondence review')
     ambiguity_tolerance: float = Field(default=1e-9, ge=0, allow_inf_nan=False)
     tiny_area: float = Field(default=4, ge=0, allow_inf_nan=False)
     split_coverage: float = Field(default=.9, gt=0, le=1, allow_inf_nan=False)

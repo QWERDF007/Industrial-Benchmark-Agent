@@ -126,14 +126,18 @@ class AnnotationMatcher:
                     'SEGMENTATION' if segmentation is not None else 'LOCATION_ONLY'))
             region = union_region([a[i].bounds,b[j].bounds])
             if score < 1:
-                difference('GEOMETRY',[i],[j],region,facts={'bbox_iou':boxes[i,j], 'segmentation_iou':segmentation},conflict=comparable)
+                difference('GEOMETRY',[i],[j],region,facts={'bbox_iou':boxes[i,j], 'segmentation_iou':segmentation},
+                    extra_pending=['Confirm instance correspondence for low-overlap regions'] if score<self.config.minimum_iou else [],
+                    conflict=comparable and score>=self.config.minimum_iou)
             first,second = left.annotations[i],right.annotations[j]
             if left.policy.category_mapping.get(first.raw_label,first.raw_label) != right.policy.category_mapping.get(second.raw_label,second.raw_label):
-                difference('CATEGORY',[i],[j],region,conflict=comparable)
+                difference('CATEGORY',[i],[j],region,conflict=comparable and score>=self.config.minimum_iou)
 
+        location_scores = {pair:box if scores[pair]>0 or box>=self.config.minimum_iou else 0.
+            for pair,box in boxes.items()}
         exact = {(i,j) for (i,j),score in scores.items() if score==1}
         exact_components=list(self.components(exact))
-        plausible_components=list(self.components({pair for pair,score in boxes.items() if score>=self.config.minimum_iou}))
+        plausible_components=list(self.components({pair for pair,score in location_scores.items() if score>0}))
         for left_component,right_component in exact_components:
             if left_component & used_left or right_component & used_right:
                 continue
@@ -189,10 +193,17 @@ class AnnotationMatcher:
                         'combined_coverage':coverage},extra_pending=['Confirm split or merge annotation convention'])
                 used_left.update(lc);used_right.update(rc)
         rows,cols=sorted(set(a)-used_left),sorted(set(b)-used_right)
-        candidate={(i,j) for i in rows for j in cols if boxes[i,j]>=self.config.minimum_iou}
+        candidate={(i,j) for i in rows for j in cols if location_scores[i,j]>0}
         for lc,rc in self.components(candidate):
             indices_left,indices_right=sorted(lc),sorted(rc)
-            matrix=self.cost_matrix(indices_left,indices_right,boxes)
+            if len(lc)!=len(rc) and (len(lc)==1 or len(rc)==1):
+                difference('AMBIGUOUS_MATCH',indices_left,indices_right,
+                    union_region([a[i].bounds for i in lc]+[b[j].bounds for j in rc]),
+                    facts={'reason':'Overlapping instances require split or merge correspondence'},
+                    extra_pending=['Confirm instance correspondence before inferring a missing annotation'])
+                used_left.update(lc);used_right.update(rc)
+                continue
+            matrix=self.cost_matrix(indices_left,indices_right,location_scores)
             chosen_rows,chosen_cols=linear_sum_assignment(matrix)
             optimum=float(matrix[chosen_rows,chosen_cols].sum())
             chosen=[(int(i),int(j)) for i,j in zip(chosen_rows,chosen_cols) if i<len(indices_left) and j<len(indices_right) and matrix[i,j]<1e5]
@@ -238,7 +249,7 @@ class AnnotationMatcher:
         for i,row in enumerate(rows):
             matrix[i,m+i]=.5
             for j,col in enumerate(cols):
-                if scores[row,col]>=self.config.minimum_iou:
+                if scores[row,col]>0:
                     matrix[i,j]=1-scores[row,col]
         for j in range(m):
             matrix[n+j,j]=.5

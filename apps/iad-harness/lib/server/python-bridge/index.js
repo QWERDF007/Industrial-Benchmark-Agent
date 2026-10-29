@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
+import { queryOperations } from "../../shared/execution.generated.js";
+const queryOperationNames = new Set(queryOperations);
 export function findWorkspaceRoot(startDir = process.cwd()) {
     let cur = path.resolve(startDir);
     while (cur !== path.dirname(cur)) {
@@ -28,7 +30,8 @@ export function resolvePythonPath(configured) {
     }
     return "python3";
 }
-export class PythonBridge {
+class PythonWorker {
+    role;
     pythonPath;
     cwd;
     timeoutMs;
@@ -37,19 +40,12 @@ export class PythonBridge {
     pendingRequests = new Map();
     stdoutAccum = "";
     stderrAccum = "";
-    modelRouting;
-    constructor(config = {}) {
+    constructor(config, role) {
+        this.role = role;
         this.cwd = config.cwd ? path.resolve(config.cwd) : findWorkspaceRoot();
         this.pythonPath = resolvePythonPath(config.pythonPath);
         this.timeoutMs = config.timeoutMs ?? 120000;
         this.dbPath = config.dbPath;
-    }
-    useModelRouting(routing) {
-        if (this.modelRouting)
-            throw new Error('工作台模型解析入口已注册');
-        this.modelRouting = routing;
-        return () => { if (this.modelRouting === routing)
-            this.modelRouting = undefined; };
     }
     ensureWorker() {
         if (this.worker && !this.worker.killed && this.worker.exitCode === null) {
@@ -58,7 +54,7 @@ export class PythonBridge {
         const pythonPathEnv = process.env.PYTHONPATH
             ? `${path.join(this.cwd, "python")}:${process.env.PYTHONPATH}`
             : path.join(this.cwd, "python");
-        const child = spawn(this.pythonPath, ["-m", "iad_core.entry"], {
+        const child = spawn(this.pythonPath, ["-m", "iad_core.entry", ...(this.role === "query" ? ["--query-worker"] : [])], {
             cwd: this.cwd,
             env: {
                 ...process.env,
@@ -138,16 +134,7 @@ export class PythonBridge {
         }
         this.pendingRequests.clear();
     }
-    /**
-     * Execute an operation against persistent python -m iad_core.entry worker via streaming NDJSON (DS-S04).
-     * Achieves sub-millisecond dispatch by avoiding per-call process spawn overhead.
-     */
     async execute(operation, argumentsPayload = {}, signal, onProgress) {
-        if (this.modelRouting)
-            return this.modelRouting.execute(operation, argumentsPayload, signal, (name, args, cancellation) => this.dispatch(name, args, cancellation, onProgress));
-        return this.dispatch(operation, argumentsPayload, signal, onProgress);
-    }
-    async dispatch(operation, argumentsPayload = {}, signal, onProgress) {
         const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const worker = this.ensureWorker();
         return new Promise((resolve, reject) => {
@@ -212,5 +199,33 @@ export class PythonBridge {
             this.worker = null;
         }
         this.handleWorkerExit(new Error("Python bridge was disposed"));
+    }
+}
+export class PythonBridge {
+    workbench;
+    queries;
+    modelRouting;
+    constructor(config = {}) {
+        this.workbench = new PythonWorker(config, "workbench");
+        this.queries = new PythonWorker(config, "query");
+    }
+    get pythonPath() { return this.workbench.pythonPath; }
+    get cwd() { return this.workbench.cwd; }
+    get timeoutMs() { return this.workbench.timeoutMs; }
+    get dbPath() { return this.workbench.dbPath; }
+    useModelRouting(routing) {
+        if (this.modelRouting)
+            throw new Error('工作台模型解析入口已注册');
+        this.modelRouting = routing;
+        return () => { if (this.modelRouting === routing)
+            this.modelRouting = undefined; };
+    }
+    execute(operation, args = {}, signal, onProgress) {
+        const dispatch = (name, values = {}, cancellation) => (queryOperationNames.has(name) ? this.queries : this.workbench).execute(name, values, cancellation, onProgress);
+        return this.modelRouting ? this.modelRouting.execute(operation, args, signal, dispatch) : dispatch(operation, args, signal);
+    }
+    destroy() {
+        this.queries.destroy();
+        this.workbench.destroy();
     }
 }

@@ -436,13 +436,27 @@ OPERATIONS = {handler.__name__: handler for handler in (
 )}
 
 
-def dispatch_request(req_data: Dict[str, Any], default_db_path: str = DEFAULT_DB_PATH):
+QUERY_OPERATIONS = frozenset({
+    'dataset_list', 'dataset_get', 'sample_list', 'sample_get',
+    'sample_image_path', 'sample_thumbnail', 'sample_mask_path', 'report_get',
+    'review_history', 'review_stats',
+    'consistency_query', 'consistency_report', 'consistency_report_saved',
+    'consistency_groups', 'consistency_group_members', 'consistency_gallery', 'consistency_gallery_members',
+    'consistency_evidence', 'consistency_evidence_media', 'consistency_evidence_export',
+    'consistency_context', 'consistency_review_context', 'consistency_group_analysis',
+})
+assert QUERY_OPERATIONS <= OPERATIONS.keys()
+
+
+def dispatch_request(req_data: Dict[str, Any], default_db_path: str = DEFAULT_DB_PATH, query_only: bool = False):
     req_id = req_data.get("request_id", "request")
     try:
         operation = req_data.get("operation")
         if operation not in OPERATIONS:
             emit({"event": "error", "request_id": req_id, "error": {"code": "UNKNOWN_OPERATION", "message": "Unknown operation", "details": {"status_code": 400}}})
             return
+        if query_only and operation not in QUERY_OPERATIONS:
+            raise ValueError('作业操作不能在查询进程执行')
         data = OPERATIONS[operation](req_data.get("arguments", {}), req_data.get("db_path", default_db_path))
         result = {"event": "result", "request_id": req_id, "status": data.get("status", "OK") if isinstance(data, dict) else "OK", "data": data}
         if operation == "tool_call":
@@ -463,7 +477,8 @@ def dispatch_request(req_data: Dict[str, Any], default_db_path: str = DEFAULT_DB
 
 
 def main():
-    if len(sys.argv) > 1:
+    query_only = len(sys.argv) > 1 and sys.argv[1] == '--query-worker'
+    if len(sys.argv) > 1 and not query_only:
         dispatch_request(json.loads(sys.argv[1]))
         return
     try:
@@ -475,7 +490,7 @@ def main():
                     request = json.loads(line)
                     if not isinstance(request, dict):
                         raise ValueError("Expected a JSON object")
-                    executor.submit(dispatch_request, request)
+                    executor.submit(dispatch_request, request, DEFAULT_DB_PATH, query_only)
                 except (ValueError, TypeError) as error:
                     emit({"event": "error", "request_id": "decode", "error": {"code": "JSON_DECODE_ERROR", "message": str(error)}})
     finally:

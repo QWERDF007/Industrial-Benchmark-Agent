@@ -9,6 +9,7 @@ const workspace = findWorkspaceRoot();
 const schema = JSON.parse(execFileSync(resolvePythonPath(), ["-c", `
 import json
 from pydantic.json_schema import models_json_schema
+from iad_core.entry import QUERY_OPERATIONS
 from iad_core.advisory.analysis import AuditAnalysis
 from iad_core.exploration.models import ExplorationStart, ExplorationSnapshot, ExplorationCatalog, DirectionAdoption, ExplorationPromptPreset, ExplorationPresetEdit
 from iad_core.knowledge.models import KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, KnowledgeSourceQuery, KnowledgeSourcePage, KnowledgeDetailQuery, KnowledgeCheckPage, KnowledgeCheckEvidencePage, KnowledgeDiscoveryPage
@@ -63,6 +64,7 @@ modes = [(model, 'validation' if model in (GroupAnalysisStart,GalleryReference,G
 references, schema = models_json_schema(modes)
 schema.update(title='WorkbenchDomain', type='object', additionalProperties=False,
     properties={model.__name__: references[(model, mode)] for model, mode in modes})
+schema['x-query-operations'] = sorted(QUERY_OPERATIONS)
 schema['x-model-defaults'] = ModelLimits().model_dump()
 schema['x-image-backbones'] = {name: vars(backbone) for name, backbone in BACKBONES.items()}
 schema['x-temporary-image-limits'] = TemporaryImageLimits().model_dump()
@@ -105,6 +107,7 @@ delete auditParameters.model_name;
 delete auditParameters.origin_session_id;
 auditParameters.normal_version_id.required = true;
 const targets = {
+  "execution.generated.ts": `/* Generated from Python operation execution policy by scripts/generate-contracts.js. */\nexport const queryOperations = ${JSON.stringify(schema["x-query-operations"], null, 2)} as const;\n`,
   "audit.parameters.generated.ts": `/* Generated from Python AuditStart by scripts/generate-contracts.js. */\nexport const auditStartParameters = ${JSON.stringify(auditParameters,null,2)} as const;\n`,
   "image-encoder.parameters.generated.ts": `/* Generated from Python image encoder models by scripts/generate-contracts.js. */\nexport const imageBackbones = ${JSON.stringify(schema['x-image-backbones'],null,2)} as const;\n`,
   "consistency.parameters.generated.ts": `/* Generated from Python consistency models by scripts/generate-contracts.js. */\nexport const consistencyRouteEnums = ${JSON.stringify(Object.fromEntries(Object.entries(toolSchema(schema.properties.ConsistencyReturnLocation).properties).filter(([,value])=>value.enum).map(([key,value])=>[key,value.enum])),null,2)} as const;\nexport const groupAnalysisStartParameters = ${JSON.stringify(toolSchema(schema.properties.GroupAnalysisStart).properties,null,2)} as const;\nexport const galleryReferenceParameters = ${JSON.stringify(toolSchema(schema.properties.GalleryReference).properties,null,2)} as const;\nexport const consistencyStartParameters = ${JSON.stringify(toolSchema(schema.properties.ConsistencyStart).properties, null, 2)} as const;\nexport const imageRetrieveParameters = ${JSON.stringify(toolSchema(schema.properties.ImageRetrieve).properties, null, 2)} as const;\nexport const imageIndexPrepareParameters = ${JSON.stringify(toolSchema(schema.properties.ImageIndexPrepare).properties, null, 2)} as const;\nexport const consistencyCompareParameters = ${JSON.stringify(toolSchema(schema.properties.ConsistencyCompare).properties,null,2)} as const;\nexport const consistencyEvidenceParameters = ${JSON.stringify(toolSchema(schema.properties.ConsistencyEvidenceReference).properties,null,2)} as const;\nexport const consistencyQueryParameters = ${JSON.stringify(toolSchema(schema.properties.ConsistencyQuery).properties,null,2)} as const;\nexport const consistencyGroupParameters = ${JSON.stringify(toolSchema(schema.properties.GroupQuery).properties,null,2)} as const;\nexport const consistencyGroupMemberParameters = ${JSON.stringify(toolSchema(schema.properties.GroupMemberQuery).properties,null,2)} as const;\nexport const consistencyContextParameters = ${JSON.stringify(toolSchema(schema.properties.ConsistencyContextRequest).properties,null,2)} as const;\nexport const consistencyBatchParameters = ${JSON.stringify(toolSchema(schema.properties.ConsistencyBatchReference).properties,null,2)} as const;\nexport const consistencyRetryParameters = ${JSON.stringify(toolSchema(schema.properties.ConsistencyBatchRetry).properties,null,2)} as const;\nexport const consistencyMediaParameters = ${JSON.stringify(toolSchema(schema.properties.ConsistencyEvidenceMediaReference).properties,null,2)} as const;\nexport const temporaryImageLimits = ${JSON.stringify(schema["x-temporary-image-limits"], null, 2)} as const;\n`,

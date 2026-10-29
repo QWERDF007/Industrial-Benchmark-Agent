@@ -1,4 +1,9 @@
 import type { AuditAnalysis, Decision, Filters, Sample, VisualEvidence } from "../shared/contracts.js";
+export declare class ApiError extends Error {
+    readonly code: string | undefined;
+    readonly status: number;
+    constructor(code: string | undefined, message: string, status: number);
+}
 export declare function request<T>(path: string, body?: unknown, method?: string, signal?: AbortSignal): Promise<T>;
 export declare const initialFilters: Filters;
 export declare const initialReviewFilters: Filters;

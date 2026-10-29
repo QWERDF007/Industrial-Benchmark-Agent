@@ -24,25 +24,16 @@ export interface ModelRouting {
     execute(operation: string, args: Record<string, any>, signal: AbortSignal | undefined, dispatch: BridgeDispatch): Promise<any>;
 }
 export declare class PythonBridge {
-    readonly pythonPath: string;
-    readonly cwd: string;
-    readonly timeoutMs: number;
-    readonly dbPath?: string;
-    private worker;
-    private pendingRequests;
-    private stdoutAccum;
-    private stderrAccum;
+    private readonly workbench;
+    private readonly queries;
     private modelRouting?;
     constructor(config?: PythonBridgeConfig);
+    get pythonPath(): string;
+    get cwd(): string;
+    get timeoutMs(): number;
+    get dbPath(): string | undefined;
     useModelRouting(routing: ModelRouting): () => void;
-    private ensureWorker;
-    private handleWorkerExit;
-    /**
-     * Execute an operation against persistent python -m iad_core.entry worker via streaming NDJSON (DS-S04).
-     * Achieves sub-millisecond dispatch by avoiding per-call process spawn overhead.
-     */
-    execute<T = any>(operation: string, argumentsPayload?: Record<string, any>, signal?: AbortSignal, onProgress?: (progressEvent: any) => void): Promise<T>;
-    private dispatch;
+    execute<T = any>(operation: string, args?: Record<string, any>, signal?: AbortSignal, onProgress?: (progressEvent: any) => void): Promise<T>;
     destroy(): void;
 }
 //# sourceMappingURL=index.d.ts.map

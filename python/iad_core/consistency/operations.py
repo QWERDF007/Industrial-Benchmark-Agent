@@ -18,6 +18,7 @@ from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.evidence_models import ConsistencyCompare, ConsistencyEvidenceReference, ConsistencyEvidenceMediaReference
 from iad_core.consistency.retrieval_sources import SourceImage
 from iad_core.workbench.runtime import workbench
+from iad_core.storage.database import Database
 
 
 class RetrievalInvocation(AnalysisModel):
@@ -72,28 +73,28 @@ def consistency_retry(args: dict,db_path: str) -> dict:
 
 
 def consistency_query(args: dict,db_path: str) -> dict:
-    return ResultQueries(workbench(db_path).db).query(ConsistencyQuery.model_validate(args)).model_dump(mode='json')
+    return ResultQueries(Database(db_path)).query(ConsistencyQuery.model_validate(args)).model_dump(mode='json')
 
 
 def consistency_report(args: dict,db_path: str) -> dict:
-    return ConsistencyReports(workbench(db_path).db).report(ConsistencyQuery.model_validate(args)).model_dump(mode='json')
+    return ConsistencyReports(Database(db_path)).report(ConsistencyQuery.model_validate(args)).model_dump(mode='json')
 
 
 def consistency_groups(args: dict,db_path: str) -> dict:
-    return GroupQueries(workbench(db_path).db).query(GroupQuery.model_validate(args)).model_dump(mode='json')
+    return GroupQueries(Database(db_path)).query(GroupQuery.model_validate(args)).model_dump(mode='json')
 
 
 def consistency_group_members(args: dict,db_path: str) -> dict:
-    return GroupQueries(workbench(db_path).db).members(GroupMemberQuery.model_validate(args)).model_dump(mode='json')
+    return GroupQueries(Database(db_path)).members(GroupMemberQuery.model_validate(args)).model_dump(mode='json')
 
 
 def consistency_context(args: dict,db_path: str) -> dict:
-    return ConsistencyContexts(workbench(db_path).db).get(ConsistencyContextRequest.model_validate(args)).model_dump(mode='json')
+    return ConsistencyContexts(Database(db_path)).get(ConsistencyContextRequest.model_validate(args)).model_dump(mode='json')
 
 
 def consistency_review_context(args: dict, db_path: str) -> dict:
     reference = ConsistencyEvidenceReference.model_validate(args)
-    return ConsistencyReview(workbench(db_path).db).context(reference.evidence_id).model_dump(mode='json')
+    return ConsistencyReview(Database(db_path)).context(reference.evidence_id).model_dump(mode='json')
 
 
 def consistency_review_submit(args: dict, db_path: str) -> dict:
@@ -110,17 +111,17 @@ def consistency_compare(args: dict, db_path: str) -> dict:
 
 def consistency_evidence(args: dict, db_path: str) -> dict:
     reference=ConsistencyEvidenceReference.model_validate(args)
-    return ConsistencyService(workbench(db_path).db).evidence(reference.evidence_id).model_dump(mode='json')
+    return ConsistencyService(Database(db_path)).evidence(reference.evidence_id).model_dump(mode='json')
 
 
 def consistency_evidence_media(args: dict, db_path: str) -> dict:
     reference=ConsistencyEvidenceMediaReference.model_validate(args)
-    return ConsistencyService(workbench(db_path).db).evidence_media(reference.evidence_id,reference.media_id,max_side=reference.max_side)
+    return ConsistencyService(Database(db_path)).evidence_media(reference.evidence_id,reference.media_id,max_side=reference.max_side)
 
 
 def consistency_evidence_export(args: dict, db_path: str) -> dict:
     reference=ConsistencyEvidenceReference.model_validate(args)
-    return ConsistencyService(workbench(db_path).db).evidence_export(reference.evidence_id).model_dump(mode='json')
+    return ConsistencyService(Database(db_path)).evidence_export(reference.evidence_id).model_dump(mode='json')
 
 def temporary_image_accept(args: dict, db_path: str) -> dict:
     admission = TemporaryImageAdmission.model_validate(args)
@@ -145,21 +146,21 @@ def temporary_image_release_owner(args: dict, db_path: str) -> dict:
 
 
 def consistency_gallery(args: dict, db_path: str) -> dict:
-    return GalleryQueries(workbench(db_path).db).query(GalleryQuery.model_validate(args)).model_dump(mode='json')
+    return GalleryQueries(Database(db_path)).query(GalleryQuery.model_validate(args)).model_dump(mode='json')
 
 
 def consistency_gallery_members(args: dict, db_path: str) -> dict:
-    return GalleryQueries(workbench(db_path).db).members(GalleryMemberQuery.model_validate(args)).model_dump(mode='json')
+    return GalleryQueries(Database(db_path)).members(GalleryMemberQuery.model_validate(args)).model_dump(mode='json')
 
 
 def consistency_report_saved(args: dict, db_path: str) -> dict:
-    return ConsistencyReports(workbench(db_path).db).saved(args['query_id']).model_dump(mode='json')
+    return ConsistencyReports(Database(db_path)).saved(args['query_id']).model_dump(mode='json')
 
 
 def consistency_group_analysis(args: dict, db_path: str) -> dict:
     from iad_core.consistency.gallery import GalleryReference
-    from iad_core.consistency.group_analysis import GroupAnalyses
-    return GroupAnalyses(workbench(db_path)).read(GalleryReference.model_validate(args)).model_dump(mode='json')
+    from iad_core.consistency.group_analysis import GroupAnalysisQueries
+    return GroupAnalysisQueries(Database(db_path)).read(GalleryReference.model_validate(args)).model_dump(mode='json')
 
 
 def consistency_group_analyze(args: dict, db_path: str) -> dict:

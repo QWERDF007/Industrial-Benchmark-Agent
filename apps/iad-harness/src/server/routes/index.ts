@@ -65,6 +65,7 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       if(pathname==='/api/iad/consistency/gallery' && method==='POST')return await call('consistency_gallery',body);
       if(pathname==='/api/iad/consistency/gallery/members' && method==='POST')return await call('consistency_gallery_members',body);
       if(pathname==='/api/iad/consistency/gallery/analysis' && method==='POST')return await call('consistency_group_analysis',body);
+      if(pathname==='/api/iad/consistency/gallery/analyze' && method==='POST')return await call('consistency_group_analyze',{request:body});
       if(pathname==='/api/iad/consistency/context' && method==='POST')return await call('consistency_context',body);
       if(pathname==='/api/iad/consistency/review/context' && method==='POST')return await call('consistency_review_context',body);
       if(pathname==='/api/iad/consistency/review/submit' && method==='POST')return await call('consistency_review_submit',body);

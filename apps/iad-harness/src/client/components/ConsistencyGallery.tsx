@@ -2,13 +2,13 @@ import React,{useEffect,useRef,useState} from 'react';
 import type {GalleryItem,GalleryPage,GalleryQuery} from '../../shared/domain.generated.js';
 import {differenceLabels} from '../../shared/consistency-presentation.js';
 import {galleryImageUrl} from '../consistency-images.js';
-import {message,request} from '../api.js';
+import {ApiError,message,request} from '../api.js';
 import {useWorkspace} from '../workspace.js';
 import {MediaImage,MediaLoad} from './MediaLoad.js';
 import {Pagination} from './Pagination.js';
 import {ConsistencyGroupDialog} from './ConsistencyGroupDialog.js';
 
-export function ConsistencyGallery({queryId,kind}:{queryId:string;kind:'conflicts'|'groups'}) {
+export function ConsistencyGallery({queryId,kind,onExpired}:{queryId:string;kind:'conflicts'|'groups';onExpired():void}) {
   const {state,workspace}=useWorkspace(),location=state.consistency;
   const [page,setPage]=useState<GalleryPage|null>(null),[error,setError]=useState('');
   const pendingMove=useRef<-1|1|null>(null);
@@ -18,9 +18,12 @@ export function ConsistencyGallery({queryId,kind}:{queryId:string;kind:'conflict
     const controller=new AbortController();setPage(null);setError('');
     const query:GalleryQuery={query_id:queryId,kind,page:number,page_size:15,search,order,difference_filter:differenceFilter};
     request<GalleryPage>('/consistency/gallery',query,undefined,controller.signal).then(value=>{if(!controller.signal.aborted){setPage(value);if(pendingMove.current){const item=pendingMove.current===1 ? value.items[0] : value.items.at(-1);pendingMove.current=null;if(item)open(item);}}})
-      .catch(failure=>{if(!controller.signal.aborted)setError(message(failure));});
+      .catch(failure=>{if(!controller.signal.aborted){
+        if(failure instanceof ApiError&&failure.code==='REFERENCE_NOT_FOUND'){pendingMove.current=null;onExpired();}
+        else setError(message(failure));
+      }});
     return()=>controller.abort();
-  },[queryId,kind,number,search,order,differenceFilter]);
+  },[queryId,kind,number,search,order,differenceFilter,onExpired]);
   const selected=page?.items.find(item=>item.group_id===location.groupId && item.facts_state===(location.facts||'CURRENT'));
   function open(item:GalleryItem) {
     focus.current=cards.current.get(item.group_id)||null;
@@ -50,6 +53,6 @@ export function ConsistencyGallery({queryId,kind}:{queryId:string;kind:'conflict
     </button>)}</div></MediaLoad>
     <Pagination total={page?.total||0} page={number} size={15} unit={kind==='groups' ? '组' : '张'} onPage={galleryPage=>workspace.updateConsistency({galleryPage,groupId:undefined},true)} />
     {selected && !location.evidenceId && <ConsistencyGroupDialog key={selected.group_id+selected.facts_state} queryId={queryId} kind={kind} item={selected} position={(number-1)*15+(page?.items.indexOf(selected)||0)+1} total={page?.total||0}
-      onMove={move} onClose={()=>workspace.updateConsistency({groupId:undefined,memberId:undefined,differenceId:undefined,detailTab:undefined},true)} restoreFocus={()=>focus.current||cards.current.get(selected.group_id)||null} />}
+      onMove={move} onExpired={onExpired} onClose={()=>workspace.updateConsistency({groupId:undefined,memberId:undefined,differenceId:undefined,detailTab:undefined},true)} restoreFocus={()=>focus.current||cards.current.get(selected.group_id)||null} />}
   </section>;
 }

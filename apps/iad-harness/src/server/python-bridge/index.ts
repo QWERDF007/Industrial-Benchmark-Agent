@@ -1,6 +1,9 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
+import {queryOperations} from "../../shared/execution.generated.js";
+
+const queryOperationNames = new Set<string>(queryOperations);
 
 export interface PythonBridgeConfig {
   pythonPath?: string;
@@ -63,7 +66,7 @@ export interface ModelRouting {
   execute(operation: string, args: Record<string, any>, signal: AbortSignal | undefined, dispatch: BridgeDispatch): Promise<any>;
 }
 
-export class PythonBridge {
+class PythonWorker {
   readonly pythonPath: string;
   readonly cwd: string;
   readonly timeoutMs: number;
@@ -73,19 +76,12 @@ export class PythonBridge {
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private stdoutAccum = "";
   private stderrAccum = "";
-  private modelRouting?: ModelRouting;
 
-  constructor(config: PythonBridgeConfig = {}) {
+  constructor(config: PythonBridgeConfig, private readonly role: "workbench" | "query") {
     this.cwd = config.cwd ? path.resolve(config.cwd) : findWorkspaceRoot();
     this.pythonPath = resolvePythonPath(config.pythonPath);
     this.timeoutMs = config.timeoutMs ?? 120000;
     this.dbPath = config.dbPath;
-  }
-
-  useModelRouting(routing: ModelRouting): () => void {
-    if (this.modelRouting) throw new Error('工作台模型解析入口已注册');
-    this.modelRouting = routing;
-    return () => { if (this.modelRouting === routing) this.modelRouting = undefined; };
   }
 
   private ensureWorker(): ChildProcess {
@@ -97,7 +93,7 @@ export class PythonBridge {
       ? `${path.join(this.cwd, "python")}:${process.env.PYTHONPATH}`
       : path.join(this.cwd, "python");
 
-    const child = spawn(this.pythonPath, ["-m", "iad_core.entry"], {
+    const child = spawn(this.pythonPath, ["-m", "iad_core.entry", ...(this.role === "query" ? ["--query-worker"] : [])], {
       cwd: this.cwd,
       env: {
         ...process.env,
@@ -178,23 +174,8 @@ export class PythonBridge {
     this.pendingRequests.clear();
   }
 
-  /**
-   * Execute an operation against persistent python -m iad_core.entry worker via streaming NDJSON (DS-S04).
-   * Achieves sub-millisecond dispatch by avoiding per-call process spawn overhead.
-   */
-  async execute<T = any>(
-    operation: string,
-    argumentsPayload: Record<string, any> = {},
-    signal?: AbortSignal,
-    onProgress?: (progressEvent: any) => void
-  ): Promise<T> {
-    if (this.modelRouting) return this.modelRouting.execute(operation, argumentsPayload, signal,
-      (name, args, cancellation) => this.dispatch(name, args, cancellation, onProgress));
-    return this.dispatch(operation, argumentsPayload, signal, onProgress);
-  }
-
-  private async dispatch<T = any>(operation: string, argumentsPayload: Record<string, any> = {}, signal?: AbortSignal,
-    onProgress?: (progressEvent: any) => void): Promise<T> {
+  async execute<T = any>(operation: string, argumentsPayload: Record<string, any> = {}, signal?: AbortSignal,
+                         onProgress?: (progressEvent: any) => void): Promise<T> {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const worker = this.ensureWorker();
 
@@ -264,5 +245,40 @@ export class PythonBridge {
       this.worker = null;
     }
     this.handleWorkerExit(new Error("Python bridge was disposed"));
+  }
+}
+
+
+export class PythonBridge {
+  private readonly workbench: PythonWorker;
+  private readonly queries: PythonWorker;
+  private modelRouting?: ModelRouting;
+
+  constructor(config: PythonBridgeConfig = {}) {
+    this.workbench = new PythonWorker(config, "workbench");
+    this.queries = new PythonWorker(config, "query");
+  }
+
+  get pythonPath() { return this.workbench.pythonPath; }
+  get cwd() { return this.workbench.cwd; }
+  get timeoutMs() { return this.workbench.timeoutMs; }
+  get dbPath() { return this.workbench.dbPath; }
+
+  useModelRouting(routing: ModelRouting): () => void {
+    if (this.modelRouting) throw new Error('工作台模型解析入口已注册');
+    this.modelRouting = routing;
+    return () => { if (this.modelRouting === routing) this.modelRouting = undefined; };
+  }
+
+  execute<T = any>(operation: string, args: Record<string, any> = {}, signal?: AbortSignal,
+                   onProgress?: (progressEvent: any) => void): Promise<T> {
+    const dispatch: BridgeDispatch = (name, values = {}, cancellation) =>
+      (queryOperationNames.has(name) ? this.queries : this.workbench).execute<T>(name, values, cancellation, onProgress);
+    return this.modelRouting ? this.modelRouting.execute(operation, args, signal, dispatch) : dispatch(operation, args, signal);
+  }
+
+  destroy() {
+    this.queries.destroy();
+    this.workbench.destroy();
   }
 }

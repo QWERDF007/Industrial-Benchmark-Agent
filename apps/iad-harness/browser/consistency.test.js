@@ -143,7 +143,23 @@ for name,label in [('other-a','hole'),('other-b','dent')]:
     await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="冲突图像"] .iad-consistency-image-card'))).length===2,5000);
     await driver.findElement(By.xpath('//*[@aria-label="冲突图像"]//button[contains(.,"other-a.png")]')).click();
     await driver.wait(()=>driver.findElement(By.css('dialog[aria-label="图组详情"]')).getText().then(text=>text.includes('other-a.png')),5000);
+    const staleLocation=await driver.executeScript('return JSON.parse(new URL(location.href).searchParams.get("iad"))');
     await click('关闭图组详情');
+    execFileSync(bridge.pythonPath,['-c',`import sqlite3,sys
+with sqlite3.connect(sys.argv[1]) as db:
+ db.execute('PRAGMA foreign_keys=ON')
+ db.execute('DELETE FROM consistency_queries WHERE query_id=?',(sys.argv[2],))
+`,path.join(root,'test.db'),staleLocation.queryId]);
+    const beforeExpired=calls.length;
+    await driver.get(`http://${host}:${server.address().port}/?${new URLSearchParams({iad:JSON.stringify({...staleLocation,batchId:'batch_removed_history',galleryPage:5})})}`);
+    await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="冲突图像"] .iad-consistency-image-card'))).length===2,5000);
+    const recovered=await driver.executeScript('return JSON.parse(new URL(location.href).searchParams.get("iad"))');
+    for(const key of ['queryId','groupId','memberId','batchId'])assert.equal(recovered[key],undefined,`失效的${key}必须清除`);
+    assert.equal(recovered.galleryPage,1);
+    assert.equal((await driver.findElements(By.css('dialog[aria-label="图组详情"]'))).length,0);
+    assert.equal(calls.slice(beforeExpired).filter(url=>url==='/api/iad/consistency/report').length,1,'失效快照只按当前范围重新建立一次');
+    assert.equal(calls.slice(beforeExpired).filter(url=>url==='/api/iad/consistency/runs/batch_removed_history').length,1,'已删除批次不反复轮询');
+    assert.equal(await driver.findElement(By.xpath('//button[normalize-space(.)="开始批量检查"]')).isEnabled(),true);
     await click('重复图组');
     await driver.wait(()=>driver.findElement(By.css('[aria-label="范围检查报告"]')).getText().then(text=>/严格同图\s+2 组.*4 成员/.test(text)),5000);
     await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="重复图组"] .iad-consistency-image-card'))).length===2,5000);

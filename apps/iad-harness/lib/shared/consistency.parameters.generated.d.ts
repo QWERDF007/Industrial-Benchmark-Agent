@@ -3,7 +3,7 @@ export declare const consistencyRouteEnums: {
     readonly tab: readonly ["conflicts", "search", "groups", "jobs"];
     readonly facts: readonly ["CURRENT", "HISTORICAL", "UNKNOWN"];
     readonly galleryOrder: readonly ["recent", "members"];
-    readonly differenceFilter: readonly ["all", "category", "geometry", "presence", "instances", "quality", "multiple"];
+    readonly differenceFilter: readonly ["all", "category", "geometry", "presence", "instances", "multiple"];
     readonly detailTab: readonly ["summary", "evidence", "review"];
     readonly reviewFilter: readonly ["OPEN", "NEEDS_CONTEXT", "RESOLVED"];
 };
@@ -404,6 +404,7 @@ export declare const consistencyCompareParameters: {
         readonly properties: {
             readonly minimum_iou: {
                 readonly type: "number";
+                readonly description: "Minimum overlap for confident instance correspondence; lower positive overlap remains a geometry difference requiring correspondence review";
                 readonly title: "Minimum Iou";
                 readonly default: 0.5;
             };
@@ -933,7 +934,7 @@ export declare const consistencyContextParameters: {
             };
             readonly differenceFilter: {
                 readonly type: "string";
-                readonly enum: readonly ["all", "category", "geometry", "presence", "instances", "quality", "multiple"];
+                readonly enum: readonly ["all", "category", "geometry", "presence", "instances", "multiple"];
                 readonly title: "Differencefilter";
             };
             readonly galleryPage: {

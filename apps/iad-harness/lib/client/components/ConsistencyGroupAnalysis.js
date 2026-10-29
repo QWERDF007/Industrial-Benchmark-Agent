@@ -19,6 +19,8 @@ export function ConsistencyGroupAnalysis({ reference, onLocate }) {
                 setError('');
                 if (value.status === 'RUNNING' || value.status === 'PENDING')
                     timer = setTimeout(read, 1200);
+                else if (value.status === 'NOT_ANALYZED')
+                    timer = setTimeout(read, 5000);
             }
             catch (failure) {
                 if (!controller.signal.aborted)

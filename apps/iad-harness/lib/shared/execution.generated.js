@@ -1,0 +1,26 @@
+/* Generated from Python operation execution policy by scripts/generate-contracts.js. */
+export const queryOperations = [
+    "consistency_context",
+    "consistency_evidence",
+    "consistency_evidence_export",
+    "consistency_evidence_media",
+    "consistency_gallery",
+    "consistency_gallery_members",
+    "consistency_group_analysis",
+    "consistency_group_members",
+    "consistency_groups",
+    "consistency_query",
+    "consistency_report",
+    "consistency_report_saved",
+    "consistency_review_context",
+    "dataset_get",
+    "dataset_list",
+    "report_get",
+    "review_history",
+    "review_stats",
+    "sample_get",
+    "sample_image_path",
+    "sample_list",
+    "sample_mask_path",
+    "sample_thumbnail"
+];

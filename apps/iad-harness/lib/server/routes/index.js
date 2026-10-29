@@ -77,6 +77,8 @@ export function createIadHttpHandler(bridge) {
                 return await call('consistency_gallery_members', body);
             if (pathname === '/api/iad/consistency/gallery/analysis' && method === 'POST')
                 return await call('consistency_group_analysis', body);
+            if (pathname === '/api/iad/consistency/gallery/analyze' && method === 'POST')
+                return await call('consistency_group_analyze', { request: body });
             if (pathname === '/api/iad/consistency/context' && method === 'POST')
                 return await call('consistency_context', body);
             if (pathname === '/api/iad/consistency/review/context' && method === 'POST')

@@ -1,8 +1,8 @@
 import {IconButton} from "./IconButton.js";
 import {RefreshIcon} from "../AuditIcon.js";
-import React,{useEffect,useState} from 'react';
+import React,{useCallback,useEffect,useState} from 'react';
 import type {ConsistencyBatch,ConsistencyQuery,ConsistencyReport,Dataset} from '../../shared/contracts.js';
-import {message,request} from '../api.js';
+import {ApiError,message,request} from '../api.js';
 import {useWorkspace} from '../workspace.js';
 import {ConsistencyScopePicker} from './ConsistencyScopePicker.js';
 import {ConsistencyGallery} from './ConsistencyGallery.js';
@@ -18,6 +18,10 @@ export function ConsistencyScopeResults({datasets,tab}:{datasets:Dataset[];tab:'
   const subject=state.consistency.subjectId||'all',review=state.consistency.reviewFilter||'';
   const [report,setReport]=useState<ConsistencyReport|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const [revision,setRevision]=useState(0);
+  const reopen=useCallback(()=>{
+    workspace.updateConsistency({queryId:undefined,groupId:undefined,memberId:undefined,differenceId:undefined,galleryPage:1,memberPage:1},true);
+    setRevision(value=>value+1);
+  },[workspace]);
   const reset=(patch:Partial<typeof state.consistency>)=>workspace.updateConsistency({...patch,queryId:undefined,groupId:undefined,memberId:undefined,galleryPage:1,memberPage:1},true);
   const batchId=state.consistency.batchId || '';
   const [batch,setBatch]=useState<ConsistencyBatch|null>(null);
@@ -33,7 +37,12 @@ export function ConsistencyScopeResults({datasets,tab}:{datasets:Dataset[];tab:'
         if(controller.signal.aborted)return;setBatch(current);setBatchError('');
         if(['PENDING','RUNNING'].includes(current.status))timer=setTimeout(poll,1200);
         else {setRevision(value=>value+1);}
-      } catch(failure){if(!controller.signal.aborted){setBatchError(message(failure));timer=setTimeout(poll,5000);}}
+      } catch(failure){if(!controller.signal.aborted){
+        if(failure instanceof ApiError && failure.code==='REFERENCE_NOT_FOUND'){
+          setBatch(null);setBatchError('');workspace.updateConsistency({batchId:undefined},true);return;
+        }
+        setBatchError(message(failure));timer=setTimeout(poll,5000);
+      }}
     }
     void poll();return()=>{controller.abort();clearTimeout(timer);};
   },[batchId]);
@@ -45,6 +54,11 @@ export function ConsistencyScopeResults({datasets,tab}:{datasets:Dataset[];tab:'
       review_state:review||undefined,page_size:1};
     const saved=state.consistency.queryId;
     request<ConsistencyReport>(saved ? `/consistency/report/${encodeURIComponent(saved)}` : '/consistency/report',saved ? undefined : input,undefined,controller.signal)
+      .catch(failure=>{
+        if(!saved || controller.signal.aborted || !(failure instanceof ApiError) || failure.code!=='REFERENCE_NOT_FOUND')throw failure;
+        workspace.updateConsistency({queryId:undefined,groupId:undefined,memberId:undefined,differenceId:undefined,galleryPage:1,memberPage:1},true);
+        return request<ConsistencyReport>('/consistency/report',input,undefined,controller.signal);
+      })
       .then(data=>{if(!controller.signal.aborted)setReport(data);}).catch(failure=>{if(!controller.signal.aborted)setError(message(failure));})
       .finally(()=>{if(!controller.signal.aborted)setBusy(false);});
     return()=>controller.abort();
@@ -64,7 +78,7 @@ export function ConsistencyScopeResults({datasets,tab}:{datasets:Dataset[];tab:'
     {report && <>
       <ConsistencyReportSummary report={report} facts={facts}>{batchId && <button className="iad-consistency-text-button" onClick={()=>workspace.updateConsistency({tab:'jobs',batchId},true)}>查看作业</button>}</ConsistencyReportSummary>
       <section aria-label={tab==='conflicts' ? '范围比较结果' : '范围重复图组'}>
-        {!report.page.total ? <ConsistencyEmpty title={report.page.execution.failed||report.page.execution.unsupported ? '当前范围检查不完整' : report.page.execution.completed ? '当前筛选没有比较结果' : '尚未执行一致性检查'} description={report.page.execution.failed||report.page.execution.unsupported ? '请到作业记录查看失败或不支持的原因；未成功检查的图像不代表没有冲突。' : report.page.execution.completed ? '可调整差异或处置状态筛选，查看已保存的检查事实。' : '选择检查范围与检索范围后开始检查，结果将在此显示。'}><button onClick={()=>workspace.updateConsistency({tab:'jobs'})}>前往批量检查</button></ConsistencyEmpty> : <ConsistencyGallery queryId={report.page.query_id} kind={tab} />}
+        {!report.page.total ? <ConsistencyEmpty title={report.page.execution.failed||report.page.execution.unsupported ? '当前范围检查不完整' : report.page.execution.completed ? '当前筛选没有比较结果' : '尚未执行一致性检查'} description={report.page.execution.failed||report.page.execution.unsupported ? '请到作业记录查看失败或不支持的原因；未成功检查的图像不代表没有冲突。' : report.page.execution.completed ? '可调整差异或处置状态筛选，查看已保存的检查事实。' : '选择检查范围与检索范围后开始检查，结果将在此显示。'}><button onClick={()=>workspace.updateConsistency({tab:'jobs'})}>前往批量检查</button></ConsistencyEmpty> : <ConsistencyGallery queryId={report.page.query_id} kind={tab} onExpired={reopen} />}
       </section>
     </>}
   </section>;

@@ -137,6 +137,16 @@ var __IadClientBundle__ = (() => {
   var import_react54 = __require("react");
 
   // src/client/api.ts
+  var ApiError = class extends Error {
+    constructor(code, message2, status) {
+      super(message2);
+      this.code = code;
+      this.status = status;
+      this.name = "ApiError";
+    }
+    code;
+    status;
+  };
   async function request(path, body, method, signal) {
     const multipart = body instanceof FormData;
     const response = await fetch("/api/iad" + path, {
@@ -146,7 +156,7 @@ var __IadClientBundle__ = (() => {
       signal
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || `\u8BF7\u6C42\u5931\u8D25 (${response.status})`);
+    if (!response.ok) throw new ApiError(data.error?.code, data.error?.message || `\u8BF7\u6C42\u5931\u8D25 (${response.status})`, response.status);
     return data;
   }
   var initialFilters = { raw_label_filters: [], annotation_filters: [], model_status: "all", review_status: "all", technical: "all", reference_status: "all", search: "", sort_by: "default" };
@@ -649,7 +659,6 @@ var __IadClientBundle__ = (() => {
       "geometry",
       "presence",
       "instances",
-      "quality",
       "multiple"
     ],
     "detailTab": [
@@ -11209,10 +11218,10 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
 .iad-consistency-card-caption{display:grid;gap:8px;padding:10px;min-width:0}.iad-consistency-card-caption>strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.iad-consistency-card-caption>div{display:flex;justify-content:space-between;gap:8px;color:var(--iad-muted);font-size:11px}.iad-consistency-badge{display:inline-block;padding:2px 5px;border-radius:3px;background:var(--iad-hover);color:var(--iad-primary);font-size:11px;font-weight:400}
 .iad-detail-dialog.iad-consistency-group-dialog{width:min(1520px,96vw);height:94vh;max-width:96vw;max-height:94vh;padding:0;overflow:hidden;border:0;border-radius:7px}
 .iad-consistency-group-dialog[open]{display:flex;flex-direction:column}.iad-group-header,.iad-group-footer{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:15px 22px;flex:none;background:var(--iad-surface)}.iad-group-header{border-bottom:1px solid var(--iad-border)}.iad-group-header>div:first-child{min-width:0}.iad-group-header h2{font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:3px 0}.iad-group-header p{margin:0;font-size:12px;color:var(--iad-muted)}.iad-group-header span{font-size:11px}.iad-group-header .iad-row{flex-wrap:nowrap;gap:8px}.iad-group-header button,.iad-group-footer button{min-height:32px;font-size:12px;padding:6px 10px}
-.iad-group-scroll{flex:1;min-height:0;overflow:auto;padding:18px 24px 24px;overscroll-behavior:contain}.iad-consistency-group-dialog .iad-consistency-canvases{margin-top:0}.iad-consistency-group-dialog .iad-consistency-side>p{font-size:13px;font-weight:600;margin:0 0 8px;color:var(--iad-text)}.iad-consistency .iad-consistency-group-dialog .iad-embedded-canvas{height:clamp(280px,39vh,430px)}.iad-consistency-group-dialog .iad-lightbox-toolbar{padding:5px;gap:4px;flex-wrap:nowrap}.iad-consistency-group-dialog .iad-viewer-heading{display:none}.iad-consistency-group-dialog .iad-viewer-zoom select{width:90px}.iad-consistency-group-dialog .iad-viewer-body{margin-top:0}
+.iad-group-scroll{display:flex;flex-direction:column;flex:1;min-height:0;padding:18px 24px 0;overflow:hidden}.iad-group-visuals{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding-bottom:8px}.iad-consistency-group-dialog .iad-consistency-canvases{margin-top:0}.iad-consistency-group-dialog .iad-consistency-side>p{font-size:13px;font-weight:600;margin:0 0 8px;color:var(--iad-text)}.iad-consistency .iad-consistency-group-dialog .iad-embedded-canvas{height:clamp(280px,39vh,430px)}.iad-consistency-group-dialog .iad-lightbox-toolbar{padding:5px;gap:4px;flex-wrap:nowrap}.iad-consistency-group-dialog .iad-viewer-heading{display:none}.iad-consistency-group-dialog .iad-viewer-zoom select{width:90px}.iad-consistency-group-dialog .iad-viewer-body{margin-top:0}
 .iad-group-image-names{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:8px;color:var(--iad-muted);font-size:11px}.iad-group-image-names span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .iad-group-candidates{margin:20px 0 16px}.iad-group-candidates>.iad-row{justify-content:space-between;gap:10px}.iad-group-candidates h3{margin:0 auto 8px 0;font-size:13px}.iad-group-candidates .iad-row>button{min-height:30px;padding:4px 8px;font-size:12px}.iad-group-candidate-strip{display:flex;overflow:auto;gap:10px;padding:3px 1px 8px}.iad-group-candidate-strip>button{display:grid;flex:0 0 116px;gap:4px;padding:5px;text-align:left;min-width:0;border:1px solid var(--iad-border);border-radius:5px;background:var(--iad-surface)}.iad-group-candidate-strip>button[aria-pressed=true]{border-color:var(--iad-primary);background:var(--iad-hover);box-shadow:0 0 0 1px var(--iad-primary)}.iad-group-candidate-strip img{width:104px;height:94px;object-fit:contain;background:var(--iad-viewer);border-radius:3px}.iad-group-candidate-strip strong{font-size:11px}.iad-group-candidate-strip span{font-size:10px;color:var(--iad-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:104px}
-.iad-group-analysis{border-top:1px solid var(--iad-border)}.iad-group-analysis h3{font-size:14px}.iad-group-analysis .iad-tab-panel{padding:16px 0 0}.iad-group-analysis .iad-consistency-differences{max-height:none;overflow:visible}.iad-group-references{display:grid;grid-template-columns:60px minmax(0,1fr);gap:6px;font-size:12px}.iad-group-references dd{margin:0;overflow-wrap:anywhere}.iad-group-fact{display:flex;align-items:center;gap:16px;padding:12px 0;border-top:1px solid var(--iad-border);font-size:12px}.iad-group-fact>button{margin-left:auto}.iad-group-footer{border-top:1px solid var(--iad-border)}
+.iad-group-analysis{flex:none;max-height:40%;overflow:auto;overscroll-behavior:contain;border-top:1px solid var(--iad-border);padding-bottom:16px}.iad-group-analysis h3{font-size:14px}.iad-group-analysis .iad-tab-panel{padding:16px 0 0}.iad-group-analysis .iad-consistency-differences{max-height:none;overflow:visible}.iad-group-references{display:grid;grid-template-columns:60px minmax(0,1fr);gap:6px;font-size:12px}.iad-group-references dd{margin:0;overflow-wrap:anywhere}.iad-group-fact{display:flex;align-items:center;gap:16px;padding:12px 0;border-top:1px solid var(--iad-border);font-size:12px}.iad-group-fact>button{margin-left:auto}.iad-group-footer{border-top:1px solid var(--iad-border)}
 .iad-group-conclusions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.iad-group-conclusions article{padding:12px;border:1px solid var(--iad-border);border-radius:5px}.iad-group-conclusions article>p{margin:0 0 10px;font-size:13px}.iad-group-conclusions .iad-row{gap:12px}.iad-group-limitations{margin-top:12px;padding:12px;background:var(--iad-surface-muted);color:var(--iad-muted);font-size:12px}.iad-group-limitations p{margin:0}
 .iad-consistency-job-summary{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.6fr) repeat(2,minmax(0,1fr));gap:0;margin:14px 0;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:7px;padding:12px 0}
 .iad-consistency-job-summary>div{min-width:0;padding:2px 18px;border-right:1px solid var(--iad-border);display:flex;flex-direction:column;align-items:start;gap:5px}.iad-consistency-job-summary>div:last-child{border-right:0}.iad-consistency-job-summary>div>span:first-child,.iad-consistency-job-summary small{color:var(--iad-muted);font-size:12px}.iad-consistency-job-summary strong{font-size:18px}.iad-consistency-job-summary .iad-job-sync{position:relative;margin:0;padding-right:55px;gap:8px}.iad-consistency-job-summary .iad-job-sync>span[role=status]{color:var(--iad-text);font-weight:600;font-size:14px}.iad-consistency-job-summary .iad-job-sync>button{position:absolute;right:12px;top:12px;margin:0}.iad-consistency-job-detail-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.iad-consistency-job-detail-heading h2{font-size:15px;margin:0}.iad-consistency-job-detail-heading strong{font-size:12px;color:var(--iad-primary)}.iad-consistency-job-progress{gap:16px;margin:12px 0}.iad-consistency-child-jobs{margin:18px 0}.iad-consistency-child-jobs>summary{cursor:pointer;font-size:12px;color:var(--iad-muted);padding:8px 0}.iad-consistency-jobs [aria-label="\u6279\u6B21\u6BD4\u8F83\u7ED3\u679C"] h3{font-size:14px}.iad-consistency-jobs [aria-label="\u6279\u6B21\u6BD4\u8F83\u7ED3\u679C"]>.iad-row{padding:12px 0;border-top:1px solid var(--iad-border);font-size:12px}
@@ -13285,6 +13294,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
           setAnalysis(value);
           setError("");
           if (value.status === "RUNNING" || value.status === "PENDING") timer = setTimeout(read, 1200);
+          else if (value.status === "NOT_ANALYZED") timer = setTimeout(read, 5e3);
         } catch (failure) {
           if (!controller.signal.aborted) setError(message(failure));
         }
@@ -13324,7 +13334,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
   // src/client/components/ConsistencyGroupDialog.tsx
   var import_jsx_runtime75 = __require("react/jsx-runtime");
   var tabs = [{ id: "summary", label: "MLLM \u5206\u6790" }, { id: "evidence", label: "\u8BC1\u636E\u6E05\u5355" }, { id: "review", label: "\u4EBA\u5DE5\u590D\u6838" }];
-  function ConsistencyGroupDialog({ queryId, kind, item, position, total, onMove, onClose, restoreFocus }) {
+  function ConsistencyGroupDialog({ queryId, kind, item, position, total, onMove, onClose, onExpired, restoreFocus }) {
     const { state, workspace } = useWorkspace(), location2 = state.consistency;
     const [members, setMembers] = (0, import_react68.useState)(null), [error2, setError] = (0, import_react68.useState)(""), [asking, setAsking] = (0, import_react68.useState)(false);
     const [lightbox, setLightbox] = (0, import_react68.useState)(null);
@@ -13339,10 +13349,13 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
           if (!value.items.some((row) => row.image.sample.sample_id === location2.memberId)) workspace.updateConsistency({ memberId: value.items[0]?.image.sample.sample_id, differenceId: void 0 }, true);
         }
       }).catch((failure) => {
-        if (!controller.signal.aborted) setError(message(failure));
+        if (!controller.signal.aborted) {
+          if (failure instanceof ApiError && failure.code === "REFERENCE_NOT_FOUND") onExpired();
+          else setError(message(failure));
+        }
       });
       return () => controller.abort();
-    }, [queryId, kind, item.group_id, item.facts_state, memberPage, workspace]);
+    }, [queryId, kind, item.group_id, item.facts_state, memberPage, workspace, onExpired]);
     const selected = members?.items.find((row) => row.image.sample.sample_id === location2.memberId) || members?.items[0];
     const anchor = useConsistencyEvidence(members?.anchor.evidence_id), candidate = useConsistencyEvidence(selected?.image.evidence_id);
     const comparison = selected?.comparison && candidate.bundle?.result.evidence_id === selected.comparison.evidence_id ? candidate.bundle : null;
@@ -13384,37 +13397,39 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
         (error2 || anchor.error || candidate.error) && /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("p", { className: "iad-error", role: "alert", children: error2 || anchor.error || candidate.error }),
         !members && !error2 && /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u5019\u9009\u56FE\u50CF\u2026" }),
         members && /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)(import_jsx_runtime75.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(ConsistencyCanvasPair, { sources, labels: [kind === "groups" ? "\u7EC4\u4EE3\u8868\u56FE\u50CF\uFF08\u56FA\u5B9A\uFF09" : "\u67E5\u8BE2\u56FE\u50CF\uFF08\u56FA\u5B9A\uFF09", kind === "groups" ? "\u7EC4\u5185\u6210\u5458" : "\u5F53\u524D\u5019\u9009"], selected: difference, anchorSide: selected?.comparison?.anchor_side, onExpand: setLightbox }),
-          /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("div", { className: "iad-group-image-names", children: sources.map((source, index3) => /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("span", { title: source?.title, children: source?.title }, index3)) }),
-          /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("section", { className: "iad-group-candidates", "aria-label": "\u5019\u9009\u56FE\u50CF", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("div", { className: "iad-row", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("h3", { children: [
-                kind === "groups" ? "\u540C\u56FE\u7EC4\u6210\u5458" : "\u76F8\u4F3C\u5019\u9009",
-                "\uFF08",
-                members.total,
-                " \u5F20",
-                kind === "groups" ? " \xB7 \u4E0D\u542B\u56FA\u5B9A\u4EE3\u8868\u56FE" : "",
-                "\uFF09"
+          /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("div", { className: "iad-group-visuals", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(ConsistencyCanvasPair, { sources, labels: [kind === "groups" ? "\u7EC4\u4EE3\u8868\u56FE\u50CF\uFF08\u56FA\u5B9A\uFF09" : "\u67E5\u8BE2\u56FE\u50CF\uFF08\u56FA\u5B9A\uFF09", kind === "groups" ? "\u7EC4\u5185\u6210\u5458" : "\u5F53\u524D\u5019\u9009"], selected: difference, anchorSide: selected?.comparison?.anchor_side, onExpand: setLightbox }),
+            /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("div", { className: "iad-group-image-names", children: sources.map((source, index3) => /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("span", { title: source?.title, children: source?.title }, index3)) }),
+            /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("section", { className: "iad-group-candidates", "aria-label": "\u5019\u9009\u56FE\u50CF", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("div", { className: "iad-row", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("h3", { children: [
+                  kind === "groups" ? "\u540C\u56FE\u7EC4\u6210\u5458" : "\u76F8\u4F3C\u5019\u9009",
+                  "\uFF08",
+                  members.total,
+                  " \u5F20",
+                  kind === "groups" ? " \xB7 \u4E0D\u542B\u56FA\u5B9A\u4EE3\u8868\u56FE" : "",
+                  "\uFF09"
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("span", { className: "iad-muted", children: [
+                  memberPage,
+                  " / ",
+                  Math.max(1, Math.ceil(members.total / 20))
+                ] }),
+                members.total > 20 && /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)(import_jsx_runtime75.Fragment, { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("button", { disabled: memberPage <= 1, onClick: () => workspace.updateConsistency({ memberPage: memberPage - 1, memberId: void 0, differenceId: void 0 }, true), children: "\u4E0A\u4E00\u9875\u5019\u9009" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("button", { disabled: memberPage * 20 >= members.total, onClick: () => workspace.updateConsistency({ memberPage: memberPage + 1, memberId: void 0, differenceId: void 0 }, true), children: "\u4E0B\u4E00\u9875\u5019\u9009" })
+                ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("span", { className: "iad-muted", children: [
-                memberPage,
-                " / ",
-                Math.max(1, Math.ceil(members.total / 20))
-              ] }),
-              members.total > 20 && /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)(import_jsx_runtime75.Fragment, { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("button", { disabled: memberPage <= 1, onClick: () => workspace.updateConsistency({ memberPage: memberPage - 1, memberId: void 0, differenceId: void 0 }, true), children: "\u4E0A\u4E00\u9875\u5019\u9009" }),
-                /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("button", { disabled: memberPage * 20 >= members.total, onClick: () => workspace.updateConsistency({ memberPage: memberPage + 1, memberId: void 0, differenceId: void 0 }, true), children: "\u4E0B\u4E00\u9875\u5019\u9009" })
-              ] })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(MediaLoad, { children: /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("div", { className: "iad-group-candidate-strip", children: members.items.map((row, index3) => /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("button", { "data-sample-id": row.image.sample.sample_id, "aria-pressed": selected === row, onClick: () => workspace.updateConsistency({ memberId: row.image.sample.sample_id, differenceId: void 0 }, true), children: [
-              row.image.available ? /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(MediaImage, { src: galleryImageUrl(row.image), alt: row.image.sample.relative_path, loading: "lazy" }) : /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("span", { children: "\u539F\u56FE\u4E0D\u53EF\u6062\u590D" }),
-              /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("strong", { children: [
-                kind === "groups" ? "\u6210\u5458" : "\u5019\u9009",
-                " ",
-                (memberPage - 1) * 20 + index3 + 1
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("span", { title: row.image.sample.relative_path, children: row.image.sample.relative_path.split("/").pop() })
-            ] }, row.image.sample.sample_id)) }) })
+              /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(MediaLoad, { children: /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("div", { className: "iad-group-candidate-strip", children: members.items.map((row, index3) => /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("button", { "data-sample-id": row.image.sample.sample_id, "aria-pressed": selected === row, onClick: () => workspace.updateConsistency({ memberId: row.image.sample.sample_id, differenceId: void 0 }, true), children: [
+                row.image.available ? /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(MediaImage, { src: galleryImageUrl(row.image), alt: row.image.sample.relative_path, loading: "lazy" }) : /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("span", { children: "\u539F\u56FE\u4E0D\u53EF\u6062\u590D" }),
+                /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("strong", { children: [
+                  kind === "groups" ? "\u6210\u5458" : "\u5019\u9009",
+                  " ",
+                  (memberPage - 1) * 20 + index3 + 1
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("span", { title: row.image.sample.relative_path, children: row.image.sample.relative_path.split("/").pop() })
+              ] }, row.image.sample.sample_id)) }) })
+            ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("div", { className: "iad-group-analysis", children: /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)(PageTabs, { label: "\u56FE\u7EC4\u8BE6\u60C5\u9875\u7B7E", items: tabs, value: tab, onChange: (detailTab) => workspace.updateConsistency({ detailTab }, true), children: [
             tab === "summary" && /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)(import_jsx_runtime75.Fragment, { children: [
@@ -13462,7 +13477,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
 
   // src/client/components/ConsistencyGallery.tsx
   var import_jsx_runtime76 = __require("react/jsx-runtime");
-  function ConsistencyGallery({ queryId, kind }) {
+  function ConsistencyGallery({ queryId, kind, onExpired }) {
     const { state, workspace } = useWorkspace(), location2 = state.consistency;
     const [page, setPage] = (0, import_react69.useState)(null), [error2, setError] = (0, import_react69.useState)("");
     const pendingMove = (0, import_react69.useRef)(null);
@@ -13483,10 +13498,15 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
           }
         }
       }).catch((failure) => {
-        if (!controller.signal.aborted) setError(message(failure));
+        if (!controller.signal.aborted) {
+          if (failure instanceof ApiError && failure.code === "REFERENCE_NOT_FOUND") {
+            pendingMove.current = null;
+            onExpired();
+          } else setError(message(failure));
+        }
       });
       return () => controller.abort();
-    }, [queryId, kind, number, search, order, differenceFilter]);
+    }, [queryId, kind, number, search, order, differenceFilter, onExpired]);
     const selected = page?.items.find((item) => item.group_id === location2.groupId && item.facts_state === (location2.facts || "CURRENT"));
     function open(item) {
       focus.current = cards.current.get(item.group_id) || null;
@@ -13565,6 +13585,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
           position: (number - 1) * 15 + (page?.items.indexOf(selected) || 0) + 1,
           total: page?.total || 0,
           onMove: move,
+          onExpired,
           onClose: () => workspace.updateConsistency({ groupId: void 0, memberId: void 0, differenceId: void 0, detailTab: void 0 }, true),
           restoreFocus: () => focus.current || cards.current.get(selected.group_id) || null
         },
@@ -13582,6 +13603,10 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
     const subject = state.consistency.subjectId || "all", review = state.consistency.reviewFilter || "";
     const [report, setReport] = (0, import_react70.useState)(null), [busy, setBusy] = (0, import_react70.useState)(false), [error2, setError] = (0, import_react70.useState)("");
     const [revision, setRevision] = (0, import_react70.useState)(0);
+    const reopen = (0, import_react70.useCallback)(() => {
+      workspace.updateConsistency({ queryId: void 0, groupId: void 0, memberId: void 0, differenceId: void 0, galleryPage: 1, memberPage: 1 }, true);
+      setRevision((value) => value + 1);
+    }, [workspace]);
     const reset = (patch) => workspace.updateConsistency({ ...patch, queryId: void 0, groupId: void 0, memberId: void 0, galleryPage: 1, memberPage: 1 }, true);
     const batchId = state.consistency.batchId || "";
     const [batch, setBatch] = (0, import_react70.useState)(null);
@@ -13608,6 +13633,12 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
           }
         } catch (failure) {
           if (!controller.signal.aborted) {
+            if (failure instanceof ApiError && failure.code === "REFERENCE_NOT_FOUND") {
+              setBatch(null);
+              setBatchError("");
+              workspace.updateConsistency({ batchId: void 0 }, true);
+              return;
+            }
             setBatchError(message(failure));
             timer = setTimeout(poll, 5e3);
           }
@@ -13633,7 +13664,11 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
         page_size: 1
       };
       const saved = state.consistency.queryId;
-      request(saved ? `/consistency/report/${encodeURIComponent(saved)}` : "/consistency/report", saved ? void 0 : input, void 0, controller.signal).then((data) => {
+      request(saved ? `/consistency/report/${encodeURIComponent(saved)}` : "/consistency/report", saved ? void 0 : input, void 0, controller.signal).catch((failure) => {
+        if (!saved || controller.signal.aborted || !(failure instanceof ApiError) || failure.code !== "REFERENCE_NOT_FOUND") throw failure;
+        workspace.updateConsistency({ queryId: void 0, groupId: void 0, memberId: void 0, differenceId: void 0, galleryPage: 1, memberPage: 1 }, true);
+        return request("/consistency/report", input, void 0, controller.signal);
+      }).then((data) => {
         if (!controller.signal.aborted) setReport(data);
       }).catch((failure) => {
         if (!controller.signal.aborted) setError(message(failure));
@@ -13699,7 +13734,7 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
       ] }),
       report && /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)(import_jsx_runtime77.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime77.jsx)(ConsistencyReportSummary, { report, facts, children: batchId && /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("button", { className: "iad-consistency-text-button", onClick: () => workspace.updateConsistency({ tab: "jobs", batchId }, true), children: "\u67E5\u770B\u4F5C\u4E1A" }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("section", { "aria-label": tab === "conflicts" ? "\u8303\u56F4\u6BD4\u8F83\u7ED3\u679C" : "\u8303\u56F4\u91CD\u590D\u56FE\u7EC4", children: !report.page.total ? /* @__PURE__ */ (0, import_jsx_runtime77.jsx)(ConsistencyEmpty, { title: report.page.execution.failed || report.page.execution.unsupported ? "\u5F53\u524D\u8303\u56F4\u68C0\u67E5\u4E0D\u5B8C\u6574" : report.page.execution.completed ? "\u5F53\u524D\u7B5B\u9009\u6CA1\u6709\u6BD4\u8F83\u7ED3\u679C" : "\u5C1A\u672A\u6267\u884C\u4E00\u81F4\u6027\u68C0\u67E5", description: report.page.execution.failed || report.page.execution.unsupported ? "\u8BF7\u5230\u4F5C\u4E1A\u8BB0\u5F55\u67E5\u770B\u5931\u8D25\u6216\u4E0D\u652F\u6301\u7684\u539F\u56E0\uFF1B\u672A\u6210\u529F\u68C0\u67E5\u7684\u56FE\u50CF\u4E0D\u4EE3\u8868\u6CA1\u6709\u51B2\u7A81\u3002" : report.page.execution.completed ? "\u53EF\u8C03\u6574\u5DEE\u5F02\u6216\u5904\u7F6E\u72B6\u6001\u7B5B\u9009\uFF0C\u67E5\u770B\u5DF2\u4FDD\u5B58\u7684\u68C0\u67E5\u4E8B\u5B9E\u3002" : "\u9009\u62E9\u68C0\u67E5\u8303\u56F4\u4E0E\u68C0\u7D22\u8303\u56F4\u540E\u5F00\u59CB\u68C0\u67E5\uFF0C\u7ED3\u679C\u5C06\u5728\u6B64\u663E\u793A\u3002", children: /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("button", { onClick: () => workspace.updateConsistency({ tab: "jobs" }), children: "\u524D\u5F80\u6279\u91CF\u68C0\u67E5" }) }) : /* @__PURE__ */ (0, import_jsx_runtime77.jsx)(ConsistencyGallery, { queryId: report.page.query_id, kind: tab }) })
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("section", { "aria-label": tab === "conflicts" ? "\u8303\u56F4\u6BD4\u8F83\u7ED3\u679C" : "\u8303\u56F4\u91CD\u590D\u56FE\u7EC4", children: !report.page.total ? /* @__PURE__ */ (0, import_jsx_runtime77.jsx)(ConsistencyEmpty, { title: report.page.execution.failed || report.page.execution.unsupported ? "\u5F53\u524D\u8303\u56F4\u68C0\u67E5\u4E0D\u5B8C\u6574" : report.page.execution.completed ? "\u5F53\u524D\u7B5B\u9009\u6CA1\u6709\u6BD4\u8F83\u7ED3\u679C" : "\u5C1A\u672A\u6267\u884C\u4E00\u81F4\u6027\u68C0\u67E5", description: report.page.execution.failed || report.page.execution.unsupported ? "\u8BF7\u5230\u4F5C\u4E1A\u8BB0\u5F55\u67E5\u770B\u5931\u8D25\u6216\u4E0D\u652F\u6301\u7684\u539F\u56E0\uFF1B\u672A\u6210\u529F\u68C0\u67E5\u7684\u56FE\u50CF\u4E0D\u4EE3\u8868\u6CA1\u6709\u51B2\u7A81\u3002" : report.page.execution.completed ? "\u53EF\u8C03\u6574\u5DEE\u5F02\u6216\u5904\u7F6E\u72B6\u6001\u7B5B\u9009\uFF0C\u67E5\u770B\u5DF2\u4FDD\u5B58\u7684\u68C0\u67E5\u4E8B\u5B9E\u3002" : "\u9009\u62E9\u68C0\u67E5\u8303\u56F4\u4E0E\u68C0\u7D22\u8303\u56F4\u540E\u5F00\u59CB\u68C0\u67E5\uFF0C\u7ED3\u679C\u5C06\u5728\u6B64\u663E\u793A\u3002", children: /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("button", { onClick: () => workspace.updateConsistency({ tab: "jobs" }), children: "\u524D\u5F80\u6279\u91CF\u68C0\u67E5" }) }) : /* @__PURE__ */ (0, import_jsx_runtime77.jsx)(ConsistencyGallery, { queryId: report.page.query_id, kind: tab, onExpired: reopen }) })
       ] })
     ] });
   }

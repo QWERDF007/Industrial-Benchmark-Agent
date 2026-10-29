@@ -1319,6 +1319,9 @@ export type TotalPixels = number;
 export type VisiblePixels = number;
 export type IgnoreAnnotationIds = string[];
 export type Masking = AnnotationMasking[];
+/**
+ * Minimum overlap for confident instance correspondence; lower positive overlap remains a geometry difference requiring correspondence review
+ */
 export type MinimumIou = number;
 export type AmbiguityTolerance = number;
 export type TinyArea = number;
@@ -1512,6 +1515,9 @@ export type ByteCount = number;
 export type Issues = string[];
 export type SampleA1 = string;
 export type SampleB1 = string;
+/**
+ * Minimum overlap for confident instance correspondence; lower positive overlap remains a geometry difference requiring correspondence review
+ */
 export type MinimumIou1 = number;
 export type AmbiguityTolerance1 = number;
 export type TinyArea1 = number;
@@ -1586,7 +1592,7 @@ export type Sessionid = string | null;
 export type Queryid = string | null;
 export type Gallerysearch = string | null;
 export type Galleryorder = ("recent" | "members") | null;
-export type Differencefilter = ("all" | "category" | "geometry" | "presence" | "instances" | "quality" | "multiple") | null;
+export type Differencefilter = ("all" | "category" | "geometry" | "presence" | "instances" | "multiple") | null;
 export type Gallerypage = number | null;
 export type Detailtab = ("summary" | "evidence" | "review") | null;
 export type Subjectid = string | null;
@@ -1627,7 +1633,7 @@ export type Sessionid1 = string | null;
 export type Queryid1 = string | null;
 export type Gallerysearch1 = string | null;
 export type Galleryorder1 = ("recent" | "members") | null;
-export type Differencefilter1 = ("all" | "category" | "geometry" | "presence" | "instances" | "quality" | "multiple") | null;
+export type Differencefilter1 = ("all" | "category" | "geometry" | "presence" | "instances" | "multiple") | null;
 export type Gallerypage1 = number | null;
 export type Detailtab1 = ("summary" | "evidence" | "review") | null;
 export type Subjectid1 = string | null;
@@ -1775,7 +1781,7 @@ export type Page12 = number;
 export type PageSize13 = number;
 export type Search6 = string;
 export type Order = "recent" | "members";
-export type DifferenceFilter = "all" | "category" | "geometry" | "presence" | "instances" | "quality" | "multiple";
+export type DifferenceFilter = "all" | "category" | "geometry" | "presence" | "instances" | "multiple";
 export type QueryId7 = string;
 export type Kind42 = "conflicts" | "groups";
 export type GroupId4 = string;
@@ -1784,7 +1790,7 @@ export type Page13 = number;
 export type PageSize14 = number;
 export type QueryId8 = string;
 export type Kind43 = "conflicts" | "groups";
-export type Value = "all" | "category" | "geometry" | "presence" | "instances" | "quality" | "multiple";
+export type Value = "all" | "category" | "geometry" | "presence" | "instances" | "multiple";
 export type Label3 = string;
 export type Count = number;
 export type Filters = GalleryFilterCount[];

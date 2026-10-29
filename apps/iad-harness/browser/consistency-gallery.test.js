@@ -66,7 +66,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     const cards=()=>driver.findElements(By.css('[aria-label="冲突图像"] .iad-consistency-image-card'));
     await driver.wait(async()=>(await cards()).length===2,10000);
     assert.equal((await driver.findElements(By.css('.iad-consistency-master-detail'))).length,0);
-    await click('良/不良标签不同 0');await driver.wait(async()=>(await cards()).length===0,5000);
+    await click('缺少或多出标注 0');await driver.wait(async()=>(await cards()).length===0,5000);
     await click('全部差异 2');await driver.wait(async()=>(await cards()).length===2,5000);
     assert.equal((await driver.findElements(By.css('select[aria-label="差异筛选"]'))).length,0);
     assert.ok((await Promise.all((await cards()).map(card=>card.getText()))).every(text=>!text.includes('c-00.png')&&!text.includes('待核对')&&!text.includes('规范未确认')));
@@ -81,6 +81,12 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     await candidates[1].click();await driver.wait(async()=>(await images())[1]!==initial[1],5000);
     assert.equal((await images())[0],initial[0],'切换候选不得替换主图');
     await click('MLLM 分析');assert.match(await modal.getText(),/未分析/);assert.doesNotMatch(await modal.getText(),/MLLM 已分析|模拟总结/);
+    const analysisVisible=await driver.executeScript(()=>{
+      const r=document.querySelector('[aria-label="MLLM 组级分析"]').getBoundingClientRect();
+      const footer=document.querySelector('.iad-group-footer').getBoundingClientRect();
+      return r.top>=0&&r.bottom<=footer.top;
+    });
+    assert.ok(analysisVisible,'打开图组后应直接看到MLLM分析状态，不能被固定页脚遮住');
     await click('证据清单');await element('[data-difference="CATEGORY"]');
     const beforeZoom=await images();await (await driver.findElements(By.css('dialog[aria-label="图组详情"] button[aria-label="全屏检视"]')))[1].click();await element('dialog.iad-viewer-dialog');
     await driver.actions().sendKeys(Key.ESCAPE).perform();await driver.wait(async()=>(await driver.findElements(By.css('dialog.iad-viewer-dialog'))).length===0,5000);
@@ -111,7 +117,6 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     await click('MLLM 分析');
     const groupRoute=await driver.executeScript('return JSON.parse(new URL(location.href).searchParams.get("iad"))');
     await bridge.execute('consistency_group_analyze',{request:{query_id:groupRoute.queryId,kind:'groups',group_id:groupRoute.groupId,facts_state:'CURRENT',request_id:'browser-model-analysis'},_model_execution:{profile:{endpoint:`http://127.0.0.1:${server.address().port}/v1`,model_id:'local-protocol-model',capacity_mode:'vllm_tokenize',max_visual_inputs:16}}});
-    await click('证据清单');await click('MLLM 分析');
     await driver.wait(()=>driver.findElement(By.css('[aria-label="MLLM 组级分析"]')).getText().then(text=>text.includes('MLLM 已分析')),15000);
     assert.equal(modelRequests.length,1);
     assert.ok(modelRequests[0].messages[0].content.some(part=>part.type==='image_url'));
@@ -145,6 +150,15 @@ for i in range(16):
     await click('下一组');await driver.wait(async()=>JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad')).galleryPage===2&&(await images()).length===2&&(await images())[0]!==lastOnPage,5000);
     await click('上一组');await driver.wait(async()=>JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad')).galleryPage===1&&(await images()).length===2&&(await images())[0]===lastOnPage,5000);
     await fs.writeFile(path.join(output,'cross-page-group-1920.png'),await driver.takeScreenshot(),'base64');
+    await click('关闭图组详情');
+    const expired=JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad')).queryId;
+    execFileSync(bridge.pythonPath,['-c',
+      'import sqlite3,sys\nwith sqlite3.connect(sys.argv[1]) as c:c.execute("UPDATE consistency_queries SET expires_at=? WHERE query_id=?",("2000-01-01T00:00:00+00:00",sys.argv[2]))',path.join(root,'test.db'),expired]);
+    await click('下一页');
+    await driver.wait(async()=>(await cards()).length===15,10000);
+    const recovered=JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad'));
+    assert.notEqual(recovered.queryId,expired);assert.equal(recovered.galleryPage,1);
+    assert.doesNotMatch(await driver.findElement(By.css('body')).getText(),/Result snapshot is unavailable/);
     console.log(JSON.stringify({output,groups:2,anchorCandidates:22,reloadRoute:currentUrl.includes('queryId'),realComparisons:40,crossPageGroups:18,localModelRequests:modelRequests.length}));
   }catch(error){if(driver){await fs.writeFile(path.join(output,'failure.png'),await driver.takeScreenshot(),'base64');console.error((await driver.findElement(By.css('body')).getText()).slice(-5000));}throw error;}
   finally{if(driver)await driver.quit();await new Promise(resolve=>server.close(resolve));}

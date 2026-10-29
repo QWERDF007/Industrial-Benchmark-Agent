@@ -24,7 +24,6 @@ export const consistencyRouteEnums = {
     "geometry",
     "presence",
     "instances",
-    "quality",
     "multiple"
   ],
   "detailTab": [
@@ -530,6 +529,7 @@ export const consistencyCompareParameters = {
     "properties": {
       "minimum_iou": {
         "type": "number",
+        "description": "Minimum overlap for confident instance correspondence; lower positive overlap remains a geometry difference requiring correspondence review",
         "title": "Minimum Iou",
         "default": 0.5
       },
@@ -1183,7 +1183,6 @@ export const consistencyContextParameters = {
           "geometry",
           "presence",
           "instances",
-          "quality",
           "multiple"
         ],
         "title": "Differencefilter"

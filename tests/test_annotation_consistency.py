@@ -86,6 +86,34 @@ def test_unmatched_nodes_do_not_force_distant_pairs_and_subpixel_geometry_is_ret
     assert result.differences[0].left[0].bbox==[.25,.5,10.25,10.5]
 
 
+@pytest.mark.parametrize('first,second', [
+    ([661.71,578.59,742.06,602.27], [622.47,573.31,783.56,602.27]),
+    ([608.88,576.64,688.79,600.93], [565.11,574.38,732.55,600.95]),
+    ([481.75,666.27,1000.49,674.88], [465.92,657.94,1000.48,674.88]),
+    ([259.98,12.4,270.83,24.8], [261.81,11.36,269.0,22.06]),
+])
+def test_overlapping_resized_regions_are_geometry_differences_not_missing_annotations(first, second):
+    left = side('left', [box('left','a','defect',first)]).model_copy(update={'width':1100,'height':800})
+    right = side('right', [box('right','b','defect',second)]).model_copy(update={'width':1100,'height':800})
+    result = AnnotationMatcher().compare(left,right,relation='EXACT')
+    assert result.factual_difference_types == ['GEOMETRY']
+    assert [(match.left_id,match.right_id) for match in result.matches] == [('a','b')]
+    assert not result.confirmed_conflict
+
+
+def test_overlapping_many_to_one_regions_require_instance_correspondence_not_missing_labels():
+    pieces = [[859.43,158.02,873.1,303.48],[860.6,301.52,874.37,487.32],
+              [857.57,.07,870.62,34.9],[858.54,16.87,872.29,169.36]]
+    left = side('left', [box('left',str(i),'defect',bounds) for i,bounds in enumerate(pieces)])
+    right = side('right', [box('right','long','defect',[858.54,1.47,872.29,487.61])])
+    left.width = right.width = 1000
+    left.height = right.height = 700
+    result = AnnotationMatcher().compare(left,right,relation='EXACT')
+    assert result.factual_difference_types == ['AMBIGUOUS_MATCH']
+    assert len(result.factual_differences[0].left) == 4
+    assert not result.factual_differences[0].confirmed_conflict
+
+
 def test_merged_box_and_overlapping_duplicate_instances_are_not_simple_missing_labels():
     left=side('left',[box('left','a','dent',[0,0,10,10]),box('left','b','dent',[10,0,20,10])])
     right=side('right',[box('right','merged','dent',[0,0,20,10])])

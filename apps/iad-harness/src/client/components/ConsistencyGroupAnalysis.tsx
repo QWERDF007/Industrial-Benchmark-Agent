@@ -15,6 +15,7 @@ export function ConsistencyGroupAnalysis({reference,onLocate}:{reference:Gallery
         if(controller.signal.aborted)return;
         setAnalysis(value);setError('');
         if(value.status==='RUNNING'||value.status==='PENDING')timer=setTimeout(read,1200);
+        else if(value.status==='NOT_ANALYZED')timer=setTimeout(read,5000);
       }catch(failure){if(!controller.signal.aborted)setError(message(failure));}
     }
     void read();return()=>{controller.abort();clearTimeout(timer);};

@@ -11,18 +11,15 @@ from iad_core.consistency.gallery import GalleryMemberQuery, GalleryQueries, Gal
 from iad_core.consistency.group_analysis_models import FrozenAnalysisGroup, GroupAnalysisDraft, GroupAnalysisStart, GroupAnalysisView
 from iad_core.consistency.repository import ConsistencyRepository
 from iad_core.evidence.images import PreparedImage
+from iad_core.storage.database import Database
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
 
 
-class GroupAnalyses:
-    MAX_IMAGES = 16
-    MAX_TEXT_BYTES = 128 * 1024
-
-    def __init__(self, runtime: WorkbenchRuntime, client: VlmClient | None = None):
-        self.runtime, self.client = runtime, client
-        self.db = runtime.db
+class GroupAnalysisQueries:
+    def __init__(self, db: Database):
+        self.db = db
 
     def freeze(self, reference: GalleryReference) -> tuple[FrozenAnalysisGroup, str]:
         query = GalleryMemberQuery(**reference.model_dump(include=set(GalleryReference.model_fields)), page_size=100)
@@ -53,6 +50,15 @@ class GroupAnalyses:
             model_name=payload['request']['model_name'], result=result,
             error=(payload['errors'][0]['message'] if payload['errors'] else row['message']) if row['status'] in ('FAILED','PARTIAL','CANCELLED','INTERRUPTED') else None,
             candidate_offsets={member['image']['sample']['sample_id']:index for index,member in enumerate(payload['request']['frozen_group']['members'])})
+
+
+class GroupAnalyses(GroupAnalysisQueries):
+    MAX_IMAGES = 16
+    MAX_TEXT_BYTES = 128 * 1024
+
+    def __init__(self, runtime: WorkbenchRuntime, client: VlmClient | None = None):
+        super().__init__(runtime.db)
+        self.runtime, self.client = runtime, client
 
     def start(self, request: GroupAnalysisStart, origin_session_id: str | None = None) -> GroupAnalysisView:
         if self.client is None:
@@ -126,6 +132,9 @@ class GroupAnalyses:
         instruction = ('分析整个冻结图组；每条结论引用真实candidate_id。引用比较证据时填写comparison对象，'
             '其中result_id和evidence_id必须完整复制上下文中的配对引用，difference_id可选；无直接比较依据时comparison为null。'
             '像素/几何事实、模型视觉解释、标注规范和人工质量裁决必须区分；相似度不能证明缺陷，不能写Gold或人工裁决。'
+            '标注匹配工具输出是待核对的候选解释，不是漏标结论。必须独立查看原图、双侧标注层和局部图，'
+            '逐项核对单侧标注是否其实对应另一侧位置微移、范围变化或拆分合并的标注；不得照抄工具分类作为视觉结论。'
+            '说明每个候选实际属于类别变化、位置/范围变化、实例划分、疑似缺多标注或无法判断，并引用对应差异证据。'
             '没有固定主图直接比较证据的成员只能保留未知。不得编造引用；明确未核实规范和任何覆盖限制。\n'
             + json.dumps({'anchor': group.anchor.model_dump(mode='json'), 'candidates': list(references), 'evidence': contexts}, ensure_ascii=False))
         if len(instruction.encode()) > self.MAX_TEXT_BYTES:
