@@ -12826,12 +12826,6 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
 .exp-table .exp-row-title{font-weight:600;color:#253854}.exp-table .exp-row-info{display:block;font-size:12px;color:#77879c;padding-top:4px}
 .exp-jobs-filters{display:flex;align-items:center;gap:10px;margin-bottom:13px}.exp-jobs-filters select{width:158px}
 .exp-pill{display:inline-block;border-radius:4px;padding:3px 8px;color:#5d708d;background:#eef2f7;font-size:12px}.exp-pill.ok{background:#e8f5ee;color:#188356}.exp-pill.running{background:#e9f0ff;color:#2b5fc7}.exp-pill.fail{background:#ffedf0;color:#ae3d46}
-.exp-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#17243ab8;z-index:150;padding:30px}.exp-modal[hidden]{display:none!important}
-.exp-dialog{display:flex;flex-direction:column;background:white;border:1px solid #d3ddea;width:min(900px,96vw);height:min(760px,90vh);border-radius:7px;overflow:hidden;box-shadow:0 22px 65px #1a294355}
-.exp-dialog.small{width:min(530px,95vw);height:auto;max-height:90vh}
-.exp-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 21px;border-bottom:1px solid #e1e7ef}
-.exp-dialog-head strong{font-size:16px}.exp-dialog-main{padding:20px 22px;overflow:auto;flex:1;min-height:0}
-.exp-dialog-foot{display:flex;justify-content:flex-end;align-items:center;gap:9px;padding:12px 22px;border-top:1px solid #e5eaf2}
 .exp-source-tools{display:flex;justify-content:space-between;gap:14px;align-items:end;margin-bottom:12px;flex-wrap:wrap}
 .exp-source-tools .exp-input{flex:1;min-width:210px}.exp-source-tools span{font-size:12px;color:#64748b}
 .exp-source-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:12px 0 0}
@@ -13070,13 +13064,6 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
 .exp-direction-table th:nth-child(4){width:135px!important;text-align:right}
 .exp-direction-table td:last-child{text-align:right}
 .exp-direction-table .exp-direction-action .exp-btn{min-height:32px;white-space:nowrap}
-.exp-modal:has(.exp-direction-dialog),
-.exp-modal.exp-direction-modal{padding:22px;background:rgba(22,34,53,.68)}
-.exp-direction-dialog{width:min(1160px,calc(100vw - 44px))!important;height:auto!important;max-height:calc(100dvh - 44px)!important;min-height:0!important;border-radius:7px;box-shadow:0 18px 55px #14233f48}
-.exp-direction-dialog .exp-dialog-head{padding:19px 26px 15px!important;border-bottom:1px solid #e3e9f2;align-items:start;flex:none}
-.exp-direction-dialog .exp-dialog-head>strong{font-size:17px!important;font-weight:650;line-height:1.55;min-width:0}
-.exp-direction-dialog .exp-dialog-main{padding:0 26px;min-height:0;overflow:auto}
-.exp-direction-dialog .exp-dialog-foot{padding:13px 26px;gap:12px;justify-content:flex-end;flex:none;background:#fff}
 .exp-direction-meta{display:flex;gap:13px;align-items:center;flex-wrap:wrap;padding:12px 0 16px;font-size:12px;color:#64748b}
 .exp-direction-meta strong{font-weight:550;color:#415675}
 .exp-direction-body{display:block!important}
@@ -14311,40 +14298,6 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
 }
 
 /* Modal dialogs */
-.modal-scrim {
-  position: fixed;
-  inset: 0;
-  background: rgba(20, 30, 49, .35);
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 18px;
-}
-
-.modal {
-  background: var(--iad-surface, #fff);
-  color: inherit;
-  width: min(720px, calc(100% - 32px));
-  max-height: calc(100vh - 36px);
-  overflow: auto;
-  border: 1px solid #c4cfdf;
-  border-radius: 8px;
-  padding: 25px 24px 24px;
-  box-shadow: 0 16px 52px rgba(8, 19, 39, .24);
-}
-
-.modal .modal-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 20px;
-}
-
-.modal .modal-top h2 { font-size: 18px; margin: 0; }
-
 .modal-x {
   border: 0 !important;
   border-color: transparent !important;
@@ -15470,67 +15423,8 @@ button.dc-vchart-zero,
   box-sizing: border-box !important;
 }
 
-/* V31: consistent content-driven dialogs, substantial but usable backdrop for closing. */
-:root {
-  --iad-dialog-max-width: 1380px;
-  --iad-dialog-gutter: 56px;
-  --iad-dialog-vgutter: 40px;
-}
-
-.detail-overlay,
-.dc-modal-mask:has(#dc-dialog-title),
-#dc-compare-mask.dc-modal-mask {
-  padding: var(--iad-dialog-vgutter) var(--iad-dialog-gutter) !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-sizing: border-box !important;
-}
-
-.detail-dialog,
-#dc-compare-mask.dc-modal-mask .dc-dialog[role=dialog],
-.dc-conflict-dialog {
-  box-sizing: border-box !important;
-  width: min(var(--iad-dialog-max-width), calc(100vw - 2 * var(--iad-dialog-gutter))) !important;
-  max-width: var(--iad-dialog-max-width) !important;
-  height: auto !important;
-  max-height: calc(100dvh - 2 * var(--iad-dialog-vgutter)) !important;
-  min-height: 0 !important;
-  border-radius: 8px !important;
-  overflow: hidden !important;
-  flex-shrink: 0 !important;
-}
-
-.detail-scroll,
-#dc-compare-mask .dc-dialog-body,
-.dc-conflict-dialog .dc-dialog-body {
-  overflow-y: auto !important;
-  min-height: 0 !important;
-  flex: 0 1 auto !important;
-}
-
-.detail-scroll { padding: 22px 28px 28px !important; }
-.detail-preview { height: clamp(310px, 46dvh, 500px) !important; }
-#dc-compare-mask .dc-dialog-body, .dc-conflict-dialog .dc-dialog-body { padding: 20px 26px 24px !important; }
-#dc-compare-mask .dc-compare-photo, .dc-conflict-dialog .dc-compare-photo { height: clamp(240px, 39dvh, 400px) !important; }
 #dc-compare-mask .dc-candidate-strip, .dc-conflict-dialog .dc-candidate-strip { margin: 12px 0 8px !important; }
 
-/* New check: one editable frozen prompt, no redundant toggles or advanced sections. */
-#dc-new-mask .dc-new-dialog {
-  width: min(760px, calc(100vw - 2 * var(--iad-dialog-gutter))) !important;
-  height: auto !important;
-  max-height: calc(100dvh - 2 * var(--iad-dialog-vgutter)) !important;
-  border-radius: 8px !important;
-  overflow: hidden !important;
-}
-#dc-new-mask .dc-new-body {
-  padding: 22px 26px 24px !important;
-  gap: 20px !important;
-  overflow-y: auto !important;
-  flex: 0 1 auto !important;
-  display: flex !important;
-  flex-direction: column !important;
-}
-#dc-new-mask .dc-new-dialog .dc-dialog-footer { flex: none !important; }
 #dc-new-mask .dc-prompt-editor {
   display: flex !important;
   flex-direction: column !important;
@@ -15559,24 +15453,6 @@ button.dc-vchart-zero,
   white-space: pre-wrap !important;
 }
 #dc-new-mask #dc-new-prompt:focus { outline: 2px solid #80a9ff !important; outline-offset: 1px !important; }
-
-@media (max-width: 850px) {
-  :root { --iad-dialog-gutter: 24px; --iad-dialog-vgutter: 22px; }
-  .detail-overlay,
-  .dc-modal-mask:has(#dc-dialog-title),
-  #dc-compare-mask.dc-modal-mask {
-    padding: var(--iad-dialog-vgutter) var(--iad-dialog-gutter) !important;
-  }
-  #dc-compare-mask .dc-compare-photo, .dc-conflict-dialog .dc-compare-photo { height: clamp(210px, 30dvh, 300px) !important; }
-  .detail-preview { height: clamp(260px, 37dvh, 400px) !important; }
-}
-@media (max-width: 560px) {
-  :root { --iad-dialog-gutter: 12px; --iad-dialog-vgutter: 12px; }
-  #dc-compare-mask .dc-compare, .dc-conflict-dialog .dc-compare { grid-template-columns: 1fr !important; }
-  #dc-compare-mask .dc-compare-photo, .dc-conflict-dialog .dc-compare-photo { height: 210px !important; }
-  #dc-new-mask .dc-new-body { padding: 16px !important; gap: 16px !important; }
-  #dc-new-mask #dc-new-prompt { height: 230px !important; min-height: 150px !important; }
-}
 
 /* V38: \u6570\u636E\u4E00\u81F4\u6027\u68C0\u67E5\u4F5C\u4E1A\u5206\u9875\u4E0E\u5BF9\u9F50\u89C4\u8303 */
 .dc-section.dc-jobs-section.iba-job-multipage .dc-table-panel{min-height:530px}
@@ -15673,15 +15549,8 @@ button.dc-vchart-zero,
 .pagination-total{white-space:nowrap;color:#62748d;font-size:12px;margin-left:8px}
 @media(max-width:680px){.pagination-controls{gap:6px}.pagination-total{margin-left:6px}}
 
-.detail-overlay {position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(23,33,50,.66);padding:22px}
 .full-overlay {position:fixed;inset:0;z-index:10010;display:flex;align-items:stretch;justify-content:stretch;padding:0;background:#1c2633}
 .detail-overlay.hidden, .full-overlay.hidden {display:none}
-.detail-dialog {width:min(960px,calc(100vw - 36px));max-height:calc(100dvh - 44px);background:#fff;border:1px solid #dce3ee;border-radius:8px;display:flex;flex-direction:column;min-height:0;overflow:hidden;box-shadow:0 18px 60px #17233a36}
-.detail-header {height:60px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--border2,#e6ebf1)}
-.detail-title{font-size:17px;font-weight:650;margin:0}
-.detail-close{border:0;background:transparent;width:32px;height:32px;font-size:21px;color:#728096;border-radius:5px;display:grid;place-items:center;cursor:pointer}
-.detail-close:hover{background:#f1f4f8;color:#34445c}
-.detail-scroll {min-height:0;overflow-y:auto;padding:22px 24px 24px}
 .detail-preview{width:100%;height:355px;display:flex;justify-content:center;align-items:center;border:1px solid var(--border2,#e6ebf1);border-radius:6px;background:#f2f5f9;cursor:zoom-in;padding:0;position:relative;overflow:hidden}
 .detail-preview:hover{border-color:#95afed}
 .detail-preview:focus-visible{outline:2px solid var(--blue,#285ed6)}
@@ -15838,8 +15707,424 @@ button.dc-vchart-zero,
 #refresh{align-self:flex-end}
 `;
 
+  // src/client/styles/dialogs.ts
+  var dialogsStyles = `
+/* ==========================================================================
+   Dialog Design Tokens (Single Source of Truth)
+   ========================================================================== */
+:root {
+  --iad-modal-backdrop: rgba(23, 34, 51, 0.68);
+  --iad-dialog-gutter: 56px;
+  --iad-dialog-vgutter: 40px;
+
+  /* Dimensions */
+  --iad-dialog-max-width: 1380px;
+  --iad-dialog-max-height: 820px;
+  --iad-dialog-medium-width: 760px;
+  --iad-dialog-small-width: 530px;
+
+  /* Surfaces & Borders */
+  --iad-dialog-bg: #ffffff;
+  --iad-dialog-radius: 8px;
+  --iad-dialog-border: 1px solid #d9e2ed;
+  --iad-dialog-shadow: 0 20px 64px rgba(14, 26, 48, 0.27);
+  --iad-dialog-divider: 1px solid #e3e9f2;
+
+  /* Typography */
+  --iad-dialog-title-font: 17px;
+  --iad-dialog-title-weight: 650;
+  --iad-dialog-title-color: #1a2638;
+  --iad-dialog-text-font: 13px;
+  --iad-dialog-text-color: #31425b;
+  --iad-dialog-muted-color: #64758d;
+
+  /* Action Buttons */
+  --iad-btn-danger-bg: #bf384a;
+  --iad-btn-danger-hover: #a82e3f;
+  --iad-btn-primary-bg: #2458d5;
+  --iad-btn-primary-hover: #1b49be;
+  --iad-btn-cancel-border: #c9d4e2;
+  --iad-btn-cancel-color: #37475d;
+}
+
+@media (max-width: 850px) {
+  :root {
+    --iad-dialog-gutter: 24px;
+    --iad-dialog-vgutter: 22px;
+  }
+}
+
+@media (max-width: 560px) {
+  :root {
+    --iad-dialog-gutter: 12px;
+    --iad-dialog-vgutter: 12px;
+  }
+}
+
+/* ==========================================================================
+   Unified Backdrops / Overlay Masks
+   ========================================================================== */
+.detail-overlay,
+.exp-modal,
+.dc-modal-mask,
+.modal-scrim,
+dialog.iad-detail-dialog::backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 500 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: var(--iad-modal-backdrop) !important;
+  padding: var(--iad-dialog-vgutter) var(--iad-dialog-gutter) !important;
+  box-sizing: border-box !important;
+}
+
+.detail-overlay.hidden,
+.exp-modal[hidden],
+.dc-modal-mask[hidden],
+.modal-scrim[hidden] {
+  display: none !important;
+}
+
+/* ==========================================================================
+   Base Dialog Container
+   ========================================================================== */
+.detail-dialog,
+.exp-dialog,
+.exp-direction-dialog,
+.dc-dialog,
+.dc-conflict-dialog,
+.modal-scrim .modal,
+dialog.iad-detail-dialog {
+  box-sizing: border-box !important;
+  background: var(--iad-dialog-bg) !important;
+  border: var(--iad-dialog-border) !important;
+  border-radius: var(--iad-dialog-radius) !important;
+  box-shadow: var(--iad-dialog-shadow) !important;
+  color: var(--iad-dialog-text-color) !important;
+  font-family: inherit !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* ==========================================================================
+   Tier 1: Large Detail Dialogs (1380px max-width, 820px max-height)
+   Image Detail, Exploration Direction Detail, Consistency Conflict Compare
+   ========================================================================== */
+.detail-dialog,
+.exp-direction-dialog,
+.dc-conflict-dialog,
+#dc-compare-mask.dc-modal-mask .dc-dialog[role=dialog],
+dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inline-dialog):not(.iad-viewer-dialog) {
+  width: min(var(--iad-dialog-max-width), calc(100vw - 2 * var(--iad-dialog-gutter))) !important;
+  max-width: var(--iad-dialog-max-width) !important;
+  height: min(var(--iad-dialog-max-height), calc(100dvh - 2 * var(--iad-dialog-vgutter))) !important;
+  max-height: calc(100dvh - 2 * var(--iad-dialog-vgutter)) !important;
+  min-height: 0 !important;
+}
+
+/* Detail dialog internal scrollable body */
+.detail-scroll,
+.exp-direction-dialog .exp-dialog-main,
+#dc-compare-mask .dc-dialog-body,
+.dc-conflict-dialog .dc-dialog-body {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+}
+
+.detail-scroll { padding: 22px 28px 28px !important; }
+.exp-direction-dialog .exp-dialog-main { padding: 15px 28px 24px !important; }
+#dc-compare-mask .dc-dialog-body,
+.dc-conflict-dialog .dc-dialog-body { padding: 20px 26px 24px !important; }
+
+/* Large detail dialog internal flex hierarchy */
+.exp-direction-dialog .exp-direction-body {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+.exp-direction-dialog .exp-direction-evidence {
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  padding-bottom: 0 !important;
+}
+.exp-direction-dialog .exp-direction-evidence-groups {
+  flex: 1 1 auto !important;
+  align-items: stretch !important;
+  min-height: 0 !important;
+}
+.exp-direction-dialog .exp-scroll-group {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+}
+.exp-direction-dialog .exp-evidence-viewport {
+  flex: 1 1 auto !important;
+  align-items: stretch !important;
+  min-height: 0 !important;
+  background: #f6f8fb !important;
+  border: 1px solid #e3e9f1 !important;
+  border-radius: 5px !important;
+  padding: 7px 7px 10px !important;
+}
+.exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card {
+  height: 100% !important;
+  box-sizing: border-box !important;
+  width: clamp(200px, 47%, 300px) !important;
+  min-width: clamp(200px, 47%, 300px) !important;
+}
+.exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img {
+  height: clamp(175px, 23dvh, 250px) !important;
+}
+#dc-compare-mask .dc-compare-photo,
+.dc-conflict-dialog .dc-compare-photo {
+  height: clamp(240px, 39dvh, 400px) !important;
+}
+.detail-preview {
+  height: clamp(310px, 46dvh, 500px) !important;
+}
+
+/* ==========================================================================
+   Tier 2: Medium Form & Analytics Dialogs (760px max-width, auto-height)
+   New Consistency Check, Stats Modal, Exploration Prompts, Add/Edit Dataset
+   ========================================================================== */
+#dc-new-mask .dc-new-dialog,
+.dc-stats-modal .dc-stats-dialog,
+.exp-prompt-modal .exp-prompt-dialog,
+.exp-dialog:not(.small):not(.exp-direction-dialog),
+.modal-scrim .modal:not(.delete-modal) {
+  width: min(var(--iad-dialog-medium-width), calc(100vw - 2 * var(--iad-dialog-gutter))) !important;
+  max-width: var(--iad-dialog-medium-width) !important;
+  height: auto !important;
+  max-height: calc(100dvh - 2 * var(--iad-dialog-vgutter)) !important;
+  min-height: 0 !important;
+}
+
+#dc-new-mask .dc-new-body,
+.dc-stats-dialog .dc-stats-body,
+.modal-scrim .modal:not(.delete-modal) .modal-body,
+.exp-dialog:not(.small):not(.exp-direction-dialog) .exp-dialog-main {
+  padding: 22px 26px 24px !important;
+  overflow-y: auto !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+
+/* ==========================================================================
+   Tier 3: Small Confirmation / Deletion Dialogs (530px max-width, auto-height)
+   Consistency Delete Job, Exploration Delete Job, Dataset Delete, Confirmations
+   ========================================================================== */
+.exp-dialog.small,
+.exp-delete-dialog,
+.dc-delete-dialog,
+#dc-delete-mask .dc-dialog,
+.modal-scrim .modal.delete-modal,
+dialog.iad-detail-dialog.iad-confirm-dialog {
+  width: min(var(--iad-dialog-small-width), calc(100vw - 32px)) !important;
+  max-width: var(--iad-dialog-small-width) !important;
+  height: auto !important;
+  max-height: calc(100dvh - 32px) !important;
+  min-height: 0 !important;
+}
+
+.exp-dialog.small .exp-dialog-main,
+.dc-delete-dialog .exp-dialog-main,
+.modal-scrim .modal.delete-modal .modal-body {
+  padding: 18px 22px 20px !important;
+  font-size: 13.5px !important;
+  line-height: 1.65 !important;
+  color: #41516b !important;
+  flex: none !important;
+}
+
+/* ==========================================================================
+   Unified Headers
+   ========================================================================== */
+.detail-header,
+.exp-dialog-head,
+.dc-dialog-head,
+.modal-scrim .modal-top,
+.iad-dialog-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  min-height: 56px !important;
+  height: 56px !important;
+  flex: none !important;
+  padding: 0 24px !important;
+  border-bottom: var(--iad-dialog-divider) !important;
+  background: var(--iad-dialog-bg) !important;
+  box-sizing: border-box !important;
+}
+
+.detail-title,
+.exp-dialog-head strong,
+.exp-dialog-head h2,
+.dc-dialog-head h2,
+.modal-scrim .modal-top h2,
+.iad-dialog-header h2 {
+  font-size: var(--iad-dialog-title-font) !important;
+  font-weight: var(--iad-dialog-title-weight) !important;
+  color: var(--iad-dialog-title-color) !important;
+  line-height: 1.4 !important;
+  margin: 0 !important;
+  font-family: inherit !important;
+}
+
+/* Unified Close Button */
+.detail-close,
+.modal-x,
+.dc-icn,
+.exp-direction-icon,
+.exp-ghost.modal-x,
+button.iad-icon-button[aria-label*="\u5173\u95ED"],
+button.modal-x {
+  display: grid !important;
+  place-items: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  border-radius: 5px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--iad-dialog-muted-color) !important;
+  font-size: 20px !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  transition: background-color .15s ease, color .15s ease !important;
+}
+
+.detail-close:hover,
+.modal-x:hover,
+.dc-icn:hover,
+.exp-direction-icon:hover,
+button.iad-icon-button[aria-label*="\u5173\u95ED"]:hover,
+button.modal-x:hover {
+  background: #eef2f7 !important;
+  color: #1e293b !important;
+}
+
+/* ==========================================================================
+   Unified Footers & Actions
+   ========================================================================== */
+.exp-dialog-foot,
+.dc-dialog-footer,
+.modal-scrim .modal-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  min-height: 58px !important;
+  height: 58px !important;
+  flex: none !important;
+  padding: 0 24px !important;
+  border-top: var(--iad-dialog-divider) !important;
+  background: var(--iad-dialog-bg) !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+}
+
+/* Unified Footer Buttons */
+.exp-dialog-foot button,
+.dc-dialog-footer button,
+.modal-scrim .modal-actions button,
+.iad-confirm-dialog button {
+  min-height: 34px !important;
+  height: 34px !important;
+  font-size: 13px !important;
+  border-radius: 5px !important;
+  box-sizing: border-box !important;
+  padding: 0 16px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Danger Action Buttons */
+.exp-delete-confirm,
+.delete-confirm,
+.dc-delete-confirm,
+.exp-dialog-foot button.danger,
+.modal-scrim .modal-actions button.btn-danger {
+  background: var(--iad-btn-danger-bg) !important;
+  background-color: var(--iad-btn-danger-bg) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--iad-btn-danger-bg) !important;
+  border-color: var(--iad-btn-danger-bg) !important;
+  font-weight: 550 !important;
+}
+
+.exp-delete-confirm:hover,
+.delete-confirm:hover,
+.dc-delete-confirm:hover,
+.exp-dialog-foot button.danger:hover,
+.modal-scrim .modal-actions button.btn-danger:hover {
+  background: var(--iad-btn-danger-hover) !important;
+  background-color: var(--iad-btn-danger-hover) !important;
+  border-color: var(--iad-btn-danger-hover) !important;
+  color: #ffffff !important;
+}
+
+/* Cancel / Ghost Buttons */
+.cancel,
+button.exp-ghost,
+.dc-dialog-footer button.dc-minor,
+.modal-scrim .modal-actions button.btn-secondary {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: var(--iad-btn-cancel-color) !important;
+  border: 1px solid var(--iad-btn-cancel-border) !important;
+  border-color: var(--iad-btn-cancel-border) !important;
+  font-weight: 500 !important;
+}
+
+.cancel:hover,
+button.exp-ghost:hover,
+.dc-dialog-footer button.dc-minor:hover,
+.modal-scrim .modal-actions button.btn-secondary:hover {
+  background: #f1f5fa !important;
+  background-color: #f1f5fa !important;
+  border-color: #b5c3d4 !important;
+  color: #1e293b !important;
+}
+
+/* Primary Form Submit Buttons */
+.dc-dialog-footer button.dc-btn,
+.modal-scrim .modal-actions button.btn-primary {
+  background: var(--iad-btn-primary-bg) !important;
+  background-color: var(--iad-btn-primary-bg) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--iad-btn-primary-bg) !important;
+  border-color: var(--iad-btn-primary-bg) !important;
+  font-weight: 550 !important;
+}
+
+.dc-dialog-footer button.dc-btn:hover:not(:disabled),
+.modal-scrim .modal-actions button.btn-primary:hover:not(:disabled) {
+  background: var(--iad-btn-primary-hover) !important;
+  background-color: var(--iad-btn-primary-hover) !important;
+  border-color: var(--iad-btn-primary-hover) !important;
+}
+`;
+
   // src/client/styles.ts
-  var workbenchStyles = themeStyles + controlStyles + modelsStyles + explorationStyles + baseStyles + collectionsStyles + jobsStyles + overlaysStyles + formsStyles + reviewStyles + knowledgeStyles + setupStyles + datasetsStyles + consistencyStyles + imagesStyles;
+  var workbenchStyles = themeStyles + controlStyles + modelsStyles + explorationStyles + baseStyles + collectionsStyles + jobsStyles + overlaysStyles + formsStyles + reviewStyles + knowledgeStyles + setupStyles + datasetsStyles + consistencyStyles + imagesStyles + dialogsStyles;
 
   // src/client/useSampleNavigation.ts
   var import_react51 = __require("react");

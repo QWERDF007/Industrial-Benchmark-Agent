@@ -955,67 +955,8 @@ button.dc-vchart-zero,
   box-sizing: border-box !important;
 }
 
-/* V31: consistent content-driven dialogs, substantial but usable backdrop for closing. */
-:root {
-  --iad-dialog-max-width: 1380px;
-  --iad-dialog-gutter: 56px;
-  --iad-dialog-vgutter: 40px;
-}
-
-.detail-overlay,
-.dc-modal-mask:has(#dc-dialog-title),
-#dc-compare-mask.dc-modal-mask {
-  padding: var(--iad-dialog-vgutter) var(--iad-dialog-gutter) !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-sizing: border-box !important;
-}
-
-.detail-dialog,
-#dc-compare-mask.dc-modal-mask .dc-dialog[role=dialog],
-.dc-conflict-dialog {
-  box-sizing: border-box !important;
-  width: min(var(--iad-dialog-max-width), calc(100vw - 2 * var(--iad-dialog-gutter))) !important;
-  max-width: var(--iad-dialog-max-width) !important;
-  height: auto !important;
-  max-height: calc(100dvh - 2 * var(--iad-dialog-vgutter)) !important;
-  min-height: 0 !important;
-  border-radius: 8px !important;
-  overflow: hidden !important;
-  flex-shrink: 0 !important;
-}
-
-.detail-scroll,
-#dc-compare-mask .dc-dialog-body,
-.dc-conflict-dialog .dc-dialog-body {
-  overflow-y: auto !important;
-  min-height: 0 !important;
-  flex: 0 1 auto !important;
-}
-
-.detail-scroll { padding: 22px 28px 28px !important; }
-.detail-preview { height: clamp(310px, 46dvh, 500px) !important; }
-#dc-compare-mask .dc-dialog-body, .dc-conflict-dialog .dc-dialog-body { padding: 20px 26px 24px !important; }
-#dc-compare-mask .dc-compare-photo, .dc-conflict-dialog .dc-compare-photo { height: clamp(240px, 39dvh, 400px) !important; }
 #dc-compare-mask .dc-candidate-strip, .dc-conflict-dialog .dc-candidate-strip { margin: 12px 0 8px !important; }
 
-/* New check: one editable frozen prompt, no redundant toggles or advanced sections. */
-#dc-new-mask .dc-new-dialog {
-  width: min(760px, calc(100vw - 2 * var(--iad-dialog-gutter))) !important;
-  height: auto !important;
-  max-height: calc(100dvh - 2 * var(--iad-dialog-vgutter)) !important;
-  border-radius: 8px !important;
-  overflow: hidden !important;
-}
-#dc-new-mask .dc-new-body {
-  padding: 22px 26px 24px !important;
-  gap: 20px !important;
-  overflow-y: auto !important;
-  flex: 0 1 auto !important;
-  display: flex !important;
-  flex-direction: column !important;
-}
-#dc-new-mask .dc-new-dialog .dc-dialog-footer { flex: none !important; }
 #dc-new-mask .dc-prompt-editor {
   display: flex !important;
   flex-direction: column !important;
@@ -1044,24 +985,6 @@ button.dc-vchart-zero,
   white-space: pre-wrap !important;
 }
 #dc-new-mask #dc-new-prompt:focus { outline: 2px solid #80a9ff !important; outline-offset: 1px !important; }
-
-@media (max-width: 850px) {
-  :root { --iad-dialog-gutter: 24px; --iad-dialog-vgutter: 22px; }
-  .detail-overlay,
-  .dc-modal-mask:has(#dc-dialog-title),
-  #dc-compare-mask.dc-modal-mask {
-    padding: var(--iad-dialog-vgutter) var(--iad-dialog-gutter) !important;
-  }
-  #dc-compare-mask .dc-compare-photo, .dc-conflict-dialog .dc-compare-photo { height: clamp(210px, 30dvh, 300px) !important; }
-  .detail-preview { height: clamp(260px, 37dvh, 400px) !important; }
-}
-@media (max-width: 560px) {
-  :root { --iad-dialog-gutter: 12px; --iad-dialog-vgutter: 12px; }
-  #dc-compare-mask .dc-compare, .dc-conflict-dialog .dc-compare { grid-template-columns: 1fr !important; }
-  #dc-compare-mask .dc-compare-photo, .dc-conflict-dialog .dc-compare-photo { height: 210px !important; }
-  #dc-new-mask .dc-new-body { padding: 16px !important; gap: 16px !important; }
-  #dc-new-mask #dc-new-prompt { height: 230px !important; min-height: 150px !important; }
-}
 
 /* V38: 数据一致性检查作业分页与对齐规范 */
 .dc-section.dc-jobs-section.iba-job-multipage .dc-table-panel{min-height:530px}

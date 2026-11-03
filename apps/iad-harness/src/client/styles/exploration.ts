@@ -91,12 +91,6 @@ export const explorationStyles = `
 .exp-table .exp-row-title{font-weight:600;color:#253854}.exp-table .exp-row-info{display:block;font-size:12px;color:#77879c;padding-top:4px}
 .exp-jobs-filters{display:flex;align-items:center;gap:10px;margin-bottom:13px}.exp-jobs-filters select{width:158px}
 .exp-pill{display:inline-block;border-radius:4px;padding:3px 8px;color:#5d708d;background:#eef2f7;font-size:12px}.exp-pill.ok{background:#e8f5ee;color:#188356}.exp-pill.running{background:#e9f0ff;color:#2b5fc7}.exp-pill.fail{background:#ffedf0;color:#ae3d46}
-.exp-modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#17243ab8;z-index:150;padding:30px}.exp-modal[hidden]{display:none!important}
-.exp-dialog{display:flex;flex-direction:column;background:white;border:1px solid #d3ddea;width:min(900px,96vw);height:min(760px,90vh);border-radius:7px;overflow:hidden;box-shadow:0 22px 65px #1a294355}
-.exp-dialog.small{width:min(530px,95vw);height:auto;max-height:90vh}
-.exp-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 21px;border-bottom:1px solid #e1e7ef}
-.exp-dialog-head strong{font-size:16px}.exp-dialog-main{padding:20px 22px;overflow:auto;flex:1;min-height:0}
-.exp-dialog-foot{display:flex;justify-content:flex-end;align-items:center;gap:9px;padding:12px 22px;border-top:1px solid #e5eaf2}
 .exp-source-tools{display:flex;justify-content:space-between;gap:14px;align-items:end;margin-bottom:12px;flex-wrap:wrap}
 .exp-source-tools .exp-input{flex:1;min-width:210px}.exp-source-tools span{font-size:12px;color:#64748b}
 .exp-source-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:12px 0 0}
@@ -335,13 +329,6 @@ export const explorationStyles = `
 .exp-direction-table th:nth-child(4){width:135px!important;text-align:right}
 .exp-direction-table td:last-child{text-align:right}
 .exp-direction-table .exp-direction-action .exp-btn{min-height:32px;white-space:nowrap}
-.exp-modal:has(.exp-direction-dialog),
-.exp-modal.exp-direction-modal{padding:22px;background:rgba(22,34,53,.68)}
-.exp-direction-dialog{width:min(1160px,calc(100vw - 44px))!important;height:auto!important;max-height:calc(100dvh - 44px)!important;min-height:0!important;border-radius:7px;box-shadow:0 18px 55px #14233f48}
-.exp-direction-dialog .exp-dialog-head{padding:19px 26px 15px!important;border-bottom:1px solid #e3e9f2;align-items:start;flex:none}
-.exp-direction-dialog .exp-dialog-head>strong{font-size:17px!important;font-weight:650;line-height:1.55;min-width:0}
-.exp-direction-dialog .exp-dialog-main{padding:0 26px;min-height:0;overflow:auto}
-.exp-direction-dialog .exp-dialog-foot{padding:13px 26px;gap:12px;justify-content:flex-end;flex:none;background:#fff}
 .exp-direction-meta{display:flex;gap:13px;align-items:center;flex-wrap:wrap;padding:12px 0 16px;font-size:12px;color:#64748b}
 .exp-direction-meta strong{font-weight:550;color:#415675}
 .exp-direction-body{display:block!important}

@@ -42,15 +42,8 @@ export const imagesStyles = `
 .pagination-total{white-space:nowrap;color:#62748d;font-size:12px;margin-left:8px}
 @media(max-width:680px){.pagination-controls{gap:6px}.pagination-total{margin-left:6px}}
 
-.detail-overlay {position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(23,33,50,.66);padding:22px}
 .full-overlay {position:fixed;inset:0;z-index:10010;display:flex;align-items:stretch;justify-content:stretch;padding:0;background:#1c2633}
 .detail-overlay.hidden, .full-overlay.hidden {display:none}
-.detail-dialog {width:min(960px,calc(100vw - 36px));max-height:calc(100dvh - 44px);background:#fff;border:1px solid #dce3ee;border-radius:8px;display:flex;flex-direction:column;min-height:0;overflow:hidden;box-shadow:0 18px 60px #17233a36}
-.detail-header {height:60px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--border2,#e6ebf1)}
-.detail-title{font-size:17px;font-weight:650;margin:0}
-.detail-close{border:0;background:transparent;width:32px;height:32px;font-size:21px;color:#728096;border-radius:5px;display:grid;place-items:center;cursor:pointer}
-.detail-close:hover{background:#f1f4f8;color:#34445c}
-.detail-scroll {min-height:0;overflow-y:auto;padding:22px 24px 24px}
 .detail-preview{width:100%;height:355px;display:flex;justify-content:center;align-items:center;border:1px solid var(--border2,#e6ebf1);border-radius:6px;background:#f2f5f9;cursor:zoom-in;padding:0;position:relative;overflow:hidden}
 .detail-preview:hover{border-color:#95afed}
 .detail-preview:focus-visible{outline:2px solid var(--blue,#285ed6)}

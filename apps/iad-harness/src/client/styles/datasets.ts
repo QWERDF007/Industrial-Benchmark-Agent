@@ -598,40 +598,6 @@ export const datasetsStyles = `
 }
 
 /* Modal dialogs */
-.modal-scrim {
-  position: fixed;
-  inset: 0;
-  background: rgba(20, 30, 49, .35);
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 18px;
-}
-
-.modal {
-  background: var(--iad-surface, #fff);
-  color: inherit;
-  width: min(720px, calc(100% - 32px));
-  max-height: calc(100vh - 36px);
-  overflow: auto;
-  border: 1px solid #c4cfdf;
-  border-radius: 8px;
-  padding: 25px 24px 24px;
-  box-shadow: 0 16px 52px rgba(8, 19, 39, .24);
-}
-
-.modal .modal-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--line);
-  margin-bottom: 20px;
-}
-
-.modal .modal-top h2 { font-size: 18px; margin: 0; }
-
 .modal-x {
   border: 0 !important;
   border-color: transparent !important;
