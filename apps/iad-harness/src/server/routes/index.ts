@@ -115,7 +115,7 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       if (groupRoute) {
         const group_id = decodeURIComponent(groupRoute[1]);
         if (method === "PATCH") return await call("dataset_group_update", { ...body, group_id });
-        if (method === "DELETE") return await call("dataset_group_delete", { group_id });
+        if (method === "DELETE") return await call("dataset_group_delete", { group_id, cascade: query.cascade !== "false" });
       }
       if (pathname === "/api/iad/datasets" && method === "GET") return await call("dataset_list");
       if (pathname === "/api/iad/review/knowledge" && method === "GET") return await call("knowledge_review_context", query);

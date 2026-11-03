@@ -365,9 +365,14 @@ export function DatasetManager({ datasets: propDatasets, groups: propGroups = []
         setDeleteBusy(true);
         try {
             if (deleteTarget.kind === "group") {
-                await request(`/datasets/groups/${encodeURIComponent(deleteTarget.group.group_id)}`, undefined, "DELETE");
+                const childDatasets = getGroupChildren(deleteTarget.group.group_id);
+                const res = await request(`/datasets/groups/${encodeURIComponent(deleteTarget.group.group_id)}`, undefined, "DELETE");
+                const removedChildIds = res.deleted_dataset_ids || childDatasets.map(c => c.dataset_id);
+                for (const cid of removedChildIds) {
+                    workspace.forgetDataset(cid);
+                }
                 setLocalGroups(prev => prev.filter(g => g.group_id !== deleteTarget.group.group_id));
-                announce("已删除数据集");
+                announce(`已删除大数据集「${deleteTarget.group.name}」${removedChildIds.length > 0 ? `及 ${removedChildIds.length} 个子数据集` : ""}`);
             }
             else {
                 await request(`/datasets/${encodeURIComponent(deleteTarget.dataset.dataset_id)}`, undefined, "DELETE");
@@ -460,7 +465,7 @@ export function DatasetManager({ datasets: propDatasets, groups: propGroups = []
                                         setDeleteTarget(null); }, "aria-label": "\u5173\u95ED", children: "\u00D7" })] }), deleteTarget.kind === "group" ? ((() => {
                             const childCount = getGroupChildren(deleteTarget.group.group_id).length;
                             return (_jsxs(_Fragment, { children: [_jsxs("p", { children: ["\u786E\u8BA4\u5220\u9664\u300C", deleteTarget.group.name, "\u300D\uFF1F"] }), _jsx("p", { children: childCount > 0
-                                            ? `该数据集包含 ${childCount} 个子数据集，请先处理其中的子数据集，再删除父级。`
-                                            : "该大数据集没有子数据集。" }), _jsxs("div", { className: "modal-actions", children: [_jsx("button", { type: "button", className: "secondary", onClick: () => setDeleteTarget(null), children: "\u53D6\u6D88" }), _jsx("button", { type: "button", className: "primary", style: { background: "#ba3540", borderColor: "#ba3540" }, disabled: childCount > 0 || deleteBusy, onClick: () => void confirmDelete(), children: deleteBusy ? "正在删除…" : "确认删除" })] })] }));
+                                            ? `该大数据集包含 ${childCount} 个子数据集，确认删除将一并移除其下的所有子数据集及其关联数据（不会删除物理源文件）。此操作不可撤销。`
+                                            : "该大数据集没有子数据集。此操作不可撤销。" }), _jsxs("div", { className: "modal-actions", children: [_jsx("button", { type: "button", className: "secondary", onClick: () => setDeleteTarget(null), children: "\u53D6\u6D88" }), _jsx("button", { type: "button", className: "primary", style: { background: "#ba3540", borderColor: "#ba3540" }, disabled: deleteBusy, onClick: () => void confirmDelete(), children: deleteBusy ? "正在删除…" : "确认删除" })] })] }));
                         })()) : (_jsxs(_Fragment, { children: [_jsxs("p", { children: ["\u786E\u8BA4\u5220\u9664\u300C", deleteTarget.dataset.name, "\u300D\uFF1F"] }), _jsx("p", { children: "\u6B64\u64CD\u4F5C\u4F1A\u4ECE\u5217\u8868\u4E2D\u5220\u9664\u8BE5\u6570\u636E\u96C6\uFF1B\u4E0D\u4F1A\u5220\u9664\u771F\u5B9E\u6587\u4EF6\u3002" }), _jsxs("div", { className: "modal-actions", children: [_jsx("button", { type: "button", className: "secondary", onClick: () => setDeleteTarget(null), children: "\u53D6\u6D88" }), _jsx("button", { type: "button", className: "primary", style: { background: "#ba3540", borderColor: "#ba3540" }, disabled: deleteBusy, onClick: () => void confirmDelete(), children: deleteBusy ? "正在删除…" : "确认删除" })] })] }))] }) })), _jsx("div", { id: "toast", className: `toast ${toastText ? "" : "hidden"}`, role: "status", children: toastText })] }));
 }

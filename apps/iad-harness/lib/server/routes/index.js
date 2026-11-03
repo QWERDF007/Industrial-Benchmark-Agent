@@ -154,7 +154,7 @@ export function createIadHttpHandler(bridge) {
                 if (method === "PATCH")
                     return await call("dataset_group_update", { ...body, group_id });
                 if (method === "DELETE")
-                    return await call("dataset_group_delete", { group_id });
+                    return await call("dataset_group_delete", { group_id, cascade: query.cascade !== "false" });
             }
             if (pathname === "/api/iad/datasets" && method === "GET")
                 return await call("dataset_list");

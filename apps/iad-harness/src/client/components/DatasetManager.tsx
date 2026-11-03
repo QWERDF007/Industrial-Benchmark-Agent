@@ -435,9 +435,18 @@ export function DatasetManager({
     setDeleteBusy(true);
     try {
       if (deleteTarget.kind === "group") {
-        await request(`/datasets/groups/${encodeURIComponent(deleteTarget.group.group_id)}`, undefined, "DELETE");
+        const childDatasets = getGroupChildren(deleteTarget.group.group_id);
+        const res = await request<{ deleted_group_id: string; deleted_dataset_ids?: string[] }>(
+          `/datasets/groups/${encodeURIComponent(deleteTarget.group.group_id)}`,
+          undefined,
+          "DELETE"
+        );
+        const removedChildIds = res.deleted_dataset_ids || childDatasets.map(c => c.dataset_id);
+        for (const cid of removedChildIds) {
+          workspace.forgetDataset(cid);
+        }
         setLocalGroups(prev => prev.filter(g => g.group_id !== deleteTarget.group.group_id));
-        announce("已删除数据集");
+        announce(`已删除大数据集「${deleteTarget.group.name}」${removedChildIds.length > 0 ? `及 ${removedChildIds.length} 个子数据集` : ""}`);
       } else {
         await request(`/datasets/${encodeURIComponent(deleteTarget.dataset.dataset_id)}`, undefined, "DELETE");
         workspace.forgetDataset(deleteTarget.dataset.dataset_id);
@@ -1057,8 +1066,8 @@ export function DatasetManager({
                     <p>确认删除「{deleteTarget.group.name}」？</p>
                     <p>
                       {childCount > 0
-                        ? `该数据集包含 ${childCount} 个子数据集，请先处理其中的子数据集，再删除父级。`
-                        : "该大数据集没有子数据集。"}
+                        ? `该大数据集包含 ${childCount} 个子数据集，确认删除将一并移除其下的所有子数据集及其关联数据（不会删除物理源文件）。此操作不可撤销。`
+                        : "该大数据集没有子数据集。此操作不可撤销。"}
                     </p>
                     <div className="modal-actions">
                       <button type="button" className="secondary" onClick={() => setDeleteTarget(null)}>取消</button>
@@ -1066,7 +1075,7 @@ export function DatasetManager({
                         type="button"
                         className="primary"
                         style={{ background: "#ba3540", borderColor: "#ba3540" }}
-                        disabled={childCount > 0 || deleteBusy}
+                        disabled={deleteBusy}
                         onClick={() => void confirmDelete()}
                       >
                         {deleteBusy ? "正在删除…" : "确认删除"}

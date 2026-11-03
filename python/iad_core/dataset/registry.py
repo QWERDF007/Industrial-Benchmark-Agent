@@ -110,15 +110,22 @@ class DatasetRegistry:
                 raise LookupError(f"Dataset group '{group_id}' not found")
         return {"group_id": group_id, "name": gname}
 
-    def delete_group(self, group_id: str, connection: Optional[Connection] = None) -> dict:
+    def delete_group(self, group_id: str, connection: Optional[Connection] = None, cascade: bool = True) -> dict:
         with nullcontext(connection) if connection is not None else self.db.connection() as conn:
-            count = conn.execute("SELECT count(*) FROM datasets WHERE group_id=?", (group_id,)).fetchone()[0]
-            if count > 0:
-                raise ValueError(f"该数据集包含 {count} 个子数据集，请先处理其中的子数据集，再删除父级。")
-            cur = conn.execute("DELETE FROM dataset_groups WHERE group_id=?", (group_id,))
-            if not cur.rowcount:
+            cur_group = conn.execute("SELECT 1 FROM dataset_groups WHERE group_id=?", (group_id,)).fetchone()
+            if not cur_group:
                 raise LookupError(f"Dataset group '{group_id}' not found")
-        return {"deleted_group_id": group_id}
+            rows = conn.execute("SELECT dataset_id FROM datasets WHERE group_id=?", (group_id,)).fetchall()
+            child_ids = [r[0] for r in rows]
+            if child_ids and not cascade:
+                raise ValueError(f"该数据集包含 {len(child_ids)} 个子数据集，请先处理其中的子数据集，再删除父级。")
+
+        for cid in child_ids:
+            self.delete(cid)
+
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+            conn.execute("DELETE FROM dataset_groups WHERE group_id=?", (group_id,))
+        return {"deleted_group_id": group_id, "deleted_dataset_ids": child_ids}
 
     def get(self, dataset_id: str, connection: Optional[Connection] = None) -> DatasetConfig:
         with nullcontext(connection) if connection is not None else self.db.connection() as conn:

@@ -1032,9 +1032,18 @@ var __IadClientBundle__ = (() => {
       setDeleteBusy(true);
       try {
         if (deleteTarget.kind === "group") {
-          await request(`/datasets/groups/${encodeURIComponent(deleteTarget.group.group_id)}`, void 0, "DELETE");
+          const childDatasets = getGroupChildren(deleteTarget.group.group_id);
+          const res = await request(
+            `/datasets/groups/${encodeURIComponent(deleteTarget.group.group_id)}`,
+            void 0,
+            "DELETE"
+          );
+          const removedChildIds = res.deleted_dataset_ids || childDatasets.map((c) => c.dataset_id);
+          for (const cid of removedChildIds) {
+            workspace.forgetDataset(cid);
+          }
           setLocalGroups((prev) => prev.filter((g) => g.group_id !== deleteTarget.group.group_id));
-          announce("\u5DF2\u5220\u9664\u6570\u636E\u96C6");
+          announce(`\u5DF2\u5220\u9664\u5927\u6570\u636E\u96C6\u300C${deleteTarget.group.name}\u300D${removedChildIds.length > 0 ? `\u53CA ${removedChildIds.length} \u4E2A\u5B50\u6570\u636E\u96C6` : ""}`);
         } else {
           await request(`/datasets/${encodeURIComponent(deleteTarget.dataset.dataset_id)}`, void 0, "DELETE");
           workspace.forgetDataset(deleteTarget.dataset.dataset_id);
@@ -1639,7 +1648,7 @@ var __IadClientBundle__ = (() => {
               deleteTarget.group.name,
               "\u300D\uFF1F"
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { children: childCount > 0 ? `\u8BE5\u6570\u636E\u96C6\u5305\u542B ${childCount} \u4E2A\u5B50\u6570\u636E\u96C6\uFF0C\u8BF7\u5148\u5904\u7406\u5176\u4E2D\u7684\u5B50\u6570\u636E\u96C6\uFF0C\u518D\u5220\u9664\u7236\u7EA7\u3002` : "\u8BE5\u5927\u6570\u636E\u96C6\u6CA1\u6709\u5B50\u6570\u636E\u96C6\u3002" }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { children: childCount > 0 ? `\u8BE5\u5927\u6570\u636E\u96C6\u5305\u542B ${childCount} \u4E2A\u5B50\u6570\u636E\u96C6\uFF0C\u786E\u8BA4\u5220\u9664\u5C06\u4E00\u5E76\u79FB\u9664\u5176\u4E0B\u7684\u6240\u6709\u5B50\u6570\u636E\u96C6\u53CA\u5176\u5173\u8054\u6570\u636E\uFF08\u4E0D\u4F1A\u5220\u9664\u7269\u7406\u6E90\u6587\u4EF6\uFF09\u3002\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002` : "\u8BE5\u5927\u6570\u636E\u96C6\u6CA1\u6709\u5B50\u6570\u636E\u96C6\u3002\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002" }),
             /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-actions", children: [
               /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "secondary", onClick: () => setDeleteTarget(null), children: "\u53D6\u6D88" }),
               /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
@@ -1648,7 +1657,7 @@ var __IadClientBundle__ = (() => {
                   type: "button",
                   className: "primary",
                   style: { background: "#ba3540", borderColor: "#ba3540" },
-                  disabled: childCount > 0 || deleteBusy,
+                  disabled: deleteBusy,
                   onClick: () => void confirmDelete(),
                   children: deleteBusy ? "\u6B63\u5728\u5220\u9664\u2026" : "\u786E\u8BA4\u5220\u9664"
                 }

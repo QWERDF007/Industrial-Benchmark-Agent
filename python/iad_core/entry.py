@@ -84,7 +84,7 @@ def dataset_group_update(args, db_path):
 
 
 def dataset_group_delete(args, db_path):
-    return DatasetRegistry(Database(db_path)).delete_group(group_id=args["group_id"])
+    return DatasetRegistry(Database(db_path)).delete_group(group_id=args["group_id"], cascade=args.get("cascade", True))
 
 
 def dataset_preview(args, db_path):
