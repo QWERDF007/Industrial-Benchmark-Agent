@@ -1106,4 +1106,9 @@ button.dc-vchart-zero,
 .dc-section.dc-jobs-section .dc-table .dc-total,
 .dc-section.dc-jobs-section .dc-table .dc-elapsed{white-space:nowrap;font-variant-numeric:tabular-nums}
 .dc-section.dc-jobs-section .dc-table .dc-has-conflicts{font-weight:650}
+
+#dc-delete-mask.dc-modal-mask {
+  background: #17243ab8 !important;
+  z-index: 430 !important;
+}
 `;

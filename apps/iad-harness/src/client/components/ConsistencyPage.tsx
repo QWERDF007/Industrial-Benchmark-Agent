@@ -1899,33 +1899,40 @@ function ConsistencyIntegratedWorkspace() {
       {/* Delete Job Modal */}
       {modal.startsWith('delete:') && (
         <div
-          className="dc-modal-mask"
+          className="dc-modal-mask exp-modal"
           id="dc-delete-mask"
           onClick={e => {
             if ((e.target as HTMLElement).id === 'dc-delete-mask') setModal('');
           }}
         >
-          <section className="dc-dialog" style={{ width: 'min(465px, 95vw)', height: 'auto' }} role="dialog" aria-modal="true">
-            <header className="dc-dialog-head">
-              <h2>删除检查作业？</h2>
+          <div className="exp-dialog small" role="dialog" aria-modal="true" aria-label="删除检查作业">
+            <div className="exp-dialog-head">
+              <strong>删除检查作业</strong>
+              <IconButton label="关闭" className="modal-x exp-ghost" onClick={() => setModal('')}>
+                <CloseIcon />
+              </IconButton>
+            </div>
+            <div className="exp-dialog-main">
+              <p className="exp-delete-text">
+                确定删除作业 <strong>{modal.slice(7)}</strong> 吗？
+              </p>
+              <p className="exp-delete-note">
+                该作业对应的冲突检查结果和展示数据将一并移除，此操作不可撤销。
+              </p>
+            </div>
+            <div className="exp-dialog-foot">
+              <button type="button" className="exp-btn" onClick={() => setModal('')}>
+                取消
+              </button>
               <button
                 type="button"
-                className="dc-icn"
-                title="取消"
-                aria-label="取消"
-                onClick={() => setModal('')}
+                className="exp-btn exp-delete-confirm"
+                onClick={() => handleDeleteJob(modal.slice(7))}
               >
-                <CloseIcon />
+                删除作业
               </button>
-            </header>
-            <div className="dc-dialog-body">
-              <p>将删除作业 {modal.slice(7)} 及其展示结果。此操作不能撤销。</p>
             </div>
-            <footer className="dc-dialog-footer">
-              <button className="dc-minor" onClick={() => setModal('')}>取消</button>
-              <button className="dc-primary" onClick={() => handleDeleteJob(modal.slice(7))}>删除作业</button>
-            </footer>
-          </section>
+          </div>
         </div>
       )}
 

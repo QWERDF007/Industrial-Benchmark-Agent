@@ -40,8 +40,8 @@ export const explorationStyles = `
 .exp-panel h2{font-size:16px;font-weight:650;margin:0}.exp-panel h3{font-size:13px;font-weight:600;margin:0}
 .exp-panel-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:17px;min-height:26px}
 .exp-lead{font-size:12px;color:#6c7b90;margin:6px 0 0}
-.exp-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;min-height:37px;background:#fff;color:#3b4c65;border:1px solid #b7c5d9;border-radius:5px;font-size:12px}
-.exp-btn:hover{background:#f2f6fd}.exp-btn:disabled{opacity:.45}
+.iad-workbench button.exp-btn,.exp-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:0 12px!important;height:37px!important;min-height:37px!important;background:#fff!important;color:#3b4c65!important;border:1px solid #b7c5d9!important;border-radius:5px!important;font-size:12px!important}
+.iad-workbench button.exp-btn:hover,.exp-btn:hover{background:#f2f6fd!important}.exp-btn:disabled{opacity:.45}
 .iad-workbench button.exp-primary,.exp-primary{background:var(--blue, #285ed6)!important;color:#fff!important;border:1px solid var(--blue, #285ed6)!important;font-weight:600}
 .iad-workbench button.exp-primary:hover,.exp-primary:hover{background:#1e51c2!important;border-color:#1e51c2!important}
 .exp-btn-text{background:transparent;border:0;color:#2d5dcb;padding:0 4px;min-height:32px}
@@ -446,7 +446,8 @@ export const explorationStyles = `
 .exp-direction-action .exp-direction-view-icon{margin-left:auto;color:#61738e;}
 .exp-direction-action .exp-direction-view-icon:hover{background:#eaf1ff;color:#255ac7;}
 .exp-delete-text{font-size:14px;line-height:1.7;margin:0 0 9px}.exp-delete-note{font-size:12px;color:#697b92;line-height:1.7;margin:0}
-.exp-delete-confirm{color:#fff;background:#bf384a;border-color:#bf384a}.exp-delete-confirm:hover{background:#a82f41;border-color:#a82f41}
+.iad-workbench button.exp-delete-confirm,.exp-dialog .exp-delete-confirm,.exp-delete-confirm{color:#fff!important;background:#bf384a!important;border:1px solid #bf384a!important;border-color:#bf384a!important;font-weight:550!important}
+.iad-workbench button.exp-delete-confirm:hover,.exp-dialog .exp-delete-confirm:hover,.exp-delete-confirm:hover{background:#a82f41!important;border-color:#a82f41!important;color:#fff!important}
 @media(max-width:840px){.exp-direction-evidence-groups{grid-template-columns:1fr}.exp-evidence-viewport .exp-direction-evidence-card{width:182px;min-width:182px}}
 
 

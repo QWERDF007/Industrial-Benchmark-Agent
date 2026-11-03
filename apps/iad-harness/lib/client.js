@@ -12766,8 +12766,8 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
 .exp-panel h2{font-size:16px;font-weight:650;margin:0}.exp-panel h3{font-size:13px;font-weight:600;margin:0}
 .exp-panel-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:17px;min-height:26px}
 .exp-lead{font-size:12px;color:#6c7b90;margin:6px 0 0}
-.exp-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;min-height:37px;background:#fff;color:#3b4c65;border:1px solid #b7c5d9;border-radius:5px;font-size:12px}
-.exp-btn:hover{background:#f2f6fd}.exp-btn:disabled{opacity:.45}
+.iad-workbench button.exp-btn,.exp-btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:0 12px!important;height:37px!important;min-height:37px!important;background:#fff!important;color:#3b4c65!important;border:1px solid #b7c5d9!important;border-radius:5px!important;font-size:12px!important}
+.iad-workbench button.exp-btn:hover,.exp-btn:hover{background:#f2f6fd!important}.exp-btn:disabled{opacity:.45}
 .iad-workbench button.exp-primary,.exp-primary{background:var(--blue, #285ed6)!important;color:#fff!important;border:1px solid var(--blue, #285ed6)!important;font-weight:600}
 .iad-workbench button.exp-primary:hover,.exp-primary:hover{background:#1e51c2!important;border-color:#1e51c2!important}
 .exp-btn-text{background:transparent;border:0;color:#2d5dcb;padding:0 4px;min-height:32px}
@@ -13172,7 +13172,8 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
 .exp-direction-action .exp-direction-view-icon{margin-left:auto;color:#61738e;}
 .exp-direction-action .exp-direction-view-icon:hover{background:#eaf1ff;color:#255ac7;}
 .exp-delete-text{font-size:14px;line-height:1.7;margin:0 0 9px}.exp-delete-note{font-size:12px;color:#697b92;line-height:1.7;margin:0}
-.exp-delete-confirm{color:#fff;background:#bf384a;border-color:#bf384a}.exp-delete-confirm:hover{background:#a82f41;border-color:#a82f41}
+.iad-workbench button.exp-delete-confirm,.exp-dialog .exp-delete-confirm,.exp-delete-confirm{color:#fff!important;background:#bf384a!important;border:1px solid #bf384a!important;border-color:#bf384a!important;font-weight:550!important}
+.iad-workbench button.exp-delete-confirm:hover,.exp-dialog .exp-delete-confirm:hover,.exp-delete-confirm:hover{background:#a82f41!important;border-color:#a82f41!important;color:#fff!important}
 @media(max-width:840px){.exp-direction-evidence-groups{grid-template-columns:1fr}.exp-evidence-viewport .exp-direction-evidence-card{width:182px;min-width:182px}}
 
 
@@ -15611,6 +15612,11 @@ button.dc-vchart-zero,
 .dc-section.dc-jobs-section .dc-table .dc-total,
 .dc-section.dc-jobs-section .dc-table .dc-elapsed{white-space:nowrap;font-variant-numeric:tabular-nums}
 .dc-section.dc-jobs-section .dc-table .dc-has-conflicts{font-weight:650}
+
+#dc-delete-mask.dc-modal-mask {
+  background: #17243ab8 !important;
+  z-index: 430 !important;
+}
 `;
 
   // src/client/styles/images.ts
@@ -19670,34 +19676,35 @@ button.dc-vchart-zero,
       modal.startsWith("delete:") && /* @__PURE__ */ (0, import_jsx_runtime70.jsx)(
         "div",
         {
-          className: "dc-modal-mask",
+          className: "dc-modal-mask exp-modal",
           id: "dc-delete-mask",
           onClick: (e) => {
             if (e.target.id === "dc-delete-mask") setModal("");
           },
-          children: /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("section", { className: "dc-dialog", style: { width: "min(465px, 95vw)", height: "auto" }, role: "dialog", "aria-modal": "true", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("header", { className: "dc-dialog-head", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("h2", { children: "\u5220\u9664\u68C0\u67E5\u4F5C\u4E1A\uFF1F" }),
+          children: /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("div", { className: "exp-dialog small", role: "dialog", "aria-modal": "true", "aria-label": "\u5220\u9664\u68C0\u67E5\u4F5C\u4E1A", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("div", { className: "exp-dialog-head", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("strong", { children: "\u5220\u9664\u68C0\u67E5\u4F5C\u4E1A" }),
+              /* @__PURE__ */ (0, import_jsx_runtime70.jsx)(IconButton, { label: "\u5173\u95ED", className: "modal-x exp-ghost", onClick: () => setModal(""), children: /* @__PURE__ */ (0, import_jsx_runtime70.jsx)(CloseIcon, {}) })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("div", { className: "exp-dialog-main", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("p", { className: "exp-delete-text", children: [
+                "\u786E\u5B9A\u5220\u9664\u4F5C\u4E1A ",
+                /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("strong", { children: modal.slice(7) }),
+                " \u5417\uFF1F"
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("p", { className: "exp-delete-note", children: "\u8BE5\u4F5C\u4E1A\u5BF9\u5E94\u7684\u51B2\u7A81\u68C0\u67E5\u7ED3\u679C\u548C\u5C55\u793A\u6570\u636E\u5C06\u4E00\u5E76\u79FB\u9664\uFF0C\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("div", { className: "exp-dialog-foot", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("button", { type: "button", className: "exp-btn", onClick: () => setModal(""), children: "\u53D6\u6D88" }),
               /* @__PURE__ */ (0, import_jsx_runtime70.jsx)(
                 "button",
                 {
                   type: "button",
-                  className: "dc-icn",
-                  title: "\u53D6\u6D88",
-                  "aria-label": "\u53D6\u6D88",
-                  onClick: () => setModal(""),
-                  children: /* @__PURE__ */ (0, import_jsx_runtime70.jsx)(CloseIcon, {})
+                  className: "exp-btn exp-delete-confirm",
+                  onClick: () => handleDeleteJob(modal.slice(7)),
+                  children: "\u5220\u9664\u4F5C\u4E1A"
                 }
               )
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("div", { className: "dc-dialog-body", children: /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("p", { children: [
-              "\u5C06\u5220\u9664\u4F5C\u4E1A ",
-              modal.slice(7),
-              " \u53CA\u5176\u5C55\u793A\u7ED3\u679C\u3002\u6B64\u64CD\u4F5C\u4E0D\u80FD\u64A4\u9500\u3002"
-            ] }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("footer", { className: "dc-dialog-footer", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("button", { className: "dc-minor", onClick: () => setModal(""), children: "\u53D6\u6D88" }),
-              /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("button", { className: "dc-primary", onClick: () => handleDeleteJob(modal.slice(7)), children: "\u5220\u9664\u4F5C\u4E1A" })
             ] })
           ] })
         }
