@@ -71,6 +71,20 @@ class BatchRepository:
         with self.db.connection() as connection:
             return connection.execute('SELECT COUNT(*) FROM consistency_batch_results WHERE batch_id=?',(batch_id,)).fetchone()[0]
 
+    def conflict_group_count(self, batch_id: str) -> int:
+        from iad_core.consistency.annotation_models import AnnotationComparison
+        with self.db.connection() as connection:
+            connection.create_function('annotation_difference_types', 1, AnnotationComparison.json_difference_types, deterministic=True)
+            row = connection.execute('''
+                SELECT COUNT(DISTINCT json_extract(r.snapshot_json, '$.sources.left.sample.sample_id'))
+                FROM consistency_batch_results b
+                JOIN consistency_results r ON b.evidence_id = r.evidence_id
+                WHERE b.batch_id = ?
+                  AND json_extract(r.snapshot_json, '$.result.verification.relation') = 'EXACT'
+                  AND json_array_length(annotation_difference_types(json_extract(r.snapshot_json, '$.result.annotation'))) > 0
+            ''', (batch_id,)).fetchone()
+            return int(row[0]) if row and row[0] is not None else 0
+
     def has_pair(self,batch_id: str,sample_a: str,sample_b: str) -> bool:
         with self.db.connection() as connection:
             return connection.execute('SELECT 1 FROM consistency_batch_results WHERE batch_id=? AND sample_a=? AND sample_b=?',
@@ -84,6 +98,19 @@ class BatchRepository:
     def cancel(self, batch_id: str):
         with self.db.connection() as connection:
             connection.execute('UPDATE consistency_runs SET cancel_requested=1 WHERE batch_id=?',(batch_id,))
+
+    def delete(self, batch_id: str) -> dict:
+        with self.db.connection() as connection:
+            child_job_ids = [row[0] for row in connection.execute(
+                'SELECT run_id FROM consistency_children WHERE batch_id=?', (batch_id,)).fetchall()]
+            connection.execute('DELETE FROM consistency_batch_results WHERE batch_id=?', (batch_id,))
+            connection.execute('DELETE FROM consistency_children WHERE batch_id=?', (batch_id,))
+            connection.execute('DELETE FROM consistency_runs WHERE batch_id=?', (batch_id,))
+            if child_job_ids:
+                placeholders = ','.join('?' * len(child_job_ids))
+                connection.execute(f'DELETE FROM model_calls WHERE run_id IN ({placeholders})', child_job_ids)
+                connection.execute(f'DELETE FROM job_runs WHERE job_id IN ({placeholders})', child_job_ids)
+        return {'deleted_batch_id': batch_id}
 
     def results(self, batch_id: str) -> list[BatchResultReference]:
         self.get(batch_id)

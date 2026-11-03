@@ -93,11 +93,13 @@ export function createIadHttpHandler(bridge) {
                 return await call('consistency_group_members', body);
             if (pathname === '/api/iad/consistency/runs' && method === 'GET')
                 return await call('consistency_list');
-            const consistencyRun = pathname.match(/^\/api\/iad\/consistency\/runs\/([^/]+)(?:\/(cancel|retry))?$/);
+            const consistencyRun = pathname.match(/^\/api\/iad\/consistency\/runs\/([^/]+)(?:\/(cancel|retry|delete))?$/);
             if (consistencyRun) {
                 const batch_id = decodeURIComponent(consistencyRun[1]);
                 if (!consistencyRun[2] && method === 'GET')
                     return await call('consistency_status', { batch_id });
+                if ((!consistencyRun[2] && method === 'DELETE') || (consistencyRun[2] === 'delete' && method === 'POST'))
+                    return await call('consistency_delete', { batch_id });
                 if (consistencyRun[2] === 'cancel' && method === 'POST')
                     return await call('consistency_cancel', { batch_id });
                 if (consistencyRun[2] === 'retry' && method === 'POST')
@@ -142,6 +144,18 @@ export function createIadHttpHandler(bridge) {
             const provider = pathname.match(/^\/api\/iad\/models\/providers\/([^/]+)$/);
             if (provider && method === "DELETE")
                 return await call("model_provider_delete", { provider_id: decodeURIComponent(provider[1]), expected_revision: Number(query.expected_revision) });
+            if (pathname === "/api/iad/datasets/groups" && method === "GET")
+                return await call("dataset_group_list");
+            if (pathname === "/api/iad/datasets/groups" && method === "POST")
+                return await call("dataset_group_create", body);
+            const groupRoute = pathname.match(/^\/api\/iad\/datasets\/groups\/([^/]+)$/);
+            if (groupRoute) {
+                const group_id = decodeURIComponent(groupRoute[1]);
+                if (method === "PATCH")
+                    return await call("dataset_group_update", { ...body, group_id });
+                if (method === "DELETE")
+                    return await call("dataset_group_delete", { group_id });
+            }
             if (pathname === "/api/iad/datasets" && method === "GET")
                 return await call("dataset_list");
             if (pathname === "/api/iad/review/knowledge" && method === "GET")
@@ -173,6 +187,8 @@ export function createIadHttpHandler(bridge) {
                 if (method === "GET")
                     return await call("dataset_get", { dataset_id: args.dataset_id });
             }
+            if (pathname === "/api/iad/samples" && method === "GET")
+                return await call("sample_list", query);
             const samples = pathname.match(/^\/api\/iad\/samples\/([^/]+)$/);
             if (samples && method === "GET")
                 return await call("sample_list", { ...query, task_id: decodeURIComponent(samples[1]) });
@@ -181,9 +197,10 @@ export function createIadHttpHandler(bridge) {
                 return await call("sample_get", { sample_id: decodeURIComponent(sample[1]) });
             const media = pathname.match(/^\/api\/iad\/media\/sample\/([^/]+)\/(.+)\/(thumbnail|image|mask)$/);
             if (media && method === "GET") {
+                const datasetId = decodeURIComponent(media[1]);
                 const sampleId = decodeURIComponent(media[2]);
                 const operations = { thumbnail: "sample_thumbnail", image: "sample_image_path", mask: "sample_mask_path" };
-                const info = await bridge.execute(operations[media[3]], { sample_id: sampleId, ...(media[3] === "thumbnail" ? { size: Number(query.size || 240) } : {}),
+                const info = await bridge.execute(operations[media[3]], { dataset_id: datasetId, sample_id: sampleId, ...(media[3] === "thumbnail" ? { size: Number(query.size || 240) } : {}),
                     ...(media[3] === "mask" ? { annotation_id: query.annotation_id, sha256: query.sha256 } : {}) });
                 await sendMedia(res, info);
                 return;
@@ -233,7 +250,7 @@ export function createIadHttpHandler(bridge) {
                 return await call("direction_exploration_start", { request: body });
             if (pathname === "/api/iad/exploration/jobs" && method === "GET")
                 return await call("direction_exploration_list", query);
-            const exploration = pathname.match(/^\/api\/iad\/exploration\/(status|cancel|retry)\/([^/]+)$/);
+            const exploration = pathname.match(/^\/api\/iad\/exploration\/(status|cancel|retry|delete)\/([^/]+)$/);
             if (exploration && ((exploration[1] === "status" && method === "GET") || (exploration[1] !== "status" && method === "POST")))
                 return await call("direction_exploration_" + exploration[1], { run_id: decodeURIComponent(exploration[2]) });
             const explorationImage = pathname.match(/^\/api\/iad\/exploration\/evidence\/([^/]+)\/([^/]+)$/);

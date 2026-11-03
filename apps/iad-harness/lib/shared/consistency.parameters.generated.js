@@ -359,6 +359,14 @@ export const consistencyStartParameters = {
         "type": "string",
         "title": "Request Id",
         "required": true
+    },
+    "model_analysis_prompt": {
+        "type": "string",
+        "title": "Model Analysis Prompt"
+    },
+    "prompt": {
+        "type": "string",
+        "title": "Prompt"
     }
 };
 export const imageRetrieveParameters = {

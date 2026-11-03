@@ -108,3 +108,8 @@ class DirectionExploration:
 
     def retry(self, run_id: str):
         return self.jobs.retry(run_id, EXPLORATION_JOBS, self.explore, validate=self.validate)
+
+    def delete(self, run_id: str) -> dict:
+        with self.db.connection() as conn:
+            conn.execute('DELETE FROM direction_explorations WHERE run_id=?', (run_id,))
+        return self.jobs.delete(run_id, EXPLORATION_JOBS)

@@ -55,7 +55,7 @@ export function apply(ctx, config = {}) {
     catch (err) {
         ctx.logger?.warn?.(`IadRemoteService registration skipped: ${err.message}`);
     }
-    // 4. Hook DSH WebServer if present: mount /api/iad routes
+    // 4. Hook DSH WebServer if present: mount /api/iad routes and client compatibility polyfills
     if (typeof ctx.inject === "function") {
         ctx.inject(["webServer"], (serverCtx) => {
             try {
@@ -65,10 +65,45 @@ export function apply(ctx, config = {}) {
                     path: "/api/iad",
                     handler,
                 });
+                if (typeof serverCtx.webServer.tapIndex === "function") {
+                    serverCtx.webServer.tapIndex((html) => {
+                        const polyfill = `<script>(function(){if(typeof Intl==="undefined"||typeof Intl.Segmenter==="function")return;Intl.Segmenter=class{constructor(l,o){this.options=o||{}}segment(input){const s=String(input);return{[Symbol.iterator](){let i=0;return{next(){if(i<s.length){const char=s[i];const idx=i++;return{value:{segment:char,index:idx,input:s},done:false};}return{done:true};}}}}};}})();</script>`;
+                        return html.replace("<head>", `<head>${polyfill}`);
+                    });
+                }
                 ctx.logger?.info?.("IAD HTTP routes mounted on DSH WebServer (/api/iad/*)");
             }
             catch (err) {
                 ctx.logger?.warn?.(`Failed to register IAD web routes: ${err.message}`);
+            }
+        });
+        ctx.inject(["connection"], (connCtx) => {
+            try {
+                if (connCtx?.connection?.browserAuth) {
+                    const browserAuth = connCtx.connection.browserAuth;
+                    const origAuthorize = browserAuth.authorizeIndex.bind(browserAuth);
+                    browserAuth.authorizeIndex = function (req, res) {
+                        const url = new URL(req.url ?? "/", "http://dsh.invalid");
+                        const hasToken = url.searchParams.has("token");
+                        const isAuth = browserAuth.isAuthenticated(req);
+                        if (!hasToken && !isAuth && req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
+                            const token = browserAuth.launchToken;
+                            if (token) {
+                                res.writeHead(302, {
+                                    Location: `/?token=${encodeURIComponent(token)}`,
+                                    "Cache-Control": "no-store",
+                                });
+                                res.end();
+                                return false;
+                            }
+                        }
+                        return origAuthorize(req, res);
+                    };
+                    ctx.logger?.info?.("Auto-redirect for LAN browser authentication installed.");
+                }
+            }
+            catch (err) {
+                ctx.logger?.warn?.(`Failed to install auto-auth redirect: ${err.message}`);
             }
         });
     }

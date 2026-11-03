@@ -12,6 +12,7 @@ import { knowledgeStyles } from "./styles/knowledge.js";
 import { setupStyles } from "./styles/setup.js";
 import { datasetsStyles } from "./styles/datasets.js";
 import { consistencyStyles } from './styles/consistency.js';
+import { imagesStyles } from "./styles/images.js";
 export const workbenchStyles = themeStyles + controlStyles
     + modelsStyles
     + explorationStyles
@@ -24,4 +25,5 @@ export const workbenchStyles = themeStyles + controlStyles
     + knowledgeStyles
     + setupStyles
     + datasetsStyles
-    + consistencyStyles;
+    + consistencyStyles
+    + imagesStyles;

@@ -11,7 +11,7 @@ from iad_core.storage.database import Database
 class GroupQuery(AnalysisModel):
     query_id: Identifier
     page: int = Field(default=1,ge=1,strict=True)
-    page_size: int = Field(default=20,ge=1,le=100,strict=True)
+    page_size: int = Field(default=20,ge=1,le=1000,strict=True)
 
 
 class GroupMemberQuery(GroupQuery):

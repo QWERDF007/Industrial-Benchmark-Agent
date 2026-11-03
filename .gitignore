@@ -27,4 +27,6 @@ data/uploads/
 .env*
 !.env.example
 .scratch/
+.dsh/
 data/*.db
+db/

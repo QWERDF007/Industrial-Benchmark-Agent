@@ -23,7 +23,7 @@ from iad_core.workbench.query import SampleQuery, WorkbenchQuery
 from iad_core.workbench.review import HumanReview, ReviewSubmission, ReviewHistoryQuery
 from iad_core.workbench.runtime import workbench, close_workbenches
 from iad_core.exploration.operations import (direction_exploration_start, direction_exploration_status, direction_exploration_list,
-    direction_exploration_cancel, direction_exploration_retry, direction_exploration_get, direction_exploration_evidence,
+    direction_exploration_cancel, direction_exploration_delete, direction_exploration_retry, direction_exploration_get, direction_exploration_evidence,
     direction_exploration_presets, direction_exploration_preset_save)
 
 from iad_core.workbench.model_operations import (model_settings_get, model_settings_save, model_settings_view,
@@ -33,7 +33,7 @@ from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.operations import (consistency_review_context, consistency_review_submit, consistency_correction_verify, image_retrieve, temporary_image_accept,
     temporary_image_release, temporary_image_release_owner,consistency_compare,consistency_evidence,
     consistency_evidence_media,consistency_evidence_export,image_index_prepare,consistency_start,consistency_status,
-    consistency_list,consistency_cancel,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_group_analyze,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context)
+    consistency_list,consistency_cancel,consistency_delete,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_group_analyze,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context)
 
 DEFAULT_DB_PATH = os.environ.get("IAD_DB_PATH", "data/benchmark.db")
 _output_lock = threading.Lock()
@@ -64,7 +64,27 @@ def dataset_import(args, db_path):
     registry = DatasetRegistry(Database(db_path))
     req = DatasetImport.model_validate(args).root
     config = registry.import_dataset(req)
+    group_id = args.get("group_id") or getattr(req, "group_id", None)
+    if group_id:
+        with registry.db.connection() as conn:
+            conn.execute("UPDATE datasets SET group_id=? WHERE dataset_id=?", (group_id, config.dataset.id))
     return dataset_get({"dataset_id": config.dataset.id}, db_path)
+
+
+def dataset_group_list(args, db_path):
+    return {"groups": DatasetRegistry(Database(db_path)).list_groups()}
+
+
+def dataset_group_create(args, db_path):
+    return DatasetRegistry(Database(db_path)).create_group(name=args["name"], group_id=args.get("group_id"))
+
+
+def dataset_group_update(args, db_path):
+    return DatasetRegistry(Database(db_path)).update_group(group_id=args["group_id"], name=args["name"])
+
+
+def dataset_group_delete(args, db_path):
+    return DatasetRegistry(Database(db_path)).delete_group(group_id=args["group_id"])
 
 
 def dataset_preview(args, db_path):
@@ -93,6 +113,9 @@ def dataset_update(args, db_path):
             registry.reset_references(args["dataset_id"])
     if "name" in args:
         registry.rename(args["dataset_id"], args["name"])
+    if "group_id" in args:
+        with registry.db.connection() as conn:
+            conn.execute("UPDATE datasets SET group_id=? WHERE dataset_id=?", (args["group_id"], args["dataset_id"]))
     if "reference_sample_ids" in args:
         registry.set_references(args["dataset_id"], args["reference_sample_ids"])
     if "unannotated_is_normal" in args:
@@ -152,7 +175,12 @@ def sample_get(args, db_path):
 
 
 def sample_image_path(args, db_path):
-    sample = SampleRepository(Database(db_path)).get(args["sample_id"])
+    repo = SampleRepository(Database(db_path))
+    sample = repo.get(args["sample_id"])
+    if not sample and args.get("dataset_id"):
+        sample = repo.get_by_dataset_and_relative_path(args["dataset_id"], args["sample_id"])
+    if not sample and args.get("dataset_id") and not args["sample_id"].startswith(args["dataset_id"] + ":"):
+        sample = repo.get(f"{args['dataset_id']}:{args['sample_id']}")
     if not sample:
         raise LookupError("Sample not found")
     image_path = validate_sample_image_path(sample, db_path)
@@ -186,7 +214,12 @@ def sample_thumbnail(args, db_path):
 def sample_mask_path(args, db_path):
     from iad_core.evidence.masks import MaskImages
     db = Database(db_path)
-    sample = SampleRepository(db).get(args["sample_id"])
+    repo = SampleRepository(db)
+    sample = repo.get(args["sample_id"])
+    if not sample and args.get("dataset_id"):
+        sample = repo.get_by_dataset_and_relative_path(args["dataset_id"], args["sample_id"])
+    if not sample and args.get("dataset_id") and not args["sample_id"].startswith(args["dataset_id"] + ":"):
+        sample = repo.get(f"{args['dataset_id']}:{args['sample_id']}")
     if not sample:
         raise LookupError("Sample not found")
     annotation = next((item for item in AnnotationRepository(db).list_by_sample(sample.sample_id)
@@ -420,13 +453,14 @@ OPERATIONS = {handler.__name__: handler for handler in (
     consistency_review_context, consistency_review_submit, consistency_correction_verify,
     image_retrieve, temporary_image_accept, temporary_image_release, temporary_image_release_owner,
     consistency_compare,consistency_evidence,consistency_evidence_media,consistency_evidence_export,
-    image_index_prepare,consistency_start,consistency_status,consistency_list,consistency_cancel,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_group_analyze,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context,
+    image_index_prepare,consistency_start,consistency_status,consistency_list,consistency_cancel,consistency_delete,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_group_analyze,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context,
     feature_settings_view, feature_settings_save, feature_profile_create, feature_connection_check,
     model_settings_get, model_settings_save, model_settings_view, model_settings_validate, model_environment_get, model_connection_check, model_provider_validate,
     direction_exploration_presets, direction_exploration_preset_save,
     knowledge_directions_adopt, direction_exploration_start, direction_exploration_status, direction_exploration_list, direction_exploration_cancel,
-    direction_exploration_retry, direction_exploration_get, direction_exploration_evidence,
+    direction_exploration_delete, direction_exploration_retry, direction_exploration_get, direction_exploration_evidence,
     tool_call, dataset_list, dataset_get, dataset_import, dataset_preview, dataset_archive_inspect, dataset_update, dataset_scan, dataset_delete,
+    dataset_group_list, dataset_group_create, dataset_group_update, dataset_group_delete,
     sample_list, sample_get, sample_image_path, sample_thumbnail, sample_mask_path,
     review_queue, review_evidence, review_submit_decision, review_history,
     knowledge_review_context, knowledge_review_submit, knowledge_review_queue,
@@ -437,7 +471,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
 
 
 QUERY_OPERATIONS = frozenset({
-    'dataset_list', 'dataset_get', 'sample_list', 'sample_get',
+    'dataset_list', 'dataset_get', 'dataset_group_list', 'sample_list', 'sample_get',
     'sample_image_path', 'sample_thumbnail', 'sample_mask_path', 'report_get',
     'review_history', 'review_stats',
     'consistency_query', 'consistency_report', 'consistency_report_saved',

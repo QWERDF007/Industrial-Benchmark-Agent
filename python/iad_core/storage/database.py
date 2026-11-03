@@ -334,6 +334,13 @@ class Database:
                 ON job_runs(job_type,json_extract(payload_json,'$.request.dataset_id'),status,id)""")
             migrate_audit_jobs(conn)
             cursor.execute("""
+                CREATE TABLE IF NOT EXISTS dataset_groups (
+                    group_id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS datasets (
                     dataset_id TEXT PRIMARY KEY,
                     task_id TEXT NOT NULL,
@@ -344,6 +351,26 @@ class Database:
                 )
             """)
             dataset_columns = {row[1] for row in cursor.execute("PRAGMA table_info(datasets)")}
+            if "group_id" not in dataset_columns:
+                cursor.execute("ALTER TABLE datasets ADD COLUMN group_id TEXT REFERENCES dataset_groups(group_id)")
+                dataset_columns.add("group_id")
+            group_count = cursor.execute("SELECT count(*) FROM dataset_groups").fetchone()[0]
+            if group_count == 0:
+                rows = cursor.execute("SELECT dataset_id, config_json FROM datasets").fetchall()
+                if rows:
+                    cursor.execute("INSERT OR IGNORE INTO dataset_groups(group_id, name) VALUES ('group-1', '框胶大数据集')")
+                    cursor.execute("INSERT OR IGNORE INTO dataset_groups(group_id, name) VALUES ('group-2', '超节点数据集')")
+                    for ds_id, cfg_json in rows:
+                        try:
+                            import json as _json
+                            cfg = _json.loads(cfg_json)
+                            ds_name = cfg.get("dataset", {}).get("name", "")
+                            if "框胶" in ds_name:
+                                cursor.execute("UPDATE datasets SET group_id='group-1' WHERE dataset_id=?", (ds_id,))
+                            elif "超节点" in ds_name:
+                                cursor.execute("UPDATE datasets SET group_id='group-2' WHERE dataset_id=?", (ds_id,))
+                        except Exception:
+                            pass
             init_content_index_schema(conn)
             cursor.execute('''CREATE TABLE IF NOT EXISTS knowledge_prompts (
                 dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id) ON DELETE CASCADE,

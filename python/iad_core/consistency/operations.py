@@ -67,6 +67,10 @@ def consistency_cancel(args: dict,db_path: str) -> dict:
     return workbench(db_path).consistency.cancel(ConsistencyBatchReference.model_validate(args).batch_id).model_dump(mode='json')
 
 
+def consistency_delete(args: dict,db_path: str) -> dict:
+    return workbench(db_path).consistency.delete(ConsistencyBatchReference.model_validate(args).batch_id)
+
+
 def consistency_retry(args: dict,db_path: str) -> dict:
     request=ConsistencyBatchRetry.model_validate(args)
     return workbench(db_path).consistency.retry(request.batch_id,request_id=request.request_id,sample_ids=request.sample_ids).model_dump(mode='json')

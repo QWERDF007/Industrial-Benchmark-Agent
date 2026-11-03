@@ -80,6 +80,8 @@ class ConsistencyBatchProgress(AnalysisModel):
     unprocessed: Count
     pair_count: Count
     created_at: AwareDatetime
+    conflict_count: int | None = None
+    duration_seconds: int | None = None
 
     @model_validator(mode='after')
     def partition(self):

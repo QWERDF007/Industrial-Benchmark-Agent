@@ -449,3 +449,56 @@ def test_queued_exploration_freezes_prompt_and_revalidates_sources(dataset, monk
         assert len(direction_exploration_get({'dataset_id': config.dataset.id}, db.db_path)['versions']) == 2
     finally:
         release.set();runtime.close()
+
+
+def test_direction_exploration_delete_removes_completed_job_and_version(dataset, monkeypatch, model_http):
+    import json
+    import httpx
+    from iad_core.entry import (direction_exploration_start, direction_exploration_list,
+                               direction_exploration_get, direction_exploration_delete, workbench)
+
+    db, _, config = dataset
+    prefix = config.dataset.id + ':'
+
+    def respond(request):
+        if request.method == 'GET' and request.url.path.endswith('/models'):
+            return httpx.Response(200, json={'data': [{'id': 'actual-provider-model'}]})
+        body = json.loads(request.content)
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 262144})
+        content = body['messages'][0]['content']
+        ids = [json.loads(p['text'].removeprefix('视觉证据：'))['evidence_id']
+               for p in content if p['type'] == 'text' and p['text'].startswith('视觉证据：')]
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps({
+            'summary': '发现2项方向',
+            'directions': [{'title': '边缘毛刺', 'instruction': '检查边缘', 'applies_to': 'defect',
+                            'rationale': '明显毛刺', 'evidence_ids': ids, 'limitations': []}],
+            'limitations': ['光照需恒定']
+        })}}]})
+
+    model_http(respond)
+    runtime = workbench(db.db_path)
+    try:
+        job = direction_exploration_start({'request': {
+            'dataset_id': config.dataset.id,
+            'normal_images': [prefix + 'normal.png'],
+            'defect_images': [prefix + 'dent.png'],
+        }}, db.db_path)
+        runtime.jobs.wait(job['run_id'], 5)
+
+        listing = direction_exploration_list({'dataset_id': config.dataset.id}, db.db_path)
+        assert any(j['run_id'] == job['run_id'] for j in listing['jobs'])
+        catalog = direction_exploration_get({'dataset_id': config.dataset.id}, db.db_path)
+        assert len(catalog['versions']) == 1
+
+        res = direction_exploration_delete({'run_id': job['run_id']}, db.db_path)
+        assert res['deleted_run_id'] == job['run_id']
+
+        listing_after = direction_exploration_list({'dataset_id': config.dataset.id}, db.db_path)
+        assert not any(j['run_id'] == job['run_id'] for j in listing_after['jobs'])
+
+        catalog_after = direction_exploration_get({'dataset_id': config.dataset.id}, db.db_path)
+        assert len(catalog_after['versions']) == 0
+    finally:
+        runtime.close()
+

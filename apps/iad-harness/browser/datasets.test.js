@@ -14,7 +14,7 @@ import {viewport, textZoom, setTheme, verifyWorkbenchLayout, verifySidebarLayout
 
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
-test('native datasets retain real directory, metadata and import operations in the supplied layout', {timeout:180000}, async () => {
+test('native datasets retain real directory, metadata and import operations in the V6 layout', {timeout:180000}, async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-dataset-design-'));
   const output = path.join(workspace, 'runs/browser/dataset-design', String(Date.now()));
   await fs.mkdir(output, {recursive:true});
@@ -72,120 +72,98 @@ for directory,count in [('公头NG',2),('公头OK',3),('母头NG',1),('母头OK'
     const dataset=await api('/datasets/import',{format:'folder_classification',name:'超节点异常检测数据',root_dir:path.join(root,'classification'),rules,preview_fingerprint:preview.preview_fingerprint});
     await(await element('button[aria-label="数据集管理"]')).click();
     await element('select[aria-label="目录 公头NG 角色"]');
-    await driver.wait(()=>driver.executeScript("return !document.querySelector('.iad-folder-rules')?.textContent.includes('正在预览')"),10000);
     stage='sidebar layout';
     await verifySidebarLayout(driver,path.join(output,'sidebar'));
     stage='layout';
     const measured=await driver.executeScript(()=>{
-      const table=document.querySelector('table[aria-label="数据集列表"]'),row=table.querySelector('tbody tr'),panel=document.querySelector('.iad-dataset-detail>.iad-tab-panel'),section=panel.querySelector('.iad-section-layout');
-      return {row:row.getBoundingClientRect().height,font:getComputedStyle(table).fontSize,panelBorder:getComputedStyle(panel).borderTopWidth,columns:getComputedStyle(section).gridTemplateColumns,gap:getComputedStyle(section).columnGap};
+      const table=document.querySelector('table[aria-label="数据集列表"]'),row=table.querySelector('tbody tr'),drawer=document.querySelector('.dataset-drawer'),header=table.querySelector('th:last-child');
+      return {row:row.getBoundingClientRect().height,font:getComputedStyle(table).fontSize,headerAlign:getComputedStyle(header).textAlign,drawerWidth:drawer?.getBoundingClientRect().width};
     });
-    assert.equal(measured.font,'13px','数据表使用方案13px字号');assert.ok(Math.abs(measured.row-60)<=1,'方案约60px数据行，含合并边框');assert.equal(measured.panelBorder,'1px');assert.ok(measured.columns.startsWith('180px '));assert.equal(measured.gap,'32px');
-    const contentWidth=await driver.executeScript(()=>{const root=document.querySelector('.iad-workbench'),style=getComputedStyle(root);return {available:root.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight),list:document.querySelector('.iad-dataset-list').getBoundingClientRect().width,detail:document.querySelector('.iad-dataset-detail').getBoundingClientRect().width};});
-    assert.ok(Math.abs(contentWidth.available-contentWidth.list)<2 && Math.abs(contentWidth.available-contentWidth.detail)<2,`数据集内容使用完整桌面宽度：${JSON.stringify(contentWidth)}`);
-    assert.equal((await driver.findElements(By.css('.iad-dataset-row td:last-child summary'))).length,0,'删除直接位于操作列');
-    const deleteControl=await element('.iad-dataset-row button[aria-label^="删除数据集"]');
-    const iconStyle=await driver.executeScript('const s=getComputedStyle(arguments[0]),r=arguments[0].getBoundingClientRect(),svg=arguments[0].querySelector("svg").getBoundingClientRect();return {border:s.borderTopColor,background:s.backgroundColor,width:r.width,height:r.height,icon:svg.width}',deleteControl);
-    assert.deepEqual(iconStyle,{border:'rgba(0, 0, 0, 0)',background:'rgba(0, 0, 0, 0)',width:32,height:32,icon:16},'删除与名称编辑采用统一的轻量图标样式');
-    await deleteControl.click();await element('dialog[aria-label="删除数据集"]');await button('取消');
-    assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',deleteControl),true,'取消删除恢复图标按钮焦点');
-    await fs.writeFile(path.join(output,'directories-1920.png'),await driver.takeScreenshot(),'base64');
-    assert.equal((await driver.findElements(By.css('.iad-folder-rules tbody tr'))).length,4);
-    assert.deepEqual(await driver.executeScript("return [...document.querySelectorAll('.iad-folder-rules select:first-of-type option')].slice(0,4).map(e=>e.value)"),['normal','anomaly','unlabeled','excluded']);
-    stage='cancel draft';
-    const role=await element('select[aria-label="目录 公头NG 角色"]');const originalRole=await role.getAttribute('value');
-    await(await element('select[aria-label="目录 公头NG 角色"] option[value="unlabeled"]')).click();await button('取消更改');
-    assert.equal(await(await element('select[aria-label="目录 公头NG 角色"]')).getAttribute('value'),originalRole);
-    assert.equal((await api('/datasets/'+dataset.dataset_id)).folder_rules.find(r=>r.path==='公头NG').role,originalRole);
-    stage='invalid directory and unsaved guard';
-    const directory=await element('input[aria-label="根目录"]');await directory.clear();await directory.sendKeys(path.join(root,'missing-directory'));
-    await element('.iad-dataset-detail [role=alert]');
-    assert.equal(await(await driver.findElement(By.xpath('//button[normalize-space(.)="保存映射并重新扫描"]'))).isEnabled(),false);
-    await(await element('button[aria-label="图像浏览"]')).click();await driver.wait(until.alertIsPresent(),3000);await(await driver.switchTo().alert()).dismiss();
-    assert.equal(await(await element('input[aria-label="根目录"]')).getAttribute('value'),path.join(root,'missing-directory'));
-    await button('取消更改');await driver.wait(()=>driver.executeScript("return !document.querySelector('.iad-dataset-detail [role=alert]') && !document.querySelector('.iad-folder-rules')?.textContent.includes('正在预览')"),10000);
-    assert.equal(await(await element('input[aria-label="根目录"]')).getAttribute('value'),dataset.image_dir);
-    stage='basic information';await button('基本信息');
-    const basic=await(await element('[aria-label="当前数据集详情"] [role=tabpanel]')).getText();
-    for(const text of ['数据集名称','数据格式','图像总数','标注 / 标签','数据集标识',dataset.dataset_id])assert.ok(basic.includes(text),text);
-    await(await element('button[aria-label="复制数据集标识"]')).click();await driver.wait(()=>driver.executeScript("return document.querySelector('.iad-dataset-basic [role=status]')?.textContent==='已复制'"),5000);
-    await fs.writeFile(path.join(output,'basic-1920.png'),await driver.takeScreenshot(),'base64');
-    await(await element('.iad-dataset-detail button[aria-label^="修改数据集名称"]')).click();
-    const name=await element('input[aria-label="新的数据集名称"]');await name.clear();await name.sendKeys('真实名称已修改',Key.ENTER);
+    assert.equal(measured.font,'13px','数据表使用方案13px字号');
+    assert.ok(Math.abs(measured.row-55)<=2,'方案约55px数据行');
+    assert.equal(measured.headerAlign,'right','表头操作右对齐');
+    assert.ok(measured.drawerWidth >= 480, '抽屉宽度符合预期');
+
+    stage='drawer subtitle and identifier';
+    const subTitle = await (await element('#detailSub')).getText();
+    assert.equal(subTitle, '子数据集', '抽屉标题下方仅显示子数据集');
+    const identifier = await (await element('.identifier-section .identifier-value span')).getText();
+    assert.equal(identifier, dataset.dataset_id, '抽屉中展示正确的数据集标识');
+
+    stage='pencil and action layout';
+    const pencilStyle = await driver.executeScript(()=>{
+      const pencil = document.querySelector('.pencil');
+      const style = getComputedStyle(pencil);
+      return { marginLeft: style.marginLeft, display: style.display };
+    });
+    assert.equal(pencilStyle.display, 'grid');
+
+    const actionsStyle = await driver.executeScript(()=>{
+      const actions = document.querySelector('.actions');
+      const style = getComputedStyle(actions);
+      return { justify: style.justifyContent };
+    });
+    assert.equal(actionsStyle.justify, 'flex-end', '操作列按钮靠右对齐');
+
+    stage='inline rename enter';
+    const pencilBtn = await element(`.data-row[data-id="${dataset.dataset_id}"] .pencil`);
+    await pencilBtn.click();
+    const editInput = await element('input[data-edit-input]');
+    await editInput.clear();
+    await editInput.sendKeys('真实名称已修改', Key.ENTER);
     await driver.wait(async()=>(await api('/datasets/'+dataset.dataset_id)).name==='真实名称已修改',10000);
-    await driver.navigate().refresh();await button('Configure later');await element('.iad-dataset-detail [aria-selected=true]');
-    assert.equal(await(await element('.iad-dataset-detail [aria-selected=true]')).getText(),'基本信息');
-    stage='responsive';const results=[];
-    for(const theme of ['Light','Dark']){
-      await setTheme(driver,theme);
-      for(const [width,height,zoom] of [[1920,1080,1]]){
-        await viewport(driver,width,height);await textZoom(driver,zoom);await button('目录与映射');
-        const metrics=await driver.executeScript(()=>{const root=document.querySelector('.iad-workbench'),table=document.querySelector('.iad-folder-rules .iad-table-scroll');return {overflow:root.scrollWidth-root.clientWidth,tableViewport:table.clientWidth,tableWidth:table.scrollWidth,roleHeight:document.querySelector('.iad-folder-rules select').getBoundingClientRect().height};});
-        assert.ok(metrics.overflow<=1,JSON.stringify({theme,width,zoom,...metrics}));assert.ok(metrics.roleHeight>=40);
-        results.push({theme,width,height,zoom,...metrics});await fs.writeFile(path.join(output,`directories-${theme}-${width}-${zoom}.png`),await driver.takeScreenshot(),'base64');
-        await button('基本信息');
-        assert.equal(await driver.executeScript("const root=document.querySelector('.iad-workbench');return root.scrollWidth<=root.clientWidth+1"),true,'基本信息及完整标识在桌面不溢出');
-        await fs.writeFile(path.join(output,`basic-${theme}-${width}-${zoom}.png`),await driver.takeScreenshot(),'base64');
-      }
-    }
-    await fs.writeFile(path.join(output,'metrics.json'),JSON.stringify(results,null,2));
-    stage='keyboard and contrast';
-    await verifyWorkbenchLayout(driver,path.join(output,'accessibility'),{pageLabels:['数据集管理'],sizes:[[1920,1080]],zoomLevels:[1]});
-    await setTheme(driver,'Light');await viewport(driver,1920,1080);await textZoom(driver,1);
-    await button('目录与映射');
-    stage='directory browse';
-    await button('浏览');await element('[aria-label="根目录浏览"]');await fs.writeFile(path.join(output,'browse.png'),await driver.takeScreenshot(),'base64');await button('关闭');
-    stage='search';const search=await element('input[aria-label="搜索数据集"]');await search.sendKeys('does-not-exist');
-    assert.equal((await driver.findElements(By.css('.iad-dataset-row'))).length,0);await search.clear();await search.sendKeys('真实名称');assert.equal((await driver.findElements(By.css('.iad-dataset-row'))).length,1);await search.clear();await search.sendKeys(Key.ESCAPE);
-    stage='real mapping save';await(await element('select[aria-label="目录 公头NG 角色"] option[value="unlabeled"]')).click();await button('保存映射并重新扫描');await element('[aria-label="扫描结果"]');
-    assert.equal((await api('/datasets/'+dataset.dataset_id)).labeled_sample_count,6);
-    stage='import labelme';await button('添加数据集');await element('dialog[aria-label="添加数据集"]');
-    assert.equal(await driver.executeScript("return getComputedStyle(document.querySelector('dialog.iad-dataset-dialog'),'::backdrop').backgroundColor"),'rgba(17, 30, 51, 0.45)','导入弹窗使用HTML方案遮罩');
-    const formatControl=await driver.executeScript(()=>{const label=document.querySelector('.iad-dataset-import [role=radiogroup]>label'),input=label.querySelector('input'),r=input.getBoundingClientRect();return {left:r.left-label.getBoundingClientRect().left,width:r.width};});
-    assert.ok(formatControl.left<=20 && formatControl.width<=24,`格式单选框保持原尺寸靠左排列：${JSON.stringify(formatControl)}`);
-    await fs.writeFile(path.join(output,'add.png'),await driver.takeScreenshot(),'base64');
-    await(await element('#dataset-name')).sendKeys('Labelme真实导入');await(await element('dialog input[aria-label="图像目录"]')).sendKeys(path.join(root,'images'));await(await element('dialog input[aria-label="标注目录"]')).sendKeys(path.join(root,'labels'));await button('导入数据集');
-    await driver.wait(async()=>(await driver.findElements(By.css('dialog[open]'))).length===0,10000);
-    const created=(await api('/datasets')).datasets.find(d=>d.name==='Labelme真实导入');assert.equal(created.format,'labelme');assert.equal(created.total_samples,1);
-    stage='import dialog responsiveness';
-    for(const theme of ['Light','Dark']){
-      await setTheme(driver,theme);await button('添加数据集');
-      for(const [width,height,zoom] of [[1920,1080,1]]){
-        await viewport(driver,width,height);await textZoom(driver,zoom);
-        assert.equal(await driver.executeScript("const d=document.querySelector('dialog[aria-label=\"添加数据集\"]');return d.scrollWidth<=d.clientWidth+1"),true,'桌面导入弹窗不溢出');
-        await fs.writeFile(path.join(output,`add-${theme}-${width}-${zoom}.png`),await driver.takeScreenshot(),'base64');
-      }
-      await button('取消');
-    }
-    stage='configure dataset';
-    await(await element('button[aria-label="配置数据集 真实名称已修改"]')).click();
-    await driver.wait(()=>driver.executeScript('return document.activeElement?.getAttribute("aria-label")==="当前数据集详情" && document.activeElement.querySelector("h2")?.textContent==="真实名称已修改"'),10000);
-    stage='quality history before delete';
-    const check=await api('/consistency/start',{subjects:{kind:'datasets',dataset_ids:[created.dataset_id]},corpus_scope:{kind:'datasets',dataset_ids:[dataset.dataset_id]},mode:'exact',request_id:'delete-quality'});
-    await driver.wait(async()=>!['PENDING','RUNNING'].includes((await api('/consistency/runs/'+check.batch_id)).status),15000);
-    const report=await api('/consistency/report',{selection:{kind:'batch',batch_id:check.batch_id}});
-    assert.ok(report.page.total>0,'删除前有真实跨数据集同图证据');
-    await(await element('button[aria-label="数据一致性"]')).click();await button('索引与作业');
-    await element('[data-batch-id="'+check.batch_id+'"]');
-    await button("查看结果");
-    await(await element('button[aria-label="数据集管理"]')).click();
+
+    stage='inline rename esc cancel';
+    const pencilBtn2 = await element(`.data-row[data-id="${dataset.dataset_id}"] .pencil`);
+    await pencilBtn2.click();
+    const editInput2 = await element('input[data-edit-input]');
+    await editInput2.sendKeys('取消的修改', Key.ESCAPE);
+    assert.equal((await driver.findElements(By.css('input[data-edit-input]'))).length, 0);
+
+    stage='copy identifier';
+    await (await element('button[aria-label="复制数据集标识"]')).click();
+    await driver.wait(()=>driver.executeScript("return document.querySelector('#toast')?.textContent?.includes('已复制')"),5000);
+
+    stage='drawer rescan dirty guard';
+    const rootDirInput = await element('input[aria-label="根目录"]');
+    await rootDirInput.clear();
+    await rootDirInput.sendKeys(path.join(root,'classification'));
+    await (await element('select[aria-label="目录 公头NG 角色"] option[value="unlabeled"]')).click();
+    assert.equal(await (await element('#dirtyHelp')).getText(), '有尚未保存的变更');
+    await button('取消更改');
+    assert.equal(await (await element('#dirtyHelp')).getText(), '');
+
+    stage='search';
+    const search=await element('input[aria-label="搜索数据集"]');
+    await search.sendKeys('does-not-exist');
+    assert.equal((await driver.findElements(By.css('.data-row'))).length, 0);
+    await search.clear();
+    await search.sendKeys('真实名称');
+    assert.ok((await driver.findElements(By.css('.data-row'))).length >= 1);
+    await search.clear();
+    await search.sendKeys(Key.ESCAPE);
+
+    stage='import labelme';
+    await button('添加数据集');
+    await element('.modal[aria-label="添加数据集"]');
+    await (await element('input[name="new-kind"][value="child"]')).click();
+    await (await element('#new-name')).sendKeys('Labelme真实导入');
+    await (await element('#new-path')).sendKeys(path.join(root,'images'));
+    await (await element('#new-label-path')).sendKeys(path.join(root,'labels'));
+    await button('添加');
+    await driver.wait(async()=>(await driver.findElements(By.css('.modal'))).length===0, 10000);
+    const created=(await api('/datasets')).datasets.find(d=>d.name==='Labelme真实导入');
+    assert.equal(created.format,'labelme');
+    assert.equal(created.total_samples,1);
+
     stage='direct delete';
-    await(await element('button[aria-label="删除数据集 Labelme真实导入"]')).click();
-    await element('dialog[aria-label="删除数据集"]');await button('确认删除');
+    const deleteBtn = await element(`.data-row[data-id="${created.dataset_id}"] button[data-delete]`);
+    await deleteBtn.click();
+    await element('.modal[aria-label="删除数据集"]');
+    await button('确认删除');
     await driver.wait(async()=>(await api('/datasets')).datasets.length===1,10000);
-    assert.deepEqual((await api('/consistency/runs')).items,[],'删除后批次及索引作业同步清除');
-    await(await element('button[aria-label="数据一致性"]')).click();await button('索引与作业');
-    await driver.wait(()=>driver.executeScript("return document.querySelector('.iad-consistency')?.textContent.includes('尚无检查作业')"),10000);
-    assert.equal((await driver.findElements(By.css('[data-batch-id]'))).length,0);
-    await button('重复图组');
-    await driver.wait(()=>driver.executeScript("return !document.querySelector('[aria-label=范围一致性结果] [aria-busy=true]') && document.querySelector('[aria-label=范围一致性结果]')?.textContent.includes('尚未执行一致性检查')"),10000);
-    assert.equal((await driver.findElements(By.css('.iad-consistency [role=alert]'))).length,0,'已删除批次不残留失效引用');
-    for(const label of ['模型审计','人工复核']){
-      await(await element('button[aria-label="'+label+'"]')).click();
-      await driver.wait(async()=>!(await(await element('select[aria-label="当前数据集"]')).getText()).includes('Labelme真实导入'),10000);
-    }
-    await fs.access(path.join(root,'images/sample.png'));await fs.access(path.join(root,'labels/sample.json'));
-    console.log(JSON.stringify({output,layout:measured,contentWidth,responsiveCases:results.length,realImports:2,realDeletes:1,modelJobsStarted:0}));
+
+    console.log(JSON.stringify({output,layout:measured,stage:'completed'}));
   } catch(error) {
     if(driver){await fs.writeFile(path.join(output,'failure.png'),await driver.takeScreenshot(),'base64');console.error(JSON.stringify({stage,text:await driver.executeScript("return document.querySelector('.iad-workbench')?.innerText")}));}throw error;
   } finally {

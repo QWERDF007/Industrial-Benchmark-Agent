@@ -497,3 +497,28 @@ def test_eighty_identical_members_reuse_pixel_proof_without_losing_last_annotati
         assert 1<=comparisons<=80,f'Full pixel comparisons: {comparisons}'
         print(json.dumps({'samples':state.total,'pair_results':state.pair_count,'last_member_conflicts':conflicts.total,'full_pixel_comparisons':comparisons}))
     finally:runtime.close();threading.setprofile(previous)
+
+
+def test_consistency_batch_summary_conflict_count_and_duration_seconds(dataset):
+    db, _, config = dataset
+    runtime = WorkbenchRuntime(db)
+    try:
+        request = ConsistencyStart(subjects={'kind': 'all_registered'}, mode='exact', request_id='v39-metrics-test')
+        started = runtime.consistency.start(request)
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            batch = runtime.consistency.status(started.batch_id)
+            if batch.status not in ('PENDING', 'RUNNING'):
+                break
+            time.sleep(.01)
+        assert batch.status == 'COMPLETED'
+        assert batch.conflict_count == 1
+        assert isinstance(batch.duration_seconds, int) and batch.duration_seconds >= 0
+
+        catalog = runtime.consistency.list().model_dump(mode='json')
+        listed = next(item for item in catalog['items'] if item['batch_id'] == started.batch_id)
+        assert listed['conflict_count'] == 1
+        assert isinstance(listed['duration_seconds'], int) and listed['duration_seconds'] >= 0
+    finally:
+        runtime.close()
+

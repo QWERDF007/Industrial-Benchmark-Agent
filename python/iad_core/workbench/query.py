@@ -39,15 +39,37 @@ class SampleFilters(BaseModel):
 
 class SampleQuery(SampleFilters):
     dataset_id: Optional[str] = None
+    dataset_ids: Optional[List[str]] = Field(default_factory=list)
     task_id: Optional[str] = None
     page: int = Field(1, ge=1)
     page_size: int = Field(24, ge=1, le=200)
 
+    @field_validator("dataset_ids", mode="before")
+    @classmethod
+    def normalize_dataset_ids(cls, v):
+        if not v:
+            return []
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return []
+            if v.startswith("[") and v.endswith("]"):
+                try:
+                    parsed = json.loads(v)
+                    if isinstance(parsed, list):
+                        return [str(x) for x in parsed if x]
+                except Exception:
+                    pass
+            return [x.strip() for x in v.split(",") if x.strip()]
+        if isinstance(v, (list, tuple, set)):
+            return [str(x) for x in v if x]
+        return []
+
     @model_validator(mode="after")
     def require_query_scope(self):
-        if not self.dataset_id and not self.task_id:
-            raise ValueError("dataset_id or task_id is required")
-        if self.reference_status != "all" and not self.dataset_id:
+        if not self.dataset_id and not self.task_id and not self.dataset_ids:
+            raise ValueError("dataset_id, dataset_ids or task_id is required")
+        if self.reference_status != "all" and not self.dataset_id and not self.dataset_ids:
             raise ValueError("Reference filters require dataset_id")
         return self
 
@@ -96,7 +118,10 @@ class WorkbenchQuery:
 
     def selection(self, query: SampleQuery, connection=None) -> tuple[str, list, str]:
         clauses, params = [], []
-        if query.dataset_id:
+        if query.dataset_ids:
+            clauses.append("dataset_id IN (SELECT value FROM json_each(?))")
+            params.append(json.dumps(query.dataset_ids))
+        elif query.dataset_id:
             clauses.append("dataset_id=?")
             params.append(query.dataset_id)
         if query.task_id:
@@ -135,7 +160,14 @@ class WorkbenchQuery:
         if query.technical == "issues":
             clauses.append("technical_quality_score<70")
         if query.reference_status != "all":
-            references = DatasetRegistry(self.db).references(query.dataset_id, limit=None, connection=connection)
+            if query.dataset_id:
+                references = DatasetRegistry(self.db).references(query.dataset_id, limit=None, connection=connection)
+            elif query.dataset_ids:
+                references = []
+                for ds_id in query.dataset_ids:
+                    references.extend(DatasetRegistry(self.db).references(ds_id, limit=None, connection=connection))
+            else:
+                references = []
             clauses.append("sample_id " + ("NOT IN" if query.reference_status == "excluded" else "IN") + " (SELECT value FROM json_each(?))")
             params.append(json.dumps(references))
         if query.search:
@@ -223,9 +255,12 @@ class WorkbenchQuery:
                 annotation_counts = conn.execute("SELECT a.raw_label,count(*) FROM annotations a JOIN samples s ON s.sample_id=a.sample_id WHERE s.dataset_id=? AND s.is_excluded=0 GROUP BY a.raw_label ORDER BY a.raw_label", (dataset_id,)).fetchall()
                 feature_count = conn.execute("SELECT count(DISTINCT f.sample_id) FROM sample_features f JOIN samples s ON s.sample_id=f.sample_id WHERE s.dataset_id=? AND s.is_excluded=0 AND f.view_key='full' AND f.profile_id=(SELECT profile_id FROM workbench_image_settings WHERE id=1)", (dataset_id,)).fetchone()[0]
                 explicit_labels = conn.execute("SELECT count(*) FROM samples WHERE dataset_id=? AND is_excluded=0 AND quality_status IN ('PASS', 'FAIL')", (dataset_id,)).fetchone()[0]
-                selected = conn.execute("SELECT reference_selection_set FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()[0]
+                row = conn.execute("SELECT reference_selection_set, group_id FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()
+                selected = row[0] if row else 0
+                group_id = row[1] if row and len(row) > 1 else None
             items.append({**report, "dataset_id": dataset_id, "name": config.dataset.name or dataset_id,
                           "format": config.dataset.format,
+                          "group_id": group_id,
                           "task_name": config.task.name or config.task.product or config.task.task_id,
                           "product": config.task.product, "image_dir": config.root, "annotation_dir": config.annotations.root,
                           "annotation_categories": [row[0] for row in annotation_counts], "annotation_count": sum(row[1] for row in annotation_counts),
@@ -236,4 +271,4 @@ class WorkbenchQuery:
                           "unannotated_is_normal": config.dataset.unannotated_is_normal,
                           "annotation_policy": config.annotations.model_dump(include=set(AnnotationPolicy.model_fields)),
                           "feature_coverage_pct": round(100 * feature_count / report["total_samples"], 2) if report["total_samples"] else 0})
-        return {"datasets": items}
+        return {"datasets": items, "groups": registry.list_groups()}

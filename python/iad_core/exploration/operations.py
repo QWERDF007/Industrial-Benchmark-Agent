@@ -21,6 +21,10 @@ def direction_exploration_cancel(args, db_path):
     return workbench(db_path).jobs.cancel(args['run_id'], ('DIRECTION_EXPLORATION',))
 
 
+def direction_exploration_delete(args, db_path):
+    return workbench(db_path).exploration.delete(args['run_id'])
+
+
 def direction_exploration_retry(args, db_path):
     return workbench(db_path).invoke_model(args.get('_model_execution'),
         lambda services: services.exploration.retry(args['run_id']), args['run_id'])

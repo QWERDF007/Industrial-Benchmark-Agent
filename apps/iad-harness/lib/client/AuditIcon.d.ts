@@ -1,6 +1,8 @@
 import React from "react";
 export declare function EditIcon(): React.JSX.Element;
-export declare function RefreshIcon(): React.JSX.Element;
+export declare function RefreshIcon({ size }?: {
+    size?: number;
+}): React.JSX.Element;
 export declare function CopyIcon(): React.JSX.Element;
 export declare function DeleteIcon(): React.JSX.Element;
 export declare function CloseIcon(): React.JSX.Element;
@@ -23,6 +25,42 @@ export declare function ExplorationIcon({ size }: {
     size?: number;
 }): React.JSX.Element;
 export declare function ModelSettingsIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
+export declare function ChevronIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
+export declare function PlusIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
+export declare function EyeIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
+export declare function DocumentIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
+export declare function MineIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
+export declare function StatsIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
+export declare function FilterIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
+export declare function VerdictConflictIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
+export declare function VerdictNoConflictIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
+export declare function VerdictRetainedIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
+export declare function VerdictExcludedIcon({ size }: {
+    size?: number;
+}): React.JSX.Element;
+export declare function VerdictUncertainIcon({ size }: {
     size?: number;
 }): React.JSX.Element;
 //# sourceMappingURL=AuditIcon.d.ts.map

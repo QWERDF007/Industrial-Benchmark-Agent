@@ -1,7 +1,7 @@
 import {IconButton} from "./components/IconButton.js";
 import {RefreshIcon} from "./AuditIcon.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import type { Dataset, Filters, ReviewDecisionRecord, SamplePage } from "../shared/contracts.js";
+import type { Dataset, DatasetGroup, Filters, ReviewDecisionRecord, SamplePage } from "../shared/contracts.js";
 import { initialReviewFilters, message, request, reviewLabel, sampleQuery } from "./api.js";
 import { DatasetManager } from "./components/DatasetManager.js";
 import { SampleFilters } from "./components/SampleFilters.js";
@@ -22,6 +22,7 @@ import { useSampleNavigation, type SampleWindow } from "./useSampleNavigation.js
 import { usePagePosition } from "./usePagePosition.js";
 import {PageTabs} from "./components/layout/PageTabs.js";
 import {WorkbenchHeader} from './components/layout/WorkbenchHeader.js';
+import { ImagesPage } from "./components/ImagesPage.js";
 
 export function WorkbenchPage({ pageId }: { pageId: PageId }) {
   const { workspace, state } = useWorkspace();
@@ -30,6 +31,7 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
   const [auditDetailOpen, setAuditDetailOpen] = useState(false);
   const [auditWidth, setAuditWidth] = useState<number | null>(null);
   const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [groups, setGroups] = useState<DatasetGroup[]>([]);
   const [result, setResult] = useState<SampleWindow>({ query: "", items: [], total: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -39,9 +41,10 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
   const dataset = datasets.find(d => d.dataset_id === datasetId);
   const loadDatasets = useCallback(async (preferred?: string, signal?: AbortSignal) => {
     try {
-      const result = await request<{ datasets: Dataset[] }>("/datasets", undefined, undefined, signal);
+      const result = await request<{ datasets: Dataset[]; groups?: DatasetGroup[] }>("/datasets", undefined, undefined, signal);
       if (signal?.aborted) return;
       setDatasets(result.datasets);
+      if (result.groups) setGroups(result.groups);
       const current = workspace.getSnapshot().datasetId;
       workspace.selectDataset(preferred || (result.datasets.some(d => d.dataset_id === current) ? current : result.datasets[0]?.dataset_id || ""), true);
       setError("");
@@ -98,19 +101,20 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
   const inspector = dataset && <SampleInspector key={pageId === "industrial-review" && view.tab === "results" ? datasetId : `${datasetId}:${inspectedSample}`} dataset={dataset} sampleId={inspectedSample} mode={pageId === "industrial-review" ? "review" : pageId === "industrial-images" ? "browse" : "model"} queue={pageId === "industrial-review" && view.tab === "results" ? grid : undefined} filters={<SampleFilters defaults={initialReviewFilters} dataset={dataset} filters={view.filters} onFilters={updateFilters} />} advanceOnSubmit={view.tab === "results" && view.filters.review_status === "pending"} panel={pageId === "industrial-audit" ? {presentation: auditWidth === null ? "closed" : auditModalOpen ? "modal" : auditCompact ? "closed" : "inline", onOpen: setAuditDetailOpen,
     onClose: () => {setAuditDetailOpen(false);workspace.updateView(pageId,{inspection:null},true);}, restoreFocus: () => surface.current?.querySelector<HTMLElement>(`.iad-sample[data-sample-id="${CSS.escape(view.selected)}"]`) || null} : undefined} revision={revision} onReviewed={reviewed} jobs={audit.jobs} onJobsChanged={audit.refresh} navigation={gallery ? navigation : undefined} />;
 
-  const datasetControls = <><select aria-label="当前数据集" value={datasetId} onChange={event => workspace.selectDataset(event.target.value)}><option value="" disabled>选择数据集</option>{datasets.map(item => <option key={item.dataset_id} value={item.dataset_id}>{item.name} ({item.total_samples})</option>)}</select><IconButton label="刷新" onClick={changed}><RefreshIcon /></IconButton></>;
+  const datasetControls = <><select aria-label="当前数据集" value={datasetId} onChange={event => workspace.selectDataset(event.target.value)}><option value="" disabled>选择数据集</option>{datasets.map(item => <option key={item.dataset_id} value={item.dataset_id}>{item.name}</option>)}</select><IconButton label="刷新" onClick={changed}><RefreshIcon /></IconButton></>;
 
   return <div ref={surface} className="iad-workbench" data-page={pageId}><style>{workbenchStyles}</style>
-    {pageId !== "industrial-datasets" && (!dataset || (pageId !== "industrial-exploration" && pageId !== "industrial-knowledge")) && <WorkbenchHeader pageId={pageId}>
+    {pageId !== "industrial-datasets" && pageId !== "industrial-images" && (!dataset || (pageId !== "industrial-exploration" && pageId !== "industrial-knowledge")) && <WorkbenchHeader pageId={pageId}>
       {datasetControls}{pageId === "industrial-audit" && <button className="iad-primary" disabled={!dataset} onClick={() => setAuditSetupOpen(true)}>新建审计</button>}
     </WorkbenchHeader>}
     {(error || audit.error) && <p role="alert" className="iad-error">{error || audit.error}</p>}
     {pageId === "industrial-datasets" ? <>
-      <DatasetManager datasets={datasets} selected={dataset} onChanged={id => { void loadDatasets(id); setRevision(v => v + 1); }} />
+      <DatasetManager datasets={datasets} groups={groups} onChanged={id => { void loadDatasets(id); setRevision(v => v + 1); }} />
+    </> : pageId === "industrial-images" ? <>
+      <ImagesPage datasets={datasets} groups={groups} onDatasetsChanged={() => void loadDatasets()} />
     </> : !dataset ? <section className="iad-job-section"><p>请先添加服务器上的数据集。</p><button onClick={() => workspace.navigate("industrial-datasets")}>前往数据集管理</button></section> : <>
       {pageId === "industrial-exploration" && <ExplorationPage key={datasetId} dataset={dataset} refreshRevision={revision} headerActions={datasetControls} />}
       {pageId === "industrial-knowledge" && <KnowledgePage key={`${datasetId}:${state.knowledgeKind}`} dataset={dataset} kind={state.knowledgeKind} refreshRevision={revision} headerActions={datasetControls} />}
-      {pageId === "industrial-images" && <PageTabs label="图像视图" items={[{id:"results",label:"全部图像"},{id:"sources",label:"良品来源"}]} value={view.tab} onChange={tab=>workspace.updateView(pageId,{tab,selected:""})}><div className="iad-browse">{grid}</div>{view.selected && <Modal title="图像详情" restoreFocus={() => surface.current?.querySelector<HTMLElement>(`.iad-sample[data-sample-id="${CSS.escape(view.selected)}"]`) || null} onClose={() => workspace.updateView(pageId, { selected: "" })}>{inspector}</Modal>}</PageTabs>}
       {pageId === "industrial-audit" && <>
         <PageTabs label="审计视图" items={[{id:"results",label:"结果"},{id:"jobs",label:"模型审计作业"},{id:"reports",label:"报告"}]} value={view.tab} onChange={tab => workspace.updateView(pageId,{tab})}>
           {view.tab !== "jobs" && audit.jobs.some(job => ["RUNNING","PENDING"].includes(job.status)) && <p role="status"><button onClick={() => workspace.updateView(pageId,{tab:"jobs"})}>查看执行中的审计作业</button></p>}

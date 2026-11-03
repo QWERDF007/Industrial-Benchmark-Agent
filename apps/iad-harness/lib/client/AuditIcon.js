@@ -2,8 +2,8 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 export function EditIcon() {
     return _jsx("svg", { "aria-hidden": "true", width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", children: _jsx("path", { d: "m16 3 5 5L8 21H3v-5L16 3Z M13 6l5 5" }) });
 }
-export function RefreshIcon() {
-    return _jsx("svg", { "aria-hidden": "true", width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", children: _jsx("path", { d: "M20 11a8 8 0 0 0-14-5L3 9m0-6v6h6M4 13a8 8 0 0 0 14 5l3-3m0 6v-6h-6" }) });
+export function RefreshIcon({ size = 16 } = {}) {
+    return _jsx("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", children: _jsx("path", { d: "M20 11a8 8 0 0 0-14-5L3 9m0-6v6h6M4 13a8 8 0 0 0 14 5l3-3m0 6v-6h-6" }) });
 }
 export function CopyIcon() {
     return _jsxs("svg", { "aria-hidden": "true", width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinejoin: "round", children: [_jsx("rect", { x: "8", y: "8", width: "12", height: "13", rx: "2" }), _jsx("path", { d: "M16 8V3H3v13h5" })] });
@@ -34,4 +34,40 @@ export function ExplorationIcon({ size = 20 }) {
 }
 export function ModelSettingsIcon({ size = 20 }) {
     return _jsxs("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", children: [_jsx("path", { d: "M4 6h16M4 12h16M4 18h16" }), _jsx("circle", { cx: "9", cy: "6", r: "2", fill: "var(--iad-surface,currentColor)" }), _jsx("circle", { cx: "15", cy: "12", r: "2", fill: "var(--iad-surface,currentColor)" }), _jsx("circle", { cx: "9", cy: "18", r: "2", fill: "var(--iad-surface,currentColor)" })] });
+}
+export function ChevronIcon({ size = 16 }) {
+    return _jsx("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: _jsx("path", { d: "m6 9 6 6 6-6" }) });
+}
+export function PlusIcon({ size = 16 }) {
+    return _jsx("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", children: _jsx("path", { d: "M12 5v14M5 12h14" }) });
+}
+export function EyeIcon({ size = 18 }) {
+    return (_jsxs("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", children: [_jsx("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" }), _jsx("circle", { cx: "12", cy: "12", r: "3" })] }));
+}
+export function DocumentIcon({ size = 18 }) {
+    return (_jsxs("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.75", strokeLinecap: "round", strokeLinejoin: "round", children: [_jsx("path", { d: "M7 3h7l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" }), _jsx("path", { d: "M14 3v5h5M9 12h6M9 16h6" })] }));
+}
+export function MineIcon({ size = 20 }) {
+    return (_jsxs("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", children: [_jsx("path", { d: "M12 6c-2.4-2-5.5-2.4-9-2v15c3.5-.5 6.5.2 9 2 2.5-1.8 5.5-2.5 9-2V4c-3.5-.4-6.6 0-9 2Z" }), _jsx("path", { d: "M12 6v15" })] }));
+}
+export function StatsIcon({ size = 17 }) {
+    return (_jsx("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", children: _jsx("path", { d: "M18 20V10M12 20V4M6 20v-6" }) }));
+}
+export function FilterIcon({ size = 17 }) {
+    return (_jsx("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", children: _jsx("path", { d: "M4 7h16M7 12h10M10 17h4" }) }));
+}
+export function VerdictConflictIcon({ size = 17 }) {
+    return (_jsxs("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.9", strokeLinecap: "round", strokeLinejoin: "round", children: [_jsx("circle", { cx: "12", cy: "12", r: "9" }), _jsx("path", { d: "M12 7v6m0 4h.01" })] }));
+}
+export function VerdictNoConflictIcon({ size = 17 }) {
+    return (_jsxs("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.9", strokeLinecap: "round", strokeLinejoin: "round", children: [_jsx("circle", { cx: "12", cy: "12", r: "9" }), _jsx("path", { d: "m8 12 3 3 5-6" })] }));
+}
+export function VerdictRetainedIcon({ size = 17 }) {
+    return _jsx(VerdictConflictIcon, { size: size });
+}
+export function VerdictExcludedIcon({ size = 17 }) {
+    return _jsx(VerdictNoConflictIcon, { size: size });
+}
+export function VerdictUncertainIcon({ size = 17 }) {
+    return (_jsxs("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.9", strokeLinecap: "round", strokeLinejoin: "round", children: [_jsx("circle", { cx: "12", cy: "12", r: "9" }), _jsx("path", { d: "M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2 2-2 3.5m0 3.5h.01" })] }));
 }

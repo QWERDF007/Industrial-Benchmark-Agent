@@ -252,6 +252,14 @@ export declare const consistencyStartParameters: {
         readonly title: "Request Id";
         readonly required: true;
     };
+    readonly model_analysis_prompt: {
+        readonly type: "string";
+        readonly title: "Model Analysis Prompt";
+    };
+    readonly prompt: {
+        readonly type: "string";
+        readonly title: "Prompt";
+    };
 };
 export declare const imageRetrieveParameters: {
     readonly query: {

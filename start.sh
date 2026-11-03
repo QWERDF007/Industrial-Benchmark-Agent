@@ -77,12 +77,14 @@ echo "[2/2] 正在构建 DSH Native 双端插件 Bundle..."
 pnpm -C apps/iad-harness run build
 
 # 3. 启动 DeepSeek Harness Native Web 交互端 (Node.js ${PORT})
+export DSH_HOME="${DSH_HOME:-${SCRIPT_DIR}/.dsh}"
+
 if lsof -Pi :${PORT} -sTCP:LISTEN -t >/dev/null 2>&1; then
     echo "[!] 提示: ${PORT} 端口已有进程在运行，跳过启动。"
 else
     echo "      正在启动 DeepSeek Harness Web 端 (0.0.0.0:${PORT})..."
-    mkdir -p "${HOME}/.dsh/profiles/web/node_modules/@industrial-benchmark"
-    ln -sfn "${SCRIPT_DIR}/apps/iad-harness" "${HOME}/.dsh/profiles/web/node_modules/@industrial-benchmark/iad-harness"
+    mkdir -p "${DSH_HOME}/profiles/web/node_modules/@industrial-benchmark"
+    ln -sfn "${SCRIPT_DIR}/apps/iad-harness" "${DSH_HOME}/profiles/web/node_modules/@industrial-benchmark/iad-harness"
     setsid "${NODE_EXEC}" "${SCRIPT_DIR}/node_modules/@deepseek-ai/dsh/lib/bin.js" \
         --profile web \
         --patch "${SCRIPT_DIR}/config/dsh_web_lan_patch.yml" \

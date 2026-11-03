@@ -120,6 +120,8 @@ class ConsistencyStart(AnalysisModel):
     mode: Mode = 'exact'
     profile_id: Optional[Identifier] = None
     request_id: Identifier
+    model_analysis_prompt: Optional[str] = None
+    prompt: Optional[str] = None
 
 
 class ImageRetrieve(AnalysisModel):

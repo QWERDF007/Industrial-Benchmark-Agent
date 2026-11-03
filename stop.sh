@@ -23,8 +23,11 @@ if [ -f runs/dsh_web.pid ]; then
     rm -f runs/dsh_web.pid
 fi
 
-# 2. 清理残留端口 (当前端口、5173、8001、8000)
-for P in "$PORT" 5173 8001 8000; do
+# 2. 清理残留端口 (当前端口、5173、8000，绝对不清理 8001 避免影响 release 实例)
+for P in "$PORT" 5173 8000; do
+    if [ "$P" = "8001" ]; then
+        continue
+    fi
     PIDS=$(lsof -ti :$P 2>/dev/null || true)
     if [ -n "$PIDS" ]; then
         echo "清理占用端口 :$P 的残留进程 ($PIDS)..."

@@ -20,7 +20,7 @@ class GalleryQuery(AnalysisModel):
     query_id: Identifier
     kind: Literal['conflicts', 'groups']
     page: int = Field(default=1, ge=1, strict=True)
-    page_size: int = Field(default=15, ge=1, le=100, strict=True)
+    page_size: int = Field(default=15, ge=1, le=1000, strict=True)
     search: str = Field(default='', max_length=500)
     order: Literal['recent', 'members'] = 'recent'
     difference_filter: GalleryFilterKind = 'all'
@@ -36,7 +36,7 @@ class GalleryReference(AnalysisModel):
 
 class GalleryMemberQuery(GalleryReference):
     page: int = Field(default=1, ge=1, strict=True)
-    page_size: int = Field(default=20, ge=1, le=100, strict=True)
+    page_size: int = Field(default=20, ge=1, le=1000, strict=True)
 
 
 class GalleryImage(AnalysisModel):

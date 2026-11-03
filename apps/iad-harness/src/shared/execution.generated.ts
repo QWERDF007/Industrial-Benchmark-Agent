@@ -14,6 +14,7 @@ export const queryOperations = [
   "consistency_report_saved",
   "consistency_review_context",
   "dataset_get",
+  "dataset_group_list",
   "dataset_list",
   "report_get",
   "review_history",

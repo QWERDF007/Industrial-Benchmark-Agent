@@ -38,7 +38,7 @@ class ConsistencyQuery(AnalysisModel):
     review_state: ReviewState | None = None
     correction_state: CorrectionState | None = None
     cursor: str | None = Field(default=None,max_length=2048)
-    page_size: int = Field(default=50,ge=1,le=100,strict=True)
+    page_size: int = Field(default=50,ge=1,le=1000,strict=True)
 
 
 class ResultSummary(AnalysisModel):

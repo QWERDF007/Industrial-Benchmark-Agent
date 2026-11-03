@@ -26,10 +26,16 @@ export interface Suggestion {
   reference_sample_ids: string[];
   created_at: string;
 }
+export interface DatasetGroup {
+  group_id: string;
+  name: string;
+  created_at?: string;
+}
 export interface DetailedSuggestion extends Suggestion { analysis: AuditAnalysis | null }
 export interface Dataset extends Report {
   dataset_id: string;
   task_id: string;
+  group_id?: string | null;
   name: string;
   format: "labelme" | "folder_classification";
   image_dir: string;

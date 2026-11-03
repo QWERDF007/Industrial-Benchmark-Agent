@@ -23,6 +23,7 @@ class DatasetImportOptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
     annotation_policy: AnnotationPolicy = Field(default_factory=AnnotationPolicy)
+    group_id: Optional[str] = None
 
 
 class LabelmeImport(DatasetImportOptions):
@@ -60,17 +61,64 @@ class DatasetRegistry:
     def __init__(self, db: Database):
         self.db = db
 
-    def save(self, config: DatasetConfig, connection: Optional[Connection] = None, *, require_existing: bool = False) -> None:
+    def save(self, config: DatasetConfig, connection: Optional[Connection] = None, *, require_existing: bool = False, group_id: Optional[str] = None) -> None:
         with nullcontext(connection) if connection is not None else self.db.connection() as conn:
             if require_existing:
-                if not conn.execute("UPDATE datasets SET config_json=? WHERE dataset_id=? AND task_id=?",
-                        (config.model_dump_json(),config.dataset.id,config.task.task_id)).rowcount:
+                if group_id is not None:
+                    res = conn.execute("UPDATE datasets SET config_json=?, group_id=? WHERE dataset_id=? AND task_id=?",
+                            (config.model_dump_json(), group_id, config.dataset.id, config.task.task_id))
+                else:
+                    res = conn.execute("UPDATE datasets SET config_json=? WHERE dataset_id=? AND task_id=?",
+                            (config.model_dump_json(), config.dataset.id, config.task.task_id))
+                if not res.rowcount:
                     raise LookupError("数据集不存在或已删除")
                 return
             conn.execute("""
-                INSERT INTO datasets(dataset_id,task_id,config_json,scan_ref) VALUES(?,?,?,?)
-                ON CONFLICT(dataset_id) DO UPDATE SET config_json=excluded.config_json
-            """, (config.dataset.id, config.task.task_id, config.model_dump_json(), 'scan_' + uuid.uuid4().hex))
+                INSERT INTO datasets(dataset_id,task_id,config_json,scan_ref,group_id) VALUES(?,?,?,?,?)
+                ON CONFLICT(dataset_id) DO UPDATE SET config_json=excluded.config_json,
+                group_id=COALESCE(excluded.group_id, datasets.group_id)
+            """, (config.dataset.id, config.task.task_id, config.model_dump_json(), 'scan_' + uuid.uuid4().hex, group_id))
+
+    def list_groups(self, connection: Optional[Connection] = None) -> List[dict]:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+            rows = conn.execute("SELECT group_id, name, created_at FROM dataset_groups ORDER BY created_at ASC, group_id ASC").fetchall()
+            return [{"group_id": r[0], "name": r[1], "created_at": str(r[2])} for r in rows]
+
+    def get_group(self, group_id: str, connection: Optional[Connection] = None) -> dict:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+            row = conn.execute("SELECT group_id, name, created_at FROM dataset_groups WHERE group_id=?", (group_id,)).fetchone()
+        if not row:
+            raise LookupError(f"Dataset group '{group_id}' not found")
+        return {"group_id": row[0], "name": row[1], "created_at": str(row[2])}
+
+    def create_group(self, name: str, group_id: Optional[str] = None, connection: Optional[Connection] = None) -> dict:
+        gid = (group_id or f"group-{uuid.uuid4().hex[:8]}").strip()
+        gname = name.strip()
+        if not gname:
+            raise ValueError("数据集名称不能为空")
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+            conn.execute("INSERT INTO dataset_groups(group_id, name) VALUES(?, ?)", (gid, gname))
+        return {"group_id": gid, "name": gname}
+
+    def update_group(self, group_id: str, name: str, connection: Optional[Connection] = None) -> dict:
+        gname = name.strip()
+        if not gname:
+            raise ValueError("数据集名称不能为空")
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+            cur = conn.execute("UPDATE dataset_groups SET name=? WHERE group_id=?", (gname, group_id))
+            if not cur.rowcount:
+                raise LookupError(f"Dataset group '{group_id}' not found")
+        return {"group_id": group_id, "name": gname}
+
+    def delete_group(self, group_id: str, connection: Optional[Connection] = None) -> dict:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+            count = conn.execute("SELECT count(*) FROM datasets WHERE group_id=?", (group_id,)).fetchone()[0]
+            if count > 0:
+                raise ValueError(f"该数据集包含 {count} 个子数据集，请先处理其中的子数据集，再删除父级。")
+            cur = conn.execute("DELETE FROM dataset_groups WHERE group_id=?", (group_id,))
+            if not cur.rowcount:
+                raise LookupError(f"Dataset group '{group_id}' not found")
+        return {"deleted_group_id": group_id}
 
     def get(self, dataset_id: str, connection: Optional[Connection] = None) -> DatasetConfig:
         with nullcontext(connection) if connection is not None else self.db.connection() as conn:

@@ -133,9 +133,31 @@ class ConsistencyJobs:
                 else ('PARTIAL' if successful or pair_count else 'FAILED') if error else 'PENDING' if not finished
                 else 'PARTIAL' if (failed or plan_failed or selected-successful-failed) and (successful or pair_count)
                 else 'FAILED' if failed or plan_failed else 'COMPLETED')
+
+            if status in ('COMPLETED', 'PARTIAL') and not (cancelled or interrupted or error):
+                conflict_count = self.repository.conflict_group_count(batch_id)
+            else:
+                conflict_count = None
+
+            started_times = [
+                datetime.fromisoformat(s.started_at)
+                for s in snapshots
+                if s.started_at
+            ]
+            finished_times = [
+                datetime.fromisoformat(s.finished_at)
+                for s in snapshots
+                if s.finished_at
+            ]
+            if started_times and finished_times and not active:
+                duration_seconds = max(0, int((max(finished_times) - min(started_times)).total_seconds()))
+            else:
+                duration_seconds = None
+
             return ConsistencyBatch(batch_id=batch_id,root_batch_id=plan.root_batch_id,parent_batch_id=plan.parent_batch_id,kind=plan.kind,
                 scopes=plan.scopes,status=status,cancel_requested=cancelled,error=error,total=len(selected),completed=len(successful),failed=len(failed),
-                unprocessed=len(selected-successful-failed),pair_count=pair_count,children=snapshots,created_at=plan.created_at)
+                unprocessed=len(selected-successful-failed),pair_count=pair_count,conflict_count=conflict_count,duration_seconds=duration_seconds,
+                children=snapshots,created_at=plan.created_at)
 
     def results(self,batch_id: str):return self.repository.results(batch_id)
 
@@ -184,3 +206,8 @@ class ConsistencyJobs:
             for child in current.children:
                 if child.status in ('PENDING','RUNNING'):self.runtime.jobs.cancel(child.run_id,(child.job_type,))
             return self.status(batch_id)
+
+    def delete(self, batch_id: str) -> dict:
+        with self.lock:
+            self.cancel(batch_id)
+            return self.repository.delete(batch_id)
