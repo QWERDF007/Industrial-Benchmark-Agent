@@ -4,6 +4,7 @@ import { message, request } from "../api.js";
 import { useFolderPreview } from "../useFolderPreview.js";
 import { WorkbenchHeader } from "./layout/WorkbenchHeader.js";
 import { ChevronIcon, CloseIcon, CopyIcon, DeleteIcon, EditIcon, PlusIcon } from "../AuditIcon.js";
+import { ClearFilterButton } from "./CommonFilterControls.js";
 import { useWorkspace } from "../workspace.js";
 
 function DirectoryPickerModal({ label, initialPath, onClose, onPick }: {
@@ -480,16 +481,26 @@ export function DatasetManager({
               {totalGroups} 个数据集 · {totalDatasets} 个子数据集
             </span>
           </h2>
-          <input
-            id="search"
-            className="search"
-            type="search"
-            autoComplete="off"
-            placeholder="搜索数据集"
-            aria-label="搜索数据集"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+          <div className="iad-manager-search-wrap" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <input
+              id="search"
+              className="search"
+              type="search"
+              autoComplete="off"
+              placeholder="搜索数据集"
+              aria-label="搜索数据集"
+              style={{ width: "220px", height: "38px", boxSizing: "border-box" }}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <ClearFilterButton
+              id="manager-clear-search"
+              title="清除筛选条件"
+              ariaLabel="清除筛选条件"
+              disabled={!search}
+              onClick={() => setSearch("")}
+            />
+          </div>
         </div>
 
         <div className="table-wrap">

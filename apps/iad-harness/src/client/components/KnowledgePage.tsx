@@ -8,6 +8,7 @@ import { useWorkspace } from "../workspace.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 import { CloseIcon, DeleteIcon, DocumentSearchIcon, RefreshIcon } from "../AuditIcon.js";
 import type { KnowledgeCheck } from "../../shared/domain.generated.js";
+import { ClearFilterButton, RefreshIconButton } from "./CommonFilterControls.js";
 
 interface PresetItem {
   id: string;
@@ -684,15 +685,12 @@ export function KnowledgePage({
               </select>
             </div>
             <div className="kb-context-actions">
-              <button
-                className="iconbtn"
-                title="刷新"
+              <RefreshIconButton
                 id="kb-refresh"
-                aria-label="刷新当前页面"
+                title="刷新当前页面"
+                ariaLabel="刷新当前页面"
                 onClick={handleRefresh}
-              >
-                ⟳
-              </button>
+              />
             </div>
             <div className="context-info" id="dataset-info"></div>
           </section>
@@ -736,6 +734,17 @@ export function KnowledgePage({
                   <option value="interrupted">已中断</option>
                   <option value="failed">失败</option>
                 </select>
+                <ClearFilterButton
+                  id="kb-clear-job-filters"
+                  ariaLabel="清除筛选条件"
+                  title="清除筛选条件"
+                  disabled={!jobSearch && jobStatus === "all"}
+                  onClick={() => {
+                    setJobSearch("");
+                    setJobStatus("all");
+                    setJobPage(1);
+                  }}
+                />
               </div>
             </div>
             <div className="tableframe" id="jobs-table-frame" style={{ minHeight: maxJobPages > 1 ? "465px" : "" }}>
@@ -870,6 +879,17 @@ export function KnowledgePage({
                     <option value="rejected">已驳回</option>
                     <option value="conflict">存在矛盾</option>
                   </select>
+                  <ClearFilterButton
+                    id="kb-clear-knowledge-filters"
+                    ariaLabel="清除筛选条件"
+                    title="清除筛选条件"
+                    disabled={!knowledgeSearch && knowledgeStatus === "all"}
+                    onClick={() => {
+                      setKnowledgeSearch("");
+                      setKnowledgeStatus("all");
+                      setEntryPage(1);
+                    }}
+                  />
                 </div>
               ) : null}
             </div>

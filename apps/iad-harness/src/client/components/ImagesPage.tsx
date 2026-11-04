@@ -7,6 +7,7 @@ import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js
 import { FullscreenViewer } from "./FullscreenViewer.js";
 import { DatasetScopeSelector } from "./DatasetScopeSelector.js";
 import { RefreshIcon } from "../AuditIcon.js";
+import { ClearFilterButton } from "./CommonFilterControls.js";
 
 export interface ImagesPageProps {
   datasets: Dataset[];
@@ -305,12 +306,12 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
       {/* Filter Bar */}
       <section className="filter-bar" aria-label="图像筛选">
         <div className="filter-item filter-search">
-          <label htmlFor="search">搜索</label>
+          <label htmlFor="search">文件名搜索</label>
           <input
             id="search"
             type="search"
             autoComplete="off"
-            placeholder="文件名"
+            placeholder="搜索文件名"
             value={search}
             onChange={e => {
               setSearch(e.target.value);
@@ -383,19 +384,13 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
           </>
         )}
 
-        <button
+        <ClearFilterButton
           id="reset"
-          type="button"
-          className="iad-subtle-icon"
           title="清除筛选条件"
-          aria-label="清除筛选条件"
+          ariaLabel="清除筛选条件"
+          disabled={!search && quality === "all" && annotation === "all" && category === "all"}
           onClick={resetFilters}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 5h16l-6.5 7.5v4.3l-3.5 2v-6.3L4 5Z" />
-            <path d="m17 17 4 4m0-4-4 4" />
-          </svg>
-        </button>
+        />
       </section>
 
       {/* Grid or Empty */}

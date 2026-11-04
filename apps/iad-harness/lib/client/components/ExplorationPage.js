@@ -10,6 +10,7 @@ import { DatasetScopeSelector } from "./DatasetScopeSelector.js";
 import { DirectionDetailDialog } from "./DirectionDetailDialog.js";
 import { FullscreenViewer } from "./FullscreenViewer.js";
 import { IbaJobPager, IBA_JOBS_PAGE_SIZE } from "./IbaJobPager.js";
+import { ClearFilterButton } from "./CommonFilterControls.js";
 const defaultPresets = [
     {
         id: "contrast",
@@ -83,6 +84,7 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
     // View state: 'jobs' (unified layout) or 'setup' (3-step creation)
     const [view, setView] = useState("jobs");
     const [jobFilter, setJobFilter] = useState("全部");
+    const [jobSearch, setJobSearch] = useState("");
     const [selectedJobId, setSelectedJobId] = useState(null);
     const [jobPage, setJobPage] = useState(1);
     const [refreshTick, setRefreshTick] = useState(0);
@@ -356,12 +358,13 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
     const parentGroups = groups.length ? groups : buildHierarchyGroups([dataset], []);
     const currentChildDatasets = datasets.filter((d) => getDatasetGroupId(d, groups) === selectedParentId);
     const filteredJobs = useMemo(() => {
+        const q = jobSearch.trim().toLowerCase();
         return jobs.filter((j) => {
-            if (jobFilter === "全部")
-                return true;
-            return j.status === jobFilter;
+            const matchStatus = jobFilter === "全部" || j.status === jobFilter;
+            const matchSearch = !q || j.id.toLowerCase().includes(q);
+            return matchStatus && matchSearch;
         });
-    }, [jobs, jobFilter]);
+    }, [jobs, jobFilter, jobSearch]);
     const jobPages = Math.max(1, Math.ceil(filteredJobs.length / IBA_JOBS_PAGE_SIZE));
     const currentJobPage = Math.max(1, Math.min(jobPages, jobPage));
     const shownJobs = useMemo(() => {
@@ -469,7 +472,11 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
         }
         setJobs((prevJobs) => {
             const remaining = prevJobs.filter((j) => j.id !== targetId);
-            const remainingFiltered = remaining.filter((j) => jobFilter === "全部" || j.status === jobFilter);
+            const remainingFiltered = remaining.filter((j) => {
+                const matchStatus = jobFilter === "全部" || j.status === jobFilter;
+                const matchSearch = !jobSearch.trim() || j.id.toLowerCase().includes(jobSearch.trim().toLowerCase());
+                return matchStatus && matchSearch;
+            });
             const newPages = Math.max(1, Math.ceil(remainingFiltered.length / IBA_JOBS_PAGE_SIZE));
             const clampedPage = Math.min(newPages, jobPage);
             setJobPage(clampedPage);
@@ -480,13 +487,22 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
         });
     };
     const renderJobDataset = (j) => {
+        const parentId = j.parentId || (j.scopeKey || "").split("|")[0];
         const storedIds = (j.datasetIds && j.datasetIds.length > 0)
             ? j.datasetIds
-            : (j.scopeKey || "").split("|")[1]?.split(",").filter(Boolean) || [j.scopeKey || dataset.dataset_id];
+            : (j.scopeKey || "").split("|")[1]?.split(",").filter(Boolean) || [];
         const childNames = storedIds
+            .map((id) => {
+            const d = datasets.find((item) => item.dataset_id === id);
+            return d ? d.name : id;
+        })
+            .filter((name) => {
+            return !groups.some((g) => g.name === name || g.group_id === name);
+        });
+        const fallbackNames = selectedChildIds
             .map((id) => datasets.find((d) => d.dataset_id === id)?.name)
-            .filter(Boolean);
-        const text = childNames.join("、") || datasets.find((d) => d.dataset_id === (storedIds[0] || j.scopeKey))?.name || "—";
+            .filter((name) => Boolean(name) && !groups.some((g) => g.name === name || g.group_id === name));
+        const text = childNames.join("、") || (fallbackNames.length > 0 ? fallbackNames.join("、") : "暂无子数据集");
         return (_jsx("div", { className: "exp-job-dataset", title: text, children: _jsx("span", { className: "exp-job-dataset-name", children: text }) }));
     };
     // Helper to find image details from samplePool or fallback to sample media endpoint
@@ -587,10 +603,17 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
                                                 ? "请选择子数据集"
                                                 : !normalSelected.length || !defectSelected.length
                                                     ? "请至少选择 1 张良品和 1 张异常图像"
-                                                    : "可启动" }), _jsx("button", { type: "button", className: "exp-btn exp-primary", disabled: !canRun, onClick: handleStartExploration, children: "\u542F\u52A8\u8054\u5408\u63A2\u7D22" })] })] })] })) : (_jsxs("div", { className: "exp-unified-layout", children: [_jsxs("section", { className: `exp-panel exp-job-list ${jobPages > 1 ? 'iba-job-multipage' : ''}`, "aria-label": "\u63A2\u7D22\u4F5C\u4E1A", children: [_jsxs("div", { className: "exp-job-list-head", children: [_jsx("h2", { children: "\u63A2\u7D22\u4F5C\u4E1A" }), _jsx("div", { className: "exp-job-list-actions", children: _jsx("label", { className: "exp-input", "aria-label": "\u7B5B\u9009\u4F5C\u4E1A\u72B6\u6001", children: _jsxs("select", { id: "exp-jobfilter", "aria-label": "\u4EFB\u52A1\u72B6\u6001", value: jobFilter, onChange: (e) => {
-                                                    setJobFilter(e.target.value);
+                                                    : "可启动" }), _jsx("button", { type: "button", className: "exp-btn exp-primary", disabled: !canRun, onClick: handleStartExploration, children: "\u542F\u52A8\u8054\u5408\u63A2\u7D22" })] })] })] })) : (_jsxs("div", { className: "exp-unified-layout", children: [_jsxs("section", { className: `exp-panel exp-job-list ${jobPages > 1 ? 'iba-job-multipage' : ''}`, "aria-label": "\u63A2\u7D22\u4F5C\u4E1A", children: [_jsxs("div", { className: "exp-job-list-head", children: [_jsx("h2", { children: "\u63A2\u7D22\u4F5C\u4E1A" }), _jsxs("div", { className: "exp-job-list-actions", children: [_jsx("label", { className: "exp-input exp-filter-control", "aria-label": "\u641C\u7D22\u4F5C\u4E1A", children: _jsx("input", { id: "exp-jobsearch", type: "search", placeholder: "\u641C\u7D22\u4F5C\u4E1A ID", value: jobSearch, "aria-label": "\u641C\u7D22\u4F5C\u4E1A ID", autoComplete: "off", onChange: (e) => {
+                                                        setJobSearch(e.target.value);
+                                                        setJobPage(1);
+                                                    } }) }), _jsx("label", { className: "exp-input exp-filter-control", "aria-label": "\u7B5B\u9009\u4F5C\u4E1A\u72B6\u6001", children: _jsxs("select", { id: "exp-jobfilter", "aria-label": "\u4EFB\u52A1\u72B6\u6001", value: jobFilter, onChange: (e) => {
+                                                        setJobFilter(e.target.value);
+                                                        setJobPage(1);
+                                                    }, children: [_jsx("option", { value: "\u5168\u90E8", children: "\u5168\u90E8\u72B6\u6001" }), _jsx("option", { value: "PENDING", children: "\u6392\u961F\u4E2D" }), _jsx("option", { value: "RUNNING", children: "\u8FD0\u884C\u4E2D" }), _jsx("option", { value: "COMPLETED", children: "\u5DF2\u5B8C\u6210" }), _jsx("option", { value: "FAILED", children: "\u5931\u8D25" })] }) }), _jsx(ClearFilterButton, { "data-exp": "clear-job-filters", ariaLabel: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6", title: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6", disabled: !jobSearch && jobFilter === "全部", onClick: () => {
+                                                    setJobSearch("");
+                                                    setJobFilter("全部");
                                                     setJobPage(1);
-                                                }, children: [_jsx("option", { value: "\u5168\u90E8", children: "\u5168\u90E8\u72B6\u6001" }), _jsx("option", { value: "PENDING", children: "\u6392\u961F\u4E2D" }), _jsx("option", { value: "RUNNING", children: "\u8FD0\u884C\u4E2D" }), _jsx("option", { value: "COMPLETED", children: "\u5DF2\u5B8C\u6210" }), _jsx("option", { value: "FAILED", children: "\u5931\u8D25" })] }) }) })] }), filteredJobs.length ? (_jsxs(_Fragment, { children: [_jsx("div", { className: "exp-job-table-wrap", role: "region", "aria-label": "\u63A2\u7D22\u4F5C\u4E1A\u5217\u8868", tabIndex: 0, children: _jsxs("table", { className: "exp-job-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u4F5C\u4E1A ID" }), _jsx("th", { children: "\u72B6\u6001" }), _jsx("th", { children: "\u6570\u636E\u96C6" }), _jsx("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }), _jsx("th", { children: "\u8017\u65F6" }), _jsx("th", { className: "exp-prompt-action-col", children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { children: shownJobs.map((j) => (_jsxs("tr", { "data-action": "select-job", "data-id": j.id, "data-selected": selectedJob?.id === j.id, "aria-selected": selectedJob?.id === j.id, tabIndex: 0, role: "button", "aria-label": `选择作业 ${j.id}`, onClick: () => setSelectedJobId(j.id), children: [_jsx("td", { children: _jsx("strong", { className: "exp-row-title", children: j.id }) }), _jsx("td", { children: expJobBadge(j.status) }), _jsx("td", { children: renderJobDataset(j) }), _jsx("td", { className: "exp-job-time", children: j.time || "—" }), _jsx("td", { className: "exp-job-duration", children: j.status === "PENDING" ? "—" : expElapsed(j.elapsed) }), _jsx("td", { className: "exp-prompt-action-col", children: _jsxs("div", { className: "exp-job-icon-actions", onClick: (e) => e.stopPropagation(), children: [_jsx(IconButton, { label: "\u67E5\u770B\u63D0\u793A\u8BCD", title: "\u67E5\u770B\u63D0\u793A\u8BCD", className: "exp-row-icon icon-button", "data-exp": "show-prompt", "data-id": j.id, onClick: () => {
+                                                } })] })] }), filteredJobs.length ? (_jsxs(_Fragment, { children: [_jsx("div", { className: "exp-job-table-wrap", role: "region", "aria-label": "\u63A2\u7D22\u4F5C\u4E1A\u5217\u8868", tabIndex: 0, children: _jsxs("table", { className: "exp-job-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u4F5C\u4E1A ID" }), _jsx("th", { children: "\u72B6\u6001" }), _jsx("th", { children: "\u6570\u636E\u96C6" }), _jsx("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }), _jsx("th", { children: "\u8017\u65F6" }), _jsx("th", { className: "exp-prompt-action-col", children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { children: shownJobs.map((j) => (_jsxs("tr", { "data-action": "select-job", "data-id": j.id, "data-selected": selectedJob?.id === j.id, "aria-selected": selectedJob?.id === j.id, tabIndex: 0, role: "button", "aria-label": `选择作业 ${j.id}`, onClick: () => setSelectedJobId(j.id), children: [_jsx("td", { children: _jsx("strong", { className: "exp-row-title", children: j.id }) }), _jsx("td", { children: expJobBadge(j.status) }), _jsx("td", { children: renderJobDataset(j) }), _jsx("td", { className: "exp-job-time", children: j.time || "—" }), _jsx("td", { className: "exp-job-duration", children: j.status === "PENDING" ? "—" : expElapsed(j.elapsed) }), _jsx("td", { className: "exp-prompt-action-col", children: _jsxs("div", { className: "exp-job-icon-actions", onClick: (e) => e.stopPropagation(), children: [_jsx(IconButton, { label: "\u67E5\u770B\u63D0\u793A\u8BCD", title: "\u67E5\u770B\u63D0\u793A\u8BCD", className: "exp-row-icon icon-button", "data-exp": "show-prompt", "data-id": j.id, onClick: () => {
                                                                                 setPromptJobId(j.id);
                                                                                 setModal("prompt");
                                                                             }, children: _jsx(DocumentIcon, {}) }), _jsx(IconButton, { label: "\u5220\u9664\u4F5C\u4E1A", title: j.status === "RUNNING" || j.status === "PENDING" ? "请先停止运行中的作业" : "删除作业", "data-delete": "true", "data-exp": "ask-delete-job", "data-id": j.id, className: "exp-row-icon danger icon-button", disabled: j.status === "RUNNING" || j.status === "PENDING", onClick: () => {

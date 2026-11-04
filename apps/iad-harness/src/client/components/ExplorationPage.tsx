@@ -20,6 +20,7 @@ import { DatasetScopeSelector } from "./DatasetScopeSelector.js";
 import { DirectionDetailDialog, type DirectionItem, type DirectionEvidenceItem } from "./DirectionDetailDialog.js";
 import { FullscreenViewer, type FullscreenViewerItem } from "./FullscreenViewer.js";
 import { IbaJobPager, IBA_JOBS_PAGE_SIZE } from "./IbaJobPager.js";
+import { ClearFilterButton } from "./CommonFilterControls.js";
 
 interface PresetItem {
   id: string;
@@ -76,6 +77,7 @@ const defaultDirections: DirectionItem[] = [
 
 interface JobItem {
   id: string;
+  parentId?: string;
   scopeKey: string;
   datasetIds: string[];
   normal: string[];
@@ -143,6 +145,7 @@ export function ExplorationPage({
   // View state: 'jobs' (unified layout) or 'setup' (3-step creation)
   const [view, setView] = useState<"jobs" | "setup">("jobs");
   const [jobFilter, setJobFilter] = useState("全部");
+  const [jobSearch, setJobSearch] = useState("");
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [jobPage, setJobPage] = useState<number>(1);
   const [refreshTick, setRefreshTick] = useState(0);
@@ -448,11 +451,13 @@ export function ExplorationPage({
   const currentChildDatasets = datasets.filter((d) => getDatasetGroupId(d, groups) === selectedParentId);
 
   const filteredJobs: JobItem[] = useMemo(() => {
+    const q = jobSearch.trim().toLowerCase();
     return jobs.filter((j) => {
-      if (jobFilter === "全部") return true;
-      return j.status === jobFilter;
+      const matchStatus = jobFilter === "全部" || j.status === jobFilter;
+      const matchSearch = !q || j.id.toLowerCase().includes(q);
+      return matchStatus && matchSearch;
     });
-  }, [jobs, jobFilter]);
+  }, [jobs, jobFilter, jobSearch]);
 
   const jobPages = Math.max(1, Math.ceil(filteredJobs.length / IBA_JOBS_PAGE_SIZE));
   const currentJobPage = Math.max(1, Math.min(jobPages, jobPage));
@@ -568,7 +573,11 @@ export function ExplorationPage({
     }
     setJobs((prevJobs) => {
       const remaining = prevJobs.filter((j) => j.id !== targetId);
-      const remainingFiltered = remaining.filter((j) => jobFilter === "全部" || j.status === jobFilter);
+      const remainingFiltered = remaining.filter((j) => {
+        const matchStatus = jobFilter === "全部" || j.status === jobFilter;
+        const matchSearch = !jobSearch.trim() || j.id.toLowerCase().includes(jobSearch.trim().toLowerCase());
+        return matchStatus && matchSearch;
+      });
       const newPages = Math.max(1, Math.ceil(remainingFiltered.length / IBA_JOBS_PAGE_SIZE));
       const clampedPage = Math.min(newPages, jobPage);
       setJobPage(clampedPage);
@@ -580,13 +589,22 @@ export function ExplorationPage({
   };
 
   const renderJobDataset = (j: JobItem) => {
+    const parentId = j.parentId || (j.scopeKey || "").split("|")[0];
     const storedIds = (j.datasetIds && j.datasetIds.length > 0)
       ? j.datasetIds
-      : (j.scopeKey || "").split("|")[1]?.split(",").filter(Boolean) || [j.scopeKey || dataset.dataset_id];
+      : (j.scopeKey || "").split("|")[1]?.split(",").filter(Boolean) || [];
     const childNames = storedIds
+      .map((id) => {
+        const d = datasets.find((item) => item.dataset_id === id);
+        return d ? d.name : id;
+      })
+      .filter((name) => {
+        return !groups.some((g) => g.name === name || g.group_id === name);
+      });
+    const fallbackNames = selectedChildIds
       .map((id) => datasets.find((d) => d.dataset_id === id)?.name)
-      .filter(Boolean) as string[];
-    const text = childNames.join("、") || datasets.find((d) => d.dataset_id === (storedIds[0] || j.scopeKey))?.name || "—";
+      .filter((name): name is string => Boolean(name) && !groups.some((g) => g.name === name || g.group_id === name));
+    const text = childNames.join("、") || (fallbackNames.length > 0 ? fallbackNames.join("、") : "暂无子数据集");
     return (
       <div className="exp-job-dataset" title={text}>
         <span className="exp-job-dataset-name">{text}</span>
@@ -895,7 +913,21 @@ export function ExplorationPage({
             <div className="exp-job-list-head">
               <h2>探索作业</h2>
               <div className="exp-job-list-actions">
-                <label className="exp-input" aria-label="筛选作业状态">
+                <label className="exp-input exp-filter-control" aria-label="搜索作业">
+                  <input
+                    id="exp-jobsearch"
+                    type="search"
+                    placeholder="搜索作业 ID"
+                    value={jobSearch}
+                    aria-label="搜索作业 ID"
+                    autoComplete="off"
+                    onChange={(e) => {
+                      setJobSearch(e.target.value);
+                      setJobPage(1);
+                    }}
+                  />
+                </label>
+                <label className="exp-input exp-filter-control" aria-label="筛选作业状态">
                   <select
                     id="exp-jobfilter"
                     aria-label="任务状态"
@@ -912,6 +944,17 @@ export function ExplorationPage({
                     <option value="FAILED">失败</option>
                   </select>
                 </label>
+                <ClearFilterButton
+                  data-exp="clear-job-filters"
+                  ariaLabel="清除筛选条件"
+                  title="清除筛选条件"
+                  disabled={!jobSearch && jobFilter === "全部"}
+                  onClick={() => {
+                    setJobSearch("");
+                    setJobFilter("全部");
+                    setJobPage(1);
+                  }}
+                />
               </div>
             </div>
 

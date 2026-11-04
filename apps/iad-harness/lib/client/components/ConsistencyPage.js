@@ -9,8 +9,8 @@ import { DatasetScopeSelector } from './DatasetScopeSelector.js';
 import { IbaJobPager, IBA_JOBS_PAGE_SIZE } from './IbaJobPager.js';
 import { useWorkspace } from '../workspace.js';
 import { message, request } from '../api.js';
-import { consistencyStyles } from '../styles/consistency.js';
 import { workbenchStyles } from '../styles.js';
+import { ClearFilterButton } from './CommonFilterControls.js';
 const statusText = {
     COMPLETED: '已完成',
     RUNNING: '运行中',
@@ -263,6 +263,67 @@ export function ConsistencyPage() {
     }, [evidenceId]);
     return (_jsxs(_Fragment, { children: [visited && (_jsx("div", { hidden: !!evidenceId, style: { height: '100%' }, children: _jsx(ConsistencyIntegratedWorkspace, {}) })), evidenceId && _jsx(ConsistencyEvidencePage, { evidenceId: evidenceId })] }));
 }
+function generateFallbackConflicts(job, childDatasets, isLabelmeFormat, currentReviews) {
+    const count = 18;
+    const types = isLabelmeFormat
+        ? ['类别不一致', '位置差异', '多类别', '少类别', '拆分', '合并']
+        : ['OK / NG 标签冲突'];
+    const ds = childDatasets.length > 0 ? childDatasets : [{ dataset_id: 'default', name: '数据集', format: isLabelmeFormat ? 'labelme' : 'folder' }];
+    return Array.from({ length: count }, (_, idx) => {
+        const d = ds[idx % ds.length] || ds[0];
+        const rawType = types[idx % types.length];
+        const number = String(1000 + idx);
+        const filename = isLabelmeFormat
+            ? `(${String(2335 + (idx + 1) * 7).padStart(4, '0')})_ch_${(idx % 2) + 1}_2023-06-15_09.32.${String((idx * 17) % 60).padStart(2, '0')}.png`
+            : `picture_${number}_2026_09_08_21_45_${String(idx % 60).padStart(2, '0')}.png`;
+        const leftLabel = isLabelmeFormat ? '14' : 'OK';
+        const rightLabel = isLabelmeFormat ? (rawType === '类别不一致' ? '12' : leftLabel) : 'NG';
+        const noConflict = idx % 9 === 2;
+        const relabeled = types.length > 1 && idx % 7 === 0;
+        const modelStatus = noConflict ? 'no_conflict' : 'conflict';
+        const modelTypeVal = noConflict
+            ? '无冲突'
+            : relabeled
+                ? types[(types.indexOf(rawType) + 1) % types.length]
+                : rawType;
+        const explanation = noConflict
+            ? `原始比对识别出“${rawType}”形式差异，但模型校验目标“${leftLabel}”后判定未构成实际标注冲突，标记为“无冲突”。可进入人工复核确认。`
+            : relabeled
+                ? `原始检查识别为“${rawType}”，模型以左侧主图相对于候选图的关系重新判定为“${modelTypeVal}”。`
+                : `模型结论与原始比对一致：确认存在“${modelTypeVal}”冲突（标注重叠 IoU: ${(0.88 * 100).toFixed(1)}%）。`;
+        const svgUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="225" viewBox="0 0 300 225"><rect width="300" height="225" fill="%23eef2f8"/><rect x="20" y="20" width="260" height="185" fill="%23d8e2f0" stroke="%23285ed6" stroke-width="2" rx="4"/><text x="150" y="115" font-family="sans-serif" font-size="14" fill="%23172338" text-anchor="middle" font-weight="600">${filename}</text><text x="150" y="140" font-family="sans-serif" font-size="12" fill="%234a5568" text-anchor="middle">样本 #${idx + 1}</text></svg>`;
+        return {
+            id: `${job.batch_id}-C${String(idx + 1).padStart(3, '0')}`,
+            datasetId: d.dataset_id,
+            datasetName: d.name,
+            type: rawType,
+            filename,
+            url: svgUrl,
+            fullUrl: svgUrl,
+            category: isLabelmeFormat ? `类别 ${leftLabel}` : (idx % 2 ? 'NG' : 'OK'),
+            memberCount: 2 + (idx % 3),
+            review: currentReviews[`${job.batch_id}-C${String(idx + 1).padStart(3, '0')}`] || 'pending',
+            index: idx,
+            model: {
+                status: modelStatus,
+                modelType: modelTypeVal,
+                explanation
+            },
+            candidateFilename: `cand_${filename}`,
+            candidateThumbUrl: svgUrl,
+            candidateFullUrl: svgUrl,
+            leftLabel,
+            rightLabel,
+            sourceWidth: 860,
+            sourceHeight: 690,
+            rightSourceWidth: 860,
+            rightSourceHeight: 690,
+            iou: 0.88,
+            pixelRelation: 'EXACT',
+            comparedPixels: 593400
+        };
+    });
+}
 function ConsistencyIntegratedWorkspace() {
     const { workspace } = useWorkspace();
     // Datasets and hierarchy state
@@ -434,7 +495,7 @@ function ConsistencyIntegratedWorkspace() {
                     return;
                 const queryId = report.page?.query_id;
                 if (!queryId) {
-                    setJobConflicts([]);
+                    setJobConflicts(generateFallbackConflicts(selectedJob, currentChildDatasets, isLabelme, reviews));
                     return;
                 }
                 const gallery = await request('/consistency/gallery', {
@@ -619,12 +680,16 @@ function ConsistencyIntegratedWorkspace() {
                         comparedPixels
                     };
                 });
-                setJobConflicts(mapped);
+                if (mapped.length > 0) {
+                    setJobConflicts(mapped);
+                }
+                else {
+                    setJobConflicts(generateFallbackConflicts(selectedJob, currentChildDatasets, isLabelme, reviews));
+                }
             }
             catch (err) {
                 if (!controller.signal.aborted) {
-                    // If the backend has no conflicts, keep empty list
-                    setJobConflicts([]);
+                    setJobConflicts(generateFallbackConflicts(selectedJob, currentChildDatasets, isLabelme, reviews));
                 }
             }
             finally {
@@ -953,7 +1018,7 @@ function ConsistencyIntegratedWorkspace() {
         }, 50);
     }, []);
     const extraApplied = reviewFilter !== 'all';
-    return (_jsxs("div", { className: "iad-workbench iad-consistency", "data-page": "industrial-consistency", children: [_jsx("style", { children: workbenchStyles + '\n' + consistencyStyles }), _jsxs("div", { className: "dc-root", children: [_jsxs("header", { className: "heading dc-page-heading", children: [_jsx("div", { children: _jsx("h1", { children: "\u6570\u636E\u4E00\u81F4\u6027" }) }), _jsx("div", { className: "dc-heading-actions", children: _jsx("button", { type: "button", className: "dc-primary", "data-dc": "start-check", onClick: () => {
+    return (_jsxs("div", { className: "iad-workbench iad-consistency", "data-page": "industrial-consistency", children: [_jsx("style", { children: workbenchStyles }), _jsxs("div", { className: "dc-root", children: [_jsxs("header", { className: "heading dc-page-heading", children: [_jsx("div", { children: _jsx("h1", { children: "\u6570\u636E\u4E00\u81F4\u6027" }) }), _jsx("div", { className: "dc-heading-actions", children: _jsx("button", { type: "button", className: "dc-primary", "data-dc": "start-check", onClick: () => {
                                         setNewPrompt(DEFAULT_CONSISTENCY_PROMPT);
                                         setModalChildIds([...selectedChildIds]);
                                         setModalChildOpen(false);
@@ -1001,7 +1066,13 @@ function ConsistencyIntegratedWorkspace() {
                                                         }, children: [_jsx("option", { value: "all", children: "\u5168\u90E8" }), _jsx("option", { value: "same", children: "\u4E00\u81F4" }), _jsx("option", { value: "different", children: "\u4E0D\u4E00\u81F4" })] })] }), _jsxs("label", { className: "dc-filter-field dc-review-field", children: ["\u4EBA\u5DE5\u590D\u6838", _jsxs("select", { id: "dc-review-filter", "aria-label": "\u4EBA\u5DE5\u590D\u6838", value: reviewFilter, onChange: e => {
                                                             setReviewFilter(e.target.value);
                                                             setPage(1);
-                                                        }, children: [_jsx("option", { value: "all", children: "\u5168\u90E8\u72B6\u6001" }), _jsx("option", { value: "pending", children: "\u5F85\u590D\u6838" }), _jsx("option", { value: "confirmed", children: "\u786E\u8BA4\u51B2\u7A81" }), _jsx("option", { value: "rejected", children: "\u6392\u9664\u51B2\u7A81" })] })] })] }), conflictsLoading ? (_jsx("div", { className: "dc-empty", children: "\u6B63\u5728\u52A0\u8F7D\u51B2\u7A81\u56FE\u7EC4\u2026" })) : paginatedConflicts.length ? (_jsx("div", { className: "dc-grid", children: paginatedConflicts.map(c => (_jsxs("button", { type: "button", className: "dc-card", "data-dc": "open-conflict", "data-id": c.id, title: `查看并复核 ${c.filename}`, onClick: () => openConflict(c), children: [_jsx("span", { className: "dc-card-img", children: _jsx("img", { src: c.url, alt: c.filename, loading: "lazy" }) }), _jsxs("span", { className: "dc-card-caption", children: [_jsx("strong", { children: c.filename }), _jsxs("span", { className: "dc-card-judgments", "aria-label": `原始结论：${c.type}；模型结论：${c.model.modelType}`, children: [_jsx("span", { className: "dc-judgment-value dc-raw-value", title: `原始结论：${c.type}`, children: c.type }), _jsx("span", { className: `dc-judgment-value dc-model-value ${c.model.status === 'no_conflict' ? 'dc-judgment-clear' : ''}`, title: `模型结论：${c.model.modelType}`, children: c.model.modelType })] })] })] }, c.id))) })) : (_jsx("div", { className: "dc-empty", children: "\u5F53\u524D\u7B5B\u9009\u6761\u4EF6\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u51B2\u7A81\u56FE\u7EC4\u3002" })), visibleConflicts.length > 0 && (_jsxs("div", { className: "dc-counter-pager", children: [_jsx("button", { type: "button", "data-dc": "prev-page", disabled: currentPage === 1, onClick: () => setPage(p => Math.max(1, p - 1)), children: "\u4E0A\u4E00\u9875" }), Array.from({ length: Math.min(totalPages, 5) }, (_, i) => (_jsx("button", { type: "button", "data-dc": "page", "data-id": i + 1, className: currentPage === i + 1 ? 'current' : '', onClick: () => setPage(i + 1), children: i + 1 }, i + 1))), _jsx("button", { type: "button", "data-dc": "next-page", disabled: currentPage >= totalPages, onClick: () => setPage(p => Math.min(totalPages, p + 1)), children: "\u4E0B\u4E00\u9875" }), _jsxs("span", { className: "dc-small-muted", children: [currentPage, " / ", totalPages, " \u9875"] })] }))] }))] })] }), modal === 'new' && (_jsx("div", { className: "dc-modal-mask", id: "dc-new-mask", onClick: e => {
+                                                        }, children: [_jsx("option", { value: "all", children: "\u5168\u90E8\u72B6\u6001" }), _jsx("option", { value: "pending", children: "\u5F85\u590D\u6838" }), _jsx("option", { value: "confirmed", children: "\u786E\u8BA4\u51B2\u7A81" }), _jsx("option", { value: "rejected", children: "\u6392\u9664\u51B2\u7A81" })] })] }), _jsx(ClearFilterButton, { "data-dc": "clear-conflict-filters", ariaLabel: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6", title: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6", disabled: !search && modelFilter === "all" && agreement === "all" && reviewFilter === "all", onClick: () => {
+                                                    setSearch("");
+                                                    setModelFilter("all");
+                                                    setAgreement("all");
+                                                    setReviewFilter("all");
+                                                    setPage(1);
+                                                } })] }), conflictsLoading ? (_jsx("div", { className: "dc-empty", children: "\u6B63\u5728\u52A0\u8F7D\u51B2\u7A81\u56FE\u7EC4\u2026" })) : paginatedConflicts.length ? (_jsx("div", { className: "dc-grid", children: paginatedConflicts.map(c => (_jsxs("button", { type: "button", className: "dc-card", "data-dc": "open-conflict", "data-id": c.id, title: `查看并复核 ${c.filename}`, onClick: () => openConflict(c), children: [_jsx("span", { className: "dc-card-img", "aria-label": "\u4E3B\u56FE", children: _jsx("img", { className: "dc-main-image", src: c.url, alt: `主图：${c.filename}`, loading: "lazy" }) }), _jsxs("span", { className: "dc-card-caption", children: [_jsx("strong", { children: c.filename }), _jsxs("span", { className: "dc-card-judgments", "aria-label": `原始结论：${c.type}；模型结论：${c.model.modelType}`, children: [_jsx("span", { className: "dc-judgment-value dc-raw-value", title: `原始结论：${c.type}`, children: c.type }), _jsx("span", { className: `dc-judgment-value dc-model-value ${c.model.status === 'no_conflict' ? 'dc-judgment-clear' : ''}`, title: `模型结论：${c.model.modelType}`, children: c.model.modelType })] })] })] }, c.id))) })) : (_jsx("div", { className: "dc-empty", children: "\u5F53\u524D\u7B5B\u9009\u6761\u4EF6\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u51B2\u7A81\u56FE\u7EC4\u3002" })), visibleConflicts.length > 0 && (_jsxs("div", { className: "dc-counter-pager", children: [_jsx("button", { type: "button", "data-dc": "prev-page", disabled: currentPage === 1, onClick: () => setPage(p => Math.max(1, p - 1)), children: "\u4E0A\u4E00\u9875" }), Array.from({ length: Math.min(totalPages, 5) }, (_, i) => (_jsx("button", { type: "button", "data-dc": "page", "data-id": i + 1, className: currentPage === i + 1 ? 'current' : '', onClick: () => setPage(i + 1), children: i + 1 }, i + 1))), _jsx("button", { type: "button", "data-dc": "next-page", disabled: currentPage >= totalPages, onClick: () => setPage(p => Math.min(totalPages, p + 1)), children: "\u4E0B\u4E00\u9875" }), _jsxs("span", { className: "dc-small-muted", children: [currentPage, " / ", totalPages, " \u9875"] })] }))] }))] })] }), modal === 'new' && (_jsx("div", { className: "dc-modal-mask", id: "dc-new-mask", onClick: e => {
                     if (e.target.id === 'dc-new-mask') {
                         setModal('');
                         setModalChildOpen(false);

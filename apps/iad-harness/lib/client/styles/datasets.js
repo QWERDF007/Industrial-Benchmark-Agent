@@ -190,14 +190,14 @@ export const datasetsStyles = `
 }
 
 .search {
-  width: 260px;
+  width: 220px;
   height: 38px;
   padding: 0 12px;
   background: var(--iad-surface, #fff);
-  border: 1px solid #9eacc3;
+  border: 1px solid #b9c7d9;
   border-radius: 5px;
   font-size: 13px;
-  color: inherit;
+  color: var(--iba-unified-ink, #172338);
 }
 
 .table-wrap {
@@ -287,13 +287,13 @@ export const datasetsStyles = `
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-weight: 550;
+  font-weight: 400;
   flex: 0 1 auto;
   min-width: 0;
   max-width: calc(100% - 40px);
 }
 
-.parent-row .name-text { font-weight: 700; }
+.parent-row .name-text { font-weight: 400; }
 .dataset-table tr[data-selected="true"] .name-text { color: #153b8e; }
 [data-ds-dark-theme] .dataset-table tr[data-selected="true"] .name-text { color: var(--primary); }
 

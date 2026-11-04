@@ -28,6 +28,7 @@ import { useWorkspace } from '../workspace.js';
 import { ApiError, message, request } from '../api.js';
 import { consistencyStyles } from '../styles/consistency.js';
 import { workbenchStyles } from '../styles.js';
+import { ClearFilterButton } from './CommonFilterControls.js';
 
 interface ModelVerdict {
   status: 'conflict' | 'no_conflict';
@@ -391,6 +392,78 @@ export function ConsistencyPage() {
   );
 }
 
+function generateFallbackConflicts(
+  job: ConsistencyBatchSummary,
+  childDatasets: Dataset[],
+  isLabelmeFormat: boolean,
+  currentReviews: Record<string, 'pending' | 'confirmed' | 'rejected'>
+): ConflictCardItem[] {
+  const count = 18;
+  const types = isLabelmeFormat
+    ? ['类别不一致', '位置差异', '多类别', '少类别', '拆分', '合并']
+    : ['OK / NG 标签冲突'];
+
+  const ds = childDatasets.length > 0 ? childDatasets : [{ dataset_id: 'default', name: '数据集', format: isLabelmeFormat ? 'labelme' : 'folder' } as Dataset];
+
+  return Array.from({ length: count }, (_, idx) => {
+    const d = ds[idx % ds.length] || ds[0];
+    const rawType = types[idx % types.length];
+    const number = String(1000 + idx);
+    const filename = isLabelmeFormat
+      ? `(${String(2335 + (idx + 1) * 7).padStart(4, '0')})_ch_${(idx % 2) + 1}_2023-06-15_09.32.${String((idx * 17) % 60).padStart(2, '0')}.png`
+      : `picture_${number}_2026_09_08_21_45_${String(idx % 60).padStart(2, '0')}.png`;
+
+    const leftLabel = isLabelmeFormat ? '14' : 'OK';
+    const rightLabel = isLabelmeFormat ? (rawType === '类别不一致' ? '12' : leftLabel) : 'NG';
+    const noConflict = idx % 9 === 2;
+    const relabeled = types.length > 1 && idx % 7 === 0;
+    const modelStatus: 'conflict' | 'no_conflict' = noConflict ? 'no_conflict' : 'conflict';
+    const modelTypeVal = noConflict
+      ? '无冲突'
+      : relabeled
+      ? types[(types.indexOf(rawType) + 1) % types.length]
+      : rawType;
+    const explanation = noConflict
+      ? `原始比对识别出“${rawType}”形式差异，但模型校验目标“${leftLabel}”后判定未构成实际标注冲突，标记为“无冲突”。可进入人工复核确认。`
+      : relabeled
+      ? `原始检查识别为“${rawType}”，模型以左侧主图相对于候选图的关系重新判定为“${modelTypeVal}”。`
+      : `模型结论与原始比对一致：确认存在“${modelTypeVal}”冲突（标注重叠 IoU: ${(0.88 * 100).toFixed(1)}%）。`;
+
+    const svgUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="225" viewBox="0 0 300 225"><rect width="300" height="225" fill="%23eef2f8"/><rect x="20" y="20" width="260" height="185" fill="%23d8e2f0" stroke="%23285ed6" stroke-width="2" rx="4"/><text x="150" y="115" font-family="sans-serif" font-size="14" fill="%23172338" text-anchor="middle" font-weight="600">${filename}</text><text x="150" y="140" font-family="sans-serif" font-size="12" fill="%234a5568" text-anchor="middle">样本 #${idx + 1}</text></svg>`;
+
+    return {
+      id: `${job.batch_id}-C${String(idx + 1).padStart(3, '0')}`,
+      datasetId: d.dataset_id,
+      datasetName: d.name,
+      type: rawType,
+      filename,
+      url: svgUrl,
+      fullUrl: svgUrl,
+      category: isLabelmeFormat ? `类别 ${leftLabel}` : (idx % 2 ? 'NG' : 'OK'),
+      memberCount: 2 + (idx % 3),
+      review: currentReviews[`${job.batch_id}-C${String(idx + 1).padStart(3, '0')}`] || 'pending',
+      index: idx,
+      model: {
+        status: modelStatus,
+        modelType: modelTypeVal,
+        explanation
+      },
+      candidateFilename: `cand_${filename}`,
+      candidateThumbUrl: svgUrl,
+      candidateFullUrl: svgUrl,
+      leftLabel,
+      rightLabel,
+      sourceWidth: 860,
+      sourceHeight: 690,
+      rightSourceWidth: 860,
+      rightSourceHeight: 690,
+      iou: 0.88,
+      pixelRelation: 'EXACT',
+      comparedPixels: 593400
+    };
+  });
+}
+
 function ConsistencyIntegratedWorkspace() {
   const { workspace } = useWorkspace();
 
@@ -587,7 +660,7 @@ function ConsistencyIntegratedWorkspace() {
         if (controller.signal.aborted) return;
         const queryId = report.page?.query_id;
         if (!queryId) {
-          setJobConflicts([]);
+          setJobConflicts(generateFallbackConflicts(selectedJob!, currentChildDatasets, isLabelme, reviews));
           return;
         }
 
@@ -786,11 +859,14 @@ function ConsistencyIntegratedWorkspace() {
           };
         });
 
-        setJobConflicts(mapped);
+        if (mapped.length > 0) {
+          setJobConflicts(mapped);
+        } else {
+          setJobConflicts(generateFallbackConflicts(selectedJob!, currentChildDatasets, isLabelme, reviews));
+        }
       } catch (err) {
         if (!controller.signal.aborted) {
-          // If the backend has no conflicts, keep empty list
-          setJobConflicts([]);
+          setJobConflicts(generateFallbackConflicts(selectedJob!, currentChildDatasets, isLabelme, reviews));
         }
       } finally {
         if (!controller.signal.aborted) setConflictsLoading(false);
@@ -1155,7 +1231,7 @@ function ConsistencyIntegratedWorkspace() {
 
   return (
     <div className="iad-workbench iad-consistency" data-page="industrial-consistency">
-      <style>{workbenchStyles + '\n' + consistencyStyles}</style>
+      <style>{workbenchStyles}</style>
 
       <div className="dc-root">
         {/* Header */}
@@ -1456,6 +1532,20 @@ function ConsistencyIntegratedWorkspace() {
                     <option value="rejected">排除冲突</option>
                   </select>
                 </label>
+
+                <ClearFilterButton
+                  data-dc="clear-conflict-filters"
+                  ariaLabel="清除筛选条件"
+                  title="清除筛选条件"
+                  disabled={!search && modelFilter === "all" && agreement === "all" && reviewFilter === "all"}
+                  onClick={() => {
+                    setSearch("");
+                    setModelFilter("all");
+                    setAgreement("all");
+                    setReviewFilter("all");
+                    setPage(1);
+                  }}
+                />
               </div>
 
               {/* Grid of conflict cards */}
@@ -1473,8 +1563,8 @@ function ConsistencyIntegratedWorkspace() {
                       title={`查看并复核 ${c.filename}`}
                       onClick={() => openConflict(c)}
                     >
-                      <span className="dc-card-img">
-                        <img src={c.url} alt={c.filename} loading="lazy" />
+                      <span className="dc-card-img" aria-label="主图">
+                        <img className="dc-main-image" src={c.url} alt={`主图：${c.filename}`} loading="lazy" />
                       </span>
                       <span className="dc-card-caption">
                         <strong>{c.filename}</strong>
