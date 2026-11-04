@@ -129,21 +129,16 @@ async function run() {
     await driver.executeScript("arguments[0].click();", miningNav);
     await driver.sleep(2500);
 
-    // Switch dataset to ds_8bf1c1e9ef8042869adb044a36b7e2a0 (has completed knowledge jobs and checks)
-    try {
-      const dsSelect = await driver.wait(until.elementLocated(By.css('select[aria-label="当前数据集"]')), 5000);
-      await driver.executeScript("arguments[0].value = 'ds_8bf1c1e9ef8042869adb044a36b7e2a0'; arguments[0].dispatchEvent(new Event('change', { bubbles: true }));", dsSelect);
-      await driver.sleep(2500);
-    } catch (_) {}
+    // Verify Unified Two-Panel Workbench Architecture: Both headings exist on the same view
+    const jobsHeading = await driver.wait(until.elementLocated(By.id("jobs-heading")), 3000);
+    chk(await jobsHeading.isDisplayed(), "Live知识挖掘双面板：挖掘作业面板标题可见");
 
-    // Test Job Drawer
-    const jobsTab = await driver.findElements(By.xpath('//button[contains(., "作业记录")]'));
-    if (jobsTab.length > 0) {
-      await driver.executeScript("arguments[0].click();", jobsTab[0]);
-      await driver.sleep(1500);
-    }
+    const knowledgeHeading = await driver.wait(until.elementLocated(By.id("knowledge-heading")), 3000);
+    chk(await knowledgeHeading.isDisplayed(), "Live知识挖掘双面板：知识条目面板标题可见");
 
+    // Test Job Prompt Drawer
     const promptBtns = await driver.findElements(By.css("[data-job-prompt]"));
+    chk(promptBtns.length > 0, "Live挖掘作业列表中存在查看提示词按钮");
     if (promptBtns.length > 0) {
       await driver.executeScript("arguments[0].click();", promptBtns[0]);
       await driver.sleep(1000);
@@ -152,13 +147,6 @@ async function run() {
       await driver.actions().sendKeys(Key.ESCAPE).perform();
       await driver.sleep(500);
     }
-
-    // Switch to results tab if needed
-    try {
-      const resultsTab = await driver.findElement(By.xpath('//button[contains(., "知识条目") or @aria-label="知识条目"]'));
-      await driver.executeScript("arguments[0].click();", resultsTab);
-      await driver.sleep(2000);
-    } catch (_) {}
 
     // Check knowledge table typography
     const kbHeadCol = await driver.findElements(By.css(".knowledge-head > span, .knowledge-head"));
@@ -170,6 +158,7 @@ async function run() {
     }
 
     const kbRows = await driver.findElements(By.css(".knowledge-row"));
+    chk(kbRows.length > 0, "Live知识条目列表中显示知识行");
     if (kbRows.length > 0) {
       const rowTextEl = await kbRows[0].findElement(By.css(".row-title, .row-desc, span"));
       const rowColor = await rowTextEl.getCssValue("color");
@@ -192,6 +181,26 @@ async function run() {
       await driver.actions().sendKeys(Key.ESCAPE).perform();
       await driver.sleep(600);
     }
+
+    // Verify Delete confirmation dialog
+    const delBtns = await driver.findElements(By.css("[data-delete-entry]"));
+    if (delBtns.length > 0) {
+      await driver.executeScript("arguments[0].click();", delBtns[0]);
+      await driver.sleep(600);
+      const confirmDialog = await driver.wait(until.elementLocated(By.id("confirm-overlay")), 2000);
+      chk(await confirmDialog.isDisplayed(), "Live知识删除确认弹窗正常打开");
+      await driver.actions().sendKeys(Key.ESCAPE).perform();
+      await driver.sleep(500);
+    }
+
+    // Verify Create Mining dialog
+    const createBtn = await driver.wait(until.elementLocated(By.id("create-btn")), 3000);
+    await driver.executeScript("arguments[0].click();", createBtn);
+    await driver.sleep(800);
+    const createOverlay = await driver.wait(until.elementLocated(By.id("create-overlay")), 2000);
+    chk(await createOverlay.isDisplayed(), "Live新建挖掘弹窗正常打开");
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    await driver.sleep(500);
 
     // -------------------------------------------------------------
     // Test Part 4: Consistency Page Live (UX49-T03)
