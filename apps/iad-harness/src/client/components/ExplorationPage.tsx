@@ -1135,7 +1135,6 @@ export function ExplorationPage({
                               }}
                             >
                               <DocumentSearchIcon />
-                              <span>查看</span>
                             </IconButton>
                             <IconButton
                               label="去知识挖掘"

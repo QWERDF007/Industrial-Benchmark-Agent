@@ -29,9 +29,9 @@ export const dialogsStyles = `
   /* Typography */
   --iad-dialog-title-font: 17px;
   --iad-dialog-title-weight: 650;
-  --iad-dialog-title-color: #1a2638;
+  --iad-dialog-title-color: #172338;
   --iad-dialog-text-font: 13px;
-  --iad-dialog-text-color: #31425b;
+  --iad-dialog-text-color: #172338;
   --iad-dialog-muted-color: #64758d;
 
   /* Action Buttons */

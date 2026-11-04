@@ -7,7 +7,7 @@ export const themeStyles = `
  --iad-surface:#fff;
  --iad-navigation:#F5F7FA;
  --iad-surface-muted:#F2F5F9;
- --iad-text:#182230;
+ --iad-text:#172338;
  --iad-muted:#536174;
  --iad-border:#CBD3DE;
  --iad-control-border:#7D8CA0;
@@ -31,11 +31,11 @@ export const themeStyles = `
  --iad-title-size:calc(var(--dsh-content-font-size,.875rem)*2);--iad-section-size:calc(var(--dsh-content-font-size,.875rem)*1.285714);--iad-group-size:calc(var(--dsh-content-font-size,.875rem)*1.071429);
 }
 [data-ds-dark-theme] {${darkColors}}
-.iad-consistency{--iad-text:#17243A;--iad-muted:#64748A;--iad-border:#D9E0E9;--iad-primary:#275BCC;--iad-primary-fill:#275BCC;--iad-hover:#EAF0FD;--iad-surface-muted:#F9FAFC}
+.iad-consistency{--iad-text:#172338;--iad-muted:#64748A;--iad-border:#D9E0E9;--iad-primary:#275BCC;--iad-primary-fill:#275BCC;--iad-hover:#EAF0FD;--iad-surface-muted:#F9FAFC}
 [data-ds-dark-theme] .iad-consistency{${darkColors}}
 :is([data-page="industrial-datasets"],[data-page="industrial-images"],.iad-dataset-dialog) {
  --iad-canvas:#F7F8FA;--iad-surface:#fff;--iad-surface-muted:#F1F4F8;
- --iad-text:#202938;--iad-muted:#626E80;--iad-border:#E2E6EC;--iad-panel-border:#CBD5E1;
+ --iad-text:#172338;--iad-muted:#626E80;--iad-border:#E2E6EC;--iad-panel-border:#CBD5E1;
  --iad-control-border:#8491A3;--iad-primary:#275BCC;--iad-primary-fill:#275BCC;--iad-hover:#EDF3FF;--iad-dialog-shadow:#17213435;
 }
 .iad-detail-dialog.iad-dataset-dialog::backdrop{background:rgba(17,30,51,.45)}

@@ -87,10 +87,10 @@ export const explorationStyles = `
 .exp-result-controls{display:flex;justify-content:space-between;gap:12px;align-items:center;margin:0 0 14px}
 .exp-result-controls select{min-width:230px}
 .exp-table{width:100%;border-collapse:collapse;font-size:13px;background:#fff}
-.exp-table thead{background:#f1f4f9;color:#68798f}.exp-table th{font-size:12px;font-weight:500;text-align:left;padding:13px 16px}.exp-table td{border-top:1px solid #e5eaf1;padding:14px 16px;color:#35445c}.exp-table tr[data-action]:hover{background:#f7faff;cursor:pointer}.exp-table th:last-child,.exp-table td:last-child{text-align:right}
-.exp-table .exp-row-title{font-weight:600;color:#253854}.exp-table .exp-row-info{display:block;font-size:12px;color:#77879c;padding-top:4px}
+.exp-table thead{background:#f1f4f9;color:#172338}.exp-table th{font-size:13px;font-weight:600;text-align:left;padding:13px 16px;color:#172338}.exp-table td{border-top:1px solid #e5eaf1;padding:14px 16px;color:#172338;font-size:13px}.exp-table tr[data-action]:hover{background:#f7faff;cursor:pointer}.exp-table th:last-child,.exp-table td:last-child{text-align:right}
+.exp-table .exp-row-title{font-weight:600;color:#172338}.exp-table .exp-row-info{display:block;font-size:13px;color:#172338;padding-top:4px}
 .exp-jobs-filters{display:flex;align-items:center;gap:10px;margin-bottom:13px}.exp-jobs-filters select{width:158px}
-.exp-pill{display:inline-block;border-radius:4px;padding:3px 8px;color:#5d708d;background:#eef2f7;font-size:12px}.exp-pill.ok{background:#e8f5ee;color:#188356}.exp-pill.running{background:#e9f0ff;color:#2b5fc7}.exp-pill.fail{background:#ffedf0;color:#ae3d46}
+.exp-pill{display:inline-block;border-radius:4px;padding:3px 8px;color:#5d708d;background:#eef2f7;font-size:12px}.exp-pill.ok{background:#e8f5ee;color:#177b53}.exp-pill.running{background:#e9f0ff;color:#285ed6}.exp-pill.fail{background:#ffedf0;color:#b23c43}
 .exp-source-tools{display:flex;justify-content:space-between;gap:14px;align-items:end;margin-bottom:12px;flex-wrap:wrap}
 .exp-source-tools .exp-input{flex:1;min-width:210px}.exp-source-tools span{font-size:12px;color:#64748b}
 .exp-source-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:12px 0 0}
@@ -228,17 +228,17 @@ export const explorationStyles = `
 .exp-job-table-wrap{overflow-x:auto}
 .exp-job-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .exp-job-table thead{background:#f2f5fa}
-.exp-job-table th{padding:12px 18px;text-align:left;color:#65758c;font-weight:500;font-size:12px;border-bottom:1px solid #dfe6f0;white-space:nowrap}
-.exp-job-table td{padding:16px 18px;border-bottom:1px solid #e5eaf1;font-size:13px;color:#354763;vertical-align:middle}
+.exp-job-table th{padding:12px 18px;text-align:left;color:#172338;font-weight:600;font-size:13px;border-bottom:1px solid #dfe6f0;white-space:nowrap}
+.exp-job-table td{padding:16px 18px;border-bottom:1px solid #e5eaf1;font-size:13px;color:#172338;vertical-align:middle}
 .exp-job-table tbody tr:last-child td{border-bottom:none}
 .exp-job-table tbody tr[data-action]{cursor:pointer}
 .exp-job-table tbody tr[data-action]:hover{background:#f5f8ff}
 .exp-job-table tbody tr[data-action]:focus-visible{outline:2px solid #85aaff;outline-offset:-2px}
 .exp-job-table th:nth-child(1){width:24%}.exp-job-table th:nth-child(2){width:13%}.exp-job-table th:nth-child(3){width:25%}.exp-job-table th:nth-child(4){width:18%}.exp-job-table th:nth-child(5){width:10%}
 .exp-job-dataset{min-width:0;line-height:1.55}
-.exp-job-dataset-name,.exp-job-dataset-parent{display:block;color:#2c405d;font-size:13px;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.exp-job-dataset-children{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere;color:#718198;font-size:12px;margin-top:2px}
-.exp-job-time,.exp-job-duration{font-variant-numeric:tabular-nums;font-size:12px!important;color:#66758d!important}
+.exp-job-dataset-name,.exp-job-dataset-parent{display:block;color:#172338;font-size:13px;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.exp-job-dataset-children{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere;color:#172338;font-size:13px;margin-top:2px}
+.exp-job-time,.exp-job-duration{font-variant-numeric:tabular-nums;font-size:13px!important;color:#172338!important}
 .exp-job-empty{padding:36px;text-align:center;font-size:13px;color:#76869b}
 .exp-job-current{padding:20px 23px 20px;margin-bottom:16px}
 .exp-job-current-top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:18px}
@@ -329,11 +329,14 @@ export const explorationStyles = `
 .exp-direction-table th:nth-child(4){width:135px!important;text-align:right}
 .exp-direction-table td:last-child{text-align:right}
 .exp-direction-table .exp-direction-action .exp-btn{min-height:32px;white-space:nowrap}
-.exp-direction-action .exp-view-detail-button{display:inline-flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;width:auto!important;min-width:70px;height:33px;padding:0 8px!important;gap:5px;color:#172338;border:0;border-radius:5px;background:transparent;cursor:pointer;font-size:12px}
-.exp-direction-action .exp-view-detail-button svg{width:17px;height:17px;flex:none;stroke:currentColor;stroke-width:1.75;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.exp-direction-action .exp-view-detail-button span{font-size:12px;line-height:1;color:#172338;white-space:nowrap}
+.exp-direction-action .exp-view-detail-button,
+.exp-direction-list .exp-view-detail-button,
+.exp-direction-table .exp-view-detail-button{width:32px!important;min-width:32px!important;height:32px!important;padding:6px!important;gap:0!important;display:inline-flex!important;justify-content:center!important;align-items:center!important;color:#172338;border:0;border-radius:5px;background:transparent;cursor:pointer}
+.exp-direction-action .exp-view-detail-button svg,.exp-direction-table .exp-view-detail-button svg{width:18px;height:18px;flex:none;stroke:currentColor;stroke-width:1.75;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.exp-direction-action .exp-view-detail-button span,.exp-direction-table .exp-view-detail-button span{display:none!important}
 .exp-direction-action .exp-view-detail-button:hover{background:#edf2f8!important}
 .exp-direction-action .exp-view-detail-button:focus-visible{outline:2px solid #7fa3e9;outline-offset:1px}
+.exp-direction-table th:last-child{width:94px!important}
 .exp-direction-meta{display:flex;gap:13px;align-items:center;flex-wrap:wrap;padding:12px 0 16px;font-size:12px;color:#64748b}
 .exp-direction-meta strong{font-weight:550;color:#415675}
 .exp-direction-body{display:block!important}
@@ -635,12 +638,12 @@ export const explorationStyles = `
 .exp-empty-result{min-height:165px!important}
 
 /* 两种作业共享同一分页样式，沿用已有按钮颜色、字号、边界、圆角。 */
-.iba-job-pager{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:8px;padding:13px 20px;border-top:1px solid #e6ebf1;background:#fff;font-size:12px;color:#687993}
-.iba-job-pager button{min-width:32px;height:32px;padding:0 10px;background:#fff;border:1px solid #dbe2eb;border-radius:5px;color:#445a77;cursor:pointer}
-.iba-job-pager button[aria-current="page"]{background:var(--blue, #2458d5);color:#fff;border-color:var(--blue, #2458d5);font-weight:600}
+.iba-job-pager{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:8px;padding:13px 20px;border-top:1px solid #e6ebf1;background:#fff;font-size:13px;color:#172338}
+.iba-job-pager button{min-width:32px;height:32px;padding:0 10px;background:#fff;border:1px solid #dbe2eb;border-radius:5px;color:#172338;cursor:pointer;font-size:13px}
+.iba-job-pager button[aria-current="page"]{background:var(--blue, #2458d5);color:#fff!important;border-color:var(--blue, #2458d5);font-weight:600}
 .iba-job-pager button:disabled{opacity:.4;cursor:not-allowed}
-.iba-job-pager .iba-job-total{margin-left:8px;white-space:nowrap;color:#73839a}
-.iba-job-pager .iba-job-ellipsis{padding:0 2px;color:#8190a5}
+.iba-job-pager .iba-job-total{margin-left:8px;white-space:nowrap;color:#172338;font-size:13px}
+.iba-job-pager .iba-job-ellipsis{padding:0 2px;color:#172338}
 
 @media(max-width:650px){
   .exp-unified-layout .exp-job-list.iba-job-multipage .exp-job-table-wrap{min-height:640px}

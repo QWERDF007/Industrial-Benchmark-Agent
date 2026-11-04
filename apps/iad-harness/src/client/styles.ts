@@ -14,6 +14,7 @@ import { datasetsStyles } from "./styles/datasets.js";
 import {consistencyStyles} from './styles/consistency.js';
 import { imagesStyles } from "./styles/images.js";
 import { dialogsStyles } from "./styles/dialogs.js";
+import { typographyStyles } from "./styles/typography.js";
 
 export const workbenchStyles = themeStyles + controlStyles
   + modelsStyles
@@ -30,4 +31,5 @@ export const workbenchStyles = themeStyles + controlStyles
   + consistencyStyles
   + imagesStyles
   + dialogsStyles
+  + typographyStyles
 ;

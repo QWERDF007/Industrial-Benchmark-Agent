@@ -18,13 +18,13 @@ export const knowledgeStyles = `
 /* V47 Knowledge Table, Prompt Drawer & Unified Actions */
 .knowledge-list{width:100%;min-width:0;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:var(--iad-radius);overflow:hidden;margin-top:20px}
 .knowledge-head,.knowledge-row{display:grid;grid-template-columns:minmax(250px,1fr) 122px 90px 90px 110px 84px;align-items:center;gap:12px;padding:0 20px}
-.knowledge-head{min-height:43px;background:#f1f4f9;color:#68798f;font-size:12px;font-weight:600;border-bottom:1px solid #dfe6f0}
+.knowledge-head{min-height:43px;background:#f1f4f9;color:#172338;font-size:13px;font-weight:600;border-bottom:1px solid #dfe6f0}
 .knowledge-head>span:last-child{text-align:center}
-.knowledge-row{min-height:64px;padding-top:10px;padding-bottom:10px;border-bottom:1px solid #e5eaf1;background:#fff;color:#35445c;cursor:pointer;font-size:13px;transition:background .12s}
+.knowledge-row{min-height:64px;padding-top:10px;padding-bottom:10px;border-bottom:1px solid #e5eaf1;background:#fff;color:#172338;cursor:pointer;font-size:13px;transition:background .12s}
 .knowledge-row:hover{background:#f7faff}
 .knowledge-row:focus-visible{outline:2px solid #8caef1;outline-offset:-2px;background:#f3f7ff}
-.knowledge-row .row-title{display:block;color:#243650;font-size:13px;font-weight:600;line-height:1.5}
-.knowledge-row .row-desc{display:block;color:#687b93;font-size:12px;line-height:1.55;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.knowledge-row .row-title{display:block;color:#172338;font-size:13px;font-weight:600;line-height:1.5}
+.knowledge-row .row-desc{display:block;color:#172338;font-size:13px;line-height:1.55;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .knowledge-row .col-evidence{display:flex;align-items:center}
 .knowledge-row .col-action{display:flex;align-items:center;justify-content:center;min-width:0}
 .knowledge-view-action{width:auto!important;min-width:70px;height:33px;padding:0 8px!important;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:0;border-radius:5px;background:transparent;color:#172338!important;cursor:pointer;font-size:12px}
@@ -32,9 +32,9 @@ export const knowledgeStyles = `
 .knowledge-view-action span{font-size:12px;line-height:1;color:#172338;white-space:nowrap}
 .knowledge-view-action:hover{background:#edf2f8!important;color:#172338!important}
 .knowledge-view-action:focus-visible{outline:2px solid #7fa3e9;outline-offset:1px}
-.knowledge-pager{display:flex;align-items:center;gap:10px;justify-content:flex-end;min-height:54px;padding:10px 20px;font-size:12px;color:#728197;border-top:1px solid #e6ebf1}
+.knowledge-pager{display:flex;align-items:center;gap:10px;justify-content:flex-end;min-height:54px;padding:10px 20px;font-size:13px;color:#172338;border-top:1px solid #e6ebf1}
 .knowledge-pager .pages{display:flex;gap:6px;align-items:center}
-.knowledge-pager .pagebtn{min-width:32px;height:30px;padding:0 8px;border:1px solid #cfd8e3;background:#fff;border-radius:4px;cursor:pointer;font-size:12px;color:#2c3a4d}
+.knowledge-pager .pagebtn{min-width:32px;height:30px;padding:0 8px;border:1px solid #cfd8e3;background:#fff;border-radius:4px;cursor:pointer;font-size:13px;color:#172338}
 .knowledge-pager .pagebtn:hover{background:#f1f5fa}
 .knowledge-pager .pagebtn[aria-current="page"]{background:#2458d5;color:#fff;border-color:#2458d5}
 @media(max-width:960px){.knowledge-head,.knowledge-row{grid-template-columns:minmax(195px,1fr) 90px 65px 65px 90px 76px;gap:8px;padding-left:14px;padding-right:14px}}
