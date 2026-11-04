@@ -410,7 +410,13 @@ export function ExplorationPage({
               (d.evidence_ids || []).forEach((eid: string) => {
                 const ev = evMap.get(eid);
                 const sid = ev ? ev.sample_id : "";
-                const isNorm = normalList.includes(sid) || sid.includes("OK") || sid.includes("pass");
+                const isNorm =
+                  ev?.role === "normal" ||
+                  ev?.role === "good" ||
+                  normalList.includes(sid) ||
+                  sid.toLowerCase().includes("ok") ||
+                  sid.toLowerCase().includes("pass") ||
+                  sid.toLowerCase().includes("good");
                 const ref = isNorm ? `N${++nIdx}` : `A${++aIdx}`;
                 const label = isNorm ? `良品 ${ref}` : `异常 ${ref}`;
                 const dsId = sid.includes(":") ? sid.split(":")[0] : bj.dataset_id;
@@ -701,38 +707,43 @@ export function ExplorationPage({
     if (!job) return { normals: [], defects: [], all: [] };
     const dir = job.directions?.find((d) => d.id === dirId) || job.directions?.[0];
 
-    if (dir?.evidences && dir.evidences.length > 0) {
-      const normals = dir.evidences.filter((e) => e.kind === "normal");
-      const defects = dir.evidences.filter((e) => e.kind === "defect");
-      return { normals, defects, all: dir.evidences };
+    let normals = dir?.evidences ? dir.evidences.filter((e) => e.kind === "normal").slice(0, 2) : [];
+    let defects = dir?.evidences ? dir.evidences.filter((e) => e.kind === "defect").slice(0, 4) : [];
+
+    if (normals.length < 2) {
+      const fallbackNormals = (job.normal || []).slice(0, 2).map((id, i) => {
+        const info = getImageInfo(id, "normal");
+        return {
+          evidenceId: id,
+          sampleId: id,
+          ref: `N${i + 1}`,
+          label: `良品 N${i + 1}`,
+          kind: "normal" as const,
+          url: info.url,
+          fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
+          filename: info.filename,
+        };
+      });
+      normals = fallbackNormals.length >= normals.length ? fallbackNormals : normals;
     }
 
-    const normals = (job.normal || []).slice(0, 2).map((id, i) => {
-      const info = getImageInfo(id, "normal");
-      return {
-        evidenceId: id,
-        sampleId: id,
-        ref: `N${i + 1}`,
-        label: `良品 N${i + 1}`,
-        kind: "normal" as const,
-        url: info.url,
-        fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
-        filename: info.filename,
-      };
-    });
-    const defects = (job.defect || []).slice(0, 4).map((id, i) => {
-      const info = getImageInfo(id, "defect");
-      return {
-        evidenceId: id,
-        sampleId: id,
-        ref: `A${i + 1}`,
-        label: `异常 A${i + 1}`,
-        kind: "defect" as const,
-        url: info.url,
-        fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
-        filename: info.filename,
-      };
-    });
+    if (defects.length < 4) {
+      const fallbackDefects = (job.defect || []).slice(0, 4).map((id, i) => {
+        const info = getImageInfo(id, "defect");
+        return {
+          evidenceId: id,
+          sampleId: id,
+          ref: `A${i + 1}`,
+          label: `异常 A${i + 1}`,
+          kind: "defect" as const,
+          url: info.url,
+          fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
+          filename: info.filename,
+        };
+      });
+      defects = fallbackDefects.length >= defects.length ? fallbackDefects : defects;
+    }
+
     return { normals, defects, all: [...normals, ...defects] };
   };
 
@@ -818,7 +829,7 @@ export function ExplorationPage({
           {/* Step 1: Select Contrast Samples */}
           <section className="exp-panel">
             <div className="exp-panel-title">
-              <h2>1. 选择对比样例</h2>
+              <h2>选择对比样例</h2>
             </div>
             <div className="exp-tab-header">
               <div className="exp-sample-tabs" role="tablist" aria-label="对比样例">
@@ -892,7 +903,7 @@ export function ExplorationPage({
           {/* Step 2: Exploration Prompt */}
           <section className="exp-panel">
             <div className="exp-panel-title">
-              <h2>2. 探索提示词</h2>
+              <h2>探索提示词</h2>
             </div>
             <div className="exp-prompt-head">
               <label className="exp-input">
@@ -943,7 +954,7 @@ export function ExplorationPage({
           {/* Step 3: Confirm and Start */}
           <section className="exp-panel">
             <div className="exp-panel-title">
-              <h2>3. 确认并启动</h2>
+              <h2>确认并启动</h2>
             </div>
             <div className="exp-brief">
               <span>所选子数据集 <b>{selectedChildIds.length} 个</b></span>

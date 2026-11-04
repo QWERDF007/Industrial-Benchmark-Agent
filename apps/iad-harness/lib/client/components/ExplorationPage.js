@@ -322,7 +322,12 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
                             (d.evidence_ids || []).forEach((eid) => {
                                 const ev = evMap.get(eid);
                                 const sid = ev ? ev.sample_id : "";
-                                const isNorm = normalList.includes(sid) || sid.includes("OK") || sid.includes("pass");
+                                const isNorm = ev?.role === "normal" ||
+                                    ev?.role === "good" ||
+                                    normalList.includes(sid) ||
+                                    sid.toLowerCase().includes("ok") ||
+                                    sid.toLowerCase().includes("pass") ||
+                                    sid.toLowerCase().includes("good");
                                 const ref = isNorm ? `N${++nIdx}` : `A${++aIdx}`;
                                 const label = isNorm ? `良品 ${ref}` : `异常 ${ref}`;
                                 const dsId = sid.includes(":") ? sid.split(":")[0] : bj.dataset_id;
@@ -600,37 +605,40 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
         if (!job)
             return { normals: [], defects: [], all: [] };
         const dir = job.directions?.find((d) => d.id === dirId) || job.directions?.[0];
-        if (dir?.evidences && dir.evidences.length > 0) {
-            const normals = dir.evidences.filter((e) => e.kind === "normal");
-            const defects = dir.evidences.filter((e) => e.kind === "defect");
-            return { normals, defects, all: dir.evidences };
+        let normals = dir?.evidences ? dir.evidences.filter((e) => e.kind === "normal").slice(0, 2) : [];
+        let defects = dir?.evidences ? dir.evidences.filter((e) => e.kind === "defect").slice(0, 4) : [];
+        if (normals.length < 2) {
+            const fallbackNormals = (job.normal || []).slice(0, 2).map((id, i) => {
+                const info = getImageInfo(id, "normal");
+                return {
+                    evidenceId: id,
+                    sampleId: id,
+                    ref: `N${i + 1}`,
+                    label: `良品 N${i + 1}`,
+                    kind: "normal",
+                    url: info.url,
+                    fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
+                    filename: info.filename,
+                };
+            });
+            normals = fallbackNormals.length >= normals.length ? fallbackNormals : normals;
         }
-        const normals = (job.normal || []).slice(0, 2).map((id, i) => {
-            const info = getImageInfo(id, "normal");
-            return {
-                evidenceId: id,
-                sampleId: id,
-                ref: `N${i + 1}`,
-                label: `良品 N${i + 1}`,
-                kind: "normal",
-                url: info.url,
-                fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
-                filename: info.filename,
-            };
-        });
-        const defects = (job.defect || []).slice(0, 4).map((id, i) => {
-            const info = getImageInfo(id, "defect");
-            return {
-                evidenceId: id,
-                sampleId: id,
-                ref: `A${i + 1}`,
-                label: `异常 A${i + 1}`,
-                kind: "defect",
-                url: info.url,
-                fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
-                filename: info.filename,
-            };
-        });
+        if (defects.length < 4) {
+            const fallbackDefects = (job.defect || []).slice(0, 4).map((id, i) => {
+                const info = getImageInfo(id, "defect");
+                return {
+                    evidenceId: id,
+                    sampleId: id,
+                    ref: `A${i + 1}`,
+                    label: `异常 A${i + 1}`,
+                    kind: "defect",
+                    url: info.url,
+                    fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
+                    filename: info.filename,
+                };
+            });
+            defects = fallbackDefects.length >= defects.length ? fallbackDefects : defects;
+        }
         return { normals, defects, all: [...normals, ...defects] };
     };
     const currentEvidence = getJobEvidence(selectedJob, viewingDirectionId);
@@ -653,7 +661,7 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
     };
     return (_jsxs("div", { id: "exploration-page", className: "iad-exploration-page", children: [_jsxs("div", { className: "exp-heading", children: [_jsx("div", { children: _jsx("h1", { children: view === "setup" ? "新建探索" : "方向探索" }) }), _jsx("div", { className: "exp-heading-actions", children: view === "setup" ? (_jsx("button", { type: "button", className: "exp-btn", onClick: () => setView("jobs"), children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" })) : (_jsx("button", { type: "button", className: "exp-btn exp-primary", disabled: !!runningJob, title: runningJob ? "已有探索任务运行或排队" : "新建探索", onClick: () => setView("setup"), children: "\u65B0\u5EFA\u63A2\u7D22" })) })] }), _jsx(DatasetScopeSelector, { className: "exp-scope", groups: parentGroups, selectedGroupId: selectedParentId, onGroupChange: handleParentChange, childDatasets: currentChildDatasets, selectedChildIds: selectedChildIds, onChildToggle: handleChildToggle, disabled: !!runningJob, groupId: "exp-parent", childId: "exp-child-toggle", childMenuId: "exp-child-menu", children: _jsx("button", { id: "refresh", type: "button", className: "iad-subtle-icon refresh-btn dc-icn", title: "\u5237\u65B0\u63A2\u7D22\u4F5C\u4E1A", "aria-label": "\u5237\u65B0\u63A2\u7D22\u4F5C\u4E1A", disabled: !!runningJob, onClick: () => {
                         setRefreshTick((t) => t + 1);
-                    }, children: _jsx(RefreshIcon, { size: 17 }) }) }), view === "setup" ? (_jsxs("div", { children: [_jsxs("section", { className: "exp-panel", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { children: "1. \u9009\u62E9\u5BF9\u6BD4\u6837\u4F8B" }) }), _jsxs("div", { className: "exp-tab-header", children: [_jsxs("div", { className: "exp-sample-tabs", role: "tablist", "aria-label": "\u5BF9\u6BD4\u6837\u4F8B", children: [_jsxs("button", { type: "button", role: "tab", "aria-selected": sampleTab === "normal", className: sampleTab === "normal" ? "active" : "", onClick: () => setSampleTab("normal"), children: ["\u826F\u54C1\u6837\u4F8B (", normalSelected.length, ")"] }), _jsxs("button", { type: "button", role: "tab", "aria-selected": sampleTab === "defect", className: sampleTab === "defect" ? "active" : "", onClick: () => setSampleTab("defect"), children: ["\u5F02\u5E38\u6837\u4F8B (", defectSelected.length, ")"] })] }), _jsx("button", { type: "button", className: "exp-clear-icon icon-button iad-icon-button", disabled: sampleTab === "normal" ? !normalSelected.length : !defectSelected.length, title: "\u6E05\u7A7A\u5F53\u524D\u9875\u5DF2\u9009\u56FE\u50CF", "aria-label": `清空${sampleTab === "normal" ? "良品" : "异常"}已选图像`, onClick: () => {
+                    }, children: _jsx(RefreshIcon, { size: 17 }) }) }), view === "setup" ? (_jsxs("div", { children: [_jsxs("section", { className: "exp-panel", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { children: "\u9009\u62E9\u5BF9\u6BD4\u6837\u4F8B" }) }), _jsxs("div", { className: "exp-tab-header", children: [_jsxs("div", { className: "exp-sample-tabs", role: "tablist", "aria-label": "\u5BF9\u6BD4\u6837\u4F8B", children: [_jsxs("button", { type: "button", role: "tab", "aria-selected": sampleTab === "normal", className: sampleTab === "normal" ? "active" : "", onClick: () => setSampleTab("normal"), children: ["\u826F\u54C1\u6837\u4F8B (", normalSelected.length, ")"] }), _jsxs("button", { type: "button", role: "tab", "aria-selected": sampleTab === "defect", className: sampleTab === "defect" ? "active" : "", onClick: () => setSampleTab("defect"), children: ["\u5F02\u5E38\u6837\u4F8B (", defectSelected.length, ")"] })] }), _jsx("button", { type: "button", className: "exp-clear-icon icon-button iad-icon-button", disabled: sampleTab === "normal" ? !normalSelected.length : !defectSelected.length, title: "\u6E05\u7A7A\u5F53\u524D\u9875\u5DF2\u9009\u56FE\u50CF", "aria-label": `清空${sampleTab === "normal" ? "良品" : "异常"}已选图像`, onClick: () => {
                                             if (sampleTab === "normal")
                                                 setNormalSelected([]);
                                             else
@@ -667,10 +675,10 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
                                                     setSourceSelectedOnly(false);
                                                     setSourcePage(1);
                                                     setModal("source");
-                                                }, children: [_jsx(PlusIcon, { size: 24 }), !(sampleTab === "normal" ? normalSelected : defectSelected).length && _jsx("span", { children: "\u6DFB\u52A0\u56FE\u50CF" })] }) })] }) })] }), _jsxs("section", { className: "exp-panel", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { children: "2. \u63A2\u7D22\u63D0\u793A\u8BCD" }) }), _jsxs("div", { className: "exp-prompt-head", children: [_jsxs("label", { className: "exp-input", children: ["\u63D0\u793A\u8BCD\u9884\u8BBE", _jsx("select", { id: "exp-preset", value: selectedPresetId, onChange: (e) => handlePresetChange(e.target.value), children: presets.map((p) => (_jsx("option", { value: p.id, children: p.name }, p.id))) })] }), _jsx("button", { type: "button", className: "exp-btn", disabled: prompt === originalPrompt, onClick: () => setPrompt(originalPrompt), children: "\u91CD\u7F6E\u4E3A\u9884\u8BBE" }), _jsx("button", { type: "button", className: "exp-btn", disabled: !prompt.trim(), onClick: () => {
+                                                }, children: [_jsx(PlusIcon, { size: 24 }), !(sampleTab === "normal" ? normalSelected : defectSelected).length && _jsx("span", { children: "\u6DFB\u52A0\u56FE\u50CF" })] }) })] }) })] }), _jsxs("section", { className: "exp-panel", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { children: "\u63A2\u7D22\u63D0\u793A\u8BCD" }) }), _jsxs("div", { className: "exp-prompt-head", children: [_jsxs("label", { className: "exp-input", children: ["\u63D0\u793A\u8BCD\u9884\u8BBE", _jsx("select", { id: "exp-preset", value: selectedPresetId, onChange: (e) => handlePresetChange(e.target.value), children: presets.map((p) => (_jsx("option", { value: p.id, children: p.name }, p.id))) })] }), _jsx("button", { type: "button", className: "exp-btn", disabled: prompt === originalPrompt, onClick: () => setPrompt(originalPrompt), children: "\u91CD\u7F6E\u4E3A\u9884\u8BBE" }), _jsx("button", { type: "button", className: "exp-btn", disabled: !prompt.trim(), onClick: () => {
                                             setNewPresetName("");
                                             setModal("save");
-                                        }, children: "\u53E6\u5B58\u4E3A\u9884\u8BBE" })] }), _jsxs("label", { className: "exp-input", children: ["\u63D0\u793A\u8BCD\u6B63\u6587", _jsx("textarea", { id: "exp-prompt", rows: 7, value: prompt, onChange: (e) => setPrompt(e.target.value) })] })] }), _jsxs("section", { className: "exp-panel", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { children: "3. \u786E\u8BA4\u5E76\u542F\u52A8" }) }), _jsxs("div", { className: "exp-brief", children: [_jsxs("span", { children: ["\u6240\u9009\u5B50\u6570\u636E\u96C6 ", _jsxs("b", { children: [selectedChildIds.length, " \u4E2A"] })] }), _jsxs("span", { children: ["\u8F93\u5165\u56FE\u50CF ", _jsxs("b", { children: ["\u826F\u54C1 ", normalSelected.length, "\uFF0C\u5F02\u5E38 ", defectSelected.length] })] }), _jsxs("span", { children: ["\u6A21\u578B ", _jsx("b", { children: "Qwen3.8-27B-FP8\uFF08\u793A\u4F8B\uFF09" })] }), _jsxs("span", { children: ["\u6267\u884C ", _jsx("b", { children: "\u6574\u7EC4\u8054\u5408\u8F93\u5165" })] })] }), _jsxs("div", { className: "exp-summarybar", children: [_jsx("span", { style: { fontSize: 12, color: canRun ? "#58718c" : "#8b5660" }, children: runningJob
+                                        }, children: "\u53E6\u5B58\u4E3A\u9884\u8BBE" })] }), _jsxs("label", { className: "exp-input", children: ["\u63D0\u793A\u8BCD\u6B63\u6587", _jsx("textarea", { id: "exp-prompt", rows: 7, value: prompt, onChange: (e) => setPrompt(e.target.value) })] })] }), _jsxs("section", { className: "exp-panel", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { children: "\u786E\u8BA4\u5E76\u542F\u52A8" }) }), _jsxs("div", { className: "exp-brief", children: [_jsxs("span", { children: ["\u6240\u9009\u5B50\u6570\u636E\u96C6 ", _jsxs("b", { children: [selectedChildIds.length, " \u4E2A"] })] }), _jsxs("span", { children: ["\u8F93\u5165\u56FE\u50CF ", _jsxs("b", { children: ["\u826F\u54C1 ", normalSelected.length, "\uFF0C\u5F02\u5E38 ", defectSelected.length] })] }), _jsxs("span", { children: ["\u6A21\u578B ", _jsx("b", { children: "Qwen3.8-27B-FP8\uFF08\u793A\u4F8B\uFF09" })] }), _jsxs("span", { children: ["\u6267\u884C ", _jsx("b", { children: "\u6574\u7EC4\u8054\u5408\u8F93\u5165" })] })] }), _jsxs("div", { className: "exp-summarybar", children: [_jsx("span", { style: { fontSize: 12, color: canRun ? "#58718c" : "#8b5660" }, children: runningJob
                                             ? "当前已有探索运行，暂不可重复启动"
                                             : !selectedChildIds.length
                                                 ? "请选择子数据集"

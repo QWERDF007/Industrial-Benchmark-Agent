@@ -651,11 +651,11 @@ button.dc-multi-trigger,
   outline: 2px solid #3873dd !important;
 }
 
-/* V30 Unified Dialog Geometry */
+/* V30/V56 Unified Dialog Geometry */
 :root {
-  --iad-content-modal-gutter: clamp(20px, 3.4vw, 60px);
+  --iad-content-modal-gutter: var(--iba-dialog-gap, clamp(12px, 2.5vw, 32px));
   --iad-content-modal-radius: 8px;
-  --iad-content-modal-width: 1260px;
+  --iad-content-modal-width: 1380px;
   --iad-content-modal-height: 820px;
 }
 .detail-overlay,

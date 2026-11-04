@@ -99,7 +99,7 @@ async function run() {
 
     const detailDialog = await driver.findElement(By.css(".detail-dialog"));
     const detailRect = await detailDialog.getRect();
-    chk(detailRect.width <= 1260 + 2, `图像详情弹窗符合最大1260px规范 (实际宽度: ${detailRect.width}px)`);
+    chk(detailRect.width <= 1380 + 2, `图像详情弹窗符合最大1380px规范 (实际宽度: ${detailRect.width}px)`);
     chk(detailRect.height <= 820 + 2, `图像详情弹窗符合最大820px规范 (实际高度: ${detailRect.height}px)`);
 
     const closeDetailBtn = await driver.findElement(By.css("#close, button.detail-close"));
@@ -136,7 +136,7 @@ async function run() {
     const dirDialog = await driver.findElement(By.css(".exp-direction-dialog"));
     chk(await dirDialog.isDisplayed(), "成功打开方向详情弹窗");
     const dirRect = await dirDialog.getRect();
-    chk(dirRect.width <= 1260 + 2, `方向详情弹窗宽度符合最大1260px规范 (实际宽度: ${dirRect.width}px)`);
+    chk(dirRect.width <= 1380 + 2, `方向详情弹窗宽度符合最大1380px规范 (实际宽度: ${dirRect.width}px)`);
     chk(dirRect.height <= 820 + 2, `方向详情弹窗高度符合最大820px规范 (实际高度: ${dirRect.height}px)`);
 
     // Evidence viewport height strictly <= 172px
@@ -148,7 +148,7 @@ async function run() {
       const evImgs = await evViewports[0].findElements(By.css(".exp-direction-evidence-card img"));
       if (evImgs.length > 0) {
         const imgR = await evImgs[0].getRect();
-        chk(imgR.height <= 110, `证据缩略图高度控制在约108px (实际高度: ${imgR.height}px)`);
+        chk(imgR.height <= 116, `证据缩略图高度控制在约114px (实际高度: ${imgR.height}px)`);
       }
     }
 
@@ -227,7 +227,7 @@ async function run() {
 
     const conflictDialog = await compareMask.findElement(By.css(".dc-conflict-dialog, .dc-dialog[role='dialog']"));
     const confRect = await conflictDialog.getRect();
-    chk(confRect.width <= 1260 + 2, `标注冲突对比弹窗宽度符合最大1260px (实际: ${confRect.width}px)`);
+    chk(confRect.width <= 1380 + 2, `标注冲突对比弹窗宽度符合最大1380px (实际: ${confRect.width}px)`);
     chk(confRect.height <= 820 + 2, `标注冲突对比弹窗高度符合最大820px (实际: ${confRect.height}px)`);
 
     // Verify candidate thumbnails strip visible

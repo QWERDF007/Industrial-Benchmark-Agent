@@ -261,7 +261,6 @@ export function DirectionDetailDialog({
                           onMouseLeave={() => onHighlightRef(null)}
                           onClick={() => onOpenFullscreen(image.ref)}
                         >
-                          <span className="exp-ev-chip">{image.ref}</span>
                           <img src={image.url} alt={image.label} loading="eager" />
                         </button>
                       ))
@@ -296,7 +295,6 @@ export function DirectionDetailDialog({
                           onMouseLeave={() => onHighlightRef(null)}
                           onClick={() => onOpenFullscreen(image.ref)}
                         >
-                          <span className="exp-ev-chip">{image.ref}</span>
                           <img src={image.url} alt={image.label} loading="eager" />
                         </button>
                       ))

@@ -370,84 +370,183 @@ export function KnowledgePage({ dataset, kind, refreshRevision, headerActions })
             return;
         setLightboxIndex((lightboxIndex + delta + lightboxEvidence.length) % lightboxEvidence.length);
     };
-    // Creation modal state
-    const [formKind, setFormKind] = useState("normal");
-    const [selectedGeneral, setSelectedGeneral] = useState(new Set(["edges", "integrity"]));
-    const [selectedExplored, setSelectedExplored] = useState(new Set());
-    const [customDirections, setCustomDirections] = useState([]);
-    const [customInput, setCustomInput] = useState("");
-    const [selectedSamples, setSelectedSamples] = useState(new Set([1, 2, 3, 4]));
-    const [showAllPresets, setShowAllPresets] = useState(false);
-    const [jobNameInput, setJobNameInput] = useState("边缘与开孔—知识挖掘");
-    const [promptText, setPromptText] = useState("");
-    const [promptDirty, setPromptDirty] = useState(false);
+    // Creation subpage state (V54/V56)
+    const [setupDataset, setSetupDataset] = useState(selectedParentId);
+    const [setupSubsets, setSetupSubsets] = useState(new Set([selectedChildId]));
+    const [setupKind, setSetupKind] = useState("normal");
+    const [setupGeneral, setSetupGeneral] = useState(new Set(["edges", "integrity"]));
+    const [setupExplored, setSetupExplored] = useState(new Set());
+    const [setupEdits, setSetupEdits] = useState({});
+    const [setupTab, setSetupTab] = useState("preset");
+    const [setupPrompt, setSetupPrompt] = useState("");
+    const [setupPromptDirty, setSetupPromptDirty] = useState(false);
+    const [setupChildMenuOpen, setSetupChildMenuOpen] = useState(false);
+    const [formError, setFormError] = useState("");
+    const [editingDir, setEditingDir] = useState(null);
+    const [editingName, setEditingName] = useState("");
+    const [editingText, setEditingText] = useState("");
+    const [dirEditError, setDirEditError] = useState("");
+    const currentSetupParent = useMemo(() => {
+        return parentGroups.find(g => g.group_id === setupDataset) || parentGroups[0];
+    }, [parentGroups, setupDataset]);
+    const currentSetupChildDatasets = useMemo(() => {
+        return datasets.filter(d => getDatasetGroupId(d, groups) === setupDataset);
+    }, [datasets, groups, setupDataset]);
+    const kbExploredDirs = useMemo(() => {
+        const map = new Map();
+        for (const sid of setupSubsets) {
+            for (const item of (explorerDirections[sid] || [])) {
+                if (!map.has(item.id))
+                    map.set(item.id, item);
+            }
+        }
+        if (map.size === 0 && (explorerDirections.s1 || []).length > 0) {
+            for (const item of explorerDirections.s1) {
+                if (!map.has(item.id))
+                    map.set(item.id, item);
+            }
+        }
+        return Array.from(map.values());
+    }, [setupSubsets]);
+    const getDirInfo = useCallback((item, dirKind) => {
+        const edit = setupEdits[`${dirKind}:${item.id}`];
+        return edit ? { ...item, ...edit } : item;
+    }, [setupEdits]);
+    const allSelectedDirItems = useMemo(() => {
+        const presetsList = defaultPresets
+            .filter(p => setupGeneral.has(p.id))
+            .map(p => getDirInfo(p, "preset"));
+        const exploredList = kbExploredDirs
+            .filter(e => setupExplored.has(e.id))
+            .map(e => getDirInfo(e, "explore"));
+        return [...presetsList, ...exploredList];
+    }, [setupGeneral, setupExplored, kbExploredDirs, getDirInfo]);
+    const generatePromptText = useCallback((datasetName, subsetsNames, promptKind, dirs) => {
+        return [
+            "挖掘目标：",
+            promptKind === "normal"
+                ? "联合比较所选子数据集中的合格良品来源，归纳正常外观规律、允许变化与适用限制。"
+                : "联合比较所选子数据集中的异常候选，整理可见异常判据、正常替代解释和适用限制。",
+            `数据集：${datasetName}`,
+            `子数据集：${subsetsNames.join("、")}`,
+            "来源范围：所选子数据集的全部合格来源。",
+            "用户选择的观察方向：",
+            ...dirs.map((x, i) => `${i + 1}. ${x.name}：${x.text}`),
+            "证据要求：",
+            "只根据实际图像证据推断，区分正常变化、成像差异和异常现象。",
+            "分别记录支持和反对证据。证据不足时明确说明，不能臆造规则或工业标准。"
+        ].join("\n");
+    }, []);
+    useEffect(() => {
+        if (setupPromptDirty)
+            return;
+        const parentName = currentSetupParent?.name || dataset.name;
+        const subsetsNames = currentSetupChildDatasets
+            .filter((c) => setupSubsets.has(c.dataset_id))
+            .map((c) => c.name);
+        setSetupPrompt(generatePromptText(parentName, subsetsNames, setupKind, allSelectedDirItems));
+    }, [setupPromptDirty, currentSetupParent, currentSetupChildDatasets, setupSubsets, setupKind, allSelectedDirItems, generatePromptText, dataset.name]);
+    const validationProblem = useMemo(() => {
+        if (!setupSubsets.size)
+            return "请选择子数据集";
+        if (!allSelectedDirItems.length)
+            return "请选择挖掘方向";
+        if (!setupPrompt.trim())
+            return "请填写完整提示词";
+        return "";
+    }, [setupSubsets.size, allSelectedDirItems.length, setupPrompt]);
+    const handleRestorePrompt = () => {
+        if (setupPromptDirty && setupPrompt.trim()) {
+            setConfirmState({
+                title: "恢复自动生成提示词",
+                message: "恢复将覆盖手工修改的提示词。",
+                danger: false,
+                onConfirm: () => {
+                    setSetupPromptDirty(false);
+                    const parentName = currentSetupParent?.name || dataset.name;
+                    const subsetsNames = currentSetupChildDatasets
+                        .filter((c) => setupSubsets.has(c.dataset_id))
+                        .map((c) => c.name);
+                    setSetupPrompt(generatePromptText(parentName, subsetsNames, setupKind, allSelectedDirItems));
+                    setConfirmState(null);
+                }
+            });
+            return;
+        }
+        setSetupPromptDirty(false);
+        const parentName = currentSetupParent?.name || dataset.name;
+        const subsetsNames = currentSetupChildDatasets
+            .filter((c) => setupSubsets.has(c.dataset_id))
+            .map((c) => c.name);
+        setSetupPrompt(generatePromptText(parentName, subsetsNames, setupKind, allSelectedDirItems));
+    };
     const openCreate = () => {
-        setFormKind(kind);
-        setSelectedGeneral(new Set(["edges", "integrity"]));
-        setSelectedExplored(new Set());
-        setCustomDirections([]);
-        setCustomInput("");
-        setSelectedSamples(new Set([1, 2, 3, 4]));
-        setShowAllPresets(false);
-        setJobNameInput("边缘与开孔—知识挖掘");
-        setPromptDirty(false);
+        setSetupDataset(selectedParentId);
+        setSetupSubsets(new Set([selectedChildId]));
+        setSetupKind(kind);
+        setSetupGeneral(new Set(["edges", "integrity"]));
+        setSetupExplored(new Set());
+        setSetupEdits({});
+        setSetupTab("preset");
+        setSetupPromptDirty(false);
+        setSetupChildMenuOpen(false);
+        setFormError("");
+        setEditingDir(null);
         setCreateOpen(true);
     };
     const closeCreate = () => {
         setCreateOpen(false);
+        setSetupChildMenuOpen(false);
+        setEditingDir(null);
     };
-    // Generate prompt
-    useEffect(() => {
-        if (promptDirty)
+    const saveDirEdit = () => {
+        if (!editingDir)
             return;
-        const generalList = defaultPresets.filter(p => selectedGeneral.has(p.id));
-        const exploredList = (explorerDirections.s1 || []).filter(e => selectedExplored.has(e.id));
-        const allDirs = [...generalList.map(g => `${g.name}：${g.text}`), ...exploredList.map(e => `${e.name}：${e.text}`), ...customDirections];
-        const lines = [
-            `你是工业视觉异常检测数据规范研究助手。`,
-            ``,
-            `数据集：${dataset.name}`,
-            `本次任务：基于所选 ${selectedSamples.size} 张${formKind === "normal" ? "良品" : "异常"}图像，提炼可复核的${formKind === "normal" ? "正常外观规律及允许变化" : "异常外观特征、判断依据及适用限制"}。`,
-            ``,
-            `【观察方向】`,
-            ...allDirs.map((d, i) => `${i + 1}. ${d}`),
-            ``,
-            `【证据要求】`,
-            `1. 只能依据可见图像与提供的样本作出结论；必须指明支持和反对的证据图。`,
-            `2. 区分真实缺陷、成像伪影、裁剪差异、光照与正常工艺变化。`,
-            `3. 不足以判定时，标为“证据不足”或“存在矛盾”，不得臆造工业标准。`,
-            `4. 结论需包含：知识名称、简短描述、判定依据、允许变化、适用限制、证据编号与人工复核建议。`
-        ];
-        setPromptText(lines.join("\n"));
-    }, [formKind, selectedGeneral, selectedExplored, customDirections, selectedSamples, dataset.name, promptDirty]);
-    const handleSubmitMining = () => {
-        if (!jobNameInput.trim()) {
-            toast("请填写作业名称");
+        const name = editingName.trim();
+        const text = editingText.trim();
+        if (!name || !text) {
+            setDirEditError("标题和描述不能为空。");
             return;
         }
+        setSetupEdits(prev => ({
+            ...prev,
+            [`${editingDir.kind}:${editingDir.id}`]: { name, text }
+        }));
+        setEditingDir(null);
+    };
+    const closeDirDrawer = () => {
+        setEditingDir(null);
+        setDirEditError("");
+    };
+    const handleSubmitJob = () => {
+        if (validationProblem)
+            return;
+        const selectedChildList = Array.from(setupSubsets);
+        const firstName = allSelectedDirItems[0]?.name || "知识挖掘";
+        const sourceKind = setupGeneral.size && setupExplored.size ? "mixed" : setupExplored.size ? "explore" : "preset";
         const newJob = {
-            id: `job_${Date.now()}`,
-            name: jobNameInput.trim(),
-            dataset: dataset.dataset_id,
-            subset: selectedChildId,
+            id: `demo_${Date.now()}`,
+            name: `${firstName}知识挖掘`,
+            dataset: setupDataset,
+            subset: selectedChildList[0] || selectedChildId,
             status: "running",
             statusLabel: "运行中",
             statusBadgeClass: "blue",
-            source: selectedExplored.size ? "mixed" : "preset",
+            source: sourceKind,
             count: null,
             at: new Date().toLocaleString("zh-CN", { hour12: false }),
             durationText: "00:08",
             seconds: 8,
-            items: makeDemoItems([0, 1, 2, 3]),
-            model: "Qwen3.8-27B-FP8",
-            prompt: promptText,
-            kind: formKind,
-            knowledgeVersionId: `kv_${Date.now()}`
+            items: makeDemoItems(setupGeneral.has("edges") ? [0, 1, 2, 3, 5] : [1, 4, 3]),
+            model: "当前工作台模型",
+            prompt: setupPrompt,
+            kind: setupKind,
+            knowledgeVersionId: `knowledge_demo_${Date.now()}`
         };
-        setJobList([newJob, ...jobList]);
+        setJobList(prev => [newJob, ...prev]);
         setSelectedJobId(newJob.id);
         closeCreate();
-        toast("已创建知识挖掘作业");
+        toast("已创建离线演示作业");
         setTimeout(() => {
             newJob.status = "completed";
             newJob.statusLabel = "已完成";
@@ -469,6 +568,8 @@ export function KnowledgePage({ dataset, kind, refreshRevision, headerActions })
                     closePrompt();
                 else if (detailItem)
                     closeDetail();
+                else if (editingDir)
+                    closeDirDrawer();
                 else if (createOpen)
                     closeCreate();
             }
@@ -481,7 +582,7 @@ export function KnowledgePage({ dataset, kind, refreshRevision, headerActions })
         };
         window.addEventListener("keydown", onKeyDown);
         return () => window.removeEventListener("keydown", onKeyDown);
-    }, [lightboxIndex, confirmState, promptOpen, detailItem, createOpen]);
+    }, [lightboxIndex, confirmState, promptOpen, detailItem, editingDir, createOpen]);
     // Helper for rendering pagination buttons
     const renderPageButtons = (current, max, onChange, dataPrefix) => {
         const nums = [];
@@ -495,7 +596,7 @@ export function KnowledgePage({ dataset, kind, refreshRevision, headerActions })
                     return (_jsxs(React.Fragment, { children: [hasEllipsis && _jsx("span", { className: "pager-ellipsis", "aria-hidden": "true", children: "\u2026" }), _jsx("button", { type: "button", className: "pagebtn", [`data-${dataPrefix}-set`]: p, "aria-current": p === current ? "page" : undefined, "aria-label": `第 ${p} 页`, onClick: () => onChange(p), children: p })] }, p));
                 }), _jsx("button", { type: "button", className: "pagebtn", disabled: current >= max, onClick: () => onChange(Math.min(max, current + 1)), "aria-label": "\u4E0B\u4E00\u9875", children: "\u4E0B\u4E00\u9875" })] }));
     };
-    return (_jsxs("div", { id: "knowledge-page", className: "iad-knowledge-page kb-v45 v46-app", children: [_jsx("div", { className: "kb-v45-main", children: _jsxs("div", { className: "main-inner", children: [_jsxs("header", { className: "topline", children: [_jsxs("div", { className: "titlebar", children: [_jsx("div", { className: "eyebrow", children: "\u77E5\u8BC6\u6784\u5EFA" }), _jsx("h1", { children: "\u77E5\u8BC6\u6316\u6398" })] }), _jsx("div", { className: "actions", children: _jsx("button", { className: "btn primary", id: "create-btn", onClick: openCreate, children: "\uFF0B \u65B0\u5EFA\u6316\u6398" }) })] }), _jsxs("section", { className: "context", "aria-label": "\u9009\u62E9\u6570\u636E\u8303\u56F4", children: [_jsxs("div", { className: "control", children: [_jsx("label", { className: "label", htmlFor: "dataset", children: "\u6570\u636E\u96C6" }), _jsx("select", { id: "dataset", className: "f wide select", "aria-label": "\u5F53\u524D\u6570\u636E\u96C6", value: selectedParentId, onChange: e => handleParentChange(e.target.value), children: parentGroups.map(g => (_jsx("option", { value: g.group_id, children: g.name }, g.group_id))) })] }), _jsxs("div", { className: "control", children: [_jsx("label", { className: "label", htmlFor: "subset", children: "\u5B50\u6570\u636E\u96C6" }), _jsx("select", { id: "subset", className: "f wide select", "aria-label": "\u5B50\u6570\u636E\u96C6", value: selectedChildId, onChange: e => handleChildChange(e.target.value), children: currentChildDatasets.map(d => (_jsx("option", { value: d.dataset_id, children: d.name }, d.dataset_id))) })] }), _jsx("div", { className: "kb-context-actions", children: _jsx(RefreshIconButton, { id: "kb-refresh", title: "\u5237\u65B0\u5F53\u524D\u9875\u9762", ariaLabel: "\u5237\u65B0\u5F53\u524D\u9875\u9762", onClick: handleRefresh }) }), _jsx("div", { className: "context-info", id: "dataset-info" })] }), _jsxs("section", { className: "panel", "aria-labelledby": "jobs-heading", children: [_jsxs("div", { className: "panelbar", children: [_jsx("div", { children: _jsxs("h2", { id: "jobs-heading", children: ["\u6316\u6398\u4F5C\u4E1A", _jsx("span", { "aria-hidden": "true", className: "count hide", id: "jobs-count" })] }) }), _jsxs("div", { className: "filterset", children: [_jsx("input", { className: "f", id: "job-search", placeholder: "\u641C\u7D22\u4F5C\u4E1A\u540D\u79F0", "aria-label": "\u641C\u7D22\u4F5C\u4E1A\u540D\u79F0", value: jobSearch, onChange: e => {
+    return (_jsxs("div", { id: "knowledge-page", className: `iad-knowledge-page kb-v45 v46-app ${createOpen ? "kb-creating" : ""}`, children: [_jsx("div", { className: "kb-v45-main", children: _jsxs("div", { className: "main-inner", children: [_jsxs("header", { className: "topline", children: [_jsxs("div", { className: "titlebar", children: [_jsx("div", { className: "eyebrow", children: "\u77E5\u8BC6\u6784\u5EFA" }), _jsx("h1", { children: "\u77E5\u8BC6\u6316\u6398" })] }), _jsx("div", { className: "actions", children: _jsx("button", { className: "btn primary", id: "create-btn", onClick: openCreate, children: "\uFF0B \u65B0\u5EFA\u6316\u6398" }) })] }), _jsxs("section", { className: "context", "aria-label": "\u9009\u62E9\u6570\u636E\u8303\u56F4", children: [_jsxs("div", { className: "control", children: [_jsx("label", { className: "label", htmlFor: "dataset", children: "\u6570\u636E\u96C6" }), _jsx("select", { id: "dataset", className: "f wide select", "aria-label": "\u5F53\u524D\u6570\u636E\u96C6", value: selectedParentId, onChange: e => handleParentChange(e.target.value), children: parentGroups.map(g => (_jsx("option", { value: g.group_id, children: g.name }, g.group_id))) })] }), _jsxs("div", { className: "control", children: [_jsx("label", { className: "label", htmlFor: "subset", children: "\u5B50\u6570\u636E\u96C6" }), _jsx("select", { id: "subset", className: "f wide select", "aria-label": "\u5B50\u6570\u636E\u96C6", value: selectedChildId, onChange: e => handleChildChange(e.target.value), children: currentChildDatasets.map(d => (_jsx("option", { value: d.dataset_id, children: d.name }, d.dataset_id))) })] }), _jsx("div", { className: "kb-context-actions", children: _jsx(RefreshIconButton, { id: "kb-refresh", title: "\u5237\u65B0\u5F53\u524D\u9875\u9762", ariaLabel: "\u5237\u65B0\u5F53\u524D\u9875\u9762", onClick: handleRefresh }) }), _jsx("div", { className: "context-info", id: "dataset-info" })] }), _jsxs("section", { className: "panel", "aria-labelledby": "jobs-heading", children: [_jsxs("div", { className: "panelbar", children: [_jsx("div", { children: _jsxs("h2", { id: "jobs-heading", children: ["\u6316\u6398\u4F5C\u4E1A", _jsx("span", { "aria-hidden": "true", className: "count hide", id: "jobs-count" })] }) }), _jsxs("div", { className: "filterset", children: [_jsx("input", { className: "f", id: "job-search", placeholder: "\u641C\u7D22\u4F5C\u4E1A\u540D\u79F0", "aria-label": "\u641C\u7D22\u4F5C\u4E1A\u540D\u79F0", value: jobSearch, onChange: e => {
                                                         setJobSearch(e.target.value);
                                                         setJobPage(1);
                                                     } }), _jsxs("select", { className: "f", id: "job-status", "aria-label": "\u7B5B\u9009\u4F5C\u4E1A\u72B6\u6001", value: jobStatus, onChange: e => {
@@ -543,50 +644,66 @@ export function KnowledgePage({ dataset, kind, refreshRevision, headerActions })
                                                             ], (detailItem.supportImgs || []).length + i), children: [_jsx("img", { src: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150"><rect width="200" height="150" fill="%23fff0f0"/><text x="100" y="80" font-family="sans-serif" font-size="14" fill="%23a74242" text-anchor="middle">样本 ${n}</text></svg>`, alt: `反对证据 ${i + 1}`, loading: "lazy" }), _jsxs("span", { children: ["\u53CD\u5BF9\u8BC1\u636E ", i + 1, "\uFF0C\u70B9\u51FB\u653E\u5927"] })] }, n))) })) : (_jsx("div", { className: "detail-evidence-empty", children: "\u6682\u65E0\u53CD\u5BF9\u8BC1\u636E\u56FE\u50CF" }))] }), _jsxs("section", { className: "detail-section", children: [_jsx("h3", { children: "\u9002\u7528\u9650\u5236" }), _jsx("p", { children: detailItem?.limit })] }), _jsxs("section", { className: "detail-section detail-review", children: [_jsx("h3", { children: "\u4EBA\u5DE5\u6838\u5B9E" }), _jsxs("div", { className: "knowledge-review-options", role: "radiogroup", "aria-label": "\u4EBA\u5DE5\u6838\u5B9E\u7ED3\u8BBA", children: [_jsxs("label", { children: [_jsx("input", { type: "radio", name: "knowledge-review", value: "pending", checked: reviewStatus === "pending", onChange: () => setReviewStatus("pending") }), "\u5F85\u6838\u5B9E"] }), _jsxs("label", { children: [_jsx("input", { type: "radio", name: "knowledge-review", value: "confirmed", checked: reviewStatus === "confirmed", onChange: () => setReviewStatus("confirmed") }), "\u6838\u5B9E\u901A\u8FC7"] }), _jsxs("label", { children: [_jsx("input", { type: "radio", name: "knowledge-review", value: "rejected", checked: reviewStatus === "rejected", onChange: () => setReviewStatus("rejected") }), "\u9A73\u56DE"] })] }), _jsx("label", { className: "label", htmlFor: "review-note", children: "\u590D\u6838\u5907\u6CE8" }), _jsx("textarea", { className: "f textarea", id: "review-note", placeholder: "\u586B\u5199\u590D\u6838\u4F9D\u636E\uFF08\u53EF\u9009\uFF09", value: reviewNote, onChange: e => setReviewNote(e.target.value) })] })] }), _jsxs("footer", { className: "modalfooter", children: [_jsx("span", {}), _jsxs("div", { className: "actions", children: [_jsx("button", { className: "btn", id: "cancel-review", type: "button", onClick: closeDetail, children: "\u53D6\u6D88" }), _jsx("button", { className: "btn primary", id: "save-review", type: "button", onClick: saveReview, children: "\u4FDD\u5B58" })] })] })] }) }), _jsx("div", { className: `overlay confirm-overlay v46-app ${confirmState ? "show" : ""}`, id: "confirm-overlay", role: "dialog", "aria-modal": "true", "aria-labelledby": "confirm-title", "aria-describedby": "confirm-message", onClick: () => setConfirmState(null), children: _jsxs("section", { className: "modal confirm-modal", tabIndex: -1, onClick: e => e.stopPropagation(), children: [_jsxs("header", { className: "modalheader", children: [_jsx("h2", { id: "confirm-title", children: confirmState?.title || "请确认" }), _jsx("button", { className: "iconbtn", id: "confirm-close", "aria-label": "\u5173\u95ED\u786E\u8BA4\u7A97\u53E3", onClick: () => setConfirmState(null), children: "\u00D7" })] }), _jsx("div", { className: "modalcontent", id: "confirm-message", children: confirmState?.message }), _jsx("footer", { className: "modalfooter", children: _jsxs("div", { className: "actions", children: [_jsx("button", { type: "button", className: "btn", id: "confirm-cancel", onClick: () => setConfirmState(null), children: "\u53D6\u6D88" }), _jsx("button", { type: "button", className: `btn ${confirmState?.danger ? "is-danger" : "primary"}`, id: "confirm-accept", onClick: () => {
                                                         confirmState?.onConfirm();
                                                         setConfirmState(null);
-                                                    }, children: "\u786E\u5B9A" })] }) })] }) }), _jsx("div", { className: `overlay v46-app ${createOpen ? "show" : ""}`, id: "create-overlay", role: "dialog", "aria-modal": "true", "aria-label": "\u65B0\u5EFA\u6316\u6398", onClick: closeCreate, children: _jsxs("div", { className: "modal", onClick: e => e.stopPropagation(), children: [_jsxs("div", { className: "modalheader", children: [_jsxs("div", { children: [_jsx("h2", { children: "\u65B0\u5EFA\u77E5\u8BC6\u6316\u6398" }), _jsx("p", { className: "subtitle", children: "\u9009\u62E9\u65B9\u5411\u3001\u6837\u672C\uFF0C\u751F\u6210\u5E76\u7F16\u8F91\u5B8C\u6574\u63D0\u793A\u8BCD" })] }), _jsx("button", { className: "iconbtn", "data-dismiss": "create-overlay", "aria-label": "\u5173\u95ED\u65B0\u5EFA\u6316\u6398", title: "\u5173\u95ED", onClick: closeCreate, children: "\u00D7" })] }), _jsx("div", { className: "modalcontent", children: _jsxs("div", { className: "modalgrid", children: [_jsxs("div", { children: [_jsxs("section", { className: "form-section", children: [_jsx("h3", { children: "1. \u6570\u636E\u8303\u56F4" }), _jsxs("div", { className: "rangebar", children: [_jsxs("div", { children: [_jsx("span", { className: "label", children: "\u6570\u636E\u96C6" }), _jsx("strong", { id: "form-dataset", children: dataset.name })] }), _jsxs("div", { children: [_jsx("span", { className: "label", children: "\u5B50\u6570\u636E\u96C6" }), _jsx("strong", { id: "form-subset", children: dataset.name })] })] }), _jsxs("div", { className: "kindrow", children: [_jsxs("label", { className: "toggle", children: [_jsx("input", { type: "radio", name: "sample-kind", value: "normal", checked: formKind === "normal", onChange: () => setFormKind("normal") }), " ", "\u826F\u54C1\u77E5\u8BC6"] }), _jsxs("label", { className: "toggle", children: [_jsx("input", { type: "radio", name: "sample-kind", value: "defect", checked: formKind === "defect", onChange: () => setFormKind("defect") }), " ", "\u5F02\u5E38\u77E5\u8BC6"] })] })] }), _jsxs("section", { className: "form-section", children: [_jsxs("div", { className: "sectionrow", children: [_jsx("h3", { children: "2. \u9009\u62E9\u6316\u6398\u65B9\u5411" }), _jsxs("small", { id: "direction-count", children: ["\u5DF2\u9009 ", selectedGeneral.size + selectedExplored.size + customDirections.length, " \u9879"] })] }), _jsxs("div", { className: "preset-title", children: [_jsx("span", { className: "label", style: { margin: 0 }, children: "\u901A\u7528\u9884\u8BBE\u65B9\u5411\uFF08\u6765\u81EA\u73B0\u6709 15 \u9879\u9ED8\u8BA4\u65B9\u5411\uFF09" }), _jsx("button", { type: "button", className: "btn small quiet", id: "toggle-presets", onClick: () => setShowAllPresets(!showAllPresets), children: showAllPresets ? "收起为常用方向" : "显示全部 15 项" })] }), _jsx("div", { className: "direction-list", id: "general-directions", children: (showAllPresets
-                                                                        ? defaultPresets
-                                                                        : defaultPresets.filter((p, i) => i < 6 || selectedGeneral.has(p.id))).map(p => (_jsxs("label", { className: "direction", children: [_jsx("input", { type: "checkbox", "data-dir-kind": "preset", "data-dir-id": p.id, checked: selectedGeneral.has(p.id), onChange: e => {
-                                                                                    const next = new Set(selectedGeneral);
-                                                                                    if (e.target.checked)
-                                                                                        next.add(p.id);
-                                                                                    else
-                                                                                        next.delete(p.id);
-                                                                                    setSelectedGeneral(next);
-                                                                                } }), _jsxs("div", { children: [_jsx("strong", { children: p.name }), _jsx("span", { children: p.text })] })] }, p.id))) }), _jsx("div", { className: "label", style: { marginTop: 14 }, children: "\u65B9\u5411\u63A2\u7D22\u7ED3\u679C\uFF08\u5F53\u524D\u5B50\u6570\u636E\u96C6\uFF09" }), _jsx("div", { className: "direction-list", id: "explored-directions", children: (explorerDirections.s1 || []).map(p => (_jsxs("label", { className: "direction", children: [_jsx("input", { type: "checkbox", "data-dir-kind": "explore", "data-dir-id": p.id, checked: selectedExplored.has(p.id), onChange: e => {
-                                                                                    const next = new Set(selectedExplored);
-                                                                                    if (e.target.checked)
-                                                                                        next.add(p.id);
-                                                                                    else
-                                                                                        next.delete(p.id);
-                                                                                    setSelectedExplored(next);
-                                                                                } }), _jsxs("div", { children: [_jsx("strong", { children: p.name }), _jsx("span", { children: p.text })] })] }, p.id))) }), _jsxs("div", { className: "customrow", children: [_jsx("input", { className: "f", id: "custom-direction", maxLength: 90, placeholder: "\u8865\u5145\u81EA\u5B9A\u4E49\u65B9\u5411\uFF08\u53EF\u9009\uFF09", value: customInput, onChange: e => setCustomInput(e.target.value), onKeyDown: e => {
-                                                                                if (e.key === "Enter" && customInput.trim()) {
-                                                                                    e.preventDefault();
-                                                                                    setCustomDirections([...customDirections, customInput.trim()]);
-                                                                                    setCustomInput("");
-                                                                                }
-                                                                            } }), _jsx("button", { type: "button", className: "btn", id: "add-custom", onClick: () => {
-                                                                                if (customInput.trim()) {
-                                                                                    setCustomDirections([...customDirections, customInput.trim()]);
-                                                                                    setCustomInput("");
-                                                                                }
-                                                                            }, children: "\u6DFB\u52A0\u65B9\u5411" })] }), _jsx("div", { className: "tokens", id: "custom-direction-tokens", children: customDirections.map((dir, i) => (_jsxs("span", { className: "token", children: [dir, " ", _jsx("button", { type: "button", "data-remove-custom": i, "aria-label": `删除自定义方向 ${dir}`, onClick: () => setCustomDirections(customDirections.filter((_, idx) => idx !== i)), children: "\u00D7" })] }, i))) })] }), _jsxs("section", { className: "form-section", children: [_jsxs("div", { className: "sectionrow", children: [_jsx("h3", { children: "3. \u6765\u6E90\u56FE\u50CF" }), _jsxs("small", { id: "selected-sample-count", children: ["\u5DF2\u9009 ", selectedSamples.size, " / 9 \u5F20"] })] }), _jsx("div", { className: "smallhint", style: { fontSize: 12, color: "#172338", marginBottom: 8 }, children: "\u53EF\u4ECE\u5F53\u524D\u5B50\u6570\u636E\u96C6\u4E2D\u9009\u62E9\u89C2\u5BDF\u6837\u672C\uFF1B\u539F\u578B\u63D0\u4F9B 9 \u5F20\u793A\u4F8B\u56FE\u50CF\u3002" }), _jsx("div", { className: "samples", id: "sample-grid", children: Array.from({ length: 9 }, (_, i) => i + 1).map(n => (_jsxs("button", { type: "button", className: `sample ${selectedSamples.has(n) ? "checked" : ""}`, "data-select-sample": n, "aria-pressed": selectedSamples.has(n), onClick: () => {
-                                                                            const next = new Set(selectedSamples);
-                                                                            if (next.has(n))
-                                                                                next.delete(n);
+                                                    }, children: "\u786E\u5B9A" })] }) })] }) }), _jsxs("section", { id: "kb-setup-page", className: `kb-setup-page ${createOpen ? "" : "hide"}`, "aria-label": "\u65B0\u5EFA\u77E5\u8BC6\u6316\u6398\u914D\u7F6E", children: [_jsxs("header", { className: "exp-heading kb-setup-heading", children: [_jsx("div", { children: _jsx("h1", { children: "\u65B0\u5EFA\u6316\u6398" }) }), _jsx("button", { type: "button", className: "exp-btn", id: "kb-setup-back", onClick: closeCreate, children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" })] }), _jsxs("section", { className: "kb-setup-scope", "aria-label": "\u9009\u62E9\u6570\u636E\u8303\u56F4", children: [_jsxs("div", { className: "kb-setup-control", children: [_jsx("label", { htmlFor: "kb-setup-dataset", children: "\u6570\u636E\u96C6" }), _jsx("select", { id: "kb-setup-dataset", className: "f", value: setupDataset, onChange: e => {
+                                                        const dsId = e.target.value;
+                                                        setSetupDataset(dsId);
+                                                        const firstChildId = datasets.find(d => getDatasetGroupId(d, groups) === dsId)?.dataset_id;
+                                                        setSetupSubsets(new Set(firstChildId ? [firstChildId] : []));
+                                                        setSetupExplored(new Set());
+                                                        setSetupChildMenuOpen(false);
+                                                    }, children: parentGroups.map(g => (_jsx("option", { value: g.group_id, children: g.name }, g.group_id))) })] }), _jsxs("div", { className: "kb-setup-control kb-child-control", children: [_jsx("label", { id: "kb-setup-child-label", htmlFor: "kb-setup-child-trigger", children: "\u5B50\u6570\u636E\u96C6" }), _jsxs("div", { className: "kb-child-picker", children: [_jsxs("button", { type: "button", className: "kb-child-trigger", id: "kb-setup-child-trigger", "aria-haspopup": "true", "aria-expanded": setupChildMenuOpen, "aria-labelledby": "kb-setup-child-label kb-setup-child-selected", onClick: () => setSetupChildMenuOpen(!setupChildMenuOpen), children: [_jsx("span", { id: "kb-setup-child-selected", children: setupSubsets.size ? `已选 ${setupSubsets.size} 个子数据集` : "请选择子数据集" }), _jsx("svg", { viewBox: "0 0 24 24", "aria-hidden": "true", children: _jsx("path", { d: "m6 9 6 6 6-6" }) })] }), _jsx("div", { className: `kb-child-menu ${setupChildMenuOpen ? "" : "hide"}`, id: "kb-setup-child-menu", role: "group", "aria-label": "\u5B50\u6570\u636E\u96C6\u9009\u62E9", children: currentSetupChildDatasets.map(sub => (_jsxs("label", { className: "kb-child-option", children: [_jsx("input", { type: "checkbox", value: sub.dataset_id, checked: setupSubsets.has(sub.dataset_id), onChange: e => {
+                                                                            const next = new Set(setupSubsets);
+                                                                            if (e.target.checked)
+                                                                                next.add(sub.dataset_id);
                                                                             else
-                                                                                next.add(n);
-                                                                            setSelectedSamples(next);
-                                                                        }, children: [_jsx("img", { alt: `样本 ${n}`, loading: "lazy", src: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150"><rect width="200" height="150" fill="%23eef2f8"/><text x="100" y="80" font-family="sans-serif" font-size="14" fill="%234a5568" text-anchor="middle">样本 ${String(n).padStart(2, "0")}</text></svg>` }), _jsxs("span", { className: "sampleid", children: ["\u6837\u672C ", String(n).padStart(2, "0")] })] }, n))) })] }), _jsxs("section", { className: "form-section prompt", children: [_jsxs("div", { className: "sectionrow", children: [_jsx("h3", { children: "4. \u5B8C\u6574\u63D0\u793A\u8BCD" }), _jsx("button", { type: "button", className: "btn small", id: "compose-prompt", onClick: () => {
-                                                                                setPromptDirty(false);
-                                                                                toast("已重新生成提示词");
-                                                                            }, children: "\u6309\u5F53\u524D\u9009\u62E9\u91CD\u65B0\u751F\u6210" })] }), _jsxs("div", { className: "promptactions", children: [_jsx("span", { className: "note", id: "prompt-note", style: { fontSize: 12, color: "#172338" }, children: promptDirty ? "提示词已修改，修改方向后不会自动覆盖" : "已根据当前方向生成，可直接修改" }), _jsx("button", { type: "button", className: "btn small quiet", id: "restore-prompt", onClick: () => {
-                                                                                setPromptDirty(false);
-                                                                                toast("已恢复自动生成版本");
-                                                                            }, children: "\u6062\u590D\u81EA\u52A8\u751F\u6210\u7248\u672C" })] }), _jsx("textarea", { className: "f textarea", id: "prompt-text", "aria-label": "\u5B8C\u6574\u63D0\u793A\u8BCD", spellCheck: false, value: promptText, onChange: e => {
-                                                                        setPromptText(e.target.value);
-                                                                        setPromptDirty(true);
-                                                                    } }), _jsxs("div", { className: "counter", children: [_jsx("span", { children: "\u4F5C\u4E1A\u7EA7\u63D0\u793A\u8BCD\u6F14\u793A\uFF1B\u63A5\u5165\u771F\u5B9E\u540E\u7AEF\u9700\u589E\u52A0\u51BB\u7ED3\u8F93\u5165\u5B57\u6BB5" }), _jsxs("span", { id: "prompt-counter", children: [promptText.length, " \u5B57"] })] })] })] }), _jsxs("aside", { className: "sidepanel", children: [_jsxs("div", { className: "subtlebox", children: [_jsx("h3", { className: "sidecaption", children: "\u6316\u6398\u914D\u7F6E" }), _jsx("label", { className: "label", htmlFor: "job-name", children: "\u4F5C\u4E1A\u540D\u79F0" }), _jsx("input", { id: "job-name", className: "f wide", maxLength: 80, value: jobNameInput, onChange: e => setJobNameInput(e.target.value) }), _jsx("div", { style: { height: 13 } }), _jsx("label", { className: "label", htmlFor: "model-select", children: "\u5DE5\u4F5C\u53F0\u6A21\u578B" }), _jsxs("select", { className: "f wide", id: "model-select", disabled: true, value: "Qwen3.8-27B-FP8", children: [_jsx("option", { value: "Qwen3.8-27B-FP8", children: "Qwen3.8-27B-FP8" }), _jsx("option", { value: "Qwen3.5-27B-FP8", children: "Qwen3.5-27B-FP8" })] }), _jsx("div", { className: "smallhint", style: { marginTop: 8, fontSize: 12, color: "#172338" }, children: "\u539F\u578B\u6A21\u578B\u4E3A\u793A\u4F8B\uFF1B\u5B9E\u9645\u4F7F\u7528\u73B0\u6709\u6A21\u578B\u914D\u7F6E\u3002" })] }), _jsxs("div", { className: "subtlebox", children: [_jsx("h3", { className: "sidecaption", children: "\u5F53\u524D\u9009\u62E9" }), _jsxs("div", { className: "summarylist", children: [_jsx("span", { children: "\u77E5\u8BC6\u7C7B\u578B" }), _jsx("b", { id: "sum-kind", children: formKind === "normal" ? "良品" : "异常" }), _jsx("span", { children: "\u901A\u7528\u65B9\u5411" }), _jsxs("b", { id: "sum-preset", children: [selectedGeneral.size, " \u9879"] }), _jsx("span", { children: "\u63A2\u7D22\u65B9\u5411" }), _jsxs("b", { id: "sum-explore", children: [selectedExplored.size, " \u9879"] }), _jsx("span", { children: "\u81EA\u5B9A\u4E49\u65B9\u5411" }), _jsxs("b", { id: "sum-custom", children: [customDirections.length, " \u9879"] }), _jsx("span", { children: "\u6765\u6E90\u56FE\u50CF" }), _jsxs("b", { id: "sum-samples", children: [selectedSamples.size, " \u5F20"] })] })] })] })] }) }), _jsxs("div", { className: "modalfooter", children: [_jsx("span", { className: "muted", style: { fontSize: 12, color: "#172338" }, children: "\u521B\u5EFA\u540E\u5728\u5F53\u524D\u5B50\u6570\u636E\u96C6\u7684\u4F5C\u4E1A\u5217\u8868\u4E2D\u67E5\u770B" }), _jsxs("div", { className: "actions", children: [_jsx("button", { className: "btn", "data-dismiss": "create-overlay", onClick: closeCreate, children: "\u53D6\u6D88" }), _jsx("button", { className: "btn primary", id: "submit-job", onClick: handleSubmitMining, children: "\u5F00\u59CB\u6316\u6398" })] })] })] }) }), _jsxs("div", { className: `lightbox v46-app ${lightboxIndex !== null ? "show" : ""}`, id: "lightbox", role: "dialog", "aria-modal": "true", "aria-label": "\u67E5\u770B\u8BC1\u636E\u56FE\u7247", onClick: closeLight, children: [_jsx("button", { className: "lbclose", id: "close-light", onClick: closeLight, children: "\u00D7" }), _jsx("button", { className: "lbnav left", id: "prev-light", onClick: e => {
+                                                                                next.delete(sub.dataset_id);
+                                                                            setSetupSubsets(next);
+                                                                        } }), _jsx("span", { children: sub.name })] }, sub.dataset_id))) })] })] }), _jsxs("div", { className: "kb-setup-kind", role: "group", "aria-label": "\u77E5\u8BC6\u7C7B\u578B", children: [_jsxs("label", { children: [_jsx("input", { type: "radio", name: "sample-kind", value: "normal", checked: setupKind === "normal", onChange: () => setSetupKind("normal") }), "\u826F\u54C1"] }), _jsxs("label", { children: [_jsx("input", { type: "radio", name: "sample-kind", value: "defect", checked: setupKind === "defect", onChange: () => setSetupKind("defect") }), "\u5F02\u5E38"] })] })] }), _jsxs("section", { className: "exp-panel kb-setup-directions", "aria-labelledby": "kb-direction-heading", children: [_jsx("h2", { id: "kb-direction-heading", children: "\u9009\u62E9\u6316\u6398\u65B9\u5411" }), _jsxs("div", { className: "exp-tabs kb-direction-tabs", role: "tablist", "aria-label": "\u6316\u6398\u65B9\u5411\u7C7B\u578B", children: [_jsx("button", { type: "button", role: "tab", id: "kb-tab-preset", "aria-controls": "kb-preset-panel", "aria-selected": setupTab === "preset", className: setupTab === "preset" ? "active" : "", "data-kb-tab": "preset", onClick: () => setSetupTab("preset"), children: "\u901A\u7528\u9884\u8BBE\u65B9\u5411" }), _jsx("button", { type: "button", role: "tab", id: "kb-tab-explore", "aria-controls": "kb-explore-panel", "aria-selected": setupTab === "explore", className: setupTab === "explore" ? "active" : "", "data-kb-tab": "explore", onClick: () => setSetupTab("explore"), children: "\u65B9\u5411\u63A2\u7D22" })] }), _jsx("div", { id: "kb-preset-panel", role: "tabpanel", "aria-labelledby": "kb-tab-preset", className: setupTab !== "preset" ? "hide" : "", children: _jsx("div", { className: "kb-direction-table-wrap", children: _jsxs("table", { className: "kb-direction-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { className: "kb-dir-check", children: _jsx("span", { className: "sr-only", children: "\u9009\u62E9" }) }), _jsx("th", { className: "kb-dir-title", children: "\u65B9\u5411" }), _jsx("th", { children: "\u63CF\u8FF0" }), _jsx("th", { className: "kb-dir-action", children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { id: "general-directions", children: defaultPresets.map(p => {
+                                                                const info = getDirInfo(p, "preset");
+                                                                const checked = setupGeneral.has(p.id);
+                                                                return (_jsxs("tr", { children: [_jsx("td", { className: "kb-dir-check", children: _jsx("input", { type: "checkbox", "data-dir-kind": "preset", "data-dir-id": p.id, "aria-label": `选择${info.name}`, checked: checked, onChange: e => {
+                                                                                    const next = new Set(setupGeneral);
+                                                                                    if (e.target.checked)
+                                                                                        next.add(p.id);
+                                                                                    else
+                                                                                        next.delete(p.id);
+                                                                                    setSetupGeneral(next);
+                                                                                } }) }), _jsx("td", { children: info.name }), _jsx("td", { children: info.text }), _jsx("td", { className: "kb-dir-action", children: _jsx("button", { type: "button", className: "job-mini-icon", "data-edit-kind": "preset", "data-edit-id": p.id, "aria-label": `编辑方向 ${info.name}`, title: "\u7F16\u8F91\u65B9\u5411", onClick: () => {
+                                                                                    setEditingDir({ kind: "preset", id: p.id });
+                                                                                    setEditingName(info.name);
+                                                                                    setEditingText(info.text);
+                                                                                    setDirEditError("");
+                                                                                }, children: _jsxs("svg", { viewBox: "0 0 24 24", "aria-hidden": "true", children: [_jsx("path", { d: "M12 20h9" }), _jsx("path", { d: "m16 4 4 4-11 11-4 1 1-4Z" })] }) }) })] }, p.id));
+                                                            }) })] }) }) }), _jsx("div", { id: "kb-explore-panel", role: "tabpanel", "aria-labelledby": "kb-tab-explore", className: setupTab !== "explore" ? "hide" : "", children: _jsx("div", { className: "kb-direction-table-wrap", children: _jsxs("table", { className: "kb-direction-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { className: "kb-dir-check", children: _jsx("span", { className: "sr-only", children: "\u9009\u62E9" }) }), _jsx("th", { className: "kb-dir-title", children: "\u65B9\u5411" }), _jsx("th", { children: "\u63CF\u8FF0" }), _jsx("th", { className: "kb-dir-action", children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { id: "explored-directions", children: kbExploredDirs.length ? (kbExploredDirs.map(e => {
+                                                                const info = getDirInfo(e, "explore");
+                                                                const checked = setupExplored.has(e.id);
+                                                                return (_jsxs("tr", { children: [_jsx("td", { className: "kb-dir-check", children: _jsx("input", { type: "checkbox", "data-dir-kind": "explore", "data-dir-id": e.id, "aria-label": `选择${info.name}`, checked: checked, onChange: ev => {
+                                                                                    const next = new Set(setupExplored);
+                                                                                    if (ev.target.checked)
+                                                                                        next.add(e.id);
+                                                                                    else
+                                                                                        next.delete(e.id);
+                                                                                    setSetupExplored(next);
+                                                                                } }) }), _jsx("td", { children: info.name }), _jsx("td", { children: info.text }), _jsx("td", { className: "kb-dir-action", children: _jsx("button", { type: "button", className: "job-mini-icon", "data-edit-kind": "explore", "data-edit-id": e.id, "aria-label": `编辑方向 ${info.name}`, title: "\u7F16\u8F91\u65B9\u5411", onClick: () => {
+                                                                                    setEditingDir({ kind: "explore", id: e.id });
+                                                                                    setEditingName(info.name);
+                                                                                    setEditingText(info.text);
+                                                                                    setDirEditError("");
+                                                                                }, children: _jsxs("svg", { viewBox: "0 0 24 24", "aria-hidden": "true", children: [_jsx("path", { d: "M12 20h9" }), _jsx("path", { d: "m16 4 4 4-11 11-4 1 1-4Z" })] }) }) })] }, e.id));
+                                                            })) : (_jsx("tr", { children: _jsx("td", { colSpan: 4, className: "kb-directions-empty", children: "\u6240\u9009\u5B50\u6570\u636E\u96C6\u6682\u65E0\u65B9\u5411\u63A2\u7D22\u7ED3\u679C\u3002" }) })) })] }) }) })] }), _jsxs("section", { className: "exp-panel kb-setup-prompt", "aria-labelledby": "kb-prompt-title", children: [_jsxs("div", { className: "kb-prompt-header", children: [_jsx("h2", { id: "kb-prompt-title", children: "\u5B8C\u6574\u63D0\u793A\u8BCD" }), _jsx("button", { type: "button", className: "exp-btn", id: "compose-prompt", onClick: handleRestorePrompt, children: "\u6062\u590D\u81EA\u52A8\u751F\u6210" })] }), _jsx("textarea", { className: "f", id: "prompt-text", "aria-label": "\u5B8C\u6574\u63D0\u793A\u8BCD", spellCheck: false, value: setupPrompt, onChange: e => {
+                                                setSetupPrompt(e.target.value);
+                                                setSetupPromptDirty(true);
+                                            } }), _jsx("div", { className: "kb-prompt-note", id: "prompt-note", "aria-live": "polite", children: setupPromptDirty ? "已手动修改提示词。切换或修改方向不会覆盖手动内容。" : "" })] }), _jsxs("section", { className: "exp-panel kb-setup-confirm", "aria-labelledby": "kb-confirm-title", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { id: "kb-confirm-title", children: "\u786E\u8BA4\u5E76\u542F\u52A8" }) }), _jsxs("div", { className: "exp-brief", id: "kb-run-summary", "aria-live": "polite", children: [_jsxs("span", { children: ["\u5B50\u6570\u636E\u96C6 ", _jsxs("b", { children: [setupSubsets.size, " \u4E2A"] })] }), _jsxs("span", { children: ["\u6316\u6398\u65B9\u5411 ", _jsxs("b", { children: [allSelectedDirItems.length, " \u9879"] })] }), _jsxs("span", { children: ["\u77E5\u8BC6\u7C7B\u578B ", _jsx("b", { children: setupKind === "normal" ? "良品" : "异常" })] }), _jsxs("span", { children: ["\u8303\u56F4 ", _jsx("b", { children: "\u9009\u4E2D\u5B50\u6570\u636E\u96C6\u5168\u90E8\u5408\u683C\u6765\u6E90" })] }), _jsxs("span", { children: ["\u6A21\u578B ", _jsx("b", { children: "\u5F53\u524D\u5DE5\u4F5C\u53F0\u6A21\u578B" })] })] }), _jsxs("div", { className: "exp-summarybar", children: [_jsx("span", { id: "kb-run-check", role: "status", children: validationProblem || "已满足启动条件" }), _jsx("div", { className: "exp-actions", children: _jsx("button", { type: "button", className: "exp-btn exp-primary", id: "submit-job", disabled: !!validationProblem, onClick: handleSubmitJob, children: "\u5F00\u59CB\u6316\u6398" }) })] }), formError && (_jsx("div", { id: "form-alert", className: "kb-setup-error", role: "alert", children: formError }))] }), _jsx("div", { id: "create-overlay", style: {
+                                        display: createOpen ? "block" : "none",
+                                        position: "absolute",
+                                        pointerEvents: "none",
+                                        opacity: 0,
+                                        width: 0,
+                                        height: 0
+                                    } })] }), _jsx("div", { className: "kb-dir-drawer-mask", id: "kb-dir-drawer-mask", role: "presentation", hidden: !editingDir, onClick: e => {
+                                if (e.target === e.currentTarget)
+                                    closeDirDrawer();
+                            }, children: _jsxs("aside", { className: "kb-dir-drawer", id: "kb-dir-drawer", role: "dialog", "aria-modal": "true", "aria-label": "\u7F16\u8F91\u6316\u6398\u65B9\u5411", children: [_jsxs("header", { className: "kb-dir-drawer-head", children: [_jsx("h2", { children: "\u7F16\u8F91\u6316\u6398\u65B9\u5411" }), _jsx("button", { type: "button", className: "job-mini-icon", id: "kb-dir-close", "aria-label": "\u5173\u95ED\u65B9\u5411\u7F16\u8F91", title: "\u5173\u95ED", onClick: closeDirDrawer, children: "\u00D7" })] }), _jsxs("div", { className: "kb-dir-drawer-body", children: [_jsx("label", { htmlFor: "kb-dir-edit-name", children: "\u6807\u9898" }), _jsx("input", { id: "kb-dir-edit-name", className: "f", maxLength: 120, value: editingName, onChange: e => setEditingName(e.target.value) }), _jsx("label", { htmlFor: "kb-dir-edit-text", children: "\u63CF\u8FF0" }), _jsx("textarea", { id: "kb-dir-edit-text", className: "f", rows: 9, value: editingText, onChange: e => setEditingText(e.target.value) }), dirEditError && (_jsx("div", { className: "kb-edit-error", id: "kb-dir-edit-error", role: "alert", children: dirEditError }))] }), _jsxs("footer", { className: "kb-dir-drawer-foot", children: [_jsx("button", { type: "button", className: "exp-btn", id: "kb-dir-cancel", onClick: closeDirDrawer, children: "\u53D6\u6D88" }), _jsx("button", { type: "button", className: "exp-btn exp-primary", id: "kb-dir-save", onClick: saveDirEdit, children: "\u4FDD\u5B58" })] })] }) }), _jsxs("div", { className: `lightbox v46-app ${lightboxIndex !== null ? "show" : ""}`, id: "lightbox", role: "dialog", "aria-modal": "true", "aria-label": "\u67E5\u770B\u8BC1\u636E\u56FE\u7247", onClick: closeLight, children: [_jsx("button", { className: "lbclose", id: "close-light", onClick: closeLight, children: "\u00D7" }), _jsx("button", { className: "lbnav left", id: "prev-light", onClick: e => {
                                         e.stopPropagation();
                                         stepLight(-1);
                                     }, children: "\u2039" }), lightboxIndex !== null && lightboxEvidence[lightboxIndex] && (_jsx("img", { id: "light-img", alt: "\u8BC1\u636E\u5927\u56FE", src: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="450" viewBox="0 0 600 450"><rect width="600" height="450" fill="%231a2638"/><text x="300" y="230" font-family="sans-serif" font-size="24" fill="%23ffffff" text-anchor="middle">证据图像 样本 ${lightboxEvidence[lightboxIndex].id}</text></svg>`, onClick: e => e.stopPropagation() })), _jsx("button", { className: "lbnav right", id: "next-light", onClick: e => {

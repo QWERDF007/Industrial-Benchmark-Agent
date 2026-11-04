@@ -6,10 +6,12 @@
 export const dialogsStyles = `
 /* ==========================================================================
    Dialog Design Tokens (Single Source of Truth)
-   V52/V53 Dialog Visual Contract
+   V56 Dialog Visual Contract
    ========================================================================== */
 :root {
-  --iba-dialog-detail-width: 1260px;
+  --iba-detail-dialog-height: 820px;
+  --iba-detail-dialog-width: 1380px;
+  --iba-dialog-detail-width: 1380px;
   --iba-dialog-edit-width: 960px;
   --iba-dialog-max-height: 820px;
   --iba-dialog-gap: clamp(12px, 2.5vw, 32px);
@@ -22,7 +24,7 @@ export const dialogsStyles = `
   --iad-dialog-vgutter: clamp(12px, 2.5vw, 32px);
 
   /* Dimensions */
-  --iad-dialog-max-width: 1260px;
+  --iad-dialog-max-width: 1380px;
   --iad-dialog-max-height: 820px;
   --iad-dialog-medium-width: 960px;
   --iad-dialog-small-width: 530px;
@@ -123,7 +125,7 @@ dialog.iad-detail-dialog {
 }
 
 /* ==========================================================================
-   Tier 1: Large Detail Dialogs (1260px max-width, 820px max-height, Content-Led Height)
+   Tier 1: Large Detail Dialogs (1380px max-width, 820px max-height)
    Image Detail, Exploration Direction Detail, Consistency Conflict Compare, Knowledge Detail
    ========================================================================== */
 .detail-overlay .detail-dialog,
@@ -134,12 +136,14 @@ dialog.iad-detail-dialog {
 #dc-compare-mask .dc-dialog[role="dialog"],
 #dc-compare-mask.dc-modal-mask .dc-dialog[role=dialog],
 #knowledge-page .kb-v45 .detail-modal,
+#knowledge-page .detail-modal,
+.detail-modal,
 dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inline-dialog):not(.iad-viewer-dialog) {
   box-sizing: border-box !important;
-  width: min(var(--iba-dialog-detail-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
-  max-width: var(--iba-dialog-detail-width) !important;
-  height: auto !important;
-  max-height: min(var(--iba-dialog-max-height), calc(100dvh - 2 * var(--iba-dialog-gap))) !important;
+  width: min(var(--iba-detail-dialog-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
+  max-width: var(--iba-detail-dialog-width) !important;
+  height: min(var(--iba-detail-dialog-height), calc(100dvh - 2 * var(--iba-dialog-gap))) !important;
+  max-height: min(var(--iba-detail-dialog-height), calc(100dvh - 2 * var(--iba-dialog-gap))) !important;
   min-height: 0 !important;
   border: 1px solid var(--iba-dialog-border) !important;
   border-radius: 7px !important;
@@ -159,10 +163,12 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 .exp-direction-dialog .exp-dialog-main,
 #dc-compare-mask .dc-dialog-body,
 .dc-conflict-dialog .dc-dialog-body,
-#knowledge-page .kb-v45 .detail-modal .modalcontent {
+#knowledge-page .kb-v45 .detail-modal .modalcontent,
+#knowledge-page .detail-modal .modalcontent,
+.detail-modal .modalcontent {
   display: flex !important;
   flex-direction: column !important;
-  flex: 0 1 auto !important;
+  flex: 1 1 auto !important;
   min-height: 0 !important;
   overflow-y: auto !important;
   overscroll-behavior: contain !important;
@@ -173,48 +179,108 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 #dc-compare-mask .dc-dialog-body,
 .dc-conflict-dialog .dc-dialog-body { padding: 20px 26px 24px !important; }
 
-/* Large detail dialog internal flex hierarchy - do not stretch exploration evidence */
-.exp-modal .exp-direction-dialog .exp-direction-body,
-.exp-modal .exp-direction-dialog .exp-direction-evidence,
+/* Large detail dialog internal flex hierarchy - direction evidence UI-56-02 */
 .exp-modal .exp-direction-dialog .exp-direction-evidence-groups,
-.exp-modal .exp-direction-dialog .exp-scroll-group,
-.exp-direction-dialog .exp-direction-body,
-.exp-direction-dialog .exp-direction-evidence,
-.exp-direction-dialog .exp-direction-evidence-groups,
-.exp-direction-dialog .exp-scroll-group {
-  flex: 0 0 auto !important;
-  min-height: 0 !important;
-  height: auto !important;
+.exp-direction-dialog .exp-direction-evidence-groups {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  align-items: start !important;
 }
 
 .exp-modal .exp-direction-dialog .exp-evidence-viewport,
 .exp-direction-dialog .exp-evidence-viewport {
-  flex: 0 0 auto !important;
   box-sizing: border-box !important;
-  height: 172px !important;
+  height: 144px !important;
+  max-height: 144px !important;
   min-height: 0 !important;
-  max-height: 172px !important;
-  background: #f6f8fb !important;
-  border: 1px solid #e3e9f1 !important;
-  border-radius: 5px !important;
-  padding: 6px 6px 8px !important;
+  padding: 2px 1px 5px !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   overflow-x: auto !important;
   overflow-y: hidden !important;
 }
 
+.exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card,
+.exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card,
 .exp-modal .exp-direction-dialog .exp-direction-evidence-card,
-.exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card {
-  height: 100% !important;
+.exp-direction-dialog .exp-direction-evidence-card {
+  width: 180px !important;
+  min-width: 180px !important;
+  height: 124px !important;
+  padding: 4px !important;
+  flex: 0 0 180px !important;
   box-sizing: border-box !important;
-  width: clamp(166px, 45%, 225px) !important;
-  min-width: clamp(166px, 45%, 225px) !important;
 }
 
+.exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img,
+.exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img,
 .exp-modal .exp-direction-dialog .exp-direction-evidence-card img,
-.exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img {
-  height: 108px !important;
-  max-height: 108px !important;
-  object-fit: contain !important;
+.exp-direction-dialog .exp-direction-evidence-card img {
+  width: 100% !important;
+  height: 114px !important;
+  max-height: 114px !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  background: #fff !important;
+}
+
+.exp-modal .exp-direction-dialog .exp-direction-evidence,
+.exp-direction-dialog .exp-direction-evidence {
+  padding: 17px 0 0 !important;
+  flex: 0 0 auto !important;
+}
+
+.exp-modal .exp-direction-dialog .exp-direction-body,
+.exp-direction-dialog .exp-direction-body {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  min-height: 100% !important;
+}
+
+.exp-modal .exp-direction-dialog .exp-direction-goal,
+.exp-direction-dialog .exp-direction-goal {
+  min-height: 0 !important;
+  line-height: 1.8 !important;
+  flex: none !important;
+}
+
+.exp-modal .exp-direction-dialog .exp-direction-reasoning,
+.exp-direction-dialog .exp-direction-reasoning {
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  line-height: 1.8 !important;
+  align-content: start !important;
+}
+
+@media (max-width: 840px) {
+  .exp-modal .exp-direction-dialog .exp-direction-evidence-groups,
+  .exp-direction-dialog .exp-direction-evidence-groups {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .exp-modal .exp-direction-dialog .exp-evidence-viewport,
+  .exp-direction-dialog .exp-evidence-viewport {
+    height: 136px !important;
+    max-height: 136px !important;
+  }
+  .exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card,
+  .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card {
+    width: 170px !important;
+    min-width: 170px !important;
+    flex-basis: 170px !important;
+    height: 118px !important;
+  }
+  .exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img,
+  .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img {
+    height: 108px !important;
+    max-height: 108px !important;
+  }
 }
 
 /* Evidence reference tokens */

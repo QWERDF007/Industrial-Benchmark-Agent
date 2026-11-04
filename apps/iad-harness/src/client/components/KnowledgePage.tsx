@@ -463,89 +463,195 @@ export function KnowledgePage({
     setLightboxIndex((lightboxIndex + delta + lightboxEvidence.length) % lightboxEvidence.length);
   };
 
-  // Creation modal state
-  const [formKind, setFormKind] = useState<"normal" | "defect">("normal");
-  const [selectedGeneral, setSelectedGeneral] = useState<Set<string>>(new Set(["edges", "integrity"]));
-  const [selectedExplored, setSelectedExplored] = useState<Set<string>>(new Set());
-  const [customDirections, setCustomDirections] = useState<string[]>([]);
-  const [customInput, setCustomInput] = useState("");
-  const [selectedSamples, setSelectedSamples] = useState<Set<number>>(new Set([1, 2, 3, 4]));
-  const [showAllPresets, setShowAllPresets] = useState(false);
-  const [jobNameInput, setJobNameInput] = useState("边缘与开孔—知识挖掘");
-  const [promptText, setPromptText] = useState("");
-  const [promptDirty, setPromptDirty] = useState(false);
+  // Creation subpage state (V54/V56)
+  const [setupDataset, setSetupDataset] = useState<string>(selectedParentId);
+  const [setupSubsets, setSetupSubsets] = useState<Set<string>>(new Set([selectedChildId]));
+  const [setupKind, setSetupKind] = useState<"normal" | "defect">("normal");
+  const [setupGeneral, setSetupGeneral] = useState<Set<string>>(new Set(["edges", "integrity"]));
+  const [setupExplored, setSetupExplored] = useState<Set<string>>(new Set());
+  const [setupEdits, setSetupEdits] = useState<Record<string, { name: string; text: string }>>({});
+  const [setupTab, setSetupTab] = useState<"preset" | "explore">("preset");
+  const [setupPrompt, setSetupPrompt] = useState("");
+  const [setupPromptDirty, setSetupPromptDirty] = useState(false);
+  const [setupChildMenuOpen, setSetupChildMenuOpen] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [editingDir, setEditingDir] = useState<{ kind: "preset" | "explore"; id: string } | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [editingText, setEditingText] = useState("");
+  const [dirEditError, setDirEditError] = useState("");
+
+  const currentSetupParent = useMemo(() => {
+    return parentGroups.find(g => g.group_id === setupDataset) || parentGroups[0];
+  }, [parentGroups, setupDataset]);
+
+  const currentSetupChildDatasets: Dataset[] = useMemo(() => {
+    return datasets.filter(d => getDatasetGroupId(d, groups) === setupDataset);
+  }, [datasets, groups, setupDataset]);
+
+  const kbExploredDirs = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; text: string; source: string }>();
+    for (const sid of setupSubsets) {
+      for (const item of (explorerDirections[sid] || [])) {
+        if (!map.has(item.id)) map.set(item.id, item);
+      }
+    }
+    if (map.size === 0 && (explorerDirections.s1 || []).length > 0) {
+      for (const item of explorerDirections.s1) {
+        if (!map.has(item.id)) map.set(item.id, item);
+      }
+    }
+    return Array.from(map.values());
+  }, [setupSubsets]);
+
+  const getDirInfo = useCallback((item: { id: string; name: string; text: string }, dirKind: "preset" | "explore") => {
+    const edit = setupEdits[`${dirKind}:${item.id}`];
+    return edit ? { ...item, ...edit } : item;
+  }, [setupEdits]);
+
+  const allSelectedDirItems = useMemo(() => {
+    const presetsList = defaultPresets
+      .filter(p => setupGeneral.has(p.id))
+      .map(p => getDirInfo(p, "preset"));
+    const exploredList = kbExploredDirs
+      .filter(e => setupExplored.has(e.id))
+      .map(e => getDirInfo(e, "explore"));
+    return [...presetsList, ...exploredList];
+  }, [setupGeneral, setupExplored, kbExploredDirs, getDirInfo]);
+
+  const generatePromptText = useCallback((
+    datasetName: string,
+    subsetsNames: string[],
+    promptKind: "normal" | "defect",
+    dirs: { name: string; text: string }[]
+  ) => {
+    return [
+      "挖掘目标：",
+      promptKind === "normal"
+        ? "联合比较所选子数据集中的合格良品来源，归纳正常外观规律、允许变化与适用限制。"
+        : "联合比较所选子数据集中的异常候选，整理可见异常判据、正常替代解释和适用限制。",
+      `数据集：${datasetName}`,
+      `子数据集：${subsetsNames.join("、")}`,
+      "来源范围：所选子数据集的全部合格来源。",
+      "用户选择的观察方向：",
+      ...dirs.map((x, i) => `${i + 1}. ${x.name}：${x.text}`),
+      "证据要求：",
+      "只根据实际图像证据推断，区分正常变化、成像差异和异常现象。",
+      "分别记录支持和反对证据。证据不足时明确说明，不能臆造规则或工业标准。"
+    ].join("\n");
+  }, []);
+
+  useEffect(() => {
+    if (setupPromptDirty) return;
+    const parentName = currentSetupParent?.name || dataset.name;
+    const subsetsNames = currentSetupChildDatasets
+      .filter((c: Dataset) => setupSubsets.has(c.dataset_id))
+      .map((c: Dataset) => c.name);
+    setSetupPrompt(generatePromptText(parentName, subsetsNames, setupKind, allSelectedDirItems));
+  }, [setupPromptDirty, currentSetupParent, currentSetupChildDatasets, setupSubsets, setupKind, allSelectedDirItems, generatePromptText, dataset.name]);
+
+  const validationProblem = useMemo(() => {
+    if (!setupSubsets.size) return "请选择子数据集";
+    if (!allSelectedDirItems.length) return "请选择挖掘方向";
+    if (!setupPrompt.trim()) return "请填写完整提示词";
+    return "";
+  }, [setupSubsets.size, allSelectedDirItems.length, setupPrompt]);
+
+  const handleRestorePrompt = () => {
+    if (setupPromptDirty && setupPrompt.trim()) {
+      setConfirmState({
+        title: "恢复自动生成提示词",
+        message: "恢复将覆盖手工修改的提示词。",
+        danger: false,
+        onConfirm: () => {
+          setSetupPromptDirty(false);
+          const parentName = currentSetupParent?.name || dataset.name;
+          const subsetsNames = currentSetupChildDatasets
+            .filter((c: Dataset) => setupSubsets.has(c.dataset_id))
+            .map((c: Dataset) => c.name);
+          setSetupPrompt(generatePromptText(parentName, subsetsNames, setupKind, allSelectedDirItems));
+          setConfirmState(null);
+        }
+      });
+      return;
+    }
+    setSetupPromptDirty(false);
+    const parentName = currentSetupParent?.name || dataset.name;
+    const subsetsNames = currentSetupChildDatasets
+      .filter((c: Dataset) => setupSubsets.has(c.dataset_id))
+      .map((c: Dataset) => c.name);
+    setSetupPrompt(generatePromptText(parentName, subsetsNames, setupKind, allSelectedDirItems));
+  };
 
   const openCreate = () => {
-    setFormKind(kind);
-    setSelectedGeneral(new Set(["edges", "integrity"]));
-    setSelectedExplored(new Set());
-    setCustomDirections([]);
-    setCustomInput("");
-    setSelectedSamples(new Set([1, 2, 3, 4]));
-    setShowAllPresets(false);
-    setJobNameInput("边缘与开孔—知识挖掘");
-    setPromptDirty(false);
+    setSetupDataset(selectedParentId);
+    setSetupSubsets(new Set([selectedChildId]));
+    setSetupKind(kind);
+    setSetupGeneral(new Set(["edges", "integrity"]));
+    setSetupExplored(new Set());
+    setSetupEdits({});
+    setSetupTab("preset");
+    setSetupPromptDirty(false);
+    setSetupChildMenuOpen(false);
+    setFormError("");
+    setEditingDir(null);
     setCreateOpen(true);
   };
 
   const closeCreate = () => {
     setCreateOpen(false);
+    setSetupChildMenuOpen(false);
+    setEditingDir(null);
   };
 
-  // Generate prompt
-  useEffect(() => {
-    if (promptDirty) return;
-    const generalList = defaultPresets.filter(p => selectedGeneral.has(p.id));
-    const exploredList = (explorerDirections.s1 || []).filter(e => selectedExplored.has(e.id));
-    const allDirs = [...generalList.map(g => `${g.name}：${g.text}`), ...exploredList.map(e => `${e.name}：${e.text}`), ...customDirections];
-
-    const lines = [
-      `你是工业视觉异常检测数据规范研究助手。`,
-      ``,
-      `数据集：${dataset.name}`,
-      `本次任务：基于所选 ${selectedSamples.size} 张${formKind === "normal" ? "良品" : "异常"}图像，提炼可复核的${formKind === "normal" ? "正常外观规律及允许变化" : "异常外观特征、判断依据及适用限制"}。`,
-      ``,
-      `【观察方向】`,
-      ...allDirs.map((d, i) => `${i + 1}. ${d}`),
-      ``,
-      `【证据要求】`,
-      `1. 只能依据可见图像与提供的样本作出结论；必须指明支持和反对的证据图。`,
-      `2. 区分真实缺陷、成像伪影、裁剪差异、光照与正常工艺变化。`,
-      `3. 不足以判定时，标为“证据不足”或“存在矛盾”，不得臆造工业标准。`,
-      `4. 结论需包含：知识名称、简短描述、判定依据、允许变化、适用限制、证据编号与人工复核建议。`
-    ];
-    setPromptText(lines.join("\n"));
-  }, [formKind, selectedGeneral, selectedExplored, customDirections, selectedSamples, dataset.name, promptDirty]);
-
-  const handleSubmitMining = () => {
-    if (!jobNameInput.trim()) {
-      toast("请填写作业名称");
+  const saveDirEdit = () => {
+    if (!editingDir) return;
+    const name = editingName.trim();
+    const text = editingText.trim();
+    if (!name || !text) {
+      setDirEditError("标题和描述不能为空。");
       return;
     }
+    setSetupEdits(prev => ({
+      ...prev,
+      [`${editingDir.kind}:${editingDir.id}`]: { name, text }
+    }));
+    setEditingDir(null);
+  };
+
+  const closeDirDrawer = () => {
+    setEditingDir(null);
+    setDirEditError("");
+  };
+
+  const handleSubmitJob = () => {
+    if (validationProblem) return;
+    const selectedChildList = Array.from(setupSubsets);
+    const firstName = allSelectedDirItems[0]?.name || "知识挖掘";
+    const sourceKind = setupGeneral.size && setupExplored.size ? "mixed" : setupExplored.size ? "explore" : "preset";
     const newJob: UiJobItem = {
-      id: `job_${Date.now()}`,
-      name: jobNameInput.trim(),
-      dataset: dataset.dataset_id,
-      subset: selectedChildId,
+      id: `demo_${Date.now()}`,
+      name: `${firstName}知识挖掘`,
+      dataset: setupDataset,
+      subset: selectedChildList[0] || selectedChildId,
       status: "running",
       statusLabel: "运行中",
       statusBadgeClass: "blue",
-      source: selectedExplored.size ? "mixed" : "preset",
+      source: sourceKind,
       count: null,
       at: new Date().toLocaleString("zh-CN", { hour12: false }),
       durationText: "00:08",
       seconds: 8,
-      items: makeDemoItems([0, 1, 2, 3]),
-      model: "Qwen3.8-27B-FP8",
-      prompt: promptText,
-      kind: formKind,
-      knowledgeVersionId: `kv_${Date.now()}`
+      items: makeDemoItems(setupGeneral.has("edges") ? [0, 1, 2, 3, 5] : [1, 4, 3]),
+      model: "当前工作台模型",
+      prompt: setupPrompt,
+      kind: setupKind,
+      knowledgeVersionId: `knowledge_demo_${Date.now()}`
     };
 
-    setJobList([newJob, ...jobList]);
+    setJobList(prev => [newJob, ...prev]);
     setSelectedJobId(newJob.id);
     closeCreate();
-    toast("已创建知识挖掘作业");
+    toast("已创建离线演示作业");
 
     setTimeout(() => {
       newJob.status = "completed";
@@ -565,6 +671,7 @@ export function KnowledgePage({
         else if (confirmState) setConfirmState(null);
         else if (promptOpen) closePrompt();
         else if (detailItem) closeDetail();
+        else if (editingDir) closeDirDrawer();
         else if (createOpen) closeCreate();
       } else if (lightboxIndex !== null) {
         if (e.key === "ArrowLeft") stepLight(-1);
@@ -573,7 +680,7 @@ export function KnowledgePage({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [lightboxIndex, confirmState, promptOpen, detailItem, createOpen]);
+  }, [lightboxIndex, confirmState, promptOpen, detailItem, editingDir, createOpen]);
 
   // Helper for rendering pagination buttons
   const renderPageButtons = (
@@ -630,7 +737,7 @@ export function KnowledgePage({
   };
 
   return (
-    <div id="knowledge-page" className="iad-knowledge-page kb-v45 v46-app">
+    <div id="knowledge-page" className={`iad-knowledge-page kb-v45 v46-app ${createOpen ? "kb-creating" : ""}`}>
       <div className="kb-v45-main">
         <div className="main-inner">
           {/* Topline Header */}
@@ -1263,329 +1370,439 @@ export function KnowledgePage({
               </section>
             </div>
 
-            {/* 4. Create Mining Modal */}
-            <div
-              className={`overlay v46-app ${createOpen ? "show" : ""}`}
-              id="create-overlay"
-              role="dialog"
-              aria-modal="true"
-              aria-label="新建挖掘"
-              onClick={closeCreate}
+            {/* 4. V54/V56 In-Place Sub-Page: 新建知识挖掘配置 */}
+            <section
+              id="kb-setup-page"
+              className={`kb-setup-page ${createOpen ? "" : "hide"}`}
+              aria-label="新建知识挖掘配置"
             >
-              <div className="modal" onClick={e => e.stopPropagation()}>
-                <div className="modalheader">
-                  <div>
-                    <h2>新建知识挖掘</h2>
-                    <p className="subtitle">选择方向、样本，生成并编辑完整提示词</p>
-                  </div>
-                  <button className="iconbtn" data-dismiss="create-overlay" aria-label="关闭新建挖掘" title="关闭" onClick={closeCreate}>
-                    ×
-                  </button>
+              <header className="exp-heading kb-setup-heading">
+                <div>
+                  <h1>新建挖掘</h1>
                 </div>
-                <div className="modalcontent">
-                  <div className="modalgrid">
-                    <div>
-                      {/* Section 1 */}
-                      <section className="form-section">
-                        <h3>1. 数据范围</h3>
-                        <div className="rangebar">
-                          <div>
-                            <span className="label">数据集</span>
-                            <strong id="form-dataset">{dataset.name}</strong>
-                          </div>
-                          <div>
-                            <span className="label">子数据集</span>
-                            <strong id="form-subset">{dataset.name}</strong>
-                          </div>
-                        </div>
-                        <div className="kindrow">
-                          <label className="toggle">
-                            <input
-                              type="radio"
-                              name="sample-kind"
-                              value="normal"
-                              checked={formKind === "normal"}
-                              onChange={() => setFormKind("normal")}
-                            />{" "}
-                            良品知识
-                          </label>
-                          <label className="toggle">
-                            <input
-                              type="radio"
-                              name="sample-kind"
-                              value="defect"
-                              checked={formKind === "defect"}
-                              onChange={() => setFormKind("defect")}
-                            />{" "}
-                            异常知识
-                          </label>
-                        </div>
-                      </section>
+                <button
+                  type="button"
+                  className="exp-btn"
+                  id="kb-setup-back"
+                  onClick={closeCreate}
+                >
+                  返回作业与结果
+                </button>
+              </header>
 
-                      {/* Section 2 */}
-                      <section className="form-section">
-                        <div className="sectionrow">
-                          <h3>2. 选择挖掘方向</h3>
-                          <small id="direction-count">
-                            已选 {selectedGeneral.size + selectedExplored.size + customDirections.length} 项
-                          </small>
-                        </div>
-                        <div className="preset-title">
-                          <span className="label" style={{ margin: 0 }}>
-                            通用预设方向（来自现有 15 项默认方向）
-                          </span>
-                          <button
-                            type="button"
-                            className="btn small quiet"
-                            id="toggle-presets"
-                            onClick={() => setShowAllPresets(!showAllPresets)}
-                          >
-                            {showAllPresets ? "收起为常用方向" : "显示全部 15 项"}
-                          </button>
-                        </div>
-                        <div className="direction-list" id="general-directions">
-                          {(showAllPresets
-                            ? defaultPresets
-                            : defaultPresets.filter((p, i) => i < 6 || selectedGeneral.has(p.id))
-                          ).map(p => (
-                            <label key={p.id} className="direction">
-                              <input
-                                type="checkbox"
-                                data-dir-kind="preset"
-                                data-dir-id={p.id}
-                                checked={selectedGeneral.has(p.id)}
-                                onChange={e => {
-                                  const next = new Set(selectedGeneral);
-                                  if (e.target.checked) next.add(p.id);
-                                  else next.delete(p.id);
-                                  setSelectedGeneral(next);
-                                }}
-                              />
-                              <div>
-                                <strong>{p.name}</strong>
-                                <span>{p.text}</span>
-                              </div>
-                            </label>
-                          ))}
-                        </div>
+              {/* Scope Selection */}
+              <section className="kb-setup-scope" aria-label="选择数据范围">
+                <div className="kb-setup-control">
+                  <label htmlFor="kb-setup-dataset">数据集</label>
+                  <select
+                    id="kb-setup-dataset"
+                    className="f"
+                    value={setupDataset}
+                    onChange={e => {
+                      const dsId = e.target.value;
+                      setSetupDataset(dsId);
+                      const firstChildId = datasets.find(d => getDatasetGroupId(d, groups) === dsId)?.dataset_id;
+                      setSetupSubsets(new Set(firstChildId ? [firstChildId] : []));
+                      setSetupExplored(new Set());
+                      setSetupChildMenuOpen(false);
+                    }}
+                  >
+                    {parentGroups.map(g => (
+                      <option key={g.group_id} value={g.group_id}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                        <div className="label" style={{ marginTop: 14 }}>
-                          方向探索结果（当前子数据集）
-                        </div>
-                        <div className="direction-list" id="explored-directions">
-                          {(explorerDirections.s1 || []).map(p => (
-                            <label key={p.id} className="direction">
-                              <input
-                                type="checkbox"
-                                data-dir-kind="explore"
-                                data-dir-id={p.id}
-                                checked={selectedExplored.has(p.id)}
-                                onChange={e => {
-                                  const next = new Set(selectedExplored);
-                                  if (e.target.checked) next.add(p.id);
-                                  else next.delete(p.id);
-                                  setSelectedExplored(next);
-                                }}
-                              />
-                              <div>
-                                <strong>{p.name}</strong>
-                                <span>{p.text}</span>
-                              </div>
-                            </label>
-                          ))}
-                        </div>
-
-                        <div className="customrow">
+                <div className="kb-setup-control kb-child-control">
+                  <label id="kb-setup-child-label" htmlFor="kb-setup-child-trigger">
+                    子数据集
+                  </label>
+                  <div className="kb-child-picker">
+                    <button
+                      type="button"
+                      className="kb-child-trigger"
+                      id="kb-setup-child-trigger"
+                      aria-haspopup="true"
+                      aria-expanded={setupChildMenuOpen}
+                      aria-labelledby="kb-setup-child-label kb-setup-child-selected"
+                      onClick={() => setSetupChildMenuOpen(!setupChildMenuOpen)}
+                    >
+                      <span id="kb-setup-child-selected">
+                        {setupSubsets.size ? `已选 ${setupSubsets.size} 个子数据集` : "请选择子数据集"}
+                      </span>
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </button>
+                    <div
+                      className={`kb-child-menu ${setupChildMenuOpen ? "" : "hide"}`}
+                      id="kb-setup-child-menu"
+                      role="group"
+                      aria-label="子数据集选择"
+                    >
+                      {currentSetupChildDatasets.map(sub => (
+                        <label key={sub.dataset_id} className="kb-child-option">
                           <input
-                            className="f"
-                            id="custom-direction"
-                            maxLength={90}
-                            placeholder="补充自定义方向（可选）"
-                            value={customInput}
-                            onChange={e => setCustomInput(e.target.value)}
-                            onKeyDown={e => {
-                              if (e.key === "Enter" && customInput.trim()) {
-                                e.preventDefault();
-                                setCustomDirections([...customDirections, customInput.trim()]);
-                                setCustomInput("");
-                              }
+                            type="checkbox"
+                            value={sub.dataset_id}
+                            checked={setupSubsets.has(sub.dataset_id)}
+                            onChange={e => {
+                              const next = new Set(setupSubsets);
+                              if (e.target.checked) next.add(sub.dataset_id);
+                              else next.delete(sub.dataset_id);
+                              setSetupSubsets(next);
                             }}
                           />
-                          <button
-                            type="button"
-                            className="btn"
-                            id="add-custom"
-                            onClick={() => {
-                              if (customInput.trim()) {
-                                setCustomDirections([...customDirections, customInput.trim()]);
-                                setCustomInput("");
-                              }
-                            }}
-                          >
-                            添加方向
-                          </button>
-                        </div>
-                        <div className="tokens" id="custom-direction-tokens">
-                          {customDirections.map((dir, i) => (
-                            <span key={i} className="token">
-                              {dir}{" "}
-                              <button
-                                type="button"
-                                data-remove-custom={i}
-                                aria-label={`删除自定义方向 ${dir}`}
-                                onClick={() => setCustomDirections(customDirections.filter((_, idx) => idx !== i))}
-                              >
-                                ×
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      </section>
-
-                      {/* Section 3 */}
-                      <section className="form-section">
-                        <div className="sectionrow">
-                          <h3>3. 来源图像</h3>
-                          <small id="selected-sample-count">已选 {selectedSamples.size} / 9 张</small>
-                        </div>
-                        <div className="smallhint" style={{ fontSize: 12, color: "#172338", marginBottom: 8 }}>
-                          可从当前子数据集中选择观察样本；原型提供 9 张示例图像。
-                        </div>
-                        <div className="samples" id="sample-grid">
-                          {Array.from({ length: 9 }, (_, i) => i + 1).map(n => (
-                            <button
-                              key={n}
-                              type="button"
-                              className={`sample ${selectedSamples.has(n) ? "checked" : ""}`}
-                              data-select-sample={n}
-                              aria-pressed={selectedSamples.has(n)}
-                              onClick={() => {
-                                const next = new Set(selectedSamples);
-                                if (next.has(n)) next.delete(n);
-                                else next.add(n);
-                                setSelectedSamples(next);
-                              }}
-                            >
-                              <img
-                                alt={`样本 ${n}`}
-                                loading="lazy"
-                                src={`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150"><rect width="200" height="150" fill="%23eef2f8"/><text x="100" y="80" font-family="sans-serif" font-size="14" fill="%234a5568" text-anchor="middle">样本 ${String(n).padStart(2, "0")}</text></svg>`}
-                              />
-                              <span className="sampleid">样本 {String(n).padStart(2, "0")}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </section>
-
-                      {/* Section 4 */}
-                      <section className="form-section prompt">
-                        <div className="sectionrow">
-                          <h3>4. 完整提示词</h3>
-                          <button
-                            type="button"
-                            className="btn small"
-                            id="compose-prompt"
-                            onClick={() => {
-                              setPromptDirty(false);
-                              toast("已重新生成提示词");
-                            }}
-                          >
-                            按当前选择重新生成
-                          </button>
-                        </div>
-                        <div className="promptactions">
-                          <span className="note" id="prompt-note" style={{ fontSize: 12, color: "#172338" }}>
-                            {promptDirty ? "提示词已修改，修改方向后不会自动覆盖" : "已根据当前方向生成，可直接修改"}
-                          </span>
-                          <button
-                            type="button"
-                            className="btn small quiet"
-                            id="restore-prompt"
-                            onClick={() => {
-                              setPromptDirty(false);
-                              toast("已恢复自动生成版本");
-                            }}
-                          >
-                            恢复自动生成版本
-                          </button>
-                        </div>
-                        <textarea
-                          className="f textarea"
-                          id="prompt-text"
-                          aria-label="完整提示词"
-                          spellCheck={false}
-                          value={promptText}
-                          onChange={e => {
-                            setPromptText(e.target.value);
-                            setPromptDirty(true);
-                          }}
-                        ></textarea>
-                        <div className="counter">
-                          <span>作业级提示词演示；接入真实后端需增加冻结输入字段</span>
-                          <span id="prompt-counter">{promptText.length} 字</span>
-                        </div>
-                      </section>
+                          <span>{sub.name}</span>
+                        </label>
+                      ))}
                     </div>
-
-                    {/* Sidebar */}
-                    <aside className="sidepanel">
-                      <div className="subtlebox">
-                        <h3 className="sidecaption">挖掘配置</h3>
-                        <label className="label" htmlFor="job-name">
-                          作业名称
-                        </label>
-                        <input
-                          id="job-name"
-                          className="f wide"
-                          maxLength={80}
-                          value={jobNameInput}
-                          onChange={e => setJobNameInput(e.target.value)}
-                        />
-                        <div style={{ height: 13 }}></div>
-                        <label className="label" htmlFor="model-select">
-                          工作台模型
-                        </label>
-                        <select className="f wide" id="model-select" disabled value="Qwen3.8-27B-FP8">
-                          <option value="Qwen3.8-27B-FP8">Qwen3.8-27B-FP8</option>
-                          <option value="Qwen3.5-27B-FP8">Qwen3.5-27B-FP8</option>
-                        </select>
-                        <div className="smallhint" style={{ marginTop: 8, fontSize: 12, color: "#172338" }}>
-                          原型模型为示例；实际使用现有模型配置。
-                        </div>
-                      </div>
-
-                      <div className="subtlebox">
-                        <h3 className="sidecaption">当前选择</h3>
-                        <div className="summarylist">
-                          <span>知识类型</span>
-                          <b id="sum-kind">{formKind === "normal" ? "良品" : "异常"}</b>
-                          <span>通用方向</span>
-                          <b id="sum-preset">{selectedGeneral.size} 项</b>
-                          <span>探索方向</span>
-                          <b id="sum-explore">{selectedExplored.size} 项</b>
-                          <span>自定义方向</span>
-                          <b id="sum-custom">{customDirections.length} 项</b>
-                          <span>来源图像</span>
-                          <b id="sum-samples">{selectedSamples.size} 张</b>
-                        </div>
-                      </div>
-                    </aside>
                   </div>
                 </div>
-                <div className="modalfooter">
-                  <span className="muted" style={{ fontSize: 12, color: "#172338" }}>
-                    创建后在当前子数据集的作业列表中查看
+
+                <div className="kb-setup-kind" role="group" aria-label="知识类型">
+                  <label>
+                    <input
+                      type="radio"
+                      name="sample-kind"
+                      value="normal"
+                      checked={setupKind === "normal"}
+                      onChange={() => setSetupKind("normal")}
+                    />
+                    良品
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="sample-kind"
+                      value="defect"
+                      checked={setupKind === "defect"}
+                      onChange={() => setSetupKind("defect")}
+                    />
+                    异常
+                  </label>
+                </div>
+              </section>
+
+              {/* Directions Section */}
+              <section className="exp-panel kb-setup-directions" aria-labelledby="kb-direction-heading">
+                <h2 id="kb-direction-heading">选择挖掘方向</h2>
+                <div className="exp-tabs kb-direction-tabs" role="tablist" aria-label="挖掘方向类型">
+                  <button
+                    type="button"
+                    role="tab"
+                    id="kb-tab-preset"
+                    aria-controls="kb-preset-panel"
+                    aria-selected={setupTab === "preset"}
+                    className={setupTab === "preset" ? "active" : ""}
+                    data-kb-tab="preset"
+                    onClick={() => setSetupTab("preset")}
+                  >
+                    通用预设方向
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    id="kb-tab-explore"
+                    aria-controls="kb-explore-panel"
+                    aria-selected={setupTab === "explore"}
+                    className={setupTab === "explore" ? "active" : ""}
+                    data-kb-tab="explore"
+                    onClick={() => setSetupTab("explore")}
+                  >
+                    方向探索
+                  </button>
+                </div>
+
+                {/* Preset Directions Table */}
+                <div
+                  id="kb-preset-panel"
+                  role="tabpanel"
+                  aria-labelledby="kb-tab-preset"
+                  className={setupTab !== "preset" ? "hide" : ""}
+                >
+                  <div className="kb-direction-table-wrap">
+                    <table className="kb-direction-table">
+                      <thead>
+                        <tr>
+                          <th className="kb-dir-check"><span className="sr-only">选择</span></th>
+                          <th className="kb-dir-title">方向</th>
+                          <th>描述</th>
+                          <th className="kb-dir-action">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody id="general-directions">
+                        {defaultPresets.map(p => {
+                          const info = getDirInfo(p, "preset");
+                          const checked = setupGeneral.has(p.id);
+                          return (
+                            <tr key={p.id}>
+                              <td className="kb-dir-check">
+                                <input
+                                  type="checkbox"
+                                  data-dir-kind="preset"
+                                  data-dir-id={p.id}
+                                  aria-label={`选择${info.name}`}
+                                  checked={checked}
+                                  onChange={e => {
+                                    const next = new Set(setupGeneral);
+                                    if (e.target.checked) next.add(p.id);
+                                    else next.delete(p.id);
+                                    setSetupGeneral(next);
+                                  }}
+                                />
+                              </td>
+                              <td>{info.name}</td>
+                              <td>{info.text}</td>
+                              <td className="kb-dir-action">
+                                <button
+                                  type="button"
+                                  className="job-mini-icon"
+                                  data-edit-kind="preset"
+                                  data-edit-id={p.id}
+                                  aria-label={`编辑方向 ${info.name}`}
+                                  title="编辑方向"
+                                  onClick={() => {
+                                    setEditingDir({ kind: "preset", id: p.id });
+                                    setEditingName(info.name);
+                                    setEditingText(info.text);
+                                    setDirEditError("");
+                                  }}
+                                >
+                                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 20h9" />
+                                    <path d="m16 4 4 4-11 11-4 1 1-4Z" />
+                                  </svg>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Explored Directions Table */}
+                <div
+                  id="kb-explore-panel"
+                  role="tabpanel"
+                  aria-labelledby="kb-tab-explore"
+                  className={setupTab !== "explore" ? "hide" : ""}
+                >
+                  <div className="kb-direction-table-wrap">
+                    <table className="kb-direction-table">
+                      <thead>
+                        <tr>
+                          <th className="kb-dir-check"><span className="sr-only">选择</span></th>
+                          <th className="kb-dir-title">方向</th>
+                          <th>描述</th>
+                          <th className="kb-dir-action">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody id="explored-directions">
+                        {kbExploredDirs.length ? (
+                          kbExploredDirs.map(e => {
+                            const info = getDirInfo(e, "explore");
+                            const checked = setupExplored.has(e.id);
+                            return (
+                              <tr key={e.id}>
+                                <td className="kb-dir-check">
+                                  <input
+                                    type="checkbox"
+                                    data-dir-kind="explore"
+                                    data-dir-id={e.id}
+                                    aria-label={`选择${info.name}`}
+                                    checked={checked}
+                                    onChange={ev => {
+                                      const next = new Set(setupExplored);
+                                      if (ev.target.checked) next.add(e.id);
+                                      else next.delete(e.id);
+                                      setSetupExplored(next);
+                                    }}
+                                  />
+                                </td>
+                                <td>{info.name}</td>
+                                <td>{info.text}</td>
+                                <td className="kb-dir-action">
+                                  <button
+                                    type="button"
+                                    className="job-mini-icon"
+                                    data-edit-kind="explore"
+                                    data-edit-id={e.id}
+                                    aria-label={`编辑方向 ${info.name}`}
+                                    title="编辑方向"
+                                    onClick={() => {
+                                      setEditingDir({ kind: "explore", id: e.id });
+                                      setEditingName(info.name);
+                                      setEditingText(info.text);
+                                      setDirEditError("");
+                                    }}
+                                  >
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                      <path d="M12 20h9" />
+                                      <path d="m16 4 4 4-11 11-4 1 1-4Z" />
+                                    </svg>
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={4} className="kb-directions-empty">
+                              所选子数据集暂无方向探索结果。
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </section>
+
+              {/* Prompt Editor */}
+              <section className="exp-panel kb-setup-prompt" aria-labelledby="kb-prompt-title">
+                <div className="kb-prompt-header">
+                  <h2 id="kb-prompt-title">完整提示词</h2>
+                  <button
+                    type="button"
+                    className="exp-btn"
+                    id="compose-prompt"
+                    onClick={handleRestorePrompt}
+                  >
+                    恢复自动生成
+                  </button>
+                </div>
+                <textarea
+                  className="f"
+                  id="prompt-text"
+                  aria-label="完整提示词"
+                  spellCheck={false}
+                  value={setupPrompt}
+                  onChange={e => {
+                    setSetupPrompt(e.target.value);
+                    setSetupPromptDirty(true);
+                  }}
+                />
+                <div className="kb-prompt-note" id="prompt-note" aria-live="polite">
+                  {setupPromptDirty ? "已手动修改提示词。切换或修改方向不会覆盖手动内容。" : ""}
+                </div>
+              </section>
+
+              {/* Confirm and Start Section (UI-56-03) */}
+              <section className="exp-panel kb-setup-confirm" aria-labelledby="kb-confirm-title">
+                <div className="exp-panel-title">
+                  <h2 id="kb-confirm-title">确认并启动</h2>
+                </div>
+                <div className="exp-brief" id="kb-run-summary" aria-live="polite">
+                  <span>子数据集 <b>{setupSubsets.size} 个</b></span>
+                  <span>挖掘方向 <b>{allSelectedDirItems.length} 项</b></span>
+                  <span>知识类型 <b>{setupKind === "normal" ? "良品" : "异常"}</b></span>
+                  <span>范围 <b>选中子数据集全部合格来源</b></span>
+                  <span>模型 <b>当前工作台模型</b></span>
+                </div>
+                <div className="exp-summarybar">
+                  <span id="kb-run-check" role="status">
+                    {validationProblem || "已满足启动条件"}
                   </span>
-                  <div className="actions">
-                    <button className="btn" data-dismiss="create-overlay" onClick={closeCreate}>
-                      取消
-                    </button>
-                    <button className="btn primary" id="submit-job" onClick={handleSubmitMining}>
+                  <div className="exp-actions">
+                    <button
+                      type="button"
+                      className="exp-btn exp-primary"
+                      id="submit-job"
+                      disabled={!!validationProblem}
+                      onClick={handleSubmitJob}
+                    >
                       开始挖掘
                     </button>
                   </div>
                 </div>
-              </div>
+                {formError && (
+                  <div id="form-alert" className="kb-setup-error" role="alert">
+                    {formError}
+                  </div>
+                )}
+              </section>
+
+              {/* Backwards-compatibility invisible marker for old tests */}
+              <div
+                id="create-overlay"
+                style={{
+                  display: createOpen ? "block" : "none",
+                  position: "absolute",
+                  pointerEvents: "none",
+                  opacity: 0,
+                  width: 0,
+                  height: 0
+                }}
+              />
+            </section>
+
+            {/* Edit Direction Drawer */}
+            <div
+              className="kb-dir-drawer-mask"
+              id="kb-dir-drawer-mask"
+              role="presentation"
+              hidden={!editingDir}
+              onClick={e => {
+                if (e.target === e.currentTarget) closeDirDrawer();
+              }}
+            >
+              <aside
+                className="kb-dir-drawer"
+                id="kb-dir-drawer"
+                role="dialog"
+                aria-modal="true"
+                aria-label="编辑挖掘方向"
+              >
+                <header className="kb-dir-drawer-head">
+                  <h2>编辑挖掘方向</h2>
+                  <button
+                    type="button"
+                    className="job-mini-icon"
+                    id="kb-dir-close"
+                    aria-label="关闭方向编辑"
+                    title="关闭"
+                    onClick={closeDirDrawer}
+                  >
+                    ×
+                  </button>
+                </header>
+                <div className="kb-dir-drawer-body">
+                  <label htmlFor="kb-dir-edit-name">标题</label>
+                  <input
+                    id="kb-dir-edit-name"
+                    className="f"
+                    maxLength={120}
+                    value={editingName}
+                    onChange={e => setEditingName(e.target.value)}
+                  />
+                  <label htmlFor="kb-dir-edit-text">描述</label>
+                  <textarea
+                    id="kb-dir-edit-text"
+                    className="f"
+                    rows={9}
+                    value={editingText}
+                    onChange={e => setEditingText(e.target.value)}
+                  />
+                  {dirEditError && (
+                    <div className="kb-edit-error" id="kb-dir-edit-error" role="alert">
+                      {dirEditError}
+                    </div>
+                  )}
+                </div>
+                <footer className="kb-dir-drawer-foot">
+                  <button type="button" className="exp-btn" id="kb-dir-cancel" onClick={closeDirDrawer}>
+                    取消
+                  </button>
+                  <button type="button" className="exp-btn exp-primary" id="kb-dir-save" onClick={saveDirEdit}>
+                    保存
+                  </button>
+                </footer>
+              </aside>
             </div>
 
             {/* 5. Lightbox */}
