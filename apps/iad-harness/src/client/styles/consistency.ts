@@ -1017,12 +1017,12 @@ button.dc-vchart-zero,
 .dc-grid .dc-card{height:auto!important;min-height:0!important;align-self:start!important;font-family:inherit!important;}
 .dc-grid .dc-card-img{height:140px;flex:none;}
 .dc-grid .dc-card-caption{padding:7px 9px 8px!important;flex:none;min-height:0!important;}
-.dc-grid .dc-card-caption>strong{margin-bottom:4px!important;line-height:18px!important;font-size:12px!important;font-weight:600!important;color:#17233a!important;font-family:inherit!important;}
+.dc-grid .dc-card-caption>strong{margin-bottom:4px!important;line-height:18px!important;font-size:12px!important;font-weight:600!important;color:var(--iba-font-color-base,#172338)!important;font-family:inherit!important;}
 .dc-grid .dc-card-judgments{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;column-gap:7px;min-width:0;line-height:18px;}
-.dc-grid .dc-card-judgments>.dc-judgment-value{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:inherit!important;font-size:12px!important;line-height:18px!important;font-weight:600!important;}
-.dc-grid .dc-card-judgments>.dc-raw-value{color:#64748b!important;text-align:left;}
-.dc-grid .dc-card-judgments>.dc-model-value{color:#17233a!important;text-align:right;}
-.dc-grid .dc-card-judgments>.dc-judgment-clear{color:#267657!important;}
+.dc-grid .dc-card-judgments>.dc-judgment-value{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:inherit!important;font-size:12px!important;line-height:18px!important;font-weight:400!important;color:var(--iba-font-color-base,#172338)!important;}
+.dc-grid .dc-card-judgments>.dc-raw-value{color:var(--iba-font-color-base,#172338)!important;text-align:left;}
+.dc-grid .dc-card-judgments>.dc-model-value{color:var(--iba-font-color-base,#172338)!important;text-align:right;}
+.dc-grid .dc-card-judgments>.dc-judgment-clear{color:var(--iba-font-color-base,#172338)!important;}
 
 /* V39: data-consistency job table only — two compact status columns, no new vertical scrolling. */
 .dc-section.dc-jobs-section .dc-table{min-width:1050px}

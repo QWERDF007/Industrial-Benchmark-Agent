@@ -328,6 +328,15 @@ export const typographyStyles = `
   object-position: center !important;
 }
 
+/* Conflict card caption bottom judgments text: ordinary text color and regular weight */
+.dc-grid .dc-card-judgments > .dc-judgment-value,
+.dc-grid .dc-card-judgments > .dc-raw-value,
+.dc-grid .dc-card-judgments > .dc-model-value,
+.dc-grid .dc-card-judgments > .dc-judgment-clear {
+  color: var(--iba-font-color-base, #172338) !important;
+  font-weight: 400 !important;
+}
+
 /* ==========================================================================
    V51 Ordinary Data Text & Status Semantic Colors
    ========================================================================== */

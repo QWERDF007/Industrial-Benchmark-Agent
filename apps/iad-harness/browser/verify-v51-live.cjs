@@ -247,6 +247,15 @@ async function run() {
     const mainImgCount = await dcCards[0].findElements(By.css(".dc-main-image"));
     chk(mainImgCount.length === 1, "数据一致性卡片使用dc-main-image独立主图类");
 
+    // Verify conflict card bottom two texts color matches ordinary text color (#172338 / rgb(23, 35, 56))
+    const rawValEl = await dcCards[0].findElement(By.css(".dc-raw-value"));
+    const rawValColor = await rawValEl.getCssValue("color");
+    chk(rawValColor === "rgb(23, 35, 56)", `数据一致性冲突卡片底部左侧文本颜色为普通文本颜色 (实际: ${rawValColor})`);
+
+    const modelValEl = await dcCards[0].findElement(By.css(".dc-model-value"));
+    const modelValColor = await modelValEl.getCssValue("color");
+    chk(modelValColor === "rgb(23, 35, 56)", `数据一致性冲突卡片底部右侧文本颜色为普通文本颜色 (实际: ${modelValColor})`);
+
     // Test clear action restores conflict cards
     await dcFilenameSearch.sendKeys("nonexistent_filename_query");
     await driver.sleep(400);
