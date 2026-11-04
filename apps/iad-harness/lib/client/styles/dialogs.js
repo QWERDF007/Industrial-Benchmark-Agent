@@ -107,7 +107,7 @@ dialog.iad-detail-dialog::backdrop {
 .exp-direction-dialog,
 .dc-dialog,
 .dc-conflict-dialog,
-.modal-scrim .modal,
+.modal-scrim .modal:not(.add-dataset-modal),
 dialog.iad-detail-dialog {
   box-sizing: border-box !important;
   background: var(--iad-dialog-bg) !important;
@@ -315,7 +315,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 .dc-stats-modal .dc-stats-dialog,
 .exp-modal .exp-source-dialog,
 .exp-dialog:not(.small):not(.exp-direction-dialog),
-.modal-scrim .modal:not(.delete-modal) {
+.modal-scrim .modal:not(.delete-modal):not(.add-dataset-modal) {
   width: min(var(--iba-dialog-edit-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
   max-width: var(--iba-dialog-edit-width) !important;
   height: auto !important;
@@ -331,7 +331,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 #knowledge-page .kb-v45 #create-overlay > .modal > .modalcontent,
 #dc-new-mask .dc-new-body,
 .dc-stats-dialog .dc-stats-body,
-.modal-scrim .modal:not(.delete-modal) .modal-body,
+.modal-scrim .modal:not(.delete-modal):not(.add-dataset-modal) .modal-body,
 .exp-dialog:not(.small):not(.exp-direction-dialog) .exp-dialog-main {
   padding: 22px 26px 24px !important;
   overflow-y: auto !important;
@@ -372,7 +372,7 @@ dialog.iad-detail-dialog.iad-confirm-dialog {
 .detail-header,
 .exp-dialog-head,
 .dc-dialog-head,
-.modal-scrim .modal-top,
+.modal-scrim .modal:not(.add-dataset-modal) .modal-top,
 .iad-dialog-header {
   display: flex !important;
   align-items: center !important;
@@ -391,7 +391,7 @@ dialog.iad-detail-dialog.iad-confirm-dialog {
 .exp-dialog-head strong,
 .exp-dialog-head h2,
 .dc-dialog-head h2,
-.modal-scrim .modal-top h2,
+.modal-scrim .modal:not(.add-dataset-modal) .modal-top h2,
 .iad-dialog-header h2 {
   font-size: var(--iad-dialog-title-font) !important;
   font-weight: var(--iad-dialog-title-weight) !important;
@@ -441,7 +441,7 @@ button.modal-x:hover {
    ========================================================================== */
 .exp-dialog-foot,
 .dc-dialog-footer,
-.modal-scrim .modal-actions {
+.modal-scrim .modal:not(.add-dataset-modal) .modal-actions {
   display: flex !important;
   align-items: center !important;
   justify-content: flex-end !important;
@@ -459,7 +459,7 @@ button.modal-x:hover {
 /* Unified Footer Buttons */
 .exp-dialog-foot button,
 .dc-dialog-footer button,
-.modal-scrim .modal-actions button,
+.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button,
 .iad-confirm-dialog button {
   min-height: 34px !important;
   height: 34px !important;
@@ -502,7 +502,7 @@ button.modal-x:hover {
 .cancel,
 button.exp-ghost,
 .dc-dialog-footer button.dc-minor,
-.modal-scrim .modal-actions button.btn-secondary {
+.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button.btn-secondary {
   background: #ffffff !important;
   background-color: #ffffff !important;
   color: var(--iad-btn-cancel-color) !important;
@@ -514,7 +514,7 @@ button.exp-ghost,
 .cancel:hover,
 button.exp-ghost:hover,
 .dc-dialog-footer button.dc-minor:hover,
-.modal-scrim .modal-actions button.btn-secondary:hover {
+.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button.btn-secondary:hover {
   background: #f1f5fa !important;
   background-color: #f1f5fa !important;
   border-color: #b5c3d4 !important;
@@ -523,7 +523,7 @@ button.exp-ghost:hover,
 
 /* Primary Form Submit Buttons */
 .dc-dialog-footer button.dc-btn,
-.modal-scrim .modal-actions button.btn-primary {
+.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button.btn-primary {
   background: var(--iad-btn-primary-bg) !important;
   background-color: var(--iad-btn-primary-bg) !important;
   color: #ffffff !important;
@@ -533,7 +533,7 @@ button.exp-ghost:hover,
 }
 
 .dc-dialog-footer button.dc-btn:hover:not(:disabled),
-.modal-scrim .modal-actions button.btn-primary:hover:not(:disabled) {
+.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button.btn-primary:hover:not(:disabled) {
   background: var(--iad-btn-primary-hover) !important;
   background-color: var(--iad-btn-primary-hover) !important;
   border-color: var(--iad-btn-primary-hover) !important;

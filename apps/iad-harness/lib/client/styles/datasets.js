@@ -763,4 +763,264 @@ button.secondary:disabled { opacity: .5; cursor: not-allowed; }
   .modal .radio-row { flex-wrap: wrap; }
   .modal .radio-row label { min-width: 150px; }
 }
+
+/* ==========================================================================
+   Add Dataset Modal & Directory Picker Modal (Strictly Aligns with HTML Prototype)
+   ========================================================================== */
+.modal-scrim .modal.add-dataset-modal {
+  width: min(720px, calc(100% - 32px)) !important;
+  max-width: 720px !important;
+  max-height: calc(100vh - 36px) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  background: #ffffff !important;
+  border: 1px solid #c4cfdf !important;
+  border-radius: 8px !important;
+  padding: 25px 24px 24px !important;
+  box-shadow: 0 16px 52px rgba(8, 19, 39, .24) !important;
+  display: block !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 0 16px !important;
+  border-bottom: 1px solid #dfe5ee !important;
+  margin-bottom: 20px !important;
+  background: transparent !important;
+  box-sizing: border-box !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-top h2 {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: #14243d !important;
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-top .modal-x {
+  border: 0 !important;
+  background: none !important;
+  color: #5f6f86 !important;
+  font-size: 24px !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-top .modal-x:hover {
+  background: transparent !important;
+  color: #14243d !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-field {
+  margin-bottom: 17px !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-field > label {
+  display: block !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #14243d !important;
+  margin-bottom: 8px !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-field input,
+.modal-scrim .modal.add-dataset-modal .modal-field select {
+  width: 100% !important;
+  height: 40px !important;
+  border: 1px solid #9caac0 !important;
+  border-radius: 5px !important;
+  padding: 0 11px !important;
+  background: #ffffff !important;
+  color: #14243d !important;
+  font-size: 14px !important;
+  box-sizing: border-box !important;
+  outline: none !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-field input:focus,
+.modal-scrim .modal.add-dataset-modal .modal-field select:focus {
+  border-color: #4476e4 !important;
+  outline: 2px solid rgba(68, 118, 228, 0.25) !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .radio-row {
+  display: flex !important;
+  gap: 10px !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .radio-row label {
+  flex: 1 !important;
+  border: 1px solid #d1dbe7 !important;
+  border-radius: 5px !important;
+  padding: 10px 12px !important;
+  font-weight: 400 !important;
+  cursor: pointer !important;
+  min-height: 46px !important;
+  display: flex !important;
+  align-items: center !important;
+  font-size: 13.5px !important;
+  color: #14243d !important;
+  background: #ffffff !important;
+  box-sizing: border-box !important;
+  transition: border-color .15s ease, background-color .15s ease !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .radio-row label:has(input:checked) {
+  border-color: #4476e4 !important;
+  background: #eef3ff !important;
+  color: #14243d !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .radio-row label input[type="radio"] {
+  width: 16px !important;
+  height: 16px !important;
+  flex: none !important;
+  margin: 0 8px 0 0 !important;
+  cursor: pointer !important;
+  accent-color: #2458d5 !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .radio-row label:has(input:disabled) {
+  opacity: .48 !important;
+  cursor: not-allowed !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .dialog-path {
+  display: flex !important;
+  gap: 9px !important;
+  align-items: center !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .dialog-path input {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .dialog-path button.secondary {
+  flex: none !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 16px !important;
+  background: #ffffff !important;
+  border: 1px solid #aab9cd !important;
+  border-radius: 5px !important;
+  font-size: 13px !important;
+  color: #14243d !important;
+  cursor: pointer !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .dialog-path button.secondary:hover {
+  background: #f6f8fb !important;
+  border-color: #92a4bc !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-hint {
+  font-size: 12px !important;
+  color: #5f6f86 !important;
+  margin: -4px 0 18px !important;
+  line-height: 1.5 !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin-top: 24px !important;
+  padding: 0 !important;
+  border-top: none !important;
+  background: transparent !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-actions button.secondary {
+  min-height: 36px !important;
+  height: 36px !important;
+  background: #ffffff !important;
+  border: 1px solid #aab9cd !important;
+  border-radius: 5px !important;
+  padding: 0 16px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #14243d !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-actions button.secondary:hover:not(:disabled) {
+  background: #f6f8fb !important;
+  border-color: #92a4bc !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-actions button.primary {
+  min-height: 36px !important;
+  height: 36px !important;
+  background: #2458d5 !important;
+  border: 1px solid #2458d5 !important;
+  border-radius: 5px !important;
+  padding: 0 18px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-actions button.primary:hover:not(:disabled) {
+  background: #1c49b6 !important;
+  border-color: #1c49b6 !important;
+}
+
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-top {
+  border-bottom-color: #334155 !important;
+}
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-top h2,
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-field > label {
+  color: #f1f5f9 !important;
+}
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-field input,
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-field select {
+  background: #0f172a !important;
+  border-color: #475569 !important;
+  color: #f1f5f9 !important;
+}
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .radio-row label {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .radio-row label:has(input:checked) {
+  background: #1e3a5f !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-hint {
+  color: #94a3b8 !important;
+}
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-actions button.secondary {
+  background: #1e293b !important;
+  border-color: #475569 !important;
+  color: #e2e8f0 !important;
+}
 `;

@@ -38,6 +38,7 @@ export function FullscreenViewer({
   onClose,
   onNavigate,
 }: FullscreenViewerProps) {
+  const [zoomMode, setZoomMode] = useState<"fit" | "custom">("fit");
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [panX, setPanX] = useState<number>(0);
   const [panY, setPanY] = useState<number>(0);
@@ -51,8 +52,30 @@ export function FullscreenViewer({
   const bigImageRef = useRef<HTMLImageElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
 
+  const imgW = naturalSize.width || item?.width || 800;
+  const imgH = naturalSize.height || item?.height || 600;
+
+  // Fit scale calculation: dynamically scale to fit the stage area
+  const fitScale = useMemo(() => {
+    if (stageBounds.width <= 0 || stageBounds.height <= 0 || imgW <= 0 || imgH <= 0) return 1;
+    const availableW = Math.max(100, stageBounds.width - 128);
+    const availableH = Math.max(100, stageBounds.height - 40);
+    const scaleX = availableW / imgW;
+    const scaleY = availableH / imgH;
+    return Math.max(0.05, Math.min(scaleX, scaleY));
+  }, [stageBounds.width, stageBounds.height, imgW, imgH]);
+
+  const effectiveScale = zoomMode === "fit" ? fitScale : zoomLevel;
+
   const setZoom = useCallback((next: number) => {
+    setZoomMode("custom");
     setZoomLevel(Math.max(0.1, Math.min(10, next)));
+  }, []);
+
+  const handleFit = useCallback(() => {
+    setZoomMode("fit");
+    setPanX(0);
+    setPanY(0);
   }, []);
 
   // Measure stage bounds for accurate fit calculation
@@ -92,11 +115,15 @@ export function FullscreenViewer({
     if (!stage || !open) return;
     function onWheel(e: WheelEvent) {
       e.preventDefault();
-      setZoomLevel(prev => Math.max(0.1, Math.min(10, prev * (e.deltaY < 0 ? 1.15 : 1 / 1.15))));
+      setZoomMode("custom");
+      setZoomLevel(prev => {
+        const base = zoomMode === "fit" ? fitScale : prev;
+        return Math.max(0.1, Math.min(10, base * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+      });
     }
     stage.addEventListener("wheel", onWheel, { passive: false });
     return () => stage.removeEventListener("wheel", onWheel);
-  }, [open]);
+  }, [open, zoomMode, fitScale]);
 
   // Navigate prev / next
   const moveViewer = useCallback((step: number) => {
@@ -105,6 +132,7 @@ export function FullscreenViewer({
     onNavigate(next);
     setPanX(0);
     setPanY(0);
+    setZoomMode("fit");
   }, [currentIndex, items.length, onNavigate]);
 
   // Keyboard navigation
@@ -126,32 +154,15 @@ export function FullscreenViewer({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onClose, moveViewer]);
 
-  const imgW = naturalSize.width || item?.width || 800;
-  const imgH = naturalSize.height || item?.height || 600;
-
-  // Fit scale calculation
-  const fitScale = useMemo(() => {
-    if (stageBounds.width === 0 || stageBounds.height === 0 || imgW === 0 || imgH === 0) return 1;
-    const scaleX = (stageBounds.width - 40) / imgW;
-    const scaleY = (stageBounds.height - 40) / imgH;
-    return Math.min(1, Math.min(scaleX, scaleY));
-  }, [stageBounds, imgW, imgH]);
-
-  const handleFit = useCallback(() => {
-    setZoomLevel(fitScale);
-    setPanX(0);
-    setPanY(0);
-  }, [fitScale]);
-
   // Auto-fit on open or item change
   useEffect(() => {
     if (open && item) {
       setPanX(0);
       setPanY(0);
+      setZoomMode("fit");
       setShowAnnotation(true);
-      if (fitScale > 0) setZoomLevel(fitScale);
     }
-  }, [open, item?.id, fitScale]);
+  }, [open, item?.id]);
 
   if (!open || !item) return null;
 
@@ -173,7 +184,7 @@ export function FullscreenViewer({
               id="zoom-out"
               title="缩小"
               aria-label="缩小"
-              onClick={() => setZoom(zoomLevel / 1.25)}
+              onClick={() => setZoom(effectiveScale / 1.25)}
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="11" cy="11" r="7" />
@@ -189,10 +200,10 @@ export function FullscreenViewer({
                 aria-label="缩放比例"
                 style={{ color: "#f4f7fd", background: "transparent" }}
                 value={
-                  [0.5, 1, 1.5, 2].some(v => Math.abs(zoomLevel - v) < 0.001)
-                    ? String(zoomLevel)
-                    : Math.abs(zoomLevel - fitScale) < 0.001
+                  zoomMode === "fit"
                     ? "fit"
+                    : [0.5, 1, 1.5, 2].some(v => Math.abs(effectiveScale - v) < 0.001)
+                    ? String(effectiveScale)
                     : "custom"
                 }
                 onChange={e => {
@@ -204,15 +215,17 @@ export function FullscreenViewer({
                   }
                 }}
               >
-                <option value="fit">适用窗口</option>
+                <option value="fit">适应窗口</option>
                 <option value="0.5">50%</option>
                 <option value="1">100%</option>
                 <option value="1.5">150%</option>
                 <option value="2">200%</option>
                 <option value="custom">
-                  {[0.5, 1, 1.5, 2].some(v => Math.abs(zoomLevel - v) < 0.001)
+                  {zoomMode === "fit"
                     ? "自定义"
-                    : `${Math.round(zoomLevel * 100)}%`}
+                    : [0.5, 1, 1.5, 2].some(v => Math.abs(effectiveScale - v) < 0.001)
+                    ? "自定义"
+                    : `${Math.round(effectiveScale * 100)}%`}
                 </option>
               </select>
               <span className="zoom-chevron" aria-hidden="true">
@@ -226,7 +239,7 @@ export function FullscreenViewer({
               id="zoom-in"
               title="放大"
               aria-label="放大"
-              onClick={() => setZoom(zoomLevel * 1.25)}
+              onClick={() => setZoom(effectiveScale * 1.25)}
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="11" cy="11" r="7" />
@@ -234,12 +247,12 @@ export function FullscreenViewer({
               </svg>
             </button>
 
-            {/* 4. 适用窗口 */}
+            {/* 4. 适应窗口 */}
             <button
               type="button"
               id="fit"
-              title="适用窗口"
-              aria-label="适用窗口"
+              title="适应窗口"
+              aria-label="适应窗口"
               onClick={handleFit}
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -305,7 +318,7 @@ export function FullscreenViewer({
               width: `${imgW}px`,
               height: `${imgH}px`,
               transformOrigin: "center",
-              transform: `translate(-50%, -50%) translate(${panX}px, ${panY}px) scale(${zoomLevel})`,
+              transform: `translate(-50%, -50%) translate(${panX}px, ${panY}px) scale(${effectiveScale})`,
             }}
           >
             <img

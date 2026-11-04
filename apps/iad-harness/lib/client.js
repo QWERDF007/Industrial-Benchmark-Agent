@@ -763,7 +763,7 @@ var __IadClientBundle__ = (() => {
     }, []);
     return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "modal-scrim", onClick: (e) => {
       if (e.target === e.currentTarget) onClose();
-    }, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "modal", role: "dialog", "aria-modal": "true", "aria-label": `\u6D4F\u89C8\u670D\u52A1\u5668\u76EE\u5F55 - ${label}`, children: [
+    }, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "modal add-dataset-modal dir-picker-modal", role: "dialog", "aria-modal": "true", "aria-label": `\u6D4F\u89C8\u670D\u52A1\u5668\u76EE\u5F55 - ${label}`, children: [
       /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "modal-top", children: [
         /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("h2", { children: "\u6D4F\u89C8\u670D\u52A1\u5668\u76EE\u5F55" }),
         /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { type: "button", className: "modal-x iad-icon-button", onClick: onClose, "aria-label": "\u5173\u95ED", children: "\xD7" })
@@ -1555,7 +1555,7 @@ var __IadClientBundle__ = (() => {
       ),
       addModalOpen && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "modal-scrim", onClick: (e) => {
         if (e.target === e.currentTarget && !addBusy) setAddModalOpen(false);
-      }, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "modal", role: "dialog", "aria-modal": "true", "aria-label": "\u6DFB\u52A0\u6570\u636E\u96C6", children: [
+      }, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "modal add-dataset-modal", role: "dialog", "aria-modal": "true", "aria-label": "\u6DFB\u52A0\u6570\u636E\u96C6", children: [
         /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "modal-top", children: [
           /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("h2", { children: "\u6DFB\u52A0\u6570\u636E\u96C6" }),
           /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { type: "button", className: "modal-x iad-icon-button", onClick: () => {
@@ -1713,7 +1713,7 @@ var __IadClientBundle__ = (() => {
       ),
       deleteTarget && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "modal-scrim", onClick: (e) => {
         if (e.target === e.currentTarget && !deleteBusy) setDeleteTarget(null);
-      }, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "modal", role: "dialog", "aria-modal": "true", "aria-label": deleteTarget.kind === "group" ? "\u5220\u9664\u5927\u6570\u636E\u96C6" : "\u5220\u9664\u6570\u636E\u96C6", children: [
+      }, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "modal delete-modal", role: "dialog", "aria-modal": "true", "aria-label": deleteTarget.kind === "group" ? "\u5220\u9664\u5927\u6570\u636E\u96C6" : "\u5220\u9664\u6570\u636E\u96C6", children: [
         /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "modal-top", children: [
           /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("h2", { children: deleteTarget.kind === "group" ? "\u5220\u9664\u5927\u6570\u636E\u96C6" : "\u5220\u9664\u6570\u636E\u96C6" }),
           /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("button", { type: "button", className: "modal-x iad-icon-button", onClick: () => {
@@ -9336,6 +9336,7 @@ var __IadClientBundle__ = (() => {
     onClose,
     onNavigate
   }) {
+    const [zoomMode, setZoomMode] = (0, import_react38.useState)("fit");
     const [zoomLevel, setZoomLevel] = (0, import_react38.useState)(1);
     const [panX, setPanX] = (0, import_react38.useState)(0);
     const [panY, setPanY] = (0, import_react38.useState)(0);
@@ -9347,8 +9348,25 @@ var __IadClientBundle__ = (() => {
     const stageRef = (0, import_react38.useRef)(null);
     const bigImageRef = (0, import_react38.useRef)(null);
     const worldRef = (0, import_react38.useRef)(null);
+    const imgW = naturalSize.width || item?.width || 800;
+    const imgH = naturalSize.height || item?.height || 600;
+    const fitScale = (0, import_react38.useMemo)(() => {
+      if (stageBounds.width <= 0 || stageBounds.height <= 0 || imgW <= 0 || imgH <= 0) return 1;
+      const availableW = Math.max(100, stageBounds.width - 128);
+      const availableH = Math.max(100, stageBounds.height - 40);
+      const scaleX = availableW / imgW;
+      const scaleY = availableH / imgH;
+      return Math.max(0.05, Math.min(scaleX, scaleY));
+    }, [stageBounds.width, stageBounds.height, imgW, imgH]);
+    const effectiveScale = zoomMode === "fit" ? fitScale : zoomLevel;
     const setZoom = (0, import_react38.useCallback)((next) => {
+      setZoomMode("custom");
       setZoomLevel(Math.max(0.1, Math.min(10, next)));
+    }, []);
+    const handleFit = (0, import_react38.useCallback)(() => {
+      setZoomMode("fit");
+      setPanX(0);
+      setPanY(0);
     }, []);
     (0, import_react38.useLayoutEffect)(() => {
       const stage = stageRef.current;
@@ -9380,17 +9398,22 @@ var __IadClientBundle__ = (() => {
       if (!stage || !open) return;
       function onWheel(e) {
         e.preventDefault();
-        setZoomLevel((prev) => Math.max(0.1, Math.min(10, prev * (e.deltaY < 0 ? 1.15 : 1 / 1.15))));
+        setZoomMode("custom");
+        setZoomLevel((prev) => {
+          const base = zoomMode === "fit" ? fitScale : prev;
+          return Math.max(0.1, Math.min(10, base * (e.deltaY < 0 ? 1.15 : 1 / 1.15)));
+        });
       }
       stage.addEventListener("wheel", onWheel, { passive: false });
       return () => stage.removeEventListener("wheel", onWheel);
-    }, [open]);
+    }, [open, zoomMode, fitScale]);
     const moveViewer = (0, import_react38.useCallback)((step) => {
       if (currentIndex < 0 || !items.length || !onNavigate) return;
       const next = Math.max(0, Math.min(items.length - 1, currentIndex + step));
       onNavigate(next);
       setPanX(0);
       setPanY(0);
+      setZoomMode("fit");
     }, [currentIndex, items.length, onNavigate]);
     (0, import_react38.useEffect)(() => {
       if (!open) return;
@@ -9409,27 +9432,14 @@ var __IadClientBundle__ = (() => {
       document.addEventListener("keydown", onKeyDown);
       return () => document.removeEventListener("keydown", onKeyDown);
     }, [open, onClose, moveViewer]);
-    const imgW = naturalSize.width || item?.width || 800;
-    const imgH = naturalSize.height || item?.height || 600;
-    const fitScale = (0, import_react38.useMemo)(() => {
-      if (stageBounds.width === 0 || stageBounds.height === 0 || imgW === 0 || imgH === 0) return 1;
-      const scaleX = (stageBounds.width - 40) / imgW;
-      const scaleY = (stageBounds.height - 40) / imgH;
-      return Math.min(1, Math.min(scaleX, scaleY));
-    }, [stageBounds, imgW, imgH]);
-    const handleFit = (0, import_react38.useCallback)(() => {
-      setZoomLevel(fitScale);
-      setPanX(0);
-      setPanY(0);
-    }, [fitScale]);
     (0, import_react38.useEffect)(() => {
       if (open && item) {
         setPanX(0);
         setPanY(0);
+        setZoomMode("fit");
         setShowAnnotation(true);
-        if (fitScale > 0) setZoomLevel(fitScale);
       }
-    }, [open, item?.id, fitScale]);
+    }, [open, item?.id]);
     if (!open || !item) return null;
     const bboxes = item.bboxes || [];
     const filename = item.title.split("/").pop() || item.title;
@@ -9444,7 +9454,7 @@ var __IadClientBundle__ = (() => {
               id: "zoom-out",
               title: "\u7F29\u5C0F",
               "aria-label": "\u7F29\u5C0F",
-              onClick: () => setZoom(zoomLevel / 1.25),
+              onClick: () => setZoom(effectiveScale / 1.25),
               children: /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("svg", { viewBox: "0 0 24 24", "aria-hidden": "true", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("circle", { cx: "11", cy: "11", r: "7" }),
                 /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("path", { d: "m21 21-4.35-4.35M8 11h6" })
@@ -9459,7 +9469,7 @@ var __IadClientBundle__ = (() => {
                 title: "\u7F29\u653E\u6BD4\u4F8B",
                 "aria-label": "\u7F29\u653E\u6BD4\u4F8B",
                 style: { color: "#f4f7fd", background: "transparent" },
-                value: [0.5, 1, 1.5, 2].some((v) => Math.abs(zoomLevel - v) < 1e-3) ? String(zoomLevel) : Math.abs(zoomLevel - fitScale) < 1e-3 ? "fit" : "custom",
+                value: zoomMode === "fit" ? "fit" : [0.5, 1, 1.5, 2].some((v) => Math.abs(effectiveScale - v) < 1e-3) ? String(effectiveScale) : "custom",
                 onChange: (e) => {
                   const v = e.target.value;
                   if (v === "fit") {
@@ -9469,12 +9479,12 @@ var __IadClientBundle__ = (() => {
                   }
                 },
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("option", { value: "fit", children: "\u9002\u7528\u7A97\u53E3" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("option", { value: "fit", children: "\u9002\u5E94\u7A97\u53E3" }),
                   /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("option", { value: "0.5", children: "50%" }),
                   /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("option", { value: "1", children: "100%" }),
                   /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("option", { value: "1.5", children: "150%" }),
                   /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("option", { value: "2", children: "200%" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("option", { value: "custom", children: [0.5, 1, 1.5, 2].some((v) => Math.abs(zoomLevel - v) < 1e-3) ? "\u81EA\u5B9A\u4E49" : `${Math.round(zoomLevel * 100)}%` })
+                  /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("option", { value: "custom", children: zoomMode === "fit" ? "\u81EA\u5B9A\u4E49" : [0.5, 1, 1.5, 2].some((v) => Math.abs(effectiveScale - v) < 1e-3) ? "\u81EA\u5B9A\u4E49" : `${Math.round(effectiveScale * 100)}%` })
                 ]
               }
             ),
@@ -9487,7 +9497,7 @@ var __IadClientBundle__ = (() => {
               id: "zoom-in",
               title: "\u653E\u5927",
               "aria-label": "\u653E\u5927",
-              onClick: () => setZoom(zoomLevel * 1.25),
+              onClick: () => setZoom(effectiveScale * 1.25),
               children: /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("svg", { viewBox: "0 0 24 24", "aria-hidden": "true", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("circle", { cx: "11", cy: "11", r: "7" }),
                 /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("path", { d: "m21 21-4.35-4.35M11 8v6M8 11h6" })
@@ -9499,8 +9509,8 @@ var __IadClientBundle__ = (() => {
             {
               type: "button",
               id: "fit",
-              title: "\u9002\u7528\u7A97\u53E3",
-              "aria-label": "\u9002\u7528\u7A97\u53E3",
+              title: "\u9002\u5E94\u7A97\u53E3",
+              "aria-label": "\u9002\u5E94\u7A97\u53E3",
               onClick: handleFit,
               children: /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("svg", { viewBox: "0 0 24 24", "aria-hidden": "true", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("circle", { cx: "12", cy: "12", r: "2.8" }),
@@ -9565,7 +9575,7 @@ var __IadClientBundle__ = (() => {
                   width: `${imgW}px`,
                   height: `${imgH}px`,
                   transformOrigin: "center",
-                  transform: `translate(-50%, -50%) translate(${panX}px, ${panY}px) scale(${zoomLevel})`
+                  transform: `translate(-50%, -50%) translate(${panX}px, ${panY}px) scale(${effectiveScale})`
                 },
                 children: [
                   /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(
@@ -16293,6 +16303,266 @@ button.secondary:disabled { opacity: .5; cursor: not-allowed; }
   .modal .radio-row { flex-wrap: wrap; }
   .modal .radio-row label { min-width: 150px; }
 }
+
+/* ==========================================================================
+   Add Dataset Modal & Directory Picker Modal (Strictly Aligns with HTML Prototype)
+   ========================================================================== */
+.modal-scrim .modal.add-dataset-modal {
+  width: min(720px, calc(100% - 32px)) !important;
+  max-width: 720px !important;
+  max-height: calc(100vh - 36px) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  background: #ffffff !important;
+  border: 1px solid #c4cfdf !important;
+  border-radius: 8px !important;
+  padding: 25px 24px 24px !important;
+  box-shadow: 0 16px 52px rgba(8, 19, 39, .24) !important;
+  display: block !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 0 16px !important;
+  border-bottom: 1px solid #dfe5ee !important;
+  margin-bottom: 20px !important;
+  background: transparent !important;
+  box-sizing: border-box !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-top h2 {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: #14243d !important;
+  margin: 0 !important;
+  line-height: 1.4 !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-top .modal-x {
+  border: 0 !important;
+  background: none !important;
+  color: #5f6f86 !important;
+  font-size: 24px !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-top .modal-x:hover {
+  background: transparent !important;
+  color: #14243d !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-field {
+  margin-bottom: 17px !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-field > label {
+  display: block !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #14243d !important;
+  margin-bottom: 8px !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-field input,
+.modal-scrim .modal.add-dataset-modal .modal-field select {
+  width: 100% !important;
+  height: 40px !important;
+  border: 1px solid #9caac0 !important;
+  border-radius: 5px !important;
+  padding: 0 11px !important;
+  background: #ffffff !important;
+  color: #14243d !important;
+  font-size: 14px !important;
+  box-sizing: border-box !important;
+  outline: none !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-field input:focus,
+.modal-scrim .modal.add-dataset-modal .modal-field select:focus {
+  border-color: #4476e4 !important;
+  outline: 2px solid rgba(68, 118, 228, 0.25) !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .radio-row {
+  display: flex !important;
+  gap: 10px !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .radio-row label {
+  flex: 1 !important;
+  border: 1px solid #d1dbe7 !important;
+  border-radius: 5px !important;
+  padding: 10px 12px !important;
+  font-weight: 400 !important;
+  cursor: pointer !important;
+  min-height: 46px !important;
+  display: flex !important;
+  align-items: center !important;
+  font-size: 13.5px !important;
+  color: #14243d !important;
+  background: #ffffff !important;
+  box-sizing: border-box !important;
+  transition: border-color .15s ease, background-color .15s ease !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .radio-row label:has(input:checked) {
+  border-color: #4476e4 !important;
+  background: #eef3ff !important;
+  color: #14243d !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .radio-row label input[type="radio"] {
+  width: 16px !important;
+  height: 16px !important;
+  flex: none !important;
+  margin: 0 8px 0 0 !important;
+  cursor: pointer !important;
+  accent-color: #2458d5 !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .radio-row label:has(input:disabled) {
+  opacity: .48 !important;
+  cursor: not-allowed !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .dialog-path {
+  display: flex !important;
+  gap: 9px !important;
+  align-items: center !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .dialog-path input {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .dialog-path button.secondary {
+  flex: none !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 16px !important;
+  background: #ffffff !important;
+  border: 1px solid #aab9cd !important;
+  border-radius: 5px !important;
+  font-size: 13px !important;
+  color: #14243d !important;
+  cursor: pointer !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .dialog-path button.secondary:hover {
+  background: #f6f8fb !important;
+  border-color: #92a4bc !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-hint {
+  font-size: 12px !important;
+  color: #5f6f86 !important;
+  margin: -4px 0 18px !important;
+  line-height: 1.5 !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin-top: 24px !important;
+  padding: 0 !important;
+  border-top: none !important;
+  background: transparent !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-actions button.secondary {
+  min-height: 36px !important;
+  height: 36px !important;
+  background: #ffffff !important;
+  border: 1px solid #aab9cd !important;
+  border-radius: 5px !important;
+  padding: 0 16px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #14243d !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-actions button.secondary:hover:not(:disabled) {
+  background: #f6f8fb !important;
+  border-color: #92a4bc !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-actions button.primary {
+  min-height: 36px !important;
+  height: 36px !important;
+  background: #2458d5 !important;
+  border: 1px solid #2458d5 !important;
+  border-radius: 5px !important;
+  padding: 0 18px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.modal-scrim .modal.add-dataset-modal .modal-actions button.primary:hover:not(:disabled) {
+  background: #1c49b6 !important;
+  border-color: #1c49b6 !important;
+}
+
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-top {
+  border-bottom-color: #334155 !important;
+}
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-top h2,
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-field > label {
+  color: #f1f5f9 !important;
+}
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-field input,
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-field select {
+  background: #0f172a !important;
+  border-color: #475569 !important;
+  color: #f1f5f9 !important;
+}
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .radio-row label {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .radio-row label:has(input:checked) {
+  background: #1e3a5f !important;
+  border-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-hint {
+  color: #94a3b8 !important;
+}
+[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-actions button.secondary {
+  background: #1e293b !important;
+  border-color: #475569 !important;
+  color: #e2e8f0 !important;
+}
 `;
 
   // src/client/styles/consistency.ts
@@ -17720,7 +17990,7 @@ dialog.iad-detail-dialog::backdrop {
 .exp-direction-dialog,
 .dc-dialog,
 .dc-conflict-dialog,
-.modal-scrim .modal,
+.modal-scrim .modal:not(.add-dataset-modal),
 dialog.iad-detail-dialog {
   box-sizing: border-box !important;
   background: var(--iad-dialog-bg) !important;
@@ -17928,7 +18198,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 .dc-stats-modal .dc-stats-dialog,
 .exp-modal .exp-source-dialog,
 .exp-dialog:not(.small):not(.exp-direction-dialog),
-.modal-scrim .modal:not(.delete-modal) {
+.modal-scrim .modal:not(.delete-modal):not(.add-dataset-modal) {
   width: min(var(--iba-dialog-edit-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
   max-width: var(--iba-dialog-edit-width) !important;
   height: auto !important;
@@ -17944,7 +18214,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 #knowledge-page .kb-v45 #create-overlay > .modal > .modalcontent,
 #dc-new-mask .dc-new-body,
 .dc-stats-dialog .dc-stats-body,
-.modal-scrim .modal:not(.delete-modal) .modal-body,
+.modal-scrim .modal:not(.delete-modal):not(.add-dataset-modal) .modal-body,
 .exp-dialog:not(.small):not(.exp-direction-dialog) .exp-dialog-main {
   padding: 22px 26px 24px !important;
   overflow-y: auto !important;
@@ -17985,7 +18255,7 @@ dialog.iad-detail-dialog.iad-confirm-dialog {
 .detail-header,
 .exp-dialog-head,
 .dc-dialog-head,
-.modal-scrim .modal-top,
+.modal-scrim .modal:not(.add-dataset-modal) .modal-top,
 .iad-dialog-header {
   display: flex !important;
   align-items: center !important;
@@ -18004,7 +18274,7 @@ dialog.iad-detail-dialog.iad-confirm-dialog {
 .exp-dialog-head strong,
 .exp-dialog-head h2,
 .dc-dialog-head h2,
-.modal-scrim .modal-top h2,
+.modal-scrim .modal:not(.add-dataset-modal) .modal-top h2,
 .iad-dialog-header h2 {
   font-size: var(--iad-dialog-title-font) !important;
   font-weight: var(--iad-dialog-title-weight) !important;
@@ -18054,7 +18324,7 @@ button.modal-x:hover {
    ========================================================================== */
 .exp-dialog-foot,
 .dc-dialog-footer,
-.modal-scrim .modal-actions {
+.modal-scrim .modal:not(.add-dataset-modal) .modal-actions {
   display: flex !important;
   align-items: center !important;
   justify-content: flex-end !important;
@@ -18072,7 +18342,7 @@ button.modal-x:hover {
 /* Unified Footer Buttons */
 .exp-dialog-foot button,
 .dc-dialog-footer button,
-.modal-scrim .modal-actions button,
+.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button,
 .iad-confirm-dialog button {
   min-height: 34px !important;
   height: 34px !important;
@@ -18115,7 +18385,7 @@ button.modal-x:hover {
 .cancel,
 button.exp-ghost,
 .dc-dialog-footer button.dc-minor,
-.modal-scrim .modal-actions button.btn-secondary {
+.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button.btn-secondary {
   background: #ffffff !important;
   background-color: #ffffff !important;
   color: var(--iad-btn-cancel-color) !important;
@@ -18127,7 +18397,7 @@ button.exp-ghost,
 .cancel:hover,
 button.exp-ghost:hover,
 .dc-dialog-footer button.dc-minor:hover,
-.modal-scrim .modal-actions button.btn-secondary:hover {
+.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button.btn-secondary:hover {
   background: #f1f5fa !important;
   background-color: #f1f5fa !important;
   border-color: #b5c3d4 !important;
@@ -18136,7 +18406,7 @@ button.exp-ghost:hover,
 
 /* Primary Form Submit Buttons */
 .dc-dialog-footer button.dc-btn,
-.modal-scrim .modal-actions button.btn-primary {
+.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button.btn-primary {
   background: var(--iad-btn-primary-bg) !important;
   background-color: var(--iad-btn-primary-bg) !important;
   color: #ffffff !important;
@@ -18146,7 +18416,7 @@ button.exp-ghost:hover,
 }
 
 .dc-dialog-footer button.dc-btn:hover:not(:disabled),
-.modal-scrim .modal-actions button.btn-primary:hover:not(:disabled) {
+.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button.btn-primary:hover:not(:disabled) {
   background: var(--iad-btn-primary-hover) !important;
   background-color: var(--iad-btn-primary-hover) !important;
   border-color: var(--iad-btn-primary-hover) !important;

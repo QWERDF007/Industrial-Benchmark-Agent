@@ -40,7 +40,7 @@ function DirectoryPickerModal({ label, initialPath, onClose, onPick }: {
 
   return (
     <div className="modal-scrim" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={`浏览服务器目录 - ${label}`}>
+      <div className="modal add-dataset-modal dir-picker-modal" role="dialog" aria-modal="true" aria-label={`浏览服务器目录 - ${label}`}>
         <div className="modal-top">
           <h2>浏览服务器目录</h2>
           <button type="button" className="modal-x iad-icon-button" onClick={onClose} aria-label="关闭">×</button>
@@ -904,7 +904,7 @@ export function DatasetManager({
       {/* Add Dataset Modal */}
       {addModalOpen && (
         <div className="modal-scrim" onClick={e => { if (e.target === e.currentTarget && !addBusy) setAddModalOpen(false); }}>
-          <div className="modal" role="dialog" aria-modal="true" aria-label="添加数据集">
+          <div className="modal add-dataset-modal" role="dialog" aria-modal="true" aria-label="添加数据集">
             <div className="modal-top">
               <h2>添加数据集</h2>
               <button type="button" className="modal-x iad-icon-button" onClick={() => { if (!addBusy) setAddModalOpen(false); }} aria-label="关闭">×</button>
@@ -1064,7 +1064,7 @@ export function DatasetManager({
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
         <div className="modal-scrim" onClick={e => { if (e.target === e.currentTarget && !deleteBusy) setDeleteTarget(null); }}>
-          <div className="modal" role="dialog" aria-modal="true" aria-label={deleteTarget.kind === "group" ? "删除大数据集" : "删除数据集"}>
+          <div className="modal delete-modal" role="dialog" aria-modal="true" aria-label={deleteTarget.kind === "group" ? "删除大数据集" : "删除数据集"}>
             <div className="modal-top">
               <h2>{deleteTarget.kind === "group" ? "删除大数据集" : "删除数据集"}</h2>
               <button type="button" className="modal-x iad-icon-button" onClick={() => { if (!deleteBusy) setDeleteTarget(null); }} aria-label="关闭">×</button>
