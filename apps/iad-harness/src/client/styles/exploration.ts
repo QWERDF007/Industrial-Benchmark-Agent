@@ -329,6 +329,11 @@ export const explorationStyles = `
 .exp-direction-table th:nth-child(4){width:135px!important;text-align:right}
 .exp-direction-table td:last-child{text-align:right}
 .exp-direction-table .exp-direction-action .exp-btn{min-height:32px;white-space:nowrap}
+.exp-direction-action .exp-view-detail-button{display:inline-flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;width:auto!important;min-width:70px;height:33px;padding:0 8px!important;gap:5px;color:#172338;border:0;border-radius:5px;background:transparent;cursor:pointer;font-size:12px}
+.exp-direction-action .exp-view-detail-button svg{width:17px;height:17px;flex:none;stroke:currentColor;stroke-width:1.75;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.exp-direction-action .exp-view-detail-button span{font-size:12px;line-height:1;color:#172338;white-space:nowrap}
+.exp-direction-action .exp-view-detail-button:hover{background:#edf2f8!important}
+.exp-direction-action .exp-view-detail-button:focus-visible{outline:2px solid #7fa3e9;outline-offset:1px}
 .exp-direction-meta{display:flex;gap:13px;align-items:center;flex-wrap:wrap;padding:12px 0 16px;font-size:12px;color:#64748b}
 .exp-direction-meta strong{font-weight:550;color:#415675}
 .exp-direction-body{display:block!important}

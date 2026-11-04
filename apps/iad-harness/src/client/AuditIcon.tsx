@@ -93,6 +93,27 @@ export function EyeIcon({ size = 18 }: { size?: number }) {
   );
 }
 
+export function DocumentSearchIcon({ size = 17 }: { size?: number }) {
+  return (
+    <svg
+      aria-hidden="true"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M13 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10l-7-7Z" />
+      <path d="M13 3v7h7" />
+      <circle cx="11" cy="15" r="2.3" />
+      <path d="m12.8 16.8 2.3 2.3" />
+    </svg>
+  );
+}
+
 export function DocumentIcon({ size = 18 }: { size?: number }) {
   return (
     <svg

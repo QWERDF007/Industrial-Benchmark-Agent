@@ -43,6 +43,9 @@ class JobSnapshots:
         if row['job_type'] in ('NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE'):
             from iad_core.knowledge.trace import observation_progress
             values['observation_progress'] = observation_progress(values)
+            if not values.get('mining_prompt'):
+                frozen = payload.get('request', {})
+                values['mining_prompt'] = payload.get('mining_prompt') or frozen.get('mining_prompt')
         if row['job_type'] == 'DIRECTION_EXPLORATION':
             frozen = payload.get('request', {})
             values['exploration_prompt'] = frozen.get('exploration_request', {}).get('prompt')

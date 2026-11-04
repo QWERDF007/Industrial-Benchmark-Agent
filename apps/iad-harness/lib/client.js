@@ -131,7 +131,7 @@ var __IadClientBundle__ = (() => {
   function PlusIcon({ size: size4 = 16 }) {
     return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { "aria-hidden": "true", width: size4, height: size4, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M12 5v14M5 12h14" }) });
   }
-  function EyeIcon({ size: size4 = 18 }) {
+  function DocumentSearchIcon({ size: size4 = 17 }) {
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
       "svg",
       {
@@ -141,12 +141,14 @@ var __IadClientBundle__ = (() => {
         viewBox: "0 0 24 24",
         fill: "none",
         stroke: "currentColor",
-        strokeWidth: "1.8",
+        strokeWidth: "1.75",
         strokeLinecap: "round",
         strokeLinejoin: "round",
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "12", cy: "12", r: "3" })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M13 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10l-7-7Z" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "M13 3v7h7" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("circle", { cx: "11", cy: "15", r: "2.3" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m12.8 16.8 2.3 2.3" })
         ]
       }
     );
@@ -7464,6 +7466,7 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/JobTable.tsx
   var import_react32 = __require("react");
+  var import_react_dom3 = __require("react-dom");
 
   // src/client/components/ExplorationProgress.tsx
   var import_react27 = __require("react");
@@ -8047,9 +8050,27 @@ var __IadClientBundle__ = (() => {
     const { workspace } = useWorkspace(), selected = workspace.view(pageId).job;
     const [page, setPage] = (0, import_react32.useState)(1), [status, setStatus] = (0, import_react32.useState)("");
     const [search, setSearch] = (0, import_react32.useState)(""), [drawerOpen, setDrawerOpen] = (0, import_react32.useState)(false);
+    const [promptJob, setPromptJob] = (0, import_react32.useState)(null);
+    const promptTriggerRef = (0, import_react32.useRef)(null);
     const rows = (0, import_react32.useRef)(/* @__PURE__ */ new Map()), filter = (0, import_react32.useRef)(null);
     const exploration = pageId === "industrial-exploration";
     const knowledge = pageId === "industrial-knowledge";
+    (0, import_react32.useEffect)(() => {
+      if (!promptJob) return;
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      const onKeyDown = (e) => {
+        if (e.key === "Escape") {
+          setPromptJob(null);
+          promptTriggerRef.current?.focus();
+        }
+      };
+      window.addEventListener("keydown", onKeyDown);
+      return () => {
+        document.body.style.overflow = prevOverflow;
+        window.removeEventListener("keydown", onKeyDown);
+      };
+    }, [promptJob]);
     const filtered = jobs.filter((job2) => (!status || job2.status === status) && (!knowledge || `${job2.run_id} ${job2.model_name}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())));
     const index3 = filtered.findIndex((job2) => job2.run_id === selected);
     (0, import_react32.useEffect)(() => {
@@ -8106,7 +8127,7 @@ var __IadClientBundle__ = (() => {
                   /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("th", { className: "iad-number", children: "\u5931\u8D25" })
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("th", { className: "iad-job-time", children: exploration ? "\u63D0\u4EA4\u65F6\u95F4" : "\u5F00\u59CB\u65F6\u95F4" }),
-                !knowledge && /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("th", { children: "\u64CD\u4F5C" })
+                /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("th", { children: "\u64CD\u4F5C" })
               ] }) }),
               /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("tbody", { children: visible.map((item) => /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)(
                 "tr",
@@ -8161,7 +8182,22 @@ var __IadClientBundle__ = (() => {
                         ).toLocaleString() : "\u672A\u63D0\u4F9B"
                       }
                     ) }),
-                    !knowledge && /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(
+                    /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("td", { children: knowledge ? /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("div", { className: "iad-job-actions", children: /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(
+                      "button",
+                      {
+                        type: "button",
+                        className: "job-mini-icon iad-icon-button",
+                        title: "\u67E5\u770B\u63D0\u793A\u8BCD",
+                        "aria-label": "\u67E5\u770B\u63D0\u793A\u8BCD",
+                        "data-job-prompt": item.run_id,
+                        onClick: (e) => {
+                          e.stopPropagation();
+                          promptTriggerRef.current = e.currentTarget;
+                          setPromptJob(item);
+                        },
+                        children: /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(DocumentIcon, {})
+                      }
+                    ) }) : /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(
                       "button",
                       {
                         "aria-label": `\u67E5\u770B\u4F5C\u4E1A ${item.run_id}`,
@@ -8203,7 +8239,72 @@ var __IadClientBundle__ = (() => {
               job.run_id
             )
           ] }),
-          knowledge && drawerOpen && job && /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(Modal, { title: "\u4F5C\u4E1A\u8BE6\u60C5", className: "iad-drawer iad-knowledge-job-drawer", onClose: () => setDrawerOpen(false), restoreFocus: () => rows.current.get(selected) || filter.current, children: /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(JobDetail, { job, onChanged, stale, lastSyncedAt, onClose: () => setDrawerOpen(false), presentation: "drawer" }, job.run_id) })
+          knowledge && drawerOpen && job && /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(Modal, { title: "\u4F5C\u4E1A\u8BE6\u60C5", className: "iad-drawer iad-knowledge-job-drawer", onClose: () => setDrawerOpen(false), restoreFocus: () => rows.current.get(selected) || filter.current, children: /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(JobDetail, { job, onChanged, stale, lastSyncedAt, onClose: () => setDrawerOpen(false), presentation: "drawer" }, job.run_id) }),
+          typeof document !== "undefined" && promptJob && (0, import_react_dom3.createPortal)(
+            /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(
+              "div",
+              {
+                className: "overlay knowledge-prompt-overlay",
+                id: "job-prompt-overlay",
+                role: "presentation",
+                onClick: () => {
+                  setPromptJob(null);
+                  promptTriggerRef.current?.focus();
+                },
+                children: /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)(
+                  "aside",
+                  {
+                    className: "knowledge-prompt-drawer",
+                    role: "dialog",
+                    "aria-modal": "true",
+                    "aria-labelledby": "job-prompt-title",
+                    tabIndex: -1,
+                    onClick: (e) => e.stopPropagation(),
+                    children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("header", { className: "knowledge-prompt-drawer-head", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("h2", { id: "job-prompt-title", children: "\u67E5\u770B\u63D0\u793A\u8BCD" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("div", { className: "knowledge-prompt-drawer-actions", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(
+                            "button",
+                            {
+                              type: "button",
+                              className: "btn small",
+                              id: "copy-job-prompt",
+                              onClick: async () => {
+                                const text = promptJob.mining_prompt?.instruction || promptJob.instruction || "\u8BE5\u5386\u53F2\u4F5C\u4E1A\u672A\u8BB0\u5F55\u51BB\u7ED3\u63D0\u793A\u8BCD\u3002";
+                                try {
+                                  await navigator.clipboard.writeText(text);
+                                } catch (_) {
+                                }
+                              },
+                              children: "\u590D\u5236\u63D0\u793A\u8BCD"
+                            }
+                          ),
+                          /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(
+                            "button",
+                            {
+                              type: "button",
+                              className: "knowledge-prompt-drawer-close",
+                              id: "close-job-prompt",
+                              "aria-label": "\u5173\u95ED\u63D0\u793A\u8BCD\u62BD\u5C49",
+                              title: "\u5173\u95ED",
+                              onClick: () => {
+                                setPromptJob(null);
+                                promptTriggerRef.current?.focus();
+                              },
+                              children: /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(CloseIcon, {})
+                            }
+                          )
+                        ] })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("div", { className: "knowledge-prompt-drawer-content", id: "job-prompt-body", children: /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("pre", { id: "job-prompt-content", className: "knowledge-prompt-readonly", children: promptJob.mining_prompt?.instruction || promptJob.instruction || "\u8BE5\u5386\u53F2\u4F5C\u4E1A\u672A\u8BB0\u5F55\u51BB\u7ED3\u63D0\u793A\u8BCD\u3002" }) })
+                    ]
+                  }
+                )
+              }
+            ),
+            document.body
+          )
         ]
       }
     );
@@ -8752,7 +8853,7 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/ExplorationPage.tsx
   var import_react39 = __require("react");
-  var import_react_dom3 = __require("react-dom");
+  var import_react_dom4 = __require("react-dom");
 
   // src/client/dataset-hierarchy.ts
   function buildHierarchyGroups(datasets, groups = []) {
@@ -9642,6 +9743,21 @@ var __IadClientBundle__ = (() => {
     const [sourcePage, setSourcePage] = (0, import_react39.useState)(1);
     const [highlightRef, setHighlightRef] = (0, import_react39.useState)(null);
     const [viewerData, setViewerData] = (0, import_react39.useState)(null);
+    (0, import_react39.useEffect)(() => {
+      if (modal !== "prompt") return;
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      const onKeyDown = (e) => {
+        if (e.key === "Escape") {
+          setModal("");
+        }
+      };
+      window.addEventListener("keydown", onKeyDown);
+      return () => {
+        document.body.style.overflow = prev;
+        window.removeEventListener("keydown", onKeyDown);
+      };
+    }, [modal]);
     const [samplePool, setSamplePool] = (0, import_react39.useState)([]);
     const [jobs, setJobs] = (0, import_react39.useState)([]);
     (0, import_react39.useEffect)(() => {
@@ -10436,17 +10552,20 @@ var __IadClientBundle__ = (() => {
                       " \u5F20"
                     ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime45.jsxs)("td", { className: "exp-direction-action", onClick: (e) => e.stopPropagation(), children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(
+                      /* @__PURE__ */ (0, import_jsx_runtime45.jsxs)(
                         IconButton,
                         {
                           label: "\u67E5\u770B\u65B9\u5411",
                           title: "\u67E5\u770B\u65B9\u5411",
-                          className: "exp-row-icon exp-direction-view-icon icon-button",
+                          className: "exp-row-icon exp-direction-view-icon exp-view-detail-button icon-button",
                           onClick: () => {
                             setViewingDirectionId(d.id);
                             setModal("direction");
                           },
-                          children: /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(EyeIcon, {})
+                          children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(DocumentSearchIcon, {}),
+                            /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("span", { children: "\u67E5\u770B" })
+                          ]
                         }
                       ),
                       /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(
@@ -10480,7 +10599,7 @@ var __IadClientBundle__ = (() => {
           ] })
         ] })
       ),
-      typeof document !== "undefined" && (0, import_react_dom3.createPortal)(
+      typeof document !== "undefined" && (0, import_react_dom4.createPortal)(
         /* @__PURE__ */ (0, import_jsx_runtime45.jsxs)(import_jsx_runtime45.Fragment, { children: [
           modal === "prompt" && promptJobId && /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(
             "div",
@@ -10501,16 +10620,34 @@ var __IadClientBundle__ = (() => {
                   children: [
                     /* @__PURE__ */ (0, import_jsx_runtime45.jsxs)("div", { className: "exp-prompt-drawer-head", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("h2", { id: "exp-prompt-title", children: "\u63A2\u7D22\u63D0\u793A\u8BCD" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(
-                        IconButton,
-                        {
-                          label: "\u5173\u95ED\u63D0\u793A\u8BCD\u62BD\u5C49",
-                          title: "\u5173\u95ED",
-                          className: "exp-prompt-close drawer-close exp-ghost",
-                          onClick: () => setModal(""),
-                          children: /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(CloseIcon, {})
-                        }
-                      )
+                      /* @__PURE__ */ (0, import_jsx_runtime45.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: 8 }, children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(
+                          "button",
+                          {
+                            type: "button",
+                            className: "exp-btn small",
+                            id: "copy-exp-prompt",
+                            onClick: async () => {
+                              const text = jobs.find((j) => j.id === promptJobId)?.prompt || "\u672C\u6B21\u4F5C\u4E1A\u672A\u8BB0\u5F55\u63D0\u793A\u8BCD\u6B63\u6587\u3002";
+                              try {
+                                await navigator.clipboard.writeText(text);
+                              } catch (_) {
+                              }
+                            },
+                            children: "\u590D\u5236\u63D0\u793A\u8BCD"
+                          }
+                        ),
+                        /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(
+                          IconButton,
+                          {
+                            label: "\u5173\u95ED\u63D0\u793A\u8BCD\u62BD\u5C49",
+                            title: "\u5173\u95ED",
+                            className: "exp-prompt-close drawer-close exp-ghost",
+                            onClick: () => setModal(""),
+                            children: /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(CloseIcon, {})
+                          }
+                        )
+                      ] })
                     ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("div", { className: "exp-prompt-drawer-content", children: /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("div", { className: "exp-prompt-readonly", children: jobs.find((j) => j.id === promptJobId)?.prompt || "\u672C\u6B21\u4F5C\u4E1A\u672A\u8BB0\u5F55\u63D0\u793A\u8BCD\u6B63\u6587\u3002" }) })
                   ]
@@ -10803,6 +10940,7 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/KnowledgePage.tsx
   var import_react49 = __require("react");
+  var import_react_dom5 = __require("react-dom");
 
   // src/client/useJobs.ts
   var import_react41 = __require("react");
@@ -12388,6 +12526,36 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
     const polling = useJobs("knowledge", dataset.dataset_id, updated, view.job);
     const jobs = polling.jobs.filter((job) => job.kind === kind);
     const running = jobs.some((job) => job.status === "RUNNING" || job.status === "PENDING");
+    const [entryPage, setEntryPage] = (0, import_react49.useState)(1);
+    const [detailCheck, setDetailCheck] = (0, import_react49.useState)(null);
+    const detailTriggerRef = (0, import_react49.useRef)(null);
+    const [reviewStatus, setReviewStatus] = (0, import_react49.useState)("pending");
+    const [reviewNote, setReviewNote] = (0, import_react49.useState)("");
+    const openDetail = (item, triggerEl) => {
+      if (triggerEl) detailTriggerRef.current = triggerEl;
+      setDetailCheck(item);
+      setReviewStatus("pending");
+      setReviewNote("");
+    };
+    const closeDetail = () => {
+      setDetailCheck(null);
+      detailTriggerRef.current?.focus();
+    };
+    (0, import_react49.useEffect)(() => {
+      if (!detailCheck) return;
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      const onKeyDown = (e) => {
+        if (e.key === "Escape") {
+          closeDetail();
+        }
+      };
+      window.addEventListener("keydown", onKeyDown);
+      return () => {
+        document.body.style.overflow = prev;
+        window.removeEventListener("keydown", onKeyDown);
+      };
+    }, [detailCheck]);
     async function start(group) {
       setBusy(true);
       setError("");
@@ -12437,6 +12605,10 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
     const term = view.knowledgeSearch.trim().normalize("NFKC").toLocaleLowerCase();
     const checks = (knowledge?.checks || []).filter((item) => (!view.knowledgeStatus || item.status === view.knowledgeStatus) && [item.title, item.subject, item.location, item.criterion, ...item.allowed_variations, ...item.limitations].join(" ").normalize("NFKC").toLocaleLowerCase().includes(term));
     const check = checks.find((check2) => check2.check_id === view.checkId) || checks[0];
+    const pageSize2 = 8;
+    const maxEntryPages = Math.max(1, Math.ceil(checks.length / pageSize2));
+    const currentEntryPage = Math.min(maxEntryPages, Math.max(1, entryPage));
+    const pagedChecks = checks.slice((currentEntryPage - 1) * pageSize2, currentEntryPage * pageSize2);
     function evidence(ids) {
       return knowledge && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(KnowledgeEvidenceGallery, { versionId: knowledge.version_id, items: knowledge.evidence.filter((item) => ids.includes(item.image.evidence_id)), onOpen: setLightbox });
     }
@@ -12507,87 +12679,166 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
             setDirectionProposal(proposal);
             workspace.updateView(pageId, { tab: "setup" });
           } }),
-          view.tab === "results" && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(import_jsx_runtime54.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "iad-knowledge-split", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "iad-check-list", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "iad-row", "aria-label": "\u77E5\u8BC6\u6761\u76EE\u7B5B\u9009", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
-                  "\u641C\u7D22\u77E5\u8BC6\u6761\u76EE",
-                  /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("input", { type: "search", "aria-label": "\u641C\u7D22\u77E5\u8BC6\u6761\u76EE", value: view.knowledgeSearch, onChange: (event) => workspace.updateView(pageId, { knowledgeSearch: event.target.value }, true) })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
-                  "\u652F\u6301\u72B6\u6001",
-                  /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("select", { "aria-label": "\u77E5\u8BC6\u652F\u6301\u72B6\u6001", value: view.knowledgeStatus, onChange: (event) => workspace.updateView(pageId, { knowledgeStatus: event.target.value }), children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("option", { value: "", children: "\u5168\u90E8\u72B6\u6001" }),
-                    Object.entries(knowledgeStatuses).map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("option", { value, children: label }, value))
-                  ] })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("button", { disabled: !view.knowledgeSearch && !view.knowledgeStatus, onClick: () => workspace.updateView(pageId, { knowledgeSearch: "", knowledgeStatus: "" }), children: "\u6E05\u9664\u77E5\u8BC6\u7B5B\u9009" })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("p", { role: "status", "aria-label": "\u77E5\u8BC6\u7B5B\u9009\u7ED3\u679C", children: [
-                "\u663E\u793A ",
-                checks.length,
-                " / ",
-                knowledge.checks.length,
-                " \u9879\u5224\u636E"
-              ] }),
-              checks.map((item) => /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("button", { "aria-pressed": check?.check_id === item.check_id, onClick: () => workspace.updateView(pageId, { checkId: item.check_id }, true), children: [
-                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("strong", { children: item.title }),
-                /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("span", { children: [
-                  knowledgeStatuses[item.status],
-                  " \xB7 \u652F\u6301 ",
-                  item.support_evidence_ids.length,
-                  " / \u53CD\u5BF9 ",
-                  item.counter_evidence_ids.length
-                ] })
-              ] }, item.check_id)),
-              !checks.length && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { children: knowledge.checks.length ? "\u6CA1\u6709\u5339\u914D\u7684\u5224\u636E\uFF0C\u8BF7\u8C03\u6574\u6216\u6E05\u9664\u7B5B\u9009\u3002" : "\u5C1A\u65E0\u53EF\u53D1\u5E03\u5224\u636E\uFF0C\u8BF7\u67E5\u770B\u9650\u5236\u548C\u6838\u9A8C\u7ED3\u679C\u3002" })
-            ] }),
-            check && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("article", { className: "iad-check-detail", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "iad-section-header", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h2", { children: check.title }),
+          view.tab === "results" && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { id: "knowledge-body", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "iad-row", "aria-label": "\u77E5\u8BC6\u6761\u76EE\u7B5B\u9009", style: { marginBottom: 12 }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
+                "\u641C\u7D22\u77E5\u8BC6\u6761\u76EE",
                 /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(
-                  DeleteAction,
+                  "input",
                   {
-                    title: "\u5220\u9664\u77E5\u8BC6\u6761\u76EE",
-                    name: check.title,
-                    description: "\u53D1\u5E03\u79FB\u9664\u8BE5\u6761\u76EE\u7684\u65B0\u7248\u672C\uFF0C\u4FDD\u7559\u5386\u53F2\u77E5\u8BC6\u548C\u5DF2\u6709\u5BA1\u8BA1\u4F9D\u636E\u3002",
-                    disabled: current.freshness?.current_version_id !== knowledge.version_id || loading,
-                    restoreFocus: () => document.querySelector(".iad-knowledge-page .iad-tabs button.active"),
-                    onDelete: async (submission_id) => {
-                      const next = await request(`/knowledge/versions/${encodeURIComponent(knowledge.version_id)}/checks/remove`, { submission_id, check_id: check.check_id });
-                      workspace.updateView(pageId, { version: "", miningPreset: view.miningPreset === knowledge.version_id ? next.version_id : view.miningPreset, miningImages: [] });
-                      workspace.updateView(pageId, { checkId: "" }, true);
-                      updated();
+                    id: "knowledge-search",
+                    type: "search",
+                    "aria-label": "\u641C\u7D22\u77E5\u8BC6\u6761\u76EE",
+                    value: view.knowledgeSearch,
+                    onChange: (event) => {
+                      workspace.updateView(pageId, { knowledgeSearch: event.target.value }, true);
+                      setEntryPage(1);
                     }
                   }
                 )
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("p", { className: "iad-muted", children: [
-                check.subject,
-                " \xB7 ",
-                check.location,
-                " \xB7 ",
-                knowledgeStatuses[check.status]
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
+                "\u652F\u6301\u72B6\u6001",
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)(
+                  "select",
+                  {
+                    id: "knowledge-status",
+                    "aria-label": "\u77E5\u8BC6\u652F\u6301\u72B6\u6001",
+                    value: view.knowledgeStatus,
+                    onChange: (event) => {
+                      workspace.updateView(pageId, { knowledgeStatus: event.target.value });
+                      setEntryPage(1);
+                    },
+                    children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("option", { value: "", children: "\u5168\u90E8\u72B6\u6001" }),
+                      Object.entries(knowledgeStatuses).map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("option", { value, children: label }, value))
+                    ]
+                  }
+                )
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: "\u5224\u5B9A\u4F9D\u636E" }),
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { children: check.criterion }),
-              !!check.recheck_sample_ids.length && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { children: /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("button", { onClick: () => workspace.updateView(pageId, { tab: "setup", miningPreset: knowledge.version_id, miningSourceMode: "recheck", miningContinuous: false, miningImages: [], miningPage: 1 }), children: [
-                "\u91CD\u6838\u9A8C\u5386\u53F2\u6765\u6E90 \xB7 ",
-                check.recheck_sample_ids.length,
-                " \u5F20"
-              ] }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: "\u5141\u8BB8\u53D8\u5316" }),
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { children: check.allowed_variations.join("\uFF1B") || "\u672A\u8BB0\u5F55" }),
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: "\u652F\u6301\u8BC1\u636E" }),
-              evidence(check.support_evidence_ids),
-              !!check.counter_evidence_ids.length && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)(import_jsx_runtime54.Fragment, { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: "\u53CD\u5BF9\u8BC1\u636E" }),
-                evidence(check.counter_evidence_ids)
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(
+                "button",
+                {
+                  disabled: !view.knowledgeSearch && !view.knowledgeStatus,
+                  onClick: () => {
+                    workspace.updateView(pageId, { knowledgeSearch: "", knowledgeStatus: "" });
+                    setEntryPage(1);
+                  },
+                  children: "\u6E05\u9664\u77E5\u8BC6\u7B5B\u9009"
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "knowledge-list", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "knowledge-head", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { children: "\u77E5\u8BC6\u6761\u76EE" }),
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { children: "\u8BC1\u636E\u5224\u65AD" }),
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { children: "\u652F\u6301" }),
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { children: "\u53CD\u5BF9" }),
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { children: "\u4EBA\u5DE5\u6838\u5B9E" }),
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { children: "\u64CD\u4F5C" })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: "\u9002\u7528\u9650\u5236" }),
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { className: "iad-muted", children: [...check.limitations, ...check.support_limitations].join("\uFF1B") || "\u672A\u8BB0\u5F55\u989D\u5916\u9650\u5236" })
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "knowledge-items", children: [
+                pagedChecks.map((item) => /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)(
+                  "div",
+                  {
+                    className: "knowledge-row",
+                    "data-detail-entry": item.check_id,
+                    role: "row",
+                    tabIndex: 0,
+                    "aria-label": `\u67E5\u770B\u77E5\u8BC6\u6761\u76EE\uFF1A${item.title}`,
+                    onClick: (e) => openDetail(item, e.currentTarget),
+                    onKeyDown: (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openDetail(item, e.currentTarget);
+                      }
+                    },
+                    children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("span", { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("strong", { className: "row-title", children: item.title }),
+                        /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { className: "row-desc", title: item.criterion, children: item.criterion })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { className: "col-evidence", children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { className: `status ${item.status === "supported" ? "green" : item.status === "conflicted" ? "red" : "amber"}`, children: knowledgeStatuses[item.status] }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("span", { className: "row-count col-support", children: [
+                        item.support_evidence_ids.length,
+                        " \u5F20"
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("span", { className: "row-count col-counter", children: [
+                        item.counter_evidence_ids.length,
+                        " \u5F20"
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { className: "col-review", children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { className: "status green", children: "\u5F85\u6838\u5B9E" }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { className: "col-action", children: /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)(
+                        "button",
+                        {
+                          type: "button",
+                          className: "knowledge-view-action",
+                          "data-view-entry": item.check_id,
+                          "aria-label": `\u67E5\u770B\u77E5\u8BC6\u6761\u76EE ${item.title}`,
+                          title: "\u67E5\u770B\u77E5\u8BC6\u6761\u76EE",
+                          onClick: (e) => {
+                            e.stopPropagation();
+                            openDetail(item, e.currentTarget);
+                          },
+                          children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(DocumentSearchIcon, {}),
+                            /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { children: "\u67E5\u770B" })
+                          ]
+                        }
+                      ) })
+                    ]
+                  },
+                  item.check_id
+                )),
+                !checks.length && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("div", { className: "iad-empty-text", style: { padding: 24, textAlign: "center", color: "var(--iad-muted)" }, children: knowledge.checks.length ? "\u6CA1\u6709\u5339\u914D\u7684\u77E5\u8BC6\u6761\u76EE\uFF0C\u8BF7\u8C03\u6574\u7B5B\u9009\u6761\u4EF6\u3002" : "\u5C1A\u65E0\u53EF\u53D1\u5E03\u77E5\u8BC6\u6761\u76EE\u3002" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "knowledge-pager", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "pages", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(
+                    "button",
+                    {
+                      type: "button",
+                      className: "pagebtn",
+                      disabled: currentEntryPage <= 1,
+                      onClick: () => setEntryPage(Math.max(1, currentEntryPage - 1)),
+                      children: "\u4E0A\u4E00\u9875"
+                    }
+                  ),
+                  Array.from({ length: maxEntryPages }, (_, i) => i + 1).map((p) => /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(
+                    "button",
+                    {
+                      type: "button",
+                      className: "pagebtn",
+                      "data-entry-set": p,
+                      "aria-current": p === currentEntryPage ? "page" : void 0,
+                      onClick: () => setEntryPage(p),
+                      children: p
+                    },
+                    p
+                  )),
+                  /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(
+                    "button",
+                    {
+                      type: "button",
+                      className: "pagebtn",
+                      disabled: currentEntryPage >= maxEntryPages,
+                      onClick: () => setEntryPage(Math.min(maxEntryPages, currentEntryPage + 1)),
+                      children: "\u4E0B\u4E00\u9875"
+                    }
+                  )
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("span", { className: "page-total", children: [
+                  "\u7B2C ",
+                  currentEntryPage,
+                  " / ",
+                  maxEntryPages,
+                  " \u9875\uFF0C\u5171 ",
+                  checks.length,
+                  " \u6761"
+                ] })
+              ] })
             ] })
-          ] }) }),
+          ] }),
           view.tab === "findings" && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)(import_jsx_runtime54.Fragment, { children: [
             knowledge.conflicts.map((conflict) => /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("article", { className: "iad-info-group", children: [
               /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: conflict.resolution?.status === "resolved" ? "\u51B2\u7A81\u5DF2\u91CD\u6838\u9A8C" : "\u77E5\u8BC6\u4E0E\u56FE\u50CF\u5F85\u6838\u5B9E" }),
@@ -12635,7 +12886,149 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
           /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(JobTable, { jobs, pageId, onChanged: polling.refresh, stale: polling.syncState === "stale", lastSyncedAt: polling.lastSyncedAt }, dataset.dataset_id + kind)
         ] })
       ] }),
-      lightbox && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(ImageViewer, { image: lightbox, onClose: () => setLightbox(null) })
+      lightbox && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(ImageViewer, { image: lightbox, onClose: () => setLightbox(null) }),
+      typeof document !== "undefined" && detailCheck && (0, import_react_dom5.createPortal)(
+        /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(
+          "div",
+          {
+            className: "overlay detail-overlay",
+            id: "detail-overlay",
+            role: "dialog",
+            "aria-modal": "true",
+            "aria-labelledby": "kb-detail-title",
+            onClick: closeDetail,
+            children: /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)(
+              "section",
+              {
+                className: "modal detail-modal iad-detail-dialog",
+                id: "entry-dialog",
+                tabIndex: -1,
+                onClick: (e) => e.stopPropagation(),
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("header", { className: "modalheader iad-dialog-header", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h2", { id: "kb-detail-title", children: detailCheck.title }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(
+                      "button",
+                      {
+                        type: "button",
+                        className: "iconbtn modal-x",
+                        id: "close-detail",
+                        "aria-label": "\u5173\u95ED\u77E5\u8BC6\u8BE6\u60C5",
+                        title: "\u5173\u95ED\u77E5\u8BC6\u8BE6\u60C5",
+                        onClick: closeDetail,
+                        children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(CloseIcon, {})
+                      }
+                    )
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "modalcontent detail-scroll", id: "detail-content", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("section", { className: "detail-section", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: "\u77E5\u8BC6\u7ED3\u8BBA" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("p", { children: [
+                        detailCheck.subject,
+                        " \xB7 ",
+                        detailCheck.location,
+                        " \xB7 ",
+                        knowledgeStatuses[detailCheck.status]
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("section", { className: "detail-section", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: "\u5224\u5B9A\u4F9D\u636E" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { children: detailCheck.criterion })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("section", { className: "detail-section", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: "\u5141\u8BB8\u53D8\u5316" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { children: detailCheck.allowed_variations.join("\uFF1B") || "\u672A\u8BB0\u5F55" })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("section", { className: "detail-section", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("h3", { children: [
+                        "\u652F\u6301\u8BC1\u636E\uFF0C",
+                        detailCheck.support_evidence_ids.length,
+                        " \u5F20"
+                      ] }),
+                      evidence(detailCheck.support_evidence_ids)
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("section", { className: "detail-section", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("h3", { children: [
+                        "\u53CD\u5BF9\u8BC1\u636E\uFF0C",
+                        detailCheck.counter_evidence_ids.length,
+                        " \u5F20"
+                      ] }),
+                      evidence(detailCheck.counter_evidence_ids)
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("section", { className: "detail-section", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: "\u9002\u7528\u9650\u5236" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { className: "iad-muted", children: [...detailCheck.limitations, ...detailCheck.support_limitations].join("\uFF1B") || "\u672A\u8BB0\u5F55\u989D\u5916\u9650\u5236" })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("section", { className: "detail-section detail-review", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: "\u4EBA\u5DE5\u6838\u5B9E" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "knowledge-review-options", role: "radiogroup", "aria-label": "\u4EBA\u5DE5\u6838\u5B9E\u7ED3\u8BBA", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(
+                            "input",
+                            {
+                              type: "radio",
+                              name: "knowledge-review",
+                              value: "pending",
+                              checked: reviewStatus === "pending",
+                              onChange: () => setReviewStatus("pending")
+                            }
+                          ),
+                          "\u5F85\u6838\u5B9E"
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(
+                            "input",
+                            {
+                              type: "radio",
+                              name: "knowledge-review",
+                              value: "confirmed",
+                              checked: reviewStatus === "confirmed",
+                              onChange: () => setReviewStatus("confirmed")
+                            }
+                          ),
+                          "\u6838\u5B9E\u901A\u8FC7"
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(
+                            "input",
+                            {
+                              type: "radio",
+                              name: "knowledge-review",
+                              value: "rejected",
+                              checked: reviewStatus === "rejected",
+                              onChange: () => setReviewStatus("rejected")
+                            }
+                          ),
+                          "\u9A73\u56DE"
+                        ] })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("label", { className: "label", htmlFor: "review-note", children: "\u590D\u6838\u5907\u6CE8" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(
+                        "textarea",
+                        {
+                          className: "f textarea",
+                          id: "review-note",
+                          placeholder: "\u586B\u5199\u590D\u6838\u4F9D\u636E\uFF08\u53EF\u9009\uFF09",
+                          value: reviewNote,
+                          onChange: (e) => setReviewNote(e.target.value)
+                        }
+                      )
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("footer", { className: "modalfooter", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", {}),
+                    /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "actions", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("button", { type: "button", className: "btn cancel", id: "cancel-review", onClick: closeDetail, children: "\u53D6\u6D88" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("button", { type: "button", className: "btn primary", id: "save-review", onClick: closeDetail, children: "\u4FDD\u5B58" })
+                    ] })
+                  ] })
+                ]
+              }
+            )
+          }
+        ),
+        document.body
+      )
     ] });
   }
 
@@ -13064,6 +13457,11 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
 .exp-direction-table th:nth-child(4){width:135px!important;text-align:right}
 .exp-direction-table td:last-child{text-align:right}
 .exp-direction-table .exp-direction-action .exp-btn{min-height:32px;white-space:nowrap}
+.exp-direction-action .exp-view-detail-button{display:inline-flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;width:auto!important;min-width:70px;height:33px;padding:0 8px!important;gap:5px;color:#172338;border:0;border-radius:5px;background:transparent;cursor:pointer;font-size:12px}
+.exp-direction-action .exp-view-detail-button svg{width:17px;height:17px;flex:none;stroke:currentColor;stroke-width:1.75;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.exp-direction-action .exp-view-detail-button span{font-size:12px;line-height:1;color:#172338;white-space:nowrap}
+.exp-direction-action .exp-view-detail-button:hover{background:#edf2f8!important}
+.exp-direction-action .exp-view-detail-button:focus-visible{outline:2px solid #7fa3e9;outline-offset:1px}
 .exp-direction-meta{display:flex;gap:13px;align-items:center;flex-wrap:wrap;padding:12px 0 16px;font-size:12px;color:#64748b}
 .exp-direction-meta strong{font-weight:550;color:#415675}
 .exp-direction-body{display:block!important}
@@ -13675,6 +14073,52 @@ ${item.instruction}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())
 .iad-check-detail .iad-knowledge-evidence{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.iad-check-detail .iad-knowledge-evidence button{min-width:0;text-align:left}.iad-check-detail .iad-knowledge-evidence img{width:100%;height:auto;aspect-ratio:4/3;object-fit:contain}.iad-check-detail .iad-knowledge-evidence small{max-width:100%}
 @container workbench (max-width:1180px){.iad-knowledge-split {grid-template-columns:240px minmax(0,1fr);}.iad-check-detail{padding:20px 24px}}
 @container workbench (max-width:900px){.iad-knowledge-split {grid-template-columns:220px minmax(0,1fr);}.iad-check-detail .iad-knowledge-evidence{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+/* V47 Knowledge Table, Prompt Drawer & Unified Actions */
+.knowledge-list{width:100%;min-width:0;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:var(--iad-radius);overflow:hidden;margin-top:20px}
+.knowledge-head,.knowledge-row{display:grid;grid-template-columns:minmax(250px,1fr) 122px 90px 90px 110px 84px;align-items:center;gap:12px;padding:0 20px}
+.knowledge-head{min-height:43px;background:#f1f4f9;color:#68798f;font-size:12px;font-weight:600;border-bottom:1px solid #dfe6f0}
+.knowledge-head>span:last-child{text-align:center}
+.knowledge-row{min-height:64px;padding-top:10px;padding-bottom:10px;border-bottom:1px solid #e5eaf1;background:#fff;color:#35445c;cursor:pointer;font-size:13px;transition:background .12s}
+.knowledge-row:hover{background:#f7faff}
+.knowledge-row:focus-visible{outline:2px solid #8caef1;outline-offset:-2px;background:#f3f7ff}
+.knowledge-row .row-title{display:block;color:#243650;font-size:13px;font-weight:600;line-height:1.5}
+.knowledge-row .row-desc{display:block;color:#687b93;font-size:12px;line-height:1.55;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.knowledge-row .col-evidence{display:flex;align-items:center}
+.knowledge-row .col-action{display:flex;align-items:center;justify-content:center;min-width:0}
+.knowledge-view-action{width:auto!important;min-width:70px;height:33px;padding:0 8px!important;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:0;border-radius:5px;background:transparent;color:#172338!important;cursor:pointer;font-size:12px}
+.knowledge-view-action svg{height:17px;width:17px;flex:none;stroke:currentColor;stroke-width:1.75;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.knowledge-view-action span{font-size:12px;line-height:1;color:#172338;white-space:nowrap}
+.knowledge-view-action:hover{background:#edf2f8!important;color:#172338!important}
+.knowledge-view-action:focus-visible{outline:2px solid #7fa3e9;outline-offset:1px}
+.knowledge-pager{display:flex;align-items:center;gap:10px;justify-content:flex-end;min-height:54px;padding:10px 20px;font-size:12px;color:#728197;border-top:1px solid #e6ebf1}
+.knowledge-pager .pages{display:flex;gap:6px;align-items:center}
+.knowledge-pager .pagebtn{min-width:32px;height:30px;padding:0 8px;border:1px solid #cfd8e3;background:#fff;border-radius:4px;cursor:pointer;font-size:12px;color:#2c3a4d}
+.knowledge-pager .pagebtn:hover{background:#f1f5fa}
+.knowledge-pager .pagebtn[aria-current="page"]{background:#2458d5;color:#fff;border-color:#2458d5}
+@media(max-width:960px){.knowledge-head,.knowledge-row{grid-template-columns:minmax(195px,1fr) 90px 65px 65px 90px 76px;gap:8px;padding-left:14px;padding-right:14px}}
+@media(max-width:680px){.knowledge-head{display:none}.knowledge-row{grid-template-columns:minmax(0,1fr) auto 78px;gap:8px}.knowledge-row .col-evidence,.knowledge-row .col-support,.knowledge-row .col-counter{display:none}.knowledge-row .col-review{grid-column:2}.knowledge-row .col-action{grid-column:3}}
+
+/* V47 Prompt Drawer */
+.knowledge-prompt-overlay{position:fixed!important;inset:0!important;z-index:410!important;display:flex!important;align-items:stretch!important;justify-content:flex-end!important;padding:0!important;background:rgba(22,33,51,.36)!important}
+.knowledge-prompt-drawer{box-sizing:border-box;width:min(560px,100vw);height:100dvh;max-height:100dvh;flex:none;background:#fff;box-shadow:-15px 0 45px #15223830;border-left:1px solid #d6deeb;display:flex;flex-direction:column;min-width:0;animation:knowledge-drawer-enter .15s ease-out}
+@keyframes knowledge-drawer-enter{from{transform:translateX(24px);opacity:.7}to{transform:translateX(0);opacity:1}}
+.knowledge-prompt-drawer-head{flex:none;height:68px;display:flex;align-items:center;justify-content:space-between;gap:14px;border-bottom:1px solid #e3e9f1;padding:0 22px}
+.knowledge-prompt-drawer-head h2{font-size:17px;line-height:1.5;font-weight:650;margin:0;color:#172338}
+.knowledge-prompt-drawer-actions{display:flex;align-items:center;gap:8px}
+.knowledge-prompt-drawer-close{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;flex:none;border:0;border-radius:5px;background:transparent;color:#172338;cursor:pointer;padding:7px}
+.knowledge-prompt-drawer-close svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round}
+.knowledge-prompt-drawer-close:hover,.knowledge-prompt-drawer-close:focus-visible{background:#edf2f8}
+.knowledge-prompt-drawer-content{padding:22px;overflow:auto;flex:1;min-height:0;overscroll-behavior:contain}
+.knowledge-prompt-readonly{font:inherit;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.9;color:#172338;margin:0}
+@media(max-width:760px){.knowledge-prompt-drawer-head{height:56px;padding:0 16px}.knowledge-prompt-drawer-content{padding:17px}}
+@media(prefers-reduced-motion:reduce){.knowledge-prompt-drawer{animation:none}}
+
+.job-mini-icon{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:6px;border:0;border-radius:5px;background:transparent;color:#455570;cursor:pointer}
+.job-mini-icon:hover{background:#edf2f8;color:#172338}
+.job-mini-icon:focus-visible{outline:2px solid #7fa3e9;outline-offset:1px}
+.job-mini-icon svg{width:18px;height:18px;stroke:currentColor}
+
 
 `;
 
@@ -16207,7 +16651,7 @@ button.exp-ghost:hover,
 
   // src/client/components/ImagesPage.tsx
   var import_react53 = __require("react");
-  var import_react_dom4 = __require("react-dom");
+  var import_react_dom6 = __require("react-dom");
   var import_jsx_runtime56 = __require("react/jsx-runtime");
   function ImagesPage({ datasets, groups, onDatasetsChanged }) {
     const hierarchyGroups = (0, import_react53.useMemo)(() => {
@@ -16608,7 +17052,7 @@ button.exp-ghost:hover,
           " \u5F20\u56FE\u50CF"
         ] })
       ] }) }),
-      typeof document !== "undefined" && (0, import_react_dom4.createPortal)(
+      typeof document !== "undefined" && (0, import_react_dom6.createPortal)(
         /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)(import_jsx_runtime56.Fragment, { children: [
           /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(
             "div",

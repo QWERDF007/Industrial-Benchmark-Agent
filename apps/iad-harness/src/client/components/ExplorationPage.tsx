@@ -9,6 +9,7 @@ import {
   ChevronIcon,
   DeleteIcon,
   DocumentIcon,
+  DocumentSearchIcon,
   EyeIcon,
   MineIcon,
   PlusIcon,
@@ -176,6 +177,22 @@ export function ExplorationPage({
     items: FullscreenViewerItem[];
     currentIndex: number;
   } | null>(null);
+
+  useEffect(() => {
+    if (modal !== "prompt") return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setModal("");
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [modal]);
 
   // Candidate samples pool
   const [samplePool, setSamplePool] = useState<SampleItem[]>([]);
@@ -1111,13 +1128,14 @@ export function ExplorationPage({
                             <IconButton
                               label="查看方向"
                               title="查看方向"
-                              className="exp-row-icon exp-direction-view-icon icon-button"
+                              className="exp-row-icon exp-direction-view-icon exp-view-detail-button icon-button"
                               onClick={() => {
                                 setViewingDirectionId(d.id);
                                 setModal("direction");
                               }}
                             >
-                              <EyeIcon />
+                              <DocumentSearchIcon />
+                              <span>查看</span>
                             </IconButton>
                             <IconButton
                               label="去知识挖掘"
@@ -1191,14 +1209,29 @@ export function ExplorationPage({
           >
             <div className="exp-prompt-drawer-head">
               <h2 id="exp-prompt-title">探索提示词</h2>
-              <IconButton
-                label="关闭提示词抽屉"
-                title="关闭"
-                className="exp-prompt-close drawer-close exp-ghost"
-                onClick={() => setModal("")}
-              >
-                <CloseIcon />
-              </IconButton>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  type="button"
+                  className="exp-btn small"
+                  id="copy-exp-prompt"
+                  onClick={async () => {
+                    const text = jobs.find((j) => j.id === promptJobId)?.prompt || "本次作业未记录提示词正文。";
+                    try {
+                      await navigator.clipboard.writeText(text);
+                    } catch (_) {}
+                  }}
+                >
+                  复制提示词
+                </button>
+                <IconButton
+                  label="关闭提示词抽屉"
+                  title="关闭"
+                  className="exp-prompt-close drawer-close exp-ghost"
+                  onClick={() => setModal("")}
+                >
+                  <CloseIcon />
+                </IconButton>
+              </div>
             </div>
             <div className="exp-prompt-drawer-content">
               <div className="exp-prompt-readonly">

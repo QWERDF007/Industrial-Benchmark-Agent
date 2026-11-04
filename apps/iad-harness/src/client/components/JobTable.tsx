@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { JobSnapshot } from "../../shared/contracts.js";
 import { jobPhases, jobStatuses } from "../../shared/job-display.js";
 import { useWorkspace, type PageId } from "../workspace.js";
 import { JobDetail } from "./JobDetail.js";
 import { Pagination } from "./Pagination.js";
 import { Modal } from "./Modal.js";
+import { CloseIcon, DocumentIcon } from "../AuditIcon.js";
 
 const types: Record<JobSnapshot["job_type"], string> = {
   MODEL_AUDIT: "模型审计",
@@ -36,9 +38,28 @@ export function JobTable({
   const [page, setPage] = useState(1),
     [status, setStatus] = useState("");
   const [search, setSearch] = useState(""), [drawerOpen, setDrawerOpen] = useState(false);
+  const [promptJob, setPromptJob] = useState<JobSnapshot | null>(null);
+  const promptTriggerRef = useRef<HTMLButtonElement | null>(null);
   const rows = useRef(new Map<string, HTMLTableRowElement>()), filter = useRef<HTMLSelectElement>(null);
   const exploration = pageId === "industrial-exploration";
   const knowledge = pageId === "industrial-knowledge";
+
+  useEffect(() => {
+    if (!promptJob) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setPromptJob(null);
+        promptTriggerRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [promptJob]);
   const filtered = jobs.filter((job) => (!status || job.status === status) && (!knowledge || `${job.run_id} ${job.model_name}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())));
   const index = filtered.findIndex((job) => job.run_id === selected);
   useEffect(() => {
@@ -91,7 +112,7 @@ export function JobTable({
                 <th className="iad-job-time">
                   {exploration ? "提交时间" : "开始时间"}
                 </th>
-                {!knowledge && <th>操作</th>}
+                <th>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -156,16 +177,35 @@ export function JobTable({
                         : "未提供"}
                     </time>
                   </td>
-                  {!knowledge && <td>
-                    <button
-                      aria-label={`查看作业 ${item.run_id}`}
-                      onClick={() =>
-                        workspace.updateView(pageId, { job: item.run_id })
-                      }
-                    >
-                      详情
-                    </button>
-                  </td>}
+                  <td>
+                    {knowledge ? (
+                      <div className="iad-job-actions">
+                        <button
+                          type="button"
+                          className="job-mini-icon iad-icon-button"
+                          title="查看提示词"
+                          aria-label="查看提示词"
+                          data-job-prompt={item.run_id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            promptTriggerRef.current = e.currentTarget;
+                            setPromptJob(item);
+                          }}
+                        >
+                          <DocumentIcon />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        aria-label={`查看作业 ${item.run_id}`}
+                        onClick={() =>
+                          workspace.updateView(pageId, { job: item.run_id })
+                        }
+                      >
+                        详情
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -202,6 +242,64 @@ export function JobTable({
       {knowledge && drawerOpen && job && <Modal title="作业详情" className="iad-drawer iad-knowledge-job-drawer" onClose={() => setDrawerOpen(false)} restoreFocus={() => rows.current.get(selected) || filter.current}>
         <JobDetail key={job.run_id} job={job} onChanged={onChanged} stale={stale} lastSyncedAt={lastSyncedAt} onClose={() => setDrawerOpen(false)} presentation="drawer" />
       </Modal>}
+      {typeof document !== "undefined" && promptJob && createPortal(
+        <div
+          className="overlay knowledge-prompt-overlay"
+          id="job-prompt-overlay"
+          role="presentation"
+          onClick={() => {
+            setPromptJob(null);
+            promptTriggerRef.current?.focus();
+          }}
+        >
+          <aside
+            className="knowledge-prompt-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="job-prompt-title"
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="knowledge-prompt-drawer-head">
+              <h2 id="job-prompt-title">查看提示词</h2>
+              <div className="knowledge-prompt-drawer-actions">
+                <button
+                  type="button"
+                  className="btn small"
+                  id="copy-job-prompt"
+                  onClick={async () => {
+                    const text = promptJob.mining_prompt?.instruction || (promptJob as any).instruction || "该历史作业未记录冻结提示词。";
+                    try {
+                      await navigator.clipboard.writeText(text);
+                    } catch (_) {}
+                  }}
+                >
+                  复制提示词
+                </button>
+                <button
+                  type="button"
+                  className="knowledge-prompt-drawer-close"
+                  id="close-job-prompt"
+                  aria-label="关闭提示词抽屉"
+                  title="关闭"
+                  onClick={() => {
+                    setPromptJob(null);
+                    promptTriggerRef.current?.focus();
+                  }}
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+            </header>
+            <div className="knowledge-prompt-drawer-content" id="job-prompt-body">
+              <pre id="job-prompt-content" className="knowledge-prompt-readonly">
+                {promptJob.mining_prompt?.instruction || (promptJob as any).instruction || "该历史作业未记录冻结提示词。"}
+              </pre>
+            </div>
+          </aside>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
