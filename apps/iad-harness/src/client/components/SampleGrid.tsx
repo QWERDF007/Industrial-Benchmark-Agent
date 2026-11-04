@@ -46,7 +46,7 @@ export function SampleGrid({ dataset, filters, onFilters, items, total, page, on
   return <section className={`iad-gallery ${layout === "queue" ? "iad-review-queue" : ""}`} aria-label="图像列表">
   {showFilters && <SampleFilters dataset={dataset} filters={filters} onFilters={onFilters} busy={busy} />}
   {managing && <section className="iad-source-controls" aria-label="良品来源管理" aria-busy={busy}>
-    <div className="iad-row"><strong aria-label="良品来源摘要">{dataset.reference_mode === "automatic" ? "自动来源" : "人工选定"} · {dataset.reference_sample_ids.length} 张</strong>
+    <div className="iad-row"><strong aria-label="良品来源摘要">{dataset.reference_mode === "automatic" ? "自动来源" : "人工选定"}，{dataset.reference_sample_ids.length} 张</strong>
       <button disabled={busy || dataset.reference_mode === "automatic"} onClick={() => void save()}>恢复自动来源</button></div>
     <div className="iad-row"><button disabled={busy || loading} onClick={() => setSelection({ scope, ids: items.map(item => item.sample_id) })}>选择当前页</button>
       <button disabled={busy || loading || !total} onClick={() => void selectAll()}>选择筛选全部</button><span>已选 {chosen.length} 张</span>

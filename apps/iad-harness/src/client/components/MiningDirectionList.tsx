@@ -136,7 +136,7 @@ export function MiningDirectionList({
             </option>
             {catalog?.versions.map((version) => (
               <option key={version.version_id} value={version.version_id}>
-                {version.created_at.slice(0, 19).replace("T", " ")} ·{" "}
+                {version.created_at.slice(0, 19).replace("T", " ")}{" "}
                 {version.direction_count} 项
               </option>
             ))}
@@ -172,7 +172,7 @@ export function MiningDirectionList({
         </button>
       </div>
       <p className="iad-muted">
-        显示 {visible.length} 项 · 已选{" "}
+        显示 {visible.length} 项，已选{" "}
         {draft.directions.filter((item) => item.enabled).length} 项
       </p>
 

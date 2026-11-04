@@ -306,7 +306,7 @@ export function DatasetManager({
         delete next[activeDataset.dataset_id];
         return next;
       });
-      announce(`扫描完成 · ${scan.image_count} 张图像 · ${scan.annotation_count} 个标注`);
+      announce(`扫描完成，${scan.image_count} 张图像，${scan.annotation_count} 个标注`);
       onChanged(activeDataset.dataset_id);
     } catch (err) {
       announce(message(err));
@@ -478,7 +478,7 @@ export function DatasetManager({
           <h2>
             数据集
             <span className="count" id="summaryCount">
-              {totalGroups} 个数据集 · {totalDatasets} 个子数据集
+              {totalGroups} 个数据集，{totalDatasets} 个子数据集
             </span>
           </h2>
           <div className="iad-manager-search-wrap" style={{ display: "flex", alignItems: "center", gap: "8px" }}>

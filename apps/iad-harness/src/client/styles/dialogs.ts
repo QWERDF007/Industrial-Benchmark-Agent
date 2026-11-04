@@ -7,21 +7,30 @@
 export const dialogsStyles = `
 /* ==========================================================================
    Dialog Design Tokens (Single Source of Truth)
+   V52/V53 Dialog Visual Contract
    ========================================================================== */
 :root {
+  --iba-dialog-detail-width: 1260px;
+  --iba-dialog-edit-width: 960px;
+  --iba-dialog-max-height: 820px;
+  --iba-dialog-gap: clamp(12px, 2.5vw, 32px);
+  --iba-dialog-ink: #172338;
+  --iba-dialog-border: #d9e2ed;
+  --iba-dialog-font: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+
   --iad-modal-backdrop: rgba(23, 34, 51, 0.68);
-  --iad-dialog-gutter: 56px;
-  --iad-dialog-vgutter: 40px;
+  --iad-dialog-gutter: clamp(12px, 2.5vw, 32px);
+  --iad-dialog-vgutter: clamp(12px, 2.5vw, 32px);
 
   /* Dimensions */
-  --iad-dialog-max-width: 1380px;
+  --iad-dialog-max-width: 1260px;
   --iad-dialog-max-height: 820px;
-  --iad-dialog-medium-width: 760px;
+  --iad-dialog-medium-width: 960px;
   --iad-dialog-small-width: 530px;
 
   /* Surfaces & Borders */
   --iad-dialog-bg: #ffffff;
-  --iad-dialog-radius: 8px;
+  --iad-dialog-radius: 7px;
   --iad-dialog-border: 1px solid #d9e2ed;
   --iad-dialog-shadow: 0 20px 64px rgba(14, 26, 48, 0.27);
   --iad-dialog-divider: 1px solid #e3e9f2;
@@ -45,8 +54,8 @@ export const dialogsStyles = `
 
 @media (max-width: 850px) {
   :root {
-    --iad-dialog-gutter: 24px;
-    --iad-dialog-vgutter: 22px;
+    --iad-dialog-gutter: 18px;
+    --iad-dialog-vgutter: 18px;
   }
 }
 
@@ -63,16 +72,22 @@ export const dialogsStyles = `
 .detail-overlay,
 .exp-modal,
 .dc-modal-mask,
+#dc-compare-mask.dc-modal-mask,
+#knowledge-page .kb-v45 .detail-overlay,
 .modal-scrim,
 dialog.iad-detail-dialog::backdrop {
   position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
   inset: 0 !important;
   z-index: 500 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   background: var(--iad-modal-backdrop) !important;
-  padding: var(--iad-dialog-vgutter) var(--iad-dialog-gutter) !important;
+  padding: var(--iba-dialog-gap) !important;
   box-sizing: border-box !important;
 }
 
@@ -109,29 +124,46 @@ dialog.iad-detail-dialog {
 }
 
 /* ==========================================================================
-   Tier 1: Large Detail Dialogs (1380px max-width, 820px max-height)
-   Image Detail, Exploration Direction Detail, Consistency Conflict Compare
+   Tier 1: Large Detail Dialogs (1260px max-width, 820px max-height, Content-Led Height)
+   Image Detail, Exploration Direction Detail, Consistency Conflict Compare, Knowledge Detail
    ========================================================================== */
+.detail-overlay .detail-dialog,
 .detail-dialog,
+.exp-modal .exp-direction-dialog,
 .exp-direction-dialog,
 .dc-conflict-dialog,
+#dc-compare-mask .dc-dialog[role="dialog"],
 #dc-compare-mask.dc-modal-mask .dc-dialog[role=dialog],
+#knowledge-page .kb-v45 .detail-modal,
 dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inline-dialog):not(.iad-viewer-dialog) {
-  width: min(var(--iad-dialog-max-width), calc(100vw - 2 * var(--iad-dialog-gutter))) !important;
-  max-width: var(--iad-dialog-max-width) !important;
-  height: min(var(--iad-dialog-max-height), calc(100dvh - 2 * var(--iad-dialog-vgutter))) !important;
-  max-height: calc(100dvh - 2 * var(--iad-dialog-vgutter)) !important;
+  box-sizing: border-box !important;
+  width: min(var(--iba-dialog-detail-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
+  max-width: var(--iba-dialog-detail-width) !important;
+  height: auto !important;
+  max-height: min(var(--iba-dialog-max-height), calc(100dvh - 2 * var(--iba-dialog-gap))) !important;
   min-height: 0 !important;
-}
-
-/* Detail dialog internal scrollable body */
-.detail-scroll,
-.exp-direction-dialog .exp-dialog-main,
-#dc-compare-mask .dc-dialog-body,
-.dc-conflict-dialog .dc-dialog-body {
+  border: 1px solid var(--iba-dialog-border) !important;
+  border-radius: 7px !important;
+  background: #fff !important;
+  box-shadow: 0 20px 64px rgba(14, 26, 48, 0.27) !important;
+  overflow: hidden !important;
+  margin: 0 auto !important;
+  flex: none !important;
   display: flex !important;
   flex-direction: column !important;
-  flex: 1 1 auto !important;
+}
+
+/* Detail dialog internal scrollable body - scrolls only when needed */
+.detail-overlay .detail-scroll,
+.detail-scroll,
+.exp-modal .exp-direction-dialog .exp-dialog-main,
+.exp-direction-dialog .exp-dialog-main,
+#dc-compare-mask .dc-dialog-body,
+.dc-conflict-dialog .dc-dialog-body,
+#knowledge-page .kb-v45 .detail-modal .modalcontent {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 0 1 auto !important;
   min-height: 0 !important;
   overflow-y: auto !important;
   overscroll-behavior: contain !important;
@@ -142,48 +174,65 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 #dc-compare-mask .dc-dialog-body,
 .dc-conflict-dialog .dc-dialog-body { padding: 20px 26px 24px !important; }
 
-/* Large detail dialog internal flex hierarchy */
-.exp-direction-dialog .exp-direction-body {
-  display: flex !important;
-  flex-direction: column !important;
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-}
-.exp-direction-dialog .exp-direction-evidence {
-  flex: 1 1 auto !important;
-  display: flex !important;
-  flex-direction: column !important;
-  min-height: 0 !important;
-  padding-bottom: 0 !important;
-}
-.exp-direction-dialog .exp-direction-evidence-groups {
-  flex: 1 1 auto !important;
-  align-items: stretch !important;
-  min-height: 0 !important;
-}
+/* Large detail dialog internal flex hierarchy - do not stretch exploration evidence */
+.exp-modal .exp-direction-dialog .exp-direction-body,
+.exp-modal .exp-direction-dialog .exp-direction-evidence,
+.exp-modal .exp-direction-dialog .exp-direction-evidence-groups,
+.exp-modal .exp-direction-dialog .exp-scroll-group,
+.exp-direction-dialog .exp-direction-body,
+.exp-direction-dialog .exp-direction-evidence,
+.exp-direction-dialog .exp-direction-evidence-groups,
 .exp-direction-dialog .exp-scroll-group {
-  display: flex !important;
-  flex-direction: column !important;
+  flex: 0 0 auto !important;
   min-height: 0 !important;
+  height: auto !important;
 }
+
+.exp-modal .exp-direction-dialog .exp-evidence-viewport,
 .exp-direction-dialog .exp-evidence-viewport {
-  flex: 1 1 auto !important;
-  align-items: stretch !important;
+  flex: 0 0 auto !important;
+  box-sizing: border-box !important;
+  height: 172px !important;
   min-height: 0 !important;
+  max-height: 172px !important;
   background: #f6f8fb !important;
   border: 1px solid #e3e9f1 !important;
   border-radius: 5px !important;
-  padding: 7px 7px 10px !important;
+  padding: 6px 6px 8px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
 }
+
+.exp-modal .exp-direction-dialog .exp-direction-evidence-card,
 .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card {
   height: 100% !important;
   box-sizing: border-box !important;
-  width: clamp(200px, 47%, 300px) !important;
-  min-width: clamp(200px, 47%, 300px) !important;
+  width: clamp(166px, 45%, 225px) !important;
+  min-width: clamp(166px, 45%, 225px) !important;
 }
+
+.exp-modal .exp-direction-dialog .exp-direction-evidence-card img,
 .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img {
-  height: clamp(175px, 23dvh, 250px) !important;
+  height: 108px !important;
+  max-height: 108px !important;
+  object-fit: contain !important;
 }
+
+/* Evidence reference tokens */
+:is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) .exp-evidence-ref,
+.exp-direction-dialog .exp-evidence-ref {
+  color: var(--iba-dialog-ink, #172338) !important;
+  font-family: var(--iba-dialog-font) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  border-color: #d9e2ed !important;
+  background: #fff !important;
+}
+:is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) .exp-evidence-ref:hover,
+.exp-direction-dialog .exp-evidence-ref:hover {
+  background: #f3f6fa !important;
+}
+
 #dc-compare-mask .dc-compare-photo,
 .dc-conflict-dialog .dc-compare-photo {
   height: clamp(210px, 28dvh, 270px) !important;
@@ -193,28 +242,36 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 }
 
 /* ==========================================================================
-   Tier 2: Medium Form & Analytics Dialogs (760px max-width, auto-height)
-   New Consistency Check, Stats Modal, Exploration Prompts, Add/Edit Dataset
+   Tier 2: Medium Form & Analytics Dialogs (960px max-width, auto-height)
+   New Consistency Check, Stats Modal, Exploration Prompts, Add/Edit Dataset, Knowledge Create
    ========================================================================== */
+#knowledge-page .kb-v45 #create-overlay > .modal,
 #dc-new-mask .dc-new-dialog,
 .dc-stats-modal .dc-stats-dialog,
+.exp-modal .exp-source-dialog,
 .exp-prompt-modal .exp-prompt-dialog,
 .exp-dialog:not(.small):not(.exp-direction-dialog),
 .modal-scrim .modal:not(.delete-modal) {
-  width: min(var(--iad-dialog-medium-width), calc(100vw - 2 * var(--iad-dialog-gutter))) !important;
-  max-width: var(--iad-dialog-medium-width) !important;
+  width: min(var(--iba-dialog-edit-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
+  max-width: var(--iba-dialog-edit-width) !important;
   height: auto !important;
-  max-height: calc(100dvh - 2 * var(--iad-dialog-vgutter)) !important;
+  max-height: min(var(--iba-dialog-max-height), calc(100dvh - 2 * var(--iba-dialog-gap))) !important;
   min-height: 0 !important;
+  border-radius: 7px !important;
 }
 
+#knowledge-page .kb-v45 #create-overlay > .modal {
+  height: auto !important;
+}
+
+#knowledge-page .kb-v45 #create-overlay > .modal > .modalcontent,
 #dc-new-mask .dc-new-body,
 .dc-stats-dialog .dc-stats-body,
 .modal-scrim .modal:not(.delete-modal) .modal-body,
 .exp-dialog:not(.small):not(.exp-direction-dialog) .exp-dialog-main {
   padding: 22px 26px 24px !important;
   overflow-y: auto !important;
-  flex: 1 1 auto !important;
+  flex: 0 1 auto !important;
   min-height: 0 !important;
 }
 
@@ -417,4 +474,80 @@ button.exp-ghost:hover,
   background-color: var(--iad-btn-primary-hover) !important;
   border-color: var(--iad-btn-primary-hover) !important;
 }
+
+/* ==========================================================================
+   V52/V53 Dialog Typography Contract & Status Preservation
+   ========================================================================== */
+.detail-dialog, .exp-dialog, .dc-dialog, #knowledge-page .kb-v45 .modal {
+  font-family: var(--iba-dialog-font) !important;
+  font-size: 13px !important;
+  color: var(--iba-dialog-ink) !important;
+}
+
+.detail-dialog :is(.detail-header, .detail-scroll, .detail-footer),
+.exp-dialog :is(.exp-dialog-head, .exp-dialog-main, .exp-dialog-foot),
+.dc-dialog :is(.dc-dialog-head, .dc-dialog-body, .dc-dialog-footer),
+#knowledge-page .kb-v45 .modal :is(.modalheader, .modalcontent, .modalfooter) {
+  color: var(--iba-dialog-ink) !important;
+}
+
+/* Ordinary explanations/IDs/field labels: one ink, one size and regular weight.
+   Exclude actual status badges and button contents from this normalization. */
+:is(.detail-dialog, .exp-dialog, .dc-dialog, #knowledge-page .kb-v45 .modal)
+:is(p, span, small, label, dt, dd, li, figcaption, pre)
+:not(:is(button, button *, a, a *, .exp-pill, .exp-pill *, .status, .status *, .dc-state, .dc-state *, .badge, .badge *, .dc-tag, .dc-tag *)) {
+  color: var(--iba-dialog-ink) !important;
+  font-family: var(--iba-dialog-font) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+
+/* Unify ordinary inline metadata found in each detail implementation. */
+.exp-direction-dialog :is(.exp-direction-meta, .exp-direction-meta *, .exp-direction-note),
+.detail-dialog :is(.detail-meta, .detail-info, .detail-summary),
+.dc-dialog :is(.dc-dialog-caption, .dc-dialog-note, .dc-verdict-description),
+#knowledge-page .kb-v45 .detail-modal :is(.muted, .row-desc, .detail-muted, .detail-evidence-empty) {
+  color: var(--iba-dialog-ink) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+
+/* Titles are the only deliberately bold non-state text. */
+:is(.detail-dialog, .exp-dialog, .dc-dialog, #knowledge-page .kb-v45 .modal)
+:is(h1, h2, h3, h4),
+.exp-dialog .exp-dialog-head > strong,
+.dc-dialog .dc-dialog-title {
+  font-family: var(--iba-dialog-font) !important;
+  color: var(--iba-dialog-ink) !important;
+  font-weight: 650 !important;
+}
+
+/* Preserve semantic status colors; primary/selected controls keep their function-based color. */
+.exp-dialog :is(.exp-pill.ok, .exp-pill.completed) { color: #177b53 !important; }
+.exp-dialog :is(.exp-pill.fail, .exp-pill.failed) { color: #b23c43 !important; }
+.exp-dialog :is(.exp-pill.pending, .exp-pill.running) { color: #285ed6 !important; }
+#knowledge-page .kb-v45 .modal .status.green { color: #177b53 !important; }
+#knowledge-page .kb-v45 .modal .status.red { color: #b23c43 !important; }
+#knowledge-page .kb-v45 .modal .status.amber { color: #976013 !important; }
+#knowledge-page .kb-v45 .modal .status.blue { color: #285ed6 !important; }
+
+@media (max-width: 760px) {
+  .detail-overlay,
+  .exp-modal,
+  #dc-compare-mask.dc-modal-mask,
+  #knowledge-page .kb-v45 .detail-overlay {
+    padding: 12px !important;
+  }
+  .exp-modal .exp-direction-dialog .exp-evidence-viewport,
+  .exp-direction-dialog .exp-evidence-viewport {
+    height: 156px !important;
+    max-height: 156px !important;
+  }
+  .exp-modal .exp-direction-dialog .exp-direction-evidence-card img,
+  .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img {
+    height: 96px !important;
+    max-height: 96px !important;
+  }
+}
+
 `;

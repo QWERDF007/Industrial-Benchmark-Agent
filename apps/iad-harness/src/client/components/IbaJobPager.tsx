@@ -94,7 +94,7 @@ export function IbaJobPager({
       </button>
 
       <span className="iba-job-total">
-        第 {page} / {pages} 页 · 共 {total} 条
+        第 {page} / {pages} 页  共 {total} 条
       </span>
     </nav>
   );

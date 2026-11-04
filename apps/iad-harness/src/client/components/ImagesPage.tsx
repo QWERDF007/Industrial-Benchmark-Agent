@@ -638,7 +638,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
                               ? "判定正常"
                               : "未判定"}
                           </strong>
-                          {sampleDetail.suggestion.reason_category ? ` · ${sampleDetail.suggestion.reason_category}` : ""}
+                          {sampleDetail.suggestion.reason_category ? `（${sampleDetail.suggestion.reason_category}）` : ""}
                         </p>
                         <p className="detail-model-text">{sampleDetail.suggestion.notes || "无附注。"}</p>
                       </>

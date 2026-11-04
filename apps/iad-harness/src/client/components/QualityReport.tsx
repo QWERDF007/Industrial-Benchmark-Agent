@@ -20,14 +20,14 @@ export function QualityReport({ report }: { report: Report }) {
   return <>
     {report.dataset_id && <section><h3>数据一致性与 Gold</h3>{consistency ? <ConsistencyReportSummary report={consistency} /> : <p className="iad-muted">{consistencyError || '正在读取一致性与 Gold 范围…'}</p>}</section>}
     <h3>覆盖与可用性</h3><dl>{dimensions.map(([label, ratio]) => <React.Fragment key={label}>
-      <dt>{label}</dt><dd><strong>{ratio.percent === null ? "未评估" : `${ratio.percent}%`}</strong> · {ratio.numerator} / {ratio.denominator}</dd>
+      <dt>{label}</dt><dd><strong>{ratio.percent === null ? "未评估" : `${ratio.percent}%`}</strong>，{ratio.numerator} / {ratio.denominator}</dd>
     </React.Fragment>)}</dl>
     <h3>模型观察与人工核验</h3><dl>
       <dt>疑点图像 / 数</dt><dd>{quality.model.suspect_samples} / {quality.model.finding_count}</dd>
       <dt>缺证 / 冲突图像</dt><dd>{quality.model.missing_evidence_samples} / {quality.model.conflict_samples}</dd>
       <dt>模型不确定</dt><dd>{quality.model.uncertain_samples}</dd>
       <dt>无结构化分析</dt><dd>{quality.model.unstructured_samples}</dd>
-      <dt>人审良品 / 异常</dt><dd>良品 {report.human_pass_count} · 异常 {report.human_fail_count}</dd>
+      <dt>人审良品 / 异常</dt><dd>良品 {report.human_pass_count}，异常 {report.human_fail_count}</dd>
       <dt>人工待定 / 跳过</dt><dd>{report.human_uncertain_count} / {report.human_skipped_count}</dd>
     </dl>
     {quality.label_comparison && (
@@ -35,15 +35,15 @@ export function QualityReport({ report }: { report: Report }) {
         <dt>标签不一致比例</dt>
         <dd>
           <strong>{quality.label_comparison.inconsistency_ratio.percent === null ? "未评估" : `${quality.label_comparison.inconsistency_ratio.percent}%`}</strong>
-          {" · "}
+          {"，"}
           {quality.label_comparison.inconsistency_ratio.numerator} / {quality.label_comparison.inconsistency_ratio.denominator}
           {quality.label_comparison.source_changed_count > 0 && ` (排除来源变动 ${quality.label_comparison.source_changed_count})`}
         </dd>
         {quality.label_comparison.source_unverified_count > 0 && <><dt>来源指纹未记录</dt><dd>{quality.label_comparison.source_unverified_count} 张历史建议不参与标签对照</dd></>}
         <dt>原始标签分布</dt>
-        <dd>良品 {quality.label_comparison.raw_ok} · 异常 {quality.label_comparison.raw_ng} · 未标记 {quality.label_comparison.raw_unlabeled}</dd>
+        <dd>良品 {quality.label_comparison.raw_ok}，异常 {quality.label_comparison.raw_ng}，未标记 {quality.label_comparison.raw_unlabeled}</dd>
         <dt>模型建议分布</dt>
-        <dd>良品 {quality.label_comparison.model_pass} · 异常 {quality.label_comparison.model_fail} · 待定 {quality.label_comparison.model_uncertain} · 未审计 {quality.label_comparison.unaudited}</dd>
+        <dd>良品 {quality.label_comparison.model_pass}，异常 {quality.label_comparison.model_fail}，待定 {quality.label_comparison.model_uncertain}，未审计 {quality.label_comparison.unaudited}</dd>
         {quality.label_comparison.source_changed_count > 0 && <>
           <dt>审计后来源变动</dt>
           <dd>{quality.label_comparison.source_changed_count} 张图像规则或文件已更新，不可作为当前标签核验依据</dd>

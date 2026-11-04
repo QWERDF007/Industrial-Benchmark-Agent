@@ -221,7 +221,7 @@ export function JobTable({
           />
         ) : (
           <p className="iad-muted">
-            {filtered.length} 个作业 · 最近 30 项及运行项
+            {filtered.length} 个作业（最近 30 项及运行项）
           </p>
         )}
         {!filtered.length && <p role="status">没有匹配的作业。</p>}

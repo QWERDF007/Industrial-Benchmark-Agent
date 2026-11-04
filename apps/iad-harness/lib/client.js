@@ -982,7 +982,7 @@ var __IadClientBundle__ = (() => {
           delete next[activeDataset.dataset_id];
           return next;
         });
-        announce(`\u626B\u63CF\u5B8C\u6210 \xB7 ${scan.image_count} \u5F20\u56FE\u50CF \xB7 ${scan.annotation_count} \u4E2A\u6807\u6CE8`);
+        announce(`\u626B\u63CF\u5B8C\u6210\uFF0C${scan.image_count} \u5F20\u56FE\u50CF\uFF0C${scan.annotation_count} \u4E2A\u6807\u6CE8`);
         onChanged(activeDataset.dataset_id);
       } catch (err) {
         announce(message(err));
@@ -1135,7 +1135,7 @@ var __IadClientBundle__ = (() => {
             "\u6570\u636E\u96C6",
             /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "count", id: "summaryCount", children: [
               totalGroups,
-              " \u4E2A\u6570\u636E\u96C6 \xB7 ",
+              " \u4E2A\u6570\u636E\u96C6\uFF0C",
               totalDatasets,
               " \u4E2A\u5B50\u6570\u636E\u96C6"
             ] })
@@ -5635,7 +5635,7 @@ var __IadClientBundle__ = (() => {
         /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "iad-row", children: [
           /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("strong", { "aria-label": "\u826F\u54C1\u6765\u6E90\u6458\u8981", children: [
             dataset.reference_mode === "automatic" ? "\u81EA\u52A8\u6765\u6E90" : "\u4EBA\u5DE5\u9009\u5B9A",
-            " \xB7 ",
+            "\uFF0C",
             dataset.reference_sample_ids.length,
             " \u5F20"
           ] }),
@@ -7889,11 +7889,11 @@ var __IadClientBundle__ = (() => {
         kind === "exploration" ? /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(ExplorationProgress, { job, stale, lastSyncedAt }) : !drawer && /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("p", { children: [
           "\u5B8C\u6210 ",
           job.completed,
-          " \xB7 \u5931\u8D25 ",
+          "\uFF0C\u5931\u8D25 ",
           job.failed,
-          " \xB7 \u672A\u5904\u7406 ",
+          "\uFF0C\u672A\u5904\u7406 ",
           job.unprocessed,
-          " \xB7 \u5171 ",
+          "\uFF0C\u5171 ",
           job.total_samples,
           " \u5F20"
         ] }),
@@ -7910,9 +7910,9 @@ var __IadClientBundle__ = (() => {
           job.observation_progress.observed_sources,
           " / ",
           job.observation_progress.planned_sources,
-          " \u5F20 \xB7 \u5B8C\u6574\u89C6\u56FE ",
+          " \u5F20\uFF0C\u5B8C\u6574\u89C6\u56FE ",
           job.observation_progress.complete_sources,
-          " \u5F20 \xB7 \u5DF2\u53D1\u5E03 ",
+          " \u5F20\uFF0C\u5DF2\u53D1\u5E03 ",
           job.observation_progress.published_sources,
           " \u5F20"
         ] }),
@@ -7990,8 +7990,9 @@ var __IadClientBundle__ = (() => {
       (drawer && tab === "failures" || !drawer && !!job.errors.length) && /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("details", { open: drawer, children: [
         /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("summary", { children: [
           drawer ? "\u5931\u8D25\u8BB0\u5F55" : "\u5931\u8D25\u8BE6\u60C5",
-          " \xB7 ",
-          job.errors.length
+          "\uFF08",
+          job.errors.length,
+          "\uFF09"
         ] }),
         !job.errors.length && /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("p", { className: "iad-muted", children: "\u6682\u65E0\u53EF\u7528\u660E\u7EC6\u3002" }),
         /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("ul", { className: "iad-job-errors", children: job.errors.map((error3, index3) => /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("li", { children: [
@@ -8040,7 +8041,7 @@ var __IadClientBundle__ = (() => {
       /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("div", { className: "iad-row", children: [
         /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("strong", { role: "status", children: active && job.cancel_requested ? "\u6B63\u5728\u505C\u6B62" : jobStatuses[job.status] }),
         /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("span", { children: [
-          job.model_profile?.provider_name ? `${job.model_profile.provider_name} \xB7 ` : "",
+          job.model_profile?.provider_name ? `${job.model_profile.provider_name} / ` : "",
           job.model_name
         ] }),
         active && /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("button", { disabled: busy || job.cancel_requested, onClick: cancel, children: job.cancel_requested ? "\u6B63\u5728\u505C\u6B62\u2026" : kind === "audit" ? "\u53D6\u6D88\u5BA1\u8BA1" : kind === "exploration" ? job.status === "PENDING" ? "\u53D6\u6D88\u6392\u961F" : "\u53D6\u6D88\u63A2\u7D22" : "\u53D6\u6D88\u6316\u6398" })
@@ -8299,7 +8300,7 @@ var __IadClientBundle__ = (() => {
               }
             ) : /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("p", { className: "iad-muted", children: [
               filtered.length,
-              " \u4E2A\u4F5C\u4E1A \xB7 \u6700\u8FD1 30 \u9879\u53CA\u8FD0\u884C\u9879"
+              " \u4E2A\u4F5C\u4E1A\uFF08\u6700\u8FD1 30 \u9879\u53CA\u8FD0\u884C\u9879\uFF09"
             ] }),
             !filtered.length && /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("p", { role: "status", children: "\u6CA1\u6709\u5339\u914D\u7684\u4F5C\u4E1A\u3002" })
           ] }),
@@ -8565,7 +8566,7 @@ var __IadClientBundle__ = (() => {
         /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("dt", { children: label }),
         /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("dd", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("strong", { children: ratio.percent === null ? "\u672A\u8BC4\u4F30" : `${ratio.percent}%` }),
-          " \xB7 ",
+          "\uFF0C",
           ratio.numerator,
           " / ",
           ratio.denominator
@@ -8593,7 +8594,7 @@ var __IadClientBundle__ = (() => {
         /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("dd", { children: [
           "\u826F\u54C1 ",
           report.human_pass_count,
-          " \xB7 \u5F02\u5E38 ",
+          "\uFF0C\u5F02\u5E38 ",
           report.human_fail_count
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("dt", { children: "\u4EBA\u5DE5\u5F85\u5B9A / \u8DF3\u8FC7" }),
@@ -8609,7 +8610,7 @@ var __IadClientBundle__ = (() => {
           /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("dt", { children: "\u6807\u7B7E\u4E0D\u4E00\u81F4\u6BD4\u4F8B" }),
           /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("dd", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("strong", { children: quality.label_comparison.inconsistency_ratio.percent === null ? "\u672A\u8BC4\u4F30" : `${quality.label_comparison.inconsistency_ratio.percent}%` }),
-            " \xB7 ",
+            "\uFF0C",
             quality.label_comparison.inconsistency_ratio.numerator,
             " / ",
             quality.label_comparison.inconsistency_ratio.denominator,
@@ -8626,20 +8627,20 @@ var __IadClientBundle__ = (() => {
           /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("dd", { children: [
             "\u826F\u54C1 ",
             quality.label_comparison.raw_ok,
-            " \xB7 \u5F02\u5E38 ",
+            "\uFF0C\u5F02\u5E38 ",
             quality.label_comparison.raw_ng,
-            " \xB7 \u672A\u6807\u8BB0 ",
+            "\uFF0C\u672A\u6807\u8BB0 ",
             quality.label_comparison.raw_unlabeled
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("dt", { children: "\u6A21\u578B\u5EFA\u8BAE\u5206\u5E03" }),
           /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("dd", { children: [
             "\u826F\u54C1 ",
             quality.label_comparison.model_pass,
-            " \xB7 \u5F02\u5E38 ",
+            "\uFF0C\u5F02\u5E38 ",
             quality.label_comparison.model_fail,
-            " \xB7 \u5F85\u5B9A ",
+            "\uFF0C\u5F85\u5B9A ",
             quality.label_comparison.model_uncertain,
-            " \xB7 \u672A\u5BA1\u8BA1 ",
+            "\uFF0C\u672A\u5BA1\u8BA1 ",
             quality.label_comparison.unaudited
           ] }),
           quality.label_comparison.source_changed_count > 0 && /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)(import_jsx_runtime39.Fragment, { children: [
@@ -9737,7 +9738,7 @@ var __IadClientBundle__ = (() => {
         page,
         " / ",
         pages2,
-        " \u9875 \xB7 \u5171 ",
+        " \u9875  \u5171 ",
         total,
         " \u6761"
       ] })
@@ -9778,13 +9779,6 @@ var __IadClientBundle__ = (() => {
     if (status === "RUNNING") return /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "exp-pill running", children: "\u8FD0\u884C\u4E2D" });
     if (status === "PENDING") return /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "exp-pill pending", children: "\u6392\u961F\u4E2D" });
     return /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "exp-pill fail", children: "\u5931\u8D25" });
-  }
-  function expJobState(status) {
-    if (status === "PENDING") return "\u6392\u961F\u4E2D";
-    if (status === "RUNNING") return "\u8FD0\u884C\u4E2D";
-    if (status === "COMPLETED") return "\u5DF2\u5B8C\u6210";
-    if (status === "FAILED") return "\u5931\u8D25";
-    return "\u5DF2\u53D6\u6D88";
   }
   var defaultDemoDirections = [
     {
@@ -10287,7 +10281,7 @@ var __IadClientBundle__ = (() => {
     const handleOpenEvidenceFullscreen = (clickedRef) => {
       const allItems = currentEvidence.all.map((item) => ({
         id: item.ref,
-        title: `${item.label} \xB7 ${item.filename}`,
+        title: `${item.label} ${item.filename}`,
         imageUrl: item.fullUrl || item.url
       }));
       const index3 = currentEvidence.all.findIndex((item) => item.ref === clickedRef);
@@ -10491,7 +10485,7 @@ var __IadClientBundle__ = (() => {
               /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("b", { children: [
                 "\u826F\u54C1 ",
                 normalSelected.length,
-                " \xB7 \u5F02\u5E38 ",
+                "\uFF0C\u5F02\u5E38 ",
                 defectSelected.length
               ] })
             ] }),
@@ -10660,11 +10654,7 @@ var __IadClientBundle__ = (() => {
           ] }) : selectedJob.status === "PENDING" || selectedJob.status === "RUNNING" ? /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u6267\u884C\u9636\u6BB5", children: [
             /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("div", { className: "exp-selected-head", children: /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("h2", { children: "\u8FD0\u884C\u72B6\u6001" }),
-              /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { className: "exp-selected-sub", children: [
-                selectedJob.id,
-                " \xB7 ",
-                expJobState(selectedJob.status)
-              ] })
+              /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "exp-selected-sub", children: selectedJob.id })
             ] }) }),
             /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { className: "exp-job-current-title", style: { margin: "0 0 17px" }, children: [
               /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: `exp-pill ${selectedJob.status === "PENDING" ? "pending" : "running"}`, children: selectedJob.status === "PENDING" ? "\u6392\u961F\u4E2D" : "\u8FD0\u884C\u4E2D" }),
@@ -10683,11 +10673,7 @@ var __IadClientBundle__ = (() => {
           ] }) : selectedJob.status === "FAILED" ? /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u9519\u8BEF\u4FE1\u606F", children: [
             /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("div", { className: "exp-selected-head", children: /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("h2", { children: "\u4F5C\u4E1A\u5931\u8D25" }),
-              /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { className: "exp-selected-sub", children: [
-                selectedJob.id,
-                " \xB7 ",
-                expJobState(selectedJob.status)
-              ] })
+              /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "exp-selected-sub", children: selectedJob.id })
             ] }) }),
             /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("p", { className: "exp-error-message", children: selectedJob.error || "\u4EFB\u52A1\u672A\u6210\u529F\u5B8C\u6210\uFF0C\u672A\u751F\u6210\u63A2\u7D22\u7ED3\u679C\u3002" }),
             /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("p", { className: "exp-lead", children: "\u672C\u6B21\u4F5C\u4E1A\u6CA1\u6709\u53EF\u7528\u7684\u5019\u9009\u65B9\u5411\u6216\u6574\u4F53\u9650\u5236\u3002" }),
@@ -10709,11 +10695,7 @@ var __IadClientBundle__ = (() => {
           ] }) : /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u63A2\u7D22\u7ED3\u679C", children: [
             /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("div", { className: "exp-selected-head", children: /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }),
-              /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { className: "exp-selected-sub", children: [
-                selectedJob.id,
-                " \xB7 ",
-                expJobState(selectedJob.status)
-              ] })
+              /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "exp-selected-sub", children: selectedJob.id })
             ] }) }),
             selectedJobSummary && /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("p", { className: "exp-result-summary", children: selectedJobSummary }),
             selectedJobDirections.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("div", { className: "exp-job-table-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("table", { className: "exp-job-table exp-direction-table", children: [
@@ -13190,7 +13172,7 @@ var __IadClientBundle__ = (() => {
 .exp-direction-reasoning p,.exp-direction-reasoning li{font-size:12.5px!important;line-height:1.85!important;color:#41516b!important;margin:0 0 9px!important}
 .exp-direction-reasoning ul{padding-left:18px!important;margin:0!important}
 .exp-direction-reasoning li{margin-bottom:6px!important}
-:is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) :is(button.exp-evidence-ref, .exp-evidence-ref){display:inline-flex!important;vertical-align:baseline!important;align-items:center!important;justify-content:center!important;padding:2px 10px!important;margin:0 4px!important;min-height:27px!important;height:27px!important;max-height:27px!important;box-sizing:border-box!important;border-radius:4px!important;border:1px solid #d5e1f5!important;background:#f3f7ff!important;background-color:#f3f7ff!important;color:#285bc0!important;font-size:12px!important;font-family:inherit!important;font-weight:550!important;line-height:1.4!important;letter-spacing:normal!important;box-shadow:none!important;outline:none!important;cursor:pointer!important;white-space:nowrap!important;text-decoration:none!important;transition:background .13s ease,border-color .13s ease,box-shadow .13s ease,color .13s ease!important}
+:is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) :is(button.exp-evidence-ref, .exp-evidence-ref){display:inline-flex!important;vertical-align:baseline!important;align-items:center!important;justify-content:center!important;padding:2px 10px!important;margin:0 4px!important;min-height:27px!important;height:27px!important;max-height:27px!important;box-sizing:border-box!important;border-radius:4px!important;border:1px solid #d9e2ed!important;background:#fff!important;background-color:#fff!important;color:var(--iba-dialog-ink, #172338)!important;font-size:13px!important;font-family:inherit!important;font-weight:400!important;line-height:1.4!important;letter-spacing:normal!important;box-shadow:none!important;outline:none!important;cursor:pointer!important;white-space:nowrap!important;text-decoration:none!important;transition:background .13s ease,border-color .13s ease,box-shadow .13s ease,color .13s ease!important}
 :is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) :is(button.exp-evidence-ref, .exp-evidence-ref):hover,
 :is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) :is(button.exp-evidence-ref, .exp-evidence-ref):focus-visible,
 :is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) :is(button.exp-evidence-ref, .exp-evidence-ref).is-related{background:#dce9ff!important;background-color:#dce9ff!important;border-color:#4982e9!important;color:#19499d!important;box-shadow:0 0 0 1px #91b5f2!important}
@@ -17344,21 +17326,30 @@ button.dc-vchart-zero,
   var dialogsStyles = `
 /* ==========================================================================
    Dialog Design Tokens (Single Source of Truth)
+   V52/V53 Dialog Visual Contract
    ========================================================================== */
 :root {
+  --iba-dialog-detail-width: 1260px;
+  --iba-dialog-edit-width: 960px;
+  --iba-dialog-max-height: 820px;
+  --iba-dialog-gap: clamp(12px, 2.5vw, 32px);
+  --iba-dialog-ink: #172338;
+  --iba-dialog-border: #d9e2ed;
+  --iba-dialog-font: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+
   --iad-modal-backdrop: rgba(23, 34, 51, 0.68);
-  --iad-dialog-gutter: 56px;
-  --iad-dialog-vgutter: 40px;
+  --iad-dialog-gutter: clamp(12px, 2.5vw, 32px);
+  --iad-dialog-vgutter: clamp(12px, 2.5vw, 32px);
 
   /* Dimensions */
-  --iad-dialog-max-width: 1380px;
+  --iad-dialog-max-width: 1260px;
   --iad-dialog-max-height: 820px;
-  --iad-dialog-medium-width: 760px;
+  --iad-dialog-medium-width: 960px;
   --iad-dialog-small-width: 530px;
 
   /* Surfaces & Borders */
   --iad-dialog-bg: #ffffff;
-  --iad-dialog-radius: 8px;
+  --iad-dialog-radius: 7px;
   --iad-dialog-border: 1px solid #d9e2ed;
   --iad-dialog-shadow: 0 20px 64px rgba(14, 26, 48, 0.27);
   --iad-dialog-divider: 1px solid #e3e9f2;
@@ -17382,8 +17373,8 @@ button.dc-vchart-zero,
 
 @media (max-width: 850px) {
   :root {
-    --iad-dialog-gutter: 24px;
-    --iad-dialog-vgutter: 22px;
+    --iad-dialog-gutter: 18px;
+    --iad-dialog-vgutter: 18px;
   }
 }
 
@@ -17400,16 +17391,22 @@ button.dc-vchart-zero,
 .detail-overlay,
 .exp-modal,
 .dc-modal-mask,
+#dc-compare-mask.dc-modal-mask,
+#knowledge-page .kb-v45 .detail-overlay,
 .modal-scrim,
 dialog.iad-detail-dialog::backdrop {
   position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
   inset: 0 !important;
   z-index: 500 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   background: var(--iad-modal-backdrop) !important;
-  padding: var(--iad-dialog-vgutter) var(--iad-dialog-gutter) !important;
+  padding: var(--iba-dialog-gap) !important;
   box-sizing: border-box !important;
 }
 
@@ -17446,29 +17443,46 @@ dialog.iad-detail-dialog {
 }
 
 /* ==========================================================================
-   Tier 1: Large Detail Dialogs (1380px max-width, 820px max-height)
-   Image Detail, Exploration Direction Detail, Consistency Conflict Compare
+   Tier 1: Large Detail Dialogs (1260px max-width, 820px max-height, Content-Led Height)
+   Image Detail, Exploration Direction Detail, Consistency Conflict Compare, Knowledge Detail
    ========================================================================== */
+.detail-overlay .detail-dialog,
 .detail-dialog,
+.exp-modal .exp-direction-dialog,
 .exp-direction-dialog,
 .dc-conflict-dialog,
+#dc-compare-mask .dc-dialog[role="dialog"],
 #dc-compare-mask.dc-modal-mask .dc-dialog[role=dialog],
+#knowledge-page .kb-v45 .detail-modal,
 dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inline-dialog):not(.iad-viewer-dialog) {
-  width: min(var(--iad-dialog-max-width), calc(100vw - 2 * var(--iad-dialog-gutter))) !important;
-  max-width: var(--iad-dialog-max-width) !important;
-  height: min(var(--iad-dialog-max-height), calc(100dvh - 2 * var(--iad-dialog-vgutter))) !important;
-  max-height: calc(100dvh - 2 * var(--iad-dialog-vgutter)) !important;
+  box-sizing: border-box !important;
+  width: min(var(--iba-dialog-detail-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
+  max-width: var(--iba-dialog-detail-width) !important;
+  height: auto !important;
+  max-height: min(var(--iba-dialog-max-height), calc(100dvh - 2 * var(--iba-dialog-gap))) !important;
   min-height: 0 !important;
-}
-
-/* Detail dialog internal scrollable body */
-.detail-scroll,
-.exp-direction-dialog .exp-dialog-main,
-#dc-compare-mask .dc-dialog-body,
-.dc-conflict-dialog .dc-dialog-body {
+  border: 1px solid var(--iba-dialog-border) !important;
+  border-radius: 7px !important;
+  background: #fff !important;
+  box-shadow: 0 20px 64px rgba(14, 26, 48, 0.27) !important;
+  overflow: hidden !important;
+  margin: 0 auto !important;
+  flex: none !important;
   display: flex !important;
   flex-direction: column !important;
-  flex: 1 1 auto !important;
+}
+
+/* Detail dialog internal scrollable body - scrolls only when needed */
+.detail-overlay .detail-scroll,
+.detail-scroll,
+.exp-modal .exp-direction-dialog .exp-dialog-main,
+.exp-direction-dialog .exp-dialog-main,
+#dc-compare-mask .dc-dialog-body,
+.dc-conflict-dialog .dc-dialog-body,
+#knowledge-page .kb-v45 .detail-modal .modalcontent {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 0 1 auto !important;
   min-height: 0 !important;
   overflow-y: auto !important;
   overscroll-behavior: contain !important;
@@ -17479,48 +17493,65 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 #dc-compare-mask .dc-dialog-body,
 .dc-conflict-dialog .dc-dialog-body { padding: 20px 26px 24px !important; }
 
-/* Large detail dialog internal flex hierarchy */
-.exp-direction-dialog .exp-direction-body {
-  display: flex !important;
-  flex-direction: column !important;
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-}
-.exp-direction-dialog .exp-direction-evidence {
-  flex: 1 1 auto !important;
-  display: flex !important;
-  flex-direction: column !important;
-  min-height: 0 !important;
-  padding-bottom: 0 !important;
-}
-.exp-direction-dialog .exp-direction-evidence-groups {
-  flex: 1 1 auto !important;
-  align-items: stretch !important;
-  min-height: 0 !important;
-}
+/* Large detail dialog internal flex hierarchy - do not stretch exploration evidence */
+.exp-modal .exp-direction-dialog .exp-direction-body,
+.exp-modal .exp-direction-dialog .exp-direction-evidence,
+.exp-modal .exp-direction-dialog .exp-direction-evidence-groups,
+.exp-modal .exp-direction-dialog .exp-scroll-group,
+.exp-direction-dialog .exp-direction-body,
+.exp-direction-dialog .exp-direction-evidence,
+.exp-direction-dialog .exp-direction-evidence-groups,
 .exp-direction-dialog .exp-scroll-group {
-  display: flex !important;
-  flex-direction: column !important;
+  flex: 0 0 auto !important;
   min-height: 0 !important;
+  height: auto !important;
 }
+
+.exp-modal .exp-direction-dialog .exp-evidence-viewport,
 .exp-direction-dialog .exp-evidence-viewport {
-  flex: 1 1 auto !important;
-  align-items: stretch !important;
+  flex: 0 0 auto !important;
+  box-sizing: border-box !important;
+  height: 172px !important;
   min-height: 0 !important;
+  max-height: 172px !important;
   background: #f6f8fb !important;
   border: 1px solid #e3e9f1 !important;
   border-radius: 5px !important;
-  padding: 7px 7px 10px !important;
+  padding: 6px 6px 8px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
 }
+
+.exp-modal .exp-direction-dialog .exp-direction-evidence-card,
 .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card {
   height: 100% !important;
   box-sizing: border-box !important;
-  width: clamp(200px, 47%, 300px) !important;
-  min-width: clamp(200px, 47%, 300px) !important;
+  width: clamp(166px, 45%, 225px) !important;
+  min-width: clamp(166px, 45%, 225px) !important;
 }
+
+.exp-modal .exp-direction-dialog .exp-direction-evidence-card img,
 .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img {
-  height: clamp(175px, 23dvh, 250px) !important;
+  height: 108px !important;
+  max-height: 108px !important;
+  object-fit: contain !important;
 }
+
+/* Evidence reference tokens */
+:is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) .exp-evidence-ref,
+.exp-direction-dialog .exp-evidence-ref {
+  color: var(--iba-dialog-ink, #172338) !important;
+  font-family: var(--iba-dialog-font) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  border-color: #d9e2ed !important;
+  background: #fff !important;
+}
+:is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) .exp-evidence-ref:hover,
+.exp-direction-dialog .exp-evidence-ref:hover {
+  background: #f3f6fa !important;
+}
+
 #dc-compare-mask .dc-compare-photo,
 .dc-conflict-dialog .dc-compare-photo {
   height: clamp(210px, 28dvh, 270px) !important;
@@ -17530,28 +17561,36 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 }
 
 /* ==========================================================================
-   Tier 2: Medium Form & Analytics Dialogs (760px max-width, auto-height)
-   New Consistency Check, Stats Modal, Exploration Prompts, Add/Edit Dataset
+   Tier 2: Medium Form & Analytics Dialogs (960px max-width, auto-height)
+   New Consistency Check, Stats Modal, Exploration Prompts, Add/Edit Dataset, Knowledge Create
    ========================================================================== */
+#knowledge-page .kb-v45 #create-overlay > .modal,
 #dc-new-mask .dc-new-dialog,
 .dc-stats-modal .dc-stats-dialog,
+.exp-modal .exp-source-dialog,
 .exp-prompt-modal .exp-prompt-dialog,
 .exp-dialog:not(.small):not(.exp-direction-dialog),
 .modal-scrim .modal:not(.delete-modal) {
-  width: min(var(--iad-dialog-medium-width), calc(100vw - 2 * var(--iad-dialog-gutter))) !important;
-  max-width: var(--iad-dialog-medium-width) !important;
+  width: min(var(--iba-dialog-edit-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
+  max-width: var(--iba-dialog-edit-width) !important;
   height: auto !important;
-  max-height: calc(100dvh - 2 * var(--iad-dialog-vgutter)) !important;
+  max-height: min(var(--iba-dialog-max-height), calc(100dvh - 2 * var(--iba-dialog-gap))) !important;
   min-height: 0 !important;
+  border-radius: 7px !important;
 }
 
+#knowledge-page .kb-v45 #create-overlay > .modal {
+  height: auto !important;
+}
+
+#knowledge-page .kb-v45 #create-overlay > .modal > .modalcontent,
 #dc-new-mask .dc-new-body,
 .dc-stats-dialog .dc-stats-body,
 .modal-scrim .modal:not(.delete-modal) .modal-body,
 .exp-dialog:not(.small):not(.exp-direction-dialog) .exp-dialog-main {
   padding: 22px 26px 24px !important;
   overflow-y: auto !important;
-  flex: 1 1 auto !important;
+  flex: 0 1 auto !important;
   min-height: 0 !important;
 }
 
@@ -17754,6 +17793,82 @@ button.exp-ghost:hover,
   background-color: var(--iad-btn-primary-hover) !important;
   border-color: var(--iad-btn-primary-hover) !important;
 }
+
+/* ==========================================================================
+   V52/V53 Dialog Typography Contract & Status Preservation
+   ========================================================================== */
+.detail-dialog, .exp-dialog, .dc-dialog, #knowledge-page .kb-v45 .modal {
+  font-family: var(--iba-dialog-font) !important;
+  font-size: 13px !important;
+  color: var(--iba-dialog-ink) !important;
+}
+
+.detail-dialog :is(.detail-header, .detail-scroll, .detail-footer),
+.exp-dialog :is(.exp-dialog-head, .exp-dialog-main, .exp-dialog-foot),
+.dc-dialog :is(.dc-dialog-head, .dc-dialog-body, .dc-dialog-footer),
+#knowledge-page .kb-v45 .modal :is(.modalheader, .modalcontent, .modalfooter) {
+  color: var(--iba-dialog-ink) !important;
+}
+
+/* Ordinary explanations/IDs/field labels: one ink, one size and regular weight.
+   Exclude actual status badges and button contents from this normalization. */
+:is(.detail-dialog, .exp-dialog, .dc-dialog, #knowledge-page .kb-v45 .modal)
+:is(p, span, small, label, dt, dd, li, figcaption, pre)
+:not(:is(button, button *, a, a *, .exp-pill, .exp-pill *, .status, .status *, .dc-state, .dc-state *, .badge, .badge *, .dc-tag, .dc-tag *)) {
+  color: var(--iba-dialog-ink) !important;
+  font-family: var(--iba-dialog-font) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+
+/* Unify ordinary inline metadata found in each detail implementation. */
+.exp-direction-dialog :is(.exp-direction-meta, .exp-direction-meta *, .exp-direction-note),
+.detail-dialog :is(.detail-meta, .detail-info, .detail-summary),
+.dc-dialog :is(.dc-dialog-caption, .dc-dialog-note, .dc-verdict-description),
+#knowledge-page .kb-v45 .detail-modal :is(.muted, .row-desc, .detail-muted, .detail-evidence-empty) {
+  color: var(--iba-dialog-ink) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+
+/* Titles are the only deliberately bold non-state text. */
+:is(.detail-dialog, .exp-dialog, .dc-dialog, #knowledge-page .kb-v45 .modal)
+:is(h1, h2, h3, h4),
+.exp-dialog .exp-dialog-head > strong,
+.dc-dialog .dc-dialog-title {
+  font-family: var(--iba-dialog-font) !important;
+  color: var(--iba-dialog-ink) !important;
+  font-weight: 650 !important;
+}
+
+/* Preserve semantic status colors; primary/selected controls keep their function-based color. */
+.exp-dialog :is(.exp-pill.ok, .exp-pill.completed) { color: #177b53 !important; }
+.exp-dialog :is(.exp-pill.fail, .exp-pill.failed) { color: #b23c43 !important; }
+.exp-dialog :is(.exp-pill.pending, .exp-pill.running) { color: #285ed6 !important; }
+#knowledge-page .kb-v45 .modal .status.green { color: #177b53 !important; }
+#knowledge-page .kb-v45 .modal .status.red { color: #b23c43 !important; }
+#knowledge-page .kb-v45 .modal .status.amber { color: #976013 !important; }
+#knowledge-page .kb-v45 .modal .status.blue { color: #285ed6 !important; }
+
+@media (max-width: 760px) {
+  .detail-overlay,
+  .exp-modal,
+  #dc-compare-mask.dc-modal-mask,
+  #knowledge-page .kb-v45 .detail-overlay {
+    padding: 12px !important;
+  }
+  .exp-modal .exp-direction-dialog .exp-evidence-viewport,
+  .exp-direction-dialog .exp-evidence-viewport {
+    height: 156px !important;
+    max-height: 156px !important;
+  }
+  .exp-modal .exp-direction-dialog .exp-direction-evidence-card img,
+  .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img {
+    height: 96px !important;
+    max-height: 96px !important;
+  }
+}
+
 `;
 
   // src/client/styles/typography.ts
@@ -18789,7 +18904,7 @@ button.exp-ghost:hover,
                     /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("div", { id: "detail-model-content", children: sampleDetail?.suggestion ? /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(import_jsx_runtime49.Fragment, { children: [
                       /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("p", { className: "detail-model-result", children: [
                         /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("strong", { children: sampleDetail.suggestion.suggested_label === "FAIL" ? "\u53D1\u73B0\u7591\u70B9" : sampleDetail.suggestion.suggested_label === "PASS" ? "\u5224\u5B9A\u6B63\u5E38" : "\u672A\u5224\u5B9A" }),
-                        sampleDetail.suggestion.reason_category ? ` \xB7 ${sampleDetail.suggestion.reason_category}` : ""
+                        sampleDetail.suggestion.reason_category ? `\uFF08${sampleDetail.suggestion.reason_category}\uFF09` : ""
                       ] }),
                       /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("p", { className: "detail-model-text", children: sampleDetail.suggestion.notes || "\u65E0\u9644\u6CE8\u3002" })
                     ] }) : /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("p", { className: "detail-model-text", children: "\u5C1A\u65E0\u6A21\u578B\u89C2\u5BDF\u3002" }) })

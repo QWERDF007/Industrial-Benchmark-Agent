@@ -182,7 +182,7 @@ async function run() {
     // Verify exploration result panel (5-column candidate directions table aligned with prototype)
     const selectedSub = await driver.wait(until.elementLocated(By.css(".exp-selected-sub")), 5000);
     const subText = await selectedSub.getText();
-    chk(subText.includes("·"), `方向探索所选作业副标题包含状态信息 (实际: ${subText})`);
+    chk(!subText.includes("·") && !subText.includes("已完成"), `方向探索所选作业副标题仅显示作业ID且无冗余状态 (实际: ${subText})`);
 
     const noCandidateHeading = (await driver.findElements(By.xpath('//h3[text()="候选方向"]'))).length === 0;
     chk(noCandidateHeading, "方向探索移除了多余的候选方向小标题");

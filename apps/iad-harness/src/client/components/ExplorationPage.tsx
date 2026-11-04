@@ -747,7 +747,7 @@ export function ExplorationPage({
   const handleOpenEvidenceFullscreen = (clickedRef: string) => {
     const allItems: FullscreenViewerItem[] = currentEvidence.all.map((item) => ({
       id: item.ref,
-      title: `${item.label} · ${item.filename}`,
+      title: `${item.label} ${item.filename}`,
       imageUrl: (item as any).fullUrl || item.url,
     }));
     const index = currentEvidence.all.findIndex((item) => item.ref === clickedRef);
@@ -947,7 +947,7 @@ export function ExplorationPage({
             </div>
             <div className="exp-brief">
               <span>所选子数据集 <b>{selectedChildIds.length} 个</b></span>
-              <span>输入图像 <b>良品 {normalSelected.length} · 异常 {defectSelected.length}</b></span>
+              <span>输入图像 <b>良品 {normalSelected.length}，异常 {defectSelected.length}</b></span>
               <span>模型 <b>Qwen3.8-27B-FP8（示例）</b></span>
               <span>执行 <b>整组联合输入</b></span>
             </div>
@@ -1133,7 +1133,7 @@ export function ExplorationPage({
               <div className="exp-selected-head">
                 <div>
                   <h2>运行状态</h2>
-                  <span className="exp-selected-sub">{selectedJob.id} · {expJobState(selectedJob.status)}</span>
+                  <span className="exp-selected-sub">{selectedJob.id}</span>
                 </div>
               </div>
               <div className="exp-job-current-title" style={{ margin: "0 0 17px" }}>
@@ -1172,7 +1172,7 @@ export function ExplorationPage({
               <div className="exp-selected-head">
                 <div>
                   <h2>作业失败</h2>
-                  <span className="exp-selected-sub">{selectedJob.id} · {expJobState(selectedJob.status)}</span>
+                  <span className="exp-selected-sub">{selectedJob.id}</span>
                 </div>
               </div>
               <p className="exp-error-message">{selectedJob.error || "任务未成功完成，未生成探索结果。"}</p>
@@ -1196,7 +1196,7 @@ export function ExplorationPage({
               <div className="exp-selected-head">
                 <div>
                   <h2>探索结果</h2>
-                  <span className="exp-selected-sub">{selectedJob.id} · {expJobState(selectedJob.status)}</span>
+                  <span className="exp-selected-sub">{selectedJob.id}</span>
                 </div>
               </div>
               {selectedJobSummary && <p className="exp-result-summary">{selectedJobSummary}</p>}

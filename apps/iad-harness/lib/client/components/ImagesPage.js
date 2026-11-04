@@ -294,7 +294,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
                                                                                     ? "发现疑点"
                                                                                     : sampleDetail.suggestion.suggested_label === "PASS"
                                                                                         ? "判定正常"
-                                                                                        : "未判定" }), sampleDetail.suggestion.reason_category ? ` · ${sampleDetail.suggestion.reason_category}` : ""] }), _jsx("p", { className: "detail-model-text", children: sampleDetail.suggestion.notes || "无附注。" })] })) : (_jsx("p", { className: "detail-model-text", children: "\u5C1A\u65E0\u6A21\u578B\u89C2\u5BDF\u3002" })) })] })] })) })] }) }), _jsx(FullscreenViewer, { open: fullscreen, item: activeSample
+                                                                                        : "未判定" }), sampleDetail.suggestion.reason_category ? `（${sampleDetail.suggestion.reason_category}）` : ""] }), _jsx("p", { className: "detail-model-text", children: sampleDetail.suggestion.notes || "无附注。" })] })) : (_jsx("p", { className: "detail-model-text", children: "\u5C1A\u65E0\u6A21\u578B\u89C2\u5BDF\u3002" })) })] })] })) })] }) }), _jsx(FullscreenViewer, { open: fullscreen, item: activeSample
                                 ? {
                                     id: activeSample.sample_id,
                                     title: activeSample.relative_path,
