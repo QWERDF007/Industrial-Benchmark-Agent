@@ -17131,12 +17131,12 @@ button.dc-vchart-zero,
 .filter-sort{width:143px}
 .btn-reset{border:1px solid var(--border,#dbe2eb);color:#55667e;background:#fff;height:38px;padding:0 14px;border-radius:5px;white-space:nowrap}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px 12px}
 .card{border:1px solid #e5eaf2;border-radius:6px;background:#fff;padding:0;text-align:left;overflow:hidden;box-shadow:0 1px 2px rgba(30,48,79,.02);color:inherit;min-width:0;transition:box-shadow .15s ease,border-color .15s ease,transform .12s ease;cursor:pointer}
 .card:hover{border-color:#7b9fe8 !important;box-shadow:0 4px 14px rgba(36,88,213,0.14) !important;transform:translateY(-1px)}
-.thumb{width:100%;aspect-ratio:16/10;max-height:115px;background:#eef2f7;display:flex;justify-content:center;align-items:center;overflow:hidden;border-bottom:1px solid #edf0f5}
-.thumb img{display:block;width:100%;height:100%;object-fit:contain}
-.card-name{font-size:12px;color:#23324c;padding:6px 8px 7px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.thumb{width:100%;aspect-ratio:4/3;background:#eef2f7;display:flex;justify-content:center;align-items:center;overflow:hidden;border-bottom:1px solid #edf0f5}
+.thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.card-name{font-size:12px;color:#23324c;padding:5px 8px 6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .empty{min-height:200px;border:1px dashed var(--border,#dbe2eb);border-radius:8px;display:grid;place-items:center;color:#738398;background:#fff}
 
 .pagination{display:flex;align-items:center;justify-content:flex-end;margin-top:10px;padding:4px 0 2px;color:#687990;font-size:12px}
@@ -17310,27 +17310,33 @@ button.dc-vchart-zero,
 
 :is(.iad-workbench, body) [data-page="industrial-images"],
 .iad-workbench[data-page="industrial-images"] {
-  padding: 16px 28px 18px !important;
+  padding: 12px 28px 14px !important;
   overflow-y: auto !important;
 }
 .iad-workbench[data-page="industrial-images"] .heading {
-  margin-bottom: 10px !important;
+  margin-bottom: 8px !important;
+}
+.iad-workbench[data-page="industrial-images"] .heading h1 {
+  font-size: 20px !important;
 }
 .iad-workbench[data-page="industrial-images"] .dataset-panel {
-  margin-bottom: 10px !important;
+  margin-bottom: 8px !important;
 }
 .iad-workbench[data-page="industrial-images"] .filter-bar {
-  margin-bottom: 10px !important;
-  padding: 8px 12px !important;
+  margin-bottom: 8px !important;
+  padding: 7px 12px !important;
 }
 .iad-workbench[data-page="industrial-images"] .grid {
-  gap: 8px 10px !important;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+  gap: 10px 12px !important;
 }
 .iad-workbench[data-page="industrial-images"] .thumb {
-  max-height: 110px !important;
+  aspect-ratio: 4/3 !important;
+  max-height: none !important;
 }
 .iad-workbench[data-page="industrial-images"] .pagination {
-  margin-top: 8px !important;
+  margin-top: 10px !important;
+  padding: 4px 0 2px !important;
 }
 `;
 
@@ -18292,7 +18298,7 @@ button.exp-ghost:hover,
     const [annotation, setAnnotation] = (0, import_react45.useState)("all");
     const [category, setCategory] = (0, import_react45.useState)("all");
     const [page, setPage] = (0, import_react45.useState)(1);
-    const pageSize2 = 12;
+    const pageSize2 = 24;
     const activeDatasets = (0, import_react45.useMemo)(() => {
       return parentChildren.filter((d) => selectedChildIds.has(d.dataset_id));
     }, [parentChildren, selectedChildIds]);

@@ -44,7 +44,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
     const [annotation, setAnnotation] = useState("all");
     const [category, setCategory] = useState("all");
     const [page, setPage] = useState(1);
-    const pageSize = 12;
+    const pageSize = 24;
     // Selected datasets objects
     const activeDatasets = useMemo(() => {
         return parentChildren.filter(d => selectedChildIds.has(d.dataset_id));
