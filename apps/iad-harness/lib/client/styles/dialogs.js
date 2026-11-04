@@ -70,11 +70,11 @@ export const dialogsStyles = `
 /* ==========================================================================
    Unified Backdrops / Overlay Masks
    ========================================================================== */
-.detail-overlay,
+.detail-overlay.show,
 .exp-modal:not(.exp-prompt-overlay),
 .dc-modal-mask,
 #dc-compare-mask.dc-modal-mask,
-#knowledge-page .kb-v45 .detail-overlay,
+#knowledge-page .kb-v45 .detail-overlay.show,
 .modal-scrim,
 dialog.iad-detail-dialog::backdrop {
   position: fixed !important;
@@ -93,9 +93,14 @@ dialog.iad-detail-dialog::backdrop {
 }
 
 .detail-overlay.hidden,
+.detail-overlay:not(.show),
+.overlay:not(.show),
+#knowledge-page .kb-v45 .detail-overlay:not(.show),
+#knowledge-page .detail-overlay:not(.show),
 .exp-modal[hidden],
 .dc-modal-mask[hidden],
-.modal-scrim[hidden] {
+.modal-scrim[hidden],
+[hidden] {
   display: none !important;
 }
 

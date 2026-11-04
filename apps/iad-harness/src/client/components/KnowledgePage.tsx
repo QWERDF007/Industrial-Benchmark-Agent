@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import type { Dataset, DatasetGroup, JobSnapshot } from "../../shared/contracts.js";
 import { mediaUrl, request } from "../api.js";
 import { useJobs } from "../useJobs.js";
@@ -595,12 +594,18 @@ export function KnowledgePage({
     setFormError("");
     setEditingDir(null);
     setCreateOpen(true);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
   };
 
   const closeCreate = () => {
     setCreateOpen(false);
     setSetupChildMenuOpen(false);
     setEditingDir(null);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
   };
 
   const saveDirEdit = () => {
@@ -737,8 +742,9 @@ export function KnowledgePage({
   };
 
   return (
-    <div id="knowledge-page" className={`iad-knowledge-page kb-v45 v46-app ${createOpen ? "kb-creating" : ""}`}>
-      <div className="kb-v45-main">
+    <div id="knowledge-page" className="iad-knowledge-page">
+      <div className={`kb-v45 v46-app ${createOpen ? "kb-creating" : ""}`}>
+        <div className="kb-v45-main">
         <div className="main-inner">
           {/* Topline Header */}
           <header className="topline">
@@ -1101,274 +1107,6 @@ export function KnowledgePage({
           <div className="demo-note">
             当前为离线交互原型，作业、模型、知识与证据均使用演示数据；实际数据结构和接口定义见开发方案。
           </div>
-        </div>
-      </div>
-
-      {/* Overlays rendered into portal */}
-      {typeof document !== "undefined" &&
-        createPortal(
-          <>
-            {/* 1. Job Prompt Drawer */}
-            <div
-              className={`overlay knowledge-prompt-overlay ${promptOpen ? "show" : ""}`}
-              id="job-prompt-overlay"
-              role="presentation"
-              onClick={closePrompt}
-            >
-              <aside
-                className="knowledge-prompt-drawer"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="job-prompt-title"
-                tabIndex={-1}
-                onClick={e => e.stopPropagation()}
-              >
-                <header className="knowledge-prompt-drawer-head">
-                  <h2 id="job-prompt-title">查看提示词</h2>
-                  <div className="knowledge-prompt-drawer-actions">
-                    <button type="button" className="btn small" id="copy-job-prompt" onClick={handleCopyPrompt}>
-                      复制提示词
-                    </button>
-                    <button
-                      type="button"
-                      className="knowledge-prompt-drawer-close"
-                      id="close-job-prompt"
-                      aria-label="关闭提示词抽屉"
-                      title="关闭"
-                      onClick={closePrompt}
-                    >
-                      <CloseIcon />
-                    </button>
-                  </div>
-                </header>
-                <div className="knowledge-prompt-drawer-content" id="job-prompt-body">
-                  <pre id="job-prompt-content" className="knowledge-prompt-readonly">
-                    {promptJob?.prompt || "该历史作业未记录冻结提示词。"}
-                  </pre>
-                </div>
-              </aside>
-            </div>
-
-            {/* 2. Knowledge Entry Detail Modal */}
-            <div
-              className={`overlay detail-overlay v46-app ${detailItem ? "show" : ""}`}
-              id="detail-overlay"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="kb-detail-title"
-              onClick={closeDetail}
-            >
-              <section
-                className="modal detail-modal"
-                id="entry-dialog"
-                tabIndex={-1}
-                onClick={e => e.stopPropagation()}
-              >
-                <header className="modalheader">
-                  <div>
-                    <h2 id="kb-detail-title">{detailItem?.name}</h2>
-                  </div>
-                  <button
-                    type="button"
-                    id="close-detail"
-                    className="iconbtn"
-                    title="关闭知识详情"
-                    aria-label="关闭知识详情"
-                    onClick={closeDetail}
-                  >
-                    ×
-                  </button>
-                </header>
-                <div className="modalcontent" id="detail-content">
-                  <section className="detail-section">
-                    <h3>知识结论</h3>
-                    <p>{detailItem?.summary}</p>
-                  </section>
-                  <section className="detail-section">
-                    <h3>判定依据</h3>
-                    <p>{detailItem?.reason}</p>
-                  </section>
-                  <section className="detail-section">
-                    <h3>允许变化</h3>
-                    <p>{detailItem?.allowed}</p>
-                  </section>
-                  <section className="detail-section">
-                    <h3>支持证据，{(detailItem?.supportImgs || []).length} 张</h3>
-                    {detailItem?.supportImgs.length ? (
-                      <div className="detail-evidence-grid">
-                        {detailItem.supportImgs.map((n, i) => (
-                          <button
-                            type="button"
-                            key={n}
-                            className="detail-evidence"
-                            data-light-image={i}
-                            aria-label={`放大支持证据 ${i + 1}`}
-                            onClick={() =>
-                              openLight(
-                                [
-                                  ...(detailItem.supportImgs || []).map(id => ({ id, role: "support" as const })),
-                                  ...(detailItem.counterImgs || []).map(id => ({ id, role: "counter" as const }))
-                                ],
-                                i
-                              )
-                            }
-                          >
-                            <img
-                              src={`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150"><rect width="200" height="150" fill="%23eef2f8"/><text x="100" y="80" font-family="sans-serif" font-size="14" fill="%234a5568" text-anchor="middle">样本 ${n}</text></svg>`}
-                              alt={`支持证据 ${i + 1}`}
-                              loading="lazy"
-                            />
-                            <span>支持证据 {i + 1}，点击放大</span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="detail-evidence-empty">暂无支持证据图像</div>
-                    )}
-                  </section>
-                  <section className="detail-section">
-                    <h3>反对证据，{(detailItem?.counterImgs || []).length} 张</h3>
-                    {detailItem?.counterImgs.length ? (
-                      <div className="detail-evidence-grid">
-                        {detailItem.counterImgs.map((n, i) => (
-                          <button
-                            type="button"
-                            key={n}
-                            className="detail-evidence"
-                            data-light-image={(detailItem.supportImgs || []).length + i}
-                            aria-label={`放大反对证据 ${i + 1}`}
-                            onClick={() =>
-                              openLight(
-                                [
-                                  ...(detailItem.supportImgs || []).map(id => ({ id, role: "support" as const })),
-                                  ...(detailItem.counterImgs || []).map(id => ({ id, role: "counter" as const }))
-                                ],
-                                (detailItem.supportImgs || []).length + i
-                              )
-                            }
-                          >
-                            <img
-                              src={`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150"><rect width="200" height="150" fill="%23fff0f0"/><text x="100" y="80" font-family="sans-serif" font-size="14" fill="%23a74242" text-anchor="middle">样本 ${n}</text></svg>`}
-                              alt={`反对证据 ${i + 1}`}
-                              loading="lazy"
-                            />
-                            <span>反对证据 {i + 1}，点击放大</span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="detail-evidence-empty">暂无反对证据图像</div>
-                    )}
-                  </section>
-                  <section className="detail-section">
-                    <h3>适用限制</h3>
-                    <p>{detailItem?.limit}</p>
-                  </section>
-                  <section className="detail-section detail-review">
-                    <h3>人工核实</h3>
-                    <div className="knowledge-review-options" role="radiogroup" aria-label="人工核实结论">
-                      <label>
-                        <input
-                          type="radio"
-                          name="knowledge-review"
-                          value="pending"
-                          checked={reviewStatus === "pending"}
-                          onChange={() => setReviewStatus("pending")}
-                        />
-                        待核实
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="knowledge-review"
-                          value="confirmed"
-                          checked={reviewStatus === "confirmed"}
-                          onChange={() => setReviewStatus("confirmed")}
-                        />
-                        核实通过
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="knowledge-review"
-                          value="rejected"
-                          checked={reviewStatus === "rejected"}
-                          onChange={() => setReviewStatus("rejected")}
-                        />
-                        驳回
-                      </label>
-                    </div>
-                    <label className="label" htmlFor="review-note">
-                      复核备注
-                    </label>
-                    <textarea
-                      className="f textarea"
-                      id="review-note"
-                      placeholder="填写复核依据（可选）"
-                      value={reviewNote}
-                      onChange={e => setReviewNote(e.target.value)}
-                    ></textarea>
-                  </section>
-                </div>
-                <footer className="modalfooter">
-                  <span></span>
-                  <div className="actions">
-                    <button className="btn" id="cancel-review" type="button" onClick={closeDetail}>
-                      取消
-                    </button>
-                    <button className="btn primary" id="save-review" type="button" onClick={saveReview}>
-                      保存
-                    </button>
-                  </div>
-                </footer>
-              </section>
-            </div>
-
-            {/* 3. Confirm Modal */}
-            <div
-              className={`overlay confirm-overlay v46-app ${confirmState ? "show" : ""}`}
-              id="confirm-overlay"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="confirm-title"
-              aria-describedby="confirm-message"
-              onClick={() => setConfirmState(null)}
-            >
-              <section className="modal confirm-modal" tabIndex={-1} onClick={e => e.stopPropagation()}>
-                <header className="modalheader">
-                  <h2 id="confirm-title">{confirmState?.title || "请确认"}</h2>
-                  <button
-                    className="iconbtn"
-                    id="confirm-close"
-                    aria-label="关闭确认窗口"
-                    onClick={() => setConfirmState(null)}
-                  >
-                    ×
-                  </button>
-                </header>
-                <div className="modalcontent" id="confirm-message">
-                  {confirmState?.message}
-                </div>
-                <footer className="modalfooter">
-                  <div className="actions">
-                    <button type="button" className="btn" id="confirm-cancel" onClick={() => setConfirmState(null)}>
-                      取消
-                    </button>
-                    <button
-                      type="button"
-                      className={`btn ${confirmState?.danger ? "is-danger" : "primary"}`}
-                      id="confirm-accept"
-                      onClick={() => {
-                        confirmState?.onConfirm();
-                        setConfirmState(null);
-                      }}
-                    >
-                      确定
-                    </button>
-                  </div>
-                </footer>
-              </section>
-            </div>
 
             {/* 4. V54/V56 In-Place Sub-Page: 新建知识挖掘配置 */}
             <section
@@ -1740,6 +1478,275 @@ export function KnowledgePage({
                 }}
               />
             </section>
+        </div>
+      </div>
+
+      {/* Overlays and Drawers */}
+      {/* 1. Job Prompt Drawer */}
+      <div
+        className={`overlay knowledge-prompt-overlay ${promptOpen ? "show" : "hidden"}`}
+        id="job-prompt-overlay"
+        role="presentation"
+        hidden={!promptOpen}
+        onClick={closePrompt}
+      >
+              <aside
+                className="knowledge-prompt-drawer"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="job-prompt-title"
+                tabIndex={-1}
+                onClick={e => e.stopPropagation()}
+              >
+                <header className="knowledge-prompt-drawer-head">
+                  <h2 id="job-prompt-title">查看提示词</h2>
+                  <div className="knowledge-prompt-drawer-actions">
+                    <button type="button" className="btn small" id="copy-job-prompt" onClick={handleCopyPrompt}>
+                      复制提示词
+                    </button>
+                    <button
+                      type="button"
+                      className="knowledge-prompt-drawer-close"
+                      id="close-job-prompt"
+                      aria-label="关闭提示词抽屉"
+                      title="关闭"
+                      onClick={closePrompt}
+                    >
+                      <CloseIcon />
+                    </button>
+                  </div>
+                </header>
+                <div className="knowledge-prompt-drawer-content" id="job-prompt-body">
+                  <pre id="job-prompt-content" className="knowledge-prompt-readonly">
+                    {promptJob?.prompt || "该历史作业未记录冻结提示词。"}
+                  </pre>
+                </div>
+              </aside>
+            </div>
+
+            {/* 2. Knowledge Entry Detail Modal */}
+            <div
+              className={`overlay detail-overlay v46-app ${detailItem ? "show" : "hidden"}`}
+              id="detail-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="kb-detail-title"
+              hidden={!detailItem}
+              onClick={closeDetail}
+            >
+              <section
+                className="modal detail-modal"
+                id="entry-dialog"
+                tabIndex={-1}
+                onClick={e => e.stopPropagation()}
+              >
+                <header className="modalheader">
+                  <div>
+                    <h2 id="kb-detail-title">{detailItem?.name}</h2>
+                  </div>
+                  <button
+                    type="button"
+                    id="close-detail"
+                    className="iconbtn"
+                    title="关闭知识详情"
+                    aria-label="关闭知识详情"
+                    onClick={closeDetail}
+                  >
+                    ×
+                  </button>
+                </header>
+                <div className="modalcontent" id="detail-content">
+                  <section className="detail-section">
+                    <h3>知识结论</h3>
+                    <p>{detailItem?.summary}</p>
+                  </section>
+                  <section className="detail-section">
+                    <h3>判定依据</h3>
+                    <p>{detailItem?.reason}</p>
+                  </section>
+                  <section className="detail-section">
+                    <h3>允许变化</h3>
+                    <p>{detailItem?.allowed}</p>
+                  </section>
+                  <section className="detail-section">
+                    <h3>支持证据，{(detailItem?.supportImgs || []).length} 张</h3>
+                    {detailItem?.supportImgs.length ? (
+                      <div className="detail-evidence-grid">
+                        {detailItem.supportImgs.map((n, i) => (
+                          <button
+                            type="button"
+                            key={n}
+                            className="detail-evidence"
+                            data-light-image={i}
+                            aria-label={`放大支持证据 ${i + 1}`}
+                            onClick={() =>
+                              openLight(
+                                [
+                                  ...(detailItem.supportImgs || []).map(id => ({ id, role: "support" as const })),
+                                  ...(detailItem.counterImgs || []).map(id => ({ id, role: "counter" as const }))
+                                ],
+                                i
+                              )
+                            }
+                          >
+                            <img
+                              src={`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150"><rect width="200" height="150" fill="%23eef2f8"/><text x="100" y="80" font-family="sans-serif" font-size="14" fill="%234a5568" text-anchor="middle">样本 ${n}</text></svg>`}
+                              alt={`支持证据 ${i + 1}`}
+                              loading="lazy"
+                            />
+                            <span>支持证据 {i + 1}，点击放大</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="detail-evidence-empty">暂无支持证据图像</div>
+                    )}
+                  </section>
+                  <section className="detail-section">
+                    <h3>反对证据，{(detailItem?.counterImgs || []).length} 张</h3>
+                    {detailItem?.counterImgs.length ? (
+                      <div className="detail-evidence-grid">
+                        {detailItem.counterImgs.map((n, i) => (
+                          <button
+                            type="button"
+                            key={n}
+                            className="detail-evidence"
+                            data-light-image={(detailItem.supportImgs || []).length + i}
+                            aria-label={`放大反对证据 ${i + 1}`}
+                            onClick={() =>
+                              openLight(
+                                [
+                                  ...(detailItem.supportImgs || []).map(id => ({ id, role: "support" as const })),
+                                  ...(detailItem.counterImgs || []).map(id => ({ id, role: "counter" as const }))
+                                ],
+                                (detailItem.supportImgs || []).length + i
+                              )
+                            }
+                          >
+                            <img
+                              src={`data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150"><rect width="200" height="150" fill="%23fff0f0"/><text x="100" y="80" font-family="sans-serif" font-size="14" fill="%23a74242" text-anchor="middle">样本 ${n}</text></svg>`}
+                              alt={`反对证据 ${i + 1}`}
+                              loading="lazy"
+                            />
+                            <span>反对证据 {i + 1}，点击放大</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="detail-evidence-empty">暂无反对证据图像</div>
+                    )}
+                  </section>
+                  <section className="detail-section">
+                    <h3>适用限制</h3>
+                    <p>{detailItem?.limit}</p>
+                  </section>
+                  <section className="detail-section detail-review">
+                    <h3>人工核实</h3>
+                    <div className="knowledge-review-options" role="radiogroup" aria-label="人工核实结论">
+                      <label>
+                        <input
+                          type="radio"
+                          name="knowledge-review"
+                          value="pending"
+                          checked={reviewStatus === "pending"}
+                          onChange={() => setReviewStatus("pending")}
+                        />
+                        待核实
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          name="knowledge-review"
+                          value="confirmed"
+                          checked={reviewStatus === "confirmed"}
+                          onChange={() => setReviewStatus("confirmed")}
+                        />
+                        核实通过
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          name="knowledge-review"
+                          value="rejected"
+                          checked={reviewStatus === "rejected"}
+                          onChange={() => setReviewStatus("rejected")}
+                        />
+                        驳回
+                      </label>
+                    </div>
+                    <label className="label" htmlFor="review-note">
+                      复核备注
+                    </label>
+                    <textarea
+                      className="f textarea"
+                      id="review-note"
+                      placeholder="填写复核依据（可选）"
+                      value={reviewNote}
+                      onChange={e => setReviewNote(e.target.value)}
+                    ></textarea>
+                  </section>
+                </div>
+                <footer className="modalfooter">
+                  <span></span>
+                  <div className="actions">
+                    <button className="btn" id="cancel-review" type="button" onClick={closeDetail}>
+                      取消
+                    </button>
+                    <button className="btn primary" id="save-review" type="button" onClick={saveReview}>
+                      保存
+                    </button>
+                  </div>
+                </footer>
+              </section>
+            </div>
+
+            {/* 3. Confirm Modal */}
+            <div
+              className={`overlay confirm-overlay v46-app ${confirmState ? "show" : "hidden"}`}
+              id="confirm-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="confirm-title"
+              aria-describedby="confirm-message"
+              hidden={!confirmState}
+              onClick={() => setConfirmState(null)}
+            >
+              <section className="modal confirm-modal" tabIndex={-1} onClick={e => e.stopPropagation()}>
+                <header className="modalheader">
+                  <h2 id="confirm-title">{confirmState?.title || "请确认"}</h2>
+                  <button
+                    className="iconbtn"
+                    id="confirm-close"
+                    aria-label="关闭确认窗口"
+                    onClick={() => setConfirmState(null)}
+                  >
+                    ×
+                  </button>
+                </header>
+                <div className="modalcontent" id="confirm-message">
+                  {confirmState?.message}
+                </div>
+                <footer className="modalfooter">
+                  <div className="actions">
+                    <button type="button" className="btn" id="confirm-cancel" onClick={() => setConfirmState(null)}>
+                      取消
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${confirmState?.danger ? "is-danger" : "primary"}`}
+                      id="confirm-accept"
+                      onClick={() => {
+                        confirmState?.onConfirm();
+                        setConfirmState(null);
+                      }}
+                    >
+                      确定
+                    </button>
+                  </div>
+                </footer>
+              </section>
+            </div>
+
 
             {/* Edit Direction Drawer */}
             <div
@@ -1807,11 +1814,12 @@ export function KnowledgePage({
 
             {/* 5. Lightbox */}
             <div
-              className={`lightbox v46-app ${lightboxIndex !== null ? "show" : ""}`}
+              className={`lightbox v46-app ${lightboxIndex !== null ? "show" : "hidden"}`}
               id="lightbox"
               role="dialog"
               aria-modal="true"
               aria-label="查看证据图片"
+              hidden={lightboxIndex === null}
               onClick={closeLight}
             >
               <button className="lbclose" id="close-light" onClick={closeLight}>
@@ -1856,9 +1864,7 @@ export function KnowledgePage({
             <div className={`toast ${toastMsg ? "show" : ""}`} id="toast" role="status">
               {toastMsg}
             </div>
-          </>,
-          document.body
-        )}
+      </div>
     </div>
   );
 }
