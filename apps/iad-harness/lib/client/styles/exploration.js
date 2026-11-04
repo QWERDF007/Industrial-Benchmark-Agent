@@ -651,5 +651,19 @@ export const explorationStyles = `
   .iba-job-pager .iba-job-total{margin-left:auto}
 }
 
+/* V51 Direction result: 5-column table (方向 25%, 描述 39%, 适用知识 14%, 证据 10%, 操作 12%) */
+.exp-selected-result .exp-direction-table{width:100%!important;table-layout:fixed!important;min-width:850px!important}
+.exp-selected-result .exp-direction-table th:nth-child(1){width:25%!important}
+.exp-selected-result .exp-direction-table th:nth-child(2){width:39%!important}
+.exp-selected-result .exp-direction-table th:nth-child(3){width:14%!important}
+.exp-selected-result .exp-direction-table th:nth-child(4){width:10%!important}
+.exp-selected-result .exp-direction-table th:nth-child(5){width:12%!important;text-align:right!important}
+.exp-selected-result .exp-direction-table td{font-weight:400!important;color:var(--iba-v50-ink, #172338)!important;vertical-align:middle!important}
+.exp-selected-result .exp-direction-table td.exp-direction-description{white-space:normal!important;overflow-wrap:anywhere!important;line-height:1.6!important}
+.exp-selected-result .exp-direction-table td.exp-direction-name{white-space:normal!important;overflow-wrap:anywhere!important}
+.exp-selected-result .exp-direction-table th:nth-child(5),.exp-selected-result .exp-direction-table td:last-child{white-space:nowrap!important;text-align:right!important}
+.exp-result-section-head:empty{display:none!important}
+
+
 
 `;

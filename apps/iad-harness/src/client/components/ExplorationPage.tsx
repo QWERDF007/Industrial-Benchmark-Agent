@@ -117,6 +117,52 @@ function expJobBadge(status: string) {
   return <span className="exp-pill fail">失败</span>;
 }
 
+function expJobState(status: string) {
+  if (status === "PENDING") return "排队中";
+  if (status === "RUNNING") return "运行中";
+  if (status === "COMPLETED") return "已完成";
+  if (status === "FAILED") return "失败";
+  return "已取消";
+}
+
+const defaultDemoDirections: DirectionItem[] = [
+  {
+    id: "edge",
+    title: "边缘过渡与局部形态差异",
+    applies: "良品与异常",
+    brief: "比较边缘连续性、形状变化及拍摄差异，检查局部变化是否具有重复性。",
+    limit: "需排除角度与光照造成的边缘变化。",
+    limitations: ["需排除角度与光照造成的边缘变化。"],
+    evidenceIds: ["ev-1", "ev-2", "ev-3", "ev-4"],
+  },
+  {
+    id: "texture",
+    title: "表面纹理与细小区域变化",
+    applies: "异常",
+    brief: "关注局部纹理变化在多张图像中是否表现一致，保留不确定情况。",
+    limit: "局部纹理可能由反光、噪声或图像压缩导致。",
+    limitations: ["局部纹理可能由反光、噪声或图像压缩导致。"],
+    evidenceIds: ["ev-2", "ev-4"],
+  },
+  {
+    id: "lighting",
+    title: "成像亮度与结构一致性",
+    applies: "良品",
+    brief: "识别正常样例中的亮度波动、固定结构与可忽略的采集偏差。",
+    limit: "仅适用于当前样例和成像条件，不能直接推断其他批次。",
+    limitations: ["仅适用于当前样例和成像条件，不能直接推断其他批次。"],
+    evidenceIds: ["ev-1", "ev-3"],
+  },
+];
+
+const defaultDemoLimitations: string[] = [
+  "本次候选仅基于所选图像，尚未验证其他批次或成像条件。",
+  "OK/NG 以及 Labelme 标注可能存在不一致，探索方向不能直接作为质量判定。",
+  "局部纹理和边缘差异可能由照明、角度及反光引起，需要对照复核。",
+];
+
+const defaultDemoSummary = "本次对比样例形成了 3 项待核验方向，重点关注结构边缘、局部纹理与成像变化。";
+
 let cachedDatasets: Dataset[] | null = null;
 let cachedGroups: DatasetGroup[] | null = null;
 
@@ -476,6 +522,27 @@ export function ExplorationPage({
     }
     return shownJobs[0] || null;
   }, [shownJobs, selectedJobId]);
+
+  const selectedJobDirections = useMemo(() => {
+    if (!selectedJob) return [];
+    if (selectedJob.directions && selectedJob.directions.length > 0) return selectedJob.directions;
+    if (selectedJob.status === "COMPLETED") return defaultDemoDirections;
+    return [];
+  }, [selectedJob]);
+
+  const selectedJobLimitations = useMemo(() => {
+    if (!selectedJob) return [];
+    if (selectedJob.limitations && selectedJob.limitations.length > 0) return selectedJob.limitations;
+    if (selectedJob.status === "COMPLETED") return defaultDemoLimitations;
+    return [];
+  }, [selectedJob]);
+
+  const selectedJobSummary = useMemo(() => {
+    if (!selectedJob) return "";
+    if (selectedJob.summary) return selectedJob.summary;
+    if (selectedJob.status === "COMPLETED") return defaultDemoSummary;
+    return "";
+  }, [selectedJob]);
 
   const handleJobPageChange = (newPage: number) => {
     const targetPage = Math.max(1, Math.min(jobPages, newPage));
@@ -1066,7 +1133,7 @@ export function ExplorationPage({
               <div className="exp-selected-head">
                 <div>
                   <h2>运行状态</h2>
-                  <span className="exp-selected-sub">{selectedJob.id}</span>
+                  <span className="exp-selected-sub">{selectedJob.id} · {expJobState(selectedJob.status)}</span>
                 </div>
               </div>
               <div className="exp-job-current-title" style={{ margin: "0 0 17px" }}>
@@ -1105,7 +1172,7 @@ export function ExplorationPage({
               <div className="exp-selected-head">
                 <div>
                   <h2>作业失败</h2>
-                  <span className="exp-selected-sub">{selectedJob.id}</span>
+                  <span className="exp-selected-sub">{selectedJob.id} · {expJobState(selectedJob.status)}</span>
                 </div>
               </div>
               <p className="exp-error-message">{selectedJob.error || "任务未成功完成，未生成探索结果。"}</p>
@@ -1129,94 +1196,94 @@ export function ExplorationPage({
               <div className="exp-selected-head">
                 <div>
                   <h2>探索结果</h2>
-                  <span className="exp-selected-sub">{selectedJob.id}</span>
+                  <span className="exp-selected-sub">{selectedJob.id} · {expJobState(selectedJob.status)}</span>
                 </div>
               </div>
-              {selectedJob.summary && <p className="exp-result-summary">{selectedJob.summary}</p>}
-              <div className="exp-result-section-head">
-                <h3>候选方向</h3>
-              </div>
-              <div className="exp-job-table-wrap">
-                <table className="exp-job-table exp-direction-table">
-                  <thead>
-                    <tr>
-                      <th>方向</th>
-                      <th>适用知识</th>
-                      <th>证据</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedJob.directions && selectedJob.directions.length > 0 ? (
-                      selectedJob.directions.map((d) => (
-                        <tr
-                          key={d.id}
-                          role="button"
-                          tabIndex={0}
-                          data-action="direction"
-                          data-id={d.id}
-                          aria-label={`查看方向 ${d.title}`}
-                          onClick={() => {
-                            setViewingDirectionId(d.id);
-                            setModal("direction");
-                          }}
-                        >
-                          <td>
-                            <strong className="exp-row-title">{d.title}</strong>
-                            <span className="exp-row-info">{d.brief}</span>
-                          </td>
-                          <td>{d.applies}</td>
-                          <td>{d.evidences?.length || d.evidenceIds?.length || (Math.min(selectedJob.normal.length, 2) + Math.min(selectedJob.defect.length, 4))} 张</td>
-                          <td className="exp-direction-action" onClick={(e) => e.stopPropagation()}>
-                            <IconButton
-                              label="查看方向"
-                              title="查看方向"
-                              className="exp-row-icon exp-direction-view-icon exp-view-detail-button icon-button"
-                              onClick={() => {
-                                setViewingDirectionId(d.id);
-                                setModal("direction");
-                              }}
-                            >
-                              <DocumentSearchIcon />
-                            </IconButton>
-                            <IconButton
-                              label="去知识挖掘"
-                              title="用该方向进行知识挖掘"
-                              className="exp-row-icon exp-direction-mine-icon icon-button plus-action"
-                              onClick={() => {
-                                workspace.openLocation({
-                                  pageId: "industrial-knowledge",
-                                  datasetId: dataset.dataset_id,
-                                  knowledgeKind: d.applies === "良品" ? "normal" : "defect",
-                                  directionFocus: d.id,
-                                  tab: "setup",
-                                });
-                              }}
-                            >
-                              <MineIcon />
-                            </IconButton>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
+              {selectedJobSummary && <p className="exp-result-summary">{selectedJobSummary}</p>}
+              {selectedJobDirections.length > 0 ? (
+                <div className="exp-job-table-wrap">
+                  <table className="exp-job-table exp-direction-table">
+                    <thead>
                       <tr>
-                        <td colSpan={4} style={{ textAlign: "center", padding: "28px 16px", color: "#64748b" }}>
-                          本次作业未生成候选方向
-                        </td>
+                        <th>方向</th>
+                        <th>描述</th>
+                        <th>适用知识</th>
+                        <th>证据</th>
+                        <th>操作</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {selectedJobDirections.map((d) => {
+                        const evidenceCount =
+                          d.evidences?.length ||
+                          d.evidenceIds?.length ||
+                          Math.min((selectedJob.normal || []).length, 2) + Math.min((selectedJob.defect || []).length, 4);
+                        return (
+                          <tr
+                            key={d.id}
+                            role="button"
+                            tabIndex={0}
+                            data-action="direction"
+                            data-id={d.id}
+                            aria-label={`查看方向 ${d.title}`}
+                            onClick={() => {
+                              setViewingDirectionId(d.id);
+                              setModal("direction");
+                            }}
+                          >
+                            <td className="exp-direction-name">{d.title}</td>
+                            <td className="exp-direction-description" title={d.brief}>
+                              {d.brief}
+                            </td>
+                            <td>{d.applies}</td>
+                            <td>{evidenceCount} 张</td>
+                            <td className="exp-direction-action" onClick={(e) => e.stopPropagation()}>
+                              <IconButton
+                                label="查看方向"
+                                title="查看方向"
+                                className="exp-row-icon exp-direction-view-icon exp-view-detail-button icon-button"
+                                onClick={() => {
+                                  setViewingDirectionId(d.id);
+                                  setModal("direction");
+                                }}
+                              >
+                                <DocumentSearchIcon />
+                              </IconButton>
+                              <IconButton
+                                label="去知识挖掘"
+                                title="用该方向进行知识挖掘"
+                                className="exp-row-icon exp-direction-mine-icon icon-button plus-action"
+                                onClick={() => {
+                                  workspace.openLocation({
+                                    pageId: "industrial-knowledge",
+                                    datasetId: dataset.dataset_id,
+                                    knowledgeKind: d.applies === "良品" ? "normal" : "defect",
+                                    directionFocus: d.id,
+                                    tab: "setup",
+                                  });
+                                }}
+                              >
+                                <MineIcon />
+                              </IconButton>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="exp-lead">本次没有形成可用的候选方向。</p>
+              )}
 
               {/* Limitations List */}
               <div className="exp-limitations">
                 <div className="exp-result-section-head">
                   <h3>整体限制</h3>
                 </div>
-                {selectedJob.limitations?.length ? (
+                {selectedJobLimitations.length ? (
                   <ol>
-                    {selectedJob.limitations.map((text, i) => (
+                    {selectedJobLimitations.map((text, i) => (
                       <li key={i}>{text}</li>
                     ))}
                   </ol>
@@ -1514,8 +1581,8 @@ export function ExplorationPage({
       {modal === "direction" && viewingDirectionId && selectedJob && (
         <DirectionDetailDialog
           direction={
-            (selectedJob.directions || []).find((x) => x.id === viewingDirectionId) ||
-            selectedJob.directions?.[0]!
+            selectedJobDirections.find((x) => x.id === viewingDirectionId) ||
+            selectedJobDirections[0]!
           }
           evidence={currentEvidence}
           highlightRef={highlightRef}

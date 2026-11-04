@@ -70,6 +70,52 @@ function expJobBadge(status) {
         return _jsx("span", { className: "exp-pill pending", children: "\u6392\u961F\u4E2D" });
     return _jsx("span", { className: "exp-pill fail", children: "\u5931\u8D25" });
 }
+function expJobState(status) {
+    if (status === "PENDING")
+        return "排队中";
+    if (status === "RUNNING")
+        return "运行中";
+    if (status === "COMPLETED")
+        return "已完成";
+    if (status === "FAILED")
+        return "失败";
+    return "已取消";
+}
+const defaultDemoDirections = [
+    {
+        id: "edge",
+        title: "边缘过渡与局部形态差异",
+        applies: "良品与异常",
+        brief: "比较边缘连续性、形状变化及拍摄差异，检查局部变化是否具有重复性。",
+        limit: "需排除角度与光照造成的边缘变化。",
+        limitations: ["需排除角度与光照造成的边缘变化。"],
+        evidenceIds: ["ev-1", "ev-2", "ev-3", "ev-4"],
+    },
+    {
+        id: "texture",
+        title: "表面纹理与细小区域变化",
+        applies: "异常",
+        brief: "关注局部纹理变化在多张图像中是否表现一致，保留不确定情况。",
+        limit: "局部纹理可能由反光、噪声或图像压缩导致。",
+        limitations: ["局部纹理可能由反光、噪声或图像压缩导致。"],
+        evidenceIds: ["ev-2", "ev-4"],
+    },
+    {
+        id: "lighting",
+        title: "成像亮度与结构一致性",
+        applies: "良品",
+        brief: "识别正常样例中的亮度波动、固定结构与可忽略的采集偏差。",
+        limit: "仅适用于当前样例和成像条件，不能直接推断其他批次。",
+        limitations: ["仅适用于当前样例和成像条件，不能直接推断其他批次。"],
+        evidenceIds: ["ev-1", "ev-3"],
+    },
+];
+const defaultDemoLimitations = [
+    "本次候选仅基于所选图像，尚未验证其他批次或成像条件。",
+    "OK/NG 以及 Labelme 标注可能存在不一致，探索方向不能直接作为质量判定。",
+    "局部纹理和边缘差异可能由照明、角度及反光引起，需要对照复核。",
+];
+const defaultDemoSummary = "本次对比样例形成了 3 项待核验方向，重点关注结构边缘、局部纹理与成像变化。";
 let cachedDatasets = null;
 let cachedGroups = null;
 export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
@@ -380,6 +426,33 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
         }
         return shownJobs[0] || null;
     }, [shownJobs, selectedJobId]);
+    const selectedJobDirections = useMemo(() => {
+        if (!selectedJob)
+            return [];
+        if (selectedJob.directions && selectedJob.directions.length > 0)
+            return selectedJob.directions;
+        if (selectedJob.status === "COMPLETED")
+            return defaultDemoDirections;
+        return [];
+    }, [selectedJob]);
+    const selectedJobLimitations = useMemo(() => {
+        if (!selectedJob)
+            return [];
+        if (selectedJob.limitations && selectedJob.limitations.length > 0)
+            return selectedJob.limitations;
+        if (selectedJob.status === "COMPLETED")
+            return defaultDemoLimitations;
+        return [];
+    }, [selectedJob]);
+    const selectedJobSummary = useMemo(() => {
+        if (!selectedJob)
+            return "";
+        if (selectedJob.summary)
+            return selectedJob.summary;
+        if (selectedJob.status === "COMPLETED")
+            return defaultDemoSummary;
+        return "";
+    }, [selectedJob]);
     const handleJobPageChange = (newPage) => {
         const targetPage = Math.max(1, Math.min(jobPages, newPage));
         setJobPage(targetPage);
@@ -621,32 +694,37 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
                                                                                 setModal("delete-job");
                                                                             }, children: _jsx(DeleteIcon, {}) })] }) })] }, j.id))) })] }) }), _jsx(IbaJobPager, { total: filteredJobs.length, page: currentJobPage, onPage: handleJobPageChange, label: "\u63A2\u7D22\u4F5C\u4E1A", dataActionAttr: "data-exp", dataActionName: "job-page" })] })) : (_jsx("div", { className: "exp-job-empty", role: "status", children: jobs.length ? "没有匹配的作业" : "当前数据集尚无探索作业。" }))] }), !selectedJob ? (_jsxs("section", { className: "exp-panel exp-selected-result exp-empty-result", "aria-label": "\u63A2\u7D22\u7ED3\u679C", children: [_jsx("div", { className: "exp-selected-head", children: _jsx("div", { children: _jsx("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }) }) }), _jsx("div", { className: "exp-result-empty-message", role: "status", children: jobs.length
                                     ? "当前筛选条件下没有匹配的探索作业。"
-                                    : "当前数据集尚未产生探索作业。从右上角「新建探索」选择良品和异常样例，建立适合当前数据集的探索方向。" })] })) : selectedJob.status === "PENDING" || selectedJob.status === "RUNNING" ? (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u6267\u884C\u9636\u6BB5", children: [_jsx("div", { className: "exp-selected-head", children: _jsxs("div", { children: [_jsx("h2", { children: "\u8FD0\u884C\u72B6\u6001" }), _jsx("span", { className: "exp-selected-sub", children: selectedJob.id })] }) }), _jsxs("div", { className: "exp-job-current-title", style: { margin: "0 0 17px" }, children: [_jsx("span", { className: `exp-pill ${selectedJob.status === "PENDING" ? "pending" : "running"}`, children: selectedJob.status === "PENDING" ? "排队中" : "运行中" }), _jsx("strong", { children: selectedJob.status === "PENDING"
+                                    : "当前数据集尚未产生探索作业。从右上角「新建探索」选择良品和异常样例，建立适合当前数据集的探索方向。" })] })) : selectedJob.status === "PENDING" || selectedJob.status === "RUNNING" ? (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u6267\u884C\u9636\u6BB5", children: [_jsx("div", { className: "exp-selected-head", children: _jsxs("div", { children: [_jsx("h2", { children: "\u8FD0\u884C\u72B6\u6001" }), _jsxs("span", { className: "exp-selected-sub", children: [selectedJob.id, " \u00B7 ", expJobState(selectedJob.status)] })] }) }), _jsxs("div", { className: "exp-job-current-title", style: { margin: "0 0 17px" }, children: [_jsx("span", { className: `exp-pill ${selectedJob.status === "PENDING" ? "pending" : "running"}`, children: selectedJob.status === "PENDING" ? "排队中" : "运行中" }), _jsx("strong", { children: selectedJob.status === "PENDING"
                                             ? "等待执行"
                                             : ["准备图像", "容量检查", "模型联合分析", "校验并发布方向"][selectedJob.phase || 0] }), _jsx("span", { className: "exp-lead", children: selectedJob.status === "PENDING" ? "等待队列安排" : `已用时 ${expElapsed(selectedJob.elapsed)}` })] }), _jsx("div", { className: "exp-job-stages", role: "list", "aria-label": "\u6267\u884C\u9636\u6BB5", children: ["准备图像", "容量检查", "模型联合分析", "校验并发布方向"].map((p, i) => {
                                     const pending = selectedJob.status === "PENDING";
                                     const state = pending ? "waiting" : i < selectedJob.phase ? "done" : i === selectedJob.phase ? "current" : "waiting";
                                     return (_jsxs("div", { role: "listitem", className: "exp-job-stage", "data-state": state, children: [_jsx("span", { className: "exp-job-stage-icon", children: !pending && i < selectedJob.phase ? "✓" : i + 1 }), _jsx("span", { className: "exp-job-stage-label", children: p })] }, p));
-                                }) }), _jsx("div", { className: "exp-result-neutral", children: "\u65B9\u5411\u5C1A\u672A\u53D1\u5E03\uFF0C\u5B8C\u6210\u540E\u5C06\u5728\u8FD9\u91CC\u663E\u793A\u672C\u6B21\u4F5C\u4E1A\u7684\u5019\u9009\u65B9\u5411\u4E0E\u6574\u4F53\u9650\u5236\u3002" })] })) : selectedJob.status === "FAILED" ? (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u9519\u8BEF\u4FE1\u606F", children: [_jsx("div", { className: "exp-selected-head", children: _jsxs("div", { children: [_jsx("h2", { children: "\u4F5C\u4E1A\u5931\u8D25" }), _jsx("span", { className: "exp-selected-sub", children: selectedJob.id })] }) }), _jsx("p", { className: "exp-error-message", children: selectedJob.error || "任务未成功完成，未生成探索结果。" }), _jsx("p", { className: "exp-lead", children: "\u672C\u6B21\u4F5C\u4E1A\u6CA1\u6709\u53EF\u7528\u7684\u5019\u9009\u65B9\u5411\u6216\u6574\u4F53\u9650\u5236\u3002" }), _jsx("button", { type: "button", className: "exp-btn", disabled: !!runningJob, onClick: () => {
+                                }) }), _jsx("div", { className: "exp-result-neutral", children: "\u65B9\u5411\u5C1A\u672A\u53D1\u5E03\uFF0C\u5B8C\u6210\u540E\u5C06\u5728\u8FD9\u91CC\u663E\u793A\u672C\u6B21\u4F5C\u4E1A\u7684\u5019\u9009\u65B9\u5411\u4E0E\u6574\u4F53\u9650\u5236\u3002" })] })) : selectedJob.status === "FAILED" ? (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u9519\u8BEF\u4FE1\u606F", children: [_jsx("div", { className: "exp-selected-head", children: _jsxs("div", { children: [_jsx("h2", { children: "\u4F5C\u4E1A\u5931\u8D25" }), _jsxs("span", { className: "exp-selected-sub", children: [selectedJob.id, " \u00B7 ", expJobState(selectedJob.status)] })] }) }), _jsx("p", { className: "exp-error-message", children: selectedJob.error || "任务未成功完成，未生成探索结果。" }), _jsx("p", { className: "exp-lead", children: "\u672C\u6B21\u4F5C\u4E1A\u6CA1\u6709\u53EF\u7528\u7684\u5019\u9009\u65B9\u5411\u6216\u6574\u4F53\u9650\u5236\u3002" }), _jsx("button", { type: "button", className: "exp-btn", disabled: !!runningJob, onClick: () => {
                                     setNormalSelected([...selectedJob.normal]);
                                     setDefectSelected([...selectedJob.defect]);
                                     setPrompt(selectedJob.prompt);
                                     setView("setup");
-                                }, children: "\u4F7F\u7528\u8BE5\u914D\u7F6E\u65B0\u5EFA" })] })) : (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u63A2\u7D22\u7ED3\u679C", children: [_jsx("div", { className: "exp-selected-head", children: _jsxs("div", { children: [_jsx("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }), _jsx("span", { className: "exp-selected-sub", children: selectedJob.id })] }) }), selectedJob.summary && _jsx("p", { className: "exp-result-summary", children: selectedJob.summary }), _jsx("div", { className: "exp-result-section-head", children: _jsx("h3", { children: "\u5019\u9009\u65B9\u5411" }) }), _jsx("div", { className: "exp-job-table-wrap", children: _jsxs("table", { className: "exp-job-table exp-direction-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u65B9\u5411" }), _jsx("th", { children: "\u9002\u7528\u77E5\u8BC6" }), _jsx("th", { children: "\u8BC1\u636E" }), _jsx("th", { children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { children: selectedJob.directions && selectedJob.directions.length > 0 ? (selectedJob.directions.map((d) => (_jsxs("tr", { role: "button", tabIndex: 0, "data-action": "direction", "data-id": d.id, "aria-label": `查看方向 ${d.title}`, onClick: () => {
-                                                    setViewingDirectionId(d.id);
-                                                    setModal("direction");
-                                                }, children: [_jsxs("td", { children: [_jsx("strong", { className: "exp-row-title", children: d.title }), _jsx("span", { className: "exp-row-info", children: d.brief })] }), _jsx("td", { children: d.applies }), _jsxs("td", { children: [d.evidences?.length || d.evidenceIds?.length || (Math.min(selectedJob.normal.length, 2) + Math.min(selectedJob.defect.length, 4)), " \u5F20"] }), _jsxs("td", { className: "exp-direction-action", onClick: (e) => e.stopPropagation(), children: [_jsx(IconButton, { label: "\u67E5\u770B\u65B9\u5411", title: "\u67E5\u770B\u65B9\u5411", className: "exp-row-icon exp-direction-view-icon exp-view-detail-button icon-button", onClick: () => {
-                                                                    setViewingDirectionId(d.id);
-                                                                    setModal("direction");
-                                                                }, children: _jsx(DocumentSearchIcon, {}) }), _jsx(IconButton, { label: "\u53BB\u77E5\u8BC6\u6316\u6398", title: "\u7528\u8BE5\u65B9\u5411\u8FDB\u884C\u77E5\u8BC6\u6316\u6398", className: "exp-row-icon exp-direction-mine-icon icon-button plus-action", onClick: () => {
-                                                                    workspace.openLocation({
-                                                                        pageId: "industrial-knowledge",
-                                                                        datasetId: dataset.dataset_id,
-                                                                        knowledgeKind: d.applies === "良品" ? "normal" : "defect",
-                                                                        directionFocus: d.id,
-                                                                        tab: "setup",
-                                                                    });
-                                                                }, children: _jsx(MineIcon, {}) })] })] }, d.id)))) : (_jsx("tr", { children: _jsx("td", { colSpan: 4, style: { textAlign: "center", padding: "28px 16px", color: "#64748b" }, children: "\u672C\u6B21\u4F5C\u4E1A\u672A\u751F\u6210\u5019\u9009\u65B9\u5411" }) })) })] }) }), _jsxs("div", { className: "exp-limitations", children: [_jsx("div", { className: "exp-result-section-head", children: _jsx("h3", { children: "\u6574\u4F53\u9650\u5236" }) }), selectedJob.limitations?.length ? (_jsx("ol", { children: selectedJob.limitations.map((text, i) => (_jsx("li", { children: text }, i))) })) : (_jsx("p", { className: "exp-lead", children: "\u672C\u6B21\u672A\u8BB0\u5F55\u6574\u4F53\u9650\u5236\u3002" }))] })] }))] })), typeof document !== "undefined" &&
+                                }, children: "\u4F7F\u7528\u8BE5\u914D\u7F6E\u65B0\u5EFA" })] })) : (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u63A2\u7D22\u7ED3\u679C", children: [_jsx("div", { className: "exp-selected-head", children: _jsxs("div", { children: [_jsx("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }), _jsxs("span", { className: "exp-selected-sub", children: [selectedJob.id, " \u00B7 ", expJobState(selectedJob.status)] })] }) }), selectedJobSummary && _jsx("p", { className: "exp-result-summary", children: selectedJobSummary }), selectedJobDirections.length > 0 ? (_jsx("div", { className: "exp-job-table-wrap", children: _jsxs("table", { className: "exp-job-table exp-direction-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u65B9\u5411" }), _jsx("th", { children: "\u63CF\u8FF0" }), _jsx("th", { children: "\u9002\u7528\u77E5\u8BC6" }), _jsx("th", { children: "\u8BC1\u636E" }), _jsx("th", { children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { children: selectedJobDirections.map((d) => {
+                                                const evidenceCount = d.evidences?.length ||
+                                                    d.evidenceIds?.length ||
+                                                    Math.min((selectedJob.normal || []).length, 2) + Math.min((selectedJob.defect || []).length, 4);
+                                                return (_jsxs("tr", { role: "button", tabIndex: 0, "data-action": "direction", "data-id": d.id, "aria-label": `查看方向 ${d.title}`, onClick: () => {
+                                                        setViewingDirectionId(d.id);
+                                                        setModal("direction");
+                                                    }, children: [_jsx("td", { className: "exp-direction-name", children: d.title }), _jsx("td", { className: "exp-direction-description", title: d.brief, children: d.brief }), _jsx("td", { children: d.applies }), _jsxs("td", { children: [evidenceCount, " \u5F20"] }), _jsxs("td", { className: "exp-direction-action", onClick: (e) => e.stopPropagation(), children: [_jsx(IconButton, { label: "\u67E5\u770B\u65B9\u5411", title: "\u67E5\u770B\u65B9\u5411", className: "exp-row-icon exp-direction-view-icon exp-view-detail-button icon-button", onClick: () => {
+                                                                        setViewingDirectionId(d.id);
+                                                                        setModal("direction");
+                                                                    }, children: _jsx(DocumentSearchIcon, {}) }), _jsx(IconButton, { label: "\u53BB\u77E5\u8BC6\u6316\u6398", title: "\u7528\u8BE5\u65B9\u5411\u8FDB\u884C\u77E5\u8BC6\u6316\u6398", className: "exp-row-icon exp-direction-mine-icon icon-button plus-action", onClick: () => {
+                                                                        workspace.openLocation({
+                                                                            pageId: "industrial-knowledge",
+                                                                            datasetId: dataset.dataset_id,
+                                                                            knowledgeKind: d.applies === "良品" ? "normal" : "defect",
+                                                                            directionFocus: d.id,
+                                                                            tab: "setup",
+                                                                        });
+                                                                    }, children: _jsx(MineIcon, {}) })] })] }, d.id));
+                                            }) })] }) })) : (_jsx("p", { className: "exp-lead", children: "\u672C\u6B21\u6CA1\u6709\u5F62\u6210\u53EF\u7528\u7684\u5019\u9009\u65B9\u5411\u3002" })), _jsxs("div", { className: "exp-limitations", children: [_jsx("div", { className: "exp-result-section-head", children: _jsx("h3", { children: "\u6574\u4F53\u9650\u5236" }) }), selectedJobLimitations.length ? (_jsx("ol", { children: selectedJobLimitations.map((text, i) => (_jsx("li", { children: text }, i))) })) : (_jsx("p", { className: "exp-lead", children: "\u672C\u6B21\u672A\u8BB0\u5F55\u6574\u4F53\u9650\u5236\u3002" }))] })] }))] })), typeof document !== "undefined" &&
                 createPortal(_jsxs(_Fragment, { children: [modal === "prompt" && promptJobId && (_jsx("div", { className: "exp-modal exp-prompt-overlay", id: "exp-prompt-overlay", role: "presentation", onClick: () => setModal(""), children: _jsxs("aside", { className: "exp-prompt-drawer", role: "dialog", "aria-modal": "true", "aria-labelledby": "exp-prompt-title", tabIndex: -1, onClick: (e) => e.stopPropagation(), children: [_jsxs("div", { className: "exp-prompt-drawer-head", children: [_jsx("h2", { id: "exp-prompt-title", children: "\u63A2\u7D22\u63D0\u793A\u8BCD" }), _jsxs("div", { style: { display: "flex", alignItems: "center", gap: 8 }, children: [_jsx("button", { type: "button", className: "exp-btn small", id: "copy-exp-prompt", onClick: async () => {
                                                             const text = jobs.find((j) => j.id === promptJobId)?.prompt || "本次作业未记录提示词正文。";
                                                             try {
@@ -699,6 +777,6 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
                                                                                         }
                                                                                     } }), _jsx("span", { title: item.filename, children: item.filename })] })] }, item.id));
                                                             }) }), !visible.length && _jsx("p", { className: "exp-lead", children: "\u6CA1\u6709\u7B26\u5408\u6761\u4EF6\u7684\u56FE\u50CF" }), _jsxs("div", { className: "pagination", style: { marginTop: 18 }, children: [_jsx("button", { type: "button", disabled: page === 1, onClick: () => setSourcePage((p) => Math.max(1, p - 1)), children: "\u4E0A\u4E00\u9875" }), _jsxs("span", { children: [page, " / ", totalPages] }), _jsx("button", { type: "button", disabled: page >= totalPages, onClick: () => setSourcePage((p) => p + 1), children: "\u4E0B\u4E00\u9875" }), _jsxs("span", { children: ["\u5171 ", filtered.length, " \u5F20\u56FE\u50CF"] })] })] }));
-                                            })()] }), _jsx("div", { className: "exp-dialog-foot", children: _jsx("button", { type: "button", className: "exp-btn exp-primary", onClick: () => setModal(""), children: "\u5B8C\u6210\u9009\u62E9" }) })] }) })), modal === "direction" && viewingDirectionId && selectedJob && (_jsx(DirectionDetailDialog, { direction: (selectedJob.directions || []).find((x) => x.id === viewingDirectionId) ||
-                                selectedJob.directions?.[0], evidence: currentEvidence, highlightRef: highlightRef, onHighlightRef: setHighlightRef, onChipFocus: handleChipFocus, onOpenFullscreen: handleOpenEvidenceFullscreen, onClose: () => setModal("") })), viewerData && (_jsx(FullscreenViewer, { open: true, item: viewerData.items[viewerData.currentIndex] || null, items: viewerData.items, currentIndex: viewerData.currentIndex, onClose: () => setViewerData(null), onNavigate: (idx) => setViewerData((prev) => (prev ? { ...prev, currentIndex: idx } : null)) }))] }), document.body)] }));
+                                            })()] }), _jsx("div", { className: "exp-dialog-foot", children: _jsx("button", { type: "button", className: "exp-btn exp-primary", onClick: () => setModal(""), children: "\u5B8C\u6210\u9009\u62E9" }) })] }) })), modal === "direction" && viewingDirectionId && selectedJob && (_jsx(DirectionDetailDialog, { direction: selectedJobDirections.find((x) => x.id === viewingDirectionId) ||
+                                selectedJobDirections[0], evidence: currentEvidence, highlightRef: highlightRef, onHighlightRef: setHighlightRef, onChipFocus: handleChipFocus, onOpenFullscreen: handleOpenEvidenceFullscreen, onClose: () => setModal("") })), viewerData && (_jsx(FullscreenViewer, { open: true, item: viewerData.items[viewerData.currentIndex] || null, items: viewerData.items, currentIndex: viewerData.currentIndex, onClose: () => setViewerData(null), onNavigate: (idx) => setViewerData((prev) => (prev ? { ...prev, currentIndex: idx } : null)) }))] }), document.body)] }));
 }

@@ -9779,6 +9779,48 @@ var __IadClientBundle__ = (() => {
     if (status === "PENDING") return /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "exp-pill pending", children: "\u6392\u961F\u4E2D" });
     return /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "exp-pill fail", children: "\u5931\u8D25" });
   }
+  function expJobState(status) {
+    if (status === "PENDING") return "\u6392\u961F\u4E2D";
+    if (status === "RUNNING") return "\u8FD0\u884C\u4E2D";
+    if (status === "COMPLETED") return "\u5DF2\u5B8C\u6210";
+    if (status === "FAILED") return "\u5931\u8D25";
+    return "\u5DF2\u53D6\u6D88";
+  }
+  var defaultDemoDirections = [
+    {
+      id: "edge",
+      title: "\u8FB9\u7F18\u8FC7\u6E21\u4E0E\u5C40\u90E8\u5F62\u6001\u5DEE\u5F02",
+      applies: "\u826F\u54C1\u4E0E\u5F02\u5E38",
+      brief: "\u6BD4\u8F83\u8FB9\u7F18\u8FDE\u7EED\u6027\u3001\u5F62\u72B6\u53D8\u5316\u53CA\u62CD\u6444\u5DEE\u5F02\uFF0C\u68C0\u67E5\u5C40\u90E8\u53D8\u5316\u662F\u5426\u5177\u6709\u91CD\u590D\u6027\u3002",
+      limit: "\u9700\u6392\u9664\u89D2\u5EA6\u4E0E\u5149\u7167\u9020\u6210\u7684\u8FB9\u7F18\u53D8\u5316\u3002",
+      limitations: ["\u9700\u6392\u9664\u89D2\u5EA6\u4E0E\u5149\u7167\u9020\u6210\u7684\u8FB9\u7F18\u53D8\u5316\u3002"],
+      evidenceIds: ["ev-1", "ev-2", "ev-3", "ev-4"]
+    },
+    {
+      id: "texture",
+      title: "\u8868\u9762\u7EB9\u7406\u4E0E\u7EC6\u5C0F\u533A\u57DF\u53D8\u5316",
+      applies: "\u5F02\u5E38",
+      brief: "\u5173\u6CE8\u5C40\u90E8\u7EB9\u7406\u53D8\u5316\u5728\u591A\u5F20\u56FE\u50CF\u4E2D\u662F\u5426\u8868\u73B0\u4E00\u81F4\uFF0C\u4FDD\u7559\u4E0D\u786E\u5B9A\u60C5\u51B5\u3002",
+      limit: "\u5C40\u90E8\u7EB9\u7406\u53EF\u80FD\u7531\u53CD\u5149\u3001\u566A\u58F0\u6216\u56FE\u50CF\u538B\u7F29\u5BFC\u81F4\u3002",
+      limitations: ["\u5C40\u90E8\u7EB9\u7406\u53EF\u80FD\u7531\u53CD\u5149\u3001\u566A\u58F0\u6216\u56FE\u50CF\u538B\u7F29\u5BFC\u81F4\u3002"],
+      evidenceIds: ["ev-2", "ev-4"]
+    },
+    {
+      id: "lighting",
+      title: "\u6210\u50CF\u4EAE\u5EA6\u4E0E\u7ED3\u6784\u4E00\u81F4\u6027",
+      applies: "\u826F\u54C1",
+      brief: "\u8BC6\u522B\u6B63\u5E38\u6837\u4F8B\u4E2D\u7684\u4EAE\u5EA6\u6CE2\u52A8\u3001\u56FA\u5B9A\u7ED3\u6784\u4E0E\u53EF\u5FFD\u7565\u7684\u91C7\u96C6\u504F\u5DEE\u3002",
+      limit: "\u4EC5\u9002\u7528\u4E8E\u5F53\u524D\u6837\u4F8B\u548C\u6210\u50CF\u6761\u4EF6\uFF0C\u4E0D\u80FD\u76F4\u63A5\u63A8\u65AD\u5176\u4ED6\u6279\u6B21\u3002",
+      limitations: ["\u4EC5\u9002\u7528\u4E8E\u5F53\u524D\u6837\u4F8B\u548C\u6210\u50CF\u6761\u4EF6\uFF0C\u4E0D\u80FD\u76F4\u63A5\u63A8\u65AD\u5176\u4ED6\u6279\u6B21\u3002"],
+      evidenceIds: ["ev-1", "ev-3"]
+    }
+  ];
+  var defaultDemoLimitations = [
+    "\u672C\u6B21\u5019\u9009\u4EC5\u57FA\u4E8E\u6240\u9009\u56FE\u50CF\uFF0C\u5C1A\u672A\u9A8C\u8BC1\u5176\u4ED6\u6279\u6B21\u6216\u6210\u50CF\u6761\u4EF6\u3002",
+    "OK/NG \u4EE5\u53CA Labelme \u6807\u6CE8\u53EF\u80FD\u5B58\u5728\u4E0D\u4E00\u81F4\uFF0C\u63A2\u7D22\u65B9\u5411\u4E0D\u80FD\u76F4\u63A5\u4F5C\u4E3A\u8D28\u91CF\u5224\u5B9A\u3002",
+    "\u5C40\u90E8\u7EB9\u7406\u548C\u8FB9\u7F18\u5DEE\u5F02\u53EF\u80FD\u7531\u7167\u660E\u3001\u89D2\u5EA6\u53CA\u53CD\u5149\u5F15\u8D77\uFF0C\u9700\u8981\u5BF9\u7167\u590D\u6838\u3002"
+  ];
+  var defaultDemoSummary = "\u672C\u6B21\u5BF9\u6BD4\u6837\u4F8B\u5F62\u6210\u4E86 3 \u9879\u5F85\u6838\u9A8C\u65B9\u5411\uFF0C\u91CD\u70B9\u5173\u6CE8\u7ED3\u6784\u8FB9\u7F18\u3001\u5C40\u90E8\u7EB9\u7406\u4E0E\u6210\u50CF\u53D8\u5316\u3002";
   var cachedDatasets = null;
   var cachedGroups = null;
   function ExplorationPage({
@@ -10059,6 +10101,24 @@ var __IadClientBundle__ = (() => {
       }
       return shownJobs[0] || null;
     }, [shownJobs, selectedJobId]);
+    const selectedJobDirections = (0, import_react39.useMemo)(() => {
+      if (!selectedJob) return [];
+      if (selectedJob.directions && selectedJob.directions.length > 0) return selectedJob.directions;
+      if (selectedJob.status === "COMPLETED") return defaultDemoDirections;
+      return [];
+    }, [selectedJob]);
+    const selectedJobLimitations = (0, import_react39.useMemo)(() => {
+      if (!selectedJob) return [];
+      if (selectedJob.limitations && selectedJob.limitations.length > 0) return selectedJob.limitations;
+      if (selectedJob.status === "COMPLETED") return defaultDemoLimitations;
+      return [];
+    }, [selectedJob]);
+    const selectedJobSummary = (0, import_react39.useMemo)(() => {
+      if (!selectedJob) return "";
+      if (selectedJob.summary) return selectedJob.summary;
+      if (selectedJob.status === "COMPLETED") return defaultDemoSummary;
+      return "";
+    }, [selectedJob]);
     const handleJobPageChange = (newPage) => {
       const targetPage = Math.max(1, Math.min(jobPages, newPage));
       setJobPage(targetPage);
@@ -10600,7 +10660,11 @@ var __IadClientBundle__ = (() => {
           ] }) : selectedJob.status === "PENDING" || selectedJob.status === "RUNNING" ? /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u6267\u884C\u9636\u6BB5", children: [
             /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("div", { className: "exp-selected-head", children: /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("h2", { children: "\u8FD0\u884C\u72B6\u6001" }),
-              /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "exp-selected-sub", children: selectedJob.id })
+              /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { className: "exp-selected-sub", children: [
+                selectedJob.id,
+                " \xB7 ",
+                expJobState(selectedJob.status)
+              ] })
             ] }) }),
             /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { className: "exp-job-current-title", style: { margin: "0 0 17px" }, children: [
               /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: `exp-pill ${selectedJob.status === "PENDING" ? "pending" : "running"}`, children: selectedJob.status === "PENDING" ? "\u6392\u961F\u4E2D" : "\u8FD0\u884C\u4E2D" }),
@@ -10619,7 +10683,11 @@ var __IadClientBundle__ = (() => {
           ] }) : selectedJob.status === "FAILED" ? /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u9519\u8BEF\u4FE1\u606F", children: [
             /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("div", { className: "exp-selected-head", children: /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("h2", { children: "\u4F5C\u4E1A\u5931\u8D25" }),
-              /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "exp-selected-sub", children: selectedJob.id })
+              /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { className: "exp-selected-sub", children: [
+                selectedJob.id,
+                " \xB7 ",
+                expJobState(selectedJob.status)
+              ] })
             ] }) }),
             /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("p", { className: "exp-error-message", children: selectedJob.error || "\u4EFB\u52A1\u672A\u6210\u529F\u5B8C\u6210\uFF0C\u672A\u751F\u6210\u63A2\u7D22\u7ED3\u679C\u3002" }),
             /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("p", { className: "exp-lead", children: "\u672C\u6B21\u4F5C\u4E1A\u6CA1\u6709\u53EF\u7528\u7684\u5019\u9009\u65B9\u5411\u6216\u6574\u4F53\u9650\u5236\u3002" }),
@@ -10641,80 +10709,85 @@ var __IadClientBundle__ = (() => {
           ] }) : /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u63A2\u7D22\u7ED3\u679C", children: [
             /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("div", { className: "exp-selected-head", children: /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }),
-              /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "exp-selected-sub", children: selectedJob.id })
+              /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("span", { className: "exp-selected-sub", children: [
+                selectedJob.id,
+                " \xB7 ",
+                expJobState(selectedJob.status)
+              ] })
             ] }) }),
-            selectedJob.summary && /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("p", { className: "exp-result-summary", children: selectedJob.summary }),
-            /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("div", { className: "exp-result-section-head", children: /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("h3", { children: "\u5019\u9009\u65B9\u5411" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("div", { className: "exp-job-table-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("table", { className: "exp-job-table exp-direction-table", children: [
+            selectedJobSummary && /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("p", { className: "exp-result-summary", children: selectedJobSummary }),
+            selectedJobDirections.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("div", { className: "exp-job-table-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("table", { className: "exp-job-table exp-direction-table", children: [
               /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("tr", { children: [
                 /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("th", { children: "\u65B9\u5411" }),
+                /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("th", { children: "\u63CF\u8FF0" }),
                 /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("th", { children: "\u9002\u7528\u77E5\u8BC6" }),
                 /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("th", { children: "\u8BC1\u636E" }),
                 /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("th", { children: "\u64CD\u4F5C" })
               ] }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("tbody", { children: selectedJob.directions && selectedJob.directions.length > 0 ? selectedJob.directions.map((d) => /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)(
-                "tr",
-                {
-                  role: "button",
-                  tabIndex: 0,
-                  "data-action": "direction",
-                  "data-id": d.id,
-                  "aria-label": `\u67E5\u770B\u65B9\u5411 ${d.title}`,
-                  onClick: () => {
-                    setViewingDirectionId(d.id);
-                    setModal("direction");
+              /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("tbody", { children: selectedJobDirections.map((d) => {
+                const evidenceCount = d.evidences?.length || d.evidenceIds?.length || Math.min((selectedJob.normal || []).length, 2) + Math.min((selectedJob.defect || []).length, 4);
+                return /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)(
+                  "tr",
+                  {
+                    role: "button",
+                    tabIndex: 0,
+                    "data-action": "direction",
+                    "data-id": d.id,
+                    "aria-label": `\u67E5\u770B\u65B9\u5411 ${d.title}`,
+                    onClick: () => {
+                      setViewingDirectionId(d.id);
+                      setModal("direction");
+                    },
+                    children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("td", { className: "exp-direction-name", children: d.title }),
+                      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("td", { className: "exp-direction-description", title: d.brief, children: d.brief }),
+                      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("td", { children: d.applies }),
+                      /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("td", { children: [
+                        evidenceCount,
+                        " \u5F20"
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("td", { className: "exp-direction-action", onClick: (e) => e.stopPropagation(), children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(
+                          IconButton,
+                          {
+                            label: "\u67E5\u770B\u65B9\u5411",
+                            title: "\u67E5\u770B\u65B9\u5411",
+                            className: "exp-row-icon exp-direction-view-icon exp-view-detail-button icon-button",
+                            onClick: () => {
+                              setViewingDirectionId(d.id);
+                              setModal("direction");
+                            },
+                            children: /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(DocumentSearchIcon, {})
+                          }
+                        ),
+                        /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(
+                          IconButton,
+                          {
+                            label: "\u53BB\u77E5\u8BC6\u6316\u6398",
+                            title: "\u7528\u8BE5\u65B9\u5411\u8FDB\u884C\u77E5\u8BC6\u6316\u6398",
+                            className: "exp-row-icon exp-direction-mine-icon icon-button plus-action",
+                            onClick: () => {
+                              workspace.openLocation({
+                                pageId: "industrial-knowledge",
+                                datasetId: dataset.dataset_id,
+                                knowledgeKind: d.applies === "\u826F\u54C1" ? "normal" : "defect",
+                                directionFocus: d.id,
+                                tab: "setup"
+                              });
+                            },
+                            children: /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(MineIcon, {})
+                          }
+                        )
+                      ] })
+                    ]
                   },
-                  children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("td", { children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("strong", { className: "exp-row-title", children: d.title }),
-                      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "exp-row-info", children: d.brief })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("td", { children: d.applies }),
-                    /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("td", { children: [
-                      d.evidences?.length || d.evidenceIds?.length || Math.min(selectedJob.normal.length, 2) + Math.min(selectedJob.defect.length, 4),
-                      " \u5F20"
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("td", { className: "exp-direction-action", onClick: (e) => e.stopPropagation(), children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(
-                        IconButton,
-                        {
-                          label: "\u67E5\u770B\u65B9\u5411",
-                          title: "\u67E5\u770B\u65B9\u5411",
-                          className: "exp-row-icon exp-direction-view-icon exp-view-detail-button icon-button",
-                          onClick: () => {
-                            setViewingDirectionId(d.id);
-                            setModal("direction");
-                          },
-                          children: /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(DocumentSearchIcon, {})
-                        }
-                      ),
-                      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(
-                        IconButton,
-                        {
-                          label: "\u53BB\u77E5\u8BC6\u6316\u6398",
-                          title: "\u7528\u8BE5\u65B9\u5411\u8FDB\u884C\u77E5\u8BC6\u6316\u6398",
-                          className: "exp-row-icon exp-direction-mine-icon icon-button plus-action",
-                          onClick: () => {
-                            workspace.openLocation({
-                              pageId: "industrial-knowledge",
-                              datasetId: dataset.dataset_id,
-                              knowledgeKind: d.applies === "\u826F\u54C1" ? "normal" : "defect",
-                              directionFocus: d.id,
-                              tab: "setup"
-                            });
-                          },
-                          children: /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(MineIcon, {})
-                        }
-                      )
-                    ] })
-                  ]
-                },
-                d.id
-              )) : /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("tr", { children: /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("td", { colSpan: 4, style: { textAlign: "center", padding: "28px 16px", color: "#64748b" }, children: "\u672C\u6B21\u4F5C\u4E1A\u672A\u751F\u6210\u5019\u9009\u65B9\u5411" }) }) })
-            ] }) }),
+                  d.id
+                );
+              }) })
+            ] }) }) : /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("p", { className: "exp-lead", children: "\u672C\u6B21\u6CA1\u6709\u5F62\u6210\u53EF\u7528\u7684\u5019\u9009\u65B9\u5411\u3002" }),
             /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { className: "exp-limitations", children: [
               /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("div", { className: "exp-result-section-head", children: /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("h3", { children: "\u6574\u4F53\u9650\u5236" }) }),
-              selectedJob.limitations?.length ? /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("ol", { children: selectedJob.limitations.map((text, i) => /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("li", { children: text }, i)) }) : /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("p", { className: "exp-lead", children: "\u672C\u6B21\u672A\u8BB0\u5F55\u6574\u4F53\u9650\u5236\u3002" })
+              selectedJobLimitations.length ? /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("ol", { children: selectedJobLimitations.map((text, i) => /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("li", { children: text }, i)) }) : /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("p", { className: "exp-lead", children: "\u672C\u6B21\u672A\u8BB0\u5F55\u6574\u4F53\u9650\u5236\u3002" })
             ] })
           ] })
         ] })
@@ -10997,7 +11070,7 @@ var __IadClientBundle__ = (() => {
           modal === "direction" && viewingDirectionId && selectedJob && /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(
             DirectionDetailDialog,
             {
-              direction: (selectedJob.directions || []).find((x) => x.id === viewingDirectionId) || selectedJob.directions?.[0],
+              direction: selectedJobDirections.find((x) => x.id === viewingDirectionId) || selectedJobDirections[0],
               evidence: currentEvidence,
               highlightRef,
               onHighlightRef: setHighlightRef,
@@ -13423,6 +13496,20 @@ var __IadClientBundle__ = (() => {
   .iba-job-pager{justify-content:flex-start;padding:11px 12px;gap:6px}
   .iba-job-pager .iba-job-total{margin-left:auto}
 }
+
+/* V51 Direction result: 5-column table (\u65B9\u5411 25%, \u63CF\u8FF0 39%, \u9002\u7528\u77E5\u8BC6 14%, \u8BC1\u636E 10%, \u64CD\u4F5C 12%) */
+.exp-selected-result .exp-direction-table{width:100%!important;table-layout:fixed!important;min-width:850px!important}
+.exp-selected-result .exp-direction-table th:nth-child(1){width:25%!important}
+.exp-selected-result .exp-direction-table th:nth-child(2){width:39%!important}
+.exp-selected-result .exp-direction-table th:nth-child(3){width:14%!important}
+.exp-selected-result .exp-direction-table th:nth-child(4){width:10%!important}
+.exp-selected-result .exp-direction-table th:nth-child(5){width:12%!important;text-align:right!important}
+.exp-selected-result .exp-direction-table td{font-weight:400!important;color:var(--iba-v50-ink, #172338)!important;vertical-align:middle!important}
+.exp-selected-result .exp-direction-table td.exp-direction-description{white-space:normal!important;overflow-wrap:anywhere!important;line-height:1.6!important}
+.exp-selected-result .exp-direction-table td.exp-direction-name{white-space:normal!important;overflow-wrap:anywhere!important}
+.exp-selected-result .exp-direction-table th:nth-child(5),.exp-selected-result .exp-direction-table td:last-child{white-space:nowrap!important;text-align:right!important}
+.exp-result-section-head:empty{display:none!important}
+
 
 
 `;
@@ -17895,7 +17982,7 @@ button.exp-ghost:hover,
 :is(.exp-job-table .exp-row-title, .exp-job-dataset, .exp-job-dataset *,
     .kb-v45 .jobtitle, .kb-v45 .knowledge-entry-name, .kb-v45 .knowledge-entry-description,
     .dc-table .dc-mono, .dc-table .dc-job-datasets, .dc-card-caption strong,
-    #images-page .card-name, .exp-job-table td, .dc-table td, .dc-grid .dc-card-caption,
+    #images-page .card-name, .exp-job-table td:not(:has(.exp-pill)), .dc-table td:not(:has(.exp-pill)):not(:has(.dc-state)), .dc-grid .dc-card-caption,
     .kb-v45 .jobs-table td, .kb-v45 .knowledge-row, .name-text) {
   font-family: var(--iba-unified-font) !important;
   font-weight: 400 !important;
@@ -17903,26 +17990,46 @@ button.exp-ghost:hover,
   font-size: 13px !important;
 }
 
-/* Status pills retain their established semantic status colors */
+/* Status pills retain their established semantic status colors and subtle backgrounds */
 :is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) :is(
-  .exp-pill.ok, .exp-pill.completed, .dc-state.completed, .kb-v45 .status.green, .status.ok, .status.green
+  .exp-pill, .dc-state.exp-pill
+) {
+  display: inline-block !important;
+  border-radius: 4px !important;
+  padding: 3px 8px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 1.4 !important;
+}
+:is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) :is(
+  .exp-pill.ok, .exp-pill.completed, .dc-state.ok, .dc-state.completed, .kb-v45 .status.green, .status.ok, .status.green
 ) {
   color: #177b53 !important;
+  background-color: #e8f5ee !important;
 }
 :is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) :is(
-  .exp-pill.fail, .exp-pill.failed, .dc-state.failed, .kb-v45 .status.red, .status.fail, .status.red
+  .exp-pill.fail, .exp-pill.failed, .dc-state.fail, .dc-state.failed, .kb-v45 .status.red, .status.fail, .status.red
 ) {
   color: #b23c43 !important;
+  background-color: #ffedf0 !important;
 }
 :is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) :is(
-  .exp-pill.running, .exp-pill.pending, .dc-state.running, .kb-v45 .status.amber, .status.running, .status.pending
+  .exp-pill.running, .dc-state.running, .kb-v45 .status.blue, .status.running
 ) {
   color: #285ed6 !important;
+  background-color: #e9f0ff !important;
+}
+:is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) :is(
+  .exp-pill.pending, .dc-state.pending, .kb-v45 .status.amber, .status.pending
+) {
+  color: #8e6d24 !important;
+  background-color: #fff5df !important;
 }
 :is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) :is(
   .status.gray, .exp-pill.draft, .kb-v45 .status.gray
 ) {
   color: #526174 !important;
+  background-color: #eef2f7 !important;
 }
 
 /* Table headers & structural labels: bold and dark (#172338) */
@@ -20217,14 +20324,14 @@ button.exp-ghost:hover,
 
   // src/client/components/ConsistencyPage.tsx
   var import_jsx_runtime63 = __require("react/jsx-runtime");
-  var statusText = {
-    COMPLETED: "\u5DF2\u5B8C\u6210",
-    RUNNING: "\u8FD0\u884C\u4E2D",
-    FAILED: "\u5931\u8D25",
-    PENDING: "\u6392\u961F\u4E2D",
-    PARTIAL: "\u90E8\u5206\u5B8C\u6210",
-    CANCELLED: "\u5DF2\u53D6\u6D88"
-  };
+  function dcJobBadge(status) {
+    const s = (status || "").toUpperCase();
+    if (s === "COMPLETED") return /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-state exp-pill ok", children: "\u5DF2\u5B8C\u6210" });
+    if (s === "PARTIAL") return /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-state exp-pill ok", children: "\u90E8\u5206\u5B8C\u6210" });
+    if (s === "RUNNING") return /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-state exp-pill running", children: "\u8FD0\u884C\u4E2D" });
+    if (s === "PENDING") return /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-state exp-pill pending", children: "\u6392\u961F\u4E2D" });
+    return /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-state exp-pill fail", children: "\u5931\u8D25" });
+  }
   var dcJobConflictTotal = (j) => (j.status === "COMPLETED" || j.status === "PARTIAL") && typeof j.conflict_count === "number" && Number.isFinite(j.conflict_count) && j.conflict_count >= 0 ? String(j.conflict_count) : "\u2014";
   var dcJobElapsed = (j) => {
     const sec = j.duration_seconds;
@@ -21261,7 +21368,7 @@ button.exp-ghost:hover,
                     },
                     children: [
                       /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { className: "dc-mono", children: j.batch_id }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: `dc-state ${j.status.toLowerCase()}`, children: statusText[j.status] || j.status }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { children: dcJobBadge(j.status) }),
                       /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { className: "dc-job-datasets", title: childNames, children: childNames || "\u5168\u90E8" }),
                       /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
                         "td",

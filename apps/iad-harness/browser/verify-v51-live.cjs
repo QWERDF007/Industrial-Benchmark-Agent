@@ -161,6 +161,36 @@ async function run() {
     const restoredRows = await driver.findElements(By.css(".exp-job-table tbody tr"));
     chk(expSearchVal === "" && restoredRows.length >= initialRows.length, "方向探索清除筛选后重置输入并恢复全部作业");
 
+    // Verify exploration result panel (5-column candidate directions table aligned with prototype)
+    const selectedSub = await driver.wait(until.elementLocated(By.css(".exp-selected-sub")), 5000);
+    const subText = await selectedSub.getText();
+    chk(subText.includes("·"), `方向探索所选作业副标题包含状态信息 (实际: ${subText})`);
+
+    const noCandidateHeading = (await driver.findElements(By.xpath('//h3[text()="候选方向"]'))).length === 0;
+    chk(noCandidateHeading, "方向探索移除了多余的候选方向小标题");
+
+    const directionTable = await driver.wait(until.elementLocated(By.css(".exp-direction-table")), 5000);
+    const directionThs = await directionTable.findElements(By.css("thead th"));
+    chk(directionThs.length === 5, `探索结果方向表格为标准的5列结构 (实际: ${directionThs.length}列)`);
+    const thTexts = await Promise.all(directionThs.map(th => th.getText()));
+    chk(
+      thTexts[0].includes("方向") &&
+      thTexts[1].includes("描述") &&
+      thTexts[2].includes("适用知识") &&
+      thTexts[3].includes("证据") &&
+      thTexts[4].includes("操作"),
+      `探索结果方向表格表头完全对齐HTML原型 (实际: ${thTexts.join(" | ")})`
+    );
+
+    const directionRows = await directionTable.findElements(By.css("tbody tr"));
+    chk(directionRows.length >= 1, `探索结果成功展示候选方向 (行数: ${directionRows.length})`);
+    const firstDirTds = await directionRows[0].findElements(By.css("td"));
+    chk(firstDirTds.length === 5, "候选方向行具有独立的5个单元格");
+
+    const viewDetailBtn = await firstDirTds[4].findElement(By.css(".exp-view-detail-button"));
+    const mineBtn = await firstDirTds[4].findElement(By.css(".exp-direction-mine-icon"));
+    chk(Boolean(viewDetailBtn && mineBtn), "候选方向操作列具有独立的查看方向与去知识挖掘按钮");
+
     const scrExp = await driver.takeScreenshot();
     fs.writeFileSync(path.join(ARTIFACT_DIR, "v51_live_02_exploration.png"), Buffer.from(scrExp, "base64"));
 
@@ -226,6 +256,13 @@ async function run() {
     // Select a completed job row in consistency table to display conflict results
     const dcRows = await driver.findElements(By.css(".dc-table tbody tr"));
     chk(dcRows.length > 0, "数据一致性作业列表已加载");
+
+    // Verify consistency job status has colored pill text matching exploration (.exp-pill)
+    const dcStatusPills = await dcRows[0].findElements(By.css(".exp-pill"));
+    chk(dcStatusPills.length > 0, "检查作业状态使用统一的 .exp-pill 胶囊标签");
+    const dcPillColor = await dcStatusPills[0].getCssValue("color");
+    chk(dcPillColor !== "rgb(23, 35, 56)", `检查作业状态带有语义状态文字颜色 (实际: ${dcPillColor})`);
+
     await driver.executeScript("arguments[0].click();", dcRows[0]);
     await driver.sleep(1500);
 

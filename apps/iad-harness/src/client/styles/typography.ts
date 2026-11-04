@@ -343,7 +343,7 @@ export const typographyStyles = `
 :is(.exp-job-table .exp-row-title, .exp-job-dataset, .exp-job-dataset *,
     .kb-v45 .jobtitle, .kb-v45 .knowledge-entry-name, .kb-v45 .knowledge-entry-description,
     .dc-table .dc-mono, .dc-table .dc-job-datasets, .dc-card-caption strong,
-    #images-page .card-name, .exp-job-table td, .dc-table td, .dc-grid .dc-card-caption,
+    #images-page .card-name, .exp-job-table td:not(:has(.exp-pill)), .dc-table td:not(:has(.exp-pill)):not(:has(.dc-state)), .dc-grid .dc-card-caption,
     .kb-v45 .jobs-table td, .kb-v45 .knowledge-row, .name-text) {
   font-family: var(--iba-unified-font) !important;
   font-weight: 400 !important;
@@ -351,26 +351,46 @@ export const typographyStyles = `
   font-size: 13px !important;
 }
 
-/* Status pills retain their established semantic status colors */
+/* Status pills retain their established semantic status colors and subtle backgrounds */
 :is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) :is(
-  .exp-pill.ok, .exp-pill.completed, .dc-state.completed, .kb-v45 .status.green, .status.ok, .status.green
+  .exp-pill, .dc-state.exp-pill
+) {
+  display: inline-block !important;
+  border-radius: 4px !important;
+  padding: 3px 8px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 1.4 !important;
+}
+:is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) :is(
+  .exp-pill.ok, .exp-pill.completed, .dc-state.ok, .dc-state.completed, .kb-v45 .status.green, .status.ok, .status.green
 ) {
   color: #177b53 !important;
+  background-color: #e8f5ee !important;
 }
 :is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) :is(
-  .exp-pill.fail, .exp-pill.failed, .dc-state.failed, .kb-v45 .status.red, .status.fail, .status.red
+  .exp-pill.fail, .exp-pill.failed, .dc-state.fail, .dc-state.failed, .kb-v45 .status.red, .status.fail, .status.red
 ) {
   color: #b23c43 !important;
+  background-color: #ffedf0 !important;
 }
 :is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) :is(
-  .exp-pill.running, .exp-pill.pending, .dc-state.running, .kb-v45 .status.amber, .status.running, .status.pending
+  .exp-pill.running, .dc-state.running, .kb-v45 .status.blue, .status.running
 ) {
   color: #285ed6 !important;
+  background-color: #e9f0ff !important;
+}
+:is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) :is(
+  .exp-pill.pending, .dc-state.pending, .kb-v45 .status.amber, .status.pending
+) {
+  color: #8e6d24 !important;
+  background-color: #fff5df !important;
 }
 :is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) :is(
   .status.gray, .exp-pill.draft, .kb-v45 .status.gray
 ) {
   color: #526174 !important;
+  background-color: #eef2f7 !important;
 }
 
 /* Table headers & structural labels: bold and dark (#172338) */

@@ -80,6 +80,15 @@ const statusText: Record<string, string> = {
   CANCELLED: '已取消'
 };
 
+function dcJobBadge(status: string) {
+  const s = (status || '').toUpperCase();
+  if (s === 'COMPLETED') return <span className="dc-state exp-pill ok">已完成</span>;
+  if (s === 'PARTIAL') return <span className="dc-state exp-pill ok">部分完成</span>;
+  if (s === 'RUNNING') return <span className="dc-state exp-pill running">运行中</span>;
+  if (s === 'PENDING') return <span className="dc-state exp-pill pending">排队中</span>;
+  return <span className="dc-state exp-pill fail">失败</span>;
+}
+
 // V39: The job-list count is the unfiltered, raw conflict group count for that job.
 // Do not substitute the currently filtered grid count or model-confirmed count.
 const dcJobConflictTotal = (j: ConsistencyBatchSummary) =>
@@ -1327,9 +1336,7 @@ function ConsistencyIntegratedWorkspace() {
                         >
                           <td className="dc-mono">{j.batch_id}</td>
                           <td>
-                            <span className={`dc-state ${j.status.toLowerCase()}`}>
-                              {statusText[j.status] || j.status}
-                            </span>
+                            {dcJobBadge(j.status)}
                           </td>
                           <td className="dc-job-datasets" title={childNames}>
                             {childNames || '全部'}

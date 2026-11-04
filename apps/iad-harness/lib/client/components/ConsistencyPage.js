@@ -19,6 +19,18 @@ const statusText = {
     PARTIAL: '部分完成',
     CANCELLED: '已取消'
 };
+function dcJobBadge(status) {
+    const s = (status || '').toUpperCase();
+    if (s === 'COMPLETED')
+        return _jsx("span", { className: "dc-state exp-pill ok", children: "\u5DF2\u5B8C\u6210" });
+    if (s === 'PARTIAL')
+        return _jsx("span", { className: "dc-state exp-pill ok", children: "\u90E8\u5206\u5B8C\u6210" });
+    if (s === 'RUNNING')
+        return _jsx("span", { className: "dc-state exp-pill running", children: "\u8FD0\u884C\u4E2D" });
+    if (s === 'PENDING')
+        return _jsx("span", { className: "dc-state exp-pill pending", children: "\u6392\u961F\u4E2D" });
+    return _jsx("span", { className: "dc-state exp-pill fail", children: "\u5931\u8D25" });
+}
 // V39: The job-list count is the unfiltered, raw conflict group count for that job.
 // Do not substitute the currently filtered grid count or model-confirmed count.
 const dcJobConflictTotal = (j) => (j.status === 'COMPLETED' || j.status === 'PARTIAL') &&
@@ -1035,7 +1047,7 @@ function ConsistencyIntegratedWorkspace() {
                                                         return (_jsxs("tr", { tabIndex: 0, "data-dc-row": j.batch_id, "data-selected": isSelected, "aria-selected": isSelected, onClick: () => selectJob(j.batch_id), onKeyDown: e => {
                                                                 if (e.key === 'Enter' || e.key === ' ')
                                                                     selectJob(j.batch_id);
-                                                            }, children: [_jsx("td", { className: "dc-mono", children: j.batch_id }), _jsx("td", { children: _jsx("span", { className: `dc-state ${j.status.toLowerCase()}`, children: statusText[j.status] || j.status }) }), _jsx("td", { className: "dc-job-datasets", title: childNames, children: childNames || '全部' }), _jsx("td", { className: `dc-total ${hasConflicts ? 'dc-has-conflicts' : ''}`, title: "\u539F\u59CB\u68C0\u67E5\u68C0\u6D4B\u51FA\u7684\u51B2\u7A81\u56FE\u7EC4\u6570", children: dcJobConflictTotal(j) }), _jsx("td", { className: "dc-time", children: timeStr }), _jsx("td", { className: "dc-elapsed dc-mono", children: dcJobElapsed(j) }), _jsxs("td", { className: "dc-operations", onClick: e => e.stopPropagation(), children: [_jsx("button", { type: "button", className: "dc-icn", title: "\u67E5\u770B\u7EDF\u8BA1\u7ED3\u679C", "aria-label": "\u67E5\u770B\u7EDF\u8BA1\u7ED3\u679C", "data-dc": "stats", "data-id": j.batch_id, disabled: j.status !== 'COMPLETED' && j.status !== 'PARTIAL', onClick: () => {
+                                                            }, children: [_jsx("td", { className: "dc-mono", children: j.batch_id }), _jsx("td", { children: dcJobBadge(j.status) }), _jsx("td", { className: "dc-job-datasets", title: childNames, children: childNames || '全部' }), _jsx("td", { className: `dc-total ${hasConflicts ? 'dc-has-conflicts' : ''}`, title: "\u539F\u59CB\u68C0\u67E5\u68C0\u6D4B\u51FA\u7684\u51B2\u7A81\u56FE\u7EC4\u6570", children: dcJobConflictTotal(j) }), _jsx("td", { className: "dc-time", children: timeStr }), _jsx("td", { className: "dc-elapsed dc-mono", children: dcJobElapsed(j) }), _jsxs("td", { className: "dc-operations", onClick: e => e.stopPropagation(), children: [_jsx("button", { type: "button", className: "dc-icn", title: "\u67E5\u770B\u7EDF\u8BA1\u7ED3\u679C", "aria-label": "\u67E5\u770B\u7EDF\u8BA1\u7ED3\u679C", "data-dc": "stats", "data-id": j.batch_id, disabled: j.status !== 'COMPLETED' && j.status !== 'PARTIAL', onClick: () => {
                                                                                 setSelectedJobId(j.batch_id);
                                                                                 setStatsModalJobId(j.batch_id);
                                                                             }, children: _jsx(StatsIcon, { size: 17 }) }), _jsx("button", { type: "button", className: "dc-icn", title: "\u5220\u9664\u4F5C\u4E1A", "aria-label": "\u5220\u9664\u4F5C\u4E1A", "data-dc": "delete", "data-id": j.batch_id, onClick: () => setModal(`delete:${j.batch_id}`), children: _jsx(DeleteIcon, {}) })] })] }, j.batch_id));
