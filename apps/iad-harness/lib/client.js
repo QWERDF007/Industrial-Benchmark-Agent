@@ -9160,7 +9160,7 @@ var __IadClientBundle__ = (() => {
                     (() => {
                       if (dir.rationale) {
                         const fullText = dir.rationale;
-                        const regex = /(img_[a-f0-9]{8,64}|[NA]\d+)/g;
+                        const regex = /(img_[a-f0-9]{8,64}|(?:良品\s*)?N\d+|(?:异常\s*)?A\d+)/g;
                         const parts = [];
                         let lastIndex = 0;
                         let match;
@@ -9169,8 +9169,9 @@ var __IadClientBundle__ = (() => {
                             parts.push(fullText.slice(lastIndex, match.index));
                           }
                           const token = match[0];
+                          const cleanRef = token.replace(/[^NA0-9]/g, "");
                           const matchedEv = evidence.all.find(
-                            (e) => e.evidenceId.startsWith(token) || token.startsWith(e.evidenceId.slice(0, 8)) || e.ref === token
+                            (e) => e.evidenceId.startsWith(token) || token.startsWith(e.evidenceId.slice(0, 8)) || e.sampleId && (e.sampleId.startsWith(token) || token.startsWith(e.sampleId.slice(0, 8))) || e.filename && (e.filename.includes(token) || token.includes(e.filename)) || e.ref === token || e.ref === cleanRef || e.label === token
                           );
                           if (matchedEv) {
                             parts.push(
@@ -9181,6 +9182,7 @@ var __IadClientBundle__ = (() => {
                                   className: `exp-evidence-ref ${highlightRef === matchedEv.ref ? "is-related" : ""}`,
                                   "data-evidence-ref": matchedEv.ref,
                                   "aria-label": `\u5B9A\u4F4D\u8BC1\u636E\u56FE\u50CF ${matchedEv.label}`,
+                                  title: `${matchedEv.label} (${token.startsWith("img_") ? token : matchedEv.filename})`,
                                   onMouseEnter: () => handleChipClick(matchedEv.ref),
                                   onMouseLeave: () => onHighlightRef(null),
                                   onClick: () => handleChipClick(matchedEv.ref),
@@ -9982,8 +9984,8 @@ var __IadClientBundle__ = (() => {
           const catalogExp = catRes?.exploration;
           const catalogVersions = catRes?.versions || [];
           rawJobs.forEach((bj) => {
-            const normalList = (bj.normal_sources || []).map((s) => s.sample_id || s);
-            const defectList = (bj.defect_sources || []).map((s) => s.sample_id || s);
+            const normalList = (catalogExp?.normal_sources || bj.normal_sources || bj.request?.normal_sources || []).map((s) => s.sample_id || s);
+            const defectList = (catalogExp?.defect_sources || bj.defect_sources || bj.request?.defect_sources || []).map((s) => s.sample_id || s);
             const elapsedSec = bj.started_at && bj.finished_at ? Math.max(1, Math.round((new Date(bj.finished_at).getTime() - new Date(bj.started_at).getTime()) / 1e3)) : bj.started_at ? Math.max(1, Math.round((Date.now() - new Date(bj.started_at).getTime()) / 1e3)) : bj.elapsed || 0;
             const promptText = typeof bj.exploration_prompt === "object" ? bj.exploration_prompt?.text || "" : typeof bj.exploration_prompt === "string" ? bj.exploration_prompt : bj.instruction || "";
             const presetName = typeof bj.exploration_prompt === "object" ? bj.exploration_prompt?.preset_id || "contrast" : "contrast";
@@ -10002,10 +10004,24 @@ var __IadClientBundle__ = (() => {
                 const evItems = [];
                 let nIdx = 0;
                 let aIdx = 0;
-                (d.evidence_ids || []).forEach((eid) => {
+                const evidenceIdSet = new Set(d.evidence_ids || []);
+                if (d.rationale) {
+                  const matches2 = d.rationale.match(/img_[a-f0-9]{8,64}/g);
+                  if (matches2) {
+                    for (const m of matches2) {
+                      for (const fullEid of evMap.keys()) {
+                        if (fullEid.startsWith(m) || m.startsWith(fullEid.slice(0, 8))) {
+                          evidenceIdSet.add(fullEid);
+                          break;
+                        }
+                      }
+                    }
+                  }
+                }
+                evidenceIdSet.forEach((eid) => {
                   const ev = evMap.get(eid);
                   const sid = ev ? ev.sample_id : "";
-                  const isNorm = ev?.role === "normal" || ev?.role === "good" || normalList.includes(sid) || sid.toLowerCase().includes("ok") || sid.toLowerCase().includes("pass") || sid.toLowerCase().includes("good");
+                  const isNorm = normalList.includes(sid) || ev?.role === "normal" || ev?.role === "good" || ev?.image?.role === "normal" || ev?.image?.role === "good" || sid.toLowerCase().includes("ok") || sid.toLowerCase().includes("pass") || sid.toLowerCase().includes("good");
                   const ref = isNorm ? `N${++nIdx}` : `A${++aIdx}`;
                   const label = isNorm ? `\u826F\u54C1 ${ref}` : `\u5F02\u5E38 ${ref}`;
                   const dsId = sid.includes(":") ? sid.split(":")[0] : bj.dataset_id;
@@ -10028,7 +10044,7 @@ var __IadClientBundle__ = (() => {
                   applies: appliesStr,
                   brief: d.instruction || "",
                   rationale: d.rationale || "",
-                  evidenceIds: d.evidence_ids || [],
+                  evidenceIds: Array.from(evidenceIdSet),
                   limit: d.limitations && d.limitations[0] || "",
                   limitations: d.limitations || [],
                   evidences: evItems
@@ -10251,40 +10267,37 @@ var __IadClientBundle__ = (() => {
     const getJobEvidence = (job, dirId) => {
       if (!job) return { normals: [], defects: [], all: [] };
       const dir = job.directions?.find((d) => d.id === dirId) || job.directions?.[0];
-      let normals = dir?.evidences ? dir.evidences.filter((e) => e.kind === "normal").slice(0, 2) : [];
-      let defects = dir?.evidences ? dir.evidences.filter((e) => e.kind === "defect").slice(0, 4) : [];
-      if (normals.length < 2) {
-        const fallbackNormals = (job.normal || []).slice(0, 2).map((id, i) => {
-          const info = getImageInfo(id, "normal");
-          return {
-            evidenceId: id,
-            sampleId: id,
-            ref: `N${i + 1}`,
-            label: `\u826F\u54C1 N${i + 1}`,
-            kind: "normal",
-            url: info.url,
-            fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
-            filename: info.filename
-          };
-        });
-        normals = fallbackNormals.length >= normals.length ? fallbackNormals : normals;
+      if (dir?.evidences && dir.evidences.length > 0) {
+        const normals2 = dir.evidences.filter((e) => e.kind === "normal");
+        const defects2 = dir.evidences.filter((e) => e.kind === "defect");
+        return { normals: normals2, defects: defects2, all: dir.evidences };
       }
-      if (defects.length < 4) {
-        const fallbackDefects = (job.defect || []).slice(0, 4).map((id, i) => {
-          const info = getImageInfo(id, "defect");
-          return {
-            evidenceId: id,
-            sampleId: id,
-            ref: `A${i + 1}`,
-            label: `\u5F02\u5E38 A${i + 1}`,
-            kind: "defect",
-            url: info.url,
-            fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
-            filename: info.filename
-          };
-        });
-        defects = fallbackDefects.length >= defects.length ? fallbackDefects : defects;
-      }
+      const normals = (job.normal || []).slice(0, 2).map((id, i) => {
+        const info = getImageInfo(id, "normal");
+        return {
+          evidenceId: id,
+          sampleId: id,
+          ref: `N${i + 1}`,
+          label: `\u826F\u54C1 N${i + 1}`,
+          kind: "normal",
+          url: info.url,
+          fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
+          filename: info.filename
+        };
+      });
+      const defects = (job.defect || []).slice(0, 4).map((id, i) => {
+        const info = getImageInfo(id, "defect");
+        return {
+          evidenceId: id,
+          sampleId: id,
+          ref: `A${i + 1}`,
+          label: `\u5F02\u5E38 A${i + 1}`,
+          kind: "defect",
+          url: info.url,
+          fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
+          filename: info.filename
+        };
+      });
       return { normals, defects, all: [...normals, ...defects] };
     };
     const currentEvidence = getJobEvidence(selectedJob, viewingDirectionId);
@@ -13370,7 +13383,7 @@ var __IadClientBundle__ = (() => {
 :is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) :is(button.exp-evidence-ref, .exp-evidence-ref){display:inline-flex!important;vertical-align:baseline!important;align-items:center!important;justify-content:center!important;padding:2px 10px!important;margin:0 4px!important;min-height:27px!important;height:27px!important;max-height:27px!important;box-sizing:border-box!important;border-radius:4px!important;border:1px solid #d9e2ed!important;background:#fff!important;background-color:#fff!important;color:var(--iba-dialog-ink, #172338)!important;font-size:13px!important;font-family:inherit!important;font-weight:400!important;line-height:1.4!important;letter-spacing:normal!important;box-shadow:none!important;outline:none!important;cursor:pointer!important;white-space:nowrap!important;text-decoration:none!important;transition:background .13s ease,border-color .13s ease,box-shadow .13s ease,color .13s ease!important}
 :is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) :is(button.exp-evidence-ref, .exp-evidence-ref):hover,
 :is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) :is(button.exp-evidence-ref, .exp-evidence-ref):focus-visible,
-:is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) :is(button.exp-evidence-ref, .exp-evidence-ref).is-related{background:#dce9ff!important;background-color:#dce9ff!important;border-color:#4982e9!important;color:#19499d!important;box-shadow:0 0 0 1px #91b5f2!important}
+:is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) :is(button.exp-evidence-ref, .exp-evidence-ref).is-related{background:#dce9ff!important;background-color:#dce9ff!important;border-color:#2458d5!important;color:#1742a0!important;box-shadow:0 0 0 1px #2458d5!important}
 .exp-direction-evidence{padding:17px 0 22px!important;flex:none!important;display:block!important}
 .exp-direction-evidence-head{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:12px;flex:none!important}
 .exp-direction-evidence-head h3{font-size:13px!important;font-weight:650!important;color:#263850!important;margin:0!important}
@@ -13380,12 +13393,12 @@ var __IadClientBundle__ = (() => {
 .exp-direction-group-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 8px;font-size:12px;color:#536780}
 .exp-direction-group-head strong{font-weight:550}
 .exp-direction-evidence-grid{display:grid;grid-template-columns:repeat(var(--group-columns,2),minmax(0,1fr));gap:9px}
-.exp-direction-evidence-card{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;position:relative!important;min-width:clamp(210px,46%,290px)!important;width:clamp(210px,46%,290px)!important;flex:1 1 auto!important;padding:8px!important;border:1px solid #dce4ef!important;border-radius:6px!important;background:#fff!important;color:#26344c;cursor:pointer!important;overflow:hidden!important;transition:background .13s,border-color .13s,box-shadow .13s}
+.exp-direction-evidence-card{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;position:relative!important;min-width:clamp(210px,46%,290px)!important;width:clamp(210px,46%,290px)!important;flex:1 1 auto!important;padding:8px!important;border:2px solid #dce4ef!important;border-radius:6px!important;background:#fff!important;color:#26344c;cursor:pointer!important;overflow:hidden!important;transition:background .13s,border-color .13s,box-shadow .13s}
 .exp-direction-evidence-card img{width:100%!important;height:215px!important;max-height:230px!important;object-fit:contain!important;display:block;background:#f1f4f8;border-radius:4px}
 .exp-direction-evidence-card .exp-ev-title{font-size:12px;font-weight:600;white-space:nowrap;padding:7px 3px 2px}
 .exp-direction-evidence-card .exp-ev-file{font-size:11px;color:#7c8a9f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 3px 3px}
-.exp-direction-evidence-card:hover,.exp-direction-evidence-card:focus-visible,.exp-direction-evidence-card.is-related{border-color:#3472e7;background:#f7faff;box-shadow:0 0 0 2px #3372e529}
-.exp-direction-evidence-card.is-related img{background:#eaf1ff}
+.exp-direction-evidence-card:hover,.exp-direction-evidence-card:focus-visible,.exp-direction-evidence-card.is-related{border:2px solid #2458d5!important;border-color:#2458d5!important;background:#f0f5ff!important;box-shadow:0 0 0 1px #2458d5,0 2px 8px rgba(36,88,213,.18)!important}
+.exp-direction-evidence-card.is-related img,.exp-direction-evidence-card:hover img{background:#eaf1ff}
 .exp-direction-footer-label{color:#697b95;font-size:12px}
 .exp-direction-knowledge-select{width:120px!important;min-height:35px}
 .exp-direction-foot-spacer{flex:1}
@@ -13472,7 +13485,7 @@ var __IadClientBundle__ = (() => {
 .exp-direction-evidence-groups{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:24px!important;flex:1 1 auto!important;min-height:0!important;align-items:stretch!important}
 .exp-scroll-group{min-width:0!important;display:flex!important;flex-direction:column!important;flex:1 1 auto!important;min-height:0!important}
 .exp-evidence-viewport{min-height:245px!important;padding:4px!important;display:flex!important;gap:14px!important;overflow-x:auto!important;overflow-y:hidden!important;flex:1 1 auto!important;align-items:stretch!important}
-.exp-evidence-viewport .exp-direction-evidence-card{position:relative!important;padding:8px!important;width:clamp(210px,46%,290px)!important;min-width:clamp(210px,46%,290px)!important;flex:1 1 auto!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;border:1px solid #dce4ef!important;border-radius:6px!important;background:#fff!important;cursor:pointer!important;overflow:hidden!important}
+.exp-evidence-viewport .exp-direction-evidence-card{position:relative!important;padding:8px!important;width:clamp(210px,46%,290px)!important;min-width:clamp(210px,46%,290px)!important;flex:1 1 auto!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;border:2px solid #dce4ef!important;border-radius:6px!important;background:#fff!important;cursor:pointer!important;overflow:hidden!important}
 .exp-evidence-viewport .exp-direction-evidence-card img{height:215px!important;max-height:230px!important;width:100%!important;object-fit:contain!important;background:#f1f4f8;border-radius:4px}
 .exp-ev-chip{position:absolute!important;top:12px!important;left:12px!important;z-index:2!important;background:rgba(255,255,255,.94)!important;border:1px solid #d0dbe9!important;color:#28446b!important;border-radius:4px!important;padding:3px 7px!important;font-size:12px!important;font-weight:650!important;line-height:1.3!important;pointer-events:none!important}
 .exp-direction-evidence-card.is-related .exp-ev-chip,.exp-direction-evidence-card:hover .exp-ev-chip{background:#dbe8ff!important;border-color:#6a9bed!important;color:#2054b9!important}
@@ -18098,6 +18111,24 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
   padding: 4px !important;
   flex: 0 0 180px !important;
   box-sizing: border-box !important;
+  border: 2px solid #dce4ef !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card:hover,
+.exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card:hover,
+.exp-modal .exp-direction-dialog .exp-direction-evidence-card:hover,
+.exp-direction-dialog .exp-direction-evidence-card:hover,
+.exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card.is-related,
+.exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card.is-related,
+.exp-modal .exp-direction-dialog .exp-direction-evidence-card.is-related,
+.exp-direction-dialog .exp-direction-evidence-card.is-related {
+  border: 2px solid #2458d5 !important;
+  border-color: #2458d5 !important;
+  background: #f0f5ff !important;
+  box-shadow: 0 0 0 1px #2458d5, 0 2px 8px rgba(36, 88, 213, 0.18) !important;
 }
 
 .exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img,
@@ -18177,8 +18208,13 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
   background: #fff !important;
 }
 :is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) .exp-evidence-ref:hover,
-.exp-direction-dialog .exp-evidence-ref:hover {
-  background: #f3f6fa !important;
+:is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) .exp-evidence-ref.is-related,
+.exp-direction-dialog .exp-evidence-ref:hover,
+.exp-direction-dialog .exp-evidence-ref.is-related {
+  background: #dce9ff !important;
+  border-color: #2458d5 !important;
+  color: #1742a0 !important;
+  box-shadow: 0 0 0 1px #2458d5 !important;
 }
 
 #dc-compare-mask .dc-compare-photo,

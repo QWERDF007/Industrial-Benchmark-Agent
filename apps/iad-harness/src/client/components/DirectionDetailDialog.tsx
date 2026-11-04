@@ -118,7 +118,7 @@ export function DirectionDetailDialog({
                 {(() => {
                   if (dir.rationale) {
                     const fullText = dir.rationale;
-                    const regex = /(img_[a-f0-9]{8,64}|[NA]\d+)/g;
+                    const regex = /(img_[a-f0-9]{8,64}|(?:良品\s*)?N\d+|(?:异常\s*)?A\d+)/g;
                     const parts: React.ReactNode[] = [];
                     let lastIndex = 0;
                     let match: RegExpExecArray | null;
@@ -128,11 +128,16 @@ export function DirectionDetailDialog({
                         parts.push(fullText.slice(lastIndex, match.index));
                       }
                       const token = match[0];
+                      const cleanRef = token.replace(/[^NA0-9]/g, "");
                       const matchedEv = evidence.all.find(
                         (e) =>
                           e.evidenceId.startsWith(token) ||
                           token.startsWith(e.evidenceId.slice(0, 8)) ||
-                          e.ref === token
+                          (e.sampleId && (e.sampleId.startsWith(token) || token.startsWith(e.sampleId.slice(0, 8)))) ||
+                          (e.filename && (e.filename.includes(token) || token.includes(e.filename))) ||
+                          e.ref === token ||
+                          e.ref === cleanRef ||
+                          e.label === token
                       );
 
                       if (matchedEv) {
@@ -143,6 +148,7 @@ export function DirectionDetailDialog({
                             className={`exp-evidence-ref ${highlightRef === matchedEv.ref ? "is-related" : ""}`}
                             data-evidence-ref={matchedEv.ref}
                             aria-label={`定位证据图像 ${matchedEv.label}`}
+                            title={`${matchedEv.label} (${token.startsWith("img_") ? token : matchedEv.filename})`}
                             onMouseEnter={() => handleChipClick(matchedEv.ref)}
                             onMouseLeave={() => onHighlightRef(null)}
                             onClick={() => handleChipClick(matchedEv.ref)}

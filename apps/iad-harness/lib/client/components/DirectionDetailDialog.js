@@ -38,7 +38,7 @@ export function DirectionDetailDialog({ direction: dir, evidence, highlightRef, 
         }, children: _jsxs("div", { className: "exp-dialog exp-direction-dialog", role: "dialog", "aria-modal": "true", "aria-label": dir.title, ref: evidenceContainerRef, children: [_jsxs("div", { className: "exp-dialog-head", children: [_jsx("strong", { children: dir.title }), _jsx(IconButton, { label: "\u5173\u95ED\u65B9\u5411\u8BE6\u60C5", title: "\u5173\u95ED", className: "exp-direction-icon modal-x", onClick: onClose, children: _jsx(CloseIcon, {}) })] }), _jsx("div", { className: "exp-dialog-main", children: _jsxs("div", { className: "exp-direction-body", children: [_jsxs("section", { className: "exp-direction-goal", children: [_jsx("h3", { children: "\u89C2\u5BDF\u76EE\u6807" }), _jsx("p", { children: dir.brief })] }), _jsxs("div", { className: "exp-direction-reasoning", children: [_jsxs("section", { children: [_jsx("h3", { children: "\u6BD4\u8F83\u4F9D\u636E" }), (() => {
                                                 if (dir.rationale) {
                                                     const fullText = dir.rationale;
-                                                    const regex = /(img_[a-f0-9]{8,64}|[NA]\d+)/g;
+                                                    const regex = /(img_[a-f0-9]{8,64}|(?:良品\s*)?N\d+|(?:异常\s*)?A\d+)/g;
                                                     const parts = [];
                                                     let lastIndex = 0;
                                                     let match;
@@ -47,11 +47,16 @@ export function DirectionDetailDialog({ direction: dir, evidence, highlightRef, 
                                                             parts.push(fullText.slice(lastIndex, match.index));
                                                         }
                                                         const token = match[0];
+                                                        const cleanRef = token.replace(/[^NA0-9]/g, "");
                                                         const matchedEv = evidence.all.find((e) => e.evidenceId.startsWith(token) ||
                                                             token.startsWith(e.evidenceId.slice(0, 8)) ||
-                                                            e.ref === token);
+                                                            (e.sampleId && (e.sampleId.startsWith(token) || token.startsWith(e.sampleId.slice(0, 8)))) ||
+                                                            (e.filename && (e.filename.includes(token) || token.includes(e.filename))) ||
+                                                            e.ref === token ||
+                                                            e.ref === cleanRef ||
+                                                            e.label === token);
                                                         if (matchedEv) {
-                                                            parts.push(_jsx("button", { type: "button", className: `exp-evidence-ref ${highlightRef === matchedEv.ref ? "is-related" : ""}`, "data-evidence-ref": matchedEv.ref, "aria-label": `定位证据图像 ${matchedEv.label}`, onMouseEnter: () => handleChipClick(matchedEv.ref), onMouseLeave: () => onHighlightRef(null), onClick: () => handleChipClick(matchedEv.ref), children: matchedEv.label }, matchedEv.ref + match.index));
+                                                            parts.push(_jsx("button", { type: "button", className: `exp-evidence-ref ${highlightRef === matchedEv.ref ? "is-related" : ""}`, "data-evidence-ref": matchedEv.ref, "aria-label": `定位证据图像 ${matchedEv.label}`, title: `${matchedEv.label} (${token.startsWith("img_") ? token : matchedEv.filename})`, onMouseEnter: () => handleChipClick(matchedEv.ref), onMouseLeave: () => onHighlightRef(null), onClick: () => handleChipClick(matchedEv.ref), children: matchedEv.label }, matchedEv.ref + match.index));
                                                         }
                                                         else {
                                                             parts.push(token);

@@ -365,8 +365,19 @@ export function ExplorationPage({
         const catalogVersions = catRes?.versions || [];
 
         rawJobs.forEach((bj: any) => {
-          const normalList = (bj.normal_sources || []).map((s: any) => s.sample_id || s);
-          const defectList = (bj.defect_sources || []).map((s: any) => s.sample_id || s);
+          const normalList = (
+            catalogExp?.normal_sources ||
+            bj.normal_sources ||
+            bj.request?.normal_sources ||
+            []
+          ).map((s: any) => s.sample_id || s);
+
+          const defectList = (
+            catalogExp?.defect_sources ||
+            bj.defect_sources ||
+            bj.request?.defect_sources ||
+            []
+          ).map((s: any) => s.sample_id || s);
           const elapsedSec = bj.started_at && bj.finished_at
             ? Math.max(1, Math.round((new Date(bj.finished_at).getTime() - new Date(bj.started_at).getTime()) / 1000))
             : bj.started_at
@@ -407,13 +418,31 @@ export function ExplorationPage({
               let nIdx = 0;
               let aIdx = 0;
 
-              (d.evidence_ids || []).forEach((eid: string) => {
+              // Collect all evidence IDs: from d.evidence_ids and any mentioned in rationale
+              const evidenceIdSet = new Set<string>(d.evidence_ids || []);
+              if (d.rationale) {
+                const matches = d.rationale.match(/img_[a-f0-9]{8,64}/g);
+                if (matches) {
+                  for (const m of matches) {
+                    for (const fullEid of evMap.keys()) {
+                      if (fullEid.startsWith(m) || m.startsWith(fullEid.slice(0, 8))) {
+                        evidenceIdSet.add(fullEid);
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+
+              evidenceIdSet.forEach((eid: string) => {
                 const ev = evMap.get(eid);
                 const sid = ev ? ev.sample_id : "";
                 const isNorm =
+                  normalList.includes(sid) ||
                   ev?.role === "normal" ||
                   ev?.role === "good" ||
-                  normalList.includes(sid) ||
+                  ev?.image?.role === "normal" ||
+                  ev?.image?.role === "good" ||
                   sid.toLowerCase().includes("ok") ||
                   sid.toLowerCase().includes("pass") ||
                   sid.toLowerCase().includes("good");
@@ -441,7 +470,7 @@ export function ExplorationPage({
                 applies: appliesStr,
                 brief: d.instruction || "",
                 rationale: d.rationale || "",
-                evidenceIds: d.evidence_ids || [],
+                evidenceIds: Array.from(evidenceIdSet),
                 limit: (d.limitations && d.limitations[0]) || "",
                 limitations: d.limitations || [],
                 evidences: evItems,
@@ -707,42 +736,39 @@ export function ExplorationPage({
     if (!job) return { normals: [], defects: [], all: [] };
     const dir = job.directions?.find((d) => d.id === dirId) || job.directions?.[0];
 
-    let normals = dir?.evidences ? dir.evidences.filter((e) => e.kind === "normal").slice(0, 2) : [];
-    let defects = dir?.evidences ? dir.evidences.filter((e) => e.kind === "defect").slice(0, 4) : [];
-
-    if (normals.length < 2) {
-      const fallbackNormals = (job.normal || []).slice(0, 2).map((id, i) => {
-        const info = getImageInfo(id, "normal");
-        return {
-          evidenceId: id,
-          sampleId: id,
-          ref: `N${i + 1}`,
-          label: `良品 N${i + 1}`,
-          kind: "normal" as const,
-          url: info.url,
-          fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
-          filename: info.filename,
-        };
-      });
-      normals = fallbackNormals.length >= normals.length ? fallbackNormals : normals;
+    if (dir?.evidences && dir.evidences.length > 0) {
+      const normals = dir.evidences.filter((e) => e.kind === "normal");
+      const defects = dir.evidences.filter((e) => e.kind === "defect");
+      return { normals, defects, all: dir.evidences };
     }
 
-    if (defects.length < 4) {
-      const fallbackDefects = (job.defect || []).slice(0, 4).map((id, i) => {
-        const info = getImageInfo(id, "defect");
-        return {
-          evidenceId: id,
-          sampleId: id,
-          ref: `A${i + 1}`,
-          label: `异常 A${i + 1}`,
-          kind: "defect" as const,
-          url: info.url,
-          fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
-          filename: info.filename,
-        };
-      });
-      defects = fallbackDefects.length >= defects.length ? fallbackDefects : defects;
-    }
+    const normals = (job.normal || []).slice(0, 2).map((id, i) => {
+      const info = getImageInfo(id, "normal");
+      return {
+        evidenceId: id,
+        sampleId: id,
+        ref: `N${i + 1}`,
+        label: `良品 N${i + 1}`,
+        kind: "normal" as const,
+        url: info.url,
+        fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
+        filename: info.filename,
+      };
+    });
+
+    const defects = (job.defect || []).slice(0, 4).map((id, i) => {
+      const info = getImageInfo(id, "defect");
+      return {
+        evidenceId: id,
+        sampleId: id,
+        ref: `A${i + 1}`,
+        label: `异常 A${i + 1}`,
+        kind: "defect" as const,
+        url: info.url,
+        fullUrl: info.url.includes("thumbnail") ? info.url.replace("/thumbnail?size=240", "/image") : info.url,
+        filename: info.filename,
+      };
+    });
 
     return { normals, defects, all: [...normals, ...defects] };
   };

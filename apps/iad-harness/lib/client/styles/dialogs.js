@@ -215,6 +215,24 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
   padding: 4px !important;
   flex: 0 0 180px !important;
   box-sizing: border-box !important;
+  border: 2px solid #dce4ef !important;
+  border-radius: 6px !important;
+  background: #fff !important;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card:hover,
+.exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card:hover,
+.exp-modal .exp-direction-dialog .exp-direction-evidence-card:hover,
+.exp-direction-dialog .exp-direction-evidence-card:hover,
+.exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card.is-related,
+.exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card.is-related,
+.exp-modal .exp-direction-dialog .exp-direction-evidence-card.is-related,
+.exp-direction-dialog .exp-direction-evidence-card.is-related {
+  border: 2px solid #2458d5 !important;
+  border-color: #2458d5 !important;
+  background: #f0f5ff !important;
+  box-shadow: 0 0 0 1px #2458d5, 0 2px 8px rgba(36, 88, 213, 0.18) !important;
 }
 
 .exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img,
@@ -294,8 +312,13 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
   background: #fff !important;
 }
 :is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) .exp-evidence-ref:hover,
-.exp-direction-dialog .exp-evidence-ref:hover {
-  background: #f3f6fa !important;
+:is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) .exp-evidence-ref.is-related,
+.exp-direction-dialog .exp-evidence-ref:hover,
+.exp-direction-dialog .exp-evidence-ref.is-related {
+  background: #dce9ff !important;
+  border-color: #2458d5 !important;
+  color: #1742a0 !important;
+  box-shadow: 0 0 0 1px #2458d5 !important;
 }
 
 #dc-compare-mask .dc-compare-photo,

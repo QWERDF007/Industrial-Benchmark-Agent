@@ -163,8 +163,8 @@ async function run() {
     const evImgs = await dirDialog.findElements(By.css(".exp-direction-evidence-card img, .exp-evidence-card img"));
     results["direction cards"] = evCards.length;
     results["direction images"] = evImgs.length;
-    chk(evCards.length === 6, `证据卡片数量为6 (实际: ${evCards.length})`);
-    chk(evImgs.length === 6, `证据图片数量为6 (实际: ${evImgs.length})`);
+    chk(evCards.length >= 6, `证据卡片数量应不低于6 (实际: ${evCards.length})`);
+    chk(evImgs.length >= 6, `证据图片数量应不低于6 (实际: ${evImgs.length})`);
 
     const imgRect = await evImgs[0].getRect();
     results["direction image height"] = Math.round(imgRect.height);
