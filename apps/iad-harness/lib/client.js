@@ -45,7 +45,7 @@ var __IadClientBundle__ = (() => {
     inject: () => inject,
     name: () => name
   });
-  var import_react58 = __toESM(__require("react"), 1);
+  var import_react59 = __toESM(__require("react"), 1);
 
   // src/client/AuditIcon.tsx
   var import_jsx_runtime = __require("react/jsx-runtime");
@@ -219,7 +219,7 @@ var __IadClientBundle__ = (() => {
   });
 
   // src/client/WorkbenchPage.tsx
-  var import_react46 = __require("react");
+  var import_react47 = __require("react");
 
   // src/client/api.ts
   var ApiError = class extends Error {
@@ -8932,7 +8932,7 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/ExplorationPage.tsx
   var import_react39 = __require("react");
-  var import_react_dom4 = __require("react-dom");
+  var import_react_dom5 = __require("react-dom");
 
   // src/client/dataset-hierarchy.ts
   function buildHierarchyGroups(datasets, groups = []) {
@@ -9332,6 +9332,7 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/FullscreenViewer.tsx
   var import_react38 = __require("react");
+  var import_react_dom4 = __require("react-dom");
   var import_jsx_runtime44 = __require("react/jsx-runtime");
   function FullscreenViewer({
     open,
@@ -9438,9 +9439,9 @@ var __IadClientBundle__ = (() => {
     if (!open || !item) return null;
     const bboxes = item.bboxes || [];
     const filename = item.title.split("/").pop() || item.title;
-    return /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("div", { id: "full-overlay", className: "full-overlay", role: "presentation", children: /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("section", { className: "full-dialog", role: "dialog", "aria-modal": "true", "aria-label": "\u539F\u56FE\u68C0\u89C6\u5668", children: [
+    const content = /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("div", { id: "full-overlay", className: "full-overlay", role: "presentation", children: /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("section", { className: "full-dialog", role: "dialog", "aria-modal": "true", "aria-label": "\u539F\u56FE\u68C0\u89C6\u5668", children: [
       /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("header", { className: "full-toolbar", role: "toolbar", "aria-label": "\u56FE\u50CF\u67E5\u770B\u5DE5\u5177", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("div", { className: "full-file", id: "full-file-name", title: item.title, children: filename }),
+        /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("div", { className: "full-file", id: "full-file-name", title: item.title, style: { color: "#f4f7fd" }, children: filename }),
         /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("div", { className: "full-actions", children: [
           /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(
             "button",
@@ -9456,13 +9457,14 @@ var __IadClientBundle__ = (() => {
               ] })
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("span", { className: "zoom-wrap", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("span", { className: "zoom-wrap", style: { background: "rgba(255, 255, 255, 0.12)", border: "1px solid rgba(255, 255, 255, 0.22)" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)(
               "select",
               {
                 id: "zoom",
                 title: "\u7F29\u653E\u6BD4\u4F8B",
                 "aria-label": "\u7F29\u653E\u6BD4\u4F8B",
+                style: { color: "#f4f7fd", background: "transparent" },
                 value: [0.5, 1, 1.5, 2].some((v) => Math.abs(zoomLevel - v) < 1e-3) ? String(zoomLevel) : Math.abs(zoomLevel - fitScale) < 1e-3 ? "fit" : "custom",
                 onChange: (e) => {
                   const v = e.target.value;
@@ -9656,6 +9658,10 @@ var __IadClientBundle__ = (() => {
         }
       )
     ] }) });
+    if (typeof document !== "undefined") {
+      return (0, import_react_dom4.createPortal)(content, document.body);
+    }
+    return content;
   }
 
   // src/client/components/IbaJobPager.tsx
@@ -10774,7 +10780,7 @@ var __IadClientBundle__ = (() => {
           ] })
         ] })
       ),
-      typeof document !== "undefined" && (0, import_react_dom4.createPortal)(
+      typeof document !== "undefined" && (0, import_react_dom5.createPortal)(
         /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)(import_jsx_runtime46.Fragment, { children: [
           modal === "prompt" && promptJobId && /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(
             "div",
@@ -11080,7 +11086,7 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/KnowledgePage.tsx
   var import_react41 = __toESM(__require("react"), 1);
-  var import_react_dom5 = __require("react-dom");
+  var import_react_dom6 = __require("react-dom");
 
   // src/client/useJobs.ts
   var import_react40 = __require("react");
@@ -12047,7 +12053,7 @@ var __IadClientBundle__ = (() => {
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { className: "demo-note", children: "\u5F53\u524D\u4E3A\u79BB\u7EBF\u4EA4\u4E92\u539F\u578B\uFF0C\u4F5C\u4E1A\u3001\u6A21\u578B\u3001\u77E5\u8BC6\u4E0E\u8BC1\u636E\u5747\u4F7F\u7528\u6F14\u793A\u6570\u636E\uFF1B\u5B9E\u9645\u6570\u636E\u7ED3\u6784\u548C\u63A5\u53E3\u5B9A\u4E49\u89C1\u5F00\u53D1\u65B9\u6848\u3002" })
       ] }) }),
-      typeof document !== "undefined" && (0, import_react_dom5.createPortal)(
+      typeof document !== "undefined" && (0, import_react_dom6.createPortal)(
         /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)(import_jsx_runtime47.Fragment, { children: [
           /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(
             "div",
@@ -17138,11 +17144,11 @@ button.dc-vchart-zero,
 .detail-preview{width:100%;height:355px;display:flex;justify-content:center;align-items:center;border:1px solid var(--border2,#e6ebf1);border-radius:6px;background:#f2f5f9;cursor:zoom-in;padding:0;position:relative;overflow:hidden}
 .detail-preview:hover{border-color:#95afed}
 .detail-preview:focus-visible{outline:2px solid var(--blue,#285ed6)}
-.detail-preview .preview-image-frame{position:relative;height:100%;max-width:100%;display:flex;justify-content:center;align-items:center}
-.detail-preview img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.preview-image-frame, .detail-preview .preview-image-frame{position:relative;height:100%;max-width:100%;max-height:100%;display:flex;justify-content:center;align-items:center}
+.preview-image-frame img, .detail-preview img{max-width:100%;max-height:100%;object-fit:contain;display:block}
 .preview-overlay{position:absolute;inset:0;pointer-events:none}
-.preview-overlay .bbox{position:absolute;border:2px solid #f1b14b;box-shadow:0 0 0 1px #16304788;min-height:3px;min-width:3px}
-.preview-overlay .bbox::before{content:attr(data-label);position:absolute;left:-2px;bottom:100%;padding:1px 4px;color:#fff;font-size:11px;line-height:17px;background:#263d59;white-space:nowrap}
+.preview-overlay .bbox{position:absolute;border:2px solid #f1b14b;box-shadow:0 0 0 1px #16304788;min-height:3px;min-width:3px;box-sizing:border-box}
+.preview-overlay .bbox::before{content:attr(data-label);position:absolute;left:-2px;bottom:100%;padding:1px 4px;color:#fff;font-size:11px;line-height:17px;background:#263d59;white-space:nowrap;border-radius:2px}
 .preview-overlay .bbox:nth-child(even){border-color:#ffca64}
 .detail-preview-hint {position:absolute;right:11px;bottom:11px;background:#17243bd9;border-radius:4px;padding:5px 9px;color:#fff;font-size:11px;opacity:0;transition:opacity .15s}
 .detail-preview:hover .detail-preview-hint,.detail-preview:focus-visible .detail-preview-hint{opacity:1}
@@ -17163,7 +17169,7 @@ button.dc-vchart-zero,
 .full-overlay {z-index:10010;display:flex;align-items:stretch;justify-content:stretch;padding:0;background:#1c2633}
 .full-dialog {display:flex;flex-direction:column;width:100vw;height:100dvh;min-width:0;min-height:0;background:#202a36}
 .full-toolbar {height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;background:#1c2633;border-bottom:1px solid rgba(255,255,255,.08);padding:0 20px;color:#f4f7fd}
-.full-file{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;color:#e2e8f0}
+.full-file{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;color:#f4f7fd !important}
 .full-stage {flex:1;position:relative;overflow:hidden;min-height:0;background:#202a36;touch-action:none;cursor:grab}
 .full-stage.dragging{cursor:grabbing}
 .full-image-world {position:absolute;left:50%;top:50%;transform-origin:center;user-select:none}
@@ -17187,9 +17193,9 @@ button.dc-vchart-zero,
 .full-actions button:disabled:hover{background:transparent;border-color:transparent}
 
 /* Zoom Dropdown: background & border slightly brighter than canvas background */
-.full-actions .zoom-wrap{position:relative;flex:none;display:inline-flex;align-items:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:6px;transition:background .15s ease,border-color .15s ease}
+.full-actions .zoom-wrap{position:relative;flex:none;display:inline-flex;align-items:center;background:rgba(255,255,255,.12) !important;border:1px solid rgba(255,255,255,.22) !important;border-radius:6px;transition:background .15s ease,border-color .15s ease}
 .full-actions .zoom-wrap:hover{background:rgba(255,255,255,.20) !important;border-color:rgba(255,255,255,.36) !important}
-.full-actions select{min-width:96px;width:96px;height:36px;appearance:none;-webkit-appearance:none;padding:0 24px 0 10px;text-align:center;text-align-last:center;border:none;background:transparent;color:#f4f7fd;font:500 13px/36px system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;cursor:pointer;outline:none}
+.full-actions select{min-width:96px;width:96px;height:36px;appearance:none;-webkit-appearance:none;padding:0 24px 0 10px;text-align:center;text-align-last:center;border:none !important;background:transparent !important;color:#f4f7fd !important;font:500 13px/36px system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;cursor:pointer;outline:none}
 .full-actions .zoom-wrap:focus-within{outline:2px solid #a1c6ff;outline-offset:1px;border-color:transparent}
 .full-actions .zoom-chevron{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:14px;height:14px;display:grid;place-items:center;color:#b2c2d6;pointer-events:none}
 .full-actions .zoom-chevron svg{width:14px;height:14px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;filter:none}
@@ -17389,7 +17395,7 @@ button.dc-vchart-zero,
    Unified Backdrops / Overlay Masks
    ========================================================================== */
 .detail-overlay,
-.exp-modal,
+.exp-modal:not(.exp-prompt-overlay),
 .dc-modal-mask,
 #dc-compare-mask.dc-modal-mask,
 #knowledge-page .kb-v45 .detail-overlay,
@@ -17568,7 +17574,6 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 #dc-new-mask .dc-new-dialog,
 .dc-stats-modal .dc-stats-dialog,
 .exp-modal .exp-source-dialog,
-.exp-prompt-modal .exp-prompt-dialog,
 .exp-dialog:not(.small):not(.exp-direction-dialog),
 .modal-scrim .modal:not(.delete-modal) {
   width: min(var(--iba-dialog-edit-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
@@ -17849,6 +17854,59 @@ button.exp-ghost:hover,
 #knowledge-page .kb-v45 .modal .status.red { color: #b23c43 !important; }
 #knowledge-page .kb-v45 .modal .status.amber { color: #976013 !important; }
 #knowledge-page .kb-v45 .modal .status.blue { color: #285ed6 !important; }
+
+/* ==========================================================================
+   Prompt Drawers (560px right-hand drawers, 100dvh full height)
+   Direction Exploration Prompt Drawer, Knowledge Prompt Drawer
+   ========================================================================== */
+.exp-prompt-overlay,
+.knowledge-prompt-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 500 !important;
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: flex-end !important;
+  padding: 0 !important;
+  background: var(--iad-modal-backdrop, rgba(22, 33, 51, 0.36)) !important;
+}
+
+.exp-prompt-drawer,
+.knowledge-prompt-drawer {
+  box-sizing: border-box !important;
+  flex: none !important;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: min(560px, 100vw) !important;
+  max-width: 560px !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border-left: 1px solid #d6deeb !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  box-shadow: -15px 0 45px rgba(21, 34, 56, 0.2) !important;
+  background: #ffffff !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  animation: exp-drawer-enter 0.15s ease-out !important;
+}
+
+@keyframes exp-drawer-enter {
+  from {
+    transform: translateX(24px);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
 
 @media (max-width: 760px) {
   .detail-overlay,
@@ -18381,53 +18439,163 @@ button.exp-ghost:hover,
   }
 
   // src/client/components/ImagesPage.tsx
+  var import_react46 = __require("react");
+  var import_react_dom7 = __require("react-dom");
+
+  // src/client/components/AnnotatedImageStage.tsx
   var import_react45 = __require("react");
-  var import_react_dom6 = __require("react-dom");
   var import_jsx_runtime49 = __require("react/jsx-runtime");
+  function AnnotatedImageStage({
+    src,
+    alt = "",
+    width,
+    height,
+    bboxes = [],
+    showAnnotations = true,
+    className = "",
+    style,
+    children,
+    onLoadDimensions
+  }) {
+    const [naturalSize, setNaturalSize] = (0, import_react45.useState)({
+      width: width || 0,
+      height: height || 0
+    });
+    const imgW = naturalSize.width || width || 800;
+    const imgH = naturalSize.height || height || 600;
+    return /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+      "div",
+      {
+        className: `annotated-image-stage ${className}`,
+        style: {
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
+          overflow: "hidden",
+          ...style
+        },
+        children: /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(
+          "span",
+          {
+            className: "preview-image-frame",
+            style: {
+              aspectRatio: `${imgW} / ${imgH}`,
+              maxWidth: "100%",
+              maxHeight: "100%",
+              height: "100%",
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            },
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+                "img",
+                {
+                  src,
+                  alt,
+                  draggable: false,
+                  style: {
+                    maxWidth: "100%",
+                    maxHeight: "100%",
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                    display: "block",
+                    pointerEvents: "none",
+                    userSelect: "none"
+                  },
+                  onLoad: (e) => {
+                    const img = e.currentTarget;
+                    if (img.naturalWidth && img.naturalHeight) {
+                      setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                      onLoadDimensions?.({ naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
+                    }
+                  }
+                }
+              ),
+              showAnnotations && bboxes && bboxes.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("span", { className: "preview-overlay", id: "preview-overlay", children: bboxes.map((item, idx) => {
+                if (!item.bbox || item.bbox.length < 4) return null;
+                const [x1, y1, x2, y2] = item.bbox;
+                const minX = Math.min(x1, x2);
+                const minY = Math.min(y1, y2);
+                const maxX = Math.max(x1, x2);
+                const maxY = Math.max(y1, y2);
+                const label = item.raw_label ? item.raw_label.replace(/^类别\s*/, "") : "";
+                return /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+                  "span",
+                  {
+                    className: "bbox",
+                    "data-label": label,
+                    "aria-hidden": "true",
+                    style: {
+                      position: "absolute",
+                      left: `${(minX / imgW * 100).toFixed(3)}%`,
+                      top: `${(minY / imgH * 100).toFixed(3)}%`,
+                      width: `${((maxX - minX) / imgW * 100).toFixed(3)}%`,
+                      height: `${((maxY - minY) / imgH * 100).toFixed(3)}%`
+                    }
+                  },
+                  item.annotation_id || idx
+                );
+              }) }),
+              children
+            ]
+          }
+        )
+      }
+    );
+  }
+
+  // src/client/components/ImagesPage.tsx
+  var import_jsx_runtime50 = __require("react/jsx-runtime");
   function ImagesPage({ datasets, groups, onDatasetsChanged }) {
-    const hierarchyGroups = (0, import_react45.useMemo)(() => {
+    const hierarchyGroups = (0, import_react46.useMemo)(() => {
       return buildHierarchyGroups(datasets, groups);
     }, [groups, datasets]);
-    const getGroupId = (0, import_react45.useCallback)((d) => {
+    const getGroupId = (0, import_react46.useCallback)((d) => {
       return getDatasetGroupId(d, hierarchyGroups);
     }, [hierarchyGroups]);
-    const [selectedParentId, setSelectedParentId] = (0, import_react45.useState)(() => hierarchyGroups[0]?.group_id || "");
-    (0, import_react45.useEffect)(() => {
+    const [selectedParentId, setSelectedParentId] = (0, import_react46.useState)(() => hierarchyGroups[0]?.group_id || "");
+    (0, import_react46.useEffect)(() => {
       if (hierarchyGroups.length > 0 && (!selectedParentId || !hierarchyGroups.some((g) => g.group_id === selectedParentId))) {
         setSelectedParentId(hierarchyGroups[0].group_id);
       }
     }, [hierarchyGroups, selectedParentId]);
-    const parentChildren = (0, import_react45.useMemo)(() => {
+    const parentChildren = (0, import_react46.useMemo)(() => {
       return datasets.filter((d) => getGroupId(d) === selectedParentId);
     }, [datasets, selectedParentId, getGroupId]);
-    const [selectedChildIds, setSelectedChildIds] = (0, import_react45.useState)(/* @__PURE__ */ new Set());
-    (0, import_react45.useEffect)(() => {
+    const [selectedChildIds, setSelectedChildIds] = (0, import_react46.useState)(/* @__PURE__ */ new Set());
+    (0, import_react46.useEffect)(() => {
       if (parentChildren.length > 0) {
         setSelectedChildIds(/* @__PURE__ */ new Set([parentChildren[0].dataset_id]));
       } else {
         setSelectedChildIds(/* @__PURE__ */ new Set());
       }
     }, [selectedParentId, parentChildren]);
-    const [search, setSearch] = (0, import_react45.useState)("");
-    const [quality, setQuality] = (0, import_react45.useState)("all");
-    const [annotation, setAnnotation] = (0, import_react45.useState)("all");
-    const [category, setCategory] = (0, import_react45.useState)("all");
-    const [page, setPage] = (0, import_react45.useState)(1);
+    const [search, setSearch] = (0, import_react46.useState)("");
+    const [quality, setQuality] = (0, import_react46.useState)("all");
+    const [annotation, setAnnotation] = (0, import_react46.useState)("all");
+    const [category, setCategory] = (0, import_react46.useState)("all");
+    const [page, setPage] = (0, import_react46.useState)(1);
     const pageSize2 = 24;
-    const activeDatasets = (0, import_react45.useMemo)(() => {
+    const activeDatasets = (0, import_react46.useMemo)(() => {
       return parentChildren.filter((d) => selectedChildIds.has(d.dataset_id));
     }, [parentChildren, selectedChildIds]);
-    const effectiveDatasets = (0, import_react45.useMemo)(() => {
+    const effectiveDatasets = (0, import_react46.useMemo)(() => {
       if (activeDatasets.length > 0) return activeDatasets;
       return parentChildren;
     }, [activeDatasets, parentChildren]);
-    const hasLabelme = (0, import_react45.useMemo)(() => {
+    const hasLabelme = (0, import_react46.useMemo)(() => {
       return effectiveDatasets.some((d) => d.format === "labelme");
     }, [effectiveDatasets]);
-    const hasAnomaly = (0, import_react45.useMemo)(() => {
+    const hasAnomaly = (0, import_react46.useMemo)(() => {
       return effectiveDatasets.some((d) => d.format === "folder_classification");
     }, [effectiveDatasets]);
-    const availableCategories = (0, import_react45.useMemo)(() => {
+    const availableCategories = (0, import_react46.useMemo)(() => {
       const set = /* @__PURE__ */ new Set();
       for (const d of effectiveDatasets) {
         for (const cat of d.annotation_categories || []) {
@@ -18436,30 +18604,30 @@ button.exp-ghost:hover,
       }
       return Array.from(set);
     }, [effectiveDatasets]);
-    (0, import_react45.useEffect)(() => {
+    (0, import_react46.useEffect)(() => {
       if (!hasAnomaly && quality !== "all") {
         setQuality("all");
       }
     }, [hasAnomaly, quality]);
-    (0, import_react45.useEffect)(() => {
+    (0, import_react46.useEffect)(() => {
       if (!hasLabelme) {
         if (annotation !== "all") setAnnotation("all");
         if (category !== "all") setCategory("all");
       }
     }, [hasLabelme, annotation, category]);
-    const resetFilters = (0, import_react45.useCallback)(() => {
+    const resetFilters = (0, import_react46.useCallback)(() => {
       setSearch("");
       setQuality("all");
       setAnnotation("all");
       setCategory("all");
       setPage(1);
     }, []);
-    const [samples, setSamples] = (0, import_react45.useState)([]);
-    const [total, setTotal] = (0, import_react45.useState)(0);
-    const [loading, setLoading] = (0, import_react45.useState)(false);
-    const [error2, setError] = (0, import_react45.useState)("");
-    const [refreshRev, setRefreshRev] = (0, import_react45.useState)(0);
-    (0, import_react45.useEffect)(() => {
+    const [samples, setSamples] = (0, import_react46.useState)([]);
+    const [total, setTotal] = (0, import_react46.useState)(0);
+    const [loading, setLoading] = (0, import_react46.useState)(false);
+    const [error2, setError] = (0, import_react46.useState)("");
+    const [refreshRev, setRefreshRev] = (0, import_react46.useState)(0);
+    (0, import_react46.useEffect)(() => {
       if (selectedChildIds.size === 0) {
         setSamples([]);
         setTotal(0);
@@ -18503,13 +18671,13 @@ button.exp-ghost:hover,
       });
       return () => controller.abort();
     }, [selectedChildIds, quality, annotation, category, search, page, pageSize2, refreshRev]);
-    const [viewerIndex, setViewerIndex] = (0, import_react45.useState)(-1);
-    const [detailModalOpen, setDetailModalOpen] = (0, import_react45.useState)(false);
-    const [fullscreen, setFullscreen] = (0, import_react45.useState)(false);
-    const [sampleDetail, setSampleDetail] = (0, import_react45.useState)(null);
-    const [detailLoading, setDetailLoading] = (0, import_react45.useState)(false);
+    const [viewerIndex, setViewerIndex] = (0, import_react46.useState)(-1);
+    const [detailModalOpen, setDetailModalOpen] = (0, import_react46.useState)(false);
+    const [fullscreen, setFullscreen] = (0, import_react46.useState)(false);
+    const [sampleDetail, setSampleDetail] = (0, import_react46.useState)(null);
+    const [detailLoading, setDetailLoading] = (0, import_react46.useState)(false);
     const activeSample = viewerIndex >= 0 && viewerIndex < samples.length ? samples[viewerIndex] : null;
-    (0, import_react45.useEffect)(() => {
+    (0, import_react46.useEffect)(() => {
       if (!activeSample) {
         setSampleDetail(null);
         return;
@@ -18524,25 +18692,25 @@ button.exp-ghost:hover,
       });
       return () => controller.abort();
     }, [activeSample]);
-    const openViewer = (0, import_react45.useCallback)((sample, index3) => {
+    const openViewer = (0, import_react46.useCallback)((sample, index3) => {
       setViewerIndex(index3);
       setDetailModalOpen(true);
       setFullscreen(false);
       document.body.style.overflow = "hidden";
     }, []);
-    const closeViewer = (0, import_react45.useCallback)(() => {
+    const closeViewer = (0, import_react46.useCallback)(() => {
       setDetailModalOpen(false);
       setFullscreen(false);
       setViewerIndex(-1);
       document.body.style.overflow = "";
     }, []);
-    const openFullscreen = (0, import_react45.useCallback)(() => {
+    const openFullscreen = (0, import_react46.useCallback)(() => {
       setFullscreen(true);
     }, []);
-    const closeFullscreen = (0, import_react45.useCallback)(() => {
+    const closeFullscreen = (0, import_react46.useCallback)(() => {
       setFullscreen(false);
     }, []);
-    (0, import_react45.useEffect)(() => {
+    (0, import_react46.useEffect)(() => {
       if (viewerIndex < 0 || fullscreen) return;
       function onKeyDown(e) {
         if (e.key === "Escape") {
@@ -18553,14 +18721,14 @@ button.exp-ghost:hover,
       document.addEventListener("keydown", onKeyDown);
       return () => document.removeEventListener("keydown", onKeyDown);
     }, [viewerIndex, fullscreen, closeViewer]);
-    const sampleDataset = (0, import_react45.useMemo)(() => {
+    const sampleDataset = (0, import_react46.useMemo)(() => {
       if (!activeSample) return null;
       return datasets.find((d) => d.dataset_id === activeSample.dataset_id) || activeDatasets[0] || null;
     }, [activeSample, datasets, activeDatasets]);
     const isMatchingSample = activeSample && sampleDetail?.sample.sample_id === activeSample.sample_id;
     const currentDetail = isMatchingSample ? sampleDetail : null;
     const detailAnnotations = currentDetail?.annotations || [];
-    const bboxes = (0, import_react45.useMemo)(() => {
+    const bboxes = (0, import_react46.useMemo)(() => {
       return detailAnnotations.filter((a) => a.bbox && a.bbox.length >= 4);
     }, [detailAnnotations]);
     const imgW = currentDetail?.sample.width || activeSample?.width || 955;
@@ -18570,9 +18738,9 @@ button.exp-ghost:hover,
     const lastPage = Math.min(pages2, firstPage + 4);
     const pageNumbers = [];
     for (let n = firstPage; n <= lastPage; n++) pageNumbers.push(n);
-    return /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "main", style: { minWidth: 0, width: "100%", padding: 0 }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(WorkbenchHeader, { pageId: "industrial-images" }),
-      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "main", style: { minWidth: 0, width: "100%", padding: 0 }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(WorkbenchHeader, { pageId: "industrial-images" }),
+      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
         DatasetScopeSelector,
         {
           className: "dataset-panel",
@@ -18594,7 +18762,7 @@ button.exp-ghost:hover,
           groupId: "parent",
           childId: "child",
           childMenuId: "child-menu",
-          children: /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+          children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
             "button",
             {
               id: "refresh",
@@ -18606,15 +18774,15 @@ button.exp-ghost:hover,
                 setRefreshRev((r) => r + 1);
                 onDatasetsChanged?.();
               },
-              children: /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(RefreshIcon, { size: 17 })
+              children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(RefreshIcon, { size: 17 })
             }
           )
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("section", { className: "filter-bar", "aria-label": "\u56FE\u50CF\u7B5B\u9009", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "filter-item filter-search", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("label", { htmlFor: "search", children: "\u6587\u4EF6\u540D\u641C\u7D22" }),
-          /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("section", { className: "filter-bar", "aria-label": "\u56FE\u50CF\u7B5B\u9009", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "filter-item filter-search", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("label", { htmlFor: "search", children: "\u6587\u4EF6\u540D\u641C\u7D22" }),
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
             "input",
             {
               id: "search",
@@ -18629,9 +18797,9 @@ button.exp-ghost:hover,
             }
           )
         ] }),
-        hasAnomaly && /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "filter-item filter-status", id: "quality-wrap", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("label", { htmlFor: "quality", title: "\u56FE\u50CF\u7EA7\u7C7B\u522B\uFF08OK / NG / \u672A\u5224\u5B9A\uFF09", children: hasLabelme ? "\u6807\u6CE8\u7C7B\u522B (\u56FE\u50CF)" : "\u6807\u6CE8\u7C7B\u522B" }),
-          /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(
+        hasAnomaly && /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "filter-item filter-status", id: "quality-wrap", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("label", { htmlFor: "quality", title: "\u56FE\u50CF\u7EA7\u7C7B\u522B\uFF08OK / NG / \u672A\u5224\u5B9A\uFF09", children: hasLabelme ? "\u6807\u6CE8\u7C7B\u522B (\u56FE\u50CF)" : "\u6807\u6CE8\u7C7B\u522B" }),
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(
             "select",
             {
               id: "quality",
@@ -18641,18 +18809,18 @@ button.exp-ghost:hover,
                 setPage(1);
               },
               children: [
-                /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
-                /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("option", { value: "PASS", children: "OK" }),
-                /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("option", { value: "FAIL", children: "NG" }),
-                /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("option", { value: "UNCERTAIN", title: "\u539F\u59CB\u89C4\u5219\u65E0\u6CD5\u5224\u5B9A\u4E3A OK \u6216 NG", children: "\u672A\u5224\u5B9A" })
+                /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
+                /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("option", { value: "PASS", children: "OK" }),
+                /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("option", { value: "FAIL", children: "NG" }),
+                /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("option", { value: "UNCERTAIN", title: "\u539F\u59CB\u89C4\u5219\u65E0\u6CD5\u5224\u5B9A\u4E3A OK \u6216 NG", children: "\u672A\u5224\u5B9A" })
               ]
             }
           )
         ] }),
-        hasLabelme && /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(import_jsx_runtime49.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "filter-item filter-ann", id: "annotation-wrap", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("label", { htmlFor: "annotation", children: "\u6807\u6CE8\u60C5\u51B5" }),
-            /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(
+        hasLabelme && /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_jsx_runtime50.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "filter-item filter-ann", id: "annotation-wrap", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("label", { htmlFor: "annotation", children: "\u6807\u6CE8\u60C5\u51B5" }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(
               "select",
               {
                 id: "annotation",
@@ -18662,16 +18830,16 @@ button.exp-ghost:hover,
                   setPage(1);
                 },
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("option", { value: "present", children: "\u6709\u6807\u6CE8" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("option", { value: "none", children: "\u65E0\u6807\u6CE8" })
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("option", { value: "present", children: "\u6709\u6807\u6CE8" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("option", { value: "none", children: "\u65E0\u6807\u6CE8" })
                 ]
               }
             )
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "filter-item filter-category", id: "category-wrap", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("label", { htmlFor: "category", children: hasAnomaly ? "\u6807\u6CE8\u7C7B\u522B (\u76EE\u6807)" : "\u6807\u6CE8\u7C7B\u522B" }),
-            /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "filter-item filter-category", id: "category-wrap", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("label", { htmlFor: "category", children: hasAnomaly ? "\u6807\u6CE8\u7C7B\u522B (\u76EE\u6807)" : "\u6807\u6CE8\u7C7B\u522B" }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(
               "select",
               {
                 id: "category",
@@ -18681,14 +18849,14 @@ button.exp-ghost:hover,
                   setPage(1);
                 },
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
-                  availableCategories.map((cat) => /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("option", { value: cat, children: cat.startsWith("\u7C7B\u522B ") || isNaN(Number(cat)) ? cat : `\u7C7B\u522B ${cat}` }, cat))
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
+                  availableCategories.map((cat) => /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("option", { value: cat, children: cat.startsWith("\u7C7B\u522B ") || isNaN(Number(cat)) ? cat : `\u7C7B\u522B ${cat}` }, cat))
                 ]
               }
             )
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
           ClearFilterButton,
           {
             id: "reset",
@@ -18699,10 +18867,10 @@ button.exp-ghost:hover,
           }
         )
       ] }),
-      error2 && /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
-      total > 0 ? /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("section", { id: "grid", className: "grid", "aria-label": "\u56FE\u50CF\u7F51\u683C", children: samples.map((s, idx) => {
+      error2 && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
+      total > 0 ? /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("section", { id: "grid", className: "grid", "aria-label": "\u56FE\u50CF\u7F51\u683C", children: samples.map((s, idx) => {
         const filename = s.relative_path.split("/").pop() || s.relative_path;
-        return /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(
+        return /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(
           "button",
           {
             type: "button",
@@ -18711,7 +18879,7 @@ button.exp-ghost:hover,
             title: filename,
             onClick: () => openViewer(s, idx),
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("div", { className: "thumb", children: /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("div", { className: "thumb", children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
                 "img",
                 {
                   src: mediaUrl(s, "thumbnail"),
@@ -18719,14 +18887,14 @@ button.exp-ghost:hover,
                   loading: "lazy"
                 }
               ) }),
-              /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("div", { className: "card-name", children: filename })
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("div", { className: "card-name", children: filename })
             ]
           },
           s.sample_id
         );
-      }) }) : /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("div", { id: "grid", className: "empty", "aria-label": "\u56FE\u50CF\u7F51\u683C", children: selectedChildIds.size === 0 ? "\u8BF7\u9009\u62E9\u81F3\u5C11\u4E00\u4E2A\u5B50\u6570\u636E\u96C6" : loading ? "\u6B63\u5728\u8BFB\u53D6\u56FE\u50CF\u2026" : "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u56FE\u50CF" }),
-      total > 0 && /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("div", { id: "pager", className: "pagination", "aria-label": "\u56FE\u50CF\u5206\u9875", children: /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "pagination-controls", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+      }) }) : /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("div", { id: "grid", className: "empty", "aria-label": "\u56FE\u50CF\u7F51\u683C", children: selectedChildIds.size === 0 ? "\u8BF7\u9009\u62E9\u81F3\u5C11\u4E00\u4E2A\u5B50\u6570\u636E\u96C6" : loading ? "\u6B63\u5728\u8BFB\u53D6\u56FE\u50CF\u2026" : "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u56FE\u50CF" }),
+      total > 0 && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("div", { id: "pager", className: "pagination", "aria-label": "\u56FE\u50CF\u5206\u9875", children: /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "pagination-controls", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
           "button",
           {
             type: "button",
@@ -18739,7 +18907,7 @@ button.exp-ghost:hover,
             children: "\u4E0A\u4E00\u9875"
           }
         ),
-        pageNumbers.map((n) => /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+        pageNumbers.map((n) => /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
           "button",
           {
             type: "button",
@@ -18753,7 +18921,7 @@ button.exp-ghost:hover,
           },
           n
         )),
-        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
           "button",
           {
             type: "button",
@@ -18766,21 +18934,21 @@ button.exp-ghost:hover,
             children: "\u4E0B\u4E00\u9875"
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("span", { className: "pagination-page", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("span", { className: "pagination-page", children: [
           page,
           " / ",
           pages2,
           " \u9875"
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("span", { className: "pagination-total", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("span", { className: "pagination-total", children: [
           "\u5171 ",
           total,
           " \u5F20\u56FE\u50CF"
         ] })
       ] }) }),
-      typeof document !== "undefined" && (0, import_react_dom6.createPortal)(
-        /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(import_jsx_runtime49.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+      typeof document !== "undefined" && (0, import_react_dom7.createPortal)(
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_jsx_runtime50.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
             "div",
             {
               id: "overlay",
@@ -18789,10 +18957,10 @@ button.exp-ghost:hover,
               onClick: (e) => {
                 if (e.target === e.currentTarget) closeViewer();
               },
-              children: /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("section", { className: "detail-dialog", role: "dialog", "aria-modal": "true", "aria-labelledby": "detail-title", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("header", { className: "detail-header", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("h2", { className: "detail-title", id: "detail-title", children: "\u56FE\u50CF\u8BE6\u60C5" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+              children: /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("section", { className: "detail-dialog", role: "dialog", "aria-modal": "true", "aria-labelledby": "detail-title", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("header", { className: "detail-header", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("h2", { className: "detail-title", id: "detail-title", children: "\u56FE\u50CF\u8BE6\u60C5" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
                     "button",
                     {
                       className: "detail-close",
@@ -18805,8 +18973,8 @@ button.exp-ghost:hover,
                     }
                   )
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("div", { className: "detail-scroll", children: activeSample && /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(import_jsx_runtime49.Fragment, { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(
+                /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("div", { className: "detail-scroll", children: activeSample && /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_jsx_runtime50.Fragment, { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(
                     "button",
                     {
                       id: "detail-preview",
@@ -18816,104 +18984,79 @@ button.exp-ghost:hover,
                       title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE\u4E0E\u6807\u6CE8",
                       onClick: openFullscreen,
                       children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(
-                          "span",
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
+                          AnnotatedImageStage,
                           {
-                            className: "preview-image-frame",
-                            style: { aspectRatio: `${imgW} / ${imgH}`, height: "100%", maxWidth: "100%", position: "relative" },
-                            children: [
-                              /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
-                                "img",
-                                {
-                                  id: "preview-image",
-                                  src: mediaUrl(activeSample, "image"),
-                                  alt: activeSample.relative_path.split("/").pop()
-                                }
-                              ),
-                              /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("span", { className: "preview-overlay", id: "preview-overlay", children: bboxes.map((item, idx) => {
-                                const [x1, y1, x2, y2] = item.bbox;
-                                return /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
-                                  "span",
-                                  {
-                                    className: "bbox",
-                                    "data-label": item.raw_label.replace(/^类别\s*/, ""),
-                                    "aria-hidden": "true",
-                                    style: {
-                                      left: `${(x1 / imgW * 100).toFixed(3)}%`,
-                                      top: `${(y1 / imgH * 100).toFixed(3)}%`,
-                                      width: `${((x2 - x1) / imgW * 100).toFixed(3)}%`,
-                                      height: `${((y2 - y1) / imgH * 100).toFixed(3)}%`
-                                    }
-                                  },
-                                  item.annotation_id || idx
-                                );
-                              }) })
-                            ]
+                            src: mediaUrl(activeSample, "image"),
+                            alt: activeSample.relative_path.split("/").pop(),
+                            width: imgW,
+                            height: imgH,
+                            bboxes
                           }
                         ),
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("span", { className: "detail-preview-hint", children: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE" })
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { className: "detail-preview-hint", children: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE" })
                       ]
                     }
                   ),
-                  /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("section", { className: "detail-content", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("h3", { className: "detail-section-heading", children: "\u56FE\u50CF\u4FE1\u606F" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("dl", { className: "detail-meta", id: "detail-fields", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("dt", { children: "\u56FE\u50CF\u8DEF\u5F84" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("dd", { className: "path-value", children: sampleDetail?.sample.image_path || activeSample.relative_path }),
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("dt", { children: "\u56FE\u50CF\u540D" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("dd", { children: activeSample.relative_path.split("/").pop() }),
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("dt", { children: "UUID" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("dd", { children: activeSample.sample_uuid }),
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("dt", { children: "\u5206\u8FA8\u7387" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("dd", { children: `${sampleDetail?.sample.width || activeSample.width} \xD7 ${sampleDetail?.sample.height || activeSample.height}` })
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("section", { className: "detail-content", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("h3", { className: "detail-section-heading", children: "\u56FE\u50CF\u4FE1\u606F" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("dl", { className: "detail-meta", id: "detail-fields", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dt", { children: "\u56FE\u50CF\u8DEF\u5F84" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dd", { className: "path-value", children: sampleDetail?.sample.image_path || activeSample.relative_path }),
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dt", { children: "\u56FE\u50CF\u540D" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dd", { children: activeSample.relative_path.split("/").pop() }),
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dt", { children: "UUID" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dd", { children: activeSample.sample_uuid }),
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dt", { children: "\u5206\u8FA8\u7387" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dd", { children: `${sampleDetail?.sample.width || activeSample.width} \xD7 ${sampleDetail?.sample.height || activeSample.height}` })
                     ] })
                   ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("section", { className: "detail-part", id: "detail-ann-section", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "detail-annotation-heading", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("h3", { className: "detail-section-heading", id: "detail-ann-title", children: "\u6807\u6CE8\u4FE1\u606F" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("span", { className: "detail-ann-summary", id: "detail-ann-count", children: sampleDataset?.format === "folder_classification" ? "\u5171 1 \u4E2A\u6807\u6CE8" : `\u5171 ${detailAnnotations.length} \u4E2A\u6807\u6CE8` })
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("section", { className: "detail-part", id: "detail-ann-section", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "detail-annotation-heading", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("h3", { className: "detail-section-heading", id: "detail-ann-title", children: "\u6807\u6CE8\u4FE1\u606F" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { className: "detail-ann-summary", id: "detail-ann-count", children: sampleDataset?.format === "folder_classification" ? "\u5171 1 \u4E2A\u6807\u6CE8" : `\u5171 ${detailAnnotations.length} \u4E2A\u6807\u6CE8` })
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("div", { id: "detail-ann-content", children: sampleDataset?.format === "folder_classification" ? /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("table", { className: "detail-ann-table", "aria-label": "\u5F02\u5E38\u68C0\u6D4B\u6807\u6CE8\u5217\u8868", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("tr", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("th", { children: "#" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("th", { children: "\u6807\u6CE8\u7C7B\u522B" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("th", { children: "\u7C7B\u578B" })
+                    /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("div", { id: "detail-ann-content", children: sampleDataset?.format === "folder_classification" ? /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("table", { className: "detail-ann-table", "aria-label": "\u5F02\u5E38\u68C0\u6D4B\u6807\u6CE8\u5217\u8868", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("tr", { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "#" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u6807\u6CE8\u7C7B\u522B" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u7C7B\u578B" })
                       ] }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("tbody", { children: /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("tr", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("td", { children: "1" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("td", { children: activeSample.quality_status === "FAIL" ? "NG" : "OK" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("td", { children: "\u5F02\u5E38\u68C0\u6D4B" })
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("tbody", { children: /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("tr", { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: "1" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: activeSample.quality_status === "FAIL" ? "NG" : "OK" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: "\u5F02\u5E38\u68C0\u6D4B" })
                       ] }) })
-                    ] }) : detailAnnotations.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("table", { className: "detail-ann-table", "aria-label": "Labelme \u6807\u6CE8\u5217\u8868", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("tr", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("th", { children: "#" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("th", { children: "\u6807\u6CE8\u7C7B\u522B" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("th", { children: "\u7C7B\u578B" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("th", { children: "\u6570\u636E" })
+                    ] }) : detailAnnotations.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("table", { className: "detail-ann-table", "aria-label": "Labelme \u6807\u6CE8\u5217\u8868", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("tr", { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "#" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u6807\u6CE8\u7C7B\u522B" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u7C7B\u578B" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u6570\u636E" })
                       ] }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("tbody", { children: detailAnnotations.map((a, k) => /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("tr", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("td", { children: k + 1 }),
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("td", { children: a.raw_label }),
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("td", { children: a.annotation_type || "bbox" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("td", { className: "ann-value", children: a.bbox ? a.bbox.map((v) => Number(v).toFixed(0)).join(", ") : "-" })
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("tbody", { children: detailAnnotations.map((a, k) => /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("tr", { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: k + 1 }),
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: a.raw_label }),
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: a.annotation_type || "bbox" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { className: "ann-value", children: a.bbox ? a.bbox.map((v) => Number(v).toFixed(0)).join(", ") : "-" })
                       ] }, a.annotation_id || k)) })
-                    ] }) : /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("p", { className: "detail-fallback", children: "\u65E0\u6807\u6CE8" }) })
+                    ] }) : /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("p", { className: "detail-fallback", children: "\u65E0\u6807\u6CE8" }) })
                   ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("section", { className: "detail-model-section", "aria-labelledby": "detail-model-title", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("h3", { className: "detail-section-heading", id: "detail-model-title", children: "\u6A21\u578B\u89C2\u5BDF" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("div", { id: "detail-model-content", children: sampleDetail?.suggestion ? /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)(import_jsx_runtime49.Fragment, { children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("p", { className: "detail-model-result", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("strong", { children: sampleDetail.suggestion.suggested_label === "FAIL" ? "\u53D1\u73B0\u7591\u70B9" : sampleDetail.suggestion.suggested_label === "PASS" ? "\u5224\u5B9A\u6B63\u5E38" : "\u672A\u5224\u5B9A" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("section", { className: "detail-model-section", "aria-labelledby": "detail-model-title", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("h3", { className: "detail-section-heading", id: "detail-model-title", children: "\u6A21\u578B\u89C2\u5BDF" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("div", { id: "detail-model-content", children: sampleDetail?.suggestion ? /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_jsx_runtime50.Fragment, { children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("p", { className: "detail-model-result", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("strong", { children: sampleDetail.suggestion.suggested_label === "FAIL" ? "\u53D1\u73B0\u7591\u70B9" : sampleDetail.suggestion.suggested_label === "PASS" ? "\u5224\u5B9A\u6B63\u5E38" : "\u672A\u5224\u5B9A" }),
                         sampleDetail.suggestion.reason_category ? `\uFF08${sampleDetail.suggestion.reason_category}\uFF09` : ""
                       ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("p", { className: "detail-model-text", children: sampleDetail.suggestion.notes || "\u65E0\u9644\u6CE8\u3002" })
-                    ] }) : /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("p", { className: "detail-model-text", children: "\u5C1A\u65E0\u6A21\u578B\u89C2\u5BDF\u3002" }) })
+                      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("p", { className: "detail-model-text", children: sampleDetail.suggestion.notes || "\u65E0\u9644\u6CE8\u3002" })
+                    ] }) : /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("p", { className: "detail-model-text", children: "\u5C1A\u65E0\u6A21\u578B\u89C2\u5BDF\u3002" }) })
                   ] })
                 ] }) })
               ] })
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
             FullscreenViewer,
             {
               open: fullscreen,
@@ -18944,23 +19087,23 @@ button.exp-ghost:hover,
   }
 
   // src/client/WorkbenchPage.tsx
-  var import_jsx_runtime50 = __require("react/jsx-runtime");
+  var import_jsx_runtime51 = __require("react/jsx-runtime");
   function WorkbenchPage({ pageId }) {
     const { workspace, state } = useWorkspace();
     const datasetId = state.datasetId, view = workspace.view(pageId);
-    const [auditSetupOpen, setAuditSetupOpen] = (0, import_react46.useState)(false);
-    const [auditDetailOpen, setAuditDetailOpen] = (0, import_react46.useState)(false);
-    const [auditWidth, setAuditWidth] = (0, import_react46.useState)(null);
-    const [datasets, setDatasets] = (0, import_react46.useState)([]);
-    const [groups, setGroups] = (0, import_react46.useState)([]);
-    const [result, setResult] = (0, import_react46.useState)({ query: "", items: [], total: 0 });
-    const [loading, setLoading] = (0, import_react46.useState)(false);
-    const [error2, setError] = (0, import_react46.useState)("");
-    const [revision, setRevision] = (0, import_react46.useState)(0);
-    const advance = (0, import_react46.useRef)(null);
-    const [reviewConfirmation, setReviewConfirmation] = (0, import_react46.useState)(null);
+    const [auditSetupOpen, setAuditSetupOpen] = (0, import_react47.useState)(false);
+    const [auditDetailOpen, setAuditDetailOpen] = (0, import_react47.useState)(false);
+    const [auditWidth, setAuditWidth] = (0, import_react47.useState)(null);
+    const [datasets, setDatasets] = (0, import_react47.useState)([]);
+    const [groups, setGroups] = (0, import_react47.useState)([]);
+    const [result, setResult] = (0, import_react47.useState)({ query: "", items: [], total: 0 });
+    const [loading, setLoading] = (0, import_react47.useState)(false);
+    const [error2, setError] = (0, import_react47.useState)("");
+    const [revision, setRevision] = (0, import_react47.useState)(0);
+    const advance = (0, import_react47.useRef)(null);
+    const [reviewConfirmation, setReviewConfirmation] = (0, import_react47.useState)(null);
     const dataset = datasets.find((d) => d.dataset_id === datasetId);
-    const loadDatasets = (0, import_react46.useCallback)(async (preferred, signal) => {
+    const loadDatasets = (0, import_react47.useCallback)(async (preferred, signal) => {
       try {
         const result2 = await request("/datasets", void 0, void 0, signal);
         if (signal?.aborted) return;
@@ -18973,12 +19116,12 @@ button.exp-ghost:hover,
         if (!signal?.aborted) setError(message(e));
       }
     }, [workspace]);
-    const changed = (0, import_react46.useCallback)(() => {
+    const changed = (0, import_react47.useCallback)(() => {
       setRevision((v) => v + 1);
       void loadDatasets();
     }, [loadDatasets]);
     const audit = useJobs("audit", pageId === "industrial-audit" ? datasetId : "", changed, workspace.view("industrial-audit").job);
-    (0, import_react46.useEffect)(() => {
+    (0, import_react47.useEffect)(() => {
       const controller = new AbortController();
       void loadDatasets(void 0, controller.signal);
       return () => controller.abort();
@@ -18987,16 +19130,16 @@ button.exp-ghost:hover,
     const query = sampleQuery(datasetId, view.filters, view.page, pageSize);
     const navigation2 = useSampleNavigation(pageId, dataset?.task_id, query, result, gallery);
     const surface = usePagePosition(gallery ? JSON.stringify([pageId, view.tab, query]) : null, state.active && state.pageId === pageId && !!dataset && result.query === query && !loading);
-    (0, import_react46.useEffect)(() => {
+    (0, import_react47.useEffect)(() => {
       if (pageId !== "industrial-audit" || !surface.current) return;
       const observer = new ResizeObserver(([entry]) => setAuditWidth(entry.borderBoxSize[0].inlineSize));
       observer.observe(surface.current);
       return () => observer.disconnect();
     }, [pageId, surface]);
-    (0, import_react46.useEffect)(() => setAuditDetailOpen(false), [datasetId, view.tab]);
+    (0, import_react47.useEffect)(() => setAuditDetailOpen(false), [datasetId, view.tab]);
     const auditCompact = auditWidth !== null && auditWidth <= 900;
     const auditModalOpen = auditCompact && (auditDetailOpen || !!view.inspection);
-    (0, import_react46.useEffect)(() => {
+    (0, import_react47.useEffect)(() => {
       if (!dataset || !gallery) return;
       const controller = new AbortController();
       setLoading(true);
@@ -19032,12 +19175,12 @@ button.exp-ghost:hover,
       changed();
     }
     const updateFilters = (filters) => workspace.updateView(pageId, { filters, page: 1, selected: "" });
-    const grid = dataset && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(SampleGrid, { layout: pageId === "industrial-review" ? "queue" : "grid", showFilters: pageId === "industrial-images", dataset, filters: view.filters, onFilters: updateFilters, items: result.query === query ? result.items : [], total: result.query === query ? result.total : 0, page: view.page, onPage: (page) => workspace.updateView(pageId, { page, selected: "" }), selected: view.selected, onSelect: (selected) => {
+    const grid = dataset && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(SampleGrid, { layout: pageId === "industrial-review" ? "queue" : "grid", showFilters: pageId === "industrial-images", dataset, filters: view.filters, onFilters: updateFilters, items: result.query === query ? result.items : [], total: result.query === query ? result.total : 0, page: view.page, onPage: (page) => workspace.updateView(pageId, { page, selected: "" }), selected: view.selected, onSelect: (selected) => {
       workspace.updateView(pageId, { selected });
       if (pageId === "industrial-audit") setAuditDetailOpen(auditCompact);
     }, loading, sourceManagement: pageId === "industrial-images" ? { active: view.tab === "sources", onChanged: changed } : void 0 }, datasetId);
     const inspectedSample = pageId === "industrial-review" && view.tab === "records" ? view.historySampleId : view.selected;
-    const inspector = dataset && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(SampleInspector, { dataset, sampleId: inspectedSample, mode: pageId === "industrial-review" ? "review" : pageId === "industrial-images" ? "browse" : "model", queue: pageId === "industrial-review" && view.tab === "results" ? grid : void 0, filters: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(SampleFilters, { defaults: initialReviewFilters, dataset, filters: view.filters, onFilters: updateFilters }), advanceOnSubmit: view.tab === "results" && view.filters.review_status === "pending", panel: pageId === "industrial-audit" ? {
+    const inspector = dataset && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(SampleInspector, { dataset, sampleId: inspectedSample, mode: pageId === "industrial-review" ? "review" : pageId === "industrial-images" ? "browse" : "model", queue: pageId === "industrial-review" && view.tab === "results" ? grid : void 0, filters: /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(SampleFilters, { defaults: initialReviewFilters, dataset, filters: view.filters, onFilters: updateFilters }), advanceOnSubmit: view.tab === "results" && view.filters.review_status === "pending", panel: pageId === "industrial-audit" ? {
       presentation: auditWidth === null ? "closed" : auditModalOpen ? "modal" : auditCompact ? "closed" : "inline",
       onOpen: setAuditDetailOpen,
       onClose: () => {
@@ -19046,51 +19189,51 @@ button.exp-ghost:hover,
       },
       restoreFocus: () => surface.current?.querySelector(`.iad-sample[data-sample-id="${CSS.escape(view.selected)}"]`) || null
     } : void 0, revision, onReviewed: reviewed, jobs: audit.jobs, onJobsChanged: audit.refresh, navigation: gallery ? navigation2 : void 0 }, pageId === "industrial-review" && view.tab === "results" ? datasetId : `${datasetId}:${inspectedSample}`);
-    const datasetControls = /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_jsx_runtime50.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("select", { "aria-label": "\u5F53\u524D\u6570\u636E\u96C6", value: datasetId, onChange: (event) => workspace.selectDataset(event.target.value), children: [
-        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("option", { value: "", disabled: true, children: "\u9009\u62E9\u6570\u636E\u96C6" }),
-        datasets.map((item) => /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("option", { value: item.dataset_id, children: item.name }, item.dataset_id))
+    const datasetControls = /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)(import_jsx_runtime51.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("select", { "aria-label": "\u5F53\u524D\u6570\u636E\u96C6", value: datasetId, onChange: (event) => workspace.selectDataset(event.target.value), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("option", { value: "", disabled: true, children: "\u9009\u62E9\u6570\u636E\u96C6" }),
+        datasets.map((item) => /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("option", { value: item.dataset_id, children: item.name }, item.dataset_id))
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(IconButton, { label: "\u5237\u65B0", onClick: changed, children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(RefreshIcon, {}) })
+      /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(IconButton, { label: "\u5237\u65B0", onClick: changed, children: /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(RefreshIcon, {}) })
     ] });
-    return /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { ref: surface, className: "iad-workbench", "data-page": pageId, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("style", { children: workbenchStyles }),
-      pageId !== "industrial-datasets" && pageId !== "industrial-images" && (!dataset || pageId !== "industrial-exploration" && pageId !== "industrial-knowledge") && /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(WorkbenchHeader, { pageId, children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("div", { ref: surface, className: "iad-workbench", "data-page": pageId, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("style", { children: workbenchStyles }),
+      pageId !== "industrial-datasets" && pageId !== "industrial-images" && (!dataset || pageId !== "industrial-exploration" && pageId !== "industrial-knowledge") && /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)(WorkbenchHeader, { pageId, children: [
         datasetControls,
-        pageId === "industrial-audit" && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("button", { className: "iad-primary", disabled: !dataset, onClick: () => setAuditSetupOpen(true), children: "\u65B0\u5EFA\u5BA1\u8BA1" })
+        pageId === "industrial-audit" && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("button", { className: "iad-primary", disabled: !dataset, onClick: () => setAuditSetupOpen(true), children: "\u65B0\u5EFA\u5BA1\u8BA1" })
       ] }),
-      (error2 || audit.error) && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("p", { role: "alert", className: "iad-error", children: error2 || audit.error }),
-      pageId === "industrial-datasets" ? /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(import_jsx_runtime50.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(DatasetManager, { datasets, groups, onChanged: (id) => {
+      (error2 || audit.error) && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("p", { role: "alert", className: "iad-error", children: error2 || audit.error }),
+      pageId === "industrial-datasets" ? /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(import_jsx_runtime51.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(DatasetManager, { datasets, groups, onChanged: (id) => {
         void loadDatasets(id);
         setRevision((v) => v + 1);
-      } }) }) : pageId === "industrial-images" ? /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(import_jsx_runtime50.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(ImagesPage, { datasets, groups, onDatasetsChanged: () => void loadDatasets() }) }) : !dataset ? /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("section", { className: "iad-job-section", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("p", { children: "\u8BF7\u5148\u6DFB\u52A0\u670D\u52A1\u5668\u4E0A\u7684\u6570\u636E\u96C6\u3002" }),
-        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("button", { onClick: () => workspace.navigate("industrial-datasets"), children: "\u524D\u5F80\u6570\u636E\u96C6\u7BA1\u7406" })
-      ] }) : /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_jsx_runtime50.Fragment, { children: [
-        pageId === "industrial-exploration" && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(ExplorationPage, { dataset, refreshRevision: revision, headerActions: datasetControls }, datasetId),
-        pageId === "industrial-knowledge" && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(KnowledgePage, { dataset, kind: state.knowledgeKind, refreshRevision: revision, headerActions: datasetControls }, `${datasetId}:${state.knowledgeKind}`),
-        pageId === "industrial-audit" && /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_jsx_runtime50.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(PageTabs, { label: "\u5BA1\u8BA1\u89C6\u56FE", items: [{ id: "results", label: "\u7ED3\u679C" }, { id: "jobs", label: "\u6A21\u578B\u5BA1\u8BA1\u4F5C\u4E1A" }, { id: "reports", label: "\u62A5\u544A" }], value: view.tab, onChange: (tab) => workspace.updateView(pageId, { tab }), children: [
-            view.tab !== "jobs" && audit.jobs.some((job) => ["RUNNING", "PENDING"].includes(job.status)) && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("p", { role: "status", children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("button", { onClick: () => workspace.updateView(pageId, { tab: "jobs" }), children: "\u67E5\u770B\u6267\u884C\u4E2D\u7684\u5BA1\u8BA1\u4F5C\u4E1A" }) }),
-            view.tab === "results" && /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_jsx_runtime50.Fragment, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(SampleFilters, { dataset, filters: view.filters, onFilters: updateFilters }),
-              /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "iad-main", "data-compact": auditCompact, children: [
+      } }) }) : pageId === "industrial-images" ? /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(import_jsx_runtime51.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(ImagesPage, { datasets, groups, onDatasetsChanged: () => void loadDatasets() }) }) : !dataset ? /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("section", { className: "iad-job-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("p", { children: "\u8BF7\u5148\u6DFB\u52A0\u670D\u52A1\u5668\u4E0A\u7684\u6570\u636E\u96C6\u3002" }),
+        /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("button", { onClick: () => workspace.navigate("industrial-datasets"), children: "\u524D\u5F80\u6570\u636E\u96C6\u7BA1\u7406" })
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)(import_jsx_runtime51.Fragment, { children: [
+        pageId === "industrial-exploration" && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(ExplorationPage, { dataset, refreshRevision: revision, headerActions: datasetControls }, datasetId),
+        pageId === "industrial-knowledge" && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(KnowledgePage, { dataset, kind: state.knowledgeKind, refreshRevision: revision, headerActions: datasetControls }, `${datasetId}:${state.knowledgeKind}`),
+        pageId === "industrial-audit" && /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)(import_jsx_runtime51.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)(PageTabs, { label: "\u5BA1\u8BA1\u89C6\u56FE", items: [{ id: "results", label: "\u7ED3\u679C" }, { id: "jobs", label: "\u6A21\u578B\u5BA1\u8BA1\u4F5C\u4E1A" }, { id: "reports", label: "\u62A5\u544A" }], value: view.tab, onChange: (tab) => workspace.updateView(pageId, { tab }), children: [
+            view.tab !== "jobs" && audit.jobs.some((job) => ["RUNNING", "PENDING"].includes(job.status)) && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("p", { role: "status", children: /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("button", { onClick: () => workspace.updateView(pageId, { tab: "jobs" }), children: "\u67E5\u770B\u6267\u884C\u4E2D\u7684\u5BA1\u8BA1\u4F5C\u4E1A" }) }),
+            view.tab === "results" && /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)(import_jsx_runtime51.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(SampleFilters, { dataset, filters: view.filters, onFilters: updateFilters }),
+              /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("div", { className: "iad-main", "data-compact": auditCompact, children: [
                 grid,
                 inspector
               ] })
             ] }),
-            view.tab === "jobs" && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(AuditJobs, { jobs: audit.jobs, onJobsChanged: audit.refresh }),
-            view.tab === "reports" && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(AuditReport, { dataset }, datasetId)
+            view.tab === "jobs" && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(AuditJobs, { jobs: audit.jobs, onJobsChanged: audit.refresh }),
+            view.tab === "reports" && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(AuditReport, { dataset }, datasetId)
           ] }),
-          auditSetupOpen && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Modal, { title: "\u65B0\u5EFA\u6A21\u578B\u5BA1\u8BA1", className: "iad-drawer", onClose: () => setAuditSetupOpen(false), children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(AuditSetup, { dataset, filters: view.filters, jobs: audit.jobs, revision, onJobsChanged: audit.refresh, onStarted: (job) => {
+          auditSetupOpen && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(Modal, { title: "\u65B0\u5EFA\u6A21\u578B\u5BA1\u8BA1", className: "iad-drawer", onClose: () => setAuditSetupOpen(false), children: /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(AuditSetup, { dataset, filters: view.filters, jobs: audit.jobs, revision, onJobsChanged: audit.refresh, onStarted: (job) => {
             setAuditSetupOpen(false);
             workspace.updateView(pageId, { tab: "jobs", job: job.run_id });
           } }, datasetId) })
         ] }),
-        pageId === "industrial-review" && /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(PageTabs, { label: "\u590D\u6838\u89C6\u56FE", items: [{ id: "results", label: "\u590D\u6838\u961F\u5217" }, { id: "conflicts", label: "\u77E5\u8BC6\u51B2\u7A81" }, { id: "records", label: "\u590D\u6838\u8BB0\u5F55" }], value: view.tab, onChange: (tab) => workspace.updateView(pageId, { tab }), children: [
-          view.tab === "conflicts" && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(KnowledgeConflictReview, { datasetId }, datasetId),
-          view.tab === "results" && /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_jsx_runtime50.Fragment, { children: [
-            reviewConfirmation?.datasetId === datasetId && /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("p", { role: "status", className: "iad-review-confirmation", children: [
+        pageId === "industrial-review" && /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)(PageTabs, { label: "\u590D\u6838\u89C6\u56FE", items: [{ id: "results", label: "\u590D\u6838\u961F\u5217" }, { id: "conflicts", label: "\u77E5\u8BC6\u51B2\u7A81" }, { id: "records", label: "\u590D\u6838\u8BB0\u5F55" }], value: view.tab, onChange: (tab) => workspace.updateView(pageId, { tab }), children: [
+          view.tab === "conflicts" && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(KnowledgeConflictReview, { datasetId }, datasetId),
+          view.tab === "results" && /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)(import_jsx_runtime51.Fragment, { children: [
+            reviewConfirmation?.datasetId === datasetId && /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("p", { role: "status", className: "iad-review-confirmation", children: [
               "\u5DF2\u63D0\u4EA4 ",
               reviewConfirmation.name,
               " \xB7 ",
@@ -19098,7 +19241,7 @@ button.exp-ghost:hover,
             ] }),
             inspector
           ] }),
-          view.tab === "records" && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
+          view.tab === "records" && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(
             ReviewRecords,
             {
               datasetId,
@@ -19213,13 +19356,13 @@ button.exp-ghost:hover,
   };
 
   // src/client/components/SessionResult.tsx
-  var import_jsx_runtime51 = __require("react/jsx-runtime");
+  var import_jsx_runtime52 = __require("react/jsx-runtime");
   function SessionResult(props) {
     const { workspace } = useWorkspace();
     const meta = props.phase === "result" ? props.block.meta : null;
     const result = meta?.type === "industrial-workbench" ? meta : null;
-    return /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("section", { className: "iad-tool-card", "aria-label": props.title, "data-iad-tool": props.toolName, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("style", { children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("section", { className: "iad-tool-card", "aria-label": props.title, "data-iad-tool": props.toolName, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("style", { children: [
         themeStyles,
         controlStyles,
         `
@@ -19228,8 +19371,8 @@ button.exp-ghost:hover,
 
     `
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("strong", { children: props.title }),
-      props.phase !== "result" ? /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("p", { role: "status", children: props.phase === "preparing" ? "\u51C6\u5907\u8C03\u7528\u2026" : "\u5DE5\u5177\u6267\u884C\u4E2D\u2026" }) : props.block.isError ? /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("p", { role: "alert", children: "\u8C03\u7528\u5931\u8D25\uFF0C\u8BF7\u67E5\u770B\u8C03\u7528\u8BE6\u60C5\u3002" }) : result?.job && /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("p", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("strong", { children: props.title }),
+      props.phase !== "result" ? /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("p", { role: "status", children: props.phase === "preparing" ? "\u51C6\u5907\u8C03\u7528\u2026" : "\u5DE5\u5177\u6267\u884C\u4E2D\u2026" }) : props.block.isError ? /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("p", { role: "alert", children: "\u8C03\u7528\u5931\u8D25\uFF0C\u8BF7\u67E5\u770B\u8C03\u7528\u8BE6\u60C5\u3002" }) : result?.job && /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("p", { children: [
         "\u8C03\u7528\u65F6\u72B6\u6001\uFF1A",
         jobStatuses[result.job.status],
         " \xB7 \u5B8C\u6210 ",
@@ -19240,9 +19383,9 @@ button.exp-ghost:hover,
         result.job.total_samples,
         " \u5F20"
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("nav", { "aria-label": "\u67E5\u770B\u5DE5\u5177\u7ED3\u679C", children: [
-        result?.links.map((link, index3) => /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("button", { "data-iad-page": link.location.pageId, "data-iad-scope-id": link.location.pageId === "industrial-consistency" ? void 0 : link.location.scopeRunId, "data-iad-run-id": link.location.pageId === "industrial-consistency" ? link.location.batchId : link.location.job, "data-iad-version-id": link.location.pageId === "industrial-consistency" ? void 0 : link.location.version, onClick: () => workspace.openLocation(link.location), children: link.label }, index3)),
-        props.inspect && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("button", { onClick: props.inspect, children: "\u8C03\u7528\u8BE6\u60C5" })
+      /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("nav", { "aria-label": "\u67E5\u770B\u5DE5\u5177\u7ED3\u679C", children: [
+        result?.links.map((link, index3) => /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("button", { "data-iad-page": link.location.pageId, "data-iad-scope-id": link.location.pageId === "industrial-consistency" ? void 0 : link.location.scopeRunId, "data-iad-run-id": link.location.pageId === "industrial-consistency" ? link.location.batchId : link.location.job, "data-iad-version-id": link.location.pageId === "industrial-consistency" ? void 0 : link.location.version, onClick: () => workspace.openLocation(link.location), children: link.label }, index3)),
+        props.inspect && /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("button", { onClick: props.inspect, children: "\u8C03\u7528\u8BE6\u60C5" })
       ] })
     ] });
   }
@@ -19295,7 +19438,7 @@ button.exp-ghost:hover,
   };
 
   // src/client/components/ModelSettingsPage.tsx
-  var import_react50 = __require("react");
+  var import_react51 = __require("react");
 
   // src/shared/model-settings.generated.ts
   var defaultModelLimits = {
@@ -19312,16 +19455,16 @@ button.exp-ghost:hover,
   };
 
   // src/client/components/ProviderManager.tsx
-  var import_react47 = __require("react");
-  var import_jsx_runtime52 = __require("react/jsx-runtime");
+  var import_react48 = __require("react");
+  var import_jsx_runtime53 = __require("react/jsx-runtime");
   function ProviderManager() {
     const { view, refresh } = useWorkbenchModel();
-    const [editing, setEditing] = (0, import_react47.useState)(null);
-    const [notice, setNotice] = (0, import_react47.useState)("");
-    return /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)(import_jsx_runtime52.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("header", { className: "iad-section-header", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("h2", { children: "\u63D0\u4F9B\u5546" }),
-        /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(
+    const [editing, setEditing] = (0, import_react48.useState)(null);
+    const [notice, setNotice] = (0, import_react48.useState)("");
+    return /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)(import_jsx_runtime53.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("header", { className: "iad-section-header", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("h2", { children: "\u63D0\u4F9B\u5546" }),
+        /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(
           "button",
           {
             className: "iad-primary",
@@ -19331,24 +19474,24 @@ button.exp-ghost:hover,
           }
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("p", { className: "iad-muted", children: "\u4E0E DSH \u8BBE\u7F6E\u5171\u7528\u63D0\u4F9B\u5546\u8D44\u6599\u548C\u51ED\u636E\u3002" }),
-      /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("div", { className: "iad-table-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("table", { className: "iad-resource-table", "aria-label": "\u63D0\u4F9B\u5546\u5217\u8868", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("th", { children: "\u63D0\u4F9B\u5546\u540D\u79F0" }),
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("th", { children: "\u670D\u52A1\u5730\u5740" }),
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("th", { className: "iad-number", children: "\u6A21\u578B\u6570" }),
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("th", { children: "\u64CD\u4F5C" })
+      /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("p", { className: "iad-muted", children: "\u4E0E DSH \u8BBE\u7F6E\u5171\u7528\u63D0\u4F9B\u5546\u8D44\u6599\u548C\u51ED\u636E\u3002" }),
+      /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("div", { className: "iad-table-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("table", { className: "iad-resource-table", "aria-label": "\u63D0\u4F9B\u5546\u5217\u8868", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("tr", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("th", { children: "\u63D0\u4F9B\u5546\u540D\u79F0" }),
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("th", { children: "\u670D\u52A1\u5730\u5740" }),
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("th", { className: "iad-number", children: "\u6A21\u578B\u6570" }),
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("th", { children: "\u64CD\u4F5C" })
         ] }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("tbody", { children: view?.providers.map((provider) => /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("td", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("strong", { children: provider.name }),
-            provider.error && /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("p", { className: "iad-error", children: provider.error })
+        /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("tbody", { children: view?.providers.map((provider) => /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("tr", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("td", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("strong", { children: provider.name }),
+            provider.error && /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("p", { className: "iad-error", children: provider.error })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("td", { className: "iad-provider-endpoint", children: provider.endpoint || provider.api || "\u5C1A\u672A\u914D\u7F6E" }),
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("td", { className: "iad-number", children: provider.models.length }),
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("div", { className: "iad-row", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(IconButton, { label: `\u7F16\u8F91\u63D0\u4F9B\u5546 ${provider.name}`, title: "\u7F16\u8F91\u63D0\u4F9B\u5546", disabled: !provider.editable, onClick: () => setEditing({ provider, revision: view.provider_revision }), children: /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(EditIcon, {}) }),
-            provider.removable && /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("td", { className: "iad-provider-endpoint", children: provider.endpoint || provider.api || "\u5C1A\u672A\u914D\u7F6E" }),
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("td", { className: "iad-number", children: provider.models.length }),
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "iad-row", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(IconButton, { label: `\u7F16\u8F91\u63D0\u4F9B\u5546 ${provider.name}`, title: "\u7F16\u8F91\u63D0\u4F9B\u5546", disabled: !provider.editable, onClick: () => setEditing({ provider, revision: view.provider_revision }), children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(EditIcon, {}) }),
+            provider.removable && /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(
               DeleteAction,
               {
                 title: "\u5220\u9664\u63D0\u4F9B\u5546",
@@ -19364,8 +19507,8 @@ button.exp-ghost:hover,
           ] }) })
         ] }, provider.provider_id)) })
       ] }) }),
-      notice && /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("p", { role: "status", children: notice }),
-      editing && /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(
+      notice && /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("p", { role: "status", children: notice }),
+      editing && /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(
         ProviderEditor,
         {
           provider: editing.provider,
@@ -19381,10 +19524,10 @@ button.exp-ghost:hover,
     ] });
   }
   function ProviderEditor({ provider, revision, onClose, onSaved }) {
-    const [id] = (0, import_react47.useState)(provider?.provider_id || `vision-${v4_default()}`);
-    const [name2, setName] = (0, import_react47.useState)(provider?.name || ""), [endpoint, setEndpoint] = (0, import_react47.useState)(provider?.endpoint || ""), [key, setKey] = (0, import_react47.useState)("");
-    const [models, setModels] = (0, import_react47.useState)(provider?.models || []);
-    const [busy, setBusy] = (0, import_react47.useState)(false), [error2, setError] = (0, import_react47.useState)("");
+    const [id] = (0, import_react48.useState)(provider?.provider_id || `vision-${v4_default()}`);
+    const [name2, setName] = (0, import_react48.useState)(provider?.name || ""), [endpoint, setEndpoint] = (0, import_react48.useState)(provider?.endpoint || ""), [key, setKey] = (0, import_react48.useState)("");
+    const [models, setModels] = (0, import_react48.useState)(provider?.models || []);
+    const [busy, setBusy] = (0, import_react48.useState)(false), [error2, setError] = (0, import_react48.useState)("");
     async function discover() {
       setBusy(true);
       setError("");
@@ -19415,22 +19558,22 @@ button.exp-ghost:hover,
         setBusy(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(Modal, { title: provider ? "\u7F16\u8F91\u63D0\u4F9B\u5546" : "\u6DFB\u52A0\u63D0\u4F9B\u5546", className: "iad-provider-dialog", onClose: () => {
+    return /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(Modal, { title: provider ? "\u7F16\u8F91\u63D0\u4F9B\u5546" : "\u6DFB\u52A0\u63D0\u4F9B\u5546", className: "iad-provider-dialog", onClose: () => {
       if (!busy) onClose();
-    }, children: /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("form", { onSubmit: save, children: /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("fieldset", { disabled: busy, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("div", { className: "iad-model-fields", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("label", { className: "iad-field", children: [
+    }, children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("form", { onSubmit: save, children: /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("fieldset", { disabled: busy, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "iad-model-fields", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
           "\u63D0\u4F9B\u5546\u540D\u79F0",
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("input", { autoFocus: true, required: true, "aria-label": "\u63D0\u4F9B\u5546\u540D\u79F0", value: name2, onChange: (event) => setName(event.target.value) })
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("input", { autoFocus: true, required: true, "aria-label": "\u63D0\u4F9B\u5546\u540D\u79F0", value: name2, onChange: (event) => setName(event.target.value) })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("label", { className: "iad-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
           "\u670D\u52A1\u5730\u5740",
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("input", { required: true, type: "url", "aria-label": "\u670D\u52A1\u5730\u5740", placeholder: "https://\u2026/v1", value: endpoint, onChange: (event) => setEndpoint(event.target.value) })
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("input", { required: true, type: "url", "aria-label": "\u670D\u52A1\u5730\u5740", placeholder: "https://\u2026/v1", value: endpoint, onChange: (event) => setEndpoint(event.target.value) })
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("label", { className: "iad-field", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
         "API \u5BC6\u94A5",
-        /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(
           "input",
           {
             type: "password",
@@ -19443,50 +19586,50 @@ button.exp-ghost:hover,
           }
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("header", { className: "iad-section-header", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("h3", { children: "\u6A21\u578B" }),
-        /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("button", { type: "button", disabled: !endpoint, onClick: () => void discover(), children: "\u8BFB\u53D6\u6A21\u578B" }),
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("button", { type: "button", onClick: () => setModels([...models, { model_id: "", name: "", input_modalities: ["text"], context_tokens: null, max_output_tokens: null }]), children: "\u6DFB\u52A0\u6A21\u578B" })
+      /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("header", { className: "iad-section-header", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("h3", { children: "\u6A21\u578B" }),
+        /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("button", { type: "button", disabled: !endpoint, onClick: () => void discover(), children: "\u8BFB\u53D6\u6A21\u578B" }),
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("button", { type: "button", onClick: () => setModels([...models, { model_id: "", name: "", input_modalities: ["text"], context_tokens: null, max_output_tokens: null }]), children: "\u6DFB\u52A0\u6A21\u578B" })
         ] })
       ] }),
-      models.map((model, index3) => /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("div", { className: "iad-provider-model", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("div", { className: "iad-model-fields", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("label", { className: "iad-field", children: [
+      models.map((model, index3) => /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "iad-provider-model", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "iad-model-fields", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
             "\u6A21\u578B ID",
-            /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("input", { "aria-label": `\u6A21\u578B ID ${index3 + 1}`, required: true, value: model.model_id, onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, model_id: event.target.value } : row)) })
+            /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("input", { "aria-label": `\u6A21\u578B ID ${index3 + 1}`, required: true, value: model.model_id, onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, model_id: event.target.value } : row)) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("label", { className: "iad-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
             "\u663E\u793A\u540D\u79F0",
-            /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("input", { "aria-label": `\u6A21\u578B\u540D\u79F0 ${index3 + 1}`, value: model.name, onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, name: event.target.value } : row)) })
+            /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("input", { "aria-label": `\u6A21\u578B\u540D\u79F0 ${index3 + 1}`, value: model.name, onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, name: event.target.value } : row)) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("label", { className: "iad-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
             "\u4E0A\u4E0B\u6587\u4E0A\u9650",
-            /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("input", { type: "number", min: "1", placeholder: "\u672A\u58F0\u660E", value: model.context_tokens ?? "", onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, context_tokens: event.target.value ? Number(event.target.value) : null } : row)) })
+            /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("input", { type: "number", min: "1", placeholder: "\u672A\u58F0\u660E", value: model.context_tokens ?? "", onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, context_tokens: event.target.value ? Number(event.target.value) : null } : row)) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("label", { className: "iad-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
             "\u8F93\u51FA\u4E0A\u9650",
-            /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("input", { type: "number", min: "1", placeholder: "\u672A\u58F0\u660E", value: model.max_output_tokens ?? "", onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, max_output_tokens: event.target.value ? Number(event.target.value) : null } : row)) })
+            /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("input", { type: "number", min: "1", placeholder: "\u672A\u58F0\u660E", value: model.max_output_tokens ?? "", onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, max_output_tokens: event.target.value ? Number(event.target.value) : null } : row)) })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("input", { type: "checkbox", checked: model.input_modalities?.includes("image") || false, onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, input_modalities: event.target.checked ? ["text", "image"] : ["text"] } : row)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("input", { type: "checkbox", checked: model.input_modalities?.includes("image") || false, onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, input_modalities: event.target.checked ? ["text", "image"] : ["text"] } : row)) }),
             " \u652F\u6301\u56FE\u50CF\u8F93\u5165"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(IconButton, { label: `\u79FB\u9664\u6A21\u578B ${model.name || model.model_id || index3 + 1}`, title: "\u79FB\u9664\u6A21\u578B", onClick: () => setModels(models.filter((_, position) => position !== index3)), children: /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(DeleteIcon, {}) })
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(IconButton, { label: `\u79FB\u9664\u6A21\u578B ${model.name || model.model_id || index3 + 1}`, title: "\u79FB\u9664\u6A21\u578B", onClick: () => setModels(models.filter((_, position) => position !== index3)), children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(DeleteIcon, {}) })
         ] })
       ] }, index3)),
-      error2 && /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
-      /* @__PURE__ */ (0, import_jsx_runtime52.jsxs)("div", { className: "iad-form-actions", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("button", { type: "button", onClick: onClose, children: "\u53D6\u6D88" }),
-        /* @__PURE__ */ (0, import_jsx_runtime52.jsx)("button", { className: "iad-primary", disabled: !name2.trim() || !endpoint || !models.length, type: "submit", children: busy ? "\u5904\u7406\u4E2D\u2026" : "\u4FDD\u5B58\u63D0\u4F9B\u5546" })
+      error2 && /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
+      /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "iad-form-actions", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("button", { type: "button", onClick: onClose, children: "\u53D6\u6D88" }),
+        /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("button", { className: "iad-primary", disabled: !name2.trim() || !endpoint || !models.length, type: "submit", children: busy ? "\u5904\u7406\u4E2D\u2026" : "\u4FDD\u5B58\u63D0\u4F9B\u5546" })
       ] })
     ] }) }) });
   }
 
   // src/client/components/ImageEncoderSettings.tsx
-  var import_react49 = __require("react");
+  var import_react50 = __require("react");
 
   // src/shared/image-encoder.parameters.generated.ts
   var imageBackbones = {
@@ -19529,13 +19672,13 @@ button.exp-ghost:hover,
   };
 
   // src/client/useUnsavedChanges.ts
-  var import_react48 = __require("react");
+  var import_react49 = __require("react");
   function useUnsavedChanges(dirty) {
     const { workspace } = useWorkspace();
-    const current = (0, import_react48.useRef)(dirty);
+    const current = (0, import_react49.useRef)(dirty);
     current.current = dirty;
-    (0, import_react48.useEffect)(() => workspace.registerLeaveGuard(() => !current.current || window.confirm("\u6709\u672A\u4FDD\u5B58\u7684\u4FEE\u6539\uFF0C\u786E\u8BA4\u79BB\u5F00\u5E76\u653E\u5F03\u4FEE\u6539\uFF1F")), [workspace]);
-    (0, import_react48.useEffect)(() => {
+    (0, import_react49.useEffect)(() => workspace.registerLeaveGuard(() => !current.current || window.confirm("\u6709\u672A\u4FDD\u5B58\u7684\u4FEE\u6539\uFF0C\u786E\u8BA4\u79BB\u5F00\u5E76\u653E\u5F03\u4FEE\u6539\uFF1F")), [workspace]);
+    (0, import_react49.useEffect)(() => {
       if (!dirty) return;
       const unload = (event) => {
         event.preventDefault();
@@ -19547,7 +19690,7 @@ button.exp-ghost:hover,
   }
 
   // src/client/components/ImageEncoderSettings.tsx
-  var import_jsx_runtime53 = __require("react/jsx-runtime");
+  var import_jsx_runtime54 = __require("react/jsx-runtime");
   function editable(view) {
     const selection = view.selection, resources = view.resources;
     return {
@@ -19564,15 +19707,15 @@ button.exp-ghost:hover,
     };
   }
   function ImageEncoderSettings({ refreshVersion, onStateChange }) {
-    const [view, setView] = (0, import_react49.useState)(null), [draft, setDraft] = (0, import_react49.useState)(null);
-    const [revision, setRevision] = (0, import_react49.useState)(0), [loading, setLoading] = (0, import_react49.useState)(true), [busy, setBusy] = (0, import_react49.useState)(false);
-    const [error2, setError] = (0, import_react49.useState)(""), [notice, setNotice] = (0, import_react49.useState)("");
+    const [view, setView] = (0, import_react50.useState)(null), [draft, setDraft] = (0, import_react50.useState)(null);
+    const [revision, setRevision] = (0, import_react50.useState)(0), [loading, setLoading] = (0, import_react50.useState)(true), [busy, setBusy] = (0, import_react50.useState)(false);
+    const [error2, setError] = (0, import_react50.useState)(""), [notice, setNotice] = (0, import_react50.useState)("");
     const changed = !!draft && !!view && JSON.stringify(draft) !== JSON.stringify(editable(view));
     useUnsavedChanges(changed && !busy);
-    (0, import_react49.useEffect)(() => {
+    (0, import_react50.useEffect)(() => {
       onStateChange({ dirty: changed, busy });
     }, [changed, busy, onStateChange]);
-    (0, import_react49.useEffect)(() => {
+    (0, import_react50.useEffect)(() => {
       const controller = new AbortController();
       setLoading(true);
       setError("");
@@ -19643,35 +19786,35 @@ button.exp-ghost:hover,
         setBusy(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("section", { className: "iad-model-configuration", "aria-label": "\u56FE\u50CF\u68C0\u7D22\u8BBE\u7F6E", "aria-busy": busy || loading, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("h2", { children: "\u56FE\u50CF\u68C0\u7D22" }),
-      error2 && /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
-      !draft ? /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u914D\u7F6E\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("form", { "aria-label": "\u56FE\u50CF\u68C0\u7D22\u914D\u7F6E", className: "iad-model-form", onSubmit: save, children: /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("fieldset", { disabled: busy || loading, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("section", { className: "iad-section-layout", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("h3", { children: "\u56FE\u50CF\u7F16\u7801\u5668" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "iad-model-fields", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("section", { className: "iad-model-configuration", "aria-label": "\u56FE\u50CF\u68C0\u7D22\u8BBE\u7F6E", "aria-busy": busy || loading, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h2", { children: "\u56FE\u50CF\u68C0\u7D22" }),
+      error2 && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
+      !draft ? /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u914D\u7F6E\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("form", { "aria-label": "\u56FE\u50CF\u68C0\u7D22\u914D\u7F6E", className: "iad-model-form", onSubmit: save, children: /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("fieldset", { disabled: busy || loading, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("section", { className: "iad-section-layout", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: "\u56FE\u50CF\u7F16\u7801\u5668" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "iad-model-fields", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
               "\u6A21\u578B",
-              /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("select", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u5668", value: draft.model_id, onChange: (event) => {
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("select", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u5668", value: draft.model_id, onChange: (event) => {
                 setDraft({ ...draft, model_id: event.target.value, weights_ref: "", source_ref: "" });
                 setError("");
                 setNotice("");
               }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("option", { value: "", children: "\u4EC5\u4E25\u683C\u540C\u56FE" }),
-                Object.keys(imageBackbones).map((id) => /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("option", { value: id, children: id }, id))
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("option", { value: "", children: "\u4EC5\u4E25\u683C\u540C\u56FE" }),
+                Object.keys(imageBackbones).map((id) => /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("option", { value: id, children: id }, id))
               ] })
             ] }),
-            draft.model_id && /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)(import_jsx_runtime53.Fragment, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
+            draft.model_id && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)(import_jsx_runtime54.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
                 "\u6743\u91CD\u8DEF\u5F84",
-                /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u6743\u91CD\u8DEF\u5F84", required: true, value: draft.weights_ref, onChange: (event) => setDraft({ ...draft, weights_ref: event.target.value }) })
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u6743\u91CD\u8DEF\u5F84", required: true, value: draft.weights_ref, onChange: (event) => setDraft({ ...draft, weights_ref: event.target.value }) })
               ] }),
-              backbone?.backend === "torch_hub" && /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
+              backbone?.backend === "torch_hub" && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
                 "\u5B98\u65B9\u6E90\u7801\u76EE\u5F55",
                 backbone.local_snapshot ? "\uFF08.pth \u5FC5\u586B\uFF09" : "",
-                /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u6E90\u7801\u76EE\u5F55", required: !backbone.local_snapshot, value: draft.source_ref, onChange: (event) => setDraft({ ...draft, source_ref: event.target.value }) })
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u6E90\u7801\u76EE\u5F55", required: !backbone.local_snapshot, value: draft.source_ref, onChange: (event) => setDraft({ ...draft, source_ref: event.target.value }) })
               ] }),
-              backbone && /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("p", { className: "iad-muted", children: [
+              backbone && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("p", { className: "iad-muted", children: [
                 backbone.dim,
                 " \u7EF4 \xB7 ",
                 backbone.local_snapshot ? "\u672C\u5730\u6A21\u578B\u76EE\u5F55\u6216 .pth \u6743\u91CD" : `${backbone.input_size} px \xB7 ${backbone.processor}`
@@ -19679,53 +19822,53 @@ button.exp-ghost:hover,
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("section", { className: "iad-section-layout", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("h3", { children: "\u8FD0\u884C\u8D44\u6E90" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "iad-model-fields", children: [
-            draft.model_id && /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)(import_jsx_runtime53.Fragment, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("section", { className: "iad-section-layout", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: "\u8FD0\u884C\u8D44\u6E90" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "iad-model-fields", children: [
+            draft.model_id && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)(import_jsx_runtime54.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
                 "\u8BBE\u5907",
-                /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u8BBE\u5907", required: true, pattern: "cpu|cuda:[0-9]+", value: draft.device, onChange: (event) => setDraft({ ...draft, device: event.target.value }) })
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u8BBE\u5907", required: true, pattern: "cpu|cuda:[0-9]+", value: draft.device, onChange: (event) => setDraft({ ...draft, device: event.target.value }) })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
                 "\u6279\u91CF",
-                /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u6279\u91CF", type: "number", min: 1, max: 256, value: draft.batch_size, onChange: (event) => setDraft({ ...draft, batch_size: Number(event.target.value) }) })
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u6279\u91CF", type: "number", min: 1, max: 256, value: draft.batch_size, onChange: (event) => setDraft({ ...draft, batch_size: Number(event.target.value) }) })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
                 "\u663E\u5B58\u9884\u7B97\uFF08MiB\uFF09",
-                /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u663E\u5B58\u9884\u7B97", type: "number", min: 256, max: 12288, value: draft.gpu_memory_mb, onChange: (event) => setDraft({ ...draft, gpu_memory_mb: Number(event.target.value) }) })
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u663E\u5B58\u9884\u7B97", type: "number", min: 256, max: 12288, value: draft.gpu_memory_mb, onChange: (event) => setDraft({ ...draft, gpu_memory_mb: Number(event.target.value) }) })
               ] })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
               "\u89E3\u7801\u7EBF\u7A0B",
-              /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("input", { "aria-label": "\u56FE\u50CF\u89E3\u7801\u7EBF\u7A0B", type: "number", min: 1, max: 8, value: draft.decode_workers, onChange: (event) => setDraft({ ...draft, decode_workers: Number(event.target.value) }) })
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("input", { "aria-label": "\u56FE\u50CF\u89E3\u7801\u7EBF\u7A0B", type: "number", min: 1, max: 8, value: draft.decode_workers, onChange: (event) => setDraft({ ...draft, decode_workers: Number(event.target.value) }) })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
               "\u89E3\u7801\u5185\u5B58\uFF08MiB\uFF09",
-              /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("input", { "aria-label": "\u56FE\u50CF\u89E3\u7801\u5185\u5B58\u9884\u7B97", type: "number", min: 1, max: 1024, value: draft.decode_memory_mb, onChange: (event) => setDraft({ ...draft, decode_memory_mb: Number(event.target.value) }) })
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("input", { "aria-label": "\u56FE\u50CF\u89E3\u7801\u5185\u5B58\u9884\u7B97", type: "number", min: 1, max: 1024, value: draft.decode_memory_mb, onChange: (event) => setDraft({ ...draft, decode_memory_mb: Number(event.target.value) }) })
             ] }),
-            draft.model_id && /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)(import_jsx_runtime53.Fragment, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
+            draft.model_id && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)(import_jsx_runtime54.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
                 "\u8BA1\u7B97\u7CBE\u5EA6",
-                /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("select", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u8BA1\u7B97\u7CBE\u5EA6", value: draft.compute_dtype, onChange: (event) => setDraft({ ...draft, compute_dtype: event.target.value }), children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("option", { value: "float32", children: "FP32" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("option", { value: "float16", disabled: draft.device === "cpu", children: "FP16" })
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("select", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u8BA1\u7B97\u7CBE\u5EA6", value: draft.compute_dtype, onChange: (event) => setDraft({ ...draft, compute_dtype: event.target.value }), children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("option", { value: "float32", children: "FP32" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("option", { value: "float16", disabled: draft.device === "cpu", children: "FP16" })
                 ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("label", { className: "iad-field", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
                 "\u5411\u91CF\u5B58\u50A8",
-                /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("select", { "aria-label": "\u56FE\u50CF\u5411\u91CF\u5B58\u50A8\u7CBE\u5EA6", value: draft.storage_dtype, onChange: (event) => setDraft({ ...draft, storage_dtype: event.target.value }), children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("option", { value: "float32", children: "FP32" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("option", { value: "float16", children: "FP16" })
+                /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("select", { "aria-label": "\u56FE\u50CF\u5411\u91CF\u5B58\u50A8\u7CBE\u5EA6", value: draft.storage_dtype, onChange: (event) => setDraft({ ...draft, storage_dtype: event.target.value }), children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("option", { value: "float32", children: "FP32" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("option", { value: "float16", children: "FP16" })
                 ] })
               ] })
             ] })
           ] })
         ] }),
-        view?.selection && /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("details", { className: "iad-model-advanced", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("summary", { children: "\u5DF2\u4FDD\u5B58\u914D\u7F6E" }),
-          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("code", { children: view.selection.profile.profile_id }),
-          /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("p", { className: "iad-muted", children: [
+        view?.selection && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("details", { className: "iad-model-advanced", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("summary", { children: "\u5DF2\u4FDD\u5B58\u914D\u7F6E" }),
+          /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("code", { children: view.selection.profile.profile_id }),
+          /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("p", { className: "iad-muted", children: [
             view.selection.profile.input_size,
             " px \xB7 ",
             view.selection.profile.pooling,
@@ -19733,11 +19876,11 @@ button.exp-ghost:hover,
             view.selection.profile.color_conversion
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "iad-form-footer", children: [
-          changed && /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { className: "iad-muted", children: "\u6709\u672A\u4FDD\u5B58\u7684\u66F4\u6539" }),
-          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("button", { type: "button", disabled: !valid || !draft.model_id, onClick: () => void check(), children: busy ? "\u5904\u7406\u4E2D\u2026" : "\u68C0\u67E5\u52A0\u8F7D" }),
-          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("button", { className: "iad-primary", type: "submit", disabled: !changed || !valid, children: "\u4FDD\u5B58\u56FE\u50CF\u914D\u7F6E" }),
-          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("button", { type: "button", disabled: !changed, onClick: () => {
+        /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "iad-form-footer", children: [
+          changed && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { className: "iad-muted", children: "\u6709\u672A\u4FDD\u5B58\u7684\u66F4\u6539" }),
+          /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("button", { type: "button", disabled: !valid || !draft.model_id, onClick: () => void check(), children: busy ? "\u5904\u7406\u4E2D\u2026" : "\u68C0\u67E5\u52A0\u8F7D" }),
+          /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("button", { className: "iad-primary", type: "submit", disabled: !changed || !valid, children: "\u4FDD\u5B58\u56FE\u50CF\u914D\u7F6E" }),
+          /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("button", { type: "button", disabled: !changed, onClick: () => {
             if (view) setDraft(editable(view));
             setRevision(view?.revision || 0);
             setError("");
@@ -19745,12 +19888,12 @@ button.exp-ghost:hover,
           }, children: "\u91CD\u7F6E\u56FE\u50CF\u914D\u7F6E" })
         ] })
       ] }) }),
-      notice && /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("p", { role: "status", children: notice })
+      notice && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { role: "status", children: notice })
     ] });
   }
 
   // src/client/components/ModelSettingsPage.tsx
-  var import_jsx_runtime54 = __require("react/jsx-runtime");
+  var import_jsx_runtime55 = __require("react/jsx-runtime");
   var numbers = [
     ["context_tokens", "\u4E0A\u4E0B\u6587\u4E0A\u9650"],
     ["max_output_tokens", "\u5355\u6B21\u8F93\u51FA\u4E0A\u9650"],
@@ -19764,11 +19907,11 @@ button.exp-ghost:hover,
   function ModelSettingsPage() {
     const { view, loading, error: loadError, refresh } = useWorkbenchModel();
     const savedSelection = view?.selection || { provider_id: "", model_id: "", limits: { ...defaultModelLimits } };
-    const parametersId = (0, import_react50.useId)();
-    const [tab, setTab] = (0, import_react50.useState)("model");
-    const [imageRefresh, setImageRefresh] = (0, import_react50.useState)(0), [imageState, setImageState] = (0, import_react50.useState)({ dirty: false, busy: false });
-    const [draft, setDraft] = (0, import_react50.useState)(null), [expectedRevision, setExpectedRevision] = (0, import_react50.useState)(0);
-    const [parameters, setParameters] = (0, import_react50.useState)("{}"), [busy, setBusy] = (0, import_react50.useState)(false), [error2, setError] = (0, import_react50.useState)(""), [notice, setNotice] = (0, import_react50.useState)("");
+    const parametersId = (0, import_react51.useId)();
+    const [tab, setTab] = (0, import_react51.useState)("model");
+    const [imageRefresh, setImageRefresh] = (0, import_react51.useState)(0), [imageState, setImageState] = (0, import_react51.useState)({ dirty: false, busy: false });
+    const [draft, setDraft] = (0, import_react51.useState)(null), [expectedRevision, setExpectedRevision] = (0, import_react51.useState)(0);
+    const [parameters, setParameters] = (0, import_react51.useState)("{}"), [busy, setBusy] = (0, import_react51.useState)(false), [error2, setError] = (0, import_react51.useState)(""), [notice, setNotice] = (0, import_react51.useState)("");
     const reset = () => {
       if (!view) return;
       setDraft(structuredClone(savedSelection));
@@ -19777,7 +19920,7 @@ button.exp-ghost:hover,
       setError("");
       setNotice("");
     };
-    (0, import_react50.useEffect)(() => {
+    (0, import_react51.useEffect)(() => {
       if (view && !draft) reset();
     }, [view, draft]);
     const provider = view?.providers.find((row) => row.provider_id === draft?.provider_id);
@@ -19828,90 +19971,90 @@ button.exp-ghost:hover,
         setBusy(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "iad-workbench", "data-page": "industrial-model-settings", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("style", { children: workbenchStyles }),
-      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(WorkbenchHeader, { pageId: "industrial-model-settings", children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(IconButton, { label: "\u5237\u65B0", disabled: busy || loading || imageState.busy, onClick: () => tab === "images" ? setImageRefresh((value) => value + 1) : void refresh(), children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(RefreshIcon, {}) }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)(PageTabs, { label: "\u6A21\u578B\u8BBE\u7F6E\u5206\u533A", items: [{ id: "model", label: "\u5DE5\u4F5C\u53F0\u6A21\u578B" }, { id: "providers", label: "\u63D0\u4F9B\u5546" }, { id: "images", label: "\u56FE\u50CF\u68C0\u7D22" }], value: tab, onChange: (value) => {
+    return /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("div", { className: "iad-workbench", "data-page": "industrial-model-settings", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("style", { children: workbenchStyles }),
+      /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(WorkbenchHeader, { pageId: "industrial-model-settings", children: /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(IconButton, { label: "\u5237\u65B0", disabled: busy || loading || imageState.busy, onClick: () => tab === "images" ? setImageRefresh((value) => value + 1) : void refresh(), children: /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(RefreshIcon, {}) }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)(PageTabs, { label: "\u6A21\u578B\u8BBE\u7F6E\u5206\u533A", items: [{ id: "model", label: "\u5DE5\u4F5C\u53F0\u6A21\u578B" }, { id: "providers", label: "\u63D0\u4F9B\u5546" }, { id: "images", label: "\u56FE\u50CF\u68C0\u7D22" }], value: tab, onChange: (value) => {
         if (tab === "images" && (imageState.busy || imageState.dirty && !window.confirm("\u6709\u672A\u4FDD\u5B58\u7684\u56FE\u50CF\u914D\u7F6E\uFF0C\u786E\u8BA4\u653E\u5F03\u4FEE\u6539\uFF1F"))) return;
         setTab(value);
         setImageState({ dirty: false, busy: false });
         if (value === "model") void refresh();
       }, children: [
-        (loadError || error2) && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { role: "alert", className: "iad-error", children: error2 || loadError }),
-        tab === "images" ? /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(ImageEncoderSettings, { refreshVersion: imageRefresh, onStateChange: setImageState }) : tab === "providers" ? /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("section", { className: "iad-provider-manager", "aria-label": "\u63D0\u4F9B\u5546\u7BA1\u7406", children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(ProviderManager, {}) }) : /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("section", { className: "iad-model-configuration", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h2", { children: "\u5DE5\u4F5C\u53F0\u6A21\u578B" }),
-          /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { className: "iad-muted", children: "\u63A2\u7D22\u3001\u6316\u6398\u548C\u5BA1\u8BA1\u5171\u7528\u6B64\u914D\u7F6E\uFF1B\u4F1A\u8BDD\u6A21\u578B\u72EC\u7ACB\u9009\u62E9\u3002" }),
-          view?.error && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("p", { role: "status", className: "iad-muted", children: [
+        (loadError || error2) && /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("p", { role: "alert", className: "iad-error", children: error2 || loadError }),
+        tab === "images" ? /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(ImageEncoderSettings, { refreshVersion: imageRefresh, onStateChange: setImageState }) : tab === "providers" ? /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("section", { className: "iad-provider-manager", "aria-label": "\u63D0\u4F9B\u5546\u7BA1\u7406", children: /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(ProviderManager, {}) }) : /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("section", { className: "iad-model-configuration", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("h2", { children: "\u5DE5\u4F5C\u53F0\u6A21\u578B" }),
+          /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("p", { className: "iad-muted", children: "\u63A2\u7D22\u3001\u6316\u6398\u548C\u5BA1\u8BA1\u5171\u7528\u6B64\u914D\u7F6E\uFF1B\u4F1A\u8BDD\u6A21\u578B\u72EC\u7ACB\u9009\u62E9\u3002" }),
+          view?.error && /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("p", { role: "status", className: "iad-muted", children: [
             "\u5DF2\u4FDD\u5B58\u914D\u7F6E\uFF1A",
             view.error
           ] }),
-          !draft ? /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u914D\u7F6E\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("form", { className: "iad-model-form", onSubmit: save, children: /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("fieldset", { disabled: busy || loading, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("section", { className: "iad-section-layout", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: "\u6A21\u578B\u9009\u62E9" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "iad-model-fields", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
+          !draft ? /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u914D\u7F6E\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("form", { className: "iad-model-form", onSubmit: save, children: /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("fieldset", { disabled: busy || loading, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("section", { className: "iad-section-layout", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("h3", { children: "\u6A21\u578B\u9009\u62E9" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("div", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("div", { className: "iad-model-fields", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("label", { className: "iad-field", children: [
                     "\u63D0\u4F9B\u5546",
-                    /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("select", { "aria-label": "\u5DE5\u4F5C\u53F0\u63D0\u4F9B\u5546", value: draft.provider_id, onChange: (event) => {
+                    /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("select", { "aria-label": "\u5DE5\u4F5C\u53F0\u63D0\u4F9B\u5546", value: draft.provider_id, onChange: (event) => {
                       setDraft({ provider_id: event.target.value, model_id: "", limits: { ...defaultModelLimits } });
                       setParameters("{}");
                       setError("");
                       setNotice("");
                     }, children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("option", { value: "", children: "\u9009\u62E9\u63D0\u4F9B\u5546" }),
-                      draft.provider_id && !provider && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("option", { value: draft.provider_id, children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("option", { value: "", children: "\u9009\u62E9\u63D0\u4F9B\u5546" }),
+                      draft.provider_id && !provider && /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("option", { value: draft.provider_id, children: [
                         "\u5DF2\u5931\u6548 \xB7 ",
                         draft.provider_id
                       ] }),
-                      view?.providers.map((row) => /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("option", { value: row.provider_id, disabled: !!row.error, children: [
+                      view?.providers.map((row) => /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("option", { value: row.provider_id, disabled: !!row.error, children: [
                         row.name,
                         row.error ? " \xB7 \u6682\u4E0D\u53EF\u7528" : ""
                       ] }, row.provider_id))
                     ] })
                   ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("label", { className: "iad-field", children: [
                     "\u6A21\u578B",
-                    /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("select", { "aria-label": "\u5DE5\u4F5C\u53F0\u6A21\u578B", value: draft.model_id, disabled: !provider || !!provider.error, onChange: (event) => {
+                    /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("select", { "aria-label": "\u5DE5\u4F5C\u53F0\u6A21\u578B", value: draft.model_id, disabled: !provider || !!provider.error, onChange: (event) => {
                       setDraft({ ...draft, model_id: event.target.value });
                       setError("");
                       setNotice("");
                     }, children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("option", { value: "", children: "\u9009\u62E9\u6A21\u578B" }),
-                      draft.model_id && !provider?.models.some((row) => row.model_id === draft.model_id) && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("option", { value: draft.model_id, children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("option", { value: "", children: "\u9009\u62E9\u6A21\u578B" }),
+                      draft.model_id && !provider?.models.some((row) => row.model_id === draft.model_id) && /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("option", { value: draft.model_id, children: [
                         "\u5DF2\u5931\u6548 \xB7 ",
                         draft.model_id
                       ] }),
-                      provider?.models.map((row) => /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("option", { value: row.model_id, disabled: !row.input_modalities?.includes("image"), children: [
+                      provider?.models.map((row) => /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("option", { value: row.model_id, disabled: !row.input_modalities?.includes("image"), children: [
                         row.name,
                         row.input_modalities?.includes("image") ? "" : " \xB7 \u672A\u58F0\u660E\u56FE\u50CF\u80FD\u529B"
                       ] }, row.model_id))
                     ] })
                   ] })
                 ] }),
-                provider && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "iad-model-endpoint", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { className: "iad-muted", children: "\u670D\u52A1\u5730\u5740" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { children: provider.endpoint || provider.error })
+                provider && /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("div", { className: "iad-model-endpoint", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("span", { className: "iad-muted", children: "\u670D\u52A1\u5730\u5740" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("p", { children: provider.endpoint || provider.error })
                 ] })
               ] })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("section", { className: "iad-section-layout", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("h3", { children: "\u9AD8\u7EA7\u8BBE\u7F6E" }),
-                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { className: "iad-muted", children: "\u672A\u586B\u5199\u65F6\u4F7F\u7528\u670D\u52A1\u58F0\u660E\u503C" })
+            /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("section", { className: "iad-section-layout", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("div", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("h3", { children: "\u9AD8\u7EA7\u8BBE\u7F6E" }),
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("p", { className: "iad-muted", children: "\u672A\u586B\u5199\u65F6\u4F7F\u7528\u670D\u52A1\u58F0\u660E\u503C" })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("details", { className: "iad-model-advanced", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("summary", { children: "\u5BB9\u91CF\u4E0E\u8D85\u65F6" }),
-                /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "iad-model-fields", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("details", { className: "iad-model-advanced", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("summary", { children: "\u5BB9\u91CF\u4E0E\u8D85\u65F6" }),
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("div", { className: "iad-model-fields", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("label", { className: "iad-field", children: [
                     "\u5BB9\u91CF\u9884\u68C0",
-                    /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("select", { "aria-label": "\u5BB9\u91CF\u9884\u68C0\u534F\u8BAE", value: draft.limits.capacity_mode || "", onChange: (event) => setDraft({ ...draft, limits: { ...draft.limits, capacity_mode: event.target.value === "vllm_tokenize" ? "vllm_tokenize" : null } }), children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("option", { value: "", children: "\u5C1A\u672A\u786E\u8BA4" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("option", { value: "vllm_tokenize", children: "vLLM /tokenize" })
+                    /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("select", { "aria-label": "\u5BB9\u91CF\u9884\u68C0\u534F\u8BAE", value: draft.limits.capacity_mode || "", onChange: (event) => setDraft({ ...draft, limits: { ...draft.limits, capacity_mode: event.target.value === "vllm_tokenize" ? "vllm_tokenize" : null } }), children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("option", { value: "", children: "\u5C1A\u672A\u786E\u8BA4" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("option", { value: "vllm_tokenize", children: "vLLM /tokenize" })
                     ] })
                   ] }),
-                  numbers.map(([key, label]) => /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
+                  numbers.map(([key, label]) => /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("label", { className: "iad-field", children: [
                     label,
-                    /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(
+                    /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(
                       "input",
                       {
                         type: "number",
@@ -19925,36 +20068,36 @@ button.exp-ghost:hover,
                     )
                   ] }, key))
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("label", { className: "iad-field", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("label", { className: "iad-field", children: [
                   "\u670D\u52A1\u6269\u5C55\u53C2\u6570\uFF08JSON\uFF09",
-                  /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("textarea", { "aria-label": "\u670D\u52A1\u6269\u5C55\u53C2\u6570", "aria-invalid": parametersError ? true : void 0, "aria-describedby": parametersError ? parametersId : void 0, rows: 4, value: parameters, onChange: (event) => setParameters(event.target.value) })
+                  /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("textarea", { "aria-label": "\u670D\u52A1\u6269\u5C55\u53C2\u6570", "aria-invalid": parametersError ? true : void 0, "aria-describedby": parametersError ? parametersId : void 0, rows: 4, value: parameters, onChange: (event) => setParameters(event.target.value) })
                 ] }),
-                parametersError && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { id: parametersId, role: "alert", className: "iad-error", children: parametersError })
+                parametersError && /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("p", { id: parametersId, role: "alert", className: "iad-error", children: parametersError })
               ] })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "iad-form-footer", children: [
-              changed && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { className: "iad-muted", children: "\u6709\u672A\u4FDD\u5B58\u7684\u66F4\u6539" }),
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("button", { type: "button", disabled: !draft.provider_id || !draft.model_id || !!parametersError, onClick: () => void check(), children: "\u68C0\u67E5\u8FDE\u63A5" }),
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("button", { className: "iad-primary", type: "submit", disabled: !changed || !draft.provider_id || !draft.model_id || !!parametersError, children: busy ? "\u5904\u7406\u4E2D\u2026" : "\u4FDD\u5B58\u914D\u7F6E" }),
-              /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("button", { type: "button", disabled: !changed, onClick: reset, children: "\u91CD\u7F6E" })
+            /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("div", { className: "iad-form-footer", children: [
+              changed && /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("span", { className: "iad-muted", children: "\u6709\u672A\u4FDD\u5B58\u7684\u66F4\u6539" }),
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("button", { type: "button", disabled: !draft.provider_id || !draft.model_id || !!parametersError, onClick: () => void check(), children: "\u68C0\u67E5\u8FDE\u63A5" }),
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("button", { className: "iad-primary", type: "submit", disabled: !changed || !draft.provider_id || !draft.model_id || !!parametersError, children: busy ? "\u5904\u7406\u4E2D\u2026" : "\u4FDD\u5B58\u914D\u7F6E" }),
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("button", { type: "button", disabled: !changed, onClick: reset, children: "\u91CD\u7F6E" })
             ] })
           ] }) }),
-          notice && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("p", { role: "status", children: notice })
+          notice && /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("p", { role: "status", children: notice })
         ] })
       ] })
     ] });
   }
 
   // src/client/host/IndustrialSidebar.tsx
-  var import_react51 = __toESM(__require("react"), 1);
-  var import_jsx_runtime55 = __require("react/jsx-runtime");
+  var import_react52 = __toESM(__require("react"), 1);
+  var import_jsx_runtime56 = __require("react/jsx-runtime");
   function IndustrialSidebar({ wide, panels, renderPanel, renderWorkspaces }) {
-    const [sessionsOpen, setSessionsOpen] = (0, import_react51.useState)(true);
-    const workspacesId = (0, import_react51.useId)();
+    const [sessionsOpen, setSessionsOpen] = (0, import_react52.useState)(true);
+    const workspacesId = (0, import_react52.useId)();
     const business = panels.filter((panel) => panel.id in navigation && navigation[panel.id].chapter !== "\u5DE5\u5177");
     const auxiliary = panels.filter((panel) => !business.includes(panel));
-    return /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("div", { className: `iad-sidebar-content ${wide ? "iad-sidebar-wide" : "iad-sidebar-rail"}`, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("style", { children: themeStyles + `
+    return /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)("div", { className: `iad-sidebar-content ${wide ? "iad-sidebar-wide" : "iad-sidebar-rail"}`, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime56.jsx)("style", { children: themeStyles + `
       .iad-sidebar-content{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;gap:16px;background:var(--iad-navigation);color:var(--iad-text);font-size:14px}
       .iad-sidebar-content>nav{display:flex;flex-direction:column;gap:20px;min-height:0;overflow:auto;flex:0 1 auto}.iad-sidebar-content>nav>section,.iad-sidebar-tools{display:flex;flex-direction:column;gap:4px}
       .iad-sidebar-content h2{margin:0 10px 4px;font-size:12px;font-weight:500;color:var(--dsw-alias-label-secondary)}
@@ -19966,26 +20109,26 @@ button.exp-ghost:hover,
       .iad-sidebar-wide>nav{flex:1 1 0;overscroll-behavior:contain}.iad-sidebar-wide>nav>section{flex:none}.iad-sidebar-wide>.iad-sidebar-sessions[data-open=true]{flex:1 1 0}
       .iad-sidebar-tools{margin-top:auto;flex:none}.iad-sidebar-rail{gap:12px}.iad-sidebar-rail>nav{gap:12px}
     ` }),
-      /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("nav", { "aria-label": "\u5DE5\u4E1A\u5DE5\u4F5C\u53F0\u5BFC\u822A", children: ["\u6570\u636E\u51C6\u5907", "\u77E5\u8BC6\u6784\u5EFA", "\u8D28\u91CF\u5BA1\u6838"].map((chapter) => /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("section", { "aria-label": chapter, children: [
-        wide && /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("h2", { children: chapter }),
-        business.filter((panel) => navigation[panel.id].chapter === chapter).map((panel) => /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(import_react51.default.Fragment, { children: renderPanel(panel) }, panel.id))
+      /* @__PURE__ */ (0, import_jsx_runtime56.jsx)("nav", { "aria-label": "\u5DE5\u4E1A\u5DE5\u4F5C\u53F0\u5BFC\u822A", children: ["\u6570\u636E\u51C6\u5907", "\u77E5\u8BC6\u6784\u5EFA", "\u8D28\u91CF\u5BA1\u6838"].map((chapter) => /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)("section", { "aria-label": chapter, children: [
+        wide && /* @__PURE__ */ (0, import_jsx_runtime56.jsx)("h2", { children: chapter }),
+        business.filter((panel) => navigation[panel.id].chapter === chapter).map((panel) => /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(import_react52.default.Fragment, { children: renderPanel(panel) }, panel.id))
       ] }, chapter)) }),
-      wide ? /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("section", { className: "iad-sidebar-sessions", "data-native-workspaces": true, "data-open": sessionsOpen, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("button", { type: "button", className: "iad-sidebar-disclosure", "aria-expanded": sessionsOpen, "aria-controls": workspacesId, onClick: () => setSessionsOpen((value) => !value), children: [
-          /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("span", { "aria-hidden": "true", children: sessionsOpen ? "\u25BE" : "\u25B8" }),
+      wide ? /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)("section", { className: "iad-sidebar-sessions", "data-native-workspaces": true, "data-open": sessionsOpen, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)("button", { type: "button", className: "iad-sidebar-disclosure", "aria-expanded": sessionsOpen, "aria-controls": workspacesId, onClick: () => setSessionsOpen((value) => !value), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime56.jsx)("span", { "aria-hidden": "true", children: sessionsOpen ? "\u25BE" : "\u25B8" }),
           "\u4F1A\u8BDD\u4E0E\u5DE5\u4F5C\u533A"
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("div", { id: workspacesId, className: "iad-native-workspace-content", hidden: !sessionsOpen, children: renderWorkspaces() })
+        /* @__PURE__ */ (0, import_jsx_runtime56.jsx)("div", { id: workspacesId, className: "iad-native-workspace-content", hidden: !sessionsOpen, children: renderWorkspaces() })
       ] }) : renderWorkspaces(),
-      /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("section", { className: "iad-sidebar-tools", "aria-label": "\u5DE5\u5177", children: auxiliary.map((panel) => /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(import_react51.default.Fragment, { children: renderPanel(panel) }, panel.id)) })
+      /* @__PURE__ */ (0, import_jsx_runtime56.jsx)("section", { className: "iad-sidebar-tools", "aria-label": "\u5DE5\u5177", children: auxiliary.map((panel) => /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(import_react52.default.Fragment, { children: renderPanel(panel) }, panel.id)) })
     ] });
   }
 
   // src/client/components/ConsistencyPage.tsx
-  var import_react57 = __require("react");
+  var import_react58 = __require("react");
 
   // src/client/components/ConsistencyEvidencePage.tsx
-  var import_react56 = __require("react");
+  var import_react57 = __require("react");
 
   // src/client/consistency-images.ts
   function frozenConsistencyImage(bundle, side) {
@@ -20023,21 +20166,21 @@ button.exp-ghost:hover,
   }
 
   // src/client/components/ConsistencyComparison.tsx
-  var import_react53 = __require("react");
+  var import_react54 = __require("react");
 
   // src/client/components/ConsistencyCanvasPair.tsx
-  var import_react52 = __require("react");
-  var import_jsx_runtime56 = __require("react/jsx-runtime");
+  var import_react53 = __require("react");
+  var import_jsx_runtime57 = __require("react/jsx-runtime");
   function ConsistencyCanvasPair({ sources, selected, synchronized = true, showDifferences = true, onExpand, anchorSide = "left", labels = ["\u67E5\u8BE2\u56FE\u50CF", "\u5019\u9009\u56FE\u50CF"] }) {
-    const [transform, setTransform] = (0, import_react52.useState)({ zoom: 0, x: 0, y: 0 });
-    const [rightTransform, setRightTransform] = (0, import_react52.useState)({ zoom: 0, x: 0, y: 0 });
-    (0, import_react52.useLayoutEffect)(() => {
+    const [transform, setTransform] = (0, import_react53.useState)({ zoom: 0, x: 0, y: 0 });
+    const [rightTransform, setRightTransform] = (0, import_react53.useState)({ zoom: 0, x: 0, y: 0 });
+    (0, import_react53.useLayoutEffect)(() => {
       if (!synchronized) setRightTransform(transform);
     }, [synchronized]);
     const region = showDifferences && selected?.region ? { id: selected.difference_id, bbox: selected.region } : void 0;
-    return /* @__PURE__ */ (0, import_jsx_runtime56.jsx)("div", { className: "iad-consistency-canvases", children: sources.map((source, index3) => /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)("div", { className: "iad-consistency-side", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime56.jsx)("p", { children: labels[index3] }),
-      source ? /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("div", { className: "iad-consistency-canvases", children: sources.map((source, index3) => /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("div", { className: "iad-consistency-side", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("p", { children: labels[index3] }),
+      source ? /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(
         ImageCanvas,
         {
           image: source,
@@ -20045,77 +20188,77 @@ button.exp-ghost:hover,
           control: index3 === 0 || synchronized ? { transform, onChange: setTransform } : { transform: rightTransform, onChange: setRightTransform },
           onExpand: onExpand ? (view) => onExpand({ ...source, initialSelection: view.selection, initialTransform: view.transform }) : void 0,
           focusRegion: region,
-          overlay: region && source.width && source.height ? /* @__PURE__ */ (0, import_jsx_runtime56.jsx)("svg", { className: "iad-finding-layer iad-consistency-region", viewBox: `0 0 ${source.width} ${source.height}`, children: /* @__PURE__ */ (0, import_jsx_runtime56.jsx)("rect", { x: region.bbox[0], y: region.bbox[1], width: region.bbox[2] - region.bbox[0], height: region.bbox[3] - region.bbox[1], strokeDasharray: selected?.reference_from_other === (index3 ? anchorSide === "left" ? "right" : "left" : anchorSide) ? "6 4" : void 0 }) }) : void 0
+          overlay: region && source.width && source.height ? /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("svg", { className: "iad-finding-layer iad-consistency-region", viewBox: `0 0 ${source.width} ${source.height}`, children: /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("rect", { x: region.bbox[0], y: region.bbox[1], width: region.bbox[2] - region.bbox[0], height: region.bbox[3] - region.bbox[1], strokeDasharray: selected?.reference_from_other === (index3 ? anchorSide === "left" ? "right" : "left" : anchorSide) ? "6 4" : void 0 }) }) : void 0
         }
-      ) : /* @__PURE__ */ (0, import_jsx_runtime56.jsx)("p", { role: "status", className: "iad-empty", children: "\u6B63\u5728\u8BFB\u53D6\u56FE\u50CF\u2026" })
+      ) : /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("p", { role: "status", className: "iad-empty", children: "\u6B63\u5728\u8BFB\u53D6\u56FE\u50CF\u2026" })
     ] }, index3)) });
   }
 
   // src/client/components/ConsistencyDifferences.tsx
-  var import_jsx_runtime57 = __require("react/jsx-runtime");
+  var import_jsx_runtime58 = __require("react/jsx-runtime");
   function ConsistencyDifferences({ member, differenceId, onDifference, anchorSide = "left" }) {
     const selected = member.annotation?.differences.find((row) => row.difference_id === differenceId);
-    return /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("aside", { className: "iad-consistency-differences", "aria-label": "\u6807\u6CE8\u5DEE\u5F02", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("h2", { children: "\u6807\u6CE8\u5DEE\u5F02" }),
-      /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("p", { className: "iad-muted", children: member.annotation ? `\u89C4\u8303${{ SAME: "\u76F8\u540C", DIFFERENT: "\u4E0D\u540C", UNKNOWN: "\u672A\u77E5" }[member.annotation.policy_relation]} \xB7 ${member.annotation.status === "COMPLETE" ? "\u6BD4\u8F83\u5B8C\u6210" : "\u6BD4\u8F83\u4E0D\u5B8C\u6574"}` : "\u5C1A\u672A\u6BD4\u8F83\u6807\u6CE8" }),
-      member.pixel.status === "COMPLETE" && /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("dl", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("dt", { children: "\u6BD4\u8F83\u50CF\u7D20" }),
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("dd", { children: member.pixel.compared_pixels.toLocaleString() }),
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("dt", { children: "\u53D8\u5316\u50CF\u7D20" }),
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("dd", { children: member.pixel.changed_pixels === null ? "\u672A\u8BA1\u7B97" : member.pixel.changed_pixels.toLocaleString() })
+    return /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("aside", { className: "iad-consistency-differences", "aria-label": "\u6807\u6CE8\u5DEE\u5F02", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h2", { children: "\u6807\u6CE8\u5DEE\u5F02" }),
+      /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { className: "iad-muted", children: member.annotation ? `\u89C4\u8303${{ SAME: "\u76F8\u540C", DIFFERENT: "\u4E0D\u540C", UNKNOWN: "\u672A\u77E5" }[member.annotation.policy_relation]} \xB7 ${member.annotation.status === "COMPLETE" ? "\u6BD4\u8F83\u5B8C\u6210" : "\u6BD4\u8F83\u4E0D\u5B8C\u6574"}` : "\u5C1A\u672A\u6BD4\u8F83\u6807\u6CE8" }),
+      member.pixel.status === "COMPLETE" && /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("dl", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("dt", { children: "\u6BD4\u8F83\u50CF\u7D20" }),
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("dd", { children: member.pixel.compared_pixels.toLocaleString() }),
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("dt", { children: "\u53D8\u5316\u50CF\u7D20" }),
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("dd", { children: member.pixel.changed_pixels === null ? "\u672A\u8BA1\u7B97" : member.pixel.changed_pixels.toLocaleString() })
       ] }),
-      member.local && (member.local.status === "COMPLETE" ? /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("dl", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("dt", { children: "\u6709\u6548\u533A\u57DF\u50CF\u7D20" }),
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("dd", { "data-stat": "local-compared", children: member.local.compared_pixels.toLocaleString() }),
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("dt", { children: "\u5C40\u90E8\u53D8\u5316\u50CF\u7D20" }),
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("dd", { children: member.local.changed_pixels?.toLocaleString() }),
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("dt", { children: "\u5C40\u90E8\u6700\u5927\u5DEE\u503C" }),
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("dd", { children: member.local.max_abs_diff })
-      ] }) : /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("p", { className: "iad-muted", children: [
+      member.local && (member.local.status === "COMPLETE" ? /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("dl", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("dt", { children: "\u6709\u6548\u533A\u57DF\u50CF\u7D20" }),
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("dd", { "data-stat": "local-compared", children: member.local.compared_pixels.toLocaleString() }),
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("dt", { children: "\u5C40\u90E8\u53D8\u5316\u50CF\u7D20" }),
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("dd", { children: member.local.changed_pixels?.toLocaleString() }),
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("dt", { children: "\u5C40\u90E8\u6700\u5927\u5DEE\u503C" }),
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("dd", { children: member.local.max_abs_diff })
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("p", { className: "iad-muted", children: [
         "\u5C40\u90E8\u5DEE\u5F02\u4E0D\u53EF\u6BD4\u8F83\uFF1A",
         member.local.reason
       ] })),
-      member.near && /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)(import_jsx_runtime57.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("p", { children: imageRelations[member.relation] }),
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("p", { className: "iad-muted", children: "\u7F29\u7565\u56FE\u8FD1\u4F3C\u590D\u6838\u4EC5\u7528\u4E8E\u5019\u9009\u5206\u7EA7\u3002" }),
-        member.near.pixel_cosine !== null && /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("dl", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("dt", { children: "\u7070\u5EA6\u4F59\u5F26" }),
-          /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("dd", { children: member.near.pixel_cosine.toFixed(4) }),
-          /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("dt", { children: "NCC" }),
-          /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("dd", { children: member.near.ncc?.toFixed(4) })
+      member.near && /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)(import_jsx_runtime58.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { children: imageRelations[member.relation] }),
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { className: "iad-muted", children: "\u7F29\u7565\u56FE\u8FD1\u4F3C\u590D\u6838\u4EC5\u7528\u4E8E\u5019\u9009\u5206\u7EA7\u3002" }),
+        member.near.pixel_cosine !== null && /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("dl", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("dt", { children: "\u7070\u5EA6\u4F59\u5F26" }),
+          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("dd", { children: member.near.pixel_cosine.toFixed(4) }),
+          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("dt", { children: "NCC" }),
+          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("dd", { children: member.near.ncc?.toFixed(4) })
         ] }),
-        member.registration?.status === "UNSUPPORTED" && /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("p", { className: "iad-muted", children: "\u5C40\u90E8\u914D\u51C6\u672A\u542F\u7528\uFF0C\u4E0D\u8FDB\u884C\u8DE8\u5750\u6807\u6807\u6CE8\u5BF9\u8D26\u3002" })
+        member.registration?.status === "UNSUPPORTED" && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { className: "iad-muted", children: "\u5C40\u90E8\u914D\u51C6\u672A\u542F\u7528\uFF0C\u4E0D\u8FDB\u884C\u8DE8\u5750\u6807\u6807\u6CE8\u5BF9\u8D26\u3002" })
       ] }),
-      member.reason && /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("p", { className: "iad-error", children: member.reason }),
-      member.annotation?.differences.map((difference) => /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("button", { "data-difference": difference.type, className: selected === difference ? "is-selected" : "", "aria-pressed": selected === difference, onClick: () => onDifference(difference.difference_id), children: [
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("strong", { children: [
+      member.reason && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { className: "iad-error", children: member.reason }),
+      member.annotation?.differences.map((difference) => /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("button", { "data-difference": difference.type, className: selected === difference ? "is-selected" : "", "aria-pressed": selected === difference, onClick: () => onDifference(difference.difference_id), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("strong", { children: [
           differenceLabels[difference.type],
           " \xB7 ",
           difference.confirmed_conflict ? "\u5DF2\u786E\u8BA4\u51B2\u7A81" : "\u5F85\u5B9A"
         ] }),
-        difference.type !== "POLICY_UNCONFIRMED" && /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)(import_jsx_runtime57.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("span", { children: [
+        difference.type !== "POLICY_UNCONFIRMED" && /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)(import_jsx_runtime58.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("span", { children: [
             anchorSide === "left" ? "\u67E5\u8BE2" : "\u5019\u9009",
             "\uFF1A",
             difference.type === "QUALITY_LABEL" ? String(difference.facts.left_quality) : difference.left.map((annotation) => annotation.raw_label).join("\u3001") || "\u65E0\u5BF9\u5E94\u6807\u6CE8"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("span", { children: [
             anchorSide === "left" ? "\u5019\u9009" : "\u67E5\u8BE2",
             "\uFF1A",
             difference.type === "QUALITY_LABEL" ? String(difference.facts.right_quality) : difference.right.map((annotation) => annotation.raw_label).join("\u3001") || "\u65E0\u5BF9\u5E94\u6807\u6CE8"
           ] })
         ] }),
-        difference.reference_from_other && /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("small", { children: [
+        difference.reference_from_other && /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("small", { children: [
           "\u865A\u7EBF\u4F4D\u7F6E\u6765\u81EA",
           difference.reference_from_other === anchorSide ? "\u5019\u9009" : "\u67E5\u8BE2",
           "\u56FE\u50CF\u6807\u6CE8\uFF0C\u4EC5\u4F5C\u53C2\u8003"
         ] }),
-        difference.pending.map((reason, index3) => /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("small", { children: reason }, index3))
+        difference.pending.map((reason, index3) => /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("small", { children: reason }, index3))
       ] }, difference.difference_id)),
-      member.annotation?.differences.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("p", { children: member.annotation.status === "COMPLETE" ? "\u5F53\u524D\u53EF\u6BD4\u8F83\u6807\u6CE8\u672A\u53D1\u73B0\u5DEE\u5F02" : "\u5F53\u524D\u672A\u53D6\u5F97\u53EF\u5224\u5B9A\u5DEE\u5F02" }),
-      !!member.annotation?.masking.length && /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("details", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("summary", { children: "\u5FFD\u7565\u533A\u57DF" }),
-        member.annotation.masking.map((row) => /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("p", { children: [
+      member.annotation?.differences.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { children: member.annotation.status === "COMPLETE" ? "\u5F53\u524D\u53EF\u6BD4\u8F83\u6807\u6CE8\u672A\u53D1\u73B0\u5DEE\u5F02" : "\u5F53\u524D\u672A\u53D6\u5F97\u53EF\u5224\u5B9A\u5DEE\u5F02" }),
+      !!member.annotation?.masking.length && /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("details", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("summary", { children: "\u5FFD\u7565\u533A\u57DF" }),
+        member.annotation.masking.map((row) => /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("p", { children: [
           "\u53EF\u89C1 ",
           row.visible_pixels,
           "/",
@@ -20127,16 +20270,16 @@ button.exp-ghost:hover,
   }
 
   // src/client/components/ConsistencyComparison.tsx
-  var import_jsx_runtime58 = __require("react/jsx-runtime");
+  var import_jsx_runtime59 = __require("react/jsx-runtime");
   function ConsistencyComparison({ member, query, temporary, differenceId, onDifference, frozen }) {
     const { workspace } = useWorkspace();
-    const [saving, setSaving] = (0, import_react53.useState)(false);
-    const saveRequest = (0, import_react53.useRef)(null);
-    (0, import_react53.useEffect)(() => () => saveRequest.current?.abort(), []);
-    const [detail, setDetail] = (0, import_react53.useState)(null), [error2, setError] = (0, import_react53.useState)("");
-    const [synchronized, setSynchronized] = (0, import_react53.useState)(true);
-    const [showDifferences, setShowDifferences] = (0, import_react53.useState)(true);
-    (0, import_react53.useEffect)(() => {
+    const [saving, setSaving] = (0, import_react54.useState)(false);
+    const saveRequest = (0, import_react54.useRef)(null);
+    (0, import_react54.useEffect)(() => () => saveRequest.current?.abort(), []);
+    const [detail, setDetail] = (0, import_react54.useState)(null), [error2, setError] = (0, import_react54.useState)("");
+    const [synchronized, setSynchronized] = (0, import_react54.useState)(true);
+    const [showDifferences, setShowDifferences] = (0, import_react54.useState)(true);
+    (0, import_react54.useEffect)(() => {
       if (frozen) return;
       const controller = new AbortController();
       request(`/sample/${encodeURIComponent(member.sample_id)}`, void 0, void 0, controller.signal).then((data) => {
@@ -20171,33 +20314,33 @@ button.exp-ghost:hover,
         if (!controller.signal.aborted) setSaving(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)(import_jsx_runtime58.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("section", { className: "iad-consistency-comparison", "aria-label": "\u53CC\u56FE\u6BD4\u8F83", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("input", { type: "checkbox", checked: synchronized, onChange: (event) => setSynchronized(event.target.checked) }),
+    return /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)(import_jsx_runtime59.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("section", { className: "iad-consistency-comparison", "aria-label": "\u53CC\u56FE\u6BD4\u8F83", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("input", { type: "checkbox", checked: synchronized, onChange: (event) => setSynchronized(event.target.checked) }),
             "\u540C\u6B65\u7F29\u653E\u4E0E\u5E73\u79FB"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("input", { type: "checkbox", checked: showDifferences, onChange: (event) => setShowDifferences(event.target.checked) }),
+          /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("input", { type: "checkbox", checked: showDifferences, onChange: (event) => setShowDifferences(event.target.checked) }),
             "\u5DEE\u5F02\u533A\u57DF"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("span", { className: "iad-muted", children: member.relation === "EXACT" ? "\u5DF2\u6309\u539F\u59CB\u89E3\u7801\u50CF\u7D20\u6838\u9A8C" : "\u5C1A\u65E0\u4E25\u683C\u540C\u56FE\u8BC1\u660E" }),
-          !frozen && query && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("button", { disabled: saving || !detail, onClick: () => void save(), children: saving ? "\u6B63\u5728\u4FDD\u5B58\u2026" : "\u4FDD\u5B58\u6BD4\u8F83\u8BC1\u636E" })
+          /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("span", { className: "iad-muted", children: member.relation === "EXACT" ? "\u5DF2\u6309\u539F\u59CB\u89E3\u7801\u50CF\u7D20\u6838\u9A8C" : "\u5C1A\u65E0\u4E25\u683C\u540C\u56FE\u8BC1\u660E" }),
+          !frozen && query && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("button", { disabled: saving || !detail, onClick: () => void save(), children: saving ? "\u6B63\u5728\u4FDD\u5B58\u2026" : "\u4FDD\u5B58\u6BD4\u8F83\u8BC1\u636E" })
         ] }),
-        error2 && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { className: "iad-error", role: "alert", children: error2 }),
-        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(ConsistencyCanvasPair, { sources, selected, synchronized, showDifferences })
+        error2 && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("p", { className: "iad-error", role: "alert", children: error2 }),
+        /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(ConsistencyCanvasPair, { sources, selected, synchronized, showDifferences })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(ConsistencyDifferences, { member, differenceId, onDifference })
+      /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(ConsistencyDifferences, { member, differenceId, onDifference })
     ] });
   }
 
   // src/client/components/FrozenConsistencyComparison.tsx
-  var import_jsx_runtime59 = __require("react/jsx-runtime");
+  var import_jsx_runtime60 = __require("react/jsx-runtime");
   function FrozenConsistencyComparison({ bundle }) {
     const { state, workspace } = useWorkspace();
     const member = frozenConsistencyMember(bundle);
-    return /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "iad-consistency-layout iad-frozen-comparison", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("div", { className: "iad-consistency-layout iad-frozen-comparison", children: /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(
       ConsistencyComparison,
       {
         member,
@@ -20211,16 +20354,16 @@ button.exp-ghost:hover,
   }
 
   // src/client/components/ConsistencyReviewPanel.tsx
-  var import_react55 = __require("react");
+  var import_react56 = __require("react");
 
   // src/client/components/ConsistencyRegionProposal.tsx
-  var import_react54 = __require("react");
-  var import_jsx_runtime60 = __require("react/jsx-runtime");
+  var import_react55 = __require("react");
+  var import_jsx_runtime61 = __require("react/jsx-runtime");
   function ConsistencyRegionProposal({ sources, differences, onChange }) {
-    const [sampleId, setSampleId] = (0, import_react54.useState)(""), [annotationId, setAnnotationId] = (0, import_react54.useState)(""), [operation, setOperation] = (0, import_react54.useState)("relabel");
-    const [category, setCategory] = (0, import_react54.useState)(""), [geometryKind, setGeometryKind] = (0, import_react54.useState)("bbox"), [geometryText, setGeometryText] = (0, import_react54.useState)("");
+    const [sampleId, setSampleId] = (0, import_react55.useState)(""), [annotationId, setAnnotationId] = (0, import_react55.useState)(""), [operation, setOperation] = (0, import_react55.useState)("relabel");
+    const [category, setCategory] = (0, import_react55.useState)(""), [geometryKind, setGeometryKind] = (0, import_react55.useState)("bbox"), [geometryText, setGeometryText] = (0, import_react55.useState)("");
     const annotations = differences.flatMap((diff) => [...diff.left, ...diff.right]).filter((item, index3, items) => items.findIndex((other) => other.annotation_id === item.annotation_id) === index3 && item.sample_id === sampleId);
-    const value = (0, import_react54.useMemo)(() => {
+    const value = (0, import_react55.useMemo)(() => {
       if (!sampleId || operation !== "add" && !annotationId) return null;
       if (operation === "remove") return { kind: "PROPOSE_REGION_CHANGE", changes: [{ operation, sample_id: sampleId, annotation_id: annotationId }] };
       if (operation === "relabel") return category.trim() ? { kind: "PROPOSE_REGION_CHANGE", changes: [{ operation, sample_id: sampleId, annotation_id: annotationId, category: category.trim() }] } : null;
@@ -20232,78 +20375,78 @@ button.exp-ghost:hover,
       const change = operation === "add" ? { operation, sample_id: sampleId, category: category.trim(), geometry } : { operation, sample_id: sampleId, annotation_id: annotationId, geometry };
       return { kind: "PROPOSE_REGION_CHANGE", changes: [change] };
     }, [sampleId, annotationId, operation, category, geometryKind, geometryText]);
-    (0, import_react54.useEffect)(() => onChange(value), [value, onChange]);
-    return /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("section", { "aria-label": "\u533A\u57DF\u4FEE\u6B63\u5EFA\u8BAE", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("p", { className: "iad-muted", children: "\u5EFA\u8BAE\u4E0D\u4F1A\u6539\u5199\u6E90\u6807\u6CE8\u3002\u5B9E\u9645\u4FEE\u6B63\u5E76\u91CD\u626B\u540E\u518D\u9A8C\u8BC1\u3002" }),
-      /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("div", { className: "iad-config-bar", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("label", { className: "iad-field", children: [
+    (0, import_react55.useEffect)(() => onChange(value), [value, onChange]);
+    return /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("section", { "aria-label": "\u533A\u57DF\u4FEE\u6B63\u5EFA\u8BAE", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("p", { className: "iad-muted", children: "\u5EFA\u8BAE\u4E0D\u4F1A\u6539\u5199\u6E90\u6807\u6CE8\u3002\u5B9E\u9645\u4FEE\u6B63\u5E76\u91CD\u626B\u540E\u518D\u9A8C\u8BC1\u3002" }),
+      /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("div", { className: "iad-config-bar", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("label", { className: "iad-field", children: [
           "\u76EE\u6807\u6837\u672C",
-          /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("select", { "aria-label": "\u533A\u57DF\u5EFA\u8BAE\u76EE\u6807", value: sampleId, onChange: (event) => {
+          /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("select", { "aria-label": "\u533A\u57DF\u5EFA\u8BAE\u76EE\u6807", value: sampleId, onChange: (event) => {
             setSampleId(event.target.value);
             setAnnotationId("");
           }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("option", { value: "", children: "\u8BF7\u9009\u62E9" }),
-            sources.map((source) => /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("option", { value: source.sample.sample_id, children: source.sample.relative_path }, source.sample.sample_id))
+            /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("option", { value: "", children: "\u8BF7\u9009\u62E9" }),
+            sources.map((source) => /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("option", { value: source.sample.sample_id, children: source.sample.relative_path }, source.sample.sample_id))
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("label", { className: "iad-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("label", { className: "iad-field", children: [
           "\u4FEE\u6B63\u65B9\u5F0F",
-          /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("select", { "aria-label": "\u533A\u57DF\u4FEE\u6B63\u65B9\u5F0F", value: operation, onChange: (event) => setOperation(event.target.value), children: [
-            /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("option", { value: "relabel", children: "\u4FEE\u6539\u7C7B\u522B" }),
-            /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("option", { value: "reshape", children: "\u4FEE\u6539\u5F62\u72B6" }),
-            /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("option", { value: "add", children: "\u65B0\u589E\u533A\u57DF" }),
-            /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("option", { value: "remove", children: "\u5220\u9664\u533A\u57DF" })
+          /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("select", { "aria-label": "\u533A\u57DF\u4FEE\u6B63\u65B9\u5F0F", value: operation, onChange: (event) => setOperation(event.target.value), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("option", { value: "relabel", children: "\u4FEE\u6539\u7C7B\u522B" }),
+            /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("option", { value: "reshape", children: "\u4FEE\u6539\u5F62\u72B6" }),
+            /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("option", { value: "add", children: "\u65B0\u589E\u533A\u57DF" }),
+            /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("option", { value: "remove", children: "\u5220\u9664\u533A\u57DF" })
           ] })
         ] })
       ] }),
-      operation !== "add" && /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("label", { className: "iad-field", children: [
+      operation !== "add" && /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("label", { className: "iad-field", children: [
         "\u6240\u9009\u5DEE\u5F02\u4E2D\u7684\u533A\u57DF",
-        /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("select", { "aria-label": "\u5EFA\u8BAE\u76EE\u6807\u533A\u57DF", value: annotationId, onChange: (event) => setAnnotationId(event.target.value), children: [
-          /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("option", { value: "", children: "\u8BF7\u9009\u62E9" }),
-          annotations.map((annotation) => /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("option", { value: annotation.annotation_id, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("select", { "aria-label": "\u5EFA\u8BAE\u76EE\u6807\u533A\u57DF", value: annotationId, onChange: (event) => setAnnotationId(event.target.value), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("option", { value: "", children: "\u8BF7\u9009\u62E9" }),
+          annotations.map((annotation) => /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("option", { value: annotation.annotation_id, children: [
             annotation.raw_label,
             " \xB7 ",
             annotation.bbox?.join(", ")
           ] }, annotation.annotation_id))
         ] })
       ] }),
-      (operation === "add" || operation === "relabel") && /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("label", { className: "iad-field", children: [
+      (operation === "add" || operation === "relabel") && /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("label", { className: "iad-field", children: [
         "\u5EFA\u8BAE\u7C7B\u522B",
-        /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("input", { "aria-label": "\u5EFA\u8BAE\u7C7B\u522B", value: category, onChange: (event) => setCategory(event.target.value) })
+        /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("input", { "aria-label": "\u5EFA\u8BAE\u7C7B\u522B", value: category, onChange: (event) => setCategory(event.target.value) })
       ] }),
-      (operation === "add" || operation === "reshape") && /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)(import_jsx_runtime60.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("label", { className: "iad-field", children: [
+      (operation === "add" || operation === "reshape") && /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)(import_jsx_runtime61.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("label", { className: "iad-field", children: [
           "\u5F62\u72B6",
-          /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("select", { value: geometryKind, onChange: (event) => setGeometryKind(event.target.value), children: [
-            /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("option", { value: "bbox", children: "\u77E9\u5F62" }),
-            /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("option", { value: "polygon", children: "\u591A\u8FB9\u5F62" })
+          /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("select", { value: geometryKind, onChange: (event) => setGeometryKind(event.target.value), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("option", { value: "bbox", children: "\u77E9\u5F62" }),
+            /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("option", { value: "polygon", children: "\u591A\u8FB9\u5F62" })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("label", { className: "iad-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("label", { className: "iad-field", children: [
           geometryKind === "bbox" ? "\u539F\u56FE\u5750\u6807 x1, y1, x2, y2" : "\u539F\u56FE\u9876\u70B9 x1, y1, x2, y2, \u2026",
-          /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("input", { "aria-label": "\u5EFA\u8BAE\u533A\u57DF\u5750\u6807", value: geometryText, onChange: (event) => setGeometryText(event.target.value) })
+          /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("input", { "aria-label": "\u5EFA\u8BAE\u533A\u57DF\u5750\u6807", value: geometryText, onChange: (event) => setGeometryText(event.target.value) })
         ] })
       ] })
     ] });
   }
 
   // src/client/components/ConsistencyReviewPanel.tsx
-  var import_jsx_runtime61 = __require("react/jsx-runtime");
+  var import_jsx_runtime62 = __require("react/jsx-runtime");
   var actions2 = { CONFIRM_DIFFERENCE: "\u786E\u8BA4\u5DEE\u5F02\uFF0C\u5F85\u4FEE\u6B63", EXPECTED_POLICY_DIFFERENCE: "\u5C5E\u4E8E\u4E0D\u540C\u89C4\u8303", NEEDS_CONTEXT: "\u9700\u8981\u8865\u5145\u4F9D\u636E", SET_EFFECTIVE_QUALITY: "\u63D0\u4EA4\u6709\u6548\u8D28\u91CF\u88C1\u51B3", PROPOSE_REGION_CHANGE: "\u63D0\u51FA\u533A\u57DF\u4FEE\u6B63\u5EFA\u8BAE" };
   var reviewStates = { OPEN: "\u5F85\u590D\u6838", NEEDS_CONTEXT: "\u5F85\u8865\u5145\u4F9D\u636E", RESOLVED: "\u5DF2\u88C1\u51B3" };
   var correctionStates = { NOT_REQUIRED: "\u65E0\u9700\u4FEE\u6B63", PROPOSED: "\u5EFA\u8BAE\u672A\u5E94\u7528", AWAITING_RESCAN: "\u7B49\u5F85\u6E90\u4FEE\u6B63\u53CA\u91CD\u626B", VERIFIED: "\u91CD\u626B\u5DF2\u9A8C\u8BC1" };
   function ConsistencyReviewPanel({ bundle }) {
     const { workspace } = useWorkspace();
     const { result } = bundle, key = "iad.consistency-pending:" + result.evidence_id;
-    const [context, setContext] = (0, import_react55.useState)(null), [error2, setError] = (0, import_react55.useState)(""), [notice, setNotice] = (0, import_react55.useState)(""), [busy, setBusy] = (0, import_react55.useState)(false);
-    const [selected, setSelected] = (0, import_react55.useState)([]), [kind, setKind] = (0, import_react55.useState)("CONFIRM_DIFFERENCE");
-    const [reviewer, setReviewer] = (0, import_react55.useState)(() => localStorage.getItem("iad.reviewer") || "auditor_qc"), [comment, setComment] = (0, import_react55.useState)("");
-    const [quality, setQuality] = (0, import_react55.useState)({});
-    const [region, setRegion] = (0, import_react55.useState)(null);
-    const pending = (0, import_react55.useRef)(null), active = (0, import_react55.useRef)(true);
-    const [hasPending, setHasPending] = (0, import_react55.useState)(false);
+    const [context, setContext] = (0, import_react56.useState)(null), [error2, setError] = (0, import_react56.useState)(""), [notice, setNotice] = (0, import_react56.useState)(""), [busy, setBusy] = (0, import_react56.useState)(false);
+    const [selected, setSelected] = (0, import_react56.useState)([]), [kind, setKind] = (0, import_react56.useState)("CONFIRM_DIFFERENCE");
+    const [reviewer, setReviewer] = (0, import_react56.useState)(() => localStorage.getItem("iad.reviewer") || "auditor_qc"), [comment, setComment] = (0, import_react56.useState)("");
+    const [quality, setQuality] = (0, import_react56.useState)({});
+    const [region, setRegion] = (0, import_react56.useState)(null);
+    const pending = (0, import_react56.useRef)(null), active = (0, import_react56.useRef)(true);
+    const [hasPending, setHasPending] = (0, import_react56.useState)(false);
     const sources = [bundle.sources.left, bundle.sources.right];
-    (0, import_react55.useEffect)(() => {
+    (0, import_react56.useEffect)(() => {
       active.current = true;
       const controller = new AbortController();
       try {
@@ -20388,106 +20531,106 @@ button.exp-ghost:hover,
         if (active.current) setBusy(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("section", { className: "iad-job-panel iad-consistency-review", "aria-label": "\u4E00\u81F4\u6027\u4EBA\u5DE5\u5904\u7F6E", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("h2", { children: "\u4EBA\u5DE5\u5904\u7F6E" }),
-      context && /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("div", { className: "iad-table-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("table", { className: "iad-resource-table", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("th", { children: "\u5DEE\u5F02" }),
-          /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("th", { children: "\u590D\u6838" }),
-          /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("th", { children: "\u6E90\u4FEE\u6B63" })
+    return /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("section", { className: "iad-job-panel iad-consistency-review", "aria-label": "\u4E00\u81F4\u6027\u4EBA\u5DE5\u5904\u7F6E", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("h2", { children: "\u4EBA\u5DE5\u5904\u7F6E" }),
+      context && /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("div", { className: "iad-table-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("table", { className: "iad-resource-table", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("tr", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("th", { children: "\u5DEE\u5F02" }),
+          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("th", { children: "\u590D\u6838" }),
+          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("th", { children: "\u6E90\u4FEE\u6B63" })
         ] }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("tbody", { children: context.differences.map((item) => /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("tr", { "data-review-state": item.review_state, "data-correction-state": item.correction_state, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("input", { type: "checkbox", "aria-label": `\u5904\u7F6E\u5DEE\u5F02 ${result.annotation.differences.find((diff) => diff.difference_id === item.difference_id)?.type}`, disabled: busy || hasPending, checked: selected.includes(item.difference_id), onChange: (event) => setSelected(event.target.checked ? [...selected, item.difference_id] : selected.filter((id) => id !== item.difference_id)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("tbody", { children: context.differences.map((item) => /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("tr", { "data-review-state": item.review_state, "data-correction-state": item.correction_state, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("input", { type: "checkbox", "aria-label": `\u5904\u7F6E\u5DEE\u5F02 ${result.annotation.differences.find((diff) => diff.difference_id === item.difference_id)?.type}`, disabled: busy || hasPending, checked: selected.includes(item.difference_id), onChange: (event) => setSelected(event.target.checked ? [...selected, item.difference_id] : selected.filter((id) => id !== item.difference_id)) }),
             differenceLabels[result.annotation.differences.find((diff) => diff.difference_id === item.difference_id).type]
           ] }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("td", { children: reviewStates[item.review_state] }),
-          /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("td", { children: correctionStates[item.correction_state] })
+          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("td", { children: reviewStates[item.review_state] }),
+          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("td", { children: correctionStates[item.correction_state] })
         ] }, item.difference_id)) })
       ] }) }),
-      !current && /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("div", { className: "iad-row", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("p", { className: "iad-muted", children: "\u5386\u53F2\u6765\u6E90\u53EF\u8865\u5145\u5904\u7F6E\u8BF4\u660E\uFF1B\u8D28\u91CF\u88C1\u51B3\u548C\u533A\u57DF\u5EFA\u8BAE\u9700\u91CD\u65B0\u6BD4\u8F83\u5F53\u524D\u6765\u6E90\u3002" }),
-        /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("button", { disabled: busy || hasPending, onClick: () => void compareCurrent(), children: "\u91CD\u65B0\u6BD4\u8F83\u5F53\u524D\u6765\u6E90" })
+      !current && /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("div", { className: "iad-row", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("p", { className: "iad-muted", children: "\u5386\u53F2\u6765\u6E90\u53EF\u8865\u5145\u5904\u7F6E\u8BF4\u660E\uFF1B\u8D28\u91CF\u88C1\u51B3\u548C\u533A\u57DF\u5EFA\u8BAE\u9700\u91CD\u65B0\u6BD4\u8F83\u5F53\u524D\u6765\u6E90\u3002" }),
+        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("button", { disabled: busy || hasPending, onClick: () => void compareCurrent(), children: "\u91CD\u65B0\u6BD4\u8F83\u5F53\u524D\u6765\u6E90" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("form", { onSubmit: (event) => {
+      /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("form", { onSubmit: (event) => {
         event.preventDefault();
         void submit();
       }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("fieldset", { disabled: busy || hasPending, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("div", { className: "iad-config-bar", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("label", { className: "iad-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("fieldset", { disabled: busy || hasPending, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("div", { className: "iad-config-bar", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("label", { className: "iad-field", children: [
               "\u5904\u7F6E\u52A8\u4F5C",
-              /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("select", { "aria-label": "\u4E00\u81F4\u6027\u5904\u7F6E\u52A8\u4F5C", value: kind, onChange: (event) => setKind(event.target.value), children: Object.entries(actions2).map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("option", { value, children: label }, value)) })
+              /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("select", { "aria-label": "\u4E00\u81F4\u6027\u5904\u7F6E\u52A8\u4F5C", value: kind, onChange: (event) => setKind(event.target.value), children: Object.entries(actions2).map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("option", { value, children: label }, value)) })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("label", { className: "iad-field", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("label", { className: "iad-field", children: [
               "\u590D\u6838\u4EBA",
-              /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("input", { "aria-label": "\u4E00\u81F4\u6027\u590D\u6838\u4EBA", value: reviewer, onChange: (event) => setReviewer(event.target.value), required: true })
+              /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("input", { "aria-label": "\u4E00\u81F4\u6027\u590D\u6838\u4EBA", value: reviewer, onChange: (event) => setReviewer(event.target.value), required: true })
             ] })
           ] }),
-          kind === "SET_EFFECTIVE_QUALITY" && /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("section", { "aria-label": "\u8D28\u91CF\u88C1\u51B3\u76EE\u6807", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("h3", { children: "\u5B9E\u9645\u76EE\u6807\u6837\u672C" }),
-            sources.map((source) => /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("label", { className: "iad-field", children: [
+          kind === "SET_EFFECTIVE_QUALITY" && /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("section", { "aria-label": "\u8D28\u91CF\u88C1\u51B3\u76EE\u6807", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("h3", { children: "\u5B9E\u9645\u76EE\u6807\u6837\u672C" }),
+            sources.map((source) => /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("label", { className: "iad-field", children: [
               source.sample.relative_path,
-              /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("select", { "aria-label": `\u8D28\u91CF\u88C1\u51B3 ${source.sample.relative_path}`, value: quality[source.sample.sample_id] || "", onChange: (event) => setQuality({ ...quality, [source.sample.sample_id]: event.target.value }), children: [
-                /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("option", { value: "", children: "\u4E0D\u4FEE\u6539" }),
-                ["PASS", "FAIL", "HARD_NORMAL", "UNCERTAIN"].map((value) => /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("option", { value, children: reviewLabel(value) }, value))
+              /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("select", { "aria-label": `\u8D28\u91CF\u88C1\u51B3 ${source.sample.relative_path}`, value: quality[source.sample.sample_id] || "", onChange: (event) => setQuality({ ...quality, [source.sample.sample_id]: event.target.value }), children: [
+                /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("option", { value: "", children: "\u4E0D\u4FEE\u6539" }),
+                ["PASS", "FAIL", "HARD_NORMAL", "UNCERTAIN"].map((value) => /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("option", { value, children: reviewLabel(value) }, value))
               ] })
             ] }, source.sample.sample_id))
           ] }),
-          kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime61.jsx)(ConsistencyRegionProposal, { sources, differences: selectedDiffs, onChange: setRegion }),
-          /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("label", { className: "iad-field", children: [
+          kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(ConsistencyRegionProposal, { sources, differences: selectedDiffs, onChange: setRegion }),
+          /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("label", { className: "iad-field", children: [
             "\u5904\u7F6E\u8BF4\u660E",
-            /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("textarea", { "aria-label": "\u4E00\u81F4\u6027\u5904\u7F6E\u8BF4\u660E", required: true, value: comment, onChange: (event) => setComment(event.target.value) })
+            /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("textarea", { "aria-label": "\u4E00\u81F4\u6027\u5904\u7F6E\u8BF4\u660E", required: true, value: comment, onChange: (event) => setComment(event.target.value) })
           ] })
         ] }),
-        hasPending && pending.current && /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("div", { role: "status", children: [
+        hasPending && pending.current && /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("div", { role: "status", children: [
           "\u63D0\u4EA4\u7ED3\u679C\u5F85\u786E\u8BA4 \xB7 ",
           actions2[pending.current.action.kind],
           " \xB7 ",
           pending.current.reviewer,
-          /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("p", { children: pending.current.comment }),
-          pending.current.action.kind === "SET_EFFECTIVE_QUALITY" && /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("ul", { children: pending.current.action.targets.map((target) => /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("li", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("p", { children: pending.current.comment }),
+          pending.current.action.kind === "SET_EFFECTIVE_QUALITY" && /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("ul", { children: pending.current.action.targets.map((target) => /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("li", { children: [
             sources.find((source) => source.sample.sample_id === target.sample_id)?.sample.relative_path,
             " \xB7 ",
             reviewLabel(target.quality)
           ] }, target.sample_id)) }),
-          pending.current.action.kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("ul", { children: pending.current.action.changes.map((change, index3) => /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("li", { children: [
+          pending.current.action.kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("ul", { children: pending.current.action.changes.map((change, index3) => /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("li", { children: [
             sources.find((source) => source.sample.sample_id === change.sample_id)?.sample.relative_path,
             " \xB7 ",
             change.operation
           ] }, index3)) })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("button", { className: "iad-primary", disabled: busy || !hasPending && !canSubmit, children: busy ? "\u63D0\u4EA4\u4E2D\u2026" : hasPending ? "\u91CD\u8BD5\u540C\u4E00\u5904\u7F6E" : "\u63D0\u4EA4\u5904\u7F6E" })
+        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("button", { className: "iad-primary", disabled: busy || !hasPending && !canSubmit, children: busy ? "\u63D0\u4EA4\u4E2D\u2026" : hasPending ? "\u91CD\u8BD5\u540C\u4E00\u5904\u7F6E" : "\u63D0\u4EA4\u5904\u7F6E" })
       ] }),
-      error2 && /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
-      notice && /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("p", { role: "status", children: notice }),
-      !!context?.decisions.length && /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("details", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("summary", { children: [
+      error2 && /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
+      notice && /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("p", { role: "status", children: notice }),
+      !!context?.decisions.length && /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("details", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("summary", { children: [
           "\u5904\u7F6E\u8BB0\u5F55 \xB7 ",
           context.decisions.length
         ] }),
-        context.decisions.map((decision) => /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("p", { children: [
+        context.decisions.map((decision) => /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("p", { children: [
             actions2[decision.request.action.kind],
             " \xB7 ",
             decision.request.reviewer,
             " \xB7 ",
             decision.request.comment
           ] }),
-          decision.request.action.kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("button", { disabled: busy || hasPending || !reviewer.trim(), onClick: () => void verify(decision.decision_id), children: "\u9A8C\u8BC1\u91CD\u626B\u7ED3\u679C" })
+          decision.request.action.kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("button", { disabled: busy || hasPending || !reviewer.trim(), onClick: () => void verify(decision.decision_id), children: "\u9A8C\u8BC1\u91CD\u626B\u7ED3\u679C" })
         ] }, decision.decision_id))
       ] })
     ] });
   }
 
   // src/client/components/ConsistencyEvidencePage.tsx
-  var import_jsx_runtime62 = __require("react/jsx-runtime");
+  var import_jsx_runtime63 = __require("react/jsx-runtime");
   var sourceStates = { CURRENT: "\u6765\u6E90\u4E0E\u5F53\u6B21\u68C0\u67E5\u4E00\u81F4", CHANGED: "\u6765\u6E90\u5DF2\u53D8\u5316", MISSING: "\u6765\u6E90\u5DF2\u79FB\u9664", UNKNOWN: "\u6765\u6E90\u72B6\u6001\u672A\u77E5" };
   function ConsistencyEvidencePage({ evidenceId }) {
     const { workspace, state } = useWorkspace();
-    const [bundle, setBundle] = (0, import_react56.useState)(null), [error2, setError] = (0, import_react56.useState)("");
-    const [asking, setAsking] = (0, import_react56.useState)(false);
-    (0, import_react56.useEffect)(() => {
+    const [bundle, setBundle] = (0, import_react57.useState)(null), [error2, setError] = (0, import_react57.useState)("");
+    const [asking, setAsking] = (0, import_react57.useState)(false);
+    (0, import_react57.useEffect)(() => {
       const controller = new AbortController();
       setBundle(null);
       setError("");
@@ -20498,16 +20641,16 @@ button.exp-ghost:hover,
       });
       return () => controller.abort();
     }, [evidenceId]);
-    return /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("div", { className: "iad-workbench iad-consistency", "data-page": "industrial-consistency", "data-evidence-id": evidenceId, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("style", { children: workbenchStyles }),
-      /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)(WorkbenchHeader, { pageId: "industrial-consistency", title: "\u6BD4\u8F83\u8BC1\u636E", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("button", { disabled: !!state.consistency.returnPage && !bundle, onClick: () => {
+    return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "iad-workbench iad-consistency", "data-page": "industrial-consistency", "data-evidence-id": evidenceId, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("style", { children: workbenchStyles }),
+      /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(WorkbenchHeader, { pageId: "industrial-consistency", title: "\u6BD4\u8F83\u8BC1\u636E", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("button", { disabled: !!state.consistency.returnPage && !bundle, onClick: () => {
           const pageId = state.consistency.returnPage, queryId = state.consistency.query?.sample_id;
           const source = queryId && bundle ? [bundle.sources.left.sample, bundle.sources.right.sample].find((sample) => sample.sample_id === queryId) : bundle?.sources.left.sample;
           if (pageId && source?.dataset_id) workspace.openLocation({ pageId, datasetId: source.dataset_id, selected: source.sample_id });
           else workspace.updateConsistency({ evidenceId: void 0, resultId: state.consistency.tab === "conflicts" ? state.consistency.resultId : void 0, tab: state.consistency.batchId ? "jobs" : state.consistency.tab || "search" }, true);
         }, children: state.consistency.returnPage === "industrial-audit" ? "\u8FD4\u56DE\u5BA1\u8BA1" : state.consistency.returnPage === "industrial-review" ? "\u8FD4\u56DE\u590D\u6838" : state.consistency.returnPage === "industrial-images" ? "\u8FD4\u56DE\u56FE\u50CF" : state.consistency.batchId ? "\u8FD4\u56DE\u6279\u6B21" : state.consistency.tab === "conflicts" || state.consistency.tab === "groups" ? "\u8FD4\u56DE\u7ED3\u679C" : "\u8FD4\u56DE\u68C0\u7D22" }),
-        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("button", { disabled: !bundle || asking, onClick: async () => {
+        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("button", { disabled: !bundle || asking, onClick: async () => {
           if (!bundle) return;
           setAsking(true);
           setError("");
@@ -20519,36 +20662,36 @@ button.exp-ghost:hover,
             setAsking(false);
           }
         }, children: asking ? "\u6B63\u5728\u6253\u5F00\u4F1A\u8BDD\u2026" : "\u5728 DSH \u4E2D\u89E3\u91CA" }),
-        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("button", { disabled: !bundle, onClick: () => window.location.assign(`/api/iad/consistency/evidence/${encodeURIComponent(evidenceId)}/export`), children: "\u4E0B\u8F7D\u8BC1\u636E" })
+        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("button", { disabled: !bundle, onClick: () => window.location.assign(`/api/iad/consistency/evidence/${encodeURIComponent(evidenceId)}/export`), children: "\u4E0B\u8F7D\u8BC1\u636E" })
       ] }),
-      error2 && /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
-      !bundle && !error2 && /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u51BB\u7ED3\u8BC1\u636E\u2026" }),
-      bundle && /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)(import_jsx_runtime62.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("strong", { children: "\u5F53\u6B21\u68C0\u67E5\u7684\u51BB\u7ED3\u5185\u5BB9" }),
-          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("time", { dateTime: bundle.checked_at, children: new Date(bundle.checked_at).toLocaleString() })
+      error2 && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
+      !bundle && !error2 && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u51BB\u7ED3\u8BC1\u636E\u2026" }),
+      bundle && /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(import_jsx_runtime63.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("strong", { children: "\u5F53\u6B21\u68C0\u67E5\u7684\u51BB\u7ED3\u5185\u5BB9" }),
+          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("time", { dateTime: bundle.checked_at, children: new Date(bundle.checked_at).toLocaleString() })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("p", { className: "iad-muted", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("p", { className: "iad-muted", children: [
           "\u67E5\u8BE2\uFF1A",
           sourceStates[bundle.source_states.left],
           " \xB7 \u5019\u9009\uFF1A",
           sourceStates[bundle.source_states.right]
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(FrozenConsistencyComparison, { bundle }),
-        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(ConsistencyReviewPanel, { bundle }, bundle.result.evidence_id)
+        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(FrozenConsistencyComparison, { bundle }),
+        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(ConsistencyReviewPanel, { bundle }, bundle.result.evidence_id)
       ] })
     ] });
   }
 
   // src/client/components/ConsistencyPage.tsx
-  var import_jsx_runtime63 = __require("react/jsx-runtime");
+  var import_jsx_runtime64 = __require("react/jsx-runtime");
   function dcJobBadge(status) {
     const s = (status || "").toUpperCase();
-    if (s === "COMPLETED") return /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-state exp-pill ok", children: "\u5DF2\u5B8C\u6210" });
-    if (s === "PARTIAL") return /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-state exp-pill ok", children: "\u90E8\u5206\u5B8C\u6210" });
-    if (s === "RUNNING") return /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-state exp-pill running", children: "\u8FD0\u884C\u4E2D" });
-    if (s === "PENDING") return /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-state exp-pill pending", children: "\u6392\u961F\u4E2D" });
-    return /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-state exp-pill fail", children: "\u5931\u8D25" });
+    if (s === "COMPLETED") return /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-state exp-pill ok", children: "\u5DF2\u5B8C\u6210" });
+    if (s === "PARTIAL") return /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-state exp-pill ok", children: "\u90E8\u5206\u5B8C\u6210" });
+    if (s === "RUNNING") return /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-state exp-pill running", children: "\u8FD0\u884C\u4E2D" });
+    if (s === "PENDING") return /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-state exp-pill pending", children: "\u6392\u961F\u4E2D" });
+    return /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-state exp-pill fail", children: "\u5931\u8D25" });
   }
   var dcJobConflictTotal = (j) => (j.status === "COMPLETED" || j.status === "PARTIAL") && typeof j.conflict_count === "number" && Number.isFinite(j.conflict_count) && j.conflict_count >= 0 ? String(j.conflict_count) : "\u2014";
   var dcJobElapsed = (j) => {
@@ -20657,152 +20800,17 @@ button.exp-ghost:hover,
       { annotation_id: `${c.id}_std_1`, raw_label: side === "anchor" ? c.leftLabel || "\u6807\u6CE8" : c.rightLabel || "\u6807\u6CE8", bbox: [Math.round(sW * 0.32), Math.round(sH * 0.31), Math.round(sW * 0.48), Math.round(sH * 0.45)] }
     ];
   }
-  function ComparePhotoStage({
-    src,
-    alt,
-    sourceWidth = 860,
-    sourceHeight = 690,
-    bboxes = []
-  }) {
-    const containerRef = (0, import_react57.useRef)(null);
-    const [naturalSize, setNaturalSize] = (0, import_react57.useState)({
-      width: sourceWidth || 860,
-      height: sourceHeight || 690
-    });
-    const imgW = naturalSize.width || sourceWidth || 860;
-    const imgH = naturalSize.height || sourceHeight || 690;
-    const [stageStyle, setStageStyle] = (0, import_react57.useState)({
-      position: "relative",
-      height: "100%",
-      aspectRatio: `${imgW} / ${imgH}`,
-      display: "block",
-      maxWidth: "100%",
-      maxHeight: "100%"
-    });
-    const updateDimensions = (0, import_react57.useCallback)(() => {
-      if (!containerRef.current) return;
-      const { clientWidth: cw, clientHeight: ch } = containerRef.current;
-      if (!cw || !ch) return;
-      const containerRatio = cw / ch;
-      const imgRatio = imgW / imgH;
-      if (containerRatio > imgRatio) {
-        const w = Math.round(ch * imgRatio);
-        setStageStyle({
-          position: "relative",
-          width: `${w}px`,
-          height: `${ch}px`,
-          display: "block",
-          flexShrink: 0
-        });
-      } else {
-        const h = Math.round(cw / imgRatio);
-        setStageStyle({
-          position: "relative",
-          width: `${cw}px`,
-          height: `${h}px`,
-          display: "block",
-          flexShrink: 0
-        });
-      }
-    }, [imgW, imgH]);
-    (0, import_react57.useLayoutEffect)(() => {
-      updateDimensions();
-    }, [updateDimensions]);
-    (0, import_react57.useEffect)(() => {
-      const el = containerRef.current;
-      if (!el || typeof ResizeObserver === "undefined") return;
-      const ro = new ResizeObserver(() => updateDimensions());
-      ro.observe(el);
-      return () => ro.disconnect();
-    }, [updateDimensions]);
-    (0, import_react57.useEffect)(() => {
-      if (sourceWidth && sourceHeight) {
-        setNaturalSize({ width: sourceWidth, height: sourceHeight });
-      }
-    }, [sourceWidth, sourceHeight, src]);
-    return /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
-      "div",
-      {
-        ref: containerRef,
-        className: "dc-compare-stage-wrapper",
-        style: {
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative",
-          overflow: "hidden"
-        },
-        children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-photo-stage", style: stageStyle, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
-            "img",
-            {
-              src,
-              alt,
-              draggable: false,
-              style: {
-                width: "100%",
-                height: "100%",
-                display: "block",
-                pointerEvents: "none",
-                userSelect: "none"
-              },
-              onLoad: (e) => {
-                const img = e.currentTarget;
-                if (img.naturalWidth && img.naturalHeight) {
-                  setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                }
-              }
-            }
-          ),
-          bboxes && bboxes.length > 0 && bboxes.map((b, idx) => {
-            if (!b.bbox || b.bbox.length < 4) return null;
-            const [x1, y1, x2, y2] = b.bbox;
-            const minX = Math.min(x1, x2);
-            const minY = Math.min(y1, y2);
-            const maxX = Math.max(x1, x2);
-            const maxY = Math.max(y1, y2);
-            const left = (minX / imgW * 100).toFixed(2);
-            const top = (minY / imgH * 100).toFixed(2);
-            const width = Math.max(1.8, (maxX - minX) / imgW * 100).toFixed(2);
-            const height = Math.max(1.8, (maxY - minY) / imgH * 100).toFixed(2);
-            return /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
-              "i",
-              {
-                className: "dc-bbox",
-                style: {
-                  position: "absolute",
-                  left: `${left}%`,
-                  top: `${top}%`,
-                  width: `${width}%`,
-                  height: `${height}%`,
-                  minWidth: "16px",
-                  minHeight: "16px",
-                  background: "transparent",
-                  border: "2px solid #e88c26",
-                  boxSizing: "border-box",
-                  pointerEvents: "none"
-                }
-              },
-              b.annotation_id || idx
-            );
-          })
-        ] })
-      }
-    );
-  }
   var DEFAULT_CONSISTENCY_PROMPT = "\u4F60\u662F\u5DE5\u4E1A\u6570\u636E\u6807\u6CE8\u4E00\u81F4\u6027\u6838\u67E5\u52A9\u624B\u3002\u8BF7\u5BF9\u6BCF\u7EC4\u7591\u4F3C\u51B2\u7A81\u56FE\u50CF\uFF0C\u57FA\u4E8E\u539F\u56FE\u3001\u73B0\u6709\u6807\u6CE8\u3001\u7C7B\u522B\u5B9A\u4E49\u548C\u68C0\u6D4B\u8BC1\u636E\u8FDB\u884C\u6BD4\u8F83\u3002\n\u4EE5\u4E3B\u56FE\u76F8\u5BF9\u4E8E\u5019\u9009\u56FE\u4E3A\u57FA\u51C6\uFF0C\u5224\u65AD\u662F\u5426\u5B58\u5728\u5B9E\u9645\u6807\u6CE8\u51B2\u7A81\uFF1B\u82E5\u5B58\u5728\uFF0C\u7ED9\u51FA\u552F\u4E00\u7684\u4E3B\u8981\u7C7B\u578B\uFF1A\u7C7B\u522B\u4E0D\u4E00\u81F4\u3001\u591A\u7C7B\u522B\u3001\u5C11\u7C7B\u522B\u3001\u4F4D\u7F6E\u5DEE\u5F02\u3001\u62C6\u5206\u6216\u5408\u5E76\u3002\u5F02\u5E38\u68C0\u6D4B\u76EE\u5F55\u6570\u636E\u96C6\u5224\u65AD OK/NG \u6807\u7B7E\u662F\u5426\u51B2\u7A81\uFF1B\u82E5\u6CA1\u6709\u5B9E\u9645\u51B2\u7A81\uFF0C\u660E\u786E\u8F93\u51FA\u201C\u65E0\u51B2\u7A81\u201D\u3002\n\u8BF7\u8BF4\u660E\u5224\u65AD\u4F9D\u636E\uFF0C\u6307\u51FA\u76F8\u5173\u56FE\u50CF\u548C\u6807\u6CE8\u533A\u57DF\uFF0C\u4E0D\u8981\u4FEE\u6539\u539F\u59CB\u6807\u6CE8\u6216\u5C06\u6A21\u578B\u8F93\u51FA\u5F53\u4F5C\u4EBA\u5DE5\u88C1\u5B9A\u3002\u65E0\u6CD5\u53D6\u5F97\u53EF\u9760\u7ED3\u679C\u65F6\u8BB0\u5F55\u5206\u6790\u5931\u8D25\uFF0C\u4E0D\u8F93\u51FA\u865A\u6784\u7ED3\u8BBA\u3002";
   function ConsistencyPage() {
     const { state } = useWorkspace();
     const evidenceId = state.consistency.evidenceId;
-    const [visited, setVisited] = (0, import_react57.useState)(!evidenceId);
-    (0, import_react57.useEffect)(() => {
+    const [visited, setVisited] = (0, import_react58.useState)(!evidenceId);
+    (0, import_react58.useEffect)(() => {
       if (!evidenceId) setVisited(true);
     }, [evidenceId]);
-    return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(import_jsx_runtime63.Fragment, { children: [
-      visited && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { hidden: !!evidenceId, style: { height: "100%" }, children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(ConsistencyIntegratedWorkspace, {}) }),
-      evidenceId && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(ConsistencyEvidencePage, { evidenceId })
+    return /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(import_jsx_runtime64.Fragment, { children: [
+      visited && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { hidden: !!evidenceId, style: { height: "100%" }, children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(ConsistencyIntegratedWorkspace, {}) }),
+      evidenceId && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(ConsistencyEvidencePage, { evidenceId })
     ] });
   }
   function generateFallbackConflicts(job, childDatasets, isLabelmeFormat, currentReviews) {
@@ -20814,6 +20822,7 @@ button.exp-ghost:hover,
       const rawType = types2[idx % types2.length];
       const number = String(1e3 + idx);
       const filename = isLabelmeFormat ? `(${String(2335 + (idx + 1) * 7).padStart(4, "0")})_ch_${idx % 2 + 1}_2023-06-15_09.32.${String(idx * 17 % 60).padStart(2, "0")}.png` : `picture_${number}_2026_09_08_21_45_${String(idx % 60).padStart(2, "0")}.png`;
+      const candFilename = isLabelmeFormat ? `(${String(2335 + (idx + 1) * 7 + 3).padStart(4, "0")})_ch_${(idx + 1) % 2 + 1}_2023-06-15_09.32.${String((idx + 1) * 17 % 60).padStart(2, "0")}.png` : `picture_${String(1e3 + idx + 10)}_2026_09_08_21_45_${String((idx + 5) % 60).padStart(2, "0")}.png`;
       const leftLabel = isLabelmeFormat ? "14" : "OK";
       const rightLabel = isLabelmeFormat ? rawType === "\u7C7B\u522B\u4E0D\u4E00\u81F4" ? "12" : leftLabel : "NG";
       const noConflict = idx % 9 === 2;
@@ -20821,7 +20830,10 @@ button.exp-ghost:hover,
       const modelStatus = noConflict ? "no_conflict" : "conflict";
       const modelTypeVal = noConflict ? "\u65E0\u51B2\u7A81" : relabeled ? types2[(types2.indexOf(rawType) + 1) % types2.length] : rawType;
       const explanation = noConflict ? `\u539F\u59CB\u6BD4\u5BF9\u8BC6\u522B\u51FA\u201C${rawType}\u201D\u5F62\u5F0F\u5DEE\u5F02\uFF0C\u4F46\u6A21\u578B\u6821\u9A8C\u76EE\u6807\u201C${leftLabel}\u201D\u540E\u5224\u5B9A\u672A\u6784\u6210\u5B9E\u9645\u6807\u6CE8\u51B2\u7A81\uFF0C\u6807\u8BB0\u4E3A\u201C\u65E0\u51B2\u7A81\u201D\u3002\u53EF\u8FDB\u5165\u4EBA\u5DE5\u590D\u6838\u786E\u8BA4\u3002` : relabeled ? `\u539F\u59CB\u68C0\u67E5\u8BC6\u522B\u4E3A\u201C${rawType}\u201D\uFF0C\u6A21\u578B\u4EE5\u5DE6\u4FA7\u4E3B\u56FE\u76F8\u5BF9\u4E8E\u5019\u9009\u56FE\u7684\u5173\u7CFB\u91CD\u65B0\u5224\u5B9A\u4E3A\u201C${modelTypeVal}\u201D\u3002` : `\u6A21\u578B\u7ED3\u8BBA\u4E0E\u539F\u59CB\u6BD4\u5BF9\u4E00\u81F4\uFF1A\u786E\u8BA4\u5B58\u5728\u201C${modelTypeVal}\u201D\u51B2\u7A81\uFF08\u6807\u6CE8\u91CD\u53E0 IoU: ${(0.88 * 100).toFixed(1)}%\uFF09\u3002`;
-      const svgUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="225" viewBox="0 0 300 225"><rect width="300" height="225" fill="%23eef2f8"/><rect x="20" y="20" width="260" height="185" fill="%23d8e2f0" stroke="%23285ed6" stroke-width="2" rx="4"/><text x="150" y="115" font-family="sans-serif" font-size="14" fill="%23172338" text-anchor="middle" font-weight="600">${filename}</text><text x="150" y="140" font-family="sans-serif" font-size="12" fill="%234a5568" text-anchor="middle">\u6837\u672C #${idx + 1}</text></svg>`;
+      const svgUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="860" height="690" viewBox="0 0 860 690"><rect width="860" height="690" fill="%23eef2f8"/><rect x="20" y="20" width="820" height="650" fill="%23d8e2f0" stroke="%23285ed6" stroke-width="2" rx="4"/><text x="430" y="325" font-family="sans-serif" font-size="20" fill="%23172338" text-anchor="middle" font-weight="600">${filename}</text><text x="430" y="365" font-family="sans-serif" font-size="15" fill="%234a5568" text-anchor="middle">\u4E3B\u56FE \xB7 \u6837\u672C #${idx + 1}</text></svg>`;
+      const candSvgUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="860" height="690" viewBox="0 0 860 690"><rect width="860" height="690" fill="%23fffaf0"/><rect x="20" y="20" width="820" height="650" fill="%23faebd7" stroke="%23d97706" stroke-width="2" rx="4"/><text x="430" y="325" font-family="sans-serif" font-size="20" fill="%23172338" text-anchor="middle" font-weight="600">${candFilename}</text><text x="430" y="365" font-family="sans-serif" font-size="15" fill="%23b45309" text-anchor="middle">\u5019\u9009\u56FE \xB7 \u6837\u672C #${idx + 1}-B</text></svg>`;
+      const leftBboxes = isLabelmeFormat ? [{ annotation_id: `${job.batch_id}_L_${idx}`, raw_label: leftLabel, bbox: [275, 214, 413, 310] }] : [];
+      const rightBboxes = isLabelmeFormat ? [{ annotation_id: `${job.batch_id}_R_${idx}`, raw_label: rightLabel, bbox: rawType === "\u4F4D\u7F6E\u5DEE\u5F02" ? [352, 186, 550, 317] : [275, 214, 413, 310] }] : [];
       return {
         id: `${job.batch_id}-C${String(idx + 1).padStart(3, "0")}`,
         datasetId: d.dataset_id,
@@ -20839,11 +20851,13 @@ button.exp-ghost:hover,
           modelType: modelTypeVal,
           explanation
         },
-        candidateFilename: `cand_${filename}`,
-        candidateThumbUrl: svgUrl,
-        candidateFullUrl: svgUrl,
+        candidateFilename: candFilename,
+        candidateThumbUrl: candSvgUrl,
+        candidateFullUrl: candSvgUrl,
         leftLabel,
         rightLabel,
+        leftBboxes,
+        rightBboxes,
         sourceWidth: 860,
         sourceHeight: 690,
         rightSourceWidth: 860,
@@ -20856,51 +20870,54 @@ button.exp-ghost:hover,
   }
   function ConsistencyIntegratedWorkspace() {
     const { workspace } = useWorkspace();
-    const [datasets, setDatasets] = (0, import_react57.useState)([]);
-    const [groups, setGroups] = (0, import_react57.useState)([]);
-    const [selectedParentId, setSelectedParentId] = (0, import_react57.useState)("group-1");
-    const [selectedChildIds, setSelectedChildIds] = (0, import_react57.useState)([]);
-    const [loading, setLoading] = (0, import_react57.useState)(false);
-    const [error2, setError] = (0, import_react57.useState)("");
-    const [batches, setBatches] = (0, import_react57.useState)([]);
-    const [selectedJobId, setSelectedJobId] = (0, import_react57.useState)("");
-    const [jobPage, setJobPage] = (0, import_react57.useState)(1);
-    const [revision, setRevision] = (0, import_react57.useState)(0);
-    const [jobConflicts, setJobConflicts] = (0, import_react57.useState)([]);
-    const [conflictsLoading, setConflictsLoading] = (0, import_react57.useState)(false);
-    const [kind, setKind] = (0, import_react57.useState)("all");
-    const [modelFilter, setModelFilter] = (0, import_react57.useState)("all");
-    const [agreement, setAgreement] = (0, import_react57.useState)("all");
-    const [search, setSearch] = (0, import_react57.useState)("");
-    const [page, setPage] = (0, import_react57.useState)(1);
-    const [reviewFilter, setReviewFilter] = (0, import_react57.useState)("all");
-    const [changedOnly, setChangedOnly] = (0, import_react57.useState)(false);
-    const [modal, setModal] = (0, import_react57.useState)("");
-    const [modalChildIds, setModalChildIds] = (0, import_react57.useState)([]);
-    const [modalChildOpen, setModalChildOpen] = (0, import_react57.useState)(false);
-    const [newCheckBusy, setNewCheckBusy] = (0, import_react57.useState)(false);
-    const [newPrompt, setNewPrompt] = (0, import_react57.useState)(DEFAULT_CONSISTENCY_PROMPT);
-    const [currentConflictId, setCurrentConflictId] = (0, import_react57.useState)("");
-    const [candidateIndex, setCandidateIndex] = (0, import_react57.useState)(0);
-    const [reviewDecision, setReviewDecision] = (0, import_react57.useState)("pending");
-    const [reviewNote, setReviewNote] = (0, import_react57.useState)("");
-    const [reviews, setReviews] = (0, import_react57.useState)({});
-    const [statsModalJobId, setStatsModalJobId] = (0, import_react57.useState)("");
-    const [zoomItem, setZoomItem] = (0, import_react57.useState)(null);
-    const hierarchyGroups = (0, import_react57.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
-    const currentParent = (0, import_react57.useMemo)(
+    const [datasets, setDatasets] = (0, import_react58.useState)([]);
+    const [groups, setGroups] = (0, import_react58.useState)([]);
+    const [selectedParentId, setSelectedParentId] = (0, import_react58.useState)("group-1");
+    const [selectedChildIds, setSelectedChildIds] = (0, import_react58.useState)([]);
+    const [loading, setLoading] = (0, import_react58.useState)(false);
+    const [error2, setError] = (0, import_react58.useState)("");
+    const [batches, setBatches] = (0, import_react58.useState)([]);
+    const [selectedJobId, setSelectedJobId] = (0, import_react58.useState)("");
+    const [jobPage, setJobPage] = (0, import_react58.useState)(1);
+    const [revision, setRevision] = (0, import_react58.useState)(0);
+    const [jobConflicts, setJobConflicts] = (0, import_react58.useState)([]);
+    const [conflictsLoading, setConflictsLoading] = (0, import_react58.useState)(false);
+    const [kind, setKind] = (0, import_react58.useState)("all");
+    const [modelFilter, setModelFilter] = (0, import_react58.useState)("all");
+    const [agreement, setAgreement] = (0, import_react58.useState)("all");
+    const [search, setSearch] = (0, import_react58.useState)("");
+    const [page, setPage] = (0, import_react58.useState)(1);
+    const [reviewFilter, setReviewFilter] = (0, import_react58.useState)("all");
+    const [changedOnly, setChangedOnly] = (0, import_react58.useState)(false);
+    const [modal, setModal] = (0, import_react58.useState)("");
+    const [modalChildIds, setModalChildIds] = (0, import_react58.useState)([]);
+    const [modalChildOpen, setModalChildOpen] = (0, import_react58.useState)(false);
+    const [newCheckBusy, setNewCheckBusy] = (0, import_react58.useState)(false);
+    const [newPrompt, setNewPrompt] = (0, import_react58.useState)(DEFAULT_CONSISTENCY_PROMPT);
+    const [currentConflictId, setCurrentConflictId] = (0, import_react58.useState)("");
+    const [candidateIndex, setCandidateIndex] = (0, import_react58.useState)(0);
+    const [activeQueryId, setActiveQueryId] = (0, import_react58.useState)("");
+    const [conflictMembers, setConflictMembers] = (0, import_react58.useState)([]);
+    const [candidateDetailAnnotations, setCandidateDetailAnnotations] = (0, import_react58.useState)(null);
+    const [reviewDecision, setReviewDecision] = (0, import_react58.useState)("pending");
+    const [reviewNote, setReviewNote] = (0, import_react58.useState)("");
+    const [reviews, setReviews] = (0, import_react58.useState)({});
+    const [statsModalJobId, setStatsModalJobId] = (0, import_react58.useState)("");
+    const [zoomItem, setZoomItem] = (0, import_react58.useState)(null);
+    const hierarchyGroups = (0, import_react58.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
+    const currentParent = (0, import_react58.useMemo)(
       () => hierarchyGroups.find((g) => g.group_id === selectedParentId) || hierarchyGroups[0],
       [hierarchyGroups, selectedParentId]
     );
-    const currentChildDatasets = (0, import_react57.useMemo)(
+    const currentChildDatasets = (0, import_react58.useMemo)(
       () => datasets.filter((d) => getDatasetGroupId(d, hierarchyGroups) === currentParent?.group_id),
       [datasets, hierarchyGroups, currentParent]
     );
-    const selectedChildDatasets = (0, import_react57.useMemo)(
+    const selectedChildDatasets = (0, import_react58.useMemo)(
       () => currentChildDatasets.filter((d) => selectedChildIds.includes(d.dataset_id)),
       [currentChildDatasets, selectedChildIds]
     );
-    (0, import_react57.useEffect)(() => {
+    (0, import_react58.useEffect)(() => {
       const controller = new AbortController();
       setLoading(true);
       request("/datasets", void 0, void 0, controller.signal).then((res) => {
@@ -20921,7 +20938,7 @@ button.exp-ghost:hover,
       });
       return () => controller.abort();
     }, []);
-    (0, import_react57.useEffect)(() => {
+    (0, import_react58.useEffect)(() => {
       const controller = new AbortController();
       let timer;
       async function poll() {
@@ -20943,7 +20960,7 @@ button.exp-ghost:hover,
         clearTimeout(timer);
       };
     }, [revision]);
-    const availableJobs = (0, import_react57.useMemo)(() => {
+    const availableJobs = (0, import_react58.useMemo)(() => {
       if (!selectedChildIds.length) {
         return [];
       }
@@ -20954,13 +20971,13 @@ button.exp-ghost:hover,
     }, [batches, selectedChildIds]);
     const jobPages = Math.max(1, Math.ceil(availableJobs.length / IBA_JOBS_PAGE_SIZE));
     const currentJobPage = Math.max(1, Math.min(jobPages, jobPage));
-    const shownJobs = (0, import_react57.useMemo)(() => {
+    const shownJobs = (0, import_react58.useMemo)(() => {
       return availableJobs.slice(
         (currentJobPage - 1) * IBA_JOBS_PAGE_SIZE,
         currentJobPage * IBA_JOBS_PAGE_SIZE
       );
     }, [availableJobs, currentJobPage]);
-    const selectedJob = (0, import_react57.useMemo)(() => {
+    const selectedJob = (0, import_react58.useMemo)(() => {
       if (!shownJobs.length) return null;
       if (selectedJobId) {
         const match = shownJobs.find((j) => j.batch_id === selectedJobId);
@@ -20983,11 +21000,11 @@ button.exp-ghost:hover,
       }
       setPage(1);
     };
-    const isLabelme = (0, import_react57.useMemo)(() => {
+    const isLabelme = (0, import_react58.useMemo)(() => {
       if (!currentChildDatasets.length) return true;
       return currentChildDatasets[0].format === "labelme" || currentParent?.name.includes("\u6846\u80F6");
     }, [currentChildDatasets, currentParent]);
-    (0, import_react57.useEffect)(() => {
+    (0, import_react58.useEffect)(() => {
       if (!selectedJob) {
         setJobConflicts([]);
         return;
@@ -21017,6 +21034,7 @@ button.exp-ghost:hover,
             setJobConflicts(generateFallbackConflicts(selectedJob, currentChildDatasets, isLabelme, reviews));
             return;
           }
+          setActiveQueryId(queryId);
           const gallery = await request(
             "/consistency/gallery",
             {
@@ -21030,16 +21048,21 @@ button.exp-ghost:hover,
           );
           if (controller.signal.aborted) return;
           const reportItems = report.page?.items || [];
-          const reportBySampleA = /* @__PURE__ */ new Map();
+          const reportBySample = /* @__PURE__ */ new Map();
           for (const ri of reportItems) {
-            if (ri.sample_a && !reportBySampleA.has(ri.sample_a)) {
-              reportBySampleA.set(ri.sample_a, ri);
+            if (ri.sample_a && !reportBySample.has(ri.sample_a)) {
+              reportBySample.set(ri.sample_a, { item: ri, isLeft: true });
+            }
+            if (ri.sample_b && !reportBySample.has(ri.sample_b)) {
+              reportBySample.set(ri.sample_b, { item: ri, isLeft: false });
             }
           }
           const mapped = (gallery.items || []).map((it, idx) => {
             const anchor = it.anchor?.sample;
             const sampleAId = anchor?.sample_id || "";
-            const reportItem = reportBySampleA.get(sampleAId) || reportItems[idx];
+            const match = reportBySample.get(sampleAId);
+            const reportItem = match?.item || reportItems[idx];
+            const isAnchorLeft = match ? match.isLeft : true;
             const dsId = anchor?.dataset_id || selectedJob.scopes?.subjects?.dataset_ids?.[0] || "";
             const relPath = anchor?.relative_path || anchor?.sample_id?.split(":").pop() || "";
             const fn = relPath.split("/").pop() || relPath || `\u6837\u672C_${idx + 1}`;
@@ -21047,7 +21070,8 @@ button.exp-ghost:hover,
             const fullSampleAId = sampleAId || (dsId && relPath ? `${dsId}:${relPath}` : "");
             const thumbUrl = dsId && fullSampleAId ? `/api/iad/media/sample/${encodeURIComponent(dsId)}/${encodeURIComponent(fullSampleAId)}/thumbnail` : "";
             const fullImgUrl = dsId && fullSampleAId ? `/api/iad/media/sample/${encodeURIComponent(dsId)}/${encodeURIComponent(fullSampleAId)}/image` : "";
-            const sampleBId = reportItem?.sample_b || "";
+            const candidateSampleId = isAnchorLeft ? reportItem?.sample_b : reportItem?.sample_a;
+            const sampleBId = candidateSampleId || "";
             const colonIdx = sampleBId.indexOf(":");
             const candDsId = colonIdx > 0 ? sampleBId.slice(0, colonIdx) : dsId;
             const candRelPath = colonIdx > 0 ? sampleBId.slice(colonIdx + 1) : sampleBId;
@@ -21074,8 +21098,8 @@ button.exp-ghost:hover,
             } else {
               rawType = "\u7C7B\u522B\u4E0D\u4E00\u81F4";
             }
-            const leftAnn = primaryDiff?.left?.[0];
-            const rightAnn = primaryDiff?.right?.[0];
+            const leftAnn = isAnchorLeft ? primaryDiff?.left?.[0] : primaryDiff?.right?.[0];
+            const rightAnn = isAnchorLeft ? primaryDiff?.right?.[0] : primaryDiff?.left?.[0];
             const leftLabel = leftAnn?.raw_label || (isLabelme ? "14" : "OK");
             const rightLabel = rightAnn?.raw_label || (isLabelme ? rawType === "\u7C7B\u522B\u4E0D\u4E00\u81F4" ? "12" : leftLabel : "NG");
             const sourceWidth = leftAnn?.source_width || anchor?.width || 860;
@@ -21145,6 +21169,8 @@ button.exp-ghost:hover,
             const explanation = noConflict ? `\u539F\u59CB\u6BD4\u5BF9\u8BC6\u522B\u51FA\u201C${rawType}\u201D\u5F62\u5F0F\u5DEE\u5F02\uFF0C\u4F46\u6A21\u578B\u6821\u9A8C\u76EE\u6807\u201C${leftLabel}\u201D\u540E\u5224\u5B9A\u672A\u6784\u6210\u5B9E\u9645\u6807\u6CE8\u51B2\u7A81\uFF0C\u6807\u8BB0\u4E3A\u201C\u65E0\u51B2\u7A81\u201D\u3002\u53EF\u8FDB\u5165\u4EBA\u5DE5\u590D\u6838\u786E\u8BA4\u3002` : relabeled ? `\u539F\u59CB\u68C0\u67E5\u8BC6\u522B\u4E3A\u201C${rawType}\u201D\uFF0C\u6A21\u578B\u4EE5\u5DE6\u4FA7\u4E3B\u56FE\u76F8\u5BF9\u4E8E\u5019\u9009\u56FE\u7684\u5173\u7CFB\u91CD\u65B0\u5224\u5B9A\u4E3A\u201C${modelTypeVal}\u201D\u3002` : `\u6A21\u578B\u7ED3\u8BBA\u4E0E\u539F\u59CB\u6BD4\u5BF9\u4E00\u81F4\uFF1A\u786E\u8BA4\u5B58\u5728\u201C${modelTypeVal}\u201D\u51B2\u7A81\uFF08\u6807\u6CE8\u91CD\u53E0 IoU: ${(iou * 100).toFixed(1)}%\uFF09\u3002`;
             return {
               id: it.group_id,
+              groupId: it.group_id,
+              factsState: it.facts_state,
               datasetId: dsId,
               datasetName: dsName,
               type: rawType,
@@ -21198,7 +21224,7 @@ button.exp-ghost:hover,
       void loadConflicts();
       return () => controller.abort();
     }, [selectedJob?.batch_id, selectedJob?.status, isLabelme, revision]);
-    const visibleConflicts = (0, import_react57.useMemo)(() => {
+    const visibleConflicts = (0, import_react58.useMemo)(() => {
       let list = [...jobConflicts];
       if (kind !== "all") {
         list = list.filter((c) => c.type === kind);
@@ -21220,11 +21246,11 @@ button.exp-ghost:hover,
     }, [jobConflicts, kind, modelFilter, agreement, search, reviewFilter, reviews]);
     const totalPages = Math.max(1, Math.ceil(visibleConflicts.length / 18));
     const currentPage = Math.min(totalPages, Math.max(1, page));
-    const paginatedConflicts = (0, import_react57.useMemo)(() => {
+    const paginatedConflicts = (0, import_react58.useMemo)(() => {
       const start = (currentPage - 1) * 18;
       return visibleConflicts.slice(start, start + 18);
     }, [visibleConflicts, currentPage]);
-    (0, import_react57.useEffect)(() => {
+    (0, import_react58.useEffect)(() => {
       function handleKeyDown(e) {
         if (e.key !== "Escape") return;
         if (zoomItem) {
@@ -21261,7 +21287,7 @@ button.exp-ghost:hover,
         document.removeEventListener("mousedown", handleClickOutside);
       };
     }, [zoomItem, modal, modalChildOpen, statsModalJobId]);
-    const handleParentChange = (0, import_react57.useCallback)(
+    const handleParentChange = (0, import_react58.useCallback)(
       (newParentId) => {
         setSelectedParentId(newParentId);
         const newChildren = datasets.filter((d) => getDatasetGroupId(d, hierarchyGroups) === newParentId);
@@ -21278,7 +21304,7 @@ button.exp-ghost:hover,
       },
       [datasets, hierarchyGroups]
     );
-    const handleChildToggle = (0, import_react57.useCallback)((childId) => {
+    const handleChildToggle = (0, import_react58.useCallback)((childId) => {
       setSelectedChildIds((prev) => {
         const next = prev.includes(childId) ? prev.filter((id) => id !== childId) : [...prev, childId];
         return next;
@@ -21291,7 +21317,7 @@ button.exp-ghost:hover,
       setModelFilter("all");
       setAgreement("all");
     }, []);
-    const selectJob = (0, import_react57.useCallback)((batchId) => {
+    const selectJob = (0, import_react58.useCallback)((batchId) => {
       setSelectedJobId(batchId);
       setSearch("");
       setPage(1);
@@ -21301,7 +21327,7 @@ button.exp-ghost:hover,
       setChangedOnly(false);
       setReviewFilter("all");
     }, []);
-    const handleRefresh = (0, import_react57.useCallback)(() => {
+    const handleRefresh = (0, import_react58.useCallback)(() => {
       setJobPage(1);
       setRevision((v) => v + 1);
     }, []);
@@ -21368,7 +21394,7 @@ button.exp-ghost:hover,
         setNewCheckBusy(false);
       }
     };
-    const openConflict = (0, import_react57.useCallback)(
+    const openConflict = (0, import_react58.useCallback)(
       (c) => {
         setCurrentConflictId(c.id);
         setCandidateIndex(0);
@@ -21378,13 +21404,94 @@ button.exp-ghost:hover,
       },
       []
     );
-    const currentConflict = (0, import_react57.useMemo)(
+    const currentConflict = (0, import_react58.useMemo)(
       () => jobConflicts.find((c) => c.id === currentConflictId) || null,
       [jobConflicts, currentConflictId]
     );
-    const anchorBboxes = (0, import_react57.useMemo)(() => getConflictBboxes(currentConflict, "anchor"), [currentConflict]);
-    const candidateBboxes = (0, import_react57.useMemo)(() => getConflictBboxes(currentConflict, "candidate"), [currentConflict]);
-    const handlePrevConflict = (0, import_react57.useCallback)(() => {
+    (0, import_react58.useEffect)(() => {
+      if (!currentConflict || !activeQueryId || modal !== "compare" || !currentConflict.groupId) {
+        setConflictMembers([]);
+        return;
+      }
+      const controller = new AbortController();
+      request(
+        "/consistency/gallery/members",
+        {
+          query_id: activeQueryId,
+          kind: "conflicts",
+          group_id: currentConflict.groupId,
+          facts_state: currentConflict.factsState || "UNKNOWN",
+          page: 1,
+          page_size: 20
+        },
+        void 0,
+        controller.signal
+      ).then((page2) => {
+        if (!controller.signal.aborted) {
+          setConflictMembers(page2.items || []);
+        }
+      }).catch(() => {
+      });
+      return () => controller.abort();
+    }, [currentConflict?.groupId, currentConflict?.factsState, activeQueryId, modal]);
+    const selectedMember = conflictMembers[candidateIndex] || conflictMembers[0] || null;
+    const currentCandidate = (0, import_react58.useMemo)(() => {
+      if (selectedMember) {
+        const s = selectedMember.image.sample;
+        const dsId = s.dataset_id;
+        const sampleId = s.sample_id;
+        const relPath = s.relative_path || sampleId.split(":").pop() || "";
+        const fn = relPath.split("/").pop() || relPath;
+        const thumbUrl = `/api/iad/media/sample/${encodeURIComponent(dsId || "")}/${encodeURIComponent(sampleId || "")}/thumbnail`;
+        const fullUrl = `/api/iad/media/sample/${encodeURIComponent(dsId || "")}/${encodeURIComponent(sampleId || "")}/image`;
+        return {
+          sampleId,
+          datasetId: dsId,
+          filename: fn,
+          thumbUrl,
+          fullUrl,
+          width: s.width || currentConflict?.rightSourceWidth || 860,
+          height: s.height || currentConflict?.rightSourceHeight || 690
+        };
+      }
+      return {
+        sampleId: currentConflict?.candidateId || "",
+        datasetId: currentConflict?.candidateDatasetId || currentConflict?.datasetId || "",
+        filename: currentConflict?.candidateFilename || currentConflict?.filename || "\u5019\u9009\u56FE",
+        thumbUrl: currentConflict?.candidateThumbUrl || currentConflict?.url || "",
+        fullUrl: currentConflict?.candidateFullUrl || currentConflict?.fullUrl || "",
+        width: currentConflict?.rightSourceWidth || currentConflict?.sourceWidth || 860,
+        height: currentConflict?.rightSourceHeight || currentConflict?.sourceHeight || 690
+      };
+    }, [selectedMember, currentConflict]);
+    (0, import_react58.useEffect)(() => {
+      if (!currentCandidate.sampleId || modal !== "compare") {
+        setCandidateDetailAnnotations(null);
+        return;
+      }
+      const controller = new AbortController();
+      request(`/sample/${encodeURIComponent(currentCandidate.sampleId)}`, void 0, void 0, controller.signal).then((res) => {
+        if (!controller.signal.aborted && res.annotations) {
+          const boxes = res.annotations.filter((a) => a.bbox && a.bbox.length >= 4).map((a) => ({
+            annotation_id: a.annotation_id,
+            raw_label: a.raw_label,
+            bbox: a.bbox
+          }));
+          setCandidateDetailAnnotations(boxes);
+        }
+      }).catch(() => {
+        setCandidateDetailAnnotations(null);
+      });
+      return () => controller.abort();
+    }, [currentCandidate.sampleId, modal]);
+    const anchorBboxes = (0, import_react58.useMemo)(() => getConflictBboxes(currentConflict, "anchor"), [currentConflict]);
+    const candidateBboxes = (0, import_react58.useMemo)(() => {
+      if (candidateDetailAnnotations && candidateDetailAnnotations.length > 0) {
+        return candidateDetailAnnotations;
+      }
+      return getConflictBboxes(currentConflict, "candidate");
+    }, [candidateDetailAnnotations, currentConflict]);
+    const handlePrevConflict = (0, import_react58.useCallback)(() => {
       const list = visibleConflicts;
       const idx = list.findIndex((c) => c.id === currentConflictId);
       if (idx > 0) {
@@ -21395,7 +21502,7 @@ button.exp-ghost:hover,
         setReviewNote("");
       }
     }, [visibleConflicts, currentConflictId]);
-    const handleNextConflict = (0, import_react57.useCallback)(() => {
+    const handleNextConflict = (0, import_react58.useCallback)(() => {
       const list = visibleConflicts;
       const idx = list.findIndex((c) => c.id === currentConflictId);
       if (idx >= 0 && idx < list.length - 1) {
@@ -21406,7 +21513,7 @@ button.exp-ghost:hover,
         setReviewNote("");
       }
     }, [visibleConflicts, currentConflictId]);
-    const handleSaveReview = (0, import_react57.useCallback)(async () => {
+    const handleSaveReview = (0, import_react58.useCallback)(async () => {
       if (!currentConflict) return;
       setReviews((prev) => ({ ...prev, [currentConflict.id]: reviewDecision }));
       setJobConflicts(
@@ -21414,7 +21521,7 @@ button.exp-ghost:hover,
       );
       setModal("");
     }, [currentConflict, reviewDecision]);
-    const handleDeleteJob = (0, import_react57.useCallback)(
+    const handleDeleteJob = (0, import_react58.useCallback)(
       async (batchId) => {
         try {
           await request(`/consistency/runs/${encodeURIComponent(batchId)}`, void 0, "DELETE");
@@ -21441,25 +21548,25 @@ button.exp-ghost:hover,
       },
       [selectedJobId, selectedChildIds, jobPage]
     );
-    const availableTypes = (0, import_react57.useMemo)(() => {
+    const availableTypes = (0, import_react58.useMemo)(() => {
       return isLabelme ? ["\u7C7B\u522B\u4E0D\u4E00\u81F4", "\u4F4D\u7F6E\u5DEE\u5F02", "\u591A\u7C7B\u522B", "\u5C11\u7C7B\u522B", "\u62C6\u5206", "\u5408\u5E76"] : ["OK / NG \u6807\u7B7E\u51B2\u7A81"];
     }, [isLabelme]);
-    const conflictTabs = (0, import_react57.useMemo)(() => {
+    const conflictTabs = (0, import_react58.useMemo)(() => {
       return [{ value: "all", label: "\u5168\u90E8\u51B2\u7A81" }, ...availableTypes.map((t) => ({ value: t, label: t }))];
     }, [availableTypes]);
-    const origStats = (0, import_react57.useMemo)(() => {
+    const origStats = (0, import_react58.useMemo)(() => {
       return availableTypes.map((name2) => ({
         name: name2,
         count: jobConflicts.filter((c) => c.type === name2).length
       }));
     }, [availableTypes, jobConflicts]);
-    const modelStats = (0, import_react57.useMemo)(() => {
+    const modelStats = (0, import_react58.useMemo)(() => {
       return [...availableTypes, "\u65E0\u51B2\u7A81"].map((name2) => ({
         name: name2,
         count: jobConflicts.filter((c) => c.model.modelType === name2).length
       }));
     }, [availableTypes, jobConflicts]);
-    const agreementStats = (0, import_react57.useMemo)(() => {
+    const agreementStats = (0, import_react58.useMemo)(() => {
       const same = jobConflicts.filter((c) => c.type === c.model.modelType).length;
       const different = jobConflicts.length - same;
       return [
@@ -21467,15 +21574,15 @@ button.exp-ghost:hover,
         { name: "\u4E0D\u4E00\u81F4", id: "different", count: different }
       ];
     }, [jobConflicts]);
-    const maxObserved = (0, import_react57.useMemo)(() => {
+    const maxObserved = (0, import_react58.useMemo)(() => {
       return Math.max(1, ...origStats.map((x) => x.count), ...modelStats.map((x) => x.count));
     }, [origStats, modelStats]);
-    const distributionAxis = (0, import_react57.useMemo)(() => niceAxis(maxObserved), [maxObserved]);
-    const agreementAxis = (0, import_react57.useMemo)(() => {
+    const distributionAxis = (0, import_react58.useMemo)(() => niceAxis(maxObserved), [maxObserved]);
+    const agreementAxis = (0, import_react58.useMemo)(() => {
       const same = jobConflicts.filter((c) => c.type === c.model.modelType).length;
       return niceAxis(Math.max(1, same, jobConflicts.length - same));
     }, [jobConflicts]);
-    const handleStatClick = (0, import_react57.useCallback)(
+    const handleStatClick = (0, import_react58.useCallback)(
       (action, id) => {
         if (action === "stat-category") {
           setKind(id);
@@ -21507,12 +21614,12 @@ button.exp-ghost:hover,
       []
     );
     const extraApplied = reviewFilter !== "all";
-    return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "iad-workbench iad-consistency", "data-page": "industrial-consistency", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("style", { children: workbenchStyles }),
-      /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-root", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("header", { className: "heading dc-page-heading", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h1", { children: "\u6570\u636E\u4E00\u81F4\u6027" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-heading-actions", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "iad-workbench iad-consistency", "data-page": "industrial-consistency", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("style", { children: workbenchStyles }),
+      /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-root", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("header", { className: "heading dc-page-heading", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h1", { children: "\u6570\u636E\u4E00\u81F4\u6027" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-heading-actions", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
             "button",
             {
               type: "button",
@@ -21528,8 +21635,8 @@ button.exp-ghost:hover,
             }
           ) })
         ] }),
-        error2 && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
-        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+        error2 && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
+        /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
           DatasetScopeSelector,
           {
             className: "dc-scope",
@@ -21542,7 +21649,7 @@ button.exp-ghost:hover,
             groupId: "dc-parent",
             childId: "dc-child-trigger",
             childMenuId: "dc-child-options",
-            children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+            children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
               "button",
               {
                 type: "button",
@@ -21550,30 +21657,30 @@ button.exp-ghost:hover,
                 title: "\u5237\u65B0\u68C0\u67E5\u4F5C\u4E1A",
                 "aria-label": "\u5237\u65B0\u68C0\u67E5\u4F5C\u4E1A",
                 onClick: handleRefresh,
-                children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(RefreshIcon, { size: 17 })
+                children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(RefreshIcon, { size: 17 })
               }
             )
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: `dc-section dc-jobs-section ${jobPages > 1 ? "iba-job-multipage" : ""}`, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-section-heading", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h2", { children: "\u68C0\u67E5\u4F5C\u4E1A" }) }),
-          availableJobs.length ? /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(import_jsx_runtime63.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-table-panel", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("table", { className: "dc-table", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("tr", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { children: "\u4F5C\u4E1A" }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { children: "\u72B6\u6001" }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { children: "\u68C0\u67E5\u8303\u56F4" }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { children: "\u51B2\u7A81\u603B\u6570" }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { children: "\u8017\u65F6" }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { className: "dc-operations", children: "\u64CD\u4F5C" })
+        /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("section", { className: `dc-section dc-jobs-section ${jobPages > 1 ? "iba-job-multipage" : ""}`, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-section-heading", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h2", { children: "\u68C0\u67E5\u4F5C\u4E1A" }) }),
+          availableJobs.length ? /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(import_jsx_runtime64.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-table-panel", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("table", { className: "dc-table", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { children: "\u4F5C\u4E1A" }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { children: "\u72B6\u6001" }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { children: "\u68C0\u67E5\u8303\u56F4" }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { children: "\u51B2\u7A81\u603B\u6570" }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { children: "\u8017\u65F6" }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { className: "dc-operations", children: "\u64CD\u4F5C" })
               ] }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("tbody", { children: shownJobs.map((j) => {
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("tbody", { children: shownJobs.map((j) => {
                 const isSelected = j.batch_id === selectedJob?.batch_id;
                 const childNames = (j.scopes?.subjects?.dataset_ids || []).map((id) => datasets.find((d) => d.dataset_id === id)?.name || id).join("\u3001");
                 const timeStr = j.created_at ? j.created_at.slice(0, 16).replace("T", " ") : "\u2014";
                 const hasConflicts = (j.status === "COMPLETED" || j.status === "PARTIAL") && typeof j.conflict_count === "number" && j.conflict_count > 0;
-                return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+                return /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
                   "tr",
                   {
                     tabIndex: 0,
@@ -21585,10 +21692,10 @@ button.exp-ghost:hover,
                       if (e.key === "Enter" || e.key === " ") selectJob(j.batch_id);
                     },
                     children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { className: "dc-mono", children: j.batch_id }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { children: dcJobBadge(j.status) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { className: "dc-job-datasets", title: childNames, children: childNames || "\u5168\u90E8" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { className: "dc-mono", children: j.batch_id }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { children: dcJobBadge(j.status) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { className: "dc-job-datasets", title: childNames, children: childNames || "\u5168\u90E8" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                         "td",
                         {
                           className: `dc-total ${hasConflicts ? "dc-has-conflicts" : ""}`,
@@ -21596,10 +21703,10 @@ button.exp-ghost:hover,
                           children: dcJobConflictTotal(j)
                         }
                       ),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { className: "dc-time", children: timeStr }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { className: "dc-elapsed dc-mono", children: dcJobElapsed(j) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("td", { className: "dc-operations", onClick: (e) => e.stopPropagation(), children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { className: "dc-time", children: timeStr }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { className: "dc-elapsed dc-mono", children: dcJobElapsed(j) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("td", { className: "dc-operations", onClick: (e) => e.stopPropagation(), children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                           "button",
                           {
                             type: "button",
@@ -21613,10 +21720,10 @@ button.exp-ghost:hover,
                               setSelectedJobId(j.batch_id);
                               setStatsModalJobId(j.batch_id);
                             },
-                            children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(StatsIcon, { size: 17 })
+                            children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(StatsIcon, { size: 17 })
                           }
                         ),
-                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                        /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                           "button",
                           {
                             type: "button",
@@ -21626,7 +21733,7 @@ button.exp-ghost:hover,
                             "data-dc": "delete",
                             "data-id": j.batch_id,
                             onClick: () => setModal(`delete:${j.batch_id}`),
-                            children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(DeleteIcon, {})
+                            children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(DeleteIcon, {})
                           }
                         )
                       ] })
@@ -21636,7 +21743,7 @@ button.exp-ghost:hover,
                 );
               }) })
             ] }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
               IbaJobPager,
               {
                 total: availableJobs.length,
@@ -21647,15 +21754,15 @@ button.exp-ghost:hover,
                 dataActionName: "jobs-page"
               }
             )
-          ] }) : /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-empty", children: "\u5F53\u524D\u8303\u56F4\u8FD8\u6CA1\u6709\u68C0\u67E5\u4F5C\u4E1A\uFF0C\u53EF\u4EE5\u521B\u5EFA\u65B0\u68C0\u67E5\u3002" })
+          ] }) : /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-empty", children: "\u5F53\u524D\u8303\u56F4\u8FD8\u6CA1\u6709\u68C0\u67E5\u4F5C\u4E1A\uFF0C\u53EF\u4EE5\u521B\u5EFA\u65B0\u68C0\u67E5\u3002" })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "dc-section dc-results-section", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-section-heading", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h2", { children: "\u6807\u6CE8\u51B2\u7A81" }) }),
-          !selectedJob ? /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-empty", children: "\u9009\u62E9\u4E0A\u65B9\u7684\u68C0\u67E5\u4F5C\u4E1A\u540E\u67E5\u770B\u7ED3\u679C\u3002" }) : selectedJob.status === "FAILED" ? /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-alert", children: selectedJob.error?.message || "\u68C0\u67E5\u5931\u8D25\uFF0C\u672A\u4EA7\u751F\u53EF\u67E5\u770B\u7ED3\u679C\u3002" }) : selectedJob.status === "PENDING" || selectedJob.status === "RUNNING" ? /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-running", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-running-header", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("strong", { children: selectedJob.status === "PENDING" ? "\u7B49\u5F85\u6267\u884C" : "\u6B63\u5728\u68C0\u67E5\u6807\u6CE8\u4E00\u81F4\u6027" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-stages", children: ["\u51C6\u5907\u56FE\u50CF", "\u68C0\u7D22\u540C\u56FE\u5019\u9009", "\u5BF9\u6BD4\u6807\u6CE8", "\u53D1\u5E03\u7ED3\u679C"].map((stageName, idx) => {
+        /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("section", { className: "dc-section dc-results-section", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-section-heading", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h2", { children: "\u6807\u6CE8\u51B2\u7A81" }) }),
+          !selectedJob ? /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-empty", children: "\u9009\u62E9\u4E0A\u65B9\u7684\u68C0\u67E5\u4F5C\u4E1A\u540E\u67E5\u770B\u7ED3\u679C\u3002" }) : selectedJob.status === "FAILED" ? /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-alert", children: selectedJob.error?.message || "\u68C0\u67E5\u5931\u8D25\uFF0C\u672A\u4EA7\u751F\u53EF\u67E5\u770B\u7ED3\u679C\u3002" }) : selectedJob.status === "PENDING" || selectedJob.status === "RUNNING" ? /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-running", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-running-header", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("strong", { children: selectedJob.status === "PENDING" ? "\u7B49\u5F85\u6267\u884C" : "\u6B63\u5728\u68C0\u67E5\u6807\u6CE8\u4E00\u81F4\u6027" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-stages", children: ["\u51C6\u5907\u56FE\u50CF", "\u68C0\u7D22\u540C\u56FE\u5019\u9009", "\u5BF9\u6BD4\u6807\u6CE8", "\u53D1\u5E03\u7ED3\u679C"].map((stageName, idx) => {
               const currentStage = selectedJob.completed > 0 ? selectedJob.completed >= selectedJob.total ? 3 : 2 : 1;
-              return /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+              return /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                 "div",
                 {
                   className: `dc-stage ${idx < currentStage ? "done" : idx === currentStage ? "current" : ""}`,
@@ -21664,10 +21771,10 @@ button.exp-ghost:hover,
                 stageName
               );
             }) })
-          ] }) : /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(import_jsx_runtime63.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-type-tabs", role: "tablist", "aria-label": "\u539F\u59CB\u6807\u6CE8\u51B2\u7A81\u7C7B\u578B", children: conflictTabs.map((t) => {
+          ] }) : /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(import_jsx_runtime64.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-type-tabs", role: "tablist", "aria-label": "\u539F\u59CB\u6807\u6CE8\u51B2\u7A81\u7C7B\u578B", children: conflictTabs.map((t) => {
               const count2 = t.value === "all" ? jobConflicts.length : jobConflicts.filter((c) => c.type === t.value).length;
-              return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+              return /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
                 "button",
                 {
                   type: "button",
@@ -21681,17 +21788,17 @@ button.exp-ghost:hover,
                     setPage(1);
                   },
                   children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { children: t.label }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-tab-num", children: count2 })
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { children: t.label }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-tab-num", children: count2 })
                   ]
                 },
                 t.value
               );
             }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-refined-filterbar", role: "group", "aria-label": "\u51B2\u7A81\u7B5B\u9009", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("label", { className: "dc-filter-field dc-search-field", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-refined-filterbar", role: "group", "aria-label": "\u51B2\u7A81\u7B5B\u9009", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("label", { className: "dc-filter-field dc-search-field", children: [
                 "\u6587\u4EF6\u540D\u641C\u7D22",
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                   "input",
                   {
                     type: "search",
@@ -21708,9 +21815,9 @@ button.exp-ghost:hover,
                   }
                 )
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("label", { className: "dc-filter-field", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("label", { className: "dc-filter-field", children: [
                 "\u6A21\u578B\u5224\u65AD",
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
                   "select",
                   {
                     id: "dc-model-filter",
@@ -21721,15 +21828,15 @@ button.exp-ghost:hover,
                       setPage(1);
                     },
                     children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "all", children: "\u5168\u90E8\u5224\u65AD" }),
-                      [...availableTypes, "\u65E0\u51B2\u7A81"].map((name2) => /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: name2, children: name2 }, name2))
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "all", children: "\u5168\u90E8\u5224\u65AD" }),
+                      [...availableTypes, "\u65E0\u51B2\u7A81"].map((name2) => /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: name2, children: name2 }, name2))
                     ]
                   }
                 )
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("label", { className: "dc-filter-field", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("label", { className: "dc-filter-field", children: [
                 "\u7ED3\u8BBA\u4E00\u81F4\u6027",
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
                   "select",
                   {
                     id: "dc-agreement",
@@ -21740,16 +21847,16 @@ button.exp-ghost:hover,
                       setPage(1);
                     },
                     children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "same", children: "\u4E00\u81F4" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "different", children: "\u4E0D\u4E00\u81F4" })
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "same", children: "\u4E00\u81F4" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "different", children: "\u4E0D\u4E00\u81F4" })
                     ]
                   }
                 )
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("label", { className: "dc-filter-field dc-review-field", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("label", { className: "dc-filter-field dc-review-field", children: [
                 "\u4EBA\u5DE5\u590D\u6838",
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
                   "select",
                   {
                     id: "dc-review-filter",
@@ -21760,15 +21867,15 @@ button.exp-ghost:hover,
                       setPage(1);
                     },
                     children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "all", children: "\u5168\u90E8\u72B6\u6001" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "pending", children: "\u5F85\u590D\u6838" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "confirmed", children: "\u786E\u8BA4\u51B2\u7A81" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "rejected", children: "\u6392\u9664\u51B2\u7A81" })
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "all", children: "\u5168\u90E8\u72B6\u6001" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "pending", children: "\u5F85\u590D\u6838" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "confirmed", children: "\u786E\u8BA4\u51B2\u7A81" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "rejected", children: "\u6392\u9664\u51B2\u7A81" })
                     ]
                   }
                 )
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                 ClearFilterButton,
                 {
                   "data-dc": "clear-conflict-filters",
@@ -21785,7 +21892,7 @@ button.exp-ghost:hover,
                 }
               )
             ] }),
-            conflictsLoading ? /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-empty", children: "\u6B63\u5728\u52A0\u8F7D\u51B2\u7A81\u56FE\u7EC4\u2026" }) : paginatedConflicts.length ? /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-grid", children: paginatedConflicts.map((c) => /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+            conflictsLoading ? /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-empty", children: "\u6B63\u5728\u52A0\u8F7D\u51B2\u7A81\u56FE\u7EC4\u2026" }) : paginatedConflicts.length ? /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-grid", children: paginatedConflicts.map((c) => /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
               "button",
               {
                 type: "button",
@@ -21795,17 +21902,17 @@ button.exp-ghost:hover,
                 title: `\u67E5\u770B\u5E76\u590D\u6838 ${c.filename}`,
                 onClick: () => openConflict(c),
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-card-img", "aria-label": "\u4E3B\u56FE", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("img", { className: "dc-main-image", src: c.url, alt: `\u4E3B\u56FE\uFF1A${c.filename}`, loading: "lazy" }) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("span", { className: "dc-card-caption", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("strong", { children: c.filename }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-card-img", "aria-label": "\u4E3B\u56FE", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("img", { className: "dc-main-image", src: c.url, alt: `\u4E3B\u56FE\uFF1A${c.filename}`, loading: "lazy" }) }),
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("span", { className: "dc-card-caption", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("strong", { children: c.filename }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
                       "span",
                       {
                         className: "dc-card-judgments",
                         "aria-label": `\u539F\u59CB\u7ED3\u8BBA\uFF1A${c.type}\uFF1B\u6A21\u578B\u7ED3\u8BBA\uFF1A${c.model.modelType}`,
                         children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-judgment-value dc-raw-value", title: `\u539F\u59CB\u7ED3\u8BBA\uFF1A${c.type}`, children: c.type }),
-                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-judgment-value dc-raw-value", title: `\u539F\u59CB\u7ED3\u8BBA\uFF1A${c.type}`, children: c.type }),
+                          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                             "span",
                             {
                               className: `dc-judgment-value dc-model-value ${c.model.status === "no_conflict" ? "dc-judgment-clear" : ""}`,
@@ -21820,9 +21927,9 @@ button.exp-ghost:hover,
                 ]
               },
               c.id
-            )) }) : /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-empty", children: "\u5F53\u524D\u7B5B\u9009\u6761\u4EF6\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u51B2\u7A81\u56FE\u7EC4\u3002" }),
-            visibleConflicts.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-counter-pager", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+            )) }) : /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-empty", children: "\u5F53\u524D\u7B5B\u9009\u6761\u4EF6\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u51B2\u7A81\u56FE\u7EC4\u3002" }),
+            visibleConflicts.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-counter-pager", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                 "button",
                 {
                   type: "button",
@@ -21832,7 +21939,7 @@ button.exp-ghost:hover,
                   children: "\u4E0A\u4E00\u9875"
                 }
               ),
-              Array.from({ length: Math.min(totalPages, 5) }, (_, i) => /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+              Array.from({ length: Math.min(totalPages, 5) }, (_, i) => /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                 "button",
                 {
                   type: "button",
@@ -21844,7 +21951,7 @@ button.exp-ghost:hover,
                 },
                 i + 1
               )),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                 "button",
                 {
                   type: "button",
@@ -21854,7 +21961,7 @@ button.exp-ghost:hover,
                   children: "\u4E0B\u4E00\u9875"
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("span", { className: "dc-small-muted", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("span", { className: "dc-small-muted", children: [
                 currentPage,
                 " / ",
                 totalPages,
@@ -21864,7 +21971,7 @@ button.exp-ghost:hover,
           ] })
         ] })
       ] }),
-      modal === "new" && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+      modal === "new" && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
         "div",
         {
           className: "dc-modal-mask",
@@ -21875,7 +21982,7 @@ button.exp-ghost:hover,
               setModalChildOpen(false);
             }
           },
-          children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+          children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
             "section",
             {
               className: "dc-dialog dc-new-dialog",
@@ -21883,9 +21990,9 @@ button.exp-ghost:hover,
               "aria-modal": "true",
               "aria-labelledby": "dc-new-title",
               children: [
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("header", { className: "dc-dialog-head", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h2", { id: "dc-new-title", children: "\u65B0\u5EFA\u4E00\u81F4\u6027\u68C0\u67E5" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("header", { className: "dc-dialog-head", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h2", { id: "dc-new-title", children: "\u65B0\u5EFA\u4E00\u81F4\u6027\u68C0\u67E5" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                     "button",
                     {
                       type: "button",
@@ -21896,19 +22003,19 @@ button.exp-ghost:hover,
                         setModal("");
                         setModalChildOpen(false);
                       },
-                      children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(CloseIcon, {})
+                      children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(CloseIcon, {})
                     }
                   )
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-dialog-body dc-new-body", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-new-field", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { children: "\u6570\u636E\u96C6" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-new-parent", children: currentParent?.name || "\u2014" })
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-dialog-body dc-new-body", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-new-field", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { children: "\u6570\u636E\u96C6" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-new-parent", children: currentParent?.name || "\u2014" })
                   ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-new-field", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { children: "\u5B50\u6570\u636E\u96C6" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-multi dc-new-multi", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-new-field", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { children: "\u5B50\u6570\u636E\u96C6" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-multi dc-new-multi", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
                         "button",
                         {
                           type: "button",
@@ -21920,20 +22027,20 @@ button.exp-ghost:hover,
                           "aria-expanded": modalChildOpen,
                           onClick: () => setModalChildOpen((prev) => !prev),
                           children: [
-                            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { children: modalChildIds.length ? `\u5DF2\u9009 ${modalChildIds.length} \u4E2A\u5B50\u6570\u636E\u96C6` : "\u9009\u62E9\u5B50\u6570\u636E\u96C6" }),
-                            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(ChevronIcon, { size: 15 })
+                            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { children: modalChildIds.length ? `\u5DF2\u9009 ${modalChildIds.length} \u4E2A\u5B50\u6570\u636E\u96C6` : "\u9009\u62E9\u5B50\u6570\u636E\u96C6" }),
+                            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(ChevronIcon, { size: 15 })
                           ]
                         }
                       ),
-                      modalChildOpen && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                      modalChildOpen && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                         "div",
                         {
                           className: "dc-options dc-new-options",
                           id: "dc-new-child-options",
                           role: "group",
                           "aria-label": "\u9009\u62E9\u53C2\u4E0E\u68C0\u67E5\u7684\u5B50\u6570\u636E\u96C6",
-                          children: currentChildDatasets.map((c) => /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("label", { className: "dc-option dc-new-option", children: [
-                            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                          children: currentChildDatasets.map((c) => /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("label", { className: "dc-option dc-new-option", children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                               "input",
                               {
                                 type: "checkbox",
@@ -21949,15 +22056,15 @@ button.exp-ghost:hover,
                                 }
                               }
                             ),
-                            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { children: c.name })
+                            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { children: c.name })
                           ] }, c.dataset_id))
                         }
                       )
                     ] })
                   ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-new-field dc-prompt-editor", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("label", { htmlFor: "dc-new-prompt", children: "\u6A21\u578B\u5206\u6790\u63D0\u793A\u8BCD" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-new-field dc-prompt-editor", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("label", { htmlFor: "dc-new-prompt", children: "\u6A21\u578B\u5206\u6790\u63D0\u793A\u8BCD" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                       "textarea",
                       {
                         id: "dc-new-prompt",
@@ -21970,8 +22077,8 @@ button.exp-ghost:hover,
                     )
                   ] })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("footer", { className: "dc-dialog-footer", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("footer", { className: "dc-dialog-footer", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                     "button",
                     {
                       type: "button",
@@ -21984,7 +22091,7 @@ button.exp-ghost:hover,
                       children: "\u53D6\u6D88"
                     }
                   ),
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                     "button",
                     {
                       type: "button",
@@ -22001,7 +22108,7 @@ button.exp-ghost:hover,
           )
         }
       ),
-      modal === "compare" && currentConflict && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+      modal === "compare" && currentConflict && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
         "div",
         {
           className: "dc-modal-mask",
@@ -22009,7 +22116,7 @@ button.exp-ghost:hover,
           onClick: (e) => {
             if (e.target.id === "dc-compare-mask") setModal("");
           },
-          children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+          children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
             "section",
             {
               className: "dc-dialog dc-conflict-dialog",
@@ -22017,12 +22124,12 @@ button.exp-ghost:hover,
               "aria-modal": "true",
               "aria-labelledby": "dc-dialog-title",
               children: [
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("header", { className: "dc-dialog-head", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h2", { id: "dc-dialog-title", children: "\u6807\u6CE8\u51B2\u7A81\u5BF9\u6BD4" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-dialog-head-actions", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("button", { className: "dc-minor", type: "button", onClick: handlePrevConflict, children: "\u4E0A\u4E00\u7EC4" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("button", { className: "dc-minor", type: "button", onClick: handleNextConflict, children: "\u4E0B\u4E00\u7EC4" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("header", { className: "dc-dialog-head", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h2", { id: "dc-dialog-title", children: "\u6807\u6CE8\u51B2\u7A81\u5BF9\u6BD4" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-dialog-head-actions", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("button", { className: "dc-minor", type: "button", onClick: handlePrevConflict, children: "\u4E0A\u4E00\u7EC4" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("button", { className: "dc-minor", type: "button", onClick: handleNextConflict, children: "\u4E0B\u4E00\u7EC4" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                       "button",
                       {
                         type: "button",
@@ -22030,15 +22137,15 @@ button.exp-ghost:hover,
                         title: "\u5173\u95ED",
                         "aria-label": "\u5173\u95ED",
                         onClick: () => setModal(""),
-                        children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(CloseIcon, {})
+                        children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(CloseIcon, {})
                       }
                     )
                   ] })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-dialog-body", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-compare", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-compare-cell", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-dialog-body", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-compare", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-compare-cell", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                         "div",
                         {
                           className: "dc-compare-photo",
@@ -22067,22 +22174,22 @@ button.exp-ghost:hover,
                               });
                             }
                           },
-                          children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
-                            ComparePhotoStage,
+                          children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
+                            AnnotatedImageStage,
                             {
                               src: currentConflict.fullUrl || currentConflict.url,
                               alt: "\u4E3B\u56FE",
-                              sourceWidth: currentConflict.sourceWidth || 860,
-                              sourceHeight: currentConflict.sourceHeight || 690,
+                              width: currentConflict.sourceWidth,
+                              height: currentConflict.sourceHeight,
                               bboxes: anchorBboxes
                             }
                           )
                         }
                       ),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-photo-filename", title: currentConflict.filename, children: currentConflict.filename })
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-photo-filename", title: currentConflict.filename, children: currentConflict.filename })
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-compare-cell", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-compare-cell", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                         "div",
                         {
                           className: "dc-compare-photo",
@@ -22092,41 +22199,69 @@ button.exp-ghost:hover,
                           "aria-label": "\u67E5\u770B\u5019\u9009\u56FE\u5927\u56FE",
                           title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE",
                           onClick: () => setZoomItem({
-                            id: currentConflict.id + "_candidate",
-                            title: `${currentConflict.candidateFilename || currentConflict.filename} (\u5019\u9009\u56FE ${candidateIndex + 1})`,
-                            imageUrl: currentConflict.candidateFullUrl || currentConflict.candidateThumbUrl || currentConflict.fullUrl || currentConflict.url,
-                            width: currentConflict.rightSourceWidth || currentConflict.sourceWidth || 860,
-                            height: currentConflict.rightSourceHeight || currentConflict.sourceHeight || 690,
+                            id: currentConflict.id + "_candidate_" + candidateIndex,
+                            title: `${currentCandidate.filename} (\u5019\u9009\u56FE ${candidateIndex + 1})`,
+                            imageUrl: currentCandidate.fullUrl,
+                            width: currentCandidate.width,
+                            height: currentCandidate.height,
                             bboxes: candidateBboxes
                           }),
                           onKeyDown: (e) => {
                             if (e.key === "Enter" || e.key === " ") {
                               setZoomItem({
-                                id: currentConflict.id + "_candidate",
-                                title: `${currentConflict.candidateFilename || currentConflict.filename} (\u5019\u9009\u56FE ${candidateIndex + 1})`,
-                                imageUrl: currentConflict.candidateFullUrl || currentConflict.candidateThumbUrl || currentConflict.fullUrl || currentConflict.url,
-                                width: currentConflict.rightSourceWidth || currentConflict.sourceWidth || 860,
-                                height: currentConflict.rightSourceHeight || currentConflict.sourceHeight || 690,
+                                id: currentConflict.id + "_candidate_" + candidateIndex,
+                                title: `${currentCandidate.filename} (\u5019\u9009\u56FE ${candidateIndex + 1})`,
+                                imageUrl: currentCandidate.fullUrl,
+                                width: currentCandidate.width,
+                                height: currentCandidate.height,
                                 bboxes: candidateBboxes
                               });
                             }
                           },
-                          children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
-                            ComparePhotoStage,
+                          children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
+                            AnnotatedImageStage,
                             {
-                              src: currentConflict.candidateFullUrl || currentConflict.candidateThumbUrl || currentConflict.fullUrl || currentConflict.url,
+                              src: currentCandidate.fullUrl || currentCandidate.thumbUrl,
                               alt: "\u5019\u9009\u56FE",
-                              sourceWidth: currentConflict.rightSourceWidth || currentConflict.sourceWidth || 860,
-                              sourceHeight: currentConflict.rightSourceHeight || currentConflict.sourceHeight || 690,
+                              width: currentCandidate.width,
+                              height: currentCandidate.height,
                               bboxes: candidateBboxes
                             }
                           )
                         }
                       ),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-photo-filename", title: currentConflict.candidateFilename || currentConflict.filename, children: currentConflict.candidateFilename || currentConflict.filename })
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-photo-filename", title: currentCandidate.filename, children: currentCandidate.filename })
                     ] })
                   ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-candidate-strip", "aria-label": "\u5207\u6362\u51B2\u7A81\u56FE\u50CF", children: Array.from({ length: Math.max(1, currentConflict.memberCount - 1) }, (_, i) => /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-candidate-strip", "aria-label": "\u5207\u6362\u51B2\u7A81\u56FE\u50CF", children: conflictMembers.length > 0 ? conflictMembers.map((m, i) => {
+                    const s = m.image.sample;
+                    const thumb = `/api/iad/media/sample/${encodeURIComponent(s.dataset_id || "")}/${encodeURIComponent(s.sample_id || "")}/thumbnail`;
+                    return /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
+                      "button",
+                      {
+                        className: "dc-candidate",
+                        type: "button",
+                        "data-dc": "candidate",
+                        "data-id": i,
+                        "aria-pressed": i === candidateIndex,
+                        title: `\u67E5\u770B\u5019\u9009\u56FE ${i + 1}: ${s.relative_path.split("/").pop()}`,
+                        onClick: () => setCandidateIndex(i),
+                        children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
+                          "img",
+                          {
+                            src: thumb,
+                            alt: `\u5019\u9009\u56FE ${i + 1}`,
+                            onError: (e) => {
+                              if (currentConflict?.candidateThumbUrl) {
+                                e.currentTarget.src = currentConflict.candidateThumbUrl;
+                              }
+                            }
+                          }
+                        )
+                      },
+                      m.image.sample.sample_id || i
+                    );
+                  }) : Array.from({ length: Math.max(1, currentConflict.memberCount - 1) }, (_, i) => /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                     "button",
                     {
                       className: "dc-candidate",
@@ -22136,7 +22271,7 @@ button.exp-ghost:hover,
                       "aria-pressed": i === candidateIndex,
                       title: `\u67E5\u770B\u5019\u9009\u56FE ${i + 1}`,
                       onClick: () => setCandidateIndex(i),
-                      children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                      children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                         "img",
                         {
                           src: currentConflict.candidateThumbUrl || currentConflict.url,
@@ -22146,25 +22281,25 @@ button.exp-ghost:hover,
                     },
                     i
                   )) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "dc-fact-panel", "aria-label": "\u5224\u5B9A\u7ED3\u8BBA", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h3", { children: "\u5224\u5B9A\u7ED3\u8BBA" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-verdict-value", children: currentConflict.type }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("p", { className: "dc-verdict-description", children: buildFactDescription(currentConflict) })
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("section", { className: "dc-fact-panel", "aria-label": "\u5224\u5B9A\u7ED3\u8BBA", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h3", { children: "\u5224\u5B9A\u7ED3\u8BBA" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-verdict-value", children: currentConflict.type }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { className: "dc-verdict-description", children: buildFactDescription(currentConflict) })
                   ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "dc-model-panel", "aria-label": "\u6A21\u578B\u5206\u6790", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h3", { children: "\u6A21\u578B\u5206\u6790" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("p", { children: buildModelAnalysis(currentConflict) })
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("section", { className: "dc-model-panel", "aria-label": "\u6A21\u578B\u5206\u6790", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h3", { children: "\u6A21\u578B\u5206\u6790" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { children: buildModelAnalysis(currentConflict) })
                   ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "dc-conclusion-panel", "aria-label": "\u6A21\u578B\u7ED3\u8BBA", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h3", { children: "\u6A21\u578B\u7ED3\u8BBA" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-verdict-value", children: currentConflict.model.modelType }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("p", { className: "dc-verdict-description", children: buildModelConclusion(currentConflict) })
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("section", { className: "dc-conclusion-panel", "aria-label": "\u6A21\u578B\u7ED3\u8BBA", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h3", { children: "\u6A21\u578B\u7ED3\u8BBA" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-verdict-value", children: currentConflict.model.modelType }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { className: "dc-verdict-description", children: buildModelConclusion(currentConflict) })
                   ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "dc-review-panel", "aria-label": "\u4EBA\u5DE5\u590D\u6838", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h3", { children: "\u4EBA\u5DE5\u590D\u6838" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-decision-controls", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("label", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("section", { className: "dc-review-panel", "aria-label": "\u4EBA\u5DE5\u590D\u6838", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h3", { children: "\u4EBA\u5DE5\u590D\u6838" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-decision-controls", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("label", { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                           "input",
                           {
                             type: "radio",
@@ -22176,8 +22311,8 @@ button.exp-ghost:hover,
                         ),
                         "\u5F85\u786E\u8BA4"
                       ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("label", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("label", { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                           "input",
                           {
                             type: "radio",
@@ -22189,8 +22324,8 @@ button.exp-ghost:hover,
                         ),
                         "\u786E\u8BA4\u51B2\u7A81"
                       ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("label", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("label", { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                           "input",
                           {
                             type: "radio",
@@ -22203,7 +22338,7 @@ button.exp-ghost:hover,
                         "\u6392\u9664\u51B2\u7A81"
                       ] })
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                       "textarea",
                       {
                         className: "dc-note",
@@ -22215,16 +22350,16 @@ button.exp-ghost:hover,
                     )
                   ] })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("footer", { className: "dc-dialog-footer", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("button", { className: "dc-minor", type: "button", onClick: () => setModal(""), children: "\u53D6\u6D88" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("button", { className: "dc-primary", type: "button", onClick: handleSaveReview, children: "\u4FDD\u5B58\u590D\u6838" })
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("footer", { className: "dc-dialog-footer", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("button", { className: "dc-minor", type: "button", onClick: () => setModal(""), children: "\u53D6\u6D88" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("button", { className: "dc-primary", type: "button", onClick: handleSaveReview, children: "\u4FDD\u5B58\u590D\u6838" })
                 ] })
               ]
             }
           )
         }
       ),
-      modal.startsWith("delete:") && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+      modal.startsWith("delete:") && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
         "div",
         {
           className: "dc-modal-mask exp-modal",
@@ -22232,22 +22367,22 @@ button.exp-ghost:hover,
           onClick: (e) => {
             if (e.target.id === "dc-delete-mask") setModal("");
           },
-          children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "exp-dialog small", role: "dialog", "aria-modal": "true", "aria-label": "\u5220\u9664\u68C0\u67E5\u4F5C\u4E1A", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "exp-dialog-head", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("strong", { children: "\u5220\u9664\u68C0\u67E5\u4F5C\u4E1A" }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(IconButton, { label: "\u5173\u95ED", className: "modal-x exp-ghost", onClick: () => setModal(""), children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(CloseIcon, {}) })
+          children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "exp-dialog small", role: "dialog", "aria-modal": "true", "aria-label": "\u5220\u9664\u68C0\u67E5\u4F5C\u4E1A", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "exp-dialog-head", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("strong", { children: "\u5220\u9664\u68C0\u67E5\u4F5C\u4E1A" }),
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(IconButton, { label: "\u5173\u95ED", className: "modal-x exp-ghost", onClick: () => setModal(""), children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(CloseIcon, {}) })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "exp-dialog-main", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("p", { className: "exp-delete-text", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "exp-dialog-main", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("p", { className: "exp-delete-text", children: [
                 "\u786E\u5B9A\u5220\u9664\u4F5C\u4E1A ",
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("strong", { children: modal.slice(7) }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("strong", { children: modal.slice(7) }),
                 " \u5417\uFF1F"
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("p", { className: "exp-delete-note", children: "\u8BE5\u4F5C\u4E1A\u5BF9\u5E94\u7684\u51B2\u7A81\u68C0\u67E5\u7ED3\u679C\u548C\u5C55\u793A\u6570\u636E\u5C06\u4E00\u5E76\u79FB\u9664\uFF0C\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002" })
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { className: "exp-delete-note", children: "\u8BE5\u4F5C\u4E1A\u5BF9\u5E94\u7684\u51B2\u7A81\u68C0\u67E5\u7ED3\u679C\u548C\u5C55\u793A\u6570\u636E\u5C06\u4E00\u5E76\u79FB\u9664\uFF0C\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "exp-dialog-foot", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("button", { type: "button", className: "exp-btn", onClick: () => setModal(""), children: "\u53D6\u6D88" }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "exp-dialog-foot", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("button", { type: "button", className: "exp-btn", onClick: () => setModal(""), children: "\u53D6\u6D88" }),
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                 "button",
                 {
                   type: "button",
@@ -22260,7 +22395,7 @@ button.exp-ghost:hover,
           ] })
         }
       ),
-      !!statsModalJobId && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+      !!statsModalJobId && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
         "div",
         {
           className: "dc-mask dc-stats-mask",
@@ -22269,7 +22404,7 @@ button.exp-ghost:hover,
           onClick: (e) => {
             if (e.target.id === "dc-mask") setStatsModalJobId("");
           },
-          children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+          children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
             "section",
             {
               className: "dc-stats-dialog",
@@ -22277,9 +22412,9 @@ button.exp-ghost:hover,
               "aria-modal": "true",
               "aria-labelledby": "dc-stats-title",
               children: [
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("header", { className: "dc-stats-header", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h2", { id: "dc-stats-title", children: "\u6807\u6CE8\u51B2\u7A81\u7EDF\u8BA1" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("header", { className: "dc-stats-header", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h2", { id: "dc-stats-title", children: "\u6807\u6CE8\u51B2\u7A81\u7EDF\u8BA1" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                     "button",
                     {
                       type: "button",
@@ -22288,23 +22423,23 @@ button.exp-ghost:hover,
                       "aria-label": "\u5173\u95ED\u7EDF\u8BA1",
                       "data-dc": "close-drawer",
                       onClick: () => setStatsModalJobId(""),
-                      children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(CloseIcon, {})
+                      children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(CloseIcon, {})
                     }
                   )
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-stats-content", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-stats-charts", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-stats-content", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-stats-charts", children: [
                   (() => {
                     const ticks = [distributionAxis, distributionAxis * 0.75, distributionAxis * 0.5, distributionAxis * 0.25, 0].map((v) => Math.round(v));
-                    return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "dc-vchart-panel", "aria-label": "\u539F\u59CB\u5DEE\u5F02\u7C7B\u578B\u67F1\u72B6\u56FE", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h3", { children: "\u539F\u59CB\u5DEE\u5F02\u7C7B\u578B" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-vchart-body", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { children: n }, i)) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-vchart-figure", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: origStats.length }, children: origStats.map((row) => {
+                    return /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("section", { className: "dc-vchart-panel", "aria-label": "\u539F\u59CB\u5DEE\u5F02\u7C7B\u578B\u67F1\u72B6\u56FE", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h3", { children: "\u539F\u59CB\u5DEE\u5F02\u7C7B\u578B" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-vchart-body", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { children: n }, i)) }),
+                        /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-vchart-figure", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: origStats.length }, children: origStats.map((row) => {
                             const height = 100 * row.count / distributionAxis;
-                            return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-vchart-column", children: [
-                              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                            return /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-vchart-column", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                                 "button",
                                 {
                                   type: "button",
@@ -22315,10 +22450,10 @@ button.exp-ghost:hover,
                                   "aria-label": `${row.name} ${row.count} \u7EC4\uFF0C\u70B9\u51FB\u67E5\u770B`,
                                   title: `${row.name}\uFF1A${row.count} \u7EC4\uFF0C\u70B9\u51FB\u7B5B\u9009`,
                                   onClick: () => handleStatClick("stat-category", row.name),
-                                  children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-vchart-value", children: row.count })
+                                  children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-vchart-value", children: row.count })
                                 }
                               ) }),
-                              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
+                              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
                             ] }, row.name);
                           }) })
                         ] })
@@ -22327,16 +22462,16 @@ button.exp-ghost:hover,
                   })(),
                   (() => {
                     const ticks = [distributionAxis, distributionAxis * 0.75, distributionAxis * 0.5, distributionAxis * 0.25, 0].map((v) => Math.round(v));
-                    return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "dc-vchart-panel", "aria-label": "\u6A21\u578B\u5224\u65AD\u67F1\u72B6\u56FE", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h3", { children: "\u6A21\u578B\u5224\u65AD" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-vchart-body", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { children: n }, i)) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-vchart-figure", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: modelStats.length }, children: modelStats.map((row) => {
+                    return /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("section", { className: "dc-vchart-panel", "aria-label": "\u6A21\u578B\u5224\u65AD\u67F1\u72B6\u56FE", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h3", { children: "\u6A21\u578B\u5224\u65AD" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-vchart-body", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { children: n }, i)) }),
+                        /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-vchart-figure", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: modelStats.length }, children: modelStats.map((row) => {
                             const height = 100 * row.count / distributionAxis;
-                            return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-vchart-column", children: [
-                              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                            return /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-vchart-column", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                                 "button",
                                 {
                                   type: "button",
@@ -22347,10 +22482,10 @@ button.exp-ghost:hover,
                                   "aria-label": `${row.name} ${row.count} \u7EC4\uFF0C\u70B9\u51FB\u67E5\u770B`,
                                   title: `${row.name}\uFF1A${row.count} \u7EC4\uFF0C\u70B9\u51FB\u7B5B\u9009`,
                                   onClick: () => handleStatClick("stat-model", row.name),
-                                  children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-vchart-value", children: row.count })
+                                  children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-vchart-value", children: row.count })
                                 }
                               ) }),
-                              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
+                              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
                             ] }, row.name);
                           }) })
                         ] })
@@ -22359,16 +22494,16 @@ button.exp-ghost:hover,
                   })(),
                   (() => {
                     const ticks = [agreementAxis, agreementAxis * 0.75, agreementAxis * 0.5, agreementAxis * 0.25, 0].map((v) => Math.round(v));
-                    return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "dc-vchart-panel dc-vchart-agreement", "aria-label": "\u7ED3\u8BBA\u4E00\u81F4\u6027\u67F1\u72B6\u56FE", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h3", { children: "\u7ED3\u8BBA\u4E00\u81F4\u6027" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-vchart-body", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { children: n }, i)) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-vchart-figure", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: agreementStats.length }, children: agreementStats.map((row) => {
+                    return /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("section", { className: "dc-vchart-panel dc-vchart-agreement", "aria-label": "\u7ED3\u8BBA\u4E00\u81F4\u6027\u67F1\u72B6\u56FE", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h3", { children: "\u7ED3\u8BBA\u4E00\u81F4\u6027" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-vchart-body", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { children: n }, i)) }),
+                        /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-vchart-figure", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: agreementStats.length }, children: agreementStats.map((row) => {
                             const height = 100 * row.count / agreementAxis;
-                            return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "dc-vchart-column", children: [
-                              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                            return /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "dc-vchart-column", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                                 "button",
                                 {
                                   type: "button",
@@ -22379,10 +22514,10 @@ button.exp-ghost:hover,
                                   "aria-label": `${row.name} ${row.count} \u7EC4\uFF0C\u70B9\u51FB\u67E5\u770B`,
                                   title: `${row.name}\uFF1A${row.count} \u7EC4\uFF0C\u70B9\u51FB\u7B5B\u9009`,
                                   onClick: () => handleStatClick("stat-agreement", row.id),
-                                  children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-vchart-value", children: row.count })
+                                  children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-vchart-value", children: row.count })
                                 }
                               ) }),
-                              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
+                              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
                             ] }, row.id);
                           }) })
                         ] })
@@ -22395,7 +22530,7 @@ button.exp-ghost:hover,
           )
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
         FullscreenViewer,
         {
           open: !!zoomItem,
@@ -22414,7 +22549,7 @@ button.exp-ghost:hover,
     const icons = { "industrial-datasets": DatasetIcon, "industrial-images": ImagesIcon, "industrial-exploration": ExplorationIcon, "industrial-knowledge": KnowledgeIcon, "industrial-consistency": ImagesIcon, "industrial-audit": AuditIcon, "industrial-review": ReviewIcon, "industrial-model-settings": ModelSettingsIcon };
     ctx.slots.inject("sidebar.content", () => ctx.slots.register({ name: "sidebar.content" }, IndustrialSidebar));
     ctx.slots.inject("tool.call.toolview", () => {
-      for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props) => import_react58.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react58.default.createElement(SessionResult, { ...props, title })));
+      for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props) => import_react59.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react59.default.createElement(SessionResult, { ...props, title })));
     });
     ctx.slots.inject("sidebar.panellist", () => {
       const disposers = Object.entries(pages).map(([id, label], index3) => ctx.slots.register({ name: "sidebar.panellist", id, order: index3 + 1, label }, icons[id]));
@@ -22424,12 +22559,12 @@ button.exp-ghost:hover,
       for (const id of Object.keys(pages)) {
         ctx.slots.register(
           { name: "main", key: id },
-          () => import_react58.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react58.default.createElement(WorkbenchModelProvider, { children: import_react58.default.createElement(
+          () => import_react59.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react59.default.createElement(WorkbenchModelProvider, { children: import_react59.default.createElement(
             "div",
             { className: "iad-workspace", onFocusCapture: (event) => {
               if (event.target instanceof HTMLElement) event.target.scrollIntoView({ block: "nearest", inline: "nearest" });
             }, style: { height: "100%", minWidth: 0, containerType: "inline-size", containerName: "workbench" } },
-            id === "industrial-model-settings" ? import_react58.default.createElement(ModelSettingsPage) : id === "industrial-consistency" ? import_react58.default.createElement(ConsistencyPage) : import_react58.default.createElement(WorkbenchPage, { pageId: id })
+            id === "industrial-model-settings" ? import_react59.default.createElement(ModelSettingsPage) : id === "industrial-consistency" ? import_react59.default.createElement(ConsistencyPage) : import_react59.default.createElement(WorkbenchPage, { pageId: id })
           ) }))
         );
       }

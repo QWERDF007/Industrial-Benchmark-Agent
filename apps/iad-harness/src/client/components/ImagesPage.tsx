@@ -5,6 +5,7 @@ import type { Dataset, DatasetGroup, Sample, SampleDetail } from "../../shared/c
 import { mediaUrl, request, message } from "../api.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 import { FullscreenViewer } from "./FullscreenViewer.js";
+import { AnnotatedImageStage } from "./AnnotatedImageStage.js";
 import { DatasetScopeSelector } from "./DatasetScopeSelector.js";
 import { RefreshIcon } from "../AuditIcon.js";
 import { ClearFilterButton } from "./CommonFilterControls.js";
@@ -519,35 +520,13 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
                   title="点击查看大图与标注"
                   onClick={openFullscreen}
                 >
-                  <span
-                    className="preview-image-frame"
-                    style={{ aspectRatio: `${imgW} / ${imgH}`, height: "100%", maxWidth: "100%", position: "relative" }}
-                  >
-                    <img
-                      id="preview-image"
-                      src={mediaUrl(activeSample, "image")}
-                      alt={activeSample.relative_path.split("/").pop()}
-                    />
-                    <span className="preview-overlay" id="preview-overlay">
-                      {bboxes.map((item, idx) => {
-                        const [x1, y1, x2, y2] = item.bbox!;
-                        return (
-                          <span
-                            key={item.annotation_id || idx}
-                            className="bbox"
-                            data-label={item.raw_label.replace(/^类别\s*/, "")}
-                            aria-hidden="true"
-                            style={{
-                              left: `${((x1 / imgW) * 100).toFixed(3)}%`,
-                              top: `${((y1 / imgH) * 100).toFixed(3)}%`,
-                              width: `${(((x2 - x1) / imgW) * 100).toFixed(3)}%`,
-                              height: `${(((y2 - y1) / imgH) * 100).toFixed(3)}%`,
-                            }}
-                          />
-                        );
-                      })}
-                    </span>
-                  </span>
+                  <AnnotatedImageStage
+                    src={mediaUrl(activeSample, "image")}
+                    alt={activeSample.relative_path.split("/").pop()}
+                    width={imgW}
+                    height={imgH}
+                    bboxes={bboxes}
+                  />
                   <span className="detail-preview-hint">点击查看大图</span>
                 </button>
 

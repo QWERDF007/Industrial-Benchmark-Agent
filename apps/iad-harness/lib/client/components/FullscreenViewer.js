@@ -1,5 +1,6 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 /**
  * Reusable full-dialog image viewer.
  * Provides pan, zoom, fit to window, annotation overlay toggle, and keyboard navigation.
@@ -121,7 +122,7 @@ export function FullscreenViewer({ open, item, items = [], currentIndex = -1, on
         return null;
     const bboxes = item.bboxes || [];
     const filename = item.title.split("/").pop() || item.title;
-    return (_jsx("div", { id: "full-overlay", className: "full-overlay", role: "presentation", children: _jsxs("section", { className: "full-dialog", role: "dialog", "aria-modal": "true", "aria-label": "\u539F\u56FE\u68C0\u89C6\u5668", children: [_jsxs("header", { className: "full-toolbar", role: "toolbar", "aria-label": "\u56FE\u50CF\u67E5\u770B\u5DE5\u5177", children: [_jsx("div", { className: "full-file", id: "full-file-name", title: item.title, children: filename }), _jsxs("div", { className: "full-actions", children: [_jsx("button", { type: "button", id: "zoom-out", title: "\u7F29\u5C0F", "aria-label": "\u7F29\u5C0F", onClick: () => setZoom(zoomLevel / 1.25), children: _jsxs("svg", { viewBox: "0 0 24 24", "aria-hidden": "true", children: [_jsx("circle", { cx: "11", cy: "11", r: "7" }), _jsx("path", { d: "m21 21-4.35-4.35M8 11h6" })] }) }), _jsxs("span", { className: "zoom-wrap", children: [_jsxs("select", { id: "zoom", title: "\u7F29\u653E\u6BD4\u4F8B", "aria-label": "\u7F29\u653E\u6BD4\u4F8B", value: [0.5, 1, 1.5, 2].some(v => Math.abs(zoomLevel - v) < 0.001)
+    const content = (_jsx("div", { id: "full-overlay", className: "full-overlay", role: "presentation", children: _jsxs("section", { className: "full-dialog", role: "dialog", "aria-modal": "true", "aria-label": "\u539F\u56FE\u68C0\u89C6\u5668", children: [_jsxs("header", { className: "full-toolbar", role: "toolbar", "aria-label": "\u56FE\u50CF\u67E5\u770B\u5DE5\u5177", children: [_jsx("div", { className: "full-file", id: "full-file-name", title: item.title, style: { color: "#f4f7fd" }, children: filename }), _jsxs("div", { className: "full-actions", children: [_jsx("button", { type: "button", id: "zoom-out", title: "\u7F29\u5C0F", "aria-label": "\u7F29\u5C0F", onClick: () => setZoom(zoomLevel / 1.25), children: _jsxs("svg", { viewBox: "0 0 24 24", "aria-hidden": "true", children: [_jsx("circle", { cx: "11", cy: "11", r: "7" }), _jsx("path", { d: "m21 21-4.35-4.35M8 11h6" })] }) }), _jsxs("span", { className: "zoom-wrap", style: { background: "rgba(255, 255, 255, 0.12)", border: "1px solid rgba(255, 255, 255, 0.22)" }, children: [_jsxs("select", { id: "zoom", title: "\u7F29\u653E\u6BD4\u4F8B", "aria-label": "\u7F29\u653E\u6BD4\u4F8B", style: { color: "#f4f7fd", background: "transparent" }, value: [0.5, 1, 1.5, 2].some(v => Math.abs(zoomLevel - v) < 0.001)
                                                 ? String(zoomLevel)
                                                 : Math.abs(zoomLevel - fitScale) < 0.001
                                                     ? "fit"
@@ -173,4 +174,8 @@ export function FullscreenViewer({ open, item, items = [], currentIndex = -1, on
                                         e.stopPropagation();
                                         moveViewer(1);
                                     }, children: "\u203A" })] }))] })] }) }));
+    if (typeof document !== "undefined") {
+        return createPortal(content, document.body);
+    }
+    return content;
 }

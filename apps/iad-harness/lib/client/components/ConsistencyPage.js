@@ -1,5 +1,6 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AnnotatedImageStage } from './AnnotatedImageStage.js';
 import { buildHierarchyGroups, getDatasetGroupId } from '../dataset-hierarchy.js';
 import { CloseIcon, DeleteIcon, RefreshIcon, StatsIcon, ChevronIcon } from '../AuditIcon.js';
 import { IconButton } from './IconButton.js';
@@ -151,117 +152,6 @@ function getConflictBboxes(c, side) {
         { annotation_id: `${c.id}_std_1`, raw_label: side === 'anchor' ? (c.leftLabel || '标注') : (c.rightLabel || '标注'), bbox: [Math.round(sW * 0.32), Math.round(sH * 0.31), Math.round(sW * 0.48), Math.round(sH * 0.45)] },
     ];
 }
-function ComparePhotoStage({ src, alt, sourceWidth = 860, sourceHeight = 690, bboxes = [], }) {
-    const containerRef = useRef(null);
-    const [naturalSize, setNaturalSize] = useState({
-        width: sourceWidth || 860,
-        height: sourceHeight || 690,
-    });
-    const imgW = naturalSize.width || sourceWidth || 860;
-    const imgH = naturalSize.height || sourceHeight || 690;
-    const [stageStyle, setStageStyle] = useState({
-        position: 'relative',
-        height: '100%',
-        aspectRatio: `${imgW} / ${imgH}`,
-        display: 'block',
-        maxWidth: '100%',
-        maxHeight: '100%',
-    });
-    const updateDimensions = useCallback(() => {
-        if (!containerRef.current)
-            return;
-        const { clientWidth: cw, clientHeight: ch } = containerRef.current;
-        if (!cw || !ch)
-            return;
-        const containerRatio = cw / ch;
-        const imgRatio = imgW / imgH;
-        if (containerRatio > imgRatio) {
-            // Container is wider than image: constrained by container height
-            const w = Math.round(ch * imgRatio);
-            setStageStyle({
-                position: 'relative',
-                width: `${w}px`,
-                height: `${ch}px`,
-                display: 'block',
-                flexShrink: 0,
-            });
-        }
-        else {
-            // Container is taller than image: constrained by container width
-            const h = Math.round(cw / imgRatio);
-            setStageStyle({
-                position: 'relative',
-                width: `${cw}px`,
-                height: `${h}px`,
-                display: 'block',
-                flexShrink: 0,
-            });
-        }
-    }, [imgW, imgH]);
-    useLayoutEffect(() => {
-        updateDimensions();
-    }, [updateDimensions]);
-    useEffect(() => {
-        const el = containerRef.current;
-        if (!el || typeof ResizeObserver === 'undefined')
-            return;
-        const ro = new ResizeObserver(() => updateDimensions());
-        ro.observe(el);
-        return () => ro.disconnect();
-    }, [updateDimensions]);
-    useEffect(() => {
-        if (sourceWidth && sourceHeight) {
-            setNaturalSize({ width: sourceWidth, height: sourceHeight });
-        }
-    }, [sourceWidth, sourceHeight, src]);
-    return (_jsx("div", { ref: containerRef, className: "dc-compare-stage-wrapper", style: {
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            overflow: 'hidden',
-        }, children: _jsxs("div", { className: "dc-photo-stage", style: stageStyle, children: [_jsx("img", { src: src, alt: alt, draggable: false, style: {
-                        width: '100%',
-                        height: '100%',
-                        display: 'block',
-                        pointerEvents: 'none',
-                        userSelect: 'none',
-                    }, onLoad: (e) => {
-                        const img = e.currentTarget;
-                        if (img.naturalWidth && img.naturalHeight) {
-                            setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                        }
-                    } }), bboxes &&
-                    bboxes.length > 0 &&
-                    bboxes.map((b, idx) => {
-                        if (!b.bbox || b.bbox.length < 4)
-                            return null;
-                        const [x1, y1, x2, y2] = b.bbox;
-                        const minX = Math.min(x1, x2);
-                        const minY = Math.min(y1, y2);
-                        const maxX = Math.max(x1, x2);
-                        const maxY = Math.max(y1, y2);
-                        const left = ((minX / imgW) * 100).toFixed(2);
-                        const top = ((minY / imgH) * 100).toFixed(2);
-                        const width = Math.max(1.8, (((maxX - minX) / imgW) * 100)).toFixed(2);
-                        const height = Math.max(1.8, (((maxY - minY) / imgH) * 100)).toFixed(2);
-                        return (_jsx("i", { className: "dc-bbox", style: {
-                                position: 'absolute',
-                                left: `${left}%`,
-                                top: `${top}%`,
-                                width: `${width}%`,
-                                height: `${height}%`,
-                                minWidth: '16px',
-                                minHeight: '16px',
-                                background: 'transparent',
-                                border: '2px solid #e88c26',
-                                boxSizing: 'border-box',
-                                pointerEvents: 'none',
-                            } }, b.annotation_id || idx));
-                    })] }) }));
-}
 export const DEFAULT_CONSISTENCY_PROMPT = '你是工业数据标注一致性核查助手。请对每组疑似冲突图像，基于原图、现有标注、类别定义和检测证据进行比较。\n' +
     '以主图相对于候选图为基准，判断是否存在实际标注冲突；若存在，给出唯一的主要类型：类别不一致、多类别、少类别、位置差异、拆分或合并。异常检测目录数据集判断 OK/NG 标签是否冲突；若没有实际冲突，明确输出“无冲突”。\n' +
     '请说明判断依据，指出相关图像和标注区域，不要修改原始标注或将模型输出当作人工裁定。无法取得可靠结果时记录分析失败，不输出虚构结论。';
@@ -288,6 +178,9 @@ function generateFallbackConflicts(job, childDatasets, isLabelmeFormat, currentR
         const filename = isLabelmeFormat
             ? `(${String(2335 + (idx + 1) * 7).padStart(4, '0')})_ch_${(idx % 2) + 1}_2023-06-15_09.32.${String((idx * 17) % 60).padStart(2, '0')}.png`
             : `picture_${number}_2026_09_08_21_45_${String(idx % 60).padStart(2, '0')}.png`;
+        const candFilename = isLabelmeFormat
+            ? `(${String(2335 + (idx + 1) * 7 + 3).padStart(4, '0')})_ch_${((idx + 1) % 2) + 1}_2023-06-15_09.32.${String(((idx + 1) * 17) % 60).padStart(2, '0')}.png`
+            : `picture_${String(1000 + idx + 10)}_2026_09_08_21_45_${String((idx + 5) % 60).padStart(2, '0')}.png`;
         const leftLabel = isLabelmeFormat ? '14' : 'OK';
         const rightLabel = isLabelmeFormat ? (rawType === '类别不一致' ? '12' : leftLabel) : 'NG';
         const noConflict = idx % 9 === 2;
@@ -303,7 +196,14 @@ function generateFallbackConflicts(job, childDatasets, isLabelmeFormat, currentR
             : relabeled
                 ? `原始检查识别为“${rawType}”，模型以左侧主图相对于候选图的关系重新判定为“${modelTypeVal}”。`
                 : `模型结论与原始比对一致：确认存在“${modelTypeVal}”冲突（标注重叠 IoU: ${(0.88 * 100).toFixed(1)}%）。`;
-        const svgUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="225" viewBox="0 0 300 225"><rect width="300" height="225" fill="%23eef2f8"/><rect x="20" y="20" width="260" height="185" fill="%23d8e2f0" stroke="%23285ed6" stroke-width="2" rx="4"/><text x="150" y="115" font-family="sans-serif" font-size="14" fill="%23172338" text-anchor="middle" font-weight="600">${filename}</text><text x="150" y="140" font-family="sans-serif" font-size="12" fill="%234a5568" text-anchor="middle">样本 #${idx + 1}</text></svg>`;
+        const svgUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="860" height="690" viewBox="0 0 860 690"><rect width="860" height="690" fill="%23eef2f8"/><rect x="20" y="20" width="820" height="650" fill="%23d8e2f0" stroke="%23285ed6" stroke-width="2" rx="4"/><text x="430" y="325" font-family="sans-serif" font-size="20" fill="%23172338" text-anchor="middle" font-weight="600">${filename}</text><text x="430" y="365" font-family="sans-serif" font-size="15" fill="%234a5568" text-anchor="middle">主图 · 样本 #${idx + 1}</text></svg>`;
+        const candSvgUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="860" height="690" viewBox="0 0 860 690"><rect width="860" height="690" fill="%23fffaf0"/><rect x="20" y="20" width="820" height="650" fill="%23faebd7" stroke="%23d97706" stroke-width="2" rx="4"/><text x="430" y="325" font-family="sans-serif" font-size="20" fill="%23172338" text-anchor="middle" font-weight="600">${candFilename}</text><text x="430" y="365" font-family="sans-serif" font-size="15" fill="%23b45309" text-anchor="middle">候选图 · 样本 #${idx + 1}-B</text></svg>`;
+        const leftBboxes = isLabelmeFormat
+            ? [{ annotation_id: `${job.batch_id}_L_${idx}`, raw_label: leftLabel, bbox: [275, 214, 413, 310] }]
+            : [];
+        const rightBboxes = isLabelmeFormat
+            ? [{ annotation_id: `${job.batch_id}_R_${idx}`, raw_label: rightLabel, bbox: rawType === '位置差异' ? [352, 186, 550, 317] : [275, 214, 413, 310] }]
+            : [];
         return {
             id: `${job.batch_id}-C${String(idx + 1).padStart(3, '0')}`,
             datasetId: d.dataset_id,
@@ -321,11 +221,13 @@ function generateFallbackConflicts(job, childDatasets, isLabelmeFormat, currentR
                 modelType: modelTypeVal,
                 explanation
             },
-            candidateFilename: `cand_${filename}`,
-            candidateThumbUrl: svgUrl,
-            candidateFullUrl: svgUrl,
+            candidateFilename: candFilename,
+            candidateThumbUrl: candSvgUrl,
+            candidateFullUrl: candSvgUrl,
             leftLabel,
             rightLabel,
+            leftBboxes,
+            rightBboxes,
             sourceWidth: 860,
             sourceHeight: 690,
             rightSourceWidth: 860,
@@ -368,6 +270,9 @@ function ConsistencyIntegratedWorkspace() {
     const [newPrompt, setNewPrompt] = useState(DEFAULT_CONSISTENCY_PROMPT);
     const [currentConflictId, setCurrentConflictId] = useState('');
     const [candidateIndex, setCandidateIndex] = useState(0);
+    const [activeQueryId, setActiveQueryId] = useState('');
+    const [conflictMembers, setConflictMembers] = useState([]);
+    const [candidateDetailAnnotations, setCandidateDetailAnnotations] = useState(null);
     const [reviewDecision, setReviewDecision] = useState('pending');
     const [reviewNote, setReviewNote] = useState('');
     const [reviews, setReviews] = useState({});
@@ -510,6 +415,7 @@ function ConsistencyIntegratedWorkspace() {
                     setJobConflicts(generateFallbackConflicts(selectedJob, currentChildDatasets, isLabelme, reviews));
                     return;
                 }
+                setActiveQueryId(queryId);
                 const gallery = await request('/consistency/gallery', {
                     query_id: queryId,
                     kind: 'conflicts',
@@ -519,16 +425,21 @@ function ConsistencyIntegratedWorkspace() {
                 if (controller.signal.aborted)
                     return;
                 const reportItems = report.page?.items || [];
-                const reportBySampleA = new Map();
+                const reportBySample = new Map();
                 for (const ri of reportItems) {
-                    if (ri.sample_a && !reportBySampleA.has(ri.sample_a)) {
-                        reportBySampleA.set(ri.sample_a, ri);
+                    if (ri.sample_a && !reportBySample.has(ri.sample_a)) {
+                        reportBySample.set(ri.sample_a, { item: ri, isLeft: true });
+                    }
+                    if (ri.sample_b && !reportBySample.has(ri.sample_b)) {
+                        reportBySample.set(ri.sample_b, { item: ri, isLeft: false });
                     }
                 }
                 const mapped = (gallery.items || []).map((it, idx) => {
                     const anchor = it.anchor?.sample;
                     const sampleAId = anchor?.sample_id || '';
-                    const reportItem = reportBySampleA.get(sampleAId) || reportItems[idx];
+                    const match = reportBySample.get(sampleAId);
+                    const reportItem = match?.item || reportItems[idx];
+                    const isAnchorLeft = match ? match.isLeft : true;
                     const dsId = anchor?.dataset_id || selectedJob.scopes?.subjects?.dataset_ids?.[0] || '';
                     const relPath = anchor?.relative_path || anchor?.sample_id?.split(':').pop() || '';
                     const fn = relPath.split('/').pop() || relPath || `样本_${idx + 1}`;
@@ -537,7 +448,8 @@ function ConsistencyIntegratedWorkspace() {
                     const thumbUrl = dsId && fullSampleAId ? `/api/iad/media/sample/${encodeURIComponent(dsId)}/${encodeURIComponent(fullSampleAId)}/thumbnail` : '';
                     const fullImgUrl = dsId && fullSampleAId ? `/api/iad/media/sample/${encodeURIComponent(dsId)}/${encodeURIComponent(fullSampleAId)}/image` : '';
                     // Candidate sample from report
-                    const sampleBId = reportItem?.sample_b || '';
+                    const candidateSampleId = isAnchorLeft ? reportItem?.sample_b : reportItem?.sample_a;
+                    const sampleBId = candidateSampleId || '';
                     const colonIdx = sampleBId.indexOf(':');
                     const candDsId = colonIdx > 0 ? sampleBId.slice(0, colonIdx) : dsId;
                     const candRelPath = colonIdx > 0 ? sampleBId.slice(colonIdx + 1) : sampleBId;
@@ -570,8 +482,8 @@ function ConsistencyIntegratedWorkspace() {
                     else {
                         rawType = '类别不一致';
                     }
-                    const leftAnn = primaryDiff?.left?.[0];
-                    const rightAnn = primaryDiff?.right?.[0];
+                    const leftAnn = isAnchorLeft ? primaryDiff?.left?.[0] : primaryDiff?.right?.[0];
+                    const rightAnn = isAnchorLeft ? primaryDiff?.right?.[0] : primaryDiff?.left?.[0];
                     const leftLabel = leftAnn?.raw_label || (isLabelme ? '14' : 'OK');
                     const rightLabel = rightAnn?.raw_label || (isLabelme ? (rawType === '类别不一致' ? '12' : leftLabel) : 'NG');
                     const sourceWidth = leftAnn?.source_width || anchor?.width || 860;
@@ -655,6 +567,8 @@ function ConsistencyIntegratedWorkspace() {
                             : `模型结论与原始比对一致：确认存在“${modelTypeVal}”冲突（标注重叠 IoU: ${(iou * 100).toFixed(1)}%）。`;
                     return {
                         id: it.group_id,
+                        groupId: it.group_id,
+                        factsState: it.facts_state,
                         datasetId: dsId,
                         datasetName: dsName,
                         type: rawType,
@@ -901,8 +815,91 @@ function ConsistencyIntegratedWorkspace() {
         setModal('compare');
     }, []);
     const currentConflict = useMemo(() => jobConflicts.find(c => c.id === currentConflictId) || null, [jobConflicts, currentConflictId]);
+    // Load actual candidates for currentConflict from /consistency/gallery/members
+    useEffect(() => {
+        if (!currentConflict || !activeQueryId || modal !== 'compare' || !currentConflict.groupId) {
+            setConflictMembers([]);
+            return;
+        }
+        const controller = new AbortController();
+        request('/consistency/gallery/members', {
+            query_id: activeQueryId,
+            kind: 'conflicts',
+            group_id: currentConflict.groupId,
+            facts_state: currentConflict.factsState || 'UNKNOWN',
+            page: 1,
+            page_size: 20
+        }, undefined, controller.signal)
+            .then(page => {
+            if (!controller.signal.aborted) {
+                setConflictMembers(page.items || []);
+            }
+        })
+            .catch(() => { });
+        return () => controller.abort();
+    }, [currentConflict?.groupId, currentConflict?.factsState, activeQueryId, modal]);
+    const selectedMember = conflictMembers[candidateIndex] || conflictMembers[0] || null;
+    const currentCandidate = useMemo(() => {
+        if (selectedMember) {
+            const s = selectedMember.image.sample;
+            const dsId = s.dataset_id;
+            const sampleId = s.sample_id;
+            const relPath = s.relative_path || sampleId.split(':').pop() || '';
+            const fn = relPath.split('/').pop() || relPath;
+            const thumbUrl = `/api/iad/media/sample/${encodeURIComponent(dsId || '')}/${encodeURIComponent(sampleId || '')}/thumbnail`;
+            const fullUrl = `/api/iad/media/sample/${encodeURIComponent(dsId || '')}/${encodeURIComponent(sampleId || '')}/image`;
+            return {
+                sampleId,
+                datasetId: dsId,
+                filename: fn,
+                thumbUrl,
+                fullUrl,
+                width: s.width || currentConflict?.rightSourceWidth || 860,
+                height: s.height || currentConflict?.rightSourceHeight || 690,
+            };
+        }
+        return {
+            sampleId: currentConflict?.candidateId || '',
+            datasetId: currentConflict?.candidateDatasetId || currentConflict?.datasetId || '',
+            filename: currentConflict?.candidateFilename || currentConflict?.filename || '候选图',
+            thumbUrl: currentConflict?.candidateThumbUrl || currentConflict?.url || '',
+            fullUrl: currentConflict?.candidateFullUrl || currentConflict?.fullUrl || '',
+            width: currentConflict?.rightSourceWidth || currentConflict?.sourceWidth || 860,
+            height: currentConflict?.rightSourceHeight || currentConflict?.sourceHeight || 690,
+        };
+    }, [selectedMember, currentConflict]);
+    // Fetch candidate annotations from /sample/:sample_id if available
+    useEffect(() => {
+        if (!currentCandidate.sampleId || modal !== 'compare') {
+            setCandidateDetailAnnotations(null);
+            return;
+        }
+        const controller = new AbortController();
+        request(`/sample/${encodeURIComponent(currentCandidate.sampleId)}`, undefined, undefined, controller.signal)
+            .then(res => {
+            if (!controller.signal.aborted && res.annotations) {
+                const boxes = res.annotations
+                    .filter(a => a.bbox && a.bbox.length >= 4)
+                    .map(a => ({
+                    annotation_id: a.annotation_id,
+                    raw_label: a.raw_label,
+                    bbox: a.bbox,
+                }));
+                setCandidateDetailAnnotations(boxes);
+            }
+        })
+            .catch(() => {
+            setCandidateDetailAnnotations(null);
+        });
+        return () => controller.abort();
+    }, [currentCandidate.sampleId, modal]);
     const anchorBboxes = useMemo(() => getConflictBboxes(currentConflict, 'anchor'), [currentConflict]);
-    const candidateBboxes = useMemo(() => getConflictBboxes(currentConflict, 'candidate'), [currentConflict]);
+    const candidateBboxes = useMemo(() => {
+        if (candidateDetailAnnotations && candidateDetailAnnotations.length > 0) {
+            return candidateDetailAnnotations;
+        }
+        return getConflictBboxes(currentConflict, 'candidate');
+    }, [candidateDetailAnnotations, currentConflict]);
     const handlePrevConflict = useCallback(() => {
         const list = visibleConflicts;
         const idx = list.findIndex(c => c.id === currentConflictId);
@@ -1125,28 +1122,33 @@ function ConsistencyIntegratedWorkspace() {
                                                                 bboxes: anchorBboxes,
                                                             });
                                                         }
-                                                    }, children: _jsx(ComparePhotoStage, { src: currentConflict.fullUrl || currentConflict.url, alt: "\u4E3B\u56FE", sourceWidth: currentConflict.sourceWidth || 860, sourceHeight: currentConflict.sourceHeight || 690, bboxes: anchorBboxes }) }), _jsx("div", { className: "dc-photo-filename", title: currentConflict.filename, children: currentConflict.filename })] }), _jsxs("div", { className: "dc-compare-cell", children: [_jsx("div", { className: "dc-compare-photo", role: "button", tabIndex: 0, "data-dc": "zoom-candidate", "aria-label": "\u67E5\u770B\u5019\u9009\u56FE\u5927\u56FE", title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE", onClick: () => setZoomItem({
-                                                        id: currentConflict.id + '_candidate',
-                                                        title: `${currentConflict.candidateFilename || currentConflict.filename} (候选图 ${candidateIndex + 1})`,
-                                                        imageUrl: currentConflict.candidateFullUrl || currentConflict.candidateThumbUrl || currentConflict.fullUrl || currentConflict.url,
-                                                        width: currentConflict.rightSourceWidth || currentConflict.sourceWidth || 860,
-                                                        height: currentConflict.rightSourceHeight || currentConflict.sourceHeight || 690,
+                                                    }, children: _jsx(AnnotatedImageStage, { src: currentConflict.fullUrl || currentConflict.url, alt: "\u4E3B\u56FE", width: currentConflict.sourceWidth, height: currentConflict.sourceHeight, bboxes: anchorBboxes }) }), _jsx("div", { className: "dc-photo-filename", title: currentConflict.filename, children: currentConflict.filename })] }), _jsxs("div", { className: "dc-compare-cell", children: [_jsx("div", { className: "dc-compare-photo", role: "button", tabIndex: 0, "data-dc": "zoom-candidate", "aria-label": "\u67E5\u770B\u5019\u9009\u56FE\u5927\u56FE", title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE", onClick: () => setZoomItem({
+                                                        id: currentConflict.id + '_candidate_' + candidateIndex,
+                                                        title: `${currentCandidate.filename} (候选图 ${candidateIndex + 1})`,
+                                                        imageUrl: currentCandidate.fullUrl,
+                                                        width: currentCandidate.width,
+                                                        height: currentCandidate.height,
                                                         bboxes: candidateBboxes,
                                                     }), onKeyDown: e => {
                                                         if (e.key === 'Enter' || e.key === ' ') {
                                                             setZoomItem({
-                                                                id: currentConflict.id + '_candidate',
-                                                                title: `${currentConflict.candidateFilename || currentConflict.filename} (候选图 ${candidateIndex + 1})`,
-                                                                imageUrl: currentConflict.candidateFullUrl || currentConflict.candidateThumbUrl || currentConflict.fullUrl || currentConflict.url,
-                                                                width: currentConflict.rightSourceWidth || currentConflict.sourceWidth || 860,
-                                                                height: currentConflict.rightSourceHeight || currentConflict.sourceHeight || 690,
+                                                                id: currentConflict.id + '_candidate_' + candidateIndex,
+                                                                title: `${currentCandidate.filename} (候选图 ${candidateIndex + 1})`,
+                                                                imageUrl: currentCandidate.fullUrl,
+                                                                width: currentCandidate.width,
+                                                                height: currentCandidate.height,
                                                                 bboxes: candidateBboxes,
                                                             });
                                                         }
-                                                    }, children: _jsx(ComparePhotoStage, { src: currentConflict.candidateFullUrl ||
-                                                            currentConflict.candidateThumbUrl ||
-                                                            currentConflict.fullUrl ||
-                                                            currentConflict.url, alt: "\u5019\u9009\u56FE", sourceWidth: currentConflict.rightSourceWidth || currentConflict.sourceWidth || 860, sourceHeight: currentConflict.rightSourceHeight || currentConflict.sourceHeight || 690, bboxes: candidateBboxes }) }), _jsx("div", { className: "dc-photo-filename", title: currentConflict.candidateFilename || currentConflict.filename, children: currentConflict.candidateFilename || currentConflict.filename })] })] }), _jsx("div", { className: "dc-candidate-strip", "aria-label": "\u5207\u6362\u51B2\u7A81\u56FE\u50CF", children: Array.from({ length: Math.max(1, currentConflict.memberCount - 1) }, (_, i) => (_jsx("button", { className: "dc-candidate", type: "button", "data-dc": "candidate", "data-id": i, "aria-pressed": i === candidateIndex, title: `查看候选图 ${i + 1}`, onClick: () => setCandidateIndex(i), children: _jsx("img", { src: currentConflict.candidateThumbUrl || currentConflict.url, alt: `候选图 ${i + 1}` }) }, i))) }), _jsxs("section", { className: "dc-fact-panel", "aria-label": "\u5224\u5B9A\u7ED3\u8BBA", children: [_jsx("h3", { children: "\u5224\u5B9A\u7ED3\u8BBA" }), _jsx("span", { className: "dc-verdict-value", children: currentConflict.type }), _jsx("p", { className: "dc-verdict-description", children: buildFactDescription(currentConflict) })] }), _jsxs("section", { className: "dc-model-panel", "aria-label": "\u6A21\u578B\u5206\u6790", children: [_jsx("h3", { children: "\u6A21\u578B\u5206\u6790" }), _jsx("p", { children: buildModelAnalysis(currentConflict) })] }), _jsxs("section", { className: "dc-conclusion-panel", "aria-label": "\u6A21\u578B\u7ED3\u8BBA", children: [_jsx("h3", { children: "\u6A21\u578B\u7ED3\u8BBA" }), _jsx("span", { className: "dc-verdict-value", children: currentConflict.model.modelType }), _jsx("p", { className: "dc-verdict-description", children: buildModelConclusion(currentConflict) })] }), _jsxs("section", { className: "dc-review-panel", "aria-label": "\u4EBA\u5DE5\u590D\u6838", children: [_jsx("h3", { children: "\u4EBA\u5DE5\u590D\u6838" }), _jsxs("div", { className: "dc-decision-controls", children: [_jsxs("label", { children: [_jsx("input", { type: "radio", name: "dc-review", value: "pending", checked: reviewDecision === 'pending', onChange: () => setReviewDecision('pending') }), "\u5F85\u786E\u8BA4"] }), _jsxs("label", { children: [_jsx("input", { type: "radio", name: "dc-review", value: "confirmed", checked: reviewDecision === 'confirmed', onChange: () => setReviewDecision('confirmed') }), "\u786E\u8BA4\u51B2\u7A81"] }), _jsxs("label", { children: [_jsx("input", { type: "radio", name: "dc-review", value: "rejected", checked: reviewDecision === 'rejected', onChange: () => setReviewDecision('rejected') }), "\u6392\u9664\u51B2\u7A81"] })] }), _jsx("textarea", { className: "dc-note", id: "dc-note", placeholder: "\u590D\u6838\u8BF4\u660E\uFF08\u53EF\u9009\uFF09", value: reviewNote, onChange: e => setReviewNote(e.target.value) })] })] }), _jsxs("footer", { className: "dc-dialog-footer", children: [_jsx("button", { className: "dc-minor", type: "button", onClick: () => setModal(''), children: "\u53D6\u6D88" }), _jsx("button", { className: "dc-primary", type: "button", onClick: handleSaveReview, children: "\u4FDD\u5B58\u590D\u6838" })] })] }) })), modal.startsWith('delete:') && (_jsx("div", { className: "dc-modal-mask exp-modal", id: "dc-delete-mask", onClick: e => {
+                                                    }, children: _jsx(AnnotatedImageStage, { src: currentCandidate.fullUrl || currentCandidate.thumbUrl, alt: "\u5019\u9009\u56FE", width: currentCandidate.width, height: currentCandidate.height, bboxes: candidateBboxes }) }), _jsx("div", { className: "dc-photo-filename", title: currentCandidate.filename, children: currentCandidate.filename })] })] }), _jsx("div", { className: "dc-candidate-strip", "aria-label": "\u5207\u6362\u51B2\u7A81\u56FE\u50CF", children: conflictMembers.length > 0 ? (conflictMembers.map((m, i) => {
+                                        const s = m.image.sample;
+                                        const thumb = `/api/iad/media/sample/${encodeURIComponent(s.dataset_id || '')}/${encodeURIComponent(s.sample_id || '')}/thumbnail`;
+                                        return (_jsx("button", { className: "dc-candidate", type: "button", "data-dc": "candidate", "data-id": i, "aria-pressed": i === candidateIndex, title: `查看候选图 ${i + 1}: ${s.relative_path.split('/').pop()}`, onClick: () => setCandidateIndex(i), children: _jsx("img", { src: thumb, alt: `候选图 ${i + 1}`, onError: (e) => {
+                                                    if (currentConflict?.candidateThumbUrl) {
+                                                        e.currentTarget.src = currentConflict.candidateThumbUrl;
+                                                    }
+                                                } }) }, m.image.sample.sample_id || i));
+                                    })) : (Array.from({ length: Math.max(1, currentConflict.memberCount - 1) }, (_, i) => (_jsx("button", { className: "dc-candidate", type: "button", "data-dc": "candidate", "data-id": i, "aria-pressed": i === candidateIndex, title: `查看候选图 ${i + 1}`, onClick: () => setCandidateIndex(i), children: _jsx("img", { src: currentConflict.candidateThumbUrl || currentConflict.url, alt: `候选图 ${i + 1}` }) }, i)))) }), _jsxs("section", { className: "dc-fact-panel", "aria-label": "\u5224\u5B9A\u7ED3\u8BBA", children: [_jsx("h3", { children: "\u5224\u5B9A\u7ED3\u8BBA" }), _jsx("span", { className: "dc-verdict-value", children: currentConflict.type }), _jsx("p", { className: "dc-verdict-description", children: buildFactDescription(currentConflict) })] }), _jsxs("section", { className: "dc-model-panel", "aria-label": "\u6A21\u578B\u5206\u6790", children: [_jsx("h3", { children: "\u6A21\u578B\u5206\u6790" }), _jsx("p", { children: buildModelAnalysis(currentConflict) })] }), _jsxs("section", { className: "dc-conclusion-panel", "aria-label": "\u6A21\u578B\u7ED3\u8BBA", children: [_jsx("h3", { children: "\u6A21\u578B\u7ED3\u8BBA" }), _jsx("span", { className: "dc-verdict-value", children: currentConflict.model.modelType }), _jsx("p", { className: "dc-verdict-description", children: buildModelConclusion(currentConflict) })] }), _jsxs("section", { className: "dc-review-panel", "aria-label": "\u4EBA\u5DE5\u590D\u6838", children: [_jsx("h3", { children: "\u4EBA\u5DE5\u590D\u6838" }), _jsxs("div", { className: "dc-decision-controls", children: [_jsxs("label", { children: [_jsx("input", { type: "radio", name: "dc-review", value: "pending", checked: reviewDecision === 'pending', onChange: () => setReviewDecision('pending') }), "\u5F85\u786E\u8BA4"] }), _jsxs("label", { children: [_jsx("input", { type: "radio", name: "dc-review", value: "confirmed", checked: reviewDecision === 'confirmed', onChange: () => setReviewDecision('confirmed') }), "\u786E\u8BA4\u51B2\u7A81"] }), _jsxs("label", { children: [_jsx("input", { type: "radio", name: "dc-review", value: "rejected", checked: reviewDecision === 'rejected', onChange: () => setReviewDecision('rejected') }), "\u6392\u9664\u51B2\u7A81"] })] }), _jsx("textarea", { className: "dc-note", id: "dc-note", placeholder: "\u590D\u6838\u8BF4\u660E\uFF08\u53EF\u9009\uFF09", value: reviewNote, onChange: e => setReviewNote(e.target.value) })] })] }), _jsxs("footer", { className: "dc-dialog-footer", children: [_jsx("button", { className: "dc-minor", type: "button", onClick: () => setModal(''), children: "\u53D6\u6D88" }), _jsx("button", { className: "dc-primary", type: "button", onClick: handleSaveReview, children: "\u4FDD\u5B58\u590D\u6838" })] })] }) })), modal.startsWith('delete:') && (_jsx("div", { className: "dc-modal-mask exp-modal", id: "dc-delete-mask", onClick: e => {
                     if (e.target.id === 'dc-delete-mask')
                         setModal('');
                 }, children: _jsxs("div", { className: "exp-dialog small", role: "dialog", "aria-modal": "true", "aria-label": "\u5220\u9664\u68C0\u67E5\u4F5C\u4E1A", children: [_jsxs("div", { className: "exp-dialog-head", children: [_jsx("strong", { children: "\u5220\u9664\u68C0\u67E5\u4F5C\u4E1A" }), _jsx(IconButton, { label: "\u5173\u95ED", className: "modal-x exp-ghost", onClick: () => setModal(''), children: _jsx(CloseIcon, {}) })] }), _jsxs("div", { className: "exp-dialog-main", children: [_jsxs("p", { className: "exp-delete-text", children: ["\u786E\u5B9A\u5220\u9664\u4F5C\u4E1A ", _jsx("strong", { children: modal.slice(7) }), " \u5417\uFF1F"] }), _jsx("p", { className: "exp-delete-note", children: "\u8BE5\u4F5C\u4E1A\u5BF9\u5E94\u7684\u51B2\u7A81\u68C0\u67E5\u7ED3\u679C\u548C\u5C55\u793A\u6570\u636E\u5C06\u4E00\u5E76\u79FB\u9664\uFF0C\u6B64\u64CD\u4F5C\u4E0D\u53EF\u64A4\u9500\u3002" })] }), _jsxs("div", { className: "exp-dialog-foot", children: [_jsx("button", { type: "button", className: "exp-btn", onClick: () => setModal(''), children: "\u53D6\u6D88" }), _jsx("button", { type: "button", className: "exp-btn exp-delete-confirm", onClick: () => handleDeleteJob(modal.slice(7)), children: "\u5220\u9664\u4F5C\u4E1A" })] })] }) })), !!statsModalJobId && (_jsx("div", { className: "dc-mask dc-stats-mask", id: "dc-mask", role: "presentation", onClick: e => {

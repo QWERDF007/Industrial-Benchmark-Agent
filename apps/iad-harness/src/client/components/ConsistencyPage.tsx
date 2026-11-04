@@ -6,7 +6,9 @@ import type {
   Dataset,
   DatasetGroup
 } from '../../shared/contracts.js';
-import type { GalleryPage, GalleryItem, GalleryQuery, ConsistencyBatchReference } from '../../shared/domain.generated.js';
+import type { GalleryPage, GalleryItem, GalleryMember, GalleryMemberPage, GalleryQuery, ConsistencyBatchReference } from '../../shared/domain.generated.js';
+import type { SampleDetail } from '../../shared/contracts.js';
+import { AnnotatedImageStage } from './AnnotatedImageStage.js';
 import { buildHierarchyGroups, getDatasetGroupId } from '../dataset-hierarchy.js';
 import {
   AuditIcon,
@@ -20,7 +22,7 @@ import {
   VerdictNoConflictIcon
 } from '../AuditIcon.js';
 import { IconButton } from './IconButton.js';
-import { FullscreenViewer, type FullscreenViewerItem } from './FullscreenViewer.js';
+import { FullscreenViewer, type FullscreenViewerItem, type FullscreenViewerAnnotation } from './FullscreenViewer.js';
 import { ConsistencyEvidencePage } from './ConsistencyEvidencePage.js';
 import { DatasetScopeSelector } from './DatasetScopeSelector.js';
 import { IbaJobPager, IBA_JOBS_PAGE_SIZE } from './IbaJobPager.js';
@@ -50,6 +52,10 @@ interface ConflictCardItem {
   index: number;
   model: ModelVerdict;
   rawItem?: GalleryItem;
+  groupId?: string;
+  factsState?: string;
+  sampleAId?: string;
+  sampleBId?: string;
   candidateId?: string;
   candidateFilename?: string;
   candidateDatasetId?: string;
@@ -223,158 +229,6 @@ function getConflictBboxes(
   ];
 }
 
-interface ComparePhotoStageProps {
-  src: string;
-  alt: string;
-  sourceWidth?: number;
-  sourceHeight?: number;
-  bboxes?: Array<{ annotation_id?: string; raw_label: string; bbox: number[] }>;
-}
-
-function ComparePhotoStage({
-  src,
-  alt,
-  sourceWidth = 860,
-  sourceHeight = 690,
-  bboxes = [],
-}: ComparePhotoStageProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number }>({
-    width: sourceWidth || 860,
-    height: sourceHeight || 690,
-  });
-
-  const imgW = naturalSize.width || sourceWidth || 860;
-  const imgH = naturalSize.height || sourceHeight || 690;
-
-  const [stageStyle, setStageStyle] = useState<React.CSSProperties>({
-    position: 'relative',
-    height: '100%',
-    aspectRatio: `${imgW} / ${imgH}`,
-    display: 'block',
-    maxWidth: '100%',
-    maxHeight: '100%',
-  });
-
-  const updateDimensions = useCallback(() => {
-    if (!containerRef.current) return;
-    const { clientWidth: cw, clientHeight: ch } = containerRef.current;
-    if (!cw || !ch) return;
-    const containerRatio = cw / ch;
-    const imgRatio = imgW / imgH;
-
-    if (containerRatio > imgRatio) {
-      // Container is wider than image: constrained by container height
-      const w = Math.round(ch * imgRatio);
-      setStageStyle({
-        position: 'relative',
-        width: `${w}px`,
-        height: `${ch}px`,
-        display: 'block',
-        flexShrink: 0,
-      });
-    } else {
-      // Container is taller than image: constrained by container width
-      const h = Math.round(cw / imgRatio);
-      setStageStyle({
-        position: 'relative',
-        width: `${cw}px`,
-        height: `${h}px`,
-        display: 'block',
-        flexShrink: 0,
-      });
-    }
-  }, [imgW, imgH]);
-
-  useLayoutEffect(() => {
-    updateDimensions();
-  }, [updateDimensions]);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(() => updateDimensions());
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [updateDimensions]);
-
-  useEffect(() => {
-    if (sourceWidth && sourceHeight) {
-      setNaturalSize({ width: sourceWidth, height: sourceHeight });
-    }
-  }, [sourceWidth, sourceHeight, src]);
-
-  return (
-    <div
-      ref={containerRef}
-      className="dc-compare-stage-wrapper"
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      <div className="dc-photo-stage" style={stageStyle}>
-        <img
-          src={src}
-          alt={alt}
-          draggable={false}
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'block',
-            pointerEvents: 'none',
-            userSelect: 'none',
-          }}
-          onLoad={(e) => {
-            const img = e.currentTarget;
-            if (img.naturalWidth && img.naturalHeight) {
-              setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-            }
-          }}
-        />
-        {bboxes &&
-          bboxes.length > 0 &&
-          bboxes.map((b, idx) => {
-            if (!b.bbox || b.bbox.length < 4) return null;
-            const [x1, y1, x2, y2] = b.bbox;
-            const minX = Math.min(x1, x2);
-            const minY = Math.min(y1, y2);
-            const maxX = Math.max(x1, x2);
-            const maxY = Math.max(y1, y2);
-            const left = ((minX / imgW) * 100).toFixed(2);
-            const top = ((minY / imgH) * 100).toFixed(2);
-            const width = Math.max(1.8, (((maxX - minX) / imgW) * 100)).toFixed(2);
-            const height = Math.max(1.8, (((maxY - minY) / imgH) * 100)).toFixed(2);
-            return (
-              <i
-                key={b.annotation_id || idx}
-                className="dc-bbox"
-                style={{
-                  position: 'absolute',
-                  left: `${left}%`,
-                  top: `${top}%`,
-                  width: `${width}%`,
-                  height: `${height}%`,
-                  minWidth: '16px',
-                  minHeight: '16px',
-                  background: 'transparent',
-                  border: '2px solid #e88c26',
-                  boxSizing: 'border-box',
-                  pointerEvents: 'none',
-                }}
-              />
-            );
-          })}
-      </div>
-    </div>
-  );
-}
-
 export const DEFAULT_CONSISTENCY_PROMPT =
   '你是工业数据标注一致性核查助手。请对每组疑似冲突图像，基于原图、现有标注、类别定义和检测证据进行比较。\n' +
   '以主图相对于候选图为基准，判断是否存在实际标注冲突；若存在，给出唯一的主要类型：类别不一致、多类别、少类别、位置差异、拆分或合并。异常检测目录数据集判断 OK/NG 标签是否冲突；若没有实际冲突，明确输出“无冲突”。\n' +
@@ -422,6 +276,10 @@ function generateFallbackConflicts(
       ? `(${String(2335 + (idx + 1) * 7).padStart(4, '0')})_ch_${(idx % 2) + 1}_2023-06-15_09.32.${String((idx * 17) % 60).padStart(2, '0')}.png`
       : `picture_${number}_2026_09_08_21_45_${String(idx % 60).padStart(2, '0')}.png`;
 
+    const candFilename = isLabelmeFormat
+      ? `(${String(2335 + (idx + 1) * 7 + 3).padStart(4, '0')})_ch_${((idx + 1) % 2) + 1}_2023-06-15_09.32.${String(((idx + 1) * 17) % 60).padStart(2, '0')}.png`
+      : `picture_${String(1000 + idx + 10)}_2026_09_08_21_45_${String((idx + 5) % 60).padStart(2, '0')}.png`;
+
     const leftLabel = isLabelmeFormat ? '14' : 'OK';
     const rightLabel = isLabelmeFormat ? (rawType === '类别不一致' ? '12' : leftLabel) : 'NG';
     const noConflict = idx % 9 === 2;
@@ -438,7 +296,16 @@ function generateFallbackConflicts(
       ? `原始检查识别为“${rawType}”，模型以左侧主图相对于候选图的关系重新判定为“${modelTypeVal}”。`
       : `模型结论与原始比对一致：确认存在“${modelTypeVal}”冲突（标注重叠 IoU: ${(0.88 * 100).toFixed(1)}%）。`;
 
-    const svgUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="225" viewBox="0 0 300 225"><rect width="300" height="225" fill="%23eef2f8"/><rect x="20" y="20" width="260" height="185" fill="%23d8e2f0" stroke="%23285ed6" stroke-width="2" rx="4"/><text x="150" y="115" font-family="sans-serif" font-size="14" fill="%23172338" text-anchor="middle" font-weight="600">${filename}</text><text x="150" y="140" font-family="sans-serif" font-size="12" fill="%234a5568" text-anchor="middle">样本 #${idx + 1}</text></svg>`;
+    const svgUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="860" height="690" viewBox="0 0 860 690"><rect width="860" height="690" fill="%23eef2f8"/><rect x="20" y="20" width="820" height="650" fill="%23d8e2f0" stroke="%23285ed6" stroke-width="2" rx="4"/><text x="430" y="325" font-family="sans-serif" font-size="20" fill="%23172338" text-anchor="middle" font-weight="600">${filename}</text><text x="430" y="365" font-family="sans-serif" font-size="15" fill="%234a5568" text-anchor="middle">主图 · 样本 #${idx + 1}</text></svg>`;
+
+    const candSvgUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="860" height="690" viewBox="0 0 860 690"><rect width="860" height="690" fill="%23fffaf0"/><rect x="20" y="20" width="820" height="650" fill="%23faebd7" stroke="%23d97706" stroke-width="2" rx="4"/><text x="430" y="325" font-family="sans-serif" font-size="20" fill="%23172338" text-anchor="middle" font-weight="600">${candFilename}</text><text x="430" y="365" font-family="sans-serif" font-size="15" fill="%23b45309" text-anchor="middle">候选图 · 样本 #${idx + 1}-B</text></svg>`;
+
+    const leftBboxes = isLabelmeFormat
+      ? [{ annotation_id: `${job.batch_id}_L_${idx}`, raw_label: leftLabel, bbox: [275, 214, 413, 310] }]
+      : [];
+    const rightBboxes = isLabelmeFormat
+      ? [{ annotation_id: `${job.batch_id}_R_${idx}`, raw_label: rightLabel, bbox: rawType === '位置差异' ? [352, 186, 550, 317] : [275, 214, 413, 310] }]
+      : [];
 
     return {
       id: `${job.batch_id}-C${String(idx + 1).padStart(3, '0')}`,
@@ -457,11 +324,13 @@ function generateFallbackConflicts(
         modelType: modelTypeVal,
         explanation
       },
-      candidateFilename: `cand_${filename}`,
-      candidateThumbUrl: svgUrl,
-      candidateFullUrl: svgUrl,
+      candidateFilename: candFilename,
+      candidateThumbUrl: candSvgUrl,
+      candidateFullUrl: candSvgUrl,
       leftLabel,
       rightLabel,
+      leftBboxes,
+      rightBboxes,
       sourceWidth: 860,
       sourceHeight: 690,
       rightSourceWidth: 860,
@@ -509,6 +378,9 @@ function ConsistencyIntegratedWorkspace() {
   const [newPrompt, setNewPrompt] = useState<string>(DEFAULT_CONSISTENCY_PROMPT);
   const [currentConflictId, setCurrentConflictId] = useState<string>('');
   const [candidateIndex, setCandidateIndex] = useState<number>(0);
+  const [activeQueryId, setActiveQueryId] = useState<string>('');
+  const [conflictMembers, setConflictMembers] = useState<GalleryMember[]>([]);
+  const [candidateDetailAnnotations, setCandidateDetailAnnotations] = useState<FullscreenViewerAnnotation[] | null>(null);
   const [reviewDecision, setReviewDecision] = useState<'pending' | 'confirmed' | 'rejected'>('pending');
   const [reviewNote, setReviewNote] = useState<string>('');
   const [reviews, setReviews] = useState<Record<string, 'pending' | 'confirmed' | 'rejected'>>({});
@@ -672,6 +544,7 @@ function ConsistencyIntegratedWorkspace() {
           setJobConflicts(generateFallbackConflicts(selectedJob!, currentChildDatasets, isLabelme, reviews));
           return;
         }
+        setActiveQueryId(queryId);
 
         const gallery = await request<GalleryPage>(
           '/consistency/gallery',
@@ -688,17 +561,22 @@ function ConsistencyIntegratedWorkspace() {
         if (controller.signal.aborted) return;
 
         const reportItems = report.page?.items || [];
-        const reportBySampleA = new Map<string, any>();
+        const reportBySample = new Map<string, { item: any; isLeft: boolean }>();
         for (const ri of reportItems) {
-          if (ri.sample_a && !reportBySampleA.has(ri.sample_a)) {
-            reportBySampleA.set(ri.sample_a, ri);
+          if (ri.sample_a && !reportBySample.has(ri.sample_a)) {
+            reportBySample.set(ri.sample_a, { item: ri, isLeft: true });
+          }
+          if (ri.sample_b && !reportBySample.has(ri.sample_b)) {
+            reportBySample.set(ri.sample_b, { item: ri, isLeft: false });
           }
         }
 
         const mapped: ConflictCardItem[] = (gallery.items || []).map((it, idx) => {
           const anchor = it.anchor?.sample;
           const sampleAId = anchor?.sample_id || '';
-          const reportItem = reportBySampleA.get(sampleAId) || reportItems[idx];
+          const match = reportBySample.get(sampleAId);
+          const reportItem = match?.item || reportItems[idx];
+          const isAnchorLeft = match ? match.isLeft : true;
 
           const dsId = anchor?.dataset_id || selectedJob!.scopes?.subjects?.dataset_ids?.[0] || '';
           const relPath = anchor?.relative_path || anchor?.sample_id?.split(':').pop() || '';
@@ -709,7 +587,8 @@ function ConsistencyIntegratedWorkspace() {
           const fullImgUrl = dsId && fullSampleAId ? `/api/iad/media/sample/${encodeURIComponent(dsId)}/${encodeURIComponent(fullSampleAId)}/image` : '';
 
           // Candidate sample from report
-          const sampleBId = reportItem?.sample_b || '';
+          const candidateSampleId = isAnchorLeft ? reportItem?.sample_b : reportItem?.sample_a;
+          const sampleBId = candidateSampleId || '';
           const colonIdx = sampleBId.indexOf(':');
           const candDsId = colonIdx > 0 ? sampleBId.slice(0, colonIdx) : dsId;
           const candRelPath = colonIdx > 0 ? sampleBId.slice(colonIdx + 1) : sampleBId;
@@ -740,8 +619,8 @@ function ConsistencyIntegratedWorkspace() {
             rawType = '类别不一致';
           }
 
-          const leftAnn = primaryDiff?.left?.[0];
-          const rightAnn = primaryDiff?.right?.[0];
+          const leftAnn = isAnchorLeft ? primaryDiff?.left?.[0] : primaryDiff?.right?.[0];
+          const rightAnn = isAnchorLeft ? primaryDiff?.right?.[0] : primaryDiff?.left?.[0];
           const leftLabel = leftAnn?.raw_label || (isLabelme ? '14' : 'OK');
           const rightLabel = rightAnn?.raw_label || (isLabelme ? (rawType === '类别不一致' ? '12' : leftLabel) : 'NG');
           const sourceWidth = leftAnn?.source_width || anchor?.width || 860;
@@ -830,6 +709,8 @@ function ConsistencyIntegratedWorkspace() {
 
           return {
             id: it.group_id,
+            groupId: it.group_id,
+            factsState: it.facts_state,
             datasetId: dsId,
             datasetName: dsName,
             type: rawType,
@@ -1092,8 +973,99 @@ function ConsistencyIntegratedWorkspace() {
     [jobConflicts, currentConflictId]
   );
 
+  // Load actual candidates for currentConflict from /consistency/gallery/members
+  useEffect(() => {
+    if (!currentConflict || !activeQueryId || modal !== 'compare' || !currentConflict.groupId) {
+      setConflictMembers([]);
+      return;
+    }
+    const controller = new AbortController();
+    request<GalleryMemberPage>(
+      '/consistency/gallery/members',
+      {
+        query_id: activeQueryId,
+        kind: 'conflicts',
+        group_id: currentConflict.groupId,
+        facts_state: currentConflict.factsState || 'UNKNOWN',
+        page: 1,
+        page_size: 20
+      },
+      undefined,
+      controller.signal
+    )
+      .then(page => {
+        if (!controller.signal.aborted) {
+          setConflictMembers(page.items || []);
+        }
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [currentConflict?.groupId, currentConflict?.factsState, activeQueryId, modal]);
+
+  const selectedMember = conflictMembers[candidateIndex] || conflictMembers[0] || null;
+  const currentCandidate = useMemo(() => {
+    if (selectedMember) {
+      const s = selectedMember.image.sample;
+      const dsId = s.dataset_id;
+      const sampleId = s.sample_id;
+      const relPath = s.relative_path || sampleId.split(':').pop() || '';
+      const fn = relPath.split('/').pop() || relPath;
+      const thumbUrl = `/api/iad/media/sample/${encodeURIComponent(dsId || '')}/${encodeURIComponent(sampleId || '')}/thumbnail`;
+      const fullUrl = `/api/iad/media/sample/${encodeURIComponent(dsId || '')}/${encodeURIComponent(sampleId || '')}/image`;
+      return {
+        sampleId,
+        datasetId: dsId,
+        filename: fn,
+        thumbUrl,
+        fullUrl,
+        width: s.width || currentConflict?.rightSourceWidth || 860,
+        height: s.height || currentConflict?.rightSourceHeight || 690,
+      };
+    }
+    return {
+      sampleId: currentConflict?.candidateId || '',
+      datasetId: currentConflict?.candidateDatasetId || currentConflict?.datasetId || '',
+      filename: currentConflict?.candidateFilename || currentConflict?.filename || '候选图',
+      thumbUrl: currentConflict?.candidateThumbUrl || currentConflict?.url || '',
+      fullUrl: currentConflict?.candidateFullUrl || currentConflict?.fullUrl || '',
+      width: currentConflict?.rightSourceWidth || currentConflict?.sourceWidth || 860,
+      height: currentConflict?.rightSourceHeight || currentConflict?.sourceHeight || 690,
+    };
+  }, [selectedMember, currentConflict]);
+
+  // Fetch candidate annotations from /sample/:sample_id if available
+  useEffect(() => {
+    if (!currentCandidate.sampleId || modal !== 'compare') {
+      setCandidateDetailAnnotations(null);
+      return;
+    }
+    const controller = new AbortController();
+    request<SampleDetail>(`/sample/${encodeURIComponent(currentCandidate.sampleId)}`, undefined, undefined, controller.signal)
+      .then(res => {
+        if (!controller.signal.aborted && res.annotations) {
+          const boxes = res.annotations
+            .filter(a => a.bbox && a.bbox.length >= 4)
+            .map(a => ({
+              annotation_id: a.annotation_id,
+              raw_label: a.raw_label,
+              bbox: a.bbox,
+            }));
+          setCandidateDetailAnnotations(boxes);
+        }
+      })
+      .catch(() => {
+        setCandidateDetailAnnotations(null);
+      });
+    return () => controller.abort();
+  }, [currentCandidate.sampleId, modal]);
+
   const anchorBboxes = useMemo(() => getConflictBboxes(currentConflict, 'anchor'), [currentConflict]);
-  const candidateBboxes = useMemo(() => getConflictBboxes(currentConflict, 'candidate'), [currentConflict]);
+  const candidateBboxes = useMemo(() => {
+    if (candidateDetailAnnotations && candidateDetailAnnotations.length > 0) {
+      return candidateDetailAnnotations;
+    }
+    return getConflictBboxes(currentConflict, 'candidate');
+  }, [candidateDetailAnnotations, currentConflict]);
 
   const handlePrevConflict = useCallback(() => {
     const list = visibleConflicts;
@@ -1833,11 +1805,11 @@ function ConsistencyIntegratedWorkspace() {
                       }
                     }}
                   >
-                    <ComparePhotoStage
+                    <AnnotatedImageStage
                       src={currentConflict.fullUrl || currentConflict.url}
                       alt="主图"
-                      sourceWidth={currentConflict.sourceWidth || 860}
-                      sourceHeight={currentConflict.sourceHeight || 690}
+                      width={currentConflict.sourceWidth}
+                      height={currentConflict.sourceHeight}
                       bboxes={anchorBboxes}
                     />
                   </div>
@@ -1856,65 +1828,89 @@ function ConsistencyIntegratedWorkspace() {
                     title="点击查看大图"
                     onClick={() =>
                       setZoomItem({
-                        id: currentConflict.id + '_candidate',
-                        title: `${currentConflict.candidateFilename || currentConflict.filename} (候选图 ${candidateIndex + 1})`,
-                        imageUrl: currentConflict.candidateFullUrl || currentConflict.candidateThumbUrl || currentConflict.fullUrl || currentConflict.url,
-                        width: currentConflict.rightSourceWidth || currentConflict.sourceWidth || 860,
-                        height: currentConflict.rightSourceHeight || currentConflict.sourceHeight || 690,
+                        id: currentConflict.id + '_candidate_' + candidateIndex,
+                        title: `${currentCandidate.filename} (候选图 ${candidateIndex + 1})`,
+                        imageUrl: currentCandidate.fullUrl,
+                        width: currentCandidate.width,
+                        height: currentCandidate.height,
                         bboxes: candidateBboxes,
                       })
                     }
                     onKeyDown={e => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         setZoomItem({
-                          id: currentConflict.id + '_candidate',
-                          title: `${currentConflict.candidateFilename || currentConflict.filename} (候选图 ${candidateIndex + 1})`,
-                          imageUrl: currentConflict.candidateFullUrl || currentConflict.candidateThumbUrl || currentConflict.fullUrl || currentConflict.url,
-                          width: currentConflict.rightSourceWidth || currentConflict.sourceWidth || 860,
-                          height: currentConflict.rightSourceHeight || currentConflict.sourceHeight || 690,
+                          id: currentConflict.id + '_candidate_' + candidateIndex,
+                          title: `${currentCandidate.filename} (候选图 ${candidateIndex + 1})`,
+                          imageUrl: currentCandidate.fullUrl,
+                          width: currentCandidate.width,
+                          height: currentCandidate.height,
                           bboxes: candidateBboxes,
                         });
                       }
                     }}
                   >
-                    <ComparePhotoStage
-                      src={
-                        currentConflict.candidateFullUrl ||
-                        currentConflict.candidateThumbUrl ||
-                        currentConflict.fullUrl ||
-                        currentConflict.url
-                      }
+                    <AnnotatedImageStage
+                      src={currentCandidate.fullUrl || currentCandidate.thumbUrl}
                       alt="候选图"
-                      sourceWidth={currentConflict.rightSourceWidth || currentConflict.sourceWidth || 860}
-                      sourceHeight={currentConflict.rightSourceHeight || currentConflict.sourceHeight || 690}
+                      width={currentCandidate.width}
+                      height={currentCandidate.height}
                       bboxes={candidateBboxes}
                     />
                   </div>
-                  <div className="dc-photo-filename" title={currentConflict.candidateFilename || currentConflict.filename}>
-                    {currentConflict.candidateFilename || currentConflict.filename}
+                  <div className="dc-photo-filename" title={currentCandidate.filename}>
+                    {currentCandidate.filename}
                   </div>
                 </div>
               </div>
 
               {/* Candidate strip */}
               <div className="dc-candidate-strip" aria-label="切换冲突图像">
-                {Array.from({ length: Math.max(1, currentConflict.memberCount - 1) }, (_, i) => (
-                  <button
-                    key={i}
-                    className="dc-candidate"
-                    type="button"
-                    data-dc="candidate"
-                    data-id={i}
-                    aria-pressed={i === candidateIndex}
-                    title={`查看候选图 ${i + 1}`}
-                    onClick={() => setCandidateIndex(i)}
-                  >
-                    <img
-                      src={currentConflict.candidateThumbUrl || currentConflict.url}
-                      alt={`候选图 ${i + 1}`}
-                    />
-                  </button>
-                ))}
+                {conflictMembers.length > 0 ? (
+                  conflictMembers.map((m, i) => {
+                    const s = m.image.sample;
+                    const thumb = `/api/iad/media/sample/${encodeURIComponent(s.dataset_id || '')}/${encodeURIComponent(s.sample_id || '')}/thumbnail`;
+                    return (
+                      <button
+                        key={m.image.sample.sample_id || i}
+                        className="dc-candidate"
+                        type="button"
+                        data-dc="candidate"
+                        data-id={i}
+                        aria-pressed={i === candidateIndex}
+                        title={`查看候选图 ${i + 1}: ${s.relative_path.split('/').pop()}`}
+                        onClick={() => setCandidateIndex(i)}
+                      >
+                        <img
+                          src={thumb}
+                          alt={`候选图 ${i + 1}`}
+                          onError={(e) => {
+                            if (currentConflict?.candidateThumbUrl) {
+                              e.currentTarget.src = currentConflict.candidateThumbUrl;
+                            }
+                          }}
+                        />
+                      </button>
+                    );
+                  })
+                ) : (
+                  Array.from({ length: Math.max(1, currentConflict.memberCount - 1) }, (_, i) => (
+                    <button
+                      key={i}
+                      className="dc-candidate"
+                      type="button"
+                      data-dc="candidate"
+                      data-id={i}
+                      aria-pressed={i === candidateIndex}
+                      title={`查看候选图 ${i + 1}`}
+                      onClick={() => setCandidateIndex(i)}
+                    >
+                      <img
+                        src={currentConflict.candidateThumbUrl || currentConflict.url}
+                        alt={`候选图 ${i + 1}`}
+                      />
+                    </button>
+                  ))
+                )}
               </div>
 
               {/* 判定结论 */}

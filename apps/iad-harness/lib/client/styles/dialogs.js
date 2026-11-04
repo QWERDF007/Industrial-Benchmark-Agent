@@ -69,7 +69,7 @@ export const dialogsStyles = `
    Unified Backdrops / Overlay Masks
    ========================================================================== */
 .detail-overlay,
-.exp-modal,
+.exp-modal:not(.exp-prompt-overlay),
 .dc-modal-mask,
 #dc-compare-mask.dc-modal-mask,
 #knowledge-page .kb-v45 .detail-overlay,
@@ -248,7 +248,6 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 #dc-new-mask .dc-new-dialog,
 .dc-stats-modal .dc-stats-dialog,
 .exp-modal .exp-source-dialog,
-.exp-prompt-modal .exp-prompt-dialog,
 .exp-dialog:not(.small):not(.exp-direction-dialog),
 .modal-scrim .modal:not(.delete-modal) {
   width: min(var(--iba-dialog-edit-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
@@ -529,6 +528,59 @@ button.exp-ghost:hover,
 #knowledge-page .kb-v45 .modal .status.red { color: #b23c43 !important; }
 #knowledge-page .kb-v45 .modal .status.amber { color: #976013 !important; }
 #knowledge-page .kb-v45 .modal .status.blue { color: #285ed6 !important; }
+
+/* ==========================================================================
+   Prompt Drawers (560px right-hand drawers, 100dvh full height)
+   Direction Exploration Prompt Drawer, Knowledge Prompt Drawer
+   ========================================================================== */
+.exp-prompt-overlay,
+.knowledge-prompt-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 500 !important;
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: flex-end !important;
+  padding: 0 !important;
+  background: var(--iad-modal-backdrop, rgba(22, 33, 51, 0.36)) !important;
+}
+
+.exp-prompt-drawer,
+.knowledge-prompt-drawer {
+  box-sizing: border-box !important;
+  flex: none !important;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: min(560px, 100vw) !important;
+  max-width: 560px !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border-left: 1px solid #d6deeb !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  box-shadow: -15px 0 45px rgba(21, 34, 56, 0.2) !important;
+  background: #ffffff !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  animation: exp-drawer-enter 0.15s ease-out !important;
+}
+
+@keyframes exp-drawer-enter {
+  from {
+    transform: translateX(24px);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
 
 @media (max-width: 760px) {
   .detail-overlay,

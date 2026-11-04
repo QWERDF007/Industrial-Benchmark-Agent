@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export interface FullscreenViewerAnnotation {
   annotation_id?: string;
@@ -157,12 +158,12 @@ export function FullscreenViewer({
   const bboxes = item.bboxes || [];
   const filename = item.title.split("/").pop() || item.title;
 
-  return (
+  const content = (
     <div id="full-overlay" className="full-overlay" role="presentation">
       <section className="full-dialog" role="dialog" aria-modal="true" aria-label="原图检视器">
         {/* Dedicated Top Toolbar Header */}
         <header className="full-toolbar" role="toolbar" aria-label="图像查看工具">
-          <div className="full-file" id="full-file-name" title={item.title}>
+          <div className="full-file" id="full-file-name" title={item.title} style={{ color: "#f4f7fd" }}>
             {filename}
           </div>
           <div className="full-actions">
@@ -181,11 +182,12 @@ export function FullscreenViewer({
             </button>
 
             {/* 2. 缩放比例下拉列表 */}
-            <span className="zoom-wrap">
+            <span className="zoom-wrap" style={{ background: "rgba(255, 255, 255, 0.12)", border: "1px solid rgba(255, 255, 255, 0.22)" }}>
               <select
                 id="zoom"
                 title="缩放比例"
                 aria-label="缩放比例"
+                style={{ color: "#f4f7fd", background: "transparent" }}
                 value={
                   [0.5, 1, 1.5, 2].some(v => Math.abs(zoomLevel - v) < 0.001)
                     ? String(zoomLevel)
@@ -390,4 +392,9 @@ export function FullscreenViewer({
       </section>
     </div>
   );
+
+  if (typeof document !== "undefined") {
+    return createPortal(content, document.body);
+  }
+  return content;
 }
