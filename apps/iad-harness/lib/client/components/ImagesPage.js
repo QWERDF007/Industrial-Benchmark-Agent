@@ -44,7 +44,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
     const [annotation, setAnnotation] = useState("all");
     const [category, setCategory] = useState("all");
     const [page, setPage] = useState(1);
-    const pageSize = 24;
+    const pageSize = 12;
     // Selected datasets objects
     const activeDatasets = useMemo(() => {
         return parentChildren.filter(d => selectedChildIds.has(d.dataset_id));
@@ -277,7 +277,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
                                 setPage(p => Math.min(pages, p + 1));
                                 document.getElementById("grid")?.scrollIntoView({ block: "start", behavior: "smooth" });
                             }, children: "\u4E0B\u4E00\u9875" }), _jsxs("span", { className: "pagination-page", children: [page, " / ", pages, " \u9875"] }), _jsxs("span", { className: "pagination-total", children: ["\u5171 ", total, " \u5F20\u56FE\u50CF"] })] }) })), typeof document !== "undefined" &&
-                createPortal(_jsxs(_Fragment, { children: [_jsx("div", { id: "overlay", className: `detail-overlay ${detailModalOpen && !fullscreen ? "" : "hidden"}`, role: "presentation", onClick: e => {
+                createPortal(_jsxs(_Fragment, { children: [_jsx("div", { id: "overlay", className: `detail-overlay ${detailModalOpen && !fullscreen ? "show" : "hidden"}`, role: "presentation", onClick: e => {
                                 if (e.target === e.currentTarget)
                                     closeViewer();
                             }, children: _jsxs("section", { className: "detail-dialog", role: "dialog", "aria-modal": "true", "aria-labelledby": "detail-title", children: [_jsxs("header", { className: "detail-header", children: [_jsx("h2", { className: "detail-title", id: "detail-title", children: "\u56FE\u50CF\u8BE6\u60C5" }), _jsx("button", { className: "detail-close", type: "button", id: "close", title: "\u5173\u95ED\u56FE\u50CF\u8BE6\u60C5", "aria-label": "\u5173\u95ED\u56FE\u50CF\u8BE6\u60C5", onClick: closeViewer, children: "\u00D7" })] }), _jsx("div", { className: "detail-scroll", children: activeSample && (_jsxs(_Fragment, { children: [_jsxs("button", { id: "detail-preview", type: "button", className: "detail-preview", "aria-label": "\u6253\u5F00\u5927\u56FE\u68C0\u89C6\u5668", title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE\u4E0E\u6807\u6CE8", onClick: openFullscreen, children: [_jsxs("span", { className: "preview-image-frame", style: { aspectRatio: `${imgW} / ${imgH}`, height: "100%", maxWidth: "100%", position: "relative" }, children: [_jsx("img", { id: "preview-image", src: mediaUrl(activeSample, "image"), alt: activeSample.relative_path.split("/").pop() }), _jsx("span", { className: "preview-overlay", id: "preview-overlay", children: bboxes.map((item, idx) => {

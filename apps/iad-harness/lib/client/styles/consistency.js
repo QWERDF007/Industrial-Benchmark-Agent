@@ -880,30 +880,28 @@ button.dc-vchart-zero,
 .dc-review-panel h3 {
   font-size: 14px !important;
   font-weight: 650 !important;
-  color: #22364c !important;
-  margin: 0 0 9px !important;
+  color: var(--iba-unified-ink, #172338) !important;
+  margin: 0 0 8px !important;
 }
 .dc-fact-panel .dc-verdict-value,
 .dc-conclusion-panel .dc-verdict-value {
   display: block !important;
-  color: #294b82 !important;
-  font-size: 14px !important;
-  font-weight: 650 !important;
-  line-height: 1.55 !important;
+  color: var(--iba-unified-ink, #172338) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  line-height: 1.6 !important;
 }
 .dc-fact-panel .dc-verdict-description,
-.dc-conclusion-panel .dc-verdict-description {
+.dc-conclusion-panel .dc-verdict-description,
+.dc-model-panel p,
+.dc-fact-panel p,
+.dc-conclusion-panel p {
   display: block !important;
-  color: #43546a !important;
+  color: var(--iba-unified-ink, #172338) !important;
   font-size: 13px !important;
+  font-weight: 400 !important;
   line-height: 1.7 !important;
   margin: 5px 0 0 !important;
-}
-.dc-model-panel p {
-  color: #43546a !important;
-  font-size: 13px !important;
-  line-height: 1.7 !important;
-  margin: 0 !important;
 }
 
 /* V30 Filter Bar layout */
@@ -955,7 +953,55 @@ button.dc-vchart-zero,
   box-sizing: border-box !important;
 }
 
-#dc-compare-mask .dc-candidate-strip, .dc-conflict-dialog .dc-candidate-strip { margin: 12px 0 8px !important; }
+#dc-compare-mask .dc-candidate-strip,
+.dc-conflict-dialog .dc-candidate-strip,
+.dc-candidate-strip {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
+  min-height: 86px !important;
+  height: 86px !important;
+  gap: 9px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 6px 2px 8px !important;
+  margin: 10px 0 8px !important;
+  box-sizing: border-box !important;
+  scrollbar-width: thin !important;
+}
+
+#dc-compare-mask .dc-candidate,
+.dc-conflict-dialog .dc-candidate,
+.dc-candidate {
+  flex: 0 0 94px !important;
+  width: 94px !important;
+  height: 70px !important;
+  min-width: 94px !important;
+  min-height: 70px !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  border: 2px solid transparent !important;
+  background: #f0f3f7 !important;
+  padding: 0 !important;
+  border-radius: 5px !important;
+  overflow: hidden !important;
+  cursor: pointer !important;
+}
+#dc-compare-mask .dc-candidate[aria-pressed="true"],
+.dc-candidate[aria-pressed="true"] {
+  border-color: var(--blue, #285ed6) !important;
+}
+#dc-compare-mask .dc-candidate:hover,
+.dc-candidate:hover {
+  border-color: #91aee8 !important;
+}
+#dc-compare-mask .dc-candidate img,
+.dc-candidate img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
 
 #dc-new-mask .dc-prompt-editor {
   display: flex !important;

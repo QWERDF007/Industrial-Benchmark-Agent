@@ -11777,11 +11777,7 @@ var __IadClientBundle__ = (() => {
           /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "panelbar", children: [
             /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("h2", { id: "jobs-heading", children: [
               "\u6316\u6398\u4F5C\u4E1A",
-              /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("span", { className: `count ${filteredJobs.length === 0 ? "hide" : ""}`, id: "jobs-count", children: [
-                "\u5171 ",
-                filteredJobs.length,
-                " \u6761"
-              ] })
+              /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { "aria-hidden": "true", className: "count hide", id: "jobs-count" })
             ] }) }),
             /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "filterset", children: [
               /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(
@@ -11919,7 +11915,7 @@ var __IadClientBundle__ = (() => {
             /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("h2", { id: "knowledge-heading", children: [
                 "\u77E5\u8BC6\u6761\u76EE",
-                /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: `count ${!selectedJob?.knowledgeVersionId ? "hide" : ""}`, id: "knowledge-count", children: selectedJob?.knowledgeVersionId ? `\u5171 ${currentJobItems.length} \u6761` : "" })
+                /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { "aria-hidden": "true", className: "count hide", id: "knowledge-count" })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { className: "scope-name hide", id: "knowledge-job-name" })
             ] }),
@@ -11989,6 +11985,7 @@ var __IadClientBundle__ = (() => {
           ] }) : /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "knowledge-list", children: [
             /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "knowledge-head", children: [
               /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { children: "\u77E5\u8BC6\u6761\u76EE" }),
+              /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { children: "\u63CF\u8FF0" }),
               /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { children: "\u652F\u6301/\u53CD\u5BF9" }),
               /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { children: "\u64CD\u4F5C" })
             ] }),
@@ -12008,10 +12005,8 @@ var __IadClientBundle__ = (() => {
                   }
                 },
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("span", { children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("strong", { className: "row-title", children: item.name }),
-                    /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "row-desc", title: item.summary, children: item.summary })
-                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "row-title knowledge-entry-name", children: item.name }),
+                  /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "row-desc knowledge-entry-description", title: item.summary, children: item.summary }),
                   /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)(
                     "span",
                     {
@@ -14336,10 +14331,40 @@ var __IadClientBundle__ = (() => {
 .kb-v45 .knowledge-head,
 .kb-v45 .knowledge-row {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 134px 94px !important;
+  grid-template-columns: minmax(200px, 28%) minmax(290px, 1fr) 112px 90px !important;
   align-items: center;
   gap: 14px !important;
-  min-width: 565px;
+  min-width: 770px !important;
+}
+
+.kb-v45 .knowledge-entry-name,
+.kb-v45 .knowledge-entry-description {
+  display: block;
+  font-weight: 400 !important;
+  color: var(--iba-v50-ink, #172338) !important;
+  line-height: 1.55;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kb-v45 .knowledge-row .knowledge-entry-description {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  max-height: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.kb-v45 .jobtitle {
+  font-weight: 400 !important;
+  color: var(--iba-v50-ink, #172338) !important;
+}
+
+.kb-v45 .count.hide,
+#jobs-count.hide,
+#knowledge-count.hide {
+  display: none !important;
 }
 
 .kb-v45 .knowledge-head {
@@ -14469,7 +14494,7 @@ var __IadClientBundle__ = (() => {
 }
 
 .overlay:not(.show),
-.detail-overlay:not(.show),
+#knowledge-page .detail-overlay:not(.show),
 .confirm-overlay:not(.show),
 .knowledge-prompt-overlay:not(.show),
 #create-overlay:not(.show),
@@ -16878,30 +16903,28 @@ button.dc-vchart-zero,
 .dc-review-panel h3 {
   font-size: 14px !important;
   font-weight: 650 !important;
-  color: #22364c !important;
-  margin: 0 0 9px !important;
+  color: var(--iba-unified-ink, #172338) !important;
+  margin: 0 0 8px !important;
 }
 .dc-fact-panel .dc-verdict-value,
 .dc-conclusion-panel .dc-verdict-value {
   display: block !important;
-  color: #294b82 !important;
-  font-size: 14px !important;
-  font-weight: 650 !important;
-  line-height: 1.55 !important;
+  color: var(--iba-unified-ink, #172338) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  line-height: 1.6 !important;
 }
 .dc-fact-panel .dc-verdict-description,
-.dc-conclusion-panel .dc-verdict-description {
+.dc-conclusion-panel .dc-verdict-description,
+.dc-model-panel p,
+.dc-fact-panel p,
+.dc-conclusion-panel p {
   display: block !important;
-  color: #43546a !important;
+  color: var(--iba-unified-ink, #172338) !important;
   font-size: 13px !important;
+  font-weight: 400 !important;
   line-height: 1.7 !important;
   margin: 5px 0 0 !important;
-}
-.dc-model-panel p {
-  color: #43546a !important;
-  font-size: 13px !important;
-  line-height: 1.7 !important;
-  margin: 0 !important;
 }
 
 /* V30 Filter Bar layout */
@@ -16953,7 +16976,55 @@ button.dc-vchart-zero,
   box-sizing: border-box !important;
 }
 
-#dc-compare-mask .dc-candidate-strip, .dc-conflict-dialog .dc-candidate-strip { margin: 12px 0 8px !important; }
+#dc-compare-mask .dc-candidate-strip,
+.dc-conflict-dialog .dc-candidate-strip,
+.dc-candidate-strip {
+  display: flex !important;
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
+  min-height: 86px !important;
+  height: 86px !important;
+  gap: 9px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 6px 2px 8px !important;
+  margin: 10px 0 8px !important;
+  box-sizing: border-box !important;
+  scrollbar-width: thin !important;
+}
+
+#dc-compare-mask .dc-candidate,
+.dc-conflict-dialog .dc-candidate,
+.dc-candidate {
+  flex: 0 0 94px !important;
+  width: 94px !important;
+  height: 70px !important;
+  min-width: 94px !important;
+  min-height: 70px !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  border: 2px solid transparent !important;
+  background: #f0f3f7 !important;
+  padding: 0 !important;
+  border-radius: 5px !important;
+  overflow: hidden !important;
+  cursor: pointer !important;
+}
+#dc-compare-mask .dc-candidate[aria-pressed="true"],
+.dc-candidate[aria-pressed="true"] {
+  border-color: var(--blue, #285ed6) !important;
+}
+#dc-compare-mask .dc-candidate:hover,
+.dc-candidate:hover {
+  border-color: #91aee8 !important;
+}
+#dc-compare-mask .dc-candidate img,
+.dc-candidate img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
 
 #dc-new-mask .dc-prompt-editor {
   display: flex !important;
@@ -17037,20 +17108,20 @@ button.dc-vchart-zero,
   // src/client/styles/images.ts
   var imagesStyles = `
 .main{width:100%;min-width:0;padding:0}
-.heading{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:24px}
-.crumb{color:#8190a6;font-size:11px;margin:0 0 4px}
-.heading h1{font-size:24px;line-height:1.3;margin:0;font-weight:670;letter-spacing:-.5px}
+.heading{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:12px}
+.crumb{color:#8190a6;font-size:11px;margin:0 0 2px}
+.heading h1{font-size:20px;line-height:1.25;margin:0;font-weight:670;letter-spacing:-.4px}
 .heading-side{font-size:12px;color:#8190a6}
 
-.dataset-panel{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:20px}
-.field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.dataset-panel{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
 .field>label,.filter-item>label{font-size:12px;color:#586a84}
 .dataset-panel .parent{width:265px}
 .dataset-panel .child{width:410px}
 .dataset-panel select{width:100%;height:38px}
 
-.filter-bar{background:var(--surface,#fff);border:1px solid var(--border,#dbe2eb);border-radius:7px;padding:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:16px}
-.filter-item{display:flex;flex-direction:column;gap:6px;min-width:0}
+.filter-bar{background:var(--surface,#fff);border:1px solid var(--border,#dbe2eb);border-radius:7px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
+.filter-item{display:flex;flex-direction:column;gap:5px;min-width:0}
 .filter-item input,.filter-item select{height:38px}
 .filter-search{flex:1 1 240px;min-width:180px}
 .filter-search input{width:100%}
@@ -17060,17 +17131,17 @@ button.dc-vchart-zero,
 .filter-sort{width:143px}
 .btn-reset{border:1px solid var(--border,#dbe2eb);color:#55667e;background:#fff;height:38px;padding:0 14px;border-radius:5px;white-space:nowrap}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px 14px}
-.card{border:1px solid #e5eaf2;border-radius:7px;background:#fff;padding:0;text-align:left;overflow:hidden;box-shadow:0 1px 2px rgba(30,48,79,.02);color:inherit;min-width:0;transition:box-shadow .15s ease,border-color .15s ease,transform .12s ease;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px 12px}
+.card{border:1px solid #e5eaf2;border-radius:6px;background:#fff;padding:0;text-align:left;overflow:hidden;box-shadow:0 1px 2px rgba(30,48,79,.02);color:inherit;min-width:0;transition:box-shadow .15s ease,border-color .15s ease,transform .12s ease;cursor:pointer}
 .card:hover{border-color:#7b9fe8 !important;box-shadow:0 4px 14px rgba(36,88,213,0.14) !important;transform:translateY(-1px)}
-.thumb{width:100%;aspect-ratio:4/3;background:#eef2f7;display:flex;justify-content:center;align-items:center;overflow:hidden;border-bottom:1px solid #edf0f5}
+.thumb{width:100%;aspect-ratio:16/10;max-height:115px;background:#eef2f7;display:flex;justify-content:center;align-items:center;overflow:hidden;border-bottom:1px solid #edf0f5}
 .thumb img{display:block;width:100%;height:100%;object-fit:contain}
-.card-name{font-size:12px;color:#23324c;padding:10px 10px 12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.empty{min-height:250px;border:1px dashed var(--border,#dbe2eb);border-radius:8px;display:grid;place-items:center;color:#738398;background:#fff}
+.card-name{font-size:12px;color:#23324c;padding:6px 8px 7px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.empty{min-height:200px;border:1px dashed var(--border,#dbe2eb);border-radius:8px;display:grid;place-items:center;color:#738398;background:#fff}
 
-.pagination{display:flex;align-items:center;justify-content:flex-end;margin-top:22px;padding:12px 0 4px;color:#687990;font-size:12px}
-.pagination-controls{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:9px;margin-left:auto}
-.pagination button{height:34px;min-width:34px;padding:0 9px;border:1px solid var(--border,#dbe2eb);border-radius:5px;background:#fff;color:#53637b;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
+.pagination{display:flex;align-items:center;justify-content:flex-end;margin-top:10px;padding:4px 0 2px;color:#687990;font-size:12px}
+.pagination-controls{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-left:auto}
+.pagination button{height:32px;min-width:32px;padding:0 8px;border:1px solid var(--border,#dbe2eb);border-radius:5px;background:#fff;color:#53637b;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
 .pagination button:disabled{opacity:.4;cursor:not-allowed}
 :is(.iad-workbench, [data-page="industrial-images"]) .pagination button:not(.active):not(:disabled):hover{background:#eef4ff !important;border-color:#8faef0 !important;color:#2458d5 !important;cursor:pointer}
 :is(.iad-workbench, [data-page="industrial-images"]) .pagination button.active{color:#fff !important;background:var(--blue,#285ed6) !important;border-color:var(--blue,#285ed6) !important}
@@ -17080,7 +17151,8 @@ button.dc-vchart-zero,
 @media(max-width:680px){.pagination-controls{gap:6px}.pagination-total{margin-left:6px}}
 
 .full-overlay {position:fixed;inset:0;z-index:10010;display:flex;align-items:stretch;justify-content:stretch;padding:0;background:#1c2633}
-.detail-overlay.hidden, .full-overlay.hidden {display:none}
+.detail-overlay.hidden, .full-overlay.hidden {display:none !important}
+.detail-overlay.show {display:flex !important}
 .detail-preview{width:100%;height:355px;display:flex;justify-content:center;align-items:center;border:1px solid var(--border2,#e6ebf1);border-radius:6px;background:#f2f5f9;cursor:zoom-in;padding:0;position:relative;overflow:hidden}
 .detail-preview:hover{border-color:#95afed}
 .detail-preview:focus-visible{outline:2px solid var(--blue,#285ed6)}
@@ -17235,6 +17307,31 @@ button.dc-vchart-zero,
 }
 #reset{margin-left:0;align-self:flex-end}
 #refresh{align-self:flex-end}
+
+:is(.iad-workbench, body) [data-page="industrial-images"],
+.iad-workbench[data-page="industrial-images"] {
+  padding: 16px 28px 18px !important;
+  overflow-y: auto !important;
+}
+.iad-workbench[data-page="industrial-images"] .heading {
+  margin-bottom: 10px !important;
+}
+.iad-workbench[data-page="industrial-images"] .dataset-panel {
+  margin-bottom: 10px !important;
+}
+.iad-workbench[data-page="industrial-images"] .filter-bar {
+  margin-bottom: 10px !important;
+  padding: 8px 12px !important;
+}
+.iad-workbench[data-page="industrial-images"] .grid {
+  gap: 8px 10px !important;
+}
+.iad-workbench[data-page="industrial-images"] .thumb {
+  max-height: 110px !important;
+}
+.iad-workbench[data-page="industrial-images"] .pagination {
+  margin-top: 8px !important;
+}
 `;
 
   // src/client/styles/dialogs.ts
@@ -17420,7 +17517,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 }
 #dc-compare-mask .dc-compare-photo,
 .dc-conflict-dialog .dc-compare-photo {
-  height: clamp(240px, 39dvh, 400px) !important;
+  height: clamp(210px, 28dvh, 270px) !important;
 }
 .detail-preview {
   height: clamp(310px, 46dvh, 500px) !important;
@@ -18195,7 +18292,7 @@ button.exp-ghost:hover,
     const [annotation, setAnnotation] = (0, import_react45.useState)("all");
     const [category, setCategory] = (0, import_react45.useState)("all");
     const [page, setPage] = (0, import_react45.useState)(1);
-    const pageSize2 = 24;
+    const pageSize2 = 12;
     const activeDatasets = (0, import_react45.useMemo)(() => {
       return parentChildren.filter((d) => selectedChildIds.has(d.dataset_id));
     }, [parentChildren, selectedChildIds]);
@@ -18566,7 +18663,7 @@ button.exp-ghost:hover,
             "div",
             {
               id: "overlay",
-              className: `detail-overlay ${detailModalOpen && !fullscreen ? "" : "hidden"}`,
+              className: `detail-overlay ${detailModalOpen && !fullscreen ? "show" : "hidden"}`,
               role: "presentation",
               onClick: (e) => {
                 if (e.target === e.currentTarget) closeViewer();
@@ -21930,7 +22027,7 @@ button.exp-ghost:hover,
                   )) }),
                   /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "dc-fact-panel", "aria-label": "\u5224\u5B9A\u7ED3\u8BBA", children: [
                     /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h3", { children: "\u5224\u5B9A\u7ED3\u8BBA" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("strong", { className: "dc-verdict-value", children: currentConflict.type }),
+                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-verdict-value", children: currentConflict.type }),
                     /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("p", { className: "dc-verdict-description", children: buildFactDescription(currentConflict) })
                   ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "dc-model-panel", "aria-label": "\u6A21\u578B\u5206\u6790", children: [
@@ -21939,7 +22036,7 @@ button.exp-ghost:hover,
                   ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "dc-conclusion-panel", "aria-label": "\u6A21\u578B\u7ED3\u8BBA", children: [
                     /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h3", { children: "\u6A21\u578B\u7ED3\u8BBA" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("strong", { className: "dc-verdict-value", children: currentConflict.model.modelType }),
+                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "dc-verdict-value", children: currentConflict.model.modelType }),
                     /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("p", { className: "dc-verdict-description", children: buildModelConclusion(currentConflict) })
                   ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "dc-review-panel", "aria-label": "\u4EBA\u5DE5\u590D\u6838", children: [

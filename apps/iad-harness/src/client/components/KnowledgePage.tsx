@@ -701,9 +701,7 @@ export function KnowledgePage({
               <div>
                 <h2 id="jobs-heading">
                   挖掘作业
-                  <span className={`count ${filteredJobs.length === 0 ? "hide" : ""}`} id="jobs-count">
-                    共 {filteredJobs.length} 条
-                  </span>
+                  <span aria-hidden="true" className="count hide" id="jobs-count"></span>
                 </h2>
               </div>
               <div className="filterset">
@@ -844,9 +842,7 @@ export function KnowledgePage({
               <div>
                 <h2 id="knowledge-heading">
                   知识条目
-                  <span className={`count ${!selectedJob?.knowledgeVersionId ? "hide" : ""}`} id="knowledge-count">
-                    {selectedJob?.knowledgeVersionId ? `共 ${currentJobItems.length} 条` : ""}
-                  </span>
+                  <span aria-hidden="true" className="count hide" id="knowledge-count"></span>
                 </h2>
                 <div className="scope-name hide" id="knowledge-job-name"></div>
               </div>
@@ -928,6 +924,7 @@ export function KnowledgePage({
                 <div className="knowledge-list">
                   <div className="knowledge-head">
                     <span>知识条目</span>
+                    <span>描述</span>
                     <span>支持/反对</span>
                     <span>操作</span>
                   </div>
@@ -948,11 +945,9 @@ export function KnowledgePage({
                           }
                         }}
                       >
-                        <span>
-                          <strong className="row-title">{item.name}</strong>
-                          <span className="row-desc" title={item.summary}>
-                            {item.summary}
-                          </span>
+                        <span className="row-title knowledge-entry-name">{item.name}</span>
+                        <span className="row-desc knowledge-entry-description" title={item.summary}>
+                          {item.summary}
                         </span>
                         <span
                           className="row-count col-evidence-count"

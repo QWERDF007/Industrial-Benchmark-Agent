@@ -542,10 +542,40 @@ export const knowledgeStyles = `
 .kb-v45 .knowledge-head,
 .kb-v45 .knowledge-row {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) 134px 94px !important;
+  grid-template-columns: minmax(200px, 28%) minmax(290px, 1fr) 112px 90px !important;
   align-items: center;
   gap: 14px !important;
-  min-width: 565px;
+  min-width: 770px !important;
+}
+
+.kb-v45 .knowledge-entry-name,
+.kb-v45 .knowledge-entry-description {
+  display: block;
+  font-weight: 400 !important;
+  color: var(--iba-v50-ink, #172338) !important;
+  line-height: 1.55;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kb-v45 .knowledge-row .knowledge-entry-description {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  max-height: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.kb-v45 .jobtitle {
+  font-weight: 400 !important;
+  color: var(--iba-v50-ink, #172338) !important;
+}
+
+.kb-v45 .count.hide,
+#jobs-count.hide,
+#knowledge-count.hide {
+  display: none !important;
 }
 
 .kb-v45 .knowledge-head {
@@ -675,7 +705,7 @@ export const knowledgeStyles = `
 }
 
 .overlay:not(.show),
-.detail-overlay:not(.show),
+#knowledge-page .detail-overlay:not(.show),
 .confirm-overlay:not(.show),
 .knowledge-prompt-overlay:not(.show),
 #create-overlay:not(.show),

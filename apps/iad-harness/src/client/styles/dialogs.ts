@@ -186,7 +186,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 }
 #dc-compare-mask .dc-compare-photo,
 .dc-conflict-dialog .dc-compare-photo {
-  height: clamp(240px, 39dvh, 400px) !important;
+  height: clamp(210px, 28dvh, 270px) !important;
 }
 .detail-preview {
   height: clamp(310px, 46dvh, 500px) !important;

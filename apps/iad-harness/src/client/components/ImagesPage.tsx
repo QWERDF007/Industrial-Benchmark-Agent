@@ -56,7 +56,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
   const [annotation, setAnnotation] = useState("all");
   const [category, setCategory] = useState("all");
   const [page, setPage] = useState(1);
-  const pageSize = 24;
+  const pageSize = 12;
 
   // Selected datasets objects
   const activeDatasets = useMemo(() => {
@@ -485,7 +485,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
             {/* Stage 1: Detail Modal */}
             <div
               id="overlay"
-              className={`detail-overlay ${detailModalOpen && !fullscreen ? "" : "hidden"}`}
+              className={`detail-overlay ${detailModalOpen && !fullscreen ? "show" : "hidden"}`}
               role="presentation"
               onClick={e => {
                 if (e.target === e.currentTarget) closeViewer();

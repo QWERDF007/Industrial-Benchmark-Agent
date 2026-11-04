@@ -112,6 +112,24 @@ async function run() {
     const imgSearchVal = await imgSearch.getAttribute("value");
     chk(imgSearchVal === "", "图像浏览清除筛选后搜索框重置为空");
 
+    // Test Image Card click opens detail modal
+    const imgCards = await driver.findElements(By.css(".grid .card"));
+    chk(imgCards.length > 0, "图像浏览成功展示图片卡片");
+    await driver.executeScript("arguments[0].click();", imgCards[0]);
+    await driver.sleep(1200);
+    const detailOverlay = await driver.findElement(By.css(".detail-overlay"));
+    const isOverlayShown = await detailOverlay.isDisplayed();
+    chk(isOverlayShown, "点击图像卡片成功打开第一阶段图像详情弹窗");
+
+    const imgDetailTitle = await driver.findElement(By.css(".detail-dialog h2, .iad-detail-dialog h2"));
+    const detailTitleText = await imgDetailTitle.getText();
+    chk(detailTitleText.length > 0, `图像详情弹窗展示图片名称 (标题: ${detailTitleText})`);
+
+    // Close detail modal
+    const closeDetailBtn = await driver.findElement(By.css("#close, button.detail-close"));
+    await closeDetailBtn.click();
+    await driver.sleep(600);
+
     const scrImages = await driver.takeScreenshot();
     fs.writeFileSync(path.join(ARTIFACT_DIR, "v51_live_01_images_browse.png"), Buffer.from(scrImages, "base64"));
 
@@ -223,11 +241,33 @@ async function run() {
     const kbJobSearchVal = await kbJobSearch.getAttribute("value");
     chk(kbJobSearchVal === "", "知识挖掘作业清除筛选后搜索框重置为空");
 
+    // Verify headings do NOT show "共 x 条"
+    const jobsCountEl = await driver.findElement(By.id("jobs-count"));
+    const isJobsCountDisplayed = await jobsCountEl.isDisplayed();
+    chk(!isJobsCountDisplayed, "挖掘作业标题不显示 '共 x 条' 计数徽标");
+
+    const kbCountEl = await driver.findElement(By.id("knowledge-count"));
+    const isKbCountDisplayed = await kbCountEl.isDisplayed();
+    chk(!isKbCountDisplayed, "知识条目标题不显示 '共 x 条' 计数徽标");
+
     // Select completed job row to reveal lower panel items
     const jobRows = await driver.findElements(By.css("#job-rows tr"));
     if (jobRows.length > 0) {
       await driver.executeScript("arguments[0].click();", jobRows[0]);
       await driver.sleep(1000);
+    }
+
+    // Verify knowledge-head 4 columns (including 描述)
+    const kbHeads = await driver.findElements(By.css(".knowledge-head > span"));
+    chk(kbHeads.length === 4, `知识条目表头具有独立的4列 (实际: ${kbHeads.length}列)`);
+    const kbHeadTexts = await Promise.all(kbHeads.map(h => h.getText()));
+    chk(kbHeadTexts.includes("描述"), `知识条目表头包含'描述'列 (表头: ${kbHeadTexts.join(" | ")})`);
+
+    // Verify row title font weight (400, not bold)
+    const kbRowTitles = await driver.findElements(By.css(".knowledge-entry-name"));
+    if (kbRowTitles.length > 0) {
+      const weight = await kbRowTitles[0].getCssValue("font-weight");
+      chk(weight === "400" || weight === "normal", `知识条目文本正常字重未加粗 (实际: ${weight})`);
     }
 
     const kbItemSearch = await driver.wait(until.elementLocated(By.id("knowledge-search")), 5000);
@@ -301,6 +341,50 @@ async function run() {
     const dcSearchVal = await dcFilenameSearch.getAttribute("value");
     const restoredCards = await driver.findElements(By.css(".dc-card"));
     chk(dcSearchVal === "" && restoredCards.length > 0, "数据一致性清除筛选后恢复全部冲突卡片");
+
+    // Click first conflict card to test conflict comparison modal
+    await driver.executeScript("arguments[0].click();", restoredCards[0]);
+    await driver.sleep(1500);
+
+    const compareMask = await driver.wait(until.elementLocated(By.id("dc-compare-mask")), 5000);
+    chk(await compareMask.isDisplayed(), "点击标注冲突卡片成功打开标注冲突对比弹窗");
+
+    // Candidate strip must be fully visible (not collapsed to 15px)
+    const candStrip = await driver.findElement(By.css(".dc-candidate-strip"));
+    const candStripRect = await candStrip.getRect();
+    chk(candStripRect.height >= 75, `标注冲突对比弹窗缩略图条完整可见未坍塌 (实际高度: ${candStripRect.height}px)`);
+
+    const candBtns = await candStrip.findElements(By.css(".dc-candidate"));
+    chk(candBtns.length >= 1, "标注冲突对比弹窗缩略图条中存在候选图");
+    const candRect = await candBtns[0].getRect();
+    chk(candRect.height >= 65 && candRect.width >= 85, `候选图缩略图尺寸完整且清晰可见 (实际: ${candRect.width}x${candRect.height}px)`);
+
+    // Verify 判定结论、模型分析、模型结论 除了标题，不要加粗、带颜色
+    const factVerdict = await driver.findElement(By.css(".dc-fact-panel .dc-verdict-value"));
+    const factWeight = await factVerdict.getCssValue("font-weight");
+    const factColor = await factVerdict.getCssValue("color");
+    chk(factWeight === "400" || factWeight === "normal", `判定结论数值不加粗 (实际字重: ${factWeight})`);
+    chk(factColor === "rgb(23, 35, 56)", `判定结论数值为普通标准文本色 (实际: ${factColor})`);
+
+    const modelAnalysisP = await driver.findElement(By.css(".dc-model-panel p"));
+    const modelAnalysisWeight = await modelAnalysisP.getCssValue("font-weight");
+    const modelAnalysisColor = await modelAnalysisP.getCssValue("color");
+    chk(modelAnalysisWeight === "400" || modelAnalysisWeight === "normal", `模型分析文本不加粗 (实际字重: ${modelAnalysisWeight})`);
+    chk(modelAnalysisColor === "rgb(23, 35, 56)", `模型分析文本为普通标准文本色 (实际: ${modelAnalysisColor})`);
+
+    const conclusionVerdict = await driver.findElement(By.css(".dc-conclusion-panel .dc-verdict-value"));
+    const conclusionWeight = await conclusionVerdict.getCssValue("font-weight");
+    const conclusionColor = await conclusionVerdict.getCssValue("color");
+    chk(conclusionWeight === "400" || conclusionWeight === "normal", `模型结论数值不加粗 (实际字重: ${conclusionWeight})`);
+    chk(conclusionColor === "rgb(23, 35, 56)", `模型结论数值为普通标准文本色 (实际: ${conclusionColor})`);
+
+    const scrModal = await driver.takeScreenshot();
+    fs.writeFileSync(path.join(ARTIFACT_DIR, "v51_live_06_conflict_dialog.png"), Buffer.from(scrModal, "base64"));
+
+    // Close conflict modal
+    const closeCompareBtn = await driver.findElement(By.css("#dc-compare-mask .dc-dialog-head-actions button[aria-label='关闭'], #dc-compare-mask .dc-dialog-footer button.dc-minor"));
+    await closeCompareBtn.click();
+    await driver.sleep(600);
 
     const scrDc = await driver.takeScreenshot();
     fs.writeFileSync(path.join(ARTIFACT_DIR, "v51_live_04_consistency.png"), Buffer.from(scrDc, "base64"));

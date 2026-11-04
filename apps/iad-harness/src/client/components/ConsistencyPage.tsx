@@ -1920,7 +1920,7 @@ function ConsistencyIntegratedWorkspace() {
               {/* 判定结论 */}
               <section className="dc-fact-panel" aria-label="判定结论">
                 <h3>判定结论</h3>
-                <strong className="dc-verdict-value">{currentConflict.type}</strong>
+                <span className="dc-verdict-value">{currentConflict.type}</span>
                 <p className="dc-verdict-description">{buildFactDescription(currentConflict)}</p>
               </section>
 
@@ -1933,7 +1933,7 @@ function ConsistencyIntegratedWorkspace() {
               {/* 模型结论 */}
               <section className="dc-conclusion-panel" aria-label="模型结论">
                 <h3>模型结论</h3>
-                <strong className="dc-verdict-value">{currentConflict.model.modelType}</strong>
+                <span className="dc-verdict-value">{currentConflict.model.modelType}</span>
                 <p className="dc-verdict-description">{buildModelConclusion(currentConflict)}</p>
               </section>
 
