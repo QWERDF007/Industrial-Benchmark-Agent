@@ -21,6 +21,9 @@ def test_audit_transmits_short_references_and_preserves_frozen_evidence_ownershi
             return original.send(request)
         requests.append(body)
         content = body['messages'][0]['content']
+        if mistake=='descriptive' and len(requests)>1:
+            feedback = json.loads(content[0]['text'].split('输出校验结果：',1)[1])
+            assert '@s0' in feedback['schema_validation_errors'][0]['msg'], '反馈应指出具体违规引用，不能让模型猜错在哪里'
         assert ':dent.png' not in json.dumps(body), '模型应看请求内引用，不能从样本ID抄出文件名'
         assert ':scratch.png' not in json.dumps(body)
         frozen = json.loads(content[0]['text'].split('冻结综合审计：', 1)[1].split('\n输出校验结果：',1)[0])
@@ -65,6 +68,47 @@ def test_audit_transmits_short_references_and_preserves_frozen_evidence_ownershi
         child = runtime.jobs.status(final['batch_runs'][0])
         mappings = list(child['model_reference_bindings'].values())
         assert any(target in mapping.values() for mapping in mappings), '实际请求引用必须保留可追溯绑定'
+    finally:
+        runtime.close()
+
+
+@pytest.mark.parametrize('location', ['conclusion', 'check', 'region_request'])
+@pytest.mark.parametrize('corrected', [True, False])
+def test_joint_unknown_references_are_repaired_once_without_publishing_invalid_evidence(dataset, mllm_api, location, corrected):
+    db, _, config = dataset
+    original, _, _ = mllm_api
+    calls = []
+    unknown = 'img_'+'f'*64
+    def respond(request):
+        response = original.send(request)
+        if request.url.path.endswith('/tokenize'):
+            return response
+        body = json.loads(request.content)
+        if body['response_format']['json_schema']['name']!='JointAnalysis':
+            return response
+        calls.append(body)
+        result = json.loads(response.json()['choices'][0]['message']['content'])
+        if len(calls)==1 or not corrected:
+            if location=='conclusion':
+                result['evidence_ids']=[unknown]
+            elif location=='check':
+                result['check_assessments'][0]['evidence_ids']=[unknown]
+            else:
+                result['global_view']['suspect_regions']=[dict(bbox_1000=[100,100,300,300],reason='需复核区域',check_ids=['unknown-check'])]
+        return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
+    runtime = WorkbenchRuntime(db,VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        target=config.dataset.id+':dent.png'
+        job=runtime.audit.start(dataset_id=config.dataset.id,sample_ids=[target])
+        runtime.audit.wait(job['run_id'],8)
+        final=runtime.audit.status(job['run_id'])
+        assert len(calls)==2,'联合检查的未知引用也应给模型一次自行纠正机会'
+        detail=audit_job_sample(dict(run_id=job['run_id'],sample_id=target),db.db_path)
+        if corrected:
+            assert final['status']=='COMPLETED',final['errors']
+            assert unknown not in detail['suggestion']['analysis']['conclusion']['evidence_ids']
+        else:
+            assert final['status']=='FAILED' and detail['suggestion'] is None
     finally:
         runtime.close()
 

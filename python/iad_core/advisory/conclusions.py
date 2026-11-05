@@ -14,13 +14,14 @@ _EVIDENCE_REFERENCE = re.compile(
 
 
 def descriptive_conclusion(value: str) -> str:
-    if _EVIDENCE_REFERENCE.search(value):
-        raise repairable_output_error('evidence_in_conclusion', '结论和描述只概括规律，具体图像编号或文件名须放入证据字段')
+    if match := _EVIDENCE_REFERENCE.search(value):
+        raise repairable_output_error('evidence_in_conclusion',
+            f'正文包含具体引用“{match.group()}”；该引用只能放入对应的结构化引用字段，正文须用自然语言说明观察和规律')
     return value
 
 
-ConclusionText = Annotated[str, Field(description='概括可复用的观察结论或方法，不包含具体图像编号、文件名或来源路径；实际证据写入专用引用字段'),
+ConclusionText = Annotated[str, Field(description='用自然语言概括观察结论或方法，不包含具体引用编号、文件名或来源路径；实际引用写入专用字段'),
                            AfterValidator(descriptive_conclusion)]
 
-NonBlankConclusion = Annotated[NonBlankText, Field(description='概括可复用结论或观察方法，不写图像编号、文件名或来源路径；具体证据放入专用引用字段'),
+NonBlankConclusion = Annotated[NonBlankText, Field(description='用自然语言概括结论或观察，不写具体引用编号、文件名或来源路径；实际引用放入专用字段'),
                                AfterValidator(descriptive_conclusion)]

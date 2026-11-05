@@ -18,12 +18,12 @@ class JointContract:
             check_id=(Literal[tuple(sorted(check_ids))], ...)) if check_ids else CheckAssessment
 
         def validate_observations(value):
-            if not set(value.evidence_ids) <= evidence_ids:
-                raise ValueError('MLLM cited unknown visual evidence')
-            if any(not set(item.evidence_ids) <= evidence_ids for item in value.check_assessments):
-                raise ValueError('MLLM check assessment cited unknown visual evidence')
-            if any(not set(region.check_ids) <= check_ids for region in value.region_requests):
-                raise ValueError('MLLM region request cited an unknown check')
+            if unknown := set(value.evidence_ids)-evidence_ids:
+                raise repairable_output_error('joint_visual_reference', f'MLLM cited unknown visual evidence: {sorted(unknown)}')
+            if unknown := {eid for item in value.check_assessments for eid in item.evidence_ids}-evidence_ids:
+                raise repairable_output_error('joint_visual_reference', f'MLLM check assessment cited unknown visual evidence: {sorted(unknown)}')
+            if unknown := {cid for region in value.region_requests for cid in region.check_ids}-check_ids:
+                raise repairable_output_error('joint_check_reference', f'MLLM region request cited an unknown check: {sorted(unknown)}')
             actual = [item.check_id for item in value.check_assessments]
             indices = [item.region_index for item in value.region_observations]
             errors = [
