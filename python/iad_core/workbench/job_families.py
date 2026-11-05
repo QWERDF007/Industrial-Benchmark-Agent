@@ -51,5 +51,5 @@ class JobFamilies:
             model_calls=[call for attempt in attempts for call in attempt['model_calls']]))
 
     def list(self, dataset_id: str, job_types: Sequence[JobKind]) -> list[JobSnapshot]:
-        roots = dict.fromkeys(job['root_run_id'] for job in self.snapshots.list(dataset_id, job_types))
+        roots = dict.fromkeys(self.snapshots.identities(dataset_id, job_types).values())
         return [self.snapshot(root, job_types) for root in roots]

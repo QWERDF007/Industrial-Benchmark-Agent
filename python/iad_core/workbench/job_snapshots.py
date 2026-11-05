@@ -15,24 +15,30 @@ class JobSnapshots:
         self.lock=threading.RLock()
         self.job_types=get_args(JobKind)
 
-    def list(self, dataset_id: str, job_types: Sequence[JobKind]) -> list:
+    def identities(self, dataset_id: str, job_types: Sequence[JobKind]) -> dict[str, str]:
+        """Map visible attempt IDs to root IDs without loading frozen snapshots."""
         with self.lock:
             placeholders = ",".join("?" for _ in job_types)
             with self.db.connection() as conn:
-                ids = [row[0] for row in conn.execute(f"""WITH owned AS MATERIALIZED (
+                rows = conn.execute(f"""WITH owned AS MATERIALIZED (
                     SELECT child.value AS job_id FROM job_runs owner,json_each(owner.payload_json,'$.batch_runs') child
                     WHERE child.type='text'), visible AS (
                     SELECT id,job_id,job_type,status,deleted_at,
+                        json_extract(payload_json,'$.root_run_id') root_run_id,
                         COALESCE(json_extract(payload_json,'$.request.dataset_id'),json_extract(payload_json,'$.dataset_id')) dataset_id,
                         json_extract(payload_json,'$.request.dataset_ids') dataset_ids
                     FROM job_runs WHERE job_id NOT IN (SELECT job_id FROM owned))
-                    SELECT job_id FROM visible WHERE id IN (
+                    SELECT job_id,root_run_id FROM visible WHERE id IN (
                     SELECT id FROM visible WHERE job_type IN ({placeholders}) AND deleted_at IS NULL
                     AND (dataset_id=? OR EXISTS (SELECT 1 FROM json_each(dataset_ids) WHERE value=?))
                     ORDER BY id DESC LIMIT 30) OR (job_type='DIRECTION_EXPLORATION' AND job_type IN ({placeholders})
                     AND status='RUNNING' AND dataset_id=?) ORDER BY id DESC""",
-                    (*job_types, dataset_id, dataset_id, *job_types, dataset_id))]
-            jobs = [self.snapshot(run_id, job_types).model_dump() for run_id in ids]
+                    (*job_types, dataset_id, dataset_id, *job_types, dataset_id)).fetchall()
+            return {row['job_id']: row['root_run_id'] for row in rows}
+
+    def list(self, dataset_id: str, job_types: Sequence[JobKind]) -> list:
+        with self.lock:
+            jobs = [self.snapshot(run_id, job_types).model_dump() for run_id in self.identities(dataset_id, job_types)]
             if 'DIRECTION_EXPLORATION' in job_types:
                 jobs.sort(key=lambda job: (0 if job['status'] == 'RUNNING' else 1 if job['status'] == 'PENDING' else 2,
                                           job['queue_position'] or 0))

@@ -6,7 +6,8 @@ import subprocess
 import sys
 from uuid import uuid4
 
-from iad_core.entry import audit_job_samples, audit_job_sample, audit_job_report
+from iad_core.entry import audit_list, audit_job_samples, audit_job_sample, audit_job_report
+from iad_core.storage.database import Database
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
 from iad_core.workbench.job_snapshots import JobSnapshots
@@ -152,7 +153,7 @@ def test_cancelling_parallel_audit_stops_all_active_images_and_retry_keeps_froze
         runtime.close()
 
 
-def test_partial_audit_retries_keep_one_full_scope_job_and_each_samples_actual_source(dataset, mllm_api):
+def test_partial_audit_retries_keep_one_full_scope_job_and_each_samples_actual_source(dataset, mllm_api, monkeypatch):
     db, _, config = dataset
     original, _, _ = mllm_api
     ids = [config.dataset.id+':'+name+'.png' for name in ('dent', 'scratch', 'normal2')]
@@ -207,6 +208,22 @@ def test_partial_audit_retries_keep_one_full_scope_job_and_each_samples_actual_s
             assert detail['sample']['run_id'] == detail['suggestion']['audit_run_id'] == detail['consistency']['run_id'] == origin
             assert detail['source_current'] is True
         assert audit_job_sample(dict(run_id=root['run_id'],sample_id=ids[0]),db.db_path) == first
+
+        queries = []
+        connect = Database.get_connection
+        def traced_connection(database):
+            connection = connect(database)
+            if database.db_path == db.db_path:
+                connection.set_trace_callback(queries.append)
+            return connection
+        with monkeypatch.context() as tracing:
+            tracing.setattr(Database, 'get_connection', traced_connection)
+            listed = audit_list(dict(dataset_id=config.dataset.id), db.db_path)['jobs']
+        assert len(listed) == 1 and listed[0]['root_run_id'] == root['run_id']
+        assert listed[0]['completed'] == listed[0]['total_samples'] == 3
+        assert listed[0]['model_calls'] == state['model_calls']
+        payload_reads = [query for query in queries if query.startswith('SELECT * FROM job_runs WHERE job_id=')]
+        assert len(payload_reads) <= 3, '列表只为读取根ID而重复加载冻结请求和调用记录：' + str(payload_reads)
     finally:
         runtime.close()
 
