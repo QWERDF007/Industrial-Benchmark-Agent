@@ -2,19 +2,18 @@ import hashlib
 import json
 import threading
 
-from pydantic import Field, create_model
-from typing import Literal
 
-from iad_core.advisory.analysis import AuditAnalysis, AuditBasis, AuditConclusion, AuditImageSource, AuditSliceCandidate, InspectionProgress
-from iad_core.advisory.conclusions import NonBlankConclusion
+from iad_core.advisory.analysis import AuditAnalysis, AuditConclusion, AuditImageSource, InspectionProgress
 from iad_core.consistency.audit_models import AuditConsistencyRecord
 from iad_core.consistency.repository import ConsistencyRepository
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.images import EvidenceImages, PreparedImage
 from iad_core.evidence.sources import SampleContent
+from iad_core.evidence.retained import RetainedImages
+from iad_core.evidence.consistency_sources import EvidenceSourcesCapture
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import AnnotationRepository, SampleRepository
-from iad_core.workbench.joint import OUTPUT_RESERVE_TOKENS
+from iad_core.workbench.audit_conclusions import AuditConclusions, AuditConclusionInput
 from iad_core.workbench.knowledge import InspectionKnowledge
 from iad_core.workbench.vision import VlmClient
 
@@ -30,8 +29,18 @@ class AuditSynthesis:
                  model_name: str, instruction: str, cancel: threading.Event, phase) -> AuditAnalysis:
         if cancel.is_set():
             raise InterruptedError('Audit cancelled')
+        def progress(completed, total):
+            phase(InspectionProgress(phase='SYNTHESIS', inspected_regions=analysis.coverage.inspected_regions,
+                planned_regions=analysis.coverage.planned_regions, completed_batches=len(analysis.joint_steps)+completed,
+                total_batches=len(analysis.joint_steps)+total))
+        progress(0, 1)
         criteria = knowledge.context(self.db, axis.sample_id, analysis.overview.source_sha256)
-        comparisons = [ConsistencyRepository(self.db).get(ref.evidence_id).result for ref in axis.references]
+        evidence = [ConsistencyRepository(self.db).get(ref.evidence_id) for ref in axis.references]
+        comparisons = [item.result for item in evidence]
+        comparison_sources = {source.sample.sample_id: source for item in evidence
+            for source in (item.sources.left, item.sources.right)}
+        retained = RetainedImages(self.db)
+        capture = EvidenceSourcesCapture(retained)
         supplied = {analysis.overview.evidence_id: analysis.overview}
         needed = set(analysis.conclusion.evidence_ids)
         needed.update(eid for item in analysis.findings for eid in item.evidence_ids)
@@ -43,14 +52,25 @@ class AuditSynthesis:
         original_sources = {item.sample_id: item for item in knowledge.snapshot.sources}
         frozen_visuals = knowledge.snapshot.evidence
         sources, prepared = [], []
-        for sample_id in dict.fromkeys([axis.sample_id, *[item.sample_id for item in criteria.visual_references]]):
-            sample = SampleRepository(self.db).get(sample_id)
-            annotations = AnnotationRepository(self.db).list_by_sample(sample_id)
+        for sample_id in dict.fromkeys([axis.sample_id, *[item.sample_id for item in criteria.visual_references],
+                *[item.sample_id for item in axis.references]]):
+            frozen_source = comparison_sources.get(sample_id)
+            sample = frozen_source.sample if frozen_source else SampleRepository(self.db).get(sample_id)
+            annotations = (capture.annotations(frozen_source).annotations if frozen_source else
+                AnnotationRepository(self.db).list_by_sample(sample_id))
             content = SampleContent.capture(self.db, sample_id)
-            if sample_id != axis.sample_id:
+            if sample_id != axis.sample_id and sample_id in original_sources:
                 expected = original_sources[sample_id].model_dump(include=set(SampleContent.model_fields))
                 if content.model_dump() != expected:
                     raise ValueError('知识比较图像或标注已变化，不能与冻结知识混用')
+            if frozen_source and sample_id != axis.sample_id:
+                views = self.images.prepare(sample.model_copy(update={'image_path':retained.path(frozen_source.image)}),
+                    DatasetRegistry(self.db).get(sample.dataset_id).dataset.format, annotations, frozen_source.image.sha256)
+                for view in views:
+                    supplied[view.evidence.evidence_id] = view.evidence
+                    owners[view.evidence.evidence_id] = sample_id
+                overview = views[0].evidence
+            elif sample_id != axis.sample_id:
                 overview = next((item.image for item in frozen_visuals if item.sample_id == sample_id
                     and item.image.representation == 'raw' and item.image.role == 'overview'
                     and item.image.crop_bbox == [0, 0, sample.width, sample.height]), None)
@@ -65,7 +85,8 @@ class AuditSynthesis:
                 annotations=annotations, overview_evidence_id=overview.evidence_id)
             for annotation in annotations:
                 if annotation.annotation_type == 'mask' and annotation.geometry_status != 'INVALID':
-                    mask = self.images.capture(sample, 'overview', 'annotation', source_sha256=content.sha256,
+                    mask = self.images.capture(sample.model_copy(update={'image_path':retained.path(frozen_source.image)}) if frozen_source else sample,
+                        'overview', 'annotation', source_sha256=frozen_source.image.sha256 if frozen_source else content.sha256,
                         annotations=[annotation], annotation_mode='annotation_mask', full_resolution=True)
                     source.mask_evidence_ids[annotation.annotation_id] = mask.evidence.evidence_id
                     supplied[mask.evidence.evidence_id] = mask.evidence
@@ -84,29 +105,10 @@ class AuditSynthesis:
                     DatasetRegistry(self.db).get(anchor.sample.dataset_id).dataset.format, anchor.annotations))
         frozen = dict(knowledge=criteria.context,
             consistency=dict(record=axis.model_dump(mode='json'), results=[item.model_dump(mode='json') for item in comparisons]),
-            visual_observations=analysis.model_dump(mode='json', exclude={'reference_evidence', 'image_sources'}), image_owners=owners)
+            visual_observations=analysis.model_dump(mode='json', exclude={'reference_evidence', 'image_sources', 'consistency'}), image_owners=owners)
         prompt = instruction+'\n冻结综合审计：'+json.dumps(frozen, ensure_ascii=False)
-        raw = tuple(image.evidence.evidence_id for image in prepared if image.evidence.representation == 'raw')
-        result_ids = tuple(item.result_id for item in comparisons)
-        basis = create_model('AuditBasis', __base__=AuditBasis, text=(NonBlankConclusion, ...),
-            evidence_ids=(list[Literal[raw]], Field(min_length=1)),
-            knowledge_check_ids=(list[Literal[tuple(criteria.check_ids)]] if criteria.check_ids else list[str],
-                Field(..., **({} if criteria.check_ids else {'max_length': 0}))),
-            consistency_result_ids=(list[Literal[result_ids]] if result_ids else list[str],
-                Field(..., **({} if result_ids else {'max_length': 0}))))
-        response_type = create_model('AuditConclusion', __base__=AuditConclusion,
-            analysis_text=(NonBlankConclusion, ...), description=(NonBlankConclusion, ...),
-            observation=(NonBlankConclusion, ...), applicable_rule=(NonBlankConclusion, ...),
-            normal_alternative=(NonBlankConclusion, ...),
-            proposed_slice=(list[create_model('AuditSliceCandidate', __base__=AuditSliceCandidate,
-                name=(NonBlankConclusion, ...), observation=(NonBlankConclusion, ...),
-                evidence_ids=(list[Literal[raw]], Field(min_length=1)))], ...),
-            evidence_ids=(list[Literal[raw]], Field(min_length=1)), basis=(list[basis], Field(min_length=1)))
-        phase(InspectionProgress(phase='SYNTHESIS', inspected_regions=analysis.coverage.inspected_regions,
-            planned_regions=analysis.coverage.planned_regions, completed_batches=len(analysis.joint_steps),
-            total_batches=len(analysis.joint_steps)+1))
-        plan = self.client.plan(response_type, prompt, prepared, model_name, OUTPUT_RESERVE_TOKENS)
-        result = self.client.generate(plan)
+        result = AuditConclusions(self.client).conclude(AuditConclusionInput(instruction, frozen, prepared,
+            criteria.check_ids, model_name), cancel, progress)
         if cancel.is_set():
             raise InterruptedError('Audit cancelled')
         analysis.conclusion = AuditConclusion.model_validate(result.model_dump())

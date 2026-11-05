@@ -27,14 +27,14 @@ from iad_core.workbench.job_models import ChildJobError
 from iad_core.workbench.knowledge import InspectionKnowledge
 from iad_core.consistency.audit import AuditConsistency
 from iad_core.consistency.audit_repository import AuditConsistencyRepository
-from iad_core.consistency.models import AllRegisteredScope, ConsistencyScopesSnapshot, CorpusScope, Mode, SampleScope
+from iad_core.consistency.models import DatasetScope, ConsistencyScopesSnapshot, CorpusScope, Mode, SampleScope
 from iad_core.consistency.scopes import ConsistencyScopes
 from iad_core.feature.profiles import ImageEncoders
 
 if TYPE_CHECKING:
     from iad_core.workbench.runtime import WorkbenchRuntime
 
-AUDIT_GENERATION_VERSION = 'dataset-audit-v6'
+AUDIT_GENERATION_VERSION = 'dataset-audit-v7'
 
 class AuditStart(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -47,7 +47,7 @@ class AuditStart(BaseModel):
     filters: SampleFilters = Field(default_factory=SampleFilters)
     consistency_mode: Mode = 'exact'
     consistency_profile_id: Optional[str] = None
-    corpus_scope: CorpusScope = Field(default_factory=AllRegisteredScope)
+    corpus_scope: CorpusScope = Field(default_factory=lambda data: DatasetScope(dataset_ids=[data['dataset_id']]))
     instruction: NonBlankText = DEFAULT_AUDIT_PROMPT
 
 
@@ -139,8 +139,7 @@ class AuditService:
         try:
             context.record(sample_id, persist=persist,
                 phase="SAMPLE_COMPLETED", inspected_regions=analysis.coverage.inspected_regions,
-                planned_regions=analysis.coverage.planned_regions,
-                completed_batches=len(analysis.joint_steps), total_batches=len(analysis.joint_steps))
+                planned_regions=analysis.coverage.planned_regions)
         except InterruptedError:
             repository.save(axis)
             raise

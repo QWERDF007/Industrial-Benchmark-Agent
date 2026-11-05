@@ -10,8 +10,12 @@ const firefox=require('selenium-webdriver/firefox.js');
   const tasks=JSON.parse(await fs.readFile(inputPath,'utf8'));
   const prepareOnly=process.argv.includes('--prepare-only');
   const cancelCurrent=process.argv.includes('--cancel-current');
+  const retryStopped=process.argv.includes('--retry-stopped');
   const selectedDataset=process.argv.find(arg=>arg.startsWith('--dataset='))?.slice('--dataset='.length);
   assert.ok(!selectedDataset||['anomaly','labelme'].includes(selectedDataset),'子集参数应为 anomaly 或 labelme');
+  const replaceInvalidCorpus=process.argv.includes('--replace-invalid-corpus');
+  assert.ok(!replaceInvalidCorpus||selectedDataset,'纠正对照范围须明确指定子集');
+  assert.ok(!retryStopped||selectedDataset&&!replaceInvalidCorpus&&!cancelCurrent,'恢复作业须单独指定子集');
   const reference='runs/verification/v58-two-small/reference.json';
   const state=JSON.parse(await fs.readFile(reference,'utf8'));
   const output='runs/browser/user-submitted-audit';await fs.mkdir(output,{recursive:true});
@@ -29,7 +33,17 @@ const firefox=require('selenium-webdriver/firefox.js');
       if(selectedDataset&&selectedDataset!==key)continue;
       const dataset=state.datasets[key],source=catalog.datasets.find(item=>item.dataset_id===dataset.dataset_id);
       assert.equal(source.total_samples,100);assert.ok(tasks[key]?.trim());
-      const saved=dataset.ui_submissions?.audit;
+      let saved=dataset.ui_submissions?.audit;
+      let replaced=null;
+      if(replaceInvalidCorpus){
+        assert.ok(saved,'先核对原作业');
+        const old=await read('audit/status/'+saved.run_id),raw=await read('analysis/node/'+saved.run_id);
+        const corpus=raw.request.consistency_scopes.corpus;
+        assert.ok(!['PENDING','RUNNING'].includes(old.status),'先保留并停止范围错误的执行');
+        assert.ok(corpus.dataset_ids.length!==1||corpus.dataset_ids[0]!==dataset.dataset_id,'不得重复替换范围正确的作业');
+        replaced={stage:'audit',submission:saved,validation:'INVALID_CORPUS_SCOPE',corpus:corpus.dataset_ids,corpus_sample_count:corpus.sample_count};
+        saved=null;
+      }
       if(cancelCurrent){
         if(!saved)continue;
         await click(await element(`#audit-dataset option[value="${source.group_id}"]`));
@@ -49,7 +63,42 @@ const firefox=require('selenium-webdriver/firefox.js');
         console.log('已从界面停止旧小集审计',key,saved.run_id);continue;
       }
       if(saved&&!prepareOnly){
-        const job=await read('audit/status/'+saved.run_id);assert.equal(job.total_samples,100);
+        const job=await read('audit/status/'+saved.run_id);assert.equal(job.total_samples,saved.remaining_samples??100);
+        if(retryStopped){
+          assert.ok(['FAILED','PARTIAL','INTERRUPTED','CANCELLED'].includes(job.status),'只恢复已停止的执行');
+          await click(await element(`#audit-dataset option[value="${source.group_id}"]`));
+          await click(await element('#audit-child-trigger'));
+          for(const checkbox of await driver.findElements(By.css('#audit-child-menu input[type=checkbox]'))){
+            const chosen=(await checkbox.getAttribute('value'))===dataset.dataset_id;
+            if(await checkbox.isSelected()!==chosen)await click(checkbox);
+          }
+          await click(await element('#audit-child-trigger'));
+          const raw=await read('analysis/node/'+saved.run_id),options=await read('audit/retry/'+saved.run_id);
+          assert.ok(options.samples.length&&!options.active_run_id,'原作业应有可恢复范围');
+          const before=new Set((await read('audit/jobs?dataset_id='+dataset.dataset_id)).jobs.map(item=>item.run_id));
+          await click(await element(`button[aria-label="查看作业 ${saved.run_id}"]`));
+          const drawer=await element('dialog[aria-label="作业状态"][open]');
+          await click(await drawer.findElement(By.xpath('.//button[normalize-space(.)="选择重试范围"]')));
+          const all=await driver.wait(until.elementLocated(By.xpath('//dialog//button[normalize-space(.)="全选"]')),15000);
+          await click(all);
+          const boxes=await drawer.findElements(By.css('.iad-retry-samples input[type=checkbox]'));
+          assert.equal(boxes.length,options.samples.length);assert.ok((await Promise.all(boxes.map(box=>box.isSelected()))).every(Boolean));
+          const submit=await drawer.findElement(By.xpath('.//button[starts-with(normalize-space(.),"重试所选 ")]'));
+          await driver.wait(until.elementIsEnabled(submit),10000);await click(submit);
+          let next;
+          await driver.wait(async()=>{next=(await read('audit/jobs?dataset_id='+dataset.dataset_id)).jobs.find(item=>!before.has(item.run_id));return !!next;},30000);
+          assert.equal(next.root_run_id,job.root_run_id);
+          const resumed=await read('analysis/node/'+next.run_id);
+          assert.deepEqual([...resumed.sample_ids].sort(),options.samples.map(sample=>sample.sample_id).sort());
+          for(const field of ['instruction','knowledge_version_id','consistency_scopes'])assert.deepEqual(resumed.request[field],raw.request[field]);
+          const current=JSON.parse(await fs.readFile(reference,'utf8')),target=current.datasets[key];
+          target.ui_submission_attempts||=[];target.ui_submission_attempts.push({stage:'audit',submission:saved,validation:'RETRIED_ORIGINAL_SCOPE'});
+          const proof={...saved,run_id:next.run_id,root_run_id:next.root_run_id,remaining_samples:next.total_samples,
+            retry_runs:[...(saved.retry_runs||[]),next.run_id],submission:'browser-original-scope-retry'};
+          target.ui_submissions.audit=proof;target.stages.audit={run_id:next.run_id};
+          await fs.writeFile(reference,JSON.stringify(current,null,2));await fs.writeFile(`${output}/${key}-resume.json`,JSON.stringify(proof,null,2));
+          console.log('已通过界面恢复原审计剩余范围',key,next.run_id,options.samples.length);continue;
+        }
         console.log('保留已通过界面提交的审计',key,saved.run_id,job.status);continue;
       }
       const versions=await read('knowledge/versions?dataset_id='+dataset.dataset_id);
@@ -89,10 +138,13 @@ const firefox=require('selenium-webdriver/firefox.js');
         task:tasks[key],prompt_sha256:createHash('sha256').update(prompt).digest('hex')};
       const current=JSON.parse(await fs.readFile(reference,'utf8')),target=current.datasets[key];
       target.ui_submissions||={};target.ui_submissions.audit=proof;target.stages.audit={run_id:job.run_id};
+      if(replaced){target.ui_submission_attempts||=[];target.ui_submission_attempts.push(replaced);}
       await fs.writeFile(reference,JSON.stringify(current,null,2));await fs.writeFile(`${output}/${key}.json`,JSON.stringify(proof,null,2));
       const raw=await read('analysis/node/'+job.run_id);
       assert.equal(job.total_samples,100);assert.equal(job.dataset_id,dataset.dataset_id);
       assert.equal(raw.request.instruction,prompt);assert.equal(raw.request.consistency_mode,'combined');
+      assert.deepEqual(raw.request.consistency_scopes.corpus.dataset_ids,[dataset.dataset_id]);
+      assert.equal(raw.request.consistency_scopes.corpus.sample_count,100,'对照检索不得自动扩大到其他已导入数据');
       assert.equal(raw.knowledge_version_id,versions.current_version_id);
       console.log('已通过界面选择范围、编辑提示词并提交审计',key,job.run_id,100);
     }

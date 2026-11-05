@@ -53,7 +53,7 @@ const firefox=require('selenium-webdriver/firefox.js');
       }
       if(saved&&!prepareOnly){
         const job=await read('analysis/status/'+saved.run_id);assert.equal(job.total_samples,100);
-        if(retryFailed&&['FAILED','PARTIAL','INTERRUPTED'].includes(job.status)){
+        if(retryFailed&&['FAILED','PARTIAL','INTERRUPTED','CANCELLED'].includes(job.status)){
           const source=catalog.datasets.find(item=>item.dataset_id===dataset.dataset_id);
           await select('#dataset',source.group_id);await select('#subset',dataset.dataset_id);
           await click(await element(`button[aria-label="查看作业 ${job.run_id}"]`));

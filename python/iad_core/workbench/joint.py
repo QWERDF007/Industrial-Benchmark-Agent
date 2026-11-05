@@ -16,7 +16,7 @@ OUTPUT_RESERVE_TOKENS = 16384
 @dataclass(frozen=True)
 class JointNode:
     step: SynthesisStep
-    representative: RegionImage
+    representative: RegionImage | None
 
 
 @dataclass(frozen=True)
@@ -48,10 +48,12 @@ class JointInspection:
                 batch, children = pending.pop(0)
                 if cancel and cancel.is_set():
                     raise InterruptedError("Audit cancelled")
-                inputs = [child.representative for child in children] if children else batch
+                inputs = [child.representative for child in children if child.representative is not None] if children else batch
                 images = [overview]
                 for region in inputs:
-                    images.append(PreparedImage(region.image, self.images.path(region.image)))
+                    annotation_ids = {origin.annotation_id for origin in region.origins}
+                    images.append(PreparedImage(region.image, self.images.path(region.image), dataset_format=overview.dataset_format,
+                        annotations=tuple(item for item in overview.annotations if item.annotation_id in annotation_ids), image_label=overview.image_label))
                     images.extend(mask for mask in annotation_masks or [] if mask.evidence.crop_bbox == region.crop_bbox)
                 instruction = context
                 if ledger.context:
@@ -102,7 +104,7 @@ class JointInspection:
                                      child_step_ids=[child.step.step_id for child in children], result=result)
                 ledger.observe(step.step_id, result, visual, check_ids)
                 steps.append(step)
-                representative = next((region for region in inputs if region.image.evidence_id in result.evidence_ids), inputs[0])
+                representative = next((region for region in inputs if region.image.evidence_id in result.evidence_ids), inputs[0] if inputs else None)
                 nodes.append(JointNode(step, representative))
                 phase(InspectionProgress(phase="SYNTHESIS", inspected_regions=len(inspected),
                                          planned_regions=planned_count, completed_batches=len(steps), total_batches=total))

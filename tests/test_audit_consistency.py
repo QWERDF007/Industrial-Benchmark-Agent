@@ -1,6 +1,8 @@
 import json
 import threading
+import time
 
+import pytest
 import httpx
 
 from iad_core.entry import sample_get
@@ -154,7 +156,8 @@ def test_cancel_preserves_finished_evidence_without_marking_current_sample_compl
     generations = 0
     def respond(request):
         nonlocal generations
-        if json.loads(request.content).get('response_format', {}).get('json_schema', {}).get('name') == 'JointAnalysis':
+        body=json.loads(request.content)
+        if body.get('response_format', {}).get('json_schema', {}).get('name') == 'JointAnalysis':
             generations += 1
             if generations == 2:
                 entered.set()
@@ -165,14 +168,20 @@ def test_cancel_preserves_finished_evidence_without_marking_current_sample_compl
     try:
         job = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=targets)
         assert entered.wait(5)
+        deadline=time.monotonic()+5
+        while time.monotonic()<deadline and not runtime.audit.status(job['run_id'])['completed']:
+            time.sleep(.01)
+        completed=runtime.audit.status(job['run_id'])['completed_sample_ids']
+        assert len(completed)==1
+        pending=next(sid for sid in targets if sid not in completed)
         runtime.audit.cancel(job['run_id'])
         release.set()
         runtime.audit.wait(job['run_id'], 5)
         status = runtime.audit.status(job['run_id'])
         assert status['status'] == 'CANCELLED', status
         assert status['completed'] == 1 and status['unprocessed'] == 1
-        assert len(sample_get({'sample_id': targets[0]}, db.db_path)['consistency']['results']) == 1
-        assert sample_get({'sample_id': targets[1]}, db.db_path)['suggestion'] is None
+        assert len(sample_get({'sample_id': completed[0]}, db.db_path)['consistency']['results']) == 1
+        assert sample_get({'sample_id': pending}, db.db_path)['suggestion'] is None
     finally:
         release.set()
         runtime.close()
@@ -302,5 +311,36 @@ def test_audit_links_existing_exact_evidence_even_without_annotation_differences
         assert runtime.audit.status(job['run_id'])['status'] == 'COMPLETED'
         detail = sample_get({'sample_id': target}, db.db_path)
         assert [result['evidence_id'] for result in detail['consistency']['results']] == [proof.evidence_id]
+    finally:
+        runtime.close()
+
+
+@pytest.mark.parametrize('scope', ['default', 'selected', 'all_registered'])
+def test_audit_corpus_follows_selected_datasets_and_only_expands_explicitly(dataset, mllm_api, tmp_path, scope):
+    from shutil import copyfile
+    from iad_core.dataset.registry import DatasetImport
+    db, registry, config = dataset
+    extra = []
+    for name in ('selected-reference', 'unselected-reference'):
+        root = tmp_path / name
+        root.mkdir()
+        copyfile(tmp_path / 'images' / 'dent.png', root / 'same-pixels.png')
+        extra.append(registry.import_dataset(DatasetImport(format='labelme', name=name,
+            image_dir=str(root), annotation_dir=str(root))).dataset.id)
+    client, _, _ = mllm_api
+    runtime = WorkbenchRuntime(db, VlmClient(client))
+    try:
+        args = {} if scope == 'default' else dict(corpus_scope=dict(kind='datasets', dataset_ids=[config.dataset.id, extra[0]])
+            if scope == 'selected' else dict(kind='all_registered'))
+        job = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[config.dataset.id+':dent.png'], **args)
+        runtime.audit.wait(job['run_id'], 8)
+        result = runtime.audit.status(job['run_id'])
+        assert result['status'] == 'COMPLETED', result['errors']
+        expected = [config.dataset.id] + (extra[:1] if scope == 'selected' else extra if scope == 'all_registered' else [])
+        assert set(result['request']['consistency_scopes']['corpus']['dataset_ids']) == set(expected)
+        detail = sample_get(dict(sample_id=config.dataset.id+':dent.png'), db.db_path)
+        assert {ref['sample_id'].split(':')[0] for ref in detail['consistency']['references']} <= set(expected)
+        if scope != 'default':
+            assert extra[0]+':same-pixels.png' in {ref['sample_id'] for ref in detail['consistency']['references']}
     finally:
         runtime.close()

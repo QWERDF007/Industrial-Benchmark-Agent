@@ -46,7 +46,9 @@ export function AuditSetup({datasets, filters, jobs, revision, onStarted, onCanc
   const provider=model.view?.providers.find(provider=>provider.provider_id===model.view?.selection?.provider_id);
   const selectedModel=provider?.models.find(item=>item.model_id===model.view?.selection?.model_id);
   async function start(){
-    if(reason || !rows || busy)return;
+    if(reason || !rows?.length || busy)return;
+    const corpus_scope:NonNullable<AuditStartRequest['corpus_scope']>={kind:'datasets',
+      dataset_ids:[rows[0].dataset.dataset_id,...rows.slice(1).map(row=>row.dataset.dataset_id)]};
     setBusy(true);onBusyChange(true);setError('');
     try{
       for(const {dataset,catalog} of rows){
@@ -54,7 +56,8 @@ export function AuditSetup({datasets, filters, jobs, revision, onStarted, onCanc
         if(!requests.current.has(dataset.dataset_id)){
           const knowledge=catalog.current_version_id;
           requests.current.set(dataset.dataset_id,{submission_id:crypto.randomUUID(),dataset_id:dataset.dataset_id,
-            knowledge_version_id:knowledge,filters,consistency_mode:view.auditConsistencyMode,instruction});
+            knowledge_version_id:knowledge,filters,consistency_mode:view.auditConsistencyMode,instruction,
+            corpus_scope});
         }
         const job=await request<JobSnapshot>('/audit/start',requests.current.get(dataset.dataset_id));
         started.current.set(dataset.dataset_id,job);

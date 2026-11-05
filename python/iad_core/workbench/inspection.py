@@ -4,6 +4,7 @@ from typing import Callable, Optional
 
 from iad_core.advisory.analysis import AuditAnalysis, Coverage, InspectionProgress, VlmResult
 from iad_core.dataset.path_safety import validate_sample_image_path
+from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.images import EvidenceImages, PreparedImage, file_sha256
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import AnnotationRepository, SampleRepository
@@ -24,22 +25,24 @@ class SampleInspection:
         phase(InspectionProgress(phase="PREPARING_KNOWLEDGE"))
         if cancel and cancel.is_set():
             raise InterruptedError("Audit cancelled")
-        overview = self.images.capture(sample, "overview", "global")
-        criteria = knowledge.context(self.db, sample_id, overview.evidence.source_sha256)
         annotations = AnnotationRepository(self.db).list_by_sample(sample_id)
-        planned = self.images.plan(sample, annotations, [])
+        dataset_format = DatasetRegistry(self.db).get(sample.dataset_id).dataset.format
+        overview = self.images.capture(sample, "overview", "global", full_resolution=True).with_source(sample, dataset_format, annotations)
+        criteria = knowledge.context(self.db, sample_id, overview.evidence.source_sha256)
+        planned = self.images.plan(sample, annotations, []) if dataset_format == 'labelme' else []
         joint = JointInspection(self.client, self.images)
         outcome, masks = None, {}
         while True:
             views = self.images.capture_regions(sample, planned, annotations, overview.evidence.source_sha256)
             regions = [view for view in views if view.image.representation == "raw"]
-            masks.update({view.image.evidence_id: PreparedImage(view.image, self.images.path(view.image))
+            masks.update({view.image.evidence_id: PreparedImage(view.image, self.images.path(view.image)).with_source(sample, dataset_format, annotations)
                           for view in views if view.image.representation == "annotation_mask"})
             outcome = joint.inspect(instruction+'\n冻结知识：'+json.dumps(criteria.context,ensure_ascii=False)+'\n', overview, regions, model_name, cancel, phase,
                                     list(masks.values()), check_ids=criteria.check_ids, previous=outcome)
             steps = outcome.steps
             proposals = [proposal for step in steps for proposal in step.result.region_requests]
-            expanded = {tuple(region.crop_bbox): region for region in self.images.plan(sample, annotations, proposals)}
+            expanded = {tuple(region.crop_bbox): region for region in
+                (self.images.plan(sample, annotations, proposals) if dataset_format == 'labelme' or proposals else [])}
             known = {tuple(region.crop_bbox) for region in outcome.regions}
             planned = [region for box, region in expanded.items() if box not in known]
             if not planned:
