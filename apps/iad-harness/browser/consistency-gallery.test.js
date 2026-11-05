@@ -92,6 +92,13 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     assert.deepEqual(await Promise.all((await operations.findElements(By.css('button'))).map(button=>button.getAttribute('aria-label'))),
       ['查看统计结果',`删除检查作业 ${batch.batch_id}`],'作业操作与HTML原型一致，不添加检查作业详情入口');
     assert.equal((await driver.findElements(By.css('dialog[aria-label="检查作业详情"]'))).length,0);
+    const stats=await operations.findElement(By.css('button[aria-label="查看统计结果"]'));await stats.click();
+    const statistics=await element('.dc-stats-dialog');
+    const statsLayout=await driver.executeScript('const r=arguments[0].getBoundingClientRect();return {modal:arguments[0].matches("dialog:modal"),width:r.width,x:r.x+r.width/2-innerWidth/2,y:r.y+r.height/2-innerHeight/2}',statistics);
+    assert.equal(statsLayout.modal,true,'统计窗口应复用公共原生Modal');assert.equal(statsLayout.width,960);assert.ok(Math.abs(statsLayout.x)<=1&&Math.abs(statsLayout.y)<=1);
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    await driver.wait(async()=>(await driver.findElements(By.css('dialog:modal'))).length===0,5000);
+    assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',stats),true,'统计关闭后焦点回到操作按钮');
     const cards=()=>driver.findElements(By.css('[data-dc="open-conflict"]'));
     await driver.wait(async()=>(await cards()).length===expectedGallery.total,10000);
     assert.equal(reviewContextReads,0,'图库首次渲染不能逐卡片读取完整图像复核上下文');
@@ -99,6 +106,18 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     const first=await element(`[data-dc="open-conflict"][data-id="${expectedGallery.items[0].group_id}"]`);await first.click();
     await driver.wait(async()=>/固定主图与候选/.test(await (await element('[aria-label="模型分析"]')).getText()),10000);
     await driver.wait(async()=>(await driver.findElements(By.css('[data-dc="candidate"]'))).length===22,10000);
+    const comparison=await element('#dc-compare-mask');
+    const compareLayout=await driver.executeScript('const r=arguments[0].getBoundingClientRect();return {modal:arguments[0].matches("dialog:modal"),width:r.width,x:r.x+r.width/2-innerWidth/2,y:r.y+r.height/2-innerHeight/2}',comparison);
+    assert.equal(compareLayout.modal,true,'冲突对比应复用公共原生Modal');assert.equal(compareLayout.width,1380);assert.ok(Math.abs(compareLayout.x)<=1&&Math.abs(compareLayout.y)<=1);
+    const zoom=await element('[data-dc="zoom-anchor"]');await zoom.click();
+    await driver.wait(async()=>(await driver.findElements(By.css('dialog:modal'))).length===2,5000);
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    await driver.wait(async()=>(await driver.findElements(By.css('dialog:modal'))).length===1,5000);
+    assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',zoom),true,'关闭大图返回原对比图焦点');
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    await driver.wait(async()=>(await driver.findElements(By.css('dialog:modal'))).length===0,5000);
+    assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',first),true,'关闭对比返回图像卡片焦点');
+    await first.click();await element('#dc-compare-mask [data-dc="zoom-anchor"] img');
     const anchorSrc=await driver.findElement(By.css('[data-dc="zoom-anchor"] img')).getAttribute('src');
     const lastCandidate=(await driver.findElements(By.css('[data-dc="candidate"]')))[21];
     const candidateLayout=await driver.executeScript(`return [arguments[0],arguments[0].parentElement,arguments[0].parentElement.parentElement].map(element=>{
@@ -138,7 +157,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     assert.equal(followingState.status,'COMPLETED',JSON.stringify(followingState.errors));
     const followingDelete=await element(`[data-dc-row="${followingState.program_batch_id}"] [data-icon="delete"]`);
     assert.equal(await originalRow.getAttribute('aria-selected'),'true','后台新增记录不切换当前选中作业');
-    await followingDelete.click();
+    await followingDelete.sendKeys(Key.ENTER);
     const deletion=await element('dialog[aria-label="删除检查作业"][open]');
     const cancel=await deletion.findElement(By.css('button[aria-label="取消删除"]'));
     assert.equal(await driver.switchTo().activeElement().then(element=>element.getId()),await cancel.getId());
@@ -154,7 +173,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     await driver.wait(async()=>(await cards()).length===expectedGallery.total,10000);
     execFileSync(bridge.pythonPath,['-c','import sqlite3,sys\nwith sqlite3.connect(sys.argv[1]) as c:c.execute("UPDATE consistency_queries SET expires_at=?",("2000-01-01T00:00:00+00:00",))',path.join(root,'test.db')]);
     await (await cards())[0].click();
-    await driver.wait(async()=>(await driver.findElement(By.css('[role="dialog"]')).getText()).includes('snapshot'),10000);
+    await driver.wait(async()=>(await driver.findElement(By.css('#dc-compare-mask')).getText()).includes('snapshot'),10000);
     assert.equal((await driver.findElements(By.css('[data-dc="zoom-candidate"] img'))).length,0,'失败时不得显示旧候选或主图代替候选');
     await click('关闭');await click('新建检查');
     await bridge.execute('dataset_delete',{dataset_id:dataset.dataset_id});

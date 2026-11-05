@@ -298,32 +298,6 @@ function ConsistencyIntegratedWorkspace() {
     return visibleConflicts.slice(start, start + 18);
   }, [visibleConflicts, currentPage]);
 
-  // Global keydown (Escape) and click outside handlers
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key !== 'Escape') return;
-
-      if (zoomItem) {
-        setZoomItem(null);
-        return;
-      }
-      if (modal === 'new') return;
-      if (modal) {
-        setModal('');
-        return;
-      }
-      if (statsModalJobId) {
-        setStatsModalJobId('');
-        return;
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [zoomItem, modal, statsModalJobId]);
-
   // Parent dataset change handler
   const handleParentChange = useCallback(
     (newParentId: string) => {
@@ -666,7 +640,9 @@ function ConsistencyIntegratedWorkspace() {
                           aria-selected={isSelected}
                           onClick={() => selectJob(j.batch_id)}
                           onKeyDown={e => {
-                            if (e.key === 'Enter' || e.key === ' ') selectJob(j.batch_id);
+                            if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                              e.preventDefault();selectJob(j.batch_id);
+                            }
                           }}
                         >
                           <td className="dc-mono">{j.batch_id}</td>
@@ -925,19 +901,7 @@ function ConsistencyIntegratedWorkspace() {
 
       {/* Conflict Comparison Dialog */}
       {modal === 'compare' && currentConflict && (
-        <div
-          className="dc-modal-mask"
-          id="dc-compare-mask"
-          onClick={e => {
-            if ((e.target as HTMLElement).id === 'dc-compare-mask') setModal('');
-          }}
-        >
-          <section
-            className="dc-dialog dc-conflict-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="dc-dialog-title"
-          >
+        <Modal title="标注冲突对比" id="dc-compare-mask" className="dc-dialog dc-conflict-dialog" header={false} onClose={()=>setModal('')}>
             <header className="dc-dialog-head">
               <h2 id="dc-dialog-title">标注冲突对比</h2>
               <div className="dc-dialog-head-actions">
@@ -1132,31 +1096,12 @@ function ConsistencyIntegratedWorkspace() {
                 保存复核
               </Button>
             </footer>
-          </section>
-        </div>
+        </Modal>
       )}
 
-      {/* Delete Job Modal */}
       {/* Statistics dialog */}
       {!!statsModalJobId && (
-        <div
-          className="dc-mask dc-stats-mask"
-          id="dc-mask"
-          role="presentation"
-          onClick={e => {
-            if ((e.target as HTMLElement).id === 'dc-mask') setStatsModalJobId('');
-          }}
-        >
-          <section
-            className="dc-stats-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="dc-stats-title"
-          >
-            <header className="dc-stats-header">
-              <h2 id="dc-stats-title">标注冲突统计</h2>
-              <IconButton icon="close" type="button" title="关闭统计" label="关闭统计" data-dc="close-drawer" onClick={() => setStatsModalJobId('')} />
-            </header>
+        <Modal title="标注冲突统计" size="form" className="dc-stats-dialog" onClose={()=>setStatsModalJobId('')}>
             <div className="dc-stats-content">
               <div className="dc-stats-charts">
                 {/* 1. 原始差异类型 */}
@@ -1292,8 +1237,7 @@ function ConsistencyIntegratedWorkspace() {
                 })()}
               </div>
             </div>
-          </section>
-        </div>
+        </Modal>
       )}
 
       {statusJobId && batches.some(job=>job.batch_id===statusJobId) && <JobStatusDrawer

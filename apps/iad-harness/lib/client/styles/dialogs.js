@@ -68,7 +68,6 @@ dialog.iad-detail-dialog {text-align:left;}
 .overlay:not(.show),
 #knowledge-page .kb-v45 .detail-overlay:not(.show),
 #knowledge-page .detail-overlay:not(.show),
-.dc-modal-mask[hidden],
 [hidden] {
   display: none !important;
 }
@@ -104,8 +103,6 @@ dialog.iad-detail-dialog {
 .detail-dialog,
 .exp-direction-dialog,
 .dc-conflict-dialog,
-#dc-compare-mask .dc-dialog[role="dialog"],
-#dc-compare-mask.dc-modal-mask .dc-dialog[role=dialog],
 #knowledge-page .kb-v45 .detail-modal,
 #knowledge-page .detail-modal,
 .detail-modal,
@@ -247,8 +244,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
    ========================================================================== */
 #knowledge-page .kb-v45 #create-overlay > .modal,
 dialog.dc-new-dialog,
-dialog.iad-detail-dialog.iad-dialog-form,
-.dc-stats-modal .dc-stats-dialog {
+dialog.iad-detail-dialog.iad-dialog-form {
   width: min(var(--iba-dialog-edit-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
   max-width: var(--iba-dialog-edit-width) !important;
   height: auto !important;
@@ -414,7 +410,6 @@ dialog.iad-detail-dialog.iad-dialog-compact {
 
 @media (max-width: 760px) {
   .detail-overlay,
-  #dc-compare-mask.dc-modal-mask,
   #knowledge-page .kb-v45 .detail-overlay {
     padding: 12px !important;
   }

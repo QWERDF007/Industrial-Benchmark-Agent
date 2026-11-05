@@ -14193,9 +14193,9 @@ button.iad-job-status-button{border:0;background:transparent;padding:0;min-heigh
 .dc-table-panel{overflow:hidden;background:#fff;border:1px solid var(--border);border-radius:7px}.dc-table{border-collapse:collapse;width:100%;text-align:left;font-size:13px}.dc-table th{font-weight:600;color:#172338;background:#f6f8fb;padding:12px 18px;border-bottom:1px solid var(--border)}.dc-table td{padding:16px 18px;border-bottom:1px solid #ecf0f5;color:#172338;font-size:13px}.dc-table tbody tr:last-child td{border-bottom:0}.dc-table tbody tr{cursor:pointer}.dc-table tbody tr:hover{background:#f7f9fd}.dc-table tbody tr[data-selected=true]{background:#eaf0ff}.dc-table .dc-operations{text-align:right;white-space:nowrap;width:120px}.dc-mono{font-variant-numeric:tabular-nums}.dc-muted{color:#8190a5}.dc-state{color:#477cbe}.dc-state.completed{color:#177b53}.dc-state.failed{color:#b23c43}.dc-state.running{color:#285ed6}.dc-state.pending{color:#285ed6}.dc-table .dc-time{white-space:nowrap}.dc-empty{min-height:132px;display:flex;align-items:center;justify-content:center;color:#8492a6;background:#fff;border:1px solid var(--border);border-radius:7px;padding:24px;text-align:center}
 .dc-running{display:grid;gap:10px;padding:17px 20px;border:1px solid #d7e2f9;border-radius:7px;background:#f8fbff;margin-bottom:14px}.dc-running-header{display:flex;justify-content:space-between;align-items:center}.dc-stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dc-stage{min-width:0;border-top:3px solid #dce3ed;padding-top:8px;font-size:12px;color:#8b99ab}.dc-stage.done{color:#28795f;border-color:#51a881}.dc-stage.current{color:#2558c4;border-color:#356be4;font-weight:600}
 .dc-result-tools{display:flex;align-items:center;gap:10px}.dc-result-tools select,.dc-result-tools input{height:36px}.dc-result-tools input{width:240px}.dc-result-tools select{width:140px}.dc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:15px}.dc-card{border:1px solid var(--border2);border-radius:7px;background:#fff;overflow:hidden;color:var(--ink);text-align:left;padding:0;transition:box-shadow .15s,border-color .15s}.dc-card:hover{border-color:#91aee8;box-shadow:0 5px 16px #183a6720}.dc-card-img{height:140px;display:flex;align-items:center;justify-content:center;background:#eef2f7;overflow:hidden;position:relative}.dc-card-img img{width:100%;height:100%;object-fit:cover}.dc-card-caption{padding:11px 12px 12px;min-width:0}.dc-card-caption strong{display:block;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;font-size:12px;font-weight:600}.dc-card-caption small{display:block;color:#7f8da2;font-size:11px;margin-top:3px}.dc-counter-pager{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:18px}.dc-counter-pager button{min-width:32px}
-.dc-mask{position:fixed;inset:0;background:#101d32a1;z-index:400;display:flex;align-items:stretch;justify-content:flex-end}.dc-mask[hidden]{display:none!important}.dc-drawer{width:min(510px,100vw);height:100dvh;overflow:auto;background:white;box-shadow:-15px 0 40px #11213b25;display:flex;flex-direction:column}.dc-drawer-header{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid var(--border)}.dc-drawer-header h2{margin:0;font-size:18px}.dc-drawer-content{padding:20px 24px}.dc-stats{display:grid;grid-template-columns:1fr 1fr;gap:14px}.dc-stat{padding:14px;border:1px solid var(--border);border-radius:5px}.dc-stat strong{display:block;font-size:26px;font-weight:650;line-height:1.5}.dc-stat span{font-size:12px;color:#7e8da1}.dc-stats-label{font-size:13px;margin:24px 0 10px;font-weight:600}.dc-metrics{border-collapse:collapse;width:100%}.dc-metrics td{border-bottom:1px solid var(--border2);padding:11px 4px;font-size:12px}.dc-metrics td+td{text-align:right}
-.dc-modal-mask{position:fixed;inset:0;background:#0b172bba;z-index:430;display:flex;align-items:center;justify-content:center;padding:22px}.dc-modal-mask[hidden]{display:none!important}.dc-dialog{width:min(1190px,calc(100vw - 40px));height:min(820px,calc(100dvh - 44px));background:#fff;border-radius:8px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 18px 60px #07102548}.dc-dialog-head{height:58px;padding:0 23px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex:none}.dc-dialog-head h2{font-size:17px;margin:0;font-weight:650}.dc-dialog-head-actions{display:flex;align-items:center;gap:8px}.dc-dialog-body{padding:20px 24px 24px;min-height:0;overflow:auto;flex:1}.dc-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.dc-compare-cell{min-width:0}.dc-compare-title{font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;margin:0 0 10px}.dc-compare-photo{height:268px;border:1px solid var(--border);border-radius:6px;background:#f0f3f7;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:zoom-in}.dc-compare-photo img{height:100%;width:100%;object-fit:contain}.dc-compare-photo .dc-bbox{position:absolute;border:2px solid #e88c26;background:transparent !important;box-shadow:none !important;pointer-events:none;box-sizing:border-box;left:32%;top:31%;width:16%;height:14%}.dc-compare-caption{font-size:12px;display:flex;gap:10px;justify-content:space-between;padding:10px 0;color:#53647c}.dc-candidate-strip{display:flex;gap:9px;overflow:auto;padding:10px 0 5px;scrollbar-width:thin}.dc-candidate{flex:none;position:relative;width:96px;height:80px;border:2px solid transparent;background:#f0f3f7;padding:0;border-radius:5px;overflow:hidden}.dc-candidate[aria-pressed=true]{border-color:var(--blue)}.dc-candidate:hover{border-color:#91aee8}.dc-candidate img{width:100%;height:100%;object-fit:cover}.dc-candidate small{position:absolute;bottom:2px;left:4px;background:#172b41c9;color:white;border-radius:3px;padding:1px 5px;font-size:11px}.dc-info{border-top:1px solid var(--border);margin-top:19px;padding-top:18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.dc-info h3{font-size:13px;margin:0 0 10px}.dc-info p{font-size:12px;color:#485972;line-height:1.8;margin:5px 0}.dc-decision-controls{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0}.dc-decision-controls label{display:inline-flex;align-items:center;gap:7px;font-size:12px}.dc-decision-controls input{height:16px;width:16px;accent-color:var(--blue)}.dc-note{width:100%;height:66px;padding:10px;border:1px solid #b7c5d9;border-radius:5px;resize:vertical;color:var(--ink)}.dc-dialog-footer{display:flex;gap:8px;justify-content:flex-end;padding:13px 24px;border-top:1px solid var(--border);flex:none}.dc-small-muted{font-size:11px;color:#8794a6}.dc-alert{border:1px solid #f3d4d4;background:#fff7f7;padding:12px;color:#ac4343;font-size:12px;border-radius:5px}.dc-dialog .dc-dialog-body label{font-size:12px}.dc-esc{display:none}
-@media(max-width:1000px){.dc-compare,.dc-info{grid-template-columns:1fr}.dc-compare-photo{height:230px}.dc-dialog{height:min(900px,95dvh)}.dc-section-heading{flex-wrap:wrap}.dc-grid{grid-template-columns:repeat(auto-fill,minmax(154px,1fr))}}@media(max-width:650px){.dc-scope .dc-parent,.dc-scope .dc-children{width:100%}.dc-scope{display:grid}.dc-result-tools{width:100%;flex-wrap:wrap}.dc-result-tools input{width:100%}.dc-modal-mask{padding:5px}.dc-dialog{width:100%;height:96dvh}.dc-compare-photo{height:190px}.dc-table{min-width:720px}.dc-table-panel{overflow:auto}}
+.dc-drawer{width:min(510px,100vw);height:100dvh;overflow:auto;background:white;box-shadow:-15px 0 40px #11213b25;display:flex;flex-direction:column}.dc-drawer-header{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid var(--border)}.dc-drawer-header h2{margin:0;font-size:18px}.dc-drawer-content{padding:20px 24px}.dc-stats{display:grid;grid-template-columns:1fr 1fr;gap:14px}.dc-stat{padding:14px;border:1px solid var(--border);border-radius:5px}.dc-stat strong{display:block;font-size:26px;font-weight:650;line-height:1.5}.dc-stat span{font-size:12px;color:#7e8da1}.dc-stats-label{font-size:13px;margin:24px 0 10px;font-weight:600}.dc-metrics{border-collapse:collapse;width:100%}.dc-metrics td{border-bottom:1px solid var(--border2);padding:11px 4px;font-size:12px}.dc-metrics td+td{text-align:right}
+.dc-dialog-head{height:58px;padding:0 23px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex:none}.dc-dialog-head h2{font-size:17px;margin:0;font-weight:650}.dc-dialog-head-actions{display:flex;align-items:center;gap:8px}.dc-dialog-body{padding:20px 24px 24px;min-height:0;overflow:auto;flex:1}.dc-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.dc-compare-cell{min-width:0}.dc-compare-title{font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;margin:0 0 10px}.dc-compare-photo{height:268px;border:1px solid var(--border);border-radius:6px;background:#f0f3f7;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:zoom-in}.dc-compare-photo img{height:100%;width:100%;object-fit:contain}.dc-compare-photo .dc-bbox{position:absolute;border:2px solid #e88c26;background:transparent !important;box-shadow:none !important;pointer-events:none;box-sizing:border-box;left:32%;top:31%;width:16%;height:14%}.dc-compare-caption{font-size:12px;display:flex;gap:10px;justify-content:space-between;padding:10px 0;color:#53647c}.dc-candidate-strip{display:flex;gap:9px;overflow:auto;padding:10px 0 5px;scrollbar-width:thin}.dc-candidate{flex:none;position:relative;width:96px;height:80px;border:2px solid transparent;background:#f0f3f7;padding:0;border-radius:5px;overflow:hidden}.dc-candidate[aria-pressed=true]{border-color:var(--blue)}.dc-candidate:hover{border-color:#91aee8}.dc-candidate img{width:100%;height:100%;object-fit:cover}.dc-candidate small{position:absolute;bottom:2px;left:4px;background:#172b41c9;color:white;border-radius:3px;padding:1px 5px;font-size:11px}.dc-info{border-top:1px solid var(--border);margin-top:19px;padding-top:18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.dc-info h3{font-size:13px;margin:0 0 10px}.dc-info p{font-size:12px;color:#485972;line-height:1.8;margin:5px 0}.dc-decision-controls{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0}.dc-decision-controls label{display:inline-flex;align-items:center;gap:7px;font-size:12px}.dc-decision-controls input{height:16px;width:16px;accent-color:var(--blue)}.dc-note{width:100%;height:66px;padding:10px;border:1px solid #b7c5d9;border-radius:5px;resize:vertical;color:var(--ink)}.dc-dialog-footer{display:flex;gap:8px;justify-content:flex-end;padding:13px 24px;border-top:1px solid var(--border);flex:none}.dc-small-muted{font-size:11px;color:#8794a6}.dc-alert{border:1px solid #f3d4d4;background:#fff7f7;padding:12px;color:#ac4343;font-size:12px;border-radius:5px}.dc-dialog .dc-dialog-body label{font-size:12px}.dc-esc{display:none}
+@media(max-width:1000px){.dc-compare,.dc-info{grid-template-columns:1fr}.dc-compare-photo{height:230px}.dc-section-heading{flex-wrap:wrap}.dc-grid{grid-template-columns:repeat(auto-fill,minmax(154px,1fr))}}@media(max-width:650px){.dc-scope .dc-parent,.dc-scope .dc-children{width:100%}.dc-scope{display:grid}.dc-result-tools{width:100%;flex-wrap:wrap}.dc-result-tools input{width:100%}.dc-compare-photo{height:190px}.dc-table{min-width:720px}.dc-table-panel{overflow:auto}}
 
 /* V18: \u7EDF\u8BA1\u4E0E\u51B2\u7A81\u7F51\u683C\u5171\u7528\u540C\u4E00\u5957\u7C7B\u578B\u53E3\u5F84\uFF1B\u4FDD\u7559\u539F\u6709\u8868\u683C/\u56FE\u50CF\u6837\u5F0F\u3002 */
 .dc-stat-type:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
@@ -14585,22 +14585,20 @@ button.iad-job-status-button{border:0;background:transparent;padding:0;min-heigh
   outline: 2px solid #3873dd !important;
 }
 
-/* V30/V56 Unified Dialog Geometry */
+/* Image detail layout */
 :root {
   --iad-content-modal-gutter: var(--iba-dialog-gap, clamp(12px, 2.5vw, 32px));
   --iad-content-modal-radius: 8px;
   --iad-content-modal-width: 1380px;
   --iad-content-modal-height: 820px;
 }
-.detail-overlay,
-.dc-modal-mask:has(#dc-dialog-title) {
+.detail-overlay {
   padding: var(--iad-content-modal-gutter) !important;
   background: rgba(23, 34, 51, 0.68) !important;
   align-items: center !important;
   justify-content: center !important;
 }
-.detail-dialog,
-.dc-modal-mask:has(#dc-dialog-title) .dc-dialog {
+.detail-dialog {
   width: min(var(--iad-content-modal-width), calc(100vw - 2 * var(--iad-content-modal-gutter))) !important;
   height: min(var(--iad-content-modal-height), calc(100dvh - 2 * var(--iad-content-modal-gutter))) !important;
   max-width: none !important;
@@ -14614,41 +14612,6 @@ button.iad-job-status-button{border:0;background:transparent;padding:0;min-heigh
   box-shadow: 0 20px 64px rgba(14, 26, 48, 0.27) !important;
 }
 
-/* V30 Centered Statistical Dialog & 3 Vertical Stacked Bar Charts */
-.dc-stats-mask {
-  align-items: center !important;
-  justify-content: center !important;
-  padding: clamp(20px, 4.5vw, 74px) !important;
-  background: rgba(23, 34, 51, 0.68) !important;
-}
-.dc-stats-dialog {
-  width: min(1170px, 100%) !important;
-  max-height: min(810px, calc(100dvh - 2 * clamp(20px, 4.5vw, 74px))) !important;
-  background: #fff !important;
-  border: 1px solid #d9e2ed !important;
-  border-radius: 8px !important;
-  box-shadow: 0 20px 64px rgba(14, 26, 48, 0.27) !important;
-  overflow: hidden !important;
-  display: flex !important;
-  flex-direction: column !important;
-  min-height: 0 !important;
-}
-.dc-stats-header {
-  min-height: 65px !important;
-  padding: 0 25px !important;
-  border-bottom: 1px solid var(--border, #dbe2eb) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 16px !important;
-  flex: none !important;
-}
-.dc-stats-header h2 {
-  font-size: 17px !important;
-  font-weight: 650 !important;
-  margin: 0 !important;
-  color: var(--ink, #17233a) !important;
-}
 .dc-stats-content {
   overflow-y: auto !important;
   overflow-x: hidden !important;
@@ -15228,7 +15191,6 @@ dialog.iad-detail-dialog {text-align:left;}
 .overlay:not(.show),
 #knowledge-page .kb-v45 .detail-overlay:not(.show),
 #knowledge-page .detail-overlay:not(.show),
-.dc-modal-mask[hidden],
 [hidden] {
   display: none !important;
 }
@@ -15264,8 +15226,6 @@ dialog.iad-detail-dialog {
 .detail-dialog,
 .exp-direction-dialog,
 .dc-conflict-dialog,
-#dc-compare-mask .dc-dialog[role="dialog"],
-#dc-compare-mask.dc-modal-mask .dc-dialog[role=dialog],
 #knowledge-page .kb-v45 .detail-modal,
 #knowledge-page .detail-modal,
 .detail-modal,
@@ -15407,8 +15367,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
    ========================================================================== */
 #knowledge-page .kb-v45 #create-overlay > .modal,
 dialog.dc-new-dialog,
-dialog.iad-detail-dialog.iad-dialog-form,
-.dc-stats-modal .dc-stats-dialog {
+dialog.iad-detail-dialog.iad-dialog-form {
   width: min(var(--iba-dialog-edit-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
   max-width: var(--iba-dialog-edit-width) !important;
   height: auto !important;
@@ -15574,7 +15533,6 @@ dialog.iad-detail-dialog.iad-dialog-compact {
 
 @media (max-width: 760px) {
   .detail-overlay,
-  #dc-compare-mask.dc-modal-mask,
   #knowledge-page .kb-v45 .detail-overlay {
     padding: 12px !important;
   }
@@ -18572,28 +18530,6 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       const start = (currentPage - 1) * 18;
       return visibleConflicts.slice(start, start + 18);
     }, [visibleConflicts, currentPage]);
-    (0, import_react75.useEffect)(() => {
-      function handleKeyDown(e) {
-        if (e.key !== "Escape") return;
-        if (zoomItem) {
-          setZoomItem(null);
-          return;
-        }
-        if (modal === "new") return;
-        if (modal) {
-          setModal("");
-          return;
-        }
-        if (statsModalJobId) {
-          setStatsModalJobId("");
-          return;
-        }
-      }
-      document.addEventListener("keydown", handleKeyDown);
-      return () => {
-        document.removeEventListener("keydown", handleKeyDown);
-      };
-    }, [zoomItem, modal, statsModalJobId]);
     const handleParentChange = (0, import_react75.useCallback)(
       (newParentId) => {
         setSelectedParentId(newParentId);
@@ -18933,7 +18869,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                     "aria-selected": isSelected,
                     onClick: () => selectJob(j.batch_id),
                     onKeyDown: (e) => {
-                      if (e.key === "Enter" || e.key === " ") selectJob(j.batch_id);
+                      if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                        e.preventDefault();
+                        selectJob(j.batch_id);
+                      }
                     },
                     children: [
                       /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("td", { className: "dc-mono", children: j.batch_id }),
@@ -19205,346 +19144,301 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           )
         ] })
       ] }),
-      modal === "compare" && currentConflict && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-        "div",
-        {
-          className: "dc-modal-mask",
-          id: "dc-compare-mask",
-          onClick: (e) => {
-            if (e.target.id === "dc-compare-mask") setModal("");
-          },
-          children: /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)(
-            "section",
-            {
-              className: "dc-dialog dc-conflict-dialog",
-              role: "dialog",
-              "aria-modal": "true",
-              "aria-labelledby": "dc-dialog-title",
-              children: [
-                /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("header", { className: "dc-dialog-head", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h2", { id: "dc-dialog-title", children: "\u6807\u6CE8\u51B2\u7A81\u5BF9\u6BD4" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-dialog-head-actions", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(Button, { type: "button", onClick: handlePrevConflict, children: "\u4E0A\u4E00\u7EC4" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(Button, { type: "button", onClick: handleNextConflict, children: "\u4E0B\u4E00\u7EC4" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(IconButton, { icon: "close", type: "button", title: "\u5173\u95ED", label: "\u5173\u95ED", onClick: () => setModal("") })
-                  ] })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-dialog-body", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-compare", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-compare-cell", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-                        "div",
-                        {
-                          className: "dc-compare-photo",
-                          role: "button",
-                          tabIndex: 0,
-                          "data-dc": "zoom-anchor",
-                          "aria-label": "\u67E5\u770B\u4E3B\u56FE\u5927\u56FE",
-                          title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE",
-                          onClick: () => setZoomItem({
-                            id: currentConflict.id + "_anchor",
-                            title: currentConflict.filename,
-                            imageUrl: currentConflict.fullUrl || currentConflict.url,
-                            width: currentConflict.sourceWidth,
-                            height: currentConflict.sourceHeight,
-                            bboxes: anchorBboxes
-                          }),
-                          onKeyDown: (e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              setZoomItem({
-                                id: currentConflict.id + "_anchor",
-                                title: currentConflict.filename,
-                                imageUrl: currentConflict.fullUrl || currentConflict.url,
-                                width: currentConflict.sourceWidth,
-                                height: currentConflict.sourceHeight,
-                                bboxes: anchorBboxes
-                              });
-                            }
-                          },
-                          children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-                            AnnotatedImageStage,
-                            {
-                              src: currentConflict.fullUrl || currentConflict.url,
-                              alt: "\u4E3B\u56FE",
-                              width: currentConflict.sourceWidth,
-                              height: currentConflict.sourceHeight,
-                              bboxes: anchorBboxes
-                            }
-                          )
-                        }
-                      ),
-                      /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-photo-filename", title: currentConflict.filename, children: currentConflict.filename })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-compare-cell", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-                        "div",
-                        {
-                          className: "dc-compare-photo",
-                          role: "button",
-                          tabIndex: 0,
-                          "data-dc": "zoom-candidate",
-                          "aria-label": "\u67E5\u770B\u5019\u9009\u56FE\u5927\u56FE",
-                          title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE",
-                          onClick: () => setZoomItem({
-                            id: currentConflict.id + "_candidate_" + candidateIndex,
-                            title: `${currentCandidate.filename} (\u5019\u9009\u56FE ${candidateIndex + 1})`,
-                            imageUrl: currentCandidate.fullUrl,
-                            width: currentCandidate.width,
-                            height: currentCandidate.height,
-                            bboxes: candidateBboxes
-                          }),
-                          onKeyDown: (e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              setZoomItem({
-                                id: currentConflict.id + "_candidate_" + candidateIndex,
-                                title: `${currentCandidate.filename} (\u5019\u9009\u56FE ${candidateIndex + 1})`,
-                                imageUrl: currentCandidate.fullUrl,
-                                width: currentCandidate.width,
-                                height: currentCandidate.height,
-                                bboxes: candidateBboxes
-                              });
-                            }
-                          },
-                          children: selectedMember && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-                            AnnotatedImageStage,
-                            {
-                              src: currentCandidate.fullUrl || currentCandidate.thumbUrl,
-                              alt: "\u5019\u9009\u56FE",
-                              width: currentCandidate.width,
-                              height: currentCandidate.height,
-                              bboxes: candidateBboxes
-                            }
-                          )
-                        }
-                      ),
-                      /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-photo-filename", title: currentCandidate.filename, children: currentCandidate.filename })
-                    ] })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "iad-thumbnail-strip", "aria-label": "\u5207\u6362\u51B2\u7A81\u56FE\u50CF", children: conflictMembers.map((m, i) => {
-                    const s = m.image.sample;
-                    const thumb = ConsistencyView.media(m.image, true);
-                    return /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-                      ThumbnailCard,
+      modal === "compare" && currentConflict && /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)(Modal, { title: "\u6807\u6CE8\u51B2\u7A81\u5BF9\u6BD4", id: "dc-compare-mask", className: "dc-dialog dc-conflict-dialog", header: false, onClose: () => setModal(""), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("header", { className: "dc-dialog-head", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h2", { id: "dc-dialog-title", children: "\u6807\u6CE8\u51B2\u7A81\u5BF9\u6BD4" }),
+          /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-dialog-head-actions", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(Button, { type: "button", onClick: handlePrevConflict, children: "\u4E0A\u4E00\u7EC4" }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(Button, { type: "button", onClick: handleNextConflict, children: "\u4E0B\u4E00\u7EC4" }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(IconButton, { icon: "close", type: "button", title: "\u5173\u95ED", label: "\u5173\u95ED", onClick: () => setModal("") })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-dialog-body", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-compare", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-compare-cell", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
+                "div",
+                {
+                  className: "dc-compare-photo",
+                  role: "button",
+                  tabIndex: 0,
+                  "data-dc": "zoom-anchor",
+                  "aria-label": "\u67E5\u770B\u4E3B\u56FE\u5927\u56FE",
+                  title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE",
+                  onClick: () => setZoomItem({
+                    id: currentConflict.id + "_anchor",
+                    title: currentConflict.filename,
+                    imageUrl: currentConflict.fullUrl || currentConflict.url,
+                    width: currentConflict.sourceWidth,
+                    height: currentConflict.sourceHeight,
+                    bboxes: anchorBboxes
+                  }),
+                  onKeyDown: (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      setZoomItem({
+                        id: currentConflict.id + "_anchor",
+                        title: currentConflict.filename,
+                        imageUrl: currentConflict.fullUrl || currentConflict.url,
+                        width: currentConflict.sourceWidth,
+                        height: currentConflict.sourceHeight,
+                        bboxes: anchorBboxes
+                      });
+                    }
+                  },
+                  children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
+                    AnnotatedImageStage,
+                    {
+                      src: currentConflict.fullUrl || currentConflict.url,
+                      alt: "\u4E3B\u56FE",
+                      width: currentConflict.sourceWidth,
+                      height: currentConflict.sourceHeight,
+                      bboxes: anchorBboxes
+                    }
+                  )
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-photo-filename", title: currentConflict.filename, children: currentConflict.filename })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-compare-cell", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
+                "div",
+                {
+                  className: "dc-compare-photo",
+                  role: "button",
+                  tabIndex: 0,
+                  "data-dc": "zoom-candidate",
+                  "aria-label": "\u67E5\u770B\u5019\u9009\u56FE\u5927\u56FE",
+                  title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE",
+                  onClick: () => setZoomItem({
+                    id: currentConflict.id + "_candidate_" + candidateIndex,
+                    title: `${currentCandidate.filename} (\u5019\u9009\u56FE ${candidateIndex + 1})`,
+                    imageUrl: currentCandidate.fullUrl,
+                    width: currentCandidate.width,
+                    height: currentCandidate.height,
+                    bboxes: candidateBboxes
+                  }),
+                  onKeyDown: (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      setZoomItem({
+                        id: currentConflict.id + "_candidate_" + candidateIndex,
+                        title: `${currentCandidate.filename} (\u5019\u9009\u56FE ${candidateIndex + 1})`,
+                        imageUrl: currentCandidate.fullUrl,
+                        width: currentCandidate.width,
+                        height: currentCandidate.height,
+                        bboxes: candidateBboxes
+                      });
+                    }
+                  },
+                  children: selectedMember && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
+                    AnnotatedImageStage,
+                    {
+                      src: currentCandidate.fullUrl || currentCandidate.thumbUrl,
+                      alt: "\u5019\u9009\u56FE",
+                      width: currentCandidate.width,
+                      height: currentCandidate.height,
+                      bboxes: candidateBboxes
+                    }
+                  )
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-photo-filename", title: currentCandidate.filename, children: currentCandidate.filename })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "iad-thumbnail-strip", "aria-label": "\u5207\u6362\u51B2\u7A81\u56FE\u50CF", children: conflictMembers.map((m, i) => {
+            const s = m.image.sample;
+            const thumb = ConsistencyView.media(m.image, true);
+            return /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
+              ThumbnailCard,
+              {
+                src: thumb,
+                label: `\u5019\u9009 ${i + 1}`,
+                "data-dc": "candidate",
+                "data-id": i,
+                "aria-pressed": i === candidateIndex,
+                onClick: () => setCandidateIndex(i)
+              },
+              s.sample_id || i
+            );
+          }) }),
+          membersError && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { role: "alert", className: "iad-error", children: membersError }),
+          compared.error && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { role: "alert", className: "iad-error", children: compared.error }),
+          /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-fact-panel", "aria-label": "\u5224\u5B9A\u7ED3\u8BBA", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u5224\u5B9A\u7ED3\u8BBA" }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-verdict-value", children: currentConflict.type }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { className: "dc-verdict-description", children: compared.data ? annotationSummary(compared.data.result.annotation) : compared.error || "\u6B63\u5728\u8BFB\u53D6\u51BB\u7ED3\u6BD4\u8F83\u8BB0\u5F55\u2026" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-model-panel", "aria-label": "\u6A21\u578B\u5206\u6790", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u6A21\u578B\u5206\u6790" }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { children: groupAnalysis.error || groupAnalysis.analysis?.error || groupAnalysis.analysis?.result?.conclusions.map((item) => item.text).join("\n") || "\u6682\u65E0\u5DF2\u4FDD\u5B58\u7684\u6A21\u578B\u5206\u6790\u7ED3\u679C\u3002" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-conclusion-panel", "aria-label": "\u6A21\u578B\u7ED3\u8BBA", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u6A21\u578B\u7ED3\u8BBA" }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-verdict-value", children: groupAnalysis.analysis?.result?.overall.text || currentConflict.model.modelType }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { className: "dc-verdict-description", children: groupAnalysis.analysis?.result?.overall.text || groupAnalysis.error || groupAnalysis.analysis?.error || "\u6682\u65E0\u5DF2\u4FDD\u5B58\u7684\u6A21\u578B\u7ED3\u8BBA\u3002" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-review-panel", "aria-label": "\u4EBA\u5DE5\u590D\u6838", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u4EBA\u5DE5\u590D\u6838" }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-decision-controls", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("label", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
+                  "input",
+                  {
+                    type: "radio",
+                    disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
+                    name: "dc-review",
+                    value: "pending",
+                    checked: reviewDecision === "pending",
+                    onChange: () => setReviewDecision("pending")
+                  }
+                ),
+                "\u5F85\u786E\u8BA4"
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("label", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
+                  "input",
+                  {
+                    type: "radio",
+                    disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
+                    name: "dc-review",
+                    value: "confirmed",
+                    checked: reviewDecision === "confirmed",
+                    onChange: () => setReviewDecision("confirmed")
+                  }
+                ),
+                "\u786E\u8BA4\u51B2\u7A81"
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("label", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
+                  "input",
+                  {
+                    type: "radio",
+                    disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
+                    name: "dc-review",
+                    value: "rejected",
+                    checked: reviewDecision === "rejected",
+                    onChange: () => setReviewDecision("rejected")
+                  }
+                ),
+                "\u6392\u9664\u51B2\u7A81"
+              ] })
+            ] }),
+            reviewError && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { role: "alert", className: "iad-error", children: reviewError }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
+              "textarea",
+              {
+                disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
+                className: "dc-note",
+                id: "dc-note",
+                placeholder: "\u590D\u6838\u8BF4\u660E\uFF08\u53EF\u9009\uFF09",
+                value: reviewNote,
+                onChange: (e) => setReviewNote(e.target.value)
+              }
+            )
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("footer", { className: "dc-dialog-footer", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(Button, { type: "button", onClick: () => setModal(""), children: "\u53D6\u6D88" }),
+          /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(Button, { variant: "primary", type: "button", disabled: reviewBusy || !reviewLoaded || !compared.data, onClick: handleSaveReview, children: "\u4FDD\u5B58\u590D\u6838" })
+        ] })
+      ] }),
+      !!statsModalJobId && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(Modal, { title: "\u6807\u6CE8\u51B2\u7A81\u7EDF\u8BA1", size: "form", className: "dc-stats-dialog", onClose: () => setStatsModalJobId(""), children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-stats-content", children: /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-stats-charts", children: [
+        (() => {
+          const ticks = [distributionAxis, distributionAxis * 0.75, distributionAxis * 0.5, distributionAxis * 0.25, 0].map((v) => Math.round(v));
+          return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-vchart-panel", "aria-label": "\u539F\u59CB\u5DEE\u5F02\u7C7B\u578B\u67F1\u72B6\u56FE", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u539F\u59CB\u5DEE\u5F02\u7C7B\u578B" }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-body", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { children: n }, i)) }),
+              /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-figure", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
+                /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: origStats.length }, children: origStats.map((row) => {
+                  const height = 100 * row.count / distributionAxis;
+                  return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-column", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
+                      "button",
                       {
-                        src: thumb,
-                        label: `\u5019\u9009 ${i + 1}`,
-                        "data-dc": "candidate",
-                        "data-id": i,
-                        "aria-pressed": i === candidateIndex,
-                        onClick: () => setCandidateIndex(i)
-                      },
-                      s.sample_id || i
-                    );
-                  }) }),
-                  membersError && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { role: "alert", className: "iad-error", children: membersError }),
-                  compared.error && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { role: "alert", className: "iad-error", children: compared.error }),
-                  /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-fact-panel", "aria-label": "\u5224\u5B9A\u7ED3\u8BBA", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u5224\u5B9A\u7ED3\u8BBA" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-verdict-value", children: currentConflict.type }),
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { className: "dc-verdict-description", children: compared.data ? annotationSummary(compared.data.result.annotation) : compared.error || "\u6B63\u5728\u8BFB\u53D6\u51BB\u7ED3\u6BD4\u8F83\u8BB0\u5F55\u2026" })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-model-panel", "aria-label": "\u6A21\u578B\u5206\u6790", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u6A21\u578B\u5206\u6790" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { children: groupAnalysis.error || groupAnalysis.analysis?.error || groupAnalysis.analysis?.result?.conclusions.map((item) => item.text).join("\n") || "\u6682\u65E0\u5DF2\u4FDD\u5B58\u7684\u6A21\u578B\u5206\u6790\u7ED3\u679C\u3002" })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-conclusion-panel", "aria-label": "\u6A21\u578B\u7ED3\u8BBA", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u6A21\u578B\u7ED3\u8BBA" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-verdict-value", children: groupAnalysis.analysis?.result?.overall.text || currentConflict.model.modelType }),
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { className: "dc-verdict-description", children: groupAnalysis.analysis?.result?.overall.text || groupAnalysis.error || groupAnalysis.analysis?.error || "\u6682\u65E0\u5DF2\u4FDD\u5B58\u7684\u6A21\u578B\u7ED3\u8BBA\u3002" })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-review-panel", "aria-label": "\u4EBA\u5DE5\u590D\u6838", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u4EBA\u5DE5\u590D\u6838" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-decision-controls", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("label", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-                          "input",
-                          {
-                            type: "radio",
-                            disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
-                            name: "dc-review",
-                            value: "pending",
-                            checked: reviewDecision === "pending",
-                            onChange: () => setReviewDecision("pending")
-                          }
-                        ),
-                        "\u5F85\u786E\u8BA4"
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("label", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-                          "input",
-                          {
-                            type: "radio",
-                            disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
-                            name: "dc-review",
-                            value: "confirmed",
-                            checked: reviewDecision === "confirmed",
-                            onChange: () => setReviewDecision("confirmed")
-                          }
-                        ),
-                        "\u786E\u8BA4\u51B2\u7A81"
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("label", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-                          "input",
-                          {
-                            type: "radio",
-                            disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
-                            name: "dc-review",
-                            value: "rejected",
-                            checked: reviewDecision === "rejected",
-                            onChange: () => setReviewDecision("rejected")
-                          }
-                        ),
-                        "\u6392\u9664\u51B2\u7A81"
-                      ] })
-                    ] }),
-                    reviewError && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { role: "alert", className: "iad-error", children: reviewError }),
-                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-                      "textarea",
-                      {
-                        disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
-                        className: "dc-note",
-                        id: "dc-note",
-                        placeholder: "\u590D\u6838\u8BF4\u660E\uFF08\u53EF\u9009\uFF09",
-                        value: reviewNote,
-                        onChange: (e) => setReviewNote(e.target.value)
+                        type: "button",
+                        className: `dc-vchart-bar ${row.count ? "" : "dc-vchart-zero"}`,
+                        style: { height: `${Math.max(0.6, height)}%` },
+                        "data-dc": "stat-category",
+                        "data-id": row.name,
+                        "aria-label": `${row.name} ${row.count} \u7EC4\uFF0C\u70B9\u51FB\u67E5\u770B`,
+                        title: `${row.name}\uFF1A${row.count} \u7EC4\uFF0C\u70B9\u51FB\u7B5B\u9009`,
+                        onClick: () => handleStatClick("stat-category", row.name),
+                        children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-vchart-value", children: row.count })
                       }
-                    )
-                  ] })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("footer", { className: "dc-dialog-footer", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(Button, { type: "button", onClick: () => setModal(""), children: "\u53D6\u6D88" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(Button, { variant: "primary", type: "button", disabled: reviewBusy || !reviewLoaded || !compared.data, onClick: handleSaveReview, children: "\u4FDD\u5B58\u590D\u6838" })
-                ] })
-              ]
-            }
-          )
-        }
-      ),
-      !!statsModalJobId && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-        "div",
-        {
-          className: "dc-mask dc-stats-mask",
-          id: "dc-mask",
-          role: "presentation",
-          onClick: (e) => {
-            if (e.target.id === "dc-mask") setStatsModalJobId("");
-          },
-          children: /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)(
-            "section",
-            {
-              className: "dc-stats-dialog",
-              role: "dialog",
-              "aria-modal": "true",
-              "aria-labelledby": "dc-stats-title",
-              children: [
-                /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("header", { className: "dc-stats-header", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h2", { id: "dc-stats-title", children: "\u6807\u6CE8\u51B2\u7A81\u7EDF\u8BA1" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(IconButton, { icon: "close", type: "button", title: "\u5173\u95ED\u7EDF\u8BA1", label: "\u5173\u95ED\u7EDF\u8BA1", "data-dc": "close-drawer", onClick: () => setStatsModalJobId("") })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-stats-content", children: /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-stats-charts", children: [
-                  (() => {
-                    const ticks = [distributionAxis, distributionAxis * 0.75, distributionAxis * 0.5, distributionAxis * 0.25, 0].map((v) => Math.round(v));
-                    return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-vchart-panel", "aria-label": "\u539F\u59CB\u5DEE\u5F02\u7C7B\u578B\u67F1\u72B6\u56FE", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u539F\u59CB\u5DEE\u5F02\u7C7B\u578B" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-body", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { children: n }, i)) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-figure", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: origStats.length }, children: origStats.map((row) => {
-                            const height = 100 * row.count / distributionAxis;
-                            return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-column", children: [
-                              /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-                                "button",
-                                {
-                                  type: "button",
-                                  className: `dc-vchart-bar ${row.count ? "" : "dc-vchart-zero"}`,
-                                  style: { height: `${Math.max(0.6, height)}%` },
-                                  "data-dc": "stat-category",
-                                  "data-id": row.name,
-                                  "aria-label": `${row.name} ${row.count} \u7EC4\uFF0C\u70B9\u51FB\u67E5\u770B`,
-                                  title: `${row.name}\uFF1A${row.count} \u7EC4\uFF0C\u70B9\u51FB\u7B5B\u9009`,
-                                  onClick: () => handleStatClick("stat-category", row.name),
-                                  children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-vchart-value", children: row.count })
-                                }
-                              ) }),
-                              /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
-                            ] }, row.name);
-                          }) })
-                        ] })
-                      ] })
-                    ] });
-                  })(),
-                  (() => {
-                    const ticks = [distributionAxis, distributionAxis * 0.75, distributionAxis * 0.5, distributionAxis * 0.25, 0].map((v) => Math.round(v));
-                    return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-vchart-panel", "aria-label": "\u6A21\u578B\u5224\u65AD\u67F1\u72B6\u56FE", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u6A21\u578B\u5224\u65AD" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-body", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { children: n }, i)) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-figure", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: modelStats.length }, children: modelStats.map((row) => {
-                            const height = 100 * row.count / distributionAxis;
-                            return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-column", children: [
-                              /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-                                "button",
-                                {
-                                  type: "button",
-                                  className: `dc-vchart-bar ${row.count ? "" : "dc-vchart-zero"}`,
-                                  style: { height: `${Math.max(0.6, height)}%` },
-                                  "data-dc": "stat-model",
-                                  "data-id": row.name,
-                                  "aria-label": `${row.name} ${row.count} \u7EC4\uFF0C\u70B9\u51FB\u67E5\u770B`,
-                                  title: `${row.name}\uFF1A${row.count} \u7EC4\uFF0C\u70B9\u51FB\u7B5B\u9009`,
-                                  onClick: () => handleStatClick("stat-model", row.name),
-                                  children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-vchart-value", children: row.count })
-                                }
-                              ) }),
-                              /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
-                            ] }, row.name);
-                          }) })
-                        ] })
-                      ] })
-                    ] });
-                  })(),
-                  (() => {
-                    const ticks = [agreementAxis, agreementAxis * 0.75, agreementAxis * 0.5, agreementAxis * 0.25, 0].map((v) => Math.round(v));
-                    return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-vchart-panel dc-vchart-agreement", "aria-label": "\u7ED3\u8BBA\u4E00\u81F4\u6027\u67F1\u72B6\u56FE", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u7ED3\u8BBA\u4E00\u81F4\u6027" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-body", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { children: n }, i)) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-figure", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: agreementStats.length }, children: agreementStats.map((row) => {
-                            const height = 100 * row.count / agreementAxis;
-                            return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-column", children: [
-                              /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-                                "button",
-                                {
-                                  type: "button",
-                                  className: `dc-vchart-bar ${row.count ? "" : "dc-vchart-zero"}`,
-                                  style: { height: `${Math.max(0.6, height)}%` },
-                                  "data-dc": "stat-agreement",
-                                  "data-id": row.id,
-                                  "aria-label": `${row.name} ${row.count} \u7EC4\uFF0C\u70B9\u51FB\u67E5\u770B`,
-                                  title: `${row.name}\uFF1A${row.count} \u7EC4\uFF0C\u70B9\u51FB\u7B5B\u9009`,
-                                  onClick: () => handleStatClick("stat-agreement", row.id),
-                                  children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-vchart-value", children: row.count })
-                                }
-                              ) }),
-                              /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
-                            ] }, row.id);
-                          }) })
-                        ] })
-                      ] })
-                    ] });
-                  })()
-                ] }) })
-              ]
-            }
-          )
-        }
-      ),
+                    ) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
+                  ] }, row.name);
+                }) })
+              ] })
+            ] })
+          ] });
+        })(),
+        (() => {
+          const ticks = [distributionAxis, distributionAxis * 0.75, distributionAxis * 0.5, distributionAxis * 0.25, 0].map((v) => Math.round(v));
+          return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-vchart-panel", "aria-label": "\u6A21\u578B\u5224\u65AD\u67F1\u72B6\u56FE", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u6A21\u578B\u5224\u65AD" }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-body", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { children: n }, i)) }),
+              /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-figure", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
+                /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: modelStats.length }, children: modelStats.map((row) => {
+                  const height = 100 * row.count / distributionAxis;
+                  return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-column", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
+                      "button",
+                      {
+                        type: "button",
+                        className: `dc-vchart-bar ${row.count ? "" : "dc-vchart-zero"}`,
+                        style: { height: `${Math.max(0.6, height)}%` },
+                        "data-dc": "stat-model",
+                        "data-id": row.name,
+                        "aria-label": `${row.name} ${row.count} \u7EC4\uFF0C\u70B9\u51FB\u67E5\u770B`,
+                        title: `${row.name}\uFF1A${row.count} \u7EC4\uFF0C\u70B9\u51FB\u7B5B\u9009`,
+                        onClick: () => handleStatClick("stat-model", row.name),
+                        children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-vchart-value", children: row.count })
+                      }
+                    ) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
+                  ] }, row.name);
+                }) })
+              ] })
+            ] })
+          ] });
+        })(),
+        (() => {
+          const ticks = [agreementAxis, agreementAxis * 0.75, agreementAxis * 0.5, agreementAxis * 0.25, 0].map((v) => Math.round(v));
+          return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-vchart-panel dc-vchart-agreement", "aria-label": "\u7ED3\u8BBA\u4E00\u81F4\u6027\u67F1\u72B6\u56FE", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u7ED3\u8BBA\u4E00\u81F4\u6027" }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-body", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { children: n }, i)) }),
+              /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-figure", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
+                /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: agreementStats.length }, children: agreementStats.map((row) => {
+                  const height = 100 * row.count / agreementAxis;
+                  return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-vchart-column", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
+                      "button",
+                      {
+                        type: "button",
+                        className: `dc-vchart-bar ${row.count ? "" : "dc-vchart-zero"}`,
+                        style: { height: `${Math.max(0.6, height)}%` },
+                        "data-dc": "stat-agreement",
+                        "data-id": row.id,
+                        "aria-label": `${row.name} ${row.count} \u7EC4\uFF0C\u70B9\u51FB\u67E5\u770B`,
+                        title: `${row.name}\uFF1A${row.count} \u7EC4\uFF0C\u70B9\u51FB\u7B5B\u9009`,
+                        onClick: () => handleStatClick("stat-agreement", row.id),
+                        children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-vchart-value", children: row.count })
+                      }
+                    ) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
+                  ] }, row.id);
+                }) })
+              ] })
+            ] })
+          ] });
+        })()
+      ] }) }) }),
       statusJobId && batches.some((job) => job.batch_id === statusJobId) && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
         JobStatusDrawer,
         {
