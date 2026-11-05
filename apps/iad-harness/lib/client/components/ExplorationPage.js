@@ -32,11 +32,10 @@ let cachedDatasets = null;
 let cachedGroups = null;
 export function ExplorationPage({ dataset, refreshRevision, }) {
     const model = useWorkbenchModel();
-    const initialGroups = buildHierarchyGroups(cachedDatasets || [dataset], cachedGroups || []);
-    const initialParentId = getDatasetGroupId(dataset, initialGroups);
-    const initialChildren = (cachedDatasets || [dataset]).filter((d) => getDatasetGroupId(d, initialGroups) === initialParentId);
+    const initialParentId = getDatasetGroupId(dataset);
+    const initialChildren = (cachedDatasets || [dataset]).filter((d) => getDatasetGroupId(d) === initialParentId);
     const [datasets, setDatasets] = useState(() => cachedDatasets || [dataset]);
-    const [groups, setGroups] = useState(() => initialGroups);
+    const [groups, setGroups] = useState(() => cachedGroups || []);
     const [selectedParentId, setSelectedParentId] = useState(() => initialParentId);
     const [selectedChildIds, setSelectedChildIds] = useState(() => initialChildren.length > 0 ? initialChildren.map((c) => c.dataset_id) : [dataset.dataset_id]);
     // View state: 'jobs' (unified layout) or 'setup' (3-step creation)
@@ -81,26 +80,18 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
             .then((res) => {
             if (!active)
                 return;
-            const dsList = res.datasets || [dataset];
-            const grpList = buildHierarchyGroups(dsList, res.groups || []);
+            const dsList = res.datasets;
             cachedDatasets = dsList;
-            cachedGroups = res.groups || [];
+            cachedGroups = res.groups;
             setDatasets(dsList);
-            setGroups(grpList);
-            const parentId = getDatasetGroupId(dataset, grpList);
+            setGroups(res.groups);
+            const parentId = getDatasetGroupId(dataset);
             setSelectedParentId(parentId);
-            const children = dsList.filter((d) => getDatasetGroupId(d, grpList) === parentId);
+            const children = dsList.filter((d) => getDatasetGroupId(d) === parentId);
             setSelectedChildIds(children.length > 0 ? children.map((c) => c.dataset_id) : [dataset.dataset_id]);
         })
-            .catch(() => {
-            if (!active)
-                return;
-            const grpList = buildHierarchyGroups([dataset], []);
-            setGroups(grpList);
-            const parentId = getDatasetGroupId(dataset, grpList);
-            setSelectedParentId(parentId);
-            setSelectedChildIds((prev) => (prev.length ? prev : [dataset.dataset_id]));
-        });
+            .catch(failure => { if (active)
+            setError(message(failure)); });
         return () => {
             active = false;
         };
@@ -151,8 +142,8 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
         return () => controller.abort();
     }, [selectedChildIds, view, modal, samplesLoaded]);
     // Derived state
-    const parentGroups = groups.length ? groups : buildHierarchyGroups([dataset], []);
-    const currentChildDatasets = datasets.filter((d) => getDatasetGroupId(d, groups) === selectedParentId);
+    const parentGroups = useMemo(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
+    const currentChildDatasets = datasets.filter((d) => getDatasetGroupId(d) === selectedParentId);
     const filteredJobs = useMemo(() => {
         const q = jobSearch.trim().toLowerCase();
         return jobs.filter((j) => {
@@ -200,7 +191,7 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
     // Handle parent group change
     const handleParentChange = (newParentId) => {
         setSelectedParentId(newParentId);
-        const children = datasets.filter((d) => getDatasetGroupId(d, groups) === newParentId);
+        const children = datasets.filter((d) => getDatasetGroupId(d) === newParentId);
         setSelectedChildIds(children.map((c) => c.dataset_id));
         setJobPage(1);
     };

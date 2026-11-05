@@ -38,8 +38,7 @@ export function WorkbenchPage({ pageId }) {
             if (signal?.aborted)
                 return;
             setDatasets(result.datasets);
-            if (result.groups)
-                setGroups(result.groups);
+            setGroups(result.groups);
             const current = workspace.getSnapshot().datasetId;
             workspace.selectDataset(preferred || (result.datasets.some(d => d.dataset_id === current) ? current : result.datasets[0]?.dataset_id || ""), true);
             setError("");
@@ -51,7 +50,7 @@ export function WorkbenchPage({ pageId }) {
     }, [workspace]);
     const changed = useCallback(() => { setRevision(v => v + 1); void loadDatasets(); }, [loadDatasets]);
     useEffect(() => { const controller = new AbortController(); void loadDatasets(undefined, controller.signal); return () => controller.abort(); }, [loadDatasets]);
-    const gallery = pageId === "industrial-images" || (pageId === "industrial-review" && view.tab === "results");
+    const gallery = pageId === "industrial-review" && view.tab === "results";
     const query = sampleQuery(datasetId, view.filters, view.page, pageSize);
     const navigation = useSampleNavigation(pageId, dataset?.task_id, query, result, gallery);
     const surface = usePagePosition(gallery ? JSON.stringify([pageId, view.tab, query]) : null, state.active && state.pageId === pageId && !!dataset && result.query === query && !loading);

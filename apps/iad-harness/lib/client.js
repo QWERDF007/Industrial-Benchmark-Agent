@@ -4801,11 +4801,22 @@ var __IadClientBundle__ = (() => {
     return { workspace, state };
   }
 
+  // src/client/dataset-hierarchy.ts
+  var UNGROUPED_SCOPE_ID = "__ungrouped__";
+  function buildHierarchyGroups(datasets, groups = []) {
+    const result = groups.map((group) => ({ ...group, kind: "group" }));
+    if (datasets.some((dataset) => !dataset.group_id)) result.push({ group_id: UNGROUPED_SCOPE_ID, name: "\u672A\u5206\u7EC4", kind: "ungrouped" });
+    return result;
+  }
+  function getDatasetGroupId(dataset) {
+    return dataset.group_id || UNGROUPED_SCOPE_ID;
+  }
+
   // src/client/components/DatasetManager.tsx
   var import_jsx_runtime12 = __require("react/jsx-runtime");
   function DatasetManager({
     datasets: propDatasets,
-    groups: propGroups = [],
+    groups: propGroups,
     selected,
     onChanged
   }) {
@@ -4821,32 +4832,19 @@ var __IadClientBundle__ = (() => {
     const datasets = localDatasets;
     const [localGroups, setLocalGroups] = (0, import_react13.useState)(propGroups);
     (0, import_react13.useEffect)(() => {
-      if (propGroups && propGroups.length > 0) {
-        setLocalGroups(propGroups);
-      }
+      setLocalGroups(propGroups);
     }, [propGroups]);
-    const groups = localGroups.length > 0 ? localGroups : [
-      { group_id: "group-1", name: "\u6846\u80F6\u5927\u6570\u636E\u96C6" },
-      { group_id: "group-2", name: "\u8D85\u8282\u70B9\u6570\u636E\u96C6" }
-    ];
-    function getDatasetGroupId2(d) {
-      if (d.group_id) return d.group_id;
-      if (d.name.includes("\u6846\u80F6") || d.image_dir?.includes("\u6846\u80F6")) return "group-1";
-      if (d.name.includes("\u8D85\u8282\u70B9") || d.image_dir?.includes("\u8D85\u8282\u70B9")) return "group-2";
-      return groups[0]?.group_id || "group-1";
-    }
-    function getGroupChildren(groupId) {
-      return datasets.filter((d) => getDatasetGroupId2(d) === groupId);
-    }
+    const groups = localGroups;
+    const hierarchyGroups = (0, import_react13.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
     (0, import_react13.useEffect)(() => {
       setExpandedGroups((prev) => {
         const next = { ...prev };
-        for (const g of groups) {
+        for (const g of hierarchyGroups) {
           if (next[g.group_id] === void 0) next[g.group_id] = true;
         }
         return next;
       });
-    }, [groups]);
+    }, [hierarchyGroups]);
     const [toastText, setToastText] = (0, import_react13.useState)("");
     const toastTimerRef = (0, import_react13.useRef)(null);
     function announce(msg) {
@@ -5080,8 +5078,8 @@ var __IadClientBundle__ = (() => {
             /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("th", { style: { textAlign: "right" }, children: "\u64CD\u4F5C" })
           ] }) }),
           /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("tbody", { id: "tableBody", children: [
-            groups.map((group) => {
-              const children = getGroupChildren(group.group_id);
+            hierarchyGroups.map((group) => {
+              const children = datasets.filter((child) => getDatasetGroupId(child) === group.group_id);
               const matchGroup = group.name.toLocaleLowerCase().includes(q);
               const matchedChildren = children.filter((c) => matchGroup || c.name.toLocaleLowerCase().includes(q));
               if (q && !matchGroup && !matchedChildren.length) return null;
@@ -5095,15 +5093,15 @@ var __IadClientBundle__ = (() => {
                   "tr",
                   {
                     className: "data-row parent-row",
-                    tabIndex: 0,
-                    role: "button",
-                    "aria-label": `\u9009\u4E2D ${group.name}`,
-                    "aria-pressed": isGroupSelected,
+                    tabIndex: group.kind === "group" ? 0 : void 0,
+                    role: group.kind === "group" ? "button" : void 0,
+                    "aria-label": group.kind === "group" ? `\u9009\u4E2D ${group.name}` : void 0,
+                    "aria-pressed": group.kind === "group" ? isGroupSelected : void 0,
                     "data-id": group.group_id,
                     "data-selected": isGroupSelected,
-                    onClick: () => selectRow(group.group_id),
+                    onClick: group.kind === "group" ? () => selectRow(group.group_id) : void 0,
                     onKeyDown: (e) => {
-                      if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                      if (group.kind === "group" && e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
                         e.preventDefault();
                         selectRow(group.group_id);
                       }
@@ -5138,13 +5136,13 @@ var __IadClientBundle__ = (() => {
                           }
                         ) }) : /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)(import_jsx_runtime12.Fragment, { children: [
                           /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("span", { className: "name-text", title: group.name, children: group.name }),
-                          /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(IconButton, { icon: "edit", type: "button", "data-edit": group.group_id, label: `\u4FEE\u6539\u6570\u636E\u96C6\u540D\u79F0 ${group.name}`, title: "\u4FEE\u6539\u6570\u636E\u96C6\u540D\u79F0", onClick: (e) => startEdit(group.group_id, group.name, e) })
+                          group.kind === "group" && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(IconButton, { icon: "edit", type: "button", "data-edit": group.group_id, label: `\u4FEE\u6539\u6570\u636E\u96C6\u540D\u79F0 ${group.name}`, title: "\u4FEE\u6539\u6570\u636E\u96C6\u540D\u79F0", onClick: (e) => startEdit(group.group_id, group.name, e) })
                         ] })
                       ] }) }),
                       /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("td", { className: "muted", children: "\u2014" }),
                       /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("td", { className: "num", children: sumImages }),
                       /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("td", { className: "num", children: sumLabels }),
-                      /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "actions", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("td", { children: group.kind === "group" && /* @__PURE__ */ (0, import_jsx_runtime12.jsxs)("div", { className: "actions", children: [
                         /* @__PURE__ */ (0, import_jsx_runtime12.jsx)(IconButton, { icon: "add", type: "button", "data-add-parent": group.group_id, label: `\u4E3A ${group.name} \u6DFB\u52A0\u5B50\u6570\u636E\u96C6`, title: "\u6DFB\u52A0\u5B50\u6570\u636E\u96C6", onClick: (e) => {
                           e.stopPropagation();
                           openAddModal(group.group_id);
@@ -5231,7 +5229,7 @@ var __IadClientBundle__ = (() => {
                 })
               ] }, group.group_id);
             }),
-            !groups.length && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("tr", { children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("td", { colSpan: 5, children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "blank", children: "\u6CA1\u6709\u5339\u914D\u7684\u6570\u636E\u96C6" }) }) })
+            !hierarchyGroups.length && /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("tr", { children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("td", { colSpan: 5, children: /* @__PURE__ */ (0, import_jsx_runtime12.jsx)("div", { className: "blank", children: "\u6CA1\u6709\u5339\u914D\u7684\u6570\u636E\u96C6" }) }) })
           ] })
         ] }) })
       ] }),
@@ -7640,43 +7638,6 @@ var __IadClientBundle__ = (() => {
     "unprocessed": "\u672A\u5904\u7406"
   };
 
-  // src/client/dataset-hierarchy.ts
-  function buildHierarchyGroups(datasets, groups = []) {
-    const list = [...groups];
-    if (list.length === 0) {
-      const hasFrame = datasets.some(
-        (d) => d.name.includes("\u6846\u80F6") || d.image_dir?.includes("\u6846\u80F6")
-      );
-      const hasNode = datasets.some(
-        (d) => d.name.includes("\u8D85\u8282\u70B9") || d.image_dir?.includes("\u8D85\u8282\u70B9")
-      );
-      if (hasFrame) list.push({ group_id: "group-1", name: "\u6846\u80F6\u5927\u6570\u636E\u96C6" });
-      if (hasNode) list.push({ group_id: "group-2", name: "\u8D85\u8282\u70B9\u6570\u636E\u96C6" });
-      if (list.length === 0 && datasets.length > 0) {
-        list.push({ group_id: "default", name: "\u5168\u90E8\u6570\u636E\u96C6" });
-      }
-    }
-    return list;
-  }
-  function getDatasetGroupId(dataset, hierarchyGroups) {
-    if (dataset.group_id && hierarchyGroups.some((g) => g.group_id === dataset.group_id)) {
-      return dataset.group_id;
-    }
-    if (dataset.name.includes("\u6846\u80F6") || dataset.image_dir?.includes("\u6846\u80F6")) {
-      const match = hierarchyGroups.find(
-        (g) => g.group_id === "group-1" || g.name.includes("\u6846\u80F6")
-      );
-      if (match) return match.group_id;
-    }
-    if (dataset.name.includes("\u8D85\u8282\u70B9") || dataset.image_dir?.includes("\u8D85\u8282\u70B9")) {
-      const match = hierarchyGroups.find(
-        (g) => g.group_id === "group-2" || g.name.includes("\u8D85\u8282\u70B9")
-      );
-      if (match) return match.group_id;
-    }
-    return hierarchyGroups[0]?.group_id || "default";
-  }
-
   // src/client/useJobs.ts
   var import_react36 = __require("react");
   function useJobs(kind, datasetId, onProgress, selectedRunId = "", refreshRevision = 0) {
@@ -9179,8 +9140,8 @@ var __IadClientBundle__ = (() => {
   function AuditPage({ dataset, datasets, groups, refreshRevision, onDatasetsChanged }) {
     const { workspace } = useWorkspace();
     const hierarchy = (0, import_react47.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
-    const [groupId, setGroupId] = (0, import_react47.useState)(() => getDatasetGroupId(dataset, hierarchy));
-    const children = (0, import_react47.useMemo)(() => datasets.filter((item) => getDatasetGroupId(item, hierarchy) === groupId), [datasets, hierarchy, groupId]);
+    const [groupId, setGroupId] = (0, import_react47.useState)(() => getDatasetGroupId(dataset));
+    const children = (0, import_react47.useMemo)(() => datasets.filter((item) => getDatasetGroupId(item) === groupId), [datasets, hierarchy, groupId]);
     const [selectedIds, setSelectedIds] = (0, import_react47.useState)([dataset.dataset_id]);
     const ids = selectedIds.filter((id) => children.some((child) => child.dataset_id === id));
     const scope = JSON.stringify([...ids].sort());
@@ -9204,7 +9165,7 @@ var __IadClientBundle__ = (() => {
       if (!hierarchy.some((group) => group.group_id === groupId)) {
         const next = hierarchy[0]?.group_id || "";
         setGroupId(next);
-        setSelectedIds(datasets.filter((item) => getDatasetGroupId(item, hierarchy) === next).slice(0, 1).map((item) => item.dataset_id));
+        setSelectedIds(datasets.filter((item) => getDatasetGroupId(item) === next).slice(0, 1).map((item) => item.dataset_id));
       }
     }, [datasets, hierarchy, groupId]);
     const query = new URLSearchParams({ page: String(page), page_size: "18", status, search });
@@ -9240,7 +9201,7 @@ var __IadClientBundle__ = (() => {
           selectedGroupId: groupId,
           onGroupChange: (next) => {
             setGroupId(next);
-            setSelectedIds(datasets.filter((item) => getDatasetGroupId(item, hierarchy) === next).slice(0, 1).map((item) => item.dataset_id));
+            setSelectedIds(datasets.filter((item) => getDatasetGroupId(item) === next).slice(0, 1).map((item) => item.dataset_id));
           },
           childDatasets: children,
           selectedChildIds: ids,
@@ -10016,13 +9977,12 @@ var __IadClientBundle__ = (() => {
     refreshRevision
   }) {
     const model = useWorkbenchModel();
-    const initialGroups = buildHierarchyGroups(cachedDatasets || [dataset], cachedGroups || []);
-    const initialParentId = getDatasetGroupId(dataset, initialGroups);
+    const initialParentId = getDatasetGroupId(dataset);
     const initialChildren = (cachedDatasets || [dataset]).filter(
-      (d) => getDatasetGroupId(d, initialGroups) === initialParentId
+      (d) => getDatasetGroupId(d) === initialParentId
     );
     const [datasets, setDatasets] = (0, import_react53.useState)(() => cachedDatasets || [dataset]);
-    const [groups, setGroups] = (0, import_react53.useState)(() => initialGroups);
+    const [groups, setGroups] = (0, import_react53.useState)(() => cachedGroups || []);
     const [selectedParentId, setSelectedParentId] = (0, import_react53.useState)(() => initialParentId);
     const [selectedChildIds, setSelectedChildIds] = (0, import_react53.useState)(
       () => initialChildren.length > 0 ? initialChildren.map((c) => c.dataset_id) : [dataset.dataset_id]
@@ -10063,23 +10023,17 @@ var __IadClientBundle__ = (() => {
       let active = true;
       request("/datasets").then((res) => {
         if (!active) return;
-        const dsList = res.datasets || [dataset];
-        const grpList = buildHierarchyGroups(dsList, res.groups || []);
+        const dsList = res.datasets;
         cachedDatasets = dsList;
-        cachedGroups = res.groups || [];
+        cachedGroups = res.groups;
         setDatasets(dsList);
-        setGroups(grpList);
-        const parentId = getDatasetGroupId(dataset, grpList);
+        setGroups(res.groups);
+        const parentId = getDatasetGroupId(dataset);
         setSelectedParentId(parentId);
-        const children = dsList.filter((d) => getDatasetGroupId(d, grpList) === parentId);
+        const children = dsList.filter((d) => getDatasetGroupId(d) === parentId);
         setSelectedChildIds(children.length > 0 ? children.map((c) => c.dataset_id) : [dataset.dataset_id]);
-      }).catch(() => {
-        if (!active) return;
-        const grpList = buildHierarchyGroups([dataset], []);
-        setGroups(grpList);
-        const parentId = getDatasetGroupId(dataset, grpList);
-        setSelectedParentId(parentId);
-        setSelectedChildIds((prev) => prev.length ? prev : [dataset.dataset_id]);
+      }).catch((failure) => {
+        if (active) setError(message(failure));
       });
       return () => {
         active = false;
@@ -10127,8 +10081,8 @@ var __IadClientBundle__ = (() => {
       });
       return () => controller.abort();
     }, [selectedChildIds, view, modal, samplesLoaded]);
-    const parentGroups = groups.length ? groups : buildHierarchyGroups([dataset], []);
-    const currentChildDatasets = datasets.filter((d) => getDatasetGroupId(d, groups) === selectedParentId);
+    const parentGroups = (0, import_react53.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
+    const currentChildDatasets = datasets.filter((d) => getDatasetGroupId(d) === selectedParentId);
     const filteredJobs = (0, import_react53.useMemo)(() => {
       const q = jobSearch.trim().toLowerCase();
       return jobs.filter((j) => {
@@ -10176,7 +10130,7 @@ var __IadClientBundle__ = (() => {
     const canRun = !submitting && !runReason;
     const handleParentChange = (newParentId) => {
       setSelectedParentId(newParentId);
-      const children = datasets.filter((d) => getDatasetGroupId(d, groups) === newParentId);
+      const children = datasets.filter((d) => getDatasetGroupId(d) === newParentId);
       setSelectedChildIds(children.map((c) => c.dataset_id));
       setJobPage(1);
     };
@@ -10933,7 +10887,7 @@ var __IadClientBundle__ = (() => {
       return parentGroups.find((g) => g.group_id === setupDataset) || parentGroups[0];
     }, [parentGroups, setupDataset]);
     const currentSetupChildDatasets = (0, import_react57.useMemo)(() => {
-      return datasets.filter((d) => getDatasetGroupId(d, groups) === setupDataset);
+      return datasets.filter((d) => getDatasetGroupId(d) === setupDataset);
     }, [datasets, groups, setupDataset]);
     const [presetDirections, setPresetDirections] = (0, import_react57.useState)([]);
     const [exploredDirections, setExploredDirections] = (0, import_react57.useState)([]);
@@ -11137,7 +11091,7 @@ var __IadClientBundle__ = (() => {
                   selectedGroupId: setupDataset,
                   onGroupChange: (id) => {
                     setSetupDataset(id);
-                    const first = datasets.find((item) => getDatasetGroupId(item, groups) === id)?.dataset_id;
+                    const first = datasets.find((item) => getDatasetGroupId(item) === id)?.dataset_id;
                     setSetupSubsets(new Set(first ? [first] : []));
                     setSetupExplored(/* @__PURE__ */ new Set());
                   },
@@ -11366,10 +11320,9 @@ var __IadClientBundle__ = (() => {
     const { workspace } = useWorkspace();
     const pageId = "industrial-knowledge";
     const view = workspace.view(pageId);
-    const initialGroups = buildHierarchyGroups(cachedDatasets2 || [dataset], cachedGroups2 || []);
-    const initialParentId = getDatasetGroupId(dataset, initialGroups);
+    const initialParentId = getDatasetGroupId(dataset);
     const [datasets, setDatasets] = (0, import_react58.useState)(() => cachedDatasets2 || [dataset]);
-    const [groups, setGroups] = (0, import_react58.useState)(() => initialGroups);
+    const [groups, setGroups] = (0, import_react58.useState)(() => cachedGroups2 || []);
     const [selectedParentId, setSelectedParentId] = (0, import_react58.useState)(() => initialParentId);
     const [selectedChildId, setSelectedChildId] = (0, import_react58.useState)(() => dataset.dataset_id);
     const [revision, setRevision] = (0, import_react58.useState)(0);
@@ -11402,13 +11355,12 @@ var __IadClientBundle__ = (() => {
       let active = true;
       request("/datasets").then((res) => {
         if (!active) return;
-        const dsList = res.datasets || [dataset];
-        const grpList = buildHierarchyGroups(dsList, res.groups || []);
+        const dsList = res.datasets;
         cachedDatasets2 = dsList;
-        cachedGroups2 = res.groups || [];
+        cachedGroups2 = res.groups;
         setDatasets(dsList);
-        setGroups(grpList);
-        const parentId = getDatasetGroupId(dataset, grpList);
+        setGroups(res.groups);
+        const parentId = getDatasetGroupId(dataset);
         setSelectedParentId(parentId);
         setSelectedChildId(dataset.dataset_id);
       }).catch((error2) => {
@@ -11435,13 +11387,13 @@ var __IadClientBundle__ = (() => {
         knowledgeVersionId: job.knowledge_version_id || null
       };
     });
-    const parentGroups = (0, import_react58.useMemo)(() => groups.filter((g) => g.group_id !== "single"), [groups]);
+    const parentGroups = (0, import_react58.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
     const currentChildDatasets = (0, import_react58.useMemo)(() => {
-      return datasets.filter((d) => getDatasetGroupId(d, groups) === selectedParentId);
+      return datasets.filter((d) => getDatasetGroupId(d) === selectedParentId);
     }, [datasets, groups, selectedParentId]);
     const handleParentChange = (parentId) => {
       setSelectedParentId(parentId);
-      const children = datasets.filter((d) => getDatasetGroupId(d, groups) === parentId);
+      const children = datasets.filter((d) => getDatasetGroupId(d) === parentId);
       if (children.length > 0) {
         setSelectedChildId(children[0].dataset_id);
         workspace.selectDataset(children[0].dataset_id);
@@ -11848,7 +11800,7 @@ var __IadClientBundle__ = (() => {
           {
             dataset,
             datasets,
-            groups,
+            groups: parentGroups,
             selectedParentId,
             selectedChildId,
             onClose: () => workspace.updateView(pageId, { tab: "results" }),
@@ -16137,9 +16089,6 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const hierarchyGroups = (0, import_react63.useMemo)(() => {
       return buildHierarchyGroups(datasets, groups);
     }, [groups, datasets]);
-    const getGroupId = (0, import_react63.useCallback)((d) => {
-      return getDatasetGroupId(d, hierarchyGroups);
-    }, [hierarchyGroups]);
     const [selectedParentId, setSelectedParentId] = (0, import_react63.useState)(() => hierarchyGroups[0]?.group_id || "");
     (0, import_react63.useEffect)(() => {
       if (hierarchyGroups.length > 0 && (!selectedParentId || !hierarchyGroups.some((g) => g.group_id === selectedParentId))) {
@@ -16147,8 +16096,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       }
     }, [hierarchyGroups, selectedParentId]);
     const parentChildren = (0, import_react63.useMemo)(() => {
-      return datasets.filter((d) => getGroupId(d) === selectedParentId);
-    }, [datasets, selectedParentId, getGroupId]);
+      return datasets.filter((d) => getDatasetGroupId(d) === selectedParentId);
+    }, [datasets, selectedParentId]);
     const [selectedChildIds, setSelectedChildIds] = (0, import_react63.useState)(/* @__PURE__ */ new Set());
     (0, import_react63.useEffect)(() => {
       if (parentChildren.length > 0) {
@@ -16543,7 +16492,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         const result2 = await request("/datasets", void 0, void 0, signal);
         if (signal?.aborted) return;
         setDatasets(result2.datasets);
-        if (result2.groups) setGroups(result2.groups);
+        setGroups(result2.groups);
         const current = workspace.getSnapshot().datasetId;
         workspace.selectDataset(preferred || (result2.datasets.some((d) => d.dataset_id === current) ? current : result2.datasets[0]?.dataset_id || ""), true);
         setError("");
@@ -16560,7 +16509,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       void loadDatasets(void 0, controller.signal);
       return () => controller.abort();
     }, [loadDatasets]);
-    const gallery = pageId === "industrial-images" || pageId === "industrial-review" && view.tab === "results";
+    const gallery = pageId === "industrial-review" && view.tab === "results";
     const query = sampleQuery(datasetId, view.filters, view.page, pageSize);
     const navigation2 = useSampleNavigation(pageId, dataset?.task_id, query, result, gallery);
     const surface = usePagePosition(gallery ? JSON.stringify([pageId, view.tab, query]) : null, state.active && state.pageId === pageId && !!dataset && result.query === query && !loading);
@@ -18171,7 +18120,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   function ConsistencyIntegratedWorkspace() {
     const [datasets, setDatasets] = (0, import_react75.useState)([]);
     const [groups, setGroups] = (0, import_react75.useState)([]);
-    const [selectedParentId, setSelectedParentId] = (0, import_react75.useState)("group-1");
+    const [selectedParentId, setSelectedParentId] = (0, import_react75.useState)("");
     const [selectedChildIds, setSelectedChildIds] = (0, import_react75.useState)([]);
     const [error2, setError] = (0, import_react75.useState)("");
     const [batches, setBatches] = (0, import_react75.useState)([]);
@@ -18211,7 +18160,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       [hierarchyGroups, selectedParentId]
     );
     const currentChildDatasets = (0, import_react75.useMemo)(
-      () => datasets.filter((d) => getDatasetGroupId(d, hierarchyGroups) === currentParent?.group_id),
+      () => datasets.filter((d) => getDatasetGroupId(d) === currentParent?.group_id),
       [datasets, hierarchyGroups, currentParent]
     );
     (0, import_react75.useEffect)(() => {
@@ -18219,14 +18168,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       request("/datasets", void 0, void 0, controller.signal).then((res) => {
         if (controller.signal.aborted) return;
         setDatasets(res.datasets);
-        if (res.groups) setGroups(res.groups);
+        setGroups(res.groups);
         const derived = buildHierarchyGroups(res.datasets, res.groups || []);
-        const parentId = derived[0]?.group_id || "group-1";
+        const parentId = derived[0]?.group_id || "";
         setSelectedParentId(parentId);
-        const children = res.datasets.filter((d) => getDatasetGroupId(d, derived) === parentId);
-        if (children.length > 0) {
-          setSelectedChildIds(children.map((c) => c.dataset_id));
-        }
+        const children = res.datasets.filter((d) => getDatasetGroupId(d) === parentId);
+        setSelectedChildIds(children.map((c) => c.dataset_id));
       }).catch((err) => {
         if (!controller.signal.aborted) setError(message(err));
       });
@@ -18364,7 +18311,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const handleParentChange = (0, import_react75.useCallback)(
       (newParentId) => {
         setSelectedParentId(newParentId);
-        const newChildren = datasets.filter((d) => getDatasetGroupId(d, hierarchyGroups) === newParentId);
+        const newChildren = datasets.filter((d) => getDatasetGroupId(d) === newParentId);
         setSelectedChildIds(newChildren.map((c) => c.dataset_id));
         setSelectedJobId("");
         setJobPage(1);

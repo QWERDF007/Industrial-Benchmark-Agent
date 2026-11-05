@@ -1,7 +1,7 @@
 import {Select} from './Select.js';
 import {Button} from './Button.js';
 import {IconButton} from "./IconButton.js";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { Dataset, DatasetGroup, FolderRule, ScanResult } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 import { useFolderPreview } from "../useFolderPreview.js";
@@ -12,15 +12,16 @@ import {DeleteAction} from "./DeleteAction.js";
 
 import { ClearFilterButton } from "./CommonFilterControls.js";
 import { useWorkspace } from "../workspace.js";
+import {buildHierarchyGroups,getDatasetGroupId} from "../dataset-hierarchy.js";
 
 export function DatasetManager({
   datasets: propDatasets,
-  groups: propGroups = [],
+  groups: propGroups,
   selected,
   onChanged,
 }: {
   datasets: Dataset[];
-  groups?: DatasetGroup[];
+  groups: DatasetGroup[];
   selected?: Dataset;
   onChanged(id?: string): void;
 }) {
@@ -37,45 +38,21 @@ export function DatasetManager({
   }, [propDatasets]);
   const datasets = localDatasets;
 
-  // Group data resolution
   const [localGroups, setLocalGroups] = useState<DatasetGroup[]>(propGroups);
-  useEffect(() => {
-    if (propGroups && propGroups.length > 0) {
-      setLocalGroups(propGroups);
-    }
-  }, [propGroups]);
-
-  // Derived groups
-  const groups: DatasetGroup[] = localGroups.length > 0
-    ? localGroups
-    : [
-        { group_id: "group-1", name: "框胶大数据集" },
-        { group_id: "group-2", name: "超节点数据集" },
-      ];
-
-  // Helper mapping: which dataset belongs to which group
-  function getDatasetGroupId(d: Dataset): string {
-    if (d.group_id) return d.group_id;
-    if (d.name.includes("框胶") || d.image_dir?.includes("框胶")) return "group-1";
-    if (d.name.includes("超节点") || d.image_dir?.includes("超节点")) return "group-2";
-    return groups[0]?.group_id || "group-1";
-  }
-
-  // Children of group
-  function getGroupChildren(groupId: string): Dataset[] {
-    return datasets.filter(d => getDatasetGroupId(d) === groupId);
-  }
+  useEffect(() => {setLocalGroups(propGroups);}, [propGroups]);
+  const groups = localGroups;
+  const hierarchyGroups=useMemo(()=>buildHierarchyGroups(datasets,groups),[datasets,groups]);
 
   // Initial group expansion
   useEffect(() => {
     setExpandedGroups(prev => {
       const next = { ...prev };
-      for (const g of groups) {
+      for (const g of hierarchyGroups) {
         if (next[g.group_id] === undefined) next[g.group_id] = true;
       }
       return next;
     });
-  }, [groups]);
+  }, [hierarchyGroups]);
 
   // Toast
   const [toastText, setToastText] = useState("");
@@ -340,8 +317,8 @@ export function DatasetManager({
               </tr>
             </thead>
             <tbody id="tableBody">
-              {groups.map(group => {
-                const children = getGroupChildren(group.group_id);
+              {hierarchyGroups.map(group => {
+                const children = datasets.filter(child=>getDatasetGroupId(child)===group.group_id);
                 const matchGroup = group.name.toLocaleLowerCase().includes(q);
                 const matchedChildren = children.filter(c => matchGroup || c.name.toLocaleLowerCase().includes(q));
 
@@ -359,14 +336,14 @@ export function DatasetManager({
                     {/* Parent Row */}
                     <tr
                       className="data-row parent-row"
-                      tabIndex={0}
-                      role="button"
-                      aria-label={`选中 ${group.name}`}
-                      aria-pressed={isGroupSelected}
+                      tabIndex={group.kind==='group'?0:undefined}
+                      role={group.kind==='group'?'button':undefined}
+                      aria-label={group.kind==='group'?`选中 ${group.name}`:undefined}
+                      aria-pressed={group.kind==='group'?isGroupSelected:undefined}
                       data-id={group.group_id}
                       data-selected={isGroupSelected}
-                      onClick={() => selectRow(group.group_id)}
-                      onKeyDown={e => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); selectRow(group.group_id); } }}
+                      onClick={group.kind==='group'?() => selectRow(group.group_id):undefined}
+                      onKeyDown={e => { if (group.kind==='group' && e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); selectRow(group.group_id); } }}
                     >
                       <td>
                         <div className="name-area">
@@ -394,7 +371,7 @@ export function DatasetManager({
                           ) : (
                             <>
                               <span className="name-text" title={group.name}>{group.name}</span>
-                              <IconButton icon="edit" type="button" data-edit={group.group_id} label={`修改数据集名称 ${group.name}`} title="修改数据集名称" onClick={e => startEdit(group.group_id, group.name, e)} />
+                              {group.kind==='group'&&<IconButton icon="edit" type="button" data-edit={group.group_id} label={`修改数据集名称 ${group.name}`} title="修改数据集名称" onClick={e => startEdit(group.group_id, group.name, e)} />}
                             </>
                           )}
                         </div>
@@ -403,11 +380,11 @@ export function DatasetManager({
                       <td className="num">{sumImages}</td>
                       <td className="num">{sumLabels}</td>
                       <td>
-                        <div className="actions">
+                        {group.kind==='group'&&<div className="actions">
                           <IconButton icon="add" type="button" data-add-parent={group.group_id} label={`为 ${group.name} 添加子数据集`} title="添加子数据集" onClick={e => { e.stopPropagation(); openAddModal(group.group_id); }} />
                           <DeleteAction title="删除大数据集" name={group.name} description={`同时移除 ${children.length} 个子数据集，保留源文件。`}
                             restoreFocus={()=>document.getElementById('search')} onDelete={()=>deleteDataset({kind:'group',group})}/>
-                        </div>
+                        </div>}
                       </td>
                     </tr>
 
@@ -473,7 +450,7 @@ export function DatasetManager({
                 );
               })}
 
-              {!groups.length && (
+              {!hierarchyGroups.length && (
                 <tr>
                   <td colSpan={5}><div className="blank">没有匹配的数据集</div></td>
                 </tr>

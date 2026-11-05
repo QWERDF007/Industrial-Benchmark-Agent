@@ -45,7 +45,7 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
   }, [parentGroups, setupDataset]);
 
   const currentSetupChildDatasets: Dataset[] = useMemo(() => {
-    return datasets.filter(d => getDatasetGroupId(d, groups) === setupDataset);
+    return datasets.filter(d => getDatasetGroupId(d) === setupDataset);
   }, [datasets, groups, setupDataset]);
 
   const [presetDirections, setPresetDirections] = useState<PresetItem[]>([]);
@@ -238,7 +238,7 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
               <DatasetScopeSelector className="kb-setup-scope" groups={parentGroups} selectedGroupId={setupDataset}
                 onGroupChange={id => {
                   setSetupDataset(id);
-                  const first = datasets.find(item => getDatasetGroupId(item, groups) === id)?.dataset_id;
+                  const first = datasets.find(item => getDatasetGroupId(item) === id)?.dataset_id;
                   setSetupSubsets(new Set(first ? [first] : [])); setSetupExplored(new Set());
                 }} childDatasets={currentSetupChildDatasets} selectedChildIds={setupSubsets}
                 onChildToggle={id => setSetupSubsets(previous => {

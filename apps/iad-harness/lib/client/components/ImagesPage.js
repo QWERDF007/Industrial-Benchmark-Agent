@@ -18,9 +18,6 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
     const hierarchyGroups = useMemo(() => {
         return buildHierarchyGroups(datasets, groups);
     }, [groups, datasets]);
-    const getGroupId = useCallback((d) => {
-        return getDatasetGroupId(d, hierarchyGroups);
-    }, [hierarchyGroups]);
     // Selected parent group
     const [selectedParentId, setSelectedParentId] = useState(() => hierarchyGroups[0]?.group_id || "");
     useEffect(() => {
@@ -30,8 +27,8 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
     }, [hierarchyGroups, selectedParentId]);
     // Child datasets for current parent
     const parentChildren = useMemo(() => {
-        return datasets.filter(d => getGroupId(d) === selectedParentId);
-    }, [datasets, selectedParentId, getGroupId]);
+        return datasets.filter(d => getDatasetGroupId(d) === selectedParentId);
+    }, [datasets, selectedParentId]);
     // Multi-selected child dataset IDs
     const [selectedChildIds, setSelectedChildIds] = useState(new Set());
     // When parent group changes, auto-select the first child

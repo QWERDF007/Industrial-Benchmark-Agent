@@ -36,7 +36,7 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
         return parentGroups.find(g => g.group_id === setupDataset) || parentGroups[0];
     }, [parentGroups, setupDataset]);
     const currentSetupChildDatasets = useMemo(() => {
-        return datasets.filter(d => getDatasetGroupId(d, groups) === setupDataset);
+        return datasets.filter(d => getDatasetGroupId(d) === setupDataset);
     }, [datasets, groups, setupDataset]);
     const [presetDirections, setPresetDirections] = useState([]);
     const [exploredDirections, setExploredDirections] = useState([]);
@@ -222,7 +222,7 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
     };
     return _jsxs(_Fragment, { children: [_jsxs("section", { id: "kb-setup-page", className: "kb-setup-page", "aria-label": "\u65B0\u5EFA\u77E5\u8BC6\u6316\u6398\u914D\u7F6E", children: [_jsxs("header", { className: "exp-heading kb-setup-heading", children: [_jsx("div", { children: _jsx("h1", { children: "\u65B0\u5EFA\u6316\u6398" }) }), _jsx(Button, { type: "button", id: "kb-setup-back", onClick: closeCreate, disabled: submitting, children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" })] }), _jsxs("fieldset", { className: "kb-create-fields", disabled: submitting || directionsLoading || presetsLoading || !!started.current, children: [_jsx(DatasetScopeSelector, { className: "kb-setup-scope", groups: parentGroups, selectedGroupId: setupDataset, onGroupChange: id => {
                                     setSetupDataset(id);
-                                    const first = datasets.find(item => getDatasetGroupId(item, groups) === id)?.dataset_id;
+                                    const first = datasets.find(item => getDatasetGroupId(item) === id)?.dataset_id;
                                     setSetupSubsets(new Set(first ? [first] : []));
                                     setSetupExplored(new Set());
                                 }, childDatasets: currentSetupChildDatasets, selectedChildIds: setupSubsets, onChildToggle: id => setSetupSubsets(previous => {

@@ -27,8 +27,8 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
 }) {
   const {workspace} = useWorkspace();
   const hierarchy = useMemo(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
-  const [groupId, setGroupId] = useState(() => getDatasetGroupId(dataset, hierarchy));
-  const children = useMemo(() => datasets.filter(item => getDatasetGroupId(item, hierarchy) === groupId), [datasets, hierarchy, groupId]);
+  const [groupId, setGroupId] = useState(() => getDatasetGroupId(dataset));
+  const children = useMemo(() => datasets.filter(item => getDatasetGroupId(item) === groupId), [datasets, hierarchy, groupId]);
   const [selectedIds, setSelectedIds] = useState([dataset.dataset_id]);
   const ids = selectedIds.filter(id => children.some(child => child.dataset_id === id));
   const scope = JSON.stringify([...ids].sort());
@@ -47,7 +47,7 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
     if (!hierarchy.some(group => group.group_id === groupId)) {
       const next = hierarchy[0]?.group_id || '';
       setGroupId(next);
-      setSelectedIds(datasets.filter(item => getDatasetGroupId(item, hierarchy) === next).slice(0, 1).map(item => item.dataset_id));
+      setSelectedIds(datasets.filter(item => getDatasetGroupId(item) === next).slice(0, 1).map(item => item.dataset_id));
     }
   }, [datasets, hierarchy, groupId]);
   const query = new URLSearchParams({page: String(page), page_size: '18', status, search});
@@ -63,7 +63,7 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
           workspace.selectDataset(ids[0]); setCreateOpen(true);
         }}>新建审计</Button>}</header>
     <DatasetScopeSelector groups={hierarchy} selectedGroupId={groupId} onGroupChange={next => {
-      setGroupId(next); setSelectedIds(datasets.filter(item => getDatasetGroupId(item, hierarchy) === next).slice(0, 1).map(item => item.dataset_id));
+      setGroupId(next); setSelectedIds(datasets.filter(item => getDatasetGroupId(item) === next).slice(0, 1).map(item => item.dataset_id));
     }} childDatasets={children} selectedChildIds={ids} onChildToggle={id => setSelectedIds(previous => previous.includes(id)
       ? previous.filter(value => value !== id) : [...previous, id])} disabled={createOpen} className="audit-scope"
       groupId="audit-dataset" childId="audit-child-trigger" childMenuId="audit-child-menu">

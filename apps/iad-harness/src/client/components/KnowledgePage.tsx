@@ -4,7 +4,7 @@ import {Button} from './Button.js';
 import {IconButton} from "./IconButton.js";
 import {Pagination} from "./Pagination.js";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import type { Dataset, DatasetGroup, JobSnapshot } from "../../shared/contracts.js";
+import type { Dataset, DatasetCatalog, DatasetGroup, JobSnapshot } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 import { useJobs } from "../useJobs.js";
 import { useResource } from "../useResource.js";
@@ -64,10 +64,9 @@ export function KnowledgePage({
   const view = workspace.view(pageId);
 
   // Hierarchy
-  const initialGroups = buildHierarchyGroups(cachedDatasets || [dataset], cachedGroups || []);
-  const initialParentId = getDatasetGroupId(dataset, initialGroups);
+  const initialParentId = getDatasetGroupId(dataset);
   const [datasets, setDatasets] = useState<Dataset[]>(() => cachedDatasets || [dataset]);
-  const [groups, setGroups] = useState<DatasetGroup[]>(() => initialGroups);
+  const [groups, setGroups] = useState<DatasetGroup[]>(() => cachedGroups || []);
   const [selectedParentId, setSelectedParentId] = useState<string>(() => initialParentId);
   const [selectedChildId, setSelectedChildId] = useState<string>(() => dataset.dataset_id);
 
@@ -105,16 +104,15 @@ export function KnowledgePage({
   // Sync datasets and hierarchy
   useEffect(() => {
     let active = true;
-    request<{ datasets: Dataset[]; groups?: DatasetGroup[] }>("/datasets")
+    request<DatasetCatalog>("/datasets")
       .then(res => {
         if (!active) return;
-        const dsList = res.datasets || [dataset];
-        const grpList = buildHierarchyGroups(dsList, res.groups || []);
+        const dsList = res.datasets;
         cachedDatasets = dsList;
-        cachedGroups = res.groups || [];
+        cachedGroups = res.groups;
         setDatasets(dsList);
-        setGroups(grpList);
-        const parentId = getDatasetGroupId(dataset, grpList);
+        setGroups(res.groups);
+        const parentId = getDatasetGroupId(dataset);
         setSelectedParentId(parentId);
         setSelectedChildId(dataset.dataset_id);
       })
@@ -138,14 +136,14 @@ export function KnowledgePage({
   });
 
   // Current scope datasets
-  const parentGroups = useMemo(() => groups.filter(g => g.group_id !== "single"), [groups]);
+  const parentGroups = useMemo(()=>buildHierarchyGroups(datasets,groups),[datasets,groups]);
   const currentChildDatasets = useMemo(() => {
-    return datasets.filter(d => getDatasetGroupId(d, groups) === selectedParentId);
+    return datasets.filter(d => getDatasetGroupId(d) === selectedParentId);
   }, [datasets, groups, selectedParentId]);
 
   const handleParentChange = (parentId: string) => {
     setSelectedParentId(parentId);
-    const children = datasets.filter(d => getDatasetGroupId(d, groups) === parentId);
+    const children = datasets.filter(d => getDatasetGroupId(d) === parentId);
     if (children.length > 0) {
       setSelectedChildId(children[0].dataset_id);
       workspace.selectDataset(children[0].dataset_id);
@@ -567,7 +565,7 @@ export function KnowledgePage({
           {(loadError || polling.error || versionsResource.error) && <p role="alert">{loadError || polling.error || versionsResource.error}</p>}
           </>}
 
-            {createOpen && <KnowledgeMiningCreate key={selectedChildId} dataset={dataset} datasets={datasets} groups={groups}
+            {createOpen && <KnowledgeMiningCreate key={selectedChildId} dataset={dataset} datasets={datasets} groups={parentGroups}
               selectedParentId={selectedParentId} selectedChildId={selectedChildId}
               onClose={()=>workspace.updateView(pageId,{tab:'results'})} onStarted={jobs=>{
                 const first=jobs[0];

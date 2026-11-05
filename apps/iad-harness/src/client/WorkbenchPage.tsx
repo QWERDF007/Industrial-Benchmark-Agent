@@ -2,7 +2,7 @@ import {Select} from './components/Select.js';
 import {IconButton} from "./components/IconButton.js";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import type { Dataset, DatasetGroup, Filters, ReviewDecisionRecord, SamplePage } from "../shared/contracts.js";
+import type { Dataset, DatasetCatalog, DatasetGroup, Filters, ReviewDecisionRecord, SamplePage } from "../shared/contracts.js";
 import { initialReviewFilters, message, request, reviewLabel, sampleQuery } from "./api.js";
 import { DatasetManager } from "./components/DatasetManager.js";
 import { SampleFilters } from "./components/SampleFilters.js";
@@ -36,10 +36,10 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
   const dataset = datasets.find(d => d.dataset_id === datasetId);
   const loadDatasets = useCallback(async (preferred?: string, signal?: AbortSignal) => {
     try {
-      const result = await request<{ datasets: Dataset[]; groups?: DatasetGroup[] }>("/datasets", undefined, undefined, signal);
+      const result = await request<DatasetCatalog>("/datasets", undefined, undefined, signal);
       if (signal?.aborted) return;
       setDatasets(result.datasets);
-      if (result.groups) setGroups(result.groups);
+      setGroups(result.groups);
       const current = workspace.getSnapshot().datasetId;
       workspace.selectDataset(preferred || (result.datasets.some(d => d.dataset_id === current) ? current : result.datasets[0]?.dataset_id || ""), true);
       setError("");
@@ -47,7 +47,7 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
   }, [workspace]);
   const changed = useCallback(() => { setRevision(v => v + 1); void loadDatasets(); }, [loadDatasets]);
   useEffect(() => { const controller = new AbortController(); void loadDatasets(undefined, controller.signal); return () => controller.abort(); }, [loadDatasets]);
-  const gallery = pageId === "industrial-images" || (pageId === "industrial-review" && view.tab === "results");
+  const gallery = pageId === "industrial-review" && view.tab === "results";
   const query = sampleQuery(datasetId, view.filters, view.page, pageSize);
   const navigation = useSampleNavigation(pageId, dataset?.task_id, query, result, gallery);
   const surface = usePagePosition(gallery ? JSON.stringify([pageId, view.tab, query]) : null, state.active && state.pageId === pageId && !!dataset && result.query === query && !loading);

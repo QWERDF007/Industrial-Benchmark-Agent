@@ -49,6 +49,7 @@ export interface Dataset extends Report {
   unannotated_is_normal: boolean;
   annotation_policy: Required<import("./domain.generated.js").AnnotationPolicy>;
 }
+export interface DatasetCatalog { datasets: Dataset[]; groups: DatasetGroup[] }
 export type Filters = Required<import("./domain.generated.js").SampleFilters>;
 export interface SampleIdentity {
   sample_id: string;

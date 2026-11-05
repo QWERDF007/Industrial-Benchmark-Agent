@@ -10,6 +10,7 @@ import type {
   ConsistencyBatch,
   Dataset,
   DatasetGroup,
+  DatasetCatalog,
   JobSnapshot
 } from '../../shared/contracts.js';
 import type { GalleryMember } from '../../shared/domain.generated.js';
@@ -98,7 +99,7 @@ function ConsistencyIntegratedWorkspace() {
   // Datasets and hierarchy state
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [groups, setGroups] = useState<DatasetGroup[]>([]);
-  const [selectedParentId, setSelectedParentId] = useState<string>('group-1');
+  const [selectedParentId, setSelectedParentId] = useState<string>('');
   const [selectedChildIds, setSelectedChildIds] = useState<string[]>([]);
   const [error, setError] = useState('');
 
@@ -146,25 +147,22 @@ function ConsistencyIntegratedWorkspace() {
     [hierarchyGroups, selectedParentId]
   );
   const currentChildDatasets = useMemo(
-    () => datasets.filter(d => getDatasetGroupId(d, hierarchyGroups) === currentParent?.group_id),
+    () => datasets.filter(d => getDatasetGroupId(d) === currentParent?.group_id),
     [datasets, hierarchyGroups, currentParent]
   );
   // Initial load of datasets
   useEffect(() => {
     const controller = new AbortController();
-    request<{ datasets: Dataset[]; groups?: DatasetGroup[] }>('/datasets', undefined, undefined, controller.signal)
+    request<DatasetCatalog>('/datasets', undefined, undefined, controller.signal)
       .then(res => {
         if (controller.signal.aborted) return;
         setDatasets(res.datasets);
-        if (res.groups) setGroups(res.groups);
+        setGroups(res.groups);
         const derived = buildHierarchyGroups(res.datasets, res.groups || []);
-        const parentId = derived[0]?.group_id || 'group-1';
+        const parentId = derived[0]?.group_id || '';
         setSelectedParentId(parentId);
-        const children = res.datasets.filter(d => getDatasetGroupId(d, derived) === parentId);
-        // Default to all child datasets in the selected group
-        if (children.length > 0) {
-          setSelectedChildIds(children.map(c => c.dataset_id));
-        }
+        const children = res.datasets.filter(d => getDatasetGroupId(d) === parentId);
+        setSelectedChildIds(children.map(c => c.dataset_id));
       })
       .catch(err => {
         if (!controller.signal.aborted) setError(message(err));
@@ -302,7 +300,7 @@ function ConsistencyIntegratedWorkspace() {
   const handleParentChange = useCallback(
     (newParentId: string) => {
       setSelectedParentId(newParentId);
-      const newChildren = datasets.filter(d => getDatasetGroupId(d, hierarchyGroups) === newParentId);
+      const newChildren = datasets.filter(d => getDatasetGroupId(d) === newParentId);
       setSelectedChildIds(newChildren.map(c => c.dataset_id));
       setSelectedJobId('');
       setJobPage(1);

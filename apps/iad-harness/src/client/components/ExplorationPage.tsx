@@ -7,7 +7,7 @@ import {TabBar} from './layout/TabBar.js';
 import {Button} from './Button.js';
 import {ThumbnailCard} from "./ThumbnailCard.js";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Dataset, DatasetGroup, JobSnapshot } from "../../shared/contracts.js";
+import type { Dataset, DatasetCatalog, DatasetGroup, JobSnapshot } from "../../shared/contracts.js";
 import { mediaUrl, message, request } from "../api.js";
 import {useWorkbenchModel} from "../models.js";
 import {useJobs} from "../useJobs.js";
@@ -43,13 +43,12 @@ export function ExplorationPage({
   refreshRevision: number;
 }) {
   const model=useWorkbenchModel();
-  const initialGroups = buildHierarchyGroups(cachedDatasets || [dataset], cachedGroups || []);
-  const initialParentId = getDatasetGroupId(dataset, initialGroups);
+  const initialParentId = getDatasetGroupId(dataset);
   const initialChildren = (cachedDatasets || [dataset]).filter(
-    (d) => getDatasetGroupId(d, initialGroups) === initialParentId
+    (d) => getDatasetGroupId(d) === initialParentId
   );
   const [datasets, setDatasets] = useState<Dataset[]>(() => cachedDatasets || [dataset]);
-  const [groups, setGroups] = useState<DatasetGroup[]>(() => initialGroups);
+  const [groups, setGroups] = useState<DatasetGroup[]>(() => cachedGroups || []);
   const [selectedParentId, setSelectedParentId] = useState<string>(() => initialParentId);
   const [selectedChildIds, setSelectedChildIds] = useState<string[]>(() =>
     initialChildren.length > 0 ? initialChildren.map((c) => c.dataset_id) : [dataset.dataset_id]
@@ -106,28 +105,20 @@ export function ExplorationPage({
   // Load datasets and hierarchy
   useEffect(() => {
     let active = true;
-    request<{ datasets: Dataset[]; groups?: DatasetGroup[] }>("/datasets")
+    request<DatasetCatalog>("/datasets")
       .then((res) => {
         if (!active) return;
-        const dsList = res.datasets || [dataset];
-        const grpList = buildHierarchyGroups(dsList, res.groups || []);
+        const dsList = res.datasets;
         cachedDatasets = dsList;
-        cachedGroups = res.groups || [];
+        cachedGroups = res.groups;
         setDatasets(dsList);
-        setGroups(grpList);
-        const parentId = getDatasetGroupId(dataset, grpList);
+        setGroups(res.groups);
+        const parentId = getDatasetGroupId(dataset);
         setSelectedParentId(parentId);
-        const children = dsList.filter((d) => getDatasetGroupId(d, grpList) === parentId);
+        const children = dsList.filter((d) => getDatasetGroupId(d) === parentId);
         setSelectedChildIds(children.length > 0 ? children.map((c) => c.dataset_id) : [dataset.dataset_id]);
       })
-      .catch(() => {
-        if (!active) return;
-        const grpList = buildHierarchyGroups([dataset], []);
-        setGroups(grpList);
-        const parentId = getDatasetGroupId(dataset, grpList);
-        setSelectedParentId(parentId);
-        setSelectedChildIds((prev) => (prev.length ? prev : [dataset.dataset_id]));
-      });
+      .catch(failure => {if(active)setError(message(failure));});
     return () => {
       active = false;
     };
@@ -169,8 +160,8 @@ export function ExplorationPage({
   },[selectedChildIds,view,modal,samplesLoaded]);
 
   // Derived state
-  const parentGroups = groups.length ? groups : buildHierarchyGroups([dataset], []);
-  const currentChildDatasets = datasets.filter((d) => getDatasetGroupId(d, groups) === selectedParentId);
+  const parentGroups = useMemo(()=>buildHierarchyGroups(datasets,groups),[datasets,groups]);
+  const currentChildDatasets = datasets.filter((d) => getDatasetGroupId(d) === selectedParentId);
 
   const filteredJobs: JobSnapshot[] = useMemo(() => {
     const q = jobSearch.trim().toLowerCase();
@@ -227,7 +218,7 @@ export function ExplorationPage({
   // Handle parent group change
   const handleParentChange = (newParentId: string) => {
     setSelectedParentId(newParentId);
-    const children = datasets.filter((d) => getDatasetGroupId(d, groups) === newParentId);
+    const children = datasets.filter((d) => getDatasetGroupId(d) === newParentId);
     setSelectedChildIds(children.map((c) => c.dataset_id));
     setJobPage(1);
   };

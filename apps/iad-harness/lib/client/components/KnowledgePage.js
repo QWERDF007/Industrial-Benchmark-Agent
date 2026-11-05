@@ -30,10 +30,9 @@ export function KnowledgePage({ dataset, refreshRevision }) {
     const pageId = "industrial-knowledge";
     const view = workspace.view(pageId);
     // Hierarchy
-    const initialGroups = buildHierarchyGroups(cachedDatasets || [dataset], cachedGroups || []);
-    const initialParentId = getDatasetGroupId(dataset, initialGroups);
+    const initialParentId = getDatasetGroupId(dataset);
     const [datasets, setDatasets] = useState(() => cachedDatasets || [dataset]);
-    const [groups, setGroups] = useState(() => initialGroups);
+    const [groups, setGroups] = useState(() => cachedGroups || []);
     const [selectedParentId, setSelectedParentId] = useState(() => initialParentId);
     const [selectedChildId, setSelectedChildId] = useState(() => dataset.dataset_id);
     // Jobs & Knowledge hooks
@@ -70,13 +69,12 @@ export function KnowledgePage({ dataset, refreshRevision }) {
             .then(res => {
             if (!active)
                 return;
-            const dsList = res.datasets || [dataset];
-            const grpList = buildHierarchyGroups(dsList, res.groups || []);
+            const dsList = res.datasets;
             cachedDatasets = dsList;
-            cachedGroups = res.groups || [];
+            cachedGroups = res.groups;
             setDatasets(dsList);
-            setGroups(grpList);
-            const parentId = getDatasetGroupId(dataset, grpList);
+            setGroups(res.groups);
+            const parentId = getDatasetGroupId(dataset);
             setSelectedParentId(parentId);
             setSelectedChildId(dataset.dataset_id);
         })
@@ -99,13 +97,13 @@ export function KnowledgePage({ dataset, refreshRevision }) {
             knowledgeVersionId: job.knowledge_version_id || null };
     });
     // Current scope datasets
-    const parentGroups = useMemo(() => groups.filter(g => g.group_id !== "single"), [groups]);
+    const parentGroups = useMemo(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
     const currentChildDatasets = useMemo(() => {
-        return datasets.filter(d => getDatasetGroupId(d, groups) === selectedParentId);
+        return datasets.filter(d => getDatasetGroupId(d) === selectedParentId);
     }, [datasets, groups, selectedParentId]);
     const handleParentChange = (parentId) => {
         setSelectedParentId(parentId);
-        const children = datasets.filter(d => getDatasetGroupId(d, groups) === parentId);
+        const children = datasets.filter(d => getDatasetGroupId(d) === parentId);
         if (children.length > 0) {
             setSelectedChildId(children[0].dataset_id);
             workspace.selectDataset(children[0].dataset_id);
@@ -259,7 +257,7 @@ export function KnowledgePage({ dataset, refreshRevision }) {
                                                                                 e.preventDefault();
                                                                                 openDetail(item);
                                                                             }
-                                                                        }, children: [_jsx("span", { className: "row-title knowledge-entry-name", children: item.name }), _jsx("span", { className: "row-desc knowledge-entry-description", title: item.summary, children: item.summary }), _jsxs("span", { className: "row-count col-evidence-count", title: `支持 ${item.supportCount} 张，反对 ${item.counterCount} 张`, children: [item.supportCount, "/", item.counterCount] }), _jsxs("span", { className: "col-action jobact", onClick: e => e.stopPropagation(), children: [_jsx(IconButton, { icon: "details", type: "button", className: "knowledge-entry-view", "data-view-entry": item.id, label: `查看知识条目 ${item.name}`, title: "\u67E5\u770B\u77E5\u8BC6\u6761\u76EE", onClick: () => openDetail(item) }), _jsx(IconButton, { icon: "delete", type: "button", className: "knowledge-entry-delete", "data-delete-entry": item.id, disabled: !canMaintain, label: `删除知识条目 ${item.name}`, title: "\u5220\u9664\u77E5\u8BC6\u6761\u76EE", onClick: () => askDeleteEntry(item) })] })] }, item.id))) }), _jsx(Pagination, { total: checksResource.data?.total || 0, page: currentEntryPage, size: 8, onPage: setEntryPage, label: "\u77E5\u8BC6\u6761\u76EE" })] })) })] }), (loadError || polling.error || versionsResource.error) && _jsx("p", { role: "alert", children: loadError || polling.error || versionsResource.error })] }), createOpen && _jsx(KnowledgeMiningCreate, { dataset: dataset, datasets: datasets, groups: groups, selectedParentId: selectedParentId, selectedChildId: selectedChildId, onClose: () => workspace.updateView(pageId, { tab: 'results' }), onStarted: jobs => {
+                                                                        }, children: [_jsx("span", { className: "row-title knowledge-entry-name", children: item.name }), _jsx("span", { className: "row-desc knowledge-entry-description", title: item.summary, children: item.summary }), _jsxs("span", { className: "row-count col-evidence-count", title: `支持 ${item.supportCount} 张，反对 ${item.counterCount} 张`, children: [item.supportCount, "/", item.counterCount] }), _jsxs("span", { className: "col-action jobact", onClick: e => e.stopPropagation(), children: [_jsx(IconButton, { icon: "details", type: "button", className: "knowledge-entry-view", "data-view-entry": item.id, label: `查看知识条目 ${item.name}`, title: "\u67E5\u770B\u77E5\u8BC6\u6761\u76EE", onClick: () => openDetail(item) }), _jsx(IconButton, { icon: "delete", type: "button", className: "knowledge-entry-delete", "data-delete-entry": item.id, disabled: !canMaintain, label: `删除知识条目 ${item.name}`, title: "\u5220\u9664\u77E5\u8BC6\u6761\u76EE", onClick: () => askDeleteEntry(item) })] })] }, item.id))) }), _jsx(Pagination, { total: checksResource.data?.total || 0, page: currentEntryPage, size: 8, onPage: setEntryPage, label: "\u77E5\u8BC6\u6761\u76EE" })] })) })] }), (loadError || polling.error || versionsResource.error) && _jsx("p", { role: "alert", children: loadError || polling.error || versionsResource.error })] }), createOpen && _jsx(KnowledgeMiningCreate, { dataset: dataset, datasets: datasets, groups: parentGroups, selectedParentId: selectedParentId, selectedChildId: selectedChildId, onClose: () => workspace.updateView(pageId, { tab: 'results' }), onStarted: jobs => {
                                     const first = jobs[0];
                                     if (first) {
                                         workspace.openLocation({ pageId, datasetId: first.dataset_id, job: first.run_id, version: '', tab: 'results' });
