@@ -250,9 +250,9 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
         runtime.jobs.wait(job.run_id, 5)
         view = analyses.read(request)
         assert len(calls) == 2, '冻结引用错误应允许模型自行纠正一次，持续错误也不能无限重试'
-        feedback = json.loads(calls[1]['messages'][0]['content'][0]['text'].split('输出校验结果：', 1)[1])
+        feedback = json.loads(calls[1]['messages'][-1]['content'].split('输出校验结果：', 1)[1])
         assert all(issue['ctx']['repairable_output'] for issue in feedback['schema_validation_errors'])
-        assert feedback['previous_response']
+        assert calls[1]['messages'][1]['content']
         if error_kind=='overall_verdict':
             assert 'MATERIAL' in feedback['schema_validation_errors'][0]['msg'] and 'EQUIVALENT' in feedback['schema_validation_errors'][0]['msg']
         if corrected:

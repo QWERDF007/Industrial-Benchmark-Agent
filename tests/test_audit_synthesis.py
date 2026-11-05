@@ -22,7 +22,7 @@ def test_audit_transmits_short_references_and_preserves_frozen_evidence_ownershi
         requests.append(body)
         content = body['messages'][0]['content']
         if mistake=='descriptive' and len(requests)>1:
-            feedback = json.loads(content[0]['text'].split('输出校验结果：',1)[1])
+            feedback = json.loads(body['messages'][-1]['content'].split('输出校验结果：',1)[1])
             assert '@s0' in feedback['schema_validation_errors'][0]['msg'], '反馈应指出具体违规引用，不能让模型猜错在哪里'
         assert ':dent.png' not in json.dumps(body), '模型应看请求内引用，不能从样本ID抄出文件名'
         assert ':scratch.png' not in json.dumps(body)
@@ -55,7 +55,7 @@ def test_audit_transmits_short_references_and_preserves_frozen_evidence_ownershi
         if mistake in ('unknown', 'wrong_kind', 'persistent'):
             assert len(requests)==2
             text = requests[1]['messages'][0]['content'][0]['text']
-            feedback = json.loads(text.split('输出校验结果：',1)[1])
+            feedback = json.loads(requests[1]['messages'][-1]['content'].split('输出校验结果：',1)[1])
             frozen = json.loads(text.split('冻结综合审计：',1)[1].split('\n输出校验结果：',1)[0])
             expected = frozen['audit_target']['sample_id'] if mistake=='wrong_kind' else '@v999'
             message = '\n'.join(issue['msg'] for issue in feedback['schema_validation_errors'])
@@ -279,7 +279,7 @@ def test_audit_returns_finding_coverage_errors_to_the_model_once_without_changin
         runtime.audit.wait(job['run_id'],5)
         final=runtime.audit.status(job['run_id'])
         assert len(calls)==2, '空间覆盖错误必须进入同一模型输出校验，只给一次自行纠正机会'
-        feedback=json.loads(calls[1]['messages'][0]['content'][0]['text'].split('输出校验结果：',1)[1])
+        feedback=json.loads(calls[1]['messages'][-1]['content'].split('输出校验结果：',1)[1])
         assert 'does not cover the finding' in str(feedback['schema_validation_errors'])
         assert all(item['ctx']['repairable_output'] for item in feedback['schema_validation_errors'])
         if corrected:
@@ -414,3 +414,63 @@ def test_anomaly_audit_sends_original_and_quality_without_synthetic_annotation_c
         detail=audit_job_sample(dict(run_id=job['run_id'],sample_id=ids[-1]),db.db_path)
         assert not detail['suggestion']['analysis']['regions']
     finally:runtime.close()
+
+
+@pytest.mark.parametrize('stage', ['JointAnalysis', 'AuditConclusion'])
+@pytest.mark.parametrize('persistent', [False, True])
+def test_missing_audit_fields_are_corrected_in_original_conversation(dataset, mllm_api, finding_response, stage, persistent):
+    db, _, config = dataset
+    original, _, _ = mllm_api
+    generated, tokenized = [], []
+    target = config.dataset.id+':dent.png'
+
+    def respond(request):
+        body = json.loads(request.content)
+        response = original.send(request)
+        if request.url.path.endswith('/tokenize'):
+            tokenized.append(body)
+            return response
+        if body['response_format']['json_schema']['name'] != stage:
+            return response
+        generated.append(body)
+        result = response.json()
+        answer = json.loads(result['choices'][0]['message']['content'])
+        if stage == 'JointAnalysis':
+            refs = [json.loads(part['text'][5:])['evidence_id'] for part in body['messages'][0]['content']
+                    if part['type']=='text' and part['text'].startswith('视觉证据：')]
+            answer['findings'] = [dict(finding_response, check_ids=[], evidence_ids=[refs[0]])]
+            if len(generated)==1 or persistent:
+                del answer['findings'][0]['description']
+        elif len(generated)==1 or persistent:
+            del answer['applicable_rule']
+            del answer['normal_alternative']
+        result['choices'][0]['message']['content'] = json.dumps(answer, ensure_ascii=False)
+        return httpx.Response(200, json=result)
+
+    runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        job = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[target])
+        runtime.audit.wait(job['run_id'], 8)
+        final = runtime.audit.status(job['run_id'])
+        assert len(generated)==2, final['errors']
+        correction = generated[1]['messages']
+        assert [message['role'] for message in correction] == ['user', 'assistant', 'user']
+        assert correction[0] == generated[0]['messages'][0], '原完整提示词、Schema和所有图像必须逐字保留'
+        prior = json.loads(correction[1]['content'])
+        if stage=='JointAnalysis':
+            assert 'description' not in prior['findings'][0]
+        else:
+            assert 'applicable_rule' not in prior and 'normal_alternative' not in prior
+        feedback = json.loads(correction[-1]['content'].split('输出校验结果：',1)[1])
+        assert feedback['schema_validation_errors']
+        assert 'previous_response' not in feedback, '先前输出只保留在assistant消息中，不再重复转义嵌入'
+        assert any(body['messages']==correction for body in tokenized), '容量校验必须计入完整纠正对话'
+        if persistent:
+            assert final['status']=='FAILED'
+            assert audit_job_sample(dict(run_id=job['run_id'],sample_id=target),db.db_path)['suggestion'] is None
+        else:
+            assert final['status']=='COMPLETED', final['errors']
+            detail = audit_job_sample(dict(run_id=job['run_id'],sample_id=target),db.db_path)
+            assert detail['suggestion'] is not None
+    finally:
+        runtime.close()

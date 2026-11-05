@@ -314,7 +314,7 @@ def test_audit_model_corrects_its_output_without_program_fallback(dataset,mllm_a
         job=runtime.audit.start(dataset_id=config.dataset.id,sample_ids=[sid])
         runtime.audit.wait(job['run_id'],8)
         result=runtime.audit.status(job['run_id'])
-        assert len(generated)==2 and '输出校验结果：' in generated[1]['messages'][0]['content'][0]['text']
+        assert len(generated)==2 and '输出校验结果：' in generated[1]['messages'][-1]['content']
         if not corrected:
             assert result['status']=='FAILED' and result['completed']==0 and result['failed']==1
             assert audit_job_sample(dict(run_id=job['run_id'],sample_id=sid),db.db_path)['suggestion'] is None

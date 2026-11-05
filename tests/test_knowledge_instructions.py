@@ -271,10 +271,10 @@ def test_discovery_linking_rechecks_inconsistent_model_status_before_publication
             return httpx.Response(200,json={'count':1000,'max_model_len':262144})
         content=body['messages'][0]['content']
         if body['response_format']['json_schema']['name']=='KnowledgeDiscoveryLinks':
-            linked.append(content[0]['text'])
+            linked.append(body['messages'])
             result={f'area_{i}':dict(status='已形成知识' if len(linked)==1 else '证据不足',subjects=[],check_titles=[]) for i in range(2)}
             if len(linked)==2:
-                feedback=content[0]['text'].split('输出校验结果：',1)[1]
+                feedback=body['messages'][-1]['content'].split('输出校验结果：',1)[1]
                 assert 'area_0' in feedback and 'area_1' in feedback
         else:
             refs=[json.loads(part['text'].removeprefix('视觉证据：'))['evidence_id'] for part in content
@@ -289,7 +289,7 @@ def test_discovery_linking_rechecks_inconsistent_model_status_before_publication
         runtime.jobs.wait(job['run_id'],5)
         result=runtime.jobs.status(job['run_id'])
         assert result['status']=='COMPLETED',result['errors']
-        assert len(linked)==2 and '输出校验结果：' in linked[-1]
+        assert len(linked)==2 and '输出校验结果：' in linked[-1][-1]['content']
         snapshot=KnowledgeRepository(db).get(result['knowledge_version_id'])
         assert snapshot.mining_steps[0].result.discovery.areas[0].status=='证据不足'
         assert snapshot.checks==[]

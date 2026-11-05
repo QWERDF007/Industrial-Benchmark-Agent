@@ -106,6 +106,6 @@ def test_model_retracts_specific_text_without_erasing_history_evidence_or_confli
         assert 'text_retractions' in calls[-1][0]['messages'][0]['content'][0]['text']
         if retraction_case not in ('valid', 'omitted', 'retirement'):
             assert len(calls) == 3, '不可用引用必须由模型纠正一次，不能猜测替换'
-            assert '输出校验结果：' in calls[-1][0]['messages'][0]['content'][0]['text']
+            assert '输出校验结果：' in calls[-1][0]['messages'][-1]['content']
     finally:
         runtime.close()

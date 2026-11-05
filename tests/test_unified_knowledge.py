@@ -147,7 +147,7 @@ def test_model_corrects_missing_support_and_conclusion_references_once(knowledge
         runtime.jobs.wait(job['run_id'],5)
         final = runtime.jobs.status(job['run_id'])
         assert len(generations)==2, '混合的可纠正错误也必须进入一次模型纠正'
-        feedback = json.loads(generations[1]['messages'][0]['content'][0]['text'].split('输出校验结果：',1)[1])
+        feedback = json.loads(generations[1]['messages'][-1]['content'].split('输出校验结果：',1)[1])
         assert {issue['type'] for issue in feedback['schema_validation_errors']} == {'evidence_in_conclusion','knowledge_support_evidence'}
         assert final['status']==('COMPLETED' if corrected else 'FAILED'), final['errors']
         if corrected:
@@ -178,8 +178,8 @@ def test_verified_suspects_are_reconsidered_visually_without_assuming_criterion_
             comparison = next(view for view in views if view['source_sha256'] != roi['source_sha256'])
             bad=reference_case in ('invalid','foreign') or reference_case=='corrected' and len(verification_calls)==1
             if len(verification_calls)==2:
-                feedback=json.loads(prompt.split('输出校验结果：')[1])
-                assert ('finding_999' if reference_case=='foreign' else ': finding_0') in feedback['previous_response']
+                feedback=json.loads(body['messages'][-1]['content'].split('输出校验结果：')[1])
+                assert ('finding_999' if reference_case=='foreign' else ': finding_0') in body['messages'][1]['content']
                 assert all(issue['ctx']['repairable_output'] for issue in feedback['schema_validation_errors'])
             result = dict(findings=[dict(finding_id=('finding_999' if reference_case=='foreign' else ': finding_0') if bad else 'finding_0', status=finding_status,
                 affected_check_titles=['局部异色规律'], description='核对局部色差与结构', normal_explanation='保留反光解释',

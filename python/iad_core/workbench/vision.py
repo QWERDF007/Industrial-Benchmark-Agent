@@ -92,7 +92,7 @@ class VlmClient:
         return {"Authorization": "Bearer " + self._api_key} if self._api_key else {}
 
     def plan(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str,
-             output_reserve: int = 2048) -> GenerationRequest[T]:
+             output_reserve: int = 2048, *, correction: Optional[ModelOutputError] = None) -> GenerationRequest[T]:
         if self.profile.capacity_mode is None:
             raise ValueError('模型容量能力未知，请配置LIVE_VLM_CAPACITY_MODE；未发送生成请求')
         if self.profile.max_visual_inputs is not None and len(images) > self.profile.max_visual_inputs:
@@ -108,8 +108,13 @@ class VlmClient:
                 encoded = base64.b64encode(source.read()).decode("ascii")
             content.append({"type": "text", "text": "视觉证据：" + json.dumps(image.model_context(), ensure_ascii=False)})
             content.append({"type": "image_url", "image_url": {"url": "data:image/png;base64," + encoded}})
+        messages = [{"role": "user", "content": content}]
+        if correction is not None:
+            messages.extend([{"role": "assistant", "content": correction.response},
+                {"role": "user", "content": '输出校验结果：' + json.dumps(
+                    {'schema_validation_errors': correction.issues}, ensure_ascii=False)}])
         body = {
-            "model": model_name, "messages": [{"role": "user", "content": content}],
+            "model": model_name, "messages": messages,
             "response_format": {"type": "json_schema", "json_schema": {"name": response_type.__name__, "strict": True, "schema": schema}},
             "stream": True, "stream_options": {"include_usage": True},
             **GENERATION_PARAMETERS, **self.profile.request_parameters,
@@ -164,9 +169,9 @@ class VlmClient:
                     break
                 if not repairable:
                     raise
-                feedback = {'schema_validation_errors': error.issues, 'previous_response': error.response}
-                instruction = plan.body['messages'][0]['content'][0]['text'] + '\n输出校验结果：' + json.dumps(feedback, ensure_ascii=False)
-                plan = self.plan(plan.response_type, instruction, list(plan.images), plan.body['model'], plan.output_reserve)
+                instruction = plan.body['messages'][0]['content'][0]['text']
+                plan = self.plan(plan.response_type, instruction, list(plan.images), plan.body['model'],
+                    plan.output_reserve, correction=error)
 
     def _generate(self, plan: GenerationRequest[T]) -> T:
         response_type = plan.response_type

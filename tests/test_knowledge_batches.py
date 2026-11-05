@@ -254,8 +254,8 @@ def test_model_revises_its_own_conclusion_references_before_publication(knowledg
         ids=[json.loads(part['text'].removeprefix('视觉证据：'))['evidence_id'] for part in content
              if part['type']=='text' and part['text'].startswith('视觉证据：')]
         if len(calls)==2:
-            assert '输出校验结果：' in content[0]['text']
-            assert 'evidence_in_conclusion' in content[0]['text']
+            assert '输出校验结果：' in body['messages'][-1]['content']
+            assert 'evidence_in_conclusion' in body['messages'][-1]['content']
         result=dict(summary='主体轮廓与孔位关系可观察',checks=[],suspects=[],limitations=[])
         if len(calls)==1 or not corrected:
             text='主体外观规律见'+ids[0]

@@ -198,9 +198,9 @@ def test_group_synthesis_corrects_its_verdict_once_and_keeps_completed_visual_ba
         view = analyses.read(request)
         assert [call['response_format']['json_schema']['name'] for call in calls] == [
             'GroupAnalysisDraft', 'GroupAnalysisDraft', 'GroupAnalysisSummary', 'GroupAnalysisSummary']
-        feedback = json.loads(calls[-1]['messages'][0]['content'][0]['text'].split('输出校验结果：', 1)[1])
+        feedback = json.loads(calls[-1]['messages'][-1]['content'].split('输出校验结果：', 1)[1])
         assert '批次汇总结论与实际逐批结论不一致' in feedback['schema_validation_errors'][0]['msg']
-        assert json.loads(feedback['previous_response'])['overall']['verdict'] == 'UNCERTAIN'
+        assert json.loads(calls[-1]['messages'][1]['content'])['overall']['verdict'] == 'UNCERTAIN'
         saved = runtime.jobs.status(job.run_id)
         assert len(saved['group_analysis_batches']) == 2
         if corrected:

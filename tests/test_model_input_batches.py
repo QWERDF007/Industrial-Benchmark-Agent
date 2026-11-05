@@ -14,7 +14,7 @@ from iad_core.entry import direction_exploration_get
 from iad_core.storage.database import Database
 from tests.knowledge_scenarios import selected_group
 from iad_core.consistency.evidence_models import ConsistencyCompare
-from iad_core.consistency.gallery import GalleryQueries, GalleryQuery, GalleryMemberQuery
+from iad_core.consistency.gallery import GalleryQueries, GalleryQuery
 from iad_core.consistency.result_models import ConsistencyQuery
 from iad_core.consistency.result_queries import ResultQueries
 from iad_core.consistency.group_analysis import GroupAnalyses
@@ -61,8 +61,8 @@ def test_model_rechecks_out_of_range_coordinates_without_rescaling_or_clipping(c
             with pytest.raises(ValueError, match='less_than_equal'):
                 client.generate(plan)
     assert len(calls) == 2, '只允许模型自行纠正一次，不由程序改写坐标'
-    feedback = json.loads(calls[1]['messages'][0]['content'][0]['text'].split('输出校验结果：', 1)[1])
-    assert json.loads(feedback['previous_response'])['bbox_1000'] == invalid
+    feedback = json.loads(calls[1]['messages'][-1]['content'].split('输出校验结果：', 1)[1])
+    assert json.loads(calls[1]['messages'][1]['content'])['bbox_1000'] == invalid
     assert all(issue['type'] == 'less_than_equal' for issue in feedback['schema_validation_errors'])
 
 
@@ -89,7 +89,7 @@ def test_model_repairs_structural_errors_once(corrected,initial_shape):
         else:
             with pytest.raises(ValueError,match='extra_forbidden|missing|model_type'):client.generate(plan)
     assert len(calls)==2
-    assert '输出校验结果：' in calls[1]['messages'][0]['content'][0]['text']
+    assert '输出校验结果：' in calls[1]['messages'][-1]['content']
 
 
 def test_folder_consistency_sends_original_labels_without_synthetic_crops(tmp_path):
@@ -102,13 +102,16 @@ def test_folder_consistency_sends_original_labels_without_synthetic_crops(tmp_pa
     preview = dataset_preview({'root_dir': str(root), 'rules': rules}, db_path)
     imported = dataset_import({'format': 'folder_classification', 'name': '同图标签差异', 'root_dir': str(root),
         'rules': rules, 'preview_fingerprint': preview['preview_fingerprint']}, db_path)
-    db, calls, citation = Database(db_path), [], {}
+    db, calls = Database(db_path), []
 
     def respond(request):
         body = json.loads(request.content)
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200, json={'count': 1000, 'max_model_len': 262144})
         calls.append(body)
+        frozen=json.loads(body['messages'][0]['content'][0]['text'].split('冻结图组：',1)[1].split('\n请根据图像',1)[0])
+        candidate_id,candidate=next(iter(frozen['candidates'].items()))
+        citation=dict(candidate_id=candidate_id,comparison={field:candidate['comparison'][field] for field in ['result_id','evidence_id']})
         return httpx.Response(200, json={'choices': [{'message': {'content': json.dumps({
             'overall': {'verdict': 'MATERIAL', 'text': '图像级标签不同', 'references': [citation]},
             'assessments': [{'candidate_id': citation['candidate_id'], 'verdict': 'MATERIAL',
@@ -119,12 +122,9 @@ def test_folder_consistency_sends_original_labels_without_synthetic_crops(tmp_pa
     runtime = WorkbenchRuntime(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
     try:
         left, right = [imported['dataset_id'] + ':' + folder + '/part.png' for folder in ('OK', 'NG')]
-        compared = runtime.consistency_service.compare(ConsistencyCompare(sample_a=left, sample_b=right))
+        runtime.consistency_service.compare(ConsistencyCompare(sample_a=left, sample_b=right))
         query = ResultQueries(db).query(ConsistencyQuery(selection={'kind': 'scope', 'subjects': {'kind': 'all_registered'}}))
         group = GalleryQueries(db).query(GalleryQuery(query_id=query.query_id, kind='conflicts')).items[0]
-        members = GalleryQueries(db).members(GalleryMemberQuery(query_id=query.query_id, kind='conflicts', group_id=group.group_id))
-        citation.update(candidate_id=members.items[0].image.sample.sample_id,
-            comparison={'result_id': compared.result_id, 'evidence_id': compared.evidence_id})
         analyses = GroupAnalyses(runtime, runtime.client)
         started = analyses.start(GroupAnalysisStart(query_id=query.query_id, kind='conflicts',
             group_id=group.group_id, request_id='image-level-input'))
@@ -132,11 +132,11 @@ def test_folder_consistency_sends_original_labels_without_synthetic_crops(tmp_pa
         finished = runtime.jobs.status(started.run_id)
         assert finished['status'] == 'COMPLETED', finished['errors']
         content = calls[0]['messages'][0]['content']
-        instruction = content[0]['text']
-        assert '"image_label":"OK"' in instruction and '"image_label":"NG"' in instruction
         descriptors = [json.loads(p['text'].removeprefix('视觉证据：')) for p in content
                        if p['type'] == 'text' and p['text'].startswith('视觉证据：')]
         assert all(item['role'] == 'overview' for item in descriptors)
+        frozen=json.loads(content[0]['text'].split('冻结图组：',1)[1].split('\n请根据图像',1)[0])
+        assert {source['image_label'] for source in frozen['sources'].values()}=={'OK','NG'}
     finally:
         runtime.close()
 
@@ -300,3 +300,27 @@ def test_json_object_mode_preserves_visible_schema_and_validates_the_result(vali
         if valid:assert client.generate(plan).summary=='仅记录实际观察'
         else:
             with pytest.raises(ModelOutputError,match='missing'):client.generate(plan)
+
+
+def test_correction_counts_the_complete_conversation_before_generating():
+    from iad_core.workbench.model_profile import ModelProfile
+    from iad_core.workbench.vision import ModelCapacityError
+    generated, tokenized = [], []
+
+    def respond(request):
+        body=json.loads(request.content)
+        if request.url.path.endswith('/tokenize'):
+            tokenized.append(body)
+            return httpx.Response(200,json={'count':100 if len(body['messages'])==1 else 120,'max_model_len':128})
+        generated.append(body)
+        return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':'{}'}}]})
+
+    profile=ModelProfile(endpoint='http://model.test/v1',capacity_mode='vllm_tokenize',context_tokens=128)
+    with httpx.Client(transport=httpx.MockTransport(respond)) as http:
+        client=VlmClient(http_client=http,profile=profile)
+        plan=client.plan(DirectionDraft,'完整可编辑提示词。\n{{response_schema}}',[],'fixture-model',output_reserve=16)
+        with pytest.raises(ModelCapacityError,match='输入 120 token'):
+            client.generate(plan)
+    assert len(generated)==1,'纠正对话超出容量时不能发送第二次生成'
+    assert [m['role'] for m in tokenized[1]['messages']]==['user','assistant','user']
+    assert tokenized[1]['messages'][0]==generated[0]['messages'][0]
