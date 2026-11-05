@@ -222,6 +222,6 @@ def test_verified_suspects_are_reconsidered_visually_without_assuming_criterion_
         assert [evidence[eid] for eid in check.counter_evidence_ids] == sample_ids[2:]
         assert check.allowed_variations == [], '程序不能从疑点的正常解释自行改写判据'
         assert len(snapshot.mining_steps) == 2
-        assert snapshot.generation_version == 'dataset-knowledge-v41'
+        assert snapshot.generation_version == 'dataset-knowledge-v42'
     finally:
         runtime.close()

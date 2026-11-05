@@ -3,10 +3,11 @@ import uuid
 from dataclasses import dataclass, field
 from typing import List, Literal, Optional
 
-from pydantic import Field, create_model
+from pydantic import Field, create_model, model_validator
 
 from iad_core.evidence.images import PreparedImage
-from iad_core.knowledge.models import CheckRevision, ObservedArea, ObservedDiscovery, KnowledgeLearning, KnowledgeDraft, KnowledgeFinding, KnowledgeObservationStep, KnowledgeSnapshot, KnowledgeSource, KnowledgeStep
+from iad_core.knowledge.models import CheckRevision, ObservedArea, ObservedDiscovery, KnowledgeLearning, KnowledgeDraft, KnowledgeFinding, KnowledgeObservationStep, KnowledgeTextRetraction, KnowledgeSource, KnowledgeStep
+from iad_core.knowledge.evolution import KnowledgeEvolution
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
 from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningPhase
@@ -26,19 +27,27 @@ class KnowledgeInput:
 
 class KnowledgeMiner:
     def __init__(self, client: VlmClient, context: JobContext, observations: Optional[List[KnowledgeObservationStep]] = None,
-                 parent: Optional[KnowledgeSnapshot] = None, *, mining_prompt: FrozenMiningPrompt):
+                 *, evolution: KnowledgeEvolution, mining_prompt: FrozenMiningPrompt):
         self.client, self.context = client, context
         self.steps: List[KnowledgeStep] = []
         self.observations = observations or []
         self.mining_prompt = mining_prompt
+        parent = evolution.parent
         ids = tuple(check.check_id for check in parent.checks) if parent else ()
+        has_statements = parent is not None and bool(parent.limitations or
+            any(check.limitations or check.allowed_variations for check in parent.checks))
         revision = create_model('CheckRevision', __base__=CheckRevision, previous_check_id=(Literal[ids], ...)) if ids else CheckRevision
         selected = tuple(item.direction_id for item in mining_prompt.configuration.directions if item.enabled)
         area = create_model('ObservedArea', __base__=ObservedArea, direction_id=(Literal[tuple([None, *selected])], None))
         self.area_type = area
         discovery = create_model('ObservedDiscovery', __base__=ObservedDiscovery, areas=(List[area], ...))
+        def validate_retractions(value):
+            return evolution.validate_text_retractions(value)
+
         self.response_type = create_model('KnowledgeDraft', __base__=KnowledgeLearning,
+            __validators__={'valid_text_retractions': model_validator(mode='after')(validate_retractions)},
             discovery=(Optional[discovery], Field(default=None)),
+            text_retractions=(List[KnowledgeTextRetraction], Field(default_factory=list, **({} if has_statements else {'max_length': 0}))),
             revisions=(List[revision], Field(default_factory=list, **({} if ids else {'max_length': 0}))))
 
     def record(self, draft: KnowledgeDraft, images: List[PreparedImage]) -> KnowledgeStep:

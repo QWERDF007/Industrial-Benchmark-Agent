@@ -55,6 +55,14 @@ class KnowledgeCorrection(AnalysisModel):
     instruction: NonBlankText = Field(description="待视觉核验的人工修订建议，不是已证实事实")
 
 
+class KnowledgeTextRetraction(AnalysisModel):
+    check_id: Optional[NonBlankText] = Field(description='冻结父版本的检查项ID；整体限制填null')
+    field: Literal['limitations', 'allowed_variations']
+    text: NonBlankText = Field(description='逐字引用要撤回的父版本表述；替代表述写入本轮相应字段')
+    reason: NonBlankText
+    evidence_ids: List[str] = Field(min_length=1, description='支持撤回理由的本轮实际原图证据')
+
+
 class ObservedPart(AnalysisModel):
     name: NonBlankText
     location: str
@@ -103,6 +111,7 @@ class KnowledgeDraftContent(AnalysisModel):
     suspects: List[KnowledgeSuspect]
     limitations: List[str]
     revisions: List[CheckRevision] = Field(default_factory=list)
+    text_retractions: List[KnowledgeTextRetraction] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def unique_check_titles(self):
@@ -292,6 +301,7 @@ class KnowledgeSnapshot(AnalysisModel):
     summary: str
     checks: List[KnowledgeCheck]
     revisions: List[CheckRevision] = Field(default_factory=list)
+    text_retractions: List[KnowledgeTextRetraction] = Field(default_factory=list)
     corrections: List[KnowledgeCorrection] = Field(default_factory=list)
     comparison_sources: List[KnowledgeSource] = Field(default_factory=list)
     suspects: List[KnowledgeSuspect]

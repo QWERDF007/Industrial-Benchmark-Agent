@@ -1,7 +1,8 @@
 import uuid
 from typing import List, Optional
 
-from iad_core.knowledge.models import CheckRevision, KnowledgeCheck, KnowledgeCorrection, KnowledgeDraft, KnowledgeSnapshot
+from iad_core.advisory.output_validation import repairable_output_error
+from iad_core.knowledge.models import CheckRevision, KnowledgeCheck, KnowledgeCorrection, KnowledgeDraft, KnowledgeDraftContent, KnowledgeSnapshot
 
 
 
@@ -22,6 +23,7 @@ class KnowledgeEvolution:
             'allowed_predecessor_check_ids': [check.check_id for check in self.parent.checks] if self.parent else [],
             'summary': self.parent.summary if self.parent else '',
             'limitations': self.parent.limitations if self.parent else [],
+            'text_origin': 'prior_model_output' if self.parent else None,
             'checks': [dict(check.criterion_context(), historical_support_count=len(check.support_evidence_ids),
                             historical_counter_count=len(check.counter_evidence_ids)) for check in self.parent.checks] if self.parent else [],
             'corrections':[item.model_dump() for item in self.corrections],
@@ -81,4 +83,39 @@ class KnowledgeEvolution:
                 if old.status == 'conflicted':
                     value.status = 'conflicted'
             checks.append(value)
+        self.apply_text_retractions(draft, checks)
         return checks
+
+    def validate_text_retractions(self, draft: KnowledgeDraftContent) -> KnowledgeDraftContent:
+        prior = {check.check_id: check for check in self.parent.checks} if self.parent else {}
+        seen = set()
+        for item in draft.text_retractions:
+            target = (item.check_id, item.field, item.text)
+            owner = prior.get(item.check_id) if item.check_id is not None else self.parent
+            if (owner is None or item.check_id is None and item.field != 'limitations'
+                    or item.text not in getattr(owner, item.field)):
+                raise repairable_output_error('invalid_text_retraction', '撤回项必须逐字引用冻结父版本对应字段中的表述')
+            if target in seen:
+                raise repairable_output_error('duplicate_text_retraction', '同一表述不能重复撤回')
+            seen.add(target)
+            if item.check_id is None:
+                current = [draft]
+            else:
+                titles = {title for revision in draft.revisions if revision.previous_check_id == item.check_id
+                          for title in revision.current_check_titles}
+                current = [check for check in draft.checks if check.title in titles or check.identity == owner.identity]
+            if any(item.text in getattr(check, item.field) for check in current):
+                raise repairable_output_error('reintroduced_text_retraction', '被撤回的表述不能同时出现在本轮对应字段中；替代表述另写')
+        return draft
+
+    def apply_text_retractions(self, draft: KnowledgeDraft, checks: List[KnowledgeCheck]) -> List[str]:
+        self.validate_text_retractions(draft)
+        limitations = list(dict.fromkeys([*(self.parent.limitations if self.parent else []), *draft.limitations]))
+        for item in draft.text_retractions:
+            if item.check_id is None:
+                limitations = [text for text in limitations if text != item.text]
+            else:
+                for check in checks:
+                    if check.check_id == item.check_id or item.check_id in check.predecessor_check_ids:
+                        setattr(check, item.field, [text for text in getattr(check, item.field) if text != item.text])
+        return limitations

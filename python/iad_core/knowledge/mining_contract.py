@@ -1,11 +1,11 @@
-import re
 from dataclasses import replace
-from typing import Literal
+from typing import Literal, get_args
 
-from pydantic import Field, create_model
+from pydantic import Field, create_model, field_validator
 
 from iad_core.evidence.images import PreparedImage
 from iad_core.advisory.conclusions import ConclusionText, NonBlankConclusion
+from iad_core.advisory.output_validation import repairable_output_error
 from iad_core.knowledge.models import KnowledgeLearning, LearnedCheck, ObservedDiscovery, ObservedPart, KnowledgeSuspect
 
 
@@ -31,9 +31,22 @@ class MiningContract:
             reason=(NonBlankConclusion,Field(description='本方向的观察结论、状态依据和限制；不写图像编号、文件名或路径，具体图像只放evidence_ids')))
         discovery = create_model('ObservedDiscovery', __base__=ObservedDiscovery, parts=(list[part], ...),
             areas=(list[area], ...))
+        def supplied_raw_evidence(value):
+            if isinstance(value, list):
+                unknown = [ref for ref in value if isinstance(ref, str) and ref not in raw]
+                if unknown:
+                    raise repairable_output_error('text_retraction_evidence',
+                        f'撤回只能引用本轮实际原图；不可用引用：{unknown}')
+            return value
+
+        retraction = create_model('KnowledgeTextRetraction',
+            __base__=get_args(response_type.model_fields['text_retractions'].annotation)[0],
+            __validators__={'supplied_raw_evidence': field_validator('evidence_ids', mode='before')(supplied_raw_evidence)},
+            reason=(NonBlankConclusion, ...), evidence_ids=(list[Literal[raw]], Field(min_length=1)))
 
         self.response_type = create_model('KnowledgeDraft', __base__=response_type,
             summary=(ConclusionText,...), limitations=(list[ConclusionText],...), checks=(list[check], ...),
+            text_retractions=(list[retraction], response_type.model_fields['text_retractions']),
             suspects=(list[suspect], ...), discovery=(discovery | None, None))
 
     def project(self, value):
@@ -44,12 +57,14 @@ class MiningContract:
         return self.aliases.get(value, value) if isinstance(value, str) else value
 
     def bind(self, response: KnowledgeLearning) -> KnowledgeLearning:
-        def restore(value):
+        citation_fields = {'evidence_id', 'evidence_ids', 'support_evidence_ids', 'counter_evidence_ids'}
+
+        def restore(value, citation=False):
             if isinstance(value, dict):
-                return {key: restore(item) for key, item in value.items()}
+                return {key: restore(item, key in citation_fields) for key, item in value.items()}
             if isinstance(value, list):
-                return [restore(item) for item in value]
-            if isinstance(value, str):
-                return re.sub(r'@v\d+(?![A-Za-z0-9_])', lambda match: self.references.get(match[0], match[0]), value)
+                return [restore(item, citation) for item in value]
+            if citation and isinstance(value, str):
+                return self.references.get(value, value)
             return value
         return self.original_type.model_validate(restore(response.model_dump()))

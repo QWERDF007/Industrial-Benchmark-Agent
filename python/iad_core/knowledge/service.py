@@ -125,7 +125,7 @@ class KnowledgeService:
             affected = {item.check_id for step in observations if step.purpose=='current'
                 for item in step.result.observations if item.status=='contradicts'}
             observer.compare(parent, inputs, payload['model_name'], evidence_images, affected=affected)
-        miner = KnowledgeMiner(self.client, context, observations, parent, mining_prompt=mining_prompt)
+        miner = KnowledgeMiner(self.client, context, observations, evolution=evolution, mining_prompt=mining_prompt)
         context.update(phase='LEARNING_KNOWLEDGE')
         draft = miner.learn({}, inputs, payload['model_name'], evolution.context).result
         proposals = {(item.evidence_id, tuple(item.bbox_1000)): item for step in miner.steps for item in step.result.suspects}
@@ -166,11 +166,12 @@ class KnowledgeService:
         self.recheck.apply(conflicts, checks, draft, review_events, applications)
         KnowledgeConflicts.quarantine(conflicts, checks, list(inherited_evidence.values()), payload['support_groups'], parent)
         self.support.assess(checks, list(inherited_evidence.values()), payload['support_groups'], policy)
+        limitations = evolution.apply_text_retractions(draft, checks)
         snapshot = KnowledgeSnapshot(version_id='knowledge_' + uuid.uuid4().hex, dataset_id=payload['dataset_id'],
             parent_version_id=payload['parent_version_id'], model_name=payload['model_name'],
             generation_version=GENERATION_VERSION, signature=signature, summary=draft.summary,
-            checks=checks, revisions=draft.revisions, corrections=corrections, suspects=draft.suspects,
-            limitations=list(dict.fromkeys([*(parent.limitations if parent else []), *draft.limitations])),
+            checks=checks, revisions=draft.revisions, text_retractions=draft.text_retractions,
+            corrections=corrections, suspects=draft.suspects, limitations=limitations,
             sources=list(inherited_sources.values()), evidence=list(inherited_evidence.values()),
             support_policy=policy, support_groups=payload['support_groups'], scope_run_id=payload['scope_run_id'],
             observed_source_ids=list(dict.fromkeys([*(parent.observed_source_ids or [] if parent else []), *payload['sample_ids']])),
