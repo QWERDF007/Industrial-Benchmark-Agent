@@ -1,5 +1,3 @@
-import hashlib
-import json
 import os
 import uuid
 from typing import List, Optional, TYPE_CHECKING
@@ -7,7 +5,7 @@ from typing import List, Optional, TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict, Field
 
 from iad_core.advisory.repository import AuditSuggestionRepository
-from iad_core.advisory.analysis import AuditAnalysis, AuditConsistencyReference, AuditConsistencyEvidenceReference, NonBlankText
+from iad_core.advisory.analysis import AuditConsistencyReference, AuditConsistencyEvidenceReference, NonBlankText
 from iad_core.advisory.schemas import AuditSuggestion, ConclusionStatus, EvidenceRefItem, HypothesisItem, ObservationItem, RecommendedAction
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.images import EvidenceImages
@@ -16,9 +14,9 @@ from iad_core.storage.database import Database
 from iad_core.storage.repositories import SampleRepository
 from iad_core.workbench.query import SampleFilters, SampleQuery, WorkbenchQuery
 
-from iad_core.workbench.vision import VlmClient, MODEL_PROMPT_CONTRACT, GENERATION_PARAMETERS
+from iad_core.workbench.vision import VlmClient
 from iad_core.workbench.audit_prompts import DEFAULT_AUDIT_PROMPT
-from iad_core.workbench.joint import OUTPUT_RESERVE_TOKENS
+from iad_core.workbench.audit_protocol import audit_generation_signature
 from iad_core.workbench.inspection import SampleInspection
 from iad_core.workbench.audit_synthesis import AuditSynthesis
 from iad_core.workbench.jobs import JobContext
@@ -33,8 +31,6 @@ from iad_core.feature.profiles import ImageEncoders
 
 if TYPE_CHECKING:
     from iad_core.workbench.runtime import WorkbenchRuntime
-
-AUDIT_GENERATION_VERSION = 'dataset-audit-v9'
 
 class AuditStart(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -67,8 +63,7 @@ class AuditService:
 
     @property
     def generation_signature(self) -> str:
-        return hashlib.sha256(json.dumps([AUDIT_GENERATION_VERSION, MODEL_PROMPT_CONTRACT, GENERATION_PARAMETERS,
-            OUTPUT_RESERVE_TOKENS, AuditAnalysis.model_json_schema()], sort_keys=True).encode()).hexdigest()
+        return audit_generation_signature()
 
     def audit_sample(self, sample_id: str, model_name: Optional[str], knowledge: InspectionKnowledge, context: JobContext,
                      model_error: Optional[Exception] = None, *, audit_run_id: str):

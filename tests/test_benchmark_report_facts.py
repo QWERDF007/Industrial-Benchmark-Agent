@@ -1,8 +1,14 @@
 import shutil
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
 
 from iad_core.dataset.registry import DatasetImport
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
+from iad_core.workbench.audit_protocol import AUDIT_GENERATION_VERSION
 
 
 def test_report_freezes_the_selected_datasets_deduplicates_audits_and_keeps_missing_metric_evidence_explicit(dataset, mllm_api, tmp_path):
@@ -52,3 +58,54 @@ def test_report_freezes_the_selected_datasets_deduplicates_audits_and_keeps_miss
         assert facts.model_dump_json(round_trip=True) == saved, '冻结报告不能随新审计记录变化'
     finally:
         runtime.close()
+
+
+def test_new_reports_exclude_audits_from_a_changed_protocol_without_rewriting_frozen_facts(dataset, mllm_api, tmp_path):
+    from iad_core.workbench.benchmark_report import BenchmarkReportFacts
+
+    db, _, config = dataset
+    client, _, _ = mllm_api
+    runtime = WorkbenchRuntime(db, VlmClient(client))
+    try:
+        audit = runtime.audit.start(dataset_id=config.dataset.id,
+            sample_ids=[config.dataset.id+':dent.png', config.dataset.id+':scratch.png'])
+        runtime.audit.wait(audit['run_id'], 5)
+        assert runtime.audit.status(audit['run_id'])['status'] == 'COMPLETED'
+        original = BenchmarkReportFacts(db).capture([config.dataset.id])
+        assert original.audited_samples == 2
+        frozen = original.model_dump_json(round_trip=True)
+    finally:
+        runtime.close()
+
+    installed = tmp_path/'updated-build'
+    package = installed/'iad_core'
+    shutil.copytree(Path(__file__).resolve().parents[1]/'python/iad_core', package,
+        ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+    old = f"AUDIT_GENERATION_VERSION = {AUDIT_GENERATION_VERSION!r}"
+    matching = [path for path in package.rglob('*.py') if old in path.read_text()]
+    assert len(matching) == 1
+    source = matching[0]
+    source.write_text(source.read_text().replace(old, "AUDIT_GENERATION_VERSION = 'updated-audit-protocol'"))
+    process = subprocess.run([sys.executable, '-c', '''
+import json,sys
+from iad_core.storage.database import Database
+from iad_core.workbench.benchmark_report import BenchmarkFacts,BenchmarkReportFacts
+from iad_core.workbench.runtime import WorkbenchRuntime
+runtime=WorkbenchRuntime(Database(sys.argv[1]))
+try:
+    facts=BenchmarkReportFacts(runtime.db).capture([sys.argv[2]])
+    restored=BenchmarkFacts.model_validate_json(sys.argv[3])
+    print(json.dumps({'audited':facts.audited_samples,'coverage':facts.coverage.numerator,
+        'excluded':facts.excluded_audit_records,'runs':facts.included_run_ids,
+        'frozen_audited':restored.audited_samples,'frozen_signature':restored.signature,
+        'old_job_status':runtime.audit.status(sys.argv[4])['status']}))
+finally:
+    runtime.close()
+''', db.db_path, config.dataset.id, frozen, audit['run_id']],
+        env={**os.environ, 'PYTHONPATH':str(installed)}, capture_output=True, text=True, timeout=15, check=True)
+    result = json.loads(process.stdout)
+    assert result['audited'] == result['coverage'] == 0, '新报告不能用已失效协议的旧结果填补覆盖率'
+    assert result['excluded'] == {'protocol_changed_or_unverified':2}
+    assert result['runs'] == []
+    assert result['frozen_audited'] == 2 and result['frozen_signature'] == original.signature
+    assert result['old_job_status'] == 'COMPLETED', '排除旧结果不篡改原始作业和模型输出'

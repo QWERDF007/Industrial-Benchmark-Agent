@@ -9,7 +9,7 @@ import pytest
 
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
-from iad_core.workbench.audit import AUDIT_GENERATION_VERSION
+from iad_core.workbench.audit_protocol import AUDIT_GENERATION_VERSION
 
 
 @pytest.mark.parametrize(('component', 'old', 'new', 'refused'), [

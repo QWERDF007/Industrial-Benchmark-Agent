@@ -8,6 +8,7 @@ from iad_core.advisory.analysis import AnalysisModel, AuditAnalysis, AuditConclu
 from iad_core.consistency.audit_models import AuditConsistencyRecord
 from iad_core.knowledge.models import KnowledgeSnapshot
 from iad_core.storage.database import Database
+from iad_core.workbench.audit_protocol import audit_generation_signature
 from iad_core.workbench.report import QualityRatio
 
 
@@ -71,6 +72,7 @@ class BenchmarkReportFacts:
         selected = sorted(set(dataset_ids))
         if not selected:
             raise ValueError('请选择报告范围')
+        protocol_signature = audit_generation_signature()
         placeholders = ','.join('?' for _ in selected)
         with self.db.connection() as conn:
             conn.execute('BEGIN')
@@ -81,7 +83,8 @@ class BenchmarkReportFacts:
             annotations = [dict(row) for row in conn.execute(f'''SELECT a.* FROM annotations a JOIN samples s ON s.sample_id=a.sample_id
                 WHERE s.is_excluded=0 AND s.dataset_id IN ({placeholders})''', selected)]
             issues = [dict(row) for row in conn.execute(f'SELECT sample_id,severity FROM import_issues WHERE dataset_id IN ({placeholders})', selected)]
-            audits = [dict(row) for row in conn.execute(f'''SELECT a.suggestion_id,a.sample_id,a.audit_run_id,a.analysis_json,a.source_fingerprint
+            audits = [dict(row) for row in conn.execute(f'''SELECT a.suggestion_id,a.sample_id,a.audit_run_id,a.analysis_json,a.source_fingerprint,
+                json_extract(j.payload_json,'$.request.generation_signature') generation_signature
                 FROM audit_suggestions a JOIN samples s ON s.sample_id=a.sample_id
                 JOIN job_runs j ON j.job_id=a.audit_run_id
                 WHERE s.is_excluded=0 AND s.dataset_id IN ({placeholders}) AND j.deleted_at IS NULL
@@ -90,6 +93,9 @@ class BenchmarkReportFacts:
             by_id = {sample['sample_id']: sample for sample in samples}
             for audit in audits:
                 sample = by_id[audit['sample_id']]
+                if audit['generation_signature'] != protocol_signature:
+                    rejected['protocol_changed_or_unverified'] += 1
+                    continue
                 if not audit['analysis_json']:
                     rejected['unstructured'] += 1
                     continue
