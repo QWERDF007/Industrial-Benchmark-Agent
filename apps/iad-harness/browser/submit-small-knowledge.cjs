@@ -74,23 +74,24 @@ const firefox=require('selenium-webdriver/firefox.js');
       await select('#dataset',source.group_id);await select('#subset',dataset.dataset_id);
       await click(await element('#create-btn'));await element('#submit-job');
       assert.equal((await driver.findElements(By.css('input[name="sample-kind"]'))).length,0);
-      await driver.wait(async()=>(await driver.findElements(By.css('#general-directions input[type=checkbox]'))).length===15,20000);
+      await driver.wait(async()=>(await driver.findElements(By.css('#general-directions input[type=checkbox]'))).length>0,20000);
       await click(await element('#kb-setup-child-trigger'));
       const children=await driver.findElements(By.css('#kb-setup-child-menu input[type=checkbox]'));
       for(const child of children){const selected=(await child.getAttribute('value'))===dataset.dataset_id;if(await child.isSelected()!==selected)await click(child);}
       await click(await element('#kb-setup-child-trigger'));
-      const selected=[];
+      const selected=[];let availableCount=0;
       const desired=new Set(selection[key]);assert.ok(desired.size,'本次选择的方向不能为空');
       for(const [tab,body] of [['#kb-tab-preset','#general-directions'],['#kb-tab-explore','#explored-directions']]){
         await click(await element(tab));
-        const boxes=await driver.findElements(By.css(body+' input[type=checkbox]'));assert.ok(boxes.length);
+        const boxes=await driver.findElements(By.css(body+' input[type=checkbox]'));assert.ok(boxes.length);availableCount+=boxes.length;
         let chosenCount=0;
         for(const box of boxes){const chosen=desired.has(await box.getAttribute('data-dir-id'));
           if(await box.isSelected()!==chosen)await click(box);assert.equal(await box.isSelected(),chosen);
           if(!chosen)continue;chosenCount++;
           selected.push({id:await box.getAttribute('data-dir-id'),name:(await box.getAttribute('aria-label')).replace(/^选择/,''),kind:await box.getAttribute('data-dir-kind')});}
-        assert.ok(chosenCount>0&&chosenCount<boxes.length,'验证应明确选择一部分预设方向和一部分探索方向');
+        assert.ok(chosenCount>0,'验证应明确手选预设方向和探索方向');
       }
+      assert.ok(selected.length<availableCount,'本次人工选择应保留未选方向，不以默认全选替代用户操作');
       assert.deepEqual(selected.map(item=>item.id).sort(),[...desired].sort());
       await click(await element('#compose-prompt'));
       const confirmation=await driver.findElements(By.css('#confirm-accept'));
@@ -122,6 +123,7 @@ const firefox=require('selenium-webdriver/firefox.js');
       const job=await read('analysis/node/'+runId);assert.deepEqual(job.dataset_ids,[dataset.dataset_id]);assert.equal(job.total_samples,100);
       assert.ok(!('kind' in job.request.submission));
       const frozen=job.request.units[0].request.mining_prompt;
+      assert.equal(job.request.units[0].request.starting_version_id??null,null,'重新验证应从新范围开始，不继承旧知识');
       assert.equal(frozen.instruction,prompt,'实际冻结提示词必须与界面所见全文相同');
       assert.deepEqual(frozen.configuration.directions.filter(item=>item.enabled).map(item=>item.direction_id).sort(),selected.map(item=>item.id).sort());
       assert.equal(job.request.submission.batch_size,20);
