@@ -52,6 +52,15 @@ def test_audit_transmits_short_references_and_preserves_frozen_evidence_ownershi
         job = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[target])
         runtime.audit.wait(job['run_id'], 8)
         final = runtime.audit.status(job['run_id'])
+        if mistake in ('unknown', 'wrong_kind', 'persistent'):
+            assert len(requests)==2
+            text = requests[1]['messages'][0]['content'][0]['text']
+            feedback = json.loads(text.split('输出校验结果：',1)[1])
+            frozen = json.loads(text.split('冻结综合审计：',1)[1].split('\n输出校验结果：',1)[0])
+            expected = frozen['audit_target']['sample_id'] if mistake=='wrong_kind' else '@v999'
+            message = '\n'.join(issue['msg'] for issue in feedback['schema_validation_errors'])
+            assert expected in message, '纠正反馈应指出实际违规引用，避免模型猜错或清空完整结果'
+            assert 'evidence_ids' in message
         if mistake=='persistent':
             assert final['status']=='FAILED'
             assert len(requests)==2

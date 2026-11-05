@@ -36,7 +36,7 @@ class AuditConclusionContract:
                     for alias in item:
                         if not isinstance(alias, str) or self.vocabulary.references.get(alias) not in allowed[key]:
                             raise repairable_output_error('frozen_audit_reference',
-                                f'{key}必须引用当前Schema给出的短编号，不使用未知、其他字段或其他批次的引用')
+                                f'{key}包含未允许的引用{alias!r}；只能引用当前Schema给出的短编号，不使用其他字段或其他批次的引用')
                         values.append(self.vocabulary.references[alias])
                     result[key] = values
                 else:
