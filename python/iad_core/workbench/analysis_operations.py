@@ -14,8 +14,7 @@ def analysis_list(args, db_path):
 
 
 def analysis_status(args, db_path):
-    views = AnalysisJobViews(Database(db_path))
-    return views.summary(views.status(args['run_id']))
+    return AnalysisJobViews(Database(db_path)).view(args['run_id'])
 
 
 def analysis_node(args, db_path):

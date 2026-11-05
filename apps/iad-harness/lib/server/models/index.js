@@ -1,4 +1,4 @@
-import { NativeProviders } from './providers.js';
+import { ModelConfigurationError, NativeProviders } from './providers.js';
 const starts = new Set(['dataset_report_start', 'analysis_start', 'direction_exploration_start', 'direction_exploration_batch_start', 'knowledge_start', 'knowledge_batch_start', 'audit_start', 'consistency_group_analyze', 'consistency_model_start']);
 const retries = { analysis_retry: 'analysis_node', direction_exploration_retry: 'direction_exploration_status', knowledge_retry: 'knowledge_status', audit_retry: 'audit_status', consistency_model_retry: 'consistency_model_status' };
 const normalized = (endpoint) => endpoint.replace(/\/$/, '').replace(/\/chat\/completions$/, '');
@@ -75,7 +75,9 @@ export class WorkbenchModelRouting {
         }
         if (retries[operation]) {
             const job = await dispatch(retries[operation], { run_id: args.run_id }, signal);
-            const execution = await this.providers.credentialsFor(job.request.model_profile);
+            if (!job.model_profile)
+                throw new ModelConfigurationError('作业缺少冻结模型配置');
+            const execution = await this.providers.credentialsFor(job.model_profile);
             return dispatch(operation, { ...args, _model_execution: execution }, signal);
         }
         return dispatch(operation, args, signal);

@@ -30,7 +30,7 @@ from iad_core.workbench.model_settings import WorkbenchModelSelection, Workbench
 from iad_core.workbench.model_profile import ModelLimits, ModelProfile
 from iad_core.workbench.audit import AuditStart
 from iad_core.workbench.calls import ModelCallDetail
-from iad_core.workbench.job_models import JobRetry, JobSnapshot, JobRetryOptions
+from iad_core.workbench.job_models import JobRetry, JobSnapshot, JobView, JobRetryOptions
 from iad_core.workbench.inspection_context import InspectionReference, InspectionSnapshot
 from iad_core.dataset.registry import DatasetImport
 from iad_core.dataset.folder_preview import FolderPreview
@@ -64,7 +64,7 @@ from iad_core.consistency.policy import AnnotationPolicy
 from iad_core.feature.profiles import BACKBONES, EmbeddingProfile, ImageEncoderConfig, ImageEncoderSettings, ImageEncoderEdit
 from iad_core.feature.operations import ImageProfileCreate
 models = [DatasetReportStart, DatasetReportSnapshot, DatasetReportView, ReportJobState, ExplorationResults, DirectionRemoval, ExplorationPromptPreset, ExplorationPresetEdit, ProviderEdit, ProviderReference, ProviderDiscovery, ModelConnection, ModelLimits, ModelProfile, ModelExecution, WorkbenchModelSelection, WorkbenchModelSettings, WorkbenchModelEdit, WorkbenchProvider, WorkbenchModelView, DirectionAdoption, ExplorationStart, ExplorationSnapshot, ExplorationCatalog, MiningPrompt, MiningPromptEdit, KnowledgeDiscoveryPage, KnowledgeTracePage, KnowledgeScopeOpen, KnowledgeScopeSnapshot, KnowledgeDetailQuery, KnowledgeCheckPage, KnowledgeCheckEvidencePage, KnowledgeEvidencePage, KnowledgeReviewContext, KnowledgeReviewSubmission, KnowledgeReviewEvent, KnowledgeReviewItem, AuditAnalysis, KnowledgeSnapshot, KnowledgeVersion, KnowledgeQuery, KnowledgeSourceQuery, KnowledgeSourcePage, AuditStart, ModelCallDetail, JobRetry, JobSnapshot, JobRetryOptions, InspectionReference, InspectionSnapshot, DatasetImport, FolderPreview, ArchiveInspection, ScanResult, DatasetReport, MiningStart, MiningRequest, Annotation, ReviewDecisionRecord, ReviewSubmission, ReviewHistoryQuery, ReviewHistoryPage, SampleQuery]
-models.extend([ConsistencyStart, ImageRetrieve, ImageIndexPrepare, ConsistencyScopesSnapshot, ConsistencyCoverage, PixelDescriptor, PixelComparison, RetrievalCandidate])
+models.extend([JobView, ConsistencyStart, ImageRetrieve, ImageIndexPrepare, ConsistencyScopesSnapshot, ConsistencyCoverage, PixelDescriptor, PixelComparison, RetrievalCandidate])
 models.extend([AnnotationPolicy, AnnotationSet, AnnotationComparison, AnnotationDifference, AnnotationMatchingConfig])
 models.extend([RetrievalPage, TemporaryImageRef])
 models.extend([AuditConsistencyView])

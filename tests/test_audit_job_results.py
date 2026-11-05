@@ -21,13 +21,20 @@ def test_audit_list_and_status_are_readable_in_an_independent_query_worker(datas
         job = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[config.dataset.id+':dent.png'])
         runtime.audit.wait(job['run_id'], 5)
         requests = [dict(request_id='status',operation='audit_status',arguments=dict(run_id=job['run_id']),db_path=db.db_path),
-            dict(request_id='list',operation='audit_list',arguments=dict(dataset_id=config.dataset.id),db_path=db.db_path)]
+            dict(request_id='list',operation='audit_list',arguments=dict(dataset_id=config.dataset.id),db_path=db.db_path),
+            dict(request_id='frozen',operation='analysis_node',arguments=dict(run_id=job['run_id']),db_path=db.db_path)]
         process = subprocess.run([sys.executable,'-m','iad_core.entry','--query-worker'],
             input=''.join(json.dumps(request)+'\n' for request in requests), capture_output=True,text=True,timeout=15,check=True)
         responses = {item['request_id']:item for item in map(json.loads,process.stdout.splitlines())}
         assert all(item['event']=='result' for item in responses.values()), responses
         assert responses['status']['data']['completed'] == 1
         assert responses['list']['data']['jobs'][0]['run_id'] == job['run_id']
+        frozen=responses['frozen']['data']
+        assert frozen['request']['input_sources']
+        for view in [responses['status']['data'], responses['list']['data']['jobs'][0]]:
+            assert not set(view) & {'request','submission','input_sources','consistency_scopes','model_reference_bindings','instruction'}, '页面状态轮询只返回声明的展示字段'
+            assert view['model_profile']==frozen['model_profile']
+            assert view['errors']==frozen['errors'] and view['model_calls']==frozen['model_calls']
     finally:
         runtime.close()
 

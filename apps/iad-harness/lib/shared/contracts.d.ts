@@ -5,7 +5,7 @@ export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnal
 export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
 export type { KnowledgeCheck, KnowledgeCorrection } from "./domain.generated.js";
 export type { KnowledgeQuery, KnowledgeFreshness } from "./domain.generated.js";
-export type { JobSnapshot, JobSample, JobRetryOptions, ModelCallSummary } from "./domain.generated.js";
+export type { JobView as JobSnapshot, JobSample, JobRetryOptions, ModelCallSummary } from "./domain.generated.js";
 export type { InspectionReference, InspectionSnapshot } from "./domain.generated.js";
 export type { KnowledgeVersion, KnowledgeSourcePage, MiningStart as KnowledgeGroup, MiningRequest as KnowledgeStartRequest } from "./domain.generated.js";
 export type { ScanResult } from "./domain.generated.js";

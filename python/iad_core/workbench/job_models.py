@@ -61,9 +61,7 @@ class JobRetryOptions(AnalysisModel):
     samples: list[RetrySample]
 
 
-class JobSnapshot(AnalysisModel):
-    model_config = ConfigDict(extra='allow')
-
+class JobView(AnalysisModel):
     run_id: str
     task_id: str
     dataset_id: str
@@ -117,6 +115,14 @@ class JobSnapshot(AnalysisModel):
     active_batch_run_id: Optional[str] = None
     errors: list[JobFailure]
     model_calls: list[ModelCallSummary]
+
+    @classmethod
+    def from_snapshot(cls, snapshot: 'JobSnapshot', **updates) -> 'JobView':
+        return cls.model_validate({**{name:getattr(snapshot,name) for name in cls.model_fields}, **updates})
+
+
+class JobSnapshot(JobView):
+    model_config = ConfigDict(extra='allow')
 
 
 class DatasetAnalysisResult(AnalysisModel):

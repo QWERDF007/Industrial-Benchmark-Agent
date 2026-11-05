@@ -312,7 +312,8 @@ def audit_start(args, db_path):
 
 def audit_status(args, db_path):
     from iad_core.workbench.job_families import JobFamilies
-    return JobFamilies(Database(db_path)).snapshot(args['run_id'], ('MODEL_AUDIT',)).model_dump()
+    from iad_core.workbench.job_models import JobView
+    return JobView.from_snapshot(JobFamilies(Database(db_path)).snapshot(args['run_id'], ('MODEL_AUDIT',))).model_dump(mode='json')
 
 
 def audit_cancel(args, db_path):
@@ -331,7 +332,9 @@ def audit_retry_options(args, db_path):
 
 def audit_list(args, db_path):
     from iad_core.workbench.job_families import JobFamilies
-    return {'jobs':[job.model_dump() for job in JobFamilies(Database(db_path)).list(args['dataset_id'], ('MODEL_AUDIT',))]}
+    from iad_core.workbench.job_models import JobView
+    return {'jobs':[JobView.from_snapshot(job).model_dump(mode='json')
+        for job in JobFamilies(Database(db_path)).list(args['dataset_id'], ('MODEL_AUDIT',))]}
 
 
 def audit_job_samples(args, db_path):

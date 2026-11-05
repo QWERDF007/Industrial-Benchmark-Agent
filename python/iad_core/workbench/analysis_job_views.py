@@ -1,4 +1,4 @@
-from iad_core.workbench.job_models import JobSnapshot
+from iad_core.workbench.job_models import JobSnapshot, JobView
 from iad_core.workbench.job_families import JobFamilies
 
 
@@ -11,18 +11,23 @@ class AnalysisJobViews:
     def status(self, run_id: str) -> dict:
         return self.families.snapshot(run_id, ('ANALYSIS_WORKFLOW',)).model_dump()
 
+    def view(self, run_id: str) -> dict:
+        return self.summary(self.families.snapshot(run_id, ('ANALYSIS_WORKFLOW',)))
+
     def list(self, dataset_id: str, analysis_kind: str) -> list:
         selected = []
         for job in self.families.list(dataset_id, ('ANALYSIS_WORKFLOW',)):
             if job.analysis_kind == analysis_kind:
-                selected.append(self.summary(job.model_dump(), dataset_id))
+                selected.append(self.summary(job, dataset_id))
         return selected
 
-    def summary(self, job: dict, dataset_id: str | None = None) -> dict:
-        dataset_id = dataset_id or job['dataset_id']
-        unit = next(unit for unit in job['request']['units'] if unit['dataset_id'] == dataset_id)
-        result = next((result for result in job['dataset_results'] if result['dataset_id'] == dataset_id), {})
-        values = dict(job, **{key:result.get(key) for key in ('knowledge_version_id','exploration_version_id')},
+    def summary(self, job: dict | JobSnapshot, dataset_id: str | None = None) -> dict:
+        job = JobSnapshot.model_validate(job)
+        dataset_id = dataset_id or job.dataset_id
+        unit = next(unit for unit in job.model_extra['request']['units'] if unit['dataset_id'] == dataset_id)
+        result = next((result for result in job.dataset_results if result.dataset_id == dataset_id), None)
+        return JobView.from_snapshot(job,
+            knowledge_version_id=result.knowledge_version_id if result else None,
+            exploration_version_id=result.exploration_version_id if result else None,
             mining_prompt=unit['request'].get('mining_prompt'),
-            exploration_prompt=unit['request'].get('exploration_request', {}).get('prompt'))
-        return {key:value for key,value in values.items() if key in JobSnapshot.model_fields}
+            exploration_prompt=unit['request'].get('exploration_request', {}).get('prompt')).model_dump(mode='json')
