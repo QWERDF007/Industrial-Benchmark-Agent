@@ -20,6 +20,7 @@ from iad_core.workbench.audit_protocol import audit_generation_signature
 from iad_core.workbench.inspection import SampleInspection
 from iad_core.workbench.audit_synthesis import AuditSynthesis
 from iad_core.workbench.jobs import JobContext
+from iad_core.workbench.job_families import JobFamilies
 from iad_core.workbench.calls import ModelCalls
 from iad_core.workbench.job_models import ChildJobError
 from iad_core.workbench.knowledge import InspectionKnowledge
@@ -143,7 +144,7 @@ class AuditService:
         request = AuditStart.model_validate(arguments)
         submission = request.model_dump(mode='json')
         if existing := self.jobs.submitted('MODEL_AUDIT', submission):
-            return existing
+            return self.status(existing['run_id'])
         request.model_name = request.model_name or self.client.profile.model_id or os.environ.get('LIVE_VLM_MODEL')
         if request.model_name:
             request.model_name = self.client.resolve_model(request.model_name)
@@ -239,7 +240,7 @@ class AuditService:
         context.join_all(children(), on_progress=observe)
 
     def status(self, run_id: str) -> dict:
-        return self.jobs.status(run_id, ("MODEL_AUDIT",))
+        return JobFamilies(self.db).snapshot(run_id, ('MODEL_AUDIT',)).model_dump()
 
     def retry(self, run_id: str, sample_ids: Optional[List[str]] = None) -> dict:
         def validate(request):
@@ -263,10 +264,10 @@ class AuditService:
                 [source for source in request['input_sources'] if source['sample_id'] in request['sample_ids']]})
 
     def list(self, dataset_id: str) -> list:
-        return self.jobs.list(dataset_id, ("MODEL_AUDIT",))
+        return [job.model_dump() for job in JobFamilies(self.db).list(dataset_id, ('MODEL_AUDIT',))]
 
     def cancel(self, run_id: str) -> dict:
-        return self.jobs.cancel(run_id, ("MODEL_AUDIT",))
+        return self.jobs.cancel(self.status(run_id)['run_id'], ("MODEL_AUDIT",))
 
     def wait(self, run_id: str, timeout: float):
         self.jobs.wait(run_id, timeout)

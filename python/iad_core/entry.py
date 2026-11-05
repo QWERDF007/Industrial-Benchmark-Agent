@@ -311,7 +311,8 @@ def audit_start(args, db_path):
 
 
 def audit_status(args, db_path):
-    return workbench(db_path).audit.status(args["run_id"])
+    from iad_core.workbench.job_families import JobFamilies
+    return JobFamilies(Database(db_path)).snapshot(args['run_id'], ('MODEL_AUDIT',)).model_dump()
 
 
 def audit_cancel(args, db_path):
@@ -329,7 +330,8 @@ def audit_retry_options(args, db_path):
 
 
 def audit_list(args, db_path):
-    return {"jobs": workbench(db_path).audit.list(args["dataset_id"])}
+    from iad_core.workbench.job_families import JobFamilies
+    return {'jobs':[job.model_dump() for job in JobFamilies(Database(db_path)).list(args['dataset_id'], ('MODEL_AUDIT',))]}
 
 
 def audit_job_samples(args, db_path):
@@ -564,7 +566,7 @@ QUERY_OPERATIONS = frozenset({
     'direction_exploration_get', 'direction_exploration_evidence', 'direction_exploration_presets',
     'analysis_list', 'analysis_status', 'analysis_node', 'analysis_results',
     'consistency_model_status',
-    'audit_job_samples', 'audit_job_sample', 'audit_job_report', 'audit_job_export',
+    'audit_status', 'audit_list', 'audit_job_samples', 'audit_job_sample', 'audit_job_report', 'audit_job_export',
     'dataset_report_get', 'dataset_report_list', 'dataset_report_status', 'dataset_report_export',
     'dataset_list', 'dataset_get', 'dataset_group_list', 'sample_list', 'sample_get',
     'sample_image_path', 'sample_thumbnail', 'sample_mask_path', 'report_get',

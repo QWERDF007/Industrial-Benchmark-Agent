@@ -13,7 +13,7 @@ import {PythonBridge, createIadHttpHandler} from '../lib/server/index.js';
 
 const app = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-test('audit detail shows model synthesis above a frozen annotated pair and shared viewer', {timeout: 90000}, async t => {
+test('audit detail, scope report and selected retry family keep frozen evidence and shared controls', {timeout: 90000}, async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-audit-synthesis-'));
   const bridge = new PythonBridge({cwd: path.resolve(app, '../..'), dbPath: path.join(root, 'test.db')});
   t.after(() => bridge.destroy());
@@ -30,17 +30,21 @@ for i in range(3):
     import React from 'react';import {createRoot} from 'react-dom/client';
     import {AuditSampleDialog} from './src/client/components/AuditSampleDialog.tsx';
     import {DatasetReport} from './src/client/components/DatasetReport.tsx';
+    import {AuditPage} from './src/client/components/AuditPage.tsx';
     import {Workspace,WorkspaceContext} from './src/client/workspace.tsx';
     import {workbenchStyles} from './src/client/styles.ts';
     const workspace=new Workspace(null);const style=document.createElement('style');style.textContent=workbenchStyles;document.head.append(style);
-    function App(){const [data,setData]=React.useState(null),[open,setOpen]=React.useState(false);
+    function App(){const [data,setData]=React.useState(null),[open,setOpen]=React.useState(false),[jobs,setJobs]=React.useState(false);
       React.useEffect(()=>{fetch('/fixture').then(r=>r.json()).then(setData)},[]);
       return <WorkspaceContext.Provider value={workspace}><div id="audit-page" className="iad-workbench" data-page="industrial-audit">
         <button id="open" onClick={()=>setOpen(true)}>查看审计</button>{open&&data&&<AuditSampleDialog sample={data.sample} taskId={data.taskId} onClose={()=>setOpen(false)}/>}
-        {data&&<DatasetReport datasetIds={data.datasetIds} onSample={()=>setOpen(true)}/>}</div></WorkspaceContext.Provider>;
+        <button id="jobs" onClick={()=>setJobs(true)}>审计作业</button>
+        {data&&(jobs?<AuditPage dataset={data.dataset} datasets={[data.dataset]} groups={[]} refreshRevision={0} onDatasetsChanged={()=>{}}/>
+          :<DatasetReport datasetIds={data.datasetIds} onSample={()=>setOpen(true)}/>)}</div></WorkspaceContext.Provider>;
     }createRoot(document.getElementById('root')).render(<App/>);
   `, loader: 'tsx', resolveDir: app}, bundle: true, format: 'iife', write: false, target: 'es2022', define: {'process.env.NODE_ENV': '"production"'}});
   let fixture;
+  const failing = new Set();
   const api = createIadHttpHandler(bridge);
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
@@ -54,6 +58,9 @@ for i in range(3):
       let result;
       if (body.response_format.json_schema.name === 'KnowledgeDraft') result = {summary: '主体外观规律', checks: [{title: '外观规律', subject: '主体', location: '表面', criterion: '可见连续表面', allowed_variations: [], status: 'supported', limitations: [], support_evidence_ids: refs, counter_evidence_ids: []}], suspects: [], limitations: []};
       else if (body.response_format.json_schema.name === 'JointAnalysis') {
+        if(failing.has(views[0].annotations[0]?.sample_id)) {
+          res.statusCode=503;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({error:'该图像的模型调用失败'}));return;
+        }
         const knowledge = JSON.parse(text.split('冻结知识：')[1].split('\n')[0]);
         result = {...view, suggested_label: 'PASS', reason_category: 'NORMAL', confidence: .7, evidence_ids: refs,
           global_view: view, region_observations: views.filter(view => view.role === 'roi' && view.representation === 'raw').map((_, index) => ({...view, region_index: index + 1})),
@@ -91,17 +98,17 @@ for i in range(3):
   process.env.IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES = '2';
   t.after(() => {for (const name of names) if (before[name] === undefined) delete process.env[name];else process.env[name] = before[name];});
   const dataset = await bridge.execute('dataset_import', {format: 'labelme', name: '综合审计', image_dir: path.join(root, 'images'), annotation_dir: path.join(root, 'labels')});
-  const wait = async (operation, job) => {
+  const wait = async (operation, job, expected='COMPLETED') => {
     const deadline = Date.now()+20000;
     while (['PENDING', 'RUNNING'].includes(job.status) && Date.now() < deadline) {
       await new Promise(resolve => setTimeout(resolve, 30));job = await bridge.execute(operation, {run_id: job.run_id});
     }
-    assert.equal(job.status, 'COMPLETED', JSON.stringify(job.errors));return job;
+    assert.equal(job.status, expected, JSON.stringify(job.errors));return job;
   };
   await wait('analysis_status', await bridge.execute('analysis_start', {request: {analysis_kind: 'knowledge', dataset_ids: [dataset.dataset_id], batch_size: 3,
     mining_prompt: {objective: '比较主体', directions: [], instruction: '按真实图像比较主体外观。'}}}));
   const audit = await wait('audit_status', await bridge.execute('audit_start', {dataset_id: dataset.dataset_id, sample_ids: [dataset.dataset_id+':part-0.png']}));
-  fixture = {sample: (await bridge.execute('audit_job_samples', {run_id: audit.run_id})).items[0], taskId: dataset.task_id,datasetIds:[dataset.dataset_id]};
+  fixture = {sample: (await bridge.execute('audit_job_samples', {run_id: audit.run_id})).items[0], taskId: dataset.task_id,datasetIds:[dataset.dataset_id],dataset};
   let driver;
   try {
     const options = new firefox.Options().addArguments('-headless');options.setBinary('/tmp/iad-firefox128/firefox/firefox');
@@ -139,6 +146,44 @@ for i in range(3):
     const exported=await fetch(`${base}/api/iad/dataset-reports/${reportId}/export`);
     assert.equal(exported.status,200);const html=await exported.text();
     assert.ok(html.includes('数据集范围结论由模型实际生成。')&&html.includes('data:image/png;base64,'));
+
+    const ids=[0,1,2].map(index=>dataset.dataset_id+`:part-${index}.png`);
+    failing.add(ids[1]);failing.add(ids[2]);
+    const partial=await wait('audit_status',await bridge.execute('audit_start',{dataset_id:dataset.dataset_id,sample_ids:ids}),'PARTIAL');
+    failing.clear();
+    await wait('audit_status',await bridge.execute('audit_start',{dataset_id:dataset.dataset_id,sample_ids:[ids[0]]}));
+    await (await driver.findElement(By.id('jobs'))).click();
+    const row=await driver.wait(until.elementLocated(By.css(`tr[data-run-id="${partial.run_id}"]`)),10000);
+    const cell=await row.findElement(By.css('td'));
+    await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',cell);await cell.click();
+    const openStatus=async()=>{
+      const selected=await driver.findElement(By.css('tr[aria-selected="true"]'));
+      await (await selected.findElement(By.css('.iad-job-status-button'))).click();
+      return driver.wait(until.elementLocated(By.css('dialog[aria-label="作业状态"][open]')),5000);
+    };
+    let drawer=await openStatus();
+    for(let step=0;step<2;step++){
+      const choose=await drawer.findElement(By.xpath('.//button[normalize-space(.)="选择重试范围"]'));
+      await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',choose);await choose.click();
+      await driver.wait(async()=>(await drawer.findElements(By.css('.iad-retry-samples input'))).length===2-step,5000);
+      if(step===0)await (await drawer.findElements(By.css('.iad-retry-samples input')))[1].click();
+      const retry=await drawer.findElement(By.xpath('.//button[normalize-space(.)="重试所选 1 张"]'));
+      await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',retry);await retry.click();
+      await driver.wait(async()=>{
+        const state=await bridge.execute('audit_status',{run_id:partial.run_id});
+        return state.completed===2+step&&!['PENDING','RUNNING'].includes(state.status);
+      },10000);
+      await driver.wait(async()=>(await driver.findElement(By.css('dialog[aria-label="作业状态"][open] .iad-job-progress-card')).getText()).includes(`${2+step} / 3`),10000);
+      await driver.actions().sendKeys(Key.ESCAPE).perform();
+      await driver.wait(async()=>(await driver.findElements(By.css('dialog[open]'))).length===0,5000);
+      const selected=await driver.findElement(By.css('tr[aria-selected="true"]'));
+      const state=await bridge.execute('audit_status',{run_id:partial.run_id});
+      assert.equal(await selected.getAttribute('data-run-id'),state.run_id,'补跑后必须继续选中原逻辑作业');
+      assert.equal((await driver.findElements(By.css('.audit-table tbody tr'))).length,3,'内部补跑不能增加作业行');
+      assert.equal((await driver.findElements(By.css('#audit-images .iad-thumbnail-card'))).length,3);
+      if(step===0)drawer=await openStatus();
+    }
+    assert.equal((await bridge.execute('audit_job_report',{run_id:partial.run_id})).audited_samples,3);
   } catch(error) {
     if(driver){console.error(await driver.executeScript('return {active:document.activeElement?.outerHTML.slice(0,300),dialogs:[...document.querySelectorAll("dialog")].map(d=>({open:d.open,modal:d.matches(":modal"),label:d.getAttribute("aria-label")}))}'));
       await fs.writeFile('/tmp/iad-audit-synthesis-failure.png',await driver.takeScreenshot(),'base64');}

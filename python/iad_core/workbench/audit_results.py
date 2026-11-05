@@ -12,18 +12,21 @@ from iad_core.workbench.audit_result_models import (
     AuditSamplePage, AuditSampleQuery,
 )
 from iad_core.workbench.job_models import JobSnapshot
-from iad_core.workbench.job_snapshots import JobSnapshots
+from iad_core.workbench.job_families import JobFamilies
 
 
 PROJECTION = """
-WITH advice AS (
+WITH family AS (
+    SELECT job_id FROM job_runs WHERE job_type='MODEL_AUDIT' AND json_extract(payload_json,'$.root_run_id')=?
+), advice AS (
     SELECT *, ROW_NUMBER() OVER (PARTITION BY sample_id ORDER BY id DESC) AS position
-    FROM audit_suggestions WHERE audit_run_id=?
+    FROM audit_suggestions WHERE audit_run_id IN (SELECT job_id FROM family)
 ), checks AS (
     SELECT *, ROW_NUMBER() OVER (PARTITION BY sample_id ORDER BY id DESC) AS position
-    FROM audit_consistency_checks WHERE run_id=?
+    FROM audit_consistency_checks WHERE run_id IN (SELECT job_id FROM family)
 ), facts AS (
     SELECT scope.value AS sample_id, scope.key AS ordinal,
+        COALESCE(a.audit_run_id,c.run_id,?) AS run_id,
         COALESCE(s.relative_path, scope.value) AS filename,
         COALESCE(s.width, 0) AS width, COALESCE(s.height, 0) AS height,
         a.suggestion_id, c.check_id AS consistency_check_id,
@@ -60,10 +63,10 @@ class AuditResults:
     def _projection(self, run_id: str) -> tuple[JobSnapshot, list[AuditSampleItem]]:
         with self.db.connection() as connection:
             connection.execute('BEGIN')
-            job = JobSnapshots(self.db).snapshot(run_id, ('MODEL_AUDIT',), connection=connection)
-            rows = connection.execute(PROJECTION, (run_id, run_id, json.dumps(job.sample_ids))).fetchall()
-        items = [AuditSampleItem(run_id=run_id, dataset_id=job.dataset_id,
-            **{key: row[key] for key in AuditSampleItem.model_fields if key not in ('run_id', 'dataset_id')}) for row in rows]
+            job = JobFamilies(self.db).snapshot(run_id, ('MODEL_AUDIT',), connection=connection)
+            rows = connection.execute(PROJECTION, (job.root_run_id, job.run_id, json.dumps(job.sample_ids))).fetchall()
+        items = [AuditSampleItem(dataset_id=job.dataset_id,
+            **{key: row[key] for key in AuditSampleItem.model_fields if key != 'dataset_id'}) for row in rows]
         return job, items
 
     def samples(self, query: AuditSampleQuery) -> AuditSamplePage:
@@ -101,7 +104,7 @@ class AuditResults:
                 current = False
         return AuditSampleDetail(sample=item, suggestion=suggestion,
             knowledge=self._knowledge(job.knowledge_version_id),
-            consistency=AuditConsistencyRepository(self.db).latest(sample_id, run_id=run_id),
+            consistency=AuditConsistencyRepository(self.db).latest(sample_id, run_id=item.run_id),
             source_current=current, errors=[error.message for error in job.errors if error.sample_id == sample_id])
 
     def report(self, run_id: str) -> AuditRunReport:

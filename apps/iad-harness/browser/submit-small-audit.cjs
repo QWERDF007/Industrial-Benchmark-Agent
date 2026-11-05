@@ -64,7 +64,7 @@ const firefox=require('selenium-webdriver/firefox.js');
         console.log('已从界面停止旧小集审计',key,saved.run_id);continue;
       }
       if(saved&&!prepareOnly){
-        const job=await read('audit/status/'+saved.run_id);assert.equal(job.total_samples,saved.remaining_samples??100);
+        const job=await read('audit/status/'+saved.run_id);assert.equal(job.total_samples,saved.total_samples);
         if(retryStopped){
           assert.ok(['FAILED','PARTIAL','INTERRUPTED','CANCELLED'].includes(job.status),'只恢复已停止的执行');
           await click(await element(`#audit-dataset option[value="${source.group_id}"]`));
@@ -94,7 +94,7 @@ const firefox=require('selenium-webdriver/firefox.js');
           for(const field of ['instruction','knowledge_version_id','consistency_scopes'])assert.deepEqual(resumed.request[field],raw.request[field]);
           const current=JSON.parse(await fs.readFile(reference,'utf8')),target=current.datasets[key];
           target.ui_submission_attempts||=[];target.ui_submission_attempts.push({stage:'audit',submission:saved,validation:'RETRIED_ORIGINAL_SCOPE'});
-          const proof={...saved,run_id:next.run_id,root_run_id:next.root_run_id,remaining_samples:next.total_samples,
+          const proof={...saved,run_id:next.run_id,root_run_id:next.root_run_id,remaining_samples:resumed.total_samples,
             retry_runs:[...(saved.retry_runs||[]),next.run_id],submission:'browser-original-scope-retry'};
           target.ui_submissions.audit=proof;target.stages.audit={run_id:next.run_id};
           await fs.writeFile(reference,JSON.stringify(current,null,2));await fs.writeFile(`${output}/${key}-resume.json`,JSON.stringify(proof,null,2));

@@ -2,6 +2,8 @@ import pytest
 import httpx
 import json
 import threading
+import subprocess
+import sys
 from uuid import uuid4
 
 from iad_core.entry import audit_job_samples, audit_job_sample, audit_job_report
@@ -9,6 +11,25 @@ from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
 from iad_core.workbench.job_snapshots import JobSnapshots
 from iad_core.workbench.audit_results import AuditResults
+
+
+def test_audit_list_and_status_are_readable_in_an_independent_query_worker(dataset, mllm_api):
+    db, _, config = dataset
+    client, _, _ = mllm_api
+    runtime = WorkbenchRuntime(db, VlmClient(client))
+    try:
+        job = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[config.dataset.id+':dent.png'])
+        runtime.audit.wait(job['run_id'], 5)
+        requests = [dict(request_id='status',operation='audit_status',arguments=dict(run_id=job['run_id']),db_path=db.db_path),
+            dict(request_id='list',operation='audit_list',arguments=dict(dataset_id=config.dataset.id),db_path=db.db_path)]
+        process = subprocess.run([sys.executable,'-m','iad_core.entry','--query-worker'],
+            input=''.join(json.dumps(request)+'\n' for request in requests), capture_output=True,text=True,timeout=15,check=True)
+        responses = {item['request_id']:item for item in map(json.loads,process.stdout.splitlines())}
+        assert all(item['event']=='result' for item in responses.values()), responses
+        assert responses['status']['data']['completed'] == 1
+        assert responses['list']['data']['jobs'][0]['run_id'] == job['run_id']
+    finally:
+        runtime.close()
 
 
 def test_published_audit_and_owner_progress_are_committed_together(dataset, mllm_api, monkeypatch):
@@ -117,10 +138,69 @@ def test_cancelling_parallel_audit_stops_all_active_images_and_retry_keeps_froze
         runtime.audit.wait(retry['run_id'], 5)
         resumed = runtime.audit.status(retry['run_id'])
         assert (resumed['status'],resumed['completed']) == ('COMPLETED',3), resumed['errors']
-        assert audit_job_report(dict(run_id=job['run_id']),db.db_path)['audited_samples'] == 0
+        assert audit_job_report(dict(run_id=job['run_id']),db.db_path)['audited_samples'] == 3
         assert audit_job_report(dict(run_id=retry['run_id']),db.db_path)['audited_samples'] == 3
     finally:
         release.set()
+        runtime.close()
+
+
+def test_partial_audit_retries_keep_one_full_scope_job_and_each_samples_actual_source(dataset, mllm_api):
+    db, _, config = dataset
+    original, _, _ = mllm_api
+    ids = [config.dataset.id+':'+name+'.png' for name in ('dent', 'scratch', 'normal2')]
+    failing = set(ids[1:])
+    inspected = []
+
+    def respond(request):
+        if request.url.path.endswith('/chat/completions'):
+            body = json.loads(request.content)
+            if body['response_format']['json_schema']['name'] == 'JointAnalysis':
+                view = next(json.loads(item['text'][5:]) for item in body['messages'][0]['content']
+                    if item['type']=='text' and item['text'].startswith('视觉证据：'))
+                source = view['annotations'][0]['sample_id'] if view['annotations'] else ids[2]
+                inspected.append(source)
+                if source in failing:
+                    return httpx.Response(503, json={'error':{'message':'当前图像的模型分析失败'}})
+        return original.send(request)
+
+    runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        root = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=ids)
+        runtime.audit.wait(root['run_id'], 5)
+        first = audit_job_sample(dict(run_id=root['run_id'],sample_id=ids[0]), db.db_path)
+        assert first['suggestion'] and first['consistency'], runtime.audit.status(root['run_id'])['errors']
+        assert runtime.audit.status(root['run_id'])['status'] == 'PARTIAL'
+        failing.clear()
+        second = runtime.audit.retry(root['run_id'], sample_ids=[ids[1]])
+        runtime.audit.wait(second['run_id'], 5)
+        state = runtime.audit.status(root['run_id'])
+        assert (state['status'],state['completed'],state['failed'],state['total_samples']) == ('PARTIAL',2,1,3)
+        assert state['request'] == root['request']
+        assert len(runtime.audit.list(config.dataset.id)) == 1
+        options = runtime.jobs.retry_options(second['run_id'], ('MODEL_AUDIT',))
+        assert [item['sample_id'] for item in options['samples']] == [ids[2]]
+        third = runtime.audit.retry(second['run_id'])
+        runtime.audit.wait(third['run_id'], 5)
+        state = runtime.audit.status(root['run_id'])
+        assert (state['status'],state['completed'],state['failed'],state['total_samples']) == ('COMPLETED',3,0,3)
+        assert state['errors'] == [] and state['completed_sample_ids'] == sorted(ids)
+        assert runtime.jobs.status(third['run_id'])['sample_ids'] == [ids[2]], '执行只处理剩余样本'
+        assert inspected.count(ids[0]) == 1, '补跑不能重新分析已成功图像'
+        assert len(runtime.audit.list(config.dataset.id)) == 1
+        repeated = runtime.audit.start(**root['request']['submission'])
+        assert repeated['run_id'] == state['run_id'] and repeated['completed'] == repeated['total_samples'] == 3
+        for handle in (root['run_id'], second['run_id'], third['run_id']):
+            page = audit_job_samples(dict(run_id=handle), db.db_path)
+            assert page['total'] == 3 and page['distribution']['normal'] == 3
+            report = audit_job_report(dict(run_id=handle), db.db_path)
+            assert report['total_samples'] == report['audited_samples'] == 3
+        for sid, origin in zip(ids, (root['run_id'],second['run_id'],third['run_id'])):
+            detail = audit_job_sample(dict(run_id=third['run_id'],sample_id=sid), db.db_path)
+            assert detail['sample']['run_id'] == detail['suggestion']['audit_run_id'] == detail['consistency']['run_id'] == origin
+            assert detail['source_current'] is True
+        assert audit_job_sample(dict(run_id=root['run_id'],sample_id=ids[0]),db.db_path) == first
+    finally:
         runtime.close()
 
 

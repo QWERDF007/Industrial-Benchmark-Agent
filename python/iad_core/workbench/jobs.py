@@ -292,12 +292,14 @@ class JobRunner:
             relatives = conn.execute("""SELECT payload_json FROM job_runs
                 WHERE json_extract(payload_json,'$.root_run_id')=?""", (root["run_id"],)).fetchall()
         completed = {sid for row in relatives for sid in json.loads(row[0])["completed_sample_ids"]}
-        remaining = [sid for sid in parent["sample_ids"] if sid not in completed]
+        remaining = [sid for sid in root["sample_ids"] if sid not in completed]
         return parent, root, remaining
 
     def retry_options(self, run_id: str, job_types: Sequence[JobKind]) -> dict:
         parent, root, remaining = self._retry_scope(run_id, job_types)
         samples = self.snapshots.samples(parent['dataset_id'], remaining)
+        from iad_core.workbench.job_families import JobFamilies
+        failed = set(JobFamilies(self.db).snapshot(run_id, job_types).failed_sample_ids)
         with self.db.connection() as conn:
             active = conn.execute("""SELECT job_id FROM job_runs WHERE job_type=?
                 AND status IN ('PENDING','RUNNING')
@@ -308,7 +310,7 @@ class JobRunner:
                 ('KNOWLEDGE', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE', 'DIRECTION_EXPLORATION') else 'subset',
             active_run_id=active[0] if active else None,
             samples=[RetrySample(**samples[sid].model_dump(exclude_computed_fields=True),
-                state='failed' if sid in parent['failed_sample_ids'] else 'unprocessed') for sid in remaining]).model_dump()
+                state='failed' if sid in failed else 'unprocessed') for sid in remaining]).model_dump()
 
     def retry(self, run_id: str, job_types: Sequence[JobKind], execute: Callable[[JobContext], None],
               sample_ids: Optional[list[str]] = None, validate: Optional[Callable[[dict], None]] = None,
@@ -321,7 +323,7 @@ class JobRunner:
             raise ValueError("只能重试原作业中尚未完成的样本")
         if validate:
             validate(root["request"])
-        payload = {**parent["request"], "sample_ids": selected}
+        payload = {**root["request"], "sample_ids": selected}
         if prepare_request:
             payload = prepare_request(payload)
         return self.start(parent["job_type"], parent["task_id"], payload, execute, "准备重试失败或未处理样本",

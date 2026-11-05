@@ -67,7 +67,8 @@ def test_operator_retries_only_failed_samples_and_preserves_completed_results(da
         if request.url.path.endswith('/chat/completions'):
             images = [json.loads(part['text'][5:]) for part in body['messages'][0]['content']
                       if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
-            calls.append(images[0]['evidence_id'])
+            if body['response_format']['json_schema']['name'] == 'JointAnalysis':
+                calls.append(images[0]['evidence_id'])
             if fail_next:
                 fail_next = False
                 return httpx.Response(500, json={'error': {'message': 'temporary model failure'}})
@@ -86,10 +87,10 @@ def test_operator_retries_only_failed_samples_and_preserves_completed_results(da
         child = runtime.audit.status(retry['run_id'])
         assert child['parent_run_id'] == first['run_id']
         assert child['root_run_id'] == first['run_id']
-        assert child['sample_ids'] == parent['failed_sample_ids']
-        assert (child['status'], child['completed'], child['failed']) == ('COMPLETED', 1, 0)
-        assert child['normal_version_id'] == parent['normal_version_id']
-        assert runtime.audit.status(first['run_id']) == parent
+        assert runtime.jobs.status(retry['run_id'])['sample_ids'] == parent['failed_sample_ids']
+        assert (child['status'], child['completed'], child['failed']) == ('COMPLETED', 4, 0)
+        assert child['knowledge_version_id'] == parent['knowledge_version_id']
+        assert runtime.jobs.status(first['run_id'])['completed_sample_ids'] == parent['completed_sample_ids']
         assert all(sample_get({'sample_id': sid}, db.db_path)['suggestion'] == suggestion
                    for sid, suggestion in originals.items())
         assert len(calls) == 5
@@ -126,7 +127,7 @@ def test_retry_rejects_changed_frozen_inputs_before_contacting_model(dataset, ml
             source.write_text(json.dumps(document))
             dataset_scan({'dataset_id': config.dataset.id}, db.db_path)
         else:
-            normal = knowledge_get({'version_id': first['normal_version_id']}, db.db_path)['knowledge']
+            normal = knowledge_get({'version_id': first['knowledge_version_id']}, db.db_path)['knowledge']
             item = normal['evidence'][0]['image']
             location = knowledge_evidence({'version_id': normal['version_id'], 'evidence_id': item['evidence_id']}, db.db_path)
             Path(location['path']).write_bytes(b'changed evidence')
@@ -152,7 +153,7 @@ def test_second_worker_cannot_mark_a_live_workers_job_interrupted(dataset, mllm_
         runtime.close()
 
 
-def test_operator_retries_failed_knowledge_without_publishing_twice(dataset, mllm_api):
+def test_operator_retries_failed_knowledge_without_publishing_twice(dataset, mllm_api, self_discovery_prompt):
     from iad_core.entry import knowledge_get
     db, _, config = dataset
     external, _, _ = mllm_api
@@ -162,7 +163,7 @@ def test_operator_retries_failed_knowledge_without_publishing_twice(dataset, mll
         if failing and request.url.path.endswith('/chat/completions'):
             return httpx.Response(500, json={'error': {'message': 'temporary failure'}})
         response = external.send(request)
-        if request.url.path.endswith('/chat/completions'):
+        if request.url.path.endswith('/chat/completions') and json.loads(request.content)['response_format']['json_schema']['name'] == 'KnowledgeDraft':
             body = json.loads(request.content)
             parent = json.loads(body['messages'][0]['content'][0]['text'].split('冻结父版本候选：')[1].split('\n')[0])
             result = json.loads(response.json()['choices'][0]['message']['content'])
@@ -173,7 +174,8 @@ def test_operator_retries_failed_knowledge_without_publishing_twice(dataset, mll
 
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal'), kind='normal', model_name='retry-test-model')
+        first = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal'),
+            mining_prompt=self_discovery_prompt, model_name='retry-test-model')
         runtime.knowledge.wait(first['run_id'], 5)
         parent = runtime.knowledge.status(first['run_id'])
         assert parent['status'] == 'FAILED'
@@ -190,7 +192,7 @@ def test_operator_retries_failed_knowledge_without_publishing_twice(dataset, mll
         assert runtime.knowledge.status(first['run_id']) == parent
         with pytest.raises(ValueError, match='没有.*重试'):
             runtime.knowledge.retry(run_id=first['run_id'])
-        assert knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge']['version_id'] == status['knowledge_version_id']
+        assert knowledge_get({'dataset_id': config.dataset.id}, db.db_path)['knowledge']['version_id'] == status['knowledge_version_id']
     finally:
         runtime.close()
 
@@ -216,7 +218,7 @@ def test_operator_recovers_a_killed_worker_without_reauditing_committed_samples(
         def do_POST(self):
             body = self.rfile.read(int(self.headers['Content-Length']))
             document = json.loads(body)
-            if self.path.endswith('/chat/completions'):
+            if self.path.endswith('/chat/completions') and document['response_format']['json_schema']['name'] == 'JointAnalysis':
                 image = next(json.loads(item['text'][5:]) for item in document['messages'][0]['content']
                              if item['type'] == 'text' and item['text'].startswith('视觉证据：'))
                 calls.append(image['evidence_id'])
@@ -254,6 +256,8 @@ def test_operator_recovers_a_killed_worker_without_reauditing_committed_samples(
                 break
             time.sleep(.01)
         assert len(state.completed_sample_ids) == 1
+        pending_calls = {call.call_id for call in state.model_calls if call.finished_at is None}
+        assert pending_calls
         completed_id = state.completed_sample_ids[0]
         committed = sample_get({'sample_id': completed_id}, db.db_path)['suggestion']
         assert committed and committed['audit_run_id'] == first['run_id']
@@ -265,16 +269,18 @@ def test_operator_recovers_a_killed_worker_without_reauditing_committed_samples(
         parent = runtime.audit.status(first['run_id'])
         assert (parent['status'], parent['completed'], parent['failed'], parent['unprocessed']) == ('INTERRUPTED', 1, 0, 3)
         assert parent['completed_sample_ids'] == [completed_id]
-        interrupted_call = parent['model_calls'][-1]
-        assert interrupted_call['error']['type'] == 'WorkerInterrupted'
-        assert interrupted_call['http_status'] is None and interrupted_call['usage'] is None
-        assert interrupted_call['elapsed_ms'] is None
+        interrupted_calls = [call for call in parent['model_calls'] if call['call_id'] in pending_calls]
+        assert len(interrupted_calls) == len(pending_calls)
+        for call in interrupted_calls:
+            assert call['error']['type'] == 'WorkerInterrupted'
+            assert call['http_status'] is None and call['usage'] is None
+            assert call['elapsed_ms'] is None
         child = runtime.audit.retry(run_id=first['run_id'])
         runtime.audit.wait(child['run_id'], 5)
         status = runtime.audit.status(child['run_id'])
-        assert (status['status'], status['completed'], status['failed']) == ('COMPLETED', 3, 0)
-        assert completed_id not in status['sample_ids']
-        assert runtime.audit.status(first['run_id']) == parent
+        assert (status['status'], status['completed'], status['failed']) == ('COMPLETED', 4, 0)
+        assert completed_id not in runtime.jobs.status(child['run_id'])['sample_ids']
+        assert runtime.jobs.status(first['run_id'])['completed_sample_ids'] == parent['completed_sample_ids']
         assert sample_get({'sample_id': completed_id}, db.db_path)['suggestion'] == committed
         assert calls.count(calls[0]) == 1
         assert all(sample_get({'sample_id': sid}, db.db_path)['suggestion'] for sid in first['sample_ids'])
@@ -325,20 +331,21 @@ def test_retries_are_idempotent_and_nonoverlapping_across_selected_subsets(datas
             runtime.audit.retry(run_id=child['run_id'])
         release.set()
         runtime.audit.wait(child['run_id'], 5)
-        assert runtime.audit.status(child['run_id'])['status'] == 'COMPLETED'
+        assert runtime.audit.status(child['run_id'])['status'] == 'PARTIAL'
         final = runtime.audit.retry(run_id=first['run_id'])
         runtime.audit.wait(final['run_id'], 5)
         status = runtime.audit.status(final['run_id'])
         assert status['status'] == 'COMPLETED'
-        assert status['sample_ids'] == parent['sample_ids'][2:]
-        assert len(runtime.audit.list(config.dataset.id)) == 3
-        assert runtime.audit.status(first['run_id']) == parent
+        assert runtime.jobs.status(final['run_id'])['sample_ids'] == parent['sample_ids'][2:]
+        assert status['sample_ids'] == parent['sample_ids']
+        assert len(runtime.audit.list(config.dataset.id)) == 1
+        assert runtime.jobs.status(first['run_id'])['status'] == 'FAILED'
     finally:
         release.set()
         runtime.close()
 
 
-def test_knowledge_retry_rejects_changed_human_feedback(dataset, mllm_api):
+def test_knowledge_retry_rejects_changed_human_feedback(dataset, mllm_api, self_discovery_prompt):
     from iad_core.workbench.review import HumanReview, ReviewSubmission
 
     db, _, config = dataset
@@ -350,7 +357,8 @@ def test_knowledge_retry_rejects_changed_human_feedback(dataset, mllm_api):
 
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal'), kind='normal', model_name='retry-test-model')
+        first = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal'),
+            mining_prompt=self_discovery_prompt, model_name='retry-test-model')
         runtime.knowledge.wait(first['run_id'], 5)
         assert runtime.knowledge.status(first['run_id'])['status'] == 'FAILED'
         sid = first['sample_ids'][0]

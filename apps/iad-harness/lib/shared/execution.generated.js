@@ -8,6 +8,8 @@ export const queryOperations = [
     "audit_job_report",
     "audit_job_sample",
     "audit_job_samples",
+    "audit_list",
+    "audit_status",
     "consistency_context",
     "consistency_evidence",
     "consistency_evidence_export",

@@ -75,7 +75,7 @@ finally:
         capture_output=True, text=True, timeout=15, check=True)
     outcome = json.loads(process.stdout)
     assert outcome['refused'] is refused
-    assert outcome['jobs'] == job_count + int(not refused)
+    assert outcome['jobs'] == job_count + int(not refused and component != 'audit')
     if refused:
         assert outcome['calls'] == []
     else:
