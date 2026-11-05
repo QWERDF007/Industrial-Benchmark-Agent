@@ -8,7 +8,7 @@ from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
 
 
-@pytest.mark.parametrize('mistake', ['none', 'unknown', 'wrong_kind', 'descriptive', 'persistent'])
+@pytest.mark.parametrize('mistake', ['none', 'unknown', 'wrong_kind', 'non_text', 'descriptive', 'persistent'])
 def test_audit_transmits_short_references_and_preserves_frozen_evidence_ownership(dataset, mllm_api, mistake):
     db, _, config = dataset
     original, _, responses = mllm_api
@@ -43,6 +43,8 @@ def test_audit_transmits_short_references_and_preserves_frozen_evidence_ownershi
                 result['basis'][0]['evidence_ids']=['@v999']
             if mistake=='wrong_kind':
                 result['basis'][0]['evidence_ids']=[frozen['audit_target']['sample_id']]
+            if mistake=='non_text':
+                result['basis'][0]['evidence_ids']=[None]
             if mistake=='descriptive':
                 result['analysis_text']='对照'+frozen['audit_target']['sample_id']+'观察轮廓。'
         return httpx.Response(200, json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
@@ -472,5 +474,54 @@ def test_missing_audit_fields_are_corrected_in_original_conversation(dataset, ml
             assert final['status']=='COMPLETED', final['errors']
             detail = audit_job_sample(dict(run_id=job['run_id'],sample_id=target),db.db_path)
             assert detail['suggestion'] is not None
+    finally:
+        runtime.close()
+
+
+@pytest.mark.parametrize('persistent', [False, True])
+def test_audit_repair_receives_all_reference_and_text_errors_together(dataset, mllm_api, persistent):
+    db, _, config = dataset
+    original, _, _ = mllm_api
+    generated = []
+    target = config.dataset.id+':dent.png'
+
+    def respond(request):
+        body = json.loads(request.content)
+        response = original.send(request)
+        if request.url.path.endswith('/tokenize') or body['response_format']['json_schema']['name'] != 'AuditConclusion':
+            return response
+        generated.append(body)
+        result = response.json()
+        answer = json.loads(result['choices'][0]['message']['content'])
+        if len(generated) > 1:
+            feedback = json.loads(body['messages'][-1]['content'].split('输出校验结果：', 1)[1])
+            errors = feedback['schema_validation_errors']
+            paths = {tuple(error['loc']) for error in errors}
+            assert paths == {('evidence_ids', 0), ('basis', 0, 'knowledge_check_ids', 0),
+                             ('analysis_text',), ('normal_alternative',)}, '一次纠正应同时收到所有独立字段错误，不能先修引用再发现原有正文错误'
+            assert any('@v999' in error['msg'] for error in errors)
+            assert any('@k999' in error['msg'] for error in errors)
+            assert any('@s0' in error['msg'] for error in errors)
+        if len(generated) == 1 or persistent:
+            answer['evidence_ids'] = ['@v999']
+            answer['basis'][0]['knowledge_check_ids'] = ['@k999']
+            answer['analysis_text'] = '待审图像@s0出现局部亮度变化。'
+            del answer['normal_alternative']
+        result['choices'][0]['message']['content'] = json.dumps(answer, ensure_ascii=False)
+        return httpx.Response(200, json=result)
+
+    runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        job = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[target])
+        runtime.audit.wait(job['run_id'], 8)
+        final = runtime.audit.status(job['run_id'])
+        assert final['status'] == ('FAILED' if persistent else 'COMPLETED'), final['errors']
+        assert len(generated) == 2
+        assert generated[1]['messages'][0] == generated[0]['messages'][0]
+        detail = audit_job_sample(dict(run_id=job['run_id'], sample_id=target), db.db_path)
+        if persistent:
+            assert detail['suggestion'] is None
+            return
+        assert all(identity.startswith('img_') for identity in detail['suggestion']['analysis']['conclusion']['evidence_ids'])
     finally:
         runtime.close()

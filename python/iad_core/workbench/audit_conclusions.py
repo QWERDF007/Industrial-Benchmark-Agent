@@ -1,12 +1,9 @@
 from dataclasses import dataclass
 import hashlib
 import json
-from typing import Any, Callable, Literal
+from typing import Any, Callable
 
-from pydantic import Field, create_model
-
-from iad_core.advisory.analysis import AuditBasis, AuditConclusion, AuditSliceCandidate
-from iad_core.advisory.conclusions import NonBlankConclusion
+from iad_core.advisory.analysis import AuditConclusion
 from iad_core.evidence.images import PreparedImage
 from iad_core.workbench.joint import OUTPUT_RESERVE_TOKENS
 from iad_core.workbench.vision import ModelCapacityError, VlmClient
@@ -141,21 +138,7 @@ class AuditConclusions:
             'comparison_coverage':dict(total_results=len(source.facts['consistency']['results']), input_result_ids=sorted(ids))}
 
     def _plan(self, source, facts, images, context, raw_ids, result_ids):
-        raw = tuple(sorted(raw_ids))
-        results = tuple(sorted(result_ids))
-        checks = tuple(sorted(source.check_ids))
-        basis = create_model('AuditBasis', __base__=AuditBasis, text=(NonBlankConclusion, ...),
-            evidence_ids=(list[Literal[raw]], Field(min_length=1)),
-            knowledge_check_ids=(list[Literal[checks]] if checks else list[str], Field(..., **({} if checks else {'max_length':0}))),
-            consistency_result_ids=(list[Literal[results]] if results else list[str], Field(..., **({} if results else {'max_length':0}))))
-        response_type = create_model('AuditConclusion', __base__=AuditConclusion,
-            analysis_text=(NonBlankConclusion, ...), description=(NonBlankConclusion, ...),
-            observation=(NonBlankConclusion, ...), applicable_rule=(NonBlankConclusion, ...), normal_alternative=(NonBlankConclusion, ...),
-            proposed_slice=(list[create_model('AuditSliceCandidate', __base__=AuditSliceCandidate,
-                name=(NonBlankConclusion, ...), observation=(NonBlankConclusion, ...),
-                evidence_ids=(list[Literal[raw]], Field(min_length=1)))], ...),
-            evidence_ids=(list[Literal[raw]], Field(min_length=1)), basis=(list[basis], Field(min_length=1)))
-        contract = AuditConclusionContract(response_type, facts, images, raw, results, checks)
+        contract = AuditConclusionContract(facts, images, tuple(sorted(raw_ids)), tuple(sorted(result_ids)), tuple(sorted(source.check_ids)))
         fingerprint = hashlib.sha256(json.dumps(dict(facts=facts, references=contract.vocabulary.references),
             sort_keys=True, ensure_ascii=False).encode()).hexdigest()
         prompt = source.instruction+'\n冻结综合审计：'+json.dumps(dict(contract.vocabulary.encode(facts),
