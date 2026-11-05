@@ -128,7 +128,10 @@ class AuditConclusions:
 
     @staticmethod
     def _facts(source, references, images, ids):
+        target = source.facts['audit_target']['sample_id']
+        samples = {source.facts['image_owners'][image.evidence.evidence_id] for image in images}
         return {**source.facts,
+            'input_scope':dict(reference_sample_ids=sorted(samples-{target}), visual_source_count=len(samples)),
             'consistency': dict(record={**source.facts['consistency']['record'], 'references':references},
                 results=[item for item in source.facts['consistency']['results'] if item['result_id'] in ids]),
             'image_owners':{image.evidence.evidence_id:source.facts['image_owners'][image.evidence.evidence_id] for image in images},

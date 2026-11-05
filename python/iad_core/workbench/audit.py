@@ -34,7 +34,7 @@ from iad_core.feature.profiles import ImageEncoders
 if TYPE_CHECKING:
     from iad_core.workbench.runtime import WorkbenchRuntime
 
-AUDIT_GENERATION_VERSION = 'dataset-audit-v7'
+AUDIT_GENERATION_VERSION = 'dataset-audit-v8'
 
 class AuditStart(BaseModel):
     model_config = ConfigDict(extra="forbid")

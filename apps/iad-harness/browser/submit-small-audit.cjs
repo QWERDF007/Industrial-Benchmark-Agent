@@ -14,8 +14,10 @@ const firefox=require('selenium-webdriver/firefox.js');
   const selectedDataset=process.argv.find(arg=>arg.startsWith('--dataset='))?.slice('--dataset='.length);
   assert.ok(!selectedDataset||['anomaly','labelme'].includes(selectedDataset),'子集参数应为 anomaly 或 labelme');
   const replaceInvalidCorpus=process.argv.includes('--replace-invalid-corpus');
-  assert.ok(!replaceInvalidCorpus||selectedDataset,'纠正对照范围须明确指定子集');
-  assert.ok(!retryStopped||selectedDataset&&!replaceInvalidCorpus&&!cancelCurrent,'恢复作业须单独指定子集');
+  const replaceInvalidTarget=process.argv.includes('--replace-invalid-target');
+  assert.ok(!(replaceInvalidCorpus&&replaceInvalidTarget),'每次只纠正一个已核实的问题');
+  assert.ok(!(replaceInvalidCorpus||replaceInvalidTarget)||selectedDataset,'替换无效验证须明确指定子集');
+  assert.ok(!retryStopped||selectedDataset&&!replaceInvalidCorpus&&!replaceInvalidTarget&&!cancelCurrent,'恢复作业须单独指定子集');
   const reference='runs/verification/v58-two-small/reference.json';
   const state=JSON.parse(await fs.readFile(reference,'utf8'));
   const output='runs/browser/user-submitted-audit';await fs.mkdir(output,{recursive:true});
@@ -35,13 +37,19 @@ const firefox=require('selenium-webdriver/firefox.js');
       assert.equal(source.total_samples,100);assert.ok(tasks[key]?.trim());
       let saved=dataset.ui_submissions?.audit;
       let replaced=null;
-      if(replaceInvalidCorpus){
+      if(replaceInvalidCorpus||replaceInvalidTarget){
         assert.ok(saved,'先核对原作业');
         const old=await read('audit/status/'+saved.run_id),raw=await read('analysis/node/'+saved.run_id);
         const corpus=raw.request.consistency_scopes.corpus;
         assert.ok(!['PENDING','RUNNING'].includes(old.status),'先保留并停止范围错误的执行');
-        assert.ok(corpus.dataset_ids.length!==1||corpus.dataset_ids[0]!==dataset.dataset_id,'不得重复替换范围正确的作业');
-        replaced={stage:'audit',submission:saved,validation:'INVALID_CORPUS_SCOPE',corpus:corpus.dataset_ids,corpus_sample_count:corpus.sample_count};
+        if(replaceInvalidCorpus)assert.ok(corpus.dataset_ids.length!==1||corpus.dataset_ids[0]!==dataset.dataset_id,'不得重复替换范围正确的作业');
+        else {
+          const {promptDefaults}=await import('../lib/shared/prompt-defaults.generated.js');
+          assert.ok(!raw.request.instruction.includes('audit_target')&&promptDefaults.audit.includes('audit_target'),
+            '只替换尚未明确单图目标的旧提示词验证');
+        }
+        replaced={stage:'audit',submission:saved,validation:replaceInvalidCorpus?'INVALID_CORPUS_SCOPE':'INVALID_AUDIT_TARGET_SCOPE',
+          generation_signature:raw.request.generation_signature,corpus:corpus.dataset_ids,corpus_sample_count:corpus.sample_count};
         saved=null;
       }
       if(cancelCurrent){
@@ -120,6 +128,7 @@ const firefox=require('selenium-webdriver/firefox.js');
       const textarea=await element('#audit-create-prompt'),original=await textarea.getAttribute('value');
       assert.ok(original.length>100,'应完整显示模型审计提示词');
       const prompt=(tasks[key].trim()+'\n\n'+original).trim();await click(textarea);
+      if(replaceInvalidTarget)assert.ok(prompt.includes('audit_target')&&prompt.includes('input_scope'));
       await driver.actions().keyDown(Key.CONTROL).sendKeys('a').keyUp(Key.CONTROL).perform();
       await textarea.sendKeys(prompt,Key.TAB);assert.equal(await textarea.getAttribute('value'),prompt);
       await driver.wait(async()=>/1 个子数据集，100 张图像/.test(await(await element('#audit-create-summary')).getText()),20000);
@@ -146,6 +155,7 @@ const firefox=require('selenium-webdriver/firefox.js');
       assert.deepEqual(raw.request.consistency_scopes.corpus.dataset_ids,[dataset.dataset_id]);
       assert.equal(raw.request.consistency_scopes.corpus.sample_count,100,'对照检索不得自动扩大到其他已导入数据');
       assert.equal(raw.knowledge_version_id,versions.current_version_id);
+      if(replaceInvalidTarget)assert.notEqual(raw.request.generation_signature,replaced.generation_signature,'新协议必须实际重载，不能仅替换前端文字');
       console.log('已通过界面选择范围、编辑提示词并提交审计',key,job.run_id,100);
     }
     console.log(prepareOnly?'AUDIT_SELECTION_PREPARED':'USER_SUBMITTED_AUDIT_SCOPE_KNOWLEDGE_AND_PROMPT_VERIFIED');

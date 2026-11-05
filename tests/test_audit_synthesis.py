@@ -42,6 +42,11 @@ def test_audit_model_synthesizes_the_frozen_knowledge_consistency_and_actual_com
         assert frozen['visual_observations']['joint_steps'], '必须结合已完成的真实视觉观察'
         assert frozen['knowledge']['checks'] and frozen['knowledge']['knowledge_version_id']
         image_owners = frozen['image_owners']
+        assert frozen['audit_target']['sample_id'] == target
+        assert image_owners[frozen['audit_target']['overview_evidence_id']] == target
+        assert target not in frozen['input_scope']['reference_sample_ids']
+        assert config.dataset.id+':scratch.png' in frozen['input_scope']['reference_sample_ids']
+        assert frozen['input_scope']['visual_source_count'] == len(set(image_owners.values()))
         assert {item['sample_id'] for item in frozen['consistency']['record']['references']} <= set(image_owners.values()), '比较事实必须带实际对应图像，不能只送比较JSON'
         target_view = next(view for view in views if image_owners[view['evidence_id']] == target)
         comparison = next(view for view in views if image_owners[view['evidence_id']] != target)
@@ -89,7 +94,7 @@ def test_audit_model_synthesizes_the_frozen_knowledge_consistency_and_actual_com
 
 def test_conflicted_knowledge_remains_auditable_without_promoting_it_to_truth(dataset, mllm_api):
     db, _, config = dataset
-    client, _, responses = mllm_api
+    client, bodies, responses = mllm_api
     responses['KnowledgeDraft']['checks'][0]['status'] = 'conflicted'
     runtime = WorkbenchRuntime(db, VlmClient(client))
     try:
@@ -108,6 +113,11 @@ def test_conflicted_knowledge_remains_auditable_without_promoting_it_to_truth(da
         assert detail['suggestion']['analysis']['knowledge_version_id']==knowledge_id
         assert detail['knowledge']['checks'][0]['status']=='conflicted'
         assert detail['suggestion']['analysis']['conclusion']['suggested_label']=='UNCERTAIN'
+        synthesis = next(body for body in bodies if body['response_format']['json_schema']['name']=='AuditConclusion')
+        frozen = json.loads(synthesis['messages'][0]['content'][0]['text'].split('冻结综合审计：',1)[1])
+        check = frozen['knowledge']['checks'][0]
+        assert check['status']=='conflicted'
+        assert check['independent_support'] is True, '判据有分歧不等于没有独立图像支持'
     finally:
         runtime.close()
 

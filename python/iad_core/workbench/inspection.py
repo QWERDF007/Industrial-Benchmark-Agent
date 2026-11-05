@@ -60,7 +60,7 @@ class SampleInspection:
         for assessment in assessments:
             earlier_anomalies = [(step.step_id, earlier) for step in steps[:-1] for earlier in step.result.check_assessments
                 if earlier.check_id == assessment.check_id and earlier.status == 'anomaly'
-                and earlier.check_id in criteria.independent_check_ids
+                and earlier.check_id in criteria.usable_check_ids
                 and not outcome.finding_ledger.resolved(step.step_id, assessment.check_id)]
             if earlier_anomalies and assessment.status in ('normal', 'not_applicable'):
                 assessment.status = 'insufficient'
@@ -75,7 +75,7 @@ class SampleInspection:
                 assessment.limitations.append('模型仍要求补充局部细节，当前证据未能消解该检查项的疑问')
             if assessment.status == 'not_applicable':
                 continue
-            if assessment.check_id not in criteria.independent_check_ids:
+            if assessment.check_id not in criteria.usable_check_ids:
                 assessment.status = 'insufficient'
                 assessment.limitations.append('知识尚未核实或缺少独立于待审图的支持')
             if assessment.status == 'insufficient':
@@ -87,12 +87,12 @@ class SampleInspection:
                 result.conflicts.append(f"{step.step_id} 建议 {step.result.suggested_label}：{step.result.description}")
             result.conflicts.extend(step.result.conflicts)
             result.missing_evidence.extend(step.result.missing_evidence)
-        applicable_criteria = any(assessment.check_id in criteria.independent_check_ids
+        applicable_criteria = any(assessment.check_id in criteria.usable_check_ids
             and assessment.status != 'not_applicable' for assessment in assessments)
         if not applicable_criteria:
             result.missing_evidence.append('没有适用且具独立支持的知识判据')
         unsupported_failure = result.suggested_label == 'FAIL' and not any(assessment.status == 'anomaly'
-            and assessment.check_id in criteria.independent_check_ids for assessment in assessments)
+            and assessment.check_id in criteria.usable_check_ids for assessment in assessments)
         if unsupported_failure:
             result.missing_evidence.append('异常结论缺少适用且具独立支持的检查项依据')
         if not applicable_criteria or unsupported_failure or (result.suggested_label == "PASS" and (result.conflicts or result.missing_evidence)):
