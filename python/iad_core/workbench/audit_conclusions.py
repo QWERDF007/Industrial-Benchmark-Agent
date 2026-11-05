@@ -1,6 +1,6 @@
 from dataclasses import dataclass
+import hashlib
 import json
-import threading
 from typing import Any, Callable, Literal
 
 from pydantic import Field, create_model
@@ -10,6 +10,8 @@ from iad_core.advisory.conclusions import NonBlankConclusion
 from iad_core.evidence.images import PreparedImage
 from iad_core.workbench.joint import OUTPUT_RESERVE_TOKENS
 from iad_core.workbench.vision import ModelCapacityError, VlmClient
+from iad_core.workbench.audit_contract import AuditConclusionContract
+from iad_core.workbench.jobs import JobContext
 
 
 @dataclass(frozen=True)
@@ -34,8 +36,9 @@ class AuditConclusions:
     def __init__(self, client: VlmClient):
         self.client = client
 
-    def conclude(self, source: AuditConclusionInput, cancel: threading.Event,
+    def conclude(self, source: AuditConclusionInput, context: JobContext,
                  progress: Callable[[int, int], None]) -> AuditConclusion:
+        cancel = context.cancel
         owners = source.facts['image_owners']
         record = source.facts['consistency']['record']
         reference_groups = {}
@@ -57,7 +60,7 @@ class AuditConclusions:
             facts = self._facts(source, references, images, ids)
             progress(completed, total)
             try:
-                plan = self._plan(source, facts, images,
+                plan = self._plan(source, facts, images, context,
                     [image.evidence.evidence_id for image in images if image.evidence.representation == 'raw'], ids)
             except ModelCapacityError:
                 if len(selected) < 2:
@@ -104,7 +107,7 @@ class AuditConclusions:
                 facts['image_owners'].update({eid:source.facts['image_owners'][eid] for eid in raw})
                 progress(completed, total)
                 try:
-                    plan = self._plan(source, facts, images, raw, result_ids)
+                    plan = self._plan(source, facts, images, context, raw, result_ids)
                 except ModelCapacityError:
                     if len(selected) < 3:
                         raise
@@ -137,7 +140,7 @@ class AuditConclusions:
             'image_owners':{image.evidence.evidence_id:source.facts['image_owners'][image.evidence.evidence_id] for image in images},
             'comparison_coverage':dict(total_results=len(source.facts['consistency']['results']), input_result_ids=sorted(ids))}
 
-    def _plan(self, source, facts, images, raw_ids, result_ids):
+    def _plan(self, source, facts, images, context, raw_ids, result_ids):
         raw = tuple(sorted(raw_ids))
         results = tuple(sorted(result_ids))
         checks = tuple(sorted(source.check_ids))
@@ -152,5 +155,11 @@ class AuditConclusions:
                 name=(NonBlankConclusion, ...), observation=(NonBlankConclusion, ...),
                 evidence_ids=(list[Literal[raw]], Field(min_length=1)))], ...),
             evidence_ids=(list[Literal[raw]], Field(min_length=1)), basis=(list[basis], Field(min_length=1)))
-        prompt = source.instruction+'\n冻结综合审计：'+json.dumps(facts, ensure_ascii=False)
-        return self.client.plan(response_type, prompt, images, source.model_name, OUTPUT_RESERVE_TOKENS)
+        contract = AuditConclusionContract(response_type, facts, images, raw, results, checks)
+        fingerprint = hashlib.sha256(json.dumps(dict(facts=facts, references=contract.vocabulary.references),
+            sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+        prompt = source.instruction+'\n冻结综合审计：'+json.dumps(dict(contract.vocabulary.encode(facts),
+            reference_binding=fingerprint), ensure_ascii=False)
+        plan = self.client.plan(contract.response_type, prompt, contract.vocabulary.images, source.model_name, OUTPUT_RESERVE_TOKENS)
+        contract.vocabulary.record(context, fingerprint)
+        return plan

@@ -1,4 +1,3 @@
-from tests.knowledge_scenarios import selected_group
 import json
 import os
 from pathlib import Path
@@ -10,14 +9,16 @@ import pytest
 
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
+from iad_core.workbench.audit import AUDIT_GENERATION_VERSION
 
 
-@pytest.mark.parametrize(('component', 'old', 'new'), [
-    ('audit', '不要预设产品或缺陷清单。', '不要预设产品或缺陷清单。新增判据必须核实。'),
-    ('audit', '"temperature": 0.1', '"temperature": 0.2'),
-    ('knowledge', 'OUTPUT_RESERVE_TOKENS = 8192', 'OUTPUT_RESERVE_TOKENS = 4096'),
+@pytest.mark.parametrize(('component', 'old', 'new', 'refused'), [
+    ('audit', '不要预设产品或缺陷清单。', '不要预设产品或缺陷清单。新增判据必须核实。', False),
+    ('audit', '"temperature": 0.1', '"temperature": 0.2', True),
+    ('audit', f"AUDIT_GENERATION_VERSION = {AUDIT_GENERATION_VERSION!r}", "AUDIT_GENERATION_VERSION = 'changed-protocol'", True),
+    ('knowledge', 'OUTPUT_RESERVE_TOKENS = 8192', 'OUTPUT_RESERVE_TOKENS = 4096', True),
 ])
-def test_updated_generation_refuses_old_job_retry(dataset, mllm_api, tmp_path, component, old, new):
+def test_retry_preserves_frozen_prompt_but_refuses_changed_protocol(dataset, mllm_api, tmp_path, self_discovery_prompt, component, old, new, refused):
     db, _, config = dataset
     external, _, responses = mllm_api
     runtime = WorkbenchRuntime(db, VlmClient(external))
@@ -26,11 +27,13 @@ def test_updated_generation_refuses_old_job_retry(dataset, mllm_api, tmp_path, c
         service = getattr(runtime, component)
         if component == 'knowledge':
             responses['Tokenize'] = {'count': 262144, 'max_model_len': 262144}
-            job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal'), kind='normal', model_name='updated-install-test')
+            job = service.start(request=dict(image_count=2, images=[config.dataset.id+':normal.png', config.dataset.id+':normal2.png']),
+                mining_prompt=self_discovery_prompt, model_name='updated-install-test')
         else:
             job = service.start(dataset_id=config.dataset.id, sample_ids=[config.dataset.id + ':dent.png'])
         service.wait(job['run_id'], 5)
         assert service.status(job['run_id'])['status'] == 'FAILED'
+        frozen_prompt = service.status(job['run_id'])['request'].get('instruction', '').split('{{response_schema}}')[0]
     finally:
         runtime.close()
     job_count = len(getattr(runtime, component).list(config.dataset.id))
@@ -48,8 +51,12 @@ from iad_core.storage.database import Database
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
 calls=[]
+prompts=[]
 def external(request):
     calls.append(request.url.path)
+    prompts.append(json.loads(request.content)['messages'][0]['content'][0]['text'])
+    if request.url.path.endswith('/tokenize'):
+        return httpx.Response(200,json={'count':1000,'max_model_len':262144})
     return httpx.Response(500,json={'error':{'message':'unexpected model request'}})
 runtime=WorkbenchRuntime(Database(sys.argv[1]),VlmClient(httpx.Client(transport=httpx.MockTransport(external))))
 try:
@@ -60,12 +67,20 @@ try:
         refused=False
     except ValueError as error:
         refused='重新启动' in str(error)
-    print(json.dumps({'refused':refused,'calls':calls,'jobs':len(getattr(runtime,sys.argv[4]).list(sys.argv[3]))}))
+    print(json.dumps({'refused':refused,'calls':calls,'uses_frozen_prompt':bool(prompts) and all(text.startswith(sys.argv[5]) for text in prompts),
+        'jobs':len(getattr(runtime,sys.argv[4]).list(sys.argv[3]))}))
 finally:
     runtime.close()
-''', db.db_path, job['run_id'], config.dataset.id, component], env={**os.environ, 'PYTHONPATH': str(installed)},
+''', db.db_path, job['run_id'], config.dataset.id, component, frozen_prompt], env={**os.environ, 'PYTHONPATH': str(installed)},
         capture_output=True, text=True, timeout=15, check=True)
-    assert json.loads(process.stdout) == {'refused': True, 'calls': [], 'jobs': job_count}
+    outcome = json.loads(process.stdout)
+    assert outcome['refused'] is refused
+    assert outcome['jobs'] == job_count + int(not refused)
+    if refused:
+        assert outcome['calls'] == []
+    else:
+        assert any(path.endswith('/chat/completions') for path in outcome['calls'])
+        assert outcome['uses_frozen_prompt'] is True
 
 
 @pytest.mark.parametrize('configured', [False, True])

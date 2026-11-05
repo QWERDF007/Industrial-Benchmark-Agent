@@ -17,7 +17,7 @@ from iad_core.storage.repositories import SampleRepository
 from iad_core.workbench.query import SampleFilters, SampleQuery, WorkbenchQuery
 
 from iad_core.workbench.vision import VlmClient, MODEL_PROMPT_CONTRACT, GENERATION_PARAMETERS
-from iad_core.workbench.audit_prompts import AUDIT_PROMPTS, DEFAULT_AUDIT_PROMPT
+from iad_core.workbench.audit_prompts import DEFAULT_AUDIT_PROMPT
 from iad_core.workbench.joint import OUTPUT_RESERVE_TOKENS
 from iad_core.workbench.inspection import SampleInspection
 from iad_core.workbench.audit_synthesis import AuditSynthesis
@@ -34,7 +34,7 @@ from iad_core.feature.profiles import ImageEncoders
 if TYPE_CHECKING:
     from iad_core.workbench.runtime import WorkbenchRuntime
 
-AUDIT_GENERATION_VERSION = 'dataset-audit-v8'
+AUDIT_GENERATION_VERSION = 'dataset-audit-v9'
 
 class AuditStart(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -67,7 +67,7 @@ class AuditService:
 
     @property
     def generation_signature(self) -> str:
-        return hashlib.sha256(json.dumps([AUDIT_GENERATION_VERSION, AUDIT_PROMPTS, MODEL_PROMPT_CONTRACT, GENERATION_PARAMETERS,
+        return hashlib.sha256(json.dumps([AUDIT_GENERATION_VERSION, MODEL_PROMPT_CONTRACT, GENERATION_PARAMETERS,
             OUTPUT_RESERVE_TOKENS, AuditAnalysis.model_json_schema()], sort_keys=True).encode()).hexdigest()
 
     def audit_sample(self, sample_id: str, model_name: Optional[str], knowledge: InspectionKnowledge, context: JobContext,
@@ -114,7 +114,7 @@ class AuditService:
             results=[AuditConsistencyEvidenceReference(result_id=ref.result_id, evidence_id=ref.evidence_id) for ref in axis.references])
         try:
             analysis = AuditSynthesis(self.db, self.client).conclude(analysis, knowledge, axis,
-                model_name, context.payload['instruction'], context.cancel, phase)
+                model_name, context.payload['instruction'], context, phase)
         except Exception:
             repository.save(axis)
             raise

@@ -1,6 +1,5 @@
 import hashlib
 import json
-import threading
 
 
 from iad_core.advisory.analysis import AuditAnalysis, AuditConclusion, AuditImageSource, InspectionProgress
@@ -15,6 +14,7 @@ from iad_core.storage.database import Database
 from iad_core.storage.repositories import AnnotationRepository, SampleRepository
 from iad_core.workbench.audit_conclusions import AuditConclusions, AuditConclusionInput
 from iad_core.workbench.knowledge import InspectionKnowledge
+from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
 
 
@@ -26,7 +26,8 @@ class AuditSynthesis:
         self.images = EvidenceImages(db.db_path)
 
     def conclude(self, analysis: AuditAnalysis, knowledge: InspectionKnowledge, axis: AuditConsistencyRecord,
-                 model_name: str, instruction: str, cancel: threading.Event, phase) -> AuditAnalysis:
+                 model_name: str, instruction: str, context: JobContext, phase) -> AuditAnalysis:
+        cancel = context.cancel
         if cancel.is_set():
             raise InterruptedError('Audit cancelled')
         def progress(completed, total):
@@ -109,7 +110,7 @@ class AuditSynthesis:
             visual_observations=analysis.model_dump(mode='json', exclude={'reference_evidence', 'image_sources', 'consistency'}), image_owners=owners)
         prompt = instruction+'\n冻结综合审计：'+json.dumps(frozen, ensure_ascii=False)
         result = AuditConclusions(self.client).conclude(AuditConclusionInput(instruction, frozen, prepared,
-            criteria.check_ids, model_name), cancel, progress)
+            criteria.check_ids, model_name), context, progress)
         if cancel.is_set():
             raise InterruptedError('Audit cancelled')
         analysis.conclusion = AuditConclusion.model_validate(result.model_dump())

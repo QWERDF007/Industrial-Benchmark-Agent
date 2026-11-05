@@ -8,6 +8,67 @@ from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
 
 
+@pytest.mark.parametrize('mistake', ['none', 'unknown', 'wrong_kind', 'descriptive', 'persistent'])
+def test_audit_transmits_short_references_and_preserves_frozen_evidence_ownership(dataset, mllm_api, mistake):
+    db, _, config = dataset
+    original, _, responses = mllm_api
+    requests = []
+    target = config.dataset.id+':dent.png'
+
+    def respond(request):
+        body = json.loads(request.content)
+        if request.url.path.endswith('/tokenize') or body['response_format']['json_schema']['name'] != 'AuditConclusion':
+            return original.send(request)
+        requests.append(body)
+        content = body['messages'][0]['content']
+        assert ':dent.png' not in json.dumps(body), '模型应看请求内引用，不能从样本ID抄出文件名'
+        assert ':scratch.png' not in json.dumps(body)
+        frozen = json.loads(content[0]['text'].split('冻结综合审计：', 1)[1].split('\n输出校验结果：',1)[0])
+        assert frozen['audit_target']['sample_id'].startswith('@s')
+        views = [json.loads(part['text'][5:]) for part in content if part['type']=='text' and part['text'].startswith('视觉证据：')]
+        raw = [view['evidence_id'] for view in views if view['representation']=='raw']
+        assert all(identity.startswith('@v') for identity in raw)
+        assert all(annotation['sample_id'].startswith('@s') for view in views for annotation in view.get('annotations', []))
+        check = frozen['knowledge']['checks'][0]['check_id']
+        result_ids = [ref['result_id'] for ref in frozen['consistency']['record']['references']]
+        result = dict(responses['VlmResult'], analysis_text='以主图的连续轮廓和独立来源进行实际对照。',
+            observation='主体表面连续', applicable_rule='适用于当前可见表面', normal_alternative='保留光照变化解释',
+            label_relation='undetermined', proposed_slice=[], evidence_ids=raw,
+            basis=[dict(text='比较主图与对应参考表面', evidence_ids=raw, knowledge_check_ids=[check], consistency_result_ids=result_ids)])
+        if len(requests)==1 or mistake=='persistent':
+            if mistake in ('unknown','persistent'):
+                result['basis'][0]['evidence_ids']=['@v999']
+            if mistake=='wrong_kind':
+                result['basis'][0]['evidence_ids']=[frozen['audit_target']['sample_id']]
+            if mistake=='descriptive':
+                result['analysis_text']='对照'+frozen['audit_target']['sample_id']+'观察轮廓。'
+        return httpx.Response(200, json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
+
+    runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        job = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[target])
+        runtime.audit.wait(job['run_id'], 8)
+        final = runtime.audit.status(job['run_id'])
+        if mistake=='persistent':
+            assert final['status']=='FAILED'
+            assert len(requests)==2
+            assert audit_job_sample(dict(run_id=job['run_id'],sample_id=target), db.db_path)['suggestion'] is None
+            return
+        assert final['status']=='COMPLETED', final['errors']
+        assert len(requests)==(1 if mistake=='none' else 2), '引用错误由模型自行纠正一次，不替换它的文字或证据'
+        detail = audit_job_sample(dict(run_id=job['run_id'],sample_id=target), db.db_path)
+        conclusion = detail['suggestion']['analysis']['conclusion']
+        assert all(identity.startswith('img_') for identity in conclusion['evidence_ids'])
+        assert conclusion['basis'][0]['knowledge_check_ids']==[detail['knowledge']['checks'][0]['check_id']]
+        assert set(conclusion['basis'][0]['consistency_result_ids'])=={ref['result_id'] for ref in detail['consistency']['references']}
+        assert detail['suggestion']['analysis']['image_sources'][0]['sample']['sample_id']==target
+        child = runtime.jobs.status(final['batch_runs'][0])
+        mappings = list(child['model_reference_bindings'].values())
+        assert any(target in mapping.values() for mapping in mappings), '实际请求引用必须保留可追溯绑定'
+    finally:
+        runtime.close()
+
+
 @pytest.mark.parametrize('comparison_encoding', ['default', 'uncompressed'])
 def test_audit_model_synthesizes_the_frozen_knowledge_consistency_and_actual_comparison_images(dataset, mllm_api, comparison_encoding):
     db, registry, config = dataset
@@ -37,19 +98,20 @@ def test_audit_model_synthesizes_the_frozen_knowledge_consistency_and_actual_com
         frozen = json.loads(content[0]['text'].split('\n冻结综合审计：', 1)[1])
         views = [json.loads(part['text'][5:]) for part in content
             if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
-        assert frozen['consistency']['record']['sample_id'] == target
+        wire_target = frozen['audit_target']['sample_id']
+        assert frozen['consistency']['record']['sample_id'] == wire_target
         assert frozen['consistency']['record']['status'] == 'COMPLETE'
         assert frozen['visual_observations']['joint_steps'], '必须结合已完成的真实视觉观察'
         assert frozen['knowledge']['checks'] and frozen['knowledge']['knowledge_version_id']
         image_owners = frozen['image_owners']
-        assert frozen['audit_target']['sample_id'] == target
-        assert image_owners[frozen['audit_target']['overview_evidence_id']] == target
-        assert target not in frozen['input_scope']['reference_sample_ids']
-        assert config.dataset.id+':scratch.png' in frozen['input_scope']['reference_sample_ids']
+        assert wire_target.startswith('@s')
+        assert image_owners[frozen['audit_target']['overview_evidence_id']] == wire_target
+        assert wire_target not in frozen['input_scope']['reference_sample_ids']
+        assert frozen['input_scope']['reference_sample_ids']
         assert frozen['input_scope']['visual_source_count'] == len(set(image_owners.values()))
         assert {item['sample_id'] for item in frozen['consistency']['record']['references']} <= set(image_owners.values()), '比较事实必须带实际对应图像，不能只送比较JSON'
-        target_view = next(view for view in views if image_owners[view['evidence_id']] == target)
-        comparison = next(view for view in views if image_owners[view['evidence_id']] != target)
+        target_view = next(view for view in views if image_owners[view['evidence_id']] == wire_target)
+        comparison = next(view for view in views if image_owners[view['evidence_id']] != wire_target)
         assert target_view['annotations'], 'Labelme整图必须携带真实标注'
         assert comparison['source_sha256'] != target_view['source_sha256']
         refs = [target_view['evidence_id'], comparison['evidence_id']]
@@ -118,6 +180,7 @@ def test_conflicted_knowledge_remains_auditable_without_promoting_it_to_truth(da
         check = frozen['knowledge']['checks'][0]
         assert check['status']=='conflicted'
         assert check['independent_support'] is True, '判据有分歧不等于没有独立图像支持'
+        assert check['usable_for_judgment'] is False, '来源独立不代表尚有冲突的判据已可用于验收'
     finally:
         runtime.close()
 
@@ -211,13 +274,13 @@ def test_audit_capacity_covers_all_comparisons_and_keeps_earlier_counter_evidenc
         else:
             comparisons = frozen['consistency']['results']
             ids = [item['result_id'] for item in comparisons]
-            seen.extend(ids)
+            seen.extend((frozen['reference_binding'], identity) for identity in ids)
             leaves.append(frozen)
             if late_failure and len(leaves)==2:
                 return httpx.Response(503,json={'error':{'message':'后批模型不可用'}})
             assert len(ids) <= leaf_limit
             assert {item['sample_id'] for item in frozen['consistency']['record']['references']} <= set(frozen['image_owners'].values())
-            assert any(frozen['image_owners'][view['evidence_id']]==target for view in views)
+            assert any(frozen['image_owners'][view['evidence_id']]==frozen['audit_target']['sample_id'] for view in views)
             refs, result_ids = raw, ids
             description = marker if len(leaves)==1 else '其他范围可见正常外观'
         result = dict(defaults['VlmResult'], suggested_label='UNCERTAIN', reason_category='INSUFFICIENT_EVIDENCE',
@@ -241,7 +304,8 @@ def test_audit_capacity_covers_all_comparisons_and_keeps_earlier_counter_evidenc
         assert child['completed_batches']==child['total_batches']==1+len(synthesis_calls),'最终进度应保留全部实际视觉批次和汇总'
         detail=audit_job_sample(dict(run_id=job['run_id'],sample_id=target),db.db_path)
         expected={item['result_id'] for item in detail['consistency']['references']}
-        assert set(seen)==expected and len(seen)==len(expected),'全部冻结比较应恰好进入一个视觉批次'
+        restored = [child['model_reference_bindings'][binding][identity] for binding,identity in seen]
+        assert set(restored)==expected and len(restored)==len(expected),'全部冻结比较应恰好进入一个视觉批次'
         assert len(leaves)>1
         analysis=detail['suggestion']['analysis']
         assert analysis['conclusion']['analysis_text']==marker

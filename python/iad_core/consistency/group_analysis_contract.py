@@ -1,4 +1,3 @@
-from dataclasses import replace
 from typing import Generic, Sequence, TypeVar
 
 from pydantic import model_validator
@@ -8,6 +7,7 @@ from iad_core.consistency.group_analysis_models import GroupAnalysisDraft, Group
 from iad_core.consistency.group_models import FrozenAnalysisGroup
 from iad_core.evidence.images import PreparedImage
 from iad_core.workbench.jobs import JobContext
+from iad_core.workbench.model_references import ModelReferences
 
 Response = TypeVar('Response', bound=GroupAnalysisSummary)
 
@@ -26,11 +26,9 @@ class GroupAnalysisContract(Generic[Response]):
             r=[*comparison['result_id']['enum']],
             d=[identity for option in differences for identity in option.get('enum', [])],
             v=[image.evidence.evidence_id for image in images])
-        self.references = {f'@{kind}{index}': identity for kind, identities in vocabularies.items()
-            for index, identity in enumerate(dict.fromkeys(identities))}
-        self.aliases = {identity: alias for alias, identity in self.references.items()}
-        self.images = [replace(image, evidence=image.evidence.model_copy(
-            update={'evidence_id': self.aliases[image.evidence.evidence_id]})) for image in images]
+        self.vocabulary = ModelReferences(vocabularies, images)
+        self.references = self.vocabulary.references
+        self.images = self.vocabulary.images
 
         def wire_schema(cls, **options):
             encoded = self.encode(response_type.model_json_schema(**options))
@@ -62,12 +60,7 @@ class GroupAnalysisContract(Generic[Response]):
             'model_json_schema': classmethod(wire_schema), 'canonical_output': canonical_output})
 
     def encode(self, value):
-        if isinstance(value, dict):
-            return {self.aliases.get(key, key): self.encode(item) for key, item in value.items()}
-        if isinstance(value, list):
-            return [self.encode(item) for item in value]
-        return self.aliases.get(value, value) if isinstance(value, str) else value
+        return self.vocabulary.encode(value)
 
     def record(self, context: JobContext, fingerprint: str):
-        context.update(model_reference_bindings={**context.payload.get('model_reference_bindings', {}),
-            fingerprint: self.references})
+        self.vocabulary.record(context, fingerprint)

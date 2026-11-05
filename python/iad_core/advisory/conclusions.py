@@ -8,7 +8,7 @@ from iad_core.advisory.analysis import NonBlankText
 
 
 _EVIDENCE_REFERENCE = re.compile(
-    r'@v\d+|img_[a-f0-9]{6,64}(?![a-f0-9])|ds_[a-f0-9]+:|[^\s，。；（）()、]+\.(?:png|jpe?g|bmp|webp|tiff?)\b',
+    r'@[a-z]\d+|img_[a-f0-9]{6,64}(?![a-f0-9])|ds_[a-f0-9]+:|[^\s，。；（）()、]+\.(?:png|jpe?g|bmp|webp|tiff?)\b',
     re.IGNORECASE,
 )
 

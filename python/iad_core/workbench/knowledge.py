@@ -53,7 +53,7 @@ class InspectionKnowledge:
                 if by_id[eid].sample_id != sample_id and by_id[eid].image.representation == 'raw'][:1]
             for item in [*selected, *counter]:
                 visuals[item.image.evidence_id] = item
-            checks.append({**record, 'independent_support': bool(independent),
+            checks.append({**record, 'independent_support': bool(independent), 'usable_for_judgment': usable,
                 'support_evidence_ids': [item.image.evidence_id for item in selected],
                 'counter_evidence_ids': [item.image.evidence_id for item in counter]})
             if usable:
