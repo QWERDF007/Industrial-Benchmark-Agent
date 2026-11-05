@@ -1,92 +1,17 @@
 import {Select} from './Select.js';
 import {Button} from './Button.js';
 import {IconButton} from "./IconButton.js";
-import React, { useEffect, useId, useRef, useState } from "react";
-import type { Dataset, DatasetGroup, DirectoryListing, FolderRule, ScanResult } from "../../shared/contracts.js";
+import React, { useEffect, useRef, useState } from "react";
+import type { Dataset, DatasetGroup, FolderRule, ScanResult } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 import { useFolderPreview } from "../useFolderPreview.js";
 import { WorkbenchHeader } from "./layout/WorkbenchHeader.js";
+import {DirectoryPickerDialog} from "./DirectoryPickerDialog.js";
+import {DatasetCreateDialog} from "./DatasetCreateDialog.js";
+import {DeleteAction} from "./DeleteAction.js";
 
 import { ClearFilterButton } from "./CommonFilterControls.js";
 import { useWorkspace } from "../workspace.js";
-
-function DirectoryPickerModal({ label, initialPath, onClose, onPick }: {
-  label: string;
-  initialPath: string;
-  onClose(): void;
-  onPick(path: string): void;
-}) {
-  const [currentPath, setCurrentPath] = useState(initialPath || "/data1");
-  const [inputVal, setInputVal] = useState(initialPath || "/data1");
-  const [listing, setListing] = useState<DirectoryListing | null>(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function browse(path: string) {
-    setLoading(true);
-    try {
-      const res = await request<DirectoryListing>(`/directories?path=${encodeURIComponent(path || "/data1")}`);
-      setListing(res);
-      setCurrentPath(res.path);
-      setInputVal(res.path);
-      setError("");
-    } catch (e) {
-      setError(message(e));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void browse(currentPath);
-  }, []);
-
-  return (
-    <div className="modal-scrim" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal add-dataset-modal dir-picker-modal" role="dialog" aria-modal="true" aria-label={`浏览服务器目录 - ${label}`}>
-        <div className="modal-top">
-          <h2>浏览服务器目录</h2>
-          <IconButton icon="close" type="button" onClick={onClose} label="关闭" />
-        </div>
-        <p className="iad-muted" style={{ marginBottom: 12 }}>选择服务器上的目录</p>
-        <div className="path-preview" style={{ marginBottom: 14 }}>{currentPath}</div>
-        <div className="modal-field">
-          <label htmlFor="browse-value">目录路径</label>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input id="browse-value" value={inputVal} onChange={e => setInputVal(e.target.value)} onKeyDown={e => { if (e.key === "Enter") void browse(inputVal); }} />
-            <Button type="button"  onClick={() => void browse(inputVal)} disabled={loading}>跳转</Button>
-          </div>
-        </div>
-        {error && <p role="alert" className="iad-error">{error}</p>}
-        {listing && (
-          <div style={{ border: "1px solid var(--line)", borderRadius: 5, padding: 10, maxHeight: 220, overflowY: "auto", margin: "14px 0" }}>
-            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              {listing.parent && <Button type="button"  style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => void browse(listing.parent)}>↑ 上级目录</Button>}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {listing.directories.map(d => (
-                <button
-                  type="button"
-                  key={d.path}
-                  style={{ textAlign: "left", background: "none", border: "0", padding: "6px 8px", borderRadius: 4, cursor: "pointer", fontSize: 13 }}
-                  className="dir-item"
-                  onClick={() => void browse(d.path)}
-                >
-                  📁 {d.name}
-                </button>
-              ))}
-              {!listing.directories.length && <p className="iad-muted" style={{ fontSize: 12, margin: 8 }}>无子目录</p>}
-            </div>
-          </div>
-        )}
-        <div className="modal-actions">
-          <Button type="button"  onClick={onClose}>取消</Button>
-          <Button type="button" variant="primary" onClick={() => { onPick(inputVal); onClose(); }}>选择此目录</Button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function DatasetManager({
   datasets: propDatasets,
@@ -331,138 +256,28 @@ export function DatasetManager({
   // Browse modal state
   const [browseField, setBrowseField] = useState<"imageDir" | "annotationDir" | null>(null);
 
-  // Add dataset modal
-  const [addModalOpen, setAddModalOpen] = useState(false);
-  const [addParentId, setAddParentId] = useState<string | null>(null);
-  const [addKind, setAddKind] = useState<"group" | "child">("child");
-  const [addFormat, setAddFormat] = useState<"Labelme" | "异常检测目录">("Labelme");
-  const [addSelectedParent, setAddSelectedParent] = useState<string>("");
-  const [addName, setAddName] = useState("");
-  const [addImagePath, setAddImagePath] = useState("");
-  const [addLabelPath, setAddLabelPath] = useState("");
-  const [addBrowseField, setAddBrowseField] = useState<"image" | "label" | null>(null);
-  const [addBusy, setAddBusy] = useState(false);
-  const [addError, setAddError] = useState("");
-
-  const { preview: addFolderPreview, ready: addFolderReady, error: addFolderError } = useFolderPreview(
-    addImagePath,
-    undefined,
-    addModalOpen && addKind === "child" && addFormat === "异常检测目录"
-  );
-
-  function openAddModal(parentId: string | null = null) {
-    if (!canLeaveDetail(null)) return;
-    setAddParentId(parentId);
-    setAddKind(parentId ? "child" : "group");
-    setAddFormat("Labelme");
-    setAddSelectedParent(parentId || (groups[0]?.group_id || ""));
-    setAddName("");
-    setAddImagePath("");
-    setAddLabelPath("");
-    setAddError("");
-    setAddBusy(false);
-    setAddModalOpen(true);
+  const [addTarget,setAddTarget]=useState<{parentId?:string}|null>(null);
+  function openAddModal(parentId:string|null=null) {
+    if(canLeaveDetail(null))setAddTarget({parentId:parentId??undefined});
   }
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setAddBusy(true);
-    setAddError("");
-    try {
-      if (addKind === "group") {
-        const name = addName.trim();
-        if (!name) {
-          setAddError("请输入数据集名称");
-          setAddBusy(false);
-          return;
-        }
-        const created = await request<DatasetGroup>("/datasets/groups", { name }, "POST");
-        setLocalGroups(prev => [...prev, created]);
-        setAddModalOpen(false);
-        announce("已创建数据集");
-        selectRow(created.group_id);
-        onChanged();
-      } else {
-        const name = addName.trim();
-        const parent = addParentId || addSelectedParent;
-        if (!name || !parent || !addImagePath || (addFormat === "Labelme" && !addLabelPath)) {
-          setAddError("请填写完整的数据集名称及目录路径");
-          setAddBusy(false);
-          return;
-        }
-        let created: Dataset;
-        if (addFormat === "Labelme") {
-          created = await request<Dataset>("/datasets/import", {
-            format: "labelme",
-            name,
-            image_dir: addImagePath,
-            annotation_dir: addLabelPath,
-            group_id: parent,
-            unannotated_is_normal: true,
-          }, "POST");
-        } else {
-          const rules = addFolderPreview ? addFolderPreview.items.map(({ path, role }) => ({ path, role })) : [];
-          created = await request<Dataset>("/datasets/import", {
-            format: "folder_classification",
-            name,
-            root_dir: addImagePath,
-            rules,
-            group_id: parent,
-            preview_fingerprint: addFolderPreview?.preview_fingerprint,
-          }, "POST");
-        }
-        setAddModalOpen(false);
-        announce("已添加子数据集");
-        // Ensure parent is expanded
-        setExpandedGroups(prev => ({ ...prev, [parent]: true }));
-        selectRow(created.dataset_id);
-        onChanged(created.dataset_id);
-      }
-    } catch (err) {
-      setAddError(message(err));
-    } finally {
-      setAddBusy(false);
+  async function deleteDataset(target:{kind:'group';group:DatasetGroup}|{kind:'child';dataset:Dataset}) {
+    let removedIds:string[];
+    if(target.kind==='group'){
+      const result=await request<{deleted_group_id:string;deleted_dataset_ids:string[]}>(
+        `/datasets/groups/${encodeURIComponent(target.group.group_id)}`,undefined,'DELETE');
+      removedIds=result.deleted_dataset_ids;
+      setLocalGroups(previous=>previous.filter(group=>group.group_id!==target.group.group_id));
+    }else{
+      await request(`/datasets/${encodeURIComponent(target.dataset.dataset_id)}`,undefined,'DELETE');
+      removedIds=[target.dataset.dataset_id];
     }
-  }
-
-  // Delete modal
-  const [deleteTarget, setDeleteTarget] = useState<{ kind: "group"; group: DatasetGroup } | { kind: "child"; dataset: Dataset } | null>(null);
-  const [deleteBusy, setDeleteBusy] = useState(false);
-
-  function openDeleteModal(target: { kind: "group"; group: DatasetGroup } | { kind: "child"; dataset: Dataset }, e: React.MouseEvent) {
-    e.stopPropagation();
-    setDeleteTarget(target);
-  }
-
-  async function confirmDelete() {
-    if (!deleteTarget) return;
-    setDeleteBusy(true);
-    try {
-      if (deleteTarget.kind === "group") {
-        const childDatasets = getGroupChildren(deleteTarget.group.group_id);
-        const res = await request<{ deleted_group_id: string; deleted_dataset_ids?: string[] }>(
-          `/datasets/groups/${encodeURIComponent(deleteTarget.group.group_id)}`,
-          undefined,
-          "DELETE"
-        );
-        const removedChildIds = res.deleted_dataset_ids || childDatasets.map(c => c.dataset_id);
-        for (const cid of removedChildIds) {
-          workspace.forgetDataset(cid);
-        }
-        setLocalGroups(prev => prev.filter(g => g.group_id !== deleteTarget.group.group_id));
-        announce(`已删除大数据集「${deleteTarget.group.name}」${removedChildIds.length > 0 ? `及 ${removedChildIds.length} 个子数据集` : ""}`);
-      } else {
-        await request(`/datasets/${encodeURIComponent(deleteTarget.dataset.dataset_id)}`, undefined, "DELETE");
-        workspace.forgetDataset(deleteTarget.dataset.dataset_id);
-        announce("已删除子数据集");
-      }
-      setDeleteTarget(null);
-      onChanged();
-    } catch (err) {
-      announce(message(err));
-    } finally {
-      setDeleteBusy(false);
+    for(const id of removedIds)workspace.forgetDataset(id);
+    setLocalDatasets(previous=>previous.filter(dataset=>!removedIds.includes(dataset.dataset_id)));
+    if(removedIds.includes(selectedId??'')||target.kind==='group'&&selectedId===target.group.group_id){
+      setSelectedId(null);setDrawerOpen(false);
     }
+    announce(target.kind==='group'?'已删除数据集':'已删除子数据集');onChanged();
   }
 
   // Filter logic
@@ -551,7 +366,7 @@ export function DatasetManager({
                       data-id={group.group_id}
                       data-selected={isGroupSelected}
                       onClick={() => selectRow(group.group_id)}
-                      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectRow(group.group_id); } }}
+                      onKeyDown={e => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); selectRow(group.group_id); } }}
                     >
                       <td>
                         <div className="name-area">
@@ -590,7 +405,8 @@ export function DatasetManager({
                       <td>
                         <div className="actions">
                           <IconButton icon="add" type="button" data-add-parent={group.group_id} label={`为 ${group.name} 添加子数据集`} title="添加子数据集" onClick={e => { e.stopPropagation(); openAddModal(group.group_id); }} />
-                          <IconButton icon="delete" type="button" data-delete={group.group_id} label={`删除数据集 ${group.name}`} title="删除数据集" onClick={e => openDeleteModal({ kind: "group", group }, e)} />
+                          <DeleteAction title="删除大数据集" name={group.name} description={`同时移除 ${children.length} 个子数据集，保留源文件。`}
+                            restoreFocus={()=>document.getElementById('search')} onDelete={()=>deleteDataset({kind:'group',group})}/>
                         </div>
                       </td>
                     </tr>
@@ -612,7 +428,7 @@ export function DatasetManager({
                           data-id={child.dataset_id}
                           data-selected={isChildSelected}
                           onClick={() => selectRow(child.dataset_id)}
-                          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectRow(child.dataset_id); } }}
+                          onKeyDown={e => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); selectRow(child.dataset_id); } }}
                         >
                           <td>
                             <div className="name-area child">
@@ -646,7 +462,8 @@ export function DatasetManager({
                           <td className="num">{childLabels}</td>
                           <td>
                             <div className="actions">
-                              <IconButton icon="delete" type="button" data-delete={child.dataset_id} label={`删除子数据集 ${child.name}`} title="删除子数据集" onClick={e => openDeleteModal({ kind: "child", dataset: child }, e)} />
+                              <DeleteAction title="删除数据集" name={child.name} description="保留源文件。"
+                                restoreFocus={()=>document.getElementById('search')} onDelete={()=>deleteDataset({kind:'child',dataset:child})}/>
                             </div>
                           </td>
                         </tr>
@@ -819,7 +636,7 @@ export function DatasetManager({
 
       {/* Directory Browser Modal */}
       {browseField && activeDataset && (
-        <DirectoryPickerModal
+        <DirectoryPickerDialog
           label={browseField === "imageDir" ? (isFolder ? "根目录" : "图像目录") : "标注目录"}
           initialPath={browseField === "imageDir" ? curImageDir : curAnnotationDir}
           onClose={() => setBrowseField(null)}
@@ -832,221 +649,17 @@ export function DatasetManager({
         />
       )}
 
-      {/* Add Dataset Modal */}
-      {addModalOpen && (
-        <div className="modal-scrim" onClick={e => { if (e.target === e.currentTarget && !addBusy) setAddModalOpen(false); }}>
-          <div className="modal add-dataset-modal" role="dialog" aria-modal="true" aria-label="添加数据集">
-            <div className="modal-top">
-              <h2>添加数据集</h2>
-              <IconButton icon="close" type="button" onClick={() => { if (!addBusy) setAddModalOpen(false); }} label="关闭" />
-            </div>
-            <form onSubmit={handleCreate}>
-              <div className="modal-field">
-                <label>添加类型</label>
-                <div className="radio-row" role="radiogroup" aria-label="添加类型">
-                  <label>
-                    <input
-                      type="radio"
-                      name="new-kind"
-                      value="group"
-                      checked={addKind === "group"}
-                      disabled={!!addParentId}
-                      onChange={() => setAddKind("group")}
-                    />
-                    数据集
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="new-kind"
-                      value="child"
-                      checked={addKind === "child"}
-                      onChange={() => setAddKind("child")}
-                    />
-                    子数据集
-                  </label>
-                </div>
-              </div>
-
-              {addKind === "child" && (
-                <>
-                  <div className="modal-field">
-                    <label htmlFor="new-parent">所属数据集</label>
-                    <Select
-                      id="new-parent"
-                      disabled={!!addParentId}
-                      value={addSelectedParent}
-                      onChange={e => setAddSelectedParent(e.target.value)}
-                    >
-                      {groups.map(g => (
-                        <option key={g.group_id} value={g.group_id}>{g.name}</option>
-                      ))}
-                    </Select>
-                  </div>
-
-                  <div className="modal-field">
-                    <label>数据格式</label>
-                    <div className="radio-row" role="radiogroup" aria-label="数据格式">
-                      <label>
-                        <input
-                          type="radio"
-                          name="new-format"
-                          value="Labelme"
-                          checked={addFormat === "Labelme"}
-                          onChange={() => setAddFormat("Labelme")}
-                        />
-                        Labelme
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="new-format"
-                          value="异常检测目录"
-                          checked={addFormat === "异常检测目录"}
-                          onChange={() => setAddFormat("异常检测目录")}
-                        />
-                        异常检测目录
-                      </label>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div className="modal-field">
-                <label htmlFor="new-name">{addKind === "child" ? "子数据集名称" : "数据集名称"}</label>
-                <input
-                  id="new-name"
-                  maxLength={120}
-                  placeholder="请输入数据集名称"
-                  autoComplete="off"
-                  value={addName}
-                  onChange={e => setAddName(e.target.value)}
-                  autoFocus
-                  required
-                />
-              </div>
-
-              {addKind === "child" && (
-                <>
-                  <div className="modal-field">
-                    <label htmlFor="new-path">{addFormat === "Labelme" ? "图像目录" : "根目录"}</label>
-                    <div className="dialog-path">
-                      <input
-                        id="new-path"
-                        placeholder="服务器上的目录"
-                        value={addImagePath}
-                        onChange={e => setAddImagePath(e.target.value)}
-                        required
-                      />
-                      <Button type="button"  onClick={() => setAddBrowseField("image")}>浏览</Button>
-                    </div>
-                  </div>
-
-                  {addFormat === "Labelme" && (
-                    <div className="modal-field">
-                      <label htmlFor="new-label-path">标注目录</label>
-                      <div className="dialog-path">
-                        <input
-                          id="new-label-path"
-                          placeholder="服务器上的目录"
-                          value={addLabelPath}
-                          onChange={e => setAddLabelPath(e.target.value)}
-                          required
-                        />
-                        <Button type="button"  onClick={() => setAddBrowseField("label")}>浏览</Button>
-                      </div>
-                    </div>
-                  )}
-
-                  <p className="modal-hint">
-                    {addFormat === "Labelme"
-                      ? "按相对路径匹配同名 JSON，无标注图作为初始良品候选。"
-                      : "选择包含正常和异常图像子目录的根目录，导入时进行扫描与角色映射。"}
-                  </p>
-                </>
-              )}
-
-              {addError && <p role="alert" className="iad-error" style={{ marginTop: 12 }}>{addError}</p>}
-
-              <div className="modal-actions">
-                <Button type="button"  onClick={() => setAddModalOpen(false)} disabled={addBusy}>取消</Button>
-                <Button type="submit" variant="primary" disabled={addBusy || (addKind === "child" && addFormat === "异常检测目录" && !addFolderReady)}>
-                  {addBusy ? "正在添加…" : "添加"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Directory Browser Modal inside Add Modal */}
-      {addBrowseField && (
-        <DirectoryPickerModal
-          label={addBrowseField === "image" ? (addFormat === "Labelme" ? "图像目录" : "根目录") : "标注目录"}
-          initialPath={addBrowseField === "image" ? addImagePath : addLabelPath}
-          onClose={() => setAddBrowseField(null)}
-          onPick={p => {
-            if (addBrowseField === "image") setAddImagePath(p);
-            else setAddLabelPath(p);
-          }}
-        />
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {deleteTarget && (
-        <div className="modal-scrim" onClick={e => { if (e.target === e.currentTarget && !deleteBusy) setDeleteTarget(null); }}>
-          <div className="modal delete-modal" role="dialog" aria-modal="true" aria-label={deleteTarget.kind === "group" ? "删除大数据集" : "删除数据集"}>
-            <div className="modal-top">
-              <h2>{deleteTarget.kind === "group" ? "删除大数据集" : "删除数据集"}</h2>
-              <IconButton icon="close" type="button" onClick={() => { if (!deleteBusy) setDeleteTarget(null); }} label="关闭" />
-            </div>
-            {deleteTarget.kind === "group" ? (
-              (() => {
-                const childCount = getGroupChildren(deleteTarget.group.group_id).length;
-                return (
-                  <>
-                    <p>确认删除「{deleteTarget.group.name}」？</p>
-                    <p>
-                      {childCount > 0
-                        ? `该大数据集包含 ${childCount} 个子数据集，确认删除将一并移除其下的所有子数据集及其关联数据（不会删除物理源文件）。此操作不可撤销。`
-                        : "该大数据集没有子数据集。此操作不可撤销。"}
-                    </p>
-                    <div className="modal-actions">
-                      <Button type="button"  onClick={() => setDeleteTarget(null)}>取消</Button>
-                      <Button
-                        type="button"
-                        variant="primary"
-                        style={{ background: "#ba3540", borderColor: "#ba3540" }}
-                        disabled={deleteBusy}
-                        onClick={() => void confirmDelete()}
-                      >
-                        {deleteBusy ? "正在删除…" : "确认删除"}
-                      </Button>
-                    </div>
-                  </>
-                );
-              })()
-            ) : (
-              <>
-                <p>确认删除「{deleteTarget.dataset.name}」？</p>
-                <p>此操作会从列表中删除该数据集；不会删除真实文件。</p>
-                <div className="modal-actions">
-                  <Button type="button"  onClick={() => setDeleteTarget(null)}>取消</Button>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    style={{ background: "#ba3540", borderColor: "#ba3540" }}
-                    disabled={deleteBusy}
-                    onClick={() => void confirmDelete()}
-                  >
-                    {deleteBusy ? "正在删除…" : "确认删除"}
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {addTarget&&<DatasetCreateDialog groups={groups} parentId={addTarget.parentId} onClose={()=>setAddTarget(null)}
+        onCreated={value=>{
+          if(value.kind==='group'){
+            setLocalGroups(previous=>[...previous,value.group]);selectRow(value.group.group_id);onChanged();
+          }else{
+            setLocalDatasets(previous=>[...previous,value.dataset]);
+            setExpandedGroups(previous=>({...previous,[value.groupId]:true}));
+            selectRow(value.dataset.dataset_id);onChanged(value.dataset.dataset_id);
+          }
+          setAddTarget(null);announce(value.kind==='group'?'已创建数据集':'已添加子数据集');
+        }}/>}
 
       {/* Toast Notification */}
       <div id="toast" className={`toast ${toastText ? "" : "hidden"}`} role="status">

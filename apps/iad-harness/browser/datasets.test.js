@@ -14,7 +14,7 @@ import {viewport, textZoom, setTheme, verifyWorkbenchLayout, verifySidebarLayout
 
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
-test('native datasets retain real directory, metadata and import operations in the V6 layout', {timeout:180000}, async () => {
+test('native dataset management preserves real directories, metadata and imports', {timeout:180000}, async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-dataset-design-'));
   const output = path.join(workspace, 'runs/browser/dataset-design', String(Date.now()));
   await fs.mkdir(output, {recursive:true});
@@ -67,14 +67,18 @@ for directory,count in [('公头NG',2),('公头OK',3),('母头NG',1),('母头OK'
     await element('button[aria-label="数据集管理"]');
     await(await driver.wait(until.elementLocated(By.xpath('//button[normalize-space(.)="Configure later"]')),10000)).click();
     stage='seed real dataset';
+    const anomalyGroup=await api('/datasets/groups',{name:'异常验证'});
+    const labelmeGroup=await api('/datasets/groups',{name:'Labelme验证'});
     const rules=['公头NG','公头OK','母头NG','母头OK'].map(name=>({path:name,role:name.endsWith('OK')?'normal':'anomaly'}));
     const preview=await api('/datasets/preview',{root_dir:path.join(root,'classification'),rules});
-    const dataset=await api('/datasets/import',{format:'folder_classification',name:'超节点异常检测数据',root_dir:path.join(root,'classification'),rules,preview_fingerprint:preview.preview_fingerprint});
+    const dataset=await api('/datasets/import',{format:'folder_classification',name:'超节点异常检测数据',root_dir:path.join(root,'classification'),rules,preview_fingerprint:preview.preview_fingerprint,group_id:anomalyGroup.group_id});
     await(await element('button[aria-label="数据集管理"]')).click();
     await(await element(`.data-row[data-id="${dataset.dataset_id}"] .name-text`)).click();
     await element('select[aria-label="目录 公头NG 角色"]');
     stage='drawer rescan dirty guard';
     const rootDirInput = await element('input[aria-label="根目录"]');
+    assert.deepEqual(await driver.executeScript('return {height:arguments[0].getBoundingClientRect().height,font:getComputedStyle(arguments[0]).fontSize}',rootDirInput),
+      {height:38,font:'13px'},'目录控件使用公共尺寸和字体');
     await rootDirInput.clear();
     await rootDirInput.sendKeys(path.join(root,'classification'));
     await (await element('select[aria-label="目录 公头NG 角色"] option[value="unlabeled"]')).click();
@@ -121,10 +125,10 @@ for directory,count in [('公头NG',2),('公头OK',3),('母头NG',1),('母头OK'
     const editInput = await element('input[data-edit-input]');
     await editInput.click();
     await driver.actions().keyDown(Key.CONTROL).sendKeys('a').keyUp(Key.CONTROL).perform();
-    await editInput.sendKeys('真实名称已修改');
-    assert.equal(await editInput.getAttribute('value'),'真实名称已修改');
+    await editInput.sendKeys('真实 名称已修改');
+    assert.equal(await editInput.getAttribute('value'),'真实 名称已修改');
     await editInput.sendKeys(Key.ENTER);
-    await driver.wait(async()=>(await api('/datasets/'+dataset.dataset_id)).name==='真实名称已修改',10000);
+    await driver.wait(async()=>(await api('/datasets/'+dataset.dataset_id)).name==='真实 名称已修改',10000);
 
     stage='inline rename esc cancel';
     const pencilBtn2 = await element(`.data-row[data-id="${dataset.dataset_id}"] button[data-edit]`);
@@ -142,7 +146,7 @@ for directory,count in [('公头NG',2),('公头OK',3),('母头NG',1),('母头OK'
     await search.sendKeys('does-not-exist');
     assert.equal((await driver.findElements(By.css('.data-row'))).length, 0);
     await search.clear();
-    await search.sendKeys('真实名称');
+    await search.sendKeys('真实');
     assert.ok((await driver.findElements(By.css('.data-row'))).length >= 1);
     await search.clear();
     await search.sendKeys(Key.ESCAPE);
@@ -150,22 +154,24 @@ for directory,count in [('公头NG',2),('公头OK',3),('母头NG',1),('母头OK'
     stage='import labelme';
     await button('关闭详情抽屉');
     await button('添加数据集');
-    await element('.modal[aria-label="添加数据集"]');
+    await element('dialog[aria-label="添加数据集"][open]');
     await (await element('input[name="new-kind"][value="child"]')).click();
+    await (await element(`#new-parent option[value="${labelmeGroup.group_id}"]`)).click();
     await (await element('#new-name')).sendKeys('Labelme真实导入');
     await (await element('#new-path')).sendKeys(path.join(root,'images'));
     await (await element('#new-label-path')).sendKeys(path.join(root,'labels'));
     await button('添加');
-    await driver.wait(async()=>(await driver.findElements(By.css('.modal'))).length===0, 10000);
+    await driver.wait(async()=>(await driver.findElements(By.css('dialog[open]'))).length===0, 10000);
     const created=(await api('/datasets')).datasets.find(d=>d.name==='Labelme真实导入');
     assert.equal(created.format,'labelme');
     assert.equal(created.total_samples,1);
+    assert.equal(created.group_id,labelmeGroup.group_id);
 
     stage='direct delete';
     await button('关闭详情抽屉');
-    const deleteBtn = await element(`.data-row[data-id="${created.dataset_id}"] button[data-delete]`);
+    const deleteBtn = await element(`.data-row[data-id="${created.dataset_id}"] button[data-icon="delete"]`);
     await deleteBtn.click();
-    await element('.modal[aria-label="删除数据集"]');
+    await element('dialog[aria-label="删除数据集"][open]');
     await button('确认删除');
     await driver.wait(async()=>(await api('/datasets')).datasets.length===1,10000);
 

@@ -36,7 +36,7 @@ export function Modal({ id, title, onClose, children, className = "", size='deta
     const rect = event.currentTarget.getBoundingClientRect();
     return event.target === event.currentTarget && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom);
   };
-  return <dialog id={id} ref={dialog} onKeyDown={event => {if (presentation === 'modal') event.stopPropagation(); onKeyDown?.(event);}} aria-label={title} role={presentation === "inline" ? "region" : undefined} className={`${frame==='fullscreen'?'iad-fullscreen-dialog':'iad-detail-dialog'} ${size!=='detail'?`iad-dialog-${size}`:''} ${presentation === "inline" ? "iad-inline-dialog" : ""} ${className}`} onCancel={event => { event.preventDefault(); event.stopPropagation(); onClose(); }}
+  return <dialog id={id} ref={dialog} onClick={event=>{if(presentation==='modal')event.stopPropagation();}} onKeyDown={event => {if (presentation === 'modal') event.stopPropagation(); onKeyDown?.(event);}} aria-label={title} role={presentation === "inline" ? "region" : undefined} className={`${frame==='fullscreen'?'iad-fullscreen-dialog':'iad-detail-dialog'} ${size!=='detail'?`iad-dialog-${size}`:''} ${presentation === "inline" ? "iad-inline-dialog" : ""} ${className}`} onCancel={event => { event.preventDefault(); event.stopPropagation(); onClose(); }}
     onPointerDown={event => { pressedOutside.current = outside(event); }} onPointerUp={event => { if (pressedOutside.current && outside(event)) onClose(); pressedOutside.current = false; }}>
     {header && presentation === "modal" && <header className="iad-dialog-header"><h2>{title}</h2><IconButton icon="close" type="button" label={`关闭${title}`} title="关闭" onClick={onClose} /></header>}
     {children}

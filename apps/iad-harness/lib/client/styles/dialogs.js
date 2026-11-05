@@ -69,7 +69,6 @@ dialog.iad-detail-dialog {text-align:left;}
 #knowledge-page .kb-v45 .detail-overlay:not(.show),
 #knowledge-page .detail-overlay:not(.show),
 .dc-modal-mask[hidden],
-.modal-scrim[hidden],
 [hidden] {
   display: none !important;
 }
@@ -82,7 +81,6 @@ dialog.iad-detail-dialog {text-align:left;}
 .exp-direction-dialog,
 .dc-dialog,
 .dc-conflict-dialog,
-.modal-scrim .modal:not(.add-dataset-modal),
 dialog.iad-detail-dialog {
   box-sizing: border-box !important;
   background: var(--iad-dialog-bg) !important;
@@ -250,8 +248,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
 #knowledge-page .kb-v45 #create-overlay > .modal,
 dialog.dc-new-dialog,
 dialog.iad-detail-dialog.iad-dialog-form,
-.dc-stats-modal .dc-stats-dialog,
-.modal-scrim .modal:not(.delete-modal):not(.add-dataset-modal) {
+.dc-stats-modal .dc-stats-dialog {
   width: min(var(--iba-dialog-edit-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
   max-width: var(--iba-dialog-edit-width) !important;
   height: auto !important;
@@ -266,8 +263,7 @@ dialog.iad-detail-dialog.iad-dialog-form,
 
 #knowledge-page .kb-v45 #create-overlay > .modal > .modalcontent,
 dialog.dc-new-dialog .dc-new-body,
-.dc-stats-dialog .dc-stats-body,
-.modal-scrim .modal:not(.delete-modal):not(.add-dataset-modal) .modal-body {
+.dc-stats-dialog .dc-stats-body {
   padding: 22px 26px 24px !important;
   overflow-y: auto !important;
   flex: 0 1 auto !important;
@@ -278,7 +274,6 @@ dialog.dc-new-dialog .dc-new-body,
    Tier 3: Small Confirmation / Deletion Dialogs (530px max-width, auto-height)
    Consistency Delete Job, Exploration Delete Job, Dataset Delete, Confirmations
    ========================================================================== */
-.modal-scrim .modal.delete-modal,
 dialog.iad-detail-dialog.iad-dialog-compact {
   width: min(var(--iad-dialog-small-width), calc(100vw - 32px)) !important;
   max-width: var(--iad-dialog-small-width) !important;
@@ -287,21 +282,12 @@ dialog.iad-detail-dialog.iad-dialog-compact {
   min-height: 0 !important;
 }
 
-.modal-scrim .modal.delete-modal .modal-body {
-  padding: 18px 22px 20px !important;
-  font-size: 13.5px !important;
-  line-height: 1.65 !important;
-  color: #41516b !important;
-  flex: none !important;
-}
-
 /* ==========================================================================
    Unified Headers
    ========================================================================== */
 .detail-header,
 .exp-dialog-head,
 .dc-dialog-head,
-.modal-scrim .modal:not(.add-dataset-modal) .modal-top,
 .iad-dialog-header {
   display: flex !important;
   align-items: center !important;
@@ -320,7 +306,6 @@ dialog.iad-detail-dialog.iad-dialog-compact {
 .exp-dialog-head strong,
 .exp-dialog-head h2,
 .dc-dialog-head h2,
-.modal-scrim .modal:not(.add-dataset-modal) .modal-top h2,
 .iad-dialog-header h2 {
   font-size: var(--iad-dialog-title-font) !important;
   font-weight: var(--iad-dialog-title-weight) !important;
@@ -336,8 +321,7 @@ dialog.iad-detail-dialog.iad-dialog-compact {
    Unified Footers & Actions
    ========================================================================== */
 .exp-dialog-foot,
-.dc-dialog-footer,
-.modal-scrim .modal:not(.add-dataset-modal) .modal-actions {
+.dc-dialog-footer {
   display: flex !important;
   align-items: center !important;
   justify-content: flex-end !important;
@@ -353,14 +337,14 @@ dialog.iad-detail-dialog.iad-dialog-compact {
 }
 
 /* Unified Footer Buttons */
-.exp-dialog-foot button,.dc-dialog-footer button,.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button,.iad-dialog-compact button {
+.exp-dialog-foot button,.dc-dialog-footer button,.iad-dialog-compact button {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
 }
 
 /* ==========================================================================
-   V52/V53 Dialog Typography Contract & Status Preservation
+   Dialog Typography and Status
    ========================================================================== */
 .detail-dialog, .exp-dialog, .dc-dialog, #knowledge-page .kb-v45 .modal {
   font-family: var(--iba-dialog-font) !important;

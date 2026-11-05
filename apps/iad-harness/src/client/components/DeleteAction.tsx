@@ -21,7 +21,7 @@ export function DeleteAction({ title, name, description, onDelete, disabled, cla
     finally { setBusy(false); }
   }
   return <>
-    <IconButton icon="delete" ref={trigger} className={className} label={`${title} ${name}`} title={title} disabled={disabled || busy} onClick={() => { submission.current = uuid(); actionStarted.current = false; setError(""); setOpen(true); }} />
+    <IconButton icon="delete" ref={trigger} className={className} label={`${title} ${name}`} title={title} disabled={disabled || busy} onClick={event => { event.stopPropagation(); submission.current = uuid(); actionStarted.current = false; setError(""); setOpen(true); }} />
     {open && <Modal title={title} size="compact" initialFocus={cancel}
       restoreFocus={() => actionStarted.current ? restoreFocus?.() || trigger.current : trigger.current}
       onClose={() => { if (!busy) setOpen(false); }}>
