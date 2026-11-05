@@ -153,7 +153,8 @@ def test_group_analysis_persists_visual_batches_and_resumes_before_model_synthes
 
 
 @pytest.mark.parametrize('corrected', [True, False])
-def test_group_synthesis_corrects_its_verdict_once_and_keeps_completed_visual_batches(dataset, tmp_path, corrected):
+@pytest.mark.parametrize('error_kind', ['overall_verdict','descriptive_text'])
+def test_group_synthesis_corrects_its_output_once_and_keeps_completed_visual_batches(dataset, tmp_path, corrected, error_kind):
     db, registry, config = dataset
     copyfile(tmp_path/'images/dent.png', tmp_path/'images/third.png')
     registry.rescan(config.dataset.id)
@@ -183,6 +184,12 @@ def test_group_synthesis_corrects_its_verdict_once_and_keeps_completed_visual_ba
             refs=[ref for node in summaries['summaries'] for ref in node['result']['overall']['references']]
             result = dict(overall=dict(verdict='MATERIAL' if corrected and attempts == 2 else 'UNCERTAIN', text='保留标注差异与待核对项', references=refs),
                 conclusions=[dict(text='部分成员已确认差异，另有成员证据不足，两者均须保留', references=refs)], limitations=[])
+            if error_kind=='descriptive_text':
+                result['overall']['verdict']='MATERIAL'
+                if attempts==1 or not corrected:
+                    result['overall']['text']='批次@c1存在差异'
+                    result['conclusions'][0]['text']='part.png 的标注差异仍需保留'
+                    result['limitations']=['图像@c2尚有未知项']
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
 
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
@@ -199,8 +206,15 @@ def test_group_synthesis_corrects_its_verdict_once_and_keeps_completed_visual_ba
         assert [call['response_format']['json_schema']['name'] for call in calls] == [
             'GroupAnalysisDraft', 'GroupAnalysisDraft', 'GroupAnalysisSummary', 'GroupAnalysisSummary']
         feedback = json.loads(calls[-1]['messages'][-1]['content'].split('输出校验结果：', 1)[1])
-        assert '批次汇总结论与实际逐批结论不一致' in feedback['schema_validation_errors'][0]['msg']
-        assert json.loads(calls[-1]['messages'][1]['content'])['overall']['verdict'] == 'UNCERTAIN'
+        original=json.loads(calls[-1]['messages'][1]['content'])
+        if error_kind=='descriptive_text':
+            assert {tuple(issue['loc']) for issue in feedback['schema_validation_errors']} == {
+                ('overall','text'),('conclusions',0,'text'),('limitations',0)}
+            assert original['conclusions'][0]['text']=='part.png 的标注差异仍需保留'
+            assert original['overall']['verdict']=='MATERIAL'
+        else:
+            assert '批次汇总结论与实际逐批结论不一致' in feedback['schema_validation_errors'][0]['msg']
+            assert original['overall']['verdict']=='UNCERTAIN'
         saved = runtime.jobs.status(job.run_id)
         assert len(saved['group_analysis_batches']) == 2
         if corrected:

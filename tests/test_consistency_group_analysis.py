@@ -192,7 +192,7 @@ def test_group_assessments_require_full_unique_candidates_and_their_direct_evide
 
 
 @pytest.mark.parametrize('corrected', [True, False])
-@pytest.mark.parametrize('error_kind', ['candidate_coverage', 'crossed_comparison', 'overall_verdict'])
+@pytest.mark.parametrize('error_kind', ['candidate_coverage', 'crossed_comparison', 'overall_verdict', 'descriptive_text'])
 def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_output(dataset, tmp_path, error_kind, corrected):
     from copy import deepcopy
     from shutil import copyfile
@@ -231,6 +231,12 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
                 result['assessments'].pop()
             elif error_kind == 'crossed_comparison':
                 result['overall']['references'][0]['comparison'] = deepcopy(wire_refs[1]['comparison'])
+            elif error_kind == 'descriptive_text':
+                result['overall']['text'] = '候选@c1存在标注差异'
+                result['conclusions'][0]['text'] = 'part.png 的标注存在差异'
+                result['assessments'][0]['explanation'] = '图像@c1存在差异'
+                result['assessments'][0]['findings'] = ['frame.png 有额外标注']
+                result['limitations'] = ['候选@c2尚需核对']
             else:
                 result['overall']['verdict'] = 'EQUIVALENT'
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
@@ -255,11 +261,24 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
         assert calls[1]['messages'][1]['content']
         if error_kind=='overall_verdict':
             assert 'MATERIAL' in feedback['schema_validation_errors'][0]['msg'] and 'EQUIVALENT' in feedback['schema_validation_errors'][0]['msg']
+        if error_kind=='descriptive_text':
+            assert {tuple(issue['loc']) for issue in feedback['schema_validation_errors']} == {
+                ('overall','text'),('conclusions',0,'text'),('assessments',0,'explanation'),
+                ('assessments',0,'findings',0),('limitations',0)}, '正文违规须逐字段一起反馈，不清洗模型原答'
+            original=json.loads(calls[1]['messages'][1]['content'])
+            assert original['conclusions'][0]['text']=='part.png 的标注存在差异'
+            assert original['overall']['verdict']=='MATERIAL'
         if corrected:
             assert view.status == 'COMPLETED', view.error
             assert view.result.overall.verdict == 'MATERIAL'
             assert [ref.model_dump(exclude_none=True) for ref in view.result.overall.references] == refs
             assert len(view.result.assessments) == 2
+            if error_kind=='descriptive_text':
+                legacy='part.png 的既有原始分析'
+                with db.connection() as connection:
+                    connection.execute("UPDATE job_runs SET payload_json=json_set(payload_json,'$.group_analysis.conclusions[0].text',?) WHERE job_id=?",
+                        (legacy,job.run_id))
+                assert analyses.read(request).result.conclusions[0].text==legacy, '格式校验仅约束新模型输出，历史原答仍须可读'
         else:
             assert view.status == 'FAILED' and view.result is None
     finally:
