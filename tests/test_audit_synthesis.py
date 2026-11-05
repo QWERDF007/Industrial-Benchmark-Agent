@@ -525,3 +525,55 @@ def test_audit_repair_receives_all_reference_and_text_errors_together(dataset, m
         assert all(identity.startswith('img_') for identity in detail['suggestion']['analysis']['conclusion']['evidence_ids'])
     finally:
         runtime.close()
+
+
+def test_audit_synthesis_uses_raw_observations_without_provisional_decisions(dataset, mllm_api, self_discovery_prompt):
+    db, _, config = dataset
+    original, _, responses = mllm_api
+    responses['KnowledgeDraft']['checks'][0]['status'] = 'conflicted'
+    original_final = []
+
+    def respond(request):
+        body = json.loads(request.content)
+        response = original.send(request)
+        if request.url.path.endswith('/tokenize'):
+            return response
+        stage = body['response_format']['json_schema']['name']
+        if stage != 'AuditConclusion':
+            return response
+        facts = json.loads(body['messages'][0]['content'][0]['text'].split('冻结综合审计：', 1)[1])
+        assert all(not check['usable_for_judgment'] for check in facts['knowledge']['checks'])
+        observed = facts['visual_observations']
+        assert 'conclusion' not in observed, '程序派生的中间结论不能作为实际视觉观察输入'
+        assert 'check_assessments' not in observed, '已在原始步骤中提供检查观察，不再混入被程序改写的状态副本'
+        for step in observed['joint_steps']:
+            assert not {'suggested_label', 'reason_category', 'confidence'} & step['result'].keys(), '联合观察阶段的临时判断不能冒充最终审计依据'
+            assert all(check['status'] == 'normal' for check in step['result']['check_assessments'])
+            assert step['result']['global_view']
+        result = response.json()
+        answer = json.loads(result['choices'][0]['message']['content'])
+        answer['suggested_label'] = 'UNCERTAIN'
+        answer['reason_category'] = '当前判据尚有分歧'
+        answer['analysis_text'] = '图像呈现连续表面，但现有检查规则仍有分歧，只能保留当前可见观察。'
+        original_final.append(answer)
+        result['choices'][0]['message']['content'] = json.dumps(answer, ensure_ascii=False)
+        return httpx.Response(200, json=result)
+
+    runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        knowledge = runtime.knowledge.start(request=dict(images=[config.dataset.id+':normal.png', config.dataset.id+':normal2.png'], image_count=2),
+            mining_prompt=self_discovery_prompt)
+        runtime.jobs.wait(knowledge['run_id'], 5)
+        assert runtime.jobs.status(knowledge['run_id'])['status'] == 'COMPLETED'
+        target = config.dataset.id+':dent.png'
+        job = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[target])
+        runtime.audit.wait(job['run_id'], 8)
+        final = runtime.audit.status(job['run_id'])
+        assert final['status'] == 'COMPLETED', final['errors']
+        detail = audit_job_sample(dict(run_id=job['run_id'], sample_id=target), db.db_path)
+        analysis = detail['suggestion']['analysis']
+        assert analysis['conclusion']['suggested_label'] == original_final[0]['suggested_label']
+        assert analysis['conclusion']['analysis_text'] == original_final[0]['analysis_text']
+        assert all(step['result']['suggested_label'] == 'PASS' for step in analysis['joint_steps']), '保存的原始模型观察不能被清洗或改写'
+    finally:
+        runtime.close()

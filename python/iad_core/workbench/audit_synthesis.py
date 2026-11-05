@@ -107,7 +107,10 @@ class AuditSynthesis:
         frozen = dict(audit_target=dict(sample_id=axis.sample_id, overview_evidence_id=analysis.overview.evidence_id),
             knowledge=criteria.context,
             consistency=dict(record=axis.model_dump(mode='json'), results=[item.model_dump(mode='json') for item in comparisons]),
-            visual_observations=analysis.model_dump(mode='json', exclude={'reference_evidence', 'image_sources', 'consistency'}), image_owners=owners)
+            visual_observations=analysis.model_dump(mode='json', exclude={
+                'reference_evidence':True, 'image_sources':True, 'consistency':True,
+                'conclusion':True, 'check_assessments':True,
+                'joint_steps':{'__all__':{'result':{'suggested_label','reason_category','confidence'}}}}), image_owners=owners)
         prompt = instruction+'\n冻结综合审计：'+json.dumps(frozen, ensure_ascii=False)
         result = AuditConclusions(self.client).conclude(AuditConclusionInput(instruction, frozen, prepared,
             criteria.check_ids, model_name), context, progress)
