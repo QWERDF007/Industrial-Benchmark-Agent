@@ -8,6 +8,7 @@ from iad_core.consistency.result_models import ResultSelection
 from iad_core.consistency.group_analysis_models import (GROUP_ANALYSIS_SCHEMA, DEFAULT_CANDIDATE_BATCH_SIZE,
     GroupAnalysisDraft, GroupAnalysisStart, GroupAnalysisView, GroupAnalysisBatch)
 from iad_core.consistency.group_analysis_inputs import GroupAnalysisInputs
+from iad_core.consistency.group_analysis_contract import GroupAnalysisContract
 from iad_core.consistency.group_analysis_synthesis import GroupAnalysisSynthesis
 from iad_core.consistency.group_analysis_validation import GroupAnalysisValidation
 from iad_core.storage.database import Database
@@ -115,12 +116,15 @@ class GroupAnalyses(GroupAnalysisQueries):
             ids = batches[index]
             subset = group.model_copy(update={'members':[members[sid] for sid in ids]})
             try:
-                instruction, images = self.inputs.prepare(context, subset)
-                fingerprint = self.inputs.input_fingerprint(instruction, images)
+                prepared = self.inputs.prepare(context, subset)
+                fingerprint = self.inputs.input_fingerprint(prepared.instruction(prepared.facts), prepared.images)
                 batch = cached.get(tuple(ids))
                 if batch is None:
                     response_type = self.validation.response_type(GroupAnalysisDraft, subset)
-                    plan = self.client.plan(response_type, instruction, images, context.payload['model_name'])
+                    contract = GroupAnalysisContract(response_type, group, prepared.images)
+                    contract.record(context, fingerprint)
+                    plan = self.client.plan(contract.response_type, prepared.instruction(contract.encode(prepared.facts)),
+                        contract.images, context.payload['model_name'])
             except (ConsistencyError, ModelCapacityError) as error:
                 if isinstance(error, ConsistencyError) and error.code != 'RESOURCE_LIMIT':
                     raise

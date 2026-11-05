@@ -10,6 +10,8 @@ const firefox=require('selenium-webdriver/firefox.js');
   const tasks=JSON.parse(await fs.readFile(inputPath,'utf8'));
   const prepareOnly=process.argv.includes('--prepare-only');
   const verifyOnly=process.argv.includes('--verify-only');
+  const retryStopped=process.argv.includes('--retry-stopped');
+  assert.ok(!retryStopped||verifyOnly,'原范围恢复须与 --verify-only 一起使用');
   const cleanStopped=process.argv.includes('--clean-stopped');
   assert.ok(!cleanStopped||verifyOnly,'清理已停止记录仅用于 --verify-only');
   assert.ok(!process.argv.includes('--retry-failed'),'不支持 --retry-failed');
@@ -107,6 +109,18 @@ const firefox=require('selenium-webdriver/firefox.js');
           assert.equal(statusGeometry.width,560);assert.equal(statusGeometry.right,statusGeometry.viewport);assert.equal(statusGeometry.header,64);
           assert.ok((await statusDrawer.getText()).includes(job.phase),'抽屉展示实际阶段代码');
           await fs.writeFile(`${output}/${key}-status.png`,await driver.takeScreenshot(),'base64');
+          if(retryStopped){
+            assert.ok(['FAILED','PARTIAL','INTERRUPTED','CANCELLED'].includes(job.status),'仅恢复已停止作业');
+            await click(await statusDrawer.findElement(By.xpath('.//button[normalize-space(.)="按原图组重试"]')));
+            let next;await driver.wait(async()=>{next=await read('analysis/status/'+saved.run_id);return next.run_id!==job.run_id;},30000);
+            assert.equal(next.root_run_id,job.root_run_id);assert.equal(next.total_samples,100);assert.ok(next.completed>=job.completed);
+            const current=JSON.parse(await fs.readFile(reference,'utf8')),record=current.datasets[key].ui_submissions.consistency;
+            record.retry_runs||=[];record.retry_runs.push(next.run_id);await fs.writeFile(reference,JSON.stringify(current,null,2));
+            await fs.writeFile(`${output}/${key}-resume.json`,JSON.stringify({root_run_id:saved.run_id,prior_attempt_id:job.run_id,
+              resumed_attempt_id:next.run_id,submission:'browser-original-scope-retry',preserved_completed:job.completed},null,2));
+            await driver.actions().sendKeys(Key.ESCAPE).perform();
+            console.log('界面恢复原范围一致性',key,next.run_id);continue;
+          }
           await driver.actions().sendKeys(Key.ESCAPE).perform();
           await driver.wait(()=>driver.executeScript(()=>!document.querySelector('dialog[aria-label="作业状态"][open]')),5000);
           assert.equal(await row.getAttribute('aria-selected'),selectionBefore,'状态入口不改变选中作业');

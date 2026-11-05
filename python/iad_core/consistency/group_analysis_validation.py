@@ -31,6 +31,8 @@ class GroupAnalysisValidation:
         def frozen_schema(cls, **options):
             schema = response_type.model_json_schema(**options)
             definitions = schema['$defs']
+            if expected_verdict is not None:
+                definitions['GroupOverallConclusion']['properties']['verdict']['enum'] = [expected_verdict]
             for name in ('GroupAnalysisReference', 'GroupPairAssessment'):
                 if name in definitions:
                     definitions[name]['properties']['candidate_id']['enum'] = candidates
@@ -85,8 +87,10 @@ class GroupAnalysisValidation:
             for assessment in result.assessments:
                 if members[assessment.candidate_id].comparison is None and assessment.verdict != 'UNCERTAIN':
                     raise ValueError('A candidate without direct evidence must remain uncertain')
-            if result.overall.verdict != self.verdict(item.verdict for item in result.assessments):
-                raise ValueError('整组结论不得否定已确认差异或遗漏证据不足的成员')
+            expected = self.verdict(item.verdict for item in result.assessments)
+            if result.overall.verdict != expected:
+                raise ValueError(f'整组结论不得否定已确认差异或遗漏证据不足的成员：'
+                    f'逐候选verdict汇总为{expected}，overall.verdict实际为{result.overall.verdict}。请核对逐候选判断及整组结论')
         for reference in [*result.overall.references, *[ref for conclusion in result.conclusions for ref in conclusion.references]]:
             member = members.get(reference.candidate_id)
             if member is None or allowed_ids is not None and reference.candidate_id not in allowed_ids:

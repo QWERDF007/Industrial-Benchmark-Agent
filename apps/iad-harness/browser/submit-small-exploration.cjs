@@ -8,6 +8,10 @@ const firefox=require('selenium-webdriver/firefox.js');
  assert.ok(taskFile,'通过 --task-file 指定本次探索目标');const tasks=JSON.parse(await fs.readFile(taskFile,'utf8'));
  const reference='runs/verification/v58-two-small/reference.json', output='runs/browser/user-submitted-exploration';await fs.mkdir(output,{recursive:true});
  const retryFailed=process.argv.includes('--retry-failed');
+ const selectedDataset=process.argv.find(value=>value.startsWith('--dataset='))?.slice(10);
+ const replaceIncomplete=process.argv.includes('--replace-incomplete-scope');
+ assert.ok(!selectedDataset||['anomaly','labelme'].includes(selectedDataset));
+ assert.ok(!replaceIncomplete||selectedDataset,'补齐范围须明确指定数据集');
  const state=JSON.parse(await fs.readFile(reference,'utf8'));
  const options=new firefox.Options().addArguments('-headless');options.setBinary('/tmp/iad-firefox128/firefox/firefox');
  const driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder('/tmp/geckodriver')).build();
@@ -18,13 +22,20 @@ const firefox=require('selenium-webdriver/firefox.js');
  try{
   await driver.manage().window().setRect({width:1904,height:1000});await driver.get('http://127.0.0.1:8000/');await click(await element('button[aria-label="方向探索"]'));
   for(const key of ['anomaly','labelme']){
+   if(selectedDataset&&selectedDataset!==key)continue;
    const target=state.datasets[key];
-   const saved=target.ui_submissions?.exploration;
+   let saved=target.ui_submissions?.exploration;
    const status=saved?await read('analysis/status/'+saved.run_id):null;
+   const replaced=replaceIncomplete?saved:null;
+   if(replaceIncomplete){
+    assert.ok(saved&&status.total_samples<100&&!['PENDING','RUNNING'].includes(status.status),'仅替换已停止且范围不足的历史验证');
+    saved=null;
+   }
    if(saved && (!retryFailed || !['FAILED','PARTIAL','INTERRUPTED'].includes(status.status))){console.log('保留已有探索',key,saved.run_id,status.status);continue;}
    const catalog=await read('datasets'),source=catalog.datasets.find(item=>item.dataset_id===target.dataset_id);assert.equal(source.total_samples,100);
    const previous=(await read('analysis/jobs?'+new URLSearchParams({dataset_id:target.dataset_id,analysis_kind:'exploration'}))).jobs;
-   if(!saved)assert.equal(previous.length,0,'未登记的真实作业必须先核对，不能重复创建');
+   if(!saved&&!replaced)assert.equal(previous.length,0,'未登记的真实作业必须先核对，不能重复创建');
+   if(replaced)assert.ok(previous.some(job=>job.run_id===replaced.run_id),'保留真实旧范围记录');
    await click(await element(`#exp-parent option[value="${source.group_id}"]`));
    await click(await element('#exp-child-toggle'));
    for(const input of await driver.findElements(By.css('#exp-child-menu input[type=checkbox]'))){const selected=await input.getAttribute('value')===target.dataset_id;if(await input.isSelected()!==selected)await click(input);}
@@ -56,12 +67,14 @@ const firefox=require('selenium-webdriver/firefox.js');
    const prepared={dataset_id:target.dataset_id,task:tasks[key],preset,selections,prompt};
    await fs.writeFile(`${output}/${key}-prepared.json`,JSON.stringify(prepared,null,2));await fs.writeFile(`${output}/${key}-prepared.png`,await driver.takeScreenshot(),'base64');
    await click(await textButton('启动联合探索'));
-   let job;await driver.wait(async()=>{const list=await read('analysis/jobs?'+new URLSearchParams({dataset_id:target.dataset_id,analysis_kind:'exploration'}));job=list.jobs[0];return !!job;},30000);
+   let job;await driver.wait(async()=>{const list=await read('analysis/jobs?'+new URLSearchParams({dataset_id:target.dataset_id,analysis_kind:'exploration'}));job=list.jobs[0];return !!job&&job.run_id!==replaced?.run_id;},30000);
    const frozen=await read('analysis/node/'+job.run_id);assert.equal(frozen.total_samples,100);assert.deepEqual(frozen.dataset_ids,[target.dataset_id]);
    assert.equal(frozen.request.submission.prompt.text,prompt);assert.equal(frozen.request.submission.normal_images.length,8);assert.equal(frozen.request.submission.defect_images.length,8);
    const proof={run_id:job.run_id,dataset_id:target.dataset_id,total_samples:100,submission:'browser',preset,
     initial_priority:{normal:8,defect:8},prompt_sha256:createHash('sha256').update(prompt).digest('hex')};
-   const current=JSON.parse(await fs.readFile(reference,'utf8')),record=current.datasets[key];record.ui_submissions||={};record.stages||={};record.ui_submissions.exploration=proof;record.stages.exploration={run_id:job.run_id};await fs.writeFile(reference,JSON.stringify(current,null,2));
+   const current=JSON.parse(await fs.readFile(reference,'utf8')),record=current.datasets[key];record.ui_submissions||={};record.stages||={};
+   if(replaced){record.ui_submission_attempts||=[];record.ui_submission_attempts.push({stage:'exploration',submission:replaced,validation:'INCOMPLETE_SCOPE',actual_total_samples:status.total_samples});}
+   record.ui_submissions.exploration=proof;record.stages.exploration={run_id:job.run_id};await fs.writeFile(reference,JSON.stringify(current,null,2));
    await fs.writeFile(`${output}/${key}.json`,JSON.stringify(proof,null,2));console.log('界面提交完整100张探索',key,job.run_id);
    assert.equal(await(await element('#exp-parent')).isEnabled(),true,'后台作业运行期间仍可切换查看其他数据集');
   }

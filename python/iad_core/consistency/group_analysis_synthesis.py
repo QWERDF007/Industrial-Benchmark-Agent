@@ -3,6 +3,7 @@ import json
 
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.group_analysis_models import GroupAnalysisSummary
+from iad_core.consistency.group_analysis_contract import GroupAnalysisContract
 from iad_core.workbench.vision import ModelCapacityError
 
 
@@ -28,19 +29,22 @@ class GroupAnalysisSynthesis:
                 expected = self.validation.verdict(node['result'].overall.verdict for node in selected)
                 allowed = {ref.candidate_id for node in selected for ref in [*node['result'].overall.references,
                     *[ref for conclusion in node['result'].conclusions for ref in conclusion.references]]}
-                instruction = context.payload['request']['analysis_instruction'] + '\n冻结批次分析：' + json.dumps(dict(expected_verdict=expected,
-                    summaries=[dict(node_id=node['node_id'], result=node['result'].model_dump(mode='json')) for node in selected]),
-                    ensure_ascii=False, separators=(',', ':'))
+                facts = dict(expected_verdict=expected,
+                    summaries=[dict(node_id=node['node_id'], result=node['result'].model_dump(mode='json')) for node in selected])
                 if ids in cached:
                     step = cached[ids]
                     result = GroupAnalysisSummary.model_validate(step['result'])
                     self.validation.validate(result, group, allowed, expected_verdict=expected)
                 else:
                     try:
+                        response_type = self.validation.response_type(GroupAnalysisSummary, group, allowed, expected_verdict=expected)
+                        contract = GroupAnalysisContract(response_type, group)
+                        instruction = context.payload['request']['analysis_instruction'] + '\n冻结批次分析：' + json.dumps(
+                            contract.encode(facts), ensure_ascii=False, separators=(',', ':'))
                         if len(instruction.encode()) > self.MAX_TEXT_BYTES:
                             raise ConsistencyError('RESOURCE_LIMIT', '批次汇总超过文本容量')
-                        response_type = self.validation.response_type(GroupAnalysisSummary, group, allowed, expected_verdict=expected)
-                        plan = self.client.plan(response_type, instruction, [], context.payload['model_name'])
+                        contract.record(context, hashlib.sha256(json.dumps(ids).encode()).hexdigest())
+                        plan = self.client.plan(contract.response_type, instruction, [], context.payload['model_name'])
                     except (ConsistencyError, ModelCapacityError) as error:
                         if isinstance(error, ConsistencyError) and error.code != 'RESOURCE_LIMIT':
                             raise

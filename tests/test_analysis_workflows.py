@@ -173,7 +173,8 @@ def test_consistency_workflow_contains_program_comparison_and_full_visual_analys
         body=json.loads(request.content)
         prompt=body['messages'][0]['content'][0]['text']
         group=json.JSONDecoder().raw_decode(prompt.split('冻结图组：')[1])[0]
-        observed_groups.append((group['anchor']['sample_id'],frozenset(group['candidates'])))
+        names={source['sample_id']:config.dataset.id+':'+source['name'] for source in group['sources'].values()}
+        observed_groups.append((names[group['anchor']['sample_id']],frozenset(names[sid] for sid in group['candidates'])))
         refs=[dict(candidate_id=sid,comparison=dict(result_id=member['comparison']['result_id'],
             evidence_id=member['comparison']['evidence_id'])) for sid,member in group['candidates'].items()]
         result=dict(overall=dict(verdict='UNCERTAIN',text='需核查标注策略',references=refs),

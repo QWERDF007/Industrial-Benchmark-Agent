@@ -1,5 +1,6 @@
 import hashlib
 import json
+from dataclasses import dataclass
 from pathlib import Path
 
 from iad_core.consistency.errors import ConsistencyError
@@ -7,9 +8,20 @@ from iad_core.consistency.group_models import FrozenAnalysisGroup
 from iad_core.consistency.review import ConsistencyReview
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.images import EvidenceImages
+from iad_core.evidence.images import PreparedImage
 from iad_core.evidence.retained import RetainedImages
 from iad_core.evidence.consistency_sources import EvidenceSourcesCapture
 from iad_core.workbench.jobs import JobContext
+
+
+@dataclass(frozen=True)
+class PreparedGroupInput:
+    prompt: str
+    facts: dict
+    images: list[PreparedImage]
+
+    def instruction(self, facts: dict) -> str:
+        return self.prompt + '\n冻结图组：' + json.dumps(facts, ensure_ascii=False, separators=(',', ':'))
 
 
 class GroupAnalysisInputs:
@@ -89,9 +101,8 @@ class GroupAnalysisInputs:
                 'verification':saved.result.verification.model_dump(mode='json'),
                 'differences':[difference.model_dump(mode='json') for difference in saved.result.annotation.differences],
                 'review':ConsistencyReview(self.db).context(evidence_id).model_dump(mode='json')})
-        instruction = (context.payload['request']['analysis_instruction'] + '\n冻结图组：'
-            + json.dumps({'anchor': {'sample_id':group.anchor.sample.sample_id,'evidence_id':group.anchor.evidence_id,'side':group.anchor.side},
+        facts = {'anchor': {'sample_id':group.anchor.sample.sample_id,'evidence_id':group.anchor.evidence_id,'side':group.anchor.side},
                 'candidates': {identity:{'evidence_id':member.image.evidence_id,'side':member.image.side,
                     'comparison':member.comparison.model_dump(mode='json') if member.comparison else None}
-                    for identity,member in references.items()}, 'sources':sources,'evidence': contexts}, ensure_ascii=False,separators=(',',':')))
-        return instruction, images
+                    for identity,member in references.items()}, 'sources':sources,'evidence': contexts}
+        return PreparedGroupInput(context.payload['request']['analysis_instruction'], facts, images)

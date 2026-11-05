@@ -54,6 +54,13 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
             assert f'"raw_label":"{label}"' in instruction
         schema = body['response_format']['json_schema']['schema']
         assert schema['$defs']['GroupOverallConclusion']['properties']['text']['maxLength'] == 40
+        assert list(schema['properties']) == ['assessments','conclusions','limitations','overall'], '先逐候选判断，再作整组结论'
+        frozen=json.JSONDecoder().raw_decode(instruction.split('冻结图组：')[1])[0]
+        candidate,member=next(iter(frozen['candidates'].items()))
+        assert candidate == '@c1' and member['comparison']['evidence_id'].startswith('@e'), '传输引用应短且与本批候选绑定'
+        wire_citation=dict(candidate_id=candidate,comparison={**member['comparison'],'difference_id':frozen['evidence'][0]['differences'][0]['difference_id']})
+        wire_citation['comparison'].pop('anchor_side',None)
+        if citation['comparison']['evidence_id']=='invented-evidence': wire_citation['comparison']['evidence_id']='invented-evidence'
         assert '类别值不同' not in schema['$defs']['GroupPairAssessment']['properties']['verdict']['description'], 'Schema不得另附不可编辑的业务判定规则'
         import base64,io
         from PIL import Image
@@ -69,10 +76,10 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
         entered.set()
         assert release.wait(10)
         text = '标注类别不同' if verdict == 'MATERIAL' else '标注视觉基本一致'
-        result = {'assessments': [{'candidate_id':citation['candidate_id'],
+        result = {'assessments': [{'candidate_id':wire_citation['candidate_id'],
             'verdict':verdict,'explanation':text,'findings':[text] if verdict == 'MATERIAL' else []}],
-            'overall':{'verdict':verdict,'text':text,'references':[citation.copy()]},
-            'conclusions': [{'text': text, 'references': [citation.copy()]}], 'limitations': []}
+            'overall':{'verdict':verdict,'text':text,'references':[wire_citation.copy()]},
+            'conclusions': [{'text': text, 'references': [wire_citation.copy()]}], 'limitations': []}
         return httpx.Response(200, json={'id': 'real-protocol-test', 'model': 'test-mllm', 'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
     runtime = WorkbenchRuntime(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
     try:
@@ -102,6 +109,11 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
         assert result.result.conclusions[0].references[0].comparison.evidence_id == compared.evidence_id
         assert result.result.assessments[0].verdict == verdict
         assert result.result.overall.verdict == verdict
+        saved=runtime.jobs.status(started.run_id)
+        bindings=saved['model_reference_bindings'][saved['group_analysis_batches'][0]['input_fingerprint']]
+        assert bindings['@c1']==b
+        wire=json.JSONDecoder().raw_decode(requests[0]['messages'][0]['content'][0]['text'].split('冻结图组：')[1])[0]
+        assert bindings[wire['candidates']['@c1']['comparison']['evidence_id']]==compared.evidence_id
         gallery = GalleryQueries(db)
         query = GalleryQuery(query_id=snapshot.query_id,kind='conflicts')
         assert gallery.query(query).total == 1, 'MLLM基本一致不得从默认问题网格删除'
@@ -147,23 +159,25 @@ def test_group_assessments_require_full_unique_candidates_and_their_direct_evide
     db,registry,config=dataset
     copyfile(tmp_path/'images/dent.png',tmp_path/'images/third.png')
     registry.rescan(config.dataset.id)
-    responses=[]
     def respond(request):
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200,json={'count':1000,'max_model_len':262144})
-        return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(responses[0])}}]})
+        body=json.loads(request.content)
+        frozen=json.JSONDecoder().raw_decode(body['messages'][0]['content'][0]['text'].split('冻结图组：')[1])[0]
+        refs=[dict(candidate_id=sid,comparison=dict(result_id=member['comparison']['result_id'],evidence_id=member['comparison']['evidence_id']))
+            for sid,member in frozen['candidates'].items()]
+        assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',explanation='需核对',findings=[]) for ref in refs]
+        if mode=='missing': assessments.pop()
+        elif mode=='duplicate': assessments[1]=assessments[0].copy()
+        else: refs[0]={**refs[0],'comparison':refs[1]['comparison']}
+        result=dict(assessments=assessments,overall=dict(verdict='UNCERTAIN',text='整组需核对',references=[refs[0]]),
+            conclusions=[dict(text='需逐图核对',references=[refs[0]])],limitations=[])
+        return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
     runtime=WorkbenchRuntime(db,VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
     try:
         anchor=config.dataset.id+':dent.png'
-        pairs=[runtime.consistency_service.compare(ConsistencyCompare(sample_a=anchor,sample_b=config.dataset.id+':'+name+'.png')) for name in ['scratch','third']]
-        assessments=[{'candidate_id':config.dataset.id+':'+name+'.png',
-            'verdict':'UNCERTAIN','explanation':'需核对','findings':[]} for name in ['scratch','third']]
-        conclusions=[{'text':'需逐图核对','references':[{'candidate_id':assessments[0]['candidate_id'],
-            'comparison':{'result_id':pairs[0].result_id,'evidence_id':pairs[0].evidence_id}}]}]
-        if mode=='missing':assessments.pop()
-        elif mode=='duplicate':assessments[1]=assessments[0].copy()
-        else:conclusions[0]['references'][0]['comparison']={'result_id':pairs[1].result_id,'evidence_id':pairs[1].evidence_id}
-        responses.append({'assessments':assessments,'overall':{'verdict':'UNCERTAIN','text':'整组需核对','references':conclusions[0]['references']},'conclusions':conclusions,'limitations':[]})
+        for name in ['scratch','third']:
+            runtime.consistency_service.compare(ConsistencyCompare(sample_a=anchor,sample_b=config.dataset.id+':'+name+'.png'))
         page=ResultQueries(db).query(ConsistencyQuery(selection={'kind':'scope','subjects':{'kind':'all_registered'}}))
         group=GalleryQueries(db).query(GalleryQuery(query_id=page.query_id,kind='groups')).items[0]
         request=GroupAnalysisStart(query_id=page.query_id,kind='groups',group_id=group.group_id,request_id=mode)
@@ -195,25 +209,28 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
             return httpx.Response(200, json={'count': 1000, 'max_model_len': 262144})
         body = json.loads(request.content)
         calls.append(body)
+        frozen=json.JSONDecoder().raw_decode(body['messages'][0]['content'][0]['text'].split('冻结图组：')[1])[0]
+        wire_refs=[dict(candidate_id=sid,comparison=dict(result_id=member['comparison']['result_id'],evidence_id=member['comparison']['evidence_id']))
+            for sid,member in frozen['candidates'].items()]
         if error_kind == 'crossed_comparison':
             reference_schema = body['response_format']['json_schema']['schema']['$defs']['GroupAnalysisReference']
             assert 'anyOf' in reference_schema, '生成约束必须绑定候选与自己的比较记录，不能独立枚举后任意串配'
             branches = reference_schema['anyOf']
-            for ref in refs:
+            for ref in wire_refs:
                 branch = next(item for item in branches if item['properties']['candidate_id']['enum']==[ref['candidate_id']])
                 comparisons = [item for item in branch['properties']['comparison']['anyOf'] if item.get('type')=='object']
                 assert any(item['properties']['evidence_id']['enum']==[ref['comparison']['evidence_id']]
                     and item['properties']['result_id']['enum']==[ref['comparison']['result_id']] for item in comparisons)
-                foreign = next(item for item in refs if item['candidate_id']!=ref['candidate_id'])['comparison']['evidence_id']
+                foreign = next(item for item in wire_refs if item['candidate_id']!=ref['candidate_id'])['comparison']['evidence_id']
                 assert all(foreign not in item['properties']['evidence_id']['enum'] for item in comparisons)
-        result = dict(overall=dict(verdict='MATERIAL', text='标注存在差异', references=deepcopy(refs)),
-            assessments=[dict(candidate_id=ref['candidate_id'], verdict='MATERIAL', explanation='对应标注存在差异', findings=['标注差异']) for ref in refs],
-            conclusions=[dict(text='保留对应标注的差异与实际证据', references=deepcopy(refs))], limitations=[])
+        result = dict(overall=dict(verdict='MATERIAL', text='标注存在差异', references=deepcopy(wire_refs)),
+            assessments=[dict(candidate_id=ref['candidate_id'], verdict='MATERIAL', explanation='对应标注存在差异', findings=['标注差异']) for ref in wire_refs],
+            conclusions=[dict(text='保留对应标注的差异与实际证据', references=deepcopy(wire_refs))], limitations=[])
         if len(calls) == 1 or not corrected:
             if error_kind == 'candidate_coverage':
                 result['assessments'].pop()
             elif error_kind == 'crossed_comparison':
-                result['overall']['references'][0]['comparison'] = deepcopy(refs[1]['comparison'])
+                result['overall']['references'][0]['comparison'] = deepcopy(wire_refs[1]['comparison'])
             else:
                 result['overall']['verdict'] = 'EQUIVALENT'
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
@@ -236,6 +253,8 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
         feedback = json.loads(calls[1]['messages'][0]['content'][0]['text'].split('输出校验结果：', 1)[1])
         assert all(issue['ctx']['repairable_output'] for issue in feedback['schema_validation_errors'])
         assert feedback['previous_response']
+        if error_kind=='overall_verdict':
+            assert 'MATERIAL' in feedback['schema_validation_errors'][0]['msg'] and 'EQUIVALENT' in feedback['schema_validation_errors'][0]['msg']
         if corrected:
             assert view.status == 'COMPLETED', view.error
             assert view.result.overall.verdict == 'MATERIAL'

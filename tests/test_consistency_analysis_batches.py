@@ -27,7 +27,7 @@ def test_default_joint_analysis_uses_one_model_batch_when_it_fits_and_splits_wit
     for index in range(11):
         copyfile(tmp_path/'images/dent.png', tmp_path/f'images/candidate-{index}.png')
     registry.rescan(config.dataset.id)
-    observed, references = [], []
+    observed = []
 
     def respond(request):
         body = json.loads(request.content)
@@ -37,12 +37,13 @@ def test_default_joint_analysis_uses_one_model_batch_when_it_fits_and_splits_wit
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200, json={'count': 262144 if visual and len(group['candidates']) > capacity else 1000, 'max_model_len':262144})
         if visual:
-            observed.append(set(group['candidates']))
+            names={source['sample_id']:config.dataset.id+':'+source['name'] for source in group['sources'].values()}
+            observed.append({names[sid] for sid in group['candidates']})
             refs = [dict(candidate_id=sid, comparison=dict(result_id=member['comparison']['result_id'], evidence_id=member['comparison']['evidence_id']))
                 for sid, member in group['candidates'].items()]
-            references.extend(refs)
         else:
-            refs = references
+            summaries=json.JSONDecoder().raw_decode(text.split('冻结批次分析：')[1])[0]
+            refs=[ref for node in summaries['summaries'] for ref in node['result']['overall']['references']]
         result = dict(overall=dict(verdict='UNCERTAIN', text='标注依据待核对', references=refs),
             conclusions=[dict(text='保留当前图像的标注比较依据', references=refs)], limitations=[])
         if visual:
@@ -114,7 +115,8 @@ def test_group_analysis_persists_visual_batches_and_resumes_before_model_synthes
             definitions=body['response_format']['json_schema']['schema']['$defs']
             assert {branch['properties']['candidate_id']['enum'][0] for branch in definitions['GroupAnalysisReference']['anyOf']}==set(citations)
             assert not any(part['type']=='image_url' for part in parts)
-            refs=list(citations.values())
+            summaries=json.JSONDecoder().raw_decode(parts[0]['text'].split('冻结批次分析：')[1])[0]
+            refs=[ref for node in summaries['summaries'] for ref in node['result']['overall']['references']]
             result=dict(overall=dict(verdict='MATERIAL',text='标注存在差异',references=refs),
                 conclusions=[dict(text='已完成批次均有标注差异',references=refs)],limitations=['汇总依据已保存的逐批视觉分析'])
         return httpx.Response(200,json={'choices':[{'message':{'content':json.dumps(result)}}]})
@@ -155,7 +157,7 @@ def test_group_synthesis_corrects_its_verdict_once_and_keeps_completed_visual_ba
     db, registry, config = dataset
     copyfile(tmp_path/'images/dent.png', tmp_path/'images/third.png')
     registry.rescan(config.dataset.id)
-    calls, refs = [], []
+    calls = []
 
     def respond(request):
         if request.url.path.endswith('/tokenize'):
@@ -168,8 +170,8 @@ def test_group_synthesis_corrects_its_verdict_once_and_keeps_completed_visual_ba
             payload = json.JSONDecoder().raw_decode(prompt.split('冻结图组：', 1)[1])[0]
             candidate, member = next(iter(payload['candidates'].items()))
             citation = dict(candidate_id=candidate, comparison=dict(result_id=member['comparison']['result_id'], evidence_id=member['comparison']['evidence_id']))
-            refs.append(citation)
-            verdict = 'MATERIAL' if candidate.endswith('scratch.png') else 'UNCERTAIN'
+            names={source['sample_id']:source['name'] for source in payload['sources'].values()}
+            verdict = 'MATERIAL' if names[candidate]=='scratch.png' else 'UNCERTAIN'
             result = dict(overall=dict(verdict=verdict, text='保留标注差异与待核对项', references=[citation]),
                 assessments=[dict(candidate_id=candidate, verdict=verdict, explanation='保留原始标注的可见差异或证据限制', findings=[])],
                 conclusions=[dict(text='仅概括本批实际观察', references=[citation])], limitations=[])
@@ -177,6 +179,8 @@ def test_group_synthesis_corrects_its_verdict_once_and_keeps_completed_visual_ba
             assert name == 'GroupAnalysisSummary'
             assert not any(part['type'] == 'image_url' for part in body['messages'][0]['content'])
             attempts = sum(call['response_format']['json_schema']['name'] == name for call in calls)
+            summaries=json.JSONDecoder().raw_decode(prompt.split('冻结批次分析：')[1])[0]
+            refs=[ref for node in summaries['summaries'] for ref in node['result']['overall']['references']]
             result = dict(overall=dict(verdict='MATERIAL' if corrected and attempts == 2 else 'UNCERTAIN', text='保留标注差异与待核对项', references=refs),
                 conclusions=[dict(text='部分成员已确认差异，另有成员证据不足，两者均须保留', references=refs)], limitations=[])
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
@@ -223,7 +227,7 @@ def test_full_scope_consistency_sends_distinct_images_to_mllm_without_requiring_
         parts=body['messages'][0]['content']
         assert '只分析当前冻结范围的真实标注' in parts[0]['text']
         payload=json.JSONDecoder().raw_decode(parts[0]['text'].split('冻结图组：')[1])[0]
-        observed.extend(source['sample_id'] for source in payload['sources'].values())
+        observed.extend(config.dataset.id+':'+source['name'] for source in payload['sources'].values())
         assert any(part['type']=='image_url' for part in parts)
         if len(generations) in (1, 2):
             return httpx.Response(200,json={'choices':[{'message':{'content':'{}'}}]})
