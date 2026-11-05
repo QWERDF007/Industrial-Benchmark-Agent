@@ -13100,13 +13100,7 @@ button.iad-job-status-button{border:0;background:transparent;padding:0;min-heigh
 
 
 /* Detail Modal */
-.detail-overlay {
-  z-index: 150;
-  background: rgba(23, 34, 51, 0.68) !important;
-  padding: var(--iad-content-modal-gutter) !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
+
 
 .detail-modal {
   width: min(var(--iad-content-modal-width), calc(100vw - 2 * var(--iad-content-modal-gutter))) !important;
@@ -14228,67 +14222,6 @@ button.iad-job-status-button{border:0;background:transparent;padding:0;min-heigh
 .dc-dialog-head-actions button{white-space:nowrap}
 @media(max-width:1000px){.dc-compare-photo{height:210px}.dc-model-verdict .dc-verdict-pending{margin-left:0}}
 
-/* V20 \u2014 shared near-full-viewport dialog geometry: image details and direction details. */
-:root { --iad-content-modal-gutter: 26px; --iad-content-modal-radius: 7px; }
-.detail-overlay {
-  padding:var(--iad-content-modal-gutter) !important;
-  background:rgba(23,34,51,.68) !important;
-  align-items:stretch !important;
-  justify-content:stretch !important;
-}
-.detail-dialog {
-  width:100% !important;
-  max-width:none !important;
-  height:100% !important;
-  max-height:100% !important;
-  min-height:0 !important;
-  margin:0 !important;
-  border:1px solid #d9e2ed !important;
-  border-radius:var(--iad-content-modal-radius) !important;
-  box-shadow:0 20px 64px rgba(14,26,48,.27) !important;
-  display:flex !important;
-  flex-direction:column !important;
-  overflow:hidden !important;
-}
-.detail-header {
-  min-height:61px;
-  height:auto;
-  flex:none;
-  padding:14px 28px !important;
-  display:flex;
-  align-items:center !important;
-  justify-content:space-between;
-  gap:16px;
-  border-bottom:1px solid #e3eaf2;
-}
-.detail-title {
-  font-size:17px;
-  font-weight:650;
-  color:#182941;
-  line-height:1.5;
-}
-.detail-scroll {
-  flex:1;
-  min-height:0;
-  overflow-y:auto;
-  overscroll-behavior-y:contain;
-  scrollbar-gutter:stable;
-  padding:22px 28px 28px !important;
-}
-.detail-preview {height:clamp(280px,49dvh,560px);flex:none;}
-.detail-content {margin-top:20px;}
-@media(max-width:840px) {
-  :root { --iad-content-modal-gutter: 14px; }
-  .detail-header {padding:13px 18px !important;min-height:56px;}
-  .detail-scroll {padding:16px 18px 22px !important;}
-  .detail-preview {height:clamp(220px,36dvh,390px);}
-}
-@media(max-width:500px) {
-  :root { --iad-content-modal-gutter: 10px; }
-  .detail-title {font-size:15px;}
-}
-
-
 /* V22: Shared 38px controls, 8px icon spacing, page headings, one unified table/section rhythm. */
 .exp-heading,.dc-page-heading{min-height:42px;display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 18px}
 .dc-page-heading h1,.exp-heading h1{margin:0;font-size:24px;font-weight:670;letter-spacing:-.4px;line-height:1.35}
@@ -14583,33 +14516,6 @@ button.iad-job-status-button{border:0;background:transparent;padding:0;min-heigh
 }
 .dc-verdict-symbol:focus-visible {
   outline: 2px solid #3873dd !important;
-}
-
-/* Image detail layout */
-:root {
-  --iad-content-modal-gutter: var(--iba-dialog-gap, clamp(12px, 2.5vw, 32px));
-  --iad-content-modal-radius: 8px;
-  --iad-content-modal-width: 1380px;
-  --iad-content-modal-height: 820px;
-}
-.detail-overlay {
-  padding: var(--iad-content-modal-gutter) !important;
-  background: rgba(23, 34, 51, 0.68) !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-.detail-dialog {
-  width: min(var(--iad-content-modal-width), calc(100vw - 2 * var(--iad-content-modal-gutter))) !important;
-  height: min(var(--iad-content-modal-height), calc(100dvh - 2 * var(--iad-content-modal-gutter))) !important;
-  max-width: none !important;
-  max-height: none !important;
-  min-height: 0 !important;
-  flex: none !important;
-  margin: 0 auto !important;
-  border-radius: var(--iad-content-modal-radius) !important;
-  border: 1px solid #d9e2ed !important;
-  overflow: hidden !important;
-  box-shadow: 0 20px 64px rgba(14, 26, 48, 0.27) !important;
 }
 
 .dc-stats-content {
@@ -14999,8 +14905,7 @@ button.iad-job-status-button{border:0;background:transparent;padding:0;min-heigh
 .empty{min-height:200px;border:1px dashed var(--border,#dbe2eb);border-radius:8px;display:grid;place-items:center;color:#738398;background:#fff}
 
 .full-overlay {position:fixed;inset:0;z-index:10010;display:flex;align-items:stretch;justify-content:stretch;padding:0;background:#1c2633}
-.detail-overlay.hidden, .full-overlay.hidden {display:none !important}
-.detail-overlay.show {display:flex !important}
+.full-overlay.hidden {display:none !important}
 .detail-preview{width:100%;height:355px;display:flex;justify-content:center;align-items:center;border:1px solid var(--border2,#e6ebf1);border-radius:6px;background:#f2f5f9;cursor:zoom-in;padding:0;position:relative;overflow:hidden}
 .detail-preview:hover{border-color:#95afed}
 .detail-preview:focus-visible{outline:2px solid var(--blue,#285ed6)}
@@ -15012,7 +14917,7 @@ button.iad-job-status-button{border:0;background:transparent;padding:0;min-heigh
 .preview-overlay .bbox:nth-child(even){border-color:#ffca64}
 .detail-preview-hint {position:absolute;right:11px;bottom:11px;background:#17243bd9;border-radius:4px;padding:5px 9px;color:#fff;font-size:11px;opacity:0;transition:opacity .15s}
 .detail-preview:hover .detail-preview-hint,.detail-preview:focus-visible .detail-preview-hint{opacity:1}
-.detail-content {padding:16px 0 0}
+.detail-content {margin-top:20px;padding:16px 0 0}
 .detail-section-heading{font-size:13px;font-weight:650;margin:0 0 12px;color:#26344c}
 .detail-meta {display:grid;grid-template-columns:104px minmax(0,1fr);gap:11px 20px;margin:0;font-size:12px;align-items:start}
 .detail-meta dt{color:#72829b}
@@ -15186,11 +15091,7 @@ dialog.iad-detail-dialog {text-align:left;}
 }
 
 
-.detail-overlay.hidden,
-.detail-overlay:not(.show),
 .overlay:not(.show),
-#knowledge-page .kb-v45 .detail-overlay:not(.show),
-#knowledge-page .detail-overlay:not(.show),
 [hidden] {
   display: none !important;
 }
@@ -15222,7 +15123,6 @@ dialog.iad-detail-dialog {
    Tier 1: Large Detail Dialogs (1380px max-width, 820px max-height)
    Image Detail, Exploration Direction Detail, Consistency Conflict Compare, Knowledge Detail
    ========================================================================== */
-.detail-overlay .detail-dialog,
 .detail-dialog,
 .exp-direction-dialog,
 .dc-conflict-dialog,
@@ -15253,7 +15153,6 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
 }
 
 /* Detail dialog internal scrollable body - scrolls only when needed */
-.detail-overlay .detail-scroll,
 .detail-scroll,
 .exp-direction-dialog .exp-dialog-main,
 #dc-compare-mask .dc-dialog-body,
@@ -15404,7 +15303,6 @@ dialog.iad-detail-dialog.iad-dialog-compact {
 /* ==========================================================================
    Unified Headers
    ========================================================================== */
-.detail-header,
 .exp-dialog-head,
 .dc-dialog-head,
 .iad-dialog-header {
@@ -15421,7 +15319,6 @@ dialog.iad-detail-dialog.iad-dialog-compact {
   box-sizing: border-box !important;
 }
 
-.detail-title,
 .exp-dialog-head strong,
 .exp-dialog-head h2,
 .dc-dialog-head h2,
@@ -15471,7 +15368,7 @@ dialog.iad-detail-dialog.iad-dialog-compact {
   color: var(--iba-dialog-ink) !important;
 }
 
-.detail-dialog :is(.detail-header, .detail-scroll, .detail-footer),
+.detail-dialog :is(.detail-scroll, .detail-footer),
 .exp-dialog :is(.exp-dialog-head, .exp-dialog-main, .exp-dialog-foot),
 .dc-dialog :is(.dc-dialog-head, .dc-dialog-body, .dc-dialog-footer),
 #knowledge-page .kb-v45 .modal :is(.modalheader, .modalcontent, .modalfooter) {
@@ -15531,13 +15428,6 @@ dialog.iad-detail-dialog.iad-dialog-compact {
   }
 }
 
-@media (max-width: 760px) {
-  .detail-overlay,
-  #knowledge-page .kb-v45 .detail-overlay {
-    padding: 12px !important;
-  }
-
-}
 
 dialog.iad-drawer>.iad-dialog-header{height:64px!important;min-height:64px!important}
 `;
@@ -16156,7 +16046,6 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 
   // src/client/components/ImagesPage.tsx
   var import_react63 = __require("react");
-  var import_react_dom4 = __require("react-dom");
 
   // src/client/components/AnnotatedImageStage.tsx
   var import_react62 = __require("react");
@@ -16364,67 +16253,21 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       return () => controller.abort();
     }, [selectedChildIds, quality, annotation, category, search, page, pageSize2, refreshRev]);
     const [viewerIndex, setViewerIndex] = (0, import_react63.useState)(-1);
-    const [detailModalOpen, setDetailModalOpen] = (0, import_react63.useState)(false);
     const [fullscreen, setFullscreen] = (0, import_react63.useState)(false);
-    const [sampleDetail, setSampleDetail] = (0, import_react63.useState)(null);
-    const [detailLoading, setDetailLoading] = (0, import_react63.useState)(false);
     const activeSample = viewerIndex >= 0 && viewerIndex < samples.length ? samples[viewerIndex] : null;
-    (0, import_react63.useEffect)(() => {
-      if (!activeSample) {
-        setSampleDetail(null);
-        return;
-      }
-      const controller = new AbortController();
-      setDetailLoading(true);
-      request(`/sample/${encodeURIComponent(activeSample.sample_id)}`, void 0, void 0, controller.signal).then((res) => {
-        if (!controller.signal.aborted) setSampleDetail(res);
-      }).catch(() => {
-      }).finally(() => {
-        if (!controller.signal.aborted) setDetailLoading(false);
-      });
-      return () => controller.abort();
-    }, [activeSample]);
-    const openViewer = (0, import_react63.useCallback)((sample, index3) => {
-      setViewerIndex(index3);
-      setDetailModalOpen(true);
-      setFullscreen(false);
-      document.body.style.overflow = "hidden";
-    }, []);
-    const closeViewer = (0, import_react63.useCallback)(() => {
-      setDetailModalOpen(false);
-      setFullscreen(false);
-      setViewerIndex(-1);
-      document.body.style.overflow = "";
-    }, []);
-    const openFullscreen = (0, import_react63.useCallback)(() => {
-      setFullscreen(true);
-    }, []);
-    const closeFullscreen = (0, import_react63.useCallback)(() => {
-      setFullscreen(false);
-    }, []);
-    (0, import_react63.useEffect)(() => {
-      if (viewerIndex < 0 || fullscreen) return;
-      function onKeyDown(e) {
-        if (e.key === "Escape") {
-          e.preventDefault();
-          closeViewer();
-        }
-      }
-      document.addEventListener("keydown", onKeyDown);
-      return () => document.removeEventListener("keydown", onKeyDown);
-    }, [viewerIndex, fullscreen, closeViewer]);
+    const { data: sampleDetail, loading: detailLoading, error: detailError } = useResource(
+      activeSample ? `/sample/${encodeURIComponent(activeSample.sample_id)}` : null
+    );
     const sampleDataset = (0, import_react63.useMemo)(() => {
       if (!activeSample) return null;
       return datasets.find((d) => d.dataset_id === activeSample.dataset_id) || activeDatasets[0] || null;
     }, [activeSample, datasets, activeDatasets]);
-    const isMatchingSample = activeSample && sampleDetail?.sample.sample_id === activeSample.sample_id;
-    const currentDetail = isMatchingSample ? sampleDetail : null;
-    const detailAnnotations = currentDetail?.annotations || [];
+    const detailAnnotations = sampleDetail?.annotations || [];
     const bboxes = (0, import_react63.useMemo)(() => {
       return detailAnnotations.filter((a) => a.bbox && a.bbox.length >= 4);
     }, [detailAnnotations]);
-    const imgW = currentDetail?.sample.width || activeSample?.width || 955;
-    const imgH = currentDetail?.sample.height || activeSample?.height || 713;
+    const imgW = sampleDetail?.sample.width || activeSample?.width || 955;
+    const imgH = sampleDetail?.sample.height || activeSample?.height || 713;
     return /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "main", style: { minWidth: 0, width: "100%", padding: 0 }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(WorkbenchHeader, { pageId: "industrial-images" }),
       /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(
@@ -16553,7 +16396,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             label: filename,
             "data-idx": idx,
             "data-sample-id": s.sample_id,
-            onClick: () => openViewer(s, idx)
+            onClick: () => {
+              setViewerIndex(idx);
+              setFullscreen(false);
+            }
           },
           s.sample_id
         );
@@ -16562,133 +16408,118 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         setPage(number);
         document.getElementById("grid")?.scrollIntoView({ block: "start", behavior: "smooth" });
       } }),
-      typeof document !== "undefined" && (0, import_react_dom4.createPortal)(
-        /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(import_jsx_runtime65.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(
-            "div",
+      activeSample && /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(Modal, { title: "\u56FE\u50CF\u8BE6\u60C5", id: "overlay", className: "detail-dialog", onClose: () => {
+        setViewerIndex(-1);
+        setFullscreen(false);
+      }, children: /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "detail-scroll", "aria-busy": detailLoading, children: [
+        detailError && /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { role: "alert", className: "iad-error", children: detailError }),
+        activeSample && /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(import_jsx_runtime65.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(
+            "button",
             {
-              id: "overlay",
-              className: `detail-overlay ${detailModalOpen && !fullscreen ? "show" : "hidden"}`,
-              role: "presentation",
-              onClick: (e) => {
-                if (e.target === e.currentTarget) closeViewer();
-              },
-              children: /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("section", { className: "detail-dialog", role: "dialog", "aria-modal": "true", "aria-labelledby": "detail-title", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("header", { className: "detail-header", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("h2", { className: "detail-title", id: "detail-title", children: "\u56FE\u50CF\u8BE6\u60C5" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(IconButton, { icon: "close", type: "button", id: "close", title: "\u5173\u95ED\u56FE\u50CF\u8BE6\u60C5", label: "\u5173\u95ED\u56FE\u50CF\u8BE6\u60C5", onClick: closeViewer })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("div", { className: "detail-scroll", children: activeSample && /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(import_jsx_runtime65.Fragment, { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(
-                    "button",
-                    {
-                      id: "detail-preview",
-                      type: "button",
-                      className: "detail-preview",
-                      "aria-label": "\u6253\u5F00\u5927\u56FE\u68C0\u89C6\u5668",
-                      title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE\u4E0E\u6807\u6CE8",
-                      onClick: openFullscreen,
-                      children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(
-                          AnnotatedImageStage,
-                          {
-                            src: mediaUrl(activeSample, "image"),
-                            alt: activeSample.relative_path.split("/").pop(),
-                            width: imgW,
-                            height: imgH,
-                            bboxes
-                          }
-                        ),
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("span", { className: "detail-preview-hint", children: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE" })
-                      ]
-                    }
-                  ),
-                  /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("section", { className: "detail-content", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("h3", { className: "detail-section-heading", children: "\u56FE\u50CF\u4FE1\u606F" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("dl", { className: "detail-meta", id: "detail-fields", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dt", { children: "\u56FE\u50CF\u8DEF\u5F84" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dd", { className: "path-value", children: sampleDetail?.sample.image_path || activeSample.relative_path }),
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dt", { children: "\u56FE\u50CF\u540D" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dd", { children: activeSample.relative_path.split("/").pop() }),
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dt", { children: "UUID" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dd", { children: activeSample.sample_uuid }),
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dt", { children: "\u5206\u8FA8\u7387" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dd", { children: `${sampleDetail?.sample.width || activeSample.width} \xD7 ${sampleDetail?.sample.height || activeSample.height}` })
-                    ] })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("section", { className: "detail-part", id: "detail-ann-section", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "detail-annotation-heading", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("h3", { className: "detail-section-heading", id: "detail-ann-title", children: "\u6807\u6CE8\u4FE1\u606F" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("span", { className: "detail-ann-summary", id: "detail-ann-count", children: sampleDataset?.format === "folder_classification" ? "\u5171 1 \u4E2A\u6807\u6CE8" : `\u5171 ${detailAnnotations.length} \u4E2A\u6807\u6CE8` })
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("div", { id: "detail-ann-content", children: sampleDataset?.format === "folder_classification" ? /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("table", { className: "detail-ann-table", "aria-label": "\u5F02\u5E38\u68C0\u6D4B\u6807\u6CE8\u5217\u8868", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("tr", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "#" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u6807\u6CE8\u7C7B\u522B" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u7C7B\u578B" })
-                      ] }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("tbody", { children: /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("tr", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: "1" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: activeSample.quality_status === "FAIL" ? "NG" : "OK" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: "\u5F02\u5E38\u68C0\u6D4B" })
-                      ] }) })
-                    ] }) : detailAnnotations.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("table", { className: "detail-ann-table", "aria-label": "Labelme \u6807\u6CE8\u5217\u8868", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("tr", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "#" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u6807\u6CE8\u7C7B\u522B" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u7C7B\u578B" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u6570\u636E" })
-                      ] }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("tbody", { children: detailAnnotations.map((a, k) => /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("tr", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: k + 1 }),
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: a.raw_label }),
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: a.annotation_type || "bbox" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { className: "ann-value", children: a.bbox ? a.bbox.map((v) => Number(v).toFixed(0)).join(", ") : "-" })
-                      ] }, a.annotation_id || k)) })
-                    ] }) : /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { className: "detail-fallback", children: "\u65E0\u6807\u6CE8" }) })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("section", { className: "detail-model-section", "aria-labelledby": "detail-model-title", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("h3", { className: "detail-section-heading", id: "detail-model-title", children: "\u6A21\u578B\u89C2\u5BDF" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("div", { id: "detail-model-content", children: sampleDetail?.suggestion ? /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(import_jsx_runtime65.Fragment, { children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("p", { className: "detail-model-result", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("strong", { children: sampleDetail.suggestion.suggested_label === "FAIL" ? "\u53D1\u73B0\u7591\u70B9" : sampleDetail.suggestion.suggested_label === "PASS" ? "\u5224\u5B9A\u6B63\u5E38" : "\u672A\u5224\u5B9A" }),
-                        sampleDetail.suggestion.reason_category ? `\uFF08${sampleDetail.suggestion.reason_category}\uFF09` : ""
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { className: "detail-model-text", children: sampleDetail.suggestion.notes || "\u65E0\u9644\u6CE8\u3002" })
-                    ] }) : /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { className: "detail-model-text", children: "\u5C1A\u65E0\u6A21\u578B\u89C2\u5BDF\u3002" }) })
-                  ] })
-                ] }) })
-              ] })
+              id: "detail-preview",
+              type: "button",
+              className: "detail-preview",
+              "aria-label": "\u6253\u5F00\u5927\u56FE\u68C0\u89C6\u5668",
+              title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE\u4E0E\u6807\u6CE8",
+              onClick: () => setFullscreen(true),
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(
+                  AnnotatedImageStage,
+                  {
+                    src: mediaUrl(activeSample, "image"),
+                    alt: activeSample.relative_path.split("/").pop(),
+                    width: imgW,
+                    height: imgH,
+                    bboxes
+                  }
+                ),
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("span", { className: "detail-preview-hint", children: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE" })
+              ]
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(
-            FullscreenViewer,
-            {
-              open: fullscreen,
-              item: activeSample ? {
-                id: activeSample.sample_id,
-                sampleId: activeSample.sample_id,
-                title: activeSample.relative_path,
-                imageUrl: mediaUrl(activeSample, "image"),
-                width: activeSample.width,
-                height: activeSample.height,
-                bboxes
-              } : null,
-              items: samples.map((s) => ({
-                id: s.sample_id,
-                sampleId: s.sample_id,
-                title: s.relative_path,
-                imageUrl: mediaUrl(s, "image"),
-                width: s.width,
-                height: s.height
-              })),
-              currentIndex: viewerIndex,
-              onClose: closeFullscreen,
-              onNavigate: setViewerIndex
-            }
-          )
-        ] }),
-        document.body
+          /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("section", { className: "detail-content", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("h3", { className: "detail-section-heading", children: "\u56FE\u50CF\u4FE1\u606F" }),
+            /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("dl", { className: "detail-meta", id: "detail-fields", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dt", { children: "\u56FE\u50CF\u8DEF\u5F84" }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dd", { className: "path-value", children: sampleDetail?.sample.image_path || activeSample.relative_path }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dt", { children: "\u56FE\u50CF\u540D" }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dd", { children: activeSample.relative_path.split("/").pop() }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dt", { children: "UUID" }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dd", { children: activeSample.sample_uuid }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dt", { children: "\u5206\u8FA8\u7387" }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dd", { children: `${sampleDetail?.sample.width || activeSample.width} \xD7 ${sampleDetail?.sample.height || activeSample.height}` })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("section", { className: "detail-part", id: "detail-ann-section", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "detail-annotation-heading", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("h3", { className: "detail-section-heading", id: "detail-ann-title", children: "\u6807\u6CE8\u4FE1\u606F" }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("span", { className: "detail-ann-summary", id: "detail-ann-count", children: sampleDataset?.format === "folder_classification" ? "\u5171 1 \u4E2A\u6807\u6CE8" : `\u5171 ${detailAnnotations.length} \u4E2A\u6807\u6CE8` })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("div", { id: "detail-ann-content", children: detailLoading ? /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { children: "\u6B63\u5728\u8BFB\u53D6\u6807\u6CE8\u2026" }) : detailError ? null : sampleDataset?.format === "folder_classification" ? /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("table", { className: "detail-ann-table", "aria-label": "\u5F02\u5E38\u68C0\u6D4B\u6807\u6CE8\u5217\u8868", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "#" }),
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u6807\u6CE8\u7C7B\u522B" }),
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u7C7B\u578B" })
+              ] }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("tbody", { children: /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: "1" }),
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: activeSample.quality_status === "FAIL" ? "NG" : "OK" }),
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: "\u5F02\u5E38\u68C0\u6D4B" })
+              ] }) })
+            ] }) : detailAnnotations.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("table", { className: "detail-ann-table", "aria-label": "Labelme \u6807\u6CE8\u5217\u8868", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "#" }),
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u6807\u6CE8\u7C7B\u522B" }),
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u7C7B\u578B" }),
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u6570\u636E" })
+              ] }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("tbody", { children: detailAnnotations.map((a, k) => /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: k + 1 }),
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: a.raw_label }),
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: a.annotation_type || "bbox" }),
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { className: "ann-value", children: a.bbox ? a.bbox.map((v) => Number(v).toFixed(0)).join(", ") : "-" })
+              ] }, a.annotation_id || k)) })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { className: "detail-fallback", children: "\u65E0\u6807\u6CE8" }) })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("section", { className: "detail-model-section", "aria-labelledby": "detail-model-title", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("h3", { className: "detail-section-heading", id: "detail-model-title", children: "\u6A21\u578B\u89C2\u5BDF" }),
+            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("div", { id: "detail-model-content", children: detailLoading ? /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { children: "\u6B63\u5728\u8BFB\u53D6\u89C2\u5BDF\u2026" }) : detailError ? null : sampleDetail?.suggestion ? /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(import_jsx_runtime65.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("p", { className: "detail-model-result", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("strong", { children: sampleDetail.suggestion.suggested_label === "FAIL" ? "\u53D1\u73B0\u7591\u70B9" : sampleDetail.suggestion.suggested_label === "PASS" ? "\u5224\u5B9A\u6B63\u5E38" : "\u672A\u5224\u5B9A" }),
+                sampleDetail.suggestion.reason_category ? `\uFF08${sampleDetail.suggestion.reason_category}\uFF09` : ""
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { className: "detail-model-text", children: sampleDetail.suggestion.notes || "\u65E0\u9644\u6CE8\u3002" })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { className: "detail-model-text", children: "\u5C1A\u65E0\u6A21\u578B\u89C2\u5BDF\u3002" }) })
+          ] })
+        ] })
+      ] }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(
+        FullscreenViewer,
+        {
+          open: fullscreen,
+          item: activeSample ? {
+            id: activeSample.sample_id,
+            sampleId: activeSample.sample_id,
+            annotationLayer: { kind: "sample", sample: sampleDetail?.sample || activeSample, annotations: sampleDetail?.annotations || [] },
+            title: activeSample.relative_path,
+            imageUrl: mediaUrl(activeSample, "image"),
+            width: activeSample.width,
+            height: activeSample.height,
+            bboxes
+          } : null,
+          items: samples.map((s) => ({
+            id: s.sample_id,
+            sampleId: s.sample_id,
+            title: s.relative_path,
+            imageUrl: mediaUrl(s, "image"),
+            width: s.width,
+            height: s.height
+          })),
+          currentIndex: viewerIndex,
+          onClose: () => setFullscreen(false),
+          onNavigate: setViewerIndex
+        }
       )
     ] });
   }

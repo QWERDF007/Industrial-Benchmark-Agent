@@ -63,11 +63,7 @@ dialog.iad-detail-dialog {text-align:left;}
 }
 
 
-.detail-overlay.hidden,
-.detail-overlay:not(.show),
 .overlay:not(.show),
-#knowledge-page .kb-v45 .detail-overlay:not(.show),
-#knowledge-page .detail-overlay:not(.show),
 [hidden] {
   display: none !important;
 }
@@ -99,7 +95,6 @@ dialog.iad-detail-dialog {
    Tier 1: Large Detail Dialogs (1380px max-width, 820px max-height)
    Image Detail, Exploration Direction Detail, Consistency Conflict Compare, Knowledge Detail
    ========================================================================== */
-.detail-overlay .detail-dialog,
 .detail-dialog,
 .exp-direction-dialog,
 .dc-conflict-dialog,
@@ -130,7 +125,6 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
 }
 
 /* Detail dialog internal scrollable body - scrolls only when needed */
-.detail-overlay .detail-scroll,
 .detail-scroll,
 .exp-direction-dialog .exp-dialog-main,
 #dc-compare-mask .dc-dialog-body,
@@ -281,7 +275,6 @@ dialog.iad-detail-dialog.iad-dialog-compact {
 /* ==========================================================================
    Unified Headers
    ========================================================================== */
-.detail-header,
 .exp-dialog-head,
 .dc-dialog-head,
 .iad-dialog-header {
@@ -298,7 +291,6 @@ dialog.iad-detail-dialog.iad-dialog-compact {
   box-sizing: border-box !important;
 }
 
-.detail-title,
 .exp-dialog-head strong,
 .exp-dialog-head h2,
 .dc-dialog-head h2,
@@ -348,7 +340,7 @@ dialog.iad-detail-dialog.iad-dialog-compact {
   color: var(--iba-dialog-ink) !important;
 }
 
-.detail-dialog :is(.detail-header, .detail-scroll, .detail-footer),
+.detail-dialog :is(.detail-scroll, .detail-footer),
 .exp-dialog :is(.exp-dialog-head, .exp-dialog-main, .exp-dialog-foot),
 .dc-dialog :is(.dc-dialog-head, .dc-dialog-body, .dc-dialog-footer),
 #knowledge-page .kb-v45 .modal :is(.modalheader, .modalcontent, .modalfooter) {
@@ -408,13 +400,6 @@ dialog.iad-detail-dialog.iad-dialog-compact {
   }
 }
 
-@media (max-width: 760px) {
-  .detail-overlay,
-  #knowledge-page .kb-v45 .detail-overlay {
-    padding: 12px !important;
-  }
-
-}
 
 dialog.iad-drawer>.iad-dialog-header{height:64px!important;min-height:64px!important}
 `;

@@ -523,13 +523,7 @@ export const knowledgeStyles = `
 
 
 /* Detail Modal */
-.detail-overlay {
-  z-index: 150;
-  background: rgba(23, 34, 51, 0.68) !important;
-  padding: var(--iad-content-modal-gutter) !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
+
 
 .detail-modal {
   width: min(var(--iad-content-modal-width), calc(100vw - 2 * var(--iad-content-modal-gutter))) !important;

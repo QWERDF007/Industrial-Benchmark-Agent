@@ -1,0 +1,86 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import http from 'node:http';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {build} from 'esbuild';
+import {Builder,By,Key,until} from 'selenium-webdriver';
+import firefox from 'selenium-webdriver/firefox.js';
+import {PythonBridge,createIadHttpHandler} from '../lib/server/index.js';
+
+const app=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+
+test('image details preserve native focus, current metadata and annotations across nested navigation',{timeout:60000},async t=>{
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-image-dialogs-'));
+  const bridge=new PythonBridge({cwd:path.resolve(app,'../..'),dbPath:path.join(root,'test.db')});
+  let driver,server,releaseDetail,delayDetail=true,blockedReads=0;
+  const detailBarrier=new Promise(resolve=>{releaseDetail=resolve;});
+  t.after(async()=>{releaseDetail();await driver?.quit();server?.closeAllConnections();if(server?.listening)await new Promise(resolve=>server.close(resolve));bridge.destroy();await fs.rm(root,{recursive:true,force:true});});
+  execFileSync(bridge.pythonPath,['-c',`
+import json,sys
+from pathlib import Path
+from PIL import Image
+p=Path(sys.argv[1])
+for folder in ['images','labels','classification/OK','classification/NG']:(p/folder).mkdir(parents=True)
+for name,size,color in [('a',(600,400),'blue'),('b',(900,300),'green')]:
+    Image.new('RGB',size,color).save(p/'images'/f'{name}.png')
+    (p/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':size[0],'imageHeight':size[1],'shapes':[{'label':name+'-mark','shape_type':'rectangle','points':[[10,20],[90,80]]}]}))
+for folder,color in [('OK','white'),('NG','red')]:Image.new('RGB',(80,60),color).save(p/'classification'/folder/'sample.png')
+`,root]);
+  const labelmeGroup=await bridge.execute('dataset_group_create',{name:'标注图像'});
+  const anomalyGroup=await bridge.execute('dataset_group_create',{name:'异常图像'});
+  const labelme=await bridge.execute('dataset_import',{format:'labelme',name:'两张标注图',group_id:labelmeGroup.group_id,image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')});
+  const folder=await bridge.execute('dataset_preview',{root_dir:path.join(root,'classification')});
+  await bridge.execute('dataset_import',{format:'folder_classification',name:'OK与NG',group_id:anomalyGroup.group_id,root_dir:path.join(root,'classification'),rules:folder.items.map(({path,role})=>({path,role})),preview_fingerprint:folder.preview_fingerprint});
+  const bundle=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';
+    import {ImagesPage} from './src/client/components/ImagesPage.tsx';import {workbenchStyles} from './src/client/styles.ts';
+    const style=document.createElement('style');style.textContent=workbenchStyles;document.head.append(style);
+    Promise.all([fetch('/api/iad/datasets').then(r=>r.json()),fetch('/api/iad/datasets/groups').then(r=>r.json())]).then(([catalog,groups])=>
+      createRoot(document.getElementById('root')).render(<main className="iad-workbench"><ImagesPage datasets={catalog.datasets} groups={groups.groups}/></main>));`,
+    loader:'tsx',resolveDir:app},bundle:true,format:'iife',write:false,target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
+  const api=createIadHttpHandler(bridge);
+  server=http.createServer(async(req,res)=>{
+    if(req.url==='/browser.js'){res.setHeader('Content-Type','application/javascript');res.end(bundle.outputFiles[0].contents);return;}
+    if(req.url==='/'){res.setHeader('Content-Type','text/html;charset=utf-8');res.end('<meta charset="utf-8"><div id="root"></div><script src="/browser.js"></script>');return;}
+    if(req.url==='/api/iad/sample/'+encodeURIComponent(labelme.dataset_id+':b.png')&&delayDetail){blockedReads++;await detailBarrier;}
+    await api(req,res);
+  });await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  const options=new firefox.Options().addArguments('-headless');options.setBinary('/tmp/iad-firefox128/firefox/firefox');
+  driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder('/tmp/geckodriver')).build();
+  await driver.manage().window().setRect({width:1904,height:1000});await driver.get(`http://127.0.0.1:${server.address().port}/`);
+  const el=selector=>driver.wait(until.elementLocated(By.css(selector)),10000);
+  await(await el(`#parent option[value="${labelmeGroup.group_id}"]`)).click();
+  const first=await el(`[data-sample-id="${labelme.dataset_id}:a.png"]`);await first.click();
+  const detail=await el('#overlay');
+  const geometry=await driver.executeScript('const r=arguments[0].getBoundingClientRect();return {modal:arguments[0].matches("dialog:modal"),width:r.width,x:r.x+r.width/2-innerWidth/2,y:r.y+r.height/2-innerHeight/2}',detail);
+  assert.equal(geometry.modal,true,'图像详情使用公共原生Modal');assert.equal(geometry.width,1380);assert.ok(Math.abs(geometry.x)<=1&&Math.abs(geometry.y)<=1);
+  await driver.wait(async()=>(await(await el('#detail-ann-content')).getText()).includes('a-mark'),10000);
+  await el('#detail-preview svg[aria-label="Labelme 标注"]');
+  assert.ok((await(await el('#detail-fields')).getText()).includes(path.join(root,'images/a.png')));
+  const preview=await el('#detail-preview');await preview.click();
+  await driver.wait(async()=>(await driver.findElements(By.css('dialog:modal'))).length===2,5000);
+  await el('dialog[aria-label="原图检视器"] svg[aria-label="Labelme 标注"]');
+  await(await el('button[aria-label="下一张图像"]')).click();
+  await driver.wait(()=>blockedReads>0,5000);await driver.actions().sendKeys(Key.ESCAPE).perform();
+  await driver.wait(async()=>(await driver.findElements(By.css('dialog:modal'))).length===1,5000);
+  const pendingText=await(await el('#detail-fields')).getText();
+  assert.ok(pendingText.includes('b.png'));assert.ok(!pendingText.includes(path.join(root,'images/a.png')),'新图请求等待时不能显示上张图的路径');
+  assert.ok(pendingText.includes('900 × 300'),'请求等待时使用当前样本尺寸');
+  assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',preview),true);
+  delayDetail=false;releaseDetail();
+  await driver.wait(async()=>(await(await el('#detail-ann-content')).getText()).includes('b-mark'),10000);
+  assert.equal(blockedReads,1,'详情和大图复用同一次样本详情请求');
+  await driver.actions().sendKeys(Key.ESCAPE).perform();
+  await driver.wait(async()=>(await driver.findElements(By.css('dialog:modal'))).length===0,5000);
+  assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',first),true);
+  await(await el(`#parent option[value="${anomalyGroup.group_id}"]`)).click();
+  const anomaly=await el('#grid [data-sample-id]');await anomaly.click();
+  const annotations=await el('table[aria-label="异常检测标注列表"]');
+  assert.match(await annotations.getText(),/OK|NG/);
+  await driver.actions().sendKeys(Key.ESCAPE).perform();
+  await driver.wait(async()=>(await driver.findElements(By.css('dialog:modal'))).length===0,5000);
+  assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',anomaly),true);
+});

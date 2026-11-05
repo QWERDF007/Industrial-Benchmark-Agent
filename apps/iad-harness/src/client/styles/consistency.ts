@@ -85,67 +85,6 @@ export const consistencyStyles=`
 .dc-dialog-head-actions button{white-space:nowrap}
 @media(max-width:1000px){.dc-compare-photo{height:210px}.dc-model-verdict .dc-verdict-pending{margin-left:0}}
 
-/* V20 — shared near-full-viewport dialog geometry: image details and direction details. */
-:root { --iad-content-modal-gutter: 26px; --iad-content-modal-radius: 7px; }
-.detail-overlay {
-  padding:var(--iad-content-modal-gutter) !important;
-  background:rgba(23,34,51,.68) !important;
-  align-items:stretch !important;
-  justify-content:stretch !important;
-}
-.detail-dialog {
-  width:100% !important;
-  max-width:none !important;
-  height:100% !important;
-  max-height:100% !important;
-  min-height:0 !important;
-  margin:0 !important;
-  border:1px solid #d9e2ed !important;
-  border-radius:var(--iad-content-modal-radius) !important;
-  box-shadow:0 20px 64px rgba(14,26,48,.27) !important;
-  display:flex !important;
-  flex-direction:column !important;
-  overflow:hidden !important;
-}
-.detail-header {
-  min-height:61px;
-  height:auto;
-  flex:none;
-  padding:14px 28px !important;
-  display:flex;
-  align-items:center !important;
-  justify-content:space-between;
-  gap:16px;
-  border-bottom:1px solid #e3eaf2;
-}
-.detail-title {
-  font-size:17px;
-  font-weight:650;
-  color:#182941;
-  line-height:1.5;
-}
-.detail-scroll {
-  flex:1;
-  min-height:0;
-  overflow-y:auto;
-  overscroll-behavior-y:contain;
-  scrollbar-gutter:stable;
-  padding:22px 28px 28px !important;
-}
-.detail-preview {height:clamp(280px,49dvh,560px);flex:none;}
-.detail-content {margin-top:20px;}
-@media(max-width:840px) {
-  :root { --iad-content-modal-gutter: 14px; }
-  .detail-header {padding:13px 18px !important;min-height:56px;}
-  .detail-scroll {padding:16px 18px 22px !important;}
-  .detail-preview {height:clamp(220px,36dvh,390px);}
-}
-@media(max-width:500px) {
-  :root { --iad-content-modal-gutter: 10px; }
-  .detail-title {font-size:15px;}
-}
-
-
 /* V22: Shared 38px controls, 8px icon spacing, page headings, one unified table/section rhythm. */
 .exp-heading,.dc-page-heading{min-height:42px;display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 18px}
 .dc-page-heading h1,.exp-heading h1{margin:0;font-size:24px;font-weight:670;letter-spacing:-.4px;line-height:1.35}
@@ -440,33 +379,6 @@ export const consistencyStyles=`
 }
 .dc-verdict-symbol:focus-visible {
   outline: 2px solid #3873dd !important;
-}
-
-/* Image detail layout */
-:root {
-  --iad-content-modal-gutter: var(--iba-dialog-gap, clamp(12px, 2.5vw, 32px));
-  --iad-content-modal-radius: 8px;
-  --iad-content-modal-width: 1380px;
-  --iad-content-modal-height: 820px;
-}
-.detail-overlay {
-  padding: var(--iad-content-modal-gutter) !important;
-  background: rgba(23, 34, 51, 0.68) !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-.detail-dialog {
-  width: min(var(--iad-content-modal-width), calc(100vw - 2 * var(--iad-content-modal-gutter))) !important;
-  height: min(var(--iad-content-modal-height), calc(100dvh - 2 * var(--iad-content-modal-gutter))) !important;
-  max-width: none !important;
-  max-height: none !important;
-  min-height: 0 !important;
-  flex: none !important;
-  margin: 0 auto !important;
-  border-radius: var(--iad-content-modal-radius) !important;
-  border: 1px solid #d9e2ed !important;
-  overflow: hidden !important;
-  box-shadow: 0 20px 64px rgba(14, 26, 48, 0.27) !important;
 }
 
 .dc-stats-content {

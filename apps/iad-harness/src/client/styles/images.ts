@@ -26,8 +26,7 @@ export const imagesStyles = `
 .empty{min-height:200px;border:1px dashed var(--border,#dbe2eb);border-radius:8px;display:grid;place-items:center;color:#738398;background:#fff}
 
 .full-overlay {position:fixed;inset:0;z-index:10010;display:flex;align-items:stretch;justify-content:stretch;padding:0;background:#1c2633}
-.detail-overlay.hidden, .full-overlay.hidden {display:none !important}
-.detail-overlay.show {display:flex !important}
+.full-overlay.hidden {display:none !important}
 .detail-preview{width:100%;height:355px;display:flex;justify-content:center;align-items:center;border:1px solid var(--border2,#e6ebf1);border-radius:6px;background:#f2f5f9;cursor:zoom-in;padding:0;position:relative;overflow:hidden}
 .detail-preview:hover{border-color:#95afed}
 .detail-preview:focus-visible{outline:2px solid var(--blue,#285ed6)}
@@ -39,7 +38,7 @@ export const imagesStyles = `
 .preview-overlay .bbox:nth-child(even){border-color:#ffca64}
 .detail-preview-hint {position:absolute;right:11px;bottom:11px;background:#17243bd9;border-radius:4px;padding:5px 9px;color:#fff;font-size:11px;opacity:0;transition:opacity .15s}
 .detail-preview:hover .detail-preview-hint,.detail-preview:focus-visible .detail-preview-hint{opacity:1}
-.detail-content {padding:16px 0 0}
+.detail-content {margin-top:20px;padding:16px 0 0}
 .detail-section-heading{font-size:13px;font-weight:650;margin:0 0 12px;color:#26344c}
 .detail-meta {display:grid;grid-template-columns:104px minmax(0,1fr);gap:11px 20px;margin:0;font-size:12px;align-items:start}
 .detail-meta dt{color:#72829b}

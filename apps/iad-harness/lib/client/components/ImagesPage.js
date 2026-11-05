@@ -2,7 +2,8 @@ import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-run
 import { Select } from './Select.js';
 import { IconButton } from "./IconButton.js";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { createPortal } from "react-dom";
+import { Modal } from "./Modal.js";
+import { useResource } from "../useResource.js";
 import { WorkbenchHeader } from "./layout/WorkbenchHeader.js";
 import { mediaUrl, request, message } from "../api.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
@@ -156,66 +157,9 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
     }, [selectedChildIds, quality, annotation, category, search, page, pageSize, refreshRev]);
     // Viewer State (Stage 1 & Stage 2)
     const [viewerIndex, setViewerIndex] = useState(-1);
-    const [detailModalOpen, setDetailModalOpen] = useState(false);
     const [fullscreen, setFullscreen] = useState(false);
-    const [sampleDetail, setSampleDetail] = useState(null);
-    const [detailLoading, setDetailLoading] = useState(false);
     const activeSample = viewerIndex >= 0 && viewerIndex < samples.length ? samples[viewerIndex] : null;
-    // Fetch Sample Detail when viewerIndex changes
-    useEffect(() => {
-        if (!activeSample) {
-            setSampleDetail(null);
-            return;
-        }
-        const controller = new AbortController();
-        setDetailLoading(true);
-        request(`/sample/${encodeURIComponent(activeSample.sample_id)}`, undefined, undefined, controller.signal)
-            .then(res => {
-            if (!controller.signal.aborted)
-                setSampleDetail(res);
-        })
-            .catch(() => { })
-            .finally(() => {
-            if (!controller.signal.aborted)
-                setDetailLoading(false);
-        });
-        return () => controller.abort();
-    }, [activeSample]);
-    // Open Stage 1
-    const openViewer = useCallback((sample, index) => {
-        setViewerIndex(index);
-        setDetailModalOpen(true);
-        setFullscreen(false);
-        document.body.style.overflow = "hidden";
-    }, []);
-    // Close Stage 1
-    const closeViewer = useCallback(() => {
-        setDetailModalOpen(false);
-        setFullscreen(false);
-        setViewerIndex(-1);
-        document.body.style.overflow = "";
-    }, []);
-    // Open Stage 2 Fullscreen
-    const openFullscreen = useCallback(() => {
-        setFullscreen(true);
-    }, []);
-    // Close Stage 2 Fullscreen
-    const closeFullscreen = useCallback(() => {
-        setFullscreen(false);
-    }, []);
-    // Keyboard shortcut for detail modal
-    useEffect(() => {
-        if (viewerIndex < 0 || fullscreen)
-            return;
-        function onKeyDown(e) {
-            if (e.key === "Escape") {
-                e.preventDefault();
-                closeViewer();
-            }
-        }
-        document.addEventListener("keydown", onKeyDown);
-        return () => document.removeEventListener("keydown", onKeyDown);
-    }, [viewerIndex, fullscreen, closeViewer]);
+    const { data: sampleDetail, loading: detailLoading, error: detailError } = useResource(activeSample ? `/sample/${encodeURIComponent(activeSample.sample_id)}` : null);
     // Active dataset of current sample in viewer
     const sampleDataset = useMemo(() => {
         if (!activeSample)
@@ -223,14 +167,12 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
         return datasets.find(d => d.dataset_id === activeSample.dataset_id) || activeDatasets[0] || null;
     }, [activeSample, datasets, activeDatasets]);
     // Annotations list for detail modal and fullscreen
-    const isMatchingSample = activeSample && sampleDetail?.sample.sample_id === activeSample.sample_id;
-    const currentDetail = isMatchingSample ? sampleDetail : null;
-    const detailAnnotations = currentDetail?.annotations || [];
+    const detailAnnotations = sampleDetail?.annotations || [];
     const bboxes = useMemo(() => {
         return detailAnnotations.filter(a => a.bbox && a.bbox.length >= 4);
     }, [detailAnnotations]);
-    const imgW = currentDetail?.sample.width || activeSample?.width || 955;
-    const imgH = currentDetail?.sample.height || activeSample?.height || 713;
+    const imgW = sampleDetail?.sample.width || activeSample?.width || 955;
+    const imgH = sampleDetail?.sample.height || activeSample?.height || 713;
     return (_jsxs("div", { className: "main", style: { minWidth: 0, width: "100%", padding: 0 }, children: [_jsx(WorkbenchHeader, { pageId: "industrial-images" }), _jsx(DatasetScopeSelector, { className: "dataset-panel", groups: hierarchyGroups, selectedGroupId: selectedParentId, onGroupChange: groupId => {
                     setSelectedParentId(groupId);
                     resetFilters();
@@ -259,7 +201,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
                                             setPage(1);
                                         }, children: [_jsx("option", { value: "all", children: "\u5168\u90E8" }), availableCategories.map(cat => (_jsx("option", { value: cat, children: cat.startsWith("类别 ") || isNaN(Number(cat)) ? cat : `类别 ${cat}` }, cat)))] })] })] })), _jsx(ClearFilterButton, { id: "reset", title: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6", ariaLabel: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6", disabled: !search && quality === "all" && annotation === "all" && category === "all", onClick: resetFilters })] }), error && _jsx("p", { role: "alert", className: "iad-error", children: error }), total > 0 ? (_jsx("section", { id: "grid", className: "iad-thumbnail-grid", "aria-label": "\u56FE\u50CF\u7F51\u683C", children: samples.map((s, idx) => {
                     const filename = s.relative_path.split("/").pop() || s.relative_path;
-                    return (_jsx(ThumbnailCard, { src: mediaUrl(s, "thumbnail"), label: filename, "data-idx": idx, "data-sample-id": s.sample_id, onClick: () => openViewer(s, idx) }, s.sample_id));
+                    return (_jsx(ThumbnailCard, { src: mediaUrl(s, "thumbnail"), label: filename, "data-idx": idx, "data-sample-id": s.sample_id, onClick: () => { setViewerIndex(idx); setFullscreen(false); } }, s.sample_id));
                 }) })) : (_jsx("div", { id: "grid", className: "empty", "aria-label": "\u56FE\u50CF\u7F51\u683C", children: selectedChildIds.size === 0
                     ? "请选择至少一个子数据集"
                     : loading
@@ -267,30 +209,27 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
                         : "没有符合筛选条件的图像" })), _jsx(Pagination, { id: "pager", total: total, page: page, size: pageSize, unit: "\u5F20\u56FE\u50CF", label: "\u56FE\u50CF", onPage: number => {
                     setPage(number);
                     document.getElementById("grid")?.scrollIntoView({ block: "start", behavior: "smooth" });
-                } }), typeof document !== "undefined" &&
-                createPortal(_jsxs(_Fragment, { children: [_jsx("div", { id: "overlay", className: `detail-overlay ${detailModalOpen && !fullscreen ? "show" : "hidden"}`, role: "presentation", onClick: e => {
-                                if (e.target === e.currentTarget)
-                                    closeViewer();
-                            }, children: _jsxs("section", { className: "detail-dialog", role: "dialog", "aria-modal": "true", "aria-labelledby": "detail-title", children: [_jsxs("header", { className: "detail-header", children: [_jsx("h2", { className: "detail-title", id: "detail-title", children: "\u56FE\u50CF\u8BE6\u60C5" }), _jsx(IconButton, { icon: "close", type: "button", id: "close", title: "\u5173\u95ED\u56FE\u50CF\u8BE6\u60C5", label: "\u5173\u95ED\u56FE\u50CF\u8BE6\u60C5", onClick: closeViewer })] }), _jsx("div", { className: "detail-scroll", children: activeSample && (_jsxs(_Fragment, { children: [_jsxs("button", { id: "detail-preview", type: "button", className: "detail-preview", "aria-label": "\u6253\u5F00\u5927\u56FE\u68C0\u89C6\u5668", title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE\u4E0E\u6807\u6CE8", onClick: openFullscreen, children: [_jsx(AnnotatedImageStage, { src: mediaUrl(activeSample, "image"), alt: activeSample.relative_path.split("/").pop(), width: imgW, height: imgH, bboxes: bboxes }), _jsx("span", { className: "detail-preview-hint", children: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE" })] }), _jsxs("section", { className: "detail-content", children: [_jsx("h3", { className: "detail-section-heading", children: "\u56FE\u50CF\u4FE1\u606F" }), _jsxs("dl", { className: "detail-meta", id: "detail-fields", children: [_jsx("dt", { children: "\u56FE\u50CF\u8DEF\u5F84" }), _jsx("dd", { className: "path-value", children: sampleDetail?.sample.image_path || activeSample.relative_path }), _jsx("dt", { children: "\u56FE\u50CF\u540D" }), _jsx("dd", { children: activeSample.relative_path.split("/").pop() }), _jsx("dt", { children: "UUID" }), _jsx("dd", { children: activeSample.sample_uuid }), _jsx("dt", { children: "\u5206\u8FA8\u7387" }), _jsx("dd", { children: `${sampleDetail?.sample.width || activeSample.width} × ${sampleDetail?.sample.height || activeSample.height}` })] })] }), _jsxs("section", { className: "detail-part", id: "detail-ann-section", children: [_jsxs("div", { className: "detail-annotation-heading", children: [_jsx("h3", { className: "detail-section-heading", id: "detail-ann-title", children: "\u6807\u6CE8\u4FE1\u606F" }), _jsx("span", { className: "detail-ann-summary", id: "detail-ann-count", children: sampleDataset?.format === "folder_classification"
-                                                                        ? "共 1 个标注"
-                                                                        : `共 ${detailAnnotations.length} 个标注` })] }), _jsx("div", { id: "detail-ann-content", children: sampleDataset?.format === "folder_classification" ? (_jsxs("table", { className: "detail-ann-table", "aria-label": "\u5F02\u5E38\u68C0\u6D4B\u6807\u6CE8\u5217\u8868", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "#" }), _jsx("th", { children: "\u6807\u6CE8\u7C7B\u522B" }), _jsx("th", { children: "\u7C7B\u578B" })] }) }), _jsx("tbody", { children: _jsxs("tr", { children: [_jsx("td", { children: "1" }), _jsx("td", { children: activeSample.quality_status === "FAIL" ? "NG" : "OK" }), _jsx("td", { children: "\u5F02\u5E38\u68C0\u6D4B" })] }) })] })) : detailAnnotations.length > 0 ? (_jsxs("table", { className: "detail-ann-table", "aria-label": "Labelme \u6807\u6CE8\u5217\u8868", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "#" }), _jsx("th", { children: "\u6807\u6CE8\u7C7B\u522B" }), _jsx("th", { children: "\u7C7B\u578B" }), _jsx("th", { children: "\u6570\u636E" })] }) }), _jsx("tbody", { children: detailAnnotations.map((a, k) => (_jsxs("tr", { children: [_jsx("td", { children: k + 1 }), _jsx("td", { children: a.raw_label }), _jsx("td", { children: a.annotation_type || "bbox" }), _jsx("td", { className: "ann-value", children: a.bbox ? a.bbox.map(v => Number(v).toFixed(0)).join(", ") : "-" })] }, a.annotation_id || k))) })] })) : (_jsx("p", { className: "detail-fallback", children: "\u65E0\u6807\u6CE8" })) })] }), _jsxs("section", { className: "detail-model-section", "aria-labelledby": "detail-model-title", children: [_jsx("h3", { className: "detail-section-heading", id: "detail-model-title", children: "\u6A21\u578B\u89C2\u5BDF" }), _jsx("div", { id: "detail-model-content", children: sampleDetail?.suggestion ? (_jsxs(_Fragment, { children: [_jsxs("p", { className: "detail-model-result", children: [_jsx("strong", { children: sampleDetail.suggestion.suggested_label === "FAIL"
-                                                                                    ? "发现疑点"
-                                                                                    : sampleDetail.suggestion.suggested_label === "PASS"
-                                                                                        ? "判定正常"
-                                                                                        : "未判定" }), sampleDetail.suggestion.reason_category ? `（${sampleDetail.suggestion.reason_category}）` : ""] }), _jsx("p", { className: "detail-model-text", children: sampleDetail.suggestion.notes || "无附注。" })] })) : (_jsx("p", { className: "detail-model-text", children: "\u5C1A\u65E0\u6A21\u578B\u89C2\u5BDF\u3002" })) })] })] })) })] }) }), _jsx(FullscreenViewer, { open: fullscreen, item: activeSample
-                                ? {
-                                    id: activeSample.sample_id, sampleId: activeSample.sample_id,
-                                    title: activeSample.relative_path,
-                                    imageUrl: mediaUrl(activeSample, "image"),
-                                    width: activeSample.width,
-                                    height: activeSample.height,
-                                    bboxes,
-                                }
-                                : null, items: samples.map(s => ({
-                                id: s.sample_id, sampleId: s.sample_id,
-                                title: s.relative_path,
-                                imageUrl: mediaUrl(s, "image"),
-                                width: s.width,
-                                height: s.height,
-                            })), currentIndex: viewerIndex, onClose: closeFullscreen, onNavigate: setViewerIndex })] }), document.body)] }));
+                } }), activeSample && _jsx(Modal, { title: "\u56FE\u50CF\u8BE6\u60C5", id: "overlay", className: "detail-dialog", onClose: () => { setViewerIndex(-1); setFullscreen(false); }, children: _jsxs("div", { className: "detail-scroll", "aria-busy": detailLoading, children: [detailError && _jsx("p", { role: "alert", className: "iad-error", children: detailError }), activeSample && (_jsxs(_Fragment, { children: [_jsxs("button", { id: "detail-preview", type: "button", className: "detail-preview", "aria-label": "\u6253\u5F00\u5927\u56FE\u68C0\u89C6\u5668", title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE\u4E0E\u6807\u6CE8", onClick: () => setFullscreen(true), children: [_jsx(AnnotatedImageStage, { src: mediaUrl(activeSample, "image"), alt: activeSample.relative_path.split("/").pop(), width: imgW, height: imgH, bboxes: bboxes }), _jsx("span", { className: "detail-preview-hint", children: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE" })] }), _jsxs("section", { className: "detail-content", children: [_jsx("h3", { className: "detail-section-heading", children: "\u56FE\u50CF\u4FE1\u606F" }), _jsxs("dl", { className: "detail-meta", id: "detail-fields", children: [_jsx("dt", { children: "\u56FE\u50CF\u8DEF\u5F84" }), _jsx("dd", { className: "path-value", children: sampleDetail?.sample.image_path || activeSample.relative_path }), _jsx("dt", { children: "\u56FE\u50CF\u540D" }), _jsx("dd", { children: activeSample.relative_path.split("/").pop() }), _jsx("dt", { children: "UUID" }), _jsx("dd", { children: activeSample.sample_uuid }), _jsx("dt", { children: "\u5206\u8FA8\u7387" }), _jsx("dd", { children: `${sampleDetail?.sample.width || activeSample.width} × ${sampleDetail?.sample.height || activeSample.height}` })] })] }), _jsxs("section", { className: "detail-part", id: "detail-ann-section", children: [_jsxs("div", { className: "detail-annotation-heading", children: [_jsx("h3", { className: "detail-section-heading", id: "detail-ann-title", children: "\u6807\u6CE8\u4FE1\u606F" }), _jsx("span", { className: "detail-ann-summary", id: "detail-ann-count", children: sampleDataset?.format === "folder_classification"
+                                                        ? "共 1 个标注"
+                                                        : `共 ${detailAnnotations.length} 个标注` })] }), _jsx("div", { id: "detail-ann-content", children: detailLoading ? _jsx("p", { children: "\u6B63\u5728\u8BFB\u53D6\u6807\u6CE8\u2026" }) : detailError ? null : sampleDataset?.format === "folder_classification" ? (_jsxs("table", { className: "detail-ann-table", "aria-label": "\u5F02\u5E38\u68C0\u6D4B\u6807\u6CE8\u5217\u8868", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "#" }), _jsx("th", { children: "\u6807\u6CE8\u7C7B\u522B" }), _jsx("th", { children: "\u7C7B\u578B" })] }) }), _jsx("tbody", { children: _jsxs("tr", { children: [_jsx("td", { children: "1" }), _jsx("td", { children: activeSample.quality_status === "FAIL" ? "NG" : "OK" }), _jsx("td", { children: "\u5F02\u5E38\u68C0\u6D4B" })] }) })] })) : detailAnnotations.length > 0 ? (_jsxs("table", { className: "detail-ann-table", "aria-label": "Labelme \u6807\u6CE8\u5217\u8868", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "#" }), _jsx("th", { children: "\u6807\u6CE8\u7C7B\u522B" }), _jsx("th", { children: "\u7C7B\u578B" }), _jsx("th", { children: "\u6570\u636E" })] }) }), _jsx("tbody", { children: detailAnnotations.map((a, k) => (_jsxs("tr", { children: [_jsx("td", { children: k + 1 }), _jsx("td", { children: a.raw_label }), _jsx("td", { children: a.annotation_type || "bbox" }), _jsx("td", { className: "ann-value", children: a.bbox ? a.bbox.map(v => Number(v).toFixed(0)).join(", ") : "-" })] }, a.annotation_id || k))) })] })) : (_jsx("p", { className: "detail-fallback", children: "\u65E0\u6807\u6CE8" })) })] }), _jsxs("section", { className: "detail-model-section", "aria-labelledby": "detail-model-title", children: [_jsx("h3", { className: "detail-section-heading", id: "detail-model-title", children: "\u6A21\u578B\u89C2\u5BDF" }), _jsx("div", { id: "detail-model-content", children: detailLoading ? _jsx("p", { children: "\u6B63\u5728\u8BFB\u53D6\u89C2\u5BDF\u2026" }) : detailError ? null : sampleDetail?.suggestion ? (_jsxs(_Fragment, { children: [_jsxs("p", { className: "detail-model-result", children: [_jsx("strong", { children: sampleDetail.suggestion.suggested_label === "FAIL"
+                                                                    ? "发现疑点"
+                                                                    : sampleDetail.suggestion.suggested_label === "PASS"
+                                                                        ? "判定正常"
+                                                                        : "未判定" }), sampleDetail.suggestion.reason_category ? `（${sampleDetail.suggestion.reason_category}）` : ""] }), _jsx("p", { className: "detail-model-text", children: sampleDetail.suggestion.notes || "无附注。" })] })) : (_jsx("p", { className: "detail-model-text", children: "\u5C1A\u65E0\u6A21\u578B\u89C2\u5BDF\u3002" })) })] })] }))] }) }), _jsx(FullscreenViewer, { open: fullscreen, item: activeSample
+                    ? {
+                        id: activeSample.sample_id, sampleId: activeSample.sample_id,
+                        annotationLayer: { kind: 'sample', sample: sampleDetail?.sample || activeSample, annotations: sampleDetail?.annotations || [] },
+                        title: activeSample.relative_path,
+                        imageUrl: mediaUrl(activeSample, "image"),
+                        width: activeSample.width,
+                        height: activeSample.height,
+                        bboxes,
+                    }
+                    : null, items: samples.map(s => ({
+                    id: s.sample_id, sampleId: s.sample_id,
+                    title: s.relative_path,
+                    imageUrl: mediaUrl(s, "image"),
+                    width: s.width,
+                    height: s.height,
+                })), currentIndex: viewerIndex, onClose: () => setFullscreen(false), onNavigate: setViewerIndex })] }));
 }

@@ -1,7 +1,8 @@
 import {Select} from './Select.js';
 import {IconButton} from "./IconButton.js";
-import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import {Modal} from "./Modal.js";
+import {useResource} from "../useResource.js";
 import { WorkbenchHeader } from "./layout/WorkbenchHeader.js";
 import type { Dataset, DatasetGroup, Sample, SampleDetail } from "../../shared/contracts.js";
 import { mediaUrl, request, message } from "../api.js";
@@ -176,71 +177,10 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
 
   // Viewer State (Stage 1 & Stage 2)
   const [viewerIndex, setViewerIndex] = useState<number>(-1);
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [sampleDetail, setSampleDetail] = useState<SampleDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-
   const activeSample = viewerIndex >= 0 && viewerIndex < samples.length ? samples[viewerIndex] : null;
-
-  // Fetch Sample Detail when viewerIndex changes
-  useEffect(() => {
-    if (!activeSample) {
-      setSampleDetail(null);
-      return;
-    }
-    const controller = new AbortController();
-    setDetailLoading(true);
-    request<SampleDetail>(`/sample/${encodeURIComponent(activeSample.sample_id)}`, undefined, undefined, controller.signal)
-      .then(res => {
-        if (!controller.signal.aborted) setSampleDetail(res);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!controller.signal.aborted) setDetailLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [activeSample]);
-
-  // Open Stage 1
-  const openViewer = useCallback((sample: Sample, index: number) => {
-    setViewerIndex(index);
-    setDetailModalOpen(true);
-    setFullscreen(false);
-    document.body.style.overflow = "hidden";
-  }, []);
-
-  // Close Stage 1
-  const closeViewer = useCallback(() => {
-    setDetailModalOpen(false);
-    setFullscreen(false);
-    setViewerIndex(-1);
-    document.body.style.overflow = "";
-  }, []);
-
-  // Open Stage 2 Fullscreen
-  const openFullscreen = useCallback(() => {
-    setFullscreen(true);
-  }, []);
-
-  // Close Stage 2 Fullscreen
-  const closeFullscreen = useCallback(() => {
-    setFullscreen(false);
-  }, []);
-
-  // Keyboard shortcut for detail modal
-  useEffect(() => {
-    if (viewerIndex < 0 || fullscreen) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        closeViewer();
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [viewerIndex, fullscreen, closeViewer]);
+  const {data:sampleDetail,loading:detailLoading,error:detailError}=useResource<SampleDetail>(
+    activeSample ? `/sample/${encodeURIComponent(activeSample.sample_id)}` : null);
 
   // Active dataset of current sample in viewer
   const sampleDataset = useMemo(() => {
@@ -249,15 +189,13 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
   }, [activeSample, datasets, activeDatasets]);
 
   // Annotations list for detail modal and fullscreen
-  const isMatchingSample = activeSample && sampleDetail?.sample.sample_id === activeSample.sample_id;
-  const currentDetail = isMatchingSample ? sampleDetail : null;
-  const detailAnnotations = currentDetail?.annotations || [];
+  const detailAnnotations = sampleDetail?.annotations || [];
   const bboxes = useMemo(() => {
     return detailAnnotations.filter(a => a.bbox && a.bbox.length >= 4);
   }, [detailAnnotations]);
 
-  const imgW = currentDetail?.sample.width || activeSample?.width || 955;
-  const imgH = currentDetail?.sample.height || activeSample?.height || 713;
+  const imgW = sampleDetail?.sample.width || activeSample?.width || 955;
+  const imgH = sampleDetail?.sample.height || activeSample?.height || 713;
 
   return (
     <div className="main" style={{ minWidth: 0, width: "100%", padding: 0 }}>
@@ -390,7 +328,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
             const filename = s.relative_path.split("/").pop() || s.relative_path;
             return (
               <ThumbnailCard key={s.sample_id} src={mediaUrl(s,"thumbnail")} label={filename}
-                data-idx={idx} data-sample-id={s.sample_id} onClick={()=>openViewer(s,idx)} />
+                data-idx={idx} data-sample-id={s.sample_id} onClick={()=>{setViewerIndex(idx);setFullscreen(false);}} />
             );
           })}
         </section>
@@ -408,28 +346,9 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
         setPage(number);document.getElementById("grid")?.scrollIntoView({block:"start",behavior:"smooth"});
       }} />
 
-      {/* Stage 1 & Stage 2 Overlays portalled to document.body */}
-      {typeof document !== "undefined" &&
-        createPortal(
-          <>
-            {/* Stage 1: Detail Modal */}
-            <div
-              id="overlay"
-              className={`detail-overlay ${detailModalOpen && !fullscreen ? "show" : "hidden"}`}
-              role="presentation"
-              onClick={e => {
-                if (e.target === e.currentTarget) closeViewer();
-              }}
-            >
-        <section className="detail-dialog" role="dialog" aria-modal="true" aria-labelledby="detail-title">
-          <header className="detail-header">
-            <h2 className="detail-title" id="detail-title">
-              图像详情
-            </h2>
-            <IconButton icon="close" type="button" id="close" title="关闭图像详情" label="关闭图像详情" onClick={closeViewer} />
-          </header>
-
-          <div className="detail-scroll">
+      {activeSample && <Modal title="图像详情" id="overlay" className="detail-dialog" onClose={()=>{setViewerIndex(-1);setFullscreen(false);}}>
+          <div className="detail-scroll" aria-busy={detailLoading}>
+            {detailError && <p role="alert" className="iad-error">{detailError}</p>}
             {activeSample && (
               <>
                 <button
@@ -438,7 +357,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
                   className="detail-preview"
                   aria-label="打开大图检视器"
                   title="点击查看大图与标注"
-                  onClick={openFullscreen}
+                  onClick={()=>setFullscreen(true)}
                 >
                   <AnnotatedImageStage
                     src={mediaUrl(activeSample, "image")}
@@ -476,7 +395,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
                     </span>
                   </div>
                   <div id="detail-ann-content">
-                    {sampleDataset?.format === "folder_classification" ? (
+                    {detailLoading ? <p>正在读取标注…</p> : detailError ? null : sampleDataset?.format === "folder_classification" ? (
                       <table className="detail-ann-table" aria-label="异常检测标注列表">
                         <thead>
                           <tr>
@@ -527,7 +446,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
                     模型观察
                   </h3>
                   <div id="detail-model-content">
-                    {sampleDetail?.suggestion ? (
+                    {detailLoading ? <p>正在读取观察…</p> : detailError ? null : sampleDetail?.suggestion ? (
                       <>
                         <p className="detail-model-result">
                           <strong>
@@ -549,8 +468,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
               </>
             )}
           </div>
-        </section>
-      </div>
+      </Modal>}
 
       {/* Stage 2: Fullscreen Viewer */}
       <FullscreenViewer
@@ -559,6 +477,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
           activeSample
             ? {
                 id: activeSample.sample_id,sampleId:activeSample.sample_id,
+                annotationLayer:{kind:'sample',sample:sampleDetail?.sample||activeSample,annotations:sampleDetail?.annotations||[]},
                 title: activeSample.relative_path,
                 imageUrl: mediaUrl(activeSample, "image"),
                 width: activeSample.width,
@@ -575,12 +494,9 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
           height: s.height,
         }))}
         currentIndex={viewerIndex}
-        onClose={closeFullscreen}
+        onClose={()=>setFullscreen(false)}
         onNavigate={setViewerIndex}
       />
-    </>,
-    document.body
-  )}
     </div>
   );
 }
