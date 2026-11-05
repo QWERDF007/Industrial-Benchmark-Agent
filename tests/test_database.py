@@ -1,3 +1,5 @@
+import sqlite3
+
 import pytest
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import (
@@ -24,6 +26,38 @@ from iad_core.storage.models import (
 def temp_db(tmp_path):
     db_file = tmp_path / "test.db"
     return Database(str(db_file))
+
+
+def test_opening_initialized_database_does_not_compete_with_an_active_writer(tmp_path):
+    path = str(tmp_path / 'concurrent.db')
+    database = Database(path)
+    with database.connection() as writer:
+        writer.execute('BEGIN IMMEDIATE')
+        reader = Database(path)
+        assert TaskRepository(reader).get('not-created') is None
+
+
+def test_schema_changes_are_reconciled_when_reopening_database(tmp_path):
+    path = str(tmp_path / 'changed.db')
+    database = Database(path)
+    with database.connection() as connection:
+        connection.execute('DROP TABLE knowledge_check_reviews')
+    reopened = Database(path)
+    with reopened.connection() as connection:
+        assert connection.execute('SELECT COUNT(*) FROM knowledge_check_reviews').fetchone()[0] == 0
+
+
+def test_replaced_database_is_initialized_without_reusing_previous_file_state(tmp_path):
+    path, replacement = tmp_path / 'current.db', tmp_path / 'replacement.db'
+    Database(str(path))
+    with sqlite3.connect(replacement) as connection:
+        connection.execute('CREATE TABLE replacement_marker (value TEXT)')
+        connection.execute("INSERT INTO replacement_marker VALUES ('restored')")
+    replacement.replace(path)
+    reopened = Database(str(path))
+    assert TaskRepository(reopened).get('not-created') is None
+    with reopened.connection() as connection:
+        assert connection.execute('SELECT value FROM replacement_marker').fetchone()[0] == 'restored'
 
 
 def test_task_repository(temp_db):

@@ -1,5 +1,7 @@
+import {Select} from './Select.js';
+import {Button} from './Button.js';
 import {IconButton} from "./IconButton.js";
-import {RefreshIcon} from "../AuditIcon.js";
+
 import React, {useEffect, useId, useState} from 'react';
 import type {ModelConnection, ModelLimits, WorkbenchModelSettings} from '../../shared/domain.generated.js';
 import {defaultModelLimits} from '../../shared/model-settings.generated.js';
@@ -60,11 +62,11 @@ export function ModelSettingsPage() {
     try {
       const result = await request<ModelConnection>('/models/check', input());
       setDraft(previous => previous ? {...previous, limits: {...previous.limits, capacity_mode: result.capacity_mode}} : previous);
-      setNotice(`连接正常 · 服务上下文 ${result.context_tokens.toLocaleString()} token；尚未发送图像`);
+      setNotice(`连接正常，服务上下文 ${result.context_tokens.toLocaleString()} token；尚未发送图像`);
     } catch (failure) {setError(message(failure));} finally {setBusy(false);}
   }
   return <div className="iad-workbench" data-page="industrial-model-settings"><style>{workbenchStyles}</style>
-    <WorkbenchHeader pageId="industrial-model-settings"><IconButton label="刷新" disabled={busy || loading || imageState.busy} onClick={() => tab==='images' ? setImageRefresh(value=>value+1) : void refresh()}><RefreshIcon /></IconButton></WorkbenchHeader>
+    <WorkbenchHeader pageId="industrial-model-settings"><IconButton icon="refresh" label="刷新" disabled={busy || loading || imageState.busy} onClick={() => tab==='images' ? setImageRefresh(value=>value+1) : void refresh()} /></WorkbenchHeader>
     <PageTabs label="模型设置分区" items={[{id: 'model', label: '工作台模型'}, {id: 'providers', label: '提供商'}, {id:'images',label:'图像检索'}]} value={tab} onChange={value => {
       if (tab==='images' && (imageState.busy || (imageState.dirty && !window.confirm('有未保存的图像配置，确认放弃修改？')))) return;
       setTab(value);setImageState({dirty:false,busy:false});if (value === 'model') void refresh();
@@ -75,25 +77,25 @@ export function ModelSettingsPage() {
       {view?.error && <p role="status" className="iad-muted">已保存配置：{view.error}</p>}
       {!draft ? <p role="status">正在读取配置…</p> : <form className="iad-model-form" onSubmit={save}>
         <fieldset disabled={busy || loading}><section className="iad-section-layout"><div><h3>模型选择</h3></div><div><div className="iad-model-fields">
-          <label className="iad-field">提供商<select aria-label="工作台提供商" value={draft.provider_id} onChange={event => {
+          <label className="iad-field">提供商<Select aria-label="工作台提供商" value={draft.provider_id} onChange={event => {
             setDraft({provider_id: event.target.value, model_id: '', limits: {...defaultModelLimits}}); setParameters('{}'); setError(''); setNotice('');
-          }}><option value="">选择提供商</option>{draft.provider_id && !provider && <option value={draft.provider_id}>已失效 · {draft.provider_id}</option>}
-            {view?.providers.map(row => <option key={row.provider_id} value={row.provider_id} disabled={!!row.error}>{row.name}{row.error ? ' · 暂不可用' : ''}</option>)}</select></label>
-          <label className="iad-field">模型<select aria-label="工作台模型" value={draft.model_id} disabled={!provider || !!provider.error} onChange={event => {setDraft({...draft, model_id: event.target.value}); setError(''); setNotice('');}}>
-            <option value="">选择模型</option>{draft.model_id && !provider?.models.some(row => row.model_id === draft.model_id) && <option value={draft.model_id}>已失效 · {draft.model_id}</option>}
-            {provider?.models.map(row => <option key={row.model_id} value={row.model_id} disabled={!row.input_modalities?.includes('image')}>{row.name}{row.input_modalities?.includes('image') ? '' : ' · 未声明图像能力'}</option>)}</select></label>
+          }}><option value="">选择提供商</option>{draft.provider_id && !provider && <option value={draft.provider_id}>已失效，{draft.provider_id}</option>}
+            {view?.providers.map(row => <option key={row.provider_id} value={row.provider_id} disabled={!!row.error}>{row.name}{row.error ? '，暂不可用' : ''}</option>)}</Select></label>
+          <label className="iad-field">模型<Select aria-label="工作台模型" value={draft.model_id} disabled={!provider || !!provider.error} onChange={event => {setDraft({...draft, model_id: event.target.value}); setError(''); setNotice('');}}>
+            <option value="">选择模型</option>{draft.model_id && !provider?.models.some(row => row.model_id === draft.model_id) && <option value={draft.model_id}>已失效，{draft.model_id}</option>}
+            {provider?.models.map(row => <option key={row.model_id} value={row.model_id} disabled={!row.input_modalities?.includes('image')}>{row.name}{row.input_modalities?.includes('image') ? '' : '，未声明图像能力'}</option>)}</Select></label>
         </div>
         {provider && <div className="iad-model-endpoint"><span className="iad-muted">服务地址</span><p>{provider.endpoint || provider.error}</p></div>}
         </div></section>
         <section className="iad-section-layout"><div><h3>高级设置</h3><p className="iad-muted">未填写时使用服务声明值</p></div>
         <details className="iad-model-advanced"><summary>容量与超时</summary><div className="iad-model-fields">
-          <label className="iad-field">容量预检<select aria-label="容量预检协议" value={draft.limits.capacity_mode || ''} onChange={event => setDraft({...draft, limits: {...draft.limits, capacity_mode: event.target.value === 'vllm_tokenize' ? 'vllm_tokenize' : null}})}>
-            <option value="">尚未确认</option><option value="vllm_tokenize">vLLM /tokenize</option></select></label>
+          <label className="iad-field">容量预检<Select aria-label="容量预检协议" value={draft.limits.capacity_mode || ''} onChange={event => setDraft({...draft, limits: {...draft.limits, capacity_mode: event.target.value === 'vllm_tokenize' ? 'vllm_tokenize' : null}})}>
+            <option value="">尚未确认</option><option value="vllm_tokenize">vLLM /tokenize</option></Select></label>
           {numbers.map(([key, label]) => <label key={key} className="iad-field">{label}<input type="number" aria-label={label} min={key.endsWith('_seconds') ? 0 : 1} step={key.endsWith('_seconds') ? 'any' : '1'}
             value={draft.limits[key] ?? ''} placeholder="使用服务声明值" onChange={event => setDraft({...draft, limits: {...draft.limits, [key]: event.target.value === '' ? null : Number(event.target.value)}})} /></label>)}
         </div><label className="iad-field">服务扩展参数（JSON）<textarea aria-label="服务扩展参数" aria-invalid={parametersError ? true : undefined} aria-describedby={parametersError ? parametersId : undefined} rows={4} value={parameters} onChange={event => setParameters(event.target.value)} /></label>{parametersError && <p id={parametersId} role="alert" className="iad-error">{parametersError}</p>}</details></section>
         <div className="iad-form-footer">{changed && <span className="iad-muted">有未保存的更改</span>}<button type="button" disabled={!draft.provider_id || !draft.model_id || !!parametersError} onClick={() => void check()}>检查连接</button>
-          <button className="iad-primary" type="submit" disabled={!changed || !draft.provider_id || !draft.model_id || !!parametersError}>{busy ? '处理中…' : '保存配置'}</button>
+          <Button variant="primary" type="submit" disabled={!changed || !draft.provider_id || !draft.model_id || !!parametersError}>{busy ? '处理中…' : '保存配置'}</Button>
           <button type="button" disabled={!changed} onClick={reset}>重置</button></div>
         </fieldset>
       </form>}

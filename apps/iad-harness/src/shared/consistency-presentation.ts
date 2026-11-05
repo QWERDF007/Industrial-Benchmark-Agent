@@ -15,5 +15,5 @@ export function annotationSummary(annotation:AnnotationComparison):string {
   const count=annotation.differences.filter(row=>row.type!=='POLICY_UNCONFIRMED'&&row.type!=='ANNOTATION_UNREADABLE').length;
   return [count ? `${count} 项标注差异` : annotation.status==='COMPLETE' ? '未发现标注差异' : '标注比较不完整',
     annotation.differences.some(row=>row.type==='POLICY_UNCONFIRMED') ? '规范待确认' : '',
-    annotation.confirmed_conflict ? '已确认冲突' : ''].filter(Boolean).join(' · ');
+    annotation.confirmed_conflict ? '已确认冲突' : ''].filter(Boolean).join('，');
 }

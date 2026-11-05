@@ -39,3 +39,8 @@ class ImageFiles:
         if (byte_count is not None and path.stat().st_size!=byte_count) or file_sha256(path)!=sha:
             raise ValueError('Image evidence bytes changed')
         return str(path)
+
+    def find(self, sha: str, byte_count: int | None = None) -> str | None:
+        """Find verified cached bytes; callers retaining history must use path()."""
+        try:return self.path(sha,byte_count)
+        except (FileNotFoundError,ValueError):return None

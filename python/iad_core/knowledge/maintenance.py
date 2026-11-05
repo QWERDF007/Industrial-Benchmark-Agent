@@ -34,9 +34,9 @@ class KnowledgeMaintenance:
                 def validate():
                     active = conn.execute("""SELECT 1 FROM job_runs WHERE job_type=? AND status IN ('PENDING','RUNNING')
                         AND COALESCE(json_extract(payload_json,'$.request.dataset_id'),json_extract(payload_json,'$.dataset_id'))=?""",
-                        ('NORMAL_KNOWLEDGE' if parent.kind == 'normal' else 'DEFECT_KNOWLEDGE', parent.dataset_id)).fetchone()
+                        ('KNOWLEDGE', parent.dataset_id)).fetchone()
                     if active:
                         raise ValueError('请先取消当前知识挖掘作业，等待结束后再移除条目')
 
                 self.repository.publish(snapshot, connection=conn, expected_head_version_id=version_id, validate=validate)
-        return next(version for version in self.repository.versions(snapshot.dataset_id, snapshot.kind) if version.version_id == target_id)
+        return next(version for version in self.repository.versions(snapshot.dataset_id) if version.version_id == target_id)

@@ -106,8 +106,9 @@ class PythonWorker {
     this.stdoutAccum = "";
     this.stderrAccum = "";
 
-    child.stdout.on("data", (chunk: Buffer) => {
-      this.stdoutAccum += chunk.toString("utf8");
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      this.stdoutAccum += chunk;
       const lines = this.stdoutAccum.split("\n");
       this.stdoutAccum = lines.pop() || "";
 
@@ -142,8 +143,9 @@ class PythonWorker {
       }
     });
 
-    child.stderr.on("data", (chunk: Buffer) => {
-      this.stderrAccum += chunk.toString("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk: string) => {
+      this.stderrAccum += chunk;
       if (this.stderrAccum.length > 50000) {
         this.stderrAccum = this.stderrAccum.slice(-20000);
       }

@@ -15,6 +15,29 @@ class JobSnapshots:
         self.lock=threading.RLock()
         self.job_types=get_args(JobKind)
 
+    def list(self, dataset_id: str, job_types: Sequence[JobKind]) -> list:
+        with self.lock:
+            placeholders = ",".join("?" for _ in job_types)
+            with self.db.connection() as conn:
+                ids = [row[0] for row in conn.execute(f"""WITH owned AS MATERIALIZED (
+                    SELECT child.value AS job_id FROM job_runs owner,json_each(owner.payload_json,'$.batch_runs') child
+                    WHERE child.type='text'), visible AS (
+                    SELECT id,job_id,job_type,status,deleted_at,
+                        COALESCE(json_extract(payload_json,'$.request.dataset_id'),json_extract(payload_json,'$.dataset_id')) dataset_id,
+                        json_extract(payload_json,'$.request.dataset_ids') dataset_ids
+                    FROM job_runs WHERE job_id NOT IN (SELECT job_id FROM owned))
+                    SELECT job_id FROM visible WHERE id IN (
+                    SELECT id FROM visible WHERE job_type IN ({placeholders}) AND deleted_at IS NULL
+                    AND (dataset_id=? OR EXISTS (SELECT 1 FROM json_each(dataset_ids) WHERE value=?))
+                    ORDER BY id DESC LIMIT 30) OR (job_type='DIRECTION_EXPLORATION' AND job_type IN ({placeholders})
+                    AND status='RUNNING' AND dataset_id=?) ORDER BY id DESC""",
+                    (*job_types, dataset_id, dataset_id, *job_types, dataset_id))]
+            jobs = [self.snapshot(run_id, job_types).model_dump() for run_id in ids]
+            if 'DIRECTION_EXPLORATION' in job_types:
+                jobs.sort(key=lambda job: (0 if job['status'] == 'RUNNING' else 1 if job['status'] == 'PENDING' else 2,
+                                          job['queue_position'] or 0))
+            return jobs
+
     def samples(self, dataset_id: str, sample_ids: Sequence[str], connection: Optional[Connection] = None) -> dict[str, JobSample]:
         with nullcontext(connection) if connection is not None else self.db.connection() as conn:
             rows = conn.execute("""SELECT sample_id,relative_path FROM samples WHERE dataset_id=?
@@ -40,13 +63,13 @@ class JobSnapshots:
                 "cancel_requested": payload.get("cancel_requested", False),
                 "unprocessed": payload["total_samples"] - payload["completed"] - payload["failed"],
                 "model_calls": [call.model_dump() for call in ModelCalls(self.db).list(run_id,connection=connection)]}
-        if row['job_type'] in ('NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE'):
+        if row['job_type'] in ('KNOWLEDGE', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE'):
             from iad_core.knowledge.trace import observation_progress
             values['observation_progress'] = observation_progress(values)
             if not values.get('mining_prompt'):
                 frozen = payload.get('request', {})
                 values['mining_prompt'] = payload.get('mining_prompt') or frozen.get('mining_prompt')
-        if row['job_type'] == 'DIRECTION_EXPLORATION':
+        if row['job_type'] in ('DIRECTION_EXPLORATION', 'EXPLORATION_BATCH'):
             frozen = payload.get('request', {})
             values['exploration_prompt'] = frozen.get('exploration_request', {}).get('prompt')
             if not values['exploration_prompt'] and frozen.get('instruction'):

@@ -1,21 +1,9 @@
-import json
 import uuid
 from typing import List, Optional
 
 from iad_core.knowledge.models import CheckRevision, KnowledgeCheck, KnowledgeCorrection, KnowledgeDraft, KnowledgeSnapshot
 
 
-EVOLUTION_INSTRUCTION = """以下是显式冻结预设，不是本轮重新观察过的视觉事实。
-先基于旧判据观察本组新图，再提出新支持、反例、新判据与修订。保持旧判据的适用范围、正常变化和未解决限制。
-旧条目不是完整检查清单，不能把它们作为本轮观察范围的上限。主动检视本组可见部件、部件间位置与结构关系、表面外观和允许的光照变化，查找旧知识尚未覆盖的独立判据。
-既有判据累积支持与新判据发现分别处理；新判据有实际跨图证据时写入checks，不要为了沿用旧知识而省略。证据不足但可追溯的新假设保留provisional；不可观察内容写入limitations，不凑条目数量。
-checks仅输出本轮观察支持的增量，support_evidence_ids/counter_evidence_ids仅引用本轮实际所见图像，不能复制未发送的历史证据。
-未触及的旧检查项由系统原样继承，不能因本组缺少相关部件就判其失效。
-对本轮有新增支持或需修改的旧项，用revisions.previous_check_id明确身份并映射到当前check的title；不得通过改写标题重复建项。
-新增独立判据没有旧项映射；一对一保持条目身份，拆分/合并须映射所有受影响旧ID，退役为空并给出理由。
-不能以新规则自证来源正常，也不能依据多数票消解冲突；保留位置、光照、正常替代解释及反例。
-人工建议是待核验约束，不是本轮视觉事实。不改写原始标签、人工裁决或历史知识。
-冻结父版本候选："""
 
 
 class KnowledgeEvolution:
@@ -28,15 +16,16 @@ class KnowledgeEvolution:
             raise ValueError('人工修订必须唯一关联当前基准版本的检查项')
 
     @property
-    def instruction(self) -> str:
-        return EVOLUTION_INSTRUCTION + json.dumps({
+    def context(self) -> dict:
+        return {
             'version_id': self.parent.version_id if self.parent else None,
             'allowed_predecessor_check_ids': [check.check_id for check in self.parent.checks] if self.parent else [],
             'summary': self.parent.summary if self.parent else '',
             'limitations': self.parent.limitations if self.parent else [],
             'checks': [dict(check.criterion_context(), historical_support_count=len(check.support_evidence_ids),
                             historical_counter_count=len(check.counter_evidence_ids)) for check in self.parent.checks] if self.parent else [],
-        }, ensure_ascii=False) + '\n待核验人工修订：' + json.dumps([item.model_dump() for item in self.corrections], ensure_ascii=False) + '\n'
+            'corrections':[item.model_dump() for item in self.corrections],
+        }
 
     def checks(self, draft: KnowledgeDraft) -> List[KnowledgeCheck]:
         previous = {check.check_id for check in self.parent.checks} if self.parent else set()

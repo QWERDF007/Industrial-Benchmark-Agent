@@ -103,7 +103,7 @@ test('1920 audit keeps PASS and model failure separate from same-image evidence 
     await fs.writeFile('/tmp/iad-audit-consistency-failure-1920.png',await driver.takeScreenshot(),'base64');
     await driver.findElement(By.xpath('//button[normalize-space(.)="报告"]')).click();
     await driver.wait(until.elementLocated(By.css('[aria-label="范围检查报告"]')),5000);
-    assert.match(await driver.findElement(By.css('[aria-label="范围检查报告"]')).getText(),/当前范围 Gold · 4 张[\s\S]*不可纳入 4/);
+    assert.match(await driver.findElement(By.css('[aria-label="范围检查报告"]')).getText(),/当前范围 Gold / 4 张[\s\S]*不可纳入 4/);
     await fs.writeFile('/tmp/iad-gold-quality-report-1920.png',await driver.takeScreenshot(),'base64');
   } catch(error) {
     if(driver)await fs.writeFile('/tmp/iad-audit-consistency-browser-failure.png',await driver.takeScreenshot(),'base64');

@@ -1,11 +1,12 @@
 import React from "react";
 import type { VisualEvidence } from "../../shared/domain.generated.js";
-import { type ImageNavigation, type ImageSource } from "./ImageCanvas.js";
+import type { ImageNavigation, ImageSource } from "./ImageCanvas.js";
 export { AnnotatedImage } from "./ImageCanvas.js";
 export type { ImageSource, ImageNavigation } from "./ImageCanvas.js";
 export interface EvidenceCollection {
     title: string;
     instruction: string;
+    index: number;
     images: {
         image: ImageSource;
         label: string;
@@ -13,9 +14,8 @@ export interface EvidenceCollection {
         group: string;
         originalSize: VisualEvidence["original_size"];
     }[];
-    index: number;
 }
-export declare function ImageViewer({ image, onClose, navigation, collection, }: {
+export declare function ImageViewer({ image, onClose, navigation, collection }: {
     image: ImageSource;
     onClose(): void;
     navigation?: ImageNavigation;

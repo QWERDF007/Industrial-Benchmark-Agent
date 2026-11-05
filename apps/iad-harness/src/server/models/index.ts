@@ -3,8 +3,8 @@ import type { JobSnapshot, ModelLimits, ModelProfile, WorkbenchModelSettings, Wo
 import type { BridgeDispatch, ModelRouting } from '../python-bridge/index.js';
 import { NativeProviders } from './providers.js';
 
-const starts = new Set(['direction_exploration_start', 'knowledge_start', 'audit_start', 'consistency_group_analyze']);
-const retries: Record<string, string> = {direction_exploration_retry: 'direction_exploration_status', knowledge_retry: 'knowledge_status', audit_retry: 'audit_status'};
+const starts = new Set(['dataset_report_start', 'analysis_start', 'direction_exploration_start', 'direction_exploration_batch_start', 'knowledge_start', 'knowledge_batch_start', 'audit_start', 'consistency_group_analyze', 'consistency_model_start']);
+const retries: Record<string, string> = {analysis_retry:'analysis_node',direction_exploration_retry: 'direction_exploration_status', knowledge_retry: 'knowledge_status', audit_retry: 'audit_status',consistency_model_retry:'consistency_model_status'};
 const normalized = (endpoint: string) => endpoint.replace(/\/$/, '').replace(/\/chat\/completions$/, '');
 
 export class WorkbenchModelRouting implements ModelRouting {

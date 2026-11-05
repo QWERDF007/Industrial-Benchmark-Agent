@@ -1,3 +1,5 @@
+import {Select} from './Select.js';
+import {IconButton} from "./IconButton.js";
 import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { FloatingMenu } from "./FloatingMenu.js";
 import { MediaImage, MediaLoad } from "./MediaLoad.js";
@@ -6,18 +8,20 @@ import { regionSources } from "../api.js";
 import { InspectionOverlay, InspectionPanel } from "./InspectionEvidence.js";
 import { resolveInspection, type ImageView, type InspectionContext, type InspectionSelection, type InspectionTransform } from "../inspection.js";
 import { useWorkspace } from "../workspace.js";
+import type {VisualEvidence} from '../../shared/contracts.js';
 
 const emptyHover = { ids: [] as string[], dismissed: false, x: 0, y: 0 };
 const minScale = 0.02, maxScale = 16;
 
 export interface ImageSource {
+  sampleId?: string; evidence?: VisualEvidence;
   src: string; title: string; caption?: string; width?: number; height?: number; annotationLayer?: AnnotationLayerSource;
   inspection?: InspectionContext;
   initialSelection?: InspectionSelection | null;
   initialTransform?: InspectionTransform;
 }
 export interface ImageNavigation { previous: boolean; next: boolean; busy: boolean; error: string; move(offset: -1 | 1): void }
-type ImageCanvasProps = { image: ImageSource; onClose?(): void; navigation?: ImageNavigation; embedded?: boolean; context?: React.ReactNode; closeLabel?: string; onExpand?(view: ImageView): void;
+type ImageCanvasProps = { image: ImageSource; navigation?: ImageNavigation; onExpand?(view: ImageView): void;
   control?: {transform: InspectionTransform; onChange(transform: React.SetStateAction<InspectionTransform>): void}; focusRegion?: {id: string; bbox: number[]}; overlay?:React.ReactNode;
 };
 
@@ -27,14 +31,14 @@ export function AnnotatedImage({ image, visible = true, onLoad }: { image: Image
   </div>;
 }
 
-export function ImageCanvas({ image, onClose, navigation, embedded = false, onExpand, context, closeLabel, control, focusRegion, overlay }: ImageCanvasProps) {
+export function ImageCanvas({ image, navigation, onExpand, control, focusRegion, overlay }: ImageCanvasProps) {
   const { workspace } = useWorkspace();
   const reference = image.inspection?.reference;
   const source = JSON.stringify(reference ? [reference.dataset_id, reference.sample_id, reference.suggestion_id] : [image.src]);
-  return <CanvasViewport key={JSON.stringify([source, image.src])} image={image} onClose={onClose} navigation={navigation} embedded={embedded} context={context} closeLabel={closeLabel} onExpand={onExpand} control={control} focusRegion={focusRegion} overlay={overlay} savedView={workspace.imageView(source)} onRemember={view => workspace.rememberImageView(source, view)} />;
+  return <CanvasViewport key={JSON.stringify([source, image.src])} image={image} navigation={navigation} onExpand={onExpand} control={control} focusRegion={focusRegion} overlay={overlay} savedView={workspace.imageView(source)} onRemember={view => workspace.rememberImageView(source, view)} />;
 }
 
-function CanvasViewport({ image, onClose, navigation, savedView, onRemember, embedded, onExpand, context, closeLabel, control, focusRegion, overlay }: ImageCanvasProps & { savedView?: ImageView; onRemember(view: ImageView): void }) {
+function CanvasViewport({ image, navigation, savedView, onRemember, onExpand, control, focusRegion, overlay }: ImageCanvasProps & { savedView?: ImageView; onRemember(view: ImageView): void }) {
   const viewport = useRef<HTMLDivElement>(null);
   const world = useRef<HTMLDivElement>(null);
   const layerMenu = useRef<HTMLDetailsElement>(null);
@@ -43,7 +47,6 @@ function CanvasViewport({ image, onClose, navigation, savedView, onRemember, emb
   const initialTransform = image.initialTransform || (image.initialSelection === undefined || JSON.stringify(image.initialSelection) === JSON.stringify(savedView?.selection) ? savedView?.transform : undefined);
   const [hover, setHover] = useState(emptyHover);
   const hintId = useId();
-  const [auxiliary, setAuxiliary] = useState<"inspection" | "context">(context ? "context" : "inspection");
   const [showEvidence, setShowEvidence] = useState(!!image.initialSelection);
   const [choices, setChoices] = useState<string[]>([]);
   const { finding, evidence, region } = resolveInspection(inspection?.analysis, selection);
@@ -134,7 +137,6 @@ function CanvasViewport({ image, onClose, navigation, savedView, onRemember, emb
     } else if (hint) setHover(previous => ({ ...previous, dismissed: true }));
     else if (choices.length) setChoices([]);
     else if (selection) setSelection(null);
-    else if (onClose) { onRemember(remembered.current.view); onClose(); }
   }
   function zoomBy(factor: number, anchorX = 0, anchorY = 0) {
     setHover(emptyHover);
@@ -156,21 +158,18 @@ function CanvasViewport({ image, onClose, navigation, savedView, onRemember, emb
     return () => element.removeEventListener("wheel", wheel);
   }, [fit,!!control]);
   const fixed = [0, 1, 1.5, 2].includes(view.scale);
-  const closeButton=onClose && <button onClick={()=>{onRemember(remembered.current.view);onClose();}}>{closeLabel || "关闭"}</button>;
-  return <div className={embedded ? "iad-image-canvas iad-embedded-canvas" : "iad-image-canvas iad-lightbox"} onKeyDown={event => { if (navigation && ["PageUp","PageDown"].includes(event.key) && !(event.target as HTMLElement).closest("input,select,textarea")) {event.preventDefault(); event.stopPropagation(); const offset = event.key === "PageUp" ? -1 : 1; if (!navigation.busy && (offset === -1 ? navigation.previous : navigation.next)) navigation.move(offset); } if (event.key === "Escape") {event.preventDefault(); event.stopPropagation(); cancel();} }}><div className="iad-lightbox-toolbar">{context && closeButton}<div className="iad-viewer-heading"><strong title={image.title}>{image.title}</strong>{image.caption && <small>{image.caption}</small>}</div>
-    <div className="iad-viewer-zoom" role="group" aria-label="图像缩放"><button className="iad-icon-button" aria-label="缩小" title="缩小" disabled={scale <= minScale} onClick={() => zoomBy(0.5)}><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M5 12h14" /></svg></button>
-    <select aria-label="缩放" value={fixed ? view.scale : "custom"} onChange={e => {
+  return <div className="iad-image-canvas iad-embedded-canvas" onKeyDown={event => { if (navigation && ["PageUp","PageDown"].includes(event.key) && !(event.target as HTMLElement).closest("input,select,textarea")) {event.preventDefault(); event.stopPropagation(); const offset = event.key === "PageUp" ? -1 : 1; if (!navigation.busy && (offset === -1 ? navigation.previous : navigation.next)) navigation.move(offset); } if (event.key === "Escape" && (layerMenu.current?.open || hint || choices.length || selection)) {event.preventDefault(); event.stopPropagation(); cancel();} }}><div className="iad-lightbox-toolbar"><div className="iad-viewer-heading"><strong title={image.title}>{image.title}</strong>{image.caption && <small>{image.caption}</small>}</div>
+    <div className="iad-viewer-zoom" role="group" aria-label="图像缩放"><IconButton icon="zoomOut" label="缩小" title="缩小" disabled={scale <= minScale} onClick={() => zoomBy(0.5)} />
+    <Select aria-label="缩放" value={fixed ? view.scale : "custom"} onChange={e => {
       const next = Number(e.target.value);
       if (next) zoomBy(next / scale);
       else { setView({ scale: 0, x: 0, y: 0 }); setHover(emptyHover); }
     }}>
       <option value={0}>适应窗口</option><option value={1}>100%</option><option value={1.5}>150%</option><option value={2}>200%</option>
       {!fixed && <option value="custom">{Math.round(scale * 100)}%</option>}
-    </select>
-    <button className="iad-icon-button" aria-label="放大" title="放大" disabled={scale >= maxScale} onClick={() => zoomBy(2)}><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M5 12h14M12 5v14" /></svg></button></div>
-    {(image.annotationLayer || inspection) && <button className="iad-icon-button" title={layers.annotation ? "隐藏标注" : "显示标注"} aria-label={layers.annotation ? "隐藏标注" : "显示标注"} aria-pressed={layers.annotation} onClick={() => setLayers(previous => ({ ...previous, annotation: !previous.annotation }))}>
-      <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" />{!layers.annotation && <path d="m3 3 18 18" />}</svg>
-    </button>}
+    </Select>
+    <IconButton icon="zoomIn" label="放大" title="放大" disabled={scale >= maxScale} onClick={() => zoomBy(2)} /></div>
+    {(image.annotationLayer || inspection) && <IconButton icon={layers.annotation ? "annotations" : "annotationsOff"} title={layers.annotation ? "隐藏标注" : "显示标注"} label={layers.annotation ? "隐藏标注" : "显示标注"} aria-pressed={layers.annotation} onClick={() => setLayers(previous => ({ ...previous, annotation: !previous.annotation }))} />}
     {inspection && <FloatingMenu detailsRef={layerMenu} className="iad-layer-menu" label="可视图层" summary="图层">
       {(Object.keys(regionSources) as (keyof typeof regionSources)[]).map(source => {
         const label = { annotation: "标注", model: "模型候选", coverage: "细节覆盖" }[source];
@@ -179,10 +178,10 @@ function CanvasViewport({ image, onClose, navigation, savedView, onRemember, emb
       })}
     </FloatingMenu>}
     {navigation && navigation.busy && <span className="iad-visually-hidden" role="status">正在切换图像…</span>}
-    {onExpand && <button className="iad-icon-button" aria-label="全屏检视" title="全屏检视" onClick={() => {onRemember(remembered.current.view);onExpand(remembered.current.view);}}><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" /></svg></button>}
-    {!context && closeButton}</div>
+    {onExpand && <IconButton icon="expand" label="全屏检视" title="全屏检视" onClick={() => {onRemember(remembered.current.view);onExpand(remembered.current.view);}} />}
+    </div>
     {navigation?.error && <p role="alert" className="iad-error">{navigation.error}</p>}
-    <div className={`iad-viewer-body ${inspection && !embedded ? "has-inspection" : ""} ${context ? "has-context" : ""}`}>
+    <div className="iad-viewer-body">
     <MediaLoad key={image.src} className="iad-viewer-media" primarySource={image.src}><div className="iad-viewer-viewport" ref={viewport} tabIndex={0} aria-label="图像视口" aria-describedby={hint ? hintId : undefined}
       onKeyDown={event => {
         const direction=({ArrowLeft:[20,0],ArrowRight:[-20,0],ArrowUp:[0,20],ArrowDown:[0,-20]} as Record<string,number[]>)[event.key];
@@ -208,7 +207,7 @@ function CanvasViewport({ image, onClose, navigation, savedView, onRemember, emb
         {inspection && <InspectionOverlay inspection={inspection} selectedId={selectedId} hoveredIds={hover.ids} regions={regions} finding={layers.model ? finding : undefined} />}
       </div>
       {hint && <div id={hintId} role="tooltip" className="iad-roi-hint" style={{ left: hover.x, top: hover.y + (hover.y < bounds.height / 2 ? 1 : 0), transform: hover.y >= bounds.height / 2 ? "translateY(-100%)" : undefined }} onPointerMove={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()}>
-        {regionSources[hint.source]} · {hint.label.slice(0,80)}{hint.label.length > 80 ? "…" : ""}{hoveredRegions.length > 1 ? ` · ${hoveredRegions.length} 个重叠区域` : ""}
+        {regionSources[hint.source]}，{hint.label.slice(0,80)}{hint.label.length > 80 ? "…" : ""}{hoveredRegions.length > 1 ? `，${hoveredRegions.length} 个重叠区域` : ""}
       </div>}
     </div>
     {navigation && <nav className="iad-viewer-edge-nav" aria-label="图片切换">
@@ -217,10 +216,8 @@ function CanvasViewport({ image, onClose, navigation, savedView, onRemember, emb
         <span className="iad-viewer-edge-disc" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"><path d={offset === -1 ? "m15 4-8 8 8 8" : "m9 4 8 8-8 8"} /></svg></span>
       </button>)}
     </nav>}
-    {context && <p className="iad-viewer-hint">拖动平移 · 滚轮缩放 · PgUp/PgDn 切换</p>}</MediaLoad>
-    {(context || (inspection && !embedded)) && <div className="iad-viewer-aux">{context && inspection && <div className="iad-tabs"><button className={auxiliary === "context" ? "active" : ""} onClick={()=>setAuxiliary("context")}>图像证据</button><button className={auxiliary === "inspection" ? "active" : ""} onClick={()=>setAuxiliary("inspection")}>检视分析</button></div>}{context && auxiliary === "context" && context}
-    {inspection && (!context || auxiliary === "inspection") && <InspectionPanel inspection={inspection} selection={selection} choices={choices} onSelect={select} transform={() => ({ zoom: view.scale ? scale / fit : 0, x: view.x, y: view.y })} />}</div>}
-    {inspection && embedded && <details className="iad-embedded-evidence" open={showEvidence} onToggle={event => setShowEvidence(event.currentTarget.open)}><summary>证据与分析</summary>    <InspectionPanel inspection={inspection} selection={selection} choices={choices} onSelect={select} transform={() => ({ zoom: view.scale ? scale / fit : 0, x: view.x, y: view.y })} /></details>}
+    </MediaLoad>
+    {inspection && <details className="iad-embedded-evidence" open={showEvidence} onToggle={event => setShowEvidence(event.currentTarget.open)}><summary>证据与分析</summary>    <InspectionPanel inspection={inspection} selection={selection} choices={choices} onSelect={select} transform={() => ({ zoom: view.scale ? scale / fit : 0, x: view.x, y: view.y })} /></details>}
     </div>
   </div>;
 }

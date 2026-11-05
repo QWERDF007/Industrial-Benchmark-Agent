@@ -6,7 +6,58 @@ import httpx
 import pytest
 
 
-def test_successor_accumulates_sources_and_keeps_rule_identity_when_wording_changes(knowledge_dataset):
+def test_conflicted_parent_can_observe_new_images_without_erasing_counter_evidence(knowledge_dataset, self_discovery_prompt):
+    from iad_core.entry import knowledge_get
+    from iad_core.knowledge.service import KnowledgeService
+    from iad_core.workbench.vision import VlmClient
+
+    db, config = knowledge_dataset
+    count = 0
+
+    def respond(request):
+        nonlocal count
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 262144})
+        observation = frozen_observation_response(request)
+        if observation is not None:
+            return observation
+        count += 1
+        parts = json.loads(request.content)['messages'][0]['content']
+        refs = [json.loads(part['text'][5:])['evidence_id'] for part in parts
+                if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
+        first = count == 1
+        result = dict(summary='保留分歧并继续观察', checks=[dict(title='孔位关系' if first else '孔间背景', subject='孔' if first else '背景',
+            location='主体', criterion='双孔横向排列' if first else '孔间背景连续可见', allowed_variations=[],
+            support_evidence_ids=refs[:-1] if first else refs, counter_evidence_ids=refs[-1:] if first else [],
+            limitations=[], status='conflicted' if first else 'supported')], suspects=[], limitations=[])
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
+
+    service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        first = service.start(request=selected_group(db, config.dataset.id, 'normal',
+            images=[f'{config.dataset.id}:part-{index}.png' for index in range(3)]), kind='normal', model_name='test-mllm', mining_prompt=self_discovery_prompt)
+        service.wait(first['run_id'], 5)
+        previous = knowledge_get({'version_id': service.status(first['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
+        assert [check['status'] for check in previous['checks']] == ['conflicted']
+        next_job = service.start(request=selected_group(db, config.dataset.id, 'normal',
+            images=[f'{config.dataset.id}:part-{index}.png' for index in range(3, 6)], knowledge_preset=[previous['version_id']]),
+            kind='normal', model_name='test-mllm', mining_prompt=self_discovery_prompt)
+        service.wait(next_job['run_id'], 5)
+        finished = service.status(next_job['run_id'])
+        assert finished['status'] == 'COMPLETED', finished['errors']
+        current = knowledge_get({'version_id': finished['knowledge_version_id']}, db.db_path)['knowledge']
+        assert current['parent_version_id'] == previous['version_id']
+        old = next(check for check in current['checks'] if check['check_id'] == previous['checks'][0]['check_id'])
+        assert old['status'] == 'conflicted'
+        assert old['counter_evidence_ids'] == previous['checks'][0]['counter_evidence_ids']
+        assert any(check['title'] == '孔间背景' for check in current['checks'])
+        assert len(current['observation_steps'][-1]['result']['observations']) == 3
+        assert knowledge_get({'version_id': previous['version_id']}, db.db_path)['knowledge'] == previous
+    finally:
+        service.close()
+
+
+def test_successor_accumulates_sources_and_keeps_rule_identity_when_wording_changes(knowledge_dataset, self_discovery_prompt):
     from iad_core.entry import knowledge_get
     from iad_core.knowledge.service import KnowledgeService
     from iad_core.workbench.vision import VlmClient
@@ -50,11 +101,11 @@ def test_successor_accumulates_sources_and_keeps_rule_identity_when_wording_chan
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=sample_ids[:2]), kind='normal', model_name='test-mllm')
+        first = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=sample_ids[:2]), kind='normal', model_name='test-mllm', mining_prompt=self_discovery_prompt)
         service.wait(first['run_id'], 5)
         assert service.status(first['run_id'])['status'] == 'COMPLETED', service.status(first['run_id'])
         previous = knowledge_get({'version_id': service.status(first['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
-        successor = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[sample_ids[2]], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm')
+        successor = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[sample_ids[2]], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm', mining_prompt=self_discovery_prompt)
         service.wait(successor['run_id'], 5)
         status = service.status(successor['run_id'])
         assert status['status'] == 'COMPLETED', status
@@ -70,7 +121,7 @@ def test_successor_accumulates_sources_and_keeps_rule_identity_when_wording_chan
         assert current['checks'][1]['predecessor_check_ids'] == []
         assert current['revisions'] == current['mining_steps'][-1]['result']['revisions']
         assert len(observed[1]) == 1
-        again = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[sample_ids[2]], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm')
+        again = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[sample_ids[2]], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm', mining_prompt=self_discovery_prompt)
         service.wait(again['run_id'], 5)
         assert service.status(again['run_id'])['knowledge_version_id'] == current['version_id']
         assert len(observed) == 2
@@ -80,7 +131,7 @@ def test_successor_accumulates_sources_and_keeps_rule_identity_when_wording_chan
 
 
 @pytest.mark.parametrize('invalid_revision', ['foreign', 'duplicate_parent', 'unknown_title', 'duplicate_title'])
-def test_invalid_rule_lineage_cannot_replace_the_published_knowledge(knowledge_dataset, invalid_revision):
+def test_invalid_rule_lineage_cannot_replace_the_published_knowledge(knowledge_dataset, self_discovery_prompt, invalid_revision):
     from iad_core.entry import knowledge_get
     from iad_core.knowledge.service import KnowledgeService
     from iad_core.workbench.vision import VlmClient
@@ -115,10 +166,10 @@ def test_invalid_rule_lineage_cannot_replace_the_published_knowledge(knowledge_d
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-0.png']), kind='normal', model_name='test-mllm')
+        first = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-0.png']), kind='normal', model_name='test-mllm', mining_prompt=self_discovery_prompt)
         service.wait(first['run_id'], 5)
         previous = knowledge_get({'version_id': service.status(first['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
-        next_job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-1.png'], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm')
+        next_job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-1.png'], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm', mining_prompt=self_discovery_prompt)
         service.wait(next_job['run_id'], 5)
         failed = service.status(next_job['run_id'])
         assert failed['status'] == 'FAILED', failed
@@ -127,7 +178,7 @@ def test_invalid_rule_lineage_cannot_replace_the_published_knowledge(knowledge_d
         assert ('revisions.0.previous_check_id: literal_error' if invalid_revision == 'foreign' else 'Knowledge revision') in failed['errors'][0]['message']
         if invalid_revision == 'foreign':
             assert not failed.get('mining_steps'), 'A schema-invalid draft is not an accepted observation'
-            assert failed['model_calls'][-1]['error']['type'] == 'ValueError'
+            assert failed['model_calls'][-1]['error']['type'] == 'ModelOutputError'
         else:
             assert failed['mining_steps'][-1]['result']['checks']
         assert knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge'] == previous
@@ -135,7 +186,7 @@ def test_invalid_rule_lineage_cannot_replace_the_published_knowledge(knowledge_d
         service.close()
 
 
-def test_source_losing_normal_qualification_is_not_carried_into_successor(knowledge_dataset):
+def test_source_losing_normal_qualification_is_not_carried_into_successor(knowledge_dataset, self_discovery_prompt):
     from iad_core.entry import knowledge_get
     from iad_core.knowledge.service import KnowledgeService
     from iad_core.workbench.review import HumanReview, ReviewSubmission
@@ -168,16 +219,16 @@ def test_source_losing_normal_qualification_is_not_carried_into_successor(knowle
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=sample_ids[:2]), kind='normal', model_name='test-mllm')
+        first = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=sample_ids[:2]), kind='normal', model_name='test-mllm', mining_prompt=self_discovery_prompt)
         service.wait(first['run_id'], 5)
         previous = knowledge_get({'version_id': service.status(first['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
         human = HumanReview(db)
         human.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=config.dataset.id, reviewer='operator', sample_id=sample_ids[0], decision='FAIL'))
         with pytest.raises(ValueError, match='资格|来源'):
-            service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=sample_ids[2:], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm')
+            service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=sample_ids[2:], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm', mining_prompt=self_discovery_prompt)
         frozen = previous
         previous = None
-        job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=sample_ids[1:]), kind='normal', model_name='test-mllm')
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=sample_ids[1:]), kind='normal', model_name='test-mllm', mining_prompt=self_discovery_prompt)
         service.wait(job['run_id'], 5)
         status = service.status(job['run_id'])
         assert status['status'] == 'COMPLETED', status
@@ -191,7 +242,7 @@ def test_source_losing_normal_qualification_is_not_carried_into_successor(knowle
         service.close()
 
 
-def test_split_merge_and_retirement_have_explicit_rule_lineage(knowledge_dataset):
+def test_split_merge_and_retirement_have_explicit_rule_lineage(knowledge_dataset, self_discovery_prompt):
     from iad_core.entry import knowledge_get
     from iad_core.knowledge.service import KnowledgeService
     from iad_core.workbench.vision import VlmClient
@@ -231,7 +282,7 @@ def test_split_merge_and_retirement_have_explicit_rule_lineage(knowledge_dataset
         versions = []
         for index in range(3):
             stage = index
-            job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + f':part-{index}.png'], knowledge_preset=[previous['version_id']] if previous else []), kind='normal', model_name='test-mllm')
+            job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + f':part-{index}.png'], knowledge_preset=[previous['version_id']] if previous else []), kind='normal', model_name='test-mllm', mining_prompt=self_discovery_prompt)
             service.wait(job['run_id'], 5)
             status = service.status(job['run_id'])
             assert status['status'] == 'COMPLETED', status
@@ -256,7 +307,7 @@ def test_split_merge_and_retirement_have_explicit_rule_lineage(knowledge_dataset
         service.close()
 
 
-def test_full_group_preserves_parent_rules_and_accumulated_visual_support(knowledge_dataset):
+def test_full_group_preserves_parent_rules_and_accumulated_visual_support(knowledge_dataset, self_discovery_prompt):
     from iad_core.entry import knowledge_get
     from iad_core.knowledge.service import KnowledgeService
     from iad_core.workbench.vision import VlmClient
@@ -292,11 +343,11 @@ def test_full_group_preserves_parent_rules_and_accumulated_visual_support(knowle
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-0.png']), kind='normal', model_name='test-mllm')
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-0.png']), kind='normal', model_name='test-mllm', mining_prompt=self_discovery_prompt)
         service.wait(job['run_id'], 5)
         previous = knowledge_get({'version_id': service.status(job['run_id'])['knowledge_version_id']}, db.db_path)['knowledge']
         observed.clear()
-        job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-1.png', config.dataset.id + ':part-2.png', config.dataset.id + ':part-3.png'], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm')
+        job = service.start(request=selected_group(service.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':part-1.png', config.dataset.id + ':part-2.png', config.dataset.id + ':part-3.png'], knowledge_preset=[previous['version_id']]), kind='normal', model_name='test-mllm', mining_prompt=self_discovery_prompt)
         service.wait(job['run_id'], 5)
         status = service.status(job['run_id'])
         assert status['status'] == 'COMPLETED', status

@@ -9,6 +9,7 @@ from iad_core.dataset.path_safety import AuthorizedDatasetPaths, PathSafetyError
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.images import file_sha256, image_pixel_sha256
 from iad_core.evidence.sources import SampleContent
+from iad_core.duplicate.index import PixelIndex
 from iad_core.knowledge.models import KnowledgeFinding, KnowledgeKind, KnowledgeSnapshot, KnowledgeSource, KnowledgeSourceMetadata, KnowledgeSourceItem
 from iad_core.knowledge.candidates import AuditCandidates
 from iad_core.storage.database import Database
@@ -35,6 +36,25 @@ class KnowledgeSources:
         self.registry = DatasetRegistry(db)
         self.samples, self.annotations, self.reviews = SampleRepository(db), AnnotationRepository(db), ReviewRepository(db)
         self.candidates = AuditCandidates(db)
+
+    def for_version(self, version: KnowledgeSnapshot) -> KnowledgeEligibility:
+        return self.registered(version.dataset_id)
+
+    def registered(self, dataset_id: str) -> KnowledgeEligibility:
+        with self.db.connection() as connection:
+            connection.execute("BEGIN")
+            rows = connection.execute("""SELECT s.sample_id,s.quality_status,
+                EXISTS(SELECT 1 FROM annotations a WHERE a.sample_id=s.sample_id) AS annotated
+                FROM samples s
+                WHERE s.dataset_id=? AND s.is_excluded=0 ORDER BY s.relative_path,s.sample_id""", (dataset_id,)).fetchall()
+            decisions = self.reviews.get_decisions([row['sample_id'] for row in rows], connection=connection)
+        qualifications = {}
+        for row in rows:
+            decision = decisions.get(row['sample_id'])
+            qualifications[row['sample_id']] = ('human_'+decision.decision.lower() if decision else
+                'raw_pass' if row['quality_status']=='PASS' else 'raw_fail' if row['quality_status']=='FAIL' else
+                'annotated_candidate' if row['annotated'] else 'initial_unannotated')
+        return KnowledgeEligibility(qualifications, {})
 
     def eligible(self, dataset_id: str, kind: KnowledgeKind, normal: Optional[KnowledgeSnapshot] = None) -> KnowledgeEligibility:
         with self.db.connection() as connection:
@@ -87,8 +107,13 @@ class KnowledgeSources:
                         qualifications[sample_id] = 'audit_suspect'
             return KnowledgeEligibility(qualifications, unavailable)
 
-    def list_candidates(self, dataset_id: str, kind: KnowledgeKind, normal: Optional[KnowledgeSnapshot], search: str = '') -> tuple[KnowledgeEligibility, List[KnowledgeSourceItem]]:
-        availability = self.eligible(dataset_id, kind, normal)
+    def collect_registered(self, dataset_id: str, sample_ids: List[str], *,
+                           frozen_sources: Optional[List[KnowledgeSource]] = None) -> List[KnowledgeSource]:
+        eligible = self.registered(dataset_id).require_available(sample_ids)
+        return self.capture_group(sample_ids, eligible, frozen_sources=frozen_sources)
+
+    def list_candidates(self, dataset_id: str, kind: KnowledgeKind, normal: Optional[KnowledgeSnapshot], search: str = '', *, joint: bool = False) -> tuple[KnowledgeEligibility, List[KnowledgeSourceItem]]:
+        availability = self.registered(dataset_id) if joint or kind is None else self.eligible(dataset_id, kind, normal)
         with self.db.connection() as conn:
             rows = conn.execute("""SELECT sample_id,relative_path FROM samples
                 WHERE sample_id IN (SELECT value FROM json_each(?)) AND instr(lower(relative_path),lower(?))>0
@@ -98,6 +123,10 @@ class KnowledgeSources:
     def collect(self, dataset_id: str, sample_ids: List[str], kind: KnowledgeKind,
                 normal: Optional[KnowledgeSnapshot] = None, *, frozen_sources: Optional[List[KnowledgeSource]] = None) -> List[KnowledgeSource]:
         eligible = self.eligible(dataset_id, kind, normal).require_available(sample_ids)
+        return self.capture_group(sample_ids, eligible, frozen_sources=frozen_sources)
+
+    def capture_group(self, sample_ids: List[str], eligible: dict[str, str], *,
+                      frozen_sources: Optional[List[KnowledgeSource]] = None) -> List[KnowledgeSource]:
         sources = []
         frozen = {source.sample_id: source for source in frozen_sources or []}
         paths = AuthorizedDatasetPaths(self.db.db_path)
@@ -126,5 +155,8 @@ class KnowledgeSources:
         if frozen and content.sha256 == frozen.sha256 and frozen.pixel_sha256:
             digest = frozen.pixel_sha256
         else:
-            digest = image_pixel_sha256(sample.image_path, content.sha256)
+            indexed = PixelIndex(self.db).get(sample_id, connection=connection)
+            digest = (indexed.descriptor.pixel_key if indexed and indexed.image_sha256 == content.sha256
+                and indexed.descriptor.decode_status == 'COMPLETE' and indexed.descriptor.pixel_key
+                else image_pixel_sha256(sample.image_path, content.sha256))
         return KnowledgeSource(**content.model_dump(), pixel_sha256=digest)

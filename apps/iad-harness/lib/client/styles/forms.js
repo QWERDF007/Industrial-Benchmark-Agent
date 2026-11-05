@@ -7,7 +7,6 @@ export const formsStyles = `.iad-info-group {background:var(--iad-surface-muted)
 .iad-floating-menu>summary {display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .iad-floating-menu summary::marker {content:"";}
 .iad-floating-menu[open]>summary {border-color:var(--iad-primary);}
-.iad-reference-grid button {padding:0;border:0;line-height:0;}
 .iad-job-section {padding:20px;margin-bottom:18px;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:var(--iad-radius);}
 .iad-job-section h2 {margin-top:0;}
 .iad-evidence-preview {display:flex;align-items:center;gap:10px;width:100%;margin:10px 0;text-align:left;font-size:12px!important;}
@@ -31,13 +30,13 @@ export const formsStyles = `.iad-info-group {background:var(--iad-surface-muted)
 .iad-config-bar {display:flex;align-items:end;gap:12px;flex-wrap:wrap;}
 .iad-config-bar>.iad-field {flex:1 1 220px;margin:0;min-width:0;}
 .iad-config-bar select {width:100%;}
-.iad-config-bar>.iad-primary {margin-left:auto;}
+.iad-config-bar>.iad-button[data-variant="primary"] {margin-left:auto;}
 
 .iad-discovery-area {margin:12px 0;}.iad-discovery-area h3 {margin:0 0 8px;}
 
 .iad-detail-dialog {width:min(1000px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:auto;margin:auto;background:var(--iad-surface);color:var(--iad-text);border:1px solid var(--iad-control-border);border-radius:6px;padding:16px;}
 .iad-detail-dialog.iad-inline-dialog {position:sticky;inset:auto;top:0;width:100%;max-width:none;max-height:none;margin:0;padding:0;overflow:visible;background:transparent;}.iad-inline-dialog .iad-inspector{position:static}
-.iad-detail-dialog.iad-drawer {width:min(560px,100%);max-width:100%;height:100dvh;max-height:100dvh;margin:0 0 0 auto;border-radius:0;padding:24px;}.iad-drawer .iad-config-bar {display:grid;gap:16px;}.iad-drawer .iad-config-bar>.iad-field {margin:0;}.iad-drawer .iad-job-panel {min-width:0;}
+.iad-detail-dialog.iad-drawer {width:min(560px,100%);max-width:100%;height:100dvh;max-height:100dvh;margin:0 0 0 auto;border-radius:0;padding:0;overflow:hidden;display:flex;flex-direction:column;}.iad-drawer .iad-config-bar {padding:24px;overflow:auto;display:grid;gap:16px;}.iad-drawer .iad-config-bar>.iad-field {margin:0;}.iad-drawer .iad-job-panel {min-width:0;}
 .iad-detail-dialog.iad-confirm-dialog {width:min(440px,calc(100% - 32px));}
 .iad-detail-dialog.iad-viewer-dialog {width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;padding:0;background:var(--iad-viewer);overflow:hidden;}
 .iad-detail-dialog::backdrop {background:var(--iad-scrim);}

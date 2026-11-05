@@ -29,7 +29,7 @@ class FindingLedger:
         return [{'reference': state.reference.model_dump(), 'finding': state.finding.model_dump(exclude={'finding_id', 'source_step_ids', 'related_findings'})}
                 for state in self._pending.values()]
 
-    def observe(self, step_id: str, result: JointAnalysis, evidence: Mapping[str, VisualEvidence], check_ids: frozenset[str]) -> None:
+    def validate(self, result: JointAnalysis, evidence: Mapping[str, VisualEvidence], check_ids: frozenset[str]) -> None:
         references = [(ref.step_id, ref.finding_index) for transition in [*result.findings, *result.resolved_findings]
                       for ref in transition.related_findings]
         if not set(references) <= self._pending.keys():
@@ -43,6 +43,9 @@ class FindingLedger:
         for resolution in result.resolved_findings:
             for ref in resolution.related_findings:
                 self._validate_evidence(resolution.evidence_ids, self._pending[(ref.step_id, ref.finding_index)].finding.location, evidence)
+
+    def observe(self, step_id: str, result: JointAnalysis, evidence: Mapping[str, VisualEvidence], check_ids: frozenset[str]) -> None:
+        self.validate(result, evidence, check_ids)
         pending, resolved = dict(self._pending), set(self._resolved)
         for resolution in result.resolved_findings:
             for ref in resolution.related_findings:

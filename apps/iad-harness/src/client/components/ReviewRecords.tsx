@@ -31,6 +31,6 @@ export function ReviewRecords({ datasetId, page, search, selected, revision, onP
             <td title={record.relative_path}>{record.relative_path}</td><td>{reviewLabel(record.decision)}</td>
             <td>{record.reviewer}<br />{record.submitted_at ? <time dateTime={record.submitted_at}>{new Date(record.submitted_at).toLocaleString()}</time> : "未记录提交时间"}</td>
             <td>{record.comment || "—"}</td><td><button onClick={() => onSelect(record.sample_id)}>查看样本</button></td>
-          </tr>)}</tbody></table></div> : <div className="iad-empty"><h2>{search ? "没有匹配的复核记录" : "暂无复核记录"}</h2><p>{search ? "请调整搜索关键词。" : "完成一次人工裁决后，记录会出现在这里。"}</p><button onClick={onQueue}>前往复核队列</button></div>}{pagination}</>}
+          </tr>)}</tbody></table></div> : <div className="iad-empty"><p>{search ? "没有符合筛选条件的复核记录。" : "当前范围暂无复核记录。"}</p><button onClick={onQueue}>前往复核队列</button></div>}{pagination}</>}
   </section>{showingDetail && detail}</div>;
 }

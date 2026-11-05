@@ -1,57 +1,77 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useEffect, useState } from "react";
-import { ImageViewer } from "./ImageViewer.js";
-import { KnowledgeEvidenceGallery } from "./KnowledgeEvidenceGallery.js";
-import { DatasetKnowledge } from "./DatasetKnowledge.js";
-import { message, request, sampleQuery } from "../api.js";
-import { useKnowledge } from "../useKnowledge.js";
-import { useWorkspace } from "../workspace.js";
-import { KnowledgeState } from "./KnowledgeState.js";
-import { useWorkbenchModel, WorkbenchModelStatus } from '../models.js';
-export function AuditSetup({ dataset, filters, jobs, revision, onJobsChanged, onStarted }) {
-    const { workspace } = useWorkspace();
-    const view = workspace.view("industrial-audit");
-    const normalQuery = useKnowledge(dataset.dataset_id, "normal", view.normalVersion, revision);
-    const defectQuery = useKnowledge(dataset.dataset_id, "defect", view.defectVersion, revision);
-    const normal = normalQuery.knowledge;
-    const defect = defectQuery.knowledge?.normal_version_id === normal?.version_id ? defectQuery.knowledge : null;
-    const loading = normalQuery.loading || defectQuery.loading;
-    const loadError = normalQuery.error || defectQuery.error || (!loading && view.defectVersion && !defect ? "所选不良知识与良品版本不匹配，请重新选择" : "");
-    const [lightbox, setLightbox] = useState(null);
-    const model = useWorkbenchModel();
-    const [busy, setBusy] = useState(false);
-    const [error, setError] = useState("");
-    const [total, setTotal] = useState(null);
-    const scopeQuery = sampleQuery(dataset.dataset_id, filters, 1, 1);
+import { Select } from './Select.js';
+import { Button } from './Button.js';
+import { useEffect, useRef, useState } from 'react';
+import { message, request, sampleQuery } from '../api.js';
+import { useWorkbenchModel } from '../models.js';
+import { useWorkspace } from '../workspace.js';
+import { promptDefaults } from '../../shared/prompt-defaults.generated.js';
+export function AuditSetup({ datasets, filters, jobs, revision, onStarted, onCancel, onBusyChange }) {
+    const { workspace } = useWorkspace(), model = useWorkbenchModel();
+    const view = workspace.view('industrial-audit');
+    const identity = JSON.stringify([datasets.map(dataset => dataset.dataset_id).sort(), filters, revision]);
+    const [result, setResult] = useState();
+    const rows = result?.identity === identity ? result.rows : null;
+    const [busy, setBusy] = useState(false), [error, setError] = useState('');
+    const [instruction, setInstruction] = useState(promptDefaults.audit);
+    const requests = useRef(new Map()), started = useRef(new Map());
     useEffect(() => {
         const controller = new AbortController();
-        setTotal(null);
-        setError("");
-        request(`/samples/${encodeURIComponent(dataset.task_id)}?${scopeQuery}`, undefined, undefined, controller.signal)
-            .then(result => { if (!controller.signal.aborted)
-            setTotal(result.total); })
+        Promise.all(datasets.map(async (dataset) => {
+            const [catalog, samples] = await Promise.all([
+                request(`/knowledge/versions?${new URLSearchParams({ dataset_id: dataset.dataset_id })}`, undefined, undefined, controller.signal),
+                request(`/samples/${encodeURIComponent(dataset.task_id)}?${sampleQuery(dataset.dataset_id, filters, 1, 1)}`, undefined, undefined, controller.signal),
+            ]);
+            return { dataset, catalog, total: samples.total };
+        })).then(rows => { if (!controller.signal.aborted)
+            setResult({ identity, rows, error: '' }); })
             .catch(error => { if (!controller.signal.aborted)
-            setError(message(error)); });
+            setResult({ identity, rows: [], error: message(error) }); });
         return () => controller.abort();
-    }, [dataset.task_id, scopeQuery]);
+    }, [identity]);
+    const unavailable = rows?.find(({ catalog, total }) => !total || !catalog.versions.some(version => version.version_id === catalog.current_version_id));
+    const reason = !model.ready ? model.error || model.view?.error || '请先配置工作台模型'
+        : !instruction.trim() ? '请填写审计提示词'
+            : result?.identity === identity && result.error ? result.error
+                : !rows ? '正在读取范围和已发布知识'
+                    : !rows.length ? '请选择子数据集'
+                        : unavailable ? `${unavailable.dataset.name}：${unavailable.total ? '请先生成统一知识' : '当前范围没有图像'}`
+                            : !started.current.size && jobs.some(job => ['PENDING', 'RUNNING'].includes(job.status)) ? '当前范围仍有审计作业执行中' : '';
+    const cancel = () => { if (!busy) {
+        if (started.current.size)
+            onStarted(Array.from(started.current.values()));
+        else
+            onCancel();
+    } };
+    const provider = model.view?.providers.find(provider => provider.provider_id === model.view?.selection?.provider_id);
+    const selectedModel = provider?.models.find(item => item.model_id === model.view?.selection?.model_id);
     async function start() {
+        if (reason || !rows || busy)
+            return;
         setBusy(true);
-        setError("");
+        onBusyChange(true);
+        setError('');
         try {
-            const input = { dataset_id: dataset.dataset_id,
-                normal_version_id: normal?.version_id, defect_version_id: defect?.version_id, filters,
-                consistency_mode: view.auditConsistencyMode };
-            const job = await request("/audit/start", input);
-            onJobsChanged();
-            onStarted?.(job);
+            for (const { dataset, catalog } of rows) {
+                if (started.current.has(dataset.dataset_id))
+                    continue;
+                if (!requests.current.has(dataset.dataset_id)) {
+                    const knowledge = catalog.current_version_id;
+                    requests.current.set(dataset.dataset_id, { submission_id: crypto.randomUUID(), dataset_id: dataset.dataset_id,
+                        knowledge_version_id: knowledge, filters, consistency_mode: view.auditConsistencyMode, instruction });
+                }
+                const job = await request('/audit/start', requests.current.get(dataset.dataset_id));
+                started.current.set(dataset.dataset_id, job);
+            }
+            onStarted(Array.from(started.current.values()));
         }
-        catch (e) {
-            setError(message(e));
+        catch (error) {
+            setError(`${started.current.size ? `已启动 ${started.current.size} 个子数据集。` : ''}${message(error)}`);
         }
         finally {
             setBusy(false);
+            onBusyChange(false);
         }
     }
-    const normalDetails = normal && _jsxs(_Fragment, { children: [_jsx(DatasetKnowledge, { knowledge: normal }), _jsx(KnowledgeEvidenceGallery, { versionId: normal.version_id, items: normal.evidence.filter(item => item.image.role === "normal" && item.image.representation === "raw"), onOpen: setLightbox })] });
-    return _jsxs("section", { className: "iad-job-panel", children: [_jsx(WorkbenchModelStatus, {}), _jsxs("section", { children: [_jsx("h3", { children: "\u77E5\u8BC6\u4F9D\u636E" }), _jsxs("div", { className: "iad-config-bar", children: [_jsxs("label", { className: "iad-field", children: ["\u826F\u54C1\u7248\u672C", _jsxs("select", { "aria-label": "\u5BA1\u8BA1\u826F\u54C1\u77E5\u8BC6\u7248\u672C", value: view.normalVersion, disabled: loading, onChange: event => workspace.updateView("industrial-audit", { normalVersion: event.target.value, defectVersion: "" }), children: [_jsx("option", { value: "", children: "\u5F53\u524D\u7248\u672C" }), normalQuery.versions.map(version => _jsxs("option", { value: version.version_id, children: [version.version_id, " \u00B7 ", version.created_at] }, version.version_id))] })] }), _jsxs("label", { className: "iad-field", children: ["\u4E0D\u826F\u54C1\u7248\u672C", _jsxs("select", { "aria-label": "\u5BA1\u8BA1\u4E0D\u826F\u54C1\u77E5\u8BC6\u7248\u672C", value: view.defectVersion, disabled: loading || !normal, onChange: event => workspace.updateView("industrial-audit", { defectVersion: event.target.value }), children: [_jsx("option", { value: "", children: "\u5339\u914D\u7684\u5F53\u524D\u7248\u672C" }), defectQuery.versions.filter(version => version.normal_version_id === normal?.version_id).map(version => _jsxs("option", { value: version.version_id, children: [version.version_id, " \u00B7 ", version.created_at] }, version.version_id))] })] }), _jsxs("label", { className: "iad-field", children: ["\u4E00\u81F4\u6027\u68C0\u67E5", _jsxs("select", { "aria-label": "\u5BA1\u8BA1\u4E00\u81F4\u6027\u6A21\u5F0F", value: view.auditConsistencyMode, onChange: event => workspace.updateView('industrial-audit', { auditConsistencyMode: event.target.value }), children: [_jsx("option", { value: "exact", children: "\u5DF2\u6709\u7CBE\u786E\u7D22\u5F15" }), _jsx("option", { value: "combined", children: "\u7CBE\u786E\u4E0E\u5DF2\u6709\u89C6\u89C9\u7D22\u5F15" })] })] })] }), _jsxs("p", { "aria-label": "\u5BA1\u8BA1\u6267\u884C\u8303\u56F4", children: ["\u5F53\u524D\u7B5B\u9009\u7684\u5168\u90E8 ", total === null ? "…" : total, " \u5F20\u56FE\u50CF \u00B7 \u5168\u56FE\u4E0E\u5168\u90E8\u9002\u7528 ROI \u8054\u5408\u5206\u6790"] }), loading ? _jsx("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u5BA1\u8BA1\u77E5\u8BC6\u2026" }) : loadError ? _jsx("p", { role: "alert", className: "iad-error", children: loadError }) : _jsxs(_Fragment, { children: [normal ? _jsxs(_Fragment, { children: [_jsx(KnowledgeState, { freshness: normalQuery.freshness }), _jsxs("details", { children: [_jsxs("summary", { children: ["\u826F\u54C1\u77E5\u8BC6 \u00B7 ", normal.checks.filter(check => check.status === "supported").length, " \u9879\u6709\u8BC1\u636E\u652F\u6301"] }), normalDetails] })] }) : _jsxs("p", { className: "iad-profile iad-muted", children: ["\u8BF7\u5148\u6316\u6398\u826F\u54C1\u77E5\u8BC6\uFF0C\u751F\u6210\u53EF\u7528\u7248\u672C\u3002", _jsx("button", { onClick: () => workspace.openLocation({ pageId: "industrial-knowledge", datasetId: dataset.dataset_id, knowledgeKind: "normal" }), children: "\u524D\u5F80\u6316\u6398\u826F\u54C1\u77E5\u8BC6" })] }), defect ? _jsxs(_Fragment, { children: [_jsx(KnowledgeState, { freshness: defectQuery.freshness }), _jsxs("details", { children: [_jsxs("summary", { children: ["\u4E0D\u826F\u77E5\u8BC6 \u00B7 ", defect.checks.length, " \u9879\u5224\u636E"] }), _jsx(DatasetKnowledge, { knowledge: defect })] })] }) : _jsx("p", { className: "iad-muted", children: "\u6682\u65E0\u5339\u914D\u7684\u4E0D\u826F\u77E5\u8BC6\uFF0C\u6309\u6B63\u5E38\u5224\u636E\u7B5B\u67E5\u3002" })] }), error && _jsx("p", { role: "alert", className: "iad-error", children: error }), _jsx("div", { className: "iad-form-actions", children: _jsx("button", { className: "iad-primary", disabled: busy || loading || total === null || total === 0 || !!loadError || !model.ready || !normal?.checks.some(check => check.status === "supported") || jobs.some(job => job.status === "RUNNING" || job.status === "PENDING"), onClick: start, children: busy ? "启动中…" : "审计当前筛选全部图像" }) })] }), lightbox && _jsx(ImageViewer, { image: lightbox, onClose: () => setLightbox(null) })] });
+    return _jsxs(_Fragment, { children: [_jsxs("div", { className: "audit-create-grid", children: [_jsxs("label", { className: "audit-field", children: [_jsx("span", { children: "\u6A21\u578B" }), _jsx(Select, { id: "audit-create-model", "aria-label": "\u5BA1\u8BA1\u6A21\u578B", disabled: true, children: _jsx("option", { children: selectedModel?.name || model.view?.selection?.model_id || '未配置' }) })] }), _jsxs("label", { className: "audit-field", children: [_jsx("span", { children: "\u4E00\u81F4\u6027\u68C0\u67E5" }), _jsxs(Select, { id: "audit-create-mode", "aria-label": "\u5BA1\u8BA1\u4E00\u81F4\u6027\u6A21\u5F0F", value: view.auditConsistencyMode, disabled: busy || requests.current.size > 0, onChange: event => workspace.updateView('industrial-audit', { auditConsistencyMode: event.target.value }), children: [_jsx("option", { value: "exact", children: "\u7CBE\u786E\u68C0\u67E5" }), _jsx("option", { value: "combined", children: "\u7CBE\u786E\u4E0E\u89C6\u89C9\u68C0\u67E5" })] })] }), _jsxs("label", { className: "audit-field", children: [_jsx("span", { children: "\u5B8C\u6574\u63D0\u793A\u8BCD" }), _jsx("textarea", { id: "audit-create-prompt", "aria-label": "\u5BA1\u8BA1\u5B8C\u6574\u63D0\u793A\u8BCD", disabled: busy || requests.current.size > 0, value: instruction, onChange: event => setInstruction(event.target.value) })] })] }), _jsxs("div", { className: "audit-confirm", children: [_jsxs("div", { children: [_jsx("h3", { children: "\u786E\u8BA4\u5E76\u542F\u52A8" }), _jsxs("p", { id: "audit-create-summary", children: [datasets.length, " \u4E2A\u5B50\u6570\u636E\u96C6\uFF0C", rows ? rows.reduce((total, row) => total + row.total, 0) : '…', " \u5F20\u56FE\u50CF\uFF0C", selectedModel?.name || model.view?.selection?.model_id || '未配置模型', "\uFF0C\u5F53\u524D\u5DF2\u53D1\u5E03\u77E5\u8BC6"] })] }), _jsxs("div", { className: "audit-create-actions", children: [_jsx(Button, { type: "button", id: "audit-create-cancel", disabled: busy, onClick: cancel, children: "\u53D6\u6D88" }), _jsx(Button, { type: "button", variant: "primary", id: "audit-create-submit", disabled: busy || !!reason, onClick: () => void start(), children: busy ? '启动中…' : started.current.size ? '继续启动剩余审计' : '开始审计' })] })] }), reason && _jsx("p", { role: "status", children: reason }), error && _jsx("p", { role: "alert", children: error }), !!rows?.length && _jsxs("details", { className: "audit-create-versions", children: [_jsx("summary", { children: "\u67E5\u770B\u51BB\u7ED3\u77E5\u8BC6\u4F9D\u636E" }), _jsx("ul", { children: rows.map(({ dataset, catalog }) => _jsxs("li", { children: [dataset.name, "\uFF1A", catalog.current_version_id || '暂无知识'] }, dataset.dataset_id)) })] })] });
 }

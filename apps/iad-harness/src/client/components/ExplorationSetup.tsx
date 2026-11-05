@@ -1,3 +1,4 @@
+import {Button} from './Button.js';
 import React, { useEffect, useRef, useState } from "react";
 import type { Dataset, JobSnapshot } from "../../shared/contracts.js";
 import type { ExplorationPromptPreset } from "../../shared/domain.generated.js";
@@ -245,11 +246,11 @@ export function ExplorationSetup({
                 {view.explorationPrompt?.preset_name || "自定义提示词"}
                 {view.explorationPrompt &&
                   view.explorationPrompt.text !== view.explorationPromptBase &&
-                  " · 已修改"}
+                  "，已修改"}
               </dd>
               <dt>输入图组</dt>
               <dd>
-                良品 {view.explorationNormalImages.length} · 异常{" "}
+                良品 {view.explorationNormalImages.length}，异常{" "}
                 {view.explorationDefectImages.length}
               </dd>
               <dt>执行方式</dt>
@@ -263,13 +264,13 @@ export function ExplorationSetup({
             </button>
             <div className="iad-form-footer">
               {reason && <p className="iad-muted">{reason}</p>}
-              <button
-                className="iad-primary"
+              <Button
+                variant="primary"
                 disabled={!!reason}
                 onClick={() => void run()}
               >
                 {busy ? "提交中…" : occupied ? "加入队列" : "开始探索"}
-              </button>
+              </Button>
             </div>
           </section>
           <section className="iad-panel iad-execution-rail">

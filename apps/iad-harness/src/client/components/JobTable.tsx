@@ -1,3 +1,6 @@
+import {Select} from './Select.js';
+import {Button} from './Button.js';
+import {IconButton} from "./IconButton.js";
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { JobSnapshot } from "../../shared/contracts.js";
@@ -6,16 +9,21 @@ import { useWorkspace, type PageId } from "../workspace.js";
 import { JobDetail } from "./JobDetail.js";
 import { Pagination } from "./Pagination.js";
 import { Modal } from "./Modal.js";
-import { CloseIcon, DocumentIcon } from "../AuditIcon.js";
+
 
 const types: Record<JobSnapshot["job_type"], string> = {
+  DATASET_REPORT: '数据集报告', ANALYSIS_WORKFLOW: "全量分析",
   MODEL_AUDIT: "模型审计",
-  NORMAL_KNOWLEDGE: "良品知识",
+  MODEL_AUDIT_SAMPLE: "图像审计",
+  KNOWLEDGE: "知识挖掘", NORMAL_KNOWLEDGE: "良品知识",
   DEFECT_KNOWLEDGE: "异常知识",
+  KNOWLEDGE_BATCH: "分批知识挖掘",
   DIRECTION_EXPLORATION: "方向探索",
+  EXPLORATION_BATCH: "分批方向探索",
   IMAGE_INDEX: "图像索引",
   DATA_CONSISTENCY: "数据一致性",
   CONSISTENCY_ANALYSIS: "图组模型分析",
+  CONSISTENCY_MODEL_BATCH: "一致性模型批次",
 };
 
 export function JobTable({
@@ -75,7 +83,7 @@ export function JobTable({
     >
       <label className="iad-field iad-job-filter">
         任务状态
-        <select
+        <Select
           ref={filter}
           aria-label="任务状态"
           value={status}
@@ -90,7 +98,7 @@ export function JobTable({
               {label}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       {knowledge && <label className="iad-field iad-job-search">搜索任务<input type="search" aria-label="搜索任务" placeholder="任务 ID / 模型名称" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} /></label>}
       <div>
@@ -180,20 +188,11 @@ export function JobTable({
                   <td>
                     {knowledge ? (
                       <div className="iad-job-actions">
-                        <button
-                          type="button"
-                          className="job-mini-icon iad-icon-button"
-                          title="查看提示词"
-                          aria-label="查看提示词"
-                          data-job-prompt={item.run_id}
-                          onClick={(e) => {
+                        <IconButton icon="prompt" type="button" title="查看提示词" label="查看提示词" data-job-prompt={item.run_id} onClick={(e) => {
                             e.stopPropagation();
                             promptTriggerRef.current = e.currentTarget;
                             setPromptJob(item);
-                          }}
-                        >
-                          <DocumentIcon />
-                        </button>
+                          }} />
                       </div>
                     ) : (
                       <button
@@ -263,9 +262,9 @@ export function JobTable({
             <header className="knowledge-prompt-drawer-head">
               <h2 id="job-prompt-title">查看提示词</h2>
               <div className="knowledge-prompt-drawer-actions">
-                <button
+                <Button
                   type="button"
-                  className="btn small"
+
                   id="copy-job-prompt"
                   onClick={async () => {
                     const text = promptJob.mining_prompt?.instruction || (promptJob as any).instruction || "该历史作业未记录冻结提示词。";
@@ -275,20 +274,11 @@ export function JobTable({
                   }}
                 >
                   复制提示词
-                </button>
-                <button
-                  type="button"
-                  className="knowledge-prompt-drawer-close"
-                  id="close-job-prompt"
-                  aria-label="关闭提示词抽屉"
-                  title="关闭"
-                  onClick={() => {
+                </Button>
+                <IconButton icon="close" type="button" className="knowledge-prompt-drawer-close" id="close-job-prompt" label="关闭提示词抽屉" title="关闭" onClick={() => {
                     setPromptJob(null);
                     promptTriggerRef.current?.focus();
-                  }}
-                >
-                  <CloseIcon />
-                </button>
+                  }} />
               </div>
             </header>
             <div className="knowledge-prompt-drawer-content" id="job-prompt-body">

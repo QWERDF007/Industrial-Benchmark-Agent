@@ -15,10 +15,10 @@ class AuditConsistencyRepository:
             conn.execute('''INSERT INTO audit_consistency_checks(check_id,run_id,sample_id,record_json)
                 VALUES(?,?,?,?)''', (record.check_id, record.run_id, record.sample_id, record.model_dump_json()))
 
-    def latest(self, sample_id: str) -> AuditConsistencyView | None:
+    def latest(self, sample_id: str, *, run_id: str | None = None) -> AuditConsistencyView | None:
         with self.db.connection() as conn:
             row = conn.execute('''SELECT record_json FROM audit_consistency_checks
-                WHERE sample_id=? ORDER BY id DESC LIMIT 1''', (sample_id,)).fetchone()
+                WHERE sample_id=? AND (? IS NULL OR run_id=?) ORDER BY id DESC LIMIT 1''', (sample_id, run_id, run_id)).fetchone()
         if row is None:
             return None
         record = AuditConsistencyRecord.model_validate_json(row[0])

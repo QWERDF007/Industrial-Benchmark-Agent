@@ -63,6 +63,18 @@ class DatasetRegistry:
 
     def save(self, config: DatasetConfig, connection: Optional[Connection] = None, *, require_existing: bool = False, group_id: Optional[str] = None) -> None:
         with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+            if not conn.in_transaction:conn.execute('BEGIN IMMEDIATE')
+            selected_paths: set[Path] | None = None
+            for row in conn.execute('SELECT config_json FROM datasets WHERE dataset_id!=?',(config.dataset.id,)):
+                existing=DatasetConfig.model_validate_json(row[0])
+                if Path(existing.root).resolve()!=Path(config.root).resolve():continue
+                if config.dataset.format==existing.dataset.format=='folder_classification':
+                    from iad_core.dataset.adapters import get_adapter
+                    if selected_paths is None:
+                        selected_paths={Path(image.image_path).resolve() for image in get_adapter(config).scan_images()}
+                    if not any(Path(image.image_path).resolve() in selected_paths for image in get_adapter(existing).scan_images()):
+                        continue
+                raise ValueError('Image scope overlaps an already imported dataset')
             if require_existing:
                 if group_id is not None:
                     res = conn.execute("UPDATE datasets SET config_json=?, group_id=? WHERE dataset_id=? AND task_id=?",
@@ -197,7 +209,9 @@ class DatasetRegistry:
             task_id = dataset['task_id']
             job_dataset = "COALESCE(json_extract(payload_json,'$.request.dataset_id'),json_extract(payload_json,'$.dataset_id'))"
             if conn.execute(f"""SELECT 1 FROM job_runs WHERE status IN ('PENDING','RUNNING')
-                AND ({job_dataset}=? OR (task_id=? AND {job_dataset} IS NULL))""", (dataset_id,task_id)).fetchone():
+                AND ({job_dataset}=? OR (task_id=? AND {job_dataset} IS NULL)
+                    OR (job_type='ANALYSIS_WORKFLOW' AND EXISTS (
+                        SELECT 1 FROM json_each(payload_json,'$.request.dataset_ids') WHERE value=?)))""", (dataset_id,task_id,dataset_id)).fetchone():
                 raise ValueError("数据集仍有执行中的作业，请先取消或等待作业结束后删除")
             exclusive_task = not conn.execute("""SELECT 1 FROM datasets WHERE task_id=? AND dataset_id!=?
                 UNION ALL SELECT 1 FROM samples WHERE task_id=? AND dataset_id!=? LIMIT 1""",
@@ -206,8 +220,17 @@ class DatasetRegistry:
                 raise ValueError("数据集仍有执行中的 Agent 作业，请等待作业结束后删除")
             from iad_core.consistency.deletion import ConsistencyDeletion
             ConsistencyDeletion(conn).delete_dataset(dataset_id)
-            jobs = f"SELECT job_id FROM job_runs WHERE ({job_dataset}=? OR (task_id=? AND ?))"
-            job_scope = (dataset_id,task_id,exclusive_task)
+            related = [row[0] for row in conn.execute(f"""WITH RECURSIVE owned(job_id) AS (
+                SELECT job_id FROM job_runs WHERE ({job_dataset}=? OR (task_id=? AND ?)
+                    OR (job_type='ANALYSIS_WORKFLOW' AND EXISTS (
+                        SELECT 1 FROM json_each(payload_json,'$.request.dataset_ids') WHERE value=?)))
+                UNION SELECT child.value FROM job_runs owner JOIN owned ON owner.job_id=owned.job_id,
+                    json_each(owner.payload_json,'$.batch_runs') child
+                UNION SELECT child.job_id FROM job_runs child JOIN owned
+                    ON json_extract(child.payload_json,'$.parent_run_id')=owned.job_id)
+                SELECT job_id FROM owned""", (dataset_id,task_id,exclusive_task,dataset_id))]
+            jobs = 'SELECT value FROM json_each(?)'
+            job_scope = (json.dumps(related),)
             conn.execute(f"DELETE FROM model_calls WHERE run_id IN ({jobs})", job_scope)
             conn.execute(f"DELETE FROM job_runs WHERE job_id IN ({jobs})", job_scope)
             for table in ('annotations','gold_records','split_assignments','review_decisions','audit_suggestions'):
@@ -314,19 +337,16 @@ class DatasetRegistry:
             raise ValueError("No readable images were imported")
         return config
 
-    def image_root(self, image_dir: str, dataset_id: Optional[str] = None) -> Path:
+    def image_root(self, image_dir: str) -> Path:
         images = Path(image_dir).expanduser().resolve(strict=True)
         if not images.is_dir():
             raise ValueError("Image path must be a directory")
         if next(iter(ImageFiles(images)), None) is None:
             raise ValueError("Image directory contains no supported images")
-        for existing in self.list():
-            if existing.dataset.id != dataset_id and Path(existing.root).resolve() == images:
-                raise ValueError("This image directory has already been imported as a dataset")
         return images
 
-    def sources(self, image_dir: str, annotation_dir: str, dataset_id: Optional[str] = None) -> tuple[Path, Path]:
-        images = self.image_root(image_dir, dataset_id)
+    def sources(self, image_dir: str, annotation_dir: str) -> tuple[Path, Path]:
+        images = self.image_root(image_dir)
         annotations = Path(annotation_dir).expanduser().resolve(strict=True)
         if not annotations.is_dir():
             raise ValueError("Annotation path must be a directory")
@@ -342,7 +362,7 @@ class DatasetRegistry:
             if annotation_dir is not None:
                 raise ValueError('Folder datasets do not accept an annotation directory')
             if image_dir is not None:
-                config.root = str(self.image_root(image_dir, dataset_id))
+                config.root = str(self.image_root(image_dir))
             if folder_rules is not None:
                 config.folder_rules = folder_rules
             if image_dir is not None or folder_rules is not None:
@@ -352,7 +372,7 @@ class DatasetRegistry:
             if image_dir is not None or annotation_dir is not None:
                 if not image_dir or not annotation_dir:
                     raise ValueError("Changing dataset sources requires both image and annotation directories")
-                images, annotations = self.sources(image_dir, annotation_dir, dataset_id)
+                images, annotations = self.sources(image_dir, annotation_dir)
                 config.root, config.annotations.root = str(images), str(annotations)
         return scan_dataset(config=config, db_path=self.db.db_path, preview_fingerprint=preview_fingerprint, force_pixels=force_pixels)
 

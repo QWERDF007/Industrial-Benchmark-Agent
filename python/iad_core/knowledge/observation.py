@@ -1,4 +1,4 @@
-import json
+from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningPhase
 import uuid
 from typing import List, Optional
 
@@ -9,14 +9,9 @@ from iad_core.knowledge.models import KnowledgeCheck, KnowledgeDraft, KnowledgeO
 from iad_core.knowledge.observation_contract import ObservationContract
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
+from iad_core.dataset.registry import DatasetRegistry
+from iad_core.storage.repositories import SampleRepository, AnnotationRepository
 
-OBSERVATION_INSTRUCTION = """按purpose观察所给判据与实际图像：current核对冻结旧判据与新图，comparison比较相关新旧图，revision核验拟修订判据在新旧图上的适用性。记录独立观察，不直接修改判据。
-输出固定完整矩阵：每个sources.source_key为行，每个checks.check_key为该行必填单元。每个来源×判据恰好一项；无法观察时明确unobservable。
-单元内只写观察内容，evidence_ids及suspects.evidence_id只使用该来源raw_evidence_keys中的短引用。不输出长sample_id或check_id；真实引用由冻结映射还原。
-supports仅说明所见符合旧判据，不证明样本正常；contradicts仅说明与旧判据不一致，不裁决知识或图片哪方错误。
-结合全图结构、局部、位置、光照和正常替代解释。只引用本轮该样本实际raw图像，Mask只用于定位。
-不要凭候选资格、数量、多数票或随后生成的规则消除矛盾。局部疑点用实际图像归一化坐标定位到suspects。
-冻结观察请求："""
 
 
 class KnowledgeObserver:
@@ -65,9 +60,7 @@ class KnowledgeObserver:
                 check.limitations = list(dict.fromkeys([*check.limitations, '拟修订判据在相关新旧证据中存在不可观察部分']))
 
     def compare(self, version: KnowledgeSnapshot, inputs: List[KnowledgeInput], model_name: str, images: EvidenceImages,
-                *, affected: Optional[set[str]] = None, proposals: Optional[List[KnowledgeCheck]] = None):
-        affected = affected if affected is not None else {item.check_id for step in self.steps if step.purpose == 'current'
-                    for item in step.result.observations if item.status == 'contradicts'}
+                *, affected: set[str], proposals: Optional[List[KnowledgeCheck]] = None):
         checks = [check for check in version.checks if check.check_id in affected]
         if not checks:
             return
@@ -89,7 +82,12 @@ class KnowledgeObserver:
             boxes = {tuple(record.image.crop_bbox) for record in support}
             chosen = {record.image.evidence_id: record for record in [overview, *[
                 record for record in all_views if tuple(record.image.crop_bbox) in boxes]]}
+            db = self.context.runner.db
+            sample = SampleRepository(db).get(source.sample_id)
+            dataset_format = DatasetRegistry(db).get(sample.dataset_id).dataset.format
+            annotations = AnnotationRepository(db).list_by_sample(source.sample_id)
             comparison.append(KnowledgeInput(source, [PreparedImage(record.image, images.path(record.image))
+                              .with_source(sample, dataset_format, annotations)
                               for record in chosen.values()]))
         merged = {item.source.sample_id: item for item in comparison}
         for item in inputs:
@@ -108,11 +106,11 @@ class KnowledgeObserver:
         sources = {item.source.sample_id: {image.evidence.evidence_id for image in item.images
                    if image.evidence.representation == 'raw'} for item in inputs}
         contract = ObservationContract(checks, inputs)
-        prompt = OBSERVATION_INSTRUCTION + json.dumps({
+        prompt = FrozenMiningPrompt.model_validate(self.context.payload['mining_prompt']).render_context('冻结观察请求',{
             **contract.context, 'version_id': version_id, 'purpose': purpose,
             'previous_checks': [check.criterion_context() for check in self.parent.checks if purpose == 'revision'
                                 and any(check.check_id in value.predecessor_check_ids for value in checks)] if self.parent else [],
-        }, ensure_ascii=False)
+        },phase=MiningPhase.OBSERVE)
         plan = self.client.plan(contract.response_type, prompt, contract.images, model_name, OUTPUT_RESERVE_TOKENS)
         result = contract.bind(self.client.generate(plan))
         self.context.checkpoint()

@@ -45,7 +45,7 @@ class InspectionContext:
             raise ValueError('模型建议不属于所选样本')
         analysis = suggestion.analysis
         images = {image.evidence_id: image for image in [analysis.overview,
-            *[region.image for region in analysis.regions], *analysis.auxiliary_evidence]}
+            *[region.image for region in analysis.regions], *analysis.auxiliary_evidence, *analysis.reference_evidence]}
         finding = next((item for item in analysis.findings if item.finding_id == reference.finding_id), None)
         if reference.finding_id and not finding:
             raise LookupError('疑点引用不存在，请重新选择')

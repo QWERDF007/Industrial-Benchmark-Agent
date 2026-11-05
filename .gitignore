@@ -16,12 +16,14 @@ backbones/
 runs/
 *.log
 data/cache/
+data/evidence/
 data/iad.db
 data/uploads/
 *.db-shm
 *.db-wal
 *.schema.lock
 *.lock
+python/iad_core/exploration/presets/custom_*.txt
 
 # Local runtime state and deployment configuration
 .env*
@@ -30,3 +32,4 @@ data/uploads/
 .dsh/
 data/*.db
 db/
+data/*.image-indexes/

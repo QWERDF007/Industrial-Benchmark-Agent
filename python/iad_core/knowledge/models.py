@@ -1,13 +1,15 @@
 from typing import Annotated, List, Literal, Optional
 from uuid import UUID
 
-from pydantic import Field, PlainSerializer, model_validator
+from pydantic import Field, PlainSerializer, field_validator, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText, NormalizedBBox, AuditFinding, RegionImage, RegionOrigin, VisualEvidence
+from iad_core.advisory.output_validation import repairable_output_error
 from iad_core.evidence.sources import SampleContent
 from iad_core.knowledge.instructions import FrozenMiningPrompt
 
 KnowledgeKind = Literal["normal", "defect"]
+KNOWLEDGE_JOB_TYPES = ("KNOWLEDGE", "NORMAL_KNOWLEDGE", "DEFECT_KNOWLEDGE")
 DiscoveryStatus = Literal['已形成知识', '证据不足', '不可观察', '不适用']
 
 
@@ -31,7 +33,7 @@ class LearnedCheck(KnowledgeCriterion):
     @model_validator(mode="after")
     def supported_has_evidence(self):
         if self.status == "supported" and not self.support_evidence_ids:
-            raise ValueError("Supported knowledge requires visual support")
+            raise repairable_output_error('knowledge_support_evidence', 'Supported knowledge requires visual support')
         return self
 
 
@@ -43,7 +45,7 @@ class KnowledgeSuspect(AnalysisModel):
 
 
 class CheckRevision(AnalysisModel):
-    previous_check_id: str = Field(min_length=1, description="仅引用冻结父版本候选checks内的同类型旧条目ID；正常比较基准不是异常知识的父条目，无同类型预设时revisions为空")
+    previous_check_id: str = Field(min_length=1, description="仅引用本次明确冻结父版本checks中的旧条目ID；没有父版本时revisions为空")
     current_check_titles: List[str] = Field(description="同一判据对应的当前检查项；拆分可多项，退役为空。仅改措辞或允许变化保持一对一")
     reason: str = Field(min_length=1)
 
@@ -280,9 +282,10 @@ class KnowledgeCheckRemoval(AnalysisModel):
 class KnowledgeSnapshot(AnalysisModel):
     version_id: str
     dataset_id: str
-    kind: KnowledgeKind
+    kind: Optional[KnowledgeKind] = None
     parent_version_id: Optional[str]
-    normal_version_id: Optional[str]
+    normal_version_id: Optional[str] = None
+    normal_reference_version_id: Optional[str] = None
     model_name: str
     generation_version: str
     signature: str
@@ -315,16 +318,28 @@ class KnowledgeSnapshot(AnalysisModel):
         return {sid for check in self.checks for sid in check.recheck_sample_ids}
 
 
+class KnowledgeVersionQuery(AnalysisModel):
+    dataset_id: str
+
+
 class KnowledgeVersion(AnalysisModel):
     version_id: str
     dataset_id: str
-    kind: KnowledgeKind
+    kind: Optional[KnowledgeKind] = None
     parent_version_id: Optional[str]
-    normal_version_id: Optional[str]
+    normal_version_id: Optional[str] = None
     model_name: str
     created_at: str
     source_count: int
     check_count: int
+    supported_check_count: int = Field(default=0, ge=0)
+    manually_edited: bool = False
+
+
+class KnowledgeVersionCatalog(AnalysisModel):
+    dataset_id: str
+    current_version_id: Optional[str]
+    versions: List[KnowledgeVersion]
 
 
 class KnowledgeSourceChange(AnalysisModel):
@@ -357,7 +372,7 @@ class KnowledgeSourceQuery(AnalysisModel):
     include_observed: bool = Field(default=False, description="明确重核验选图时包含已观察的合格来源；不扩大冻结范围，不启动作业")
     scope_run_id: Optional[str] = None
     dataset_id: str
-    kind: KnowledgeKind
+    kind: Optional[KnowledgeKind] = None
     normal_version_id: Optional[str] = None
     uncovered_from_version: Optional[str] = Field(default=None, description="仅查询指定版本语义链尚未观察的新来源；已变更旧来源单列待重核验")
     page: int = Field(default=1, ge=1)
@@ -383,8 +398,8 @@ class KnowledgeCoverage(AnalysisModel):
 
 class KnowledgeSourcePage(AnalysisModel):
     dataset_id: str
-    kind: KnowledgeKind
-    normal_version_id: Optional[str]
+    kind: Optional[KnowledgeKind] = None
+    normal_version_id: Optional[str] = None
     total: int = Field(ge=0)
     unavailable_source_count: int = Field(ge=0)
     page: int
@@ -396,21 +411,37 @@ class KnowledgeSourcePage(AnalysisModel):
 class KnowledgeDetailQuery(AnalysisModel):
     version_id: str = Field(min_length=1)
     check_id: Optional[str] = None
-    section: Literal['checks', 'discovery'] = 'checks'
+    evidence_role: Optional[Literal['support', 'counter']] = None
+    section: Literal['checks', 'discovery', 'evidence'] = 'checks'
+    evidence_ids: List[str] = Field(default_factory=list)
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=10, ge=1, le=50)
+    search: str = ''
+    review_status: Literal['all', 'pending', 'confirmed', 'rejected', 'conflict'] = 'all'
+
+    @field_validator('evidence_ids', mode='before')
+    @classmethod
+    def parse_evidence_ids(cls, value):
+        if isinstance(value, str):
+            import json
+            return json.loads(value)
+        return value
 
     @model_validator(mode='after')
     def distinct_sections(self):
-        if self.section == 'discovery' and self.check_id is not None:
-            raise ValueError('观察范围查询不能同时指定判据')
+        if self.section != 'checks' and self.check_id is not None:
+            raise ValueError('非判据查询不能同时指定判据')
+        if self.section != 'evidence' and self.evidence_ids:
+            raise ValueError('具体图像引用仅用于证据查询')
+        if self.evidence_role is not None and (self.check_id is None or self.section != 'checks'):
+            raise ValueError('证据类型查询必须指定知识判据')
         return self
 
 
 class KnowledgeDiscoveryPage(AnalysisModel):
     version_id: str
     dataset_id: str
-    kind: KnowledgeKind
+    kind: Optional[KnowledgeKind] = None
     recorded: bool
     parts: List[ObservedPart]
     total: int
@@ -419,7 +450,24 @@ class KnowledgeDiscoveryPage(AnalysisModel):
     items: List[DiscoveryArea]
 
 
+class KnowledgeCheckReview(AnalysisModel):
+    status: Literal['pending', 'confirmed', 'rejected'] = 'pending'
+    note: str = ''
+    revision: int = Field(default=0, ge=0)
+    created_at: Optional[str] = None
+
+
+class KnowledgeCheckReviewSubmission(AnalysisModel):
+    version_id: str
+    check_id: str
+    submission_id: UUID
+    expected_revision: int = Field(ge=0)
+    status: Literal['pending', 'confirmed', 'rejected']
+    note: str = ''
+
+
 class KnowledgeCheckSummary(KnowledgeCriterion):
+    review: KnowledgeCheckReview = Field(default_factory=KnowledgeCheckReview)
     pending_recheck_source_count: int = Field(ge=0)
     check_id: str
     support_count: int
@@ -427,16 +475,10 @@ class KnowledgeCheckSummary(KnowledgeCriterion):
     conflict_ids: List[str]
     support_limitations: List[str]
 
-    @classmethod
-    def from_check(cls, check: KnowledgeCheck):
-        return cls.model_validate(dict(check.criterion_context(),
-            support_count=len(set(check.support_evidence_ids)), counter_count=len(set(check.counter_evidence_ids))))
-
-
 class KnowledgeCheckPage(AnalysisModel):
     version_id: str
     dataset_id: str
-    kind: KnowledgeKind
+    kind: Optional[KnowledgeKind] = None
     total: int
     page: int
     page_size: int
@@ -446,8 +488,18 @@ class KnowledgeCheckPage(AnalysisModel):
 class KnowledgeCheckEvidencePage(AnalysisModel):
     version_id: str
     dataset_id: str
-    kind: KnowledgeKind
+    kind: Optional[KnowledgeKind] = None
     check: KnowledgeCheckSummary
+    support_evidence_ids: List[str]
+    counter_evidence_ids: List[str]
+    total: int
+    page: int
+    page_size: int
+    items: List[KnowledgeEvidence]
+
+
+class KnowledgeEvidencePage(AnalysisModel):
+    version_id: str
     total: int
     page: int
     page_size: int

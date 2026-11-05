@@ -1,3 +1,4 @@
+import {Button} from './Button.js';
 import React, { useState } from "react";
 import { message } from "../api.js";
 import { useWorkspace } from "../workspace.js";
@@ -23,6 +24,6 @@ export function InspectionQuestion({ inspection, selection, transform }: {
     <label className="iad-field">追问内容<textarea aria-label="追问内容" rows={3} value={question} disabled={busy} onChange={event => setQuestion(event.target.value)} /></label>
     <p className="iad-muted">携带当前疑点、冻结知识与实际图像引用。</p>
     {error && <p role="alert" className="iad-error">{error}</p>}
-    <div className="iad-actions"><button type="submit" className="iad-primary" disabled={busy}>{busy ? "正在提交…" : "发送到会话"}</button><button type="button" disabled={busy} onClick={() => setExpanded(false)}>取消</button></div>
+    <div className="iad-actions"><Button type="submit" variant="primary" disabled={busy}>{busy ? "正在提交…" : "发送到会话"}</Button><button type="button" disabled={busy} onClick={() => setExpanded(false)}>取消</button></div>
   </form> : <button onClick={() => setExpanded(true)}>向 Agent 追问</button>;
 }

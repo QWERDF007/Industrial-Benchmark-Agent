@@ -802,7 +802,7 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await driver.navigate().refresh();await gridCount(0);
     assert.equal(await (await element(".iad-decision textarea")).getAttribute("value"),"已核实局部反光");
     await button("重试提交");
-    await driver.wait(async()=>(await (await element(".iad-review-confirmation")).getText()).includes("dent.png · 良品"),5000);
+    await driver.wait(async()=>(await (await element(".iad-review-confirmation")).getText()).includes("dent.png / 良品"),5000);
     await driver.wait(async()=>(await driver.findElements(By.css(".iad-decision"))).length===0,5000);
     assert.equal(reviewRequests.length,2);
     assert.deepEqual(reviewRequests[1],reviewRequests[0],"刷新后必须重放同一份提交，包括标识和耗时");
@@ -832,7 +832,7 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await driver.wait(async()=>(await driver.findElements(By.css(".iad-review-records tbody tr"))).length===1,5000);
     assert.equal(await (await element("input[aria-label='搜索复核记录']")).getAttribute("value"),"已核实局部反光");
     await (await element(".iad-review-records tbody button")).click();
-    await driver.wait(async()=>(await (await element(".iad-review-history")).getText()).includes("复核记录 · 2 次"),5000);
+    await driver.wait(async()=>(await (await element(".iad-review-history")).getText()).includes("复核记录 / 2 次"),5000);
     await driver.executeScript("arguments[0].scrollIntoView({block:'end'})",await element(".iad-review-history"));
     await fs.writeFile(path.join(workspace, "runs/browser/human-review.png"), await driver.takeScreenshot(), "base64");
     await viewportSize(1920,1080);
@@ -854,9 +854,9 @@ print(sum(image.getpixel((i,y))==stroke for i in range(x-round(20*dpr),x+round(2
     await button("报告");
     await driver.wait(async () => (await driver.findElement(By.css(".iad-workbench")).getText()).includes("人工核验覆盖率"), 15000);
     const ratioValue = async label => { const values = await driver.findElements(By.xpath(`//dt[normalize-space(.)='${label}']/following-sibling::dd[1]`)); return values[0] ? values[0].getText() : ""; };
-    assert.equal(await ratioValue("技术可用率"), "100% · 3 / 3");
-    assert.equal(await ratioValue("审计覆盖率"), "100% · 3 / 3");
-    assert.equal(await ratioValue("人工核验覆盖率"), "33.33% · 1 / 3");
+    assert.equal(await ratioValue("技术可用率"), "100% / 3 / 3");
+    assert.equal(await ratioValue("审计覆盖率"), "100% / 3 / 3");
+    assert.equal(await ratioValue("人工核验覆盖率"), "33.33% / 1 / 3");
     await (await driver.findElement(By.xpath("//summary[normalize-space(.)='口径、范围与版本']"))).click();
     const scopeText = await driver.findElement(By.css(".iad-workbench")).getText();
     assert.ok(scopeText.includes(learned.knowledge_version_id || (await (await fetch(`${base}/api/iad/knowledge/status/${learned.run_id}`)).json()).knowledge_version_id));
@@ -994,9 +994,9 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
     assert.deepEqual(maskContext.evidence.map(image=>image.evidence_id),[maskAudit.suggestion.analysis.overview.evidence_id,inspectionMask.evidence_id,pairedRaw.evidence_id],"Mask追问必须携带实际配对原图，不能将定位图单独作为缺陷证据");
     await button("关闭");
     await button("模型审计"); await button("报告");
-    await driver.wait(async () => await ratioValue("技术可用率") === "100% · 2 / 2", 10000);
+    await driver.wait(async () => await ratioValue("技术可用率") === "100% / 2 / 2", 10000);
     await select("当前数据集", dataset.dataset_id);
-    await driver.wait(async () => await ratioValue("技术可用率") === "100% · 3 / 3", 10000);
+    await driver.wait(async () => await ratioValue("技术可用率") === "100% / 3 / 3", 10000);
     holdReportDataset = otherDataset.dataset_id;
     reportGate = new Promise(resolve => { releaseReport = resolve; });
     const waitingReport = new Promise(resolve => { reportRequested = resolve; });
@@ -1005,7 +1005,7 @@ print(json.dumps({'foreground':pixel(22.5,18.5),'hole':pixel(25.5,20.5),'outside
       assert.equal((await driver.findElements(By.css(".iad-quality-report dl"))).length, 0, "切数据集后等待新报告时不能保留上一数据集统计");
       assert.equal((await driver.findElements(By.xpath("//button[normalize-space(.)='导出 JSON']"))).length, 0, "新数据集报告返回前不能导出旧统计");
     } finally { holdReportDataset = ""; releaseReport(); }
-    await driver.wait(async () => await ratioValue("技术可用率") === "100% · 2 / 2", 10000);
+    await driver.wait(async () => await ratioValue("技术可用率") === "100% / 2 / 2", 10000);
     await button("图像浏览"); await gridCount(2);
     await button("数据集管理");
     await (await element("button[aria-label='配置数据集 验收后改名']")).click();

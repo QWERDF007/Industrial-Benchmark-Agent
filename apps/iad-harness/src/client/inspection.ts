@@ -4,7 +4,13 @@ import type { ImageSource } from "./components/ImageViewer.js";
 
 export interface InspectionContext { reference: InspectionReference; analysis: AuditAnalysis; historical?: boolean }
 export type InspectionSelection = { kind: "finding"; id: string } | { kind: "evidence"; id: string; findingId?: string };
-export interface InspectionTransform { zoom: number; x: number; y: number }
+export interface InspectionTransform {
+  /** Multiplier of the viewport fit scale; zero keeps automatic fit. */
+  zoom: number;
+  /** CSS pixel displacement from the viewport center. */
+  x: number;
+  y: number;
+}
 export interface ImageView { selection: InspectionSelection | null; transform: InspectionTransform }
 export interface InspectionView extends ImageView { reference: InspectionReference; sessionId?: string }
 

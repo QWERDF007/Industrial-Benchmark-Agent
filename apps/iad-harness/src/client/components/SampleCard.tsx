@@ -1,3 +1,4 @@
+import {ThumbnailCard} from "./ThumbnailCard.js";
 import React from "react";
 import type { Sample } from "../../shared/contracts.js";
 import { mediaUrl, modelLabels, reviewLabel } from "../api.js";
@@ -10,12 +11,10 @@ export function SampleCard({ sample, selected, onSelect, reference, selection, c
 }) {
   const status = sample.suggestion?.suggested_label;
   return <div className="iad-sample-item">
-    <button data-sample-id={sample.sample_id} className={`iad-sample ${selected ? "is-selected" : ""}`} title={sample.relative_path} onClick={onSelect}>
-      <div className="iad-thumb"><img loading="lazy" src={mediaUrl(sample, "thumbnail")} alt={sample.relative_path} />
-        {reference && <span className="iad-reference">良品来源</span>}</div>
-      <strong>{sample.relative_path.split("/").pop()}</strong>
-      <span className="iad-sample-label">{sample.quality_status === "PASS" ? "OK" : sample.quality_status === "FAIL" ? "NG" : "未标记"} {compact && ` · ${sample.review_decision ? reviewLabel(sample.review_decision) : status ? modelLabels[status] : "未审计"}`}</span>
-    </button>
+    <ThumbnailCard data-sample-id={sample.sample_id} src={mediaUrl(sample,"thumbnail")} label={sample.relative_path.split("/").pop()!} aria-pressed={selected} onClick={onSelect}>
+      {reference && <span>良品来源</span>}
+      <span className="iad-sample-label">{sample.quality_status === "PASS" ? "OK" : sample.quality_status === "FAIL" ? "NG" : "未标记"} {compact && `，${sample.review_decision ? reviewLabel(sample.review_decision) : status ? modelLabels[status] : "未审计"}`}</span>
+    </ThumbnailCard>
     {!compact && <Tooltip label={`查看状态 ${sample.relative_path}`} className={`iad-status-trigger is-${status || "pending"}`} content={<>
       <p>模型建议不代替人工裁决。</p>
       {sample.review_decision && <p>模型审计：{status ? modelLabels[status] : "未审计"}</p>}

@@ -23,7 +23,6 @@ export declare const knowledgeSourceParameters: {
         readonly type: "string";
         readonly enum: readonly ["normal", "defect"];
         readonly title: "Kind";
-        readonly required: true;
     };
     readonly normal_version_id: {
         readonly type: "string";

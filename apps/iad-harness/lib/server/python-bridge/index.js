@@ -65,8 +65,9 @@ class PythonWorker {
         });
         this.stdoutAccum = "";
         this.stderrAccum = "";
+        child.stdout.setEncoding("utf8");
         child.stdout.on("data", (chunk) => {
-            this.stdoutAccum += chunk.toString("utf8");
+            this.stdoutAccum += chunk;
             const lines = this.stdoutAccum.split("\n");
             this.stdoutAccum = lines.pop() || "";
             for (const line of lines) {
@@ -106,8 +107,9 @@ class PythonWorker {
                 }
             }
         });
+        child.stderr.setEncoding("utf8");
         child.stderr.on("data", (chunk) => {
-            this.stderrAccum += chunk.toString("utf8");
+            this.stderrAccum += chunk;
             if (this.stderrAccum.length > 50000) {
                 this.stderrAccum = this.stderrAccum.slice(-20000);
             }

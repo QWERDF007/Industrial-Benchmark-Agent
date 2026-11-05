@@ -1,4 +1,4 @@
-import json
+from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningPhase
 from typing import List, Optional
 
 from iad_core.evidence.images import EvidenceImages, PreparedImage
@@ -9,14 +9,9 @@ from iad_core.knowledge.models import (KnowledgeCheck, KnowledgeConflict, Knowle
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.knowledge_review import KnowledgeReview, KnowledgeReviewEvent
 from iad_core.workbench.vision import VlmClient
+from iad_core.dataset.registry import DatasetRegistry
+from iad_core.storage.repositories import SampleRepository, AnnotationRepository
 
-RECHECK_INSTRUCTION = """结合实际全图、局部及新旧支持证据，核验人工知识处置建议。
-人工建议有来源但不是视觉事实，不修改图像的人审裁决或标签。逐个submission_id恰好返回一次。
-仅当实际图像支持处置、拟发布判据与适用范围时resolved；仍有矛盾为unresolved，缺证为insufficient。
-source_context给出来源当前人工资格与用途，comparison仅为历史/反例比较，不提供正常支持；图像的人审结论不由模型改写。
-对保留/修订需核对原支持、反例与新图，不能只凭一张正常图或多数票消除矛盾；退役也须观察相关证据。
-每项引用实际发送的新图及关联冲突新旧raw证据；Mask仅定位。结合位置、光照及正常替代解释，不凭文字强行闭环。
-人工处置重核验："""
 
 
 class KnowledgeRecheck:
@@ -43,18 +38,25 @@ class KnowledgeRecheck:
             conflict = next(item for item in parent.conflicts if item.conflict_id == event.conflict_id)
             ids = set(conflict.new_evidence_ids + conflict.comparison_evidence_ids)
             owners = {item.sample_id for item in parent.evidence if item.image.evidence_id in ids}
-            supplied = {item.image.evidence_id: PreparedImage(item.image, images.path(item.image)) for item in parent.evidence
-                if item.image.evidence_id in ids or (item.sample_id in owners and item.image.role in ('normal', 'overview'))}
+            supplied = {}
+            for item in parent.evidence:
+                if item.image.evidence_id not in ids and not (item.sample_id in owners and item.image.role in ('normal', 'overview')):
+                    continue
+                sample = SampleRepository(self.review.db).get(item.sample_id)
+                dataset_format = DatasetRegistry(self.review.db).get(sample.dataset_id).dataset.format
+                annotations = AnnotationRepository(self.review.db).list_by_sample(item.sample_id)
+                supplied[item.image.evidence_id] = PreparedImage(item.image, images.path(item.image)).with_source(
+                    sample, dataset_format, annotations)
             supplied.update({image.evidence.evidence_id: image for item in inputs for image in item.images})
             frozen_sources = context.payload['preset_sources'][parent.version_id]
             source_context = [dict(sample_id=source['sample_id'], qualification=source['qualification'], purpose=purpose)
                 for key, purpose in (('qualified_sources', 'support_candidate'), ('comparison_sources', 'comparison'))
                 for source in frozen_sources[key] if source['sample_id'] in owners]
-            prompt = RECHECK_INSTRUCTION + json.dumps({'events': [event.model_dump(mode='json')],
+            prompt = FrozenMiningPrompt.model_validate(context.payload['mining_prompt']).render_context('人工处置重核验',{'events': [event.model_dump(mode='json')],
                 'source_context': source_context,
                 'conflicts': [conflict.model_dump()], 'prior_checks': [check.criterion_context() for check in parent.checks
                     if check.check_id in conflict.check_ids], 'proposed_checks': [check.model_dump() for check in draft.checks],
-                'current_evidence_ids': [image.evidence.evidence_id for item in inputs for image in item.images]}, ensure_ascii=False)
+                'current_evidence_ids': [image.evidence.evidence_id for item in inputs for image in item.images]},phase=MiningPhase.RECHECK)
             KnowledgeTrace(context).register(item for item in parent.evidence if item.image.evidence_id in supplied)
             context.checkpoint()
             context.update(phase='RECHECKING_HUMAN_KNOWLEDGE')

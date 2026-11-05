@@ -1,3 +1,5 @@
+import {Select} from './Select.js';
+import {Button} from './Button.js';
 import React, { useEffect, useRef, useState } from "react";
 import type {
   ExplorationPromptPreset,
@@ -68,7 +70,7 @@ export function ExplorationPromptEditor({
       <div className="iad-prompt-controls">
         <label className="iad-field">
           提示词预设
-          <select
+          <Select
             aria-label="提示词预设"
             disabled={disabled}
             value={value.preset_id || ""}
@@ -89,7 +91,7 @@ export function ExplorationPromptEditor({
                 {preset.name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <span className="iad-muted">
           {modified ? "已修改" : "使用预设内容"}
@@ -138,15 +140,15 @@ export function ExplorationPromptEditor({
           <p>当前正文已修改。替换正文会保留补充目标和两组图像。</p>
           <div className="iad-form-actions">
             <button onClick={() => setReplace(null)}>保留当前编辑</button>
-            <button
-              className="iad-primary"
+            <Button
+              variant="primary"
               onClick={() => {
                 choose(replace);
                 setReplace(null);
               }}
             >
               替换为所选预设
-            </button>
+            </Button>
           </div>
         </Modal>
       )}
@@ -172,13 +174,13 @@ export function ExplorationPromptEditor({
             <button disabled={saving} onClick={() => setDialog(false)}>
               取消
             </button>
-            <button
+            <Button
               disabled={saving || !name.trim() || !value.text.trim()}
-              className="iad-primary"
+              variant="primary"
               onClick={() => void save()}
             >
               {saving ? "保存中…" : "保存预设"}
-            </button>
+            </Button>
           </div>
         </Modal>
       )}

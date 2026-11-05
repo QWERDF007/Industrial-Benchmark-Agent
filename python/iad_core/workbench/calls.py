@@ -6,12 +6,13 @@ from contextlib import contextmanager,nullcontext
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from sqlite3 import Connection
-from typing import Any, List, Literal, Optional, Tuple
+from typing import Any, Callable, List, Literal, Optional, Tuple
 
 import httpx
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.storage.database import Database
+from iad_core.workbench.completion import CompletionResponse, ResponseCapture
 
 
 class ModelCallError(AnalysisModel):
@@ -42,7 +43,7 @@ class ModelCallDetail(ModelCallSummary):
     response_body: Optional[str]
 
 
-_active: ContextVar[Optional[Tuple['ModelCalls', str]]] = ContextVar('iad_model_calls', default=None)
+_active: ContextVar[Optional[Tuple['ModelCalls', str, Optional[Callable[[], None]], str]]] = ContextVar('iad_model_calls', default=None)
 
 
 class ModelCalls:
@@ -50,8 +51,8 @@ class ModelCalls:
         self.db = db
 
     @contextmanager
-    def bind(self, run_id: str):
-        token = _active.set((self, run_id))
+    def bind(self, run_id: str, checkpoint: Optional[Callable[[], None]] = None, *, state_run_id: Optional[str] = None):
+        token = _active.set((self, run_id, checkpoint, state_run_id or run_id))
         try:
             yield
         finally:
@@ -59,23 +60,32 @@ class ModelCalls:
 
     @staticmethod
     @contextmanager
-    def exchange(client: httpx.Client, request: httpx.Request, operation: Literal['tokenize', 'generate'], schema_name: str):
+    def exchange(client: httpx.Client, request: httpx.Request, operation: Literal['tokenize', 'generate'], schema_name: str, *, stream: bool = False):
         binding = _active.get()
         if binding is None:
-            yield client.send(request)
+            response = client.send(request, stream=stream)
+            try:
+                yield response
+            finally:
+                response.close()
             return
-        repository, run_id = binding
+        repository, run_id, checkpoint, state_run_id = binding
         with repository.db.connection() as conn:
-            payload = json.loads(conn.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (run_id,)).fetchone()[0])
+            payload = json.loads(conn.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (state_run_id,)).fetchone()[0])
             summary = ModelCallSummary(call_id='call_' + uuid.uuid4().hex, run_id=run_id, operation=operation,
                 schema_name=schema_name, phase=payload.get('phase'), sample_id=payload.get('current_sample_id'),
                 started_at=datetime.now(timezone.utc).isoformat())
             conn.execute('INSERT INTO model_calls(call_id,run_id,summary_json,request_body) VALUES(?,?,?,?)',
                          (summary.call_id, run_id, summary.model_dump_json(), zlib.compress(request.content)))
-        response = None
+        response, capture, response_body = None, None, None
         started = time.perf_counter()
         try:
-            response = client.send(request)
+            response = client.send(request, stream=stream)
+            if stream and not response.is_stream_consumed:
+                capture = ResponseCapture(response.stream, checkpoint)
+                response.stream = capture
+            if response.is_error:
+                response.read()
             yield response
         except Exception as error:
             summary.error = ModelCallError(type=type(error).__name__, message=str(error))
@@ -85,8 +95,11 @@ class ModelCalls:
             summary.elapsed_ms = (time.perf_counter() - started) * 1000
             if response is not None:
                 summary.http_status = response.status_code
+                recorded = (httpx.Response(response.status_code, headers=response.headers, content=bytes(capture.content))
+                            if capture is not None else response)
+                response_body = recorded.content
                 try:
-                    body = response.json()
+                    body = CompletionResponse.read(recorded).body
                 except (ValueError, UnicodeError):
                     body = None
                 if isinstance(body, dict):
@@ -97,10 +110,11 @@ class ModelCalls:
                     if isinstance(choices, list) and choices and isinstance(choices[0], dict):
                         reason = choices[0].get('finish_reason')
                         summary.finish_reason = reason if isinstance(reason, str) else None
+                response.close()
             with repository.db.connection() as conn:
                 conn.execute('UPDATE model_calls SET summary_json=?,request_body=?,response_body=? WHERE call_id=?',
                     (summary.model_dump_json(), zlib.compress(request.content),
-                     zlib.compress(response.content) if response is not None else None, summary.call_id))
+                     zlib.compress(response_body) if response_body is not None else None, summary.call_id))
 
     def list(self, run_id: str, connection: Optional[Connection] = None) -> List[ModelCallSummary]:
         with nullcontext(connection) if connection is not None else self.db.connection() as conn:

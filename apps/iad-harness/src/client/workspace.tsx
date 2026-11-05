@@ -1,5 +1,5 @@
 import { createContext, useContext, useSyncExternalStore } from "react";
-import type { AuditStartRequest,ConsistencyContext,ConsistencyContextRequest,ConsistencyResult,Filters, InspectionReference, InspectionSnapshot, KnowledgeSnapshot } from "../shared/contracts.js";
+import type { AuditStartRequest,ConsistencyContext,ConsistencyContextRequest,ConsistencyResult,Filters, InspectionReference, InspectionSnapshot } from "../shared/contracts.js";
 import { initialFilters, initialReviewFilters, request } from "./api.js";
 import { restoreInspection, type ImageView, type InspectionSelection, type InspectionTransform, type InspectionView } from "./inspection.js";
 import type { WorkbenchSession } from "./workbench-session.js";
@@ -8,19 +8,18 @@ import { knowledgeStatuses, type KnowledgeStatusFilter } from "../shared/knowled
 import {consistencyRouteEnums} from "../shared/consistency.parameters.generated.js";
 export { pages, type PageId } from "../shared/navigation.js";
 
-interface ViewState { auditConsistencyMode: NonNullable<AuditStartRequest["consistency_mode"]>; explorationPrompt: import("../shared/domain.generated.js").FrozenExplorationPrompt | null; explorationPromptBase: string; directionFocus: string; datasetSettingsTab: "directories" | "basic"; checkId: string; explorationVersion: string; explorationNormalCount: string; explorationDefectCount: string; explorationNormalImages: string[]; explorationDefectImages: string[]; explorationObjective: string; miningSourceMode: "uncovered" | "all" | "recheck"; scopeRunId: string; scopeSessionId: string; miningContinuous: boolean; conflictId: string; miningCount: string; miningImages: string[]; miningPreset: string; miningSearch: string; miningPage: number; filters: Filters; page: number; selected: string; tab: string; version: string; normalVersion: string; defectVersion: string; job: string; historyPage: number; historySearch: string; historySampleId: string; knowledgeSearch: string; knowledgeStatus: KnowledgeStatusFilter; inspection: InspectionView | null }
-type KnowledgeKind = KnowledgeSnapshot["kind"];
-interface WorkspaceState { consistency: Omit<ConsistencyLocation, 'pageId'>; knowledgeKind: KnowledgeKind; active: boolean; pageId: PageId; datasetId: string; views: Record<string, ViewState> }
+interface ViewState { auditConsistencyMode: NonNullable<AuditStartRequest["consistency_mode"]>; explorationPrompt: import("../shared/domain.generated.js").FrozenExplorationPrompt | null; explorationPromptBase: string; datasetSettingsTab: "directories" | "basic"; checkId: string; explorationVersion: string; explorationNormalCount: string; explorationDefectCount: string; explorationNormalImages: string[]; explorationDefectImages: string[]; explorationObjective: string; miningSourceMode: "uncovered" | "all" | "recheck"; scopeRunId: string; scopeSessionId: string; miningContinuous: boolean; conflictId: string; miningCount: string; miningImages: string[]; miningPreset: string; miningSearch: string; miningPage: number; filters: Filters; page: number; selected: string; tab: string; version: string; normalVersion: string; defectVersion: string; job: string; historyPage: number; historySearch: string; historySampleId: string; knowledgeSearch: string; knowledgeStatus: KnowledgeStatusFilter; inspection: InspectionView | null }
+interface WorkspaceState { consistency: Omit<ConsistencyLocation, 'pageId'>; active: boolean; pageId: PageId; datasetId: string; views: Record<string, ViewState> }
 interface Layout {
   selectPanel(id: string | null): void;
   panelInfo: { getSnapshot(): { activePanelId: string | null }; subscribe(listener: () => void): () => void };
 }
-const defaultView = (page: PageId): ViewState => ({ auditConsistencyMode: "exact", explorationPrompt: null, explorationPromptBase: "", directionFocus: "", datasetSettingsTab: "directories", checkId:"", explorationVersion: "", explorationNormalCount: "10", explorationDefectCount: "10", explorationNormalImages: [], explorationDefectImages: [], explorationObjective: "", miningSourceMode: "uncovered", scopeRunId: "", scopeSessionId: "", miningContinuous: false, conflictId: "", miningCount: "10", miningImages: [], miningPreset: "", miningSearch: "", miningPage: 1, filters: { ...(page === "industrial-review" ? initialReviewFilters : initialFilters) }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", historySampleId: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
+const defaultView = (page: PageId): ViewState => ({ auditConsistencyMode: "exact", explorationPrompt: null, explorationPromptBase: "", datasetSettingsTab: "directories", checkId:"", explorationVersion: "", explorationNormalCount: "10", explorationDefectCount: "10", explorationNormalImages: [], explorationDefectImages: [], explorationObjective: "", miningSourceMode: "uncovered", scopeRunId: "", scopeSessionId: "", miningContinuous: false, conflictId: "", miningCount: "10", miningImages: [], miningPreset: "", miningSearch: "", miningPage: 1, filters: { ...(page === "industrial-review" ? initialReviewFilters : initialFilters) }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", historySampleId: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
 
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export class Workspace {
   constructor(private readonly conversation: WorkbenchSession) {}
-  private state: WorkspaceState = { consistency: {tab:'conflicts',scope:{kind:'all_registered'}}, knowledgeKind: "normal", active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
+  private state: WorkspaceState = { consistency: {tab:'conflicts',scope:{kind:'all_registered'}}, active: false, pageId: "industrial-datasets", datasetId: "", views: {} };
   private listeners = new Set<() => void>();
   private leaveGuards = new Set<() => boolean>();
   registerLeaveGuard(guard: () => boolean) { this.leaveGuards.add(guard); return () => { this.leaveGuards.delete(guard); }; }
@@ -35,13 +34,9 @@ export class Workspace {
   private defaults = Object.fromEntries(Object.keys(pages).map(id => [id, defaultView(id as PageId)])) as Record<PageId, ViewState>;
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
-  view(page: PageId, kind = this.state.knowledgeKind, datasetId = this.state.datasetId) { return { ...this.defaults[page], ...this.state.views[this.viewKey(page, datasetId, kind)] }; }
-  private viewKey(page: PageId, datasetId: string, kind: KnowledgeKind) { return `${page}:${datasetId}${page === "industrial-knowledge" ? `:${kind}` : ""}`; }
-  selectKnowledgeKind(knowledgeKind: KnowledgeKind) {
-    if (knowledgeKind === this.state.knowledgeKind) return;
-    if (!this.canLeave()) return;
-    this.state = { ...this.state, knowledgeKind }; this.commit();
-  }
+  view(page: PageId, datasetId = this.state.datasetId) { return { ...this.defaults[page], ...this.state.views[this.viewKey(page, datasetId)] }; }
+  private viewKey(page: PageId, datasetId: string) { return `${page}:${datasetId}`; }
+
   connect(layout: Layout) {
     this.layout = layout;
     this.restore();
@@ -61,7 +56,7 @@ export class Workspace {
   navigate(pageId: PageId, selected?: string) {
     if (pageId !== this.state.pageId && !this.canLeave()) { this.layout?.selectPanel(this.state.pageId); return; }
     this.state = { ...this.state, active: true, pageId };
-    if (selected !== undefined) this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(pageId, this.state.datasetId, this.state.knowledgeKind)]: { ...this.view(pageId), selected, tab: "results" } } };
+    if (selected !== undefined) this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(pageId, this.state.datasetId)]: { ...this.view(pageId), selected, tab: "results" } } };
     this.commit();
     this.layout?.selectPanel(pageId);
   }
@@ -75,16 +70,16 @@ export class Workspace {
       this.state={...this.state,active:true,pageId,consistency:{tab:'conflicts',scope:{kind:'all_registered'},...consistency}};
       this.commit();this.layout?.selectPanel(pageId);return;
     }
-    const { pageId, datasetId, knowledgeKind = this.state.knowledgeKind, ...view } = location;
-    this.state = { ...this.state, active: true, pageId, datasetId, knowledgeKind };
-    this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(pageId, datasetId, knowledgeKind)]: { ...this.view(pageId), ...view, inspection: null } } };
+    const { pageId, datasetId, ...view } = location;
+    this.state = { ...this.state, active: true, pageId, datasetId };
+    this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(pageId, datasetId)]: { ...this.view(pageId), ...view, inspection: null } } };
     this.commit();
     this.layout?.selectPanel(pageId);
   }
   forgetDataset(datasetId: string) {
     const views = { ...this.state.views };
     for (const page of Object.keys(pages) as PageId[]) {
-      for (const kind of ["normal", "defect"] as const) delete views[this.viewKey(page, datasetId, kind)];
+      delete views[this.viewKey(page, datasetId)];
     }
     this.state = { ...this.state, views, datasetId: this.state.datasetId === datasetId ? "" : this.state.datasetId,
       consistency: { tab: this.state.consistency.tab, scope: { kind: "all_registered" } } };
@@ -97,29 +92,20 @@ export class Workspace {
   }
   updateView(page: PageId, patch: Partial<ViewState>, replace = false) {
     if (patch.tab && patch.tab !== this.view(page).tab && !this.canLeave()) return;
-    this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(page, this.state.datasetId, this.state.knowledgeKind)]: { ...this.view(page), ...patch } } };
+    this.state = { ...this.state, views: { ...this.state.views, [this.viewKey(page, this.state.datasetId)]: { ...this.view(page), ...patch } } };
     this.commit(replace);
   }
   async ask(reference: InspectionReference, selection: InspectionSelection | null, transform: InspectionTransform, question: string) {
-    const { pageId, datasetId, knowledgeKind } = this.state;
+    const { pageId, datasetId } = this.state;
     const view = this.view(pageId);
     const snapshot = await request<InspectionSnapshot>("/inspection/context", reference);
     if (!this.state.active || this.state.pageId !== pageId || this.state.datasetId !== datasetId || this.view(pageId).selected !== reference.sample_id) throw new Error("检视位置已切换，请在当前图像重新追问");
     await this.conversation.inspect(snapshot, question, sessionId => {
       if (!this.state.active || this.state.pageId !== pageId || this.state.datasetId !== datasetId || this.view(pageId).selected !== reference.sample_id) throw new Error("检视位置已切换，请在当前图像重新追问");
       this.updateView(pageId, { inspection: { reference, selection, transform, sessionId } }, true);
-      const route = new URLSearchParams({ iad: JSON.stringify({ pageId, datasetId, knowledgeKind, ...this.view(pageId) }) });
+      const route = new URLSearchParams({ iad: JSON.stringify({ pageId, datasetId, ...this.view(pageId) }) });
       return `${location.origin}${location.pathname}?${route}`;
     }, view.inspection?.reference.sample_id === reference.sample_id ? view.inspection.sessionId : undefined);
-  }
-  async mineScope(scopeRunId: string, imageCount: number, images: string[]) {
-    const { datasetId, knowledgeKind } = this.state;
-    const pageId = "industrial-knowledge", view = this.view(pageId);
-    await this.conversation.mine(scopeRunId, knowledgeKind, imageCount, images, sessionId => {
-      if (this.state.datasetId !== datasetId || this.state.knowledgeKind !== knowledgeKind) throw new Error("数据集或知识类型已切换，请在当前范围重新发起");
-      this.updateView(pageId, { scopeRunId, scopeSessionId: sessionId });
-      return `${location.origin}${location.pathname}?${new URLSearchParams({ iad: JSON.stringify({ pageId, datasetId, knowledgeKind, ...this.view(pageId) }) })}`;
-    }, view.scopeSessionId || undefined);
   }
   openSession(sessionId: string) { return this.conversation.open(sessionId); }
   async explainConsistency(result:Pick<ConsistencyResult,'evidence_id'|'result_id'>){
@@ -138,10 +124,10 @@ export class Workspace {
     },frozen.sessionId);
   }
   private commit(replace = false) {
-    const { pageId, datasetId, knowledgeKind } = this.state;
+    const { pageId, datasetId } = this.state;
     const url = new URL(location.href);
     const { explorationPrompt, explorationPromptBase, ...routeView } = this.view(pageId);
-    if (this.state.active) url.searchParams.set("iad", JSON.stringify(pageId==='industrial-consistency' ? {pageId,...this.state.consistency} : { pageId, datasetId, knowledgeKind, ...routeView }));
+    if (this.state.active) url.searchParams.set("iad", JSON.stringify(pageId==='industrial-consistency' ? {pageId,...this.state.consistency} : { pageId, datasetId, ...routeView }));
     else url.searchParams.delete("iad");
     history[replace ? "replaceState" : "pushState"](history.state, "", url);
     sessionStorage.setItem("iad.workspace", JSON.stringify(this.state));
@@ -152,7 +138,7 @@ export class Workspace {
     try {
       const saved = JSON.parse(sessionStorage.getItem("iad.workspace") || "null");
       if (!fromHistory && saved?.pageId in pages && typeof saved.datasetId === "string" && typeof saved.active === "boolean") {
-        this.state = { ...this.state, ...saved, consistency:saved.consistency || this.state.consistency, knowledgeKind: saved.knowledgeKind === "defect" ? "defect" : "normal", views: Object.fromEntries(Object.entries(saved.views || {}).map(([key, value]) => {
+        this.state = { ...this.state, ...saved, consistency:saved.consistency || this.state.consistency, views: Object.fromEntries(Object.entries(saved.views || {}).map(([key, value]) => {
           const view = value as ViewState;
           return [key, { ...view, filters: { ...initialFilters, ...view.filters } }];
         })) };
@@ -176,10 +162,9 @@ export class Workspace {
           if(route.returnPage in pages && route.returnPage!=='industrial-consistency')consistency.returnPage=route.returnPage;
           this.state={...this.state,active:true,pageId:route.pageId,consistency};
         } else if (route.pageId in pages && typeof route.datasetId === "string") {
-          const knowledgeKind: KnowledgeKind = route.knowledgeKind === "defect" ? "defect" : "normal";
-          const stored = this.state.views[this.viewKey(route.pageId, route.datasetId, knowledgeKind)];
+          const stored = this.state.views[this.viewKey(route.pageId, route.datasetId)];
           const view = { ...defaultView(route.pageId), explorationPrompt: stored?.explorationPrompt || null, explorationPromptBase: stored?.explorationPromptBase || "" };
-          for (const key of ["directionFocus", "checkId", "explorationVersion", "explorationNormalCount", "explorationDefectCount", "explorationObjective", "selected", "scopeRunId", "scopeSessionId", "conflictId", "tab", "version", "miningCount", "miningPreset", "miningSearch", "normalVersion", "defectVersion", "job", "historySearch", "historySampleId", "knowledgeSearch"] as const) if (typeof route[key] === "string") view[key] = route[key];
+          for (const key of ["checkId", "explorationVersion", "explorationNormalCount", "explorationDefectCount", "explorationObjective", "selected", "scopeRunId", "scopeSessionId", "conflictId", "tab", "version", "miningCount", "miningPreset", "miningSearch", "normalVersion", "defectVersion", "job", "historySearch", "historySampleId", "knowledgeSearch"] as const) if (typeof route[key] === "string") view[key] = route[key];
           if (route.datasetSettingsTab === "directories" || route.datasetSettingsTab === "basic") view.datasetSettingsTab = route.datasetSettingsTab;
           if (['exact','visual','combined'].includes(route.auditConsistencyMode)) view.auditConsistencyMode = route.auditConsistencyMode;
           if (["uncovered", "all", "recheck"].includes(route.miningSourceMode)) view.miningSourceMode = route.miningSourceMode;
@@ -196,7 +181,7 @@ export class Workspace {
             if (Array.isArray(route.filters.raw_label_filters) && route.filters.raw_label_filters.every((item: unknown) => typeof item === "string")) view.filters.raw_label_filters = route.filters.raw_label_filters;
             if (Array.isArray(route.filters.annotation_filters) && route.filters.annotation_filters.every((item: unknown) => typeof item === "string")) view.filters.annotation_filters = route.filters.annotation_filters;
           }
-          this.state = { ...this.state, active: true, pageId: route.pageId, datasetId: route.datasetId, knowledgeKind, views: { ...this.state.views, [this.viewKey(route.pageId, route.datasetId, knowledgeKind)]: view } };
+          this.state = { ...this.state, active: true, pageId: route.pageId, datasetId: route.datasetId, views: { ...this.state.views, [this.viewKey(route.pageId, route.datasetId)]: view } };
         }
       }
     } catch { sessionStorage.removeItem("iad.workspace"); }

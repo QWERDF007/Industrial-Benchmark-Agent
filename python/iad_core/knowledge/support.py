@@ -26,8 +26,12 @@ class KnowledgeSupport:
         if not sources:
             return {}
         repository = SampleRepository(self.db)
-        task_id = repository.get(sources[0].sample_id).task_id
-        samples = repository.list_by_task(task_id)
+        ids = {source.sample_id for source in sources} | ({target_sample_id} if target_sample_id else set())
+        selected = repository.get_many(sorted(ids))
+        if ids != {sample.sample_id for sample in selected}:
+            raise LookupError('知识支持来源或待审图像不存在')
+        task_ids = sorted({sample.task_id for sample in selected})
+        samples = [sample for task_id in task_ids for sample in repository.list_by_task(task_id)]
         by_hash = defaultdict(list)
         versions = {source.sample_id: source.sha256 for source in sources}
         for source in sources:
@@ -45,17 +49,17 @@ class KnowledgeSupport:
             and os.path.isfile(sample.image_path) and file_sha256(sample.image_path) == versions[sample.sample_id]
             and (entry := PixelIndex(self.db).get(sample.sample_id)) is not None
             and entry.image_sha256 == versions[sample.sample_id]]
-        relations = load_leakage_relations(self.db, task_id, sample_ids=current_ids)
-        pairs, groups = relations.near_leakage_pairs, relations.groups
+        relations = [load_leakage_relations(self.db, task_id, sample_ids=current_ids) for task_id in task_ids]
+        pairs = [pair for relation in relations for pair in relation.near_leakage_pairs]
+        groups = [group for relation in relations for group in relation.groups]
         _, mapping = build_split_groups(samples, verified_pairs=pairs,
                                         verified_groups=[*groups, *by_hash.values()], gold_records={})
         original_ids = {sample.sample_id for sample in samples if sample.data_origin != DataOrigin.AUGMENTED}
-        ids = {source.sample_id for source in sources} | ({target_sample_id} if target_sample_id else set())
         return {sid: mapping[sid] for sid in ids if sid in original_ids or sid == target_sample_id}
 
     @staticmethod
     def assess(checks: List[KnowledgeCheck], evidence: List[KnowledgeEvidence],
-               groups: dict[str, str], policy: KnowledgeSupportPolicy):
+               groups: dict[str, str], policy: KnowledgeSupportPolicy, *, comparison_source_ids: Optional[set[str]] = None):
         owners = {item.image.evidence_id: item.sample_id for item in evidence if item.image.representation == 'raw'}
         for check in checks:
             check.support_limitations = []
@@ -63,7 +67,8 @@ class KnowledgeSupport:
                 continue
             supports = {groups[owners[eid]] for eid in check.support_evidence_ids
                         if eid in owners and owners[eid] in groups}
-            if check.counter_evidence_ids:
+            contradictions = [eid for eid in check.counter_evidence_ids if owners.get(eid) not in (comparison_source_ids or set())]
+            if contradictions:
                 check.status = 'conflicted'
                 check.support_limitations = ['存在尚未消解的反对证据']
             elif policy.min_source_groups is None:

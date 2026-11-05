@@ -17,6 +17,10 @@ class ExpectedPolicyDifference(AnalysisModel):
     kind: Literal['EXPECTED_POLICY_DIFFERENCE']
 
 
+class RejectDifference(AnalysisModel):
+    kind: Literal['REJECT_DIFFERENCE']
+
+
 class NeedsContext(AnalysisModel):
     kind: Literal['NEEDS_CONTEXT']
 
@@ -87,7 +91,7 @@ class ProposeRegionChange(AnalysisModel):
     changes: list[RegionChange] = Field(min_length=1, max_length=100)
 
 
-ReviewAction = Annotated[ConfirmDifference | ExpectedPolicyDifference | NeedsContext | SetEffectiveQuality | ProposeRegionChange, Field(discriminator='kind')]
+ReviewAction = Annotated[ConfirmDifference | ExpectedPolicyDifference | RejectDifference | NeedsContext | SetEffectiveQuality | ProposeRegionChange, Field(discriminator='kind')]
 
 
 class ConsistencyReviewSubmission(AnalysisModel):

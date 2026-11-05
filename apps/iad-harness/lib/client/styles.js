@@ -15,7 +15,12 @@ import { consistencyStyles } from './styles/consistency.js';
 import { imagesStyles } from "./styles/images.js";
 import { dialogsStyles } from "./styles/dialogs.js";
 import { typographyStyles } from "./styles/typography.js";
-export const workbenchStyles = themeStyles + controlStyles
+import { auditStyles } from './styles/audit.js';
+import { galleryStyles } from './styles/gallery.js';
+import { reportStyles } from './styles/reports.js';
+import { tabStyles } from './styles/tabs.js';
+import { selectStyles } from './styles/selects.js';
+export const workbenchStyles = themeStyles
     + modelsStyles
     + explorationStyles
     + baseStyles
@@ -30,4 +35,10 @@ export const workbenchStyles = themeStyles + controlStyles
     + consistencyStyles
     + imagesStyles
     + dialogsStyles
-    + typographyStyles;
+    + typographyStyles
+    + auditStyles
+    + controlStyles
+    + selectStyles
+    + tabStyles
+    + galleryStyles
+    + reportStyles;

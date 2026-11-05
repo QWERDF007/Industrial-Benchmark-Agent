@@ -32,6 +32,41 @@ def test_independent_support_preserves_raw_16bit_content_identity(tmp_path):
     assert len(set(groups.values())) == 2
 
 
+@pytest.mark.parametrize('target_name',['duplicate','independent'])
+def test_reference_support_keeps_actual_identity_across_dataset_tasks(tmp_path,target_name):
+    from PIL.PngImagePlugin import PngInfo
+    from iad_core.dataset.registry import DatasetImport,DatasetRegistry
+    from iad_core.knowledge.sources import KnowledgeSources
+    from iad_core.knowledge.support import KnowledgeSupport
+    from iad_core.storage.database import Database
+    roots=[tmp_path/name for name in ('controls','targets')]
+    for root in roots:root.mkdir()
+    pixels=Image.new('RGB',(32,24),'blue')
+    pixels.save(roots[0]/'control.png')
+    metadata=PngInfo();metadata.add_text('origin','different container, identical pixels')
+    pixels.save(roots[1]/'duplicate.png',pnginfo=metadata)
+    pixels.putpixel((0,0),(0,1,255));pixels.save(roots[1]/'independent.png')
+    db=Database(str(tmp_path/'references.db'))
+    registry=DatasetRegistry(db)
+    controls,targets=[registry.import_labelme(DatasetImport(format='labelme',name=root.name,
+        image_dir=str(root),annotation_dir=str(root))) for root in roots]
+    assert controls.task.task_id!=targets.task.task_id
+    control_id=controls.dataset.id+':control.png'
+    target_id=targets.dataset.id+':'+target_name+'.png'
+    sources=KnowledgeSources(db)
+    control=sources.capture(control_id,'initial_unannotated')
+    support=KnowledgeSupport(db)
+    target_groups=support.groups([control],target_sample_id=target_id)
+    assert set(target_groups)=={control_id,target_id}
+    assert (target_groups[control_id]==target_groups[target_id])==(target_name=='duplicate')
+    others=[sources.capture(targets.dataset.id+':'+name+'.png','initial_unannotated')
+        for name in ('duplicate','independent')]
+    groups=support.groups([control,*others])
+    assert set(groups)=={source.sample_id for source in [control,*others]}
+    assert groups[control_id]==groups[others[0].sample_id]
+    assert groups[control_id]!=groups[others[1].sample_id]
+
+
 def test_audit_requires_learned_knowledge_before_creating_a_job(knowledge_dataset):
     db, config = knowledge_dataset
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(
@@ -363,12 +398,13 @@ def test_historical_analysis_migration_preserves_evidence_and_human_decision(dat
                       if key not in {'normal_version_id', 'defect_version_id', 'legacy_profile_id', 'knowledge_limitations',
                                      'reference_sample_ids', 'auxiliary_evidence'}}
         historical['profile_id'] = 'normal_historical'
-        with db.connection() as conn:
-            conn.execute('UPDATE audit_suggestions SET analysis_json=? WHERE suggestion_id=?',
-                         (json.dumps(historical), suggestion['suggestion_id']))
         human = HumanReview(db)
         human.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=config.dataset.id, reviewer='inspector', sample_id=target, decision='PASS', comment='人工核对'))
         before = sample_get({'sample_id': target}, db.db_path)
+        with db.connection() as conn:
+            conn.execute('UPDATE audit_suggestions SET analysis_json=? WHERE suggestion_id=?',
+                         (json.dumps(historical), suggestion['suggestion_id']))
+        db.init_schema()
         for _ in range(2):
             reopened = sample_get({'sample_id': target}, db.db_path)
             assert reopened['normal_knowledge'] is reopened['defect_knowledge'] is None

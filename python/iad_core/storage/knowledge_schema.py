@@ -28,3 +28,15 @@ def migrate_knowledge_sources(conn: sqlite3.Connection) -> None:
         snapshot['comparison_sources'] = list(comparisons.values())
         conn.execute('UPDATE knowledge_versions SET snapshot_json=? WHERE version_id=?',
                      (json.dumps(snapshot, ensure_ascii=False), version_id))
+
+
+def migrate_unified_knowledge(conn: sqlite3.Connection) -> None:
+    columns = {row[1] for row in conn.execute('PRAGMA table_info(knowledge_versions)')}
+    if 'kind' not in columns:
+        return
+    conn.execute('DROP INDEX IF EXISTS idx_knowledge_dataset_kind')
+    conn.execute('ALTER TABLE knowledge_versions DROP COLUMN kind')
+    conn.execute('ALTER TABLE knowledge_versions DROP COLUMN normal_version_id')
+    conn.execute('DROP TABLE IF EXISTS knowledge_heads')
+    conn.execute("""UPDATE agent_runs SET status='STOPPED',finished_at=CURRENT_TIMESTAMP
+        WHERE status='ACTIVE' AND json_type(scope_json,'$.kind') IS NOT NULL""")

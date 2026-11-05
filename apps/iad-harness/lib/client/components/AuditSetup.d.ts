@@ -1,12 +1,12 @@
-import React from "react";
-import type { JobSnapshot, Dataset, Filters } from "../../shared/contracts.js";
-export interface AuditSetupProps {
-    dataset: Dataset;
+import React from 'react';
+import type { Dataset, Filters, JobSnapshot } from '../../shared/contracts.js';
+export declare function AuditSetup({ datasets, filters, jobs, revision, onStarted, onCancel, onBusyChange }: {
+    datasets: Dataset[];
     filters: Filters;
     jobs: JobSnapshot[];
     revision: number;
-    onJobsChanged(): void;
-    onStarted?(job: JobSnapshot): void;
-}
-export declare function AuditSetup({ dataset, filters, jobs, revision, onJobsChanged, onStarted }: AuditSetupProps): React.JSX.Element;
+    onStarted(jobs: JobSnapshot[]): void;
+    onCancel(): void;
+    onBusyChange(busy: boolean): void;
+}): React.JSX.Element;
 //# sourceMappingURL=AuditSetup.d.ts.map

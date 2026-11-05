@@ -5,20 +5,23 @@
  */
 
 export const dialogsStyles = `
+dialog.iad-detail-dialog {text-align:left;}
+.iad-dialog-body {flex:1 1 auto;min-height:0;overflow:auto;padding:18px 24px;font-size:var(--iad-font-size);color:var(--iad-text);}
+.iad-dialog-footer {display:flex;align-items:center;justify-content:flex-end;flex:none;gap:10px;min-height:58px;padding:10px 24px;border-top:1px solid var(--iad-border);background:var(--iad-surface);}
 /* ==========================================================================
    Dialog Design Tokens (Single Source of Truth)
    V56 Dialog Visual Contract
    ========================================================================== */
 :root {
-  --iba-detail-dialog-height: 820px;
-  --iba-detail-dialog-width: 1380px;
-  --iba-dialog-detail-width: 1380px;
-  --iba-dialog-edit-width: 960px;
-  --iba-dialog-max-height: 820px;
-  --iba-dialog-gap: clamp(12px, 2.5vw, 32px);
-  --iba-dialog-ink: #172338;
-  --iba-dialog-border: #d9e2ed;
-  --iba-dialog-font: system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+  --iba-detail-dialog-height: var(--iad-dialog-max-height);
+  --iba-detail-dialog-width: var(--iad-dialog-max-width);
+  --iba-dialog-detail-width: var(--iad-dialog-max-width);
+  --iba-dialog-edit-width: var(--iad-dialog-medium-width);
+  --iba-dialog-max-height: var(--iad-dialog-max-height);
+  --iba-dialog-gap: var(--iad-dialog-gutter);
+  --iba-dialog-ink: var(--iad-text);
+  --iba-dialog-border: var(--iad-border);
+  --iba-dialog-font: var(--iad-font-family);
 
   --iad-modal-backdrop: rgba(23, 34, 51, 0.68);
   --iad-dialog-gutter: clamp(12px, 2.5vw, 32px);
@@ -31,7 +34,7 @@ export const dialogsStyles = `
   --iad-dialog-small-width: 530px;
 
   /* Surfaces & Borders */
-  --iad-dialog-bg: #ffffff;
+  --iad-dialog-bg: var(--iad-surface);
   --iad-dialog-radius: 7px;
   --iad-dialog-border: 1px solid #d9e2ed;
   --iad-dialog-shadow: 0 20px 64px rgba(14, 26, 48, 0.27);
@@ -40,18 +43,10 @@ export const dialogsStyles = `
   /* Typography */
   --iad-dialog-title-font: 17px;
   --iad-dialog-title-weight: 650;
-  --iad-dialog-title-color: #172338;
-  --iad-dialog-text-font: 13px;
-  --iad-dialog-text-color: #172338;
-  --iad-dialog-muted-color: #64758d;
-
-  /* Action Buttons */
-  --iad-btn-danger-bg: #bf384a;
-  --iad-btn-danger-hover: #a82e3f;
-  --iad-btn-primary-bg: #2458d5;
-  --iad-btn-primary-hover: #1b49be;
-  --iad-btn-cancel-border: #c9d4e2;
-  --iad-btn-cancel-color: #37475d;
+  --iad-dialog-title-color: var(--iad-text);
+  --iad-dialog-text-font: var(--iad-font-size);
+  --iad-dialog-text-color: var(--iad-text);
+  --iad-dialog-muted-color: var(--iad-muted);
 }
 
 @media (max-width: 850px) {
@@ -127,7 +122,6 @@ dialog.iad-detail-dialog {
   overflow: hidden !important;
   flex-shrink: 0 !important;
   padding: 0 !important;
-  margin: 0 !important;
 }
 
 /* ==========================================================================
@@ -156,10 +150,15 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
   background: #fff !important;
   box-shadow: 0 20px 64px rgba(14, 26, 48, 0.27) !important;
   overflow: hidden !important;
-  margin: 0 auto !important;
   flex: none !important;
   display: flex !important;
   flex-direction: column !important;
+}
+
+dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewer-dialog) {
+  position:fixed;
+  inset:0;
+  margin: auto !important;
 }
 
 /* Detail dialog internal scrollable body - scrolls only when needed */
@@ -181,131 +180,68 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 }
 
 .detail-scroll { padding: 22px 28px 28px !important; }
-.exp-direction-dialog .exp-dialog-main { padding: 15px 28px 24px !important; }
+.exp-direction-dialog .exp-dialog-main { padding: 15px 28px 24px !important; flex:1 1 0!important; overflow:hidden!important; }
 #dc-compare-mask .dc-dialog-body,
 .dc-conflict-dialog .dc-dialog-body { padding: 20px 26px 24px !important; }
 
-/* Large detail dialog internal flex hierarchy - direction evidence UI-56-02 */
-.exp-modal .exp-direction-dialog .exp-direction-evidence-groups,
-.exp-direction-dialog .exp-direction-evidence-groups {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 18px !important;
-  align-items: start !important;
-}
-
-.exp-modal .exp-direction-dialog .exp-evidence-viewport,
-.exp-direction-dialog .exp-evidence-viewport {
-  box-sizing: border-box !important;
-  height: 144px !important;
-  max-height: 144px !important;
-  min-height: 0 !important;
-  padding: 2px 1px 5px !important;
-  align-items: flex-start !important;
-  gap: 8px !important;
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-}
-
-.exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card,
-.exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card,
-.exp-modal .exp-direction-dialog .exp-direction-evidence-card,
-.exp-direction-dialog .exp-direction-evidence-card {
-  width: 180px !important;
-  min-width: 180px !important;
-  height: 124px !important;
-  padding: 4px !important;
-  flex: 0 0 180px !important;
-  box-sizing: border-box !important;
-  border: 2px solid #dce4ef !important;
-  border-radius: 6px !important;
-  background: #fff !important;
-  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease !important;
-}
-
-.exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card:hover,
-.exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card:hover,
-.exp-modal .exp-direction-dialog .exp-direction-evidence-card:hover,
-.exp-direction-dialog .exp-direction-evidence-card:hover,
-.exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card.is-related,
-.exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card.is-related,
-.exp-modal .exp-direction-dialog .exp-direction-evidence-card.is-related,
-.exp-direction-dialog .exp-direction-evidence-card.is-related {
-  border: 2px solid #2458d5 !important;
-  border-color: #2458d5 !important;
-  background: #f0f5ff !important;
-  box-shadow: 0 0 0 1px #2458d5, 0 2px 8px rgba(36, 88, 213, 0.18) !important;
-}
-
-.exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img,
-.exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img,
-.exp-modal .exp-direction-dialog .exp-direction-evidence-card img,
-.exp-direction-dialog .exp-direction-evidence-card img {
-  width: 100% !important;
-  height: 114px !important;
-  max-height: 114px !important;
-  object-fit: cover !important;
-  object-position: center !important;
-  background: #fff !important;
-}
-
-.exp-modal .exp-direction-dialog .exp-direction-evidence,
-.exp-direction-dialog .exp-direction-evidence {
-  padding: 17px 0 0 !important;
-  flex: 0 0 auto !important;
-}
-
-.exp-modal .exp-direction-dialog .exp-direction-body,
 .exp-direction-dialog .exp-direction-body {
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: space-between !important;
-  min-height: 100% !important;
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:repeat(3,minmax(0,1fr)) minmax(230px,1fr);
+  gap:0;
+  flex:1 1 0;
+  min-height:0;
+  min-width:0;
 }
-
-.exp-modal .exp-direction-dialog .exp-direction-goal,
-.exp-direction-dialog .exp-direction-goal {
-  min-height: 0 !important;
-  line-height: 1.8 !important;
-  flex: none !important;
+.exp-direction-dialog .exp-direction-body h3 {font-size:13px;margin:0 0 10px}
+.exp-direction-dialog .exp-direction-body>section {
+  min-width:0;
+  min-height:0;
+  overflow:auto;
+  overflow-wrap:anywhere;
+  line-height:1.85;
+  box-sizing:border-box;
+  padding:16px 0;
 }
-
-.exp-modal .exp-direction-dialog .exp-direction-reasoning,
-.exp-direction-dialog .exp-direction-reasoning {
-  flex: 0 0 auto !important;
-  min-height: 0 !important;
-  line-height: 1.8 !important;
-  align-content: start !important;
+.exp-direction-dialog .exp-direction-body>section:first-child{padding-top:0}
+.exp-direction-dialog .exp-direction-body>section+section{border-top:1px solid var(--iad-border,#dbe2eb)}
+.exp-direction-dialog .exp-direction-body p {margin:0;line-height:1.85}
+.exp-direction-dialog .exp-direction-body ul {margin:0;padding-left:18px}
+.exp-direction-dialog .exp-direction-body li+li {margin-top:6px}
+.exp-direction-dialog .exp-direction-evidence {
+  grid-column:1/-1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  padding-bottom:0;
 }
-
-@media (max-width: 840px) {
-  .exp-modal .exp-direction-dialog .exp-direction-evidence-groups,
-  .exp-direction-dialog .exp-direction-evidence-groups {
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-  }
-  .exp-modal .exp-direction-dialog .exp-evidence-viewport,
-  .exp-direction-dialog .exp-evidence-viewport {
-    height: 136px !important;
-    max-height: 136px !important;
-  }
-  .exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card,
-  .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card {
-    width: 170px !important;
-    min-width: 170px !important;
-    flex-basis: 170px !important;
-    height: 118px !important;
-  }
-  .exp-modal .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img,
-  .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img {
-    height: 108px !important;
-    max-height: 108px !important;
-  }
+.exp-direction-dialog .exp-direction-evidence-head {flex:none;margin-bottom:12px}
+.exp-direction-dialog .exp-direction-evidence-head h3 {margin:0}
+.exp-direction-dialog .exp-direction-evidence-groups {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:24px;
+  flex:1 1 0;
+  min-height:0;
 }
+.exp-direction-dialog .exp-scroll-group {display:flex;min-height:0;min-width:0;overflow:hidden}
+.exp-direction-dialog .exp-scroll-group+.exp-scroll-group{border-left:1px solid var(--iad-border,#dbe2eb);padding-left:24px;box-sizing:border-box}
+.exp-direction-dialog .exp-evidence-viewport {
+  display:flex;
+  flex:1 1 0;
+  box-sizing:border-box;
+  min-height:0;
+  min-width:0;
+  padding:3px 2px 8px;
+  align-items:stretch;
+  gap:10px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:thin;
+  scroll-snap-type:x proximity;
+}
+.exp-direction-dialog .exp-evidence-viewport:focus-visible {outline:2px solid #2458d5;outline-offset:-2px}
 
 /* Evidence reference tokens */
 :is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) .exp-evidence-ref,
@@ -340,7 +276,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
    New Consistency Check, Stats Modal, Exploration Prompts, Add/Edit Dataset, Knowledge Create
    ========================================================================== */
 #knowledge-page .kb-v45 #create-overlay > .modal,
-#dc-new-mask .dc-new-dialog,
+dialog.dc-new-dialog,
 .dc-stats-modal .dc-stats-dialog,
 .exp-modal .exp-source-dialog,
 .exp-dialog:not(.small):not(.exp-direction-dialog),
@@ -358,7 +294,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
 }
 
 #knowledge-page .kb-v45 #create-overlay > .modal > .modalcontent,
-#dc-new-mask .dc-new-body,
+dialog.dc-new-dialog .dc-new-body,
 .dc-stats-dialog .dc-stats-body,
 .modal-scrim .modal:not(.delete-modal):not(.add-dataset-modal) .modal-body,
 .exp-dialog:not(.small):not(.exp-direction-dialog) .exp-dialog-main {
@@ -374,8 +310,6 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inli
    ========================================================================== */
 .exp-dialog.small,
 .exp-delete-dialog,
-.dc-delete-dialog,
-#dc-delete-mask .dc-dialog,
 .modal-scrim .modal.delete-modal,
 dialog.iad-detail-dialog.iad-confirm-dialog {
   width: min(var(--iad-dialog-small-width), calc(100vw - 32px)) !important;
@@ -386,7 +320,6 @@ dialog.iad-detail-dialog.iad-confirm-dialog {
 }
 
 .exp-dialog.small .exp-dialog-main,
-.dc-delete-dialog .exp-dialog-main,
 .modal-scrim .modal.delete-modal .modal-body {
   padding: 18px 22px 20px !important;
   font-size: 13.5px !important;
@@ -431,39 +364,6 @@ dialog.iad-detail-dialog.iad-confirm-dialog {
 }
 
 /* Unified Close Button */
-.detail-close,
-.modal-x,
-.dc-icn,
-.exp-direction-icon,
-.exp-ghost.modal-x,
-button.iad-icon-button[aria-label*="关闭"],
-button.modal-x {
-  display: grid !important;
-  place-items: center !important;
-  width: 32px !important;
-  height: 32px !important;
-  min-width: 32px !important;
-  min-height: 32px !important;
-  border-radius: 5px !important;
-  border: 0 !important;
-  background: transparent !important;
-  color: var(--iad-dialog-muted-color) !important;
-  font-size: 20px !important;
-  cursor: pointer !important;
-  padding: 0 !important;
-  line-height: 1 !important;
-  transition: background-color .15s ease, color .15s ease !important;
-}
-
-.detail-close:hover,
-.modal-x:hover,
-.dc-icn:hover,
-.exp-direction-icon:hover,
-button.iad-icon-button[aria-label*="关闭"]:hover,
-button.modal-x:hover {
-  background: #eef2f7 !important;
-  color: #1e293b !important;
-}
 
 /* ==========================================================================
    Unified Footers & Actions
@@ -486,86 +386,10 @@ button.modal-x:hover {
 }
 
 /* Unified Footer Buttons */
-.exp-dialog-foot button,
-.dc-dialog-footer button,
-.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button,
-.iad-confirm-dialog button {
-  min-height: 34px !important;
-  height: 34px !important;
-  font-size: 13px !important;
-  border-radius: 5px !important;
-  box-sizing: border-box !important;
-  padding: 0 16px !important;
-  cursor: pointer !important;
+.exp-dialog-foot button,.dc-dialog-footer button,.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button,.iad-confirm-dialog button {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-}
-
-/* Danger Action Buttons */
-.exp-delete-confirm,
-.delete-confirm,
-.dc-delete-confirm,
-.exp-dialog-foot button.danger,
-.modal-scrim .modal-actions button.btn-danger {
-  background: var(--iad-btn-danger-bg) !important;
-  background-color: var(--iad-btn-danger-bg) !important;
-  color: #ffffff !important;
-  border: 1px solid var(--iad-btn-danger-bg) !important;
-  border-color: var(--iad-btn-danger-bg) !important;
-  font-weight: 550 !important;
-}
-
-.exp-delete-confirm:hover,
-.delete-confirm:hover,
-.dc-delete-confirm:hover,
-.exp-dialog-foot button.danger:hover,
-.modal-scrim .modal-actions button.btn-danger:hover {
-  background: var(--iad-btn-danger-hover) !important;
-  background-color: var(--iad-btn-danger-hover) !important;
-  border-color: var(--iad-btn-danger-hover) !important;
-  color: #ffffff !important;
-}
-
-/* Cancel / Ghost Buttons */
-.cancel,
-button.exp-ghost,
-.dc-dialog-footer button.dc-minor,
-.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button.btn-secondary {
-  background: #ffffff !important;
-  background-color: #ffffff !important;
-  color: var(--iad-btn-cancel-color) !important;
-  border: 1px solid var(--iad-btn-cancel-border) !important;
-  border-color: var(--iad-btn-cancel-border) !important;
-  font-weight: 500 !important;
-}
-
-.cancel:hover,
-button.exp-ghost:hover,
-.dc-dialog-footer button.dc-minor:hover,
-.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button.btn-secondary:hover {
-  background: #f1f5fa !important;
-  background-color: #f1f5fa !important;
-  border-color: #b5c3d4 !important;
-  color: #1e293b !important;
-}
-
-/* Primary Form Submit Buttons */
-.dc-dialog-footer button.dc-btn,
-.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button.btn-primary {
-  background: var(--iad-btn-primary-bg) !important;
-  background-color: var(--iad-btn-primary-bg) !important;
-  color: #ffffff !important;
-  border: 1px solid var(--iad-btn-primary-bg) !important;
-  border-color: var(--iad-btn-primary-bg) !important;
-  font-weight: 550 !important;
-}
-
-.dc-dialog-footer button.dc-btn:hover:not(:disabled),
-.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button.btn-primary:hover:not(:disabled) {
-  background: var(--iad-btn-primary-hover) !important;
-  background-color: var(--iad-btn-primary-hover) !important;
-  border-color: var(--iad-btn-primary-hover) !important;
 }
 
 /* ==========================================================================
@@ -684,16 +508,8 @@ button.exp-ghost:hover,
   #knowledge-page .kb-v45 .detail-overlay {
     padding: 12px !important;
   }
-  .exp-modal .exp-direction-dialog .exp-evidence-viewport,
-  .exp-direction-dialog .exp-evidence-viewport {
-    height: 156px !important;
-    max-height: 156px !important;
-  }
-  .exp-modal .exp-direction-dialog .exp-direction-evidence-card img,
-  .exp-direction-dialog .exp-evidence-viewport .exp-direction-evidence-card img {
-    height: 96px !important;
-    max-height: 96px !important;
-  }
+
 }
 
+dialog.iad-drawer>.iad-dialog-header{height:64px!important;min-height:64px!important}
 `;

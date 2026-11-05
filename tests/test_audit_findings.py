@@ -12,7 +12,7 @@ def test_audit_findings_keep_actual_local_and_global_evidence_without_writing_hu
     client, _, responses = mllm_api
     target = config.dataset.id + ':dent.png'
     before = sample_get({'sample_id': target}, db.db_path)
-    check_id = knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge']['checks'][0]['check_id']
+    check_id = knowledge_get({'dataset_id': config.dataset.id}, db.db_path)['knowledge']['checks'][0]['check_id']
     responses['VlmResult'].update(suggested_label='FAIL', description='请复核主体左上角色差，并核对整体对称性。')
 
     def reply(request):
@@ -77,7 +77,7 @@ def test_audit_findings_keep_actual_local_and_global_evidence_without_writing_hu
 def test_finding_cannot_claim_unrelated_or_nonexistent_visual_evidence(dataset, mllm_api, case, error):
     db, _, config = dataset
     client, _, responses = mllm_api
-    check_id = knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge']['checks'][0]['check_id']
+    check_id = knowledge_get({'dataset_id': config.dataset.id}, db.db_path)['knowledge']['checks'][0]['check_id']
 
     def reply(request):
         if not request.url.path.endswith('/chat/completions'):
@@ -128,12 +128,13 @@ def test_child_batch_finding_survives_a_later_summary_that_omits_it(dataset, mll
     client, _, responses = mllm_api
     Image.new('RGB', (6000, 1800), 'blue').save(config.root + '/large.png')
     dataset_scan({'dataset_id': config.dataset.id}, db.db_path)
-    check_id = knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge']['checks'][0]['check_id']
+    check_id = knowledge_get({'dataset_id': config.dataset.id}, db.db_path)['knowledge']['checks'][0]['check_id']
     responses['Tokenize'] = {'tokens_per_image': 1000, 'max_model_len': 26000}
+    responses['VlmResult'].update(suggested_label='UNCERTAIN',reason_category='INSUFFICIENT_EVIDENCE')
     calls = []
 
     def reply(request):
-        if request.url.path.endswith('/chat/completions'):
+        if request.url.path.endswith('/chat/completions') and json.loads(request.content)['response_format']['json_schema']['name']=='JointAnalysis':
             content = json.loads(request.content)['messages'][0]['content']
             overview = next(json.loads(part['text'][5:]) for part in content if part['type'] == 'text' and part['text'].startswith('视觉证据：'))
             calls.append(content)
@@ -170,11 +171,13 @@ def test_child_batch_finding_survives_a_later_summary_that_omits_it(dataset, mll
 def test_followup_updates_or_resolves_the_same_finding_using_its_actual_source(dataset, mllm_api, mode, reference_step, repeat, error, expected):
     db, _, config = dataset
     client, _, responses = mllm_api
-    check_id = knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge']['checks'][0]['check_id']
+    check_id = knowledge_get({'dataset_id': config.dataset.id}, db.db_path)['knowledge']['checks'][0]['check_id']
     calls = []
 
     def reply(request):
         if not request.url.path.endswith('/chat/completions'):
+            return
+        if json.loads(request.content)['response_format']['json_schema']['name']!='JointAnalysis':
             return
         content = json.loads(request.content)['messages'][0]['content']
         views = [json.loads(part['text'][5:]) for part in content if part['type'] == 'text' and part['text'].startswith('视觉证据：')]

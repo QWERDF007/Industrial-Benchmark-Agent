@@ -71,7 +71,17 @@ for directory,count in [('公头NG',2),('公头OK',3),('母头NG',1),('母头OK'
     const preview=await api('/datasets/preview',{root_dir:path.join(root,'classification'),rules});
     const dataset=await api('/datasets/import',{format:'folder_classification',name:'超节点异常检测数据',root_dir:path.join(root,'classification'),rules,preview_fingerprint:preview.preview_fingerprint});
     await(await element('button[aria-label="数据集管理"]')).click();
+    await(await element(`.data-row[data-id="${dataset.dataset_id}"] .name-text`)).click();
     await element('select[aria-label="目录 公头NG 角色"]');
+    stage='drawer rescan dirty guard';
+    const rootDirInput = await element('input[aria-label="根目录"]');
+    await rootDirInput.clear();
+    await rootDirInput.sendKeys(path.join(root,'classification'));
+    await (await element('select[aria-label="目录 公头NG 角色"] option[value="unlabeled"]')).click();
+    assert.equal(await (await element('#dirtyHelp')).getText(), '有尚未保存的变更');
+    await button('取消更改');
+    assert.equal(await (await element('#dirtyHelp')).getText(), '');
+
     stage='sidebar layout';
     await verifySidebarLayout(driver,path.join(output,'sidebar'));
     stage='layout';
@@ -92,11 +102,11 @@ for directory,count in [('公头NG',2),('公头OK',3),('母头NG',1),('母头OK'
 
     stage='pencil and action layout';
     const pencilStyle = await driver.executeScript(()=>{
-      const pencil = document.querySelector('.pencil');
+      const pencil = document.querySelector('.data-row button[data-edit]');
       const style = getComputedStyle(pencil);
       return { marginLeft: style.marginLeft, display: style.display };
     });
-    assert.equal(pencilStyle.display, 'grid');
+    assert.ok(['flex','inline-flex'].includes(pencilStyle.display));
 
     const actionsStyle = await driver.executeScript(()=>{
       const actions = document.querySelector('.actions');
@@ -106,15 +116,18 @@ for directory,count in [('公头NG',2),('公头OK',3),('母头NG',1),('母头OK'
     assert.equal(actionsStyle.justify, 'flex-end', '操作列按钮靠右对齐');
 
     stage='inline rename enter';
-    const pencilBtn = await element(`.data-row[data-id="${dataset.dataset_id}"] .pencil`);
+    const pencilBtn = await element(`.data-row[data-id="${dataset.dataset_id}"] button[data-edit]`);
     await pencilBtn.click();
     const editInput = await element('input[data-edit-input]');
-    await editInput.clear();
-    await editInput.sendKeys('真实名称已修改', Key.ENTER);
+    await editInput.click();
+    await driver.actions().keyDown(Key.CONTROL).sendKeys('a').keyUp(Key.CONTROL).perform();
+    await editInput.sendKeys('真实名称已修改');
+    assert.equal(await editInput.getAttribute('value'),'真实名称已修改');
+    await editInput.sendKeys(Key.ENTER);
     await driver.wait(async()=>(await api('/datasets/'+dataset.dataset_id)).name==='真实名称已修改',10000);
 
     stage='inline rename esc cancel';
-    const pencilBtn2 = await element(`.data-row[data-id="${dataset.dataset_id}"] .pencil`);
+    const pencilBtn2 = await element(`.data-row[data-id="${dataset.dataset_id}"] button[data-edit]`);
     await pencilBtn2.click();
     const editInput2 = await element('input[data-edit-input]');
     await editInput2.sendKeys('取消的修改', Key.ESCAPE);
@@ -123,15 +136,6 @@ for directory,count in [('公头NG',2),('公头OK',3),('母头NG',1),('母头OK'
     stage='copy identifier';
     await (await element('button[aria-label="复制数据集标识"]')).click();
     await driver.wait(()=>driver.executeScript("return document.querySelector('#toast')?.textContent?.includes('已复制')"),5000);
-
-    stage='drawer rescan dirty guard';
-    const rootDirInput = await element('input[aria-label="根目录"]');
-    await rootDirInput.clear();
-    await rootDirInput.sendKeys(path.join(root,'classification'));
-    await (await element('select[aria-label="目录 公头NG 角色"] option[value="unlabeled"]')).click();
-    assert.equal(await (await element('#dirtyHelp')).getText(), '有尚未保存的变更');
-    await button('取消更改');
-    assert.equal(await (await element('#dirtyHelp')).getText(), '');
 
     stage='search';
     const search=await element('input[aria-label="搜索数据集"]');
@@ -144,6 +148,7 @@ for directory,count in [('公头NG',2),('公头OK',3),('母头NG',1),('母头OK'
     await search.sendKeys(Key.ESCAPE);
 
     stage='import labelme';
+    await button('关闭详情抽屉');
     await button('添加数据集');
     await element('.modal[aria-label="添加数据集"]');
     await (await element('input[name="new-kind"][value="child"]')).click();
@@ -157,6 +162,7 @@ for directory,count in [('公头NG',2),('公头OK',3),('母头NG',1),('母头OK'
     assert.equal(created.total_samples,1);
 
     stage='direct delete';
+    await button('关闭详情抽屉');
     const deleteBtn = await element(`.data-row[data-id="${created.dataset_id}"] button[data-delete]`);
     await deleteBtn.click();
     await element('.modal[aria-label="删除数据集"]');

@@ -1,5 +1,7 @@
+import {Select} from './Select.js';
+import {Button} from './Button.js';
 import {IconButton} from "./IconButton.js";
-import {RefreshIcon} from "../AuditIcon.js";
+
 import React, { useEffect, useState } from "react";
 import { v4 as uuid } from "uuid";
 import type { KnowledgeReviewContext, KnowledgeReviewItem, KnowledgeReviewSubmission } from "../../shared/domain.generated.js";
@@ -48,14 +50,14 @@ export function KnowledgeConflictReview({ datasetId }: { datasetId: string }) {
     catch (error) { setError(message(error)); } finally { setBusy(false); }
   }
   return <section className="iad-job-section" aria-label="知识冲突复核">
-    {error && <p role="alert" className="iad-error">{error} <IconButton label="重新读取知识冲突" onClick={() => setRevision(value => value + 1)}><RefreshIcon /></IconButton></p>}
-    <label className="iad-field">状态<select aria-label="知识冲突状态" value={state} onChange={event => {setState(event.target.value as typeof state);setPage(1);}}><option value="">全部状态</option>{Object.entries(states).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+    {error && <p role="alert" className="iad-error">{error} <IconButton icon="refresh" label="重新读取知识冲突" onClick={() => setRevision(value => value + 1)} /></p>}
+    <label className="iad-field">状态<Select aria-label="知识冲突状态" value={state} onChange={event => {setState(event.target.value as typeof state);setPage(1);}}><option value="">全部状态</option>{Object.entries(states).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></label>
     <div className="iad-conflict-workspace"><div><div className="iad-check-list" aria-label="知识冲突队列">{filtered.slice((page-1)*10,page*10).map(item => <button key={item.conflict_id} aria-pressed={selected?.conflict_id === item.conflict_id}
       onClick={() => workspace.updateView("industrial-review", { conflictId: item.conflict_id, version: item.version_id })}>
-      <strong>{item.description}</strong><span>{item.kind === "normal" ? "良品" : "异常"} · {states[item.state]}</span></button>)}{!loading && !filtered.length && <p>暂无匹配的知识冲突。</p>}{loading && <p role="status">正在读取冲突队列…</p>}</div><Pagination total={filtered.length} page={page} size={10} unit="项冲突" onPage={setPage} /></div>
+      <strong>{item.description}</strong><span>{item.kind === "normal" ? "良品" : "异常"}，{states[item.state]}</span></button>)}{!loading && !filtered.length && <p>暂无匹配的知识冲突。</p>}{loading && <p role="status">正在读取冲突队列…</p>}</div><Pagination total={filtered.length} page={page} size={10} unit="项冲突" onPage={setPage} /></div>
       {contextLoading && <p role="status">正在读取冲突证据…</p>}{context && <div className="iad-conflict-detail"><article aria-label="冲突证据"><h2>知识冲突</h2><p role="status" data-field="knowledge-review-state">{states[context.state]}</p>
         <p>{context.conflict.description}</p><p>正常替代解释：{context.conflict.normal_explanation || "未提供"}</p>
-        {context.checks.map(check => <div key={check.check_id}><h3>{check.title}</h3><p>{check.criterion}</p><p className="iad-muted">{check.subject} · {check.location}</p></div>)}
+        {context.checks.map(check => <div key={check.check_id}><h3>{check.title}</h3><p>{check.criterion}</p><p className="iad-muted">{check.subject}，{check.location}</p></div>)}
         <section><h3>新图证据</h3><KnowledgeEvidenceGallery versionId={context.reference.version_id} items={context.evidence.filter(item => context.conflict.new_evidence_ids.includes(item.image.evidence_id))} onOpen={setLightbox} /></section>
         <section><h3>历史比较证据</h3><KnowledgeEvidenceGallery versionId={context.reference.version_id} items={context.evidence.filter(item => context.conflict.comparison_evidence_ids.includes(item.image.evidence_id))} onOpen={setLightbox} /></section>
         {context.evidence.some(item => ![...context.conflict.new_evidence_ids,...context.conflict.comparison_evidence_ids].includes(item.image.evidence_id)) && <details><summary>判据的其他引用</summary><KnowledgeEvidenceGallery versionId={context.reference.version_id} items={context.evidence.filter(item => ![...context.conflict.new_evidence_ids,...context.conflict.comparison_evidence_ids].includes(item.image.evidence_id))} onOpen={setLightbox} /></details>}
@@ -66,14 +68,14 @@ export function KnowledgeConflictReview({ datasetId }: { datasetId: string }) {
         <form aria-label="知识处置" onSubmit={event => { event.preventDefault(); void submit(); }}>
           <fieldset className="iad-disposition-fields" disabled={busy || !!pending || !context.is_latest || !context.source_current}>
             <label className="iad-field">复核人<input aria-label="知识复核人" required value={reviewer} onChange={event => setReviewer(event.target.value)} /></label>
-            <label className="iad-field">知识处置<select aria-label="知识处置方式" value={action} onChange={event => setAction(event.target.value as KnowledgeReviewSubmission["action"])}>{Object.entries(actions).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label className="iad-field">知识处置<Select aria-label="知识处置方式" value={action} onChange={event => setAction(event.target.value as KnowledgeReviewSubmission["action"])}>{Object.entries(actions).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</Select></label>
             {action === "revise" && <label className="iad-field">待核验修订<textarea aria-label="知识修订建议" required value={instruction} onChange={event => setInstruction(event.target.value)} /></label>}
             <label className="iad-field">原因<textarea aria-label="知识复核原因" required value={reason} onChange={event => setReason(event.target.value)} /></label>
           </fieldset>
-          <div className="iad-form-actions"><button type="submit" className="iad-primary" disabled={busy || !context.is_latest || !context.source_current || (!pending && (!reviewer.trim() || !reason.trim() || (action === "revise" && !instruction.trim())))}>{busy ? "提交中…" : pending ? "重试相同提交" : "提交知识处置"}</button></div>
+          <div className="iad-form-actions"><Button type="submit" variant="primary" disabled={busy || !context.is_latest || !context.source_current || (!pending && (!reviewer.trim() || !reason.trim() || (action === "revise" && !instruction.trim())))}>{busy ? "提交中…" : pending ? "重试相同提交" : "提交知识处置"}</Button></div>
         </form>
-        {context.state === "pending_recheck" && <button onClick={() => workspace.openLocation({ pageId: "industrial-knowledge", datasetId, knowledgeKind: items.find(item => item.conflict_id === context.reference.conflict_id)?.kind || "normal", miningPreset: context.reference.version_id, scopeRunId: context.scope_run_id || "", miningSourceMode: "all", miningContinuous: false, version: "", tab: "setup" })}>选择图像重核验</button>}
-        {!!context.events.length && <details><summary>处置记录 · {context.events.length} 次</summary>{context.events.map(event => <div key={event.submission_id}><p>{actions[event.action]} · {event.reviewer}</p><p>{event.instruction || event.reason}</p><time dateTime={event.created_at}>{new Date(event.created_at).toLocaleString()}</time></div>)}</details>}
+        {context.state === "pending_recheck" && <button onClick={() => workspace.openLocation({ pageId: "industrial-knowledge", datasetId, miningPreset: context.reference.version_id, scopeRunId: context.scope_run_id || "", miningSourceMode: "all", miningContinuous: false, version: "", tab: "setup" })}>选择图像重核验</button>}
+        {!!context.events.length && <details><summary>处置记录，{context.events.length} 次</summary>{context.events.map(event => <div key={event.submission_id}><p>{actions[event.action]}，{event.reviewer}</p><p>{event.instruction || event.reason}</p><time dateTime={event.created_at}>{new Date(event.created_at).toLocaleString()}</time></div>)}</details>}
       </aside></div>}
     </div>{lightbox && <ImageViewer image={lightbox} onClose={() => setLightbox(null)} />}
   </section>;

@@ -10,6 +10,36 @@ from iad_core.dataset.registry import DatasetImport, DatasetRegistry
 from iad_core.storage.database import Database
 
 
+def test_folder_subsets_share_root_only_when_their_selected_images_are_disjoint(tmp_path):
+    from iad_core.task.config import FolderRule
+    root=tmp_path/'shared'
+    folders={'maleOK':'normal','maleNG':'anomaly','femaleOK':'normal','femaleNG':'anomaly'}
+    for index,name in enumerate(folders):
+        (root/name).mkdir(parents=True)
+        Image.new('RGB',(32,24),(index*40,70,90)).save(root/name/'image.png')
+    db=Database(str(tmp_path/'subsets.db'))
+    registry=DatasetRegistry(db)
+    configs=[]
+    for owner in ('male','female'):
+        rules=[FolderRule(path=name,role=role if name.startswith(owner) else 'excluded') for name,role in folders.items()]
+        preview=preview_folder_dataset(str(root),rules)
+        config=registry.import_dataset(dict(format='folder_classification',name=owner,root_dir=str(root),
+            rules=[rule.model_dump() for rule in rules],preview_fingerprint=preview.preview_fingerprint))
+        configs.append(config)
+        with db.connection() as conn:
+            paths=conn.execute('SELECT relative_path,quality_status FROM samples WHERE dataset_id=? ORDER BY relative_path',(config.dataset.id,)).fetchall()
+        assert {path.split('/')[0] for path,_ in paths}=={owner+'OK',owner+'NG'}
+        assert {status for _,status in paths}=={'PASS','FAIL'}
+    overlapping=[FolderRule(path=name,role=role) for name,role in folders.items()]
+    preview=preview_folder_dataset(str(root),overlapping)
+    with pytest.raises(ValueError,match='already'):
+        registry.rescan(configs[1].dataset.id,folder_rules=overlapping,preview_fingerprint=preview.preview_fingerprint)
+    assert registry.get(configs[1].dataset.id).folder_rules==configs[1].folder_rules
+    with db.connection() as conn:
+        assert conn.execute('SELECT count(*) FROM datasets').fetchone()[0]==2
+        assert conn.execute('SELECT count(*) FROM samples').fetchone()[0]==4
+
+
 def test_import_rename_and_dataset_isolation(dataset, tmp_path):
     db, registry, config = dataset
     assert registry.get(config.dataset.id).dataset.name == "生产线 A"
@@ -562,7 +592,7 @@ def test_audit_uses_server_enforced_schema_for_roi_results(dataset, mllm_api, in
             return httpx.Response(200,json={'count':1000,'max_model_len':262144})
         bodies.append(body)
         constrained = body.get('response_format', {}).get('json_schema', {})
-        schema = constrained.get('schema') or json.loads(body['messages'][0]['content'][0]['text'].split('JSON Schema 的 JSON，不要 Markdown：\n')[1])
+        schema = constrained['schema']
         title = schema['title']
         answer = dict(view)
         if title == 'JointAnalysis':

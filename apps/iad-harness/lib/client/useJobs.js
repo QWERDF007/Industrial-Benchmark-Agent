@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { message, request } from "./api.js";
 export function useJobs(kind, datasetId, onProgress, selectedRunId = "", refreshRevision = 0) {
-    const identity = `${kind}:${datasetId}`;
+    const scope = JSON.stringify([...new Set((Array.isArray(datasetId) ? datasetId : [datasetId]).filter(Boolean))].sort());
+    const identity = `${kind}:${scope}`;
     const [snapshot, setSnapshot] = useState({
         identity,
         jobs: [],
@@ -26,7 +27,8 @@ export function useJobs(kind, datasetId, onProgress, selectedRunId = "", refresh
                 syncState: "syncing",
             });
         }
-        if (!datasetId)
+        const datasetIds = JSON.parse(scope);
+        if (!datasetIds.length)
             return;
         let timer, reading = false, active = true, failures = 0;
         let currentRequest;
@@ -41,13 +43,20 @@ export function useJobs(kind, datasetId, onProgress, selectedRunId = "", refresh
                 ? { ...previous, syncState: previous.error ? "stale" : "syncing" }
                 : previous);
             try {
-                const result = await request(`/${kind}/jobs?dataset_id=${encodeURIComponent(datasetId)}`, undefined, undefined, readingController.signal);
+                const results = await Promise.all(datasetIds.map(id => request(kind === 'audit' ? `/audit/jobs?dataset_id=${encodeURIComponent(id)}` : `/analysis/jobs?${new URLSearchParams({ dataset_id: id, analysis_kind: kind })}`, undefined, undefined, readingController.signal)));
+                const result = {
+                    jobs: [...new Map(results.flatMap(result => result.jobs).map(job => [job.run_id, job])).values()]
+                        .sort((a, b) => b.submitted_at.localeCompare(a.submitted_at)),
+                    pending_count: results.reduce((total, result) => total + (result.pending_count || 0), 0),
+                };
                 if (selectedRunId &&
-                    !result.jobs.some((job) => job.run_id === selectedRunId)) {
-                    const selected = await request(`/${kind}/status/${encodeURIComponent(selectedRunId)}`, undefined, undefined, readingController.signal);
-                    if (selected.dataset_id !== datasetId)
+                    !result.jobs.some((job) => job.run_id === selectedRunId ||
+                        (job.job_type === 'ANALYSIS_WORKFLOW' && job.root_run_id === selectedRunId))) {
+                    const selected = await request(`/${kind === 'audit' ? 'audit' : 'analysis'}/status/${encodeURIComponent(selectedRunId)}`, undefined, undefined, readingController.signal);
+                    if (!datasetIds.includes(selected.dataset_id) && !selected.dataset_ids.some(id => datasetIds.includes(id)))
                         throw new Error("所选作业不属于当前数据集");
-                    result.jobs.push(selected);
+                    if (!result.jobs.some(job => job.run_id === selected.run_id))
+                        result.jobs.push(selected);
                 }
                 if (controller.signal.aborted)
                     return;
@@ -124,7 +133,7 @@ export function useJobs(kind, datasetId, onProgress, selectedRunId = "", refresh
     }, [
         identity,
         kind,
-        datasetId,
+        scope,
         onProgress,
         revision,
         selectedRunId,

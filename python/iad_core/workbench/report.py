@@ -30,8 +30,7 @@ class QualityScope(AnalysisModel):
 
 
 class KnowledgeUsage(AnalysisModel):
-    normal_version_id: Optional[str]
-    defect_version_id: Optional[str]
+    knowledge_version_id: Optional[str]
     legacy_profile_id: Optional[str]
     sample_count: int
 
@@ -81,7 +80,7 @@ class QualityAssessment(AnalysisModel):
         observed = len(sample_ids | issue_ids)
         analyses = {row['sample_id']: AuditAnalysis.model_validate_json(row['analysis_json'])
             for row in samples if row['analysis_json'] is not None}
-        versions = Counter((analysis.normal_version_id, analysis.defect_version_id, analysis.legacy_profile_id)
+        versions = Counter((analysis.knowledge_version_id, analysis.legacy_profile_id)
             for analysis in analyses.values())
         suspects = {row['sample_id'] for row in samples if row['suggested_label'] == 'FAIL'} | {
             sample_id for sample_id, analysis in analyses.items() if analysis.findings}
@@ -142,8 +141,8 @@ class QualityAssessment(AnalysisModel):
                 unstructured_samples=sum(row['suggestion_id'] is not None and row['sample_id'] not in analyses for row in samples),
             ),
             label_comparison=comparison,
-            knowledge_versions=[KnowledgeUsage(normal_version_id=normal, defect_version_id=defect,
-                legacy_profile_id=legacy, sample_count=count) for (normal, defect, legacy), count in
+            knowledge_versions=[KnowledgeUsage(knowledge_version_id=version,
+                legacy_profile_id=legacy, sample_count=count) for (version, legacy), count in
                 sorted(versions.items(), key=lambda item: tuple(value or '' for value in item[0]))],
             audit_run_ids=sorted({row['audit_run_id'] for row in samples if row['audit_run_id']}),
             scope=QualityScope(observed_inputs=observed, registered_samples=len(samples),

@@ -1,4 +1,6 @@
 import json
+import sqlite3
+from pathlib import Path
 from uuid import uuid4
 
 import httpx
@@ -44,6 +46,11 @@ def test_historical_audit_remains_readable_after_upgrade(dataset, status, comple
     HumanReview(db).submit(ReviewSubmission(submission_id=str(uuid4()), dataset_id=dataset_id,
         sample_id=sample_ids[0], reviewer='operator', decision='PASS', comment='已核实'))
     original = repository.get('historical-0').model_dump()
+    restored = Path(db.db_path).with_name('historical.db')
+    with db.connection() as source, sqlite3.connect(restored) as target:
+        source.backup(target)
+    db = Database(str(restored))
+    repository = AuditSuggestionRepository(db)
 
     def unexpected_model_call(request):
         pytest.fail('读取历史作业不得调用模型')

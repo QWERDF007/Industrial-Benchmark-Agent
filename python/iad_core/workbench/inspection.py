@@ -1,4 +1,5 @@
 import threading
+import json
 from typing import Callable, Optional
 
 from iad_core.advisory.analysis import AuditAnalysis, Coverage, InspectionProgress, VlmResult
@@ -17,7 +18,7 @@ class SampleInspection:
         self.images = EvidenceImages(db.db_path)
 
     def inspect(self, sample_id: str, model_name: str, knowledge: InspectionKnowledge, cancel: Optional[threading.Event],
-                phase: Callable[[InspectionProgress], None]) -> AuditAnalysis:
+                phase: Callable[[InspectionProgress], None], *, instruction: str) -> AuditAnalysis:
         sample = SampleRepository(self.db).get(sample_id)
         target_path = validate_sample_image_path(sample, self.db.db_path)
         phase(InspectionProgress(phase="PREPARING_KNOWLEDGE"))
@@ -34,7 +35,7 @@ class SampleInspection:
             regions = [view for view in views if view.image.representation == "raw"]
             masks.update({view.image.evidence_id: PreparedImage(view.image, self.images.path(view.image))
                           for view in views if view.image.representation == "annotation_mask"})
-            outcome = joint.inspect(criteria.instruction, overview, regions, model_name, cancel, phase,
+            outcome = joint.inspect(instruction+'\n冻结知识：'+json.dumps(criteria.context,ensure_ascii=False)+'\n', overview, regions, model_name, cancel, phase,
                                     list(masks.values()), check_ids=criteria.check_ids, previous=outcome)
             steps = outcome.steps
             proposals = [proposal for step in steps for proposal in step.result.region_requests]
@@ -83,21 +84,20 @@ class SampleInspection:
                 result.conflicts.append(f"{step.step_id} 建议 {step.result.suggested_label}：{step.result.description}")
             result.conflicts.extend(step.result.conflicts)
             result.missing_evidence.extend(step.result.missing_evidence)
-        applicable_normal = any(assessment.check_id in criteria.normal_check_ids & criteria.independent_check_ids
+        applicable_criteria = any(assessment.check_id in criteria.independent_check_ids
             and assessment.status != 'not_applicable' for assessment in assessments)
-        if not applicable_normal:
-            result.missing_evidence.append('没有适用且具独立支持的正常判据')
+        if not applicable_criteria:
+            result.missing_evidence.append('没有适用且具独立支持的知识判据')
         unsupported_failure = result.suggested_label == 'FAIL' and not any(assessment.status == 'anomaly'
             and assessment.check_id in criteria.independent_check_ids for assessment in assessments)
         if unsupported_failure:
             result.missing_evidence.append('异常结论缺少适用且具独立支持的检查项依据')
-        if not applicable_normal or unsupported_failure or (result.suggested_label == "PASS" and (result.conflicts or result.missing_evidence)):
+        if not applicable_criteria or unsupported_failure or (result.suggested_label == "PASS" and (result.conflicts or result.missing_evidence)):
             result.suggested_label = "UNCERTAIN"
             result.reason_category = "INSUFFICIENT_EVIDENCE"
         if file_sha256(target_path) != overview.evidence.source_sha256:
             raise ValueError("Target image changed during inspection")
-        return AuditAnalysis(normal_version_id=knowledge.normal.version_id,
-            defect_version_id=knowledge.defect.version_id if knowledge.defect else None,
+        return AuditAnalysis(knowledge_version_id=knowledge.snapshot.version_id,
             knowledge_limitations=criteria.limitations, reference_sample_ids=criteria.reference_sample_ids, check_assessments=assessments,
             overview=overview.evidence, coverage=coverage, global_view=global_view, regions=evidence,
             findings=findings,

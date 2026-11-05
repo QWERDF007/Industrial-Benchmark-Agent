@@ -1,7 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { IconButton } from "./IconButton.js";
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { CloseIcon } from "../AuditIcon.js";
-export function Modal({ title, onClose, children, className = "", restoreFocus, initialFocus, header = true, presentation = "modal", onKeyDown }) {
+export function Modal({ id, title, onClose, children, className = "", frame = 'dialog', restoreFocus, initialFocus, header = true, presentation = "modal", onKeyDown }) {
     const dialog = useRef(null);
     const focusTarget = useRef(restoreFocus);
     const pressedOutside = useRef(false);
@@ -40,6 +40,7 @@ export function Modal({ title, onClose, children, className = "", restoreFocus, 
         const rect = event.currentTarget.getBoundingClientRect();
         return event.target === event.currentTarget && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom);
     };
-    return _jsxs("dialog", { ref: dialog, onKeyDown: onKeyDown, "aria-label": title, role: presentation === "inline" ? "region" : undefined, className: `iad-detail-dialog ${presentation === "inline" ? "iad-inline-dialog" : ""} ${className}`, onCancel: event => { event.preventDefault(); event.stopPropagation(); onClose(); }, onPointerDown: event => { pressedOutside.current = outside(event); }, onPointerUp: event => { if (pressedOutside.current && outside(event))
-            onClose(); pressedOutside.current = false; }, children: [header && presentation === "modal" && _jsxs("header", { className: "iad-dialog-header", children: [_jsx("h2", { children: title }), _jsx("button", { type: "button", className: "iad-icon-button", "aria-label": `关闭${title}`, title: "\u5173\u95ED", onClick: onClose, children: _jsx(CloseIcon, {}) })] }), children] });
+    return _jsxs("dialog", { id: id, ref: dialog, onKeyDown: event => { if (presentation === 'modal')
+            event.stopPropagation(); onKeyDown?.(event); }, "aria-label": title, role: presentation === "inline" ? "region" : undefined, className: `${frame === 'fullscreen' ? 'iad-fullscreen-dialog' : 'iad-detail-dialog'} ${presentation === "inline" ? "iad-inline-dialog" : ""} ${className}`, onCancel: event => { event.preventDefault(); event.stopPropagation(); onClose(); }, onPointerDown: event => { pressedOutside.current = outside(event); }, onPointerUp: event => { if (pressedOutside.current && outside(event))
+            onClose(); pressedOutside.current = false; }, children: [header && presentation === "modal" && _jsxs("header", { className: "iad-dialog-header", children: [_jsx("h2", { children: title }), _jsx(IconButton, { icon: "close", type: "button", label: `关闭${title}`, title: "\u5173\u95ED", onClick: onClose })] }), children] });
 }

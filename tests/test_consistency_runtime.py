@@ -6,6 +6,57 @@ import sys
 import pytest
 
 
+def test_knowledge_and_direction_queries_run_without_model_services(dataset):
+    import json
+    from iad_core.evidence.images import EvidenceImages
+    from iad_core.knowledge.models import KnowledgeEvidence
+    from iad_core.knowledge.trace import KnowledgeTrace
+    from iad_core.storage.repositories import SampleRepository
+    from iad_core.workbench.jobs import JobRunner
+
+    db, _, config = dataset
+    sample = SampleRepository(db).get(config.dataset.id + ':normal.png')
+    image = EvidenceImages(db.db_path).capture(sample, 'normal', 'reference')
+    jobs = JobRunner(db, ('NORMAL_KNOWLEDGE',))
+    try:
+        def prepare(context):
+            KnowledgeTrace(context).register([KnowledgeEvidence(sample_id=sample.sample_id, image=image.evidence)])
+            context.record(sample.sample_id)
+
+        job = jobs.start('NORMAL_KNOWLEDGE', config.task.task_id,
+            dict(dataset_id=config.dataset.id, sample_ids=[sample.sample_id]), prepare, '准备真实图像证据')
+        jobs.wait(job['run_id'], 5)
+    finally:
+        jobs.close()
+    requests = [
+        ('knowledge_presets', {}),
+        ('knowledge_prompt_get', {'dataset_id': config.dataset.id, 'kind': 'normal'}),
+        ('knowledge_versions', {'dataset_id': config.dataset.id}),
+        ('knowledge_sources', {'dataset_id': config.dataset.id, 'kind': 'normal'}),
+        ('direction_exploration_get', {'dataset_id': config.dataset.id}),
+        ('direction_exploration_presets', {}),
+        ('knowledge_observations', {'run_id': job['run_id']}),
+        ('knowledge_evidence', {'run_id': job['run_id'], 'evidence_id': image.evidence.evidence_id}),
+    ]
+    code = '''
+import json,sys
+from iad_core.entry import dispatch_request
+for operation,arguments in json.loads(sys.argv[2]):
+    dispatch_request(dict(operation=operation,arguments=arguments),sys.argv[1],query_only=True)
+assert not any(name in sys.modules for name in ['torch','faiss'])
+'''
+    result = subprocess.run([sys.executable, '-c', code, db.db_path, json.dumps(requests)],
+        env={**os.environ, 'PYTHONPATH': str(Path(__file__).resolve().parents[1] / 'python'),
+             'CUDA_VISIBLE_DEVICES': '', 'LIVE_VLM_REQUEST_PARAMETERS': 'not-valid-json'},
+        capture_output=True, text=True, timeout=20)
+    assert result.returncode == 0, result.stderr
+    responses = [json.loads(line) for line in result.stdout.splitlines()]
+    assert len(responses) == len(requests)
+    assert all(response['event'] == 'result' for response in responses), responses
+    assert responses[-2]['data']['total'] == 1
+    assert responses[-1]['data']['path'] == image.path
+
+
 def test_cpu_readiness_tools_do_not_load_optional_encoders(tmp_path):
     code = '''
 import sys

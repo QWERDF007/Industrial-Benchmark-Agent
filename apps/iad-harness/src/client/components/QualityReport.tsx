@@ -58,11 +58,10 @@ export function QualityReport({ report }: { report: Report }) {
         {dimensions.map(([label, ratio]) => <React.Fragment key={label}><dt>{label}</dt><dd>{ratio.basis}</dd></React.Fragment>)}
         {quality.label_comparison && <><dt>标签对照口径</dt><dd>{quality.label_comparison.inconsistency_ratio.basis}</dd></>}
       </dl>
-      <h3>审计使用的知识组合</h3>
+      <h3>审计使用的知识版本</h3>
       {quality.knowledge_versions.length ? quality.knowledge_versions.map((usage, index) => <dl key={index}>
         <dt>图像数</dt><dd>{usage.sample_count}</dd>
-        <dt>良品版本</dt><dd>{usage.normal_version_id || "未记录"}</dd>
-        <dt>不良品版本</dt><dd>{usage.defect_version_id || "未使用"}</dd>
+        <dt>知识版本</dt><dd>{usage.knowledge_version_id || "未记录"}</dd>
         {usage.legacy_profile_id && <><dt>参考模式</dt><dd>{usage.legacy_profile_id}</dd></>}
       </dl>) : <p>尚无可追溯的知识版本。</p>}
       <h3>审计作业</h3>

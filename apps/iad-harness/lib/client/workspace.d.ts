@@ -1,4 +1,4 @@
-import type { AuditStartRequest, ConsistencyResult, Filters, InspectionReference, KnowledgeSnapshot } from "../shared/contracts.js";
+import type { AuditStartRequest, ConsistencyResult, Filters, InspectionReference } from "../shared/contracts.js";
 import { type ImageView, type InspectionSelection, type InspectionTransform, type InspectionView } from "./inspection.js";
 import type { WorkbenchSession } from "./workbench-session.js";
 import { type ConsistencyLocation, type PageId, type WorkbenchLocation } from "../shared/navigation.js";
@@ -8,7 +8,6 @@ interface ViewState {
     auditConsistencyMode: NonNullable<AuditStartRequest["consistency_mode"]>;
     explorationPrompt: import("../shared/domain.generated.js").FrozenExplorationPrompt | null;
     explorationPromptBase: string;
-    directionFocus: string;
     datasetSettingsTab: "directories" | "basic";
     checkId: string;
     explorationVersion: string;
@@ -42,10 +41,8 @@ interface ViewState {
     knowledgeStatus: KnowledgeStatusFilter;
     inspection: InspectionView | null;
 }
-type KnowledgeKind = KnowledgeSnapshot["kind"];
 interface WorkspaceState {
     consistency: Omit<ConsistencyLocation, 'pageId'>;
-    knowledgeKind: KnowledgeKind;
     active: boolean;
     pageId: PageId;
     datasetId: string;
@@ -79,11 +76,10 @@ export declare class Workspace {
     private defaults;
     getSnapshot: () => WorkspaceState;
     subscribe: (listener: () => void) => () => void;
-    view(page: PageId, kind?: import("../shared/domain.generated.js").Kind9, datasetId?: string): {
+    view(page: PageId, datasetId?: string): {
         auditConsistencyMode: NonNullable<AuditStartRequest["consistency_mode"]>;
         explorationPrompt: import("../shared/domain.generated.js").FrozenExplorationPrompt | null;
         explorationPromptBase: string;
-        directionFocus: string;
         datasetSettingsTab: "directories" | "basic";
         checkId: string;
         explorationVersion: string;
@@ -118,7 +114,6 @@ export declare class Workspace {
         inspection: InspectionView | null;
     };
     private viewKey;
-    selectKnowledgeKind(knowledgeKind: KnowledgeKind): void;
     connect(layout: Layout): () => void;
     navigate(pageId: PageId, selected?: string): void;
     updateConsistency(patch: Partial<WorkspaceState['consistency']>, replace?: boolean): void;
@@ -127,7 +122,6 @@ export declare class Workspace {
     selectDataset(datasetId: string, replace?: boolean): void;
     updateView(page: PageId, patch: Partial<ViewState>, replace?: boolean): void;
     ask(reference: InspectionReference, selection: InspectionSelection | null, transform: InspectionTransform, question: string): Promise<void>;
-    mineScope(scopeRunId: string, imageCount: number, images: string[]): Promise<void>;
     openSession(sessionId: string): Promise<void>;
     explainConsistency(result: Pick<ConsistencyResult, 'evidence_id' | 'result_id'>): Promise<void>;
     private commit;

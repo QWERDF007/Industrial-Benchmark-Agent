@@ -1,4 +1,5 @@
 import React from "react";
+import { type EvidenceReference } from "../direction-evidence.js";
 export interface DirectionEvidenceItem {
     evidenceId: string;
     sampleId: string;
@@ -11,14 +12,15 @@ export interface DirectionEvidenceItem {
 }
 export interface DirectionItem {
     id: string;
+    versionId: string;
+    datasetId: string;
     title: string;
     applies: string;
     brief: string;
-    rationale?: string;
-    evidenceIds?: string[];
-    limit: string;
-    limitations?: string[];
-    evidences?: DirectionEvidenceItem[];
+    rationale: string;
+    limitations: string[];
+    evidences: DirectionEvidenceItem[];
+    references: Map<string, EvidenceReference>;
 }
 export interface DirectionDetailDialogProps {
     direction: DirectionItem;

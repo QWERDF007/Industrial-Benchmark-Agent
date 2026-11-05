@@ -6,7 +6,7 @@ from iad_core.advisory.analysis import AnalysisModel
 from iad_core.exploration.models import DirectionAdoption
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.knowledge.models import KnowledgeKind
-from iad_core.knowledge.instructions import (FrozenMiningPrompt, MiningPromptConfiguration, DEFAULT_DIRECTIONS, DEFAULT_OBJECTIVES)
+from iad_core.knowledge.instructions import (FrozenMiningPrompt, MiningPromptConfiguration, default_directions, DEFAULT_OBJECTIVE)
 from iad_core.storage.database import Database
 
 
@@ -36,8 +36,27 @@ class KnowledgePrompts:
         with self.db.connection() as conn:
             row = conn.execute('SELECT configuration_json FROM knowledge_prompts WHERE dataset_id=? AND kind=?',
                                (query.dataset_id, query.kind)).fetchone()
-        default = MiningPromptConfiguration(objective=DEFAULT_OBJECTIVES[query.kind], directions=list(DEFAULT_DIRECTIONS))
-        configuration = MiningPromptConfiguration.model_validate_json(row[0]) if row else default
+        from iad_core.exploration.repository import ExplorationRepository
+        repository = ExplorationRepository(self.db)
+        if row:
+            removed = set(repository.removed_ids([query.dataset_id]))
+            configuration = MiningPromptConfiguration.model_validate_json(row[0])
+            configuration.directions = [direction for direction in configuration.directions
+                                        if direction.origin != 'explored' or direction.direction_id not in removed]
+        else:
+            from iad_core.knowledge.instructions import MiningDirection, MiningExploration
+            catalog = repository.catalog(query.dataset_id)
+            removed = set(catalog.removed_direction_ids)
+            snapshot = catalog.exploration
+            available = [direction for direction in snapshot.directions if direction.direction_id not in removed] if snapshot else []
+            directions = {direction.title.casefold():direction.model_copy(update={'enabled':not bool(available)})
+                for direction in default_directions()}
+            for direction in available:
+                directions[direction.title.casefold()] = MiningDirection(direction_id=direction.direction_id,
+                    title=direction.title, instruction=direction.instruction, origin='explored')
+            configuration = MiningPromptConfiguration(objective=DEFAULT_OBJECTIVE, directions=list(directions.values()),
+                exploration=MiningExploration(version_id=snapshot.version_id, summary=snapshot.summary,
+                    limitations=snapshot.limitations) if snapshot else None)
         frozen = FrozenMiningPrompt.capture(configuration)
         revision = ('custom:' if row else 'default:') + frozen.signature
         return MiningPrompt(**query.model_dump(), instruction=frozen.instruction, configuration=configuration,
@@ -55,9 +74,7 @@ class KnowledgePrompts:
                 from iad_core.exploration.repository import ExplorationRepository
                 for direction in edit.configuration.directions:
                     if direction.origin == 'explored':
-                        source = ExplorationRepository(self.db).direction(edit.dataset_id, direction.direction_id)
-                        if source.applies_to not in ('both', edit.kind):
-                            raise ValueError('探索方向不适用于当前知识类型')
+                        ExplorationRepository(self.db).direction(edit.dataset_id, direction.direction_id)
                 conn.execute('''INSERT INTO knowledge_prompts(dataset_id,kind,configuration_json) VALUES(?,?,?)
                     ON CONFLICT(dataset_id,kind) DO UPDATE SET configuration_json=excluded.configuration_json''',
                              (edit.dataset_id, edit.kind, edit.configuration.model_dump_json()))
@@ -76,4 +93,4 @@ class KnowledgePrompts:
                 title=choice.title or (existing.title if existing else source.title),
                 instruction=choice.instruction or (existing.instruction if existing else source.instruction), enabled=choice.enabled)
         return self.save(MiningPromptEdit(dataset_id=edit.dataset_id, kind=edit.kind, expected_revision=edit.expected_revision,
-            configuration=MiningPromptConfiguration(objective=current.configuration.objective, directions=list(directions.values()))))
+            configuration=MiningPromptConfiguration(objective=current.configuration.objective, directions=list(directions.values()), exploration=current.configuration.exploration)))

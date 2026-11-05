@@ -1,4 +1,5 @@
 import sqlite3
+import json
 from contextlib import nullcontext
 from typing import Any, Dict, List, Optional
 
@@ -89,12 +90,21 @@ class ReviewRepository:
             return decision
 
     def get_decision(self, sample_id: str, reviewer: Optional[str] = None, connection: Optional[sqlite3.Connection] = None) -> Optional[ReviewDecisionRecord]:
+        return self.get_decisions([sample_id], reviewer=reviewer, connection=connection).get(sample_id)
+
+    def get_decisions(self, sample_ids: List[str], *, reviewer: Optional[str] = None,
+                      connection: Optional[sqlite3.Connection] = None) -> Dict[str, ReviewDecisionRecord]:
         with nullcontext(connection) if connection is not None else self.db.connection() as conn:
-            row = conn.execute("""SELECT * FROM current_review_decisions WHERE sample_id=?"""
+            rows = conn.execute("""SELECT * FROM current_review_decisions
+                WHERE sample_id IN (SELECT value FROM json_each(?))"""
                 + (" AND reviewer=?" if reviewer else "")
-                + " ORDER BY COALESCE(submitted_at,updated_at) DESC,id DESC LIMIT 1",
-                (sample_id,reviewer) if reviewer else (sample_id,)).fetchone()
-            return ReviewDecisionRecord.model_validate(dict(row)) if row else None
+                + " ORDER BY COALESCE(submitted_at,updated_at) DESC,id DESC",
+                (json.dumps(sample_ids),reviewer) if reviewer else (json.dumps(sample_ids),)).fetchall()
+        decisions = {}
+        for row in rows:
+            if row['sample_id'] not in decisions:
+                decisions[row['sample_id']] = ReviewDecisionRecord.model_validate(dict(row))
+        return decisions
 
     def get_event(self, decision_id: str, connection: Optional[sqlite3.Connection] = None) -> Optional[ReviewDecisionRecord]:
         with nullcontext(connection) if connection is not None else self.db.connection() as conn:

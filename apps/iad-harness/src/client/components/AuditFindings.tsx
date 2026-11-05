@@ -10,10 +10,10 @@ export function AuditFindings({ analysis, onLocate, onEvidence }: {
   const [expanded, setExpanded] = useState(false);
   if (!analysis.findings.length) return null;
   const visible = expanded ? analysis.findings : analysis.findings.slice(0, 3);
-  return <section className="iad-findings" aria-label="优先复核疑点"><h3>重点疑点 · {analysis.findings.length}</h3>
+  return <section className="iad-findings" aria-label="优先复核疑点"><h3>重点疑点，{analysis.findings.length}</h3>
     <ol>{visible.map(finding => <li key={finding.finding_id} data-finding-id={finding.finding_id}>
       <p>{priorities[finding.priority]}</p>
-      <button onClick={() => onLocate(finding)} title="在全图定位">{finding.location.description} · {finding.description}</button>
+      <button onClick={() => onLocate(finding)} title="在全图定位">{finding.location.description}，{finding.description}</button>
       <p>{finding.review_action}</p>
       <details className="iad-analysis"><summary>依据与正常解释</summary>
         <FindingExplanation finding={finding} />

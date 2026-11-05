@@ -28,151 +28,134 @@ for group,count,color in [('a',23,'#bdc8d2'),('b',3,'#e4d4b1'),('c',3,'#a7ccd9')
   name=f'{group}-{i:02d}';im.save(r/'images'/f'{name}.png')
   (r/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':640,'imageHeight':480,'shapes':[{'label':f'category-{min(i,2) if group!="c" else 0}','shape_type':'rectangle','points':[[180,180],[260,260]]}]}))
 `,root]);
-  const dataset=await bridge.execute('dataset_import',{format:'labelme',name:'固定主图核验',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')});
+  const group=await bridge.execute('dataset_group_create',{name:'一致性真实资源'});
+  const dataset=await bridge.execute('dataset_import',{format:'labelme',group_id:group.group_id,name:'固定主图核验',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')});
   const comparisons=new Map();
   for(const [group,count] of [['a',23],['b',3],['c',3]])for(let i=1;i<count;i++)comparisons.set(`${group}-${String(i).padStart(2,'0')}`,await bridge.execute('consistency_compare',{sample_a:`${dataset.dataset_id}:${group}-00.png`,sample_b:`${dataset.dataset_id}:${group}-${String(i).padStart(2,'0')}.png`}));
+  const started=await bridge.execute('consistency_start',{subjects:{kind:'all_registered'},mode:'exact',request_id:'browser-program'});
+  let batch;
+  do {await new Promise(resolve=>setTimeout(resolve,20));batch=await bridge.execute('consistency_status',{batch_id:started.batch_id});}while(['PENDING','RUNNING'].includes(batch.status));
+  assert.equal(batch.status,'COMPLETED');
+  let expectedReport=await bridge.execute('consistency_report',{selection:{kind:'batch',batch_id:batch.batch_id},relation:'EXACT',annotation_differences_only:true});
+  let expectedGallery=await bridge.execute('consistency_gallery',{query_id:expectedReport.page.query_id,kind:'conflicts',order:'members'});
   const bundle=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';import {apply} from './src/client/index.ts';
 const entries=[],mains=new Map(),listeners=new Set();let panel=null;
 const layout={panelInfo:{getSnapshot:()=>({activePanelId:panel}),subscribe:f=>{listeners.add(f);return()=>listeners.delete(f)}},selectPanel:id=>{panel=id;listeners.forEach(f=>f())}};
 apply({layout,slots:{inject:(_,f)=>f(),register:(o,c)=>{if(o.name==='main')mains.set(o.key,c);else if(o.name==='sidebar.panellist')entries.push(o)}}});
 function App(){const [id,setId]=React.useState(panel||entries[0].id);React.useEffect(()=>layout.panelInfo.subscribe(()=>setId(panel)),[]);const Page=mains.get(id);return <div style={{height:'100%'}}>{Page&&<Page/>}</div>}
 createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolveDir:app},bundle:true,format:'iife',write:false,target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
-  const api=createIadHttpHandler(bridge);let failMembers=false;
+  const api=createIadHttpHandler(bridge);
   const modelRequests=[];
   const server=http.createServer(async(req,res)=>{
     if(req.url==='/tokenize'){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({count:1000,max_model_len:262144}));}
     if(req.url==='/v1/chat/completions'){
       const chunks=[];for await(const chunk of req)chunks.push(chunk);modelRequests.push(JSON.parse(Buffer.concat(chunks)));
-      const compared=comparisons.get('a-22');
-      const assessments=[...comparisons].filter(([name])=>name.startsWith('a-')).map(([name])=>({candidate_id:dataset.dataset_id+':'+name+'.png',verdict:'MATERIAL',explanation:'对应标注的原始类别值不同。',findings:['标注类别不同']}));
-      const references=[{candidate_id:dataset.dataset_id+':a-22.png',comparison:{result_id:compared.result_id,evidence_id:compared.evidence_id,difference_id:compared.annotation.differences[0].difference_id}}];
-      const result={assessments,overall:{verdict:'MATERIAL',text:'标注类别不同',references},conclusions:[{text:'固定主图与候选的像素相同，对应标注的原始类别值不同。',references}],limitations:[]};
+      const body=modelRequests.at(-1), text=body.messages[0].content[0].text;
+      const visual=body.response_format.json_schema.name==='GroupAnalysisDraft';
+      const scope=JSON.parse(text.split(visual?'冻结图组：':'冻结批次分析：')[1].split('\n请根据图像')[0]);
+      const references=visual?Object.entries(scope.candidates).map(([candidate_id,item])=>({candidate_id,
+        comparison:{result_id:item.comparison.result_id,evidence_id:item.comparison.evidence_id}}))
+        :scope.summaries.flatMap(item=>item.result.overall.references);
+      const result={...(visual?{assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'MATERIAL',explanation:'对应标注的原始类别值不同。',findings:['标注类别不同']}))}:{}),
+        overall:{verdict:'MATERIAL',text:'标注类别不同',references},conclusions:[{text:'固定主图与候选的像素相同，对应标注的原始类别值不同。',references}],limitations:[]};
       res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({id:'local-group-analysis',model:'local-protocol-model',choices:[{finish_reason:'stop',message:{content:JSON.stringify(result)}}]}));
     }
     if(req.url==='/browser.js'){res.setHeader('Content-Type','application/javascript');return res.end(bundle.outputFiles[0].contents);}
     if(req.url.startsWith('/api/iad')){
-      if(failMembers&&req.url==='/api/iad/consistency/gallery/members'){failMembers=false;res.writeHead(503,{'Content-Type':'application/json'});return res.end(JSON.stringify({error:{message:'候选加载测试失败'}}));}
       return api(req,res);
     }
     res.setHeader('Content-Type','text/html;charset=utf-8');res.end('<!doctype html><meta charset="utf-8"><style>html,body,#root{height:100%;margin:0}body{font-family:system-ui;font-size:14px}</style><div id="root"></div><script src="/browser.js"></script>');
   });await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   let driver;
   try{
+    const workflow=await bridge.execute('analysis_start',{request:{analysis_kind:'consistency',mode:'exact',dataset_ids:[dataset.dataset_id]},
+      _model_execution:{profile:{endpoint:`http://127.0.0.1:${server.address().port}/v1`,model_id:'local-protocol-model',capacity_mode:'vllm_tokenize',max_visual_inputs:16}}});
+    let workflowState;
+    do {await new Promise(resolve=>setTimeout(resolve,20));workflowState=await bridge.execute('analysis_status',{run_id:workflow.run_id});}while(['PENDING','RUNNING'].includes(workflowState.status));
+    assert.equal(workflowState.status,'COMPLETED',JSON.stringify(workflowState.errors));
+    batch=await bridge.execute('consistency_status',{batch_id:workflowState.program_batch_id});
+    expectedReport=await bridge.execute('consistency_report',{selection:{kind:'batch',batch_id:batch.batch_id},relation:'EXACT',annotation_differences_only:true});
+    expectedGallery=await bridge.execute('consistency_gallery',{query_id:expectedReport.page.query_id,kind:'conflicts',order:'members'});
     const options=new firefox.Options().addArguments('-headless','--remote-allow-system-access');if(process.env.FIREFOX_PATH)options.setBinary(process.env.FIREFOX_PATH);
     driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
-    const route={pageId:'industrial-consistency',tab:'conflicts',scope:{kind:'all_registered'},galleryOrder:'members'};
-    const start=`http://127.0.0.1:${server.address().port}/?${new URLSearchParams({iad:JSON.stringify(route)})}`;
+    const start=`http://127.0.0.1:${server.address().port}/?${new URLSearchParams({iad:JSON.stringify({pageId:"industrial-consistency"})})}`;
     const element=selector=>driver.wait(until.elementLocated(By.css(selector)),10000);
     const click=async label=>(await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${label}' or @aria-label='${label}']`)),10000)).click();
     await driver.get(start);await viewport(driver,1920,1080);
-    const cards=()=>driver.findElements(By.css('[aria-label="冲突图像"] .iad-consistency-image-card'));
-    await driver.wait(async()=>(await cards()).length===2,10000);
-    assert.equal((await driver.findElements(By.css('.iad-consistency-master-detail'))).length,0);
-    await click('缺少或多出标注 0');await driver.wait(async()=>(await cards()).length===0,5000);
-    await click('全部差异 2');await driver.wait(async()=>(await cards()).length===2,5000);
-    assert.equal((await driver.findElements(By.css('select[aria-label="差异筛选"]'))).length,0);
-    assert.ok((await Promise.all((await cards()).map(card=>card.getText()))).every(text=>!text.includes('c-00.png')&&!text.includes('待核对')&&!text.includes('规范未确认')));
-    const first=(await cards())[0];assert.match(await first.getText(),/22.*候选/);assert.doesNotMatch(await first.getText(),/点击查看|查询图像 ·/);
-    await first.sendKeys(Key.ENTER);
-    const modal=await element('dialog[aria-label="图组详情"]');
-    assert.equal((await modal.findElements(By.xpath('.//button[normalize-space(.)="查看比较证据"]'))).length,0);
-    const images=()=>driver.executeScript('return [...document.querySelectorAll("dialog[aria-label=图组详情] .iad-consistency-canvases .iad-image-frame img")].map(e=>e.src)');
-    await driver.wait(async()=>(await images()).length===2,5000);const initial=await images();
-    await driver.wait(()=>driver.executeScript('return [...document.querySelectorAll("dialog[aria-label=图组详情] .iad-image-frame img")].every(e=>e.complete&&e.naturalWidth>0)'),5000);
-    const candidates=await driver.findElements(By.css('[aria-label="候选图像"] button[data-sample-id]'));assert.equal(candidates.length,20);
-    await candidates[1].click();await driver.wait(async()=>(await images())[1]!==initial[1],5000);
-    assert.equal((await images())[0],initial[0],'切换候选不得替换主图');
-    await click('MLLM 分析');assert.match(await modal.getText(),/未分析/);assert.doesNotMatch(await modal.getText(),/MLLM 已分析|模拟总结/);
-    const analysisVisible=await driver.executeScript(()=>{
-      const r=document.querySelector('[aria-label="MLLM 组级分析"]').getBoundingClientRect();
-      const footer=document.querySelector('.iad-group-footer').getBoundingClientRect();
-      return r.top>=0&&r.bottom<=footer.top;
-    });
-    assert.ok(analysisVisible,'打开图组后应直接看到MLLM分析状态，不能被固定页脚遮住');
-    await click('证据清单');await element('[data-difference="CATEGORY"]');
-    const beforeZoom=await images();await (await driver.findElements(By.css('dialog[aria-label="图组详情"] button[aria-label="全屏检视"]')))[1].click();await element('dialog.iad-viewer-dialog');
-    await driver.actions().sendKeys(Key.ESCAPE).perform();await driver.wait(async()=>(await driver.findElements(By.css('dialog.iad-viewer-dialog'))).length===0,5000);
-    assert.deepEqual(await images(),beforeZoom);
-    assert.equal(await driver.findElement(By.css('[aria-label="图组详情页签"] [role=tab][aria-selected=true]')).getText(),'证据清单');
-    for(const width of [1366,1792,1920]){
-      await viewport(driver,width,1080);
-      const bounds=await driver.executeScript('const e=document.querySelector("dialog[aria-label=图组详情]"),r=e.getBoundingClientRect();return {width:r.width,left:r.left,right:r.right,overflow:e.scrollWidth-e.clientWidth}');
-      assert.ok(bounds.overflow<=1&&bounds.left>=0&&bounds.right<=width+1,JSON.stringify(bounds));
-      if(width===1920)assert.ok(bounds.width>=1440&&bounds.width<=1521);
-      await fs.writeFile(path.join(output,`dialog-${width}.png`),await driver.takeScreenshot(),'base64');
-    }
-    await click('下一页候选');await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="候选图像"] button[data-sample-id]'))).length===2,5000);
-    assert.equal((await images())[0],initial[0]);
-    const currentUrl=await driver.getCurrentUrl();await driver.navigate().refresh();await element('dialog[aria-label="图组详情"]');
-    await driver.wait(async()=>(await images()).length===2,5000);assert.equal((await images())[0],initial[0]);
-    await click('下一组');await driver.wait(async()=>(await images())[0]!==initial[0],5000);
-    await driver.actions().sendKeys(Key.ARROW_LEFT).perform();await driver.wait(async()=>(await images())[0]===initial[0],5000);
-    await driver.actions().sendKeys(Key.ESCAPE).perform();await driver.wait(async()=>(await driver.findElements(By.css('dialog[aria-label="图组详情"]'))).length===0,5000);
-    assert.equal(await driver.executeScript('return document.activeElement.classList.contains("iad-consistency-image-card")'),true);
-    await fs.writeFile(path.join(output,'conflicts-grid-1920.png'),await driver.takeScreenshot(),'base64');
-    await click('重复图组');await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="重复图组"] .iad-consistency-image-card'))).length===3,5000);
-    assert.match(await driver.findElement(By.css('[aria-label="重复图组"] .iad-consistency-image-card')).getText(),/23.*成员/);
-    await driver.findElement(By.css('[aria-label="重复图组"] .iad-consistency-image-card')).click();await element('dialog[aria-label="图组详情"]');
-    await driver.wait(async()=>(await images()).length===2,5000);const groupImage=(await images())[0];await click('下一页候选');
-    await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="候选图像"] button[data-sample-id]'))).length===2,5000);assert.equal((await images())[0],groupImage);
-    await fs.writeFile(path.join(output,'duplicate-dialog-1920.png'),await driver.takeScreenshot(),'base64');
-    await click('MLLM 分析');
-    const groupRoute=await driver.executeScript('return JSON.parse(new URL(location.href).searchParams.get("iad"))');
-    await bridge.execute('consistency_group_analyze',{request:{query_id:groupRoute.queryId,kind:'groups',group_id:groupRoute.groupId,facts_state:'CURRENT',request_id:'browser-model-analysis'},_model_execution:{profile:{endpoint:`http://127.0.0.1:${server.address().port}/v1`,model_id:'local-protocol-model',capacity_mode:'vllm_tokenize',max_visual_inputs:16}}});
-    await driver.wait(()=>driver.findElement(By.css('[aria-label="MLLM 组级分析"]')).getText().then(text=>text.includes('MLLM 已分析')),15000);
-    assert.equal(modelRequests.length,1);
-    assert.ok(modelRequests[0].messages[0].content.some(part=>part.type==='image_url'));
-    assert.doesNotMatch(await driver.findElement(By.css('[aria-label="MLLM 组级分析"]')).getText(),/定位候选|定位核对图像|当前候选核对/);
-    assert.match(await driver.findElement(By.css('[aria-label="MLLM 组级分析"]>div:last-child')).getText(),/模型结论.*存在实质差异[\s\S]*标注类别不同/);
-    await driver.findElement(By.css('[aria-label="候选图像"] button[data-sample-id="'+dataset.dataset_id+':a-22.png"]')).click();
-    await driver.wait(()=>driver.findElement(By.css('[aria-label="候选图像"] button[aria-pressed=true]')).getAttribute('data-sample-id').then(value=>value===dataset.dataset_id+':a-22.png'),5000);
-    assert.equal((await images())[0],groupImage);
-    assert.equal((await driver.findElements(By.xpath('//button[normalize-space(.)="查看冻结证据"]'))).length,0);
-    await click('MLLM 分析');
-    await driver.wait(()=>driver.findElement(By.css('[aria-label="MLLM 组级分析"]')).getText().then(text=>text.includes('MLLM 已分析')),5000);
-    await driver.executeScript('arguments[0].scrollIntoView({block:"end"})',await driver.findElement(By.css('[aria-label="MLLM 组级分析"]')));
-    await fs.writeFile(path.join(output,'saved-model-analysis-1920.png'),await driver.takeScreenshot(),'base64');
-    await driver.actions().sendKeys(Key.ESCAPE).perform();
-    const modelFilter=await element('select[aria-label="MLLM结论筛选"]');
-    await modelFilter.findElement(By.css('option[value="MATERIAL"]')).click();
-    await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="重复图组"] .iad-consistency-image-card'))).length===1,5000);
-    assert.match(await driver.findElement(By.css('.iad-consistency-model-state')).getText(),/存在实质差异/);
-    await driver.navigate().refresh();await element('select[aria-label="MLLM结论筛选"]');
-    await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="重复图组"] .iad-consistency-image-card'))).length===1,5000);
-    assert.equal(await driver.findElement(By.css('select[aria-label="MLLM结论筛选"]')).getAttribute('value'),'MATERIAL');
-    await driver.findElement(By.css('select[aria-label="MLLM结论筛选"] option[value="all"]')).click();
-    await driver.wait(async()=>(await driver.findElements(By.css('[aria-label="重复图组"] .iad-consistency-image-card'))).length===3,5000);
-    failMembers=true;await driver.findElement(By.css('[aria-label="重复图组"] .iad-consistency-image-card')).click();
-    await driver.wait(()=>driver.findElement(By.css('dialog[aria-label="图组详情"]')).getText().then(text=>text.includes('候选加载测试失败')),5000);
-    assert.equal((await driver.findElements(By.css('dialog[aria-label="图组详情"] .iad-consistency-canvases .iad-image-frame img'))).length,0,'失败时不显示上次候选');
-    await click('关闭图组详情');
-    execFileSync(bridge.pythonPath,['-c',`
-import json,sys
-from pathlib import Path
-from PIL import Image
-r=Path(sys.argv[1])/'extra';r.mkdir()
-for i in range(16):
- for side,label in [('left','scratch'),('right','dent')]:
-  name=f'g-{i:02d}-{side}';Image.new('RGB',(80,60),(i*11,90,170)).save(r/(name+'.png'))
-  (r/(name+'.json')).write_text(json.dumps({'imageWidth':80,'imageHeight':60,'shapes':[{'label':label,'shape_type':'rectangle','points':[[10,10],[30,30]]}]}))
-`,root]);
-    const extra=await bridge.execute('dataset_import',{format:'labelme',name:'真实跨页图组',image_dir:path.join(root,'extra'),annotation_dir:path.join(root,'extra'),annotation_policy:{policy_id:'extra-policy',annotation_role:'REFERENCE',annotation_coverage:'EXHAUSTIVE'}});
-    for(let i=0;i<16;i++)await bridge.execute('consistency_compare',{sample_a:`${extra.dataset_id}:g-${String(i).padStart(2,'0')}-left.png`,sample_b:`${extra.dataset_id}:g-${String(i).padStart(2,'0')}-right.png`});
-    await click('标注冲突');await driver.wait(async()=>(await cards()).length===15,5000);
-    await (await cards())[14].click();await driver.wait(async()=>(await images()).length===2,5000);const lastOnPage=(await images())[0];
-    await click('下一组');await driver.wait(async()=>JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad')).galleryPage===2&&(await images()).length===2&&(await images())[0]!==lastOnPage,5000);
-    await click('上一组');await driver.wait(async()=>JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad')).galleryPage===1&&(await images()).length===2&&(await images())[0]===lastOnPage,5000);
-    await fs.writeFile(path.join(output,'cross-page-group-1920.png'),await driver.takeScreenshot(),'base64');
-    await click('关闭图组详情');
-    const expired=JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad')).queryId;
-    execFileSync(bridge.pythonPath,['-c',
-      'import sqlite3,sys\nwith sqlite3.connect(sys.argv[1]) as c:c.execute("UPDATE consistency_queries SET expires_at=? WHERE query_id=?",("2000-01-01T00:00:00+00:00",sys.argv[2]))',path.join(root,'test.db'),expired]);
-    await click('下一页');
-    await driver.wait(async()=>(await cards()).length===15,10000);
-    const recovered=JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad'));
-    assert.notEqual(recovered.queryId,expired);assert.equal(recovered.galleryPage,1);
-    assert.doesNotMatch(await driver.findElement(By.css('body')).getText(),/Result snapshot is unavailable/);
-    console.log(JSON.stringify({output,groups:2,anchorCandidates:22,reloadRoute:currentUrl.includes('queryId'),realComparisons:40,crossPageGroups:18,localModelRequests:modelRequests.length}));
+    const operations=await element(`[data-dc-row="${batch.batch_id}"] .dc-operations`);
+    assert.deepEqual(await Promise.all((await operations.findElements(By.css('button'))).map(button=>button.getAttribute('aria-label'))),
+      ['查看统计结果',`删除检查作业 ${batch.batch_id}`],'作业操作与HTML原型一致，不添加检查作业详情入口');
+    assert.equal((await driver.findElements(By.css('dialog[aria-label="检查作业详情"]'))).length,0);
+    const cards=()=>driver.findElements(By.css('[data-dc="open-conflict"]'));
+    await driver.wait(async()=>(await cards()).length===expectedGallery.total,10000);
+    for(const card of await cards())assert.match(await card.getText(),/模型：存在实质差异/);
+    const first=await element(`[data-dc="open-conflict"][data-id="${expectedGallery.items[0].group_id}"]`);await first.click();
+    await driver.wait(async()=>/固定主图与候选/.test(await (await element('[aria-label="模型分析"]')).getText()),10000);
+    await driver.wait(async()=>(await driver.findElements(By.css('[data-dc="candidate"]'))).length===22,10000);
+    const anchorSrc=await driver.findElement(By.css('[data-dc="zoom-anchor"] img')).getAttribute('src');
+    const lastCandidate=(await driver.findElements(By.css('[data-dc="candidate"]')))[21];
+    const candidateLayout=await driver.executeScript(`return [arguments[0],arguments[0].parentElement,arguments[0].parentElement.parentElement].map(element=>{
+      const style=getComputedStyle(element),rect=element.getBoundingClientRect();return {className:element.className,display:style.display,height:rect.height,width:rect.width,maxHeight:style.maxHeight,overflow:style.overflow,flex:style.flex};})`,lastCandidate);
+    assert.ok(candidateLayout[0].height>100,JSON.stringify(candidateLayout));
+    await driver.executeScript('arguments[0].scrollIntoView({block:"nearest",inline:"center"})',lastCandidate);
+    await lastCandidate.click();
+    await driver.wait(async()=>await driver.findElement(By.css('[data-dc="zoom-candidate"] img')).getAttribute('src')!==anchorSrc,5000);
+    assert.equal(await driver.findElement(By.css('[data-dc="zoom-anchor"] img')).getAttribute('src'),anchorSrc);
+    assert.ok(anchorSrc.includes('/consistency/evidence/'));
+    await fs.writeFile(path.join(output,'current-conflict-dialog.png'),await driver.takeScreenshot(),'base64');
+    await click('关闭');
+    const report=await bridge.execute('consistency_report',{selection:{kind:'batch',batch_id:batch.batch_id},relation:'EXACT',annotation_differences_only:true});
+    const gallery=await bridge.execute('consistency_gallery',{query_id:report.page.query_id,kind:'conflicts',order:'members'});
+    const analyzed=await bridge.execute('consistency_group_analysis',{query_id:report.page.query_id,kind:'conflicts',group_id:gallery.items[0].group_id,facts_state:'CURRENT'});
+    assert.equal(analyzed.status,'COMPLETED');
+    assert.equal(analyzed.result.assessments.length,22);
+    assert.equal(new Set(analyzed.result.assessments.map(item=>item.candidate_id)).size,22);
+    assert.ok(modelRequests.some(body=>body.response_format.json_schema.name==='GroupAnalysisSummary'));
+    await (await element(`[data-dc="open-conflict"][data-id="${expectedGallery.items[0].group_id}"]`)).click();
+    const confirm=await element('input[name="dc-review"][value="confirmed"]');await driver.wait(until.elementIsEnabled(confirm),10000);await confirm.click();
+    await driver.findElement(By.id('dc-note')).sendKeys('实际核对后确认此比较的差异');
+    await click('保存复核');await driver.wait(async()=>(await driver.findElements(By.css('#dc-compare-mask'))).length===0,10000);
+    await driver.navigate().refresh();await driver.wait(async()=>(await cards()).length===expectedGallery.total,10000);
+    await (await element(`[data-dc="open-conflict"][data-id="${expectedGallery.items[0].group_id}"]`)).click();
+    await driver.wait(async()=>await driver.findElement(By.css('input[name="dc-review"][value="confirmed"]')).isSelected(),10000);
+    const members=await bridge.execute('consistency_gallery_members',{query_id:report.page.query_id,kind:'conflicts',group_id:gallery.items[0].group_id,facts_state:'CURRENT'});
+    const reviewed=await bridge.execute('consistency_review_context',{evidence_id:members.items[0].comparison.evidence_id});
+    assert.equal(reviewed.decisions.at(-1).request.action.kind,'CONFIRM_DIFFERENCE');assert.equal(reviewed.review_events.length,0);
+    await click('关闭');
+    const originalRow=await element(`[data-dc-row="${batch.batch_id}"]`);
+    await originalRow.findElement(By.css('td')).click();
+    const following=await bridge.execute('analysis_start',{request:{analysis_kind:'consistency',mode:'exact',dataset_ids:[dataset.dataset_id]},
+      _model_execution:{profile:{endpoint:`http://127.0.0.1:${server.address().port}/v1`,model_id:'local-protocol-model',capacity_mode:'vllm_tokenize',max_visual_inputs:16}}});
+    let followingState;
+    do {await new Promise(resolve=>setTimeout(resolve,20));followingState=await bridge.execute('analysis_status',{run_id:following.run_id});}while(['PENDING','RUNNING'].includes(followingState.status));
+    assert.equal(followingState.status,'COMPLETED',JSON.stringify(followingState.errors));
+    const followingDelete=await element(`[data-dc-row="${followingState.program_batch_id}"] [data-icon="delete"]`);
+    assert.equal(await originalRow.getAttribute('aria-selected'),'true','后台新增记录不切换当前选中作业');
+    await followingDelete.click();
+    const deletion=await element('dialog[aria-label="删除检查作业"][open]');
+    const cancel=await deletion.findElement(By.css('button[aria-label="取消删除"]'));
+    assert.equal(await driver.switchTo().activeElement().then(element=>element.getId()),await cancel.getId());
+    await cancel.sendKeys(Key.ENTER);
+    await driver.wait(async()=>(await driver.findElements(By.css('dialog[aria-label="删除检查作业"][open]'))).length===0,10000);
+    assert.equal(await originalRow.getAttribute('aria-selected'),'true','确认窗的按键不能触发背景作业行');
+    await followingDelete.click();
+    const confirmedDeletion=await element('dialog[aria-label="删除检查作业"][open]');
+    await confirmedDeletion.findElement(By.css('button[data-variant="danger"]')).click();
+    await driver.wait(async()=>!(await bridge.execute('analysis_list',{dataset_id:dataset.dataset_id,analysis_kind:'consistency'})).jobs
+      .some(job=>job.root_run_id===following.run_id),10000,'轮询新增的作业应可直接删除');
+    assert.equal((await bridge.execute('analysis_status',{run_id:workflow.run_id})).status,'COMPLETED','删除新增记录不影响原作业');
+    await driver.wait(async()=>(await cards()).length===expectedGallery.total,10000);
+    execFileSync(bridge.pythonPath,['-c','import sqlite3,sys\nwith sqlite3.connect(sys.argv[1]) as c:c.execute("UPDATE consistency_queries SET expires_at=?",("2000-01-01T00:00:00+00:00",))',path.join(root,'test.db')]);
+    await (await cards())[0].click();
+    await driver.wait(async()=>(await driver.findElement(By.css('[role="dialog"]')).getText()).includes('snapshot'),10000);
+    assert.equal((await driver.findElements(By.css('[data-dc="zoom-candidate"] img'))).length,0,'失败时不得显示旧候选或主图代替候选');
+    await click('关闭');await click('新建检查');
+    await bridge.execute('dataset_delete',{dataset_id:dataset.dataset_id});
+    await click('开始检查');
+    await driver.wait(async()=>(await driver.findElements(By.css('#dc-new-mask [role="alert"]'))).length>0,10000);
+    assert.ok(await driver.findElement(By.id('dc-new-mask')).isDisplayed());
+    assert.equal((await bridge.execute('consistency_list',{})).items.length,0,'创建失败不得留下假作业');
+    console.log(JSON.stringify({output,groups:expectedGallery.total,anchorCandidates:22,modelRequests:modelRequests.length}));
   }catch(error){if(driver){await fs.writeFile(path.join(output,'failure.png'),await driver.takeScreenshot(),'base64');console.error((await driver.findElement(By.css('body')).getText()).slice(-5000));}throw error;}
   finally{if(driver)await driver.quit();await new Promise(resolve=>server.close(resolve));}
 });

@@ -45,6 +45,10 @@ export const explorationParameters = {
             }
         },
         "title": "FrozenExplorationPrompt"
+    },
+    "parent_version_id": {
+        "type": "string",
+        "title": "Parent Version Id"
     }
 };
 export const explorationPresetParameters = {

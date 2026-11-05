@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 from tests.knowledge_scenarios import selected_group
+from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningPromptConfiguration
 
 
 def test_operator_edits_mining_directions_per_dataset_and_kind(knowledge_dataset):
@@ -40,7 +41,8 @@ def test_mining_freezes_edited_prompt_and_validates_observation_scope(knowledge_
     query = {'dataset_id': config.dataset.id, 'kind': 'normal'}
     original = knowledge_prompt_get(query, db.db_path)
     chosen = knowledge_prompt_save({**query, 'expected_revision': original['revision'],
-                                   'configuration': {'objective': '检查两孔关系以及孔内背景，不分析标识。', 'directions': [
+                                   'configuration': {'objective': '检查两孔关系以及孔内背景，不分析标识。',
+                                       'instruction':'用户完整提示词：联合核对两孔关系与背景，保留实际支持、反对和不可观察项。', 'directions': [
                                        {'direction_id': 'holes', 'title': '两孔关系', 'instruction': '检查孔位与数量'}]}}, db.db_path)
     entered, release = threading.Event(), threading.Event()
     prompts = []
@@ -51,6 +53,9 @@ def test_mining_freezes_edited_prompt_and_validates_observation_scope(knowledge_
         body = json.loads(request.content)
         content = body['messages'][0]['content']
         prompts.append(content[0]['text'])
+        context_label='冻结视觉提取：' if body['response_format']['json_schema']['name']=='KnowledgeDiscoveryLinks' else '冻结父版本候选：'
+        runtime_context=json.JSONDecoder().raw_decode(content[0]['text'].split(context_label,1)[1])[0]
+        assert next(iter(runtime_context))=='phase','当前阶段应先于大量历史来源上下文，避免末尾阶段被忽略'
         if body['response_format']['json_schema']['name'] == 'KnowledgeDiscoveryLinks':
             result = {'area_0': {'status': '已形成知识', 'subjects': ['虚构基座' if invalid == 'unknown_part' else '孔板'],
                 'check_titles': ['未归纳的判据'] if invalid == 'unknown_check' else ['两孔数量', '孔位排列']},
@@ -86,7 +91,7 @@ def test_mining_freezes_edited_prompt_and_validates_observation_scope(knowledge_
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(request=selected_group(db, config.dataset.id, 'normal'), kind='normal', model_name='test-mllm')
+        job = service.start(request=selected_group(db, config.dataset.id, 'normal'), mining_prompt=FrozenMiningPrompt.capture(MiningPromptConfiguration.model_validate(chosen['configuration'])), model_name='test-mllm')
         assert entered.wait(3)
         knowledge_prompt_save({**query, 'expected_revision': chosen['revision'], 'configuration': {'objective': '仅观察轮廓。', 'directions': []}}, db.db_path)
         release.set()
@@ -97,12 +102,14 @@ def test_mining_freezes_edited_prompt_and_validates_observation_scope(knowledge_
             assert finished['status'] == 'FAILED'
             if invalid in ('unknown_part', 'unknown_check'):
                 assert 'literal_error' in finished['errors'][0]['message']
-            assert knowledge_get(query, db.db_path)['knowledge'] is None
+            assert knowledge_get({'dataset_id':config.dataset.id}, db.db_path)['knowledge'] is None
             return
         assert finished['status'] == 'COMPLETED', finished['errors']
         snapshot = knowledge_get({'version_id': finished['knowledge_version_id']}, db.db_path)['knowledge']
         assert snapshot['mining_prompt']['instruction'] == chosen['instruction']
         assert chosen['instruction'] in prompts[0]
+        assert all(prompt.startswith(chosen['instruction']) for prompt in prompts),'视觉提取和关联阶段都应使用冻结的完整提示词'
+        assert all('逐部件联动全图与真实局部' not in prompt for prompt in prompts),'不得暗中追加默认分析指令'
         assert '仅观察轮廓。' not in prompts[0]
         assert '柔性部件与包装' not in prompts[0], '自定义提示完整替换默认方向，删除的内容不应暗中加回'
         assert len(snapshot['checks']) == 5, '独立知识不截为固定条数'
@@ -119,7 +126,7 @@ def test_mining_freezes_edited_prompt_and_validates_observation_scope(knowledge_
         service.close()
 
 
-def test_stop_with_incomplete_json_is_reported_without_repair_or_retry(knowledge_dataset):
+def test_stop_with_incomplete_json_is_reported_without_repair_or_retry(knowledge_dataset, self_discovery_prompt):
     from iad_core.entry import knowledge_get, model_call_get
     from iad_core.knowledge.service import KnowledgeService
     from iad_core.workbench.vision import VlmClient
@@ -136,13 +143,13 @@ def test_stop_with_incomplete_json_is_reported_without_repair_or_retry(knowledge
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(request=selected_group(db, config.dataset.id, 'normal'), kind='normal', model_name='test-mllm')
+        job = service.start(request=selected_group(db, config.dataset.id, 'normal'), mining_prompt=self_discovery_prompt, model_name='test-mllm')
         service.wait(job['run_id'], 5)
         finished = service.status(job['run_id'])
         assert finished['status'] == 'FAILED' and len(calls) == 1
         assert 'JSON语法无效' in finished['errors'][0]['message']
         assert 'EOF' in finished['errors'][0]['message']
-        assert knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge'] is None
+        assert knowledge_get({'dataset_id': config.dataset.id}, db.db_path)['knowledge'] is None
         generated = next(call for call in finished['model_calls'] if call['operation'] == 'generate')
         detail = model_call_get({'run_id': job['run_id'], 'call_id': generated['call_id']}, db.db_path)
         assert json.loads(detail['response_body'])['choices'][0]['message']['content'] == malformed
@@ -151,7 +158,7 @@ def test_stop_with_incomplete_json_is_reported_without_repair_or_retry(knowledge
 
 
 @pytest.mark.parametrize('invalid_link', [None, 'unknown_part', 'empty_formed'])
-def test_mining_links_visual_observations_using_frozen_name_enumerations(knowledge_dataset, invalid_link):
+def test_mining_links_visual_observations_using_frozen_name_enumerations(knowledge_dataset, self_discovery_prompt, invalid_link):
     from iad_core.entry import knowledge_get
     from iad_core.knowledge.service import KnowledgeService
     from iad_core.workbench.vision import VlmClient
@@ -189,7 +196,9 @@ def test_mining_links_visual_observations_using_frozen_name_enumerations(knowled
             assert links['subjects']['items']['const'] == '圆孔'
             assert links['check_titles']['items']['const'] == '孔内背景可见'
             assert set(links['status']['enum']) == {'已形成知识', '证据不足', '不可观察', '不适用'}
-            assert all(eid in content[0]['text'] for eid in supplied[:3])
+            extraction=json.JSONDecoder().raw_decode(content[0]['text'].split('冻结视觉提取：',1)[1])[0]
+            restored=extraction['discovery']['parts'][0]['evidence_ids']
+            assert len(restored)==len(supplied[:3]) and all(eid.startswith('img_') for eid in restored)
             result = {'area_0': {'status': '已形成知识', 'subjects': ['圆形开口' if invalid_link == 'unknown_part' else '圆孔'],
                                  'check_titles': ['孔内背景可见']},
                       'area_1': {'status': '已形成知识' if invalid_link == 'empty_formed' else '证据不足',
@@ -198,12 +207,13 @@ def test_mining_links_visual_observations_using_frozen_name_enumerations(knowled
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        job = service.start(request=selected_group(db, config.dataset.id, 'normal'), kind='normal', model_name='test-mllm')
+        job = service.start(request=selected_group(db, config.dataset.id, 'normal'), model_name='test-mllm', mining_prompt=self_discovery_prompt)
         service.wait(job['run_id'], 5)
         finished = service.status(job['run_id'])
-        assert len(generated) == 2, finished['errors']
-        assert [call['schema_name'] for call in finished['model_calls'] if call['operation'] == 'generate'] == ['KnowledgeDraft', 'KnowledgeDiscoveryLinks']
-        snapshot = knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge']
+        expected_calls=['KnowledgeDraft','KnowledgeDiscoveryLinks'] + (['KnowledgeDiscoveryLinks'] if invalid_link=='empty_formed' else [])
+        assert len(generated) == len(expected_calls), finished['errors']
+        assert [call['schema_name'] for call in finished['model_calls'] if call['operation'] == 'generate'] == expected_calls
+        snapshot = knowledge_get({'dataset_id': config.dataset.id}, db.db_path)['knowledge']
         if invalid_link:
             assert finished['status'] == 'FAILED' and snapshot is None
             assert ('literal_error' if invalid_link == 'unknown_part' else '形成知识的观察方向必须关联判据') in finished['errors'][0]['message']
@@ -211,11 +221,13 @@ def test_mining_links_visual_observations_using_frozen_name_enumerations(knowled
             assert finished['status'] == 'COMPLETED', finished['errors']
             area = snapshot['mining_steps'][0]['result']['discovery']['areas'][0]
             assert area['subjects'] == ['圆孔'] and area['check_titles'] == ['孔内背景可见']
-            assert area['evidence_ids'] == supplied[:3]
+            assert len(area['evidence_ids'])==len(supplied[:3])
+            assert all(eid.startswith('img_') for eid in area['evidence_ids'])
+            assert set(area['evidence_ids']) <= {item['image']['evidence_id'] for item in snapshot['evidence']}
             unresolved = snapshot['mining_steps'][0]['result']['discovery']['areas'][1]
             assert unresolved['status'] == '证据不足' and unresolved['check_titles'] == []
             assert unresolved['reason'] == '三个来源可见外缘，但本次增量未建立外缘判据'
-            assert unresolved['evidence_ids'] == supplied[:3]
+            assert unresolved['evidence_ids'] == area['evidence_ids']
             assert snapshot['checks'][0]['subject'] == '圆形开口', '关联不得篡改已经提取的图像知识'
     finally:
         service.close()
@@ -245,3 +257,117 @@ def test_source_paging_uses_a_bounded_read_snapshot_after_human_qualification_ch
     assert result.total == expected
     assert (target in [item.sample_id for item in result.items]) == (kind == 'defect')
     assert len(opened) <= 4, '资格分页不能为每张来源重新建立数据库连接'
+
+
+def test_discovery_linking_rechecks_inconsistent_model_status_before_publication(knowledge_dataset, self_discovery_prompt):
+    from iad_core.workbench.runtime import WorkbenchRuntime
+    from iad_core.workbench.vision import VlmClient
+    from iad_core.knowledge.repository import KnowledgeRepository
+    db,config=knowledge_dataset
+    linked=[]
+    def respond(request):
+        body=json.loads(request.content)
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200,json={'count':1000,'max_model_len':262144})
+        content=body['messages'][0]['content']
+        if body['response_format']['json_schema']['name']=='KnowledgeDiscoveryLinks':
+            linked.append(content[0]['text'])
+            result={f'area_{i}':dict(status='已形成知识' if len(linked)==1 else '证据不足',subjects=[],check_titles=[]) for i in range(2)}
+            if len(linked)==2:
+                feedback=content[0]['text'].split('输出校验结果：',1)[1]
+                assert 'area_0' in feedback and 'area_1' in feedback
+        else:
+            refs=[json.loads(part['text'].removeprefix('视觉证据：'))['evidence_id'] for part in content
+                  if part['type']=='text' and part['text'].startswith('视觉证据：')]
+            result=dict(summary='本轮未形成判据',checks=[],suspects=[],limitations=[],discovery=dict(parts=[],areas=[dict(
+                direction_id=None,direction='边缘观察',status='已形成知识',reason='可见外观尚不足以建立判据',evidence_ids=refs),dict(
+                direction_id=None,direction='部件观察',status='已形成知识',reason='可见部件仍不足以建立判据',evidence_ids=refs)]))
+        return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
+    runtime=WorkbenchRuntime(db,VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        job=runtime.knowledge.start(request=selected_group(db,config.dataset.id,'normal'),mining_prompt=self_discovery_prompt)
+        runtime.jobs.wait(job['run_id'],5)
+        result=runtime.jobs.status(job['run_id'])
+        assert result['status']=='COMPLETED',result['errors']
+        assert len(linked)==2 and '输出校验结果：' in linked[-1]
+        snapshot=KnowledgeRepository(db).get(result['knowledge_version_id'])
+        assert snapshot.mining_steps[0].result.discovery.areas[0].status=='证据不足'
+        assert snapshot.checks==[]
+    finally:runtime.close()
+
+
+@pytest.mark.parametrize('observation', ['missing', 'partial'])
+@pytest.mark.parametrize('custom_instruction', [False, True])
+def test_mining_uses_selected_directions_without_requiring_one_result_per_direction(dataset, observation, custom_instruction):
+    from iad_core.workbench.runtime import WorkbenchRuntime
+    from iad_core.workbench.vision import VlmClient
+    from iad_core.exploration.models import ExplorationStart
+    from iad_core.exploration.repository import ExplorationRepository
+    from iad_core.knowledge.repository import KnowledgeRepository
+    from iad_core.knowledge.prompts import KnowledgePrompts, MiningPromptQuery, MiningPromptEdit
+
+    db, _, config = dataset
+    selected = []; learned = []; schemas = []
+
+    def respond(request):
+        body = json.loads(request.content)
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 262144})
+        name = body['response_format']['json_schema']['name']; content = body['messages'][0]['content']
+        refs = [json.loads(part['text'].removeprefix('视觉证据：'))['evidence_id'] for part in content
+                if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
+        if name == 'DirectionDraft':
+            result = dict(summary='可观察的结构方向', limitations=[], directions=[dict(title=title, instruction=text,
+                applies_to='both', rationale='本批存在可见结构', evidence_ids=refs[:1], limitations=[])
+                for title, text in [('主体轮廓', '比较主体轮廓连续性'), ('边缘分布', '比较边缘形状分布')]])
+        elif name == 'KnowledgeDiscoveryLinks':
+            result = {'area_0': dict(status='证据不足', subjects=[], check_titles=[])}
+        else:
+            learned.append(content[0]['text'])
+            schemas.append(body['response_format']['json_schema']['schema'])
+            result = dict(summary='保留实际观察', checks=[], suspects=[], limitations=[])
+            if observation == 'partial':
+                result['discovery'] = dict(parts=[], areas=[dict(direction_id=selected[0].direction_id,
+                    direction=selected[0].title, status='证据不足', reason='本组尚未形成可复用判据', evidence_ids=[])])
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
+
+    runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        job = runtime.exploration.start(ExplorationStart(dataset_id=config.dataset.id,
+            normal_images=[config.dataset.id+':normal.png'], defect_images=[config.dataset.id+':dent.png']))
+        runtime.jobs.wait(job['run_id'], 5)
+        explored = ExplorationRepository(db).catalog(config.dataset.id).exploration.directions
+        prompts = KnowledgePrompts(db)
+        prompt = prompts.read(MiningPromptQuery(dataset_id=config.dataset.id, kind='normal'))
+        configuration = prompt.configuration
+        chosen_ids = {'shape', explored[0].direction_id}
+        for direction in configuration.directions:
+            direction.enabled = direction.direction_id in chosen_ids
+        selected[:] = [direction for direction in configuration.directions if direction.enabled]
+        assert len(selected) == 2
+        if custom_instruction:
+            configuration.instruction = '联合观察主体轮廓，按实际图像保留发现与分歧。'
+        saved = prompts.save(MiningPromptEdit(dataset_id=config.dataset.id, kind='normal',
+            expected_revision=prompt.revision, configuration=configuration))
+        instruction = saved.instruction
+        ids = list(runtime.knowledge.sources.registered(config.dataset.id).qualifications)
+        job = runtime.knowledge.start(request=dict(images=ids, image_count=len(ids)), mining_prompt=FrozenMiningPrompt.capture(configuration))
+        runtime.jobs.wait(job['run_id'], 5)
+        result = runtime.jobs.status(job['run_id'])
+        assert result['status'] == 'COMPLETED', result['errors']
+        assert len(learned) == 1, '不应因模型未逐项返回方向观察而触发补写重试'
+        assert learned[0].startswith(instruction.split('{{response_schema}}', 1)[0])
+        snapshot = KnowledgeRepository(db).get(result['knowledge_version_id'])
+        frozen = snapshot.mining_prompt
+        assert frozen.instruction == instruction
+        assert {direction.direction_id for direction in frozen.configuration.directions if direction.enabled} == chosen_ids
+        if not custom_instruction:
+            assert all(direction.direction_id + ' | ' in instruction for direction in selected)
+            assert all(direction.direction_id + ' | ' not in instruction for direction in configuration.directions if not direction.enabled)
+            assert '必须覆盖' not in instruction
+            assert '逐项记录全部已选' not in instruction
+        discovery = snapshot.mining_steps[0].result.discovery
+        assert (discovery is None) if observation == 'missing' else len(discovery.areas) == 1
+        assert schemas[0]['$defs']['ObservedDiscovery']['properties']['areas'].get('minItems', 0) == 0
+    finally:
+        runtime.close()

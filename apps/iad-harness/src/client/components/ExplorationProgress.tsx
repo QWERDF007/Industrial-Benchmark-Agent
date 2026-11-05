@@ -46,12 +46,12 @@ export function ExplorationProgress({
   return (
     <div className="iad-exploration-progress">
       <p>
-        输入 {job.total_samples} 张 · 良品{" "}
-        {job.exploration_request?.normal_images.length ?? "未记录"} · 异常{" "}
+        输入 {job.total_samples} 张，良品{" "}
+        {job.exploration_request?.normal_images.length ?? "未记录"}，异常{" "}
         {job.exploration_request?.defect_images.length ?? "未记录"}
       </p>
       {job.status === "PENDING" ? (
-        <p>排队第 {job.queue_position} 项 · 等待前一任务结束</p>
+        <p>排队第 {job.queue_position} 项，等待前一任务结束</p>
       ) : (
         <ol className="iad-execution-stages">
           {stages.map((label, index) => (
@@ -100,7 +100,7 @@ export function ExplorationProgress({
           {elapsed !== null && (
             <p className="iad-muted">
               当前{call ? "请求" : "阶段"}已用 {Math.floor(elapsed / 60)} 分{" "}
-              {elapsed % 60} 秒{stale ? " · 上次同步时" : ""}
+              {elapsed % 60} 秒{stale ? "，上次同步时" : ""}
             </p>
           )}
         </>

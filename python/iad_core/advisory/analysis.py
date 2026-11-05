@@ -1,6 +1,8 @@
 from typing import Annotated, List, Literal, Optional, Union
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
+from iad_core.storage.models import Annotation, Sample
+
 
 NonBlankText = Annotated[str, Field(min_length=1, pattern=r'^[\s\S]*\S[\s\S]*$')]
 
@@ -178,7 +180,7 @@ class SynthesisStep(AnalysisModel):
     step_id: str
     input_evidence_ids: List[str]
     child_step_ids: List[str]
-    result: Union[VlmResult, JointAnalysis]
+    result: JointAnalysis
 
 
 class AuditConsistencyEvidenceReference(AnalysisModel):
@@ -191,7 +193,39 @@ class AuditConsistencyReference(AnalysisModel):
     results: List[AuditConsistencyEvidenceReference]
 
 
+class AuditBasis(AnalysisModel):
+    text: NonBlankText
+    evidence_ids: List[str] = Field(min_length=1)
+    knowledge_check_ids: List[str]
+    consistency_result_ids: List[str]
+
+
+class AuditSliceCandidate(AnalysisModel):
+    name: NonBlankText
+    observation: NonBlankText
+    evidence_ids: List[str] = Field(min_length=1)
+
+
+class AuditConclusion(VlmResult):
+    analysis_text: NonBlankText = Field(description='结合当前图像、冻结知识、实际比较图和一致性记录的连贯综合分析；不罗列输入全文')
+    basis: List[AuditBasis] = Field(min_length=1, description='与最终结论直接相关的可见事实及其真实引用')
+    observation: NonBlankText = Field(description='实际可见的外观事实，与候选解释和验收判据分开')
+    applicable_rule: NonBlankText = Field(description='适用的冻结判据及条件；无适用规则时明确说明')
+    normal_alternative: NonBlankText = Field(description='正常替代解释及实际支持或反驳依据')
+    label_relation: Literal['consistent', 'suspected_missing', 'suspected_mislabel', 'different_conditions', 'undetermined']
+    proposed_slice: List[AuditSliceCandidate] = Field(description='有可见依据的能力切片候选；没有时为空，不作为已确认难度或真值')
+
+
+class AuditImageSource(AnalysisModel):
+    sample: Sample
+    dataset_format: Literal['labelme', 'folder_classification']
+    annotations: List[Annotation]
+    overview_evidence_id: str
+    mask_evidence_ids: dict[str, str] = Field(default_factory=dict)
+
+
 class AuditAnalysis(AnalysisModel):
+    knowledge_version_id: Optional[str] = None
     consistency: Optional[AuditConsistencyReference] = None
     normal_version_id: Optional[str] = None
     defect_version_id: Optional[str] = None
@@ -205,8 +239,11 @@ class AuditAnalysis(AnalysisModel):
     global_view: GlobalAnalysis
     regions: List[RegionEvidence]
     auxiliary_evidence: List[VisualEvidence] = Field(default_factory=list)
-    conclusion: VlmResult
+    conclusion: Union[AuditConclusion, VlmResult]
     joint_steps: List[SynthesisStep] = Field(default_factory=list)
+    image_sources: List[AuditImageSource] = Field(default_factory=list)
+    reference_evidence: List[VisualEvidence] = Field(default_factory=list)
+    input_snapshot_signature: Optional[str] = Field(default=None, pattern='^[a-f0-9]{64}$')
 
 
 class InspectionProgress(AnalysisModel):

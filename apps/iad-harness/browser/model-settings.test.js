@@ -243,7 +243,7 @@ test('authenticated LAN browser saves provider settings and switches models', {t
       await driver.findElement(By.css('select[aria-label="图像编码器"]')).sendKeys('dinov3_vitb16');
       await driver.findElement(By.css('input[aria-label="图像编码权重路径"]')).sendKeys(process.env.IAD_TEST_DINOV3_SNAPSHOT);
       await click('检查加载');
-      await driver.wait(()=>driver.executeScript("return document.querySelector('[aria-label=\"图像检索设置\"] [role=\"status\"]')?.textContent.includes('加载正常 · dinov3_vitb16 · 768 维 · cpu')"),30000);
+      await driver.wait(()=>driver.executeScript("return document.querySelector('[aria-label=\"图像检索设置\"] [role=\"status\"]')?.textContent.includes('加载正常 / dinov3_vitb16 / 768 维 / cpu')"),30000);
       await click('保存图像配置');
       await driver.wait(()=>driver.executeScript("return document.querySelector('[aria-label=\"图像检索设置\"] [role=\"status\"]')?.textContent.includes('已保存')"),10000);
       const local=await api(null,'/images/settings');

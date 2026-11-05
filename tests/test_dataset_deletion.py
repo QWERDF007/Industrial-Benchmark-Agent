@@ -192,9 +192,11 @@ def test_delete_invalidates_cross_dataset_evidence_and_preserves_independent_his
         'subjects': {'kind': 'datasets', 'dataset_ids': [other.dataset.id]},
         'corpus_scope': {'kind': 'datasets', 'dataset_ids': [other.dataset.id]}}))
     assert kept_query.total == 1
+    from iad_core.entry import direction_exploration_presets
+    expected_presets = direction_exploration_presets({}, db.db_path)
     with db.connection() as conn:
         expected = {table: [tuple(row) for row in conn.execute(f'SELECT * FROM {table}')]
-            for table in ('workbench_image_settings', 'image_embedding_profiles', 'exploration_prompt_presets')}
+            for table in ('workbench_image_settings', 'image_embedding_profiles')}
     dataset_delete({'dataset_id': config.dataset.id}, db.db_path)
     for result in (owned, shared):
         with pytest.raises(ConsistencyError, match='does not exist'):
@@ -203,6 +205,7 @@ def test_delete_invalidates_cross_dataset_evidence_and_preserves_independent_his
     with pytest.raises(ConsistencyError, match='unavailable'):
         queries.page(removed_query.query_id)
     assert queries.page(kept_query.query_id).total == 1
+    assert direction_exploration_presets({}, db.db_path) == expected_presets
     with db.connection() as conn:
         assert conn.execute('SELECT count(*) FROM consistency_decisions').fetchone()[0] == 0
         for table, rows in expected.items():
@@ -232,6 +235,7 @@ def test_delete_rejects_active_batch_when_dataset_is_only_in_corpus(dataset, tmp
                 break
             time.sleep(.01)
         assert batch.status == 'COMPLETED'
+        runtime.close()
         with db.connection() as conn:
             conn.execute('UPDATE job_runs SET status=? WHERE job_id=?', (status, batch.children[0].run_id))
             before = {table: [tuple(row) for row in conn.execute(f'SELECT * FROM {table}')]

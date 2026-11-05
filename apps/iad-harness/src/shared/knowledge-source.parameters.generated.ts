@@ -26,8 +26,7 @@ export const knowledgeSourceParameters = {
       "normal",
       "defect"
     ],
-    "title": "Kind",
-    "required": true
+    "title": "Kind"
   },
   "normal_version_id": {
     "type": "string",

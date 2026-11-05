@@ -1,5 +1,5 @@
 from iad_core.dataset.registry import DatasetRegistry
-from iad_core.exploration.models import ExplorationCatalog, ExplorationSnapshot, ExplorationVersion
+from iad_core.exploration.models import DirectionRemoval, ExplorationCatalog, ExplorationSnapshot, ExplorationVersion
 from iad_core.storage.database import Database
 
 
@@ -27,9 +27,32 @@ class ExplorationRepository:
         selected = source_id or version_id or (versions[0].version_id if versions else None)
         if selected and selected not in {v.version_id for v in versions}:
             raise ValueError('方向探索版本不属于当前数据集')
-        return ExplorationCatalog(dataset_id=dataset_id, versions=versions, exploration=self.get(selected) if selected else None)
+        return ExplorationCatalog(dataset_id=dataset_id, versions=versions, exploration=self.get(selected) if selected else None,
+                                  removed_direction_ids=self.removed_ids([dataset_id]))
+
+    def removed_ids(self, dataset_ids: list[str]) -> list[str]:
+        if not dataset_ids:
+            return []
+        with self.db.connection() as conn:
+            rows = conn.execute(f'''SELECT r.direction_id FROM exploration_direction_removals r
+                JOIN direction_explorations e ON e.version_id=r.version_id
+                WHERE e.dataset_id IN ({','.join('?' for _ in dataset_ids)}) ORDER BY r.direction_id''', dataset_ids).fetchall()
+        return [row['direction_id'] for row in rows]
+
+    def remove(self, request: DirectionRemoval) -> DirectionRemoval:
+        snapshot = self.get(request.version_id)
+        if snapshot.dataset_id != request.dataset_id:
+            raise ValueError('探索版本不属于当前数据集')
+        if request.direction_id not in {item.direction_id for item in snapshot.directions}:
+            raise ValueError('探索版本不包含该方向')
+        with self.db.connection() as conn:
+            conn.execute('''INSERT INTO exploration_direction_removals(version_id,direction_id) VALUES(?,?)
+                ON CONFLICT(version_id,direction_id) DO NOTHING''', (request.version_id, request.direction_id))
+        return request
 
     def direction(self, dataset_id: str, direction_id: str):
+        if direction_id in self.removed_ids([dataset_id]):
+            raise ValueError('所选探索方向已删除')
         return next(d for d in self.source(dataset_id, direction_id).directions if d.direction_id == direction_id)
 
     def source(self, dataset_id: str, direction_id: str) -> ExplorationSnapshot:

@@ -1,3 +1,5 @@
+import {Select} from './Select.js';
+import {IconButton} from "./IconButton.js";
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { WorkbenchHeader } from "./layout/WorkbenchHeader.js";
@@ -7,7 +9,9 @@ import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js
 import { FullscreenViewer } from "./FullscreenViewer.js";
 import { AnnotatedImageStage } from "./AnnotatedImageStage.js";
 import { DatasetScopeSelector } from "./DatasetScopeSelector.js";
-import { RefreshIcon } from "../AuditIcon.js";
+import {ThumbnailCard} from "./ThumbnailCard.js";
+import {Pagination} from "./Pagination.js";
+
 import { ClearFilterButton } from "./CommonFilterControls.js";
 
 export interface ImagesPageProps {
@@ -255,13 +259,6 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
   const imgW = currentDetail?.sample.width || activeSample?.width || 955;
   const imgH = currentDetail?.sample.height || activeSample?.height || 713;
 
-  // Pagination calculation
-  const pages = Math.max(1, Math.ceil(total / pageSize));
-  const firstPage = Math.max(1, Math.min(page - 2, pages - 4));
-  const lastPage = Math.min(pages, firstPage + 4);
-  const pageNumbers: number[] = [];
-  for (let n = firstPage; n <= lastPage; n++) pageNumbers.push(n);
-
   return (
     <div className="main" style={{ minWidth: 0, width: "100%", padding: 0 }}>
       {/* Header */}
@@ -289,19 +286,10 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
         childId="child"
         childMenuId="child-menu"
       >
-        <button
-          id="refresh"
-          type="button"
-          className="iad-subtle-icon refresh-btn dc-icn"
-          title="刷新图像"
-          aria-label="刷新图像"
-          onClick={() => {
+        <IconButton icon="refresh" id="refresh" type="button" title="刷新图像" label="刷新图像" onClick={() => {
             setRefreshRev(r => r + 1);
             onDatasetsChanged?.();
-          }}
-        >
-          <RefreshIcon size={17} />
-        </button>
+          }} />
       </DatasetScopeSelector>
 
       {/* Filter Bar */}
@@ -326,7 +314,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
             <label htmlFor="quality" title="图像级类别（OK / NG / 未判定）">
               {hasLabelme ? "标注类别 (图像)" : "标注类别"}
             </label>
-            <select
+            <Select
               id="quality"
               value={quality}
               onChange={e => {
@@ -340,7 +328,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
               <option value="UNCERTAIN" title="原始规则无法判定为 OK 或 NG">
                 未判定
               </option>
-            </select>
+            </Select>
           </div>
         )}
 
@@ -348,7 +336,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
           <>
             <div className="filter-item filter-ann" id="annotation-wrap">
               <label htmlFor="annotation">标注情况</label>
-              <select
+              <Select
                 id="annotation"
                 value={annotation}
                 onChange={e => {
@@ -359,14 +347,14 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
                 <option value="all">全部</option>
                 <option value="present">有标注</option>
                 <option value="none">无标注</option>
-              </select>
+              </Select>
             </div>
 
             <div className="filter-item filter-category" id="category-wrap">
               <label htmlFor="category">
                 {hasAnomaly ? "标注类别 (目标)" : "标注类别"}
               </label>
-              <select
+              <Select
                 id="category"
                 value={category}
                 onChange={e => {
@@ -380,7 +368,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
                     {cat.startsWith("类别 ") || isNaN(Number(cat)) ? cat : `类别 ${cat}`}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
           </>
         )}
@@ -397,27 +385,12 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
       {/* Grid or Empty */}
       {error && <p role="alert" className="iad-error">{error}</p>}
       {total > 0 ? (
-        <section id="grid" className="grid" aria-label="图像网格">
+        <section id="grid" className="iad-thumbnail-grid" aria-label="图像网格">
           {samples.map((s, idx) => {
             const filename = s.relative_path.split("/").pop() || s.relative_path;
             return (
-              <button
-                key={s.sample_id}
-                type="button"
-                className="card"
-                data-idx={idx}
-                title={filename}
-                onClick={() => openViewer(s, idx)}
-              >
-                <div className="thumb">
-                  <img
-                    src={mediaUrl(s, "thumbnail")}
-                    alt={filename}
-                    loading="lazy"
-                  />
-                </div>
-                <div className="card-name">{filename}</div>
-              </button>
+              <ThumbnailCard key={s.sample_id} src={mediaUrl(s,"thumbnail")} label={filename}
+                data-idx={idx} data-sample-id={s.sample_id} onClick={()=>openViewer(s,idx)} />
             );
           })}
         </section>
@@ -431,53 +404,9 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
         </div>
       )}
 
-      {/* Pagination - Right Aligned V10 Group */}
-      {total > 0 && (
-        <div id="pager" className="pagination" aria-label="图像分页">
-          <div className="pagination-controls">
-            <button
-              type="button"
-              id="p-prev"
-              disabled={page === 1}
-              onClick={() => {
-                setPage(p => Math.max(1, p - 1));
-                document.getElementById("grid")?.scrollIntoView({ block: "start", behavior: "smooth" });
-              }}
-            >
-              上一页
-            </button>
-            {pageNumbers.map(n => (
-              <button
-                key={n}
-                type="button"
-                data-page={n}
-                className={n === page ? "active" : ""}
-                onClick={() => {
-                  setPage(n);
-                  document.getElementById("grid")?.scrollIntoView({ block: "start", behavior: "smooth" });
-                }}
-              >
-                {n}
-              </button>
-            ))}
-            <button
-              type="button"
-              id="p-next"
-              disabled={page >= pages}
-              onClick={() => {
-                setPage(p => Math.min(pages, p + 1));
-                document.getElementById("grid")?.scrollIntoView({ block: "start", behavior: "smooth" });
-              }}
-            >
-              下一页
-            </button>
-            <span className="pagination-page">
-              {page} / {pages} 页
-            </span>
-            <span className="pagination-total">共 {total} 张图像</span>
-          </div>
-        </div>
-      )}
+      <Pagination id="pager" total={total} page={page} size={pageSize} unit="张图像" label="图像" onPage={number=>{
+        setPage(number);document.getElementById("grid")?.scrollIntoView({block:"start",behavior:"smooth"});
+      }} />
 
       {/* Stage 1 & Stage 2 Overlays portalled to document.body */}
       {typeof document !== "undefined" &&
@@ -497,16 +426,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
             <h2 className="detail-title" id="detail-title">
               图像详情
             </h2>
-            <button
-              className="detail-close"
-              type="button"
-              id="close"
-              title="关闭图像详情"
-              aria-label="关闭图像详情"
-              onClick={closeViewer}
-            >
-              ×
-            </button>
+            <IconButton icon="close" type="button" id="close" title="关闭图像详情" label="关闭图像详情" onClick={closeViewer} />
           </header>
 
           <div className="detail-scroll">
@@ -638,7 +558,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
         item={
           activeSample
             ? {
-                id: activeSample.sample_id,
+                id: activeSample.sample_id,sampleId:activeSample.sample_id,
                 title: activeSample.relative_path,
                 imageUrl: mediaUrl(activeSample, "image"),
                 width: activeSample.width,
@@ -648,7 +568,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
             : null
         }
         items={samples.map(s => ({
-          id: s.sample_id,
+          id: s.sample_id,sampleId:s.sample_id,
           title: s.relative_path,
           imageUrl: mediaUrl(s, "image"),
           width: s.width,

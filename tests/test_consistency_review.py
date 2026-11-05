@@ -12,6 +12,23 @@ from iad_core.consistency.service import ConsistencyService
 from iad_core.entry import sample_get
 
 
+def test_reject_difference_persists_without_changing_human_quality_or_comparison(dataset):
+    db,_,config=dataset
+    service=ConsistencyService(db)
+    result=service.compare(ConsistencyCompare(sample_a=config.dataset.id+':dent.png',sample_b=config.dataset.id+':scratch.png'))
+    review=ConsistencyReview(db)
+    request=dict(client_request_id=str(uuid4()),evidence_id=result.evidence_id,result_id=result.result_id,
+        difference_ids=[item.difference_id for item in result.annotation.differences],reviewer='质检',comment='已核对图像，排除此冲突',
+        action={'kind':'REJECT_DIFFERENCE'})
+    saved=review.submit(request)
+    assert review.submit(request)==saved
+    context=review.context(result.evidence_id)
+    assert all(item.review_state=='RESOLVED' and item.correction_state=='NOT_REQUIRED' for item in context.differences)
+    assert context.decisions[-1].request.action.kind=='REJECT_DIFFERENCE'
+    assert saved.review_decision_ids==[]
+    assert service.evidence(result.evidence_id).result==result
+
+
 def test_expected_policy_difference_closes_review_without_erasing_facts_or_sources(dataset):
     db, _, config = dataset
     service = ConsistencyService(db)
@@ -157,14 +174,14 @@ def test_report_freezes_review_and_correction_counts_without_erasing_differences
     request = ConsistencyQuery(selection={'kind': 'scope', 'subjects': {'kind': 'all_registered'}})
     reports = ConsistencyReports(db)
     before = reports.report(request)
-    assert before.pending_review == len(result.annotation.differences)
+    assert before.pending_review == len(result.annotation.factual_differences)
     assert before.pending_correction == 0
     ConsistencyReview(db).submit(ConsistencyReviewSubmission(client_request_id=uuid4(), evidence_id=result.evidence_id,
         result_id=result.result_id, difference_ids=[item.difference_id for item in result.annotation.differences],
         reviewer='统计复核人', comment='确认差异，待源文件修正', action={'kind': 'CONFIRM_DIFFERENCE'}))
     after = reports.report(request)
     assert after.pending_review == 0
-    assert after.pending_correction == len(result.annotation.differences)
+    assert after.pending_correction == len(result.annotation.factual_differences)
     assert after.statistics.current.differences == before.statistics.current.differences
     assert reports.report(ConsistencyQuery(selection=request.selection, review_state='OPEN')).page.total == 0
     assert reports.report(ConsistencyQuery(selection=request.selection, correction_state='PROPOSED')).page.total == 1

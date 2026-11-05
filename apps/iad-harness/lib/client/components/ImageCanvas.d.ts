@@ -1,7 +1,10 @@
 import React from "react";
 import { type AnnotationLayerSource } from "./AnnotationLayer.js";
 import { type ImageView, type InspectionContext, type InspectionSelection, type InspectionTransform } from "../inspection.js";
+import type { VisualEvidence } from '../../shared/contracts.js';
 export interface ImageSource {
+    sampleId?: string;
+    evidence?: VisualEvidence;
     src: string;
     title: string;
     caption?: string;
@@ -21,11 +24,7 @@ export interface ImageNavigation {
 }
 type ImageCanvasProps = {
     image: ImageSource;
-    onClose?(): void;
     navigation?: ImageNavigation;
-    embedded?: boolean;
-    context?: React.ReactNode;
-    closeLabel?: string;
     onExpand?(view: ImageView): void;
     control?: {
         transform: InspectionTransform;
@@ -42,6 +41,6 @@ export declare function AnnotatedImage({ image, visible, onLoad }: {
     visible?: boolean;
     onLoad?: React.ReactEventHandler<HTMLImageElement>;
 }): React.JSX.Element;
-export declare function ImageCanvas({ image, onClose, navigation, embedded, onExpand, context, closeLabel, control, focusRegion, overlay }: ImageCanvasProps): React.JSX.Element;
+export declare function ImageCanvas({ image, navigation, onExpand, control, focusRegion, overlay }: ImageCanvasProps): React.JSX.Element;
 export {};
 //# sourceMappingURL=ImageCanvas.d.ts.map

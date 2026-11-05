@@ -11,7 +11,7 @@ export const reviewStyles = `.iad-workbench[data-page=industrial-review]:has(.ia
 .iad-review-queue-slot {overflow:auto;}
 .iad-review-queue {padding:0;background:transparent;}
 .iad-review-queue .iad-grid {display:flex;flex-direction:column;gap:8px;}
-.iad-review-queue button.iad-sample {display:grid;grid-template-columns:40px minmax(0,1fr);gap:0 8px;padding:8px;height:64px;}
+.iad-review-queue button.iad-sample {display:grid;grid-template-columns:40px minmax(0,1fr);gap:0 8px;}
 .iad-review-queue .iad-thumb {grid-row:1/3;align-self:center;}
 .iad-review-queue .iad-sample>strong {padding:0;line-height:22px;}
 .iad-review-queue .iad-sample-label {padding:0;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}

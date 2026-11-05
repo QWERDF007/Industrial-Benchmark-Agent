@@ -14,6 +14,24 @@ export function DeleteIcon() {
 export function CloseIcon() {
     return _jsx("svg", { "aria-hidden": "true", width: "20", height: "20", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", children: _jsx("path", { d: "m6 6 12 12M18 6 6 18" }) });
 }
+export function ClearFilterIcon() {
+    return _jsxs("svg", { "aria-hidden": "true", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", children: [_jsx("path", { d: "M4 5h16l-6.5 7.5v4.3l-3.5 2v-6.3L4 5Z" }), _jsx("path", { d: "m17 17 4 4m0-4-4 4" })] });
+}
+export function ZoomInIcon() {
+    return _jsxs("svg", { "aria-hidden": "true", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", children: [_jsx("circle", { cx: "10", cy: "10", r: "7" }), _jsx("path", { d: "m15 15 6 6M7 10h6M10 7v6" })] });
+}
+export function ZoomOutIcon() {
+    return _jsxs("svg", { "aria-hidden": "true", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", children: [_jsx("circle", { cx: "10", cy: "10", r: "7" }), _jsx("path", { d: "m15 15 6 6M7 10h6" })] });
+}
+export function FitIcon() {
+    return _jsxs("svg", { "aria-hidden": "true", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", children: [_jsx("circle", { cx: "12", cy: "12", r: "2.8" }), _jsx("path", { d: "M8 4H5a1 1 0 0 0-1 1v3M16 4h3a1 1 0 0 1 1 1v3M4 16v3a1 1 0 0 0 1 1h3M20 16v3a1 1 0 0 1-1 1h-3" })] });
+}
+export function ExpandIcon() {
+    return _jsx("svg", { "aria-hidden": "true", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", children: _jsx("path", { d: "M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" }) });
+}
+export function EyeOffIcon() {
+    return _jsxs("svg", { "aria-hidden": "true", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", children: [_jsx("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" }), _jsx("circle", { cx: "12", cy: "12", r: "3" }), _jsx("path", { d: "m3 3 18 18" })] });
+}
 export function DatasetIcon({ size = 20 }) {
     return _jsxs("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", children: [_jsx("ellipse", { cx: "12", cy: "5", rx: "8", ry: "3" }), _jsx("path", { d: "M4 5v14c0 4 16 4 16 0V5M4 12c0 4 16 4 16 0" })] });
 }

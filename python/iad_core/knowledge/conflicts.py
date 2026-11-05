@@ -10,7 +10,7 @@ class KnowledgeConflicts:
     @staticmethod
     def reconcile(parent: Optional[KnowledgeSnapshot], checks: List[KnowledgeCheck],
                   observations: List[KnowledgeObservationStep], evidence: List[KnowledgeEvidence],
-                  groups: dict[str, str]) -> List[KnowledgeConflict]:
+                  groups: dict[str, str], *, comparison_source_ids: Optional[set[str]] = None) -> List[KnowledgeConflict]:
         if parent is None:
             return []
         conflicts = {item.conflict_id: item.model_copy(deep=True) for item in parent.conflicts}
@@ -21,7 +21,7 @@ class KnowledgeConflicts:
             if step.purpose not in ('current', 'revision'):
                 continue
             for observation in step.result.observations:
-                if observation.status != 'contradicts':
+                if observation.status != 'contradicts' or observation.sample_id in (comparison_source_ids or set()):
                     continue
                 candidate = next((check for check in checks if check.check_id == observation.check_id), None)
                 related = [cid for cid in (candidate.predecessor_check_ids if candidate else []) if cid in prior]

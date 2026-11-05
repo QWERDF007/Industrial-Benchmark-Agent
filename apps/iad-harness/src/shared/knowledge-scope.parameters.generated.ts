@@ -5,15 +5,6 @@ export const knowledgeScopeParameters = {
     "title": "Dataset Id",
     "required": true
   },
-  "kind": {
-    "type": "string",
-    "enum": [
-      "normal",
-      "defect"
-    ],
-    "title": "Kind",
-    "required": true
-  },
   "objective": {
     "type": "string",
     "title": "Objective",
@@ -31,9 +22,5 @@ export const knowledgeScopeParameters = {
   "starting_version_id": {
     "type": "string",
     "title": "Starting Version Id"
-  },
-  "normal_version_id": {
-    "type": "string",
-    "title": "Normal Version Id"
   }
 } as const;

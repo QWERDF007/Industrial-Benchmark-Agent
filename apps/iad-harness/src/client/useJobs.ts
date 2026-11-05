@@ -14,12 +14,13 @@ interface JobsState {
 
 export function useJobs(
   kind: "audit" | "knowledge" | "exploration",
-  datasetId: string,
+  datasetId: string | string[],
   onProgress: () => void,
   selectedRunId = "",
   refreshRevision = 0,
 ) {
-  const identity = `${kind}:${datasetId}`;
+  const scope = JSON.stringify([...new Set((Array.isArray(datasetId) ? datasetId : [datasetId]).filter(Boolean))].sort());
+  const identity = `${kind}:${scope}`;
   const [snapshot, setSnapshot] = useState<JobsState>({
     identity,
     jobs: [],
@@ -44,7 +45,8 @@ export function useJobs(
         syncState: "syncing",
       });
     }
-    if (!datasetId) return;
+    const datasetIds: string[] = JSON.parse(scope);
+    if (!datasetIds.length) return;
     let timer: ReturnType<typeof setTimeout>,
       reading = false,
       active = true,
@@ -62,28 +64,34 @@ export function useJobs(
           : previous,
       );
       try {
-        const result = await request<{
+        const results = await Promise.all(datasetIds.map(id => request<{
           jobs: JobSnapshot[];
           pending_count?: number;
         }>(
-          `/${kind}/jobs?dataset_id=${encodeURIComponent(datasetId)}`,
+          kind === 'audit' ? `/audit/jobs?dataset_id=${encodeURIComponent(id)}` : `/analysis/jobs?${new URLSearchParams({dataset_id:id,analysis_kind:kind})}`,
           undefined,
           undefined,
           readingController.signal,
-        );
+        )));
+        const result = {
+          jobs: [...new Map(results.flatMap(result => result.jobs).map(job => [job.run_id, job])).values()]
+            .sort((a, b) => b.submitted_at.localeCompare(a.submitted_at)),
+          pending_count: results.reduce((total, result) => total + (result.pending_count || 0), 0),
+        };
         if (
           selectedRunId &&
-          !result.jobs.some((job) => job.run_id === selectedRunId)
+          !result.jobs.some((job) => job.run_id === selectedRunId ||
+            (job.job_type === 'ANALYSIS_WORKFLOW' && job.root_run_id === selectedRunId))
         ) {
           const selected = await request<JobSnapshot>(
-            `/${kind}/status/${encodeURIComponent(selectedRunId)}`,
+            `/${kind === 'audit' ? 'audit' : 'analysis'}/status/${encodeURIComponent(selectedRunId)}`,
             undefined,
             undefined,
             readingController.signal,
           );
-          if (selected.dataset_id !== datasetId)
+          if (!datasetIds.includes(selected.dataset_id) && !selected.dataset_ids.some(id=>datasetIds.includes(id)))
             throw new Error("所选作业不属于当前数据集");
-          result.jobs.push(selected);
+          if (!result.jobs.some(job=>job.run_id===selected.run_id)) result.jobs.push(selected);
         }
         if (controller.signal.aborted) return;
         if (readingController.signal.aborted) throw new Error("状态读取超时");
@@ -170,7 +178,7 @@ export function useJobs(
   }, [
     identity,
     kind,
-    datasetId,
+    scope,
     onProgress,
     revision,
     selectedRunId,

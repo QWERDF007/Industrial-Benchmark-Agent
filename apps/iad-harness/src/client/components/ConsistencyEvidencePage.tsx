@@ -32,7 +32,7 @@ export function ConsistencyEvidencePage({evidenceId}:{evidenceId:string}) {
     {!bundle && !error && <p role="status">正在读取冻结证据…</p>}
     {bundle && <>
       <div className="iad-row"><strong>当次检查的冻结内容</strong><time dateTime={bundle.checked_at}>{new Date(bundle.checked_at).toLocaleString()}</time></div>
-      <p className="iad-muted">查询：{sourceStates[bundle.source_states.left]} · 候选：{sourceStates[bundle.source_states.right]}</p>
+      <p className="iad-muted">查询：{sourceStates[bundle.source_states.left]}，候选：{sourceStates[bundle.source_states.right]}</p>
       <FrozenConsistencyComparison bundle={bundle} />
       <ConsistencyReviewPanel key={bundle.result.evidence_id} bundle={bundle} />
     </>}

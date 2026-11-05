@@ -1,3 +1,5 @@
+import {Select} from './Select.js';
+import {Button} from './Button.js';
 import React, {useEffect, useRef, useState} from 'react';
 import {v4 as uuid} from 'uuid';
 import type {ConsistencyReviewContext, ConsistencyReviewSubmission, CorrectionCheck, ConsistencyResult, EvidenceBundle} from '../../shared/domain.generated.js';
@@ -7,7 +9,7 @@ import {useWorkspace} from '../workspace.js';
 import {ConsistencyRegionProposal} from './ConsistencyRegionProposal.js';
 
 type Action = ConsistencyReviewSubmission['action'];
-const actions:Record<Action['kind'],string> = {CONFIRM_DIFFERENCE:'确认差异，待修正',EXPECTED_POLICY_DIFFERENCE:'属于不同规范',NEEDS_CONTEXT:'需要补充依据',SET_EFFECTIVE_QUALITY:'提交有效质量裁决',PROPOSE_REGION_CHANGE:'提出区域修正建议'};
+const actions:Record<Action['kind'],string> = {CONFIRM_DIFFERENCE:'确认差异，待修正',EXPECTED_POLICY_DIFFERENCE:'属于不同规范',REJECT_DIFFERENCE:'排除冲突',NEEDS_CONTEXT:'需要补充依据',SET_EFFECTIVE_QUALITY:'提交有效质量裁决',PROPOSE_REGION_CHANGE:'提出区域修正建议'};
 const reviewStates = {OPEN:'待复核',NEEDS_CONTEXT:'待补充依据',RESOLVED:'已裁决'};
 const correctionStates = {NOT_REQUIRED:'无需修正',PROPOSED:'建议未应用',AWAITING_RESCAN:'等待源修正及重扫',VERIFIED:'重扫已验证'};
 
@@ -71,20 +73,20 @@ export function ConsistencyReviewPanel({bundle}:{bundle:EvidenceBundle}) {
     </tbody></table></div>}
     {!current && <div className="iad-row"><p className="iad-muted">历史来源可补充处置说明；质量裁决和区域建议需重新比较当前来源。</p><button disabled={busy||hasPending} onClick={()=>void compareCurrent()}>重新比较当前来源</button></div>}
     <form onSubmit={event=>{event.preventDefault();void submit();}}><fieldset disabled={busy||hasPending}>
-      <div className="iad-config-bar"><label className="iad-field">处置动作<select aria-label="一致性处置动作" value={kind} onChange={event=>setKind(event.target.value as Action['kind'])}>{Object.entries(actions).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+      <div className="iad-config-bar"><label className="iad-field">处置动作<Select aria-label="一致性处置动作" value={kind} onChange={event=>setKind(event.target.value as Action['kind'])}>{Object.entries(actions).map(([value,label])=><option key={value} value={value}>{label}</option>)}</Select></label>
       <label className="iad-field">复核人<input aria-label="一致性复核人" value={reviewer} onChange={event=>setReviewer(event.target.value)} required /></label></div>
-      {kind==='SET_EFFECTIVE_QUALITY' && <section aria-label="质量裁决目标"><h3>实际目标样本</h3>{sources.map(source=><label className="iad-field" key={source.sample.sample_id}>{source.sample.relative_path}<select aria-label={`质量裁决 ${source.sample.relative_path}`} value={quality[source.sample.sample_id]||''} onChange={event=>setQuality({...quality,[source.sample.sample_id]:event.target.value as typeof quality[string]})}>
+      {kind==='SET_EFFECTIVE_QUALITY' && <section aria-label="质量裁决目标"><h3>实际目标样本</h3>{sources.map(source=><label className="iad-field" key={source.sample.sample_id}>{source.sample.relative_path}<Select aria-label={`质量裁决 ${source.sample.relative_path}`} value={quality[source.sample.sample_id]||''} onChange={event=>setQuality({...quality,[source.sample.sample_id]:event.target.value as typeof quality[string]})}>
         <option value="">不修改</option>{(['PASS','FAIL','HARD_NORMAL','UNCERTAIN'] as const).map(value=><option key={value} value={value}>{reviewLabel(value)}</option>)}
-      </select></label>)}</section>}
+      </Select></label>)}</section>}
       {kind==='PROPOSE_REGION_CHANGE' && <ConsistencyRegionProposal sources={sources} differences={selectedDiffs} onChange={setRegion} />}
       <label className="iad-field">处置说明<textarea aria-label="一致性处置说明" required value={comment} onChange={event=>setComment(event.target.value)} /></label>
-    </fieldset>{hasPending && pending.current && <div role="status">提交结果待确认 · {actions[pending.current.action.kind]} · {pending.current.reviewer}<p>{pending.current.comment}</p>
-      {pending.current.action.kind==='SET_EFFECTIVE_QUALITY' && <ul>{pending.current.action.targets.map(target=><li key={target.sample_id}>{sources.find(source=>source.sample.sample_id===target.sample_id)?.sample.relative_path} · {reviewLabel(target.quality)}</li>)}</ul>}
-      {pending.current.action.kind==='PROPOSE_REGION_CHANGE' && <ul>{pending.current.action.changes.map((change,index)=><li key={index}>{sources.find(source=>source.sample.sample_id===change.sample_id)?.sample.relative_path} · {change.operation}</li>)}</ul>}
+    </fieldset>{hasPending && pending.current && <div role="status">提交结果待确认，{actions[pending.current.action.kind]}，{pending.current.reviewer}<p>{pending.current.comment}</p>
+      {pending.current.action.kind==='SET_EFFECTIVE_QUALITY' && <ul>{pending.current.action.targets.map(target=><li key={target.sample_id}>{sources.find(source=>source.sample.sample_id===target.sample_id)?.sample.relative_path}，{reviewLabel(target.quality)}</li>)}</ul>}
+      {pending.current.action.kind==='PROPOSE_REGION_CHANGE' && <ul>{pending.current.action.changes.map((change,index)=><li key={index}>{sources.find(source=>source.sample.sample_id===change.sample_id)?.sample.relative_path}，{change.operation}</li>)}</ul>}
     </div>}
-    <button className="iad-primary" disabled={busy||(!hasPending&&!canSubmit)}>{busy?'提交中…':hasPending?'重试同一处置':'提交处置'}</button></form>
+    <Button variant="primary" disabled={busy||(!hasPending&&!canSubmit)}>{busy?'提交中…':hasPending?'重试同一处置':'提交处置'}</Button></form>
     {error && <p role="alert" className="iad-error">{error}</p>}{notice && <p role="status">{notice}</p>}
-    {!!context?.decisions.length && <details><summary>处置记录 · {context.decisions.length}</summary>{context.decisions.map(decision=><div key={decision.decision_id}><p>{actions[decision.request.action.kind]} · {decision.request.reviewer} · {decision.request.comment}</p>
+    {!!context?.decisions.length && <details><summary>处置记录，{context.decisions.length}</summary>{context.decisions.map(decision=><div key={decision.decision_id}><p>{actions[decision.request.action.kind]}，{decision.request.reviewer}，{decision.request.comment}</p>
       {decision.request.action.kind==='PROPOSE_REGION_CHANGE' && <button disabled={busy||hasPending||!reviewer.trim()} onClick={()=>void verify(decision.decision_id)}>验证重扫结果</button>}
     </div>)}</details>}
   </section>;

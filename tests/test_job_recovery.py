@@ -200,7 +200,9 @@ def test_operator_recovers_a_killed_worker_without_reauditing_committed_samples(
     import subprocess
     import sys
     import threading
+    import time
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from iad_core.workbench.job_snapshots import JobSnapshots
 
     db, _, config = dataset
     external, _, _ = mllm_api
@@ -218,7 +220,7 @@ def test_operator_recovers_a_killed_worker_without_reauditing_committed_samples(
                 image = next(json.loads(item['text'][5:]) for item in document['messages'][0]['content']
                              if item['type'] == 'text' and item['text'].startswith('视觉证据：'))
                 calls.append(image['evidence_id'])
-                if len(calls) == 2:
+                if len(calls) >= 2:
                     entered.set()
                     assert release.wait(15)
             result = external.send(httpx.Request('POST', 'http://test-model' + self.path, content=body))
@@ -244,8 +246,15 @@ def test_operator_recovers_a_killed_worker_without_reauditing_committed_samples(
         response = json.loads(worker.stdout.readline())
         assert response['event'] == 'result', response
         first = response['data']
-        assert entered.wait(10), 'Worker must commit one sample and enter the second real HTTP request'
-        completed_id = first['sample_ids'][0]
+        assert entered.wait(10), 'Worker must enter concurrent real HTTP requests'
+        deadline = time.monotonic() + 5
+        while True:
+            state = JobSnapshots(db).snapshot(first['run_id'])
+            if state.completed_sample_ids or time.monotonic() >= deadline:
+                break
+            time.sleep(.01)
+        assert len(state.completed_sample_ids) == 1
+        completed_id = state.completed_sample_ids[0]
         committed = sample_get({'sample_id': completed_id}, db.db_path)['suggestion']
         assert committed and committed['audit_run_id'] == first['run_id']
         worker.kill()

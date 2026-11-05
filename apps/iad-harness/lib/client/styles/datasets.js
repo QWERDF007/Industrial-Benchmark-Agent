@@ -50,123 +50,6 @@ export const datasetsStyles = `
   padding-right: 0 !important;
 }
 
-:is(.iad-workbench, [data-page="industrial-datasets"], [data-page="industrial-images"]) :is(
-  button.expand,
-  button.pencil,
-  button.icon-button,
-  button.copy-id,
-  button.drawer-close,
-  button.modal-x,
-  button.iad-icon-button,
-  button.iad-subtle-icon,
-  #refresh,
-  #reset
-) {
-  border: 0 !important;
-  border-color: transparent !important;
-  min-height: 0 !important;
-  padding: 0 !important;
-  box-shadow: none !important;
-  outline: none !important;
-  transition: background-color 140ms ease, color 140ms ease !important;
-}
-
-:is(.iad-workbench, [data-page="industrial-datasets"], [data-page="industrial-images"]) :is(
-  button.expand,
-  button.pencil,
-  button.icon-button,
-  button.copy-id,
-  button.drawer-close,
-  button.modal-x,
-  button.iad-icon-button,
-  button.iad-subtle-icon,
-  #refresh,
-  #reset
-):not(:hover) {
-  background: transparent !important;
-  background-color: transparent !important;
-}
-
-:is(.iad-workbench, [data-page="industrial-datasets"]) :is(
-  button.expand,
-  button.pencil,
-  button.icon-button,
-  button.copy-id,
-  button.drawer-close,
-  button.modal-x,
-  button.iad-icon-button
-):hover {
-  background: var(--hover, #eaf0fe) !important;
-  background-color: var(--hover, #eaf0fe) !important;
-  cursor: pointer !important;
-}
-
-:is(.iad-workbench, [data-page="industrial-datasets"]) button.expand:hover {
-  background: #dfe8fc !important;
-  background-color: #dfe8fc !important;
-  color: #1e4bb8 !important;
-}
-
-:is(.iad-workbench, [data-page="industrial-datasets"]) button.pencil:hover {
-  background: #e4eafb !important;
-  background-color: #e4eafb !important;
-  color: #2458d5 !important;
-}
-
-:is(.iad-workbench, [data-page="industrial-datasets"]) button.plus-action:hover {
-  background: #dde9ff !important;
-  background-color: #dde9ff !important;
-  color: #194bad !important;
-}
-
-:is(.iad-workbench, [data-page="industrial-datasets"]) button[data-delete]:hover {
-  background: #fee4e2 !important;
-  background-color: #fee4e2 !important;
-  color: #d92d20 !important;
-}
-
-:is(.iad-workbench, [data-page="industrial-datasets"]) button.copy-id:hover {
-  background: #eaf0ff !important;
-  background-color: #eaf0ff !important;
-  color: var(--primary, #2458d5) !important;
-}
-
-:is(.iad-workbench, [data-page="industrial-datasets"]) :is(button.drawer-close, button.modal-x):hover {
-  background: var(--hover, #eaf0fe) !important;
-  background-color: var(--hover, #eaf0fe) !important;
-  color: #182230 !important;
-}
-
-[data-ds-dark-theme] :is(.iad-workbench, [data-page="industrial-datasets"]) :is(
-  button.expand,
-  button.pencil,
-  button.icon-button,
-  button.copy-id,
-  button.drawer-close,
-  button.modal-x,
-  button.iad-icon-button
-):hover {
-  background: rgba(255, 255, 255, 0.12) !important;
-  background-color: rgba(255, 255, 255, 0.12) !important;
-}
-
-[data-ds-dark-theme] :is(.iad-workbench, [data-page="industrial-datasets"]) button.expand:hover,
-[data-ds-dark-theme] :is(.iad-workbench, [data-page="industrial-datasets"]) button.pencil:hover,
-[data-ds-dark-theme] :is(.iad-workbench, [data-page="industrial-datasets"]) button.plus-action:hover,
-[data-ds-dark-theme] :is(.iad-workbench, [data-page="industrial-datasets"]) button.copy-id:hover {
-  color: var(--primary, #a7c5ff) !important;
-}
-
-[data-ds-dark-theme] :is(.iad-workbench, [data-page="industrial-datasets"]) button[data-delete]:hover {
-  background: rgba(239, 68, 68, 0.22) !important;
-  background-color: rgba(239, 68, 68, 0.22) !important;
-  color: #fca5a5 !important;
-}
-
-[data-ds-dark-theme] :is(.iad-workbench, [data-page="industrial-datasets"]) :is(button.drawer-close, button.modal-x):hover {
-  color: #fff !important;
-}
-
 .section-bar {
   display: flex;
   align-items: center;
@@ -262,25 +145,6 @@ export const datasetsStyles = `
 }
 
 .name-area.child { padding-left: 33px; }
-
-.expand {
-  height: 25px !important;
-  width: 25px !important;
-  padding: 4px !important;
-  border: 0 !important;
-  border-color: transparent !important;
-  background: transparent !important;
-  color: #5d6d84;
-  border-radius: 4px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  min-height: 0 !important;
-}
-
-.expand:hover { background: #dfe8fc !important; }
-.expand svg { width: 16px; height: 16px; transition: transform .15s; }
 .expand[data-expanded="false"] svg { transform: rotate(-90deg); }
 
 .name-text {
@@ -299,24 +163,7 @@ export const datasetsStyles = `
 
 .pencil {
   margin-left: auto;
-  display: grid;
-  flex: 0 0 29px;
-  height: 29px !important;
-  width: 29px !important;
-  min-height: 0 !important;
-  border: 0 !important;
-  border-color: transparent !important;
-  background: transparent !important;
-  color: #7888a0;
-  place-items: center;
-  border-radius: 5px;
-  cursor: pointer;
-  padding: 0 !important;
 }
-
-.parent-row .pencil { color: #8291a7; }
-.pencil:hover, .icon-button:hover { background: #e4eafb !important; color: #2458d5; }
-.pencil svg, .icon-button svg { height: 16px; width: 16px; }
 
 .actions {
   display: flex;
@@ -324,24 +171,6 @@ export const datasetsStyles = `
   align-items: center;
   gap: 4px;
 }
-
-.icon-button {
-  height: 31px !important;
-  width: 31px !important;
-  min-height: 0 !important;
-  border: 0 !important;
-  border-color: transparent !important;
-  background: transparent !important;
-  display: grid;
-  place-items: center;
-  border-radius: 5px;
-  color: #7a8ba3;
-  cursor: pointer;
-  padding: 0 !important;
-}
-
-.plus-action { color: #3565bc; }
-.plus-action:hover { background: #dde9ff !important; color: #194bad; }
 
 .edit-wrap {
   display: flex;
@@ -427,26 +256,6 @@ export const datasetsStyles = `
   overflow-wrap: anywhere;
 }
 
-.drawer-close {
-  width: 34px !important;
-  height: 34px !important;
-  flex: none;
-  background: transparent !important;
-  color: var(--sub) !important;
-  border: 0 !important;
-  border-color: transparent !important;
-  border-radius: 5px !important;
-  font-size: 25px !important;
-  line-height: 30px !important;
-  cursor: pointer;
-  padding: 0 !important;
-  min-height: 0 !important;
-  display: grid;
-  place-items: center;
-}
-
-.drawer-close:hover { background: var(--hover) !important; }
-
 .drawer-body {
   overflow-y: auto;
   min-height: 0;
@@ -483,7 +292,7 @@ export const datasetsStyles = `
   color: inherit;
 }
 
-.dataset-drawer .field .control button { padding-left: 12px; padding-right: 12px; flex: none; }
+.dataset-drawer .field .control button { flex: none; }
 
 .identifier-section {
   border-top: 1px solid var(--line);
@@ -518,24 +327,6 @@ export const datasetsStyles = `
 
 .identifier-value .copy-id {
   margin-left: auto;
-  flex: none;
-  background: transparent !important;
-  color: var(--sub) !important;
-  border: 0 !important;
-  border-color: transparent !important;
-  border-radius: 5px !important;
-  display: grid;
-  place-items: center;
-  width: 30px !important;
-  height: 30px !important;
-  min-height: 0 !important;
-  padding: 0 !important;
-  cursor: pointer;
-}
-
-.identifier-value .copy-id:hover {
-  background: #eaf0ff !important;
-  color: var(--primary) !important;
 }
 
 .group-identifier .identifier-section {
@@ -598,26 +389,6 @@ export const datasetsStyles = `
 }
 
 /* Modal dialogs */
-.modal-x {
-  border: 0 !important;
-  border-color: transparent !important;
-  background: transparent !important;
-  color: var(--sub) !important;
-  font-size: 24px !important;
-  line-height: 1 !important;
-  cursor: pointer;
-  padding: 0 !important;
-  min-height: 0 !important;
-  width: 32px !important;
-  height: 32px !important;
-  border-radius: 5px !important;
-  display: grid;
-  place-items: center;
-}
-
-.modal-x:hover {
-  background: var(--hover) !important;
-}
 
 .modal-field { margin-bottom: 17px; }
 
@@ -703,39 +474,6 @@ export const datasetsStyles = `
 .toast.hidden { display: none; }
 
 /* Buttons */
-:is(.iad-workbench, .iad-detail-dialog, .iad-floating-menu-panel, [data-page="industrial-datasets"]) button:is(.primary, .iad-primary) {
-  background: var(--iad-primary-fill, var(--primary, #275bcc));
-  border: 1px solid var(--iad-primary-fill, var(--primary, #275bcc));
-  color: var(--iad-on-primary, #fff);
-  padding: 8px 12px;
-  border-radius: var(--iad-radius, 6px);
-  font-weight: 500;
-  font-size: 14px;
-  min-height: var(--iad-control-height, 40px);
-  cursor: pointer;
-}
-:is(.iad-workbench, .iad-detail-dialog, .iad-floating-menu-panel, [data-page="industrial-datasets"]) button:is(.primary, .iad-primary):hover:not(:disabled) {
-  background: color-mix(in srgb, var(--iad-primary-fill, #275bcc) 88%, #000) !important;
-  border-color: color-mix(in srgb, var(--iad-primary-fill, #275bcc) 88%, #000) !important;
-  color: var(--iad-on-primary, #fff) !important;
-}
-:is(.iad-workbench, .iad-detail-dialog, .iad-floating-menu-panel, [data-page="industrial-datasets"]) button:is(.primary, .iad-primary):disabled {
-  opacity: .5;
-  cursor: not-allowed;
-}
-
-button.secondary {
-  min-height: 35px;
-  background: var(--iad-surface, #fff);
-  border: 1px solid #aab9cd;
-  border-radius: 5px;
-  padding: 8px 12px;
-  font-size: 13px;
-  color: inherit;
-  cursor: pointer;
-}
-button.secondary:hover { background: var(--hover); }
-button.secondary:disabled { opacity: .5; cursor: not-allowed; }
 
 /* Responsive */
 @media(max-width: 1200px) {
@@ -802,24 +540,6 @@ button.secondary:disabled { opacity: .5; cursor: not-allowed; }
   color: #14243d !important;
   margin: 0 !important;
   line-height: 1.4 !important;
-}
-
-.modal-scrim .modal.add-dataset-modal .modal-top .modal-x {
-  border: 0 !important;
-  background: none !important;
-  color: #5f6f86 !important;
-  font-size: 24px !important;
-  line-height: 1 !important;
-  cursor: pointer !important;
-  width: auto !important;
-  height: auto !important;
-  padding: 0 !important;
-  box-shadow: none !important;
-}
-
-.modal-scrim .modal.add-dataset-modal .modal-top .modal-x:hover {
-  background: transparent !important;
-  color: #14243d !important;
 }
 
 .modal-scrim .modal.add-dataset-modal .modal-field {
@@ -907,22 +627,8 @@ button.secondary:disabled { opacity: .5; cursor: not-allowed; }
   min-width: 0 !important;
 }
 
-.modal-scrim .modal.add-dataset-modal .dialog-path button.secondary {
+.modal-scrim .modal.add-dataset-modal .dialog-path button.iad-button {
   flex: none !important;
-  height: 40px !important;
-  min-height: 40px !important;
-  padding: 0 16px !important;
-  background: #ffffff !important;
-  border: 1px solid #aab9cd !important;
-  border-radius: 5px !important;
-  font-size: 13px !important;
-  color: #14243d !important;
-  cursor: pointer !important;
-}
-
-.modal-scrim .modal.add-dataset-modal .dialog-path button.secondary:hover {
-  background: #f6f8fb !important;
-  border-color: #92a4bc !important;
 }
 
 .modal-scrim .modal.add-dataset-modal .modal-hint {
@@ -943,48 +649,6 @@ button.secondary:disabled { opacity: .5; cursor: not-allowed; }
   background: transparent !important;
   height: auto !important;
   min-height: 0 !important;
-}
-
-.modal-scrim .modal.add-dataset-modal .modal-actions button.secondary {
-  min-height: 36px !important;
-  height: 36px !important;
-  background: #ffffff !important;
-  border: 1px solid #aab9cd !important;
-  border-radius: 5px !important;
-  padding: 0 16px !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  color: #14243d !important;
-  cursor: pointer !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.modal-scrim .modal.add-dataset-modal .modal-actions button.secondary:hover:not(:disabled) {
-  background: #f6f8fb !important;
-  border-color: #92a4bc !important;
-}
-
-.modal-scrim .modal.add-dataset-modal .modal-actions button.primary {
-  min-height: 36px !important;
-  height: 36px !important;
-  background: #2458d5 !important;
-  border: 1px solid #2458d5 !important;
-  border-radius: 5px !important;
-  padding: 0 18px !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  color: #ffffff !important;
-  cursor: pointer !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.modal-scrim .modal.add-dataset-modal .modal-actions button.primary:hover:not(:disabled) {
-  background: #1c49b6 !important;
-  border-color: #1c49b6 !important;
 }
 
 [data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal {
@@ -1017,10 +681,5 @@ button.secondary:disabled { opacity: .5; cursor: not-allowed; }
 }
 [data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-hint {
   color: #94a3b8 !important;
-}
-[data-ds-dark-theme] .modal-scrim .modal.add-dataset-modal .modal-actions button.secondary {
-  background: #1e293b !important;
-  border-color: #475569 !important;
-  color: #e2e8f0 !important;
 }
 `;

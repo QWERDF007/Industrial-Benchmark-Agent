@@ -124,3 +124,9 @@ def test_exploration_uses_frozen_provider_model_and_does_not_persist_credentials
     finally:
         release.set()
         close_workbenches(); server.shutdown(); server.server_close(); thread.join(3)
+
+
+@pytest.mark.parametrize('value',[{'type':'text'},{'type':'json_schema','json_schema':{}},{'type':'json_object','schema':{}}])
+def test_model_output_extension_cannot_replace_the_analysis_schema(value):
+    from iad_core.workbench.model_profile import ModelLimits
+    with pytest.raises(ValueError):ModelLimits(request_parameters={'response_format':value})

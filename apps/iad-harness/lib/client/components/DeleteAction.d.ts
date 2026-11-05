@@ -2,7 +2,7 @@ import React from "react";
 export declare function DeleteAction({ title, name, description, onDelete, disabled, className, restoreFocus }: {
     title: string;
     name: string;
-    description: string;
+    description?: string;
     onDelete(submissionId: string): Promise<void>;
     disabled?: boolean;
     className?: string;

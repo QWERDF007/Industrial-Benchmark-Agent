@@ -10,7 +10,7 @@ export function AuditEvidence({ analysis, ids, label, onEvidence, selectedId }: 
     const image = images.get(id);
     return <button key={id} data-evidence-id={id} aria-current={id === selectedId ? "true" : undefined} disabled={!image} onClick={() => image && onEvidence(image)}
       aria-label={`查看${label}的证据 ${index + 1}`}>
-      证据 {index + 1} · {!image ? "不可用" : image.representation === "annotation_mask" ? "定位图" : image.role === "overview" ? "全图" : "ROI"}
+      证据 {index + 1}，{!image ? "不可用" : image.representation === "annotation_mask" ? "定位图" : image.role === "overview" ? "全图" : "ROI"}
     </button>;
   })}</div>;
 }

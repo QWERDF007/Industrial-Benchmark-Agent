@@ -1,10 +1,14 @@
 import hashlib
 import json
-from typing import List, Literal
+import os
+from pathlib import Path
+from typing import List, Literal, Optional
 
 from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
+from iad_core.knowledge.prompt_text import mining_prompt_text, MiningPhase
+from iad_core.prompt_files import PromptFiles
 
 
 class MiningDirection(AnalysisModel):
@@ -15,9 +19,17 @@ class MiningDirection(AnalysisModel):
     origin: Literal['preset', 'dataset', 'explored'] = 'dataset'
 
 
+class MiningExploration(AnalysisModel):
+    version_id: str
+    summary: str
+    limitations: List[str]
+
+
 class MiningPromptConfiguration(AnalysisModel):
     objective: NonBlankText
     directions: List[MiningDirection]
+    instruction: Optional[NonBlankText] = None
+    exploration: Optional[MiningExploration] = None
 
     @model_validator(mode='after')
     def unique_directions(self):
@@ -28,8 +40,15 @@ class MiningPromptConfiguration(AnalysisModel):
         return self
 
     def render(self) -> str:
+        if self.instruction is not None:
+            return self.instruction
         directions = [f'{item.direction_id} | {item.title}：{item.instruction}' for item in self.directions if item.enabled]
-        return '挖掘目标：' + self.objective + '\n用户选择的观察方向：\n' + '\n'.join(directions)
+        context = ('\n方向探索结论：' + self.exploration.summary + '\n探索限制：' + '；'.join(self.exploration.limitations)) if self.exploration else ''
+        return '挖掘目标：' + self.objective + context + '\n用户选择的观察方向：\n' + '\n'.join(directions) + '\n\n' + mining_prompt_text()
+
+
+class SubmittedMiningPrompt(MiningPromptConfiguration):
+    instruction: NonBlankText
 
 
 class FrozenMiningPrompt(AnalysisModel):
@@ -42,9 +61,12 @@ class FrozenMiningPrompt(AnalysisModel):
         instruction = configuration.render()
         return cls(configuration=configuration, instruction=instruction, signature=cls.signature_for(configuration, instruction))
 
+    def render_context(self, label: str, data: dict, *, phase: MiningPhase) -> str:
+        return self.instruction + '\n' + label + '：' + json.dumps(dict(phase=phase.value, **data), ensure_ascii=False)
+
     @staticmethod
     def signature_for(configuration: MiningPromptConfiguration, instruction: str) -> str:
-        return hashlib.sha256(json.dumps({'configuration': configuration.model_dump(), 'instruction': instruction},
+        return hashlib.sha256(json.dumps({'configuration': configuration.model_dump(exclude_none=True), 'instruction': instruction},
                                         sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
     @model_validator(mode='after')
@@ -54,28 +76,9 @@ class FrozenMiningPrompt(AnalysisModel):
         return self
 
 
-DEFAULT_DIRECTIONS = tuple(
-    MiningDirection(direction_id=key, title=title, instruction=instruction, origin='preset')
-    for key, title, instruction in [
-        ('shape', '整体形态', '轮廓、长宽比例、对称性、弯曲、翘曲的可见外观，整体与局部关系。'),
-        ('parts', '部件组成', '可见部件的存在、数量、排列、方向、重复单元、对应与共现关系。'),
-        ('geometry', '位置与几何关系', '相对位置、间距、对齐、平行、同心、接触、间隙及可见遮挡，不凭透视图推断精密尺寸。'),
-        ('assembly', '装配与配合', '接缝、贴合、错位、露出、插接、扣合、紧固件及装配完整性的可见线索。'),
-        ('connections', '连接与走线', '引脚、触点、导线、焊盘、轨迹、交叉与连接分布；只能描述可见连接外观，不推断电气导通或功能。'),
-        ('edges', '边缘与开口', '边缘连续性、孔、槽、齿、缺口、开口内外、堵塞、毛刺、崩边与局部残缺的可见迹象。'),
-        ('integrity', '表面完整性', '裂纹状线条、划痕、磨损、压痕、凹坑、凸起、破损及其与结构边界的关系。'),
-        ('texture', '纹理与表面加工', '纹理方向、周期、粗细、颗粒、纤维、加工纹路、光泽一致性及正常局部变化。'),
-        ('coating', '颜色与覆盖层', '颜色分布、斑点、色差、涂覆、镀层或膜层的可见连续性、露底、起皮；材质与化学成分不由颜色证明。'),
-        ('cleanliness', '清洁与异物', '颗粒、纤维、污迹、残胶、油状痕迹、附着物、孔隙内遮挡及可能的正常反光解释。'),
-        ('process', '工艺痕迹', '适用时观察胶路、焊缝、焊点、切边、冲压、注塑、浇口、飞边、溢胶、覆盖连续性和分布；不凭外观宣称强度或工艺合格。'),
-        ('markings', '标识与图案', '字符、标志、印刷、刻印、编码区域的存在、位置、朝向、清晰度、缺笔、重影及图案重复关系；无业务依据不判定编码内容正确。'),
-        ('packaging', '柔性部件与包装', '适用时观察折痕、褶皱、封边、封口、薄膜、边缘卷曲、褶叠及其正常变化。'),
-        ('logic', '多实例与逻辑关系', '多个对象的数量、槽位、组合、左右对应、顺序和相互位置；仅在跨图证据支持时形成约束。'),
-        ('imaging', '成像与允许变化', '视角、旋转、尺度、光照、高光、阴影、曝光、透明/反射、景深、模糊、遮挡和背景；区分产品变化与成像变化，不假设未提供的背面或其他视图。'),
-    ]
-)
+def default_directions() -> list[MiningDirection]:
+    directory = Path(os.environ.get('IAD_KNOWLEDGE_DIRECTIONS_DIR') or Path(__file__).with_name('directions'))
+    return [MiningDirection(direction_id=preset.id, title=preset.name, instruction=preset.text, origin='preset')
+        for preset in PromptFiles(directory).list()]
 
-DEFAULT_OBJECTIVES = {
-    'normal': '联合比较当前候选良品图组，充分发现有跨图支持的正常外观规律、允许变化和适用边界，同时识别候选池中的整图或局部疑点。',
-    'defect': '联合比较异常候选及实际可用的正常知识和比较图，发现异常外观判据、正常替代解释和适用边界；无正常基准时只整理待核验假设。',
-}
+DEFAULT_OBJECTIVE = '联合比较所选范围的真实图像，发现可观察规律、允许变化、异常候选及适用边界，保留支持、反对和证据不足。'

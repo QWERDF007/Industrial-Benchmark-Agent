@@ -1,3 +1,4 @@
+import {Select} from './Select.js';
 import React, {useEffect,useMemo,useState} from 'react';
 import type {AnnotationDifference, ConsistencyReviewSubmission, FrozenEvidenceSource} from '../../shared/domain.generated.js';
 
@@ -22,11 +23,11 @@ export function ConsistencyRegionProposal({sources,differences,onChange}:{source
   },[sampleId,annotationId,operation,category,geometryKind,geometryText]);
   useEffect(()=>onChange(value),[value,onChange]);
   return <section aria-label="区域修正建议"><p className="iad-muted">建议不会改写源标注。实际修正并重扫后再验证。</p>
-    <div className="iad-config-bar"><label className="iad-field">目标样本<select aria-label="区域建议目标" value={sampleId} onChange={event=>{setSampleId(event.target.value);setAnnotationId('');}}><option value="">请选择</option>{sources.map(source=><option key={source.sample.sample_id} value={source.sample.sample_id}>{source.sample.relative_path}</option>)}</select></label>
-    <label className="iad-field">修正方式<select aria-label="区域修正方式" value={operation} onChange={event=>setOperation(event.target.value as Change['operation'])}><option value="relabel">修改类别</option><option value="reshape">修改形状</option><option value="add">新增区域</option><option value="remove">删除区域</option></select></label></div>
-    {operation!=='add' && <label className="iad-field">所选差异中的区域<select aria-label="建议目标区域" value={annotationId} onChange={event=>setAnnotationId(event.target.value)}><option value="">请选择</option>{annotations.map(annotation=><option key={annotation.annotation_id} value={annotation.annotation_id}>{annotation.raw_label} · {annotation.bbox?.join(', ')}</option>)}</select></label>}
+    <div className="iad-config-bar"><label className="iad-field">目标样本<Select aria-label="区域建议目标" value={sampleId} onChange={event=>{setSampleId(event.target.value);setAnnotationId('');}}><option value="">请选择</option>{sources.map(source=><option key={source.sample.sample_id} value={source.sample.sample_id}>{source.sample.relative_path}</option>)}</Select></label>
+    <label className="iad-field">修正方式<Select aria-label="区域修正方式" value={operation} onChange={event=>setOperation(event.target.value as Change['operation'])}><option value="relabel">修改类别</option><option value="reshape">修改形状</option><option value="add">新增区域</option><option value="remove">删除区域</option></Select></label></div>
+    {operation!=='add' && <label className="iad-field">所选差异中的区域<Select aria-label="建议目标区域" value={annotationId} onChange={event=>setAnnotationId(event.target.value)}><option value="">请选择</option>{annotations.map(annotation=><option key={annotation.annotation_id} value={annotation.annotation_id}>{annotation.raw_label}，{annotation.bbox?.join(', ')}</option>)}</Select></label>}
     {(operation==='add'||operation==='relabel') && <label className="iad-field">建议类别<input aria-label="建议类别" value={category} onChange={event=>setCategory(event.target.value)} /></label>}
-    {(operation==='add'||operation==='reshape') && <><label className="iad-field">形状<select value={geometryKind} onChange={event=>setGeometryKind(event.target.value as 'bbox'|'polygon')}><option value="bbox">矩形</option><option value="polygon">多边形</option></select></label>
+    {(operation==='add'||operation==='reshape') && <><label className="iad-field">形状<Select value={geometryKind} onChange={event=>setGeometryKind(event.target.value as 'bbox'|'polygon')}><option value="bbox">矩形</option><option value="polygon">多边形</option></Select></label>
     <label className="iad-field">{geometryKind==='bbox'?'原图坐标 x1, y1, x2, y2':'原图顶点 x1, y1, x2, y2, …'}<input aria-label="建议区域坐标" value={geometryText} onChange={event=>setGeometryText(event.target.value)} /></label></>}
   </section>;
 }

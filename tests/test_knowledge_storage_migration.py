@@ -1,4 +1,6 @@
 import json
+import sqlite3
+from pathlib import Path
 
 import pytest
 
@@ -25,7 +27,10 @@ def test_existing_knowledge_remains_readable_after_storage_upgrade(knowledge_dat
                           json.dumps(snapshot), common['created_at']))
         conn.execute('INSERT INTO knowledge_heads VALUES(?,?,?)', (config.dataset.id, 'normal', 'old-head'))
 
-    Database(db.db_path)
+    restored = Path(db.db_path).with_name('historical.db')
+    with db.connection() as source, sqlite3.connect(restored) as target:
+        source.backup(target)
+    db = Database(str(restored))
     current = knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge']
     parent = knowledge_get({'version_id': 'old-parent'}, db.db_path)['knowledge']
     assert current['version_id'] == 'old-head'

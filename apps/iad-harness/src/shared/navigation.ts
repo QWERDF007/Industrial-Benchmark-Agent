@@ -26,8 +26,6 @@ export type WorkbenchLocation = ConsistencyLocation | {
   pageId: DatasetPageId;
   datasetId: string;
   explorationVersion?: string;
-  directionFocus?: string;
-  knowledgeKind?: KnowledgeSnapshot["kind"];
   job?: string;
   version?: string;
   conflictId?: string;

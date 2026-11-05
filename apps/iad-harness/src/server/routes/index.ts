@@ -66,6 +66,15 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       if(pathname==='/api/iad/consistency/gallery/members' && method==='POST')return await call('consistency_gallery_members',body);
       if(pathname==='/api/iad/consistency/gallery/analysis' && method==='POST')return await call('consistency_group_analysis',body);
       if(pathname==='/api/iad/consistency/gallery/analyze' && method==='POST')return await call('consistency_group_analyze',{request:body});
+      if(pathname==='/api/iad/consistency/model-batches/start' && method==='POST')return await call('consistency_model_start',{request:body});
+      if (pathname === '/api/iad/analysis/start' && method === 'POST') return await call('analysis_start', {request:body});
+      if (pathname === '/api/iad/analysis/jobs' && method === 'GET') return await call('analysis_list', query);
+      const analysis = pathname.match(/^\/api\/iad\/analysis\/(status|node|results|cancel|retry|delete)\/([^/]+)$/);
+      if (analysis && ((['status','node','results'].includes(analysis[1]) && method === 'GET') || (!['status','node','results'].includes(analysis[1]) && method === 'POST')))
+        return await call('analysis_'+analysis[1], {run_id:decodeURIComponent(analysis[2])});
+      const modelBatch=pathname.match(/^\/api\/iad\/consistency\/model-batches\/([^/]+)(?:\/(cancel|retry))?$/);
+      if(modelBatch && ((!modelBatch[2] && method==='GET') || (modelBatch[2] && method==='POST')))
+        return await call('consistency_model_'+(modelBatch[2] || 'status'),{run_id:decodeURIComponent(modelBatch[1])});
       if(pathname==='/api/iad/consistency/context' && method==='POST')return await call('consistency_context',body);
       if(pathname==='/api/iad/consistency/review/context' && method==='POST')return await call('consistency_review_context',body);
       if(pathname==='/api/iad/consistency/review/submit' && method==='POST')return await call('consistency_review_submit',body);
@@ -163,6 +172,38 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         run_id: decodeURIComponent(modelCall[1]), call_id: decodeURIComponent(modelCall[2]),
       });
       if (pathname === "/api/iad/audit/jobs" && method === "GET") return await call("audit_list", query);
+      if (pathname === '/api/iad/dataset-reports' && method === 'POST') return await call('dataset_report_start', {request: body});
+      if (pathname === '/api/iad/dataset-reports' && method === 'GET') return await call('dataset_report_list', {
+        dataset_ids: JSON.parse(url.searchParams.get('dataset_ids') || '[]'),
+      });
+      const datasetReport = pathname.match(/^\/api\/iad\/dataset-reports\/([^/]+)(?:\/(status|export))?$/);
+      if (datasetReport && method === 'GET') {
+        const args = {run_id: decodeURIComponent(datasetReport[1])};
+        if (datasetReport[2] === 'export') {
+          const output = await bridge.execute<{filename: string; html: string}>('dataset_report_export', args);
+          res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8',
+            'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(output.filename)}`, 'Cache-Control': 'no-store'});
+          res.end(output.html);return;
+        }
+        return await call(datasetReport[2] === 'status' ? 'dataset_report_status' : 'dataset_report_get', args);
+      }
+      const auditSample = pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/samples\/([^/]+)$/);
+      if (auditSample && method === 'GET') return await call('audit_job_sample', {
+        run_id: decodeURIComponent(auditSample[1]), sample_id: decodeURIComponent(auditSample[2]),
+      });
+      const auditResults = pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/(samples|report|export)$/);
+      if (auditResults && method === 'GET') {
+        const args = { ...query, run_id: decodeURIComponent(auditResults[1]) };
+        if (auditResults[2] === 'export') {
+          const output = await bridge.execute<{filename: string; html: string}>('audit_job_export', args);
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8',
+            'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(output.filename)}`,
+            'Cache-Control': 'no-store' });
+          res.end(output.html);
+          return;
+        }
+        return await call(auditResults[2] === 'samples' ? 'audit_job_samples' : 'audit_job_report', args);
+      }
       const retryOptions = pathname.match(/^\/api\/iad\/(audit|knowledge)\/retry\/([^/]+)$/);
       if (retryOptions && method === "GET") return await call(retryOptions[1] + "_retry_options", { run_id: decodeURIComponent(retryOptions[2]) });
       const audit = pathname.match(/^\/api\/iad\/audit\/(status|cancel|retry)\/([^/]+)$/);
@@ -176,9 +217,11 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         if ((scope[2] === "stop" || scope[2] === "resume") && method === "POST") return await call("knowledge_scope_" + scope[2], { scope_run_id });
       }
       if (pathname === "/api/iad/exploration" && method === "GET") return await call("direction_exploration_get", query);
+      if (pathname === '/api/iad/exploration/directions/remove' && method === 'POST') return await call('direction_exploration_remove_direction', body);
       if (pathname === "/api/iad/exploration/presets" && method === "GET") return await call("direction_exploration_presets", query);
       if (pathname === "/api/iad/exploration/presets" && method === "POST") return await call("direction_exploration_preset_save", body);
       if (pathname === "/api/iad/exploration/start" && method === "POST") return await call("direction_exploration_start", { request: body });
+      if (pathname === "/api/iad/exploration/batches/start" && method === "POST") return await call("direction_exploration_batch_start", {request:body});
       if (pathname === "/api/iad/exploration/jobs" && method === "GET") return await call("direction_exploration_list", query);
       const exploration = pathname.match(/^\/api\/iad\/exploration\/(status|cancel|retry|delete)\/([^/]+)$/);
       if (exploration && ((exploration[1] === "status" && method === "GET") || (exploration[1] !== "status" && method === "POST")))
@@ -191,9 +234,13 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         await sendMedia(res, info); return;
       }
       if (pathname === "/api/iad/knowledge" && method === "GET") return await call("knowledge_get", query);
+      if (pathname === "/api/iad/knowledge/presets" && method === "GET") return await call("knowledge_presets", query);
+      if (pathname === "/api/iad/knowledge/batches/start" && method === "POST") return await call("knowledge_batch_start", {request:body});
       if (pathname === "/api/iad/knowledge/prompt" && method === "GET") return await call("knowledge_prompt_get", query);
       if (pathname === "/api/iad/knowledge/prompt" && method === "POST") return await call("knowledge_prompt_save", body);
       if (pathname === "/api/iad/knowledge/details" && method === "GET") return await call("knowledge_details", query);
+      if (pathname === "/api/iad/knowledge/versions" && method === "GET") return await call("knowledge_versions", query);
+      if (pathname === "/api/iad/knowledge/check-review" && method === "POST") return await call("knowledge_check_review", body);
       if (pathname === "/api/iad/knowledge/sources" && method === "GET") return await call("knowledge_sources", query);
       if (pathname === "/api/iad/knowledge/start" && method === "POST") return await call("knowledge_start", { request: body });
       if (pathname === "/api/iad/knowledge/jobs" && method === "GET") return await call("knowledge_list", query);

@@ -30,7 +30,9 @@ class RetainedImages:
                 if any(getattr(content.descriptor,name)!=getattr(published.descriptor,name) for name in fields):
                     raise ConsistencyError('SOURCE_UNAVAILABLE','Published group pixel representations disagree')
                 blob=self.blobs[group]
-                self.path(blob)
+                if self.files.find(blob.sha256,blob.byte_count) is None:
+                    blob=self.pixels(content)
+                    self.blobs[group]=blob
                 return blob,content.with_annotation_coordinates(published.descriptor.annotation_coordinates)
             content=source.pixels()
             blob=self.pixels(content)
@@ -60,7 +62,13 @@ class RetainedImages:
             rows=connection.execute('SELECT sha256,byte_count FROM consistency_pixel_evidence WHERE pixel_key=?',(content.descriptor.pixel_key,)).fetchall()
         for row in rows:
             blob=EvidenceBlob(**dict(row))
-            if content.compare(PixelContent.read(self.path(blob))).exact_equal:return blob
+            path=self.files.find(blob.sha256,blob.byte_count)
+            if path is None:
+                with self.db.connection() as connection:
+                    connection.execute('DELETE FROM consistency_pixel_evidence WHERE pixel_key=? AND sha256=? AND byte_count=?',
+                        (content.descriptor.pixel_key,blob.sha256,blob.byte_count))
+                continue
+            if content.compare(PixelContent.read(path)).exact_equal:return blob
         blob=self.store(content.png())
         with self.db.connection() as connection:
             connection.execute('INSERT OR IGNORE INTO consistency_pixel_evidence VALUES(?,?,?)',

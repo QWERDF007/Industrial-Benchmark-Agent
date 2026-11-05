@@ -1,11 +1,11 @@
 import React from "react";
-import type { FullscreenViewerAnnotation } from "./FullscreenViewer.js";
+import { type ImageBoxAnnotation } from "./AnnotationLayer.js";
 export interface AnnotatedImageStageProps {
     src: string;
     alt?: string;
     width?: number;
     height?: number;
-    bboxes?: FullscreenViewerAnnotation[];
+    bboxes?: ImageBoxAnnotation[];
     showAnnotations?: boolean;
     className?: string;
     style?: React.CSSProperties;

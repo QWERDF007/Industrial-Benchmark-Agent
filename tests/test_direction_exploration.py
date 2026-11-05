@@ -5,6 +5,64 @@ import httpx
 import pytest
 
 
+@pytest.mark.parametrize('customized', [False, True])
+def test_removed_direction_leaves_current_choices_but_preserves_frozen_history(dataset, model_http, customized):
+    from iad_core import entry
+    from iad_core.exploration.repository import ExplorationRepository
+
+    db, _, config = dataset
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 262144})
+        parts = json.loads(request.content)['messages'][0]['content']
+        refs = [json.loads(part['text'][5:])['evidence_id'] for part in parts
+                if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
+        result = dict(summary='可见轮廓与色泽', limitations=[], directions=[
+            dict(title=title, instruction='联合比较实际图像', applies_to='both', rationale='存在可比结构',
+                 evidence_ids=refs, limitations=[]) for title in ['轮廓', '色泽']])
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
+
+    model_http(respond)
+    try:
+        job = entry.analysis_start({'request': {'analysis_kind': 'exploration', 'dataset_ids': [config.dataset.id]}}, db.db_path)
+        entry.workbench(db.db_path).jobs.wait(job['run_id'], 5)
+        assert entry.analysis_status({'run_id': job['run_id']}, db.db_path)['status'] == 'COMPLETED'
+        results = entry.analysis_results({'run_id': job['run_id']}, db.db_path)
+        original = results['snapshots'][0]
+        direction, retained = original['directions']
+        query = dict(dataset_id=config.dataset.id, kind='normal')
+        before = entry.knowledge_prompt_get(query, db.db_path)
+        if customized:
+            configuration = dict(before['configuration'], instruction='用户填写的完整提示词')
+            before = entry.knowledge_prompt_save(dict(query, expected_revision=before['revision'], configuration=configuration), db.db_path)
+        removal = dict(dataset_id=config.dataset.id, version_id=original['version_id'], direction_id=direction['direction_id'])
+        with pytest.raises(ValueError, match='不属于'):
+            entry.direction_exploration_remove_direction(dict(removal, dataset_id='another-dataset'), db.db_path)
+        with pytest.raises(ValueError, match='不包含'):
+            entry.direction_exploration_remove_direction(dict(removal, direction_id='unknown-direction'), db.db_path)
+        assert entry.direction_exploration_remove_direction(removal, db.db_path) == removal
+        assert entry.direction_exploration_remove_direction(removal, db.db_path) == removal
+        catalog = entry.direction_exploration_get({'dataset_id': config.dataset.id}, db.db_path)
+        assert catalog['removed_direction_ids'] == [direction['direction_id']]
+        assert catalog['exploration'] == original
+        after = entry.knowledge_prompt_get(query, db.db_path)
+        choices = {item['direction_id'] for item in after['configuration']['directions']}
+        assert retained['direction_id'] in choices and direction['direction_id'] not in choices
+        assert after['revision'] != before['revision']
+        if customized:
+            assert after['instruction'] == '用户填写的完整提示词'
+        with pytest.raises(ValueError, match='已删除'):
+            entry.knowledge_directions_adopt(dict(query, expected_revision=after['revision'],
+                directions=[{'direction_id': direction['direction_id']}]), db.db_path)
+        current = entry.analysis_results({'run_id': job['run_id']}, db.db_path)
+        assert current['removed_direction_ids'] == [direction['direction_id']]
+        assert current['snapshots'] == results['snapshots']
+        assert ExplorationRepository(db).get(original['version_id']).model_dump() == original
+    finally:
+        entry.workbench(db.db_path).close()
+
+
 @pytest.fixture
 def model_http(monkeypatch):
     client_type = httpx.Client
@@ -39,7 +97,7 @@ def test_mixed_examples_produce_selectable_directions_without_publishing_knowled
         calls.append(body)
         assert body['model'] == 'actual-provider-model'
         content = body['messages'][0]['content']
-        assert sum(part['type'] == 'image_url' for part in content) == 4
+        assert sum(part['type'] == 'image_url' for part in content) == 8  # 四张整图、两张标注裁剪、两张定位掩膜
         assert all(sid in content[0]['text'] for sid in normal + abnormal)
         ids = [json.loads(p['text'].removeprefix('视觉证据：'))['evidence_id']
                for p in content if p['type'] == 'text' and p['text'].startswith('视觉证据：')]
@@ -64,12 +122,15 @@ def test_mixed_examples_produce_selectable_directions_without_publishing_knowled
         assert len(snapshot['directions']) == 2
         assert snapshot['run_id'] == job['run_id']
         assert snapshot['request']['normal_images'] == normal
-        assert knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge'] is None
-        assert knowledge_prompt_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path) == before
+        assert knowledge_get({'dataset_id': config.dataset.id}, db.db_path)['knowledge'] is None
+        current_prompt = knowledge_prompt_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)
+        assert snapshot['summary'] in current_prompt['instruction']
+        assert {d['direction_id'] for d in snapshot['directions']} <= {d['direction_id'] for d in current_prompt['configuration']['directions']}
+        before = current_prompt
         direction = snapshot['directions'][0]
         configuration = before['configuration']
-        configuration['directions'].append({'direction_id': direction['direction_id'], 'title': direction['title'],
-            'instruction': '比较表面颜色，尤其排除光照差异', 'origin': 'explored', 'enabled': True})
+        for item in configuration['directions']:
+            if item['direction_id']==direction['direction_id']:item['instruction']='比较表面颜色，尤其排除光照差异'
         saved = knowledge_prompt_save({'dataset_id': config.dataset.id, 'kind': 'normal',
             'expected_revision': before['revision'], 'configuration': configuration}, db.db_path)
         assert '尤其排除光照差异' in saved['instruction']
@@ -83,9 +144,9 @@ def test_mixed_examples_produce_selectable_directions_without_publishing_knowled
                 'instruction': '结合光照对照比较颜色'}]}, db.db_path)
         assert len(adopted['configuration']['directions']) == len(saved['configuration']['directions'])
         assert '结合光照对照比较颜色' in adopted['instruction']
-        with pytest.raises(ValueError, match='不适用'):
-            knowledge_directions_adopt({'dataset_id': config.dataset.id, 'kind': 'normal',
-                'expected_revision': adopted['revision'], 'directions': [{'direction_id': snapshot['directions'][1]['direction_id']}]}, db.db_path)
+        adopted = knowledge_directions_adopt({'dataset_id': config.dataset.id, 'kind': 'normal',
+            'expected_revision': adopted['revision'], 'directions': [{'direction_id': snapshot['directions'][1]['direction_id']}]}, db.db_path)
+        assert snapshot['directions'][1]['direction_id'] in {d['direction_id'] for d in adopted['configuration']['directions']}
         assert knowledge_prompt_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path) == adopted
         assert direction_exploration_get({'dataset_id': config.dataset.id}, db.db_path)['exploration'] == snapshot
         next_job = direction_exploration_start({'request': {'dataset_id': config.dataset.id,
@@ -364,13 +425,20 @@ def test_closing_exploration_worker_interrupts_pending_without_dispatch(dataset,
         release.set();runtime.close()
 
 
-def test_exploration_presets_persist_and_edited_body_is_the_execution_input(dataset, monkeypatch, model_http):
+def test_exploration_presets_persist_and_edited_body_is_the_execution_input(dataset, monkeypatch, model_http, tmp_path):
+    import shutil
+    from pathlib import Path
+    from iad_core.exploration import prompts
     from iad_core.entry import (direction_exploration_presets, direction_exploration_preset_save,
         direction_exploration_start, direction_exploration_status, direction_exploration_get, workbench)
 
     db, _, config = dataset
+    directory = tmp_path / 'presets'
+    shutil.copytree(Path(prompts.__file__).with_name('presets'), directory)
+    monkeypatch.setenv('IAD_EXPLORATION_PRESETS_DIR', str(directory))
     presets = direction_exploration_presets({}, db.db_path)['presets']
-    assert [p['name'] for p in presets] == ['通用对比探索', '正常变化与成像差异', '表面与局部差异', '结构与装配关系']
+    assert presets[0]['name'] == '通用对比探索'
+    assert {p['name'] for p in presets} == {'通用对比探索', '正常变化与成像差异', '表面与局部差异', '结构与装配关系'}
     assert all(p['builtin'] and p['text'].strip() for p in presets)
     custom = direction_exploration_preset_save({'name': '连接器反光对比', 'text': '仅联合比较本次反光位置，保留不确定性。'}, db.db_path)
     assert not custom['builtin']
@@ -402,6 +470,10 @@ def test_exploration_presets_persist_and_edited_body_is_the_execution_input(data
         instruction = calls[0]['messages'][0]['content'][0]['text']
         assert instruction.startswith(prompt['text'])
         assert '识别句子：不要推断内部材质。' in instruction
+        dynamic_context=instruction[len(prompt['text']):]
+        assert 'title和instruction描述可复用方向' not in dynamic_context
+        assert '只填写输出Schema字段' not in dynamic_context
+        assert '结合上一批初步方向继续探索' not in dynamic_context
         assert '联合观察全部候选良品与异常图，自行提出这个数据集值得深入挖掘的检查方向。' not in instruction
         assert direction_exploration_get({'dataset_id': config.dataset.id}, db.db_path)['exploration']['request']['prompt'] == prompt
         default = direction_exploration_start({'request': {'dataset_id': config.dataset.id,

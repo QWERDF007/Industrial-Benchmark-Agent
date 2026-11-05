@@ -170,7 +170,7 @@ with sqlite3.connect(sys.argv[1]) as db:
     await click('下一组');await driver.wait(()=>driver.findElement(By.css('.iad-group-header h2')).getText().then(text=>text!==firstTitle),5000);
     await click('关闭图组详情');
     await (firstName.includes('other-') ? groupCards[1] : groupCards[0]).click();
-    await driver.wait(until.elementLocated(By.css('dialog[aria-label="图组详情"] .iad-consistency-canvases')),5000);
+    await driver.wait(until.elementLocated(By.css('dialog[aria-label="图组详情"] .iad-image-pair')),5000);
     await fs.writeFile(path.join(output,'scope-groups-1920.png'),await driver.takeScreenshot(),'base64');
     assert.equal((await driver.findElements(By.xpath('//button[normalize-space(.)="查看比较证据"]'))).length,0);
     await click('关闭图组详情');
@@ -209,7 +209,7 @@ with sqlite3.connect(sys.argv[1]) as db:
     const retryPanel=await driver.wait(until.elementLocated(By.css('[aria-label="一致性人工处置"]')),5000);
     await driver.wait(()=>retryPanel.getText().then(text=>text.includes('提交结果待确认')),5000);
     const pendingText=await retryPanel.getText();
-    assert.match(pendingText,/query\.png · 异常/);assert.match(pendingText,/copy\.png · 异常/);
+    assert.match(pendingText,/query\.png / 异常/);assert.match(pendingText,/copy\.png / 异常/);
     assert.equal(await retryPanel.findElement(By.css('[aria-label="一致性处置动作"]')).isEnabled(),false);
     await driver.executeScript("arguments[0].scrollIntoView({block:'end'})",retryPanel);
     await fs.writeFile(path.join(output,'review-pending-reload-1920.png'),await driver.takeScreenshot(),'base64');
@@ -315,7 +315,7 @@ with sqlite3.connect(sys.argv[1]) as db:
     assert.match(await driver.findElement(By.css('.iad-consistency-differences')).getText(),/scratch/);
     assert.match(await driver.findElement(By.css('.iad-consistency-differences')).getText(),/dent/);
     await driver.findElement(By.css('[data-difference="CATEGORY"]')).click();
-    await driver.wait(()=>driver.executeScript('return [...document.querySelectorAll(".iad-consistency-side")].every(side=>{const image=side.querySelector("img"),region=side.querySelector(".iad-consistency-region rect"),viewport=side.querySelector(".iad-viewer-viewport");if(!image||image.naturalWidth!==1280||!region||!viewport)return false;const r=region.getBoundingClientRect(),v=viewport.getBoundingClientRect();return Math.abs((r.left+r.right-v.left-v.right)/2)<3 && Math.abs((r.top+r.bottom-v.top-v.bottom)/2)<3})'),5000);
+    await driver.wait(()=>driver.executeScript('return [...document.querySelectorAll(".iad-image-pair-side")].every(side=>{const image=side.querySelector("img"),region=side.querySelector(".iad-consistency-region rect"),viewport=side.querySelector(".iad-viewer-viewport");if(!image||image.naturalWidth!==1280||!region||!viewport)return false;const r=region.getBoundingClientRect(),v=viewport.getBoundingClientRect();return Math.abs((r.left+r.right-v.left-v.right)/2)<3 && Math.abs((r.top+r.bottom-v.top-v.bottom)/2)<3})'),5000);
     await fs.writeFile(path.join(output,'frozen-history-1920.png'),await driver.takeScreenshot(),'base64');
     await driver.get(`http://${host}:${server.address().port}/?${new URLSearchParams({iad:JSON.stringify({pageId:'industrial-knowledge',datasetId:dataset.dataset_id,knowledgeKind:'normal',tab:'setup'})})}`);
     await driver.wait(until.elementLocated(By.css('button[aria-label="通用方向"]')),5000);

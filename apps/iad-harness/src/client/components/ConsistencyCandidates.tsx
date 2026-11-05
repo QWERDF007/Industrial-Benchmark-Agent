@@ -1,3 +1,4 @@
+import {ThumbnailCard} from "./ThumbnailCard.js";
 import React from 'react';
 import type {Dataset,RetrievalMember,RetrievalPage} from '../../shared/contracts.js';
 import {imageRelations} from '../../shared/consistency-presentation.js';
@@ -12,14 +13,14 @@ export function ConsistencyCandidates({groups,selected,datasets,onSelect,onCompa
   const score=selectedGroup?.origins.find(origin=>origin.branch==='visual')?.score;
   return <div className="iad-consistency-search-layout">
     <section className="iad-consistency-list" aria-label="候选图像网格"><header className="iad-consistency-panel-header"><strong>检索结果</strong><span>按实际召回顺序</span></header>
-      <div className="iad-consistency-candidate-grid">{groups.flatMap(group=>group.members.map(member=>{
+      <div className="iad-thumbnail-grid">{groups.flatMap(group=>group.members.map(member=>{
         const source=datasets.find(item=>item.dataset_id===member.dataset_id),name=member.sample_id.slice(member.sample_id.indexOf(':')+1);
         const value=group.origins.find(origin=>origin.branch==='visual')?.score;
-        return <button key={group.content_group_id+member.sample_id} data-relation={member.relation} aria-pressed={member===selected} onClick={()=>onSelect(group.content_group_id,member.sample_id)}>
-          {source && <img loading="lazy" src={mediaUrl({task_id:source.task_id,sample_id:member.sample_id},'thumbnail')} alt={name} />}
-          <strong title={name}>{name}</strong><span>{imageRelations[member.relation]}{typeof value==='number' ? ` · 视觉分数 ${value.toFixed(4)}` : ''}</span>
-          <small>原标签：{reviewLabels[member.quality_status as keyof typeof reviewLabels] || member.quality_status}</small>
-        </button>;
+        return <ThumbnailCard key={group.content_group_id+member.sample_id} label={name} src={source?mediaUrl({task_id:source.task_id,sample_id:member.sample_id},'thumbnail'):undefined}
+          data-relation={member.relation} aria-pressed={member===selected} onClick={()=>onSelect(group.content_group_id,member.sample_id)}>
+          <small>{imageRelations[member.relation]}{typeof value==='number'?`，视觉分数 ${value.toFixed(4)}`:''}</small>
+          <small>原标签：{reviewLabels[member.quality_status as keyof typeof reviewLabels]||member.quality_status}</small>
+        </ThumbnailCard>;
       }))}</div>
     </section>
     {selected && <aside className="iad-consistency-detail" aria-label="候选图像详情"><header className="iad-consistency-panel-header"><strong>图像详情</strong><span>{imageRelations[selected.relation]}</span></header>

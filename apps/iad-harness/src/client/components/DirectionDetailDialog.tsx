@@ -1,6 +1,8 @@
+import {ThumbnailCard} from "./ThumbnailCard.js";
 import React, { useEffect, useRef } from "react";
-import { CloseIcon } from "../AuditIcon.js";
+
 import { IconButton } from "./IconButton.js";
+import {ReferencedText, type EvidenceReference} from "../direction-evidence.js";
 
 export interface DirectionEvidenceItem {
   evidenceId: string;
@@ -15,14 +17,15 @@ export interface DirectionEvidenceItem {
 
 export interface DirectionItem {
   id: string;
+  versionId: string;
+  datasetId: string;
   title: string;
   applies: string;
   brief: string;
-  rationale?: string;
-  evidenceIds?: string[];
-  limit: string;
-  limitations?: string[];
-  evidences?: DirectionEvidenceItem[];
+  rationale: string;
+  limitations: string[];
+  evidences: DirectionEvidenceItem[];
+  references: Map<string,EvidenceReference>;
 }
 
 export interface DirectionDetailDialogProps {
@@ -56,7 +59,7 @@ export function DirectionDetailDialog({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && !e.defaultPrevented) {
         onClose();
       }
     };
@@ -77,6 +80,10 @@ export function DirectionDetailDialog({
     }
   };
 
+  const renderText=(text:string)=><ReferencedText text={text} references={dir.references}
+    className="exp-evidence-ref" highlightedId={highlightRef} onReference={handleChipClick}
+    onPreview={(ref,active)=>{if(active)handleChipClick(ref);else onHighlightRef(null);}}/>;
+
   return (
     <div
       className="exp-modal exp-direction-modal"
@@ -94,147 +101,26 @@ export function DirectionDetailDialog({
       >
         <div className="exp-dialog-head">
           <strong>{dir.title}</strong>
-          <IconButton
-            label="关闭方向详情"
-            title="关闭"
-            className="exp-direction-icon modal-x"
-            onClick={onClose}
-          >
-            <CloseIcon />
-          </IconButton>
+          <IconButton icon="close" label="关闭方向详情" title="关闭" onClick={onClose} />
         </div>
         <div className="exp-dialog-main">
           <div className="exp-direction-body">
             {/* Goal */}
             <section className="exp-direction-goal">
               <h3>观察目标</h3>
-              <p>{dir.brief}</p>
+              <p>{renderText(dir.brief)}</p>
             </section>
 
-            {/* Reasoning & Limitations */}
-            <div className="exp-direction-reasoning">
-              <section>
-                <h3>比较依据</h3>
-                {(() => {
-                  if (dir.rationale) {
-                    const fullText = dir.rationale;
-                    const regex = /(img_[a-f0-9]{8,64}|(?:良品\s*)?N\d+|(?:异常\s*)?A\d+)/g;
-                    const parts: React.ReactNode[] = [];
-                    let lastIndex = 0;
-                    let match: RegExpExecArray | null;
-
-                    while ((match = regex.exec(fullText)) !== null) {
-                      if (match.index > lastIndex) {
-                        parts.push(fullText.slice(lastIndex, match.index));
-                      }
-                      const token = match[0];
-                      const cleanRef = token.replace(/[^NA0-9]/g, "");
-                      const matchedEv = evidence.all.find(
-                        (e) =>
-                          e.evidenceId.startsWith(token) ||
-                          token.startsWith(e.evidenceId.slice(0, 8)) ||
-                          (e.sampleId && (e.sampleId.startsWith(token) || token.startsWith(e.sampleId.slice(0, 8)))) ||
-                          (e.filename && (e.filename.includes(token) || token.includes(e.filename))) ||
-                          e.ref === token ||
-                          e.ref === cleanRef ||
-                          e.label === token
-                      );
-
-                      if (matchedEv) {
-                        parts.push(
-                          <button
-                            key={matchedEv.ref + match.index}
-                            type="button"
-                            className={`exp-evidence-ref ${highlightRef === matchedEv.ref ? "is-related" : ""}`}
-                            data-evidence-ref={matchedEv.ref}
-                            aria-label={`定位证据图像 ${matchedEv.label}`}
-                            title={`${matchedEv.label} (${token.startsWith("img_") ? token : matchedEv.filename})`}
-                            onMouseEnter={() => handleChipClick(matchedEv.ref)}
-                            onMouseLeave={() => onHighlightRef(null)}
-                            onClick={() => handleChipClick(matchedEv.ref)}
-                          >
-                            {matchedEv.label}
-                          </button>
-                        );
-                      } else {
-                        parts.push(token);
-                      }
-                      lastIndex = regex.lastIndex;
-                    }
-                    if (lastIndex < fullText.length) {
-                      parts.push(fullText.slice(lastIndex));
-                    }
-                    return <p>{parts}</p>;
-                  }
-
-                  return (
-                    <>
-                      <p>
-                        良品样例{" "}
-                        {evidence.normals.length ? (
-                          evidence.normals.map((item, idx) => (
-                            <React.Fragment key={item.ref}>
-                              {idx > 0 && "、"}
-                              <button
-                                type="button"
-                                className={`exp-evidence-ref ${highlightRef === item.ref ? "is-related" : ""}`}
-                                data-evidence-ref={item.ref}
-                                aria-label={`定位证据图像 ${item.label}`}
-                                onMouseEnter={() => handleChipClick(item.ref)}
-                                onMouseLeave={() => onHighlightRef(null)}
-                                onClick={() => handleChipClick(item.ref)}
-                              >
-                                {item.label}
-                              </button>
-                            </React.Fragment>
-                          ))
-                        ) : (
-                          "暂无"
-                        )}{" "}
-                        用于观察正常状态下的共有结构与波动。
-                      </p>
-                      <p>
-                        异常样例{" "}
-                        {evidence.defects.length ? (
-                          evidence.defects.map((item, idx) => (
-                            <React.Fragment key={item.ref}>
-                              {idx > 0 && "、"}
-                              <button
-                                type="button"
-                                className={`exp-evidence-ref ${highlightRef === item.ref ? "is-related" : ""}`}
-                                data-evidence-ref={item.ref}
-                                aria-label={`定位证据图像 ${item.label}`}
-                                onMouseEnter={() => handleChipClick(item.ref)}
-                                onMouseLeave={() => onHighlightRef(null)}
-                                onClick={() => handleChipClick(item.ref)}
-                              >
-                                {item.label}
-                              </button>
-                            </React.Fragment>
-                          ))
-                        ) : (
-                          "暂无"
-                        )}{" "}
-                        用于比较同一位置或相似结构的变化；具体结论需结合原图再次核验。
-                      </p>
-                    </>
-                  );
-                })()}
-              </section>
-              <section>
-                <h3>限制与待确认</h3>
-                <ul>
-                  {dir.limitations && dir.limitations.length > 0 ? (
-                    dir.limitations.map((lim, i) => <li key={i}>{lim}</li>)
-                  ) : (
-                    <>
-                      <li>{dir.limit || "候选方向仅基于本次样例，需结合原图再次核验。"}</li>
-                      <li>候选方向仅基于本次样例，不能直接作为缺陷判定。</li>
-                    </>
-                  )}
-                </ul>
-              </section>
-            </div>
+            <section className="exp-direction-rationale">
+              <h3>比较依据</h3>
+              <p>{renderText(dir.rationale)}</p>
+            </section>
+            <section className="exp-direction-limitations">
+              <h3>限制与待确认</h3>
+              {dir.limitations.length ? <ul>
+                {dir.limitations.map((lim,i)=><li key={i}>{renderText(lim)}</li>)}
+              </ul> : <p>未记录限制</p>}
+            </section>
 
             {/* Image Evidence Strips */}
             <section className="exp-direction-evidence">
@@ -256,19 +142,18 @@ export function DirectionDetailDialog({
                   >
                     {evidence.normals.length ? (
                       evidence.normals.map((image) => (
-                        <button
+                        <ThumbnailCard
                           key={image.ref}
                           type="button"
                           className={`exp-direction-evidence-card ${highlightRef === image.ref ? "is-related" : ""}`}
                           data-evidence-card={image.ref}
                           aria-label={`查看${image.label}大图`}
                           title={`点击放大 ${image.label}`}
+                          src={image.url} label={image.label} data-highlighted={highlightRef===image.ref}
                           onMouseEnter={() => onHighlightRef(image.ref)}
                           onMouseLeave={() => onHighlightRef(null)}
                           onClick={() => onOpenFullscreen(image.ref)}
-                        >
-                          <img src={image.url} alt={image.label} loading="eager" />
-                        </button>
+                        />
                       ))
                     ) : (
                       <p className="exp-direction-empty">暂无可用良品证据</p>
@@ -290,19 +175,18 @@ export function DirectionDetailDialog({
                   >
                     {evidence.defects.length ? (
                       evidence.defects.map((image) => (
-                        <button
+                        <ThumbnailCard
                           key={image.ref}
                           type="button"
                           className={`exp-direction-evidence-card ${highlightRef === image.ref ? "is-related" : ""}`}
                           data-evidence-card={image.ref}
                           aria-label={`查看${image.label}大图`}
                           title={`点击放大 ${image.label}`}
+                          src={image.url} label={image.label} data-highlighted={highlightRef===image.ref}
                           onMouseEnter={() => onHighlightRef(image.ref)}
                           onMouseLeave={() => onHighlightRef(null)}
                           onClick={() => onOpenFullscreen(image.ref)}
-                        >
-                          <img src={image.url} alt={image.label} loading="eager" />
-                        </button>
+                        />
                       ))
                     ) : (
                       <p className="exp-direction-empty">暂无可用异常证据</p>

@@ -17,6 +17,6 @@ def generate_duplicate_report_markdown(result: DuplicateMiningResult, verified_g
     lines.extend(f'| {name} | {result.cross_origin_pairs.get(name,0)} | {result.verified_cross_origin_pairs.get(name,0)} |'
         for name in sorted(set(result.cross_origin_pairs)|set(result.verified_cross_origin_pairs)))
     for group in sorted(verified_groups,key=lambda value:(-value.size,value.group_id))[:15]:
-        lines.extend(['',f'## {group.group_id} · {group.size} 成员'])
+        lines.extend(['',f'## {group.group_id} / {group.size} 成员'])
         lines.extend(f'- {samples_map[identity].relative_path}' for identity in group.sample_ids[:5])
     return '\n'.join(lines)+'\n'

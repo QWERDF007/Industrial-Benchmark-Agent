@@ -42,17 +42,16 @@ export function toolPresentation(value) {
         }
     if (typeof record.dataset_id === "string") {
         const datasetId = record.dataset_id;
-        const knowledgeKind = record.kind === "defect" ? "defect" : "normal";
         if (typeof record.scope_run_id === "string")
-            links.push({ label: "查看连续范围", location: { pageId: "industrial-knowledge", datasetId, knowledgeKind, scopeRunId: record.scope_run_id, tab: "results" } });
+            links.push({ label: "查看连续范围", location: { pageId: "industrial-knowledge", datasetId, scopeRunId: record.scope_run_id, tab: "results" } });
         if (typeof record.run_id === "string") {
-            const pageId = record.job_type === "DIRECTION_EXPLORATION" ? "industrial-exploration" : record.job_type === "MODEL_AUDIT" ? "industrial-audit" : "industrial-knowledge";
-            links.push({ label: "查看作业", location: { pageId, datasetId, knowledgeKind, job: record.run_id, tab: "jobs" } });
+            const pageId = record.job_type === "DIRECTION_EXPLORATION" ? "industrial-exploration" : (record.job_type === "MODEL_AUDIT" || record.job_type === "MODEL_AUDIT_SAMPLE") ? "industrial-audit" : "industrial-knowledge";
+            links.push({ label: "查看作业", location: { pageId, datasetId, job: record.run_id, tab: "jobs" } });
             if (typeof record.status === "string" && record.status in jobStatuses && typeof record.completed === "number" && typeof record.failed === "number" && typeof record.total_samples === "number") {
                 job = { status: record.status, completed: record.completed, failed: record.failed, total_samples: record.total_samples };
             }
             if (typeof record.knowledge_version_id === "string")
-                links.push({ label: "查看知识版本", location: { pageId, datasetId, knowledgeKind, version: record.knowledge_version_id, tab: "results" } });
+                links.push({ label: "查看知识版本", location: { pageId, datasetId, version: record.knowledge_version_id, tab: "results" } });
         }
         if (record.exploration && typeof record.exploration === "object" && "version_id" in record.exploration && typeof record.exploration.version_id === "string")
             links.push({ label: "查看探索方向", location: { pageId: "industrial-exploration", datasetId, version: record.exploration.version_id, tab: "results" } });
@@ -64,8 +63,8 @@ export function toolPresentation(value) {
                 links.push({ label: dataset.name, location: { pageId: "industrial-datasets", datasetId: dataset.dataset_id } });
         }
     const knowledge = record.knowledge;
-    if (knowledge && typeof knowledge === "object" && "dataset_id" in knowledge && "version_id" in knowledge && "kind" in knowledge && typeof knowledge.dataset_id === "string" && typeof knowledge.version_id === "string" && (knowledge.kind === "normal" || knowledge.kind === "defect")) {
-        links.push({ label: "查看知识版本", location: { pageId: "industrial-knowledge", knowledgeKind: knowledge.kind, datasetId: knowledge.dataset_id, version: knowledge.version_id, tab: "results" } });
+    if (knowledge && typeof knowledge === "object" && "dataset_id" in knowledge && "version_id" in knowledge && typeof knowledge.dataset_id === "string" && typeof knowledge.version_id === "string") {
+        links.push({ label: "查看知识版本", location: { pageId: "industrial-knowledge", datasetId: knowledge.dataset_id, version: knowledge.version_id, tab: "results" } });
     }
     return links.length ? { type: "industrial-workbench", links, job } : null;
 }

@@ -21,6 +21,30 @@ from iad_core.workbench.runtime import workbench
 from iad_core.storage.database import Database
 
 
+def consistency_model_start(args: dict, db_path: str) -> dict:
+    runtime = workbench(db_path)
+    return runtime.invoke_model(args.get('_model_execution'), lambda services:
+        services.consistency_model_batches.start(args['request'], model_name=args.get('model_name')))
+
+
+def consistency_model_status(args: dict, db_path: str) -> dict:
+    from iad_core.workbench.job_snapshots import JobSnapshots
+    return JobSnapshots(Database(db_path)).snapshot(args['run_id'], ('CONSISTENCY_MODEL_BATCH','CONSISTENCY_ANALYSIS')).model_dump()
+
+
+def consistency_model_cancel(args: dict, db_path: str) -> dict:
+    return workbench(db_path).jobs.cancel(args['run_id'], ('CONSISTENCY_MODEL_BATCH','CONSISTENCY_ANALYSIS'))
+
+
+def consistency_model_retry(args: dict, db_path: str) -> dict:
+    from iad_core.consistency.group_analysis import GroupAnalyses
+    runtime = workbench(db_path)
+    kind = runtime.jobs.status(args['run_id'], ('CONSISTENCY_MODEL_BATCH','CONSISTENCY_ANALYSIS'))['job_type']
+    return runtime.invoke_model(args.get('_model_execution'), lambda services:
+        (services.consistency_model_batches if kind == 'CONSISTENCY_MODEL_BATCH' else GroupAnalyses(runtime,services.client))
+        .retry(args['run_id']), args['run_id'])
+
+
 class RetrievalInvocation(AnalysisModel):
     request: ImageRetrieve
     owner_id: Identifier | None = None

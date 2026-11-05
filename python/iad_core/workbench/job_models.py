@@ -1,4 +1,5 @@
-from typing import Literal, Optional
+from collections.abc import Iterable, Mapping
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
@@ -22,7 +23,7 @@ class JobObservationProgress(AnalysisModel):
     published_sources: int = Field(ge=0)
 
 
-JobKind = Literal['MODEL_AUDIT', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE', 'DIRECTION_EXPLORATION', 'IMAGE_INDEX', 'DATA_CONSISTENCY', 'CONSISTENCY_ANALYSIS']
+JobKind = Literal['ANALYSIS_WORKFLOW', 'DATASET_REPORT', 'MODEL_AUDIT', 'MODEL_AUDIT_SAMPLE', 'KNOWLEDGE', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE', 'KNOWLEDGE_BATCH', 'DIRECTION_EXPLORATION', 'EXPLORATION_BATCH', 'IMAGE_INDEX', 'DATA_CONSISTENCY', 'CONSISTENCY_ANALYSIS', 'CONSISTENCY_MODEL_BATCH']
 
 
 class JobRetry(BaseModel):
@@ -64,6 +65,12 @@ class JobSnapshot(AnalysisModel):
     run_id: str
     task_id: str
     dataset_id: str
+    dataset_ids: list[str] = Field(default_factory=list)
+    analysis_kind: Optional[Literal['exploration', 'knowledge', 'consistency']] = None
+    dataset_results: list['DatasetAnalysisResult'] = Field(default_factory=list)
+    program_batch_id: Optional[str] = None
+    total_gallery_groups: Optional[int] = Field(default=None, ge=0)
+    completed_gallery_groups: Optional[int] = Field(default=None, ge=0)
     job_type: JobKind
     origin_session_id: Optional[str] = None
     root_run_id: str
@@ -104,5 +111,19 @@ class JobSnapshot(AnalysisModel):
     planned_regions: Optional[int] = None
     completed_batches: Optional[int] = None
     total_batches: Optional[int] = None
+    batch_runs: list[str] = Field(default_factory=list)
+    active_batch_run_id: Optional[str] = None
     errors: list[JobFailure]
     model_calls: list[ModelCallSummary]
+
+
+class DatasetAnalysisResult(AnalysisModel):
+    dataset_id: str
+    run_id: str
+    status: JobStatus
+    exploration_version_id: Optional[str] = None
+    knowledge_version_id: Optional[str] = None
+
+
+def failure_message(errors: Iterable[Mapping[str, Any]]) -> str:
+    return '；'.join(dict.fromkeys(error['message'] for error in errors))

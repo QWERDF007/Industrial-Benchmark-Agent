@@ -1,3 +1,4 @@
+import {Select} from './Select.js';
 import React from "react";
 import type {Dataset, Filters} from "../../shared/contracts.js";
 import {initialFilters, modelLabels} from "../api.js";
@@ -15,8 +16,8 @@ export function SampleFilters({dataset, filters, onFilters, busy = false, defaul
   const rawLabelOptions: [("PASS" | "FAIL" | "UNCERTAIN"), string][] = [["PASS", "OK"], ["FAIL", "NG"], ["UNCERTAIN", "未标记"]];
   const rawLabelMap: Record<string, string> = { PASS: "OK", FAIL: "NG", UNCERTAIN: "未标记" };
   const rawFilters = filters.raw_label_filters || [];
-  const select = <K extends keyof typeof options>(key: K, label: string) => <label className="iad-filter">{label}<select aria-label={label} disabled={busy} value={filters[key]} onChange={e => onFilters({ ...filters, [key]: e.target.value })}>
-    {options[key].map(([value, title]) => <option key={value} value={value}>{title}</option>)}</select></label>;
+  const select = <K extends keyof typeof options>(key: K, label: string) => <label className="iad-filter">{label}<Select aria-label={label} disabled={busy} value={filters[key]} onChange={e => onFilters({ ...filters, [key]: e.target.value })}>
+    {options[key].map(([value, title]) => <option key={value} value={value}>{title}</option>)}</Select></label>;
   const active = [
     ...rawFilters.map(value => `标签：${rawLabelMap[value] || value}`),
     ...(!isFolder ? filters.annotation_filters.map(value => value === "none" ? "无标注" : value === "present" ? "有标注" : value.slice(9)) : []),
@@ -41,6 +42,6 @@ export function SampleFilters({dataset, filters, onFilters, busy = false, defaul
     <FloatingMenu className="iad-multiselect" label="更多筛选" summary="更多筛选">{select("technical", "技术质量")}{select("reference_status", "良品来源")}{select("sort_by", "排序")}</FloatingMenu>
 
   </div>
-  {!!active.length && <div className="iad-filter-summary"><span>筛选：{active.join(" · ")}</span><button disabled={busy} onClick={() => onFilters({ ...defaults })}>清除筛选</button></div>}
+  {!!active.length && <div className="iad-filter-summary"><span>筛选：{active.join("，")}</span><button disabled={busy} onClick={() => onFilters({ ...defaults })}>清除筛选</button></div>}
   </>;
 }

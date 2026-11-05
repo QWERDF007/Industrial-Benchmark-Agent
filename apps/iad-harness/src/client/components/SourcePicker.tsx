@@ -1,3 +1,4 @@
+import {ThumbnailCard} from "./ThumbnailCard.js";
 import React, { useState } from "react";
 import type { Dataset, KnowledgeSourcePage } from "../../shared/contracts.js";
 import { mediaUrl } from "../api.js";
@@ -22,10 +23,10 @@ export function SourcePicker({ dataset, label, sources, selected, target, disabl
   function show(only: boolean) { setSelectedOnly(only); setSelectedPage(1); setSelectedSearch(""); setOpen(true); }
   function thumbnail(id: string, path: string) {
     const sample = { task_id: dataset.task_id, sample_id: id };
-    return <button type="button" aria-label={`放大样例 ${path}`} onClick={() => setImage({ src: mediaUrl(sample, "image"), title: path })}><img src={mediaUrl(sample, "thumbnail")} alt={path} loading="lazy" /></button>;
+    return <ThumbnailCard src={mediaUrl(sample,"thumbnail")} label={path.split("/").pop()!} aria-label={`放大样例 ${path}`} onClick={()=>setImage({src:mediaUrl(sample,"image"),title:path,sampleId:id})} />;
   }
   return <div className="iad-source-picker">
-    <p role="status">已选 {selected.length} / {target || "—"} 张{sources ? ` · 可用 ${sources.total}` : ""}</p>
+    <p role="status">已选 {selected.length} / {target || "—"} 张{sources ? `，可用 ${sources.total}` : ""}</p>
     <div className="iad-source-preview">{selected.slice(0, 4).map(id => <div key={id}>{thumbnail(id, name(id))}<span title={name(id)}>{name(id).split("/").pop()}</span></div>)}</div>
     <div className="iad-row">
       <button type="button" disabled={disabled} onClick={() => show(false)}>选择{label}图像</button>
@@ -38,7 +39,7 @@ export function SourcePicker({ dataset, label, sources, selected, target, disabl
       <div className="iad-row">{onChoose && <button type="button" disabled={disabled || choosing || !canChoose} onClick={onChoose}>{choosing ? "选择中…" : "按数量选择"}</button>}
         <button type="button" disabled={disabled || choosing || !selected.length} onClick={() => onChange([])}>清空{label}选择</button></div>
       <fieldset disabled={disabled || choosing} className="iad-source-candidates"><legend>{label}图像</legend>
-        <div className="iad-source-grid">{items.map(item => <div className="iad-source-option" key={item.sample_id}>
+        <div className="iad-thumbnail-grid">{items.map(item => <div className="iad-source-option" key={item.sample_id}>
           {thumbnail(item.sample_id, item.relative_path)}<label title={item.relative_path}><input type="checkbox" aria-label={`选择${label} ${item.relative_path}`} checked={selected.includes(item.sample_id)} onChange={event => onChange(event.target.checked ? [...selected, item.sample_id] : selected.filter(id => id !== item.sample_id))} /><span>{item.relative_path.split("/").pop()}</span></label>
         </div>)}</div>{!items.length && <p role="status">{selectedOnly ? "没有匹配的已选图像。" : sources ? "没有匹配的合格来源。" : "正在读取来源…"}</p>}
       </fieldset><Pagination total={selectedOnly ? chosen.length : sources?.total || 0} page={selectedOnly ? current : page} size={10} unit="张" onPage={selectedOnly ? setSelectedPage : onPage} />

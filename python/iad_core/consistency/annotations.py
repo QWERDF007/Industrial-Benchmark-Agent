@@ -100,7 +100,8 @@ class AnnotationMatcher:
         if domain.unavailable_reason is not None:
             difference('POLICY_UNCONFIRMED', facts={'reason': domain.unavailable_reason},
                 extra_pending=['Verify the original coordinate and ignore domain before geometric reconciliation'])
-            return AnnotationComparison(status='UNAVAILABLE', policy_relation=policy_relation, matches=[],
+            captured = relation != 'EXACT' and not any(invalid) and all(side.annotation_coordinates == 'RAW' for side in sides)
+            return AnnotationComparison(status='COMPLETE' if captured else 'UNAVAILABLE', policy_relation=policy_relation, matches=[],
                 differences=differences, invalid_left=invalid[0], invalid_right=invalid[1], confirmed_conflict=any(d.confirmed_conflict for d in differences),
                 ignore_regions=ignore_regions,masking=masking)
         a,b = geometries

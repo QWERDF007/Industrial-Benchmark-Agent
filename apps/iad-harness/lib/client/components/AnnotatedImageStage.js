@@ -1,5 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from "react";
+import { AnnotationLayer } from "./AnnotationLayer.js";
 /**
  * Unified Annotated Image Stage.
  * Single Source of Truth for rendering an image with bounding box annotations and category badges.
@@ -45,21 +46,5 @@ export function AnnotatedImageStage({ src, alt = "", width, height, bboxes = [],
                             setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
                             onLoadDimensions?.({ naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
                         }
-                    } }), showAnnotations && bboxes && bboxes.length > 0 && (_jsx("span", { className: "preview-overlay", id: "preview-overlay", children: bboxes.map((item, idx) => {
-                        if (!item.bbox || item.bbox.length < 4)
-                            return null;
-                        const [x1, y1, x2, y2] = item.bbox;
-                        const minX = Math.min(x1, x2);
-                        const minY = Math.min(y1, y2);
-                        const maxX = Math.max(x1, x2);
-                        const maxY = Math.max(y1, y2);
-                        const label = item.raw_label ? item.raw_label.replace(/^类别\s*/, "") : "";
-                        return (_jsx("span", { className: "bbox", "data-label": label, "aria-hidden": "true", style: {
-                                position: "absolute",
-                                left: `${((minX / imgW) * 100).toFixed(3)}%`,
-                                top: `${((minY / imgH) * 100).toFixed(3)}%`,
-                                width: `${(((maxX - minX) / imgW) * 100).toFixed(3)}%`,
-                                height: `${(((maxY - minY) / imgH) * 100).toFixed(3)}%`,
-                            } }, item.annotation_id || idx));
-                    }) })), children] }) }));
+                    } }), showAnnotations && bboxes.length > 0 && _jsx(AnnotationLayer, { source: { kind: 'boxes', annotations: bboxes, width: imgW, height: imgH } }), children] }) }));
 }

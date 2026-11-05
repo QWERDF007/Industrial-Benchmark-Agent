@@ -1,3 +1,5 @@
+import {Select} from './Select.js';
+import {ThumbnailCard} from "./ThumbnailCard.js";
 import React,{useEffect,useRef,useState} from 'react';
 import type {GalleryItem,GalleryPage,GalleryQuery} from '../../shared/domain.generated.js';
 import {differenceLabels} from '../../shared/consistency-presentation.js';
@@ -38,25 +40,24 @@ export function ConsistencyGallery({queryId,kind,onExpired}:{queryId:string;kind
     else {pendingMove.current=offset;workspace.updateConsistency({galleryPage:number+offset,memberId:undefined,memberPage:1},true);}
   }
   return <section className="iad-consistency-gallery-panel" aria-label={kind==='conflicts' ? '冲突图像' : '重复图组'}>
-    <header className="iad-consistency-panel-header"><strong>{kind==='conflicts' ? '同图标注差异' : '重复图组 · 代表图像'} <span className="iad-muted">{page?.total ?? '—'} {kind==='conflicts' ? '张' : '组'}</span></strong>
+    <header className="iad-consistency-panel-header"><strong>{kind==='conflicts' ? '同图标注差异' : '重复图组，代表图像'} <span className="iad-muted">{page?.total ?? '—'} {kind==='conflicts' ? '张' : '组'}</span></strong>
       <div className="iad-row"><input type="search" aria-label="搜索图像" placeholder="搜索文件名" value={search} onChange={event=>workspace.updateConsistency({gallerySearch:event.target.value,galleryPage:1,groupId:undefined},true)} />
-        <select aria-label="MLLM结论筛选" value={modelFilter} onChange={event=>workspace.updateConsistency({modelFilter:event.target.value as NonNullable<typeof location.modelFilter>,galleryPage:1,groupId:undefined},true)}>
+        <Select aria-label="MLLM结论筛选" value={modelFilter} onChange={event=>workspace.updateConsistency({modelFilter:event.target.value as NonNullable<typeof location.modelFilter>,galleryPage:1,groupId:undefined},true)}>
           {(page?.model_filters||[{value:modelFilter,label:modelFilter==='all' ? '全部模型结论' : modelAssessmentLabels[modelFilter],count:0}]).map(filter=><option key={filter.value} value={filter.value}>{filter.label}{page ? ` ${filter.count}` : ''}</option>)}
-        </select>
-        <select aria-label="排序方式" value={order} onChange={event=>workspace.updateConsistency({galleryOrder:event.target.value as NonNullable<typeof location.galleryOrder>,galleryPage:1,groupId:undefined},true)}><option value="recent">最近比较</option><option value="members">{kind==='conflicts' ? '候选数量从多到少' : '成员数量从多到少'}</option></select></div>
+        </Select>
+        <Select aria-label="排序方式" value={order} onChange={event=>workspace.updateConsistency({galleryOrder:event.target.value as NonNullable<typeof location.galleryOrder>,galleryPage:1,groupId:undefined},true)}><option value="recent">最近比较</option><option value="members">{kind==='conflicts' ? '候选数量从多到少' : '成员数量从多到少'}</option></Select></div>
     </header>
     {error && <p role="alert" className="iad-error">{error}</p>}
     {!page&&!error && <p role="status" className="iad-empty">正在读取图像…</p>}
     {page && !page.total && <p className="iad-empty">没有匹配的图像，请调整筛选条件。</p>}
     {kind==='conflicts' && page && <div className="iad-consistency-filter-chips" role="group" aria-label="差异类型筛选">{page.filters.map(filter=><button key={filter.value} aria-pressed={differenceFilter===filter.value} onClick={()=>workspace.updateConsistency({differenceFilter:filter.value,galleryPage:1,groupId:undefined},true)}>{filter.label} {filter.count}</button>)}</div>}
-    <MediaLoad><div className="iad-consistency-gallery">{page?.items.map(item=><button key={item.group_id+item.facts_state} ref={element=>{if(element)cards.current.set(item.group_id,element);else cards.current.delete(item.group_id);}}
-      className="iad-consistency-image-card" data-group-id={item.group_id} data-facts-state={item.facts_state} onClick={()=>open(item)}>
-      <div className="iad-consistency-card-image">{item.anchor.available ? <MediaImage src={galleryImageUrl(item.anchor)} alt={item.anchor.sample.relative_path} loading="lazy" /> : <span>原图不可恢复</span>}
-        <span className="iad-consistency-card-count">{kind==='groups' ? `${item.member_count} 张成员` : `${item.candidate_count} 张候选`}</span></div>
-      <div className="iad-consistency-card-caption"><strong title={item.anchor.sample.relative_path}>{item.anchor.sample.relative_path.split('/').pop()}</strong>
-        <div><span className="iad-consistency-badge">{kind==='groups' ? '严格同图' : item.difference_types.map(type=>differenceLabels[type]).join('、')||'未发现标注差异'}</span><span>{kind==='groups' ? `${item.dataset_count} 个数据集` : ''}</span></div></div>
-      <span className="iad-consistency-model-state">MLLM · {modelAssessmentLabels[item.model_state]}</span>
-    </button>)}</div></MediaLoad>
+    <MediaLoad><div className="iad-thumbnail-grid">{page?.items.map(item=><ThumbnailCard key={item.group_id+item.facts_state} ref={element=>{if(element)cards.current.set(item.group_id,element);else cards.current.delete(item.group_id);}}
+      src={item.anchor.available?galleryImageUrl(item.anchor):undefined} label={item.anchor.sample.relative_path.split('/').pop()!}
+      data-group-id={item.group_id} data-facts-state={item.facts_state} onClick={()=>open(item)}>
+      <small>{kind==='groups'?`${item.member_count} 张成员`:`${item.candidate_count} 张候选`}</small>
+      <small>{kind==='groups'?'严格同图':item.difference_types.map(type=>differenceLabels[type]).join('、')||'未发现标注差异'}</small>
+      <small>MLLM，{modelAssessmentLabels[item.model_state]}</small>
+    </ThumbnailCard>)}</div></MediaLoad>
     <Pagination total={page?.total||0} page={number} size={15} unit={kind==='groups' ? '组' : '张'} onPage={galleryPage=>workspace.updateConsistency({galleryPage,groupId:undefined},true)} />
     {selected && !location.evidenceId && <ConsistencyGroupDialog key={selected.group_id+selected.facts_state} queryId={queryId} kind={kind} item={selected} position={(number-1)*15+(page?.items.indexOf(selected)||0)+1} total={page?.total||0}
       onMove={move} onExpired={onExpired} onClose={()=>workspace.updateConsistency({groupId:undefined,memberId:undefined,differenceId:undefined,detailTab:undefined},true)} restoreFocus={()=>focus.current||cards.current.get(selected.group_id)||null} />}

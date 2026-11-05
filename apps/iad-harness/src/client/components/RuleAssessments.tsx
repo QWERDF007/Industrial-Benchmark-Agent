@@ -9,9 +9,9 @@ export function RuleAssessments({ analysis, knowledge, onEvidence }: {
 }) {
   const checks = new Map(knowledge.flatMap(snapshot => snapshot.checks.map(check => [check.check_id, check] as const)));
   if (!analysis.check_assessments.length) return null;
-  return <details className="iad-rule-assessments iad-analysis"><summary>检查项 · {analysis.check_assessments.length}</summary>
+  return <details className="iad-rule-assessments iad-analysis"><summary>检查项，{analysis.check_assessments.length}</summary>
     <ol>{analysis.check_assessments.map(assessment => <li key={assessment.check_id} data-check-id={assessment.check_id}>
-      <strong>{checks.get(assessment.check_id)?.title || assessment.check_id}</strong> · {statuses[assessment.status]}
+      <strong>{checks.get(assessment.check_id)?.title || assessment.check_id}</strong>，{statuses[assessment.status]}
       <p>{assessment.description}</p>
       {!!assessment.limitations.length && <p className="iad-muted">{assessment.limitations.join("；")}</p>}
       <AuditEvidence analysis={analysis} ids={assessment.evidence_ids} label={checks.get(assessment.check_id)?.title || "检查项"} onEvidence={onEvidence} />

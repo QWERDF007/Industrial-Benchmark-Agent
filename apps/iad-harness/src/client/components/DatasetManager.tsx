@@ -1,9 +1,12 @@
+import {Select} from './Select.js';
+import {Button} from './Button.js';
+import {IconButton} from "./IconButton.js";
 import React, { useEffect, useId, useRef, useState } from "react";
 import type { Dataset, DatasetGroup, DirectoryListing, FolderRule, ScanResult } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 import { useFolderPreview } from "../useFolderPreview.js";
 import { WorkbenchHeader } from "./layout/WorkbenchHeader.js";
-import { ChevronIcon, CloseIcon, CopyIcon, DeleteIcon, EditIcon, PlusIcon } from "../AuditIcon.js";
+
 import { ClearFilterButton } from "./CommonFilterControls.js";
 import { useWorkspace } from "../workspace.js";
 
@@ -43,7 +46,7 @@ function DirectoryPickerModal({ label, initialPath, onClose, onPick }: {
       <div className="modal add-dataset-modal dir-picker-modal" role="dialog" aria-modal="true" aria-label={`浏览服务器目录 - ${label}`}>
         <div className="modal-top">
           <h2>浏览服务器目录</h2>
-          <button type="button" className="modal-x iad-icon-button" onClick={onClose} aria-label="关闭">×</button>
+          <IconButton icon="close" type="button" onClick={onClose} label="关闭" />
         </div>
         <p className="iad-muted" style={{ marginBottom: 12 }}>选择服务器上的目录</p>
         <div className="path-preview" style={{ marginBottom: 14 }}>{currentPath}</div>
@@ -51,14 +54,14 @@ function DirectoryPickerModal({ label, initialPath, onClose, onPick }: {
           <label htmlFor="browse-value">目录路径</label>
           <div style={{ display: "flex", gap: 8 }}>
             <input id="browse-value" value={inputVal} onChange={e => setInputVal(e.target.value)} onKeyDown={e => { if (e.key === "Enter") void browse(inputVal); }} />
-            <button type="button" className="secondary" onClick={() => void browse(inputVal)} disabled={loading}>跳转</button>
+            <Button type="button"  onClick={() => void browse(inputVal)} disabled={loading}>跳转</Button>
           </div>
         </div>
         {error && <p role="alert" className="iad-error">{error}</p>}
         {listing && (
           <div style={{ border: "1px solid var(--line)", borderRadius: 5, padding: 10, maxHeight: 220, overflowY: "auto", margin: "14px 0" }}>
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-              {listing.parent && <button type="button" className="secondary" style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => void browse(listing.parent)}>↑ 上级目录</button>}
+              {listing.parent && <Button type="button"  style={{ padding: "4px 10px", fontSize: 12 }} onClick={() => void browse(listing.parent)}>↑ 上级目录</Button>}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {listing.directories.map(d => (
@@ -77,8 +80,8 @@ function DirectoryPickerModal({ label, initialPath, onClose, onPick }: {
           </div>
         )}
         <div className="modal-actions">
-          <button type="button" className="secondary" onClick={onClose}>取消</button>
-          <button type="button" className="primary" onClick={() => { onPick(inputVal); onClose(); }}>选择此目录</button>
+          <Button type="button"  onClick={onClose}>取消</Button>
+          <Button type="button" variant="primary" onClick={() => { onPick(inputVal); onClose(); }}>选择此目录</Button>
         </div>
       </div>
     </div>
@@ -470,7 +473,7 @@ export function DatasetManager({
   return (
     <div className={`iad-dataset-page-wrap ${drawerOpen && (activeDataset || activeGroup) ? "has-drawer" : ""}`}>
       <WorkbenchHeader pageId="industrial-datasets">
-        <button id="addBtn" type="button" className="iad-primary" onClick={() => openAddModal(null)}>添加数据集</button>
+        <Button id="addBtn" type="button" variant="primary" onClick={() => openAddModal(null)}>添加数据集</Button>
       </WorkbenchHeader>
 
       <section aria-label="数据集列表">
@@ -552,21 +555,10 @@ export function DatasetManager({
                     >
                       <td>
                         <div className="name-area">
-                          <button
-                            type="button"
-                            className="expand iad-icon-button"
-                            data-expand={group.group_id}
-                            data-expanded={isOpen}
-                            aria-label={`${isOpen ? "收起" : "展开"} ${group.name}`}
-                            aria-expanded={isOpen}
-                            title={`${isOpen ? "收起" : "展开"}子数据集`}
-                            onClick={e => {
+                          <IconButton icon="chevron" type="button" className="expand" data-expand={group.group_id} data-expanded={isOpen} label={`${isOpen ? "收起" : "展开"} ${group.name}`} aria-expanded={isOpen} title={`${isOpen ? "收起" : "展开"}子数据集`} onClick={e => {
                               e.stopPropagation();
                               setExpandedGroups(prev => ({ ...prev, [group.group_id]: !isOpen }));
-                            }}
-                          >
-                            <ChevronIcon size={16} />
-                          </button>
+                            }} />
                           {isGroupEditing ? (
                             <div className="edit-wrap" onClick={e => e.stopPropagation()}>
                               <input
@@ -587,16 +579,7 @@ export function DatasetManager({
                           ) : (
                             <>
                               <span className="name-text" title={group.name}>{group.name}</span>
-                              <button
-                                type="button"
-                                className="pencil iad-icon-button"
-                                data-edit={group.group_id}
-                                aria-label={`修改数据集名称 ${group.name}`}
-                                title="修改数据集名称"
-                                onClick={e => startEdit(group.group_id, group.name, e)}
-                              >
-                                <EditIcon />
-                              </button>
+                              <IconButton icon="edit" type="button" data-edit={group.group_id} label={`修改数据集名称 ${group.name}`} title="修改数据集名称" onClick={e => startEdit(group.group_id, group.name, e)} />
                             </>
                           )}
                         </div>
@@ -606,26 +589,8 @@ export function DatasetManager({
                       <td className="num">{sumLabels}</td>
                       <td>
                         <div className="actions">
-                          <button
-                            type="button"
-                            className="icon-button plus-action iad-icon-button"
-                            data-add-parent={group.group_id}
-                            aria-label={`为 ${group.name} 添加子数据集`}
-                            title="添加子数据集"
-                            onClick={e => { e.stopPropagation(); openAddModal(group.group_id); }}
-                          >
-                            <PlusIcon size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            className="icon-button iad-icon-button"
-                            data-delete={group.group_id}
-                            aria-label={`删除数据集 ${group.name}`}
-                            title="删除数据集"
-                            onClick={e => openDeleteModal({ kind: "group", group }, e)}
-                          >
-                            <DeleteIcon />
-                          </button>
+                          <IconButton icon="add" type="button" data-add-parent={group.group_id} label={`为 ${group.name} 添加子数据集`} title="添加子数据集" onClick={e => { e.stopPropagation(); openAddModal(group.group_id); }} />
+                          <IconButton icon="delete" type="button" data-delete={group.group_id} label={`删除数据集 ${group.name}`} title="删除数据集" onClick={e => openDeleteModal({ kind: "group", group }, e)} />
                         </div>
                       </td>
                     </tr>
@@ -671,16 +636,7 @@ export function DatasetManager({
                               ) : (
                                 <>
                                   <span className="name-text" title={child.name}>{child.name}</span>
-                                  <button
-                                    type="button"
-                                    className="pencil iad-icon-button"
-                                    data-edit={child.dataset_id}
-                                    aria-label={`修改数据集名称 ${child.name}`}
-                                    title="修改数据集名称"
-                                    onClick={e => startEdit(child.dataset_id, child.name, e)}
-                                  >
-                                    <EditIcon />
-                                  </button>
+                                  <IconButton icon="edit" type="button" data-edit={child.dataset_id} label={`修改数据集名称 ${child.name}`} title="修改数据集名称" onClick={e => startEdit(child.dataset_id, child.name, e)} />
                                 </>
                               )}
                             </div>
@@ -690,16 +646,7 @@ export function DatasetManager({
                           <td className="num">{childLabels}</td>
                           <td>
                             <div className="actions">
-                              <button
-                                type="button"
-                                className="icon-button iad-icon-button"
-                                data-delete={child.dataset_id}
-                                aria-label={`删除子数据集 ${child.name}`}
-                                title="删除子数据集"
-                                onClick={e => openDeleteModal({ kind: "child", dataset: child }, e)}
-                              >
-                                <DeleteIcon />
-                              </button>
+                              <IconButton icon="delete" type="button" data-delete={child.dataset_id} label={`删除子数据集 ${child.name}`} title="删除子数据集" onClick={e => openDeleteModal({ kind: "child", dataset: child }, e)} />
                             </div>
                           </td>
                         </tr>
@@ -729,7 +676,7 @@ export function DatasetManager({
                 <h2 id="detailTitle">{activeDataset.name}</h2>
                 <div className="detail-sub" id="detailSub">子数据集</div>
               </div>
-              <button type="button" className="drawer-close iad-icon-button" onClick={closeDrawer} aria-label="关闭详情抽屉" title="关闭">×</button>
+              <IconButton icon="close" type="button" onClick={closeDrawer} label="关闭详情抽屉" title="关闭" />
             </header>
             <div className="drawer-body">
               <div className="detail-card" id="detailContent">
@@ -747,7 +694,7 @@ export function DatasetManager({
                             value={curImageDir}
                             onChange={e => setDirty(prev => ({ ...prev, [activeDataset.dataset_id]: { ...prev[activeDataset.dataset_id], imageDir: e.target.value } }))}
                           />
-                          <button type="button" className="secondary" onClick={() => setBrowseField("imageDir")}>浏览</button>
+                          <Button type="button"  onClick={() => setBrowseField("imageDir")}>浏览</Button>
                         </div>
                       </div>
                     ) : (
@@ -762,7 +709,7 @@ export function DatasetManager({
                               value={curImageDir}
                               onChange={e => setDirty(prev => ({ ...prev, [activeDataset.dataset_id]: { ...prev[activeDataset.dataset_id], imageDir: e.target.value } }))}
                             />
-                            <button type="button" className="secondary" onClick={() => setBrowseField("imageDir")}>浏览</button>
+                            <Button type="button"  onClick={() => setBrowseField("imageDir")}>浏览</Button>
                           </div>
                         </div>
                         <div className="field">
@@ -775,7 +722,7 @@ export function DatasetManager({
                               value={curAnnotationDir}
                               onChange={e => setDirty(prev => ({ ...prev, [activeDataset.dataset_id]: { ...prev[activeDataset.dataset_id], annotationDir: e.target.value } }))}
                             />
-                            <button type="button" className="secondary" onClick={() => setBrowseField("annotationDir")}>浏览</button>
+                            <Button type="button"  onClick={() => setBrowseField("annotationDir")}>浏览</Button>
                           </div>
                         </div>
                       </>
@@ -789,12 +736,12 @@ export function DatasetManager({
                             {(preview?.items || curRules || []).map((r, i) => (
                               <div className="mapping-row" key={r.path}>
                                 <span title={r.path}>{r.path}</span>
-                                <select
+                                <Select
                                   aria-label={`目录 ${r.path} 角色`}
                                   value={r.role}
                                   onChange={e => {
                                     const nextRole = e.target.value as FolderRule["role"];
-                                    const nextRules = (curRules.length ? [...curRules] : (preview?.items || []).map(it => ({ path: it.path, role: it.role })));
+                                    const nextRules = (curRules.length ? curRules : preview?.items || []).map(({path,role})=>({path,role}));
                                     const existing = nextRules.find(item => item.path === r.path);
                                     if (existing) existing.role = nextRole;
                                     else nextRules.push({ path: r.path, role: nextRole });
@@ -805,7 +752,7 @@ export function DatasetManager({
                                   <option value="anomaly">异常</option>
                                   <option value="unlabeled">未标注</option>
                                   <option value="excluded">排除</option>
-                                </select>
+                                </Select>
                               </div>
                             ))}
                           </div>
@@ -819,15 +766,7 @@ export function DatasetManager({
                     <h3>数据集标识</h3>
                     <div className="identifier-value">
                       <span title={activeDataset.dataset_id}>{activeDataset.dataset_id}</span>
-                      <button
-                        className="copy-id iad-icon-button"
-                        type="button"
-                        aria-label="复制数据集标识"
-                        title="复制数据集标识"
-                        onClick={() => void copyIdentifier(activeDataset.dataset_id)}
-                      >
-                        <CopyIcon />
-                      </button>
+                      <IconButton icon="copy" type="button" label="复制数据集标识" title="复制数据集标识" onClick={() => void copyIdentifier(activeDataset.dataset_id)} />
                     </div>
                   </section>
 
@@ -835,15 +774,15 @@ export function DatasetManager({
                   <div className="detail-footer">
                     <p className="help" id="dirtyHelp">{hasDirty ? "有尚未保存的变更" : ""}</p>
                     <div className="buttons">
-                      {hasDirty && <button type="button" className="secondary" onClick={resetDraft}>取消更改</button>}
-                      <button
+                      {hasDirty && <Button type="button"  onClick={resetDraft}>取消更改</Button>}
+                      <Button
                         type="button"
-                        className={hasDirty ? "primary" : "secondary"}
+                        variant={hasDirty ? "primary" : "secondary"}
                         disabled={busy || (isFolder && hasDirty && !ready)}
                         onClick={() => void rescanDirectory()}
                       >
                         {busy ? "正在处理…" : hasDirty ? "保存映射并重新扫描" : "重新扫描目录"}
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -857,7 +796,7 @@ export function DatasetManager({
                 <h2 id="detailTitle">{activeGroup.name}</h2>
                 <div className="detail-sub" id="detailSub">数据集</div>
               </div>
-              <button type="button" className="drawer-close iad-icon-button" onClick={closeDrawer} aria-label="关闭详情抽屉" title="关闭">×</button>
+              <IconButton icon="close" type="button" onClick={closeDrawer} label="关闭详情抽屉" title="关闭" />
             </header>
             <div className="drawer-body">
               <div className="detail-card" id="detailContent">
@@ -867,15 +806,7 @@ export function DatasetManager({
                       <h3>数据集标识</h3>
                       <div className="identifier-value">
                         <span title={activeGroup.group_id}>{activeGroup.group_id}</span>
-                        <button
-                          className="copy-id iad-icon-button"
-                          type="button"
-                          aria-label="复制数据集标识"
-                          title="复制数据集标识"
-                          onClick={() => void copyIdentifier(activeGroup.group_id)}
-                        >
-                          <CopyIcon />
-                        </button>
+                        <IconButton icon="copy" type="button" label="复制数据集标识" title="复制数据集标识" onClick={() => void copyIdentifier(activeGroup.group_id)} />
                       </div>
                     </section>
                   </div>
@@ -907,7 +838,7 @@ export function DatasetManager({
           <div className="modal add-dataset-modal" role="dialog" aria-modal="true" aria-label="添加数据集">
             <div className="modal-top">
               <h2>添加数据集</h2>
-              <button type="button" className="modal-x iad-icon-button" onClick={() => { if (!addBusy) setAddModalOpen(false); }} aria-label="关闭">×</button>
+              <IconButton icon="close" type="button" onClick={() => { if (!addBusy) setAddModalOpen(false); }} label="关闭" />
             </div>
             <form onSubmit={handleCreate}>
               <div className="modal-field">
@@ -941,7 +872,7 @@ export function DatasetManager({
                 <>
                   <div className="modal-field">
                     <label htmlFor="new-parent">所属数据集</label>
-                    <select
+                    <Select
                       id="new-parent"
                       disabled={!!addParentId}
                       value={addSelectedParent}
@@ -950,7 +881,7 @@ export function DatasetManager({
                       {groups.map(g => (
                         <option key={g.group_id} value={g.group_id}>{g.name}</option>
                       ))}
-                    </select>
+                    </Select>
                   </div>
 
                   <div className="modal-field">
@@ -1007,7 +938,7 @@ export function DatasetManager({
                         onChange={e => setAddImagePath(e.target.value)}
                         required
                       />
-                      <button type="button" className="secondary" onClick={() => setAddBrowseField("image")}>浏览</button>
+                      <Button type="button"  onClick={() => setAddBrowseField("image")}>浏览</Button>
                     </div>
                   </div>
 
@@ -1022,7 +953,7 @@ export function DatasetManager({
                           onChange={e => setAddLabelPath(e.target.value)}
                           required
                         />
-                        <button type="button" className="secondary" onClick={() => setAddBrowseField("label")}>浏览</button>
+                        <Button type="button"  onClick={() => setAddBrowseField("label")}>浏览</Button>
                       </div>
                     </div>
                   )}
@@ -1038,10 +969,10 @@ export function DatasetManager({
               {addError && <p role="alert" className="iad-error" style={{ marginTop: 12 }}>{addError}</p>}
 
               <div className="modal-actions">
-                <button type="button" className="secondary" onClick={() => setAddModalOpen(false)} disabled={addBusy}>取消</button>
-                <button type="submit" className="primary" disabled={addBusy || (addKind === "child" && addFormat === "异常检测目录" && !addFolderReady)}>
+                <Button type="button"  onClick={() => setAddModalOpen(false)} disabled={addBusy}>取消</Button>
+                <Button type="submit" variant="primary" disabled={addBusy || (addKind === "child" && addFormat === "异常检测目录" && !addFolderReady)}>
                   {addBusy ? "正在添加…" : "添加"}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -1067,7 +998,7 @@ export function DatasetManager({
           <div className="modal delete-modal" role="dialog" aria-modal="true" aria-label={deleteTarget.kind === "group" ? "删除大数据集" : "删除数据集"}>
             <div className="modal-top">
               <h2>{deleteTarget.kind === "group" ? "删除大数据集" : "删除数据集"}</h2>
-              <button type="button" className="modal-x iad-icon-button" onClick={() => { if (!deleteBusy) setDeleteTarget(null); }} aria-label="关闭">×</button>
+              <IconButton icon="close" type="button" onClick={() => { if (!deleteBusy) setDeleteTarget(null); }} label="关闭" />
             </div>
             {deleteTarget.kind === "group" ? (
               (() => {
@@ -1081,16 +1012,16 @@ export function DatasetManager({
                         : "该大数据集没有子数据集。此操作不可撤销。"}
                     </p>
                     <div className="modal-actions">
-                      <button type="button" className="secondary" onClick={() => setDeleteTarget(null)}>取消</button>
-                      <button
+                      <Button type="button"  onClick={() => setDeleteTarget(null)}>取消</Button>
+                      <Button
                         type="button"
-                        className="primary"
+                        variant="primary"
                         style={{ background: "#ba3540", borderColor: "#ba3540" }}
                         disabled={deleteBusy}
                         onClick={() => void confirmDelete()}
                       >
                         {deleteBusy ? "正在删除…" : "确认删除"}
-                      </button>
+                      </Button>
                     </div>
                   </>
                 );
@@ -1100,16 +1031,16 @@ export function DatasetManager({
                 <p>确认删除「{deleteTarget.dataset.name}」？</p>
                 <p>此操作会从列表中删除该数据集；不会删除真实文件。</p>
                 <div className="modal-actions">
-                  <button type="button" className="secondary" onClick={() => setDeleteTarget(null)}>取消</button>
-                  <button
+                  <Button type="button"  onClick={() => setDeleteTarget(null)}>取消</Button>
+                  <Button
                     type="button"
-                    className="primary"
+                    variant="primary"
                     style={{ background: "#ba3540", borderColor: "#ba3540" }}
                     disabled={deleteBusy}
                     onClick={() => void confirmDelete()}
                   >
                     {deleteBusy ? "正在删除…" : "确认删除"}
-                  </button>
+                  </Button>
                 </div>
               </>
             )}

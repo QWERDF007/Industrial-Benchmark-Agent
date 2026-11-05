@@ -6,7 +6,7 @@ export declare function JobDetail({ job, onChanged, stale, lastSyncedAt, onCopy,
     stale?: boolean;
     lastSyncedAt?: number | null;
     onCopy?(job: JobSnapshot): void;
-    presentation?: "inline" | "drawer";
+    presentation?: "inline" | "drawer" | "status";
     onClose?(): void;
 }): React.JSX.Element;
 //# sourceMappingURL=JobDetail.d.ts.map

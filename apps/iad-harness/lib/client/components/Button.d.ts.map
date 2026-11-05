@@ -1,0 +1,1 @@
+{"version":3,"file":"Button.d.ts","sourceRoot":"","sources":["../../../src/client/components/Button.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAmB,MAAM,OAAO,CAAC;AAExC,MAAM,WAAW,WAAY,SAAQ,KAAK,CAAC,oBAAoB,CAAC,iBAAiB,CAAC;IAChF,OAAO,CAAC,EAAE,WAAW,GAAG,SAAS,GAAG,QAAQ,CAAC;CAC9C;AAED,eAAO,MAAM,MAAM,uFAKjB,CAAC"}

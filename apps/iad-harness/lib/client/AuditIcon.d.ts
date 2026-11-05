@@ -6,6 +6,12 @@ export declare function RefreshIcon({ size }?: {
 export declare function CopyIcon(): React.JSX.Element;
 export declare function DeleteIcon(): React.JSX.Element;
 export declare function CloseIcon(): React.JSX.Element;
+export declare function ClearFilterIcon(): React.JSX.Element;
+export declare function ZoomInIcon(): React.JSX.Element;
+export declare function ZoomOutIcon(): React.JSX.Element;
+export declare function FitIcon(): React.JSX.Element;
+export declare function ExpandIcon(): React.JSX.Element;
+export declare function EyeOffIcon(): React.JSX.Element;
 export declare function DatasetIcon({ size }: {
     size?: number;
 }): React.JSX.Element;

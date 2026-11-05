@@ -24,14 +24,17 @@ class FrozenExplorationPrompt(AnalysisModel):
 
 class ExplorationStart(AnalysisModel):
     dataset_id: str
-    normal_images: list[str] = Field(min_length=1)
-    defect_images: list[str] = Field(min_length=1)
+    normal_images: list[str]
+    defect_images: list[str]
     objective: NonBlankText = '联合比较候选良品和异常样例，自行提出适合此数据集的可观察检查方向。'
     prompt: Optional[FrozenExplorationPrompt] = None
+    parent_version_id: Optional[str] = None
 
     @model_validator(mode='after')
     def unique_images(self):
         images = self.normal_images + self.defect_images
+        if not images:
+            raise ValueError('至少选择一张真实候选图像')
         if len(set(images)) != len(images):
             raise ValueError('两组图像必须无重复，不能将同一图像同时放入两组')
         return self
@@ -44,6 +47,8 @@ class ProposedDirection(AnalysisModel):
     rationale: NonBlankText
     evidence_ids: list[str] = Field(min_length=1)
     limitations: list[str]
+    previous_direction_id: Optional[str] = Field(default=None,
+        description='延续或修订历史方向时填写给定direction_id；本轮新增方向为null，历史文本不是本轮视觉证据')
 
 
 class DirectionDraft(AnalysisModel):
@@ -64,6 +69,7 @@ class ExploredDirection(ProposedDirection):
 
 
 class ExplorationSnapshot(DirectionDraft):
+    visual_references: dict[str, str] = Field(default_factory=dict)
     version_id: str
     dataset_id: str
     run_id: str
@@ -89,6 +95,18 @@ class ExplorationCatalog(AnalysisModel):
     dataset_id: str
     versions: list[ExplorationVersion]
     exploration: Optional[ExplorationSnapshot]
+    removed_direction_ids: list[str] = Field(default_factory=list)
+
+
+class ExplorationResults(AnalysisModel):
+    snapshots: list[ExplorationSnapshot]
+    removed_direction_ids: list[str]
+
+
+class DirectionRemoval(AnalysisModel):
+    dataset_id: NonBlankText
+    version_id: NonBlankText
+    direction_id: NonBlankText
 
 
 class DirectionChoice(AnalysisModel):

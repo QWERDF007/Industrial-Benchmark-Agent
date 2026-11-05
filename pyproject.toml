@@ -19,6 +19,7 @@ dependencies = [
     "scikit-learn>=1.1.0",
     "typing-extensions>=4.0.0",
     "httpx>=0.24.0",
+    "httpx-sse>=0.4.3,<0.5",
     "filelock>=3.16.0",
 ]
 
@@ -42,3 +43,7 @@ iad-benchmark = "iad_cli.main:app"
 [tool.setuptools.packages.find]
 where = ["python"]
 include = ["iad_core*", "iad_cli*"]
+
+[tool.setuptools.package-data]
+"iad_core.exploration" = ["presets/*.txt"]
+"iad_core.knowledge" = ["directions/*.txt"]

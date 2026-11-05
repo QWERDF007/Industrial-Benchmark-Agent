@@ -14,7 +14,9 @@ export type InspectionSelection = {
     findingId?: string;
 };
 export interface InspectionTransform {
+    /** Multiplier of the viewport fit scale; zero keeps automatic fit. */
     zoom: number;
+    /** CSS pixel displacement from the viewport center. */
     x: number;
     y: number;
 }

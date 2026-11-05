@@ -1,3 +1,6 @@
+from iad_core.workbench.prompt_text import RESPONSE_FORMAT_INSTRUCTION
+
+
 AUDIT_PROMPTS: dict[str, str] = {
     'criteria': (
         '依据冻结的数据集知识联合分析真实全图与全部ROI，逐项核验可观察判据，结合结构、位置、光照与允许变化。'
@@ -12,7 +15,9 @@ AUDIT_PROMPTS: dict[str, str] = {
         '正常判据偏离或异常判据命中均标记anomaly，不可用标注类别直接推断。'
         '若某检查项缺少局部细节，使用其inspection_regions提出实际位置，由系统追加原图裁剪；'
         '不要猜测不存在的证据。'
-        'findings记录需要复核的实际疑点，每项关联检查点、所见现象、异常假设、合理正常解释、限制与具体复核动作。'
+        'findings记录需要复核的实际疑点，每项以check_ids关联检查点，description必填并写明实际可见现象，'
+        'hypothesis记录异常假设，normal_explanation记录合理正常解释，limitations记录限制，review_action记录具体复核动作。'
+        '每项分别提供description现象描述和location.description位置说明。'
         'location局部位置使用原图像素坐标bbox并引用实际覆盖该位置的raw证据；'
         '整体关系疑点使用global位置且引用全图，不伪造局部框。'
         'location.scope=local用于孔内异物、表面色差等可定位现象，必须给出原图bbox；'
@@ -20,7 +25,6 @@ AUDIT_PROMPTS: dict[str, str] = {
         'priority仅表示复核顺序，不是缺陷概率；'
         '每个anomaly检查项须关联至少一个finding，无疑点时findings为空。'
         '以一句简短综合建议指出最需要人工复核的位置，避免长篇重复视觉描述。'
-        '冻结知识：'
     ),
     'followup': (
         '补看后同一现象用related_findings引用给定reference并更新观察，不再重复创建。'
@@ -35,6 +39,18 @@ AUDIT_PROMPTS: dict[str, str] = {
     'synthesis': (
         '综合各子批次完整分析，结合当前全图和代表性ROI重新判断；'
         '不得用正常批次否定其他批次的异常证据。'
+    ),
+    'conclusion': (
+        '收到冻结综合审计时，结合当前图像、实际比较图、冻结知识和一致性记录生成最终结论。'
+        'analysis_text写连贯综合分析，说明可见变化、适用规律、正常替代解释及一致性线索是否影响判断；'
+        'description写简短结论，basis只列直接相关的事实与真实图像、知识条目和一致性结果引用。'
+        'observation只写可见事实，applicable_rule说明适用判据与条件或无适用规则，normal_alternative保留正常解释及其证据。'
+        'label_relation区分与原标一致、疑似漏标、疑似误标、不同条件可解释和无法判断，不修改原标或裁决真值。'
+        'proposed_slice仅列有可见证据的能力切片候选，例如框尺度、低对比、结构关系、困难正常或域变化；'
+        'bbox尺度不是缺陷真实面积，模型是否出错不能定义固有难度。无可靠切片依据时留空。'
+        '一致性差异不自动证明产品缺陷，未审计或缺证不视为正常，疑点仅为待复核候选。'
+        '比较图是独立来源，不能把其标注、局部或位置混为待审主图的事实；只引用实际提供的图像。'
+        '支持、反对和缺证据实保留，未知的工程阈值不由模型补造。'
     ),
     'joint': (
         '在同一次分析中同时观察全图与所附全部ROI，关联整体结构、各区域关系和产品知识。'
@@ -51,12 +67,9 @@ AUDIT_PROMPTS: dict[str, str] = {
         'evidence_ids只能用所附证据ID或子批次已引用的ID。'
         'suspect_regions仅列需要补充细看的新线索，用整图0..1000归一化坐标。'
         '每项观察简洁明确。'
-        '区域顺序与来源：'
-    ),
-    'previous_label': (
-        '\n此前实际联合观察与证据记录：'
-    ),
-    'pending_label': (
-        '\n待处理疑点：'
     ),
 }
+
+DEFAULT_AUDIT_PROMPT = ('根据运行上下文执行联合检查、补看或批次汇总。结论和描述概括实际发现，'
+    '不写具体文件名或图像ID；具体图像依据放入结构化证据字段。\n\n'
+    + '\n\n'.join(AUDIT_PROMPTS.values()) + '\n\n' + RESPONSE_FORMAT_INSTRUCTION)

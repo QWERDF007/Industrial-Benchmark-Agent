@@ -13,8 +13,9 @@ from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
 
 
-@pytest.mark.parametrize('labels,verdict', [(('15', '18'), 'MATERIAL'), (('OK', 'NG'), 'MATERIAL'), (('14', '14'), 'EQUIVALENT')])
-def test_group_model_analysis_is_completed_only_after_saved_valid_citations(dataset, tmp_path, labels, verdict):
+@pytest.mark.parametrize('labels,verdict,prompt', [(('15', '18'), 'MATERIAL',None), (('OK', 'NG'), 'MATERIAL',None), (('14', '14'), 'EQUIVALENT',None),
+    (('15','18'),'MATERIAL','用户完整提示词：仅比较实际原始标注，保留差异证据。')])
+def test_group_model_analysis_is_completed_only_after_saved_valid_citations(dataset, tmp_path, labels, verdict,prompt):
     from iad_core.consistency.group_analysis import GroupAnalyses
     from iad_core.consistency.group_analysis_models import GroupAnalysisStart
     db, registry, config = dataset
@@ -35,18 +36,25 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
             return httpx.Response(200, json={'count': 1000, 'max_model_len': 262144})
         requests.append(body)
         instruction = body['messages'][0]['content'][0]['text']
-        assert '不限于工具已报出的差异' in instruction
-        assert 'overall.text只写一句简短的差异结论' in instruction
-        assert '类别值不同就是标注类别不同' in instruction
-        assert '不判断哪一侧标注正确' in instruction
-        assert '不得预设类别映射或语义相近' in instruction
-        assert '视觉相近可以写入详细分析，但不能否定类别差异' in instruction
+        if prompt:
+            assert instruction.startswith(prompt)
+            assert '不限于工具已报出的差异' not in instruction[len(prompt):]
+        else:
+            assert '不限于工具已报出的差异' in instruction
+            assert 'overall.text只写一句简短的差异结论' in instruction
+            assert '类别值不同就是标注类别不同' in instruction
+            assert '不裁决哪一侧标注正确' in instruction
+            assert '不得预设类别映射或语义相近' in instruction
+            assert '视觉相近可以写入详细分析，但不能否定类别差异' in instruction
+            assert '非同像素的相似图' in instruction
+            assert '不能仅因OK/NG不同' in instruction
+            assert '不能仅因没有精确配准' in instruction
         assert '明确未核实规范' not in instruction
         for label in labels:
             assert f'"raw_label":"{label}"' in instruction
         schema = body['response_format']['json_schema']['schema']
         assert schema['$defs']['GroupOverallConclusion']['properties']['text']['maxLength'] == 40
-        assert '类别值不同' in schema['$defs']['GroupPairAssessment']['properties']['verdict']['description']
+        assert '类别值不同' not in schema['$defs']['GroupPairAssessment']['properties']['verdict']['description'], 'Schema不得另附不可编辑的业务判定规则'
         import base64,io
         from PIL import Image
         descriptors=[json.loads(item['text'].split('视觉证据：',1)[1]) for item in body['messages'][0]['content']
@@ -73,7 +81,8 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
         citation.update(candidate_id=b, comparison={'result_id':compared.result_id, 'evidence_id':compared.evidence_id, 'difference_id':compared.annotation.differences[0].difference_id})
         snapshot = ResultQueries(db).query(ConsistencyQuery(selection={'kind': 'scope', 'subjects': {'kind': 'all_registered'}}))
         group = GalleryQueries(db).query(GalleryQuery(query_id=snapshot.query_id, kind='conflicts')).items[0]
-        request = GroupAnalysisStart(query_id=snapshot.query_id, kind='conflicts', group_id=group.group_id, request_id='one-group-analysis')
+        request = GroupAnalysisStart(query_id=snapshot.query_id, kind='conflicts', group_id=group.group_id, request_id='one-group-analysis',
+            **({'instruction':prompt} if prompt else {}))
         analyses = GroupAnalyses(runtime, runtime.client)
         assert analyses.read(request).status == 'NOT_ANALYZED'
         started = analyses.start(request)
@@ -166,3 +175,73 @@ def test_group_assessments_require_full_unique_candidates_and_their_direct_evide
         filtered=GalleryQueries(db).query(GalleryQuery(query_id=page.query_id,kind='groups',model_filter='FAILED'))
         assert filtered.total==1
     finally:runtime.close()
+
+
+@pytest.mark.parametrize('corrected', [True, False])
+@pytest.mark.parametrize('error_kind', ['candidate_coverage', 'crossed_comparison', 'overall_verdict'])
+def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_output(dataset, tmp_path, error_kind, corrected):
+    from copy import deepcopy
+    from shutil import copyfile
+    from iad_core.consistency.group_analysis import GroupAnalyses
+    from iad_core.consistency.group_analysis_models import GroupAnalysisStart
+
+    db, registry, config = dataset
+    copyfile(tmp_path/'images/dent.png', tmp_path/'images/third.png')
+    registry.rescan(config.dataset.id)
+    calls, refs = [], []
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 262144})
+        body = json.loads(request.content)
+        calls.append(body)
+        if error_kind == 'crossed_comparison':
+            reference_schema = body['response_format']['json_schema']['schema']['$defs']['GroupAnalysisReference']
+            assert 'anyOf' in reference_schema, '生成约束必须绑定候选与自己的比较记录，不能独立枚举后任意串配'
+            branches = reference_schema['anyOf']
+            for ref in refs:
+                branch = next(item for item in branches if item['properties']['candidate_id']['enum']==[ref['candidate_id']])
+                comparisons = [item for item in branch['properties']['comparison']['anyOf'] if item.get('type')=='object']
+                assert any(item['properties']['evidence_id']['enum']==[ref['comparison']['evidence_id']]
+                    and item['properties']['result_id']['enum']==[ref['comparison']['result_id']] for item in comparisons)
+                foreign = next(item for item in refs if item['candidate_id']!=ref['candidate_id'])['comparison']['evidence_id']
+                assert all(foreign not in item['properties']['evidence_id']['enum'] for item in comparisons)
+        result = dict(overall=dict(verdict='MATERIAL', text='标注存在差异', references=deepcopy(refs)),
+            assessments=[dict(candidate_id=ref['candidate_id'], verdict='MATERIAL', explanation='对应标注存在差异', findings=['标注差异']) for ref in refs],
+            conclusions=[dict(text='保留对应标注的差异与实际证据', references=deepcopy(refs))], limitations=[])
+        if len(calls) == 1 or not corrected:
+            if error_kind == 'candidate_coverage':
+                result['assessments'].pop()
+            elif error_kind == 'crossed_comparison':
+                result['overall']['references'][0]['comparison'] = deepcopy(refs[1]['comparison'])
+            else:
+                result['overall']['verdict'] = 'EQUIVALENT'
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
+
+    runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        anchor = config.dataset.id+':dent.png'
+        for name in ('scratch', 'third'):
+            candidate = config.dataset.id+':'+name+'.png'
+            comparison = runtime.consistency_service.compare(ConsistencyCompare(sample_a=anchor, sample_b=candidate))
+            refs.append(dict(candidate_id=candidate, comparison=dict(result_id=comparison.result_id, evidence_id=comparison.evidence_id)))
+        page = ResultQueries(db).query(ConsistencyQuery(selection={'kind': 'scope', 'subjects': {'kind': 'all_registered'}}))
+        group = GalleryQueries(db).query(GalleryQuery(query_id=page.query_id, kind='groups')).items[0]
+        request = GroupAnalysisStart(query_id=page.query_id, kind='groups', group_id=group.group_id, request_id=error_kind)
+        analyses = GroupAnalyses(runtime, runtime.client)
+        job = analyses.start(request)
+        runtime.jobs.wait(job.run_id, 5)
+        view = analyses.read(request)
+        assert len(calls) == 2, '冻结引用错误应允许模型自行纠正一次，持续错误也不能无限重试'
+        feedback = json.loads(calls[1]['messages'][0]['content'][0]['text'].split('输出校验结果：', 1)[1])
+        assert all(issue['ctx']['repairable_output'] for issue in feedback['schema_validation_errors'])
+        assert feedback['previous_response']
+        if corrected:
+            assert view.status == 'COMPLETED', view.error
+            assert view.result.overall.verdict == 'MATERIAL'
+            assert [ref.model_dump(exclude_none=True) for ref in view.result.overall.references] == refs
+            assert len(view.result.assessments) == 2
+        else:
+            assert view.status == 'FAILED' and view.result is None
+    finally:
+        runtime.close()

@@ -45,5 +45,5 @@ export function WorkbenchModelStatus() {
     const provider = view?.providers.find(row => row.provider_id === view.selection?.provider_id);
     const model = provider?.models.find(row => row.model_id === view?.selection?.model_id);
     return _jsxs("div", { className: "iad-model-status", children: [_jsx("span", { children: loading ? '正在读取模型…' : error || view?.error ||
-                    (view?.selection ? `${provider?.name || view.selection.provider_id} · ${model?.name || view.selection.model_id}` : '使用当前服务配置') }), _jsx("button", { onClick: () => workspace.navigate('industrial-model-settings'), children: "\u6A21\u578B\u8BBE\u7F6E" })] });
+                    (view?.selection ? `${provider?.name || view.selection.provider_id}，${model?.name || view.selection.model_id}` : '使用当前服务配置') }), _jsx("button", { onClick: () => workspace.navigate('industrial-model-settings'), children: "\u6A21\u578B\u8BBE\u7F6E" })] });
 }

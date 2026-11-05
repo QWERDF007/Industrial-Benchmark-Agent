@@ -93,7 +93,7 @@ def test_failed_calls_preserve_actual_output_and_the_original_error(knowledge_da
         assert status['status'] == 'FAILED', status
         call = status['model_calls'][-1]
         assert call['finished_at'] and call['elapsed_ms'] >= 0
-        expected = {'http': 'HTTPStatusError', 'schema': 'ValueError', 'length': 'ValueError',
+        expected = {'http': 'HTTPStatusError', 'schema': 'ModelOutputError', 'length': 'ValueError',
                     'malformed_choices': 'AttributeError', 'timeout': 'ReadTimeout'}
         assert call['error']['type'] == expected[failure]
         assert call['error']['message'] == status['errors'][0]['message']

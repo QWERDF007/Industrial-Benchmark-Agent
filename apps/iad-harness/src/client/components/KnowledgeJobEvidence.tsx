@@ -1,3 +1,5 @@
+import {ThumbnailCard} from "./ThumbnailCard.js";
+import {Pagination} from "./Pagination.js";
 import React, { useEffect, useState } from "react";
 import type { JobSnapshot } from "../../shared/contracts.js";
 import type { KnowledgeTracePage } from "../../shared/domain.generated.js";
@@ -20,14 +22,14 @@ export function KnowledgeJobEvidence({ job, initiallyOpen = false }: { job: JobS
     {job.mining_prompt && <details><summary>本次冻结挖掘提示词</summary><pre className="iad-observation">{job.mining_prompt.instruction}</pre></details>}
     {error && <p role="alert" className="iad-error">{error}</p>}
     {open && !result && !error && <p role="status">正在读取冻结观察…</p>}
-    {open && result && <><p className="iad-muted">规划 {result.progress.planned_visuals} 个视图 · 已接受观察 {result.progress.observed_visuals} 个 · 已发布 {result.progress.published_sources} 张来源</p>
-      <div className="iad-reference-grid">{result.items.map(item => {
+    {open && result && <><p className="iad-muted">规划 {result.progress.planned_visuals} 个视图，已接受观察 {result.progress.observed_visuals} 个，已发布 {result.progress.published_sources} 张来源</p>
+      <div className="iad-thumbnail-grid">{result.items.map(item => {
         const src = `/api/iad/knowledge/observations/${encodeURIComponent(job.run_id)}/evidence/${encodeURIComponent(item.image.evidence_id)}`;
-        const title = `${item.image.role} · ${item.observed ? "已接受观察" : "尚未完成观察"}`;
-        return <button key={item.image.evidence_id} title="放大冻结观察证据" onClick={() => setImage({ src, title, width: item.image.sent_size[0], height: item.image.sent_size[1] })}><img src={src} alt={title} loading="lazy" /><small>{title}</small></button>;
+        const title = `${item.image.role}，${item.observed ? "已接受观察" : "尚未完成观察"}`;
+        return <ThumbnailCard key={item.image.evidence_id} src={src} label={title} onClick={()=>setImage({src,title,width:item.image.sent_size[0],height:item.image.sent_size[1],sampleId:item.sample_id,evidence:item.image})} />;
       })}</div>
       {!result.total && <p>尚未规划图像证据。</p>}
-      {result.total > result.page_size && <div className="iad-row"><button disabled={page <= 1} onClick={() => setPage(value => value - 1)}>上一页证据</button><span>第 {page} 页</span><button disabled={page * result.page_size >= result.total} onClick={() => setPage(value => value + 1)}>下一页证据</button></div>}
+      <Pagination total={result.total} page={page} size={result.page_size} unit="项证据" onPage={setPage} />
     </>}{image && <ImageViewer image={image} onClose={() => setImage(null)} />}
   </details>;
 }

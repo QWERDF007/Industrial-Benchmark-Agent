@@ -41,7 +41,7 @@ def test_gallery_groups_complete_snapshot_instead_of_current_result_page(dataset
         gallery.members(GalleryMemberQuery(query_id=snapshot.query_id, kind='conflicts', group_id='missing'))
 
 
-def test_strict_gallery_keeps_one_anchor_and_does_not_borrow_a_different_pairs_evidence(dataset, tmp_path):
+def test_strict_gallery_keeps_one_anchor_and_does_not_borrow_a_different_pairs_evidence(dataset, tmp_path,monkeypatch):
     from shutil import copyfile
     from iad_core.consistency.gallery import GalleryQueries, GalleryQuery, GalleryMemberQuery
     db, registry, config = dataset
@@ -57,7 +57,18 @@ def test_strict_gallery_keeps_one_anchor_and_does_not_borrow_a_different_pairs_e
     assert groups.total == 1 and groups.items[0].member_count == 3
     group = groups.items[0]
     assert group.anchor.sample_id == sample('third')
-    members = gallery.members(GalleryMemberQuery(query_id=snapshot.query_id, kind='groups', group_id=group.group_id))
+    from contextlib import contextmanager
+    queries=[]
+    connect=db.connection
+    @contextmanager
+    def traced_connection():
+        with connect() as connection:
+            connection.set_trace_callback(queries.append)
+            yield connection
+    with monkeypatch.context() as patch:
+        patch.setattr(db,'connection',traced_connection)
+        members = gallery.members(GalleryMemberQuery(query_id=snapshot.query_id, kind='groups', group_id=group.group_id))
+    assert len([query for query in queries if query.lstrip().upper().startswith(('WITH','SELECT'))])<=3, '分页候选读取不能逐候选重扫完整比较快照'
     assert members.anchor == group.anchor and members.total == 2
     by_name = {item.image.sample.relative_path: item for item in members.items}
     assert by_name['scratch.png'].comparison.evidence_id == newest.evidence_id

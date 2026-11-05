@@ -12,22 +12,22 @@ export function createKnowledgeTools(bridge, ctx) {
     return [
         defineTool({
             name: "knowledge_prompt_get",
-            description: "只读查阅当前数据集、良品或异常的挖掘目标、已选通用方向和数据集专属方向。图组工具自动冻结并使用这里已保存的配置；不修改配置、不启动作业，仍允许模型发现清单之外的新方向。",
+            description: "只读查阅当前数据集、良品或异常的挖掘目标、已选通用方向和数据集专属方向。仅供查阅，不替代本次提交的完整mining_prompt；不修改配置、不启动作业，仍允许模型发现清单之外的新方向。",
             parameters: { dataset_id: { type: "string", required: true }, kind: { type: "string", enum: ["normal", "defect"], required: true } },
             output: knowledgePromptOutput,
             execute: (args, exec) => bridge.execute("knowledge_prompt_get", args, exec.signal),
         }),
         defineTool({
             name: "knowledge_scope_open",
-            description: "仅在用户明确要求连续处理整个范围时，保存授权任务与当前候选范围；此操作不发模型请求。objective记录实际用户意图，search/seed冻结筛选及顺序，可提供starting_version_id与异常的normal_version_id。只看一组不建立范围。每次数量仍由Agent在三输入图组工具中选择，不增加循环或首批参数。",
+            description: "仅在用户明确要求连续处理整个范围时，保存授权任务与当前候选范围；此操作不发模型请求。objective记录实际用户意图，search/seed冻结筛选及顺序，可提供starting_version_id。只看一组不建立范围。每次数量仍由Agent在三输入图组工具中选择，不增加循环或首批参数。",
             parameters: knowledgeScopeParameters,
             output: knowledgeScopeOutput,
             execute: (args, exec) => bridge.execute("knowledge_scope_open", { request: args, origin_session_id: exec.agent?.id || null }, exec.signal),
         }),
         defineTool({
             name: "knowledge_scope_get",
-            description: "读取连续范围真实版本、已观察/待核验/剩余及活动作业。传scope_run_id，或dataset_id与kind查询当前会话活动范围。首组完成不等于整个范围完成。用scope_run_id查询knowledge_sources下一组，等待上组发布，显式携带刚返回的current_version_id继续，直到真实剩余耗尽；不重发全部历史图，不枚举全库。",
-            parameters: { scope_run_id: { type: "string" }, dataset_id: { type: "string" }, kind: { type: "string", enum: ["normal", "defect"] } },
+            description: "读取连续范围真实版本、已观察/待核验/剩余及活动作业。传scope_run_id，或dataset_id查询当前会话活动范围。首组完成不等于整个范围完成。用scope_run_id查询knowledge_sources下一组，等待上组发布，显式携带刚返回的current_version_id继续，直到真实剩余耗尽；不重发全部历史图，不枚举全库。",
+            parameters: { scope_run_id: { type: "string" }, dataset_id: { type: "string" } },
             output: knowledgeScopeOutput,
             execute: (args, exec) => bridge.execute("knowledge_scope_get", { ...args, origin_session_id: exec.agent?.id || null }, exec.signal),
         }),
@@ -47,24 +47,20 @@ export function createKnowledgeTools(bridge, ctx) {
         }),
         defineTool({
             name: "knowledge_sources",
-            description: "只读分页查询合格来源，返回真实sample_id、路径和资格。page_size范围1..200，默认10；只查询当前已确认图组所需引用，不预先枚举全库。用户未给图组数量时先建议10或20张并等待确认，不能把未给数量理解为全部来源。连续任务传scope_run_id查询冻结范围内真实剩余；不传时kind为normal/defect，search筛选路径。结果资格是候选身份，不是视觉真值；不会启动作业。",
+            description: "只读分页查询合格来源，返回真实sample_id、路径和资格。page_size范围1..200，默认10；只查询当前已确认图组所需引用，不预先枚举全库。用户未给图组数量时先建议10或20张并等待确认，不能把未给数量理解为全部来源。连续任务传scope_run_id查询冻结范围内真实剩余；不传时覆盖登记图像，search筛选路径。结果资格是候选身份，不是视觉真值；不会启动作业。",
             parameters: knowledgeSourceParameters,
             output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("knowledge_sources", args, exec.signal),
         }),
         defineTool({
-            name: "knowledge_mine_normal",
-            description: "独立挖掘明确图组的良品知识。仅提供knowledge_preset、image_count、images；引用从knowledge_sources复制，数量严格一致。无预设不读当前知识，不合并全部历史来源。总范围与每次数量按用户上下文区分，缺少数量建议10或20，不预先枚举全库。" + groupPolicy,
+            name: "knowledge_mine",
+            description: "联合观察明确图组，按用户手选方向与完整提示词归纳规律、差异及正反证据。mining_prompt必须包含本次最终全文；原始标签不预设支持/反对资格。可显式续用一个父知识版本，数量与images严格一致。" + groupPolicy,
             parameters: miningParameters,
             output: knowledgeJobOutput,
-            execute: (args, exec) => bridge.execute("knowledge_start", { request: { ...args, kind: "normal" }, origin_session_id: exec.agent?.id || null }, exec.signal),
-        }),
-        defineTool({
-            name: "knowledge_mine_defect",
-            description: "独立挖掘明确图组的异常候选知识。三输入与良品工具相同，可选良品基准及异常预设。没有正常基准时仅整理待验证假设，不自动挖掘良品或执行审计。images只用真实引用，工具只处理本组。" + groupPolicy,
-            parameters: miningParameters,
-            output: knowledgeJobOutput,
-            execute: (args, exec) => bridge.execute("knowledge_start", { request: { ...args, kind: "defect" }, origin_session_id: exec.agent?.id || null }, exec.signal),
+            execute: (args, exec) => {
+                const { mining_prompt, ...request } = args;
+                return bridge.execute("knowledge_start", { request, mining_prompt, origin_session_id: exec.agent?.id || null }, exec.signal);
+            },
         }),
         defineTool({
             name: "knowledge_job_observations",
@@ -96,11 +92,10 @@ export function createKnowledgeTools(bridge, ctx) {
         }),
         defineTool({
             name: "knowledge_get",
-            description: "读取知识版本、真实计数、新鲜度和最多三个优先疑点的紧凑摘要。指定version_id，或dataset_id加kind。判据与证据用knowledge_details按需分页；观察方向用section=discovery查阅，未记录不等于覆盖完整。冲突用knowledge_conflict_context读取。不会展开全库或改写历史。",
+            description: "读取知识版本、真实计数、新鲜度和最多三个优先疑点的紧凑摘要。指定version_id，或dataset_id读取单一当前版本。判据与证据用knowledge_details按需分页；观察方向用section=discovery查阅，未记录不等于覆盖完整。冲突用knowledge_conflict_context读取。不会展开全库或改写历史。",
             parameters: {
                 version_id: { type: "string" },
                 dataset_id: { type: "string" },
-                kind: { type: "string", enum: ["normal", "defect"] },
             },
             output: knowledgeOutput,
             execute: (args, exec) => bridge.execute("knowledge_get", args, exec.signal),

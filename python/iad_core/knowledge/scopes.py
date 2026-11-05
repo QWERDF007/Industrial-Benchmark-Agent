@@ -21,12 +21,10 @@ from iad_core.storage.database import Database
 
 class KnowledgeScopeOpen(AnalysisModel):
     dataset_id: str
-    kind: KnowledgeKind
     objective: NonBlankText
     search: str = ''
     seed: Optional[int] = None
     starting_version_id: Optional[str] = None
-    normal_version_id: Optional[str] = None
 
 
 class KnowledgeScopeDefinition(KnowledgeScopeOpen):
@@ -49,11 +47,9 @@ class KnowledgeScopeSnapshot(AnalysisModel):
     seed: Optional[int]
     scope_run_id: str
     dataset_id: str
-    kind: KnowledgeKind
     objective: str
     status: Literal['ACTIVE', 'STOPPED']
     current_version_id: Optional[str]
-    normal_version_id: Optional[str]
     total: int
     observed: int
     valid_observed: int
@@ -102,16 +98,17 @@ class KnowledgeScopes:
 
     def open(self, request: KnowledgeScopeOpen, origin_session_id: Optional[str] = None) -> KnowledgeScopeSnapshot:
         config = DatasetRegistry(self.db).resolve(dataset_id=request.dataset_id)
-        normal = self.repository.get(request.normal_version_id) if request.normal_version_id else None
-        if normal and (normal.dataset_id != request.dataset_id or normal.kind != 'normal' or request.kind != 'defect'):
-            raise ValueError('比较基准必须为同数据集良品知识，且仅用于异常范围')
         if request.starting_version_id:
             previous = self.repository.get(request.starting_version_id)
-            if previous.dataset_id != request.dataset_id or previous.kind != request.kind:
-                raise ValueError('起点知识须属于所选数据集与知识类型')
-        _, items = self.sources.list_candidates(request.dataset_id, request.kind, normal, request.search)
+            if previous.dataset_id != request.dataset_id or previous.kind is not None:
+                raise ValueError('起点须为所选数据集的统一知识版本')
+        _, items = self.sources.list_candidates(request.dataset_id, None, None, request.search, joint=True)
         if request.seed is not None:
             items.sort(key=lambda item: hashlib.sha256(f'{request.seed}:{item.sample_id}'.encode()).digest())
+            normal_ids = {item.sample_id for item in items if item.qualification in ('raw_pass','human_pass','human_hard_normal','initial_unannotated')}
+            pools = [[item for item in items if (item.sample_id in normal_ids) == normal] for normal in (True, False)]
+            positions = {item.sample_id: (index + 0.5) / len(pool) for pool in pools for index, item in enumerate(pool)}
+            items.sort(key=lambda item: positions[item.sample_id])
         paths = AuthorizedDatasetPaths(self.db.db_path)
         with self.db.connection() as connection:
             connection.execute('BEGIN')
@@ -124,20 +121,20 @@ class KnowledgeScopes:
         definition = KnowledgeScopeDefinition(**frozen, fingerprint=hashlib.sha256(json.dumps(frozen, sort_keys=True).encode()).hexdigest())
         with self.db.connection() as conn:
             conn.execute('BEGIN IMMEDIATE')
-            if origin_session_id and self.active(origin_session_id, request.dataset_id, request.kind):
+            if origin_session_id and self.active(origin_session_id, request.dataset_id):
                 raise ValueError('此会话已有活动连续范围，请先查询或停止该范围')
             conn.execute("""INSERT INTO agent_runs(run_id,task_id,session_id,goal,status,scope_json)
                 VALUES(?,?,?,?,'ACTIVE',?)""", (scope_run_id, config.task.task_id,
                 origin_session_id or 'workbench', request.objective, definition.model_dump_json()))
         return self.read(scope_run_id)
 
-    def active(self, session_id: Optional[str], dataset_id: str, kind: str) -> Optional[str]:
+    def active(self, session_id: Optional[str], dataset_id: str) -> Optional[str]:
         if not session_id:
             return None
         with self.db.connection() as conn:
             row = conn.execute("""SELECT run_id FROM agent_runs WHERE session_id=? AND status='ACTIVE'
-                AND json_extract(scope_json,'$.dataset_id')=? AND json_extract(scope_json,'$.kind')=?
-                ORDER BY id DESC LIMIT 1""", (session_id, dataset_id, kind)).fetchone()
+                AND json_extract(scope_json,'$.dataset_id')=?
+                ORDER BY id DESC LIMIT 1""", (session_id, dataset_id)).fetchone()
         return row[0] if row else None
 
     def state(self, scope_run_id: str) -> ScopeState:
@@ -154,7 +151,7 @@ class KnowledgeScopes:
         jobs = [dict(run_id=item['job_id'], status=item['status'], payload=json.loads(item['payload_json'])) for item in rows]
         version_ids = [version[0] for version in versions]
         current_id = version_ids[-1] if version_ids else definition.starting_version_id
-        head = self.repository.current(definition.dataset_id, definition.kind)
+        head = self.repository.current(definition.dataset_id)
         edits = []
         while head and head.manual_edit and head.version_id != current_id:
             edits.append(head.version_id)
@@ -176,8 +173,7 @@ class KnowledgeScopes:
         for source in current.sources + current.comparison_sources if current else []:
             if source.sample_id in observed:
                 expected[source.sample_id] = KnowledgeSourceMetadata.model_validate(source.model_dump(exclude={'pixel_sha256'}))
-        normal = self.repository.get(definition.normal_version_id) if definition.normal_version_id else None
-        available = self.sources.eligible(definition.dataset_id, definition.kind, normal)
+        available = self.sources.registered(definition.dataset_id)
         stale, excluded = set(), set()
         comparison = {source.sample_id for source in current.comparison_sources} if current else set()
         paths = AuthorizedDatasetPaths(self.db.db_path)
@@ -198,8 +194,9 @@ class KnowledgeScopes:
     def read(self, scope_run_id: str) -> KnowledgeScopeSnapshot:
         state = self.state(scope_run_id)
         current = state.current
-        return KnowledgeScopeSnapshot(scope_run_id=scope_run_id, dataset_id=state.definition.dataset_id, kind=state.definition.kind,
-            objective=state.definition.objective, search=state.definition.search, seed=state.definition.seed, status=state.status, normal_version_id=state.definition.normal_version_id, current_version_id=current.version_id if current else None,
+        return KnowledgeScopeSnapshot(scope_run_id=scope_run_id, dataset_id=state.definition.dataset_id,
+            objective=state.definition.objective, search=state.definition.search, seed=state.definition.seed, status=state.status,
+            current_version_id=current.version_id if current else None,
             total=len(state.definition.sources), observed=len(state.observed), valid_observed=len(state.observed - state.stale - state.excluded),
             stale=len(state.stale), excluded=len(state.excluded), recheck=len(state.recheck), unprocessed=len(state.definition.sources) - len(state.observed), remaining=len(state.remaining),
             pending_review=len(state.pending_review),
@@ -209,8 +206,8 @@ class KnowledgeScopes:
     def source_page(self, query: KnowledgeSourceQuery) -> KnowledgeSourcePage:
         state = self.state(query.scope_run_id)
         definition = state.definition
-        if (query.dataset_id != definition.dataset_id or query.kind != definition.kind
-                or query.search not in ('', definition.search) or query.normal_version_id not in (None, definition.normal_version_id)
+        if (query.dataset_id != definition.dataset_id or query.kind is not None
+                or query.search not in ('', definition.search)
                 or (query.uncovered_from_version and query.uncovered_from_version != (state.current.version_id if state.current else None))):
             raise ValueError('查询不得改变已冻结连续范围的类型、筛选或比较基准')
         with self.db.connection() as conn:
@@ -218,8 +215,7 @@ class KnowledgeScopes:
                 'SELECT sample_id,relative_path FROM samples WHERE dataset_id=?', (definition.dataset_id,))}
         candidates = state.remaining
         if query.include_observed or query.recheck_from_version:
-            normal = self.repository.get(definition.normal_version_id) if definition.normal_version_id else None
-            eligible = self.sources.eligible(definition.dataset_id, definition.kind, normal).qualifications
+            eligible = self.sources.registered(definition.dataset_id).qualifications
             paths = AuthorizedDatasetPaths(self.db.db_path)
             with self.db.connection() as connection:
                 connection.execute('BEGIN')
@@ -233,15 +229,14 @@ class KnowledgeScopes:
         coverage = KnowledgeCoverage(version_id=state.current.version_id if state.current else None, total=len(definition.sources),
             observed=len(state.observed - state.stale - state.excluded), stale=len(state.stale), remaining=len(state.remaining),
             pending_review=len(state.pending_review), recheck=len(state.recheck))
-        return KnowledgeSourcePage(dataset_id=definition.dataset_id, kind=definition.kind, normal_version_id=definition.normal_version_id,
+        return KnowledgeSourcePage(dataset_id=definition.dataset_id, kind=None, normal_version_id=None,
             total=len(candidates), unavailable_source_count=len(state.stale), page=query.page, page_size=query.page_size,
             coverage=coverage, items=[KnowledgeSourceItem(sample_id=source.sample_id, relative_path=relative_paths[source.sample_id],
                 qualification=source.qualification) for source in candidates[start:start + query.page_size]])
 
-    def validate_group(self, scope_run_id: str, sample_ids: List[str], parent_version_id: Optional[str], fingerprint: Optional[str] = None, normal_version_id: Optional[str] = None) -> str:
+    def validate_group(self, scope_run_id: str, sample_ids: List[str], parent_version_id: Optional[str], fingerprint: Optional[str] = None,
+                       ) -> str:
         state = self.state(scope_run_id)
-        if normal_version_id != state.definition.normal_version_id:
-            raise ValueError('连续范围必须使用明确冻结的良品比较基准')
         if state.status != 'ACTIVE':
             raise ValueError('连续范围已停止，明确继续后才可执行新图组')
         if fingerprint is not None and fingerprint != state.definition.fingerprint:
@@ -262,7 +257,7 @@ class KnowledgeScopes:
         target_session = session_id or state.bound_session_id
         with self.db.connection() as conn:
             conn.execute('BEGIN IMMEDIATE')
-            existing = self.active(target_session, state.definition.dataset_id, state.definition.kind) if target_session != 'workbench' else None
+            existing = self.active(target_session, state.definition.dataset_id) if target_session != 'workbench' else None
             if active and existing and existing != scope_run_id:
                 raise ValueError('当前会话已有其他活动连续范围，请先明确停止或使用另一会话')
             conn.execute("UPDATE agent_runs SET status=?,session_id=COALESCE(?,session_id),finished_at=? WHERE run_id=?",

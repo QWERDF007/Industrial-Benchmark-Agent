@@ -1,30 +1,13 @@
-import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useEffect, useState } from "react";
-import { message, request } from "../api.js";
-import { JobTable } from "./JobTable.js";
-import { QualityReport } from "./QualityReport.js";
-export function AuditJobs(props) {
-    return _jsxs("section", { className: "iad-job-section", children: [_jsx("h2", { children: "\u5BA1\u8BA1\u4F5C\u4E1A" }), _jsx(JobTable, { jobs: props.jobs, pageId: "industrial-audit", onChanged: props.onJobsChanged })] });
-}
-export function AuditReport({ dataset }) {
-    const [report, setReport] = useState(null);
-    const [error, setError] = useState("");
-    useEffect(() => {
-        const controller = new AbortController();
-        request(`/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`, undefined, undefined, controller.signal).then(value => { if (!controller.signal.aborted) {
-            setReport(value);
-            setError("");
-        } }).catch(e => { if (!controller.signal.aborted)
-            setError(message(e)); });
-        return () => controller.abort();
-    }, [dataset]);
-    function download() {
-        const blob = new Blob([JSON.stringify({ dataset_id: dataset.dataset_id, name: dataset.name, ...report }, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob), anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = `${dataset.name}-report.json`;
-        anchor.click();
-        URL.revokeObjectURL(url);
-    }
-    return _jsxs("section", { className: "iad-job-section iad-quality-report", children: [_jsxs("div", { className: "iad-section-header", children: [_jsx("h2", { children: "\u5BA1\u8BA1\u6C47\u603B" }), report && _jsx("button", { onClick: download, children: "\u5BFC\u51FA JSON" })] }), _jsx("p", { className: "iad-muted", children: "\u5168\u90E8\u6570\u636E\u96C6\u56FE\u50CF \u00B7 \u6BCF\u56FE\u6700\u65B0\u5DF2\u4FDD\u5B58\u8BB0\u5F55 \u00B7 \u4E0D\u53D7\u7F51\u683C\u7B5B\u9009\u5F71\u54CD" }), !report && !error && _jsx("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u5F53\u524D\u6570\u636E\u96C6\u62A5\u544A\u2026" }), error && _jsx("p", { role: "alert", className: "iad-error", children: error }), report && _jsx(_Fragment, { children: _jsx(QualityReport, { report: report }) })] });
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { JobStatusButton } from './JobStatusDrawer.js';
+import { Select } from './Select.js';
+import { IconButton } from "./IconButton.js";
+import { jobStatuses } from '../../shared/job-display.js';
+import { ClearFilterButton } from './CommonFilterControls.js';
+import { Pagination } from './Pagination.js';
+export function AuditJobs({ selection, datasets, onDetails }) {
+    return _jsxs("section", { className: "audit-panel", "aria-label": "\u5BA1\u8BA1\u4F5C\u4E1A", children: [_jsxs("header", { className: "audit-panel-head", children: [_jsx("h2", { children: "\u5BA1\u8BA1\u4F5C\u4E1A" }), _jsxs("div", { className: "audit-filters", children: [_jsxs("label", { className: "audit-field", children: [_jsx("span", { children: "\u4F5C\u4E1A ID" }), _jsx("input", { id: "audit-job-search", type: "search", value: selection.state.search, onChange: event => selection.search(event.target.value), placeholder: "\u641C\u7D22\u4F5C\u4E1A ID" })] }), _jsxs("label", { className: "audit-field", children: [_jsx("span", { children: "\u72B6\u6001" }), _jsxs(Select, { "aria-label": "\u5BA1\u8BA1\u4F5C\u4E1A\u72B6\u6001", value: selection.state.status, onChange: event => selection.status(event.target.value), children: [_jsx("option", { value: "", children: "\u5168\u90E8\u72B6\u6001" }), Object.entries(jobStatuses).map(([value, label]) => _jsx("option", { value: value, children: label }, value))] })] }), _jsx(ClearFilterButton, { onClick: selection.clear })] })] }), _jsx("div", { className: "iad-table-scroll", children: _jsxs("table", { className: "audit-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u4F5C\u4E1A ID" }), _jsx("th", { children: "\u72B6\u6001" }), _jsx("th", { children: "\u68C0\u67E5\u8303\u56F4" }), _jsx("th", { children: "\u5B8C\u6210 / \u603B\u6570" }), _jsx("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }), _jsx("th", { className: "audit-ops", children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { children: selection.visible.map(job => _jsxs("tr", { "data-run-id": job.run_id, "aria-selected": selection.selected?.run_id === job.run_id, tabIndex: 0, onClick: () => selection.select(job.run_id), onKeyDown: event => { if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    selection.select(job.run_id);
+                                } }, children: [_jsx("td", { title: job.run_id, children: job.run_id }), _jsx("td", { children: _jsx(JobStatusButton, { job: job, onClick: () => onDetails(job) }) }), _jsx("td", { children: datasets.find(dataset => dataset.dataset_id === job.dataset_id)?.name || '范围名称未记录' }), _jsxs("td", { children: [job.completed, " / ", job.total_samples] }), _jsx("td", { children: new Date(job.submitted_at).toLocaleString() }), _jsx("td", { className: "audit-ops", children: _jsx(IconButton, { icon: "details", type: "button", label: `查看作业 ${job.run_id}`, onClick: event => { event.stopPropagation(); onDetails(job); } }) })] }, job.run_id)) })] }) }), !selection.filtered.length && _jsx("p", { className: "audit-empty", children: selection.state.search || selection.state.status ? '没有符合筛选条件的审计作业。' : '当前范围还没有审计作业，可以创建新审计。' }), _jsx(Pagination, { total: selection.filtered.length, page: selection.page, size: 8, unit: "\u4E2A\u4F5C\u4E1A", onPage: selection.setPage })] });
 }

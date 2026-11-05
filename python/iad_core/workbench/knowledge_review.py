@@ -43,7 +43,7 @@ class KnowledgeReviewEvent(KnowledgeReviewSubmission):
 
 class KnowledgeReviewItem(KnowledgeReviewReference):
     dataset_id: str
-    kind: KnowledgeKind
+    kind: Optional[KnowledgeKind] = None
     sample_id: str
     description: str
     state: Literal['pending_review', 'pending_recheck', 'resolved']
@@ -100,7 +100,7 @@ class KnowledgeReview:
             content = None
         events = self.events(conflict.conflict_id)
         sample_review = ReviewRepository(self.db).get_decision(conflict.sample_id)
-        head = self.repository.current(version.dataset_id, version.kind)
+        head = self.repository.current(version.dataset_id)
         signature = hashlib.sha256(json.dumps([version.signature, head.version_id if head else None,
             content.model_dump() if content else None, sample_review.model_dump(mode='json') if sample_review else None,
             [item.model_dump(mode='json') for item in events]], sort_keys=True).encode()).hexdigest()
@@ -114,14 +114,12 @@ class KnowledgeReview:
     def queue(self, dataset_id: str) -> List[KnowledgeReviewItem]:
         DatasetRegistry(self.db).get(dataset_id)
         items = []
-        for kind in ('normal', 'defect'):
-            version = self.repository.current(dataset_id, kind)
-            for conflict in version.conflicts if version else []:
-                reference = KnowledgeReviewReference(version_id=version.version_id, conflict_id=conflict.conflict_id)
-                events = self.events(conflict.conflict_id)
-                items.append(KnowledgeReviewItem(**reference.model_dump(), dataset_id=dataset_id, kind=kind,
-                    sample_id=conflict.sample_id, description=conflict.description,
-                    state=review_state(conflict, events)))
+        version = self.repository.current(dataset_id)
+        for conflict in version.conflicts if version else []:
+            reference = KnowledgeReviewReference(version_id=version.version_id, conflict_id=conflict.conflict_id)
+            events = self.events(conflict.conflict_id)
+            items.append(KnowledgeReviewItem(**reference.model_dump(), dataset_id=dataset_id,
+                sample_id=conflict.sample_id, description=conflict.description, state=review_state(conflict, events)))
         return items
 
     def submit(self, request: KnowledgeReviewSubmission) -> KnowledgeReviewEvent:

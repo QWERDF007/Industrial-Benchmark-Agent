@@ -79,8 +79,7 @@ export interface SamplePage {
 }
 export interface SampleDetail {
     consistency: import('./domain.generated.js').AuditConsistencyView | null;
-    normal_knowledge: KnowledgeSummary | null;
-    defect_knowledge: KnowledgeSummary | null;
+    knowledge: KnowledgeSummary | null;
     sample: SampleIdentity;
     annotations: Annotation[];
     technical_issues: Array<{

@@ -1,3 +1,4 @@
+import {Button} from './Button.js';
 import React, { useState } from "react";
 import type { Dataset, Filters, Sample, SamplePage } from "../../shared/contracts.js";
 import { message, request, sampleQuery } from "../api.js";
@@ -51,7 +52,7 @@ export function SampleGrid({ dataset, filters, onFilters, items, total, page, on
     <div className="iad-row"><button disabled={busy || loading} onClick={() => setSelection({ scope, ids: items.map(item => item.sample_id) })}>选择当前页</button>
       <button disabled={busy || loading || !total} onClick={() => void selectAll()}>选择筛选全部</button><span>已选 {chosen.length} 张</span>
       <button disabled={busy || !chosen.length} onClick={() => setSelection({ scope, ids: [] })}>取消选择</button>
-      <button className="iad-primary" disabled={busy || !chosen.length} onClick={() => void save(true)}>加入良品来源</button>
+      <Button variant="primary" disabled={busy || !chosen.length} onClick={() => void save(true)}>加入良品来源</Button>
       <button disabled={busy || !chosen.length} onClick={() => void save(false)}>移出良品来源</button><span className="iad-muted">候选来源，非人工裁决</span></div>
   </section>}
   {error && <p role="alert" className="iad-error">{error}</p>}{notice && <p role="status">{notice}</p>}

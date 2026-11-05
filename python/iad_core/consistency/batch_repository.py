@@ -73,15 +73,21 @@ class BatchRepository:
 
     def conflict_group_count(self, batch_id: str) -> int:
         from iad_core.consistency.annotation_models import AnnotationComparison
+        from iad_core.consistency.candidate_selection import ELIGIBLE_PAIR_SQL,REVIEW_PAIR_SQL
         with self.db.connection() as connection:
             connection.create_function('annotation_difference_types', 1, AnnotationComparison.json_difference_types, deterministic=True)
-            row = connection.execute('''
-                SELECT COUNT(DISTINCT json_extract(r.snapshot_json, '$.sources.left.sample.sample_id'))
+            row = connection.execute(f'''WITH pairs AS (
+                SELECT json_extract(r.snapshot_json, '$.sources.left.sample.sample_id') sample_id,
+                    json_extract(r.snapshot_json,'$.result.verification.relation') relation,
+                    annotation_difference_types(json_extract(r.snapshot_json,'$.result.annotation')) difference_types,
+                    (json_extract(r.snapshot_json,'$.result.annotation.invalid_left')+
+                        json_extract(r.snapshot_json,'$.result.annotation.invalid_right')>0) annotation_issues,
+                    json_extract(j.plan_json,'$.request.mode') mode
                 FROM consistency_batch_results b
                 JOIN consistency_results r ON b.evidence_id = r.evidence_id
+                JOIN consistency_runs j ON j.batch_id=b.batch_id
                 WHERE b.batch_id = ?
-                  AND json_extract(r.snapshot_json, '$.result.verification.relation') = 'EXACT'
-                  AND json_array_length(annotation_difference_types(json_extract(r.snapshot_json, '$.result.annotation'))) > 0
+                ) SELECT COUNT(DISTINCT sample_id) FROM pairs WHERE {ELIGIBLE_PAIR_SQL} AND {REVIEW_PAIR_SQL}
             ''', (batch_id,)).fetchone()
             return int(row[0]) if row and row[0] is not None else 0
 

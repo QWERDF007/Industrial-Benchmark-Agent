@@ -7,11 +7,14 @@ from iad_core.dataset.registry import DatasetRegistry
 from iad_core.knowledge.models import (KnowledgeFreshness, KnowledgeKind, KnowledgeQuery, KnowledgeSnapshot,
                                       KnowledgeSourceChange, KnowledgeSourcePage, KnowledgeSourceQuery, KnowledgeCoverage,
                                       KnowledgeDetailQuery, KnowledgeCheckPage, KnowledgeCheckEvidencePage, KnowledgeCheckSummary)
+from iad_core.knowledge.models import KnowledgeEvidencePage
 from iad_core.knowledge.repository import KnowledgeRepository
 from iad_core.knowledge.generation import generation_signature
 from iad_core.knowledge.sources import KnowledgeSources
 from iad_core.storage.database import Database
 from iad_core.knowledge.models import KnowledgeDiscoveryPage
+from iad_core.knowledge.check_reviews import KnowledgeCheckReviews
+from iad_core.knowledge.display_evidence import KnowledgeDisplayEvidence
 
 
 class KnowledgeReader:
@@ -20,27 +23,47 @@ class KnowledgeReader:
         self.repository = KnowledgeRepository(db)
         self.sources = KnowledgeSources(db)
 
-    def details(self, query: KnowledgeDetailQuery) -> KnowledgeCheckPage | KnowledgeCheckEvidencePage | KnowledgeDiscoveryPage:
+    def details(self, query: KnowledgeDetailQuery) -> KnowledgeCheckPage | KnowledgeCheckEvidencePage | KnowledgeDiscoveryPage | KnowledgeEvidencePage:
         version = self.repository.get(query.version_id)
         start = (query.page - 1) * query.page_size
         common = dict(version_id=version.version_id, dataset_id=version.dataset_id, kind=version.kind,
                       page=query.page, page_size=query.page_size)
+        if query.section == 'evidence':
+            images = KnowledgeDisplayEvidence(version.evidence).images(query.evidence_ids)
+            return KnowledgeEvidencePage(version_id=version.version_id, total=len(images), page=query.page,
+                page_size=query.page_size, items=images[start:start + query.page_size])
         if query.section == 'discovery':
             discovery = version.mining_steps[-1].result.discovery if version.mining_steps else None
             return KnowledgeDiscoveryPage(**common, recorded=discovery is not None, parts=discovery.parts if discovery else [],
                 total=len(discovery.areas) if discovery else 0, items=discovery.areas[start:start + query.page_size] if discovery else [])
         if query.check_id is None:
-            return KnowledgeCheckPage(**common, total=len(version.checks), items=[KnowledgeCheckSummary.from_check(check)
-                                      for check in version.checks[start:start + query.page_size]])
+            reviews = KnowledgeCheckReviews(self.db).read(version.version_id)
+            projection = KnowledgeDisplayEvidence(version.evidence)
+            items = [projection.summary(check) for check in version.checks]
+            for item in items:
+                if item.check_id in reviews:
+                    item.review = reviews[item.check_id]
+            term = query.search.strip().casefold()
+            items = [item for item in items if (not term or term in (item.title + ' ' + item.criterion).casefold())
+                     and (query.review_status == 'all'
+                          or query.review_status == 'conflict' and item.status == 'conflicted'
+                          or query.review_status == item.review.status)]
+            return KnowledgeCheckPage(**common, total=len(items), items=items[start:start + query.page_size])
         check = next((item for item in version.checks if item.check_id == query.check_id), None)
         if check is None:
             raise LookupError('所选知识版本不包含该判据')
         ids = list(dict.fromkeys([*check.support_evidence_ids, *check.counter_evidence_ids]))
-        evidence = {item.image.evidence_id: item for item in version.evidence}
-        if set(ids) - evidence.keys():
-            raise LookupError('知识判据缺少所引用的冻结证据')
-        return KnowledgeCheckEvidencePage(**common, check=KnowledgeCheckSummary.from_check(check), total=len(ids),
-                                          items=[evidence[eid] for eid in ids[start:start + query.page_size]])
+        if query.evidence_role is not None:
+            ids = list(dict.fromkeys(check.support_evidence_ids if query.evidence_role == 'support' else check.counter_evidence_ids))
+        projection = KnowledgeDisplayEvidence(version.evidence)
+        images = projection.images(ids)
+        summary = projection.summary(check)
+        reviews = KnowledgeCheckReviews(self.db).read(version.version_id)
+        if check.check_id in reviews:
+            summary.review = reviews[check.check_id]
+        return KnowledgeCheckEvidencePage(**common, check=summary,
+                                          support_evidence_ids=check.support_evidence_ids, counter_evidence_ids=check.counter_evidence_ids, total=len(images),
+                                          items=images[start:start + query.page_size])
 
     def source_page(self, query: KnowledgeSourceQuery) -> KnowledgeSourcePage:
         DatasetRegistry(self.db).get(query.dataset_id)
@@ -94,32 +117,25 @@ class KnowledgeReader:
             coverage=coverage, items=[dict(row, qualification=availability.qualifications[row['sample_id']])
                    for row in rows[start:start + query.page_size]])
 
-    def read(self, dataset_id: Optional[str] = None, kind: Optional[KnowledgeKind] = None,
-             version_id: Optional[str] = None) -> KnowledgeQuery:
+    def read(self, dataset_id: Optional[str] = None, version_id: Optional[str] = None) -> KnowledgeQuery:
         if version_id:
             snapshot = self.repository.get(version_id)
             if dataset_id and snapshot.dataset_id != dataset_id:
                 raise ValueError('Knowledge version belongs to another dataset')
-            if kind and snapshot.kind != kind:
-                raise ValueError('Knowledge version has a different kind')
-            dataset_id, kind = snapshot.dataset_id, snapshot.kind
+            dataset_id = snapshot.dataset_id
         else:
-            if kind not in ('normal', 'defect'):
-                raise ValueError('Knowledge kind must be normal or defect')
             DatasetRegistry(self.db).get(dataset_id)
-            snapshot = self.repository.current(dataset_id, kind)
-        normal = self.repository.current(dataset_id, 'normal') if kind == 'defect' else None
-        availability = self.sources.eligible(dataset_id, kind, normal)
-        return KnowledgeQuery(knowledge=snapshot, versions=self.repository.versions(dataset_id, kind),
-                              freshness=self.freshness(snapshot) if snapshot else None,
-                              eligible_source_count=len(availability.qualifications),
-                              unavailable_source_count=len(availability.unavailable))
+            snapshot = self.repository.current(dataset_id)
+        availability = self.sources.registered(dataset_id)
+        return KnowledgeQuery(knowledge=snapshot, versions=self.repository.versions(dataset_id),
+            freshness=self.freshness(snapshot) if snapshot else None, eligible_source_count=len(availability.qualifications),
+            unavailable_source_count=len(availability.unavailable))
 
     def freshness(self, snapshot: KnowledgeSnapshot) -> KnowledgeFreshness:
         normal = self.repository.get(snapshot.normal_version_id) if snapshot.normal_version_id else None
-        current = self.repository.current(snapshot.dataset_id, snapshot.kind)
-        current_normal = self.repository.current(snapshot.dataset_id, 'normal')
-        availability = self.sources.eligible(snapshot.dataset_id, snapshot.kind, normal)
+        current = self.repository.current(snapshot.dataset_id)
+        current_normal = None
+        availability = self.sources.for_version(snapshot)
         eligible = availability.qualifications
         changes = []
         fields = {'sha256': 'image', 'annotations_sha256': 'annotations', 'review_sha256': 'review',

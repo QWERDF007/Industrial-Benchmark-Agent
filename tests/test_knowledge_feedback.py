@@ -145,8 +145,14 @@ def test_changed_image_cannot_reuse_an_old_audit_as_a_knowledge_candidate(feedba
         image.putpixel((90, 110), (0, 255, 0))
         image.save(path)
     dataset_scan({'dataset_id': config.dataset.id}, db.db_path)
-    with pytest.raises(ValueError, match='不合格知识来源'):
-        runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='defect', images=sample_ids[-1:], knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
+    from iad_core.knowledge.sources import KnowledgeSources
+    from iad_core.knowledge.repository import KnowledgeRepository
+    eligible=KnowledgeSources(db).eligible(config.dataset.id,'defect',KnowledgeRepository(db).get(normal['version_id']))
+    assert sample_ids[-1] not in eligible.qualifications
+    job=runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='defect', images=sample_ids[-1:], knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
+    assert [source['sample_id'] for source in job['comparison_sources']]==sample_ids[-1:]
+    runtime.knowledge.cancel(job['run_id'])
+    runtime.knowledge.wait(job['run_id'],5)
     assert sample_get({'sample_id': sample_ids[-1]}, db.db_path)['suggestion'] == advice
     assert knowledge_get({'dataset_id': config.dataset.id, 'kind': 'defect'}, db.db_path)['knowledge'] is None
 
@@ -264,3 +270,34 @@ def test_global_relationship_candidate_keeps_its_scope_during_knowledge_verifica
     assert finding['audit_finding']['location'] == responses['location']
     assert finding['bbox'] == [0, 0, 320, 240]
     assert finding['regions'][0]['crop_bbox'] == [0, 0, 320, 240]
+
+
+def test_new_audit_hints_do_not_rewrite_frozen_knowledge_provenance(feedback_workbench):
+    from iad_core.knowledge.repository import KnowledgeRepository
+    from iad_core.knowledge.sources import KnowledgeSources
+    db,config,sample_ids,_,normal,_,runtime,_,_=feedback_workbench
+    snapshot=KnowledgeRepository(db).get(normal['version_id'])
+    sample_id=sample_ids[0]
+    old=next(source for source in snapshot.sources if source.sample_id==sample_id)
+    assert old.audit_suggestion_ids==[]
+    audit=runtime.audit.start(dataset_id=config.dataset.id,sample_ids=[sample_id],normal_version_id=snapshot.version_id)
+    runtime.audit.wait(audit['run_id'],5)
+    result=runtime.audit.status(audit['run_id'])
+    assert result['status']=='COMPLETED',result['errors']
+    advice=sample_get({'sample_id':sample_id},db.db_path)['suggestion']
+    captured=runtime.knowledge.frozen.presets([snapshot.version_id],config.dataset.id)[0]
+    assert captured.qualified_sources==snapshot.sources
+    fresh=KnowledgeSources(db).collect_mining(config.dataset.id,[sample_id],'normal')[0]
+    assert advice['suggestion_id'] in fresh.audit_suggestion_ids
+
+
+def test_removing_a_used_audit_hint_invalidates_the_frozen_preset(feedback_workbench):
+    db,config,sample_ids,_,_,advice,runtime,_,_=feedback_workbench
+    job=runtime.knowledge.start(request=selected_group(db,config.dataset.id,'normal',images=sample_ids),kind='normal')
+    runtime.knowledge.wait(job['run_id'],5)
+    result=runtime.knowledge.status(job['run_id'])
+    assert result['status']=='COMPLETED',result['errors']
+    with db.connection() as connection:
+        connection.execute('DELETE FROM audit_suggestions WHERE suggestion_id=?',(advice['suggestion_id'],))
+    with pytest.raises(ValueError,match='来源已变化'):
+        runtime.knowledge.frozen.presets([result['knowledge_version_id']],config.dataset.id)

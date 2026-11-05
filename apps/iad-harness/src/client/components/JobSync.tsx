@@ -1,5 +1,5 @@
 import {IconButton} from "./IconButton.js";
-import {RefreshIcon} from "../AuditIcon.js";
+
 import React from "react";
 
 export function JobSync({
@@ -35,7 +35,7 @@ export function JobSync({
           : "尚未同步"}
       </span>
       {error && <span>{error}</span>}
-      <IconButton label={syncState === "stale" ? "重试同步" : "刷新状态"} onClick={refresh}><RefreshIcon /></IconButton>
+      <IconButton icon="refresh" label={syncState === "stale" ? "重试同步" : "刷新状态"} onClick={refresh} />
     </div>
   );
 }

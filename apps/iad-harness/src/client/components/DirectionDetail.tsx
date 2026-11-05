@@ -1,5 +1,8 @@
+import {Select} from './Select.js';
+import {Button} from './Button.js';
+import {ThumbnailCard} from "./ThumbnailCard.js";
 import {IconButton} from "./IconButton.js";
-import {RefreshIcon} from "../AuditIcon.js";
+
 import React, { useEffect, useRef, useState } from "react";
 import type {
   ExploredDirection,
@@ -12,52 +15,7 @@ import { Modal } from "./Modal.js";
 import { ImageViewer, type EvidenceCollection } from "./ImageViewer.js";
 import { MediaImage, MediaLoad } from "./MediaLoad.js";
 
-type EvidenceReference = { id: string; label: string };
-
-function ReferencedText({
-  text,
-  references,
-  onReference,
-  onPreview,
-}: {
-  text: string;
-  references: Map<string, EvidenceReference>;
-  onReference(id: string): void;
-  onPreview(id: string, active: boolean): void;
-}) {
-  if (!references.size) return <>{text}</>;
-  const ids = [...references.keys()]
-    .sort((a, b) => b.length - a.length)
-    .map((id) => id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const pattern = new RegExp(
-    `(?<![A-Za-z0-9_:/.-])(${ids.join("|")})(?![A-Za-z0-9_:/.-])`,
-    "g",
-  );
-  return (
-    <>
-      {text.split(pattern).map((part, index) => {
-        const reference = references.get(part);
-        return reference ? (
-          <button
-            key={index}
-            type="button"
-            className="iad-evidence-ref"
-            aria-label={`定位证据 ${reference.label}`}
-            onClick={() => onReference(reference.id)}
-            onMouseEnter={() => onPreview(reference.id, true)}
-            onMouseLeave={() => onPreview(reference.id, false)}
-            onFocus={() => onPreview(reference.id, true)}
-            onBlur={() => onPreview(reference.id, false)}
-          >
-            {reference.label}
-          </button>
-        ) : (
-          <React.Fragment key={index}>{part}</React.Fragment>
-        );
-      })}
-    </>
-  );
-}
+import {directionEvidence, ReferencedText} from "../direction-evidence.js";
 
 export function DirectionDetail({
   snapshot,
@@ -111,65 +69,7 @@ export function DirectionDetail({
     return () => controller.abort();
   }, [promptOpen, promptRevision, snapshot.run_id, frozenPrompt]);
   const buttons = useRef(new Map<string, HTMLButtonElement>());
-  const normals = new Set(
-      snapshot.normal_sources.map((source) => source.sample_id),
-    ),
-    defects = new Set(
-      snapshot.defect_sources.map((source) => source.sample_id),
-    );
-  const counters = { normal: 0, defect: 0, unknown: 0 };
-  const allEvidence = snapshot.evidence.map((evidence) => {
-    const title = evidence.sample_id.startsWith(snapshot.dataset_id + ":")
-      ? evidence.sample_id.slice(snapshot.dataset_id.length + 1)
-      : evidence.sample_id;
-    return { id: evidence.image.evidence_id, evidence, title, filename: title.split("/").at(-1)! };
-  });
-  const entries = direction.evidence_ids.map((id) => {
-    const item = allEvidence.find((item) => item.id === id);
-    if (!item)
-      return {
-        id,
-        evidence: null,
-        label: "证据缺失",
-        kind: "unknown" as const,
-        title: id,
-        filename: id,
-      };
-    const { evidence } = item;
-    const kind = normals.has(evidence.sample_id)
-      ? "normal"
-      : defects.has(evidence.sample_id)
-        ? "defect"
-        : "unknown";
-    const label =
-      { normal: "良品 N", defect: "异常 A", unknown: "证据 E" }[kind] +
-      ++counters[kind];
-    return { ...item, label, kind };
-  });
-  const referencesById = new Map<string, EvidenceReference>(
-    entries.filter((entry) => entry.evidence).map((entry) => [entry.id, entry]),
-  );
-  const owners = new Map<string, Set<string>>();
-  for (const item of allEvidence) {
-    for (const alias of [item.id, item.evidence.sample_id, item.title, item.filename]) {
-      const ids = owners.get(alias) || new Set<string>();
-      ids.add(item.id);
-      owners.set(alias, ids);
-    }
-  }
-  const references = new Map<string, EvidenceReference>();
-  for (const [alias, ids] of owners) {
-    if (ids.size !== 1) continue;
-    const reference = referencesById.get([...ids][0]);
-    if (reference) references.set(alias, reference);
-  }
-  const text = [direction.instruction, direction.rationale, ...direction.limitations].join("\n");
-  for (const [alias] of text.matchAll(/\bimg_[a-f0-9]{6,64}\b/g)) {
-    const matches = allEvidence.filter((item) => item.id.startsWith(alias));
-    if (matches.length !== 1) continue;
-    const reference = referencesById.get(matches[0].id);
-    if (reference) references.set(alias, reference);
-  }
+  const {entries, references, counters}=directionEvidence(snapshot,direction);
   const collection: EvidenceCollection = {
     title: direction.title,
     instruction: direction.instruction,
@@ -191,7 +91,7 @@ export function DirectionDetail({
                 src: `/api/iad/exploration/evidence/${encodeURIComponent(snapshot.version_id)}/${encodeURIComponent(entry.id)}`,
                 title: entry.title,
                 width: entry.evidence.image.sent_size[0],
-                height: entry.evidence.image.sent_size[1],
+                height: entry.evidence.image.sent_size[1],sampleId:entry.evidence.sample_id,evidence:entry.evidence.image,
               },
             },
           ]
@@ -278,7 +178,7 @@ export function DirectionDetail({
             </section>
           </div>
           <section className="iad-direction-evidence">
-            <h3>图像证据 · {entries.length}</h3>
+            <h3>图像证据，{entries.length}</h3>
             <div
               className="iad-evidence-groups"
               style={
@@ -320,14 +220,14 @@ export function DirectionDetail({
                                 (item) => item.id === entry.id,
                               );
                               return item ? (
-                                <button
+                                <ThumbnailCard
                                   key={entry.id}
                                   ref={(element) => {
                                     if (element)
                                       buttons.current.set(entry.id, element);
                                     else buttons.current.delete(entry.id);
                                   }}
-                                  className="iad-direction-evidence-item"
+                                  src={item.image.src} label={item.label}
                                   data-focused={(previewed || focused?.id) === entry.id}
                                   aria-label={`查看证据 ${entry.label}`}
                                   onClick={() =>
@@ -335,17 +235,7 @@ export function DirectionDetail({
                                       collection.images.indexOf(item),
                                     )
                                   }
-                                >
-                                  <MediaImage
-                                    src={item.image.src}
-                                    alt={item.label}
-                                    loading="lazy"
-                                  />
-                                  <strong>{item.label}</strong>
-                                  <span title={item.image.title}>
-                                    {item.image.title}
-                                  </span>
-                                </button>
+                                />
                               ) : (
                                 <div
                                   key={entry.id}
@@ -360,7 +250,7 @@ export function DirectionDetail({
                       </MediaLoad>
                       {!expanded && group.length > 8 && (
                         <button onClick={() => setExpanded(true)}>
-                          展开更多 · {group.length - 8} 张
+                          展开更多，{group.length - 8} 张
                         </button>
                       )}
                     </section>
@@ -381,7 +271,7 @@ export function DirectionDetail({
             </dl>
             {entries.map((entry) => (
               <p key={entry.id}>
-                {entry.label} · {entry.id}
+                {entry.label}，{entry.id}
                 <br />
                 {entry.evidence?.sample_id || "未记录来源"}
               </p>
@@ -398,7 +288,7 @@ export function DirectionDetail({
               ) : (
                 <p>
                   {promptError || "未记录"}
-                  <IconButton label="重新读取提示词" onClick={() => setPromptRevision((value) => value + 1)}><RefreshIcon /></IconButton>
+                  <IconButton icon="refresh" label="重新读取提示词" onClick={() => setPromptRevision((value) => value + 1)} />
                 </p>
               )}
             </details>
@@ -410,7 +300,7 @@ export function DirectionDetail({
             <>
               <label className="iad-direction-destination">
                 用于知识类型
-                <select
+                <Select
                   aria-label="采用知识类型"
                   value={destination}
                   onChange={(event) =>
@@ -433,11 +323,11 @@ export function DirectionDetail({
                         {label}
                       </option>
                     ))}
-                </select>
+                </Select>
               </label>
-              <button className="iad-primary" onClick={() => onGo(destination)}>
+              <Button variant="primary" onClick={() => onGo(destination)}>
                 去知识挖掘
-              </button>
+              </Button>
             </>
           )}
         </footer>

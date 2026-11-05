@@ -1,4 +1,4 @@
-import type { Filters, KnowledgeSnapshot } from "./contracts.js";
+import type { Filters } from "./contracts.js";
 export declare const navigation: {
     readonly 'industrial-datasets': {
         readonly label: '数据集管理';
@@ -68,8 +68,6 @@ export type WorkbenchLocation = ConsistencyLocation | {
     pageId: DatasetPageId;
     datasetId: string;
     explorationVersion?: string;
-    directionFocus?: string;
-    knowledgeKind?: KnowledgeSnapshot["kind"];
     job?: string;
     version?: string;
     conflictId?: string;

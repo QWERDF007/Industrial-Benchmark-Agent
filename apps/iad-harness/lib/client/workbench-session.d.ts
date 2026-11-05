@@ -13,7 +13,6 @@ export declare class WorkbenchSession {
     constructor(host: Pick<Context, "sessions" | "uiWorkspace">);
     explainConsistency(context: ConsistencyContextRequest, returnLink: (sessionId: string) => string, previousSessionId?: string): Promise<void>;
     inspect(snapshot: InspectionSnapshot, question: string, returnLink: (sessionId: string) => string, previousSessionId?: string): Promise<void>;
-    mine(scopeRunId: string, kind: "normal" | "defect", imageCount: number, images: string[], returnLink: (sessionId: string) => string, previousSessionId?: string): Promise<void>;
     open(sessionId: string): Promise<void>;
 }
 //# sourceMappingURL=workbench-session.d.ts.map

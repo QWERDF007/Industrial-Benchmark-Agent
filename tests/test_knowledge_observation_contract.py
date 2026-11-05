@@ -70,8 +70,12 @@ def test_observation_matrix_binds_every_cell_to_frozen_real_references(knowledge
             observer.evaluate('frozen-version', checks, inputs, 'test-mllm')
             context.record(sample_ids, observation_result=observer.steps[0].result.model_dump(mode='json'))
 
+        from iad_core.knowledge.prompts import KnowledgePrompts, MiningPromptQuery
+        from iad_core.knowledge.instructions import FrozenMiningPrompt
+        prompt=KnowledgePrompts(db).read(MiningPromptQuery(dataset_id=config.dataset.id,kind='normal'))
         job = runtime.jobs.start('NORMAL_KNOWLEDGE', config.task.task_id,
-            {'dataset_id': config.dataset.id, 'sample_ids': sample_ids}, execute, '完整图组观察')
+            {'dataset_id': config.dataset.id, 'sample_ids': sample_ids,
+             'mining_prompt':FrozenMiningPrompt.capture(prompt.configuration).model_dump()}, execute, '完整图组观察')
         runtime.jobs.wait(job['run_id'], 10)
         saved = runtime.jobs.status(job['run_id'])
         if mode != 'complete':

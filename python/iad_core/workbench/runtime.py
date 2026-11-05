@@ -29,7 +29,17 @@ class ModelServices:
         self.client, self.jobs = client, jobs
         self.audit = AuditService(db, self.client, runtime=runtime)
         self.knowledge = KnowledgeService(db, self.client, self.jobs)
+        from iad_core.knowledge.batches import KnowledgeBatches
+        self.knowledge_batches = KnowledgeBatches(self.knowledge)
         self.exploration = DirectionExploration(db, self.client, self.jobs)
+        from iad_core.exploration.batches import ExplorationBatches
+        self.exploration_batches = ExplorationBatches(self.exploration)
+        from iad_core.consistency.model_batches import ConsistencyModelBatches
+        self.consistency_model_batches = ConsistencyModelBatches(runtime, self.client)
+        from iad_core.workbench.analysis_workflows import AnalysisWorkflows
+        self.analysis_workflows = AnalysisWorkflows(self, runtime)
+        from iad_core.workbench.dataset_reports import DatasetReports
+        self.dataset_reports = DatasetReports(db, self.client, self.jobs)
 
 
 class WorkbenchRuntime:

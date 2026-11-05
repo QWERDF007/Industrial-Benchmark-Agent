@@ -1,0 +1,1 @@
+{"version":3,"file":"KnowledgeEntryDialog.d.ts","sourceRoot":"","sources":["../../../src/client/components/KnowledgeEntryDialog.tsx"],"names":[],"mappings":"AAEA,OAAO,KAA4B,MAAM,OAAO,CAAC;AAQjD,wBAAgB,oBAAoB,CAAC,EAAC,SAAS,EAAE,OAAO,EAAE,OAAO,EAAE,OAAO,EAAC,EAAE;IAC3E,SAAS,EAAC,MAAM,CAAC;IAAA,OAAO,EAAC,MAAM,CAAC;IAAA,OAAO,IAAG,IAAI,CAAC;IAAA,OAAO,IAAG,IAAI,CAAC;CAC/D,qBAgDA"}

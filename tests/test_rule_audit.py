@@ -75,9 +75,9 @@ def test_learned_check_requests_actual_target_detail_and_keeps_rule_provenance(d
 
 
 @pytest.mark.parametrize('case,error', [
-    ('missing', 'every frozen check'),
-    ('duplicate', 'every frozen check'),
-    ('unknown_check', 'every frozen check'),
+    ('missing', 'check_assessments: too_short'),
+    ('duplicate', 'check_assessments: too_long'),
+    ('unknown_check', 'check_assessments.0.check_id: literal_error'),
     ('unknown_evidence', 'unknown visual evidence'),
     ('unknown_region_check', 'unknown check'),
     ('mask_only', 'raw visual evidence'),

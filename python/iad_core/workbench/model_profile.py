@@ -7,6 +7,10 @@ from pydantic import ConfigDict, Field, model_validator
 from iad_core.advisory.analysis import AnalysisModel
 
 
+class JsonObjectResponseFormat(AnalysisModel):
+    type: Literal['json_object']
+
+
 class ModelLimits(AnalysisModel):
     capacity_mode: Optional[Literal['vllm_tokenize']] = None
     max_visual_inputs: Optional[int] = Field(default=None, ge=1)
@@ -21,8 +25,10 @@ class ModelLimits(AnalysisModel):
 
     @model_validator(mode='after')
     def protected_request_fields(self):
-        if set(self.request_parameters) & {'model', 'messages', 'response_format', 'max_tokens', 'max_completion_tokens', 'stream'}:
+        if set(self.request_parameters) & {'model', 'messages', 'max_tokens', 'max_completion_tokens', 'stream', 'stream_options'}:
             raise ValueError('模型扩展参数不可覆盖请求范围或输出契约')
+        if 'response_format' in self.request_parameters:
+            JsonObjectResponseFormat.model_validate(self.request_parameters['response_format'])
         return self
 
 

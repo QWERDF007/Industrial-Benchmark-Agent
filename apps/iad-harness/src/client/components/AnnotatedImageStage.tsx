@@ -1,12 +1,12 @@
 import React, { useState } from "react";
-import type { FullscreenViewerAnnotation } from "./FullscreenViewer.js";
+import {AnnotationLayer,type ImageBoxAnnotation} from "./AnnotationLayer.js";
 
 export interface AnnotatedImageStageProps {
   src: string;
   alt?: string;
   width?: number;
   height?: number;
-  bboxes?: FullscreenViewerAnnotation[];
+  bboxes?: ImageBoxAnnotation[];
   showAnnotations?: boolean;
   className?: string;
   style?: React.CSSProperties;
@@ -89,35 +89,7 @@ export function AnnotatedImageStage({
           }}
         />
 
-        {showAnnotations && bboxes && bboxes.length > 0 && (
-          <span className="preview-overlay" id="preview-overlay">
-            {bboxes.map((item, idx) => {
-              if (!item.bbox || item.bbox.length < 4) return null;
-              const [x1, y1, x2, y2] = item.bbox;
-              const minX = Math.min(x1, x2);
-              const minY = Math.min(y1, y2);
-              const maxX = Math.max(x1, x2);
-              const maxY = Math.max(y1, y2);
-              const label = item.raw_label ? item.raw_label.replace(/^类别\s*/, "") : "";
-
-              return (
-                <span
-                  key={item.annotation_id || idx}
-                  className="bbox"
-                  data-label={label}
-                  aria-hidden="true"
-                  style={{
-                    position: "absolute",
-                    left: `${((minX / imgW) * 100).toFixed(3)}%`,
-                    top: `${((minY / imgH) * 100).toFixed(3)}%`,
-                    width: `${(((maxX - minX) / imgW) * 100).toFixed(3)}%`,
-                    height: `${(((maxY - minY) / imgH) * 100).toFixed(3)}%`,
-                  }}
-                />
-              );
-            })}
-          </span>
-        )}
+        {showAnnotations && bboxes.length>0 && <AnnotationLayer source={{kind:'boxes',annotations:bboxes,width:imgW,height:imgH}} />}
         {children}
       </span>
     </div>

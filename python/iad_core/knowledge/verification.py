@@ -6,25 +6,18 @@ from typing import List, Optional
 from iad_core.advisory.analysis import RegionImage, RegionOrigin
 from iad_core.evidence.images import EvidenceImages
 from iad_core.knowledge.mining import KnowledgeInput
-from iad_core.knowledge.models import FindingTarget, KnowledgeDraft, KnowledgeEvidence, KnowledgeFinding, KnowledgeSnapshot
+from iad_core.knowledge.models import FindingTarget, KnowledgeDraft, KnowledgeEvidence, KnowledgeSnapshot
 from iad_core.knowledge.findings import FindingVerification, VerificationOutcome
 from iad_core.knowledge.candidates import AuditCandidates
 from iad_core.storage.database import Database
-from iad_core.storage.repositories import SampleRepository
+from iad_core.storage.repositories import SampleRepository, AnnotationRepository
+from iad_core.dataset.registry import DatasetRegistry
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
 
-VERIFICATION_INSTRUCTION = """联合核验候选良品中的疑点。观察各目标全图、真实ROI和其他来源，关联位置、结构与光照。
-来源资格与先前提议都不是事实。区分可支持的异常、正常变化/反光解释、证据不足。
-audit_finding保留历史审计观察，其中evidence_ids不是本轮视觉依据，须重新引用当前实际raw与比较图。
-目标不能成为其自身结论的唯一正常支持，相同内容哈希不能当作独立来源。
-每个finding_id恰好返回一项，引用其实际ROI和比较证据；affected_check_titles只能使用所给检查项title。
-supported表示图像支持疑点，refuted表示正常解释可支持，insufficient表示无法排除或缺证。
-不得用正常区域淹没异常，保留分歧、正常替代解释及限制。此结果只供人工核实，不修改标签。
-待核验疑点："""
 
 
-class NormalVerification:
+class KnowledgeVerification:
     def __init__(self, db: Database, client: VlmClient, context: JobContext):
         self.db, self.client, self.context = db, client, context
         self.images, self.samples = EvidenceImages(db.db_path), SampleRepository(db)
@@ -68,41 +61,27 @@ class NormalVerification:
         targets = list(target_by_id.values())
         if not targets:
             return VerificationOutcome([], [], [])
-        self.context.update(phase="VERIFYING_NORMAL")
+        self.context.update(phase="VERIFYING_KNOWLEDGE")
         for target in targets:
             source = by_sample[target.sample_id]
             sample = self.samples.get(target.sample_id)
             if not target.origins:
                 raise ValueError('Knowledge finding is missing its region origin')
             origin = target.origins[0]
+            dataset_format = DatasetRegistry(self.db).get(sample.dataset_id).dataset.format
+            if dataset_format == 'folder_classification':
+                overview = self.overviews[sample.sample_id]
+                target.regions = [RegionImage(**origin.model_dump(), origins=target.origins,
+                    crop_bbox=overview.evidence.crop_bbox, image=overview.evidence)]
+                continue
+            annotations = AnnotationRepository(self.db).list_by_sample(sample.sample_id)
             for tile in self.images.tiles(sample, target.bbox, 0.2):
-                image = self.images.capture(sample, "roi", origin.source, tile, source.source.sha256)
+                image = self.images.capture(sample, "roi", origin.source, tile, source.source.sha256).with_source(
+                    sample, dataset_format, annotations)
                 self.by_id[image.evidence.evidence_id] = image
                 extra[image.evidence.evidence_id] = KnowledgeEvidence(sample_id=sample.sample_id, image=image.evidence)
                 target.regions.append(RegionImage(**origin.model_dump(), origins=target.origins, crop_bbox=tile, image=image.evidence))
         outcome = FindingVerification(self.db, self.client, self.context).review(
             targets, inputs, list(self.overviews.values()), self.by_id, draft.checks, model_name,
-            VERIFICATION_INSTRUCTION)
-        findings = outcome.findings
-        actions: dict[tuple[str, str], List[KnowledgeFinding]] = {}
-        for finding in findings:
-            for title in finding.judgment.affected_check_titles:
-                actions.setdefault((finding.sample_id, title), []).append(finding)
-        for (sample_id, title), affected in actions.items():
-            sample_eids = {image.evidence.evidence_id for item in inputs if item.source.sample_id == sample_id for image in item.images}
-            sample_eids.update(item.image.evidence_id for item in extra.values() if item.sample_id == sample_id)
-            for check in draft.checks:
-                if check.title != title:
-                    continue
-                if all(item.judgment.status == 'refuted' for item in affected):
-                    check.counter_evidence_ids = [eid for eid in check.counter_evidence_ids if eid not in sample_eids]
-                    check.allowed_variations = list(dict.fromkeys([*check.allowed_variations,
-                        *[item.judgment.normal_explanation for item in affected if item.judgment.normal_explanation]]))
-                else:
-                    check.support_evidence_ids = [eid for eid in check.support_evidence_ids if eid not in sample_eids]
-                    counter = [eid for item in affected for eid in item.judgment.evidence_ids if eid in sample_eids]
-                    check.counter_evidence_ids = list(dict.fromkeys([*check.counter_evidence_ids, *counter,
-                        *[item.proposal.evidence_id for item in affected if item.proposal]]))
-                    if not check.support_evidence_ids or any(item.judgment.status == 'insufficient' for item in affected):
-                        check.status = 'conflicted'
-        return VerificationOutcome(findings, list(extra.values()), outcome.steps)
+            'verification')
+        return VerificationOutcome(outcome.findings, list(extra.values()), outcome.steps)

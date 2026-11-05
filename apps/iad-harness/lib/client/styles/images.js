@@ -23,24 +23,7 @@ export const imagesStyles = `
 .filter-sort{width:143px}
 .btn-reset{border:1px solid var(--border,#dbe2eb);color:#55667e;background:#fff;height:38px;padding:0 14px;border-radius:5px;white-space:nowrap}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px 12px}
-.card{border:1px solid #e5eaf2;border-radius:6px;background:#fff;padding:0;text-align:left;overflow:hidden;box-shadow:0 1px 2px rgba(30,48,79,.02);color:inherit;min-width:0;transition:box-shadow .15s ease,border-color .15s ease,transform .12s ease;cursor:pointer}
-.card:hover{border-color:#7b9fe8 !important;box-shadow:0 4px 14px rgba(36,88,213,0.14) !important;transform:translateY(-1px)}
-.thumb{width:100%;aspect-ratio:4/3;background:#eef2f7;display:flex;justify-content:center;align-items:center;overflow:hidden;border-bottom:1px solid #edf0f5}
-.thumb img{display:block;width:100%;height:100%;object-fit:cover}
-.card-name{font-size:12px;color:#23324c;padding:5px 8px 6px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .empty{min-height:200px;border:1px dashed var(--border,#dbe2eb);border-radius:8px;display:grid;place-items:center;color:#738398;background:#fff}
-
-.pagination{display:flex;align-items:center;justify-content:flex-end;margin-top:10px;padding:4px 0 2px;color:#687990;font-size:12px}
-.pagination-controls{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-left:auto}
-.pagination button{height:32px;min-width:32px;padding:0 8px;border:1px solid var(--border,#dbe2eb);border-radius:5px;background:#fff;color:#53637b;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease}
-.pagination button:disabled{opacity:.4;cursor:not-allowed}
-:is(.iad-workbench, [data-page="industrial-images"]) .pagination button:not(.active):not(:disabled):hover{background:#eef4ff !important;border-color:#8faef0 !important;color:#2458d5 !important;cursor:pointer}
-:is(.iad-workbench, [data-page="industrial-images"]) .pagination button.active{color:#fff !important;background:var(--blue,#285ed6) !important;border-color:var(--blue,#285ed6) !important}
-:is(.iad-workbench, [data-page="industrial-images"]) .pagination button.active:hover{color:#fff !important;background:#1b49be !important;border-color:#1b49be !important;cursor:pointer}
-.pagination-page{white-space:nowrap;margin-left:4px;color:#738298}
-.pagination-total{white-space:nowrap;color:#62748d;font-size:12px;margin-left:8px}
-@media(max-width:680px){.pagination-controls{gap:6px}.pagination-total{margin-left:6px}}
 
 .full-overlay {position:fixed;inset:0;z-index:10010;display:flex;align-items:stretch;justify-content:stretch;padding:0;background:#1c2633}
 .detail-overlay.hidden, .full-overlay.hidden {display:none !important}
@@ -90,11 +73,6 @@ export const imagesStyles = `
 .full-side-nav:disabled:hover{background:transparent;border-color:transparent}
 
 .full-actions{display:flex;align-items:center;gap:6px;flex:none;white-space:nowrap}
-.full-actions button{display:inline-grid;place-items:center;flex:none;width:38px;min-width:38px;height:38px;padding:0;border:1px solid transparent;border-radius:6px;box-shadow:none;background:transparent;color:#f4f7fd;font:500 14px/1.2 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;text-shadow:0 1px 3px #071322dd,0 0 3px #071322bb;cursor:pointer;transition:background .15s ease,border-color .15s ease}
-.full-actions button:hover:not(:disabled){background:rgba(255,255,255,.22) !important;border-color:rgba(255,255,255,.32) !important;color:#fff !important}
-.full-actions button:focus-visible{outline:2px solid #a1c6ff;outline-offset:2px;background:rgba(255,255,255,.2)}
-.full-actions button:disabled{opacity:.3;cursor:not-allowed}
-.full-actions button:disabled:hover{background:transparent;border-color:transparent}
 
 /* Zoom Dropdown: background & border slightly brighter than canvas background */
 .full-actions .zoom-wrap{position:relative;flex:none;display:inline-flex;align-items:center;background:rgba(255,255,255,.12) !important;border:1px solid rgba(255,255,255,.22) !important;border-radius:6px;transition:background .15s ease,border-color .15s ease}
@@ -104,9 +82,7 @@ export const imagesStyles = `
 .full-actions .zoom-chevron{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:14px;height:14px;display:grid;place-items:center;color:#b2c2d6;pointer-events:none}
 .full-actions .zoom-chevron svg{width:14px;height:14px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;filter:none}
 .full-actions select option{color:#192b46;background:#fff;text-shadow:none}
-.full-actions button[aria-pressed=true]{background:transparent;border-color:transparent;color:#fff}
-.full-actions button[aria-pressed=true]:hover{background:rgba(255,255,255,.17);border-color:rgba(255,255,255,.1)}
-.full-actions .full-close{margin-left:6px;width:38px;min-width:38px;color:#fff}
+.full-actions .full-close{margin-left:6px}
 .full-actions svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px 2px rgba(0,0,0,.72));pointer-events:none}
 
 .detail-ann-table {width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;color:#293951}
@@ -125,17 +101,6 @@ export const imagesStyles = `
 .detail-ann-label span:first-child{color:#72829b}
 
 .dataset-panel .child{position:relative}
-.dataset-multi{position:relative;min-width:0;width:100%}
-.dataset-multi-trigger{height:38px;min-height:38px;width:100%;padding:0 12px;font:inherit;color:#25344e;background:var(--surface,#fff);border:1px solid var(--border,#c8d2e2);border-radius:5px;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;cursor:pointer}
-.dataset-multi-trigger:hover{border-color:#91a7d1}
-.dataset-multi-trigger:focus-visible{outline:2px solid #3167df;outline-offset:1px}
-.dataset-multi-chevron{flex:none;font-size:17px;color:#667792;line-height:1}
-.dataset-multi-menu{z-index:30;position:absolute;top:calc(100% + 5px);left:0;width:100%;min-width:290px;background:#fff;border:1px solid #cbd5e4;border-radius:6px;box-shadow:0 12px 26px #1b30521c;padding:5px;max-height:270px;overflow:auto}
-.dataset-multi-menu[hidden]{display:none!important}
-.child-multi-option{display:flex;align-items:center;gap:10px;min-height:38px;border-radius:4px;padding:7px 9px;cursor:pointer;color:#293852;font-size:12px}
-.child-multi-option:hover{background:#f2f5fb}
-.child-multi-option input{accent-color:#2c61da;width:15px;height:15px;flex:none;margin:0}
-.child-multi-option span{flex:1;overflow-wrap:anywhere;line-height:1.4}
 .detail-ann-table tr:last-child td{border-bottom:0}
 .detail-ann-table .ann-value{font:inherit;color:#34435d;white-space:normal}
 
@@ -151,51 +116,6 @@ export const imagesStyles = `
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23566880' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-size:16px 16px;
   background-position:right 11px center;padding-right:35px;background-color:var(--surface,#fff);
-}
-.dataset-multi-chevron{width:16px;height:16px;flex:0 0 16px;display:grid;place-items:center;color:#556880}
-.dataset-multi-chevron svg{width:16px;height:16px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.dataset-multi-trigger{padding-right:11px;border-color:#aebdd2}
-
-:is(.iad-workbench, [data-page="industrial-images"]) :is(#refresh, #reset, .iad-subtle-icon, button.iad-subtle-icon) {
-  display: grid !important;
-  place-items: center !important;
-  flex: none !important;
-  width: 38px !important;
-  height: 38px !important;
-  min-height: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-color: transparent !important;
-  border-radius: 5px !important;
-  background: transparent !important;
-  background-color: transparent !important;
-  color: #667892 !important;
-  box-shadow: none !important;
-  outline: none !important;
-  outline-offset: 1px !important;
-  transition: background-color .12s ease, color .12s ease !important;
-  cursor: pointer !important;
-}
-:is(.iad-workbench, [data-page="industrial-images"]) :is(#refresh, #reset, .iad-subtle-icon, button.iad-subtle-icon) svg {
-  width: 18px !important;
-  height: 18px !important;
-  stroke: currentColor !important;
-  stroke-width: 1.8 !important;
-  fill: none !important;
-  stroke-linecap: round !important;
-  stroke-linejoin: round !important;
-}
-:is(.iad-workbench, [data-page="industrial-images"]) :is(#refresh, #reset, .iad-subtle-icon, button.iad-subtle-icon):hover {
-  background: #eaf0fe !important;
-  background-color: #eaf0fe !important;
-  color: var(--blue, #2458d5) !important;
-}
-:is(.iad-workbench, [data-page="industrial-images"]) :is(#refresh, #reset, .iad-subtle-icon, button.iad-subtle-icon):active {
-  background: #e2ebfe !important;
-  background-color: #e2ebfe !important;
-}
-:is(.iad-workbench, [data-page="industrial-images"]) :is(#refresh, #reset, .iad-subtle-icon, button.iad-subtle-icon):focus-visible {
-  outline: 2px solid #9db7ff !important;
 }
 #reset{margin-left:0;align-self:flex-end}
 #refresh{align-self:flex-end}

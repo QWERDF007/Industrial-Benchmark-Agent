@@ -1,5 +1,11 @@
 from iad_core.storage.database import Database
 from iad_core.workbench.runtime import workbench
+from iad_core.exploration.service import EXPLORATION_JOBS
+
+
+def direction_exploration_batch_start(args, db_path):
+    return workbench(db_path).invoke_model(args.get('_model_execution'), lambda services:
+        services.exploration_batches.start(args['request'], model_name=args.get('model_name')))
 
 def direction_exploration_start(args, db_path):
     from iad_core.exploration.models import ExplorationStart
@@ -8,17 +14,17 @@ def direction_exploration_start(args, db_path):
 
 
 def direction_exploration_status(args, db_path):
-    return workbench(db_path).jobs.status(args['run_id'], ('DIRECTION_EXPLORATION',))
+    return workbench(db_path).jobs.status(args['run_id'], EXPLORATION_JOBS)
 
 
 def direction_exploration_list(args, db_path):
     jobs = workbench(db_path).jobs
-    return {'jobs': jobs.list(args['dataset_id'], ('DIRECTION_EXPLORATION',)),
+    return {'jobs': jobs.list(args['dataset_id'], EXPLORATION_JOBS),
             'pending_count': jobs.queue_size(args['dataset_id'], 'DIRECTION_EXPLORATION')}
 
 
 def direction_exploration_cancel(args, db_path):
-    return workbench(db_path).jobs.cancel(args['run_id'], ('DIRECTION_EXPLORATION',))
+    return workbench(db_path).jobs.cancel(args['run_id'], EXPLORATION_JOBS)
 
 
 def direction_exploration_delete(args, db_path):
@@ -35,6 +41,12 @@ def direction_exploration_get(args, db_path):
     return ExplorationRepository(Database(db_path)).catalog(args['dataset_id'], args.get('version_id'), args.get('direction_id')).model_dump()
 
 
+def direction_exploration_remove_direction(args, db_path):
+    from iad_core.exploration.models import DirectionRemoval
+    from iad_core.exploration.repository import ExplorationRepository
+    return ExplorationRepository(Database(db_path)).remove(DirectionRemoval.model_validate(args)).model_dump()
+
+
 def direction_exploration_evidence(args, db_path):
     from iad_core.exploration.repository import ExplorationRepository
     from iad_core.evidence.images import EvidenceImages
@@ -47,10 +59,10 @@ def direction_exploration_evidence(args, db_path):
 
 def direction_exploration_presets(args, db_path):
     from iad_core.exploration.prompts import ExplorationPrompts
-    return {'presets': [p.model_dump() for p in ExplorationPrompts(Database(db_path)).list()]}
+    return {'presets': [p.model_dump() for p in ExplorationPrompts().list()]}
 
 
 def direction_exploration_preset_save(args, db_path):
     from iad_core.exploration.prompts import ExplorationPrompts
     from iad_core.exploration.models import ExplorationPresetEdit
-    return ExplorationPrompts(Database(db_path)).create(ExplorationPresetEdit.model_validate(args)).model_dump()
+    return ExplorationPrompts().create(ExplorationPresetEdit.model_validate(args)).model_dump()

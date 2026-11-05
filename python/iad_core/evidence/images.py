@@ -2,7 +2,7 @@ import hashlib
 import io
 import json
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import List, Literal, Optional
 
@@ -17,6 +17,7 @@ from iad_core.evidence.files import ImageFiles, file_sha256
 
 OVERVIEW_MAX_SIDE = 1280
 ROI_MAX_SIDE = 1024
+MODEL_INPUT_VERSION = 'annotated-sample-input-v1'
 
 
 def normalized_preview(image: Image.Image) -> Image.Image:
@@ -41,6 +42,26 @@ def image_pixel_sha256(path: str, expected_sha256: str) -> str:
 class PreparedImage:
     evidence: VisualEvidence
     path: str
+    dataset_format: Optional[Literal['labelme', 'folder_classification']] = None
+    annotations: tuple[Annotation, ...] = ()
+    image_label: Optional[Literal['OK', 'NG', 'UNKNOWN']] = None
+
+    def with_source(self, sample: Sample, dataset_format: Literal['labelme', 'folder_classification'],
+                    annotations: List[Annotation]) -> 'PreparedImage':
+        return replace(self, dataset_format=dataset_format,
+            annotations=tuple(annotations) if dataset_format == 'labelme' else (),
+            image_label={'PASS': 'OK', 'FAIL': 'NG'}.get(sample.quality_status, 'UNKNOWN')
+                        if dataset_format == 'folder_classification' else None)
+
+    def model_context(self) -> dict:
+        context = self.evidence.model_context()
+        if self.dataset_format:
+            context['dataset_format'] = self.dataset_format
+            if self.dataset_format == 'labelme':
+                context['annotations'] = [item.model_dump(mode='json', exclude={'mask_path'}) for item in self.annotations]
+            else:
+                context['image_label'] = self.image_label
+        return context
 
 
 class RegionView(RegionOrigin):
@@ -52,10 +73,24 @@ class EvidenceImages:
     def __init__(self, db_path: str):
         self.root = Path(db_path).resolve().parent / "cache" / "visual-evidence"
 
+    def prepare(self, sample: Sample, dataset_format: Literal['labelme', 'folder_classification'],
+                annotations: List[Annotation], source_sha256: str, *, role: str = 'overview') -> List[PreparedImage]:
+        overview = self.capture(sample, role, 'reference' if role == 'normal' else 'global',
+            source_sha256=source_sha256, full_resolution=True)
+        if dataset_format == 'folder_classification':
+            return [overview.with_source(sample, dataset_format, [])]
+        prepared = [overview.with_source(sample, dataset_format, annotations)]
+        if annotations or max(sample.width, sample.height) > OVERVIEW_MAX_SIDE:
+            for region in self.capture_regions(sample, self.plan(sample, annotations, []), annotations, source_sha256):
+                ids = {origin.annotation_id for origin in region.origins}
+                prepared.append(PreparedImage(region.image, self.path(region.image), dataset_format,
+                    tuple(item for item in annotations if item.annotation_id in ids)))
+        return prepared
+
     def capture(self, sample: Sample, role: str, source: str, bbox: Optional[List[int]] = None,
                 source_sha256: Optional[str] = None, annotations: Optional[List[Annotation]] = None,
                 annotation_mode: Literal["annotation_mask", "annotation_overlay"] = "annotation_overlay",
-                max_side: Optional[int] = None) -> PreparedImage:
+                max_side: Optional[int] = None, *, full_resolution: bool = False) -> PreparedImage:
         box = bbox or [0, 0, sample.width, sample.height]
         original_bytes = Path(sample.image_path).read_bytes()
         source_sha = hashlib.sha256(original_bytes).hexdigest()
@@ -71,9 +106,9 @@ class EvidenceImages:
             if max_side is not None:
                 if not 1<=max_side<=OVERVIEW_MAX_SIDE:raise ValueError('Invalid preview size budget')
                 image.thumbnail((max_side,max_side),Image.Resampling.LANCZOS)
-            elif role != "roi":
+            elif role != "roi" and not full_resolution:
                 image.thumbnail((OVERVIEW_MAX_SIDE, OVERVIEW_MAX_SIDE), Image.Resampling.LANCZOS)
-            elif max(image.size) > ROI_MAX_SIDE:
+            elif role == 'roi' and max(image.size) > ROI_MAX_SIDE:
                 raise ValueError("ROI must be tiled before encoding")
             buffer = io.BytesIO()
             image.save(buffer, "PNG")

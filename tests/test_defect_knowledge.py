@@ -25,6 +25,7 @@ from iad_core.workbench.review import HumanReview, ReviewSubmission
     ('supported', True, 17600, False, False, 'supported'),
     ('supported', True, 262144, True, False, 'invalid'),
     ('supported', True, 262144, False, True, 'invalid_lineage'),
+    ('foreign_finding', True, 262144, False, False, 'invalid_finding'),
 ])
 def test_operator_verifies_annotated_defect_against_frozen_normal_knowledge(
         defect_dataset, judgment_status, independent, capacity, cite_mask, foreign_lineage, expected):
@@ -51,6 +52,8 @@ def test_operator_verifies_annotated_defect_against_frozen_normal_knowledge(
             assert payload['normal_version_id'] == normal['version_id']
             assert payload['checks'][0]['criterion'] == '孔内部可见背景'
             target, = payload['findings']
+            assert target['finding_id']=='finding_0','批内疑点标识应使用短引用，避免长哈希复制或截断'
+            assert set(payload['planned_roi_evidence_ids'])=={'finding_0'}
             assert target['proposal'] is None
             assert target['origins'][0]['annotation_id'] == original['annotations'][0]['annotation_id']
             raw, = [item for item in evidence if item['role'] == 'roi' and item['representation'] == 'raw']
@@ -58,7 +61,11 @@ def test_operator_verifies_annotated_defect_against_frozen_normal_knowledge(
             assert binary['crop_bbox'] == raw['crop_bbox'] == [72, 78, 129, 163]
             assert len([item for item in evidence if item['role'] == 'overview']) == 1
             if capacity == 262144:
-                assert len([item for item in evidence if item['role'] == 'normal']) == 3
+                controls=[item for item in evidence if item['role']=='normal']
+                assert len(controls)==2
+                selected={source['sample_id'] for source in normal['sources']
+                    if source['sha256'] in {item['source_sha256'] for item in controls}}
+                assert len({normal['support_groups'][sid] for sid in selected})==2
             for index, item in enumerate(content):
                 if item['type'] == 'text' and item['text'].startswith('视觉证据：'):
                     metadata = json.loads(item['text'].removeprefix('视觉证据：'))
@@ -73,7 +80,8 @@ def test_operator_verifies_annotated_defect_against_frozen_normal_knowledge(
             if independent and comparison:
                 cited.append(comparison[0])
             result = {'findings': [{
-                'finding_id': target['finding_id'], 'status': judgment_status, 'affected_check_titles': ['孔内外观'],
+                'finding_id': 'finding_999' if judgment_status=='foreign_finding' else target['finding_id'],
+                'status': 'supported' if judgment_status=='foreign_finding' else judgment_status, 'affected_check_titles': ['孔内外观'],
                 'description': '孔内红色区域遮挡背景', 'normal_explanation': '不能仅凭红色认定材料缺陷',
                 'limitations': ['合成数据'], 'evidence_ids': cited, 'conflicts': [],
             }]}
@@ -106,10 +114,11 @@ def test_operator_verifies_annotated_defect_against_frozen_normal_knowledge(
             assert len(calls) == 1
             assert finished['knowledge_version_id'] is None
             return
-        if expected in ('invalid', 'invalid_lineage'):
+        if expected in ('invalid', 'invalid_lineage','invalid_finding'):
             assert finished['status'] == 'FAILED', finished
             assert ('raw ROI' if expected == 'invalid' else '输出格式错误') in finished['errors'][0]['message']
             assert knowledge_get({'dataset_id': dataset['dataset_id'], 'kind': 'defect'}, db_path)['knowledge'] is None
+            if expected=='invalid_finding':assert [kind for kind,_ in calls].count('KnowledgeVerification')==1
             return
         assert finished['status'] == 'COMPLETED', finished
         assert finished['completed'] == finished['total_samples'] == 1
@@ -118,6 +127,8 @@ def test_operator_verifies_annotated_defect_against_frozen_normal_knowledge(
         assert defect['normal_version_id'] == normal['version_id']
         assert defect['sources'][0]['qualification'] == 'annotated_candidate'
         finding, = defect['findings']
+        assert finding['finding_id'].startswith('finding_') and len(finding['finding_id'])>40
+        assert finding['judgment']['finding_id']==finding['finding_id']
         assert finding['bbox'] == [80, 90, 121, 151]
         assert finding['judgment']['status'] == expected
         assert finding['affected_check_ids'] == [normal['checks'][0]['check_id']]
@@ -193,8 +204,6 @@ def test_defect_mining_keeps_frozen_normal_lineage_when_normal_head_changes(defe
         foreign = dataset_import({'format': 'labelme', 'name': '另一数据集', 'image_dir': str(foreign_images), 'annotation_dir': str(foreign_labels)}, db.db_path)
         with pytest.raises(ValueError, match='数据集'):
             service.start(request=selected_group(service.db, foreign['dataset_id'], kind='defect', images=[foreign['dataset_id'] + ':part.png'], knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
-        with pytest.raises(ValueError, match='不合格知识来源'):
-            service.start(request=selected_group(service.db, dataset['dataset_id'], kind='defect', images=[dataset['dataset_id'] + ':part-0.png'], knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
         defect_job = service.start(request=selected_group(service.db, dataset['dataset_id'], kind='defect', knowledge_preset=[normal['version_id']]), kind='defect', model_name='test-mllm')
         assert entered.wait(3)
         Image.new('RGB', (320, 240), 'white').save(images / 'part-0.png')
@@ -418,7 +427,8 @@ def test_folder_classification_defect_and_normal_knowledge(tmp_path):
                     if item['type'] == 'text' and item['text'].startswith('视觉证据：')]
         if body['response_format']['json_schema']['name'] == 'KnowledgeVerification':
             payload = json.loads(content[0]['text'].split('待核验疑点：', 1)[1].split('\n请根据图像', 1)[0])
-            raw = next(item for item in evidence if item['role'] == 'roi')
+            assert all(item['role']!='roi' for item in evidence), '目录式数据只发送原始整图与标签'
+            raw = next(item for item in evidence if item['role'] == 'overview')
             reference = next(item for item in evidence if item['role'] == 'normal' and item['source_sha256'] != raw['source_sha256'])
             result = {'findings': [{'finding_id': target['finding_id'], 'status': 'supported',
                       'affected_check_titles': ['表面外观'], 'description': '异常红色', 'normal_explanation': '非正常颜色',
@@ -447,7 +457,7 @@ def test_folder_classification_defect_and_normal_knowledge(tmp_path):
         defect_job = service.start(request=selected_group(service.db, ds_id, kind='defect', images=[ng2_id], knowledge_preset=[normal_ver]), kind='defect', model_name='test-mllm')
         service.wait(defect_job['run_id'], 5)
         defect_status = service.status(defect_job['run_id'])
-        assert defect_status['status'] == 'COMPLETED'
+        assert defect_status['status'] == 'COMPLETED',defect_status['errors']
         defect_k = knowledge_get({'version_id': defect_status['knowledge_version_id']}, db.db_path)['knowledge']
         assert defect_k['sources'][0]['qualification'] == 'raw_fail'
         # Verification finding had full-image coverage and no annotation bbox

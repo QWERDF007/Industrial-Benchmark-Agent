@@ -1,20 +1,15 @@
-import json
+from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningPhase
 from typing import List, Literal
 
-from pydantic import Field, create_model
+from pydantic import Field, create_model, model_validator, ValidationError
+from pydantic_core import InitErrorDetails
 
 from iad_core.advisory.analysis import AnalysisModel
+from iad_core.advisory.output_validation import repairable_output_error
 from iad_core.knowledge.models import DiscoveryArea, DiscoveryStatus, KnowledgeDraft, KnowledgeLearning
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
 
-LINK_INSTRUCTION = """为已经完成的视觉观察建立部件与判据引用，并依据实际关联确定每个方向的最终status；不进行新的图像判断，不改写观察事实、reason、图像证据或知识判据。
-输入areas按顺序对应area_0、area_1等输出字段，每项都必须返回。
-subjects从已观察parts名称中选择，check_titles从本次checks标题中选择，准确关联该项reason所描述的观察。
-没有对应项时引用留空，不用近义词新造引用，不以关联结果宣称人审确认或检查完整。
-提取阶段的status是候选判断，不能直接照抄。已形成知识必须关联本次checks中的对应判据并有实际图像证据；没有对应判据时按观察事实确定证据不足、不可观察或不适用。
-仅复核已有规则、但本轮增量checks未形成对应判据时保留全部观察，不能强行关联无关的新判据，也不能复制旧判据凑引用。
-冻结视觉提取："""
 
 
 class DiscoveryLinks(AnalysisModel):
@@ -36,11 +31,25 @@ class KnowledgeDiscoveryLinker:
             links = create_model('DiscoveryLinks', __base__=DiscoveryLinks,
                 subjects=(List[Literal[parts]] if parts else List[str], Field(**({} if parts else {'max_length': 0}))),
                 check_titles=(List[Literal[checks]] if checks else List[str], Field(**({} if checks else {'max_length': 0}))))
+            def validate_associations(value):
+                problems: list[InitErrorDetails] = []
+                for index, area in enumerate(discovery.areas):
+                    try:
+                        DiscoveryArea.model_validate(dict(area.model_dump(), **getattr(value,f'area_{index}').model_dump()))
+                    except ValidationError as error:
+                        for issue in error.errors(include_input=False):
+                            problems.append(InitErrorDetails(type=repairable_output_error('invalid_discovery_links',issue['msg']),
+                                loc=(f'area_{index}',*issue['loc']), input=getattr(value,f'area_{index}').model_dump()))
+                if problems:
+                    raise ValidationError.from_exception_data('KnowledgeDiscoveryLinks',problems)
+                return value
+
             response = create_model('KnowledgeDiscoveryLinks', __base__=AnalysisModel,
+                __validators__={'valid_associations':model_validator(mode='after')(validate_associations)},
                 **{f'area_{index}': (links, ...) for index in range(len(discovery.areas))})
             self.context.checkpoint()
             self.context.update(phase='LINKING_KNOWLEDGE_DISCOVERY')
-            prompt = LINK_INSTRUCTION + json.dumps(result, ensure_ascii=False)
+            prompt = FrozenMiningPrompt.model_validate(self.context.payload['mining_prompt']).render_context('冻结视觉提取',result,phase=MiningPhase.LINK)
             plan = self.client.plan(response, prompt, [], model_name)
             self.context.checkpoint()
             linked = self.client.generate(plan).model_dump(mode='json')

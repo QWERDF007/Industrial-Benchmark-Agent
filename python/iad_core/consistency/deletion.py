@@ -21,8 +21,10 @@ class ConsistencyDeletion:
         jobs = json.dumps([row[0] for row in conn.execute('''SELECT job_id FROM job_runs
             WHERE job_id IN (SELECT run_id FROM consistency_children WHERE batch_id IN (SELECT value FROM json_each(?)))
                OR (job_type='CONSISTENCY_ANALYSIS' AND EXISTS (
-                   SELECT 1 FROM json_tree(payload_json,'$.request.frozen_group') WHERE key='dataset_id' AND value=?))''',
-            (batches, dataset_id))])
+                   SELECT 1 FROM json_tree(payload_json,'$.request.frozen_group') WHERE key='dataset_id' AND value=?))
+               OR (job_type='CONSISTENCY_MODEL_BATCH' AND EXISTS (
+                   SELECT 1 FROM json_tree(payload_json,'$.request.consistency_scopes') WHERE key='dataset_id' AND value=?))''',
+            (batches, dataset_id, dataset_id))])
         if conn.execute('''SELECT 1 FROM job_runs WHERE job_id IN (SELECT value FROM json_each(?))
                 AND status IN ('PENDING','RUNNING') LIMIT 1''', (jobs,)).fetchone():
             raise ValueError('数据集仍有关联审核作业执行中，请先取消或等待作业结束后删除')

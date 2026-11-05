@@ -23,6 +23,12 @@ def configured_test_mllm(monkeypatch):
 
 
 @pytest.fixture
+def self_discovery_prompt():
+    from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningPromptConfiguration
+    return FrozenMiningPrompt.capture(MiningPromptConfiguration(objective='观察实际图组并保留分歧', directions=[]))
+
+
+@pytest.fixture
 def knowledge_dataset(tmp_path, request):
     images, labels = tmp_path / "images", tmp_path / "labels"
     images.mkdir()
@@ -116,7 +122,7 @@ def mllm_api(dataset, finding_response, monkeypatch):
             count = capacity.get('count', sum(part['type']=='image_url' for part in body['messages'][0]['content']) * capacity.get('tokens_per_image', 1000))
             return httpx.Response(200,json={'count':count,'max_model_len':capacity['max_model_len']})
         bodies.append(body)
-        schema = json.loads(body['messages'][0]['content'][0]['text'].split("JSON Schema 的 JSON，不要 Markdown：\n")[1])
+        schema = body['response_format']['json_schema']['schema']
         if schema['title'] == 'KnowledgeDraft':
             answer = {**patterns, 'checks': [{**check, 'support_evidence_ids': [json.loads(part['text'][5:])['evidence_id'] for part in body['messages'][0]['content'] if part['type']=='text' and part['text'].startswith('视觉证据：')]} for check in patterns['checks']]}
         elif schema['title'] == 'KnowledgeVerification':
@@ -133,6 +139,19 @@ def mllm_api(dataset, finding_response, monkeypatch):
                 'evidence_ids': evidence_ids if evidence_ids else ['placeholder_evidence'],
                 'conflicts': []
             } for target in payload.get('findings', [])]}
+        elif schema['title'] == 'AuditConclusion':
+            content = body['messages'][0]['content']
+            frozen = json.loads(content[0]['text'].split('\n冻结综合审计：', 1)[1])
+            metadata = [json.loads(part['text'][5:]) for part in content
+                if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
+            refs = [image['evidence_id'] for image in metadata if image['representation'] == 'raw']
+            answer = responses.get('AuditConclusion', dict(responses['VlmResult'], evidence_ids=refs,
+                analysis_text='结合整体外观、实际比较图和一致性结果观察主体表面，保留可见差异及正常成像解释。',
+                observation='可见蓝色主体表面', applicable_rule='主体外观判据', normal_alternative='正常成像变化',
+                label_relation='undetermined', proposed_slice=[],
+                basis=[dict(text='按独立比较图核对主体外观', evidence_ids=refs,
+                    knowledge_check_ids=[check['check_id'] for check in frozen['knowledge']['checks']],
+                    consistency_result_ids=[result['result_id'] for result in frozen['consistency']['results']])]))
         elif schema['title'] == 'JointAnalysis':
             metadata=[json.loads(part['text'].split('视觉证据：')[1]) for part in body['messages'][0]['content'] if part['type']=='text' and part['text'].startswith('视觉证据：')]
             answer={**responses['VlmResult'],'global_view':responses['GlobalAnalysis'],
@@ -158,7 +177,9 @@ def mllm_api(dataset, finding_response, monkeypatch):
     from iad_core.workbench.vision import VlmClient
     db, _, config = dataset
     mining = KnowledgeService(db, VlmClient(http_client=client))
-    job = mining.start(request=selected_group(mining.db, config.dataset.id, kind='normal'), kind='normal', model_name='test-mllm')
+    from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningPromptConfiguration
+    job = mining.start(request=selected_group(mining.db, config.dataset.id, kind='normal'),
+        mining_prompt=FrozenMiningPrompt.capture(MiningPromptConfiguration(objective='观察实际外观',directions=[])), model_name='test-mllm')
     mining.wait(job['run_id'], 5)
     assert mining.status(job['run_id'])['status'] == 'COMPLETED', mining.status(job['run_id'])
     mining.jobs.close()

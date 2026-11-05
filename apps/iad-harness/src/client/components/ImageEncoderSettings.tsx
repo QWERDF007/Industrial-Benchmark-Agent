@@ -1,3 +1,5 @@
+import {Select} from './Select.js';
+import {Button} from './Button.js';
 import React, {useEffect, useState} from 'react';
 import type {EmbeddingProfile, ImageEncoderConfig, ImageEncoderSettings as Settings, ImageProfileCreate} from '../../shared/domain.generated.js';
 import {imageBackbones} from '../../shared/image-encoder.parameters.generated.js';
@@ -60,7 +62,7 @@ export function ImageEncoderSettings({refreshVersion, onStateChange}: {
     setBusy(true);setError('');setNotice('');
     try {
       const result=await request<{model_id:string;dim:number;device:string;norm:number}>('/images/settings/check',{selection:await input()});
-      setNotice(`加载正常 · ${result.model_id} · ${result.dim} 维 · ${result.device}`);
+      setNotice(`加载正常，${result.model_id}，${result.dim} 维，${result.device}`);
     } catch(failure) {setError(message(failure));} finally {setBusy(false);}
   }
   return <section className="iad-model-configuration" aria-label="图像检索设置" aria-busy={busy || loading}>
@@ -69,12 +71,12 @@ export function ImageEncoderSettings({refreshVersion, onStateChange}: {
     {!draft ? <p role="status">正在读取配置…</p> : <form aria-label="图像检索配置" className="iad-model-form" onSubmit={save}>
       <fieldset disabled={busy || loading}>
         <section className="iad-section-layout"><div><h3>图像编码器</h3></div><div className="iad-model-fields">
-          <label className="iad-field">模型<select aria-label="图像编码器" value={draft.model_id} onChange={event=>{
+          <label className="iad-field">模型<Select aria-label="图像编码器" value={draft.model_id} onChange={event=>{
             setDraft({...draft,model_id:event.target.value as Draft['model_id'],weights_ref:'',source_ref:''});setError('');setNotice('');
-          }}><option value="">仅严格同图</option>{Object.keys(imageBackbones).map(id=><option key={id} value={id}>{id}</option>)}</select></label>
+          }}><option value="">仅严格同图</option>{Object.keys(imageBackbones).map(id=><option key={id} value={id}>{id}</option>)}</Select></label>
           {draft.model_id && <><label className="iad-field">权重路径<input aria-label="图像编码权重路径" required value={draft.weights_ref} onChange={event=>setDraft({...draft,weights_ref:event.target.value})} /></label>
           {backbone?.backend==='torch_hub' && <label className="iad-field">官方源码目录{backbone.local_snapshot ? '（.pth 必填）' : ''}<input aria-label="图像编码源码目录" required={!backbone.local_snapshot} value={draft.source_ref} onChange={event=>setDraft({...draft,source_ref:event.target.value})} /></label>}
-          {backbone && <p className="iad-muted">{backbone.dim} 维 · {backbone.local_snapshot ? '本地模型目录或 .pth 权重' : `${backbone.input_size} px · ${backbone.processor}`}</p>}
+          {backbone && <p className="iad-muted">{backbone.dim} 维，{backbone.local_snapshot ? '本地模型目录或 .pth 权重' : `${backbone.input_size} px，${backbone.processor}`}</p>}
           </>}
         </div></section>
         <section className="iad-section-layout"><div><h3>运行资源</h3></div><div className="iad-model-fields">
@@ -84,14 +86,14 @@ export function ImageEncoderSettings({refreshVersion, onStateChange}: {
           </>}
           <label className="iad-field">解码线程<input aria-label="图像解码线程" type="number" min={1} max={8} value={draft.decode_workers} onChange={event=>setDraft({...draft,decode_workers:Number(event.target.value)})} /></label>
           <label className="iad-field">解码内存（MiB）<input aria-label="图像解码内存预算" type="number" min={1} max={1024} value={draft.decode_memory_mb} onChange={event=>setDraft({...draft,decode_memory_mb:Number(event.target.value)})} /></label>
-          {draft.model_id && <><label className="iad-field">计算精度<select aria-label="图像编码计算精度" value={draft.compute_dtype} onChange={event=>setDraft({...draft,compute_dtype:event.target.value as Draft['compute_dtype']})}><option value="float32">FP32</option><option value="float16" disabled={draft.device==='cpu'}>FP16</option></select></label>
-          <label className="iad-field">向量存储<select aria-label="图像向量存储精度" value={draft.storage_dtype} onChange={event=>setDraft({...draft,storage_dtype:event.target.value as Draft['storage_dtype']})}><option value="float32">FP32</option><option value="float16">FP16</option></select></label>
+          {draft.model_id && <><label className="iad-field">计算精度<Select aria-label="图像编码计算精度" value={draft.compute_dtype} onChange={event=>setDraft({...draft,compute_dtype:event.target.value as Draft['compute_dtype']})}><option value="float32">FP32</option><option value="float16" disabled={draft.device==='cpu'}>FP16</option></Select></label>
+          <label className="iad-field">向量存储<Select aria-label="图像向量存储精度" value={draft.storage_dtype} onChange={event=>setDraft({...draft,storage_dtype:event.target.value as Draft['storage_dtype']})}><option value="float32">FP32</option><option value="float16">FP16</option></Select></label>
           </>}
         </div></section>
-        {view?.selection && <details className="iad-model-advanced"><summary>已保存配置</summary><code>{view.selection.profile.profile_id}</code><p className="iad-muted">{view.selection.profile.input_size} px · {view.selection.profile.pooling} · {view.selection.profile.color_conversion}</p></details>}
+        {view?.selection && <details className="iad-model-advanced"><summary>已保存配置</summary><code>{view.selection.profile.profile_id}</code><p className="iad-muted">{view.selection.profile.input_size} px，{view.selection.profile.pooling}，{view.selection.profile.color_conversion}</p></details>}
         <div className="iad-form-footer">{changed && <span className="iad-muted">有未保存的更改</span>}
           <button type="button" disabled={!valid || !draft.model_id} onClick={()=>void check()}>{busy ? '处理中…' : '检查加载'}</button>
-          <button className="iad-primary" type="submit" disabled={!changed || !valid}>保存图像配置</button>
+          <Button variant="primary" type="submit" disabled={!changed || !valid}>保存图像配置</Button>
           <button type="button" disabled={!changed} onClick={()=>{if(view)setDraft(editable(view));setRevision(view?.revision || 0);setError('');setNotice('');}}>重置图像配置</button>
         </div>
       </fieldset>

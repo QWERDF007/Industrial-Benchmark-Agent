@@ -270,7 +270,7 @@ test('knowledge navigation: one entry preserves each type and dataset through hi
     assert.equal(revisedPredicate.checks[0].recheck_sample_ids.length,1);
     const criterionLocation=encodeURIComponent(JSON.stringify({pageId:'industrial-knowledge',datasetId:predicateDataset.dataset_id,knowledgeKind:'normal',scopeRunId:predicateScope.scope_run_id,miningCount:'1'}));
     await driver.get(base+'/?iad='+criterionLocation);
-    await click('重核验历史来源 · 1 张');
+    await click('重核验历史来源 / 1 张');
     await element('button[data-action="knowledge-group-run"]');
     assert.equal(await(await element('select[aria-label="来源范围"]')).getAttribute('value'),'recheck');
     await click('选择来源图像');assert.equal((await driver.findElements(By.css('input[type="checkbox"][aria-label^="选择来源"]'))).length,1);await click('完成选择');

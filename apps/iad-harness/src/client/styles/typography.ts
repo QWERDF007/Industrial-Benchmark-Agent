@@ -1,39 +1,23 @@
-/**
- * Single Source of Truth (SSOT) for V51 UI Visual Contract & Typography
- * across all workbench pages, dialogs, drawers, and host views.
- *
- * Aligns with IBA V51 specification:
- * - Font Stack: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif
- * - Body Ink Color: #172338 (rgb(23, 35, 56))
- * - Body Font Size: 13px, Normal Weight: 400
- * - Field Inputs & Dropdowns: 220px width, 38px height, 1px solid #b9c7d9, border-radius 5px
- * - Refresh & Clear Filter Icons: 38x38px, SVG 18x18px, hover #edf3ff, color #285ed6
- * - Dataset Selectors: Parent 250px, Child 390px, height 38px
- * - Primary Action Buttons: height 38px, font 13px, background #285ed6, hover #1e51c2, white text
- * - Consistency Conflict Cards: Single main image with object-fit: contain
- * - Table Headers & Section Titles: font-weight: 600, color: #172338
- * - Semantic Statuses: ok/completed (#177b53), fail/failed (#b23c43), running/pending (#285ed6), gray (#526174)
- */
+/** Typography and form layout; theme.ts owns visual tokens. */
 
 export const typographyStyles = `
 /* ==========================================================================
    V51 Unified Design Tokens (Single Source of Truth)
    ========================================================================== */
 :root {
-  --iba-field-width: 220px;
-  --iba-field-height: 38px;
-  --iba-parent-dataset-width: 250px;
-  --iba-child-dataset-width: 390px;
-  --iba-filter-gap: 12px;
-  --iba-unified-font: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
-  --iba-unified-ink: #172338;
-  --iba-unified-body-size: 13px;
-  --iba-control-font: 13px;
-  --iba-border: #b9c7d9;
-  --iba-radius: 5px;
-  --iba-primary: #285ed6;
-  --iba-primary-hover: #1e51c2;
-  --iad-text: #172338;
+  --iba-field-width: var(--iad-field-width);
+  --iba-field-height: var(--iad-control-height);
+  --iba-parent-dataset-width: var(--iad-dataset-width);
+  --iba-child-dataset-width: var(--iad-subset-width);
+  --iba-filter-gap: var(--iad-space-3);
+  --iba-unified-font: var(--iad-font-family);
+  --iba-unified-ink: var(--iad-text);
+  --iba-unified-body-size: var(--iad-font-size);
+  --iba-control-font: var(--iad-font-size);
+  --iba-border: var(--iad-control-border);
+  --iba-radius: var(--iad-radius);
+  --iba-primary: var(--iad-primary-fill);
+  --iba-primary-hover: var(--iad-primary-hover);
 }
 
 /* Global font family application */
@@ -47,7 +31,7 @@ export const typographyStyles = `
   p, li, td, th, label, legend, small, summary, dt, dd, figcaption, time, pre, blockquote, textarea, select, input,
   .nav-label, .eyebrow, .row-desc, .page-total, .pagination-page, .pagination-total,
   .exp-row-info, .exp-lead, .exp-input, .exp-prompt-note, .exp-brief, .exp-summary, .exp-row-title,
-  .exp-job-time, .exp-job-duration, .exp-job-dataset, .exp-job-dataset-name, .exp-delete-note,
+  .exp-job-time, .exp-job-duration, .exp-job-dataset, .exp-job-dataset-name,
   .dc-muted, .dc-note, .dc-mono, .dc-time, .dc-elapsed, .detail-model-text, .detail-model-result,
   .hint, .subtitle, .muted, .smallhint, .note, .sidecaption, .context-info, .row-count, .jobtitle, .job-meta, .job-desc
 ),
@@ -71,37 +55,6 @@ export const typographyStyles = `
 /* ==========================================================================
    V51 Primary Buttons (Height 38px, font 13px, white text)
    ========================================================================== */
-:is(.iad-workbench, .overlay, .modal, .app, .shell) :is(
-  .btn.primary, .exp-primary, button.primary, .iad-primary, #create-btn, #submit-job, #save-review, #confirm-accept
-) {
-  height: 38px !important;
-  min-height: 38px !important;
-  max-height: 38px !important;
-  padding: 0 15px !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  background: var(--iba-primary) !important;
-  border-color: var(--iba-primary) !important;
-  color: #fff !important;
-  border-radius: var(--iba-radius) !important;
-  box-sizing: border-box !important;
-}
-:is(.iad-workbench, .overlay, .modal, .app, .shell) :is(
-  .btn.primary, .exp-primary, button.primary, .iad-primary, #create-btn, #submit-job, #save-review, #confirm-accept
-):hover:not(:disabled) {
-  background: var(--iba-primary-hover) !important;
-  border-color: var(--iba-primary-hover) !important;
-}
-:is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) :is(
-  .btn.primary, .exp-primary, .primary, .exp-delete-confirm, .danger-confirm, .btn.danger, .iad-primary,
-  .pagebtn[aria-current="page"], .iba-job-pager button[aria-current="page"], .dc-counter-pager button.current
-),
-:is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) :is(
-  .btn.primary, .exp-primary, .primary, .exp-delete-confirm, .danger-confirm, .btn.danger, .iad-primary,
-  .pagebtn[aria-current="page"], .iba-job-pager button[aria-current="page"], .dc-counter-pager button.current
-) * {
-  color: #fff !important;
-}
 
 /* ==========================================================================
    V51 Unified Filter Bars & Controls (220x38px, 12px gap, left aligned)
@@ -172,56 +125,12 @@ export const typographyStyles = `
    V51 Clear Filter & Refresh Icon Buttons (38x38px)
    ========================================================================== */
 .iba-filter-clear, .iba-refresh-icon {
-  display: inline-grid !important;
-  place-items: center !important;
-  flex: 0 0 var(--iba-field-height) !important;
   align-self: flex-end !important;
-  width: var(--iba-field-height) !important;
-  height: var(--iba-field-height) !important;
-  min-width: var(--iba-field-height) !important;
-  max-width: var(--iba-field-height) !important;
-  padding: 0 !important;
   margin: 0 !important;
-  border: 1px solid transparent !important;
-  border-radius: var(--iba-radius) !important;
-  color: #536680 !important;
-  background: transparent !important;
-  cursor: pointer !important;
   box-sizing: border-box !important;
 }
-.iba-filter-clear svg, .iba-refresh-icon svg {
-  width: 18px !important;
-  height: 18px !important;
-  fill: none !important;
-  stroke: currentColor !important;
-  stroke-width: 1.7 !important;
-  stroke-linecap: round !important;
-  stroke-linejoin: round !important;
-}
-.iba-filter-clear:hover:not(:disabled), .iba-refresh-icon:hover:not(:disabled) {
-  background: #edf3ff !important;
-  color: var(--iba-primary) !important;
-}
-.iba-filter-clear:disabled {
-  opacity: 0.35 !important;
-  cursor: default !important;
-}
 #images-page #reset, #images-page #refresh {
-  width: 38px !important;
-  height: 38px !important;
-  min-width: 38px !important;
   align-self: flex-end !important;
-  border: 1px solid transparent !important;
-  background: transparent !important;
-  color: #536680 !important;
-}
-#images-page #reset:hover, #images-page #refresh:hover {
-  background: #edf3ff !important;
-  color: var(--iba-primary) !important;
-}
-#images-page #reset svg, #images-page #refresh svg {
-  width: 18px !important;
-  height: 18px !important;
 }
 
 /* Panel bars alignment */
@@ -292,17 +201,7 @@ export const typographyStyles = `
   color: var(--iba-unified-ink) !important;
 }
 .exp-scope-refresh, .dc-scope .dc-child-controls .dc-icn {
-  width: 38px !important;
-  height: 38px !important;
-  min-width: 38px !important;
   align-self: flex-end !important;
-  background: transparent !important;
-  border: 0 !important;
-  color: #536680 !important;
-}
-.exp-scope-refresh:hover, .dc-scope .dc-child-controls .dc-icn:hover {
-  background: #edf3ff !important;
-  color: var(--iba-primary) !important;
 }
 .kb-v45 .context .kb-context-actions {
   align-self: flex-end !important;
@@ -402,18 +301,12 @@ export const typographyStyles = `
 /* Secondary auxiliary texts: normal weight 400 */
 :is(.iad-workbench, .iad-detail-dialog, .overlay, .modal, .iad-drawer, .app, .shell) :is(
   .exp-job-dataset-children, .exp-row-info, .exp-lead, .row-desc, .exp-prompt-note,
-  .pagination-total, .pagination-page, .page-total, .eyebrow, .exp-delete-note
+  .pagination-total, .pagination-page, .page-total, .eyebrow
 ) {
   font-weight: 400 !important;
 }
 
 /* Secondary action buttons & links use body ink */
-:is(.iad-workbench, .iad-detail-dialog, .overlay, .modal, .iad-drawer, .app, .shell) :is(
-  .exp-btn:not(.exp-primary):not(.danger), .exp-btn-text, .exp-prompt-link,
-  button.btn:not(.primary):not(.danger):not(.is-danger):not(.cancel)
-) {
-  color: var(--iba-unified-ink) !important;
-}
 
 /* Placeholders */
 :is(.iad-workbench, .iad-detail-dialog, .overlay, .modal, .iad-drawer, .app, .shell) :is(input, textarea)::placeholder {

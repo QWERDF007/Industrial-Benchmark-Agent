@@ -1,0 +1,386 @@
+from sqlite3 import Connection
+
+from iad_core.storage.review_schema import init_review_schema
+from iad_core.storage.job_schema import migrate_audit_jobs
+from iad_core.storage.knowledge_schema import migrate_knowledge_sources, migrate_unified_knowledge
+from iad_core.storage.consistency_schema import init_content_index_schema
+
+
+def initialize_schema(conn: Connection) -> None:
+    conn.execute("BEGIN IMMEDIATE")
+    cursor = conn.cursor()
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS workbench_model_settings (
+        id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL CHECK(revision>0),
+        selection_json TEXT NOT NULL)''')
+
+    cursor.execute('''CREATE TABLE IF NOT EXISTS direction_explorations (
+        version_id TEXT PRIMARY KEY, dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id) ON DELETE CASCADE,
+        run_id TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL, snapshot_json TEXT NOT NULL)''')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_exploration_dataset ON direction_explorations(dataset_id,created_at)')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS exploration_direction_removals (
+        version_id TEXT NOT NULL REFERENCES direction_explorations(version_id) ON DELETE CASCADE,
+        direction_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY(version_id,direction_id))''')
+
+    # 1. inspection_tasks
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS inspection_tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id TEXT UNIQUE NOT NULL,
+        product TEXT,
+        station TEXT,
+        camera TEXT,
+        inspection_target TEXT NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_task_id ON inspection_tasks(task_id)")
+
+    # 2. samples
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS samples (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sample_id TEXT UNIQUE NOT NULL,
+        task_id TEXT NOT NULL,
+        dataset_id TEXT NOT NULL,
+        image_path TEXT NOT NULL,
+        relative_path TEXT NOT NULL,
+        data_origin TEXT DEFAULT 'UNKNOWN',
+        physical_sample_id TEXT,
+        capture_sequence_id TEXT,
+        batch_id TEXT,
+        station TEXT,
+        camera TEXT,
+        width INTEGER NOT NULL,
+        height INTEGER NOT NULL,
+        quality_status TEXT NOT NULL,
+        quality_source TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(dataset_id, relative_path)
+    )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_task_id ON samples(task_id)")
+    if 'source_fingerprint' not in {row[1] for row in cursor.execute('PRAGMA table_info(samples)')}:
+        cursor.execute('ALTER TABLE samples ADD COLUMN source_fingerprint TEXT')
+    if 'is_excluded' not in {row[1] for row in cursor.execute('PRAGMA table_info(samples)')}:
+        cursor.execute('ALTER TABLE samples ADD COLUMN is_excluded INTEGER NOT NULL DEFAULT 0 CHECK(is_excluded IN (0,1))')
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_dataset_id ON samples(dataset_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_quality ON samples(quality_status)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_batch_id ON samples(batch_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_origin ON samples(data_origin)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_physical ON samples(physical_sample_id)")
+
+    # 3. annotations
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS annotations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        annotation_id TEXT UNIQUE NOT NULL,
+        sample_id TEXT NOT NULL,
+        annotation_type TEXT NOT NULL,
+        raw_label TEXT NOT NULL,
+        phenomenon TEXT,
+        bbox_json TEXT,
+        polygon_json TEXT,
+        mask_path TEXT,
+        mask_sha256 TEXT,
+        geometry_status TEXT DEFAULT 'VALID',
+        source TEXT NOT NULL DEFAULT 'imported',
+        source_width INTEGER,
+        source_height INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_annos_sample_id ON annotations(sample_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_annos_phenomenon ON annotations(phenomenon)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_annos_geometry ON annotations(geometry_status)")
+    annotation_columns = {row[1] for row in cursor.execute("PRAGMA table_info(annotations)")}
+    if "mask_sha256" not in annotation_columns:
+        cursor.execute("ALTER TABLE annotations ADD COLUMN mask_sha256 TEXT")
+    if 'is_ignored' not in annotation_columns:
+        cursor.execute('ALTER TABLE annotations ADD COLUMN is_ignored INTEGER NOT NULL DEFAULT 0 CHECK(is_ignored IN (0,1))')
+
+    # 4. import_issues
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS import_issues (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id TEXT NOT NULL,
+        dataset_id TEXT DEFAULT 'UNKNOWN',
+        sample_id TEXT,
+        issue_type TEXT NOT NULL,
+        severity TEXT NOT NULL,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_issues_task_id ON import_issues(task_id)")
+
+    # Migration: ensure dataset_id column exists on legacy databases
+    cursor.execute("PRAGMA table_info(import_issues)")
+    existing_issue_cols = {col[1] for col in cursor.fetchall()}
+    if "dataset_id" not in existing_issue_cols:
+        cursor.execute("ALTER TABLE import_issues ADD COLUMN dataset_id TEXT DEFAULT 'UNKNOWN'")
+
+    init_review_schema(conn)
+
+    # 8. gold_records
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS gold_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sample_id TEXT NOT NULL,
+        task_id TEXT NOT NULL,
+        policy_name TEXT NOT NULL,
+        gold_quality TEXT NOT NULL,
+        binary_label TEXT,
+        hard_normal BOOLEAN DEFAULT 0,
+        gold_source TEXT NOT NULL,
+        gold_source_ref TEXT,
+        gold_status TEXT NOT NULL,
+        provenance_json TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(sample_id, policy_name)
+    )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_gold_sample_id ON gold_records(sample_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_gold_task_id ON gold_records(task_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_gold_status ON gold_records(gold_status)")
+
+    # 9. benchmark_builds
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS benchmark_builds (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        build_id TEXT UNIQUE NOT NULL,
+        task_id TEXT NOT NULL,
+        gold_policy TEXT NOT NULL,
+        split_policy TEXT NOT NULL,
+        seed INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        output_dir TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_builds_task_id ON benchmark_builds(task_id)")
+
+    # 10. split_assignments
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS split_assignments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        build_id TEXT NOT NULL,
+        sample_id TEXT NOT NULL,
+        split_group_id TEXT NOT NULL,
+        split_name TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(build_id, sample_id)
+    )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_split_build_id ON split_assignments(build_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_split_sample_id ON split_assignments(sample_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_split_group_id ON split_assignments(split_group_id)")
+
+    # 11. evaluation_runs
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS evaluation_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id TEXT UNIQUE NOT NULL,
+        task_id TEXT NOT NULL,
+        build_id TEXT NOT NULL,
+        model_id TEXT NOT NULL,
+        threshold_strategy TEXT NOT NULL,
+        metrics_json TEXT,
+        status TEXT NOT NULL,
+        output_dir TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_eval_task_id ON evaluation_runs(task_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_eval_build_id ON evaluation_runs(build_id)")
+
+    # 12. job_runs
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS job_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        job_id TEXT UNIQUE NOT NULL,
+        task_id TEXT NOT NULL,
+        job_type TEXT NOT NULL,
+        status TEXT NOT NULL,
+        progress REAL DEFAULT 0.0,
+        message TEXT,
+        artifact_dir TEXT,
+        started_at TIMESTAMP,
+        finished_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_jobs_task_id ON job_runs(task_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON job_runs(status)")
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS model_calls (
+            call_id TEXT PRIMARY KEY,
+            run_id TEXT NOT NULL REFERENCES job_runs(job_id),
+            summary_json TEXT NOT NULL,
+            request_body BLOB NOT NULL,
+            response_body BLOB
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_model_calls_run ON model_calls(run_id)")
+
+    # 13. agent_runs
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS agent_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id TEXT UNIQUE NOT NULL,
+        task_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        goal TEXT NOT NULL,
+        status TEXT NOT NULL,
+        final_artifact TEXT,
+        started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        finished_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    if 'scope_json' not in {row[1] for row in cursor.execute('PRAGMA table_info(agent_runs)')}:
+        cursor.execute('ALTER TABLE agent_runs ADD COLUMN scope_json TEXT')
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_agent_runs_task ON agent_runs(task_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_agent_runs_session ON agent_runs(session_id)")
+    cursor.execute("""CREATE UNIQUE INDEX IF NOT EXISTS idx_agent_scope_active_session
+        ON agent_runs(session_id,json_extract(scope_json,'$.dataset_id'),json_extract(scope_json,'$.kind'))
+        WHERE scope_json IS NOT NULL AND status='ACTIVE' AND session_id!='workbench'""")
+
+    # 14. audit_suggestions (Non-authoritative multimodal LLM advice, Tickets RP-14, S08)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS audit_suggestions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        suggestion_id TEXT UNIQUE NOT NULL,
+        task_id TEXT NOT NULL,
+        sample_id TEXT,
+        session_id TEXT,
+        model_route TEXT,
+        observations_json TEXT,
+        hypotheses_json TEXT,
+        evidence_refs_json TEXT,
+        conclusion_status TEXT NOT NULL,
+        recommended_action TEXT NOT NULL,
+        input_modalities_json TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_suggestions_task ON audit_suggestions(task_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_suggestions_sample ON audit_suggestions(sample_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_suggestions_session ON audit_suggestions(session_id)")
+    columns = {row[1] for row in cursor.execute("PRAGMA table_info(audit_suggestions)")}
+    for column, definition in {
+        "confidence": "REAL",
+        "reference_sample_ids_json": "TEXT NOT NULL DEFAULT '[]'",
+        "audit_run_id": "TEXT",
+        "analysis_json": "TEXT",
+        "source_fingerprint": "TEXT",
+    }.items():
+        if column not in columns:
+            cursor.execute(f"ALTER TABLE audit_suggestions ADD COLUMN {column} {definition}")
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_suggestions_audit_run ON audit_suggestions(audit_run_id,sample_id,id)')
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_issues_sample ON import_issues(sample_id)")
+    job_columns = {row[1] for row in cursor.execute("PRAGMA table_info(job_runs)")}
+    if "payload_json" not in job_columns:
+        cursor.execute("ALTER TABLE job_runs ADD COLUMN payload_json TEXT NOT NULL DEFAULT '{}'")
+    if "deleted_at" not in job_columns:
+        cursor.execute("ALTER TABLE job_runs ADD COLUMN deleted_at TEXT")
+    cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_root
+        ON job_runs(json_extract(payload_json,'$.root_run_id'))""")
+    cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_queue
+        ON job_runs(job_type,json_extract(payload_json,'$.request.dataset_id'),status,id)""")
+    cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_submission
+        ON job_runs(job_type,json_extract(payload_json,'$.request.submission.submission_id'))""")
+    migrate_audit_jobs(conn)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS dataset_groups (
+            group_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS datasets (
+            dataset_id TEXT PRIMARY KEY,
+            task_id TEXT NOT NULL,
+            config_json TEXT NOT NULL,
+            reference_sample_ids_json TEXT NOT NULL DEFAULT '[]',
+            reference_selection_set INTEGER NOT NULL DEFAULT 0 CHECK(reference_selection_set IN (0,1)),
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    dataset_columns = {row[1] for row in cursor.execute("PRAGMA table_info(datasets)")}
+    if "group_id" not in dataset_columns:
+        cursor.execute("ALTER TABLE datasets ADD COLUMN group_id TEXT REFERENCES dataset_groups(group_id)")
+        dataset_columns.add("group_id")
+    group_count = cursor.execute("SELECT count(*) FROM dataset_groups").fetchone()[0]
+    if group_count == 0:
+        rows = cursor.execute("SELECT dataset_id, config_json FROM datasets").fetchall()
+        if rows:
+            cursor.execute("INSERT OR IGNORE INTO dataset_groups(group_id, name) VALUES ('group-1', '框胶大数据集')")
+            cursor.execute("INSERT OR IGNORE INTO dataset_groups(group_id, name) VALUES ('group-2', '超节点数据集')")
+            for ds_id, cfg_json in rows:
+                try:
+                    import json as _json
+                    cfg = _json.loads(cfg_json)
+                    ds_name = cfg.get("dataset", {}).get("name", "")
+                    if "框胶" in ds_name:
+                        cursor.execute("UPDATE datasets SET group_id='group-1' WHERE dataset_id=?", (ds_id,))
+                    elif "超节点" in ds_name:
+                        cursor.execute("UPDATE datasets SET group_id='group-2' WHERE dataset_id=?", (ds_id,))
+                except Exception:
+                    pass
+    init_content_index_schema(conn)
+    cursor.execute('''CREATE TABLE IF NOT EXISTS knowledge_prompts (
+        dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id) ON DELETE CASCADE,
+        kind TEXT NOT NULL CHECK(kind IN ('normal','defect')),
+        configuration_json TEXT NOT NULL,
+        PRIMARY KEY(dataset_id,kind)
+    )''')
+    if "reference_selection_set" not in dataset_columns:
+        cursor.execute("ALTER TABLE datasets ADD COLUMN reference_selection_set INTEGER NOT NULL DEFAULT 0 CHECK(reference_selection_set IN (0,1))")
+        cursor.execute("UPDATE datasets SET reference_selection_set=1 WHERE json_array_length(reference_sample_ids_json)>0")
+    cursor.execute("""UPDATE datasets SET config_json=json_set(config_json, '$.dataset.format', 'labelme')
+        WHERE json_extract(config_json, '$.dataset.format') IS NULL""")
+    cursor.execute("""UPDATE audit_suggestions SET analysis_json=json_set(
+        json_remove(analysis_json,'$.profile_id'),'$.legacy_profile_id',json_extract(analysis_json,'$.profile_id'))
+        WHERE json_type(analysis_json,'$.profile_id') IS NOT NULL""")
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS knowledge_versions (
+            version_id TEXT PRIMARY KEY,
+            dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id),
+            parent_version_id TEXT REFERENCES knowledge_versions(version_id),
+            signature TEXT NOT NULL,
+            snapshot_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+    migrate_unified_knowledge(conn)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_knowledge_dataset ON knowledge_versions(dataset_id,created_at)")
+    cursor.execute('''CREATE TABLE IF NOT EXISTS knowledge_check_reviews (
+        submission_id TEXT PRIMARY KEY,
+        version_id TEXT NOT NULL REFERENCES knowledge_versions(version_id) ON DELETE CASCADE,
+        check_id TEXT NOT NULL, revision INTEGER NOT NULL CHECK(revision>0),
+        submission_json TEXT NOT NULL, review_json TEXT NOT NULL,
+        UNIQUE(version_id,check_id,revision))''')
+    migrate_knowledge_sources(conn)
+    cursor.execute("""CREATE TABLE IF NOT EXISTS knowledge_review_events (
+        submission_id TEXT PRIMARY KEY,
+        version_id TEXT NOT NULL REFERENCES knowledge_versions(version_id) ON DELETE CASCADE,
+        conflict_id TEXT NOT NULL,
+        event_json TEXT NOT NULL
+    )""")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_knowledge_review_conflict ON knowledge_review_events(conflict_id)")
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS knowledge_heads (
+            dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id),
+            version_id TEXT NOT NULL REFERENCES knowledge_versions(version_id),
+            PRIMARY KEY(dataset_id)
+        )
+    """)

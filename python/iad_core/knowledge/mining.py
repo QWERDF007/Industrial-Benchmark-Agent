@@ -6,24 +6,15 @@ from typing import List, Literal, Optional
 from pydantic import Field, create_model
 
 from iad_core.evidence.images import PreparedImage
-from iad_core.knowledge.models import CheckRevision, ObservedPart, ObservedArea, ObservedDiscovery, KnowledgeLearning, KnowledgeDraft, KnowledgeFinding, KnowledgeObservationStep, KnowledgeSnapshot, KnowledgeSource, KnowledgeStep
+from iad_core.knowledge.models import CheckRevision, ObservedArea, ObservedDiscovery, KnowledgeLearning, KnowledgeDraft, KnowledgeFinding, KnowledgeObservationStep, KnowledgeSnapshot, KnowledgeSource, KnowledgeStep
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
-from iad_core.knowledge.instructions import FrozenMiningPrompt
+from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningPhase
 from iad_core.knowledge.discovery import KnowledgeDiscoveryLinker
+from iad_core.knowledge.mining_contract import MiningContract
 
 OUTPUT_RESERVE_TOKENS = 8192
 
-DISCOVERY_INSTRUCTION = """先列出图像中实际可见部件及位置，逐部件联动全图与真实局部，不要只概括几个显眼特征。
-用户选择的方向用于聚焦而非封闭发现范围；可自主发现其外的新方向，direction_id填null，明确写出发现内容。
-只为可见、可复用且有实际证据的独立判据建项，同义规则合并，独立规则保留；没有知识条目数量配额，不凑数。
-discovery.parts记录实际可见部件和raw图像证据；discovery.areas逐项记录用户选中方向与自主发现方向。
-选中方向以所给direction_id引用，direction填写本轮观察标题；自主发现方向的direction_id为null。未选方向不作为必查清单。每项在reason中写明实际观察到的部件特征、状态依据与限制，并记录实际raw证据。部件与判据引用在后续关联阶段填写，不在视觉提取时生成自由文本交叉引用。
-状态为已形成知识、证据不足、不可观察或不适用；形成知识不等于人审确认，空或缺失记录不代表检查完整。
-没有适用部件、不具备视角或缺少细节时据实记录，不用无标注、未见异常或多数样本投票证明规则正确。
-没有标尺、标定、工程图或业务标准时，不编造尺寸公差、材质、内部结构、电气功能、机械性能或合格标准。
-预设、方向说明及用户目标均不能改变证据引用、来源资格、结构化输出与人工裁决约束。
-"""
 
 
 @dataclass(frozen=True)
@@ -73,8 +64,8 @@ class KnowledgeMiner:
         self.context.update(mining_steps=[item.model_dump(mode="json") for item in self.steps])
         return step
 
-    def learn(self, instruction: str, inputs: List[KnowledgeInput], model_name: str,
-              evolution_instruction: str = '') -> KnowledgeStep:
+    def learn(self, comparison: dict, inputs: List[KnowledgeInput], model_name: str,
+              evolution_context: Optional[dict] = None) -> KnowledgeStep:
         self.context.checkpoint()
         images = [image for item in inputs for image in item.images]
         actual = {image.evidence.evidence_id for image in images}
@@ -99,22 +90,14 @@ class KnowledgeMiner:
             source_context.append(dict(source=item.source.model_dump(),
                 image_evidence_ids=[image.evidence.evidence_id for image in item.images],
                 verified_findings=findings, prior_observations=observed))
-        prompt = (evolution_instruction + DISCOVERY_INSTRUCTION
-                  + self.mining_prompt.instruction + '\n'
-                  + instruction + json.dumps(source_context, ensure_ascii=False))
-        raw = tuple(sorted(image.evidence.evidence_id for image in images if image.evidence.representation == 'raw'))
-        references = List[Literal[raw]] if raw else List[str]
-        part = create_model('ObservedPart', __base__=ObservedPart,
-            evidence_ids=(references, Field(min_length=1)))
-        area = create_model('ObservedArea', __base__=self.area_type,
-            evidence_ids=(references, Field(**({} if raw else {'max_length': 0}))))
-        discovery = create_model('ObservedDiscovery', __base__=ObservedDiscovery,
-            parts=(List[part], ...), areas=(List[area], ...))
-        response = create_model('KnowledgeDraft', __base__=self.response_type,
-            discovery=(Optional[discovery], Field(default=None)))
-        plan = self.client.plan(response, prompt, images, model_name, OUTPUT_RESERVE_TOKENS)
+        contract = MiningContract(images, self.response_type, self.area_type)
+        prompt = (self.mining_prompt.render_context('冻结父版本候选', contract.project(evolution_context or {}),
+              phase=MiningPhase.LEARN)
+                  + '\n比较基准：' + json.dumps(contract.project(comparison), ensure_ascii=False)
+                  + '\n来源：' + json.dumps(contract.project(source_context), ensure_ascii=False))
+        plan = self.client.plan(contract.response_type, prompt, contract.images, model_name, OUTPUT_RESERVE_TOKENS)
         self.context.checkpoint()
-        draft = self.client.generate(plan)
+        draft = contract.bind(self.client.generate(plan))
         self.context.checkpoint()
         linked = KnowledgeDiscoveryLinker(self.client, self.context).link(draft, model_name)
         return self.record(linked, images)

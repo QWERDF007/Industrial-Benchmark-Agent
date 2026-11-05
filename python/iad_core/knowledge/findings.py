@@ -1,4 +1,4 @@
-import json
+from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningPhase
 import uuid
 from dataclasses import dataclass
 from typing import List, Literal, Optional
@@ -15,10 +15,6 @@ from iad_core.knowledge.models import (FindingTarget, LearnedCheck, KnowledgeEvi
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
 
-EVIDENCE_SCOPE_INSTRUCTION = """依据planned_roi_evidence_ids区分候选完整范围与本轮实际分块。
-仅见部分ROI时，局部正常不能排除其他未观察部位；缺证使用insufficient，明确可见的异常可supported。
-本轮必须联合观察全部目标全图、ROI与比较证据，不按多数正常抹除少数异常或未消解矛盾。
-"""
 
 
 @dataclass(frozen=True)
@@ -36,11 +32,11 @@ class FindingVerification:
 
     def review(self, targets: List[FindingTarget], inputs: List[KnowledgeInput], references: List[PreparedImage],
                images: dict[str, PreparedImage], checks: List[LearnedCheck], model_name: str,
-               instruction: str, normal_version_id: Optional[str] = None) -> VerificationOutcome:
+               purpose: str) -> VerificationOutcome:
         self.inputs, self.by_id, self.checks = inputs, images, checks
         groups = self.support.groups([item.source for item in inputs])
         self.owners = {image.evidence.evidence_id: item.source.sample_id for item in inputs for image in item.images}
-        self.instruction, self.normal_version_id = EVIDENCE_SCOPE_INSTRUCTION + instruction, normal_version_id
+        self.purpose = purpose
         self.reference_ids = {image.evidence.evidence_id for image in references if image.evidence.representation == 'raw'}
         self.overviews = {}
         for item in inputs:
@@ -70,15 +66,17 @@ class FindingVerification:
             overview = self.overviews[target.sample_id]
             supplied[overview.evidence.evidence_id] = overview
             supplied.update({region.image.evidence_id: self.by_id[region.image.evidence_id] for region in target.regions})
-        payload = {'normal_version_id': self.normal_version_id, 'findings': [target.model_dump() for target in targets],
-                   'planned_roi_evidence_ids': {target.finding_id: [region.image.evidence_id
+        findings = {f'finding_{index}':target.finding_id for index,target in enumerate(targets)}
+        aliases = {identity:alias for alias,identity in findings.items()}
+        payload = {'findings': [dict(target.model_dump(),finding_id=aliases[target.finding_id]) for target in targets],
+                   'planned_roi_evidence_ids': {aliases[target.finding_id]: [region.image.evidence_id
                        for region in target.regions if region.image.representation == 'raw'] for target in targets},
                    'checks': [check.model_dump() for check in self.checks],
                    'sources': [{'source':item.source.model_dump(), 'overview_evidence_id':item.images[0].evidence.evidence_id}
                                for item in self.inputs if item.images[0].evidence.evidence_id in supplied]}
-        prompt = self.instruction + json.dumps(payload, ensure_ascii=False)
+        prompt = FrozenMiningPrompt.model_validate(self.context.payload['mining_prompt']).render_context('待核验疑点',payload,phase=MiningPhase(self.purpose))
         images = list(supplied.values())
-        ids = tuple(target.finding_id for target in targets)
+        ids = tuple(findings)
         allowed = set(supplied)
         titles = tuple(check.title for check in self.checks)
         judgment = create_model('KnowledgeJudgment', __base__=KnowledgeJudgment,
@@ -88,7 +86,9 @@ class FindingVerification:
             findings=(List[judgment], Field(min_length=len(ids), max_length=len(ids))))
         plan = self.client.plan(response_type, prompt, images, model_name, OUTPUT_RESERVE_TOKENS)
         self.context.checkpoint()
-        result = self.client.generate(plan)
+        response = self.client.generate(plan)
+        result = KnowledgeVerification(findings=[item.model_copy(update={'finding_id':findings[item.finding_id]})
+            for item in response.findings])
         self.context.checkpoint()
         expected = {target.finding_id for target in targets}
         if len(result.findings) != len(expected) or {item.finding_id for item in result.findings} != expected:

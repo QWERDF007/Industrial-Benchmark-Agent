@@ -7,7 +7,10 @@ from typing import Generic, List, Optional, Type, TypeVar
 import httpx
 from pydantic import BaseModel, Field, ValidationError
 from iad_core.evidence.images import PreparedImage, file_sha256
+from iad_core.advisory.output_validation import REPAIRABLE_OUTPUT
 from iad_core.workbench.calls import ModelCalls
+from iad_core.workbench.completion import CompletionResponse, ModelOutputError
+from iad_core.workbench.prompt_text import RESPONSE_SCHEMA_SLOT
 from iad_core.workbench.model_profile import ModelProfile
 from iad_core.workbench.model_settings import ModelConnection
 
@@ -27,9 +30,11 @@ class TokenCapacity(BaseModel):
 class GenerationRequest(Generic[T]):
     response_type: Type[T]
     body: dict
+    images: tuple[PreparedImage, ...]
+    output_reserve: int
 
 
-RESPONSE_INSTRUCTION = "\n请根据图像和上下文填写实际分析结果；Schema 是格式约束，不是答案，不要复述其定义。\n只输出符合以下 JSON Schema 的 JSON，不要 Markdown：\n"
+MODEL_PROMPT_CONTRACT = 'complete-editable-prompt-v4'
 GENERATION_PARAMETERS = {"temperature": 0.1}
 
 
@@ -93,17 +98,20 @@ class VlmClient:
         if self.profile.max_visual_inputs is not None and len(images) > self.profile.max_visual_inputs:
             raise ModelCapacityError(f'完整图组含 {len(images)} 个视觉输入，超过已配置上限 {self.profile.max_visual_inputs}；未拆组，请确认是否减少图像数量')
         schema = response_type.model_json_schema()
-        content = [{"type": "text", "text": instruction + RESPONSE_INSTRUCTION + json.dumps(schema, ensure_ascii=False)}]
+        rendered='\n'.join(json.dumps(schema,ensure_ascii=False) if line.strip()==RESPONSE_SCHEMA_SLOT else line
+            for line in instruction.split('\n'))
+        content = [{"type": "text", "text": rendered}]
         for image in images:
             if file_sha256(image.path) != image.evidence.sha256:
                 raise ValueError("Visual input content changed")
             with open(image.path, "rb") as source:
                 encoded = base64.b64encode(source.read()).decode("ascii")
-            content.append({"type": "text", "text": "视觉证据：" + json.dumps(image.evidence.model_context(), ensure_ascii=False)})
+            content.append({"type": "text", "text": "视觉证据：" + json.dumps(image.model_context(), ensure_ascii=False)})
             content.append({"type": "image_url", "image_url": {"url": "data:image/png;base64," + encoded}})
         body = {
             "model": model_name, "messages": [{"role": "user", "content": content}],
             "response_format": {"type": "json_schema", "json_schema": {"name": response_type.__name__, "strict": True, "schema": schema}},
+            "stream": True, "stream_options": {"include_usage": True},
             **GENERATION_PARAMETERS, **self.profile.request_parameters,
         }
         if not self.within_limits(body, images):
@@ -122,14 +130,55 @@ class VlmClient:
             body['max_tokens'] = min(available, self.profile.max_output_tokens or available)
         if not self.within_limits(body, images):
             raise ModelCapacityError(f'完整图组请求体超过已配置上限 {self.profile.max_request_bytes} 字节；未拆组，请确认是否减少图像数量')
-        return GenerationRequest(response_type, body)
+        return GenerationRequest(response_type, body, tuple(images), output_reserve)
 
     def generate(self, plan: GenerationRequest[T]) -> T:
+        for attempt in range(2):
+            try:
+                return self._generate(plan)
+            except ModelOutputError as error:
+                if attempt:
+                    raise
+                known = {image.evidence.evidence_id for image in plan.images}
+                repairable = True
+                parsed = None
+                for issue in error.issues:
+                    if issue.get('ctx',{}).get(REPAIRABLE_OUTPUT):
+                        continue
+                    if issue['type'] in {'missing','model_type','list_type','dict_type','too_short','too_long','extra_forbidden',
+                                         'greater_than','greater_than_equal','less_than','less_than_equal'}:
+                        continue
+                    if issue['type'] == 'literal_error' and any(field in issue['loc'] for field in
+                            ('evidence_id','evidence_ids','support_evidence_ids','counter_evidence_ids')):
+                        if parsed is None:
+                            parsed=json.loads(error.response)
+                        value = parsed
+                        try:
+                            for part in issue['loc']:
+                                value = value[part]
+                        except (KeyError, IndexError, TypeError):
+                            value = None
+                        if isinstance(value, str) and value in known:
+                            continue
+                    repairable = False
+                    break
+                if not repairable:
+                    raise
+                feedback = {'schema_validation_errors': error.issues, 'previous_response': error.response}
+                instruction = plan.body['messages'][0]['content'][0]['text'] + '\n输出校验结果：' + json.dumps(feedback, ensure_ascii=False)
+                plan = self.plan(plan.response_type, instruction, list(plan.images), plan.body['model'], plan.output_reserve)
+
+    def _generate(self, plan: GenerationRequest[T]) -> T:
         response_type = plan.response_type
-        request = self.client.build_request('POST', self.endpoint, headers=self._headers, json=plan.body)
-        with ModelCalls.exchange(self.client, request, 'generate', response_type.__name__) as response:
+        request = self.client.build_request('POST', self.endpoint,
+            headers={**self._headers, 'Accept': 'text/event-stream', 'Accept-Encoding': 'identity'},
+            json=plan.body)
+        with ModelCalls.exchange(self.client, request, 'generate', response_type.__name__, stream=True) as response:
             response.raise_for_status()
-            choice = response.json()["choices"][0]
+            completion = CompletionResponse.read(response, validate_json_object=True)
+            if not completion.complete:
+                raise ValueError('模型流未完整结束，分析结果未发布')
+            choice = completion.body["choices"][0]
             if choice.get("finish_reason") == "length":
                 raise ValueError(f"MLLM {response_type.__name__} 输出达到 token 上限（本次输出预算 {plan.body['max_tokens']}），分析未完整返回")
             text = choice["message"].get("content")
@@ -143,11 +192,11 @@ class VlmClient:
             except ValidationError as error:
                 validation_issues = error.errors(include_input=False)
                 issues = "; ".join(f"{'.'.join(map(str, issue['loc'])) or '$'}: {issue['type']}"
-                    + (f" ({issue['msg']})" if issue['type'] == 'value_error' else '') for issue in validation_issues)
+                    + (f" ({issue['msg']})" if issue['type']=='value_error' or issue.get('ctx',{}).get(REPAIRABLE_OUTPUT) else '') for issue in validation_issues)
                 syntax = [issue.get('ctx', {}).get('error', issue['msg']) for issue in validation_issues if issue['type'] == 'json_invalid']
                 if syntax:
                     issues += '；JSON语法无效：' + '; '.join(syntax)
-                raise ValueError(f"MLLM {response_type.__name__} 输出格式错误 (finish_reason={choice.get('finish_reason')}): {issues}") from error
+                raise ModelOutputError(f"MLLM {response_type.__name__} 输出格式错误 (finish_reason={choice.get('finish_reason')}): {issues}", validation_issues, text) from error
 
     def close(self):
         self.client.close()

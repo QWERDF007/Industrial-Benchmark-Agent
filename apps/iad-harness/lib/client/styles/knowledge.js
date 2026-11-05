@@ -1,4 +1,5 @@
 export const knowledgeStyles = `
+#knowledge-page .kb-create-fields{border:0;padding:0;margin:0;min-width:0;}
 /* V49 Knowledge Mining Styles - Scoped to .kb-v45 and workbench */
 
 :root {
@@ -102,96 +103,6 @@ export const knowledgeStyles = `
 }
 
 /* Common Buttons & Form Controls in KB */
-.kb-v45 .btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 37px;
-  min-height: 37px;
-  padding: 0 12px;
-  background: #fff;
-  border: 1px solid #b7c5d9;
-  border-radius: 5px;
-  color: #172338 !important;
-  font-size: 13px !important;
-  font-weight: 500;
-  line-height: 1.2;
-  white-space: nowrap;
-  box-shadow: none;
-  cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
-}
-
-.kb-v45 .btn:hover:not(:disabled) {
-  background: #f2f6fd;
-  border-color: #9caed1;
-}
-
-.kb-v45 .btn.primary {
-  background: #285ed6;
-  border: 1px solid #285ed6;
-  color: #fff !important;
-  font-weight: 600 !important;
-}
-
-.kb-v45 .btn.primary:hover:not(:disabled) {
-  background: #1e51c2;
-  border-color: #1e51c2;
-}
-
-.kb-v45 .btn.quiet {
-  height: 32px;
-  min-height: 32px;
-  padding: 0 6px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: #2d5dcb !important;
-  font-size: 12px !important;
-}
-
-.kb-v45 .btn.quiet:hover:not(:disabled) {
-  background: #eff4fb;
-  border-color: transparent;
-}
-
-.kb-v45 .btn.small {
-  height: 32px;
-  min-height: 32px;
-  padding: 0 10px;
-  font-size: 12px !important;
-}
-
-.kb-v45 .btn.danger,
-.kb-v45 .btn.is-danger {
-  background: #fff;
-  border-color: #deaeb5;
-  color: #b24652 !important;
-}
-
-.kb-v45 .btn.danger:hover:not(:disabled),
-.kb-v45 .btn.is-danger:hover:not(:disabled) {
-  background: #fff2f3;
-  border-color: #deaeb5;
-}
-
-.kb-v45 .iconbtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid #d4dce7;
-  border-radius: 5px;
-  background: white;
-  color: #172338 !important;
-  font-size: 18px;
-  cursor: pointer;
-}
-
-.kb-v45 .iconbtn:hover:not(:disabled) {
-  background: #f1f5fb;
-}
 
 .kb-v45 .f {
   min-height: 38px;
@@ -261,11 +172,6 @@ export const knowledgeStyles = `
   align-items: center;
   align-self: flex-end;
   flex: none;
-}
-
-.kb-v45 .kb-context-actions .iconbtn {
-  width: 38px;
-  height: 38px;
 }
 
 .kb-v45 .context-info {
@@ -407,41 +313,6 @@ export const knowledgeStyles = `
   justify-content: flex-end;
 }
 
-.kb-v45 .job-mini-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 33px;
-  width: 34px;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: #172338 !important;
-  cursor: pointer;
-  padding: 0;
-}
-
-.kb-v45 .job-mini-icon svg {
-  width: 17px;
-  height: 17px;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.kb-v45 .job-mini-icon:hover {
-  background: #edf2fa;
-}
-
-.kb-v45 .job-mini-icon[data-remove-job]:hover,
-.kb-v45 .job-mini-icon[data-delete-entry]:hover,
-.kb-v45 .knowledge-entry-delete:hover {
-  color: #b24652 !important;
-  background: #fff0f1 !important;
-}
-
 .kb-v45 .knowledge-entry-view:hover {
   color: #285fc9 !important;
   background: #edf2fa !important;
@@ -484,84 +355,11 @@ export const knowledgeStyles = `
   background: #edf1f5;
 }
 
-/* Pagination */
-.kb-v45 .job-pager,
-.kb-v45 .knowledge-pager {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-  min-height: 59px;
-  border-top: 1px solid #e6ebf1;
-  padding: 13px 20px;
-  background: #fff;
-  color: #172338 !important;
-  font-size: 13px !important;
-}
-
-.kb-v45 .job-pager .pages,
-.kb-v45 .knowledge-pager .pages {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  flex-wrap: wrap;
-}
-
-.kb-v45 .pagebtn {
-  height: 32px;
-  min-width: 32px;
-  padding: 0 10px;
-  background: #fff;
-  border: 1px solid #dbe2eb;
-  border-radius: 5px;
-  color: #172338 !important;
-  font-size: 13px !important;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.kb-v45 .pagebtn:hover:not(:disabled) {
-  background: #f2f6fd;
-  border-color: #b7c7df;
-}
-
-.kb-v45 .pagebtn[aria-current="page"] {
-  background: #285ed6 !important;
-  color: #fff !important;
-  border-color: #285ed6 !important;
-  font-weight: 600;
-}
-
-.kb-v45 .pagebtn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.kb-v45 .page-total {
-  margin-left: 8px;
-  white-space: nowrap;
-  color: #172338 !important;
-  font-size: 13px !important;
-  font-weight: 400 !important;
-}
-
-.kb-v45 .pager-ellipsis {
-  padding: 0 2px;
-  color: #8190a5;
-}
-
 .kb-v45 .tableempty {
   padding: 50px 18px;
   text-align: center;
   color: #172338 !important;
   font-size: 13px !important;
-}
-
-.kb-v45 .tableempty strong {
-  display: block;
-  color: #172338 !important;
-  font-weight: 650 !important;
-  margin: 7px 0;
 }
 
 /* Lower Panel: Knowledge Entries */
@@ -700,28 +498,6 @@ export const knowledgeStyles = `
   color: #172338 !important;
 }
 
-.kb-v45 .blank-icon {
-  font-size: 34px;
-  color: #92a6c4;
-  line-height: 1.5;
-}
-
-.kb-v45 .blank strong {
-  display: block;
-  color: #172338 !important;
-  font-weight: 650 !important;
-  margin: 8px 0;
-  font-size: 14px;
-}
-
-.kb-v45 .blank p {
-  margin: 0;
-  line-height: 1.7;
-  color: #172338 !important;
-  font-size: 13px !important;
-  font-weight: 400 !important;
-}
-
 .kb-v45 .demo-note {
   font-size: 13px !important;
   color: #172338 !important;
@@ -747,7 +523,6 @@ export const knowledgeStyles = `
 
 .overlay:not(.show),
 #knowledge-page .detail-overlay:not(.show),
-.confirm-overlay:not(.show),
 .knowledge-prompt-overlay:not(.show),
 #create-overlay:not(.show),
 #lightbox:not(.show) {
@@ -839,49 +614,6 @@ export const knowledgeStyles = `
   line-height: 1.75;
   margin: 0;
   overflow-wrap: anywhere;
-}
-
-.detail-evidence-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.detail-evidence {
-  display: block;
-  width: 100%;
-  padding: 0;
-  background: #fafbfd;
-  border: 1px solid #d6e0eb;
-  border-radius: 5px;
-  overflow: hidden;
-  text-align: left;
-  cursor: pointer;
-}
-
-.detail-evidence:hover {
-  border-color: #8dadde;
-  background: #f5f8ff;
-}
-
-.detail-evidence:focus-visible {
-  outline: 2px solid #83a8ef;
-  outline-offset: 2px;
-}
-
-.detail-evidence img {
-  width: 100%;
-  height: 138px;
-  object-fit: cover;
-  display: block;
-  background: #eef2f8;
-}
-
-.detail-evidence span {
-  display: block;
-  padding: 7px 9px;
-  color: #172338 !important;
-  font-size: 12px;
 }
 
 .detail-evidence-empty {
@@ -987,35 +719,6 @@ export const knowledgeStyles = `
   gap: 8px;
 }
 
-.knowledge-prompt-drawer-close {
-  width: 34px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: #172338 !important;
-  cursor: pointer;
-  padding: 7px;
-}
-
-.knowledge-prompt-drawer-close svg {
-  width: 19px;
-  height: 19px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-}
-
-.knowledge-prompt-drawer-close:hover,
-.knowledge-prompt-drawer-close:focus-visible {
-  background: #edf2f8;
-}
-
 .knowledge-prompt-drawer-content {
   padding: 22px;
   overflow: auto;
@@ -1032,53 +735,6 @@ export const knowledgeStyles = `
   line-height: 1.9;
   color: #172338 !important;
   margin: 0;
-}
-
-/* Confirm Modal */
-.confirm-overlay {
-  z-index: 170;
-}
-
-.confirm-modal {
-  width: min(485px, calc(100vw - 32px));
-  max-height: calc(100dvh - 40px);
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 18px 55px rgba(16, 31, 55, 0.22);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.confirm-modal .modalheader {
-  padding: 17px 22px;
-  border-bottom: 1px solid #e1e7ef;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.confirm-modal .modalheader h2 {
-  font-size: 16px !important;
-  font-weight: 650 !important;
-  margin: 0;
-  color: #172338 !important;
-}
-
-.confirm-modal .modalcontent {
-  padding: 22px;
-  line-height: 1.75;
-  color: #172338 !important;
-  font-size: 13px !important;
-}
-
-.confirm-modal .modalfooter {
-  border-top: 1px solid #e5eaf2;
-  padding: 12px 22px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 9px;
 }
 
 /* Create Overlay */
@@ -1285,13 +941,6 @@ export const knowledgeStyles = `
   font-size: 12px;
 }
 
-.token button {
-  border: 0;
-  background: none;
-  color: #172338 !important;
-  cursor: pointer;
-}
-
 .promptactions {
   display: flex;
   gap: 10px;
@@ -1484,32 +1133,19 @@ export const knowledgeStyles = `
   display: none !important;
 }
 
-/* V54/V56: target new knowledge creation view and check-jobs panel. */
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45.kb-creating, .kb-creating) .main-inner > :not(#kb-setup-page) { display: none !important; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page.hide { display: none !important; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page { font: 13px/1.55 system-ui, "Microsoft YaHei", sans-serif; color: #172338; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page h1 { font-size: 24px; margin: 0; font-weight: 650; color: #172338; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page h2 { font-size: 16px; font-weight: 650; margin: 0; color: #172338; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-heading { margin: 0 0 22px; display: flex; align-items: center; justify-content: space-between; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page button.exp-btn { height: 37px; min-height: 37px; font-size: 13px; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-scope { display: flex; gap: 14px; align-items: end; flex-wrap: wrap; margin: 0 0 18px; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-control { width: 250px; max-width: 100%; min-width: 0; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-child-control { width: 390px; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-control > label { display: block; margin: 0 0 7px; font-size: 13px; font-weight: 400; color: #172338; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-control select, :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-child-trigger { width: 100%; height: 38px !important; background: #fff; border: 1px solid #b6c5d8; border-radius: 5px; color: #172338; font: 13px system-ui, "Microsoft YaHei", sans-serif; padding: 0 10px; text-align: left; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-child-picker { position: relative; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-child-trigger { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-child-trigger svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.9; flex: none; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-child-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: #fff; border: 1px solid #ccd6e5; border-radius: 5px; box-shadow: 0 8px 20px #1b294322; z-index: 15; padding: 6px; max-height: 260px; overflow-y: auto; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-child-option { display: flex; align-items: center; gap: 9px; padding: 10px 9px; font-weight: 400; color: #172338; font-size: 13px; cursor: pointer; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-child-option:hover { background: #f2f5fa; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page input[type=checkbox], :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page input[type=radio] { accent-color: #285ed6; width: 16px; height: 16px; flex: none; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-kind { display: flex; align-items: center; gap: 20px; min-height: 38px; margin-left: 12px; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-kind label { display: inline-flex; align-items: center; gap: 7px; color: #172338; font-size: 13px; cursor: pointer; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-directions, :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-prompt { padding: 20px 22px; background: white; border: 1px solid #dbe2eb; border-radius: 6px; margin-bottom: 18px; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-direction-tabs { margin: 12px 0 0; border-bottom: 1px solid #dbe2eb; display: flex; gap: 18px; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-direction-tabs button { padding: 11px 2px; background: transparent; border: none; border-bottom: 2px solid transparent; border-radius: 0; color: #172338; font-size: 13px; font-weight: 400; cursor: pointer; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-direction-tabs button.active { color: #172338; border-bottom-color: #285ed6; font-weight: 650; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-direction-table-wrap { overflow-x: auto; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-direction-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-direction-table th { background: #f2f5fa; border-bottom: 1px solid #dbe2eb; padding: 12px 13px; text-align: left; font-weight: 400; color: #172338; }
@@ -1518,9 +1154,6 @@ export const knowledgeStyles = `
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-direction-table .kb-dir-check { width: 50px; text-align: center; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-direction-table .kb-dir-title { width: 28%; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-direction-table .kb-dir-action { width: 78px; text-align: right; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-direction-table .kb-dir-action .job-mini-icon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: transparent; border: 0; color: #536780; border-radius: 4px; cursor: pointer; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-direction-table .kb-dir-action .job-mini-icon:hover { background: #edf2fa; color: #285ed6; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-direction-table .kb-dir-action svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-directions-empty { padding: 28px 13px; text-align: center !important; font-weight: 400; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-prompt-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
@@ -1561,11 +1194,6 @@ export const knowledgeStyles = `
   color: #172338;
   font-weight: 400;
 }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-confirm .exp-brief b {
-  font-size: 13px;
-  color: #172338;
-  font-weight: 400;
-}
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-confirm .exp-summarybar {
   margin-top: 16px;
   min-height: 58px;
@@ -1584,10 +1212,6 @@ export const knowledgeStyles = `
   margin: 0;
   color: #a53b39;
   font-size: 13px;
-}
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-confirm .exp-actions button {
-  height: 38px !important;
-  padding: 0 17px !important;
 }
 @media (max-width: 700px) {
   :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-confirm {

@@ -1,4 +1,5 @@
 from typing import Literal
+from dataclasses import replace
 
 from pydantic import Field, create_model
 
@@ -22,7 +23,7 @@ class ObservationContract:
         images = {image.evidence.evidence_id: image for item in inputs for image in item.images}
         aliases = {eid: f'v{i}' for i, eid in enumerate(images)}
         self.evidence_refs = {alias: eid for eid, alias in aliases.items()}
-        self.images = [PreparedImage(image.evidence.model_copy(update={'evidence_id': aliases[eid]}), image.path)
+        self.images = [replace(image, evidence=image.evidence.model_copy(update={'evidence_id': aliases[eid]}))
                        for eid, image in images.items()]
         self.context = {
             'checks': [dict(check.criterion_context(), check_key=key) for key, check in self.checks.items()],
@@ -35,7 +36,7 @@ class ObservationContract:
             if not raw:
                 raise ValueError('Each observed source requires raw visual evidence')
             self.context['sources'].append({'source_key': key, 'sample_id': item.source.sample_id,
-                                            'raw_evidence_keys': list(raw)})
+                                            'qualification':item.source.qualification, 'raw_evidence_keys': list(raw)})
             suspect = create_model('ObservationSuspect_' + key, __base__=KnowledgeSuspect,
                                    evidence_id=(Literal[raw], ...))
             cell = create_model('ObservationCell_' + key, __base__=KnowledgeObservationContent,

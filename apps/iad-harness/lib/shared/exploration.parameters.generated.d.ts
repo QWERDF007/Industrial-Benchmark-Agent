@@ -45,6 +45,10 @@ export declare const explorationParameters: {
         };
         readonly title: "FrozenExplorationPrompt";
     };
+    readonly parent_version_id: {
+        readonly type: "string";
+        readonly title: "Parent Version Id";
+    };
 };
 export declare const explorationPresetParameters: {
     readonly name: {

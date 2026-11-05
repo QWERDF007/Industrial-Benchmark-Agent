@@ -32,6 +32,6 @@ export function WorkbenchModelStatus() {
   const provider = view?.providers.find(row => row.provider_id === view.selection?.provider_id);
   const model = provider?.models.find(row => row.model_id === view?.selection?.model_id);
   return <div className="iad-model-status"><span>{loading ? '正在读取模型…' : error || view?.error ||
-    (view?.selection ? `${provider?.name || view.selection.provider_id} · ${model?.name || view.selection.model_id}` : '使用当前服务配置')}</span>
+    (view?.selection ? `${provider?.name || view.selection.provider_id}，${model?.name || view.selection.model_id}` : '使用当前服务配置')}</span>
     <button onClick={() => workspace.navigate('industrial-model-settings')}>模型设置</button></div>;
 }

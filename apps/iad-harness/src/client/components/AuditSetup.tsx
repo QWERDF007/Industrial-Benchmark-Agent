@@ -1,66 +1,85 @@
-import React, { useEffect, useState } from "react";
-import type { AuditStartRequest, JobSnapshot, Dataset, Filters, SamplePage } from "../../shared/contracts.js";
-import { ImageViewer, type ImageSource } from "./ImageViewer.js";
-import { KnowledgeEvidenceGallery } from "./KnowledgeEvidenceGallery.js";
-import { DatasetKnowledge } from "./DatasetKnowledge.js";
-import { message, request, sampleQuery } from "../api.js";
-import { useKnowledge } from "../useKnowledge.js";
-import { useWorkspace } from "../workspace.js";
-import { KnowledgeState } from "./KnowledgeState.js";
-import {useWorkbenchModel, WorkbenchModelStatus} from '../models.js';
+import {Select} from './Select.js';
+import {Button} from './Button.js';
+import React, {useEffect, useRef, useState} from 'react';
+import type {AuditStartRequest, Dataset, Filters, JobSnapshot, SamplePage} from '../../shared/contracts.js';
+import type {KnowledgeVersionCatalog} from '../../shared/domain.generated.js';
+import {message, request, sampleQuery} from '../api.js';
+import {useWorkbenchModel} from '../models.js';
+import {useWorkspace} from '../workspace.js';
+import {promptDefaults} from '../../shared/prompt-defaults.generated.js';
 
-export interface AuditSetupProps { dataset: Dataset; filters: Filters; jobs: JobSnapshot[]; revision: number; onJobsChanged(): void; onStarted?(job: JobSnapshot): void }
+interface AuditSource {dataset:Dataset;catalog:KnowledgeVersionCatalog;total:number}
 
-export function AuditSetup({ dataset, filters, jobs, revision, onJobsChanged, onStarted }: AuditSetupProps) {
-  const { workspace } = useWorkspace();
-  const view = workspace.view("industrial-audit");
-  const normalQuery = useKnowledge(dataset.dataset_id, "normal", view.normalVersion, revision);
-  const defectQuery = useKnowledge(dataset.dataset_id, "defect", view.defectVersion, revision);
-  const normal = normalQuery.knowledge;
-  const defect = defectQuery.knowledge?.normal_version_id === normal?.version_id ? defectQuery.knowledge : null;
-  const loading = normalQuery.loading || defectQuery.loading;
-  const loadError = normalQuery.error || defectQuery.error || (!loading && view.defectVersion && !defect ? "所选不良知识与良品版本不匹配，请重新选择" : "");
-  const [lightbox, setLightbox] = useState<ImageSource | null>(null);
-  const model = useWorkbenchModel();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [total, setTotal] = useState<number | null>(null);
-  const scopeQuery = sampleQuery(dataset.dataset_id, filters, 1, 1);
-  useEffect(() => {
-    const controller = new AbortController(); setTotal(null); setError("");
-    request<SamplePage>(`/samples/${encodeURIComponent(dataset.task_id)}?${scopeQuery}`, undefined, undefined, controller.signal)
-      .then(result => { if (!controller.signal.aborted) setTotal(result.total); })
-      .catch(error => { if (!controller.signal.aborted) setError(message(error)); });
-    return () => controller.abort();
-  }, [dataset.task_id, scopeQuery]);
-  async function start() {
-    setBusy(true); setError("");
-    try {
-      const input: AuditStartRequest = { dataset_id: dataset.dataset_id,
-        normal_version_id: normal?.version_id, defect_version_id: defect?.version_id, filters,
-        consistency_mode:view.auditConsistencyMode };
-      const job = await request<JobSnapshot>("/audit/start", input); onJobsChanged(); onStarted?.(job);
-    }
-    catch (e) { setError(message(e)); } finally { setBusy(false); }
+export function AuditSetup({datasets, filters, jobs, revision, onStarted, onCancel, onBusyChange}: {
+  datasets:Dataset[];filters:Filters;jobs:JobSnapshot[];revision:number;
+  onStarted(jobs:JobSnapshot[]):void;onCancel():void;onBusyChange(busy:boolean):void;
+}) {
+  const {workspace}=useWorkspace(), model=useWorkbenchModel();
+  const view=workspace.view('industrial-audit');
+  const identity=JSON.stringify([datasets.map(dataset=>dataset.dataset_id).sort(),filters,revision]);
+  const [result,setResult]=useState<{identity:string;rows:AuditSource[];error:string}>();
+  const rows=result?.identity===identity?result.rows:null;
+  const [busy,setBusy]=useState(false), [error,setError]=useState('');
+  const [instruction,setInstruction]=useState<string>(promptDefaults.audit);
+  const requests=useRef(new Map<string,AuditStartRequest>()), started=useRef(new Map<string,JobSnapshot>());
+  useEffect(()=>{
+    const controller=new AbortController();
+    Promise.all(datasets.map(async dataset=>{
+      const [catalog,samples]=await Promise.all([
+        request<KnowledgeVersionCatalog>(`/knowledge/versions?${new URLSearchParams({dataset_id:dataset.dataset_id})}`,undefined,undefined,controller.signal),
+        request<SamplePage>(`/samples/${encodeURIComponent(dataset.task_id)}?${sampleQuery(dataset.dataset_id,filters,1,1)}`,undefined,undefined,controller.signal),
+      ]);
+      return {dataset,catalog,total:samples.total};
+    })).then(rows=>{if(!controller.signal.aborted)setResult({identity,rows,error:''});})
+      .catch(error=>{if(!controller.signal.aborted)setResult({identity,rows:[],error:message(error)});});
+    return ()=>controller.abort();
+  },[identity]);
+  const unavailable=rows?.find(({catalog,total})=>!total || !catalog.versions.some(version=>version.version_id===catalog.current_version_id));
+  const reason=!model.ready?model.error || model.view?.error || '请先配置工作台模型'
+    : !instruction.trim()?'请填写审计提示词'
+    : result?.identity===identity && result.error?result.error
+    : !rows?'正在读取范围和已发布知识'
+    : !rows.length?'请选择子数据集'
+    : unavailable?`${unavailable.dataset.name}：${unavailable.total?'请先生成统一知识':'当前范围没有图像'}`
+    : !started.current.size && jobs.some(job=>['PENDING','RUNNING'].includes(job.status))?'当前范围仍有审计作业执行中':'';
+  const cancel=()=>{if(!busy){if(started.current.size)onStarted(Array.from(started.current.values()));else onCancel();}};
+  const provider=model.view?.providers.find(provider=>provider.provider_id===model.view?.selection?.provider_id);
+  const selectedModel=provider?.models.find(item=>item.model_id===model.view?.selection?.model_id);
+  async function start(){
+    if(reason || !rows || busy)return;
+    setBusy(true);onBusyChange(true);setError('');
+    try{
+      for(const {dataset,catalog} of rows){
+        if(started.current.has(dataset.dataset_id))continue;
+        if(!requests.current.has(dataset.dataset_id)){
+          const knowledge=catalog.current_version_id;
+          requests.current.set(dataset.dataset_id,{submission_id:crypto.randomUUID(),dataset_id:dataset.dataset_id,
+            knowledge_version_id:knowledge,filters,consistency_mode:view.auditConsistencyMode,instruction});
+        }
+        const job=await request<JobSnapshot>('/audit/start',requests.current.get(dataset.dataset_id));
+        started.current.set(dataset.dataset_id,job);
+      }
+      onStarted(Array.from(started.current.values()));
+    }catch(error){setError(`${started.current.size?`已启动 ${started.current.size} 个子数据集。`:''}${message(error)}`);}
+    finally{setBusy(false);onBusyChange(false);}
   }
-  const normalDetails = normal && <><DatasetKnowledge knowledge={normal} /><KnowledgeEvidenceGallery versionId={normal.version_id} items={normal.evidence.filter(item => item.image.role === "normal" && item.image.representation === "raw")} onOpen={setLightbox} /></>;
-  return <section className="iad-job-panel"><WorkbenchModelStatus /><section><h3>知识依据</h3>
-    <div className="iad-config-bar"><label className="iad-field">良品版本<select aria-label="审计良品知识版本" value={view.normalVersion} disabled={loading} onChange={event => workspace.updateView("industrial-audit", { normalVersion: event.target.value, defectVersion: "" })}>
-      <option value="">当前版本</option>{normalQuery.versions.map(version => <option key={version.version_id} value={version.version_id}>{version.version_id} · {version.created_at}</option>)}
-    </select></label><label className="iad-field">不良品版本<select aria-label="审计不良品知识版本" value={view.defectVersion} disabled={loading || !normal} onChange={event => workspace.updateView("industrial-audit", { defectVersion: event.target.value })}>
-      <option value="">匹配的当前版本</option>{defectQuery.versions.filter(version => version.normal_version_id === normal?.version_id).map(version => <option key={version.version_id} value={version.version_id}>{version.version_id} · {version.created_at}</option>)}
-    </select></label>
-    <label className="iad-field">一致性检查<select aria-label="审计一致性模式" value={view.auditConsistencyMode} onChange={event => workspace.updateView('industrial-audit', {auditConsistencyMode:event.target.value as NonNullable<AuditStartRequest['consistency_mode']>})}>
-      <option value="exact">已有精确索引</option><option value="combined">精确与已有视觉索引</option>
-    </select></label></div>
-    <p aria-label="审计执行范围">当前筛选的全部 {total === null ? "…" : total} 张图像 · 全图与全部适用 ROI 联合分析</p>
-    {loading ? <p role="status">正在读取审计知识…</p> : loadError ? <p role="alert" className="iad-error">{loadError}</p> : <>
-    {normal ? <><KnowledgeState freshness={normalQuery.freshness} /><details><summary>良品知识 · {normal.checks.filter(check => check.status === "supported").length} 项有证据支持</summary>{normalDetails}</details></> : <p className="iad-profile iad-muted">请先挖掘良品知识，生成可用版本。<button onClick={() => workspace.openLocation({ pageId: "industrial-knowledge", datasetId: dataset.dataset_id, knowledgeKind: "normal" })}>前往挖掘良品知识</button></p>}
-    {defect ? <><KnowledgeState freshness={defectQuery.freshness} /><details><summary>不良知识 · {defect.checks.length} 项判据</summary><DatasetKnowledge knowledge={defect} /></details></> : <p className="iad-muted">暂无匹配的不良知识，按正常判据筛查。</p>}
-    </>}
-    {error && <p role="alert" className="iad-error">{error}</p>}
-    <div className="iad-form-actions"><button className="iad-primary" disabled={busy || loading || total === null || total === 0 || !!loadError || !model.ready || !normal?.checks.some(check => check.status === "supported") || jobs.some(job => job.status === "RUNNING" || job.status === "PENDING")} onClick={start}>{busy ? "启动中…" : "审计当前筛选全部图像"}</button></div>
-    </section>
-    {lightbox && <ImageViewer image={lightbox} onClose={() => setLightbox(null)} />}
-  </section>;
+  return <>
+    <div className="audit-create-grid">
+      <label className="audit-field"><span>模型</span><Select id="audit-create-model" aria-label="审计模型" disabled>
+        <option>{selectedModel?.name || model.view?.selection?.model_id || '未配置'}</option></Select></label>
+      <label className="audit-field"><span>一致性检查</span><Select id="audit-create-mode" aria-label="审计一致性模式" value={view.auditConsistencyMode}
+        disabled={busy || requests.current.size>0} onChange={event=>workspace.updateView('industrial-audit',{auditConsistencyMode:event.target.value as NonNullable<AuditStartRequest['consistency_mode']>})}>
+        <option value="exact">精确检查</option><option value="combined">精确与视觉检查</option></Select></label>
+      <label className="audit-field"><span>完整提示词</span><textarea id="audit-create-prompt" aria-label="审计完整提示词"
+        disabled={busy || requests.current.size>0} value={instruction} onChange={event=>setInstruction(event.target.value)} /></label>
+    </div>
+    <div className="audit-confirm"><div><h3>确认并启动</h3><p id="audit-create-summary">
+      {datasets.length} 个子数据集，{rows?rows.reduce((total,row)=>total+row.total,0):'…'} 张图像，{selectedModel?.name || model.view?.selection?.model_id || '未配置模型'}，当前已发布知识
+    </p></div><div className="audit-create-actions"><Button type="button"  id="audit-create-cancel" disabled={busy} onClick={cancel}>取消</Button>
+      <Button type="button" variant="primary" id="audit-create-submit" disabled={busy || !!reason} onClick={()=>void start()}>{busy?'启动中…':started.current.size?'继续启动剩余审计':'开始审计'}</Button></div></div>
+    {reason && <p role="status">{reason}</p>}{error && <p role="alert">{error}</p>}
+    {!!rows?.length && <details className="audit-create-versions"><summary>查看冻结知识依据</summary><ul>{rows.map(({dataset,catalog})=><li key={dataset.dataset_id}>
+      {dataset.name}：{catalog.current_version_id || '暂无知识'}
+    </li>)}</ul></details>}
+  </>;
 }
