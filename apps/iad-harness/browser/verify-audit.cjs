@@ -48,6 +48,15 @@ const firefox=require('selenium-webdriver/firefox.js');
       if(await box.isSelected()!==((await box.getAttribute('value'))===dataset.dataset_id))await click(box);
     }
     await click(await element('#audit-child-trigger'));
+    await click(await element('button[title="新建审计"]'));
+    const editor=await element('#audit-create-prompt');
+    const {promptDefaults}=await import('../lib/shared/prompt-defaults.generated.js');
+    assert.equal(await editor.getAttribute('value'),promptDefaults.audit,'页面应完整显示同一来源的默认提示词');
+    assert.equal(await editor.isEnabled(),true);assert.equal(await editor.getDomAttribute('readonly'),null);
+    await editor.sendKeys(Key.END,' 浏览器编辑核验');
+    await driver.wait(async()=>(await editor.getAttribute('value')).includes('浏览器编辑核验'),3000);
+    await click(await element('#audit-create-cancel'));
+    proof.complete_editable_default_verified=true;
     const row=await element(`tr[data-run-id="${job.run_id}"]`);await click(await row.findElement(By.css('td')));
     const search=await element('input[aria-label="搜索审计图像"]');
     await search.sendKeys(sample_id.split('/').pop().split(':').pop());

@@ -44,7 +44,7 @@ AUDIT_PROMPTS: dict[str, str] = {
         '收到冻结综合审计时，结合当前图像、实际比较图、冻结知识和一致性记录生成最终结论。'
         '最终suggested_label表示是否有可用判据支持当前判断，不等于肉眼未见异常。'
         '先检查本次knowledge.checks的usable_for_judgment：若全部为false，最终suggested_label只能写UNCERTAIN，'
-        '即使主图外观规整、未见明显缺陷、与原标OK的图像相似，也不能写PASS。'
+        '无论主图外观正常还是存在明显异常疑点，均不能写PASS或FAIL；异常观察、正常解释和相应证据仍须如实保留。'
         'observation仍如实描述可见的正常或异常外观，analysis_text说明判据缺口及其影响；'
         '疑点及其证据继续保留，不因无法定论而停止观察或消去发现。'
         '未知、冲突或不可观察不得给确定PASS。'
