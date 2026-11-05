@@ -49,6 +49,10 @@ def test_scope_report_is_model_generated_from_frozen_facts_and_survives_new_audi
         assert all(case['sample_id'].startswith('@s') for case in context['cases'])
         assert context['statistics']['registered_samples'] == 4
         assert context['statistics']['audited_samples'] == (2 if bounded_context else 1)
+        technical = context['statistics']['technical_evidence']
+        assert technical['image_decoding']['numerator'] == technical['image_decoding']['denominator'] == 4
+        assert technical['annotation_geometry']['numerator'] == technical['annotation_geometry']['denominator'] == 3
+        assert technical['bbox_scale']['area_fraction']['count'] == 3
         assert context['statistics']['gold_by_policy'] == []
         refs = [json.loads(item['text'][5:])['evidence_id'] for item in body['messages'][0]['content']
             if item['type']=='text' and item['text'].startswith('视觉证据：')]

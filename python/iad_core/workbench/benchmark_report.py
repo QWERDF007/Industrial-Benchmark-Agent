@@ -10,6 +10,7 @@ from iad_core.knowledge.models import KnowledgeSnapshot
 from iad_core.storage.database import Database
 from iad_core.workbench.audit_protocol import audit_generation_signature
 from iad_core.workbench.report import QualityRatio
+from iad_core.workbench.report_technical_evidence import ReportTechnicalEvidence
 
 
 class ReportAnnotationCoverage(AnalysisModel):
@@ -43,6 +44,7 @@ class BenchmarkFactsData(AnalysisModel):
     audited_samples: int
     coverage: QualityRatio
     technical_usability: QualityRatio
+    technical_evidence: ReportTechnicalEvidence
     included_run_ids: list[str]
     excluded_audit_records: dict[str, int]
     outcomes: dict[str, int]
@@ -82,7 +84,10 @@ class BenchmarkReportFacts:
             samples = [dict(row) for row in conn.execute(f'SELECT * FROM samples WHERE is_excluded=0 AND dataset_id IN ({placeholders}) ORDER BY sample_id', selected)]
             annotations = [dict(row) for row in conn.execute(f'''SELECT a.* FROM annotations a JOIN samples s ON s.sample_id=a.sample_id
                 WHERE s.is_excluded=0 AND s.dataset_id IN ({placeholders})''', selected)]
-            issues = [dict(row) for row in conn.execute(f'SELECT sample_id,severity FROM import_issues WHERE dataset_id IN ({placeholders})', selected)]
+            issues = [dict(row) for row in conn.execute(f'SELECT sample_id,severity,issue_type FROM import_issues WHERE dataset_id IN ({placeholders})', selected)]
+            pixels = [dict(row) for row in conn.execute(f'''SELECT p.sample_id,json_extract(p.descriptor_json,'$.decode_status') decode_status
+                FROM sample_pixel_index p JOIN samples s ON s.sample_id=p.sample_id
+                WHERE s.is_excluded=0 AND s.dataset_id IN ({placeholders})''', selected)]
             audits = [dict(row) for row in conn.execute(f'''SELECT a.suggestion_id,a.sample_id,a.audit_run_id,a.analysis_json,a.source_fingerprint,
                 json_extract(j.payload_json,'$.request.generation_signature') generation_signature
                 FROM audit_suggestions a JOIN samples s ON s.sample_id=a.sample_id
@@ -157,6 +162,7 @@ class BenchmarkReportFacts:
             coverage=QualityRatio(numerator=len(cases), denominator=len(samples), basis='当前范围去重后有有效冻结审计记录的图像 / 去重登记图像'),
             technical_usability=QualityRatio(numerator=sum(sample['sample_id'] not in blocking and sample['width']>0 and sample['height']>0 for sample in samples),
                 denominator=len(observed), basis='有有效尺寸且无阻断导入问题的登记图像 / 登记与扫描拒绝的图像'),
+            technical_evidence=ReportTechnicalEvidence.from_records(samples, annotations, issues, pixels),
             included_run_ids=sorted({case.run_id for case in cases}), excluded_audit_records=dict(rejected),
             outcomes={key: outcomes[key] for key in ['normal_candidate','anomaly_candidate','insufficient','not_processed']},
             raw_labels=dict(Counter(sample['quality_status'] for sample in samples)),

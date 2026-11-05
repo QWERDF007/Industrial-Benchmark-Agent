@@ -142,10 +142,17 @@ for i in range(3):
     assert.equal((await driver.findElements(By.css('[data-report-section]'))).length,20);
     assert.equal((await driver.findElements(By.css('.iad-report-chart'))).length,3);
     assert.ok((await driver.findElements(By.css('.iad-report-data dd'))).length>20);
+    const technical=await driver.findElement(By.css('[data-report-section="technical_usability"]'));
+    for (const label of ['原图完整解码','空间标注坐标有效','标注声明尺寸匹配']) {
+      const row=await technical.findElement(By.xpath(`.//dt[normalize-space(.)="${label}"]/parent::*`));
+      assert.equal(await row.findElement(By.css('dd')).getText(),'3/3');
+    }
+    assert.ok((await driver.findElement(By.css('[data-report-section="defect_coverage"]')).getText()).includes('框面积 / 原图面积'));
     const reportId=await driver.findElement(By.css('select[aria-label="报告记录"]')).getAttribute('value');
     const exported=await fetch(`${base}/api/iad/dataset-reports/${reportId}/export`);
     assert.equal(exported.status,200);const html=await exported.text();
     assert.ok(html.includes('数据集范围结论由模型实际生成。')&&html.includes('data:image/png;base64,'));
+    assert.ok(html.includes('原图完整解码')&&html.includes('空间标注坐标有效')&&html.includes('框面积 / 原图面积'));
 
     const ids=[0,1,2].map(index=>dataset.dataset_id+`:part-${index}.png`);
     failing.add(ids[1]);failing.add(ids[2]);

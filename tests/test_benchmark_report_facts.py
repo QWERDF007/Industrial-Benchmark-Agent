@@ -11,6 +11,69 @@ from iad_core.workbench.vision import VlmClient
 from iad_core.workbench.audit_protocol import AUDIT_GENERATION_VERSION
 
 
+def test_report_separates_image_decoding_annotation_geometry_and_box_scale(dataset, tmp_path):
+    from PIL import Image
+    from iad_core.workbench.benchmark_report import BenchmarkReportFacts
+    from iad_core.workbench.dataset_report_data import report_data
+
+    db, registry, config = dataset
+    images, labels = tmp_path/'images', tmp_path/'labels'
+    for name in ('bad-label', 'bad-box', 'mismatched-size'):
+        Image.new('RGB', (80, 60), 'gray').save(images/(name+'.png'))
+    (images/'unreadable.png').write_bytes(b'not an image')
+    (labels/'bad-label.json').write_text('broken json')
+    for name, width, height, points in [('bad-box', 80, 60, [[-5, 0], [20, 10]]),
+            ('mismatched-size', 40, 30, [[10, 10], [20, 20]])]:
+        (labels/(name+'.json')).write_text(json.dumps(dict(imageWidth=width,imageHeight=height,
+            shapes=[dict(label='candidate',shape_type='rectangle',points=points)])))
+    registry.rescan(config.dataset.id)
+    facts = BenchmarkReportFacts(db).capture([config.dataset.id])
+    technical = facts.technical_evidence
+    assert facts.registered_samples == 7
+    assert (technical.image_decoding.numerator, technical.image_decoding.denominator) == (7, 8)
+    assert (facts.technical_usability.numerator, facts.technical_usability.denominator) == (4, 8)
+    assert technical.decode_statuses == {'COMPLETE':7, 'UNAVAILABLE':1}
+    assert (technical.annotation_geometry.numerator, technical.annotation_geometry.denominator) == (2, 4)
+    assert technical.geometry_statuses == {'VALID':2, 'INVALID':2}
+    assert technical.annotation_parse_error_samples == 1
+    assert (technical.annotation_source_sizes.numerator, technical.annotation_source_sizes.denominator) == (3, 4)
+    assert technical.source_size_unknown_annotations == 0
+    assert technical.bbox_scale['area_fraction'].count == 2
+    for key, expected in [('width_fraction', 1/16), ('height_fraction', 1/12), ('area_fraction', 1/192)]:
+        scale = technical.bbox_scale[key]
+        assert scale.minimum == scale.median == scale.maximum == expected
+    rows = report_data(facts)
+    assert any(row['label']=='原图完整解码' and row['value']=='7/8' for row in rows['technical_usability'])
+    assert any(row['label']=='空间标注坐标有效' and row['value']=='2/4' for row in rows['technical_usability'])
+    assert len(rows['bbox_scale']) == 3 and all(row['basis'] for row in rows['bbox_scale'])
+    frozen = facts.model_dump_json(round_trip=True)
+    Image.new('RGB', (80, 60), 'gray').save(images/'unreadable.png')
+    registry.rescan(config.dataset.id)
+    refreshed = BenchmarkReportFacts(db).capture([config.dataset.id])
+    assert refreshed.technical_evidence.image_decoding.numerator == 8
+    assert facts.model_dump_json(round_trip=True) == frozen
+
+
+def test_report_without_spatial_annotations_keeps_geometry_and_scale_unavailable(dataset, tmp_path):
+    from iad_core.workbench.benchmark_report import BenchmarkReportFacts
+    from iad_core.workbench.dataset_report_data import report_data
+
+    db, registry, _ = dataset
+    labels = tmp_path/'empty-labels'
+    labels.mkdir()
+    shutil.copytree(tmp_path/'images', tmp_path/'unannotated-images')
+    config = registry.import_labelme(DatasetImport(format='labelme', name='无区域标注',
+        image_dir=str(tmp_path/'unannotated-images'), annotation_dir=str(labels)))
+    facts = BenchmarkReportFacts(db).capture([config.dataset.id])
+    technical = facts.technical_evidence
+    assert technical.image_decoding.numerator == technical.image_decoding.denominator == 4
+    assert technical.annotation_geometry.denominator == 0 and technical.annotation_geometry.percent is None
+    assert all(item.count==0 and item.minimum is item.median is item.maximum is None for item in technical.bbox_scale.values())
+    rows = report_data(facts)
+    assert next(row['value'] for row in rows['technical_usability'] if row['label']=='空间标注坐标有效') == '不可计算'
+    assert all(row['value']=='无可用框尺度' for row in rows['bbox_scale'])
+
+
 def test_report_freezes_the_selected_datasets_deduplicates_audits_and_keeps_missing_metric_evidence_explicit(dataset, mllm_api, tmp_path):
     from iad_core.workbench.benchmark_report import BenchmarkReportFacts
 

@@ -5,6 +5,7 @@ export const reportRequirements = {
     "title": "技术可用性",
     "data": [
       "technical_usability",
+      "technical_states",
       "annotation_coverage"
     ],
     "required": "图像可读率、坐标有效率、原图与标注对应情况"
@@ -49,6 +50,7 @@ export const reportRequirements = {
     "title": "缺陷覆盖",
     "data": [
       "annotation_coverage",
+      "bbox_scale",
       "capability_candidates",
       "outcomes"
     ],
@@ -117,6 +119,7 @@ export const reportRequirements = {
       "evaluation_evidence",
       "capability_candidates",
       "annotation_coverage",
+      "bbox_scale",
       "small_defects_metrics"
     ],
     "required": "原图尺度及模型输入尺度分层 Recall、定位召回、语义切片抽查"

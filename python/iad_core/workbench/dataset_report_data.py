@@ -4,8 +4,19 @@ from iad_core.workbench.report_requirements import REPORT_METRICS
 
 def report_data(facts: BenchmarkFacts) -> dict[str, list[dict[str, str]]]:
     annotations = facts.annotation_coverage
+    technical = facts.technical_evidence
     result = {
-        'technical_usability': [dict(label='可读取且无阻断问题', value=f'{facts.technical_usability.numerator}/{facts.technical_usability.denominator}', basis=facts.technical_usability.basis)],
+        'technical_usability': [dict(label=label, value=f'{ratio.numerator}/{ratio.denominator}' if ratio.denominator else '不可计算', basis=ratio.basis) for label, ratio in [
+            ('原图完整解码', technical.image_decoding), ('空间标注坐标有效', technical.annotation_geometry),
+            ('标注声明尺寸匹配', technical.annotation_source_sizes), ('有效尺寸且无阻断问题', facts.technical_usability)]],
+        'technical_states': [dict(label=label, value=str(count), basis=basis) for label, count, basis in [
+            *[(f'解码 {status}', count, '最近扫描保存的原始像素解码状态') for status, count in technical.decode_statuses.items()],
+            *[(f'坐标 {status}', count, '已解析空间标注的扫描几何状态') for status, count in technical.geometry_statuses.items()],
+            ('标注解析失败图像', technical.annotation_parse_error_samples, '解析失败的图像不计为无标注已确认'),
+            ('标注声明尺寸未知', technical.source_size_unknown_annotations, '尺寸缺失不计入尺寸匹配分母')]],
+        'bbox_scale': [dict(label={'width_fraction':'框宽 / 原图宽', 'height_fraction':'框高 / 原图高', 'area_fraction':'框面积 / 原图面积'}[key],
+            value=(f'{item.count} 个，{item.minimum:.6g}～{item.maximum:.6g}，中位数 {item.median:.6g}' if item.count else '无可用框尺度'),
+            basis='有效空间标注外接框的归一化尺度；不含无效框，不是缺陷真实面积或物理尺寸') for key, item in technical.bbox_scale.items()],
         'raw_labels': [dict(label=key, value=str(value), basis='当前范围原始标签，未自动作为 Gold') for key, value in facts.raw_labels.items()],
         'gold_by_policy': ([dict(label=item['policy_name'], value=str(item['independently_confirmed']), basis='独立人工或业务来源确认的记录数；政策间不相加') for item in facts.gold_by_policy]
             or [dict(label='独立 Gold', value='未提供', basis='没有独立确认的冻结参考真值，不能计算真实错误率')]),

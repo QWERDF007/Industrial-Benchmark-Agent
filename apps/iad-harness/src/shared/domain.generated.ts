@@ -15,6 +15,12 @@ export type Numerator = number;
 export type Denominator = number;
 export type Basis = string;
 export type Percent = number | null;
+export type AnnotationParseErrorSamples = number;
+export type SourceSizeUnknownAnnotations = number;
+export type Count = number;
+export type Minimum = number | null;
+export type Median = number | null;
+export type Maximum = number | null;
 export type IncludedRunIds = string[];
 export type AnnotatedSamples = number;
 export type UnannotatedSamples = number;
@@ -2269,11 +2275,11 @@ export type QueryId8 = string;
 export type Kind43 = "conflicts" | "groups";
 export type Value1 = "all" | "category" | "geometry" | "presence" | "instances" | "multiple";
 export type Label5 = string;
-export type Count = number;
+export type Count1 = number;
 export type Filters = GalleryFilterCount[];
 export type Value2 = "all" | "NOT_ANALYZED" | "RUNNING" | "FAILED" | "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
 export type Label6 = string;
-export type Count1 = number;
+export type Count2 = number;
 export type ModelFilters = GalleryModelFilterCount[];
 export type GroupId7 = string;
 export type FactsState6 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
@@ -2587,6 +2593,7 @@ export interface BenchmarkFacts {
   audited_samples: AuditedSamples;
   coverage: QualityRatio;
   technical_usability: QualityRatio;
+  technical_evidence: ReportTechnicalEvidence;
   included_run_ids: IncludedRunIds;
   excluded_audit_records: ExcludedAuditRecords;
   outcomes: Outcomes;
@@ -2607,6 +2614,31 @@ export interface QualityRatio {
   denominator: Denominator;
   basis: Basis;
   percent: Percent;
+}
+export interface ReportTechnicalEvidence {
+  image_decoding: QualityRatio;
+  decode_statuses: DecodeStatuses;
+  annotation_geometry: QualityRatio;
+  geometry_statuses: GeometryStatuses;
+  annotation_parse_error_samples: AnnotationParseErrorSamples;
+  annotation_source_sizes: QualityRatio;
+  source_size_unknown_annotations: SourceSizeUnknownAnnotations;
+  bbox_scale: BboxScale;
+}
+export interface DecodeStatuses {
+  [k: string]: number;
+}
+export interface GeometryStatuses {
+  [k: string]: number;
+}
+export interface BboxScale {
+  [k: string]: ReportDistribution;
+}
+export interface ReportDistribution {
+  count: Count;
+  minimum: Minimum;
+  median: Median;
+  maximum: Maximum;
 }
 export interface ExcludedAuditRecords {
   [k: string]: number;
@@ -5254,12 +5286,12 @@ export interface GalleryPage {
 export interface GalleryFilterCount {
   value: Value1;
   label: Label5;
-  count: Count;
+  count: Count1;
 }
 export interface GalleryModelFilterCount {
   value: Value2;
   label: Label6;
-  count: Count1;
+  count: Count2;
 }
 export interface GalleryItem {
   group_id: GroupId7;

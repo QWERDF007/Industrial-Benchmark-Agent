@@ -2,7 +2,7 @@ export declare const reportRequirements: {
     readonly technical_usability: {
         readonly card: "dataset";
         readonly title: "技术可用性";
-        readonly data: readonly ["technical_usability", "annotation_coverage"];
+        readonly data: readonly ["technical_usability", "technical_states", "annotation_coverage"];
         readonly required: "图像可读率、坐标有效率、原图与标注对应情况";
     };
     readonly label_trust: {
@@ -32,7 +32,7 @@ export declare const reportRequirements: {
     readonly defect_coverage: {
         readonly card: "dataset";
         readonly title: "缺陷覆盖";
-        readonly data: readonly ["annotation_coverage", "capability_candidates", "outcomes"];
+        readonly data: readonly ["annotation_coverage", "bbox_scale", "capability_candidates", "outcomes"];
         readonly required: "形态、位置、框尺度、可见对比与结构关系，候选与确认分开";
     };
     readonly independence: {
@@ -74,7 +74,7 @@ export declare const reportRequirements: {
     readonly small_defects: {
         readonly card: "model";
         readonly title: "细小与低对比缺陷";
-        readonly data: readonly ["evaluation_evidence", "capability_candidates", "annotation_coverage", "small_defects_metrics"];
+        readonly data: readonly ["evaluation_evidence", "capability_candidates", "annotation_coverage", "bbox_scale", "small_defects_metrics"];
         readonly required: "原图尺度及模型输入尺度分层 Recall、定位召回、语义切片抽查";
     };
     readonly localization: {
