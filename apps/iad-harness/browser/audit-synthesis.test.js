@@ -107,6 +107,7 @@ for i in range(3):
   };
   await wait('analysis_status', await bridge.execute('analysis_start', {request: {analysis_kind: 'knowledge', dataset_ids: [dataset.dataset_id], batch_size: 3,
     mining_prompt: {objective: '比较主体', directions: [], instruction: '按真实图像比较主体外观。'}}}));
+  await bridge.execute('consistency_compare',{sample_a:dataset.dataset_id+':part-1.png',sample_b:dataset.dataset_id+':part-2.png'});
   const audit = await wait('audit_status', await bridge.execute('audit_start', {dataset_id: dataset.dataset_id, sample_ids: [dataset.dataset_id+':part-0.png']}));
   fixture = {sample: (await bridge.execute('audit_job_samples', {run_id: audit.run_id})).items[0], taskId: dataset.task_id,datasetIds:[dataset.dataset_id],dataset};
   let driver;
@@ -148,11 +149,14 @@ for i in range(3):
       assert.equal(await row.findElement(By.css('dd')).getText(),'3/3');
     }
     assert.ok((await driver.findElement(By.css('[data-report-section="defect_coverage"]')).getText()).includes('框面积 / 原图面积'));
+    const consistencyRow=await driver.findElement(By.xpath('//*[@data-report-section="label_trust"]//dt[normalize-space(.)="当前比较对"]/parent::*'));
+    assert.equal(await consistencyRow.findElement(By.css('dd')).getText(),'1','报告包含未审计图像之间的比较');
     const reportId=await driver.findElement(By.css('select[aria-label="报告记录"]')).getAttribute('value');
     const exported=await fetch(`${base}/api/iad/dataset-reports/${reportId}/export`);
     assert.equal(exported.status,200);const html=await exported.text();
     assert.ok(html.includes('数据集范围结论由模型实际生成。')&&html.includes('data:image/png;base64,'));
     assert.ok(html.includes('原图完整解码')&&html.includes('空间标注坐标有效')&&html.includes('框面积 / 原图面积'));
+    assert.ok(html.includes('当前比较对')&&html.includes('严格同图检查覆盖'));
 
     const ids=[0,1,2].map(index=>dataset.dataset_id+`:part-${index}.png`);
     failing.add(ids[1]);failing.add(ids[2]);

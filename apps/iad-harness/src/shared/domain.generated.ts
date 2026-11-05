@@ -394,6 +394,30 @@ export type ErrorCode =
   | null;
 export type Reason3 = string | null;
 export type ConsistencyRecords = AuditConsistencyRecord[];
+export type QueryId = string;
+export type ScopeId1 = string;
+export type DatasetIds1 = string[];
+export type FrozenAt = string;
+export type SampleCount = number;
+export type ObservedAt = string;
+export type Current = number;
+export type Historical = number;
+export type Unknown = number;
+export type Total1 = number;
+export type Mode1 = ("exact" | "visual" | "combined") | null;
+export type ProfileId1 = string | null;
+export type RetrievalCompleteness = "EXACT_SCOPE" | "TOP_K" | "PARTIAL" | "INDEX_ONLY";
+export type Pairs = number;
+export type StrictGroups = number;
+export type StrictMembers = number;
+export type ConfirmedQualityConflicts = number;
+export type RegionalDifferences = number;
+export type PolicyUnknown = number;
+export type Differences = number;
+export type InvalidAnnotationPairs = number;
+export type UnavailableEvidencePairs = number;
+export type PendingReview = number;
+export type PendingCorrection = number;
 export type SampleId7 = string;
 export type DatasetId1 = string;
 export type RunId2 = string;
@@ -870,7 +894,7 @@ export type DatasetId13 = string;
 export type Kind4 = ("normal" | "defect") | null;
 export type Recorded = boolean;
 export type Parts1 = ObservedPart[];
-export type Total1 = number;
+export type Total2 = number;
 export type Page = number;
 export type PageSize = number;
 export type Items = DiscoveryArea[];
@@ -885,7 +909,7 @@ export type ObservedVisuals = number;
 export type PublishedSources = number;
 export type Page1 = number;
 export type PageSize1 = number;
-export type Total2 = number;
+export type Total3 = number;
 export type SampleId11 = string;
 export type Observed = boolean;
 export type Items1 = KnowledgeTraceItem[];
@@ -901,7 +925,7 @@ export type DatasetId15 = string;
 export type Objective4 = string;
 export type Status11 = "ACTIVE" | "STOPPED";
 export type CurrentVersionId = string | null;
-export type Total3 = number;
+export type Total4 = number;
 export type Observed1 = number;
 export type ValidObserved = number;
 export type Stale = number;
@@ -909,7 +933,7 @@ export type Excluded = number;
 export type Recheck = number;
 export type Unprocessed = number;
 export type Remaining = number;
-export type PendingReview = number;
+export type PendingReview1 = number;
 export type RunIds = string[];
 export type VersionIds = string[];
 export type ActiveRunIds = string[];
@@ -925,7 +949,7 @@ export type ReviewStatus = "all" | "pending" | "confirmed" | "rejected" | "confl
 export type VersionId8 = string;
 export type DatasetId16 = string;
 export type Kind5 = ("normal" | "defect") | null;
-export type Total4 = number;
+export type Total5 = number;
 export type Page3 = number;
 export type PageSize3 = number;
 export type Title5 = string;
@@ -954,12 +978,12 @@ export type DatasetId17 = string;
 export type Kind6 = ("normal" | "defect") | null;
 export type SupportEvidenceIds2 = string[];
 export type CounterEvidenceIds2 = string[];
-export type Total5 = number;
+export type Total6 = number;
 export type Page4 = number;
 export type PageSize4 = number;
 export type Items3 = KnowledgeEvidence[];
 export type VersionId10 = string;
-export type Total6 = number;
+export type Total7 = number;
 export type Page5 = number;
 export type PageSize5 = number;
 export type Items4 = KnowledgeEvidence[];
@@ -1059,7 +1083,7 @@ export type Search3 = string;
 export type DatasetId22 = string;
 export type Kind10 = ("normal" | "defect") | null;
 export type NormalVersionId4 = string | null;
-export type Total7 = number;
+export type Total8 = number;
 export type UnavailableSourceCount1 = number;
 export type Page7 = number;
 export type PageSize7 = number;
@@ -1069,9 +1093,9 @@ export type Qualification1 = string;
 export type Items5 = KnowledgeSourceItem[];
 export type Recheck1 = number;
 export type VersionId16 = string | null;
-export type Total8 = number;
+export type Total9 = number;
 export type Observed2 = number;
-export type PendingReview1 = number;
+export type PendingReview2 = number;
 export type Stale1 = number;
 export type Remaining1 = number;
 export type DatasetId23 = string;
@@ -1096,7 +1120,7 @@ export type Kind12 = "datasets";
 /**
  * @minItems 1
  */
-export type DatasetIds1 = [string, ...string[]];
+export type DatasetIds2 = [string, ...string[]];
 export type Instruction12 = string;
 export type CallId = string;
 export type RunId9 = string;
@@ -1123,7 +1147,7 @@ export type SampleIds2 = string[] | null;
 export type RunId11 = string;
 export type TaskId1 = string;
 export type DatasetId24 = string;
-export type DatasetIds2 = string[];
+export type DatasetIds3 = string[];
 export type AnalysisKind = ("exploration" | "knowledge" | "consistency") | null;
 export type DatasetId25 = string;
 export type RunId12 = string;
@@ -1183,7 +1207,7 @@ export type ProviderName2 = string | null;
 export type ModelId7 = string | null;
 export type CredentialRef2 = string | null;
 export type Api3 = "openai-completions";
-export type ProfileId1 = string;
+export type ProfileId2 = string;
 export type Backend = "torch_hub" | "torchscript" | "transformers";
 export type ModelId8 = "dinov2_vitb14_reg" | "dinov3_vitb16" | "sscd_disc_mixup";
 export type WeightsRef = string;
@@ -1382,7 +1406,7 @@ export type SourceChangedCount = number;
 export type SourceUnverifiedCount = number;
 export type KnowledgeVersionId5 = string | null;
 export type LegacyProfileId1 = string | null;
-export type SampleCount = number;
+export type SampleCount1 = number;
 export type KnowledgeVersions1 = KnowledgeUsage[];
 export type AuditRunIds = string[];
 /**
@@ -1439,7 +1463,7 @@ export type SubmittedAt2 = string | null;
 export type ReviewDurationMs1 = number;
 export type RelativePath5 = string;
 export type Items7 = ReviewHistoryRecord[];
-export type Total9 = number;
+export type Total10 = number;
 export type Page9 = number;
 export type PageSize9 = number;
 export type RawLabelFilters1 = ("PASS" | "FAIL" | "UNCERTAIN")[];
@@ -1451,7 +1475,7 @@ export type ReferenceStatus1 = "all" | "candidate" | "excluded";
 export type Search6 = string;
 export type SortBy1 = "default" | "risk" | "tech";
 export type DatasetId32 = string | null;
-export type DatasetIds3 = string[] | null;
+export type DatasetIds4 = string[] | null;
 export type TaskId4 = string | null;
 export type Page10 = number;
 export type PageSize10 = number;
@@ -1464,8 +1488,8 @@ export type SampleIds4 = [string, ...string[]];
 export type Kind15 = "filtered";
 export type DatasetId33 = string;
 export type CorpusScope1 = AllRegisteredScope | DatasetScope;
-export type Mode1 = "exact" | "visual" | "combined";
-export type ProfileId2 = string | null;
+export type Mode2 = "exact" | "visual" | "combined";
+export type ProfileId3 = string | null;
 export type RequestId = string;
 export type ModelAnalysisPrompt = string | null;
 export type Prompt = string | null;
@@ -1475,24 +1499,24 @@ export type SampleId25 = string;
 export type Kind17 = "temporary";
 export type ImageRef = string;
 export type CorpusScope2 = AllRegisteredScope | DatasetScope;
-export type Mode2 = "exact" | "visual" | "combined";
-export type ProfileId3 = string | null;
+export type Mode3 = "exact" | "visual" | "combined";
+export type ProfileId4 = string | null;
 export type TopK = number;
 export type Cursor = string | null;
 export type CorpusScope3 = AllRegisteredScope | DatasetScope;
-export type ProfileId4 = string | null;
+export type ProfileId5 = string | null;
 export type RequestId1 = string;
-export type ScopeId1 = string;
-export type DatasetIds4 = string[];
-export type FrozenAt = string;
-export type SampleCount1 = number;
+export type ScopeId2 = string;
+export type DatasetIds5 = string[];
+export type FrozenAt1 = string;
+export type SampleCount2 = number;
 export type Selector = AllRegisteredScope1 | DatasetScope1 | SampleScope1 | FilteredScope1;
 export type Kind18 = "all_registered";
 export type Kind19 = "datasets";
 /**
  * @minItems 1
  */
-export type DatasetIds5 = [string, ...string[]];
+export type DatasetIds6 = [string, ...string[]];
 export type Kind20 = "samples";
 /**
  * @minItems 1
@@ -1531,7 +1555,7 @@ export type ContentGroupId = string;
 export type RetrievalBranch = "exact" | "visual";
 export type Rank = number;
 export type Score = number | null;
-export type ProfileId5 = string | null;
+export type ProfileId6 = string | null;
 export type Relation = "EXACT" | "NEAR_CANDIDATE" | "VISUAL_REFERENCE" | "DIFFERENT" | "UNCHECKED";
 export type EvidenceId6 = string | null;
 export type SampleId28 = string;
@@ -1576,7 +1600,7 @@ export type Pending1 = string[];
 export type ReferenceFromOther = ("left" | "right") | null;
 export type SuspectedMissing = ("left" | "right") | null;
 export type ConfirmedConflict = boolean;
-export type Differences = AnnotationDifference[];
+export type Differences1 = AnnotationDifference[];
 export type InvalidLeft = number;
 export type InvalidRight = number;
 export type ConfirmedConflict1 = boolean;
@@ -1601,15 +1625,15 @@ export type Kind22 = "sample";
 export type SampleId29 = string;
 export type Kind23 = "temporary";
 export type ImageRef1 = string;
-export type ScopeId2 = string;
-export type Mode3 = "exact" | "visual" | "combined";
-export type ProfileId6 = string | null;
+export type ScopeId3 = string;
+export type Mode4 = "exact" | "visual" | "combined";
+export type ProfileId7 = string | null;
 export type Status19 = "READY" | "PARTIAL" | "NOT_READY" | "UNSUPPORTED" | "NOT_REQUESTED";
 export type ContentGroupId1 = string;
 export type Branch = "exact" | "visual";
 export type Rank1 = number;
 export type Score1 = number | null;
-export type ProfileId7 = string | null;
+export type ProfileId8 = string | null;
 export type Origins3 = RetrievalOrigin[];
 export type MemberCount = number;
 export type ConflictCount = number;
@@ -1671,7 +1695,7 @@ export type Reason12 = string | null;
 export type GroupCount1 = number;
 export type MemberCount2 = number;
 export type VisualK = number;
-export type RetrievalCompleteness = "EXACT_SCOPE" | "TOP_K" | "PARTIAL";
+export type RetrievalCompleteness1 = "EXACT_SCOPE" | "TOP_K" | "PARTIAL";
 export type ImageRef2 = string;
 export type Sha2563 = string;
 export type SourceBytes = number;
@@ -1679,9 +1703,9 @@ export type ExpiresInSeconds = number;
 export type CheckId10 = string;
 export type RunId15 = string;
 export type SampleId31 = string;
-export type ScopeId3 = string;
-export type Mode4 = "exact" | "visual" | "combined";
-export type ProfileId8 = string | null;
+export type ScopeId4 = string;
+export type Mode5 = "exact" | "visual" | "combined";
+export type ProfileId9 = string | null;
 export type Status22 = "COMPLETE" | "PARTIAL" | "FAILED";
 export type References1 = AuditResultReference[];
 export type ErrorCode3 =
@@ -1718,7 +1742,7 @@ export type PageSize11 = number;
 export type Status23 = "all" | "suspect" | "insufficient" | "normal" | "unprocessed";
 export type Search7 = string;
 export type RunId17 = string;
-export type Total10 = number;
+export type Total11 = number;
 export type Page12 = number;
 export type PageSize12 = number;
 export type Items8 = AuditSampleItem[];
@@ -1815,7 +1839,7 @@ export type SubmissionId10 = string;
 /**
  * @minItems 1
  */
-export type DatasetIds6 = [string, ...string[]];
+export type DatasetIds7 = [string, ...string[]];
 export type AnalysisKind1 = "exploration";
 export type InitialBatchSize1 = number;
 export type BatchSize2 = number;
@@ -1826,16 +1850,16 @@ export type SubmissionId11 = string;
 /**
  * @minItems 1
  */
-export type DatasetIds7 = [string, ...string[]];
+export type DatasetIds8 = [string, ...string[]];
 export type AnalysisKind2 = "knowledge";
 export type BatchSize3 = number;
 export type SubmissionId12 = string;
 /**
  * @minItems 1
  */
-export type DatasetIds8 = [string, ...string[]];
+export type DatasetIds9 = [string, ...string[]];
 export type AnalysisKind3 = "consistency";
-export type Mode5 = "exact" | "visual" | "combined";
+export type Mode6 = "exact" | "visual" | "combined";
 export type BatchSize4 = number;
 export type CandidateBatchSize = number;
 export type Instruction16 = string;
@@ -1919,7 +1943,7 @@ export type ReviewState = "OPEN" | "NEEDS_CONTEXT" | "RESOLVED";
 export type CorrectionState = "NOT_REQUIRED" | "PROPOSED" | "AWAITING_RESCAN" | "VERIFIED";
 export type DecisionId2 = string | null;
 export type CorrectionDecisionId = string | null;
-export type Differences1 = DifferenceReview[];
+export type Differences2 = DifferenceReview[];
 export type DecisionId3 = string;
 export type ReviewDecisionIds = string[];
 export type SubmittedAt4 = string;
@@ -2050,7 +2074,7 @@ export type EvidenceId14 = string;
 export type ResultId6 = string;
 export type AnnotationCount2 = number;
 export type Issues1 = string[];
-export type Differences2 = AnnotationDifference[];
+export type Differences3 = AnnotationDifference[];
 export type TotalDifferences = number;
 export type RequestedDifferences = number;
 export type UnselectedDifferences = number;
@@ -2102,7 +2126,7 @@ export type Code1 =
   | "RESOURCE_LIMIT"
   | "REFERENCE_NOT_FOUND";
 export type Message3 = string;
-export type Total11 = number;
+export type Total12 = number;
 export type Completed2 = number;
 export type Failed2 = number;
 export type Unprocessed2 = number;
@@ -2119,13 +2143,9 @@ export type BatchId4 = string;
 export type RootBatchId1 = string;
 export type ParentBatchId1 = string | null;
 export type Kind35 = "index" | "consistency";
-export type ScopeId4 = string;
-export type DatasetIds9 = string[];
-export type FrozenAt1 = string;
-export type SampleCount2 = number;
 export type Status27 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type CancelRequested2 = boolean;
-export type Total12 = number;
+export type Total13 = number;
 export type Completed3 = number;
 export type Failed3 = number;
 export type Unprocessed3 = number;
@@ -2171,8 +2191,8 @@ export type Kind39 = "scope";
 export type Subjects3 = AllRegisteredScope | DatasetScope | SampleScope | FilteredScope;
 export type CorpusScope4 = AllRegisteredScope | DatasetScope;
 export type Facts3 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
-export type Mode6 = "exact" | "visual" | "combined";
-export type ProfileId9 = string | null;
+export type Mode7 = "exact" | "visual" | "combined";
+export type ProfileId10 = string | null;
 export type AnnotationDifferencesOnly = boolean;
 export type Relation3 = ("EXACT" | "NEAR_CANDIDATE" | "VISUAL_REFERENCE" | "DIFFERENT" | "UNCHECKED") | null;
 export type ConfirmedConflict2 = boolean | null;
@@ -2192,59 +2212,45 @@ export type ReviewState1 = ("OPEN" | "NEEDS_CONTEXT" | "RESOLVED") | null;
 export type CorrectionState2 = ("NOT_REQUIRED" | "PROPOSED" | "AWAITING_RESCAN" | "VERIFIED") | null;
 export type Cursor2 = string | null;
 export type PageSize13 = number;
-export type QueryId = string;
-export type ObservedAt = string;
-export type Current = number;
-export type Historical = number;
-export type Unknown = number;
+export type QueryId1 = string;
+export type ObservedAt1 = string;
+export type Total14 = number;
+export type Mode8 = ("exact" | "visual" | "combined") | null;
+export type ProfileId11 = string | null;
+export type RetrievalCompleteness2 = "EXACT_SCOPE" | "TOP_K" | "PARTIAL" | "INDEX_ONLY";
 export type SampleA2 = string;
 export type SampleB2 = string;
 export type CheckedAt3 = string;
 export type FactsState = "CURRENT" | "HISTORICAL" | "UNKNOWN";
 export type EvidenceAvailable = boolean;
 export type Items10 = ResultSummary[];
-export type Total13 = number;
 export type NextCursor2 = string | null;
-export type Mode7 = ("exact" | "visual" | "combined") | null;
-export type ProfileId10 = string | null;
-export type RetrievalCompleteness1 = "EXACT_SCOPE" | "TOP_K" | "PARTIAL" | "INDEX_ONLY";
-export type Pairs = number;
-export type StrictGroups = number;
-export type StrictMembers = number;
-export type ConfirmedQualityConflicts = number;
-export type RegionalDifferences = number;
-export type PolicyUnknown = number;
-export type Differences3 = number;
-export type InvalidAnnotationPairs = number;
-export type UnavailableEvidencePairs = number;
-export type PendingReview2 = number;
-export type PendingCorrection = number;
 export type PendingReview3 = number;
 export type PendingCorrection1 = number;
-export type Total14 = number;
+export type Total15 = number;
 export type Confirmed = number | null;
 export type Conflicts6 = number | null;
 export type Excluded1 = number | null;
 export type PolicyNames = string[];
 export type UnavailableReason = string | null;
 export type GoldExcluded = number | null;
-export type QueryId1 = string;
+export type QueryId2 = string;
 export type Page13 = number;
 export type PageSize14 = number;
-export type QueryId2 = string;
+export type QueryId3 = string;
 export type Page14 = number;
 export type PageSize15 = number;
 export type GroupId2 = string;
 export type FactsState1 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
-export type QueryId3 = string;
+export type QueryId4 = string;
 export type GroupId3 = string;
 export type FactsState2 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
 export type MemberCount3 = number;
 export type DatasetCount = number;
 export type PairCount2 = number;
 export type Items11 = StrictGroup[];
-export type Total15 = number;
-export type QueryId4 = string;
+export type Total16 = number;
+export type QueryId5 = string;
 export type GroupId4 = string;
 export type FactsState3 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
 export type SampleId39 = string;
@@ -2252,12 +2258,12 @@ export type DatasetId44 = string;
 export type RelativePath6 = string;
 export type EvidenceId15 = string;
 export type Items12 = GroupMember[];
-export type Total16 = number;
-export type QueryId5 = string;
+export type Total17 = number;
+export type QueryId6 = string;
 export type Kind40 = "conflicts" | "groups";
 export type GroupId5 = string;
 export type FactsState4 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
-export type QueryId6 = string;
+export type QueryId7 = string;
 export type Kind41 = "conflicts" | "groups";
 export type Page15 = number;
 export type PageSize16 = number;
@@ -2265,13 +2271,13 @@ export type Search8 = string;
 export type Order = "recent" | "members";
 export type DifferenceFilter = "all" | "category" | "geometry" | "presence" | "instances" | "multiple";
 export type ModelFilter = "all" | "NOT_ANALYZED" | "RUNNING" | "FAILED" | "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
-export type QueryId7 = string;
+export type QueryId8 = string;
 export type Kind42 = "conflicts" | "groups";
 export type GroupId6 = string;
 export type FactsState5 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
 export type Page16 = number;
 export type PageSize17 = number;
-export type QueryId8 = string;
+export type QueryId9 = string;
 export type Kind43 = "conflicts" | "groups";
 export type Value1 = "all" | "category" | "geometry" | "presence" | "instances" | "multiple";
 export type Label5 = string;
@@ -2304,15 +2310,15 @@ export type ConfirmedConflict3 = boolean;
 export type ModelState = "NOT_ANALYZED" | "RUNNING" | "FAILED" | "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
 export type ReviewState2 = "pending" | "confirmed" | "rejected";
 export type Items13 = GalleryItem[];
-export type Total17 = number;
-export type QueryId9 = string;
+export type Total18 = number;
+export type QueryId10 = string;
 export type GroupId8 = string;
 export type EvidenceId17 = string;
 export type ResultId7 = string;
 export type AnchorSide = "left" | "right";
 export type Items14 = GalleryMember[];
-export type Total18 = number;
-export type QueryId10 = string;
+export type Total19 = number;
+export type QueryId11 = string;
 export type Kind44 = "conflicts" | "groups";
 export type GroupId9 = string;
 export type FactsState7 = "CURRENT" | "HISTORICAL" | "UNKNOWN";
@@ -2398,7 +2404,7 @@ export type GpuMemoryMb2 = number;
 export type ComputeDtype2 = "float32" | "float16";
 export type DecodeWorkers2 = number;
 export type DecodeMemoryMb2 = number;
-export type ProfileId11 = string;
+export type ProfileId12 = string;
 export type Backend1 = "torch_hub" | "torchscript" | "transformers";
 export type ModelId9 = "dinov2_vitb14_reg" | "dinov3_vitb16" | "sscd_disc_mixup";
 export type WeightsRef1 = string;
@@ -2605,6 +2611,7 @@ export interface BenchmarkFacts {
   evaluation_evidence: EvaluationEvidence;
   knowledge_versions: KnowledgeVersions;
   consistency_records: ConsistencyRecords;
+  scope_consistency: ConsistencyReportSummary;
   capability_candidates: CapabilityCandidates;
   cases: Cases;
   signature: Signature2;
@@ -2997,6 +3004,52 @@ export interface AuditResultReference {
   result_id: ResultId;
   evidence_id: EvidenceId2;
   sample_id: SampleId6;
+}
+export interface ConsistencyReportSummary {
+  query_id: QueryId;
+  scopes: ConsistencyScopesSummary;
+  observed_at: ObservedAt;
+  facts: FactCounts;
+  total: Total1;
+  execution: CoverageCount;
+  corpus: CoverageCount;
+  mode: Mode1;
+  profile_id: ProfileId1;
+  retrieval_completeness: RetrievalCompleteness;
+  statistics: ReportStatistics;
+}
+export interface ConsistencyScopesSummary {
+  subjects: ScopeSummary;
+  corpus: ScopeSummary;
+}
+export interface ScopeSummary {
+  scope_id: ScopeId1;
+  dataset_ids: DatasetIds1;
+  frozen_at: FrozenAt;
+  sample_count: SampleCount;
+}
+export interface FactCounts {
+  current: Current;
+  historical: Historical;
+  unknown: Unknown;
+}
+export interface ReportStatistics {
+  current: FactStatistics;
+  historical: FactStatistics;
+  unknown: FactStatistics;
+}
+export interface FactStatistics {
+  pairs: Pairs;
+  strict_groups: StrictGroups;
+  strict_members: StrictMembers;
+  confirmed_quality_conflicts: ConfirmedQualityConflicts;
+  regional_differences: RegionalDifferences;
+  policy_unknown: PolicyUnknown;
+  differences: Differences;
+  invalid_annotation_pairs: InvalidAnnotationPairs;
+  unavailable_evidence_pairs: UnavailableEvidencePairs;
+  pending_review: PendingReview;
+  pending_correction: PendingCorrection;
 }
 export interface CapabilityCandidates {
   [k: string]: string[];
@@ -3563,7 +3616,7 @@ export interface KnowledgeDiscoveryPage {
   kind: Kind4;
   recorded: Recorded;
   parts: Parts1;
-  total: Total1;
+  total: Total2;
   page: Page;
   page_size: PageSize;
   items: Items;
@@ -3575,7 +3628,7 @@ export interface KnowledgeTracePage {
   progress: JobObservationProgress;
   page: Page1;
   page_size: PageSize1;
-  total: Total2;
+  total: Total3;
   items: Items1;
 }
 export interface JobObservationProgress {
@@ -3606,7 +3659,7 @@ export interface KnowledgeScopeSnapshot {
   objective: Objective4;
   status: Status11;
   current_version_id: CurrentVersionId;
-  total: Total3;
+  total: Total4;
   observed: Observed1;
   valid_observed: ValidObserved;
   stale: Stale;
@@ -3614,7 +3667,7 @@ export interface KnowledgeScopeSnapshot {
   recheck: Recheck;
   unprocessed: Unprocessed;
   remaining: Remaining;
-  pending_review: PendingReview;
+  pending_review: PendingReview1;
   run_ids: RunIds;
   version_ids: VersionIds;
   active_run_ids: ActiveRunIds;
@@ -3634,7 +3687,7 @@ export interface KnowledgeCheckPage {
   version_id: VersionId8;
   dataset_id: DatasetId16;
   kind: Kind5;
-  total: Total4;
+  total: Total5;
   page: Page3;
   page_size: PageSize3;
   items: Items2;
@@ -3668,14 +3721,14 @@ export interface KnowledgeCheckEvidencePage {
   check: KnowledgeCheckSummary;
   support_evidence_ids: SupportEvidenceIds2;
   counter_evidence_ids: CounterEvidenceIds2;
-  total: Total5;
+  total: Total6;
   page: Page4;
   page_size: PageSize4;
   items: Items3;
 }
 export interface KnowledgeEvidencePage {
   version_id: VersionId10;
-  total: Total6;
+  total: Total7;
   page: Page5;
   page_size: PageSize5;
   items: Items4;
@@ -3792,7 +3845,7 @@ export interface KnowledgeSourcePage {
   dataset_id: DatasetId22;
   kind: Kind10;
   normal_version_id: NormalVersionId4;
-  total: Total7;
+  total: Total8;
   unavailable_source_count: UnavailableSourceCount1;
   page: Page7;
   page_size: PageSize7;
@@ -3807,9 +3860,9 @@ export interface KnowledgeSourceItem {
 export interface KnowledgeCoverage {
   recheck: Recheck1;
   version_id: VersionId16;
-  total: Total8;
+  total: Total9;
   observed: Observed2;
-  pending_review: PendingReview1;
+  pending_review: PendingReview2;
   stale: Stale1;
   remaining: Remaining1;
 }
@@ -3841,7 +3894,7 @@ export interface AllRegisteredScope {
 }
 export interface DatasetScope {
   kind?: Kind12;
-  dataset_ids: DatasetIds1;
+  dataset_ids: DatasetIds2;
 }
 export interface ModelCallDetail {
   call_id: CallId;
@@ -3874,7 +3927,7 @@ export interface JobSnapshot {
   run_id: RunId11;
   task_id: TaskId1;
   dataset_id: DatasetId24;
-  dataset_ids: DatasetIds2;
+  dataset_ids: DatasetIds3;
   analysis_kind: AnalysisKind;
   dataset_results: DatasetResults;
   program_batch_id: ProgramBatchId;
@@ -3959,7 +4012,7 @@ export interface RequestParameters4 {
   [k: string]: unknown;
 }
 export interface EmbeddingProfile {
-  profile_id: ProfileId1;
+  profile_id: ProfileId2;
   backend: Backend;
   model_id: ModelId8;
   weights_ref: WeightsRef;
@@ -4189,7 +4242,7 @@ export interface LabelComparison {
 export interface KnowledgeUsage {
   knowledge_version_id: KnowledgeVersionId5;
   legacy_profile_id: LegacyProfileId1;
-  sample_count: SampleCount;
+  sample_count: SampleCount1;
 }
 export interface MiningStart {
   knowledge_preset?: KnowledgePreset1;
@@ -4220,7 +4273,7 @@ export interface ReviewHistoryQuery {
 }
 export interface ReviewHistoryPage {
   items: Items7;
-  total: Total9;
+  total: Total10;
   page: Page9;
   page_size: PageSize9;
 }
@@ -4248,7 +4301,7 @@ export interface SampleQuery {
   search?: Search6;
   sort_by?: SortBy1;
   dataset_id?: DatasetId32;
-  dataset_ids?: DatasetIds3;
+  dataset_ids?: DatasetIds4;
   task_id?: TaskId4;
   page?: Page10;
   page_size?: PageSize10;
@@ -4256,8 +4309,8 @@ export interface SampleQuery {
 export interface ConsistencyStart {
   subjects: Subjects1;
   corpus_scope?: CorpusScope1;
-  mode?: Mode1;
-  profile_id?: ProfileId2;
+  mode?: Mode2;
+  profile_id?: ProfileId3;
   request_id: RequestId;
   model_analysis_prompt?: ModelAnalysisPrompt;
   prompt?: Prompt;
@@ -4274,8 +4327,8 @@ export interface FilteredScope {
 export interface ImageRetrieve {
   query: Query;
   corpus_scope?: CorpusScope2;
-  mode?: Mode2;
-  profile_id?: ProfileId3;
+  mode?: Mode3;
+  profile_id?: ProfileId4;
   top_k?: TopK;
   cursor?: Cursor;
 }
@@ -4289,7 +4342,7 @@ export interface TemporaryImageQuery {
 }
 export interface ImageIndexPrepare {
   corpus_scope?: CorpusScope3;
-  profile_id?: ProfileId4;
+  profile_id?: ProfileId5;
   request_id: RequestId1;
 }
 export interface ConsistencyScopesSnapshot {
@@ -4297,10 +4350,10 @@ export interface ConsistencyScopesSnapshot {
   corpus: FrozenScope;
 }
 export interface FrozenScope {
-  scope_id: ScopeId1;
-  dataset_ids: DatasetIds4;
-  frozen_at: FrozenAt;
-  sample_count: SampleCount1;
+  scope_id: ScopeId2;
+  dataset_ids: DatasetIds5;
+  frozen_at: FrozenAt1;
+  sample_count: SampleCount2;
   selector: Selector;
   samples: Samples1;
   scans: Scans;
@@ -4310,7 +4363,7 @@ export interface AllRegisteredScope1 {
 }
 export interface DatasetScope1 {
   kind: Kind19;
-  dataset_ids: DatasetIds5;
+  dataset_ids: DatasetIds6;
 }
 export interface SampleScope1 {
   kind: Kind20;
@@ -4360,7 +4413,7 @@ export interface RetrievalCandidate {
   retrieval_branch: RetrievalBranch;
   rank: Rank;
   score: Score;
-  profile_id: ProfileId5;
+  profile_id: ProfileId6;
   relation: Relation;
   evidence_id: EvidenceId6;
 }
@@ -4389,7 +4442,7 @@ export interface AnnotationComparison {
   status: Status18;
   policy_relation: PolicyRelation;
   matches: Matches;
-  differences: Differences;
+  differences: Differences1;
   invalid_left: InvalidLeft;
   invalid_right: InvalidRight;
   confirmed_conflict: ConfirmedConflict1;
@@ -4437,16 +4490,16 @@ export interface AnnotationMatchingConfig {
 }
 export interface RetrievalPage {
   query: Query1;
-  scope_id: ScopeId2;
-  mode: Mode3;
-  profile_id: ProfileId6;
+  scope_id: ScopeId3;
+  mode: Mode4;
+  profile_id: ProfileId7;
   exact: RetrievalBranchPage;
   visual: RetrievalBranchPage;
   coverage: ConsistencyCoverage;
   group_count: GroupCount1;
   member_count: MemberCount2;
   visual_k: VisualK;
-  retrieval_completeness: RetrievalCompleteness;
+  retrieval_completeness: RetrievalCompleteness1;
 }
 export interface SampleImageQuery1 {
   kind: Kind22;
@@ -4478,7 +4531,7 @@ export interface RetrievalOrigin {
   branch: Branch;
   rank: Rank1;
   score: Score1;
-  profile_id: ProfileId7;
+  profile_id: ProfileId8;
 }
 export interface RetrievalMember {
   sample_id: SampleId30;
@@ -4528,9 +4581,9 @@ export interface AuditConsistencyView {
   check_id: CheckId10;
   run_id: RunId15;
   sample_id: SampleId31;
-  scope_id: ScopeId3;
-  mode: Mode4;
-  profile_id: ProfileId8;
+  scope_id: ScopeId4;
+  mode: Mode5;
+  profile_id: ProfileId9;
   status: Status22;
   coverage: ConsistencyCoverage | null;
   references: References1;
@@ -4570,7 +4623,7 @@ export interface AuditSampleQuery {
 }
 export interface AuditSamplePage {
   run_id: RunId17;
-  total: Total10;
+  total: Total11;
   page: Page12;
   page_size: PageSize12;
   distribution: Distribution;
@@ -4715,7 +4768,7 @@ export interface ExplorationBatchStart {
 }
 export interface ExplorationWorkflowStart {
   submission_id: SubmissionId10;
-  dataset_ids: DatasetIds6;
+  dataset_ids: DatasetIds7;
   analysis_kind: AnalysisKind1;
   initial_batch_size: InitialBatchSize1;
   batch_size: BatchSize2;
@@ -4726,16 +4779,16 @@ export interface ExplorationWorkflowStart {
 }
 export interface KnowledgeWorkflowStart {
   submission_id: SubmissionId11;
-  dataset_ids: DatasetIds7;
+  dataset_ids: DatasetIds8;
   analysis_kind: AnalysisKind2;
   batch_size: BatchSize3;
   mining_prompt: SubmittedMiningPrompt1;
 }
 export interface ConsistencyWorkflowStart {
   submission_id: SubmissionId12;
-  dataset_ids: DatasetIds8;
+  dataset_ids: DatasetIds9;
   analysis_kind: AnalysisKind3;
-  mode: Mode5;
+  mode: Mode6;
   batch_size: BatchSize4;
   candidate_batch_size: CandidateBatchSize;
   instruction: Instruction16;
@@ -4816,7 +4869,7 @@ export interface ConsistencyReviewContext {
   evidence_id: EvidenceId9;
   result_id: ResultId4;
   source_states: EvidenceSourceStates;
-  differences: Differences1;
+  differences: Differences2;
   decisions: Decisions;
   review_events: ReviewEvents;
   corrections: Corrections1;
@@ -4993,7 +5046,7 @@ export interface ConsistencyContext {
   review_context: ConsistencyReviewContext;
   sources: Sources1;
   verification: VerificationResult;
-  differences: Differences2;
+  differences: Differences3;
   total_differences: TotalDifferences;
   requested_differences: RequestedDifferences;
   unselected_differences: UnselectedDifferences;
@@ -5054,7 +5107,7 @@ export interface ConsistencyBatch {
   status: Status26;
   cancel_requested: CancelRequested1;
   error: BatchFailure | null;
-  total: Total11;
+  total: Total12;
   completed: Completed2;
   failed: Failed2;
   unprocessed: Unprocessed2;
@@ -5088,7 +5141,7 @@ export interface ConsistencyBatchSummary {
   status: Status27;
   cancel_requested: CancelRequested2;
   error: BatchFailure | null;
-  total: Total12;
+  total: Total13;
   completed: Completed3;
   failed: Failed3;
   unprocessed: Unprocessed3;
@@ -5097,16 +5150,6 @@ export interface ConsistencyBatchSummary {
   conflict_count: ConflictCount2;
   duration_seconds: DurationSeconds1;
   children: Children1;
-}
-export interface ConsistencyScopesSummary {
-  subjects: ScopeSummary;
-  corpus: ScopeSummary;
-}
-export interface ScopeSummary {
-  scope_id: ScopeId4;
-  dataset_ids: DatasetIds9;
-  frozen_at: FrozenAt1;
-  sample_count: SampleCount2;
 }
 export interface ConsistencyChildSummary {
   run_id: RunId19;
@@ -5149,27 +5192,22 @@ export interface ScopeSelection {
   subjects: Subjects3;
   corpus_scope?: CorpusScope4;
   facts?: Facts3;
-  mode?: Mode6;
-  profile_id?: ProfileId9;
+  mode?: Mode7;
+  profile_id?: ProfileId10;
 }
 export interface ResultPage {
-  query_id: QueryId;
+  query_id: QueryId1;
   scopes: ConsistencyScopesSummary;
-  observed_at: ObservedAt;
+  observed_at: ObservedAt1;
   facts: FactCounts;
-  items: Items10;
-  total: Total13;
-  next_cursor: NextCursor2;
+  total: Total14;
   execution: CoverageCount;
   corpus: CoverageCount;
-  mode: Mode7;
-  profile_id: ProfileId10;
-  retrieval_completeness: RetrievalCompleteness1;
-}
-export interface FactCounts {
-  current: Current;
-  historical: Historical;
-  unknown: Unknown;
+  mode: Mode8;
+  profile_id: ProfileId11;
+  retrieval_completeness: RetrievalCompleteness2;
+  items: Items10;
+  next_cursor: NextCursor2;
 }
 export interface ResultSummary {
   sample_a: SampleA2;
@@ -5188,26 +5226,8 @@ export interface ConsistencyReport {
   gold: GoldAvailability;
   gold_excluded: GoldExcluded;
 }
-export interface ReportStatistics {
-  current: FactStatistics;
-  historical: FactStatistics;
-  unknown: FactStatistics;
-}
-export interface FactStatistics {
-  pairs: Pairs;
-  strict_groups: StrictGroups;
-  strict_members: StrictMembers;
-  confirmed_quality_conflicts: ConfirmedQualityConflicts;
-  regional_differences: RegionalDifferences;
-  policy_unknown: PolicyUnknown;
-  differences: Differences3;
-  invalid_annotation_pairs: InvalidAnnotationPairs;
-  unavailable_evidence_pairs: UnavailableEvidencePairs;
-  pending_review: PendingReview2;
-  pending_correction: PendingCorrection;
-}
 export interface GoldAvailability {
-  total: Total14;
+  total: Total15;
   confirmed: Confirmed;
   conflicts: Conflicts6;
   excluded: Excluded1;
@@ -5215,21 +5235,21 @@ export interface GoldAvailability {
   unavailable_reason: UnavailableReason;
 }
 export interface GroupQuery {
-  query_id: QueryId1;
+  query_id: QueryId2;
   page?: Page13;
   page_size?: PageSize14;
 }
 export interface GroupMemberQuery {
-  query_id: QueryId2;
+  query_id: QueryId3;
   page?: Page14;
   page_size?: PageSize15;
   group_id: GroupId2;
   facts_state?: FactsState1;
 }
 export interface StrictGroupPage {
-  query_id: QueryId3;
+  query_id: QueryId4;
   items: Items11;
-  total: Total15;
+  total: Total16;
 }
 export interface StrictGroup {
   group_id: GroupId3;
@@ -5239,11 +5259,11 @@ export interface StrictGroup {
   pair_count: PairCount2;
 }
 export interface GroupMemberPage {
-  query_id: QueryId4;
+  query_id: QueryId5;
   group_id: GroupId4;
   facts_state: FactsState3;
   items: Items12;
-  total: Total16;
+  total: Total17;
 }
 export interface GroupMember {
   sample_id: SampleId39;
@@ -5252,13 +5272,13 @@ export interface GroupMember {
   evidence_id: EvidenceId15;
 }
 export interface GalleryReference {
-  query_id: QueryId5;
+  query_id: QueryId6;
   kind: Kind40;
   group_id: GroupId5;
   facts_state?: FactsState4;
 }
 export interface GalleryQuery {
-  query_id: QueryId6;
+  query_id: QueryId7;
   kind: Kind41;
   page?: Page15;
   page_size?: PageSize16;
@@ -5268,7 +5288,7 @@ export interface GalleryQuery {
   model_filter?: ModelFilter;
 }
 export interface GalleryMemberQuery {
-  query_id: QueryId7;
+  query_id: QueryId8;
   kind: Kind42;
   group_id: GroupId6;
   facts_state?: FactsState5;
@@ -5276,12 +5296,12 @@ export interface GalleryMemberQuery {
   page_size?: PageSize17;
 }
 export interface GalleryPage {
-  query_id: QueryId8;
+  query_id: QueryId9;
   kind: Kind43;
   filters: Filters;
   model_filters: ModelFilters;
   items: Items13;
-  total: Total17;
+  total: Total18;
 }
 export interface GalleryFilterCount {
   value: Value1;
@@ -5313,11 +5333,11 @@ export interface GalleryImage {
   available: Available1;
 }
 export interface GalleryMemberPage {
-  query_id: QueryId9;
+  query_id: QueryId10;
   group_id: GroupId8;
   anchor: GalleryImage;
   items: Items14;
-  total: Total18;
+  total: Total19;
 }
 export interface GalleryMember {
   image: GalleryImage;
@@ -5329,7 +5349,7 @@ export interface GalleryComparison {
   anchor_side: AnchorSide;
 }
 export interface GroupAnalysisStart {
-  query_id: QueryId10;
+  query_id: QueryId11;
   kind: Kind44;
   group_id: GroupId9;
   facts_state?: FactsState7;
@@ -5417,7 +5437,7 @@ export interface ImageEncoderConfig1 {
   profile: EmbeddingProfile1;
 }
 export interface EmbeddingProfile1 {
-  profile_id: ProfileId11;
+  profile_id: ProfileId12;
   backend: Backend1;
   model_id: ModelId9;
   weights_ref: WeightsRef1;

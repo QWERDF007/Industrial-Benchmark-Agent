@@ -5,6 +5,7 @@ from iad_core.workbench.report_requirements import REPORT_METRICS
 def report_data(facts: BenchmarkFacts) -> dict[str, list[dict[str, str]]]:
     annotations = facts.annotation_coverage
     technical = facts.technical_evidence
+    consistency = facts.scope_consistency
     result = {
         'technical_usability': [dict(label=label, value=f'{ratio.numerator}/{ratio.denominator}' if ratio.denominator else '不可计算', basis=ratio.basis) for label, ratio in [
             ('原图完整解码', technical.image_decoding), ('空间标注坐标有效', technical.annotation_geometry),
@@ -36,6 +37,17 @@ def report_data(facts: BenchmarkFacts) -> dict[str, list[dict[str, str]]]:
         'evaluation_evidence': ([dict(label=item['model_id'], value=item['status'], basis=item['scope_note']) for item in facts.evaluation_evidence]
             or [dict(label='独立模型评测', value='未提供', basis='缺冻结划分、Val 阈值和实际预测，不把构建审计当 Test 成绩')]),
         'consistency_records': [dict(label='冻结一致性记录', value=str(len(facts.consistency_records)), basis='与本次有效审计对应的比较线索，不与疑点数相加')],
+        'scope_consistency': [dict(label=label,value=str(getattr(consistency.statistics.current,key)),
+            basis='选定范围与同范围检索库的当前结果；对向比较去重，差异项不等于图像数或已确认业务错误') for label,key in [
+            ('当前比较对','pairs'), ('严格同图组','strict_groups'), ('严格同图成员','strict_members'),
+            ('已确认质量标签冲突项','confirmed_quality_conflicts'), ('区域标注差异项','regional_differences'),
+            ('待确认策略项','policy_unknown'), ('无效标注比较对','invalid_annotation_pairs'), ('待复核差异项','pending_review')]] + [
+            dict(label='历史比较记录',value=str(consistency.facts.historical),basis='历史结果不混入当前比较统计'),
+            dict(label='资格未知比较记录',value=str(consistency.facts.unknown),basis='来源或证据不可核验的记录不混入当前比较统计'),
+            dict(label='严格同图检查覆盖',value=f'{consistency.execution.completed}/{consistency.execution.total}',
+                basis='复用匹配当前范围的既有检查；不把已检查图像数当成相似图穷举证明'),
+            dict(label='检查完整性',value={'EXACT_SCOPE':'严格同图范围完整','TOP_K':'候选检索 Top-K','PARTIAL':'部分完成','INDEX_ONLY':'仅索引'}[consistency.retrieval_completeness],
+                basis='当前严格同图检查口径；未处理、失败与无匹配的来源分别保留')],
         'scope_dataset_ids': [dict(label='子数据集', value=str(len(facts.scope_dataset_ids)), basis='去重登记图像为覆盖率分母，未审计保留')],
     }
     for group, specifications in REPORT_METRICS.items():

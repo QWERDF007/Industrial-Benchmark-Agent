@@ -3,17 +3,17 @@ from iad_core.workbench.prompt_text import RESPONSE_FORMAT_INSTRUCTION
 
 REPORT_REQUIREMENTS = {
     'technical_usability': dict(card='dataset', title='技术可用性', data=['technical_usability', 'technical_states', 'annotation_coverage'], required='图像可读率、坐标有效率、原图与标注对应情况'),
-    'label_trust': dict(card='dataset', title='标签可信性与 Gold 资格', data=['raw_labels', 'gold_by_policy', 'label_comparison'], required='确认覆盖、未决、银标、独立随机抽查及加权标签错误估计'),
+    'label_trust': dict(card='dataset', title='标签可信性与 Gold 资格', data=['raw_labels', 'gold_by_policy', 'label_comparison', 'scope_consistency'], required='确认覆盖、未决、银标、独立随机抽查及加权标签错误估计'),
     'annotation_completeness': dict(card='dataset', title='标注完整性', data=['annotation_coverage'], required='图像与区域核验、完整或部分标注资格、bbox 与真实 mask 分层'),
     'rule_explanation': dict(card='dataset', title='规则可解释性与正反证据', data=['knowledge_versions'], required='可见事实、验收来源、适用条件、支持、反驳、独立验证与未决原因'),
     'normal_coverage': dict(card='dataset', title='正常变化覆盖', data=['independence', 'capability_candidates'], required='已知批次、域、允许变化覆盖及独立物理件数'),
     'defect_coverage': dict(card='dataset', title='缺陷覆盖', data=['annotation_coverage', 'bbox_scale', 'capability_candidates', 'outcomes'], required='形态、位置、框尺度、可见对比与结构关系，候选与确认分开'),
-    'independence': dict(card='dataset', title='独立性与代表性', data=['independence'], required='物理件、批次、连拍、重复、跨划分关联及生产分布范围'),
+    'independence': dict(card='dataset', title='独立性与代表性', data=['independence', 'scope_consistency'], required='物理件、批次、连拍、重复、跨划分关联及生产分布范围'),
     'statistical_support': dict(card='dataset', title='统计支撑', data=['coverage', 'independence', 'capability_candidates'], required='有效独立分子分母、各切片样本数、差异区间及最低可辨差异'),
     'discrimination': dict(card='dataset', title='区分能力', data=['evaluation_evidence'], required='开发试评天花板或地板、同样本模型配对差异、排名稳定性和保留集确认'),
     'detection': dict(card='model', title='缺陷检出', data=['evaluation_evidence', 'gold_by_policy'], required='Val 冻结阈值的 Test Recall、TP、FN、各类漏检，I-AUROC 与 I-AP 及异常比例'),
     'normal_tolerance': dict(card='model', title='普通与困难良品容忍', data=['evaluation_evidence', 'gold_by_policy'], required='Test FPR、FP、TN、Hard-Normal FPR，各自有效分母及未知样本'),
-    'acceptance_boundary': dict(card='model', title='验收边界区分', data=['evaluation_evidence', 'consistency_records'], required='确认 OK/NG 成对同时判对率、对内排序、同分约定、配对连通组'),
+    'acceptance_boundary': dict(card='model', title='验收边界区分', data=['evaluation_evidence', 'consistency_records', 'scope_consistency'], required='确认 OK/NG 成对同时判对率、对内排序、同分约定、配对连通组'),
     'small_defects': dict(card='model', title='细小与低对比缺陷', data=['evaluation_evidence', 'capability_candidates', 'annotation_coverage', 'bbox_scale'], required='原图尺度及模型输入尺度分层 Recall、定位召回、语义切片抽查'),
     'localization': dict(card='model', title='局部定位', data=['evaluation_evidence', 'annotation_coverage'], required='完整 bbox AP/Recall、部分标注区域召回、可靠 mask 的 P-AUROC/P-AP/P-AUPRO 与忽略区'),
     'structural_relations': dict(card='model', title='结构关系', data=['evaluation_evidence', 'capability_candidates'], required='缺失、多件、错位及对应正常结构的独立切片 Recall/FPR'),
@@ -49,6 +49,7 @@ DEFAULT_REPORT_PROMPT = '''依据冻结报告事实和本次实际图像，逐�
 report_observation阶段只将本批实际图像作为视觉依据，统计仍使用完整冻结范围；report_summary阶段结合全部child_reports与实际代表图归纳，不丢弃冲突、缺证和子批观察范围，子批实际已见图像可以通过结构化字段追溯。
 每节采用结论、真实数据、图像证据与适用限制的语义，分析简洁连贯；不得从缺失记录补造测量或业务门槛，不输出未经校准的质量总分。
 statistics是确定性统计的唯一来源。原始标签不是独立Gold；不一致率不是错误率，高风险送审改标率不能代替总体标签错误估计。
+scope_consistency是选定范围内的去重一致性统计，consistency_records只覆盖本次有效审计引用的比较线索，两者不相加。严格同图检查覆盖不代表相似图穷举；相似关系保留为候选，不作像素一致证明，历史或资格未知记录不混入当前统计。
 构建工具的审计建议不等于参评模型预测。缺独立真值、相同冻结输入协议、有效分母或实际预测时，不得宣称模型准确率、Recall、FPR、定位成绩或模型排名。
 无缺陷、无困难良品、无可靠mask、空分母和未测量均不能写成零错误。bbox不得当真实mask或缺陷面积，部分标注的未匹配预测不自动算误报。
 按独立物理件或配对连通组解释统计支撑；生产分布未知时只讨论观察范围；切片可重叠，不虚增样本。无法区分模型时据实写样本不足。

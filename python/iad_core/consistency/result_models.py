@@ -57,37 +57,31 @@ class FactCounts(AnalysisModel):
     unknown: Count = 0
 
 
-class ResultSnapshot(AnalysisModel):
-    query_id: Identifier
-    query_hash: Identifier
-    request: ConsistencyQuery
-    scopes: ConsistencyScopesSnapshot
-    observed_at: AwareDatetime
-    expires_at: AwareDatetime
-    facts: FactCounts
-    total: Count
-    execution: CoverageCount
-    corpus: CoverageCount
-    mode: Mode | None
-    profile_id: Identifier | None
-    retrieval_completeness: ExecutionCompleteness
-    statistics: 'ReportStatistics'
-    gold: GoldAvailability
-
-
-class ResultPage(AnalysisModel):
+class ResultCoverage(AnalysisModel):
     query_id: Identifier
     scopes: ConsistencyScopesSummary
     observed_at: AwareDatetime
     facts: FactCounts
-    items: list[ResultSummary]
     total: Count
-    next_cursor: Identifier | None = None
     execution: CoverageCount
     corpus: CoverageCount
     mode: Mode | None
     profile_id: Identifier | None
     retrieval_completeness: ExecutionCompleteness
+
+
+class ResultSnapshot(ResultCoverage):
+    query_hash: Identifier
+    request: ConsistencyQuery
+    scopes: ConsistencyScopesSnapshot
+    expires_at: AwareDatetime
+    statistics: 'ReportStatistics'
+    gold: GoldAvailability
+
+
+class ResultPage(ResultCoverage):
+    items: list[ResultSummary]
+    next_cursor: Identifier | None = None
 
 
 class ResultCursor(AnalysisModel):
@@ -114,6 +108,10 @@ class ReportStatistics(AnalysisModel):
     current: FactStatistics = Field(default_factory=FactStatistics)
     historical: FactStatistics = Field(default_factory=FactStatistics)
     unknown: FactStatistics = Field(default_factory=FactStatistics)
+
+
+class ConsistencyReportSummary(ResultCoverage):
+    statistics: ReportStatistics
 
 
 class ConsistencyReport(AnalysisModel):

@@ -11,6 +11,53 @@ from iad_core.workbench.vision import VlmClient
 from iad_core.workbench.audit_protocol import AUDIT_GENERATION_VERSION
 
 
+def test_report_keeps_scope_consistency_outside_the_audited_samples(dataset, tmp_path):
+    import time
+    from iad_core.consistency.evidence_models import ConsistencyCompare
+    from iad_core.consistency.models import ConsistencyStart
+    from iad_core.consistency.service import ConsistencyService
+    from iad_core.workbench.benchmark_report import BenchmarkReportFacts
+    from iad_core.workbench.dataset_report_data import report_data
+
+    db, registry, config = dataset
+    shutil.copytree(tmp_path/'images', tmp_path/'outside-images')
+    shutil.copytree(tmp_path/'labels', tmp_path/'outside-labels')
+    outside = registry.import_labelme(DatasetImport(format='labelme',name='其他范围',
+        image_dir=str(tmp_path/'outside-images'),annotation_dir=str(tmp_path/'outside-labels')))
+    service = ConsistencyService(db)
+    service.compare(ConsistencyCompare(sample_a=outside.dataset.id+':dent.png',sample_b=outside.dataset.id+':scratch.png'))
+    runtime = WorkbenchRuntime(db)
+    try:
+        scope = dict(kind='datasets',dataset_ids=[config.dataset.id])
+        started = runtime.consistency.start(ConsistencyStart(subjects=scope,corpus_scope=scope,request_id='report-scope-consistency'))
+        deadline = time.monotonic()+10
+        while time.monotonic()<deadline:
+            batch = runtime.consistency.status(started.batch_id)
+            if batch.status not in ('PENDING','RUNNING'):
+                break
+            time.sleep(.01)
+        assert batch.status=='COMPLETED'
+        facts = BenchmarkReportFacts(db).capture([config.dataset.id])
+        assert facts.audited_samples==0 and facts.consistency_records==[]
+        consistency = facts.scope_consistency
+        assert consistency.scopes.subjects.dataset_ids==consistency.scopes.corpus.dataset_ids==[config.dataset.id]
+        assert consistency.scopes.subjects.sample_count==consistency.scopes.corpus.sample_count==4
+        assert consistency.total==consistency.statistics.current.pairs==1
+        assert consistency.statistics.current.strict_groups==1 and consistency.statistics.current.strict_members==2
+        assert consistency.statistics.current.confirmed_quality_conflicts==0
+        assert consistency.execution.completed==consistency.execution.total==4
+        assert consistency.mode=='exact' and consistency.retrieval_completeness=='EXACT_SCOPE'
+        rows=report_data(facts)['scope_consistency']
+        assert next(row['value'] for row in rows if row['label']=='严格同图组')=='1'
+        frozen=facts.model_dump_json(round_trip=True)
+        service.compare(ConsistencyCompare(sample_a=config.dataset.id+':normal.png',sample_b=config.dataset.id+':normal2.png'))
+        refreshed=BenchmarkReportFacts(db).capture([config.dataset.id])
+        assert refreshed.scope_consistency.total==2
+        assert facts.model_dump_json(round_trip=True)==frozen
+    finally:
+        runtime.close()
+
+
 def test_report_separates_image_decoding_annotation_geometry_and_box_scale(dataset, tmp_path):
     from PIL import Image
     from iad_core.workbench.benchmark_report import BenchmarkReportFacts

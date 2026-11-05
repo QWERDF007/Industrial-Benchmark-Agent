@@ -6,6 +6,10 @@ from pydantic import Field
 
 from iad_core.advisory.analysis import AnalysisModel, AuditAnalysis, AuditConclusion
 from iad_core.consistency.audit_models import AuditConsistencyRecord
+from iad_core.consistency.models import DatasetScope
+from iad_core.consistency.reports import ConsistencyReports
+from iad_core.consistency.result_models import ConsistencyQuery, ConsistencyReportSummary
+from iad_core.consistency.scopes import ConsistencyScopes
 from iad_core.knowledge.models import KnowledgeSnapshot
 from iad_core.storage.database import Database
 from iad_core.workbench.audit_protocol import audit_generation_signature
@@ -56,6 +60,7 @@ class BenchmarkFactsData(AnalysisModel):
     evaluation_evidence: list[dict]
     knowledge_versions: list[KnowledgeSnapshot]
     consistency_records: list[AuditConsistencyRecord]
+    scope_consistency: ConsistencyReportSummary
     capability_candidates: dict[str, list[str]]
     cases: list[ReportAuditCase]
 
@@ -81,6 +86,8 @@ class BenchmarkReportFacts:
             registered = {row[0] for row in conn.execute(f'SELECT dataset_id FROM datasets WHERE dataset_id IN ({placeholders})', selected)}
             if registered != set(selected):
                 raise LookupError('报告范围包含未登记数据集')
+            scope = DatasetScope(dataset_ids=selected)
+            sources = ConsistencyScopes(self.db).freeze(scope, scope, conn)
             samples = [dict(row) for row in conn.execute(f'SELECT * FROM samples WHERE is_excluded=0 AND dataset_id IN ({placeholders}) ORDER BY sample_id', selected)]
             annotations = [dict(row) for row in conn.execute(f'''SELECT a.* FROM annotations a JOIN samples s ON s.sample_id=a.sample_id
                 WHERE s.is_excluded=0 AND s.dataset_id IN ({placeholders})''', selected)]
@@ -143,6 +150,13 @@ class BenchmarkReportFacts:
             for evaluation in evaluations:
                 evaluation['metrics'] = json.loads(evaluation.pop('metrics_json') or '{}')
                 evaluation['scope_note'] = '该评测使用其自身冻结划分，不自动视为当前报告范围的成绩'
+        report = ConsistencyReports(self.db).report(ConsistencyQuery(selection=dict(
+            kind='scope', subjects=scope, corpus_scope=scope, facts='CURRENT', mode='exact'), page_size=1))
+        if (report.page.scopes.subjects.scope_id != sources.subjects.scope_id or
+                report.page.scopes.corpus.scope_id != sources.corpus.scope_id):
+            raise ValueError('报告范围在捕获过程中发生变化，请重新生成报告')
+        scope_consistency = ConsistencyReportSummary.model_validate(dict(
+            report.page.model_dump(exclude={'items', 'next_cursor'}), statistics=report.statistics))
         outcomes = Counter()
         for case in cases:
             conclusion = case.analysis.conclusion
@@ -177,6 +191,7 @@ class BenchmarkReportFacts:
             label_comparison=QualityRatio(numerator=sum(case.raw_label!=case.analysis.conclusion.suggested_label for case in comparable),
                 denominator=len(comparable), basis='模型明确建议与原始明确标签不一致 / 可比较样本；不是标签错误率或模型准确率'),
             gold_by_policy=policies, evaluation_evidence=evaluations, knowledge_versions=knowledge, consistency_records=consistency,
+            scope_consistency=scope_consistency,
             capability_candidates={key: sorted(set(value)) for key, value in candidates.items()}, cases=cases)
         content = BenchmarkFactsData(**payload)
         encoded = json.dumps(content.model_dump(mode='json', round_trip=True), sort_keys=True, ensure_ascii=False)

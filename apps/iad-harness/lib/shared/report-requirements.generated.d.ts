@@ -8,7 +8,7 @@ export declare const reportRequirements: {
     readonly label_trust: {
         readonly card: "dataset";
         readonly title: "标签可信性与 Gold 资格";
-        readonly data: readonly ["raw_labels", "gold_by_policy", "label_comparison"];
+        readonly data: readonly ["raw_labels", "gold_by_policy", "label_comparison", "scope_consistency"];
         readonly required: "确认覆盖、未决、银标、独立随机抽查及加权标签错误估计";
     };
     readonly annotation_completeness: {
@@ -38,7 +38,7 @@ export declare const reportRequirements: {
     readonly independence: {
         readonly card: "dataset";
         readonly title: "独立性与代表性";
-        readonly data: readonly ["independence"];
+        readonly data: readonly ["independence", "scope_consistency"];
         readonly required: "物理件、批次、连拍、重复、跨划分关联及生产分布范围";
     };
     readonly statistical_support: {
@@ -68,7 +68,7 @@ export declare const reportRequirements: {
     readonly acceptance_boundary: {
         readonly card: "model";
         readonly title: "验收边界区分";
-        readonly data: readonly ["evaluation_evidence", "consistency_records", "acceptance_boundary_metrics"];
+        readonly data: readonly ["evaluation_evidence", "consistency_records", "scope_consistency", "acceptance_boundary_metrics"];
         readonly required: "确认 OK/NG 成对同时判对率、对内排序、同分约定、配对连通组";
     };
     readonly small_defects: {

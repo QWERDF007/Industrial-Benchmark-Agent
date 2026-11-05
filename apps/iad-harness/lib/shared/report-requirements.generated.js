@@ -16,7 +16,8 @@ export const reportRequirements = {
         "data": [
             "raw_labels",
             "gold_by_policy",
-            "label_comparison"
+            "label_comparison",
+            "scope_consistency"
         ],
         "required": "确认覆盖、未决、银标、独立随机抽查及加权标签错误估计"
     },
@@ -60,7 +61,8 @@ export const reportRequirements = {
         "card": "dataset",
         "title": "独立性与代表性",
         "data": [
-            "independence"
+            "independence",
+            "scope_consistency"
         ],
         "required": "物理件、批次、连拍、重复、跨划分关联及生产分布范围"
     },
@@ -108,6 +110,7 @@ export const reportRequirements = {
         "data": [
             "evaluation_evidence",
             "consistency_records",
+            "scope_consistency",
             "acceptance_boundary_metrics"
         ],
         "required": "确认 OK/NG 成对同时判对率、对内排序、同分约定、配对连通组"

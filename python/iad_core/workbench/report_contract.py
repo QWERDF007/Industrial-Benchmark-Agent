@@ -35,6 +35,8 @@ class ReportContract:
             r=[reference['result_id'] for reference in references],
             e=[reference['evidence_id'] for reference in references],
             w=[version['version_id'] for version in statistics['knowledge_versions']],
+            q=[statistics['scope_consistency']['query_id']],
+            c=[scope['scope_id'] for scope in statistics['scope_consistency']['scopes'].values()],
             d=statistics['scope_dataset_ids'],
             j=[*statistics['included_run_ids'], *[record['run_id'] for record in records]],
             a=[annotation.annotation_id for image in images for annotation in image.annotations]), images)

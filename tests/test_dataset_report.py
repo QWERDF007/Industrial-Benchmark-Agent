@@ -53,6 +53,10 @@ def test_scope_report_is_model_generated_from_frozen_facts_and_survives_new_audi
         assert technical['image_decoding']['numerator'] == technical['image_decoding']['denominator'] == 4
         assert technical['annotation_geometry']['numerator'] == technical['annotation_geometry']['denominator'] == 3
         assert technical['bbox_scale']['area_fraction']['count'] == 3
+        consistency = context['statistics']['scope_consistency']
+        assert consistency['query_id'].startswith('@q')
+        assert all(scope['scope_id'].startswith('@c') and scope['sample_count']==4 for scope in consistency['scopes'].values())
+        assert consistency['statistics']['current']['strict_groups'] == 1
         assert context['statistics']['gold_by_policy'] == []
         refs = [json.loads(item['text'][5:])['evidence_id'] for item in body['messages'][0]['content']
             if item['type']=='text' and item['text'].startswith('视觉证据：')]
