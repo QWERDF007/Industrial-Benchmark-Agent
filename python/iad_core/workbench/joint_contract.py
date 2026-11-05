@@ -1,6 +1,6 @@
-from typing import Literal, Mapping
+from typing import Annotated, Literal, Mapping
 
-from pydantic import Field, ValidationError, create_model, model_validator
+from pydantic import BeforeValidator, Field, ValidationError, create_model, model_validator
 from pydantic_core import InitErrorDetails
 
 from iad_core.advisory.analysis import CheckAssessment, JointAnalysis, RegionObservation, VisualEvidence
@@ -14,14 +14,17 @@ class JointContract:
     def __init__(self, check_ids: frozenset[str], evidence: Mapping[str, VisualEvidence], region_count: int, ledger: FindingLedger):
         evidence_ids = set(evidence)
         raw_ids = {eid for eid, image in evidence.items() if image.representation == 'raw'}
+        def validate_image_references(value):
+            if isinstance(value, list):
+                unknown = {item for item in value if isinstance(item, str)}-evidence_ids
+                if unknown:
+                    raise repairable_output_error('joint_visual_reference', f'MLLM cited unknown visual evidence: {sorted(unknown)}')
+            return value
+        image_references = Annotated[list[Literal[tuple(sorted(evidence_ids))]], BeforeValidator(validate_image_references)]
         assessment = create_model('CheckAssessment', __base__=CheckAssessment,
-            check_id=(Literal[tuple(sorted(check_ids))], ...)) if check_ids else CheckAssessment
+            check_id=(Literal[tuple(sorted(check_ids))], ...), evidence_ids=(image_references, Field(min_length=1))) if check_ids else CheckAssessment
 
         def validate_observations(value):
-            if unknown := set(value.evidence_ids)-evidence_ids:
-                raise repairable_output_error('joint_visual_reference', f'MLLM cited unknown visual evidence: {sorted(unknown)}')
-            if unknown := {eid for item in value.check_assessments for eid in item.evidence_ids}-evidence_ids:
-                raise repairable_output_error('joint_visual_reference', f'MLLM check assessment cited unknown visual evidence: {sorted(unknown)}')
             if unknown := {cid for region in value.region_requests for cid in region.check_ids}-check_ids:
                 raise repairable_output_error('joint_check_reference', f'MLLM region request cited an unknown check: {sorted(unknown)}')
             actual = [item.check_id for item in value.check_assessments]
@@ -54,5 +57,6 @@ class JointContract:
 
         self.response_type = create_model('JointAnalysis', __base__=JointAnalysis,
             __validators__={'valid_observations': model_validator(mode='after')(validate_observations)},
+            evidence_ids=(image_references, Field(min_length=1)),
             check_assessments=(list[assessment], Field(min_length=len(check_ids), max_length=len(check_ids))),
             region_observations=(list[RegionObservation], Field(min_length=region_count, max_length=region_count)))

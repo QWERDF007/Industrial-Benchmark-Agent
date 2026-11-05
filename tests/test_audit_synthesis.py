@@ -87,6 +87,14 @@ def test_joint_unknown_references_are_repaired_once_without_publishing_invalid_e
         if body['response_format']['json_schema']['name']!='JointAnalysis':
             return response
         calls.append(body)
+        schema=body['response_format']['json_schema']['schema']
+        views=[json.loads(part['text'][5:]) for part in body['messages'][0]['content'] if part['type']=='text' and part['text'].startswith('视觉证据：')]
+        supplied={view['evidence_id'] for view in views}
+        ids=schema['properties']['evidence_ids']['items']
+        assert set(ids.get('enum',[ids.get('const')]))==supplied,'联合检查Schema应给模型实际图像引用选项，不能只声明任意字符串'
+        assessment=schema['$defs'][schema['properties']['check_assessments']['items']['$ref'].split('/')[-1]]
+        ids=assessment['properties']['evidence_ids']['items']
+        assert set(ids.get('enum',[ids.get('const')]))==supplied
         result = json.loads(response.json()['choices'][0]['message']['content'])
         if len(calls)==1 or not corrected:
             if location=='conclusion':
