@@ -51,7 +51,7 @@ class ResultSnapshots:
                 plan,_=BatchRepository(self.db).get(selection.batch_id,connection)
                 scopes=plan.scopes
                 link=connection.execute('SELECT COALESCE(MAX(rowid),0) FROM consistency_batch_results WHERE batch_id=?',(selection.batch_id,)).fetchone()[0]
-                clauses.append('EXISTS(SELECT 1 FROM consistency_batch_results b WHERE b.batch_id=? AND b.rowid<=? AND b.evidence_id=r.evidence_id)')
+                clauses.append('r.evidence_id IN(SELECT b.evidence_id FROM consistency_batch_results b WHERE b.batch_id=? AND b.rowid<=?)')
                 args.extend((selection.batch_id,link))
             else:
                 scopes=ConsistencyScopes(self.db).freeze(selection.subjects,selection.corpus_scope,connection)

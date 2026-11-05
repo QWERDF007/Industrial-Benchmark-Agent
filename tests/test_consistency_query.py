@@ -103,3 +103,47 @@ def test_scope_results_do_not_treat_unknown_policy_as_confirmed_conflicts(datase
     service.compare(ConsistencyCompare(sample_a=config.dataset.id+':dent.png',sample_b=config.dataset.id+':scratch.png'))
     result=ResultQueries(db).query(ConsistencyQuery(selection={'kind':'scope','subjects':{'kind':'all_registered'}},confirmed_conflict=True))
     assert result.total==0
+
+
+def test_batch_report_uses_indexed_membership_without_correlated_history_scans(dataset, monkeypatch):
+    from contextlib import contextmanager
+    import time
+    from iad_core.consistency.models import ConsistencyStart
+    from iad_core.consistency.reports import ConsistencyReports
+    from iad_core.workbench.runtime import WorkbenchRuntime
+
+    db, _, config = dataset
+    runtime = WorkbenchRuntime(db)
+    try:
+        started = runtime.consistency.start(ConsistencyStart(subjects={'kind':'all_registered'}, request_id='indexed-report'))
+        deadline = time.monotonic()+10
+        while time.monotonic()<deadline:
+            batch = runtime.consistency.status(started.batch_id)
+            if batch.status not in ('PENDING','RUNNING'):
+                break
+            time.sleep(.01)
+        assert batch.status == 'COMPLETED'
+        queries = []
+        connect = db.connection
+
+        @contextmanager
+        def traced_connection():
+            with connect() as connection:
+                connection.set_trace_callback(queries.append)
+                yield connection
+
+        with monkeypatch.context() as patch:
+            patch.setattr(db, 'connection', traced_connection)
+            report = ConsistencyReports(db).report(ConsistencyQuery(selection={'kind':'batch','batch_id':batch.batch_id}))
+        assert report.page.total == report.statistics.current.pairs == 1
+        assert report.page.execution.completed == report.page.execution.total == 4
+        assert {report.page.items[0].sample_a, report.page.items[0].sample_b} == {
+            config.dataset.id+':dent.png', config.dataset.id+':scratch.png'}
+        reads = [query for query in queries if query.startswith('SELECT ') and 'FROM consistency_results r WHERE' in query]
+        assert reads
+        with db.connection() as connection:
+            plans = [row['detail'] for query in reads for row in connection.execute('EXPLAIN QUERY PLAN '+query)]
+        assert not any('CORRELATED' in step for step in plans), '批次结果读取不能为每条全库历史结果重新扫描批次关联'
+        assert any('evidence_id=?' in step for step in plans), '应按当前批次的证据身份直接定位冻结结果'
+    finally:
+        runtime.close()
