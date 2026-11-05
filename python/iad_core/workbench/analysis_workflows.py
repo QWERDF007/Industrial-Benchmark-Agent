@@ -1,4 +1,4 @@
-from iad_core.workbench.job_models import failure_message
+from iad_core.workbench.job_models import ChildJobError
 import json
 from typing import Annotated, Literal
 from uuid import UUID, uuid4, uuid5
@@ -183,5 +183,5 @@ class AnalysisWorkflows:
         for child in context.join_all(children(), on_progress=observe):
             unresolved = wanted[child['dataset_id']] - model_completed
             if unresolved:
-                context.record(sorted(unresolved), ValueError(failure_message(child['errors']) or '子数据集分析未完成'))
+                context.record(sorted(unresolved), ChildJobError(child))
                 pending.difference_update(unresolved)

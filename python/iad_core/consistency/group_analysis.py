@@ -3,6 +3,8 @@ import json
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.gallery import GalleryQueries, GalleryReference
 from iad_core.consistency.group_models import FrozenAnalysisGroup
+from iad_core.consistency.group_analysis_states import GroupAnalysisStates
+from iad_core.consistency.result_models import ResultSelection
 from iad_core.consistency.group_analysis_models import (GROUP_ANALYSIS_SCHEMA, DEFAULT_CANDIDATE_BATCH_SIZE,
     GroupAnalysisDraft, GroupAnalysisStart, GroupAnalysisView, GroupAnalysisBatch)
 from iad_core.consistency.group_analysis_inputs import GroupAnalysisInputs
@@ -20,12 +22,12 @@ class GroupAnalysisQueries:
         self.db = db
 
     def read(self, reference: GalleryReference) -> GroupAnalysisView:
-        _, fingerprint = GalleryQueries(self.db).freeze(reference)
-        with self.db.connection() as connection:
-            row = connection.execute('''SELECT * FROM job_runs WHERE job_type='CONSISTENCY_ANALYSIS'
-                AND json_extract(payload_json,'$.request.group_fingerprint')=? AND deleted_at IS NULL ORDER BY id DESC LIMIT 1''', (fingerprint,)).fetchone()
-        if row is None:
+        frozen = GalleryQueries(self.db).freeze(reference)
+        record = GroupAnalysisStates(self.db).read(frozen.selection,[frozen.identity]).get(frozen.identity.key)
+        if record is None:
             return GroupAnalysisView(group_id=reference.group_id, status='NOT_ANALYZED')
+        with self.db.connection() as connection:
+            row = connection.execute('SELECT * FROM job_runs WHERE job_id=?',(record.run_id,)).fetchone()
         return self.view(row)
 
     @staticmethod
@@ -46,12 +48,13 @@ class GroupAnalyses(GroupAnalysisQueries):
 
     def start(self, request: GroupAnalysisStart, origin_session_id: str | None = None) -> GroupAnalysisView:
         request = GroupAnalysisStart.model_validate(request)
-        group, fingerprint = GalleryQueries(self.db).freeze(request)
-        return self.start_frozen(group, fingerprint, request.request_id, request.batch_size, origin_session_id,
-            instruction=request.instruction)
+        frozen = GalleryQueries(self.db).freeze(request)
+        return self.start_frozen(frozen.group, frozen.identity.fingerprint(GROUP_ANALYSIS_SCHEMA), request.request_id, request.batch_size, origin_session_id,
+            instruction=request.instruction,selection=frozen.selection)
 
     def start_frozen(self, group: FrozenAnalysisGroup, fingerprint: str, request_id: str,
-                     batch_size: int = DEFAULT_CANDIDATE_BATCH_SIZE, origin_session_id: str | None = None, instruction: str | None = None) -> GroupAnalysisView:
+                     batch_size: int = DEFAULT_CANDIDATE_BATCH_SIZE, origin_session_id: str | None = None, instruction: str | None = None, selection: ResultSelection | None = None) -> GroupAnalysisView:
+        analysis_selection = selection.model_dump(mode='json') if selection else None
         instruction = DEFAULT_CONSISTENCY_PROMPT if instruction is None else instruction
         if self.client is None:
             raise ValueError('A resolved workbench model is required to analyze a group')
@@ -65,14 +68,14 @@ class GroupAnalyses(GroupAnalysisQueries):
             if previous is not None:
                 original = json.loads(previous['payload_json'])['request']
                 if (original['group_fingerprint'] != fingerprint or original.get('analysis_batch_size') != batch_size
-                    or original.get('analysis_instruction') != instruction):
+                    or original.get('analysis_instruction') != instruction or original.get('analysis_selection') != analysis_selection):
                     raise ConsistencyError('INVALID_SCOPE', 'Analysis request_id belongs to a different frozen group or batch policy')
                 return self.view(previous)
             sample = group.anchor.sample
             started = self.runtime.jobs.start('CONSISTENCY_ANALYSIS', sample.task_id,
                 dict(dataset_id=sample.dataset_id, sample_ids=[sample.sample_id, *members],
                     analysis_request_id=request_id, group_fingerprint=fingerprint, analysis_schema=GROUP_ANALYSIS_SCHEMA,
-                    analysis_instruction=instruction,
+                    analysis_instruction=instruction,analysis_selection=analysis_selection,
                     frozen_group=group.model_dump(mode='json'), frozen_group_sha256=self.inputs.fingerprint(group),
                     analysis_batch_size=batch_size, analysis_plan=[members[start:start+batch_size] for start in range(0,len(members),batch_size)],
                     model_name=self.client.resolve_model(), model_profile=self.client.profile.model_dump(), origin_session_id=origin_session_id),

@@ -1,9 +1,21 @@
+from collections.abc import Iterable
+
 from iad_core.consistency.evidence_models import FrozenEvidence
-from iad_core.consistency.review_models import ConsistencyDecision, CorrectionCheck, DifferenceReview
+from iad_core.consistency.review_models import ConsistencyDecision, CorrectionCheck, DifferenceReview, ReviewDisposition
 from iad_core.storage.models import ReviewDecisionRecord
 
 
 class ReviewStates:
+    @staticmethod
+    def disposition(difference_ids: Iterable[str], decisions: list[ConsistencyDecision]) -> ReviewDisposition:
+        latest = {identity:decision.request.action.kind for decision in decisions for identity in decision.request.difference_ids}
+        actions = [latest.get(identity) for identity in difference_ids]
+        if actions and all(action=='CONFIRM_DIFFERENCE' for action in actions):
+            return 'confirmed'
+        if actions and all(action in ('REJECT_DIFFERENCE','EXPECTED_POLICY_DIFFERENCE') for action in actions):
+            return 'rejected'
+        return 'pending'
+
     @staticmethod
     def project(evidence: FrozenEvidence, decisions: list[ConsistencyDecision], corrections: list[CorrectionCheck],
                 reviews: dict[str, ReviewDecisionRecord]) -> list[DifferenceReview]:

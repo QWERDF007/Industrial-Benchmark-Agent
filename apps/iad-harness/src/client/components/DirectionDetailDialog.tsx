@@ -1,5 +1,6 @@
+import {Modal} from './Modal.js';
 import {ThumbnailCard} from "./ThumbnailCard.js";
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 
 import { IconButton } from "./IconButton.js";
 import {ReferencedText, type EvidenceReference} from "../direction-evidence.js";
@@ -57,16 +58,6 @@ export function DirectionDetailDialog({
 }: DirectionDetailDialogProps) {
   const evidenceContainerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !e.defaultPrevented) {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
-
   const handleChipClick = (ref: string) => {
     onChipFocus(ref);
     if (!evidenceContainerRef.current) return;
@@ -85,25 +76,12 @@ export function DirectionDetailDialog({
     onPreview={(ref,active)=>{if(active)handleChipClick(ref);else onHighlightRef(null);}}/>;
 
   return (
-    <div
-      className="exp-modal exp-direction-modal"
-      id="exp-modal"
-      onClick={e => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="exp-dialog exp-direction-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label={dir.title}
-        ref={evidenceContainerRef}
-      >
+    <Modal title={dir.title} className="exp-dialog exp-direction-dialog" id="exp-modal" header={false} onClose={onClose}>
         <div className="exp-dialog-head">
           <strong>{dir.title}</strong>
           <IconButton icon="close" label="关闭方向详情" title="关闭" onClick={onClose} />
         </div>
-        <div className="exp-dialog-main">
+        <div className="exp-dialog-main" ref={evidenceContainerRef}>
           <div className="exp-direction-body">
             {/* Goal */}
             <section className="exp-direction-goal">
@@ -197,7 +175,6 @@ export function DirectionDetailDialog({
             </section>
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

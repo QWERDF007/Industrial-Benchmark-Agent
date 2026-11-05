@@ -1,4 +1,6 @@
-export const formsStyles = `.iad-info-group {background:var(--iad-surface-muted);padding:14px;border-radius:8px;margin:14px 0;}
+export const formsStyles = `
+.iad-prompt-text{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:var(--iad-font-size);line-height:1.7;color:var(--iad-text)}
+.iad-info-group {background:var(--iad-surface-muted);padding:14px;border-radius:8px;margin:14px 0;}
 .iad-info-group h3:first-child {margin-top:0;}
 .iad-analysis {margin-top:14px;font-size:12px;overflow-wrap:anywhere;}
 .iad-analysis summary {cursor:pointer;color:var(--iad-primary);}

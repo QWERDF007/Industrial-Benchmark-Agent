@@ -1211,6 +1211,8 @@ export type SampleId18 = string;
 export type RelativePath3 = string | null;
 export type Message2 = string;
 export type Code = string | null;
+export type SourceRunId = string | null;
+export type SourcePhase = string | null;
 export type SampleUuid2 = string;
 export type Errors = JobFailure[];
 export type CallId1 = string;
@@ -2276,6 +2278,7 @@ export type DifferenceTypes = (
 )[];
 export type ConfirmedConflict3 = boolean;
 export type ModelState = "NOT_ANALYZED" | "RUNNING" | "FAILED" | "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
+export type ReviewState2 = "pending" | "confirmed" | "rejected";
 export type Items13 = GalleryItem[];
 export type Total17 = number;
 export type QueryId9 = string;
@@ -3930,6 +3933,8 @@ export interface JobFailure {
   relative_path: RelativePath3;
   message: Message2;
   code: Code;
+  source_run_id: SourceRunId;
+  source_phase: SourcePhase;
   sample_uuid: SampleUuid2;
 }
 export interface ModelCallSummary {
@@ -5240,6 +5245,7 @@ export interface GalleryItem {
   difference_types: DifferenceTypes;
   confirmed_conflict: ConfirmedConflict3;
   model_state: ModelState;
+  review_state: ReviewState2;
 }
 export interface GalleryImage {
   sample: Sample;

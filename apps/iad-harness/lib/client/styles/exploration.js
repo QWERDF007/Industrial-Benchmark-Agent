@@ -245,15 +245,15 @@ export const explorationStyles = `
 .exp-prompt-link{border:0;background:transparent;color:#245bcc;font:inherit;font-size:12px;padding:6px 5px;cursor:pointer;border-radius:5px;white-space:nowrap}
 .exp-prompt-link:hover{background:#edf3ff}
 .exp-prompt-link:focus-visible{outline:2px solid #2d65da;outline-offset:1px}
-.exp-prompt-overlay{position:fixed!important;inset:0!important;z-index:400!important;display:flex!important;align-items:stretch!important;justify-content:flex-end!important;padding:0!important;background:rgba(22,33,51,.36)!important}
-.exp-prompt-drawer{box-sizing:border-box;flex:none;width:min(560px,100vw);height:100dvh;max-height:100dvh;background:white;border-left:1px solid #d6deeb;box-shadow:-15px 0 45px #15223830;display:flex;flex-direction:column;min-width:0;animation:exp-drawer-enter .15s ease-out}
+
+
 @keyframes exp-drawer-enter{from{transform:translateX(24px);opacity:.7}to{transform:translateX(0);opacity:1}}
-.exp-prompt-drawer-head{flex:none;height:68px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #e3e9f1;padding:0 22px}
-.exp-prompt-drawer-head h2{font-size:17px;line-height:1.5;font-weight:650;margin:0;color:#26344c}
-.exp-prompt-drawer-content{padding:22px;overflow:auto;flex:1;min-height:0}
-.exp-prompt-readonly{font:inherit;font-size:13px;font-weight:400;line-height:1.9;color:#26364f;white-space:pre-wrap;overflow-wrap:anywhere}
-@media(max-width:760px){.exp-prompt-drawer-head{height:56px;padding:0 16px}.exp-prompt-drawer-content{padding:17px}.exp-prompt-action-col{width:110px}}
-@media(prefers-reduced-motion:reduce){.exp-prompt-drawer{animation:none}}
+
+
+
+
+@media(max-width:760px){.exp-prompt-action-col{width:110px}}
+
 
 /* V9 direction detail: same IBA visual system as dataset manager and image browser. */
 .exp-direction-table th:nth-child(1){width:auto!important}

@@ -1,4 +1,4 @@
-import type {ConsistencyReport, ConsistencyReviewContext, GalleryItem, GalleryPage, GalleryMember, GalleryMemberPage, GalleryReference} from '../shared/domain.generated.js';
+import type {ConsistencyReport, GalleryItem, GalleryPage, GalleryMember, GalleryMemberPage, GalleryReference} from '../shared/domain.generated.js';
 import {differenceLabels} from '../shared/consistency-presentation.js';
 import {modelAssessmentLabels} from '../shared/consistency.parameters.generated.js';
 import {request} from './api.js';
@@ -12,7 +12,7 @@ export interface ConflictCardItem {
   sourceWidth:number;
   sourceHeight:number;
   memberCount:number;
-  review:'pending'|'confirmed'|'rejected';
+  review:GalleryItem['review_state'];
   model:{status:'conflict'|'no_conflict'|'unknown';modelType:string};
   rawItem:GalleryItem;
 }
@@ -32,23 +32,12 @@ export class ConsistencyView {
       items.push(...result.items);
       if(items.length>=result.total)break;
     }
-    const cards:ConflictCardItem[]=[];
-    for(let offset=0;offset<items.length;offset+=8){
-      cards.push(...await Promise.all(items.slice(offset,offset+8).map(async item=>{
-        const context=await request<ConsistencyReviewContext>('/consistency/review/context',{evidence_id:item.anchor.evidence_id},undefined,signal);
-        const latest=new Map<string,ConsistencyReviewContext['decisions'][number]['request']['action']['kind']>();
-        for(const decision of context.decisions)for(const id of decision.request.difference_ids)latest.set(id,decision.request.action.kind);
-        const kinds=context.differences.map(difference=>latest.get(difference.difference_id));
-        const review:ConflictCardItem['review']=kinds.length && kinds.every(kind=>kind==='CONFIRM_DIFFERENCE')?'confirmed':
-          kinds.length && kinds.every(kind=>kind==='REJECT_DIFFERENCE'||kind==='EXPECTED_POLICY_DIFFERENCE')?'rejected':'pending';
-        return {id:item.group_id,
+    const cards:ConflictCardItem[]=items.map(item=>({id:item.group_id,
       type:item.difference_types.map(type=>differenceLabels[type]).join('、') || '标注待核对',
       filename:item.anchor.sample.relative_path.split('/').pop()!,url:this.media(item.anchor,true),fullUrl:this.media(item.anchor),
-      sourceWidth:item.anchor.sample.width,sourceHeight:item.anchor.sample.height,memberCount:item.member_count,review,
+      sourceWidth:item.anchor.sample.width,sourceHeight:item.anchor.sample.height,memberCount:item.member_count,review:item.review_state,
       model:{status:item.model_state==='MATERIAL'?'conflict':item.model_state==='EQUIVALENT'?'no_conflict':'unknown',
-        modelType:modelAssessmentLabels[item.model_state]},rawItem:item} satisfies ConflictCardItem;
-      })));
-    }
+        modelType:modelAssessmentLabels[item.model_state]},rawItem:item}));
     return {queryId,items:cards};
   }
 

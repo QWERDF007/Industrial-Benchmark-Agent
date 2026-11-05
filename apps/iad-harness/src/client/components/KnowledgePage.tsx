@@ -1,3 +1,4 @@
+import {PromptDrawer} from './PromptDrawer.js';
 import {Select} from './Select.js';
 import {Button} from './Button.js';
 import {IconButton} from "./IconButton.js";
@@ -92,7 +93,6 @@ export function KnowledgePage({
   const [entryPage, setEntryPage] = useState(1);
 
   // Modals & Drawers
-  const [promptOpen, setPromptOpen] = useState(false);
   const [promptJob, setPromptJob] = useState<UiJobItem | null>(null);
   const [detailItem, setDetailItem] = useState<string | null>(null);
   const [confirmState, setConfirmState] = useState<KnowledgeConfirmationState | null>(null);
@@ -225,22 +225,10 @@ export function KnowledgePage({
     const j = jobList.find(v => v.id === id);
     if (!j) return;
     setPromptJob(j);
-    setPromptOpen(true);
   };
 
   const closePrompt = () => {
-    setPromptOpen(false);
     setPromptJob(null);
-  };
-
-  const handleCopyPrompt = async () => {
-    if (!promptJob) return;
-    try {
-      await navigator.clipboard.writeText(promptJob.prompt);
-      toast("提示词已复制");
-    } catch (_) {
-      toast("复制失败，请选中文本复制");
-    }
   };
 
   const openDetail = (item: KnowledgeItemData) => setDetailItem(item.id);
@@ -267,10 +255,7 @@ export function KnowledgePage({
   };
 
   const openCreate = () => workspace.updateView(pageId, {tab:'setup'});
-  useEffect(() => {
-    const handle = (event:KeyboardEvent) => {if(event.key==='Escape' && promptOpen)closePrompt();};
-    window.addEventListener('keydown',handle); return ()=>window.removeEventListener('keydown',handle);
-  }, [promptOpen]);
+
 
 
   return (
@@ -520,8 +505,6 @@ export function KnowledgePage({
                 <div className="blank">
                   {selectedJob.status === "running"
                     ? "作业正在运行，知识发布后将在这里显示。"
-                    : selectedJob.status === "failed"
-                    ? "当前作业下没有对应的知识"
                     : "当前作业下没有对应的知识"}
                 </div>
               ) : checksResource.error ? <p role="alert">{checksResource.error}</p>
@@ -593,37 +576,7 @@ export function KnowledgePage({
 
       {/* Overlays and Drawers */}
       {/* 1. Job Prompt Drawer */}
-      <div
-        className={`overlay knowledge-prompt-overlay ${promptOpen ? "show" : "hidden"}`}
-        id="job-prompt-overlay"
-        role="presentation"
-        hidden={!promptOpen}
-        onClick={closePrompt}
-      >
-              <aside
-                className="knowledge-prompt-drawer"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="job-prompt-title"
-                tabIndex={-1}
-                onClick={e => e.stopPropagation()}
-              >
-                <header className="knowledge-prompt-drawer-head">
-                  <h2 id="job-prompt-title">查看提示词</h2>
-                  <div className="knowledge-prompt-drawer-actions">
-                    <Button type="button"  id="copy-job-prompt" onClick={handleCopyPrompt}>
-                      复制提示词
-                    </Button>
-                    <IconButton icon="close" type="button" className="knowledge-prompt-drawer-close" id="close-job-prompt" label="关闭提示词抽屉" title="关闭" onClick={closePrompt} />
-                  </div>
-                </header>
-                <div className="knowledge-prompt-drawer-content" id="job-prompt-body">
-                  <pre id="job-prompt-content" className="knowledge-prompt-readonly">
-                    {promptJob?.prompt || "该历史作业未记录冻结提示词。"}
-                  </pre>
-                </div>
-              </aside>
-            </div>
+      {promptJob && <PromptDrawer title="查看提示词" text={promptJob.prompt || '该历史作业未记录冻结提示词。'} onClose={closePrompt} />}
 
             {detailItem && selectedVersionId && <KnowledgeEntryDialog key={`${selectedVersionId}:${detailItem}`} versionId={selectedVersionId}
               checkId={detailItem} onClose={closeDetail} onSaved={()=>{updated();toast('人工核实已保存');}} />}

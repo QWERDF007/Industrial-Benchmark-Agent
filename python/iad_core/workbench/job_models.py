@@ -45,6 +45,8 @@ class JobSample(AnalysisModel):
 class JobFailure(JobSample):
     message: str
     code: Optional[str] = None
+    source_run_id: Optional[str] = None
+    source_phase: Optional[str] = None
 
 
 class RetrySample(JobSample):
@@ -127,3 +129,11 @@ class DatasetAnalysisResult(AnalysisModel):
 
 def failure_message(errors: Iterable[Mapping[str, Any]]) -> str:
     return '；'.join(dict.fromkeys(error['message'] for error in errors))
+
+
+class ChildJobError(ValueError):
+    def __init__(self, snapshot: Mapping[str, Any], *, message: str | None = None, code: str | None = None):
+        self.source_run_id: str = snapshot['run_id']
+        self.source_phase: str | None = snapshot.get('phase')
+        self.code = code
+        super().__init__(message or failure_message(snapshot['errors']) or '未记录错误详情')

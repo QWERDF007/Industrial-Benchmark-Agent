@@ -1,4 +1,5 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { PromptDrawer } from './PromptDrawer.js';
 import { Select } from './Select.js';
 import { Button } from './Button.js';
 import { IconButton } from "./IconButton.js";
@@ -54,7 +55,6 @@ export function KnowledgePage({ dataset, refreshRevision }) {
     const [knowledgeStatus, setKnowledgeStatus] = useState("all");
     const [entryPage, setEntryPage] = useState(1);
     // Modals & Drawers
-    const [promptOpen, setPromptOpen] = useState(false);
     const [promptJob, setPromptJob] = useState(null);
     const [detailItem, setDetailItem] = useState(null);
     const [confirmState, setConfirmState] = useState(null);
@@ -181,22 +181,9 @@ export function KnowledgePage({ dataset, refreshRevision }) {
         if (!j)
             return;
         setPromptJob(j);
-        setPromptOpen(true);
     };
     const closePrompt = () => {
-        setPromptOpen(false);
         setPromptJob(null);
-    };
-    const handleCopyPrompt = async () => {
-        if (!promptJob)
-            return;
-        try {
-            await navigator.clipboard.writeText(promptJob.prompt);
-            toast("提示词已复制");
-        }
-        catch (_) {
-            toast("复制失败，请选中文本复制");
-        }
     };
     const openDetail = (item) => setDetailItem(item.id);
     const closeDetail = () => setDetailItem(null);
@@ -234,12 +221,6 @@ export function KnowledgePage({ dataset, refreshRevision }) {
             } });
     };
     const openCreate = () => workspace.updateView(pageId, { tab: 'setup' });
-    useEffect(() => {
-        const handle = (event) => { if (event.key === 'Escape' && promptOpen)
-            closePrompt(); };
-        window.addEventListener('keydown', handle);
-        return () => window.removeEventListener('keydown', handle);
-    }, [promptOpen]);
     return (_jsx("div", { id: "knowledge-page", className: "iad-knowledge-page", children: _jsxs("div", { className: `kb-v45 v46-app ${createOpen ? "kb-creating" : ""}`, children: [_jsx("div", { className: "kb-v45-main", children: _jsxs("div", { className: "main-inner", children: [!createOpen && _jsxs(_Fragment, { children: [_jsxs("header", { className: "topline", children: [_jsx("div", { className: "titlebar", children: _jsx("h1", { children: "\u77E5\u8BC6\u6316\u6398" }) }), _jsx("div", { className: "actions", children: _jsx(Button, { variant: "primary", id: "create-btn", onClick: openCreate, children: "\uFF0B \u65B0\u5EFA\u6316\u6398" }) })] }), _jsxs("section", { className: "context", "aria-label": "\u9009\u62E9\u6570\u636E\u8303\u56F4", children: [_jsxs("div", { className: "control", children: [_jsx("label", { className: "label", htmlFor: "dataset", children: "\u6570\u636E\u96C6" }), _jsx(Select, { id: "dataset", className: "f wide select", "aria-label": "\u5F53\u524D\u6570\u636E\u96C6", value: selectedParentId, onChange: e => handleParentChange(e.target.value), children: parentGroups.map(g => (_jsx("option", { value: g.group_id, children: g.name }, g.group_id))) })] }), _jsxs("div", { className: "control", children: [_jsx("label", { className: "label", htmlFor: "subset", children: "\u5B50\u6570\u636E\u96C6" }), _jsx(Select, { id: "subset", className: "f wide select", "aria-label": "\u5B50\u6570\u636E\u96C6", value: selectedChildId, onChange: e => handleChildChange(e.target.value), children: currentChildDatasets.map(d => (_jsx("option", { value: d.dataset_id, children: d.name }, d.dataset_id))) })] }), _jsx("div", { className: "kb-context-actions", children: _jsx(RefreshIconButton, { id: "kb-refresh", title: "\u5237\u65B0\u5F53\u524D\u9875\u9762", ariaLabel: "\u5237\u65B0\u5F53\u524D\u9875\u9762", onClick: handleRefresh }) }), _jsx("div", { className: "context-info", id: "dataset-info" })] }), _jsxs("section", { className: "panel", "aria-labelledby": "jobs-heading", children: [_jsxs("div", { className: "panelbar", children: [_jsx("div", { children: _jsxs("h2", { id: "jobs-heading", children: ["\u6316\u6398\u4F5C\u4E1A", _jsx("span", { "aria-hidden": "true", className: "count hide", id: "jobs-count" })] }) }), _jsxs("div", { className: "filterset", children: [_jsx("input", { className: "f", id: "job-search", placeholder: "\u641C\u7D22\u4F5C\u4E1A\u540D\u79F0", "aria-label": "\u641C\u7D22\u4F5C\u4E1A\u540D\u79F0", value: jobSearch, onChange: e => {
                                                                     setJobSearch(e.target.value);
                                                                     setJobPage(1);
@@ -267,9 +248,7 @@ export function KnowledgePage({ dataset, refreshRevision }) {
                                                                     setEntryPage(1);
                                                                 } })] })) : null] }), resultVersions.length > 1 && _jsxs("label", { className: "control", children: ["\u7ED3\u679C\u7248\u672C", _jsx(Select, { className: "f", "aria-label": "\u77E5\u8BC6\u7ED3\u679C\u7248\u672C", value: selectedVersionId || '', onChange: event => workspace.updateView(pageId, { job: selectedJob.id, version: event.target.value }), children: resultVersions.map(version => _jsxs("option", { value: version.version_id, children: [version.manually_edited ? '维护版本' : '作业冻结版本', " ", version.version_id.slice(-8)] }, version.version_id)) })] }), _jsx("div", { className: "knowledge-wrap", id: "knowledge-body", children: !selectedJob ? (_jsx("div", { className: "blank", children: "\u8BF7\u9009\u62E9\u4E0A\u65B9\u7684\u6316\u6398\u4F5C\u4E1A\u67E5\u770B\u77E5\u8BC6\u6761\u76EE\u3002" })) : !selectedJob.knowledgeVersionId ? (_jsx("div", { className: "blank", children: selectedJob.status === "running"
                                                         ? "作业正在运行，知识发布后将在这里显示。"
-                                                        : selectedJob.status === "failed"
-                                                            ? "当前作业下没有对应的知识"
-                                                            : "当前作业下没有对应的知识" })) : checksResource.error ? _jsx("p", { role: "alert", children: checksResource.error })
+                                                        : "当前作业下没有对应的知识" })) : checksResource.error ? _jsx("p", { role: "alert", children: checksResource.error })
                                                     : checksResource.loading ? _jsx("div", { className: "blank", children: "\u6B63\u5728\u8BFB\u53D6\u4F5C\u4E1A\u51BB\u7ED3\u77E5\u8BC6" })
                                                         : filteredChecks.length === 0 ? (_jsx("div", { className: "blank", children: knowledgeSearch || knowledgeStatus !== "all" ? "没有符合筛选条件的知识条目。" : "当前作业暂无知识条目。" })) : (_jsxs("div", { className: "knowledge-list", children: [_jsxs("div", { className: "knowledge-head", children: [_jsx("span", { children: "\u77E5\u8BC6\u6761\u76EE" }), _jsx("span", { children: "\u63CF\u8FF0" }), _jsx("span", { children: "\u652F\u6301/\u53CD\u5BF9" }), _jsx("span", { children: "\u64CD\u4F5C" })] }), _jsx("div", { className: "knowledge-items", children: pagedChecks.map(item => (_jsxs("div", { className: "knowledge-row", "data-detail-entry": item.id, role: "row", tabIndex: 0, "aria-label": `查看知识条目：${item.name}`, onClick: () => openDetail(item), onKeyDown: e => {
                                                                             if (e.key === "Enter" || e.key === " ") {
@@ -285,5 +264,5 @@ export function KnowledgePage({ dataset, refreshRevision }) {
                                     polling.refresh();
                                     updated();
                                     toast('挖掘作业已启动');
-                                } }, selectedChildId)] }) }), _jsx("div", { className: `overlay knowledge-prompt-overlay ${promptOpen ? "show" : "hidden"}`, id: "job-prompt-overlay", role: "presentation", hidden: !promptOpen, onClick: closePrompt, children: _jsxs("aside", { className: "knowledge-prompt-drawer", role: "dialog", "aria-modal": "true", "aria-labelledby": "job-prompt-title", tabIndex: -1, onClick: e => e.stopPropagation(), children: [_jsxs("header", { className: "knowledge-prompt-drawer-head", children: [_jsx("h2", { id: "job-prompt-title", children: "\u67E5\u770B\u63D0\u793A\u8BCD" }), _jsxs("div", { className: "knowledge-prompt-drawer-actions", children: [_jsx(Button, { type: "button", id: "copy-job-prompt", onClick: handleCopyPrompt, children: "\u590D\u5236\u63D0\u793A\u8BCD" }), _jsx(IconButton, { icon: "close", type: "button", className: "knowledge-prompt-drawer-close", id: "close-job-prompt", label: "\u5173\u95ED\u63D0\u793A\u8BCD\u62BD\u5C49", title: "\u5173\u95ED", onClick: closePrompt })] })] }), _jsx("div", { className: "knowledge-prompt-drawer-content", id: "job-prompt-body", children: _jsx("pre", { id: "job-prompt-content", className: "knowledge-prompt-readonly", children: promptJob?.prompt || "该历史作业未记录冻结提示词。" }) })] }) }), detailItem && selectedVersionId && _jsx(KnowledgeEntryDialog, { versionId: selectedVersionId, checkId: detailItem, onClose: closeDetail, onSaved: () => { updated(); toast('人工核实已保存'); } }, `${selectedVersionId}:${detailItem}`), jobDetails && polling.jobs.some(job => job.run_id === jobDetails || job.root_run_id === jobDetails) && _jsx(JobStatusDrawer, { job: polling.jobs.find(job => job.run_id === jobDetails || job.root_run_id === jobDetails), onClose: () => setJobDetails(null), onChanged: handleRefresh, stale: polling.syncState === 'stale', lastSyncedAt: polling.lastSyncedAt }), _jsx(KnowledgeConfirmation, { state: confirmState, onClose: () => setConfirmState(null) }), _jsx("div", { className: `toast ${toastMsg ? "show" : ""}`, id: "toast", role: "status", children: toastMsg })] }) }));
+                                } }, selectedChildId)] }) }), promptJob && _jsx(PromptDrawer, { title: "\u67E5\u770B\u63D0\u793A\u8BCD", text: promptJob.prompt || '该历史作业未记录冻结提示词。', onClose: closePrompt }), detailItem && selectedVersionId && _jsx(KnowledgeEntryDialog, { versionId: selectedVersionId, checkId: detailItem, onClose: closeDetail, onSaved: () => { updated(); toast('人工核实已保存'); } }, `${selectedVersionId}:${detailItem}`), jobDetails && polling.jobs.some(job => job.run_id === jobDetails || job.root_run_id === jobDetails) && _jsx(JobStatusDrawer, { job: polling.jobs.find(job => job.run_id === jobDetails || job.root_run_id === jobDetails), onClose: () => setJobDetails(null), onChanged: handleRefresh, stale: polling.syncState === 'stale', lastSyncedAt: polling.lastSyncedAt }), _jsx(KnowledgeConfirmation, { state: confirmState, onClose: () => setConfirmState(null) }), _jsx("div", { className: `toast ${toastMsg ? "show" : ""}`, id: "toast", role: "status", children: toastMsg })] }) }));
 }

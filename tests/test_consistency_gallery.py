@@ -135,3 +135,37 @@ def test_image_quality_labels_share_category_filter_with_region_labels(dataset, 
     assert page.items[0].difference_types == ['QUALITY_LABEL']
     assert {row.value:row.count for row in page.filters} == {
         'all':1,'category':1,'geometry':0,'presence':0,'instances':0,'multiple':0}
+
+
+def test_gallery_projects_all_pair_reviews_without_reopening_image_contexts(dataset,tmp_path):
+    import json
+    from shutil import copyfile
+    from uuid import uuid4
+    from iad_core.consistency.gallery import GalleryQueries,GalleryQuery
+    from iad_core.consistency.review import ConsistencyReview
+    from iad_core.consistency.review_models import ConsistencyReviewSubmission
+    db,registry,config=dataset
+    copyfile(tmp_path/'images/dent.png',tmp_path/'images/third.png')
+    content=json.loads((tmp_path/'labels/dent.json').read_text());content['shapes'][0]['label']='third-category'
+    (tmp_path/'labels/third.json').write_text(json.dumps(content));registry.rescan(config.dataset.id)
+    service=ConsistencyService(db)
+    anchor=config.dataset.id+':dent.png'
+    pairs=[service.compare(ConsistencyCompare(sample_a=anchor,sample_b=config.dataset.id+':'+name+'.png')) for name in ['scratch','third']]
+    snapshot=ResultQueries(db).query(ConsistencyQuery(selection={'kind':'scope','subjects':{'kind':'all_registered'}}))
+    gallery=GalleryQueries(db);query=GalleryQuery(query_id=snapshot.query_id,kind='conflicts')
+    assert gallery.query(query).items[0].review_state=='pending'
+    reviews=ConsistencyReview(db)
+    def decide(pair,kind):
+        reviews.submit(ConsistencyReviewSubmission(client_request_id=uuid4(),evidence_id=pair.evidence_id,
+            result_id=pair.result_id,difference_ids=[d.difference_id for d in pair.annotation.differences],
+            reviewer='真实复核员',comment='核对该组原图及原始标注',action={'kind':kind}))
+    decide(pairs[0],'CONFIRM_DIFFERENCE')
+    assert gallery.query(query).items[0].review_state=='pending','不能以一对已确认替代整个图组的复核'
+    decide(pairs[1],'CONFIRM_DIFFERENCE')
+    assert gallery.query(query).items[0].review_state=='confirmed'
+    decide(pairs[1],'REJECT_DIFFERENCE')
+    assert gallery.query(query).items[0].review_state=='pending'
+    decide(pairs[0],'EXPECTED_POLICY_DIFFERENCE')
+    assert gallery.query(query).items[0].review_state=='rejected'
+    from iad_core.storage.repositories import SampleRepository
+    assert SampleRepository(db).get(anchor).quality_status=='UNCERTAIN','比较复核不能擅改来源的质量真值'

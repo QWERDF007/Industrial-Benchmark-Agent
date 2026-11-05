@@ -245,3 +245,98 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
             assert view.status == 'FAILED' and view.result is None
     finally:
         runtime.close()
+
+
+def test_selected_workflow_owns_group_results_across_prompts_running_jobs_and_contract_updates(dataset, tmp_path, monkeypatch):
+    from iad_core.consistency.group_analysis import GroupAnalysisQueries
+    from iad_core.consistency.gallery import GalleryReference
+    import iad_core.consistency.group_analysis_models as contracts
+    db, registry, config = dataset
+    entered, release = threading.Event(), threading.Event()
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200,json={'count':1000,'max_model_len':262144})
+        text=json.loads(request.content)['messages'][0]['content'][0]['text']
+        if text.startswith('作业乙'):
+            entered.set()
+            assert release.wait(10)
+        frozen=json.JSONDecoder().raw_decode(text.split('冻结图组：')[1])[0]
+        refs=[dict(candidate_id=sid,comparison=dict(result_id=member['comparison']['result_id'],
+            evidence_id=member['comparison']['evidence_id'])) for sid,member in frozen['candidates'].items()]
+        verdict='MATERIAL' if text.startswith('作业甲') else 'UNCERTAIN'
+        label='标注存在差异' if verdict=='MATERIAL' else '对应依据待核对'
+        result=dict(overall=dict(verdict=verdict,text=label,references=refs),
+            assessments=[dict(candidate_id=ref['candidate_id'],verdict=verdict,explanation=label,findings=[]) for ref in refs],
+            conclusions=[dict(text=label,references=refs)],limitations=[])
+        return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
+
+    runtime=WorkbenchRuntime(db,VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        first=runtime.models.analysis_workflows.start(dict(analysis_kind='consistency',mode='exact',
+            dataset_ids=[config.dataset.id],instruction='作业甲完整提示词：比较原始标注。'))
+        runtime.jobs.wait(first['run_id'],10)
+        first=runtime.models.analysis_workflows.status(first['run_id'])
+        assert first['status']=='COMPLETED', first['errors']
+        query_a=ResultQueries(db).query(ConsistencyQuery(selection=dict(kind='batch',batch_id=first['program_batch_id'])))
+        gallery=GalleryQueries(db)
+        cards_a=gallery.query(GalleryQuery(query_id=query_a.query_id,kind='conflicts'))
+        assert cards_a.items
+        reference_a=GalleryReference(query_id=query_a.query_id,kind='conflicts',group_id=cards_a.items[0].group_id)
+        analyses=GroupAnalysisQueries(db)
+        original=analyses.read(reference_a)
+        assert original.status=='COMPLETED' and original.result.overall.verdict=='MATERIAL'
+        second=runtime.models.analysis_workflows.start(dict(analysis_kind='consistency',mode='exact',
+            dataset_ids=[config.dataset.id],instruction='作业乙完整提示词：保留未确认的依据。'))
+        assert entered.wait(5)
+        assert analyses.read(reference_a)==original, '另一个作业开始分析时不能覆盖选中作业的完成结果'
+        assert gallery.query(GalleryQuery(query_id=query_a.query_id,kind='conflicts')).items[0].model_state=='MATERIAL'
+        running_b=runtime.models.analysis_workflows.status(second['run_id'])
+        pending_query=ResultQueries(db).query(ConsistencyQuery(selection=dict(kind='batch',batch_id=running_b['program_batch_id'])))
+        pending_cards=gallery.query(GalleryQuery(query_id=pending_query.query_id,kind='conflicts'))
+        assert all(card.model_state in ('RUNNING','NOT_ANALYZED') for card in pending_cards.items), '新作业尚未分析的组不能借用旧作业结论'
+        release.set()
+        runtime.jobs.wait(second['run_id'],10)
+        second=runtime.models.analysis_workflows.status(second['run_id'])
+        assert second['status']=='COMPLETED',second['errors']
+        query_b=ResultQueries(db).query(ConsistencyQuery(selection=dict(kind='batch',batch_id=second['program_batch_id'])))
+        cards_b=gallery.query(GalleryQuery(query_id=query_b.query_id,kind='conflicts'))
+        assert cards_b.items[0].group_id==reference_a.group_id
+        reference_b=reference_a.model_copy(update={'query_id':query_b.query_id})
+        assert analyses.read(reference_a)==original
+        assert analyses.read(reference_b).result.overall.verdict=='UNCERTAIN'
+        assert analyses.read(reference_b).run_id!=original.run_id
+        with db.connection() as connection:
+            connection.executemany('''INSERT INTO job_runs(job_id,task_id,job_type,status,progress,message,payload_json)
+                SELECT ?,task_id,job_type,status,progress,message,json_set(payload_json,'$.root_run_id',?,
+                    '$.request.analysis_request_id',?) FROM job_runs WHERE job_id=?''',
+                [(f'unrelated-{index}',f'unrelated-{index}',f'unrelated-request-{index}',original.run_id) for index in range(1200)])
+            connection.execute('ANALYZE job_runs')
+        connect=db.get_connection
+        instructions=0
+        def budget():
+            nonlocal instructions
+            instructions+=100
+            return instructions>20000
+        def connection():
+            value=connect();value.set_progress_handler(budget,100);return value
+        with monkeypatch.context() as patch:
+            patch.setattr(db,'get_connection',connection)
+            assert analyses.read(reference_a)==original,'按所选作业读取不应扫描其他作业的大量冻结负载'
+            assert gallery.query(GalleryQuery(query_id=query_a.query_id,kind='conflicts')).items[0].model_state=='MATERIAL'
+        monkeypatch.setattr(contracts,'GROUP_ANALYSIS_SCHEMA','a-new-contract-for-future-jobs')
+        assert analyses.read(reference_a)==original, '历史结果使用其实际冻结契约，不能因当前默认Schema更新而消失'
+        assert gallery.query(GalleryQuery(query_id=query_a.query_id,kind='conflicts')).items[0].model_state=='MATERIAL'
+        assert gallery.query(GalleryQuery(query_id=query_b.query_id,kind='conflicts')).items[0].model_state=='UNCERTAIN'
+        label=tmp_path/'labels/dent.json'
+        changed=json.loads(label.read_text());changed['shapes'][0]['label']='later-label';label.write_text(json.dumps(changed))
+        registry.rescan(config.dataset.id)
+        historical=ResultQueries(db).query(ConsistencyQuery(selection=dict(kind='batch',batch_id=first['program_batch_id'])))
+        historical_cards=gallery.query(GalleryQuery(query_id=historical.query_id,kind='conflicts'))
+        assert all(card.facts_state=='HISTORICAL' for card in historical_cards.items)
+        old_card=next(card for card in historical_cards.items if card.group_id==reference_a.group_id)
+        assert old_card.model_state=='MATERIAL'
+        assert analyses.read(reference_a.model_copy(update={'query_id':historical.query_id,'facts_state':old_card.facts_state}))==original
+    finally:
+        release.set()
+        runtime.close()

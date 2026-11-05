@@ -1,4 +1,5 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { PromptDrawer } from './PromptDrawer.js';
 import { JobStatusDrawer, JobStatusButton } from './JobStatusDrawer.js';
 import { Select } from './Select.js';
 import { TabBar } from './layout/TabBar.js';
@@ -79,7 +80,7 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
     // Modals
     const [modal, setModal] = useState("");
     const [deletingJobId, setDeletingJobId] = useState(null);
-    const [promptJobId, setPromptJobId] = useState(null);
+    const [promptText, setPromptText] = useState(null);
     const [viewingDirection, setViewingDirection] = useState(null);
     const [newPresetName, setNewPresetName] = useState("");
     // Source picker modal state
@@ -91,22 +92,6 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
     const [highlightRef, setHighlightRef] = useState(null);
     // Fullscreen Viewer state (reusing shared FullscreenViewer.tsx)
     const [viewerData, setViewerData] = useState(null);
-    useEffect(() => {
-        if (modal !== "prompt")
-            return;
-        const prev = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-        const onKeyDown = (e) => {
-            if (e.key === "Escape") {
-                setModal("");
-            }
-        };
-        window.addEventListener("keydown", onKeyDown);
-        return () => {
-            document.body.style.overflow = prev;
-            window.removeEventListener("keydown", onKeyDown);
-        };
-    }, [modal]);
     // Candidate samples pool
     const [samplePool, setSamplePool] = useState([]);
     const [samplesLoaded, setSamplesLoaded] = useState(false), [samplesLoading, setSamplesLoading] = useState(false);
@@ -409,7 +394,7 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
                                                     setJobFilter("全部");
                                                     setJobPage(1);
                                                 } })] })] }), filteredJobs.length ? (_jsxs(_Fragment, { children: [_jsx("div", { className: "exp-job-table-wrap", role: "region", "aria-label": "\u63A2\u7D22\u4F5C\u4E1A\u5217\u8868", tabIndex: 0, children: _jsxs("table", { className: "exp-job-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u4F5C\u4E1A ID" }), _jsx("th", { children: "\u72B6\u6001" }), _jsx("th", { children: "\u6570\u636E\u96C6" }), _jsx("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }), _jsx("th", { children: "\u8017\u65F6" }), _jsx("th", { className: "exp-prompt-action-col", children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { children: shownJobs.map((j) => (_jsxs("tr", { "data-action": "select-job", "data-id": j.id, "data-selected": selectedJob?.id === j.id, "aria-selected": selectedJob?.id === j.id, tabIndex: 0, role: "button", "aria-label": `选择作业 ${j.id}`, onClick: () => setSelectedJobId(j.id), children: [_jsx("td", { children: _jsx("strong", { className: "exp-row-title", children: j.id }) }), _jsx("td", { children: _jsx(JobStatusButton, { job: jobSnapshots.find(job => job.run_id === j.id), onClick: () => setStatusJobId(jobSnapshots.find(job => job.run_id === j.id).root_run_id), children: expJobBadge(j.status) }) }), _jsx("td", { children: renderJobDataset(j) }), _jsx("td", { className: "exp-job-time", children: j.time || "—" }), _jsx("td", { className: "exp-job-duration", children: j.status === "PENDING" ? "—" : expElapsed(j.elapsed) }), _jsx("td", { className: "exp-prompt-action-col", children: _jsxs("div", { className: "exp-job-icon-actions", onClick: (e) => e.stopPropagation(), children: [j.status !== 'COMPLETED' && _jsx(IconButton, { icon: "details", label: `查看作业状态 ${j.id}`, onClick: () => setStatusJobId(jobSnapshots.find(job => job.run_id === j.id).root_run_id) }), _jsx(IconButton, { icon: "prompt", label: "\u67E5\u770B\u63D0\u793A\u8BCD", title: "\u67E5\u770B\u63D0\u793A\u8BCD", "data-exp": "show-prompt", "data-id": j.id, onClick: () => {
-                                                                                setPromptJobId(j.id);
+                                                                                setPromptText(j.prompt);
                                                                                 setModal("prompt");
                                                                             } }), _jsx(IconButton, { icon: "delete", label: "\u5220\u9664\u4F5C\u4E1A", title: j.status === "RUNNING" || j.status === "PENDING" ? "请先停止运行中的作业" : "删除作业", "data-delete": "true", "data-exp": "ask-delete-job", "data-id": j.id, className: "danger", disabled: j.status === "RUNNING" || j.status === "PENDING", onClick: () => {
                                                                                 setDeletingJobId(j.id);
@@ -439,13 +424,7 @@ export function ExplorationPage({ dataset, refreshRevision, headerActions, }) {
                                                                         setRefreshTick(value => value + 1);
                                                                     } })] })] }, d.id));
                                             }) })] }) })) : (_jsx("p", { className: "exp-lead", children: "\u672C\u6B21\u6CA1\u6709\u5F62\u6210\u53EF\u7528\u7684\u5019\u9009\u65B9\u5411\u3002" })), _jsxs("div", { className: "exp-limitations", children: [_jsx("div", { className: "exp-result-section-head", children: _jsx("h3", { children: "\u6574\u4F53\u9650\u5236" }) }), selectedJobLimitations.length ? (_jsx("ol", { children: selectedJobLimitations.map((text, i) => (_jsx("li", { children: text }, i))) })) : (_jsx("p", { className: "exp-lead", children: "\u672C\u6B21\u672A\u8BB0\u5F55\u6574\u4F53\u9650\u5236\u3002" }))] })] }))] })), typeof document !== "undefined" &&
-                createPortal(_jsxs(_Fragment, { children: [modal === "prompt" && promptJobId && (_jsx("div", { className: "exp-modal exp-prompt-overlay", id: "exp-prompt-overlay", role: "presentation", onClick: () => setModal(""), children: _jsxs("aside", { className: "exp-prompt-drawer", role: "dialog", "aria-modal": "true", "aria-labelledby": "exp-prompt-title", tabIndex: -1, onClick: (e) => e.stopPropagation(), children: [_jsxs("div", { className: "exp-prompt-drawer-head", children: [_jsx("h2", { id: "exp-prompt-title", children: "\u63A2\u7D22\u63D0\u793A\u8BCD" }), _jsxs("div", { style: { display: "flex", alignItems: "center", gap: 8 }, children: [_jsx(Button, { type: "button", id: "copy-exp-prompt", onClick: async () => {
-                                                            const text = jobs.find((j) => j.id === promptJobId)?.prompt || "本次作业未记录提示词正文。";
-                                                            try {
-                                                                await navigator.clipboard.writeText(text);
-                                                            }
-                                                            catch (_) { }
-                                                        }, children: "\u590D\u5236\u63D0\u793A\u8BCD" }), _jsx(IconButton, { icon: "close", label: "\u5173\u95ED\u63D0\u793A\u8BCD\u62BD\u5C49", title: "\u5173\u95ED", className: "exp-prompt-close", onClick: () => setModal("") })] })] }), _jsx("div", { className: "exp-prompt-drawer-content", children: _jsx("div", { className: "exp-prompt-readonly", children: jobs.find((j) => j.id === promptJobId)?.prompt || "本次作业未记录提示词正文。" }) })] }) })), modal === "delete-job" && deletingJobId && (_jsx("div", { className: "exp-modal", id: "exp-modal", children: _jsxs("div", { className: "exp-dialog small", role: "dialog", "aria-modal": "true", "aria-label": "\u5220\u9664\u63A2\u7D22\u4F5C\u4E1A", children: [_jsxs("div", { className: "exp-dialog-head", children: [_jsx("strong", { children: "\u5220\u9664\u63A2\u7D22\u4F5C\u4E1A" }), _jsx(IconButton, { icon: "close", label: "\u5173\u95ED", onClick: () => setModal("") })] }), _jsx("div", { className: "exp-dialog-main", children: _jsxs("p", { className: "exp-delete-text", children: ["\u786E\u5B9A\u5220\u9664\u4F5C\u4E1A ", deletingJobId, " \u5417\uFF1F"] }) }), _jsxs("div", { className: "exp-dialog-foot", children: [_jsx(Button, { type: "button", onClick: () => setModal(""), children: "\u53D6\u6D88" }), _jsx(Button, { type: "button", variant: "danger", onClick: handleConfirmDeleteJob, children: "\u5220\u9664\u4F5C\u4E1A" })] })] }) })), modal === "save" && (_jsx("div", { className: "exp-modal", id: "exp-modal", children: _jsxs("div", { className: "exp-dialog small", role: "dialog", "aria-modal": "true", "aria-label": "\u53E6\u5B58\u4E3A\u63D0\u793A\u8BCD\u9884\u8BBE", children: [_jsxs("div", { className: "exp-dialog-head", children: [_jsx("strong", { children: "\u53E6\u5B58\u4E3A\u63D0\u793A\u8BCD\u9884\u8BBE" }), _jsx(IconButton, { icon: "close", label: "\u5173\u95ED", onClick: () => setModal("") })] }), _jsx("div", { className: "exp-dialog-main", children: _jsxs("label", { className: "exp-input", children: ["\u9884\u8BBE\u540D\u79F0", _jsx("input", { id: "exp-new-preset", placeholder: "\u8BF7\u8F93\u5165\u9884\u8BBE\u540D\u79F0", value: newPresetName, onChange: (e) => setNewPresetName(e.target.value) })] }) }), _jsxs("div", { className: "exp-dialog-foot", children: [_jsx(Button, { type: "button", onClick: () => setModal(""), children: "\u53D6\u6D88" }), _jsx(Button, { type: "button", variant: "primary", disabled: !newPresetName.trim(), onClick: async () => { try {
+                createPortal(_jsxs(_Fragment, { children: [modal === "prompt" && promptText !== null && _jsx(PromptDrawer, { title: "\u63A2\u7D22\u63D0\u793A\u8BCD", text: promptText || '本次作业未记录提示词正文。', onClose: () => setModal('') }), modal === "delete-job" && deletingJobId && (_jsx("div", { className: "exp-modal", id: "exp-modal", children: _jsxs("div", { className: "exp-dialog small", role: "dialog", "aria-modal": "true", "aria-label": "\u5220\u9664\u63A2\u7D22\u4F5C\u4E1A", children: [_jsxs("div", { className: "exp-dialog-head", children: [_jsx("strong", { children: "\u5220\u9664\u63A2\u7D22\u4F5C\u4E1A" }), _jsx(IconButton, { icon: "close", label: "\u5173\u95ED", onClick: () => setModal("") })] }), _jsx("div", { className: "exp-dialog-main", children: _jsxs("p", { className: "exp-delete-text", children: ["\u786E\u5B9A\u5220\u9664\u4F5C\u4E1A ", deletingJobId, " \u5417\uFF1F"] }) }), _jsxs("div", { className: "exp-dialog-foot", children: [_jsx(Button, { type: "button", onClick: () => setModal(""), children: "\u53D6\u6D88" }), _jsx(Button, { type: "button", variant: "danger", onClick: handleConfirmDeleteJob, children: "\u5220\u9664\u4F5C\u4E1A" })] })] }) })), modal === "save" && (_jsx("div", { className: "exp-modal", id: "exp-modal", children: _jsxs("div", { className: "exp-dialog small", role: "dialog", "aria-modal": "true", "aria-label": "\u53E6\u5B58\u4E3A\u63D0\u793A\u8BCD\u9884\u8BBE", children: [_jsxs("div", { className: "exp-dialog-head", children: [_jsx("strong", { children: "\u53E6\u5B58\u4E3A\u63D0\u793A\u8BCD\u9884\u8BBE" }), _jsx(IconButton, { icon: "close", label: "\u5173\u95ED", onClick: () => setModal("") })] }), _jsx("div", { className: "exp-dialog-main", children: _jsxs("label", { className: "exp-input", children: ["\u9884\u8BBE\u540D\u79F0", _jsx("input", { id: "exp-new-preset", placeholder: "\u8BF7\u8F93\u5165\u9884\u8BBE\u540D\u79F0", value: newPresetName, onChange: (e) => setNewPresetName(e.target.value) })] }) }), _jsxs("div", { className: "exp-dialog-foot", children: [_jsx(Button, { type: "button", onClick: () => setModal(""), children: "\u53D6\u6D88" }), _jsx(Button, { type: "button", variant: "primary", disabled: !newPresetName.trim(), onClick: async () => { try {
                                                     const saved = await request("/exploration/presets", { name: newPresetName.trim(), text: prompt });
                                                     setPresets(values => [...values, saved]);
                                                     setSelectedPresetId(saved.id);

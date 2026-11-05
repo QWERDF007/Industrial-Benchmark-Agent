@@ -29,7 +29,7 @@ const firefox=require('selenium-webdriver/firefox.js');
     assert.deepEqual(await Promise.all(tabs.map(tab=>tab.getText())),['支持证据','反对证据'],'证据Tab只显示名称，不在旁边重复图像数量');
     for(const tab of tabs){
       const style=await driver.executeScript('const s=getComputedStyle(arguments[0]);return [s.borderLeftWidth,s.borderTopWidth,s.borderBottomWidth,s.borderRadius,s.height,s.backgroundColor]',tab);
-      assert.deepEqual(style,['0px','0px','2px','0px','40px','rgba(0, 0, 0, 0)']);
+      assert.deepEqual(style,['0px','0px','2px','0px','44px','rgba(0, 0, 0, 0)']);
     }
     assert.ok((await dialog.getText()).includes('对象与位置'));
     await driver.wait(async()=>(await dialog.findElements(By.css('[data-evidence-role="support"] .iad-thumbnail-card'))).length>0,15000);

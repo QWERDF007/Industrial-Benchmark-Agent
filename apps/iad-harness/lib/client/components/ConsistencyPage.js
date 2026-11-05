@@ -109,7 +109,6 @@ function ConsistencyIntegratedWorkspace() {
     const pendingReview = useRef(null);
     const [reviewDecision, setReviewDecision] = useState('pending');
     const [reviewNote, setReviewNote] = useState('');
-    const [reviews, setReviews] = useState({});
     const [statsModalJobId, setStatsModalJobId] = useState('');
     const [zoomItem, setZoomItem] = useState(null);
     // Derive hierarchy groups
@@ -256,10 +255,10 @@ function ConsistencyIntegratedWorkspace() {
             list = list.filter(c => c.filename.toLowerCase().includes(q));
         }
         if (reviewFilter !== 'all') {
-            list = list.filter(c => (reviews[c.rawItem.anchor.evidence_id] || c.review) === reviewFilter);
+            list = list.filter(c => c.review === reviewFilter);
         }
         return list;
-    }, [jobConflicts, kind, modelFilter, agreement, search, reviewFilter, reviews]);
+    }, [jobConflicts, kind, modelFilter, agreement, search, reviewFilter]);
     const totalPages = Math.max(1, Math.ceil(visibleConflicts.length / 18));
     const currentPage = Math.min(totalPages, Math.max(1, page));
     const paginatedConflicts = useMemo(() => {
@@ -417,7 +416,6 @@ function ConsistencyIntegratedWorkspace() {
         setReviewDecision(decision);
         setReviewNote(latest?.request.comment || '');
         setReviewLoaded(true);
-        setReviews(previous => ({ ...previous, [context.evidence_id]: decision }));
     }, [selectedMember?.comparison?.evidence_id, currentConflict?.id]);
     useEffect(() => {
         const controller = new AbortController();
@@ -481,6 +479,7 @@ function ConsistencyIntegratedWorkspace() {
             await readReview();
             pendingReview.current = null;
             setModal('');
+            setRevision(value => value + 1);
         }
         catch (error) {
             setReviewError(message(error));

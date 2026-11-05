@@ -277,6 +277,11 @@ def test_consistency_retry_keeps_successful_uncovered_images_and_rechecks_only_t
         first=runtime.models.analysis_workflows.status(started['run_id'])
         assert first['status']=='PARTIAL',first['errors']
         assert first['completed']==first['failed']==2
+        for failure in first['errors']:
+            source=runtime.jobs.status(failure['source_run_id'])
+            assert source['job_type']=='CONSISTENCY_ANALYSIS'
+            assert failure['source_phase']==source['phase']=='ANALYZING_GROUP_BATCHES'
+            assert failure['source_phase']!=first['phase'],'子作业失败不能归因于父作业后续阶段'
         succeeded=set(first['completed_sample_ids'])
         assert len(calls)==3
         successful_child=runtime.jobs.status(first['unit_runs'][config.dataset.id])

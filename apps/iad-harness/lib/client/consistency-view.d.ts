@@ -8,7 +8,7 @@ export interface ConflictCardItem {
     sourceWidth: number;
     sourceHeight: number;
     memberCount: number;
-    review: 'pending' | 'confirmed' | 'rejected';
+    review: GalleryItem['review_state'];
     model: {
         status: 'conflict' | 'no_conflict' | 'unknown';
         modelType: string;

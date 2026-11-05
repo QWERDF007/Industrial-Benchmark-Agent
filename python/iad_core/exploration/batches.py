@@ -1,4 +1,4 @@
-from iad_core.workbench.job_models import failure_message
+from iad_core.workbench.job_models import ChildJobError, failure_message
 import json
 from collections import deque
 from uuid import UUID, uuid4
@@ -110,7 +110,7 @@ class ExplorationBatches:
                     defect_images=batch['defect_images'], parent_version_id=previous))
                 child = context.join(self.exploration.start(child_request, request['model_name']))
                 if child['status'] != 'COMPLETED':
-                    raise ValueError(f"探索图组 {index + 1} 未完成（{child['run_id']}）：" +
+                    raise ChildJobError(child,message=f"探索图组 {index + 1} 未完成（{child['run_id']}）：" +
                                      failure_message(child['errors']))
             previous = child['exploration_version_id']
             if index == len(request['batches']) - 1:

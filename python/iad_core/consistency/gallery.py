@@ -1,4 +1,3 @@
-import hashlib
 import json
 from collections import Counter, defaultdict
 from collections.abc import Sequence
@@ -11,11 +10,14 @@ from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.annotation_models import AnnotationComparison, ANNOTATION_DIFFERENCE_CATEGORIES
 from iad_core.consistency.models import MODEL_ASSESSMENT_LABELS, Count, DifferenceType, GalleryFilterKind, GalleryModelFilter, Identifier, ModelAssessmentState
-from iad_core.consistency.result_models import FactState
+from iad_core.consistency.result_models import FactState, ResultSelection
+from iad_core.consistency.review_repository import ConsistencyDecisionRepository
+from iad_core.consistency.review_states import ReviewStates
+from iad_core.consistency.review_models import ReviewDisposition
 from iad_core.consistency.result_snapshot import ResultSnapshots
 from iad_core.consistency.group_analysis_states import GroupAnalysisStates
 from iad_core.consistency.candidate_selection import ELIGIBLE_PAIR_SQL, REVIEW_PAIR_SQL
-from iad_core.consistency.group_models import FrozenAnalysisGroup, GalleryKind, GalleryImage, GalleryComparison, GalleryMember
+from iad_core.consistency.group_models import FrozenAnalysisGroup, GalleryKind, GalleryImage, GalleryComparison, GalleryMember, GroupAnalysisIdentity, FrozenGalleryGroup
 from iad_core.storage.database import Database
 from iad_core.storage.models import Sample
 
@@ -54,6 +56,7 @@ class GalleryItem(AnalysisModel):
     difference_types: list[DifferenceType]
     confirmed_conflict: bool
     model_state: ModelAssessmentState
+    review_state: ReviewDisposition
 
 
 class GalleryFilterCount(AnalysisModel):
@@ -125,20 +128,12 @@ class GalleryQueries:
         self.db = db
 
     @staticmethod
-    def analysis_fingerprint(reference: GalleryReference, anchor: GalleryImage, evidence_ids: list[str]) -> str:
-        from iad_core.consistency.group_analysis_models import GROUP_ANALYSIS_SCHEMA
-        return hashlib.sha256(json.dumps({'schema':GROUP_ANALYSIS_SCHEMA,
-            'group':reference.model_dump(include={'kind','group_id','facts_state'}),
-            'anchor':{'evidence_id':anchor.evidence_id,'side':anchor.side},'evidence_ids':sorted(set(evidence_ids))},
-            sort_keys=True).encode()).hexdigest()
-
-    @staticmethod
     def image(row) -> GalleryImage:
         return GalleryImage(sample=Sample.model_validate(json.loads(row['source'])['sample']),
             evidence_id=row['evidence_id'], side=row['side'], available=bool(row['evidence_available']))
 
     def query(self, request: GalleryQuery) -> GalleryPage:
-        ResultSnapshots(self.db).get(request.query_id)
+        snapshot = ResultSnapshots(self.db).get(request.query_id)
         args = (request.query_id, request.kind, request.kind, request.search)
         cte = self.PAIRS + "," + """ grouped AS (
             SELECT group_id,facts_state,COUNT(DISTINCT json_extract(source,'$.sample.sample_id')) member_count,
@@ -157,19 +152,21 @@ class GalleryQueries:
             connection.create_function('annotation_difference_types', 1, AnnotationComparison.json_difference_types, deterministic=True)
             rows = connection.execute(cte + """ SELECT g.*,a.source,a.evidence_id,a.side,a.evidence_available,c.pair_count,c.confirmed,
                 COALESCE((SELECT json_group_array(type) FROM types t WHERE t.group_id=g.group_id AND t.facts_state=g.facts_state),'[]') difference_types,
-                (SELECT json_group_array(e.evidence_id) FROM edges e WHERE e.group_id=g.group_id AND e.facts_state=g.facts_state) evidence_ids
+                (SELECT json_group_array(e.evidence_id) FROM edges e WHERE e.group_id=g.group_id AND e.facts_state=g.facts_state) evidence_ids,
+                (SELECT json_group_object(e.evidence_id,(SELECT json_group_array(json_extract(d.value,'$.difference_id')) FROM json_each(e.differences) d))
+                    FROM edges e WHERE e.group_id=g.group_id AND e.facts_state=g.facts_state) review_facts
                 FROM matching g JOIN anchors a ON a.group_id=g.group_id AND a.facts_state=g.facts_state AND a.rank=1
                 JOIN counts c ON c.group_id=g.group_id AND c.facts_state=g.facts_state ORDER BY """ + order, args).fetchall()
         counts, model_counts = Counter(), Counter()
-        fingerprints={row['group_id']+'@'+row['facts_state']:self.analysis_fingerprint(
-            GalleryReference(query_id=request.query_id,kind=request.kind,group_id=row['group_id'],facts_state=row['facts_state']),
-            self.image(row),json.loads(row['evidence_ids'])) for row in rows}
-        group_states=GroupAnalysisStates(self.db).read(set(fingerprints.values()))
+        identities = {(row['group_id'],row['facts_state']):GroupAnalysisIdentity(kind=request.kind,group_id=row['group_id'],
+            facts_state=row['facts_state'],anchor=self.image(row),evidence_ids=tuple(json.loads(row['evidence_ids']))) for row in rows}
+        group_states=GroupAnalysisStates(self.db).read(snapshot.request.selection,identities.values())
         selected = []
         for row in rows:
             categories = {ANNOTATION_DIFFERENCE_CATEGORIES[kind] for kind in json.loads(row['difference_types'])}
             category = next(iter(categories)) if len(categories) == 1 else 'multiple' if categories else None
-            model_state=group_states.get(fingerprints[row['group_id']+'@'+row['facts_state']],'NOT_ANALYZED')
+            state=group_states.get(identities[row['group_id'],row['facts_state']].key)
+            model_state=state.model_state if state else 'NOT_ANALYZED'
             category_matches=request.difference_filter in ('all', category)
             model_matches=request.model_filter in ('all',model_state)
             if model_matches:counts[category] += 1
@@ -178,12 +175,18 @@ class GalleryQueries:
                 selected.append((row,model_state))
         total = len(selected)
         rows = selected[(request.page - 1) * request.page_size:request.page * request.page_size]
+        review_facts = {(row['group_id'],row['facts_state']):json.loads(row['review_facts']) for row,_ in rows}
+        histories = ConsistencyDecisionRepository(self.db).histories({identity for pairs in review_facts.values() for identity in pairs})
+        reviews = {}
+        for key,pairs in review_facts.items():
+            states = {ReviewStates.disposition(differences,histories.get(identity,[])) for identity,differences in pairs.items() if differences}
+            reviews[key] = next(iter(states)) if len(states)==1 else 'pending'
         filters = [GalleryFilterCount(value=value,label=label,count=sum(counts.values()) if value=='all' else counts[value]) for value,label in self.FILTERS]
         model_filters=[GalleryModelFilterCount(value=value,label=label,count=sum(model_counts.values()) if value=='all' else model_counts[value]) for value,label in self.MODEL_FILTERS]
         return GalleryPage(query_id=request.query_id,kind=request.kind,total=total,filters=filters,model_filters=model_filters,items=[
             GalleryItem(group_id=row['group_id'],facts_state=row['facts_state'],anchor=self.image(row),
                 member_count=row['member_count'],candidate_count=row['member_count']-1,dataset_count=row['dataset_count'],
-                pair_count=row['pair_count'],difference_types=json.loads(row['difference_types']),confirmed_conflict=bool(row['confirmed']),model_state=model_state) for row,model_state in rows])
+                pair_count=row['pair_count'],difference_types=json.loads(row['difference_types']),confirmed_conflict=bool(row['confirmed']),model_state=model_state,review_state=reviews[row['group_id'],row['facts_state']]) for row,model_state in rows])
 
     def members(self, request: GalleryMemberQuery) -> GalleryMemberPage:
         ResultSnapshots(self.db).get(request.query_id)
@@ -197,32 +200,33 @@ class GalleryQueries:
         image, items, total = self._members(pairs, (request.page-1)*request.page_size, request.page*request.page_size)
         return GalleryMemberPage(query_id=request.query_id, group_id=request.group_id, anchor=image, items=items, total=total)
 
-    def freeze(self, reference: GalleryReference) -> tuple[FrozenAnalysisGroup, str]:
-        ResultSnapshots(self.db).get(reference.query_id)
+    def freeze(self, reference: GalleryReference) -> FrozenGalleryGroup:
+        snapshot = ResultSnapshots(self.db).get(reference.query_id)
         with self.db.connection() as connection:
             connection.create_function('annotation_difference_types',1,AnnotationComparison.json_difference_types,deterministic=True)
             pairs = connection.execute(self.PAIRS+' SELECT * FROM edges WHERE group_id=? AND facts_state=? ORDER BY position',
                 (reference.query_id,reference.kind,reference.kind,reference.group_id,reference.facts_state)).fetchall()
         if not pairs:
             raise ConsistencyError('REFERENCE_NOT_FOUND', 'Image group is outside this result snapshot')
-        return self._freeze(reference,pairs)
+        return self._freeze(reference,pairs,snapshot.request.selection)
 
-    def freeze_all(self, query_id: str, kind: GalleryKind) -> list[tuple[FrozenAnalysisGroup,str]]:
-        ResultSnapshots(self.db).get(query_id)
+    def freeze_all(self, query_id: str, kind: GalleryKind) -> list[FrozenGalleryGroup]:
+        snapshot = ResultSnapshots(self.db).get(query_id)
         with self.db.connection() as connection:
             connection.create_function('annotation_difference_types',1,AnnotationComparison.json_difference_types,deterministic=True)
             pairs = connection.execute(self.PAIRS+' SELECT * FROM edges ORDER BY position', (query_id,kind,kind)).fetchall()
         groups: dict[tuple[str,FactState],list[Row]] = defaultdict(list)
         for pair in pairs:
             groups[pair['group_id'],pair['facts_state']].append(pair)
-        return [self._freeze(GalleryReference(query_id=query_id,kind=kind,group_id=group_id,facts_state=state),members)
+        return [self._freeze(GalleryReference(query_id=query_id,kind=kind,group_id=group_id,facts_state=state),members,snapshot.request.selection)
             for (group_id,state),members in groups.items()]
 
-    def _freeze(self, reference: GalleryReference, pairs: Sequence[Row]) -> tuple[FrozenAnalysisGroup,str]:
+    def _freeze(self, reference: GalleryReference, pairs: Sequence[Row], selection: ResultSelection) -> FrozenGalleryGroup:
         image, members, _ = self._members(pairs)
         group = FrozenAnalysisGroup(kind=reference.kind,group_id=reference.group_id,facts_state=reference.facts_state,
             anchor=image,members=members)
-        return group,self.analysis_fingerprint(reference,image,[pair['evidence_id'] for pair in pairs])
+        return FrozenGalleryGroup(group,GroupAnalysisIdentity(reference.kind,reference.group_id,reference.facts_state,image,
+            tuple(pair['evidence_id'] for pair in pairs)),selection)
 
     def _members(self, pairs: Sequence[Row], start: int = 0, stop: int | None = None) -> tuple[GalleryImage,list[GalleryMember],int]:
         sources = {}

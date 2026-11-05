@@ -136,7 +136,6 @@ function ConsistencyIntegratedWorkspace() {
   const pendingReview=useRef<ConsistencyReviewSubmission|null>(null);
   const [reviewDecision, setReviewDecision] = useState<'pending' | 'confirmed' | 'rejected'>('pending');
   const [reviewNote, setReviewNote] = useState<string>('');
-  const [reviews, setReviews] = useState<Record<string, 'pending' | 'confirmed' | 'rejected'>>({});
   const [statsModalJobId, setStatsModalJobId] = useState<string>('');
   const [zoomItem, setZoomItem] = useState<FullscreenViewerItem | null>(null);
 
@@ -288,10 +287,10 @@ function ConsistencyIntegratedWorkspace() {
       list = list.filter(c => c.filename.toLowerCase().includes(q));
     }
     if (reviewFilter !== 'all') {
-      list = list.filter(c => (reviews[c.rawItem.anchor.evidence_id] || c.review) === reviewFilter);
+      list = list.filter(c => c.review === reviewFilter);
     }
     return list;
-  }, [jobConflicts, kind, modelFilter, agreement, search, reviewFilter, reviews]);
+  }, [jobConflicts, kind, modelFilter, agreement, search, reviewFilter]);
 
   const totalPages = Math.max(1, Math.ceil(visibleConflicts.length / 18));
   const currentPage = Math.min(totalPages, Math.max(1, page));
@@ -454,7 +453,6 @@ function ConsistencyIntegratedWorkspace() {
     const decision=action==='CONFIRM_DIFFERENCE'?'confirmed':action==='REJECT_DIFFERENCE'?'rejected':'pending';
     setReviewDecision(decision);setReviewNote(latest?.request.comment || '');
     setReviewLoaded(true);
-    setReviews(previous=>({...previous,[context.evidence_id]:decision}));
   },[selectedMember?.comparison?.evidence_id,currentConflict?.id]);
   useEffect(()=>{
     const controller=new AbortController();setReviewLoaded(false);setReviewError('');setReviewDecision('pending');setReviewNote('');pendingReview.current=null;
@@ -500,7 +498,7 @@ function ConsistencyIntegratedWorkspace() {
         reviewer:localStorage.getItem('iad.reviewer') || 'auditor_qc',comment:reviewNote.trim(),
         action:{kind:reviewDecision==='confirmed'?'CONFIRM_DIFFERENCE':reviewDecision==='rejected'?'REJECT_DIFFERENCE':'NEEDS_CONTEXT'}};
       await request('/consistency/review/submit',pendingReview.current);
-      await readReview();pendingReview.current=null;setModal('');
+      await readReview();pendingReview.current=null;setModal('');setRevision(value=>value+1);
     }catch(error){setReviewError(message(error));}finally{setReviewBusy(false);}
   };
 

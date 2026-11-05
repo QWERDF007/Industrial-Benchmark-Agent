@@ -8,13 +8,21 @@ import { message, request } from "../api.js";
 import { useWorkspace } from "../workspace.js";
 import { KnowledgeJobEvidence } from "./KnowledgeJobEvidence.js";
 import { jobStatuses, jobPhases as phases } from "../../shared/job-display.js";
-import { PageTabs } from "./layout/PageTabs.js";
 import {useResource} from "../useResource.js";
 import { DeleteAction } from "./DeleteAction.js";
 
 const sampleName = (sample: JobSample) => sample.relative_path || sample.sample_uuid;
 
-export function JobDetail({ job, onChanged, stale = false, lastSyncedAt, onCopy, onClose, presentation = "inline" }: { job: JobSnapshot; onChanged(): void; stale?: boolean; lastSyncedAt?: number | null; onCopy?(job: JobSnapshot): void; presentation?: "inline" | "drawer" | "status"; onClose?(): void }) {
+export interface JobDetailProps {
+  job: JobSnapshot;
+  onChanged(): void;
+  stale?: boolean;
+  lastSyncedAt?: number | null;
+  presentation?: 'inline' | 'drawer';
+  onClose?(): void;
+}
+
+export function JobDetail({job,onChanged,stale=false,lastSyncedAt,onClose,presentation='inline'}: JobDetailProps) {
   const { workspace } = useWorkspace();
   const grouped=job.job_type==="ANALYSIS_WORKFLOW";
   const kind = ['MODEL_AUDIT','MODEL_AUDIT_SAMPLE'].includes(job.job_type) ? "audit" : job.analysis_kind === "exploration" || ['DIRECTION_EXPLORATION','EXPLORATION_BATCH'].includes(job.job_type) ? "exploration" : job.analysis_kind === "consistency" ? "consistency" : "knowledge";
@@ -31,8 +39,6 @@ export function JobDetail({ job, onChanged, stale = false, lastSyncedAt, onCopy,
   const [revision, setRevision] = useState(0);
   const article = useRef<HTMLElement>(null);
   const drawer = presentation !== "inline";
-  const statusOnly = presentation === "status";
-  const [tab, setTab] = useState<"overview" | "evidence" | "failures" | "retry">("overview");
   const focused = workspace.view(page).job === job.run_id;
   useEffect(() => { if (focused && !drawer) article.current?.scrollIntoView({ block: "nearest" }); }, [focused, drawer]);
   useEffect(() => {
@@ -65,10 +71,10 @@ export function JobDetail({ job, onChanged, stale = false, lastSyncedAt, onCopy,
   }
   const body = (
 <div className="iad-job-detail-body">
-    {(!drawer || statusOnly || tab === 'overview') && <section aria-label="运行概览">
+    <section aria-label="运行概览">
     {kind !== "exploration" && !drawer && job.total_samples > 0 && <progress aria-label="作业处理进度" value={job.progress} max={1} />}
     {drawer && <section className="iad-job-progress-card"><p>作业完成进度<strong>{job.completed} / {job.total_samples}</strong></p><progress aria-label="作业完成进度" value={job.completed} max={job.total_samples || 1} /></section>}
-    {statusOnly && <section aria-label="执行阶段"><h3>执行阶段</h3><dl>
+    {drawer && <section aria-label="执行阶段"><h3>执行阶段</h3><dl>
       <dt>当前阶段</dt><dd>{phases[job.phase || ''] || job.phase || '未记录阶段'}{job.phase && <code className="iad-job-phase-code">{job.phase}</code>}</dd>
       <dt>阶段开始</dt><dd>{job.phase_started_at ? <time dateTime={job.phase_started_at}>{new Date(job.phase_started_at).toLocaleString()}</time> : '未记录'}</dd>
       {job.queue_position != null && <><dt>排队位置</dt><dd>{job.queue_position}</dd></>}
@@ -77,12 +83,12 @@ export function JobDetail({ job, onChanged, stale = false, lastSyncedAt, onCopy,
       {job.finished_at && <><dt>结束时间</dt><dd>{new Date(job.finished_at).toLocaleString()}</dd></>}
     </dl><p>{job.message}</p></section>}
     {drawer && job.observation_progress && <section className="iad-job-progress-card"><p>图像观察进度（不代表完成或发布）<strong>{job.observation_progress.observed_sources} / {job.observation_progress.planned_sources}</strong></p><progress aria-label="图像观察进度" value={job.observation_progress.observed_sources} max={job.observation_progress.planned_sources || 1} /></section>}
-    {kind === "exploration" ? <ExplorationProgress job={job} stale={stale} lastSyncedAt={lastSyncedAt} /> : !drawer && <p>完成 {job.completed}，失败 {job.failed}，未处理 {job.unprocessed}，共 {job.total_samples} 张</p>}
-    {kind === "exploration" && <><details><summary>任务冻结提示词</summary><pre className="iad-observation">{job.exploration_prompt?.text || "未记录"}</pre><p>{job.exploration_request?.objective}</p></details>{onCopy && <button onClick={() => onCopy(job)}>复制为新配置</button>}</>}
-    {kind === "knowledge" && job.observation_progress && <p className="iad-muted">已观察 {job.observation_progress.observed_sources} / {job.observation_progress.planned_sources} 张，完整视图 {job.observation_progress.complete_sources} 张，已发布 {job.observation_progress.published_sources} 张</p>}
+    {!drawer && (kind === "exploration" ? <ExplorationProgress job={job} stale={stale} lastSyncedAt={lastSyncedAt} /> : <p>完成 {job.completed}，失败 {job.failed}，未处理 {job.unprocessed}，共 {job.total_samples} 张</p>)}
+    {kind === "exploration" && <><details><summary>任务冻结提示词</summary><pre className="iad-observation">{job.exploration_prompt?.text || "未记录"}</pre><p>{job.exploration_request?.objective}</p></details></>}
+    {!drawer && kind === "knowledge" && job.observation_progress && <p className="iad-muted">已观察 {job.observation_progress.observed_sources} / {job.observation_progress.planned_sources} 张，完整视图 {job.observation_progress.complete_sources} 张，已发布 {job.observation_progress.published_sources} 张</p>}
     {['KNOWLEDGE_BATCH','EXPLORATION_BATCH'].includes(job.job_type) && <section><h3>分批进度</h3><p>已发布批次 {job.completed_batches || 0} / {job.total_batches ?? '准备中'}</p>
       <ol>{job.batch_runs.map(runId=><li key={runId}><button type="button" onClick={()=>{related(runId);}}>{runId}</button></li>)}</ol></section>}
-    {active && job.cancel_requested ? <p className="iad-muted">等待当前模型请求返回后停止。</p> : <p className="iad-muted">{phases[job.phase || ""] || job.message}</p>}
+    {!drawer && (active && job.cancel_requested ? <p className="iad-muted">等待当前模型请求返回后停止。</p> : <p className="iad-muted">{phases[job.phase || ""] || job.message}</p>)}
     {job.current_sample && <p>当前图像 <button onClick={() => locate(job.current_sample!.sample_id)} title={job.current_sample.sample_uuid}>{sampleName(job.current_sample)}</button></p>}
     {!!job.planned_regions && <p className="iad-muted">ROI {job.inspected_regions || 0} / {job.planned_regions}</p>}
     {!!job.total_batches && <p className="iad-muted">联合判断 {job.completed_batches || 0} / {job.total_batches}</p>}
@@ -95,19 +101,20 @@ export function JobDetail({ job, onChanged, stale = false, lastSyncedAt, onCopy,
     }}>返回发起会话</button></p>}
     {job.parent_run_id && <p className="iad-job-links"><button onClick={() => related(job.parent_run_id!)}>原作业 {job.parent_run_id}</button>{job.root_run_id !== job.parent_run_id && <button onClick={() => related(job.root_run_id)}>起始作业 {job.root_run_id}</button>}</p>}
     {kind === "knowledge" && job.knowledge_version_id && <p><button onClick={() => { workspace.openLocation({ pageId: "industrial-knowledge", datasetId: job.dataset_id, version: job.knowledge_version_id!, tab: "results" }); }}>查看已发布版本</button></p>}
-    </section>}
-    {!grouped && kind === 'knowledge' && !statusOnly && (!drawer || tab === 'evidence') && <KnowledgeJobEvidence job={job} initiallyOpen={drawer} />}
-    {((drawer && tab === 'failures') || (statusOnly && (job.errors.length > 0 || ['FAILED','PARTIAL','INTERRUPTED'].includes(job.status))) || (!drawer && !!job.errors.length)) && <section aria-label="失败记录"><h3>失败记录</h3>{!job.errors.length && <p>未记录错误详情</p>}
+    </section>
+    {!grouped && kind === 'knowledge' && !drawer && <KnowledgeJobEvidence job={job} initiallyOpen={drawer} />}
+    {(job.errors.length > 0 || (drawer && ['FAILED','PARTIAL','INTERRUPTED'].includes(job.status))) && <section aria-label="失败记录"><h3>失败记录</h3>{!job.errors.length && <p>未记录错误详情</p>}
       <ul className="iad-job-errors">{job.errors.map((error,index) => <li key={index}>
         <button type="button" onClick={() => locate(error.sample_id)} title={error.sample_uuid}>{sampleName(error)}</button>
         {error.code && <code>{error.code}</code>}<p>{error.message}</p>
+        {error.source_run_id && <p>{phases[error.source_phase || ''] || error.source_phase || '未记录阶段'}<code className="iad-job-phase-code">{error.source_run_id}</code></p>}
       </li>)}</ul></section>}
 
-    {(!drawer || tab === "overview") && kind === "exploration" && job.exploration_version_id && <button onClick={() => workspace.updateView(page,{version:job.exploration_version_id!,tab:"results"})}>查看探索结果</button>}
+    {kind === "exploration" && job.exploration_version_id && <button onClick={() => workspace.updateView(page,{version:job.exploration_version_id!,tab:"results"})}>查看探索结果</button>}
     {(grouped || kind === "exploration") && !active && job.status !== "COMPLETED" && <button disabled={busy} onClick={() => void retry()}>按原图组重试</button>}
-    {(!drawer || statusOnly || tab === "retry") && !grouped && kind !== "exploration" && !active && !job.deleted_at && job.status !== "COMPLETED" && <button aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? "收起重试范围" : "选择重试范围"}</button>}
-    {drawer && tab === "retry" && (active || job.status === "COMPLETED") && <p className="iad-muted">{active ? "作业仍在执行，终态后可查看重试范围。" : "作业已完成，无需重试。"}</p>}
-    {expanded && !active && job.status !== "COMPLETED" && (!drawer || statusOnly || tab === "retry") && <section className="iad-retry-scope" aria-label="重试范围">
+    {!grouped && kind !== "exploration" && !active && !job.deleted_at && job.status !== "COMPLETED" && <button aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? "收起重试范围" : "选择重试范围"}</button>}
+
+    {expanded && !active && job.status !== "COMPLETED" && <section className="iad-retry-scope" aria-label="重试范围">
       {options ? <>
         {options.active_run_id && <p role="status">同类作业仍在执行，请结束后重新读取范围。</p>}
         {!options.samples.length ? <p>关联作业已完成全部图像，无需重试。</p> : <>
@@ -139,7 +146,7 @@ export function JobDetail({ job, onChanged, stale = false, lastSyncedAt, onCopy,
     {drawer && <><div className="iad-job-metrics"><div><span>完成</span><strong>{job.completed}</strong><small>/ {job.total_samples}</small></div><div><span>失败</span><strong>{job.failed}</strong><small>张</small></div><div><span>未处理</span><strong>{job.unprocessed}</strong><small>张</small></div><div><span>已观察</span><strong>{job.observation_progress?.observed_sources ?? '未提供'}</strong>{job.observation_progress && <small>/ {job.observation_progress.planned_sources}</small>}</div></div>
       {stale && <p role="alert" className="iad-error">同步已过期，以下保留最近一次作业状态。</p>}
     </>}
-    {drawer && !statusOnly ? <PageTabs label="作业详情分区" value={tab} onChange={value => { setTab(value); setExpanded(value === 'retry'); }} items={[{id:'overview',label:'运行概览'},...(kind === 'consistency' ? [] : [{id:'evidence' as const,label:'观察证据'}]),{id:'failures',label:'失败记录'},{id:'retry',label:'重试范围'}]}>{body}</PageTabs> : body}
+    {body}
     <footer className="iad-job-footer">{drawer && <button onClick={onClose}>关闭</button>}
       {kind === "knowledge" && !active && !job.deleted_at && <DeleteAction title="删除作业" name={job.run_id} className="iad-action-end"
         description="从作业列表删除，保留已发布知识、冻结证据及历史引用。"
@@ -147,7 +154,7 @@ export function JobDetail({ job, onChanged, stale = false, lastSyncedAt, onCopy,
         onDelete={async () => { await request(grouped?`/analysis/delete/${encodeURIComponent(job.run_id)}`:`/knowledge/jobs/${encodeURIComponent(job.run_id)}`, grouped?{}:undefined, grouped?"POST":"DELETE");
           if (focused) workspace.updateView(page, { job: "" }); onClose?.(); onChanged(); }} />}
 
-    {drawer && !statusOnly && !active && job.status !== "COMPLETED" && <Button variant="primary" onClick={() => { setTab("retry"); setExpanded(true); }}>选择重试范围</Button>}
+
     </footer>
   </article>;
 }

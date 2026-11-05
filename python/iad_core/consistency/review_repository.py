@@ -1,3 +1,5 @@
+import json
+from collections.abc import Iterable
 import hashlib
 from sqlite3 import Connection
 from contextlib import nullcontext
@@ -25,10 +27,18 @@ class ConsistencyDecisionRepository:
             hashlib.sha256(record.request.model_dump_json().encode()).hexdigest(), record.model_dump_json()))
 
     def history(self, evidence_id: str, connection: Connection | None = None, *, watermark: int | None = None) -> list[ConsistencyDecision]:
+        return self.histories([evidence_id],connection,watermark=watermark).get(evidence_id,[])
+
+    def histories(self, evidence_ids: Iterable[str], connection: Connection | None = None, *,
+                  watermark: int | None = None) -> dict[str,list[ConsistencyDecision]]:
         with nullcontext(connection) if connection is not None else self.db.connection() as connection:
-            return [ConsistencyDecision.model_validate_json(row[0]) for row in connection.execute(
-                'SELECT record_json FROM consistency_decisions WHERE evidence_id=?' + (' AND id<=?' if watermark is not None else '') + ' ORDER BY id',
-                (evidence_id, watermark) if watermark is not None else (evidence_id,))]
+            rows=connection.execute('SELECT evidence_id,record_json FROM consistency_decisions WHERE evidence_id IN (SELECT value FROM json_each(?))'
+                + (' AND id<=?' if watermark is not None else '') + ' ORDER BY id',
+                (json.dumps(sorted(set(evidence_ids))),watermark) if watermark is not None else (json.dumps(sorted(set(evidence_ids))),)).fetchall()
+        records: dict[str,list[ConsistencyDecision]] = {}
+        for row in rows:
+            records.setdefault(row['evidence_id'],[]).append(ConsistencyDecision.model_validate_json(row['record_json']))
+        return records
 
     def get(self, decision_id: str, connection: Connection) -> ConsistencyDecision:
         row = connection.execute('SELECT record_json FROM consistency_decisions WHERE decision_id=?', (decision_id,)).fetchone()

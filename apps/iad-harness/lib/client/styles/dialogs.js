@@ -62,30 +62,6 @@ dialog.iad-detail-dialog {text-align:left;}
   }
 }
 
-/* ==========================================================================
-   Unified Backdrops / Overlay Masks
-   ========================================================================== */
-.detail-overlay.show,
-.exp-modal:not(.exp-prompt-overlay),
-.dc-modal-mask,
-#dc-compare-mask.dc-modal-mask,
-#knowledge-page .kb-v45 .detail-overlay.show,
-.modal-scrim,
-dialog.iad-detail-dialog::backdrop {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  inset: 0 !important;
-  z-index: 500 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: var(--iad-modal-backdrop) !important;
-  padding: var(--iba-dialog-gap) !important;
-  box-sizing: border-box !important;
-}
 
 .detail-overlay.hidden,
 .detail-overlay:not(.show),
@@ -447,47 +423,7 @@ dialog.iad-detail-dialog.iad-confirm-dialog {
 #knowledge-page .kb-v45 .modal .status.amber { color: #976013 !important; }
 #knowledge-page .kb-v45 .modal .status.blue { color: #285ed6 !important; }
 
-/* ==========================================================================
-   Prompt Drawers (560px right-hand drawers, 100dvh full height)
-   Direction Exploration Prompt Drawer, Knowledge Prompt Drawer
-   ========================================================================== */
-.exp-prompt-overlay,
-.knowledge-prompt-overlay {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 500 !important;
-  display: flex !important;
-  align-items: stretch !important;
-  justify-content: flex-end !important;
-  padding: 0 !important;
-  background: var(--iad-modal-backdrop, rgba(22, 33, 51, 0.36)) !important;
-}
 
-.exp-prompt-drawer,
-.knowledge-prompt-drawer {
-  box-sizing: border-box !important;
-  flex: none !important;
-  position: fixed !important;
-  top: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: min(560px, 100vw) !important;
-  max-width: 560px !important;
-  height: 100dvh !important;
-  max-height: 100dvh !important;
-  margin: 0 !important;
-  border-radius: 0 !important;
-  border-left: 1px solid #d6deeb !important;
-  border-top: 0 !important;
-  border-right: 0 !important;
-  border-bottom: 0 !important;
-  box-shadow: -15px 0 45px rgba(21, 34, 56, 0.2) !important;
-  background: #ffffff !important;
-  display: flex !important;
-  flex-direction: column !important;
-  min-width: 0 !important;
-  animation: exp-drawer-enter 0.15s ease-out !important;
-}
 
 @keyframes exp-drawer-enter {
   from {

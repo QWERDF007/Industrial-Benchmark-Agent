@@ -297,6 +297,12 @@ def initialize_schema(conn: Connection) -> None:
         ON job_runs(job_type,json_extract(payload_json,'$.request.dataset_id'),status,id)""")
     cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_submission
         ON job_runs(job_type,json_extract(payload_json,'$.request.submission.submission_id'))""")
+    cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_analysis_request
+        ON job_runs(json_extract(payload_json,'$.request.analysis_request_id'),id) WHERE job_type='CONSISTENCY_ANALYSIS'""")
+    cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_analysis_group
+        ON job_runs(json_extract(payload_json,'$.request.frozen_group.group_id'),id) WHERE job_type='CONSISTENCY_ANALYSIS'""")
+    cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_program_batch
+        ON job_runs(json_extract(payload_json,'$.program_batch_id'),id) WHERE job_type='ANALYSIS_WORKFLOW'""")
     migrate_audit_jobs(conn)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS dataset_groups (

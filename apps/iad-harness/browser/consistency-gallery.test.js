@@ -46,6 +46,7 @@ function App(){const [id,setId]=React.useState(panel||entries[0].id);React.useEf
 createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolveDir:app},bundle:true,format:'iife',write:false,target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
   const api=createIadHttpHandler(bridge);
   const modelRequests=[];
+  let reviewContextReads=0;
   const server=http.createServer(async(req,res)=>{
     if(req.url==='/tokenize'){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({count:1000,max_model_len:262144}));}
     if(req.url==='/v1/chat/completions'){
@@ -62,6 +63,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     }
     if(req.url==='/browser.js'){res.setHeader('Content-Type','application/javascript');return res.end(bundle.outputFiles[0].contents);}
     if(req.url.startsWith('/api/iad')){
+      if(req.url==='/api/iad/consistency/review/context')reviewContextReads++;
       return api(req,res);
     }
     res.setHeader('Content-Type','text/html;charset=utf-8');res.end('<!doctype html><meta charset="utf-8"><style>html,body,#root{height:100%;margin:0}body{font-family:system-ui;font-size:14px}</style><div id="root"></div><script src="/browser.js"></script>');
@@ -88,6 +90,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     assert.equal((await driver.findElements(By.css('dialog[aria-label="检查作业详情"]'))).length,0);
     const cards=()=>driver.findElements(By.css('[data-dc="open-conflict"]'));
     await driver.wait(async()=>(await cards()).length===expectedGallery.total,10000);
+    assert.equal(reviewContextReads,0,'图库首次渲染不能逐卡片读取完整图像复核上下文');
     for(const card of await cards())assert.match(await card.getText(),/模型：存在实质差异/);
     const first=await element(`[data-dc="open-conflict"][data-id="${expectedGallery.items[0].group_id}"]`);await first.click();
     await driver.wait(async()=>/固定主图与候选/.test(await (await element('[aria-label="模型分析"]')).getText()),10000);

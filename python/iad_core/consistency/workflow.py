@@ -1,10 +1,11 @@
 from iad_core.workbench.analysis_job_views import AnalysisJobViews
-from iad_core.workbench.job_models import failure_message
+from iad_core.workbench.job_models import ChildJobError
 from uuid import UUID, uuid5
 
 from iad_core.consistency.gallery import GalleryQueries
 from iad_core.consistency.model_batches import ConsistencyModelBatches
 from iad_core.consistency.group_models import FrozenAnalysisGroup
+from iad_core.consistency.group_analysis_models import GROUP_ANALYSIS_SCHEMA
 from iad_core.consistency.models import ConsistencyStart
 from iad_core.consistency.reports import ConsistencyReports
 from iad_core.consistency.result_models import ConsistencyQuery
@@ -55,7 +56,7 @@ class ConsistencyWorkflow:
         for child in context.join_all(children(),on_progress=observe):
             unresolved = wanted[child['dataset_id']]
             if unresolved:
-                context.record(sorted(unresolved),ValueError(failure_message(child['errors']) or '图像一致性检查未完成'))
+                context.record(sorted(unresolved),ChildJobError(child))
                 pending.difference_update(unresolved)
         if pending:
             raise ValueError('所选范围仍有未完成检查的图像')
@@ -100,7 +101,7 @@ class ConsistencyWorkflow:
                 if failure.code == 'ANNOTATION_UNREADABLE':
                     continue
                 if failure.sample_id in pending:
-                    context.record(failure.sample_id, ValueError(failure.message))
+                    context.record(failure.sample_id, ChildJobError(child.model_dump(),message=failure.message,code=failure.code))
                     pending.remove(failure.sample_id)
         root = self.runtime.jobs.status(context.payload['root_run_id'])
         plan = root.get('gallery_plan')
@@ -108,9 +109,11 @@ class ConsistencyWorkflow:
             report = ConsistencyReports(self.db).report(ConsistencyQuery(selection=dict(kind='batch',batch_id=program.batch_id),
                 page_size=1))
             plan = []
-            for frozen,fingerprint in GalleryQueries(self.db).freeze_all(report.page.query_id,'conflicts'):
+            for frozen in GalleryQueries(self.db).freeze_all(report.page.query_id,'conflicts'):
+                group = frozen.group
+                fingerprint = frozen.identity.fingerprint(GROUP_ANALYSIS_SCHEMA)
                 context.checkpoint()
-                plan.append(dict(group=frozen.model_dump(mode='json'),fingerprint=fingerprint))
+                plan.append(dict(group=group.model_dump(mode='json'),fingerprint=fingerprint))
         context.update(gallery_plan=plan, phase='ANALYZING_SELECTED_DATASETS')
         return plan
 
@@ -138,7 +141,7 @@ class ConsistencyWorkflow:
                     child = self.analyses.retry(child['run_id'])
                 child = context.join(child)
                 if child['status'] != 'COMPLETED':
-                    raise ValueError(failure_message(child['errors']) or '冲突图组分析未完成')
+                    raise ChildJobError(child)
                 finished.add(group.group_id)
                 ready = {sid for sid in pending if requirements.get(sid) and requirements[sid] <= finished}
                 if ready:

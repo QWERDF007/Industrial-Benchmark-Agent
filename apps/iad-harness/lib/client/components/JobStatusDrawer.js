@@ -13,5 +13,5 @@ export function JobStatusDrawer({ job, onClose, onChanged, stale, lastSyncedAt }
     const trigger = useRef(document.activeElement instanceof HTMLElement ? document.activeElement : null);
     useEffect(() => { if (state.pageId !== page.current)
         onClose(); }, [state.pageId, onClose]);
-    return _jsx(Modal, { title: "\u4F5C\u4E1A\u72B6\u6001", className: "iad-drawer iad-job-drawer", onClose: onClose, restoreFocus: () => trigger.current?.isConnected ? trigger.current : document.querySelector(`button[data-job-root="${CSS.escape(job.root_run_id)}"]`), children: _jsx(JobDetail, { job: job, presentation: "status", onClose: onClose, onChanged: onChanged, stale: stale, lastSyncedAt: lastSyncedAt }, job.run_id) });
+    return _jsx(Modal, { title: "\u4F5C\u4E1A\u72B6\u6001", className: "iad-drawer iad-job-drawer", onClose: onClose, restoreFocus: () => trigger.current?.isConnected ? trigger.current : document.querySelector(`button[data-job-root="${CSS.escape(job.root_run_id)}"]`), children: _jsx(JobDetail, { job: job, presentation: "drawer", onClose: onClose, onChanged: onChanged, stale: stale, lastSyncedAt: lastSyncedAt }, job.run_id) });
 }

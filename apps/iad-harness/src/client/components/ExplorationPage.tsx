@@ -1,3 +1,4 @@
+import {PromptDrawer} from './PromptDrawer.js';
 import {JobStatusDrawer, JobStatusButton} from './JobStatusDrawer.js';
 import {Select} from './Select.js';
 import {TabBar} from './layout/TabBar.js';
@@ -130,7 +131,7 @@ export function ExplorationPage({
   // Modals
   const [modal, setModal] = useState<"" | "source" | "delete-job" | "save" | "direction" | "prompt">("");
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
-  const [promptJobId, setPromptJobId] = useState<string | null>(null);
+  const [promptText, setPromptText] = useState<string | null>(null);
   const [viewingDirection, setViewingDirection] = useState<DirectionItem | null>(null);
   const [newPresetName, setNewPresetName] = useState("");
 
@@ -149,21 +150,7 @@ export function ExplorationPage({
     currentIndex: number;
   } | null>(null);
 
-  useEffect(() => {
-    if (modal !== "prompt") return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setModal("");
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [modal]);
+
 
   // Candidate samples pool
   const [samplePool, setSamplePool] = useState<SampleItem[]>([]);
@@ -689,7 +676,7 @@ export function ExplorationPage({
                             <div className="exp-job-icon-actions" onClick={(e) => e.stopPropagation()}>
                               {j.status !== 'COMPLETED' && <IconButton icon="details" label={`查看作业状态 ${j.id}`} onClick={()=>setStatusJobId(jobSnapshots.find(job=>job.run_id===j.id)!.root_run_id)} />}
                               <IconButton icon="prompt" label="查看提示词" title="查看提示词" data-exp="show-prompt" data-id={j.id} onClick={() => {
-                                  setPromptJobId(j.id);
+                                  setPromptText(j.prompt);
                                   setModal("prompt");
                                 }} />
                               <IconButton icon="delete" label="删除作业" title={j.status === "RUNNING" || j.status === "PENDING" ? "请先停止运行中的作业" : "删除作业"} data-delete="true" data-exp="ask-delete-job" data-id={j.id} className="danger" disabled={j.status === "RUNNING" || j.status === "PENDING"} onClick={() => {
@@ -883,48 +870,8 @@ export function ExplorationPage({
         createPortal(
           <>
             {/* Prompt Drawer */}
-      {modal === "prompt" && promptJobId && (
-        <div
-          className="exp-modal exp-prompt-overlay"
-          id="exp-prompt-overlay"
-          role="presentation"
-          onClick={() => setModal("")}
-        >
-          <aside
-            className="exp-prompt-drawer"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="exp-prompt-title"
-            tabIndex={-1}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="exp-prompt-drawer-head">
-              <h2 id="exp-prompt-title">探索提示词</h2>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Button
-                  type="button"
-
-                  id="copy-exp-prompt"
-                  onClick={async () => {
-                    const text = jobs.find((j) => j.id === promptJobId)?.prompt || "本次作业未记录提示词正文。";
-                    try {
-                      await navigator.clipboard.writeText(text);
-                    } catch (_) {}
-                  }}
-                >
-                  复制提示词
-                </Button>
-                <IconButton icon="close" label="关闭提示词抽屉" title="关闭" className="exp-prompt-close" onClick={() => setModal("")} />
-              </div>
-            </div>
-            <div className="exp-prompt-drawer-content">
-              <div className="exp-prompt-readonly">
-                {jobs.find((j) => j.id === promptJobId)?.prompt || "本次作业未记录提示词正文。"}
-              </div>
-            </div>
-          </aside>
-        </div>
-      )}
+      {modal === "prompt" && promptText !== null && <PromptDrawer title="探索提示词"
+        text={promptText || '本次作业未记录提示词正文。'} onClose={()=>setModal('')} />}
 
       {/* Delete Job Confirmation Modal */}
       {modal === "delete-job" && deletingJobId && (

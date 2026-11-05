@@ -117,6 +117,7 @@ class ConsistencyDecision(AnalysisModel):
     submitted_at: AwareDatetime
 
 
+ReviewDisposition = Literal['pending', 'confirmed', 'rejected']
 ReviewState = Literal['OPEN', 'NEEDS_CONTEXT', 'RESOLVED']
 CorrectionState = Literal['NOT_REQUIRED', 'PROPOSED', 'AWAITING_RESCAN', 'VERIFIED']
 

@@ -27,7 +27,9 @@ const firefox=require('selenium-webdriver/firefox.js');
   const read=async route=>{const response=await fetch('http://127.0.0.1:8000/api/iad/'+route);assert.equal(response.status,200);return response.json();};
   async function chooseChildren(trigger,menu,id){
     await click(await element(trigger));
-    for(const checkbox of await driver.findElements(By.css(menu+' input[type=checkbox]'))){
+    const boxes=await driver.findElements(By.css(menu+' input[type=checkbox]'));
+    assert.ok((await Promise.all(boxes.map(box=>box.getAttribute('value')))).includes(id),'目标子数据集必须出现在实际选项中');
+    for(const checkbox of boxes){
       const chosen=(await checkbox.getAttribute('value'))===id;
       if(await checkbox.isSelected()!==chosen)await click(checkbox);
       assert.equal(await checkbox.isSelected(),chosen);
@@ -44,8 +46,11 @@ const firefox=require('selenium-webdriver/firefox.js');
       assert.equal(source.total_samples,100);assert.ok(tasks[key]?.trim());
       const saved=dataset.ui_submissions?.consistency;
       assert.ok(!verifyOnly||saved,'检查界面记录前必须已有提交句柄');
+      await driver.wait(async()=>!(await (await element('#dc-child-trigger')).getText()).includes('请选择'),10000);
       await click(await element(`#dc-parent option[value="${source.group_id}"]`));
+      await driver.wait(async()=>(await (await element('#dc-parent')).getAttribute('value'))===source.group_id,10000,'数据集选择应提交到实际界面');
       await chooseChildren('#dc-child-trigger','#dc-child-options',dataset.dataset_id);
+      assert.equal(await (await element('#dc-parent')).getAttribute('value'),source.group_id,'选择子集后父级范围保持一致');
       if(cleanStopped){
         const identity=entry=>entry.run_id||(typeof entry.submission==='object'?entry.submission.run_id:undefined);
         for(const entry of dataset.ui_submission_attempts?.filter(entry=>entry.stage==='consistency')||[]){

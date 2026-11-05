@@ -391,7 +391,9 @@ class JobRunner:
                 payload['completed_sample_ids'].extend(sample_ids)
             else:
                 payload['failed_sample_ids'].extend(sample_ids)
-                payload['errors'].extend({'sample_id':sid, 'message':str(error), 'code':getattr(error,'code',None)} for sid in sample_ids)
+                payload['errors'].extend({'sample_id':sid, 'message':str(error), 'code':getattr(error,'code',None),
+                    'source_run_id':getattr(error,'source_run_id',run_id),
+                    'source_phase':getattr(error,'source_phase',payload.get('phase'))} for sid in sample_ids)
             return self.update(run_id, connection=conn, **values,
                 completed=len(payload['completed_sample_ids']), failed=len(payload['failed_sample_ids']),
                 completed_sample_ids=payload['completed_sample_ids'],
