@@ -1,3 +1,6 @@
+from iad_core.workbench.prompt_text import RESPONSE_FORMAT_INSTRUCTION
+
+
 REPORT_REQUIREMENTS = {
     'technical_usability': dict(card='dataset', title='技术可用性', data=['technical_usability', 'annotation_coverage'], required='图像可读率、坐标有效率、原图与标注对应情况'),
     'label_trust': dict(card='dataset', title='标签可信性与 Gold 资格', data=['raw_labels', 'gold_by_policy', 'label_comparison'], required='确认覆盖、未决、银标、独立随机抽查及加权标签错误估计'),
@@ -52,4 +55,4 @@ statistics是确定性统计的唯一来源。原始标签不是独立Gold；不
 资料不全时说明具体缺失及影响，每项状态为可评估、限定评估、待补证或不支持该指标；有依据的部分仍保留，不用通用免责声明替代真实判断。
 知识规则的来源与正常替代解释、支持及反对图像、未决冲突应据实保留。只有实际提供的图像才能作为本次视觉依据，引用填写结构化字段；正文不要文件名或图像编号。
 能力切片只按可见事实提出候选，不因某模型错了就认定固有难度。自报置信度不当作正确概率，MLLM评价须区分独立校准与未验证部分。
-保留数据集可用于什么任务、哪些范围需要补证及模型能力差异是否有依据的最终结论。只返回当前Schema结果。'''
+保留数据集可用于什么任务、哪些范围需要补证及模型能力差异是否有依据的最终结论。只返回当前Schema结果。''' + '\n\n' + RESPONSE_FORMAT_INSTRUCTION

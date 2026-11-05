@@ -1,6 +1,9 @@
 from dataclasses import replace
-from typing import Iterable, Mapping, Sequence, TYPE_CHECKING
+from typing import Annotated, Any, Iterable, Mapping, Sequence, TYPE_CHECKING
 
+from pydantic import BeforeValidator, WithJsonSchema
+
+from iad_core.advisory.output_validation import repairable_output_error
 from iad_core.evidence.images import PreparedImage
 
 if TYPE_CHECKING:
@@ -24,6 +27,20 @@ class ModelReferences:
         if isinstance(value, list):
             return [self.encode(item) for item in value]
         return self.aliases.get(value, value) if isinstance(value, str) else value
+
+    def reference_type(self, field: str, identities: Iterable[str]) -> Any:
+        identities = tuple(dict.fromkeys(identities))
+        allowed = set(identities)
+
+        def decode(alias: Any) -> str:
+            identity = self.references.get(alias) if isinstance(alias, str) else None
+            if identity not in allowed:
+                raise repairable_output_error('frozen_model_reference',
+                    f'{field}包含未允许的引用{alias!r}；只能引用当前Schema给出的短编号，不使用其他字段或其他批次的引用')
+            return identity
+
+        return Annotated[str, BeforeValidator(decode), WithJsonSchema({
+            'type':'string', 'enum':[self.aliases[identity] for identity in identities]})]
 
     def record(self, context: 'JobContext', fingerprint: str):
         context.update(model_reference_bindings={**context.payload.get('model_reference_bindings', {}),
