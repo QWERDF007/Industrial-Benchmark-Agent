@@ -1,3 +1,4 @@
+import {Modal} from './Modal.js';
 import {DatasetScopeSelector} from './DatasetScopeSelector.js';
 import {TabBar} from './layout/TabBar.js';
 import {Button} from './Button.js';
@@ -212,16 +213,6 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
     } catch(error){setFormError(message(error));}finally{setSubmitting(false);}
   };
 
-  useEffect(() => {
-    const handle = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      if (confirmState) setConfirmState(null);
-      else if (editingDir) closeDirDrawer();
-      else if (!submitting) onClose();
-    };
-    window.addEventListener('keydown', handle);
-    return () => window.removeEventListener('keydown', handle);
-  }, [confirmState, editingDir, submitting, onClose]);
   return <>
             <section
               id="kb-setup-page"
@@ -448,60 +439,21 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
               </section>
 
             </section>
-            {/* Edit Direction Drawer */}
-            <div
-              className="kb-dir-drawer-mask"
-              id="kb-dir-drawer-mask"
-              role="presentation"
-              hidden={!editingDir}
-              onClick={e => {
-                if (e.target === e.currentTarget) closeDirDrawer();
-              }}
-            >
-              <aside
-                className="kb-dir-drawer"
-                id="kb-dir-drawer"
-                role="dialog"
-                aria-modal="true"
-                aria-label="编辑挖掘方向"
-              >
-                <header className="kb-dir-drawer-head">
-                  <h2>编辑挖掘方向</h2>
-                  <IconButton icon="close" type="button" id="kb-dir-close" label="关闭方向编辑" title="关闭" onClick={closeDirDrawer} />
-                </header>
-                <div className="kb-dir-drawer-body">
-                  <label htmlFor="kb-dir-edit-name">标题</label>
-                  <input
-                    id="kb-dir-edit-name"
-                    className="f"
-                    maxLength={120}
-                    value={editingName}
-                    onChange={e => setEditingName(e.target.value)}
-                  />
-                  <label htmlFor="kb-dir-edit-text">描述</label>
-                  <textarea
-                    id="kb-dir-edit-text"
-                    className="f"
-                    rows={9}
-                    value={editingText}
-                    onChange={e => setEditingText(e.target.value)}
-                  />
-                  {dirEditError && (
-                    <div className="kb-edit-error" id="kb-dir-edit-error" role="alert">
-                      {dirEditError}
-                    </div>
-                  )}
-                </div>
-                <footer className="kb-dir-drawer-foot">
-                  <Button type="button"  id="kb-dir-cancel" onClick={closeDirDrawer}>
-                    取消
-                  </Button>
-                  <Button type="button" variant="primary" id="kb-dir-save" onClick={saveDirEdit}>
-                    保存
-                  </Button>
-                </footer>
-              </aside>
-            </div>
+            {editingDir && <Modal title="编辑挖掘方向" className="iad-drawer" id="kb-dir-drawer" onClose={closeDirDrawer}>
+              <div className="iad-dialog-body">
+                <label className="iad-field" htmlFor="kb-dir-edit-name">标题
+                  <input id="kb-dir-edit-name" maxLength={120} value={editingName} onChange={event=>setEditingName(event.target.value)} />
+                </label>
+                <label className="iad-field" htmlFor="kb-dir-edit-text">描述
+                  <textarea id="kb-dir-edit-text" rows={9} value={editingText} onChange={event=>setEditingText(event.target.value)} />
+                </label>
+                {dirEditError && <p id="kb-dir-edit-error" role="alert">{dirEditError}</p>}
+              </div>
+              <footer className="iad-dialog-footer">
+                <Button id="kb-dir-cancel" onClick={closeDirDrawer}>取消</Button>
+                <Button variant="primary" id="kb-dir-save" onClick={saveDirEdit}>保存</Button>
+              </footer>
+            </Modal>}
 
 <KnowledgeConfirmation state={confirmState} onClose={()=>setConfirmState(null)} />
 </>;

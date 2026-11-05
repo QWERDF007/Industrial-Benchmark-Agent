@@ -3,7 +3,9 @@ import uuid
 from dataclasses import dataclass
 from typing import List, Literal, Optional
 
-from pydantic import Field, create_model
+from pydantic import Field, create_model, field_validator
+
+from iad_core.advisory.output_validation import repairable_output_error
 
 from iad_core.evidence.images import PreparedImage
 from iad_core.knowledge.trace import KnowledgeTrace
@@ -79,7 +81,16 @@ class FindingVerification:
         ids = tuple(findings)
         allowed = set(supplied)
         titles = tuple(check.title for check in self.checks)
+
+        @field_validator('finding_id', mode='before')
+        def frozen_finding_reference(value):
+            if isinstance(value, str) and value not in findings:
+                raise repairable_output_error('frozen_finding_reference',
+                    'finding_id必须逐字使用本次待核验疑点的引用：' + '、'.join(ids))
+            return value
+
         judgment = create_model('KnowledgeJudgment', __base__=KnowledgeJudgment,
+            __validators__={'frozen_finding_reference': frozen_finding_reference},
             finding_id=(Literal[ids], ...), evidence_ids=(List[Literal[tuple(sorted(allowed))]], Field(min_length=1)),
             affected_check_titles=(List[Literal[titles]] if titles else List[str], Field(..., **({} if titles else {'max_length': 0}))))
         response_type = create_model('KnowledgeVerification', __base__=KnowledgeVerification,

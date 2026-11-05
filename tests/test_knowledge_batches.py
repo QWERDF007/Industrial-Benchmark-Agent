@@ -48,6 +48,8 @@ def test_full_scope_mining_batches_resume_from_frozen_remaining_sources(knowledg
         assert failed['status'] == 'PARTIAL', failed['errors']
         assert failed['completed'] == 2 and failed['failed'] == 4
         assert len(failed['batch_runs']) == 2
+        leaf=runtime.jobs.status(failed['batch_runs'][-1])
+        assert failed['errors'][0]['source_run_id']==leaf['run_id'],'范围失败应保留真实MLLM步骤的来源'
         assert all(len(call) == 2 for call in calls)
         first_version = failed['knowledge_version_id']
         first = KnowledgeRepository(db).get(first_version)

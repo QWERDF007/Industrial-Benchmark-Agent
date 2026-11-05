@@ -1,4 +1,4 @@
-from iad_core.workbench.job_models import failure_message
+from iad_core.workbench.job_models import ChildJobError, failure_message
 from typing import Optional
 from secrets import randbits
 from uuid import UUID, uuid4
@@ -95,7 +95,7 @@ class KnowledgeBatches:
                 mining_prompt=FrozenMiningPrompt.model_validate(request['mining_prompt']))
             child = context.join(child)
             if child['status'] != 'COMPLETED':
-                raise ValueError(f"图组 {index + 1} 未完成（{child['run_id']}）：" +
-                                 failure_message(child['errors']))
+                raise ChildJobError(child, message=f"图组 {index + 1} 未完成（{child['run_id']}）：" +
+                                    failure_message(child['errors']))
             context.record(sample_ids, knowledge_version_id=child['knowledge_version_id'],
                            completed_batches=index + 1, active_batch_run_id=None)

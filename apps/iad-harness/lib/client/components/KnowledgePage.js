@@ -174,7 +174,8 @@ export function KnowledgePage({ dataset, refreshRevision }) {
         setEntryPage(maxEntryPages); }, [entryPage, maxEntryPages, checksResource.loading]);
     const pagedChecks = filteredChecks.map(check => ({ id: check.check_id, name: check.title,
         summary: check.criterion, supportCount: check.support_count, counterCount: check.counter_count, review: check.review }));
-    useEffect(() => { setDetailItem(null); setEntryPage(1); }, [selectedJob?.id, selectedVersionId]);
+    useEffect(() => { setDetailItem(null); }, [selectedChildId, selectedJob?.id]);
+    useEffect(() => { setEntryPage(1); }, [selectedJob?.id, selectedVersionId]);
     // Prompt drawer handlers
     const openJobPrompt = (id) => {
         const j = jobList.find(v => v.id === id);
@@ -185,7 +186,10 @@ export function KnowledgePage({ dataset, refreshRevision }) {
     const closePrompt = () => {
         setPromptJob(null);
     };
-    const openDetail = (item) => setDetailItem(item.id);
+    const openDetail = (item) => {
+        if (selectedVersionId)
+            setDetailItem({ versionId: selectedVersionId, checkId: item.id });
+    };
     const closeDetail = () => setDetailItem(null);
     const askDeleteJob = (id) => {
         const job = jobList.find(item => item.id === id);
@@ -264,5 +268,5 @@ export function KnowledgePage({ dataset, refreshRevision }) {
                                     polling.refresh();
                                     updated();
                                     toast('挖掘作业已启动');
-                                } }, selectedChildId)] }) }), promptJob && _jsx(PromptDrawer, { title: "\u67E5\u770B\u63D0\u793A\u8BCD", text: promptJob.prompt || '该历史作业未记录冻结提示词。', onClose: closePrompt }), detailItem && selectedVersionId && _jsx(KnowledgeEntryDialog, { versionId: selectedVersionId, checkId: detailItem, onClose: closeDetail, onSaved: () => { updated(); toast('人工核实已保存'); } }, `${selectedVersionId}:${detailItem}`), jobDetails && polling.jobs.some(job => job.run_id === jobDetails || job.root_run_id === jobDetails) && _jsx(JobStatusDrawer, { job: polling.jobs.find(job => job.run_id === jobDetails || job.root_run_id === jobDetails), onClose: () => setJobDetails(null), onChanged: handleRefresh, stale: polling.syncState === 'stale', lastSyncedAt: polling.lastSyncedAt }), _jsx(KnowledgeConfirmation, { state: confirmState, onClose: () => setConfirmState(null) }), _jsx("div", { className: `toast ${toastMsg ? "show" : ""}`, id: "toast", role: "status", children: toastMsg })] }) }));
+                                } }, selectedChildId)] }) }), promptJob && _jsx(PromptDrawer, { title: "\u67E5\u770B\u63D0\u793A\u8BCD", text: promptJob.prompt || '该历史作业未记录冻结提示词。', onClose: closePrompt }), detailItem && _jsx(KnowledgeEntryDialog, { ...detailItem, onClose: closeDetail, onSaved: () => { updated(); toast('人工核实已保存'); } }, `${detailItem.versionId}:${detailItem.checkId}`), jobDetails && polling.jobs.some(job => job.run_id === jobDetails || job.root_run_id === jobDetails) && _jsx(JobStatusDrawer, { job: polling.jobs.find(job => job.run_id === jobDetails || job.root_run_id === jobDetails), onClose: () => setJobDetails(null), onChanged: handleRefresh, stale: polling.syncState === 'stale', lastSyncedAt: polling.lastSyncedAt }), _jsx(KnowledgeConfirmation, { state: confirmState, onClose: () => setConfirmState(null) }), _jsx("div", { className: `toast ${toastMsg ? "show" : ""}`, id: "toast", role: "status", children: toastMsg })] }) }));
 }

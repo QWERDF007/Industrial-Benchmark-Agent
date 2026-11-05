@@ -15,7 +15,7 @@ from filelock import FileLock, Timeout
 from iad_core.storage.database import Database
 from iad_core.workbench.calls import ModelCalls
 from iad_core.workbench.job_snapshots import JobSnapshots
-from iad_core.workbench.job_models import JobKind, JobRetryOptions, JobSnapshot, RetrySample
+from iad_core.workbench.job_models import JobKind, JobRetryOptions, JobSnapshot, RetrySample, JobExecutionError
 
 
 @dataclass
@@ -32,6 +32,10 @@ class JobContext:
     def update(self, **values):
         self.runner.update(self.run_id, **values)
         self.payload.update(values)
+
+    def failure(self, error: Exception) -> JobExecutionError:
+        return JobExecutionError(str(error), source_run_id=getattr(error, 'source_run_id', self.run_id),
+            source_phase=getattr(error, 'source_phase', self.payload.get('phase')), code=getattr(error, 'code', None))
 
     def join(self, child: dict, *, on_progress: Optional[Callable[[dict], None]] = None) -> dict:
         return self.join_all([child], on_progress=on_progress)[0]
@@ -391,9 +395,11 @@ class JobRunner:
                 payload['completed_sample_ids'].extend(sample_ids)
             else:
                 payload['failed_sample_ids'].extend(sample_ids)
+                active = _active_job.get()
+                origin = active if active and active.runner is self else None
                 payload['errors'].extend({'sample_id':sid, 'message':str(error), 'code':getattr(error,'code',None),
-                    'source_run_id':getattr(error,'source_run_id',run_id),
-                    'source_phase':getattr(error,'source_phase',payload.get('phase'))} for sid in sample_ids)
+                    'source_run_id':getattr(error,'source_run_id',origin.run_id if origin else run_id),
+                    'source_phase':getattr(error,'source_phase',origin.payload.get('phase') if origin else payload.get('phase'))} for sid in sample_ids)
             return self.update(run_id, connection=conn, **values,
                 completed=len(payload['completed_sample_ids']), failed=len(payload['failed_sample_ids']),
                 completed_sample_ids=payload['completed_sample_ids'],

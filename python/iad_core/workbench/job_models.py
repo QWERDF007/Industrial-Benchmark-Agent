@@ -131,9 +131,16 @@ def failure_message(errors: Iterable[Mapping[str, Any]]) -> str:
     return '；'.join(dict.fromkeys(error['message'] for error in errors))
 
 
-class ChildJobError(ValueError):
+class JobExecutionError(ValueError):
+    def __init__(self, message: str, *, source_run_id: str, source_phase: str | None, code: str | None = None):
+        self.source_run_id, self.source_phase, self.code = source_run_id, source_phase, code
+        super().__init__(message)
+
+
+class ChildJobError(JobExecutionError):
     def __init__(self, snapshot: Mapping[str, Any], *, message: str | None = None, code: str | None = None):
-        self.source_run_id: str = snapshot['run_id']
-        self.source_phase: str | None = snapshot.get('phase')
-        self.code = code
-        super().__init__(message or failure_message(snapshot['errors']) or '未记录错误详情')
+        cause = next(iter(snapshot['errors']), {})
+        super().__init__(message or failure_message(snapshot['errors']) or '未记录错误详情',
+            source_run_id=cause.get('source_run_id') or snapshot['run_id'],
+            source_phase=cause.get('source_phase') if cause.get('source_run_id') else snapshot.get('phase'),
+            code=code if code is not None else cause.get('code'))

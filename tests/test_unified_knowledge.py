@@ -157,8 +157,9 @@ def test_model_corrects_missing_support_and_conclusion_references_once(knowledge
         runtime.close()
 
 
+@pytest.mark.parametrize('reference_case', ['valid','corrected','invalid','foreign'])
 @pytest.mark.parametrize('finding_status', ['supported', 'refuted'])
-def test_verified_suspects_are_reconsidered_visually_without_assuming_criterion_polarity(knowledge_dataset, self_discovery_prompt, finding_status):
+def test_verified_suspects_are_reconsidered_visually_without_assuming_criterion_polarity(knowledge_dataset, self_discovery_prompt, finding_status, reference_case):
     db, config = knowledge_dataset
     learning_calls = []
     verification_calls = []
@@ -175,7 +176,12 @@ def test_verified_suspects_are_reconsidered_visually_without_assuming_criterion_
             verification_calls.append(body)
             roi = next(view for view in views if view['role'] == 'roi')
             comparison = next(view for view in views if view['source_sha256'] != roi['source_sha256'])
-            result = dict(findings=[dict(finding_id='finding_0', status=finding_status,
+            bad=reference_case in ('invalid','foreign') or reference_case=='corrected' and len(verification_calls)==1
+            if len(verification_calls)==2:
+                feedback=json.loads(prompt.split('输出校验结果：')[1])
+                assert ('finding_999' if reference_case=='foreign' else ': finding_0') in feedback['previous_response']
+                assert all(issue['ctx']['repairable_output'] for issue in feedback['schema_validation_errors'])
+            result = dict(findings=[dict(finding_id=('finding_999' if reference_case=='foreign' else ': finding_0') if bad else 'finding_0', status=finding_status,
                 affected_check_titles=['局部异色规律'], description='核对局部色差与结构', normal_explanation='保留反光解释',
                 limitations=[], conflicts=[], evidence_ids=[roi['evidence_id'], comparison['evidence_id']])])
         else:
@@ -201,8 +207,13 @@ def test_verified_suspects_are_reconsidered_visually_without_assuming_criterion_
         job = runtime.knowledge.start(request=dict(images=sample_ids, image_count=3), mining_prompt=self_discovery_prompt)
         runtime.jobs.wait(job['run_id'], 5)
         final = runtime.jobs.status(job['run_id'])
+        assert len(verification_calls)==(1 if reference_case=='valid' else 2),'错误的冻结疑点引用应交由模型纠正一次'
+        if reference_case in ('invalid','foreign'):
+            assert final['status']=='FAILED' and final['knowledge_version_id'] is None
+            assert 'frozen_finding_reference' in final['errors'][0]['message']
+            return
         assert final['status'] == 'COMPLETED', final['errors']
-        assert len(verification_calls) == 1 and len(learning_calls) == 2
+        assert len(learning_calls) == 2
         snapshot = KnowledgeReader(db).read(version_id=final['knowledge_version_id']).knowledge
         assert snapshot.findings[0].judgment.status == finding_status
         check = snapshot.checks[0]

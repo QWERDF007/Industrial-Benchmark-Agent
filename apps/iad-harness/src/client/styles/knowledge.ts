@@ -652,16 +652,7 @@ export const knowledgeStyles = `
 
 
 
-@keyframes knowledge-drawer-enter {
-  from {
-    transform: translateX(24px);
-    opacity: 0.7;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
+
 
 
 
@@ -1092,17 +1083,6 @@ export const knowledgeStyles = `
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-prompt-note { min-height: 0; padding: 7px 0 0; font-size: 13px; color: #172338; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-prompt-note:empty { display: none; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-error { font-size: 13px; color: #a53b39; padding: 10px 0; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-mask[hidden] { display: none !important; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-mask { position: fixed; inset: 0; z-index: 1200; background: #17243aa8; display: flex; justify-content: flex-end; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer { width: min(560px, 100vw); height: 100dvh; background: #fff; display: flex; flex-direction: column; box-shadow: -8px 0 30px #1b294333; color: #172338; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-head { padding: 20px 22px; border-bottom: 1px solid #e0e6ef; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-head h2 { font-size: 17px; font-weight: 650; margin: 0; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-body { padding: 24px 22px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-body label { font-size: 13px; font-weight: 400; color: #172338; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-body input { height: 38px; width: 100%; border: 1px solid #b6c5d8; border-radius: 5px; padding: 0 10px; box-sizing: border-box; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-body textarea { width: 100%; height: 210px; padding: 12px; resize: vertical; line-height: 1.6; color: #172338; border: 1px solid #b6c5d8; border-radius: 5px; box-sizing: border-box; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-foot { padding: 15px 22px; border-top: 1px solid #e0e6ef; display: flex; align-items: center; justify-content: flex-end; gap: 9px; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-edit-error { color: #a53b39; font-size: 13px; }
 
 /* UI-56-03 Confirm and Start Panel */
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-confirm {

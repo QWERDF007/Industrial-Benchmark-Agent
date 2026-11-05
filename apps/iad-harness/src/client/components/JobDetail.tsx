@@ -94,13 +94,13 @@ export function JobDetail({job,onChanged,stale=false,lastSyncedAt,onClose,presen
     {!!job.total_batches && <p className="iad-muted">联合判断 {job.completed_batches || 0} / {job.total_batches}</p>}
     {job.normal_version_id && <small className="iad-muted">良品版本 {job.normal_version_id}<br />{job.defect_version_id && <>不良版本 {job.defect_version_id}<br /></>}</small>}
     <details><summary>冻结依据与任务标识</summary><dl><dt>任务 ID</dt><dd>{job.run_id}</dd><dt>根任务</dt><dd>{job.root_run_id}</dd><dt>开始时间</dt><dd>{job.started_at || "未提供"}</dd><dt>结束时间</dt><dd>{job.finished_at || "未提供"}</dd><dt>提供商</dt><dd>{job.model_profile?.provider_name || "未记录"}</dd><dt>模型</dt><dd>{job.model_name}</dd></dl></details>
-    {job.origin_session_id && <p><button disabled={busy} onClick={async () => {
+    {job.origin_session_id && <p><Button disabled={busy} onClick={async () => {
       setBusy(true); setError("");
       try { await workspace.openSession(job.origin_session_id!); onClose?.(); }
       catch (error) { setError(message(error)); } finally { setBusy(false); }
-    }}>返回发起会话</button></p>}
+    }}>返回发起会话</Button></p>}
     {job.parent_run_id && <p className="iad-job-links"><button onClick={() => related(job.parent_run_id!)}>原作业 {job.parent_run_id}</button>{job.root_run_id !== job.parent_run_id && <button onClick={() => related(job.root_run_id)}>起始作业 {job.root_run_id}</button>}</p>}
-    {kind === "knowledge" && job.knowledge_version_id && <p><button onClick={() => { workspace.openLocation({ pageId: "industrial-knowledge", datasetId: job.dataset_id, version: job.knowledge_version_id!, tab: "results" }); }}>查看已发布版本</button></p>}
+    {kind === "knowledge" && job.knowledge_version_id && <p><Button onClick={() => { workspace.openLocation({ pageId: "industrial-knowledge", datasetId: job.dataset_id, version: job.knowledge_version_id!, tab: "results" }); }}>查看已发布版本</Button></p>}
     </section>
     {!grouped && kind === 'knowledge' && !drawer && <KnowledgeJobEvidence job={job} initiallyOpen={drawer} />}
     {(job.errors.length > 0 || (drawer && ['FAILED','PARTIAL','INTERRUPTED'].includes(job.status))) && <section aria-label="失败记录"><h3>失败记录</h3>{!job.errors.length && <p>未记录错误详情</p>}
@@ -110,18 +110,18 @@ export function JobDetail({job,onChanged,stale=false,lastSyncedAt,onClose,presen
         {error.source_run_id && <p>{phases[error.source_phase || ''] || error.source_phase || '未记录阶段'}<code className="iad-job-phase-code">{error.source_run_id}</code></p>}
       </li>)}</ul></section>}
 
-    {kind === "exploration" && job.exploration_version_id && <button onClick={() => workspace.updateView(page,{version:job.exploration_version_id!,tab:"results"})}>查看探索结果</button>}
-    {(grouped || kind === "exploration") && !active && job.status !== "COMPLETED" && <button disabled={busy} onClick={() => void retry()}>按原图组重试</button>}
-    {!grouped && kind !== "exploration" && !active && !job.deleted_at && job.status !== "COMPLETED" && <button aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? "收起重试范围" : "选择重试范围"}</button>}
+    {kind === "exploration" && job.exploration_version_id && <Button onClick={() => workspace.updateView(page,{version:job.exploration_version_id!,tab:"results"})}>查看探索结果</Button>}
+    {(grouped || kind === "exploration") && !active && job.status !== "COMPLETED" && <Button disabled={busy} onClick={() => void retry()}>按原图组重试</Button>}
+    {!grouped && kind !== "exploration" && !active && !job.deleted_at && job.status !== "COMPLETED" && <Button aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? "收起重试范围" : "选择重试范围"}</Button>}
 
     {expanded && !active && job.status !== "COMPLETED" && <section className="iad-retry-scope" aria-label="重试范围">
       {options ? <>
         {options.active_run_id && <p role="status">同类作业仍在执行，请结束后重新读取范围。</p>}
         {!options.samples.length ? <p>关联作业已完成全部图像，无需重试。</p> : <>
           {options.selection_mode === "all_sources" ? <p className="iad-muted">知识联合归纳须使用整组冻结来源。</p> : <div className="iad-row">
-            <button onClick={() => setSelected(options.samples.map(sample => sample.sample_id))}>全选</button>
-            <button onClick={() => setSelected(options.samples.filter(sample => sample.state === "failed").map(sample => sample.sample_id))}>仅失败</button>
-            <button onClick={() => setSelected(options.samples.filter(sample => sample.state === "unprocessed").map(sample => sample.sample_id))}>仅未处理</button>
+            <Button onClick={() => setSelected(options.samples.map(sample => sample.sample_id))}>全选</Button>
+            <Button onClick={() => setSelected(options.samples.filter(sample => sample.state === "failed").map(sample => sample.sample_id))}>仅失败</Button>
+            <Button onClick={() => setSelected(options.samples.filter(sample => sample.state === "unprocessed").map(sample => sample.sample_id))}>仅未处理</Button>
           </div>}
           <fieldset disabled={busy || !!options.active_run_id}><legend>失败或未处理图像</legend><div className="iad-retry-samples">{options.samples.map(sample => <label key={sample.sample_id} title={sample.sample_uuid}>
             <input type="checkbox" checked={selected.includes(sample.sample_id)} disabled={options.selection_mode === "all_sources"}
@@ -134,20 +134,20 @@ export function JobDetail({job,onChanged,stale=false,lastSyncedAt,onClose,presen
       <IconButton icon="refresh" label="重新读取范围" disabled={busy} onClick={() => setRevision(value => value + 1)} />
     </section>}
     {child.error&&<p role="alert" className="iad-error">{child.error}</p>}
-    {child.data&&<section aria-label="内部步骤详情"><button type="button" onClick={()=>setChildId("")}>收起步骤</button><JobDetail job={child.data} onChanged={onChanged}/></section>}
+    {child.data&&<section aria-label="内部步骤详情"><Button type="button" onClick={()=>setChildId("")}>收起步骤</Button><JobDetail job={child.data} onChanged={onChanged}/></section>}
     {error && <p role="alert" className="iad-error">{error}</p>}
     </div>
   );
   return <article ref={article} className="iad-job" data-job-id={job.run_id} aria-label={`作业 ${job.run_id}`} aria-current={focused || undefined}>
     {drawer && <p className="iad-job-identifier">{job.run_id}</p>}
     <div className="iad-row"><strong role="status">{active && job.cancel_requested ? "正在停止" : jobStatuses[job.status]}</strong><span>{job.model_profile?.provider_name ? `${job.model_profile.provider_name} / ` : ''}{job.model_name}</span>
-      {active && <button disabled={busy || job.cancel_requested} onClick={cancel}>{job.cancel_requested ? "正在停止…" : kind === "audit" ? "取消审计" : kind === "exploration" ? job.status === "PENDING" ? "取消排队" : "取消探索" : kind === "consistency" ? "取消检查" : "取消挖掘"}</button>}
+      {active && <Button disabled={busy || job.cancel_requested} onClick={cancel}>{job.cancel_requested ? "正在停止…" : kind === "audit" ? "取消审计" : kind === "exploration" ? job.status === "PENDING" ? "取消排队" : "取消探索" : kind === "consistency" ? "取消检查" : "取消挖掘"}</Button>}
     </div>
     {drawer && <><div className="iad-job-metrics"><div><span>完成</span><strong>{job.completed}</strong><small>/ {job.total_samples}</small></div><div><span>失败</span><strong>{job.failed}</strong><small>张</small></div><div><span>未处理</span><strong>{job.unprocessed}</strong><small>张</small></div><div><span>已观察</span><strong>{job.observation_progress?.observed_sources ?? '未提供'}</strong>{job.observation_progress && <small>/ {job.observation_progress.planned_sources}</small>}</div></div>
       {stale && <p role="alert" className="iad-error">同步已过期，以下保留最近一次作业状态。</p>}
     </>}
     {body}
-    <footer className="iad-job-footer">{drawer && <button onClick={onClose}>关闭</button>}
+    <footer className="iad-job-footer">{drawer && <Button onClick={onClose}>关闭</Button>}
       {kind === "knowledge" && !active && !job.deleted_at && <DeleteAction title="删除作业" name={job.run_id} className="iad-action-end"
         description="从作业列表删除，保留已发布知识、冻结证据及历史引用。"
         restoreFocus={() => document.querySelector<HTMLElement>(".iad-knowledge-page .iad-tabs button.active")}

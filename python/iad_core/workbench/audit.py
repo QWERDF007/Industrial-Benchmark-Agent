@@ -23,7 +23,7 @@ from iad_core.workbench.inspection import SampleInspection
 from iad_core.workbench.audit_synthesis import AuditSynthesis
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.calls import ModelCalls
-from iad_core.workbench.job_models import failure_message
+from iad_core.workbench.job_models import ChildJobError
 from iad_core.workbench.knowledge import InspectionKnowledge
 from iad_core.consistency.audit import AuditConsistency
 from iad_core.consistency.audit_repository import AuditConsistencyRepository
@@ -95,7 +95,7 @@ class AuditService:
             repository.save(consistency.retained(audit_run_id, sample_id, scopes, **axis_options))
             raise
         except Exception as failure:
-            error = failure
+            error = context.failure(failure)
         if SampleContent.capture(self.db, sample_id).model_dump() != expected:
             raise ValueError('源图像或标注内容已变化，请重新启动审计')
         context.update(phase='COMPARING', current_sample_id=sample_id)
@@ -204,7 +204,7 @@ class AuditService:
             model_name = self.client.resolve_model(model_name)
             context.update(model_name=model_name, request={**payload['request'], 'model_name': model_name})
         except Exception as error:
-            model_error = error
+            model_error = context.failure(error)
         pending = set(payload['sample_ids'])
         sources = {source['sample_id']: source for source in payload['input_sources']}
         task_id = self.registry.get(payload['dataset_id']).task.task_id
@@ -239,7 +239,7 @@ class AuditService:
                         EXISTS (SELECT 1 FROM json_each(payload_json,'$.failed_sample_ids') WHERE value=?)
                         FROM job_runs WHERE job_id=?""", (child['sample_ids'][0],child['sample_ids'][0],context.run_id)).fetchone()[0]
                 if not recorded:
-                    context.record(sorted(selected), ValueError(failure_message(child['errors']) or '图像审计未完成'))
+                    context.record(sorted(selected), ChildJobError(child))
                 pending.difference_update(selected)
 
         context.join_all(children(), on_progress=observe)

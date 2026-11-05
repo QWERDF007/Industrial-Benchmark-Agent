@@ -8403,7 +8403,7 @@ var __IadClientBundle__ = (() => {
             /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("dd", { children: job.model_name })
           ] })
         ] }),
-        job.origin_session_id && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("p", { children: /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("button", { disabled: busy, onClick: async () => {
+        job.origin_session_id && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("p", { children: /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(Button, { disabled: busy, onClick: async () => {
           setBusy(true);
           setError("");
           try {
@@ -8425,7 +8425,7 @@ var __IadClientBundle__ = (() => {
             job.root_run_id
           ] })
         ] }),
-        kind === "knowledge" && job.knowledge_version_id && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("p", { children: /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("button", { onClick: () => {
+        kind === "knowledge" && job.knowledge_version_id && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("p", { children: /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(Button, { onClick: () => {
           workspace.openLocation({ pageId: "industrial-knowledge", datasetId: job.dataset_id, version: job.knowledge_version_id, tab: "results" });
         }, children: "\u67E5\u770B\u5DF2\u53D1\u5E03\u7248\u672C" }) })
       ] }),
@@ -8443,17 +8443,17 @@ var __IadClientBundle__ = (() => {
           ] })
         ] }, index3)) })
       ] }),
-      kind === "exploration" && job.exploration_version_id && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("button", { onClick: () => workspace.updateView(page, { version: job.exploration_version_id, tab: "results" }), children: "\u67E5\u770B\u63A2\u7D22\u7ED3\u679C" }),
-      (grouped || kind === "exploration") && !active && job.status !== "COMPLETED" && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("button", { disabled: busy, onClick: () => void retry(), children: "\u6309\u539F\u56FE\u7EC4\u91CD\u8BD5" }),
-      !grouped && kind !== "exploration" && !active && !job.deleted_at && job.status !== "COMPLETED" && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("button", { "aria-expanded": expanded, onClick: () => setExpanded((value) => !value), children: expanded ? "\u6536\u8D77\u91CD\u8BD5\u8303\u56F4" : "\u9009\u62E9\u91CD\u8BD5\u8303\u56F4" }),
+      kind === "exploration" && job.exploration_version_id && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(Button, { onClick: () => workspace.updateView(page, { version: job.exploration_version_id, tab: "results" }), children: "\u67E5\u770B\u63A2\u7D22\u7ED3\u679C" }),
+      (grouped || kind === "exploration") && !active && job.status !== "COMPLETED" && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(Button, { disabled: busy, onClick: () => void retry(), children: "\u6309\u539F\u56FE\u7EC4\u91CD\u8BD5" }),
+      !grouped && kind !== "exploration" && !active && !job.deleted_at && job.status !== "COMPLETED" && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(Button, { "aria-expanded": expanded, onClick: () => setExpanded((value) => !value), children: expanded ? "\u6536\u8D77\u91CD\u8BD5\u8303\u56F4" : "\u9009\u62E9\u91CD\u8BD5\u8303\u56F4" }),
       expanded && !active && job.status !== "COMPLETED" && /* @__PURE__ */ (0, import_jsx_runtime40.jsxs)("section", { className: "iad-retry-scope", "aria-label": "\u91CD\u8BD5\u8303\u56F4", children: [
         options ? /* @__PURE__ */ (0, import_jsx_runtime40.jsxs)(import_jsx_runtime40.Fragment, { children: [
           options.active_run_id && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("p", { role: "status", children: "\u540C\u7C7B\u4F5C\u4E1A\u4ECD\u5728\u6267\u884C\uFF0C\u8BF7\u7ED3\u675F\u540E\u91CD\u65B0\u8BFB\u53D6\u8303\u56F4\u3002" }),
           !options.samples.length ? /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("p", { children: "\u5173\u8054\u4F5C\u4E1A\u5DF2\u5B8C\u6210\u5168\u90E8\u56FE\u50CF\uFF0C\u65E0\u9700\u91CD\u8BD5\u3002" }) : /* @__PURE__ */ (0, import_jsx_runtime40.jsxs)(import_jsx_runtime40.Fragment, { children: [
             options.selection_mode === "all_sources" ? /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("p", { className: "iad-muted", children: "\u77E5\u8BC6\u8054\u5408\u5F52\u7EB3\u987B\u4F7F\u7528\u6574\u7EC4\u51BB\u7ED3\u6765\u6E90\u3002" }) : /* @__PURE__ */ (0, import_jsx_runtime40.jsxs)("div", { className: "iad-row", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("button", { onClick: () => setSelected(options.samples.map((sample) => sample.sample_id)), children: "\u5168\u9009" }),
-              /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("button", { onClick: () => setSelected(options.samples.filter((sample) => sample.state === "failed").map((sample) => sample.sample_id)), children: "\u4EC5\u5931\u8D25" }),
-              /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("button", { onClick: () => setSelected(options.samples.filter((sample) => sample.state === "unprocessed").map((sample) => sample.sample_id)), children: "\u4EC5\u672A\u5904\u7406" })
+              /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(Button, { onClick: () => setSelected(options.samples.map((sample) => sample.sample_id)), children: "\u5168\u9009" }),
+              /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(Button, { onClick: () => setSelected(options.samples.filter((sample) => sample.state === "failed").map((sample) => sample.sample_id)), children: "\u4EC5\u5931\u8D25" }),
+              /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(Button, { onClick: () => setSelected(options.samples.filter((sample) => sample.state === "unprocessed").map((sample) => sample.sample_id)), children: "\u4EC5\u672A\u5904\u7406" })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime40.jsxs)("fieldset", { disabled: busy || !!options.active_run_id, children: [
               /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("legend", { children: "\u5931\u8D25\u6216\u672A\u5904\u7406\u56FE\u50CF" }),
@@ -8478,7 +8478,7 @@ var __IadClientBundle__ = (() => {
       ] }),
       child.error && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("p", { role: "alert", className: "iad-error", children: child.error }),
       child.data && /* @__PURE__ */ (0, import_jsx_runtime40.jsxs)("section", { "aria-label": "\u5185\u90E8\u6B65\u9AA4\u8BE6\u60C5", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("button", { type: "button", onClick: () => setChildId(""), children: "\u6536\u8D77\u6B65\u9AA4" }),
+        /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(Button, { type: "button", onClick: () => setChildId(""), children: "\u6536\u8D77\u6B65\u9AA4" }),
         /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(JobDetail, { job: child.data, onChanged })
       ] }),
       error2 && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("p", { role: "alert", className: "iad-error", children: error2 })
@@ -8491,7 +8491,7 @@ var __IadClientBundle__ = (() => {
           job.model_profile?.provider_name ? `${job.model_profile.provider_name} / ` : "",
           job.model_name
         ] }),
-        active && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("button", { disabled: busy || job.cancel_requested, onClick: cancel, children: job.cancel_requested ? "\u6B63\u5728\u505C\u6B62\u2026" : kind === "audit" ? "\u53D6\u6D88\u5BA1\u8BA1" : kind === "exploration" ? job.status === "PENDING" ? "\u53D6\u6D88\u6392\u961F" : "\u53D6\u6D88\u63A2\u7D22" : kind === "consistency" ? "\u53D6\u6D88\u68C0\u67E5" : "\u53D6\u6D88\u6316\u6398" })
+        active && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(Button, { disabled: busy || job.cancel_requested, onClick: cancel, children: job.cancel_requested ? "\u6B63\u5728\u505C\u6B62\u2026" : kind === "audit" ? "\u53D6\u6D88\u5BA1\u8BA1" : kind === "exploration" ? job.status === "PENDING" ? "\u53D6\u6D88\u6392\u961F" : "\u53D6\u6D88\u63A2\u7D22" : kind === "consistency" ? "\u53D6\u6D88\u68C0\u67E5" : "\u53D6\u6D88\u6316\u6398" })
       ] }),
       drawer && /* @__PURE__ */ (0, import_jsx_runtime40.jsxs)(import_jsx_runtime40.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime40.jsxs)("div", { className: "iad-job-metrics", children: [
@@ -8526,7 +8526,7 @@ var __IadClientBundle__ = (() => {
       ] }),
       body,
       /* @__PURE__ */ (0, import_jsx_runtime40.jsxs)("footer", { className: "iad-job-footer", children: [
-        drawer && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)("button", { onClick: onClose, children: "\u5173\u95ED" }),
+        drawer && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(Button, { onClick: onClose, children: "\u5173\u95ED" }),
         kind === "knowledge" && !active && !job.deleted_at && /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(
           DeleteAction,
           {
@@ -11438,16 +11438,6 @@ var __IadClientBundle__ = (() => {
         setSubmitting(false);
       }
     };
-    (0, import_react53.useEffect)(() => {
-      const handle = (event) => {
-        if (event.key !== "Escape") return;
-        if (confirmState) setConfirmState(null);
-        else if (editingDir) closeDirDrawer();
-        else if (!submitting) onClose();
-      };
-      window.addEventListener("keydown", handle);
-      return () => window.removeEventListener("keydown", handle);
-    }, [confirmState, editingDir, submitting, onClose]);
     return /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)(import_jsx_runtime57.Fragment, { children: [
       /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)(
         "section",
@@ -11669,63 +11659,23 @@ var __IadClientBundle__ = (() => {
           ]
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(
-        "div",
-        {
-          className: "kb-dir-drawer-mask",
-          id: "kb-dir-drawer-mask",
-          role: "presentation",
-          hidden: !editingDir,
-          onClick: (e) => {
-            if (e.target === e.currentTarget) closeDirDrawer();
-          },
-          children: /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)(
-            "aside",
-            {
-              className: "kb-dir-drawer",
-              id: "kb-dir-drawer",
-              role: "dialog",
-              "aria-modal": "true",
-              "aria-label": "\u7F16\u8F91\u6316\u6398\u65B9\u5411",
-              children: [
-                /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("header", { className: "kb-dir-drawer-head", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("h2", { children: "\u7F16\u8F91\u6316\u6398\u65B9\u5411" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(IconButton, { icon: "close", type: "button", id: "kb-dir-close", label: "\u5173\u95ED\u65B9\u5411\u7F16\u8F91", title: "\u5173\u95ED", onClick: closeDirDrawer })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("div", { className: "kb-dir-drawer-body", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("label", { htmlFor: "kb-dir-edit-name", children: "\u6807\u9898" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(
-                    "input",
-                    {
-                      id: "kb-dir-edit-name",
-                      className: "f",
-                      maxLength: 120,
-                      value: editingName,
-                      onChange: (e) => setEditingName(e.target.value)
-                    }
-                  ),
-                  /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("label", { htmlFor: "kb-dir-edit-text", children: "\u63CF\u8FF0" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(
-                    "textarea",
-                    {
-                      id: "kb-dir-edit-text",
-                      className: "f",
-                      rows: 9,
-                      value: editingText,
-                      onChange: (e) => setEditingText(e.target.value)
-                    }
-                  ),
-                  dirEditError && /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("div", { className: "kb-edit-error", id: "kb-dir-edit-error", role: "alert", children: dirEditError })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("footer", { className: "kb-dir-drawer-foot", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(Button, { type: "button", id: "kb-dir-cancel", onClick: closeDirDrawer, children: "\u53D6\u6D88" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(Button, { type: "button", variant: "primary", id: "kb-dir-save", onClick: saveDirEdit, children: "\u4FDD\u5B58" })
-                ] })
-              ]
-            }
-          )
-        }
-      ),
+      editingDir && /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)(Modal, { title: "\u7F16\u8F91\u6316\u6398\u65B9\u5411", className: "iad-drawer", id: "kb-dir-drawer", onClose: closeDirDrawer, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("div", { className: "iad-dialog-body", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("label", { className: "iad-field", htmlFor: "kb-dir-edit-name", children: [
+            "\u6807\u9898",
+            /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("input", { id: "kb-dir-edit-name", maxLength: 120, value: editingName, onChange: (event) => setEditingName(event.target.value) })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("label", { className: "iad-field", htmlFor: "kb-dir-edit-text", children: [
+            "\u63CF\u8FF0",
+            /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("textarea", { id: "kb-dir-edit-text", rows: 9, value: editingText, onChange: (event) => setEditingText(event.target.value) })
+          ] }),
+          dirEditError && /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("p", { id: "kb-dir-edit-error", role: "alert", children: dirEditError })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("footer", { className: "iad-dialog-footer", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(Button, { id: "kb-dir-cancel", onClick: closeDirDrawer, children: "\u53D6\u6D88" }),
+          /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(Button, { variant: "primary", id: "kb-dir-save", onClick: saveDirEdit, children: "\u4FDD\u5B58" })
+        ] })
+      ] }),
       /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(KnowledgeConfirmation, { state: confirmState, onClose: () => setConfirmState(null) })
     ] });
   }
@@ -11894,6 +11844,8 @@ var __IadClientBundle__ = (() => {
     }));
     (0, import_react54.useEffect)(() => {
       setDetailItem(null);
+    }, [selectedChildId, selectedJob?.id]);
+    (0, import_react54.useEffect)(() => {
       setEntryPage(1);
     }, [selectedJob?.id, selectedVersionId]);
     const openJobPrompt = (id) => {
@@ -11904,7 +11856,9 @@ var __IadClientBundle__ = (() => {
     const closePrompt = () => {
       setPromptJob(null);
     };
-    const openDetail = (item) => setDetailItem(item.id);
+    const openDetail = (item) => {
+      if (selectedVersionId) setDetailItem({ versionId: selectedVersionId, checkId: item.id });
+    };
     const closeDetail = () => setDetailItem(null);
     const askDeleteJob = (id) => {
       const job = jobList.find((item) => item.id === id);
@@ -12244,18 +12198,17 @@ var __IadClientBundle__ = (() => {
         )
       ] }) }),
       promptJob && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(PromptDrawer, { title: "\u67E5\u770B\u63D0\u793A\u8BCD", text: promptJob.prompt || "\u8BE5\u5386\u53F2\u4F5C\u4E1A\u672A\u8BB0\u5F55\u51BB\u7ED3\u63D0\u793A\u8BCD\u3002", onClose: closePrompt }),
-      detailItem && selectedVersionId && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
+      detailItem && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
         KnowledgeEntryDialog,
         {
-          versionId: selectedVersionId,
-          checkId: detailItem,
+          ...detailItem,
           onClose: closeDetail,
           onSaved: () => {
             updated();
             toast("\u4EBA\u5DE5\u6838\u5B9E\u5DF2\u4FDD\u5B58");
           }
         },
-        `${selectedVersionId}:${detailItem}`
+        `${detailItem.versionId}:${detailItem.checkId}`
       ),
       jobDetails && polling.jobs.some((job) => job.run_id === jobDetails || job.root_run_id === jobDetails) && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
         JobStatusDrawer,
@@ -13650,16 +13603,7 @@ button.iad-job-status-button{border:0;background:transparent;padding:0;min-heigh
 
 
 
-@keyframes knowledge-drawer-enter {
-  from {
-    transform: translateX(24px);
-    opacity: 0.7;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
+
 
 
 
@@ -14090,17 +14034,6 @@ button.iad-job-status-button{border:0;background:transparent;padding:0;min-heigh
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-prompt-note { min-height: 0; padding: 7px 0 0; font-size: 13px; color: #172338; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-prompt-note:empty { display: none; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-error { font-size: 13px; color: #a53b39; padding: 10px 0; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-mask[hidden] { display: none !important; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-mask { position: fixed; inset: 0; z-index: 1200; background: #17243aa8; display: flex; justify-content: flex-end; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer { width: min(560px, 100vw); height: 100dvh; background: #fff; display: flex; flex-direction: column; box-shadow: -8px 0 30px #1b294333; color: #172338; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-head { padding: 20px 22px; border-bottom: 1px solid #e0e6ef; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-head h2 { font-size: 17px; font-weight: 650; margin: 0; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-body { padding: 24px 22px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-body label { font-size: 13px; font-weight: 400; color: #172338; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-body input { height: 38px; width: 100%; border: 1px solid #b6c5d8; border-radius: 5px; padding: 0 10px; box-sizing: border-box; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-body textarea { width: 100%; height: 210px; padding: 12px; resize: vertical; line-height: 1.6; color: #172338; border: 1px solid #b6c5d8; border-radius: 5px; box-sizing: border-box; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-dir-drawer-foot { padding: 15px 22px; border-top: 1px solid #e0e6ef; display: flex; align-items: center; justify-content: flex-end; gap: 9px; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-edit-error { color: #a53b39; font-size: 13px; }
 
 /* UI-56-03 Confirm and Start Panel */
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-confirm {

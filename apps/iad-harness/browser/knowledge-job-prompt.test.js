@@ -31,7 +31,7 @@ test('user chooses directions and changes subsets without losing the private min
       if(!data)return null;const dataset=data.catalog.datasets.find(item=>item.name==='作业提示词');
       return <div className="iad-workbench"><WorkbenchModelProvider><KnowledgeMiningCreate dataset={dataset}
         datasets={data.catalog.datasets} groups={data.groups.groups} selectedParentId={dataset.group_id}
-        selectedChildId={dataset.dataset_id} onClose={()=>{}}
+        selectedChildId={dataset.dataset_id} onClose={()=>{window.closedSetup=true;}}
         onStarted={jobs=>{window.startedJob=jobs[0];}}/></WorkbenchModelProvider></div>;
     }createRoot(document.getElementById('root')).render(<App/>);
   `,loader:'tsx',resolveDir:app},bundle:true,format:'iife',write:false,target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
@@ -97,6 +97,17 @@ test('user chooses directions and changes subsets without losing the private min
     const directionId=await explored[0].getAttribute('data-dir-id');await explored[0].click();
     await driver.wait(async()=>(await (await element('#prompt-text')).getAttribute('value')).includes('本批可以比较外轮廓'),5000);
     await (await element('#kb-tab-preset')).click();
+    await (await element('[data-edit-kind="preset"][data-edit-id="edges"]')).click();
+    const drawer=await element('[aria-label="编辑挖掘方向"]');
+    assert.equal(await driver.executeScript('return arguments[0].matches("dialog:modal")',drawer),true,'方向编辑复用原生Modal');
+    const geometry=await driver.executeScript('const r=arguments[0].getBoundingClientRect();return [r.width,r.right,innerWidth,arguments[0].querySelector(".iad-dialog-header").getBoundingClientRect().height]',drawer);
+    assert.deepEqual(geometry,[560,1440,1440,64]);
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    await driver.wait(async()=>(await driver.findElements(By.css('dialog[aria-label="编辑挖掘方向"][open]'))).length===0,5000);
+    assert.equal(await driver.executeScript('return document.activeElement.getAttribute("data-edit-id")'),'edges');
+    assert.ok(await element('#submit-job'),'Esc关闭编辑后保留新建草稿');
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    assert.equal(await driver.executeScript('return !!window.closedSetup'),false,'页面上的Esc不能丢弃整个新建草稿');
     await (await element('[data-edit-kind="preset"][data-edit-id="edges"]')).click();
     const editedTitle='本次边缘观察',editedText='结合主体与边缘细节比较实际变化。';
     for(const [selector,value] of [['#kb-dir-edit-name',editedTitle],['#kb-dir-edit-text',editedText]]){

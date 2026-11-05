@@ -10,6 +10,8 @@ const firefox=require('selenium-webdriver/firefox.js');
   const tasks=JSON.parse(await fs.readFile(inputPath,'utf8'));
   const prepareOnly=process.argv.includes('--prepare-only');
   const cancelCurrent=process.argv.includes('--cancel-current');
+  const selectedDataset=process.argv.find(arg=>arg.startsWith('--dataset='))?.slice('--dataset='.length);
+  assert.ok(!selectedDataset||['anomaly','labelme'].includes(selectedDataset),'子集参数应为 anomaly 或 labelme');
   const reference='runs/verification/v58-two-small/reference.json';
   const state=JSON.parse(await fs.readFile(reference,'utf8'));
   const output='runs/browser/user-submitted-audit';await fs.mkdir(output,{recursive:true});
@@ -24,6 +26,7 @@ const firefox=require('selenium-webdriver/firefox.js');
     await click(await element('button[aria-label="模型审计"]'));
     const catalog=await read('datasets');
     for(const key of ['anomaly','labelme']){
+      if(selectedDataset&&selectedDataset!==key)continue;
       const dataset=state.datasets[key],source=catalog.datasets.find(item=>item.dataset_id===dataset.dataset_id);
       assert.equal(source.total_samples,100);assert.ok(tasks[key]?.trim());
       const saved=dataset.ui_submissions?.audit;
@@ -41,7 +44,7 @@ const firefox=require('selenium-webdriver/firefox.js');
           await click(await element(`button[aria-label="查看作业 ${saved.run_id}"]`));
           await click(await driver.wait(until.elementLocated(By.xpath('//dialog//button[normalize-space(.)="取消审计"]')),15000));
           await driver.wait(async()=>(await read('audit/status/'+saved.run_id)).cancel_requested,10000);
-          await click(await element('button[aria-label="关闭审计作业详情"]'));
+          await click(await element('button[aria-label="关闭作业状态"]'));
         }
         console.log('已从界面停止旧小集审计',key,saved.run_id);continue;
       }

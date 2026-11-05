@@ -94,7 +94,7 @@ export function KnowledgePage({
 
   // Modals & Drawers
   const [promptJob, setPromptJob] = useState<UiJobItem | null>(null);
-  const [detailItem, setDetailItem] = useState<string | null>(null);
+  const [detailItem, setDetailItem] = useState<Pick<React.ComponentProps<typeof KnowledgeEntryDialog>, 'versionId' | 'checkId'> | null>(null);
   const [confirmState, setConfirmState] = useState<KnowledgeConfirmationState | null>(null);
   const createOpen = view.tab === 'setup';
   const [toastMsg, setToastMsg] = useState("");
@@ -218,7 +218,8 @@ export function KnowledgePage({
   useEffect(() => {if (entryPage > maxEntryPages && !checksResource.loading) setEntryPage(maxEntryPages);}, [entryPage, maxEntryPages, checksResource.loading]);
   const pagedChecks: KnowledgeItemData[] = filteredChecks.map(check => ({id:check.check_id, name:check.title,
     summary:check.criterion, supportCount:check.support_count, counterCount:check.counter_count, review:check.review}));
-  useEffect(() => {setDetailItem(null); setEntryPage(1);}, [selectedJob?.id, selectedVersionId]);
+  useEffect(() => {setDetailItem(null);}, [selectedChildId, selectedJob?.id]);
+  useEffect(() => {setEntryPage(1);}, [selectedJob?.id, selectedVersionId]);
 
   // Prompt drawer handlers
   const openJobPrompt = (id: string) => {
@@ -231,7 +232,9 @@ export function KnowledgePage({
     setPromptJob(null);
   };
 
-  const openDetail = (item: KnowledgeItemData) => setDetailItem(item.id);
+  const openDetail = (item: KnowledgeItemData) => {
+    if (selectedVersionId) setDetailItem({versionId:selectedVersionId, checkId:item.id});
+  };
   const closeDetail = () => setDetailItem(null);
   const askDeleteJob = (id: string) => {
     const job = jobList.find(item => item.id === id);
@@ -578,8 +581,8 @@ export function KnowledgePage({
       {/* 1. Job Prompt Drawer */}
       {promptJob && <PromptDrawer title="查看提示词" text={promptJob.prompt || '该历史作业未记录冻结提示词。'} onClose={closePrompt} />}
 
-            {detailItem && selectedVersionId && <KnowledgeEntryDialog key={`${selectedVersionId}:${detailItem}`} versionId={selectedVersionId}
-              checkId={detailItem} onClose={closeDetail} onSaved={()=>{updated();toast('人工核实已保存');}} />}
+            {detailItem && <KnowledgeEntryDialog key={`${detailItem.versionId}:${detailItem.checkId}`} {...detailItem}
+              onClose={closeDetail} onSaved={()=>{updated();toast('人工核实已保存');}} />}
             {jobDetails && polling.jobs.some(job=>job.run_id===jobDetails || job.root_run_id===jobDetails) && <JobStatusDrawer
               job={polling.jobs.find(job=>job.run_id===jobDetails || job.root_run_id===jobDetails)!} onClose={()=>setJobDetails(null)} onChanged={handleRefresh}
               stale={polling.syncState === 'stale'} lastSyncedAt={polling.lastSyncedAt} />}

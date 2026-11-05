@@ -244,3 +244,26 @@ def test_audit_model_corrects_its_output_without_program_fallback(dataset,mllm_a
         detail=audit_job_sample(dict(run_id=job['run_id'],sample_id=sid),db.db_path)
         assert detail['suggestion']['analysis']['findings'][0]['description']=='模型重新核对后给出的可见异常描述'
     finally:runtime.close()
+
+
+@pytest.mark.parametrize('failed_stage',['JointAnalysis','AuditConclusion'])
+def test_audit_failure_keeps_the_actual_image_step_and_phase_in_the_owner_drawer(dataset, mllm_api, failed_stage):
+    db, _, config = dataset
+    original, _, _ = mllm_api
+
+    def respond(request):
+        if request.url.path.endswith('/chat/completions') and json.loads(request.content)['response_format']['json_schema']['name'] == failed_stage:
+            return httpx.Response(503, json={'error': {'message': '真实模型步骤不可用'}})
+        return original.send(request)
+
+    runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        job = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[config.dataset.id+':dent.png'])
+        runtime.audit.wait(job['run_id'], 5)
+        owner = runtime.audit.status(job['run_id'])
+        assert owner['status'] == 'FAILED' and owner['failed'] == 1
+        child = runtime.jobs.status(owner['batch_runs'][0])
+        assert owner['errors'][0]['source_run_id'] == child['run_id']
+        assert owner['errors'][0]['source_phase'] == child['errors'][0]['source_phase'] == 'SYNTHESIS'
+    finally:
+        runtime.close()

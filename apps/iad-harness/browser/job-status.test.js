@@ -26,6 +26,8 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
   assert.equal(await drawer.getAttribute('aria-label'),'作业状态');
   const rect=await driver.executeScript('const r=arguments[0].getBoundingClientRect();return {width:r.width,right:r.right,height:r.height,view:innerWidth}',drawer);
   assert.equal(rect.width,560);assert.equal(rect.right,rect.view);
+  const actionSizes=await driver.executeScript('return [arguments[0].querySelector(".iad-row button"),arguments[0].querySelector(".iad-job-footer button")].map(e=>e.getBoundingClientRect().height)',drawer);
+  assert.deepEqual(actionSizes,[38,38],'状态抽屉的动作按钮统一38px');
   assert.match(await drawer.getText(),/14 \/ 99/);assert.match(await drawer.getText(),/分析冲突图组/);
   assert.match(await drawer.getText(),/2026/);assert.ok(!(await drawer.getText()).includes('准备图像已完成'),'current phase must not invent a history');
   await driver.executeScript("document.getElementById('stop').click()");
