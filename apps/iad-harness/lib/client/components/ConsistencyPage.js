@@ -146,19 +146,18 @@ function ConsistencyIntegratedWorkspace() {
         let timer;
         async function poll() {
             try {
-                const [catalog, ...groups] = await Promise.all([
-                    request('/consistency/runs', undefined, undefined, controller.signal),
-                    ...selectedChildIds.map(dataset_id => request(`/analysis/jobs?${new URLSearchParams({ dataset_id, analysis_kind: 'consistency' })}`, undefined, undefined, controller.signal))
-                ]);
+                const groups = await Promise.all(selectedChildIds.map(dataset_id => request(`/analysis/jobs?${new URLSearchParams({ dataset_id, analysis_kind: 'consistency' })}`, undefined, undefined, controller.signal)));
                 if (controller.signal.aborted)
                     return;
                 const roots = [...new Map(groups.flatMap(group => group.jobs).map(job => [job.run_id, job])).values()];
-                const rows = roots.flatMap(job => {
-                    const program = catalog.items.find(item => item.batch_id === job.program_batch_id);
-                    return program ? [{ ...program, analysis: job, status: job.status,
-                            total: job.total_samples, completed: job.completed, failed: job.failed, unprocessed: job.unprocessed, cancel_requested: job.cancel_requested,
-                            created_at: job.submitted_at, duration_seconds: job.finished_at && job.started_at ? Math.max(0, Math.round((Date.parse(job.finished_at) - Date.parse(job.started_at)) / 1000)) : null }] : [];
-                });
+                const rows = await Promise.all(roots.filter(job => job.program_batch_id).map(async (job) => {
+                    const program = await request(`/consistency/runs/${encodeURIComponent(job.program_batch_id)}`, undefined, undefined, controller.signal);
+                    return { ...program, analysis: job, status: job.status,
+                        total: job.total_samples, completed: job.completed, failed: job.failed, unprocessed: job.unprocessed, cancel_requested: job.cancel_requested,
+                        created_at: job.submitted_at, duration_seconds: job.finished_at && job.started_at ? Math.max(0, Math.round((Date.parse(job.finished_at) - Date.parse(job.started_at)) / 1000)) : null };
+                }));
+                if (controller.signal.aborted)
+                    return;
                 setBatches(rows);
                 const hasActive = roots.some(item => ['RUNNING', 'PENDING'].includes(item.status));
                 timer = setTimeout(poll, hasActive ? 1200 : 5000);

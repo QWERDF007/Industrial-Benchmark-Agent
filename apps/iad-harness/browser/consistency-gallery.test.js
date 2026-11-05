@@ -46,6 +46,7 @@ function App(){const [id,setId]=React.useState(panel||entries[0].id);React.useEf
 createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolveDir:app},bundle:true,format:'iife',write:false,target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
   const api=createIadHttpHandler(bridge);
   const modelRequests=[];
+  const programReads=[];
   let reviewContextReads=0;
   const server=http.createServer(async(req,res)=>{
     if(req.url==='/tokenize'){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({count:1000,max_model_len:262144}));}
@@ -63,6 +64,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     }
     if(req.url==='/browser.js'){res.setHeader('Content-Type','application/javascript');return res.end(bundle.outputFiles[0].contents);}
     if(req.url.startsWith('/api/iad')){
+      if(req.url.startsWith('/api/iad/consistency/runs'))programReads.push(req.url);
       if(req.url==='/api/iad/consistency/review/context')reviewContextReads++;
       return api(req,res);
     }
@@ -85,6 +87,8 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     const click=async label=>(await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${label}' or @aria-label='${label}']`)),10000)).click();
     await driver.get(start);await viewport(driver,1920,1080);
     const operations=await element(`[data-dc-row="${batch.batch_id}"] .dc-operations`);
+    assert.ok(!programReads.includes('/api/iad/consistency/runs'),'列表只读取当前范围作业引用的程序批次，不重算全局历史批次');
+    assert.ok(programReads.includes('/api/iad/consistency/runs/'+batch.batch_id));
     assert.deepEqual(await Promise.all((await operations.findElements(By.css('button'))).map(button=>button.getAttribute('aria-label'))),
       ['查看统计结果',`删除检查作业 ${batch.batch_id}`],'作业操作与HTML原型一致，不添加检查作业详情入口');
     assert.equal((await driver.findElements(By.css('dialog[aria-label="检查作业详情"]'))).length,0);

@@ -24,6 +24,10 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
   const expanded=async(id,value)=>driver.wait(async()=>await(await el(id+'-trigger')).getAttribute('aria-expanded')===String(value),5000);
   await click('first-trigger');await expanded('first',true);
   const option=await driver.findElement(By.css('#first-menu input[value=one]'));await option.click();assert.equal(await option.isSelected(),true);
+  await click('first-trigger');await expanded('first',false);
+  await(await el('first-trigger')).sendKeys(Key.SPACE);await expanded('first',true);
+  await(await el('first-trigger')).sendKeys(Key.ENTER);await expanded('first',false);
+  await click('first-trigger');await expanded('first',true);assert.equal(await option.isSelected(),true);
   await click('second-trigger');await expanded('second',true);await expanded('first',false);
   await(await el('second-trigger')).sendKeys(Key.ESCAPE);await expanded('second',false);
   assert.equal(await driver.executeScript('return document.activeElement.id'),'second-trigger');

@@ -3861,11 +3861,16 @@ var __IadClientBundle__ = (() => {
     });
     (0, import_react3.useEffect)(() => {
       const element = panel.current;
+      const trigger = refs.reference.current;
       element.popover = "auto";
+      trigger.popoverTargetElement = element;
       const toggle = (event) => setOpen(event.newState === "open");
       element.addEventListener("beforetoggle", toggle);
-      return () => element.removeEventListener("beforetoggle", toggle);
-    }, []);
+      return () => {
+        element.removeEventListener("beforetoggle", toggle);
+        trigger.popoverTargetElement = null;
+      };
+    }, [refs.reference]);
     (0, import_react3.useEffect)(() => {
       if (!open || !refs.reference.current || !refs.floating.current) return;
       return autoUpdate(refs.reference.current, refs.floating.current, update);
@@ -3885,7 +3890,6 @@ var __IadClientBundle__ = (() => {
           "aria-label": `\u9009\u62E9${label}`,
           "aria-expanded": open,
           "aria-controls": panelId,
-          onClick: () => panel.current?.togglePopover(),
           children: [
             /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { children: values.size ? `\u5DF2\u9009 ${values.size} \u4E2A${label}` : `\u8BF7\u9009\u62E9${label}` }),
             /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(ChevronIcon, { size: 16 })
@@ -19127,15 +19131,17 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       let timer;
       async function poll() {
         try {
-          const [catalog, ...groups2] = await Promise.all([
-            request("/consistency/runs", void 0, void 0, controller.signal),
-            ...selectedChildIds.map((dataset_id) => request(`/analysis/jobs?${new URLSearchParams({ dataset_id, analysis_kind: "consistency" })}`, void 0, void 0, controller.signal))
-          ]);
+          const groups2 = await Promise.all(selectedChildIds.map((dataset_id) => request(
+            `/analysis/jobs?${new URLSearchParams({ dataset_id, analysis_kind: "consistency" })}`,
+            void 0,
+            void 0,
+            controller.signal
+          )));
           if (controller.signal.aborted) return;
           const roots = [...new Map(groups2.flatMap((group) => group.jobs).map((job) => [job.run_id, job])).values()];
-          const rows = roots.flatMap((job) => {
-            const program = catalog.items.find((item) => item.batch_id === job.program_batch_id);
-            return program ? [{
+          const rows = await Promise.all(roots.filter((job) => job.program_batch_id).map(async (job) => {
+            const program = await request(`/consistency/runs/${encodeURIComponent(job.program_batch_id)}`, void 0, void 0, controller.signal);
+            return {
               ...program,
               analysis: job,
               status: job.status,
@@ -19146,8 +19152,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
               cancel_requested: job.cancel_requested,
               created_at: job.submitted_at,
               duration_seconds: job.finished_at && job.started_at ? Math.max(0, Math.round((Date.parse(job.finished_at) - Date.parse(job.started_at)) / 1e3)) : null
-            }] : [];
-          });
+            };
+          }));
+          if (controller.signal.aborted) return;
           setBatches(rows);
           const hasActive = roots.some((item) => ["RUNNING", "PENDING"].includes(item.status));
           timer = setTimeout(poll, hasActive ? 1200 : 5e3);

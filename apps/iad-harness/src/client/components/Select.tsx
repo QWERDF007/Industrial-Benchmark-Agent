@@ -25,11 +25,13 @@ export function MultiSelect({id, menuId, label, options, selected, onToggle, dis
   });
   useEffect(() => {
     const element = panel.current!;
+    const trigger = refs.reference.current as HTMLButtonElement;
     element.popover = 'auto';
+    trigger.popoverTargetElement = element;
     const toggle = (event: Event) => setOpen((event as ToggleEvent).newState === 'open');
     element.addEventListener('beforetoggle', toggle);
-    return () => element.removeEventListener('beforetoggle', toggle);
-  }, []);
+    return () => {element.removeEventListener('beforetoggle', toggle);trigger.popoverTargetElement = null;};
+  }, [refs.reference]);
   useEffect(() => {
     if (!open || !refs.reference.current || !refs.floating.current) return;
     return autoUpdate(refs.reference.current, refs.floating.current, update);
@@ -37,7 +39,7 @@ export function MultiSelect({id, menuId, label, options, selected, onToggle, dis
   useEffect(() => {if (disabled) panel.current?.hidePopover();}, [disabled]);
   return <div className="iad-multiselect">
     <button ref={refs.setReference} id={id} type="button" className="iad-select iad-multiselect-trigger" disabled={disabled}
-      aria-label={`选择${label}`} aria-expanded={open} aria-controls={panelId} onClick={() => panel.current?.togglePopover()}>
+      aria-label={`选择${label}`} aria-expanded={open} aria-controls={panelId}>
       <span>{values.size ? `已选 ${values.size} 个${label}` : `请选择${label}`}</span><ChevronIcon size={16} />
     </button>
     <div ref={element => {panel.current = element; refs.setFloating(element);}} id={panelId}
