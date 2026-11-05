@@ -21,6 +21,11 @@ def test_audit_transmits_short_references_and_preserves_frozen_evidence_ownershi
             return original.send(request)
         requests.append(body)
         content = body['messages'][0]['content']
+        schema = body['response_format']['json_schema']['schema']
+        assert schema['properties']['suggested_label']['enum']==['PASS','FAIL','UNCERTAIN'], '字段顺序不能限制模型的判断选项'
+        for names in [list(schema['properties']), schema['required']]:
+            assert all(names.index(field)<names.index('suggested_label') for field in
+                ['observation','applicable_rule','normal_alternative','basis','analysis_text']), '实际输出Schema应先记录观察与依据，再给最终标签'
         if mistake=='descriptive' and len(requests)>1:
             feedback = json.loads(body['messages'][-1]['content'].split('输出校验结果：',1)[1])
             assert '@s0' in feedback['schema_validation_errors'][0]['msg'], '反馈应指出具体违规引用，不能让模型猜错在哪里'
@@ -72,6 +77,7 @@ def test_audit_transmits_short_references_and_preserves_frozen_evidence_ownershi
         assert len(requests)==(1 if mistake=='none' else 2), '引用错误由模型自行纠正一次，不替换它的文字或证据'
         detail = audit_job_sample(dict(run_id=job['run_id'],sample_id=target), db.db_path)
         conclusion = detail['suggestion']['analysis']['conclusion']
+        assert conclusion['suggested_label']==responses['VlmResult']['suggested_label'], '保留模型实际判断，不由程序改标签'
         assert all(identity.startswith('img_') for identity in conclusion['evidence_ids'])
         assert conclusion['basis'][0]['knowledge_check_ids']==[detail['knowledge']['checks'][0]['check_id']]
         assert set(conclusion['basis'][0]['consistency_result_ids'])=={ref['result_id'] for ref in detail['consistency']['references']}

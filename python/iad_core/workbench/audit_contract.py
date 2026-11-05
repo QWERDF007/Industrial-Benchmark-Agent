@@ -1,6 +1,6 @@
 from typing import Any, Sequence
 
-from pydantic import Field, create_model
+from pydantic import ConfigDict, Field, create_model
 
 from iad_core.advisory.analysis import AuditBasis, AuditConclusion, AuditSliceCandidate
 from iad_core.advisory.conclusions import NonBlankConclusion
@@ -30,7 +30,17 @@ class AuditConclusionContract:
         slice_candidate = create_model('AuditSliceCandidate', __base__=AuditSliceCandidate,
             name=(NonBlankConclusion, ...), observation=(NonBlankConclusion, ...),
             evidence_ids=(list[image_ref], Field(min_length=1)))
+
+        def observation_before_judgment(schema: dict[str, Any]) -> None:
+            order = ('observation', 'applicable_rule', 'normal_alternative', 'basis', 'conflicts', 'missing_evidence',
+                'analysis_text', 'description', 'position_analysis', 'illumination_analysis', 'evidence_ids',
+                'proposed_slice', 'label_relation', 'suggested_label', 'reason_category', 'confidence', 'defect_location')
+            properties = schema['properties']
+            schema['properties'] = {name:properties[name] for name in dict.fromkeys((*order, *properties)) if name in properties}
+            schema['required'] = [name for name in schema['properties'] if name in schema['required']]
+
         self.response_type = create_model('AuditConclusion', __base__=AuditConclusion,
+            __config__=ConfigDict(json_schema_extra=observation_before_judgment),
             analysis_text=(NonBlankConclusion, ...), description=(NonBlankConclusion, ...),
             observation=(NonBlankConclusion, ...), applicable_rule=(NonBlankConclusion, ...), normal_alternative=(NonBlankConclusion, ...),
             proposed_slice=(list[slice_candidate], ...),
