@@ -75,7 +75,7 @@ export function createWorkbenchTools(bridge: PythonBridge, ctx: Context): ToolDe
     }),
     defineTool({
       name: "model_audit_start",
-      description: "用冻结良品知识及可选不良知识独立进行 MLLM 联合审计，再附加同图检查。默认所选数据集全部图像、全图及适用 ROI，检索库为全部已注册数据集；仅用户明确指定时传 sample_ids、filters 或 corpus_scope。默认 consistency_mode=exact；仅用户明确开启视觉候选时用 combined/visual，只查询已有向量，不隐式建库。模型失败不抹除一致性证据，确定性冲突不交给模型消解。",
+      description: "用指定的冻结统一知识，结合全图及适用 ROI 进行 MLLM 联合审计和最终综合判断，并保留独立的一致性证据。默认审计所选数据集全部图像，检索库限于该数据集；按用户要求用 sample_ids、filters 或 corpus_scope 限定审计与检索范围。默认 consistency_mode=exact；仅用户明确开启视觉候选时用 combined/visual，只查询已有向量，不隐式建库。模型失败不抹除一致性证据，确定性冲突不交给模型消解。",
       parameters: auditStartParameters,
       output: workbenchJsonOutput,
       execute: (args, exec) => bridge.execute("audit_start", { ...args, origin_session_id: exec.agent?.id || null }, exec.signal),
