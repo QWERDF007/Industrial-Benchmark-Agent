@@ -39,7 +39,6 @@ export const formsStyles = `
 .iad-detail-dialog {width:min(1000px,calc(100% - 32px));max-height:calc(100% - 32px);overflow:auto;margin:auto;background:var(--iad-surface);color:var(--iad-text);border:1px solid var(--iad-control-border);border-radius:6px;padding:16px;}
 .iad-detail-dialog.iad-inline-dialog {position:sticky;inset:auto;top:0;width:100%;max-width:none;max-height:none;margin:0;padding:0;overflow:visible;background:transparent;}.iad-inline-dialog .iad-inspector{position:static}
 .iad-detail-dialog.iad-drawer {width:min(560px,100%);max-width:100%;height:100dvh;max-height:100dvh;margin:0 0 0 auto;border-radius:0;padding:0;overflow:hidden;display:flex;flex-direction:column;}.iad-drawer .iad-config-bar {padding:24px;overflow:auto;display:grid;gap:16px;}.iad-drawer .iad-config-bar>.iad-field {margin:0;}.iad-drawer .iad-job-panel {min-width:0;}
-.iad-detail-dialog.iad-confirm-dialog {width:min(440px,calc(100% - 32px));}
 .iad-detail-dialog.iad-viewer-dialog {width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;padding:0;background:var(--iad-viewer);overflow:hidden;}
 .iad-detail-dialog::backdrop {background:var(--iad-scrim);}
 .iad-detail-dialog>.iad-row {margin-bottom:16px;}

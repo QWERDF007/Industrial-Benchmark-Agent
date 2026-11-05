@@ -1,3 +1,5 @@
+import {ExplorationPresetDialog} from './ExplorationPresetDialog.js';
+import {ExplorationSourceDialog} from './ExplorationSourceDialog.js';
 import {PromptDrawer} from './PromptDrawer.js';
 import {JobStatusDrawer, JobStatusButton} from './JobStatusDrawer.js';
 import {Select} from './Select.js';
@@ -5,11 +7,11 @@ import {TabBar} from './layout/TabBar.js';
 import {Button} from './Button.js';
 import {ThumbnailCard} from "./ThumbnailCard.js";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import type { Dataset, DatasetGroup, JobSnapshot } from "../../shared/contracts.js";
 import { mediaUrl, message, request } from "../api.js";
 import {useWorkbenchModel} from "../models.js";
-import { useWorkspace } from "../workspace.js";
+import {useJobs} from "../useJobs.js";
+import {jobStatuses} from "../../shared/job-display.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 import {PlusIcon} from "../AuditIcon.js";
 import { IconButton } from "./IconButton.js";
@@ -20,64 +22,14 @@ import { FullscreenViewer, type FullscreenViewerItem } from "./FullscreenViewer.
 import { Pagination, IBA_JOBS_PAGE_SIZE } from "./Pagination.js";
 import { ClearFilterButton } from "./CommonFilterControls.js";
 
-import type {ExplorationResults, DirectionRemoval} from "../../shared/domain.generated.js";
+import type {ExplorationResults, DirectionRemoval, ExplorationPromptPreset} from "../../shared/domain.generated.js";
 import {useResource} from "../useResource.js";
-import {explorationCandidates,explorationDirections} from "../exploration-view.js";
-
-interface PresetItem {
-  id: string;
-  name: string;
-  text: string;
-}
-
-interface JobItem {
-  id: string;
-  parentId?: string;
-  scopeKey: string;
-  datasetIds: string[];
-  normal: string[];
-  defect: string[];
-  prompt: string;
-  preset: string;
-  status: JobSnapshot["status"];
-  phase: number;
-  elapsed: number;
-  time: string;
-  error?: string;
-  summary?: string;
-  directions?: DirectionItem[];
-  limitations?: string[];
-  explorationVersionId?: string;
-}
-
-interface SampleItem {
-  id: string;
-  filename: string;
-  url: string;
-  kind: "normal" | "defect";
-  category?: string;
-  datasetId: string;
-}
+import {explorationCandidates,explorationDirections,type ExplorationCandidate} from "../exploration-view.js";
 
 function expElapsed(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
   return (m > 0 ? `${m}分` : "") + `${s}秒`;
-}
-
-function expJobBadge(status: string) {
-  if (status === "COMPLETED") return <span className="exp-pill ok">已完成</span>;
-  if (status === "RUNNING") return <span className="exp-pill running">运行中</span>;
-  if (status === "PENDING") return <span className="exp-pill pending">排队中</span>;
-  return <span className="exp-pill fail">失败</span>;
-}
-
-function expJobState(status: string) {
-  if (status === "PENDING") return "排队中";
-  if (status === "RUNNING") return "运行中";
-  if (status === "COMPLETED") return "已完成";
-  if (status === "FAILED") return "失败";
-  return "已取消";
 }
 
 let cachedDatasets: Dataset[] | null = null;
@@ -86,13 +38,10 @@ let cachedGroups: DatasetGroup[] | null = null;
 export function ExplorationPage({
   dataset,
   refreshRevision,
-  headerActions,
 }: {
   dataset: Dataset;
   refreshRevision: number;
-  headerActions: React.ReactNode;
 }) {
-  const { workspace } = useWorkspace();
   const model=useWorkbenchModel();
   const initialGroups = buildHierarchyGroups(cachedDatasets || [dataset], cachedGroups || []);
   const initialParentId = getDatasetGroupId(dataset, initialGroups);
@@ -123,23 +72,15 @@ export function ExplorationPage({
   const [sampleTab, setSampleTab] = useState<"normal" | "defect">("normal");
   const [normalSelected, setNormalSelected] = useState<string[]>([]);
   const [defectSelected, setDefectSelected] = useState<string[]>([]);
-  const [presets, setPresets] = useState<PresetItem[]>([]);
+  const [presets, setPresets] = useState<ExplorationPromptPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState("");
   const [prompt, setPrompt] = useState("");
   const [originalPrompt, setOriginalPrompt] = useState("");
 
   // Modals
-  const [modal, setModal] = useState<"" | "source" | "delete-job" | "save" | "direction" | "prompt">("");
-  const [deletingJobId, setDeletingJobId] = useState<string | null>(null);
+  const [modal, setModal] = useState<"" | "source" | "save" | "direction" | "prompt">("");
   const [promptText, setPromptText] = useState<string | null>(null);
   const [viewingDirection, setViewingDirection] = useState<DirectionItem | null>(null);
-  const [newPresetName, setNewPresetName] = useState("");
-
-  // Source picker modal state
-  const [sourceSearch, setSourceSearch] = useState("");
-  const [sourceCategory, setSourceCategory] = useState("all");
-  const [sourceSelectedOnly, setSourceSelectedOnly] = useState(false);
-  const [sourcePage, setSourcePage] = useState(1);
 
   // Direction detail interaction
   const [highlightRef, setHighlightRef] = useState<string | null>(null);
@@ -153,12 +94,14 @@ export function ExplorationPage({
 
 
   // Candidate samples pool
-  const [samplePool, setSamplePool] = useState<SampleItem[]>([]);
+  const [samplePool, setSamplePool] = useState<ExplorationCandidate[]>([]);
   const [samplesLoaded,setSamplesLoaded]=useState(false),[samplesLoading,setSamplesLoading]=useState(false);
   const sampleById=useMemo(()=>new Map(samplePool.map(item=>[item.id,item])),[samplePool]);
 
-  // Jobs state initialized to empty array (loaded dynamically from backend API)
-  const [jobs, setJobs] = useState<JobItem[]>([]);
+  const progress=useCallback(()=>setRefreshTick(value=>value+1),[]);
+  const jobQuery=useJobs('exploration',selectedChildIds,progress,'',refreshRevision);
+  const jobs=jobQuery.jobs;
+  const refreshJobs=()=>{jobQuery.refresh();progress();};
 
   // Load datasets and hierarchy
   useEffect(() => {
@@ -193,7 +136,7 @@ export function ExplorationPage({
   // Load presets from server if available
   useEffect(() => {
     let active = true;
-    request<{ presets: PresetItem[] }>("/exploration/presets")
+    request<{ presets: ExplorationPromptPreset[] }>("/exploration/presets")
       .then((res) => {
         if (active && res.presets?.length) {
           setPresets(res.presets);
@@ -225,71 +168,40 @@ export function ExplorationPage({
     return()=>controller.abort();
   },[selectedChildIds,view,modal,samplesLoaded]);
 
-  const [jobSnapshots,setJobSnapshots]=useState<JobSnapshot[]>([]);
-  useEffect(()=>{
-    const controller=new AbortController();
-    if(!selectedChildIds.length){setJobs([]);setJobSnapshots([]);return;}
-    Promise.all(selectedChildIds.map(dataset_id=>request<{jobs:JobSnapshot[]}>(`/analysis/jobs?${new URLSearchParams({dataset_id,analysis_kind:'exploration'})}`,
-      undefined,undefined,controller.signal))).then(results=>{
-      if(controller.signal.aborted)return;
-      const snapshots=[...new Map(results.flatMap(result=>result.jobs).map(job=>[job.run_id,job])).values()]
-        .sort((a,b)=>b.submitted_at.localeCompare(a.submitted_at));
-      setJobSnapshots(snapshots);
-      setJobs(snapshots.map(job=>({id:job.run_id,scopeKey:job.dataset_ids.join('|'),datasetIds:job.dataset_ids,normal:[],defect:[],
-        prompt:job.exploration_prompt?.text||'',preset:job.exploration_prompt?.preset_id||'',status:job.status,
-        phase:job.status==='COMPLETED'?3:job.status==='PENDING'?0:2,
-        elapsed:job.started_at?Math.max(0,Math.round(((job.finished_at?Date.parse(job.finished_at):Date.now())-Date.parse(job.started_at))/1000)):0,
-        time:new Date(job.submitted_at).toLocaleString('zh-CN',{hour12:false}),error:job.errors[0]?.message})));
-      setSelectedJobId(previous=>snapshots.some(job=>job.run_id===previous)?previous:snapshots[0]?.run_id||null);
-      setError('');
-    }).catch(error=>{if(!controller.signal.aborted)setError(message(error));});
-    return()=>controller.abort();
-  },[selectedChildIds,refreshRevision,refreshTick]);
-
-  // Polling for active background jobs
-  useEffect(() => {
-    const hasActiveJob = jobs.some((j) => j.status === "RUNNING" || j.status === "PENDING");
-    if (!hasActiveJob) return;
-    const interval = setInterval(() => {
-      setRefreshTick((t) => t + 1);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [jobs]);
-
   // Derived state
   const parentGroups = groups.length ? groups : buildHierarchyGroups([dataset], []);
   const currentChildDatasets = datasets.filter((d) => getDatasetGroupId(d, groups) === selectedParentId);
 
-  const filteredJobs: JobItem[] = useMemo(() => {
+  const filteredJobs: JobSnapshot[] = useMemo(() => {
     const q = jobSearch.trim().toLowerCase();
     return jobs.filter((j) => {
       const matchStatus = jobFilter === "全部" || j.status === jobFilter;
-      const matchSearch = !q || j.id.toLowerCase().includes(q);
+      const matchSearch = !q || [j.run_id,j.root_run_id].some(id=>id.toLowerCase().includes(q));
       return matchStatus && matchSearch;
     });
   }, [jobs, jobFilter, jobSearch]);
 
   const jobPages = Math.max(1, Math.ceil(filteredJobs.length / IBA_JOBS_PAGE_SIZE));
   const currentJobPage = Math.max(1, Math.min(jobPages, jobPage));
-  const shownJobs: JobItem[] = useMemo(() => {
+  const shownJobs: JobSnapshot[] = useMemo(() => {
     return filteredJobs.slice(
       (currentJobPage - 1) * IBA_JOBS_PAGE_SIZE,
       currentJobPage * IBA_JOBS_PAGE_SIZE
     );
   }, [filteredJobs, currentJobPage]);
 
-  const selectedJob: JobItem | null = useMemo(() => {
+  const selectedJob: JobSnapshot | null = useMemo(() => {
     if (!shownJobs.length) return null;
     if (selectedJobId) {
-      const match = shownJobs.find((j: JobItem) => j.id === selectedJobId);
+      const match = shownJobs.find((j: JobSnapshot) => j.root_run_id === selectedJobId || j.run_id === selectedJobId);
       if (match) return match;
     }
     return shownJobs[0] || null;
   }, [shownJobs, selectedJobId]);
 
-  const selectedSnapshot=jobSnapshots.find(job=>job.run_id===selectedJob?.id);
+  const selectedSnapshot=selectedJob;
   const versionKey=(selectedSnapshot?.dataset_results||[]).map(result=>result.exploration_version_id||'').join('|');
-  const results=useResource<ExplorationResults>(selectedJob?`/analysis/results/${encodeURIComponent(selectedJob.id)}`:null,`${versionKey}|${refreshTick}`);
+  const results=useResource<ExplorationResults>(selectedJob?`/analysis/results/${encodeURIComponent(selectedJob.run_id)}`:null,`${versionKey}|${refreshTick}`);
   const snapshots=useMemo(()=>(results.data?.snapshots||[]).filter(snapshot=>selectedChildIds.includes(snapshot.dataset_id)),
     [results.data,selectedChildIds]);
   const selectedJobDirections=useMemo(()=>explorationDirections(snapshots,results.data?.removed_direction_ids),[snapshots,results.data]);
@@ -301,7 +213,7 @@ export function ExplorationPage({
     setJobPage(targetPage);
     const firstOnPage = filteredJobs[(targetPage - 1) * IBA_JOBS_PAGE_SIZE];
     if (firstOnPage) {
-      setSelectedJobId(firstOnPage.id);
+      setSelectedJobId(firstOnPage.root_run_id);
     }
   };
 
@@ -347,40 +259,8 @@ export function ExplorationPage({
       const res=await request<JobSnapshot>('/analysis/start',{submission_id:submission.current.id,analysis_kind:'exploration',
         dataset_ids:selectedChildIds,normal_images:normalSelected,defect_images:defectSelected,
         prompt:{preset_id:selectedPresetId,preset_name:presets.find(preset=>preset.id===selectedPresetId)?.name||'自定义',text:prompt}});
-      setSelectedJobId(res.run_id);setJobPage(1);setRefreshTick(value=>value+1);setView('jobs');submission.current=null;
+      setSelectedJobId(res.run_id);setJobPage(1);refreshJobs();setView('jobs');submission.current=null;
     } catch(error){setError(message(error));} finally {setSubmitting(false);}
-  };
-
-  const handleConfirmDeleteJob=async()=>{
-    if(!deletingJobId)return;
-    try {
-      await request(`/analysis/delete/${encodeURIComponent(deletingJobId)}`,{});
-      setModal('');setDeletingJobId(null);setRefreshTick(value=>value+1);
-    } catch(error){setError(message(error));}
-  };
-
-  const renderJobDataset = (j: JobItem) => {
-    const parentId = j.parentId || (j.scopeKey || "").split("|")[0];
-    const storedIds = (j.datasetIds && j.datasetIds.length > 0)
-      ? j.datasetIds
-      : (j.scopeKey || "").split("|")[1]?.split(",").filter(Boolean) || [];
-    const childNames = storedIds
-      .map((id) => {
-        const d = datasets.find((item) => item.dataset_id === id);
-        return d ? d.name : id;
-      })
-      .filter((name) => {
-        return !groups.some((g) => g.name === name || g.group_id === name);
-      });
-    const fallbackNames = selectedChildIds
-      .map((id) => datasets.find((d) => d.dataset_id === id)?.name)
-      .filter((name): name is string => Boolean(name) && !groups.some((g) => g.name === name || g.group_id === name));
-    const text = childNames.join("、") || (fallbackNames.length > 0 ? fallbackNames.join("、") : "暂无子数据集");
-    return (
-      <div className="exp-job-dataset" title={text}>
-        <span className="exp-job-dataset-name">{text}</span>
-      </div>
-    );
   };
 
   const currentEvidence=useMemo(()=>{
@@ -410,7 +290,7 @@ export function ExplorationPage({
 
   return (
     <div id="exploration-page" className="iad-exploration-page">
-      {(error||results.error)&&<p role="alert" className="iad-error">{error||results.error}</p>}
+      {(error||results.error||jobQuery.error)&&<p role="alert" className="iad-error">{error||results.error||jobQuery.error}</p>}
       {/* Top Heading */}
       <div className="exp-heading">
         <div>
@@ -450,7 +330,7 @@ export function ExplorationPage({
         childMenuId="exp-child-menu"
       >
         <IconButton icon="refresh" id="refresh" type="button" title="刷新探索作业" label="刷新探索作业" disabled={submitting} onClick={() => {
-            setRefreshTick((t) => t + 1);
+            refreshJobs();
           }} />
       </DatasetScopeSelector>
 
@@ -491,10 +371,6 @@ export function ExplorationPage({
                     aria-label={`继续添加${sampleTab === "normal" ? "良品" : "异常"}图像`}
                     title="继续添加图像"
                     onClick={() => {
-                      setSourceSearch("");
-                      setSourceCategory("all");
-                      setSourceSelectedOnly(false);
-                      setSourcePage(1);
                       setModal("source");
                     }}
                   >
@@ -539,7 +415,6 @@ export function ExplorationPage({
 
                 disabled={!prompt.trim()}
                 onClick={() => {
-                  setNewPresetName("");
                   setModal("save");
                 }}
               >
@@ -616,10 +491,7 @@ export function ExplorationPage({
                     }}
                   >
                     <option value="全部">全部状态</option>
-                    <option value="PENDING">排队中</option>
-                    <option value="RUNNING">运行中</option>
-                    <option value="COMPLETED">已完成</option>
-                    <option value="FAILED">失败</option>
+                    {Object.entries(jobStatuses).map(([value,label])=><option key={value} value={value}>{label}</option>)}
                   </Select>
                 </label>
                 <ClearFilterButton
@@ -651,42 +523,46 @@ export function ExplorationPage({
                       </tr>
                     </thead>
                     <tbody>
-                      {shownJobs.map((j) => (
+                      {shownJobs.map(j=>{
+                        const datasetNames=j.dataset_ids.map(id=>datasets.find(dataset=>dataset.dataset_id===id)?.name||id).join('、');
+                        const elapsed=j.started_at?Math.max(0,Math.round(((j.finished_at?Date.parse(j.finished_at):Date.now())-Date.parse(j.started_at))/1000)):0;
+                        return (
                         <tr
-                          key={j.id}
+                          key={j.run_id}
                           data-action="select-job"
-                          data-id={j.id}
-                          data-selected={selectedJob?.id === j.id}
-                          aria-selected={selectedJob?.id === j.id}
+                          data-id={j.run_id}
+                          data-selected={selectedJob?.run_id === j.run_id}
+                          aria-selected={selectedJob?.run_id === j.run_id}
                           tabIndex={0}
-                          role="button"
-                          aria-label={`选择作业 ${j.id}`}
-                          onClick={() => setSelectedJobId(j.id)}
+                          aria-label={`选择作业 ${j.run_id}`}
+                          onClick={() => setSelectedJobId(j.root_run_id)}
+                          onKeyDown={event=>{if(event.target===event.currentTarget&&(event.key==='Enter'||event.key===' ')){event.preventDefault();setSelectedJobId(j.root_run_id);}}}
                         >
                           <td>
-                            <strong className="exp-row-title">{j.id}</strong>
+                            <strong className="exp-row-title">{j.run_id}</strong>
                           </td>
-                          <td><JobStatusButton job={jobSnapshots.find(job=>job.run_id===j.id)!} onClick={()=>setStatusJobId(jobSnapshots.find(job=>job.run_id===j.id)!.root_run_id)}>{expJobBadge(j.status)}</JobStatusButton></td>
-                          <td>{renderJobDataset(j)}</td>
-                          <td className="exp-job-time">{j.time || "—"}</td>
+                          <td><JobStatusButton job={j} onClick={()=>setStatusJobId(j.root_run_id)} /></td>
+                          <td><div className="exp-job-dataset" title={datasetNames}><span className="exp-job-dataset-name">{datasetNames}</span></div></td>
+                          <td className="exp-job-time">{new Date(j.submitted_at).toLocaleString('zh-CN',{hour12:false})}</td>
                           <td className="exp-job-duration">
-                            {j.status === "PENDING" ? "—" : expElapsed(j.elapsed)}
+                            {j.status === "PENDING" ? "—" : expElapsed(elapsed)}
                           </td>
                           <td className="exp-prompt-action-col">
                             <div className="exp-job-icon-actions" onClick={(e) => e.stopPropagation()}>
-                              {j.status !== 'COMPLETED' && <IconButton icon="details" label={`查看作业状态 ${j.id}`} onClick={()=>setStatusJobId(jobSnapshots.find(job=>job.run_id===j.id)!.root_run_id)} />}
-                              <IconButton icon="prompt" label="查看提示词" title="查看提示词" data-exp="show-prompt" data-id={j.id} onClick={() => {
-                                  setPromptText(j.prompt);
+                              {j.status !== 'COMPLETED' && <IconButton icon="details" label={`查看作业状态 ${j.run_id}`} onClick={()=>setStatusJobId(j.root_run_id)} />}
+                              <IconButton icon="prompt" label="查看提示词" title="查看提示词" data-exp="show-prompt" data-id={j.run_id} onClick={() => {
+                                  setPromptText(j.exploration_prompt?.text||'');
                                   setModal("prompt");
                                 }} />
-                              <IconButton icon="delete" label="删除作业" title={j.status === "RUNNING" || j.status === "PENDING" ? "请先停止运行中的作业" : "删除作业"} data-delete="true" data-exp="ask-delete-job" data-id={j.id} className="danger" disabled={j.status === "RUNNING" || j.status === "PENDING"} onClick={() => {
-                                  setDeletingJobId(j.id);
-                                  setModal("delete-job");
+                              <DeleteAction title="删除探索作业" name={j.run_id} disabled={j.status === 'RUNNING' || j.status === 'PENDING'}
+                                restoreFocus={()=>document.querySelector<HTMLInputElement>('#exp-jobsearch')} onDelete={async()=>{
+                                  await request(`/analysis/delete/${encodeURIComponent(j.run_id)}`,{});
+                                  refreshJobs();
                                 }} />
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      );})}
                     </tbody>
                   </table>
                 </div>
@@ -717,75 +593,17 @@ export function ExplorationPage({
                 请选择上方的探索作业查看结果。
               </div>
             </section>
-          ) : (selectedJob.status === "PENDING" || selectedJob.status === "RUNNING") && !selectedJobDirections.length ? (
-            <section className="exp-panel exp-selected-result" aria-label="所选作业的执行阶段">
-              <div className="exp-selected-head">
-                <div>
-                  <h2>运行状态</h2>
-                  <span className="exp-selected-sub">{selectedJob.id}</span>
-                </div>
-              </div>
-              <div className="exp-job-current-title" style={{ margin: "0 0 17px" }}>
-                <span className={`exp-pill ${selectedJob.status === "PENDING" ? "pending" : "running"}`}>
-                  {selectedJob.status === "PENDING" ? "排队中" : "运行中"}
-                </span>
-                <strong>
-                  {selectedJob.status === "PENDING"
-                    ? "等待执行"
-                    : ["准备图像", "容量检查", "模型联合分析", "校验并发布方向"][selectedJob.phase || 0]}
-                </strong>
-                <span className="exp-lead">
-                  {selectedJob.status === "PENDING" ? "等待队列安排" : `已用时 ${expElapsed(selectedJob.elapsed)}`}
-                </span>
-              </div>
-              <div className="exp-job-stages" role="list" aria-label="执行阶段">
-                {["准备图像", "容量检查", "模型联合分析", "校验并发布方向"].map((p, i) => {
-                  const pending = selectedJob.status === "PENDING";
-                  const state = pending ? "waiting" : i < selectedJob.phase ? "done" : i === selectedJob.phase ? "current" : "waiting";
-                  return (
-                    <div key={p} role="listitem" className="exp-job-stage" data-state={state}>
-                      <span className="exp-job-stage-icon">
-                        {!pending && i < selectedJob.phase ? "✓" : i + 1}
-                      </span>
-                      <span className="exp-job-stage-label">{p}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="exp-result-neutral">
-                方向发布后将在这里显示。
-              </div>
-            </section>
-          ) : selectedJob.status === "FAILED" ? (
-            <section className="exp-panel exp-selected-result" aria-label="所选作业的错误信息">
-              <div className="exp-selected-head">
-                <div>
-                  <h2>作业失败</h2>
-                  <span className="exp-selected-sub">{selectedJob.id}</span>
-                </div>
-              </div>
-              <p className="exp-error-message">{selectedJob.error || "任务未成功完成，未生成探索结果。"}</p>
-              <p className="exp-lead">本次作业没有可用的候选方向或整体限制。</p>
-              <Button
-                type="button"
-
-                disabled={!!runningJob}
-                onClick={() => {
-                  setNormalSelected([...selectedJob.normal]);
-                  setDefectSelected([...selectedJob.defect]);
-                  setPrompt(selectedJob.prompt);
-                  setView("setup");
-                }}
-              >
-                使用该配置新建
-              </Button>
+          ) : selectedJob.status!=='COMPLETED'&&!selectedJobDirections.length ? (
+            <section className="exp-panel exp-selected-result" aria-label="探索结果">
+              <div className="exp-selected-head"><h2>探索结果</h2></div>
+              <p>当前作业下没有对应的探索结果。</p>
             </section>
           ) : (
             <section className="exp-panel exp-selected-result" aria-label="所选作业的探索结果">
               <div className="exp-selected-head">
                 <div>
                   <h2>探索结果</h2>
-                  <span className="exp-selected-sub">{selectedJob.id}</span>
+                  <span className="exp-selected-sub">{selectedJob.run_id}</span>
                 </div>
               </div>
               {selectedJobSummary && <p className="exp-result-summary">{selectedJobSummary}</p>}
@@ -808,8 +626,7 @@ export function ExplorationPage({
                         return (
                           <tr
                             key={d.id}
-                            role="button"
-                            tabIndex={0}
+                              tabIndex={0}
                             data-action="direction"
                             data-id={d.id}
                             aria-label={`查看方向 ${d.title}`}
@@ -865,205 +682,16 @@ export function ExplorationPage({
         </div>
       )}
 
-      {/* Modals & Overlays Portalled to document.body */}
-      {typeof document !== "undefined" &&
-        createPortal(
-          <>
             {/* Prompt Drawer */}
       {modal === "prompt" && promptText !== null && <PromptDrawer title="探索提示词"
         text={promptText || '本次作业未记录提示词正文。'} onClose={()=>setModal('')} />}
 
-      {/* Delete Job Confirmation Modal */}
-      {modal === "delete-job" && deletingJobId && (
-        <div className="exp-modal" id="exp-modal">
-          <div className="exp-dialog small" role="dialog" aria-modal="true" aria-label="删除探索作业">
-            <div className="exp-dialog-head">
-              <strong>删除探索作业</strong>
-              <IconButton icon="close" label="关闭" onClick={() => setModal("")} />
-            </div>
-            <div className="exp-dialog-main">
-              <p className="exp-delete-text">
-                确定删除作业 {deletingJobId} 吗？
-              </p>
-            </div>
-            <div className="exp-dialog-foot">
-              <Button type="button"  onClick={() => setModal("")}>
-                取消
-              </Button>
-              <Button
-                type="button"
-                variant="danger"
-                onClick={handleConfirmDeleteJob}
-              >
-                删除作业
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Save Preset Modal */}
-      {modal === "save" && (
-        <div className="exp-modal" id="exp-modal">
-          <div className="exp-dialog small" role="dialog" aria-modal="true" aria-label="另存为提示词预设">
-            <div className="exp-dialog-head">
-              <strong>另存为提示词预设</strong>
-              <IconButton icon="close" label="关闭" onClick={() => setModal("")} />
-            </div>
-            <div className="exp-dialog-main">
-              <label className="exp-input">
-                预设名称
-                <input
-                  id="exp-new-preset"
-                  placeholder="请输入预设名称"
-                  value={newPresetName}
-                  onChange={(e) => setNewPresetName(e.target.value)}
-                />
-              </label>
-            </div>
-            <div className="exp-dialog-foot">
-              <Button type="button"  onClick={() => setModal("")}>
-                取消
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                disabled={!newPresetName.trim()}
-                onClick={async()=>{try {const saved=await request<PresetItem>("/exploration/presets",{name:newPresetName.trim(),text:prompt});setPresets(values=>[...values,saved]);setSelectedPresetId(saved.id);setOriginalPrompt(prompt);setModal("");}catch(error){setError(message(error));}}}
-              >
-                保存
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Source Image Picker Modal */}
-      {modal === "source" && (
-        <div className="exp-modal" id="exp-modal">
-          <div className="exp-dialog exp-source-dialog" role="dialog" aria-modal="true" aria-label={`选择${sampleTab === "normal" ? "良品" : "异常"}图像`}>
-            <div className="exp-dialog-head">
-              <strong>选择{sampleTab === "normal" ? "良品" : "异常"}图像</strong>
-              <IconButton icon="close" label="关闭" onClick={() => setModal("")} />
-            </div>
-            <div className="exp-dialog-main">
-              <div className="exp-source-scope exp-source-scope-clean">
-                <label className="exp-input">
-                  搜索图像
-                  <input
-                    id="exp-source-search"
-                    type="search"
-                    placeholder="文件名"
-                    value={sourceSearch}
-                    onChange={(e) => {
-                      setSourceSearch(e.target.value);
-                      setSourcePage(1);
-                    }}
-                  />
-                </label>
-                {sampleTab === "defect" && (
-                  <label className="exp-input">
-                    标注类别
-                    <Select
-                      id="exp-source-category"
-                      value={sourceCategory}
-                      onChange={(e) => {
-                        setSourceCategory(e.target.value);
-                        setSourcePage(1);
-                      }}
-                    >
-                      <option value="all">全部类别</option>
-                      {[...new Set(samplePool.map((s) => s.category).filter(Boolean))].map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-                )}
-                <label className="exp-source-only">
-                  <input
-                    id="exp-only-selected"
-                    type="checkbox"
-                    checked={sourceSelectedOnly}
-                    onChange={(e) => {
-                      setSourceSelectedOnly(e.target.checked);
-                      setSourcePage(1);
-                    }}
-                  />
-                  仅看已选
-                </label>
-              </div>
-
-              {/* Candidate Grid */}
-              {(() => {
-                const selectedList = sampleTab === "normal" ? normalSelected : defectSelected;
-                const filtered = samplePool.filter((s) => {
-                  if (s.kind !== sampleTab) return false;
-                  if (sourceSelectedOnly && !selectedList.includes(s.id)) return false;
-                  if (sourceSearch.trim() && !s.filename.toLowerCase().includes(sourceSearch.trim().toLowerCase())) return false;
-                  if (sourceCategory !== "all" && s.category !== sourceCategory) return false;
-                  return true;
-                });
-                const totalPages = Math.ceil(filtered.length / 24) || 1;
-                const page = Math.max(1, Math.min(sourcePage, totalPages));
-                const visible = filtered.slice((page - 1) * 24, page * 24);
-
-                return (
-                  <>
-                    <div className="iad-thumbnail-grid">
-                      {visible.map((item) => {
-                        const isChosen = selectedList.includes(item.id);
-                        return (
-                          <label
-                            key={item.id}
-                            className="iad-thumbnail-option"
-                          >
-                            <ThumbnailCard src={item.url} label={item.filename} aria-pressed={isChosen} onClick={event=>{
-                              event.preventDefault();
-                              if(sampleTab==="normal")setNormalSelected(prev=>isChosen?prev.filter(id=>id!==item.id):[...prev,item.id]);
-                              else setDefectSelected(prev=>isChosen?prev.filter(id=>id!==item.id):[...prev,item.id]);
-                            }} />
-                            <span className="exp-select-meta">
-                              <input
-                                type="checkbox"
-                                checked={isChosen}
-                                onChange={(e) => {
-                                  if (sampleTab === "normal") {
-                                    setNormalSelected((prev) =>
-                                      e.target.checked ? [...prev, item.id] : prev.filter((x) => x !== item.id)
-                                    );
-                                  } else {
-                                    setDefectSelected((prev) =>
-                                      e.target.checked ? [...prev, item.id] : prev.filter((x) => x !== item.id)
-                                    );
-                                  }
-                                }}
-                              />
-                              <span title={item.filename}>{item.filename}</span>
-                            </span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                    {samplesLoading ? <p role="status">正在读取图像…</p> : !visible.length && <p className="exp-lead">没有符合条件的图像</p>}
-                    <Pagination total={filtered.length} page={page} size={24} unit="张图像" onPage={setSourcePage} />
-                  </>
-                );
-              })()}
-            </div>
-            <div className="exp-dialog-foot">
-              <Button
-                type="button"
-                variant="primary"
-                onClick={() => setModal("")}
-              >
-                完成选择
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {modal === 'save' && <ExplorationPresetDialog text={prompt} onClose={()=>setModal('')} onSaved={saved=>{
+        setPresets(values=>[...values,saved]);setSelectedPresetId(saved.id);setOriginalPrompt(saved.text);setModal('');
+      }} />}
+      {modal === 'source' && <ExplorationSourceDialog kind={sampleTab} candidates={samplePool}
+        selected={sampleTab==='normal'?normalSelected:defectSelected} loading={samplesLoading}
+        onChange={sampleTab==='normal'?setNormalSelected:setDefectSelected} onClose={()=>setModal('')} />}
 
       {/* Direction Detail Dialog (Shared Reusable Component) */}
       {modal === "direction" && viewingDirection && (
@@ -1091,11 +719,8 @@ export function ExplorationPage({
           }
         />
       )}
-          </>,
-          document.body
-        )}
-      {statusJobId && jobSnapshots.some(job=>job.run_id===statusJobId || job.root_run_id===statusJobId) && <JobStatusDrawer job={jobSnapshots.find(job=>job.run_id===statusJobId || job.root_run_id===statusJobId)!}
-        onClose={()=>setStatusJobId(null)} onChanged={()=>setRefreshTick(value=>value+1)} />}
+      {statusJobId && jobs.some(job=>job.run_id===statusJobId || job.root_run_id===statusJobId) && <JobStatusDrawer job={jobs.find(job=>job.run_id===statusJobId || job.root_run_id===statusJobId)!}
+        onClose={()=>setStatusJobId(null)} onChanged={refreshJobs} />}
     </div>
   );
 }

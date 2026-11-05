@@ -1,7 +1,6 @@
 export const explorationStyles = `
 .iad-exploration-page{min-width:0}.iad-job-sync{display:flex;align-items:center;flex-wrap:wrap;gap:12px 20px;min-height:44px;margin-bottom:20px;font-size:.8125rem}.iad-job-sync button{margin-left:auto}.iad-job-sync[data-state=stale]{padding:12px 16px;border-left:3px solid var(--iad-warning);background:var(--iad-surface);color:var(--iad-warning)}
-.iad-exploration-setup-layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:24px;align-items:start}.iad-exploration-side{display:grid;gap:24px;min-width:0}.iad-exploration-side>.iad-panel{padding:20px}.iad-exploration-side .iad-form-footer{display:grid}.iad-exploration-side dl{display:grid;grid-template-columns:76px minmax(0,1fr);gap:16px 12px;margin:24px 0}.iad-exploration-side dd{margin:0;overflow-wrap:anywhere}
-.iad-exploration-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.iad-exploration-groups>section+section{border-left:1px solid var(--iad-border);padding-left:24px!important}.iad-exploration-groups h3{margin:0 0 14px}.iad-exploration-groups fieldset{border:0;padding:0;min-width:0}.iad-exploration-page textarea{width:100%}.iad-prompt-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.iad-prompt-controls>.iad-field{flex:1 1 220px;margin:0}.iad-prompt-controls+label{margin-top:20px}
+.iad-exploration-page textarea{width:100%}
 .iad-exploration-page .iad-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:280px;padding:40px 24px;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:var(--iad-radius)}.iad-exploration-page .iad-empty h2{margin:0;color:var(--iad-text)}.iad-exploration-page .iad-empty p{max-width:480px}.iad-exploration-page .iad-empty button{margin-top:8px}
 .iad-exploration-results{min-width:0}.iad-exploration-results>.iad-muted{margin-bottom:20px}.iad-exploration-results>.iad-table-scroll{background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:var(--iad-radius)}
 .iad-exploration-summary{margin-bottom:20px}.iad-exploration-summary>p{line-height:1.8;overflow-wrap:anywhere}.iad-exploration-summary>p[data-expanded=false]{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
@@ -81,22 +80,13 @@ export const explorationStyles = `
 .exp-table .exp-row-title{font-weight:600;color:#172338}.exp-table .exp-row-info{display:block;font-size:13px;color:#172338;padding-top:4px}
 .exp-jobs-filters{display:flex;align-items:center;gap:10px;margin-bottom:13px}.exp-jobs-filters select{width:158px}
 .exp-pill{display:inline-block;border-radius:4px;padding:3px 8px;color:#5d708d;background:#eef2f7;font-size:12px}.exp-pill.ok{background:#e8f5ee;color:#177b53}.exp-pill.running{background:#e9f0ff;color:#285ed6}.exp-pill.fail{background:#ffedf0;color:#b23c43}
-.exp-source-tools{display:flex;justify-content:space-between;gap:14px;align-items:end;margin-bottom:12px;flex-wrap:wrap}
-.exp-source-tools .exp-input{flex:1;min-width:210px}.exp-source-tools span{font-size:12px;color:#64748b}
-.exp-source-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:12px 0 0}
-.exp-source-option{border:1px solid #dee6f0;background:#fff;padding:5px 5px 9px;border-radius:5px;text-align:left;min-width:0}
-.exp-source-option.chosen{border-color:#3671e0;background:#f4f7ff}.exp-source-option:hover{border-color:#94b1ea}
-.exp-source-option img{display:block;width:100%;height:100px;object-fit:contain;background:#eef2f8;border-radius:3px}
-.exp-source-option .exp-select-meta{display:flex;gap:6px;padding:8px 2px 0;align-items:center;font-size:11px;color:#53617c}
-.exp-source-option .exp-select-meta span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.exp-source-option input{height:14px;width:14px;flex:none;padding:0;accent-color:#2e62d0}
 .exp-detail-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:22px}
 .exp-evidence{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 0}
 .exp-evidence img{width:100%;height:120px;object-fit:contain;background:#f0f4f9;border-radius:4px}
 .exp-detail-field{padding:8px 0;border-bottom:1px solid #e8edf3;font-size:13px}.exp-detail-field span{display:block;font-size:12px;color:#76869a;margin-bottom:5px}
 .exp-inline-warning{margin:0 0 10px;font-size:12px;color:#a64e3e}
-@media(max-width:1120px){.exp-source-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.exp-samples{gap:12px}.exp-preview img{height:72px}}
-@media(max-width:850px){.exp-heading-actions select{width:220px}.exp-samples{grid-template-columns:1fr}.exp-prompt-head{grid-template-columns:1fr auto}.exp-prompt-head .exp-input{grid-column:1/-1;max-width:none}.exp-phase-grid{grid-template-columns:repeat(2,1fr)}.exp-source-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.exp-detail-grid{grid-template-columns:1fr}}
+@media(max-width:1120px){.exp-samples{gap:12px}.exp-preview img{height:72px}}
+@media(max-width:850px){.exp-heading-actions select{width:220px}.exp-samples{grid-template-columns:1fr}.exp-prompt-head{grid-template-columns:1fr auto}.exp-prompt-head .exp-input{grid-column:1/-1;max-width:none}.exp-phase-grid{grid-template-columns:repeat(2,1fr)}.exp-detail-grid{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.exp-progress>i{animation:none}}
 
 .exp-sample-body{min-width:0}
@@ -106,36 +96,17 @@ export const explorationStyles = `
 .exp-previews.exp-previews-wide{grid-template-columns:repeat(6,minmax(0,1fr));gap:11px;min-height:148px;margin:0 0 3px}
 .exp-previews-wide .exp-preview img{height:110px}
 .exp-previews-wide .exp-preview.empty{height:156px}
-.exp-source-dialog{width:min(1110px,96vw);height:min(840px,92vh)}
-.exp-source-scope{display:grid;grid-template-columns:minmax(160px,1.5fr) minmax(185px,1fr) minmax(150px,1fr) auto;gap:12px;align-items:end}
-.exp-source-scope .exp-input{min-width:0}
-.exp-source-scope .exp-source-only{display:flex;gap:7px;align-items:center;font-size:12px;color:#52637c;min-height:38px;white-space:nowrap}
-.exp-source-scope .exp-source-only input{accent-color:#2b60d2}
-.exp-source-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;color:#62748e;font-size:12px}
-.exp-source-summary .exp-actions{gap:8px}
-.exp-source-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
-.exp-source-option img{height:100px}
-.exp-source-option .exp-select-meta{font-size:12px}
 .exp-sample-context{color:#75859c;font-size:12px;padding-bottom:12px}
 .exp-samples.exp-samples-tabs{display:block}
-@media(max-width:1200px){.exp-source-grid{grid-template-columns:repeat(5,minmax(0,1fr))}.exp-previews.exp-previews-wide{grid-template-columns:repeat(5,minmax(0,1fr))}}
-@media(max-width:970px){.exp-source-scope{grid-template-columns:repeat(2,minmax(0,1fr))}.exp-source-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.exp-previews.exp-previews-wide{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media(max-width:640px){.exp-scope>.exp-input:first-child,.exp-child-wrap{width:100%}.exp-source-scope{grid-template-columns:1fr}.exp-source-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.exp-previews.exp-previews-wide{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:1200px){.exp-previews.exp-previews-wide{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(max-width:970px){.exp-previews.exp-previews-wide{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:640px){.exp-scope>.exp-input:first-child,.exp-child-wrap{width:100%}.exp-previews.exp-previews-wide{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 
-/* Exploration V3: simplify image selection without changing dataset scope or business rules */
-.exp-dialog.exp-source-dialog{height:auto;max-height:min(840px,92vh);min-height:min(520px,90vh)}
 .exp-sample-toolbar{justify-content:flex-end}
-.exp-source-dialog .exp-source-scope-clean{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin-bottom:17px}
-.exp-source-scope-clean .exp-input:first-child{flex:1 1 270px;max-width:440px}
-.exp-source-scope-clean .exp-input:has(select){flex:0 1 230px;min-width:180px}
-.exp-source-scope-clean .exp-source-only{margin-left:auto;min-width:80px;justify-content:center}
 .exp-clear-icon svg{pointer-events:none}
-.exp-source-dialog .exp-source-grid{margin-top:0}
-.exp-source-dialog .exp-dialog-foot{justify-content:flex-end}
-@media(max-width:650px){.exp-source-scope-clean .exp-input:first-child{max-width:none}.exp-source-scope-clean .exp-input:has(select){flex:1 1 170px}.exp-source-scope-clean .exp-source-only{margin-left:0}}
 
-/* Exploration V4: the image grid itself is the add-image entry; clear only the active tab. */
+
 .exp-tab-header{display:flex;align-items:stretch;justify-content:space-between;gap:16px;border-bottom:1px solid #dfe7f0;margin-bottom:15px}
 .exp-tab-header .iad-tabs{margin:0;min-width:0}
 .exp-tab-header .exp-clear-icon{align-self:center;margin:0 1px 2px 0}
@@ -150,7 +121,6 @@ export const explorationStyles = `
 .exp-add-image.exp-add-empty svg{width:23px;height:23px}
 
 
-/* V6：与数据集管理 / 图像浏览一致的布局，仅重整作业区 */
 .exp-heading {margin-bottom:18px}
 .exp-heading h1 {font-size:24px}
 .exp-scope{margin-top:4px;margin-bottom:12px}
@@ -197,16 +167,11 @@ export const explorationStyles = `
 .exp-job-table .exp-pill{font-size:12px;border-radius:4px;font-weight:500}
 .exp-pill.pending{color:#8e6d24;background:#fff5df}
 .exp-job-info{margin:0;color:#64758d;font-size:12px}
-.exp-job-dialog-info{display:grid;grid-template-columns:96px minmax(0,1fr);gap:13px 18px;font-size:13px;line-height:1.6}
-.exp-job-dialog-info dt{color:#6e7f96}.exp-job-dialog-info dd{margin:0;overflow-wrap:anywhere;color:#273a55}
 .exp-job-prompt{white-space:pre-wrap;overflow-wrap:anywhere;background:#f7f9fc;border:1px solid #e2e8f0;border-radius:5px;padding:12px 14px;line-height:1.7;margin-top:6px;max-height:235px;overflow:auto;font-size:12px;color:#31425c}
-.exp-job-dialog-sub{margin:18px 0 10px;font-size:13px;font-weight:600}
-.exp-job-dialog{width:min(670px,95vw)!important;height:auto!important;max-height:min(720px,90vh)!important}.exp-job-dialog .exp-dialog-main{flex:0 1 auto;max-height:calc(90vh - 140px)}
 @media(max-width:980px){.exp-job-table{min-width:780px}.exp-job-stages{gap:7px}.exp-job-stage{font-size:11px}.exp-job-stats{gap:6px 12px}}
 @media(max-width:650px){.exp-job-current-top{flex-direction:column}.exp-job-stages{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:14px}.exp-job-stage::after{display:none}.exp-job-list-head{align-items:flex-start;flex-direction:column}.exp-job-list-actions{width:100%;justify-content:space-between}}
 
 
-/* V7: one continuous vertical workspace — job selection above, selected result below. */
 .exp-unified-layout{display:flex;flex-direction:column;gap:18px;min-width:0}
 .exp-unified-layout>.exp-panel{width:100%;min-width:0;box-sizing:border-box}
 .exp-job-list-head{padding:18px 22px}
@@ -240,7 +205,6 @@ export const explorationStyles = `
 .exp-unified-empty{min-height:165px!important}
 @media(max-width:900px){.exp-selected-result{padding:17px}.exp-selected-head{align-items:flex-start;flex-direction:column}.exp-direction-table th:nth-child(1){width:auto}}
 
-/* V8: fixed overlay drawer, does NOT resize the page or the job/results workspace. */
 .exp-prompt-action-col{width:128px;text-align:right!important}
 .exp-prompt-link{border:0;background:transparent;color:#245bcc;font:inherit;font-size:12px;padding:6px 5px;cursor:pointer;border-radius:5px;white-space:nowrap}
 .exp-prompt-link:hover{background:#edf3ff}
@@ -255,7 +219,6 @@ export const explorationStyles = `
 @media(max-width:760px){.exp-prompt-action-col{width:110px}}
 
 
-/* V9 direction detail: same IBA visual system as dataset manager and image browser. */
 .exp-direction-table th:nth-child(1){width:auto!important}
 .exp-direction-table th:nth-child(2){width:175px!important}
 .exp-direction-table th:nth-child(3){width:96px!important}
@@ -297,14 +260,9 @@ export const explorationStyles = `
 
 
 
-/* V14: aligned transparent action icons; image evidence remains visual-only. */
 .exp-direction-action{white-space:nowrap!important}
 .exp-direction-action .exp-row-icon{vertical-align:middle;margin-left:5px}
 .exp-direction-table th:last-child{width:112px!important}
-/* V15 — Align the lower candidate-directions table with the upper jobs table.
-   The jobs table is full-bleed inside its panel (padding:0).
-   Keep the selected-result text sections inset, but let the lower table
-   reach the same panel edges and use the same header/body cell paddings. */
 .exp-unified-layout .exp-selected-result{padding:22px 22px 24px;}
 .exp-unified-layout .exp-selected-result > .exp-job-table-wrap{
   margin-inline:-22px;
@@ -327,7 +285,6 @@ export const explorationStyles = `
 
 /* Unified Icon Button styles with Dataset Manager and Image Browsing */
 
-/* V38: 作业分页及整页滚动规范 */
 .exp-unified-layout .exp-job-list .exp-job-table thead th{position:static;background:#f2f5fa}
 .exp-unified-layout .exp-job-list.iba-job-multipage .exp-job-table-wrap{min-height:640px}
 /* 结果面板及候选方向完整参与页面滚动，不保留任何内部纵向滚动高度限制。 */
@@ -346,7 +303,6 @@ export const explorationStyles = `
   .exp-unified-layout .exp-job-list.iba-job-multipage .exp-job-table-wrap{min-height:640px}
 }
 
-/* V51 Direction result: 5-column table (方向 25%, 描述 39%, 适用知识 14%, 证据 10%, 操作 12%) */
 .exp-selected-result .exp-direction-table{width:100%!important;table-layout:fixed!important;min-width:850px!important}
 .exp-selected-result .exp-direction-table th:nth-child(1){width:25%!important}
 .exp-selected-result .exp-direction-table th:nth-child(2){width:39%!important}

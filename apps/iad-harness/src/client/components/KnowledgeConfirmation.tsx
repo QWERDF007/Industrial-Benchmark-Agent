@@ -11,7 +11,7 @@ export interface KnowledgeConfirmationState {
 export function KnowledgeConfirmation({state, onClose}: {state:KnowledgeConfirmationState|null;onClose():void}) {
   const [busy,setBusy]=useState(false), [error,setError]=useState('');
   if (!state) return null;
-  return <Modal title={state.title} onClose={()=>{if(!busy)onClose();}} className="iad-confirm-dialog knowledge-confirm-dialog" header={false}>
+  return <Modal title={state.title} onClose={()=>{if(!busy)onClose();}} size="compact" className="knowledge-confirm-dialog" header={false}>
       <header className="iad-dialog-header"><h2>{state.title}</h2><IconButton icon="close" label="关闭确认窗口" disabled={busy} onClick={onClose} /></header>
       <div className="iad-dialog-body" id="confirm-message">{state.message}{error && <p role="alert">{error}</p>}</div>
       <footer className="iad-dialog-footer"><Button disabled={busy} onClick={onClose}>取消</Button>

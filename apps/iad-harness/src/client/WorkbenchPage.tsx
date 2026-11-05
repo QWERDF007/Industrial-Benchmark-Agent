@@ -97,7 +97,7 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
     </> : pageId === "industrial-images" ? <>
       <ImagesPage datasets={datasets} groups={groups} onDatasetsChanged={() => void loadDatasets()} />
     </> : !dataset ? <section className="iad-job-section"><p>请先添加服务器上的数据集。</p><button onClick={() => workspace.navigate("industrial-datasets")}>前往数据集管理</button></section> : <>
-      {pageId === "industrial-exploration" && <ExplorationPage key={datasetId} dataset={dataset} refreshRevision={revision} headerActions={datasetControls} />}
+      {pageId === "industrial-exploration" && <ExplorationPage key={datasetId} dataset={dataset} refreshRevision={revision} />}
       {pageId === "industrial-knowledge" && <KnowledgePage key={datasetId} dataset={dataset} refreshRevision={revision} />}
       {pageId === "industrial-audit" && <AuditPage dataset={dataset} datasets={datasets} groups={groups}
         refreshRevision={revision} onDatasetsChanged={changed} />}

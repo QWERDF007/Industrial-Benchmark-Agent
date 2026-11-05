@@ -22,7 +22,7 @@ export function DeleteAction({ title, name, description, onDelete, disabled, cla
   }
   return <>
     <IconButton icon="delete" ref={trigger} className={className} label={`${title} ${name}`} title={title} disabled={disabled || busy} onClick={() => { submission.current = uuid(); actionStarted.current = false; setError(""); setOpen(true); }} />
-    {open && <Modal title={title} className="iad-confirm-dialog" initialFocus={cancel}
+    {open && <Modal title={title} size="compact" initialFocus={cancel}
       restoreFocus={() => actionStarted.current ? restoreFocus?.() || trigger.current : trigger.current}
       onClose={() => { if (!busy) setOpen(false); }}>
       <div className="iad-dialog-body"><p>确认{title}“{name}”？</p>{description && <p>{description}</p>}

@@ -5,11 +5,11 @@
  */
 export const dialogsStyles = `
 dialog.iad-detail-dialog {text-align:left;}
+.iad-dialog-form-layout {display:flex;flex-direction:column;flex:1 1 auto;min-height:0;}
 .iad-dialog-body {flex:1 1 auto;min-height:0;overflow:auto;padding:18px 24px;font-size:var(--iad-font-size);color:var(--iad-text);}
 .iad-dialog-footer {display:flex;align-items:center;justify-content:flex-end;flex:none;gap:10px;min-height:58px;padding:10px 24px;border-top:1px solid var(--iad-border);background:var(--iad-surface);}
 /* ==========================================================================
    Dialog Design Tokens (Single Source of Truth)
-   V56 Dialog Visual Contract
    ========================================================================== */
 :root {
   --iba-detail-dialog-height: var(--iad-dialog-max-height);
@@ -68,7 +68,6 @@ dialog.iad-detail-dialog {text-align:left;}
 .overlay:not(.show),
 #knowledge-page .kb-v45 .detail-overlay:not(.show),
 #knowledge-page .detail-overlay:not(.show),
-.exp-modal[hidden],
 .dc-modal-mask[hidden],
 .modal-scrim[hidden],
 [hidden] {
@@ -105,7 +104,6 @@ dialog.iad-detail-dialog {
    ========================================================================== */
 .detail-overlay .detail-dialog,
 .detail-dialog,
-.exp-modal .exp-direction-dialog,
 .exp-direction-dialog,
 .dc-conflict-dialog,
 #dc-compare-mask .dc-dialog[role="dialog"],
@@ -113,7 +111,7 @@ dialog.iad-detail-dialog {
 #knowledge-page .kb-v45 .detail-modal,
 #knowledge-page .detail-modal,
 .detail-modal,
-dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-confirm-dialog):not(.iad-inline-dialog):not(.iad-viewer-dialog) {
+dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-dialog-compact):not(.iad-dialog-form):not(.iad-inline-dialog):not(.iad-viewer-dialog) {
   box-sizing: border-box !important;
   width: min(var(--iba-detail-dialog-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
   max-width: var(--iba-detail-dialog-width) !important;
@@ -139,7 +137,6 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
 /* Detail dialog internal scrollable body - scrolls only when needed */
 .detail-overlay .detail-scroll,
 .detail-scroll,
-.exp-modal .exp-direction-dialog .exp-dialog-main,
 .exp-direction-dialog .exp-dialog-main,
 #dc-compare-mask .dc-dialog-body,
 .dc-conflict-dialog .dc-dialog-body,
@@ -252,9 +249,8 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
    ========================================================================== */
 #knowledge-page .kb-v45 #create-overlay > .modal,
 dialog.dc-new-dialog,
+dialog.iad-detail-dialog.iad-dialog-form,
 .dc-stats-modal .dc-stats-dialog,
-.exp-modal .exp-source-dialog,
-.exp-dialog:not(.small):not(.exp-direction-dialog),
 .modal-scrim .modal:not(.delete-modal):not(.add-dataset-modal) {
   width: min(var(--iba-dialog-edit-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
   max-width: var(--iba-dialog-edit-width) !important;
@@ -271,8 +267,7 @@ dialog.dc-new-dialog,
 #knowledge-page .kb-v45 #create-overlay > .modal > .modalcontent,
 dialog.dc-new-dialog .dc-new-body,
 .dc-stats-dialog .dc-stats-body,
-.modal-scrim .modal:not(.delete-modal):not(.add-dataset-modal) .modal-body,
-.exp-dialog:not(.small):not(.exp-direction-dialog) .exp-dialog-main {
+.modal-scrim .modal:not(.delete-modal):not(.add-dataset-modal) .modal-body {
   padding: 22px 26px 24px !important;
   overflow-y: auto !important;
   flex: 0 1 auto !important;
@@ -283,10 +278,8 @@ dialog.dc-new-dialog .dc-new-body,
    Tier 3: Small Confirmation / Deletion Dialogs (530px max-width, auto-height)
    Consistency Delete Job, Exploration Delete Job, Dataset Delete, Confirmations
    ========================================================================== */
-.exp-dialog.small,
-.exp-delete-dialog,
 .modal-scrim .modal.delete-modal,
-dialog.iad-detail-dialog.iad-confirm-dialog {
+dialog.iad-detail-dialog.iad-dialog-compact {
   width: min(var(--iad-dialog-small-width), calc(100vw - 32px)) !important;
   max-width: var(--iad-dialog-small-width) !important;
   height: auto !important;
@@ -294,7 +287,6 @@ dialog.iad-detail-dialog.iad-confirm-dialog {
   min-height: 0 !important;
 }
 
-.exp-dialog.small .exp-dialog-main,
 .modal-scrim .modal.delete-modal .modal-body {
   padding: 18px 22px 20px !important;
   font-size: 13.5px !important;
@@ -361,7 +353,7 @@ dialog.iad-detail-dialog.iad-confirm-dialog {
 }
 
 /* Unified Footer Buttons */
-.exp-dialog-foot button,.dc-dialog-footer button,.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button,.iad-confirm-dialog button {
+.exp-dialog-foot button,.dc-dialog-footer button,.modal-scrim .modal:not(.add-dataset-modal) .modal-actions button,.iad-dialog-compact button {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -438,7 +430,6 @@ dialog.iad-detail-dialog.iad-confirm-dialog {
 
 @media (max-width: 760px) {
   .detail-overlay,
-  .exp-modal,
   #dc-compare-mask.dc-modal-mask,
   #knowledge-page .kb-v45 .detail-overlay {
     padding: 12px !important;

@@ -5,7 +5,6 @@ export interface ExplorationCandidate {
     filename: string;
     url: string;
     kind: 'normal' | 'defect';
-    category?: string;
     datasetId: string;
 }
 export declare function explorationCandidates(datasetIds: string[], signal: AbortSignal): Promise<ExplorationCandidate[]>;

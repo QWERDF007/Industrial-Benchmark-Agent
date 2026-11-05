@@ -8,7 +8,6 @@ export interface ExplorationCandidate {
   filename: string;
   url: string;
   kind: 'normal'|'defect';
-  category?: string;
   datasetId: string;
 }
 

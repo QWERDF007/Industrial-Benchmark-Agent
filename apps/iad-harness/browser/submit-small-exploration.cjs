@@ -56,9 +56,10 @@ const firefox=require('selenium-webdriver/firefox.js');
    for(const [kind,label] of [['normal','良品'],['defect','异常']]){
     await click(await driver.wait(until.elementLocated(By.xpath(`//button[@role='tab' and starts-with(normalize-space(.),'${label}样例')]`)),10000));
     await click(await element(`button[aria-label="继续添加${label}图像"]`));
-    await driver.wait(async()=>(await driver.findElements(By.css('#exp-modal .iad-thumbnail-option input[type=checkbox]'))).length>=20,20000);
-    const inputs=await driver.findElements(By.css('#exp-modal .iad-thumbnail-option input[type=checkbox]'));selections[kind]=[];
-    for(const index of [0,2,5,7,11,13,17,19]){await click(inputs[index]);selections[kind].push(await inputs[index].findElement(By.xpath('..')).getText());}
+    const picker=`dialog[aria-label="选择${label}图像"][open]`;
+    await driver.wait(async()=>(await driver.findElements(By.css(picker+' .iad-thumbnail-option input[type=checkbox]'))).length>=20,20000);
+    const inputs=await driver.findElements(By.css(picker+' .iad-thumbnail-option input[type=checkbox]'));selections[kind]=[];
+    for(const index of [0,2,5,7,11,13,17,19]){await click(inputs[index]);selections[kind].push(await inputs[index].getAttribute('aria-label'));}
     await click(await textButton('完成选择'));
    }
    const preset=key==='anomaly'?'assembly':'surface';await click(await element(`#exp-preset option[value="${preset}"]`));
