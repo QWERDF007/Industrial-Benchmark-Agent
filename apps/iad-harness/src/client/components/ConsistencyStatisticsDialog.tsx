@@ -1,6 +1,7 @@
 import React from 'react';
 import type {ConflictCardItem} from '../consistency-view.js';
 import {Modal} from './Modal.js';
+import {conflictCategories} from '../../shared/consistency.parameters.generated.js';
 
 export type ConsistencyStatisticAction='stat-category'|'stat-model'|'stat-agreement';
 interface StatisticRow {name:string;count:number;id?:string}
@@ -40,7 +41,8 @@ function StatisticChart({title,rows,action,axis,onFilter}:{title:string;rows:Sta
 
 export function ConsistencyStatisticsDialog({items,onFilter,onClose}:{items:ConflictCardItem[];
   onFilter(action:ConsistencyStatisticAction,id:string):void;onClose():void}) {
-  const original=[...new Set(items.map(item=>item.type))].map(name=>({name,count:items.filter(item=>item.type===name).length}));
+  const original=conflictCategories.filter(name=>items.some(item=>item.types.includes(name)))
+    .map(name=>({name,count:items.filter(item=>item.types.includes(name)).length}));
   const model=[...new Set(items.map(item=>item.model.modelType))].map(name=>({name,count:items.filter(item=>item.model.modelType===name).length}));
   const agreement=[{name:'一致',id:'same',count:items.filter(item=>item.model.status==='conflict').length},
     {name:'不一致',id:'different',count:items.filter(item=>item.model.status==='no_conflict').length}];

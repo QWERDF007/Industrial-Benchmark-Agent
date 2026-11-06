@@ -7,6 +7,33 @@ from iad_core.consistency.result_queries import ResultQueries
 from iad_core.consistency.service import ConsistencyService
 
 
+@pytest.mark.parametrize('left_boxes,right_boxes,expected', [
+    ([('15',[10,10,30,30])],[('18',[10,10,30,30])],['类别不一致']),
+    ([('15',[10,10,30,30])],[('15',[11,10,31,30])],['位置差异']),
+    ([('15',[10,10,30,30]),('18',[70,70,90,90])],[('15',[10,10,30,30])],['多类别']),
+    ([('15',[10,10,30,30])],[('15',[10,10,30,30]),('18',[70,70,90,90])],['少类别']),
+    ([('15',[10,10,20,30]),('15',[20,10,30,30])],[('15',[10,10,30,30])],['拆分']),
+    ([('15',[10,10,30,30])],[('15',[10,10,20,30]),('15',[20,10,30,30])],['合并']),
+    ([('15',[10,10,30,30])],[('18',[11,10,31,30])],['类别不一致','位置差异']),
+])
+def test_conflict_categories_follow_frozen_anchor_direction(dataset,tmp_path,left_boxes,right_boxes,expected):
+    import json
+    from PIL import Image
+    from iad_core.consistency.gallery import GalleryQueries,GalleryQuery
+    db,registry,config=dataset
+    for name,boxes in [('anchor',left_boxes),('candidate',right_boxes)]:
+        Image.new('RGB',(320,240),'#378aa7').save(tmp_path/'images'/f'{name}.png')
+        (tmp_path/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':320,'imageHeight':240,
+            'shapes':[{'label':label,'shape_type':'rectangle','points':[box[:2],box[2:]]} for label,box in boxes]}))
+    registry.rescan(config.dataset.id)
+    service=ConsistencyService(db)
+    service.compare(ConsistencyCompare(sample_a=config.dataset.id+':anchor.png',sample_b=config.dataset.id+':candidate.png'))
+    snapshot=ResultQueries(db).query(ConsistencyQuery(selection={'kind':'scope','subjects':{'kind':'all_registered'}}))
+    item=GalleryQueries(db).query(GalleryQuery(query_id=snapshot.query_id,kind='conflicts')).items[0]
+    assert item.anchor.sample.relative_path=='anchor.png'
+    assert item.conflict_categories==expected
+
+
 def test_gallery_groups_complete_snapshot_instead_of_current_result_page(dataset):
     from iad_core.consistency.gallery import GalleryQueries, GalleryQuery, GalleryMemberQuery
     db, _, config = dataset
@@ -133,6 +160,7 @@ def test_image_quality_labels_share_category_filter_with_region_labels(dataset, 
     page = gallery.query(GalleryQuery(query_id=snapshot.query_id,kind='conflicts',difference_filter='category'))
     assert page.total == 1
     assert page.items[0].difference_types == ['QUALITY_LABEL']
+    assert page.items[0].conflict_categories == ['类别不一致']
     assert {row.value:row.count for row in page.filters} == {
         'all':1,'category':1,'geometry':0,'presence':0,'instances':0,'multiple':0}
 

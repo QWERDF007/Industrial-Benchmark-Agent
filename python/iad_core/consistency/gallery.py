@@ -20,6 +20,7 @@ from iad_core.consistency.candidate_selection import ELIGIBLE_PAIR_SQL, REVIEW_P
 from iad_core.consistency.group_models import FrozenAnalysisGroup, GalleryKind, GalleryImage, GalleryComparison, GalleryMember, GroupAnalysisIdentity, FrozenGalleryGroup
 from iad_core.storage.database import Database
 from iad_core.storage.models import Sample
+from iad_core.consistency.conflict_categories import ConflictCategory
 
 
 class GalleryQuery(AnalysisModel):
@@ -54,8 +55,10 @@ class GalleryItem(AnalysisModel):
     dataset_count: Count
     pair_count: Count
     difference_types: list[DifferenceType]
+    conflict_categories: list[ConflictCategory]
     confirmed_conflict: bool
     model_state: ModelAssessmentState
+    model_conclusion: str | None = None
     review_state: ReviewDisposition
 
 
@@ -106,6 +109,7 @@ class GalleryQueries:
             json_extract(r.snapshot_json,'$.sources.left') left_source,
             json_extract(r.snapshot_json,'$.sources.right') right_source,
             json_extract(r.snapshot_json,'$.result.annotation.differences') differences,
+            json_extract(r.snapshot_json,'$.result.annotation') annotation,
             annotation_difference_types(json_extract(r.snapshot_json,'$.result.annotation')) difference_types,
             json_extract(r.snapshot_json,'$.result.annotation.confirmed_conflict') confirmed,
             json_extract(r.snapshot_json,'$.result.verification.relation') relation,
@@ -153,6 +157,7 @@ class GalleryQueries:
             rows = connection.execute(cte + """ SELECT g.*,a.source,a.evidence_id,a.side,a.evidence_available,c.pair_count,c.confirmed,
                 COALESCE((SELECT json_group_array(type) FROM types t WHERE t.group_id=g.group_id AND t.facts_state=g.facts_state),'[]') difference_types,
                 (SELECT json_group_array(e.evidence_id) FROM edges e WHERE e.group_id=g.group_id AND e.facts_state=g.facts_state) evidence_ids,
+                (SELECT json_group_array(json(e.annotation)) FROM edges e WHERE e.group_id=g.group_id AND e.facts_state=g.facts_state) annotations,
                 (SELECT json_group_object(e.evidence_id,(SELECT json_group_array(json_extract(d.value,'$.difference_id')) FROM json_each(e.differences) d))
                     FROM edges e WHERE e.group_id=g.group_id AND e.facts_state=g.facts_state) review_facts
                 FROM matching g JOIN anchors a ON a.group_id=g.group_id AND a.facts_state=g.facts_state AND a.rank=1
@@ -172,10 +177,10 @@ class GalleryQueries:
             if model_matches:counts[category] += 1
             if category_matches:model_counts[model_state] += 1
             if category_matches and model_matches:
-                selected.append((row,model_state))
+                selected.append((row,model_state,state))
         total = len(selected)
         rows = selected[(request.page - 1) * request.page_size:request.page * request.page_size]
-        review_facts = {(row['group_id'],row['facts_state']):json.loads(row['review_facts']) for row,_ in rows}
+        review_facts = {(row['group_id'],row['facts_state']):json.loads(row['review_facts']) for row,_,_ in rows}
         histories = ConsistencyDecisionRepository(self.db).histories({identity for pairs in review_facts.values() for identity in pairs})
         reviews = {}
         for key,pairs in review_facts.items():
@@ -186,7 +191,10 @@ class GalleryQueries:
         return GalleryPage(query_id=request.query_id,kind=request.kind,total=total,filters=filters,model_filters=model_filters,items=[
             GalleryItem(group_id=row['group_id'],facts_state=row['facts_state'],anchor=self.image(row),
                 member_count=row['member_count'],candidate_count=row['member_count']-1,dataset_count=row['dataset_count'],
-                pair_count=row['pair_count'],difference_types=json.loads(row['difference_types']),confirmed_conflict=bool(row['confirmed']),model_state=model_state,review_state=reviews[row['group_id'],row['facts_state']]) for row,model_state in rows])
+                pair_count=row['pair_count'],difference_types=json.loads(row['difference_types']),confirmed_conflict=bool(row['confirmed']),model_state=model_state,
+                conflict_categories=sorted({category for annotation in json.loads(row['annotations'])
+                    for category in AnnotationComparison.model_validate(annotation).conflict_categories},key=list(ConflictCategory).index),
+                model_conclusion=state.conclusion if state and state.status=='COMPLETED' else None,review_state=reviews[row['group_id'],row['facts_state']]) for row,model_state,state in rows])
 
     def members(self, request: GalleryMemberQuery) -> GalleryMemberPage:
         ResultSnapshots(self.db).get(request.query_id)

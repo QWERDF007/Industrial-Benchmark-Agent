@@ -1,8 +1,10 @@
+import type { ImageQualityLabel } from '../dataset-image-annotations.js';
 import React from "react";
 import { type AnnotationLayerSource } from "./AnnotationLayer.js";
 import { type ImageView, type InspectionContext, type InspectionSelection, type InspectionTransform } from "../inspection.js";
 import type { VisualEvidence } from '../../shared/contracts.js';
 export interface ImageSource {
+    qualityLabel?: ImageQualityLabel;
     sampleId?: string;
     evidence?: VisualEvidence;
     src: string;
@@ -10,7 +12,7 @@ export interface ImageSource {
     caption?: string;
     width?: number;
     height?: number;
-    annotationLayer?: AnnotationLayerSource;
+    annotationLayer?: AnnotationLayerSource | null;
     inspection?: InspectionContext;
     initialSelection?: InspectionSelection | null;
     initialTransform?: InspectionTransform;

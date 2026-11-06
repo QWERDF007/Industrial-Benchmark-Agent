@@ -38,7 +38,8 @@ def test_consistency_workflow_finishes_without_model_calls_when_no_pair_reaches_
         return httpx.Response(500,json={'error':'不应调用模型'})
     runtime=WorkbenchRuntime(db,VlmClient(httpx.Client(transport=httpx.MockTransport(unexpected_call))))
     try:
-        started=runtime.models.analysis_workflows.start(dict(analysis_kind='consistency',dataset_ids=[config.dataset.id]))
+        frozen_prompt='核对创建时标注。\n保留原始换行。'
+        started=runtime.models.analysis_workflows.start(dict(analysis_kind='consistency',dataset_ids=[config.dataset.id],instruction=frozen_prompt))
         runtime.jobs.wait(started['run_id'],10)
         final=runtime.models.analysis_workflows.status(started['run_id'])
         assert final['status']=='COMPLETED',final['errors']
@@ -46,6 +47,10 @@ def test_consistency_workflow_finishes_without_model_calls_when_no_pair_reaches_
         assert final['request']['submission']['min_similarity']==.95
         assert len(final['no_candidate_sample_ids'])==2 and not final['unit_runs']
         assert calls==[]
+        for status in ('RUNNING','COMPLETED','FAILED'):
+            with db.connection() as conn:
+                conn.execute('UPDATE job_runs SET status=? WHERE job_id=?',(status,started['run_id']))
+            assert runtime.models.analysis_workflows.status(started['run_id'])['consistency_prompt']==frozen_prompt
     finally:
         runtime.close()
 
@@ -214,7 +219,7 @@ def test_consistency_workflow_contains_program_comparison_and_eligible_visual_an
         refs=[dict(candidate_id=sid,comparison=dict(result_id=member['comparison']['result_id'],
             evidence_id=member['comparison']['evidence_id'])) for sid,member in group['candidates'].items()]
         result=dict(overall=dict(verdict='UNCERTAIN',text='需核查标注策略',references=refs),
-            assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',explanation='现有标注策略未确认',findings=[]) for ref in refs],
+            assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',conclusion='缺少标注对象对应依据',explanation='现有标注策略未确认',findings=[]) for ref in refs],
             conclusions=[dict(text='需人工核查策略',references=refs)],limitations=['标签非人工真值'])
         return httpx.Response(200,json={'choices':[{'message':{'content':json.dumps(result)}}]})
 
@@ -295,8 +300,8 @@ def test_consistency_retry_keeps_samples_without_candidates_and_rechecks_only_th
             return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':'{}'}}]})
         refs=[dict(candidate_id=sid,comparison=dict(result_id=member['comparison']['result_id'],evidence_id=member['comparison']['evidence_id']))
             for sid,member in group['candidates'].items()]
-        result=dict(overall=dict(verdict='UNCERTAIN',text='标注依据待核对',references=refs),
-            assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',explanation='保留实际标注依据与未知项',findings=[]) for ref in refs],
+        result=dict(overall=dict(verdict='UNCERTAIN',text='缺少标注对象对应依据',references=refs),
+            assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',conclusion='缺少标注对象对应依据',explanation='保留实际标注依据与未知项',findings=[]) for ref in refs],
             conclusions=[dict(text='保留该图组的真实比较依据',references=refs)],limitations=[])
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
 

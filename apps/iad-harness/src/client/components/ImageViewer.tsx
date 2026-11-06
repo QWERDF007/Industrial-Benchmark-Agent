@@ -29,9 +29,9 @@ export function ImageViewer({image,onClose,navigation,collection}:{
     : inspection ? <InspectionPanel inspection={inspection} selection={selection} choices={[]} onSelect={setSelection}
       transform={()=>transform.current} /> : undefined;
   const items=collection?.images.map(item=>({id:item.id,title:item.image.title,imageUrl:item.image.src,
-    width:item.image.width,height:item.image.height,annotationLayer:item.image.annotationLayer,sampleId:item.image.sampleId,evidence:item.image.evidence}));
+    width:item.image.width,height:item.image.height,annotationLayer:item.image.annotationLayer,qualityLabel:item.image.qualityLabel,sampleId:item.image.sampleId,evidence:item.image.evidence}));
   return <FullscreenViewer open item={{id:current.src,title:current.title,imageUrl:current.src,width:current.width,
-    height:current.height,annotationLayer:current.annotationLayer,sampleId:current.sampleId,evidence:current.evidence}}
+    height:current.height,annotationLayer:current.annotationLayer,qualityLabel:current.qualityLabel,sampleId:current.sampleId,evidence:current.evidence}}
     items={items} currentIndex={index} onNavigate={collection?setIndex:undefined} navigation={navigation}
     context={context} initialTransform={current.initialTransform} onTransform={remember} onClose={onClose}
     overlay={inspection && <InspectionOverlay inspection={inspection} selectedId={region?.image.evidence_id || ''}

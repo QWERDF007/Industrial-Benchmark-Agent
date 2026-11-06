@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import {AnnotationLayer,type ImageBoxAnnotation,type AnnotationLayerSource} from "./AnnotationLayer.js";
+import {ImageQualityBadge} from './ImageQualityBadge.js';
+import type {ImageQualityLabel} from '../dataset-image-annotations.js';
 
 export interface AnnotatedImageStageProps {
   src: string;
@@ -7,7 +9,8 @@ export interface AnnotatedImageStageProps {
   width?: number;
   height?: number;
   bboxes?: ImageBoxAnnotation[];
-  annotationLayer?:AnnotationLayerSource;
+  annotationLayer?:AnnotationLayerSource|null;
+  qualityLabel?:ImageQualityLabel;
   showAnnotations?: boolean;
   className?: string;
   style?: React.CSSProperties;
@@ -27,6 +30,7 @@ export function AnnotatedImageStage({
   height,
   bboxes = [],
   annotationLayer,
+  qualityLabel,
   showAnnotations = true,
   className = "",
   style,
@@ -80,6 +84,7 @@ export function AnnotatedImageStage({
 
         {showAnnotations && (annotationLayer || bboxes.length>0) && <AnnotationLayer fit="contain" source={annotationLayer || {kind:'boxes',annotations:bboxes,width:imgW,height:imgH}} />}
         {children}
+        <ImageQualityBadge label={qualityLabel} />
     </div>
   );
 }

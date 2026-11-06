@@ -1,11 +1,13 @@
 import {v4 as uuid} from 'uuid';
 import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import type {EvidenceBundle,FrozenEvidenceSource,GalleryMember,GalleryReference,ConsistencyReviewContext,ConsistencyReviewSubmission} from '../../shared/domain.generated.js';
+import type {EvidenceBundle,GalleryMember,GalleryReference,ConsistencyReviewContext,ConsistencyReviewSubmission} from '../../shared/domain.generated.js';
+import {datasetImageAnnotations} from '../dataset-image-annotations.js';
+import {useDatasetCatalog} from '../useDatasetCatalog.js';
 import {ConsistencyView,type ConflictCardItem} from '../consistency-view.js';
 import {useGroupAnalysis} from '../useGroupAnalysis.js';
 import {useResource} from '../useResource.js';
 import {message,request} from '../api.js';
-import {annotationSummary} from '../../shared/consistency-presentation.js';
+import {annotationSummary,differenceLabels} from '../../shared/consistency-presentation.js';
 import {Modal} from './Modal.js';
 import {Button} from './Button.js';
 import {IconButton} from './IconButton.js';
@@ -22,16 +24,10 @@ interface ConsistencyConflictDialogProps {
   onReviewed():void;
 }
 
-function OriginalAnnotationLabel({source}:{source:FrozenEvidenceSource|null|undefined}) {
-  if(!source)return null;
-  const categories=[...new Set(source.annotations.annotations.map(annotation=>annotation.raw_label))];
-  const label=categories.join('、') || ({PASS:'OK',FAIL:'NG',UNCERTAIN:'未标注'})[source.sample.quality_status];
-  return <span className="dc-source-label" title={`原始标注 ${label}`}>原始标注 {label}</span>;
-}
-
 export function ConsistencyConflictDialog({conflict:currentConflict,items:visibleConflicts,queryId:activeQueryId,
   onSelect,onClose,onReviewed}:ConsistencyConflictDialogProps) {
   const currentConflictId=currentConflict.id;
+  const catalog=useDatasetCatalog();
   const [candidateIndex, setCandidateIndex] = useState<number>(0);
   const [conflictMembers, setConflictMembers] = useState<GalleryMember[]>([]);
   const [membersError,setMembersError]=useState('');
@@ -55,6 +51,10 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
     return()=>controller.abort();
   },[groupReference]);
   const selectedMember=conflictMembers[candidateIndex] || null;
+  const modelResult=groupAnalysis.analysis?.status==='COMPLETED' ? groupAnalysis.analysis.result : null;
+  const assessment=modelResult?.assessments.find(item=>item.candidate_id===selectedMember?.image.sample.sample_id);
+  const pairConclusion=assessment?.conclusion || (conflictMembers.length===1 ? modelResult?.overall.text : null);
+
   const currentCandidate=useMemo(()=>{
     const image=selectedMember?.image;
     return {sampleId:image?.sample.sample_id || '',filename:image?.sample.relative_path.split('/').pop() || '',
@@ -66,8 +66,8 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
   const anchorSide=selectedMember?.comparison?.anchor_side;
   const anchorSource=anchorSide?compared.data?.sources[anchorSide]:null;
   const candidateSource=anchorSide?compared.data?.sources[anchorSide==='left'?'right':'left']:null;
-  const anchorBboxes=anchorSource?.annotations.annotations.filter(annotation=>annotation.bbox && annotation.geometry_status!=='INVALID') || [];
-  const candidateBboxes=candidateSource?.annotations.annotations.filter(annotation=>annotation.bbox && annotation.geometry_status!=='INVALID') || [];
+  const anchorAnnotations=anchorSource?datasetImageAnnotations(catalog.data?.datasets.find(dataset=>dataset.dataset_id===anchorSource.sample.dataset_id)?.format,anchorSource.sample,anchorSource.annotations.annotations):{};
+  const candidateAnnotations=candidateSource?datasetImageAnnotations(catalog.data?.datasets.find(dataset=>dataset.dataset_id===candidateSource.sample.dataset_id)?.format,candidateSource.sample,candidateSource.annotations.annotations):{};
   const readReview=useCallback(async(signal?:AbortSignal)=>{
     if(!selectedMember?.comparison)return;
     const context=await request<ConsistencyReviewContext>('/consistency/review/context',{evidence_id:selectedMember.comparison.evidence_id},undefined,signal);
@@ -142,7 +142,6 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
             <div className="dc-dialog-body">
               <div className="dc-compare">
                 <div className="dc-compare-cell">
-                  <h3 className="dc-compare-title">主图</h3>
                   <div
                     className="dc-compare-photo"
                     role="button"
@@ -157,7 +156,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                         imageUrl: currentConflict.fullUrl || currentConflict.url,
                         width: currentConflict.sourceWidth,
                         height: currentConflict.sourceHeight,
-                        bboxes: anchorBboxes,
+                        ...anchorAnnotations,
                       })
                     }
                     onKeyDown={e => {
@@ -168,7 +167,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                           imageUrl: currentConflict.fullUrl || currentConflict.url,
                           width: currentConflict.sourceWidth,
                           height: currentConflict.sourceHeight,
-                          bboxes: anchorBboxes,
+                          ...anchorAnnotations,
                         });
                       }
                     }}
@@ -178,9 +177,8 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                       alt="主图"
                       width={currentConflict.sourceWidth}
                       height={currentConflict.sourceHeight}
-                      bboxes={anchorBboxes}
+                      {...anchorAnnotations}
                     />
-                    <OriginalAnnotationLabel source={anchorSource} />
                   </div>
                   <div className="dc-photo-filename" title={currentConflict.filename}>
                     {currentConflict.filename}
@@ -188,7 +186,6 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                 </div>
 
                 <div className="dc-compare-cell">
-                  <h3 className="dc-compare-title">对照图像</h3>
                   <div
                     className="dc-compare-photo"
                     role="button"
@@ -203,7 +200,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                         imageUrl: currentCandidate.fullUrl,
                         width: currentCandidate.width,
                         height: currentCandidate.height,
-                        bboxes: candidateBboxes,
+                        ...candidateAnnotations,
                       })
                     }
                     onKeyDown={e => {
@@ -214,7 +211,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                           imageUrl: currentCandidate.fullUrl,
                           width: currentCandidate.width,
                           height: currentCandidate.height,
-                          bboxes: candidateBboxes,
+                          ...candidateAnnotations,
                         });
                       }
                     }}
@@ -224,9 +221,8 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                       alt="候选图"
                       width={currentCandidate.width}
                       height={currentCandidate.height}
-                      bboxes={candidateBboxes}
+                      {...candidateAnnotations}
                     />}
-                    <OriginalAnnotationLabel source={candidateSource} />
                   </div>
                   <div className="dc-photo-filename" title={currentCandidate.filename}>
                     {currentCandidate.filename}
@@ -248,24 +244,26 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
               {membersError && <p role="alert" className="iad-error">{membersError}</p>}
               {compared.error && <p role="alert" className="iad-error">{compared.error}</p>}
 
-              {/* 判定结论 */}
-              <section className="dc-fact-panel" aria-label="判定结论">
-                <h3>判定结论</h3>
-                <span className="dc-verdict-value">{currentConflict.type}</span>
+              {/* Program observations remain separate from the model's conclusion. */}
+              <section className="dc-fact-panel" aria-label="程序比对">
+                <h3>程序比对</h3>
+                <span className="dc-verdict-value">{compared.data
+                  ? [...new Set(compared.data.result.annotation.differences.filter(item=>item.type!=='POLICY_UNCONFIRMED').map(item=>differenceLabels[item.type]))].join('、') || '程序未检出标注差异'
+                  : compared.error || '正在读取程序比对…'}</span>
                 <p className="dc-verdict-description">{compared.data?annotationSummary(compared.data.result.annotation):compared.error || '正在读取冻结比较记录…'}</p>
               </section>
 
               {/* 模型分析 */}
               <section className="dc-model-panel" aria-label="模型分析">
                 <h3>模型分析</h3>
-                <p>{groupAnalysis.error || groupAnalysis.analysis?.error || groupAnalysis.analysis?.result?.conclusions.map(item=>item.text).join('\n') || '暂无已保存的模型分析结果。'}</p>
+                <p>{groupAnalysis.error || groupAnalysis.analysis?.error || assessment?.explanation || '暂无已保存的当前图对分析。'}</p>
               </section>
 
               {/* 模型结论 */}
               <section className="dc-conclusion-panel" aria-label="模型结论">
                 <h3>模型结论</h3>
-                <span className="dc-verdict-value">{groupAnalysis.analysis?.result?.overall.text || currentConflict.model.modelType}</span>
-                <p className="dc-verdict-description">{groupAnalysis.analysis?.result?.overall.text || groupAnalysis.error || groupAnalysis.analysis?.error || '暂无已保存的模型结论。'}</p>
+                <span className="dc-verdict-value">{pairConclusion || groupAnalysis.error || groupAnalysis.analysis?.error || '暂无已保存的当前图对结论。'}</span>
+                {conflictMembers.length>1&&modelResult&&<p className="dc-verdict-description">图组结论：{modelResult.overall.text}</p>}
               </section>
 
               {/* Human review panel */}

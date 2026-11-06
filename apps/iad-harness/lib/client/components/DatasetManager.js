@@ -1,4 +1,5 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { copyText } from '../clipboard.js';
 import { Select } from './Select.js';
 import { Button } from './Button.js';
 import { IconButton } from "./IconButton.js";
@@ -149,29 +150,13 @@ export function DatasetManager({ datasets: propDatasets, groups: propGroups, sel
         setDrawerOpen(false);
         setSelectedId(null);
     }
-    // Copy identifier
     async function copyIdentifier(val) {
         try {
-            await navigator.clipboard.writeText(val);
+            await copyText(val);
             announce("已复制数据集标识");
         }
         catch {
-            const ta = document.createElement("textarea");
-            ta.value = val;
-            ta.style.position = "fixed";
-            ta.style.opacity = "0";
-            document.body.appendChild(ta);
-            ta.select();
-            try {
-                document.execCommand("copy");
-                announce("已复制数据集标识");
-            }
-            catch {
-                announce("无法复制，请手动选择标识");
-            }
-            finally {
-                ta.remove();
-            }
+            announce("无法复制，请手动选择标识");
         }
     }
     // Rescan directory in drawer

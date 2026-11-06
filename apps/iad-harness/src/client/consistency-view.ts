@@ -1,11 +1,11 @@
 import type {ConsistencyReport, GalleryItem, GalleryPage, GalleryMember, GalleryMemberPage, GalleryReference} from '../shared/domain.generated.js';
-import {differenceLabels} from '../shared/consistency-presentation.js';
 import {modelAssessmentLabels} from '../shared/consistency.parameters.generated.js';
 import {request} from './api.js';
 
 export interface ConflictCardItem {
   id:string;
   type:string;
+  types:GalleryItem['conflict_categories'];
   filename:string;
   url:string;
   fullUrl:string;
@@ -33,11 +33,12 @@ export class ConsistencyView {
       if(items.length>=result.total)break;
     }
     const cards:ConflictCardItem[]=items.map(item=>({id:item.group_id,
-      type:item.difference_types.map(type=>differenceLabels[type]).join('、') || '标注待核对',
+      types:item.conflict_categories,
+      type:item.conflict_categories.join('、') || '程序未检出标注差异',
       filename:item.anchor.sample.relative_path.split('/').pop()!,url:this.media(item.anchor,true),fullUrl:this.media(item.anchor),
       sourceWidth:item.anchor.sample.width,sourceHeight:item.anchor.sample.height,memberCount:item.member_count,review:item.review_state,
       model:{status:item.model_state==='MATERIAL'?'conflict':item.model_state==='EQUIVALENT'?'no_conflict':'unknown',
-        modelType:modelAssessmentLabels[item.model_state]},rawItem:item}));
+        modelType:item.model_conclusion || modelAssessmentLabels[item.model_state]},rawItem:item}));
     return {queryId,items:cards};
   }
 

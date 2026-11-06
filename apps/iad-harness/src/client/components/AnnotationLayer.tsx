@@ -1,4 +1,4 @@
-import React, { useId } from "react";
+import React, { useId,useLayoutEffect,useRef,useState } from "react";
 import { MediaMask } from "./MediaLoad.js";
 import type { Annotation, AuditAnalysis, SampleIdentity } from "../../shared/contracts.js";
 import { auditEvidenceUrl, mediaUrl } from "../api.js";
@@ -33,7 +33,15 @@ export function AnnotationLayer({ source, viewport, fit="stretch" }: { source: A
       id: image.evidence_id, bbox: image.crop_bbox, url: auditEvidenceUrl(source.suggestionId, image),
     })) : [];
   const [x1,y1,x2,y2]=viewport || [0,0,width,height];
-  return <svg className="iad-annotation-layer" viewBox={`${x1} ${y1} ${x2-x1} ${y2-y1}`} preserveAspectRatio={fit==="contain"?"xMidYMid meet":"none"} aria-label="Labelme 标注">
+  const layer=useRef<SVGSVGElement>(null);
+  const [labelSize,setLabelSize]=useState(12);
+  useLayoutEffect(()=>{
+    const svg=layer.current!;
+    const measure=()=>{const scale=Math.abs(svg.getScreenCTM()?.a || 0);if(scale)setLabelSize(12/scale);};
+    const observer=new ResizeObserver(measure);observer.observe(svg);measure();
+    return()=>observer.disconnect();
+  },[x1,y1,x2,y2,fit]);
+  return <svg ref={layer} className="iad-annotation-layer" viewBox={`${x1} ${y1} ${x2-x1} ${y2-y1}`} preserveAspectRatio={fit==="contain"?"xMidYMid meet":"none"} aria-label="Labelme 标注">
     {!!masks.length && <g className="iad-annotation-mask">{masks.map((mask, index) => {
       const maskId = `${namespace}-mask-${index}`;
       const [x1, y1, x2, y2] = mask.bbox;
@@ -47,7 +55,7 @@ export function AnnotationLayer({ source, viewport, fit="stretch" }: { source: A
     {annotations.map((annotation,index) => <g key={annotation.annotation_id || index}>
       {annotation.annotation_type !== "mask" && (annotation.polygon ? <polygon points={annotation.polygon.map(point => point.join(",")).join(" ")} />
         : annotation.bbox && <rect x={annotation.bbox[0]} y={annotation.bbox[1]} width={annotation.bbox[2] - annotation.bbox[0]} height={annotation.bbox[3] - annotation.bbox[1]} />)}
-      {annotation.bbox && <text x={annotation.bbox[0]} y={Math.max(12, annotation.bbox[1] - 4)}>{annotation.raw_label}</text>}
+      {annotation.bbox && <text style={{fontSize:labelSize}} x={annotation.bbox[0]} y={Math.max(labelSize, annotation.bbox[1] - 4)}>{annotation.raw_label}</text>}
     </g>)}
   </svg>;
 }

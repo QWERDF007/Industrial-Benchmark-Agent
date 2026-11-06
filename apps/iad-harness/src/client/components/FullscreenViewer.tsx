@@ -1,4 +1,6 @@
 import {Select} from './Select.js';
+import {ImageQualityBadge} from './ImageQualityBadge.js';
+import type {ImageQualityLabel} from '../dataset-image-annotations.js';
 import {IconButton} from "./IconButton.js";
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {createPortal} from 'react-dom';
@@ -12,9 +14,10 @@ import type {InspectionTransform} from '../inspection.js';
 export type FullscreenViewerAnnotation=ImageBoxAnnotation;
 
 export interface FullscreenViewerItem {
+  qualityLabel?:ImageQualityLabel;
   sampleId?: string;
   evidence?: VisualEvidence;
-  annotationLayer?: AnnotationLayerSource;
+  annotationLayer?: AnnotationLayerSource|null;
   id: string;
   title: string;
   imageUrl: string;
@@ -57,9 +60,9 @@ export function FullscreenViewer({
   onTransform,
   onImageClick,
 }: FullscreenViewerProps) {
-  const source=useResource<SampleDetail>(open && item?.sampleId && !item.annotationLayer
+  const source=useResource<SampleDetail>(open && item?.sampleId && item.annotationLayer===undefined && !item.qualityLabel
     ? `/sample/${encodeURIComponent(item.sampleId)}` : null);
-  const annotationLayer=item?.annotationLayer || (source.data ? {kind:'sample' as const,
+  const annotationLayer=item?.annotationLayer===null?undefined:item?.annotationLayer || (source.data ? {kind:'sample' as const,
     sample:source.data.sample,annotations:source.data.annotations} : item?.bboxes?.length
       ? {kind:'boxes' as const,annotations:item.bboxes,width:item.width || 1,height:item.height || 1} : undefined);
   const [zoomMode, setZoomMode] = useState<"fit" | "custom">("fit");
@@ -344,6 +347,7 @@ export function FullscreenViewer({
               </button>
             </>
           )}
+          <ImageQualityBadge label={item.qualityLabel} />
         </div>{context && <aside className="full-context">{context}</aside>}</div>
       </section>
     </div>

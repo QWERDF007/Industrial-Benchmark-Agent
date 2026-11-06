@@ -2,7 +2,6 @@ import {Select} from './Select.js';
 import {ThumbnailCard} from "./ThumbnailCard.js";
 import React,{useEffect,useRef,useState} from 'react';
 import type {GalleryItem,GalleryPage,GalleryQuery} from '../../shared/domain.generated.js';
-import {differenceLabels} from '../../shared/consistency-presentation.js';
 import {modelAssessmentLabels} from '../../shared/consistency.parameters.generated.js';
 import {galleryImageUrl} from '../consistency-images.js';
 import {ApiError,message,request} from '../api.js';
@@ -55,8 +54,8 @@ export function ConsistencyGallery({queryId,kind,onExpired}:{queryId:string;kind
       src={item.anchor.available?galleryImageUrl(item.anchor):undefined} label={item.anchor.sample.relative_path.split('/').pop()!}
       data-group-id={item.group_id} data-facts-state={item.facts_state} onClick={()=>open(item)}>
       <small>{kind==='groups'?`${item.member_count} 张成员`:`${item.candidate_count} 张候选`}</small>
-      <small>{kind==='groups'?'严格同图':item.difference_types.map(type=>differenceLabels[type]).join('、')||'未发现标注差异'}</small>
-      <small>MLLM，{modelAssessmentLabels[item.model_state]}</small>
+      <small>{kind==='groups'?'严格同图':item.conflict_categories.join('、')||'未发现标注差异'}</small>
+      <small>MLLM，{item.model_conclusion || modelAssessmentLabels[item.model_state]}</small>
     </ThumbnailCard>)}</div></MediaLoad>
     <Pagination total={page?.total||0} page={number} size={15} unit={kind==='groups' ? '组' : '张'} onPage={galleryPage=>workspace.updateConsistency({galleryPage,groupId:undefined},true)} />
     {selected && !location.evidenceId && <ConsistencyGroupDialog key={selected.group_id+selected.facts_state} queryId={queryId} kind={kind} item={selected} position={(number-1)*15+(page?.items.indexOf(selected)||0)+1} total={page?.total||0}

@@ -1,4 +1,6 @@
 import {Select} from './Select.js';
+import {ImageQualityBadge} from './ImageQualityBadge.js';
+import type {ImageQualityLabel} from '../dataset-image-annotations.js';
 import {IconButton} from "./IconButton.js";
 import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { FloatingMenu } from "./FloatingMenu.js";
@@ -14,8 +16,9 @@ const emptyHover = { ids: [] as string[], dismissed: false, x: 0, y: 0 };
 const minScale = 0.02, maxScale = 16;
 
 export interface ImageSource {
+  qualityLabel?:ImageQualityLabel;
   sampleId?: string; evidence?: VisualEvidence;
-  src: string; title: string; caption?: string; width?: number; height?: number; annotationLayer?: AnnotationLayerSource;
+  src: string; title: string; caption?: string; width?: number; height?: number; annotationLayer?: AnnotationLayerSource|null;
   inspection?: InspectionContext;
   initialSelection?: InspectionSelection | null;
   initialTransform?: InspectionTransform;
@@ -28,6 +31,7 @@ type ImageCanvasProps = { image: ImageSource; navigation?: ImageNavigation; onEx
 export function AnnotatedImage({ image, visible = true, onLoad }: { image: ImageSource; visible?: boolean; onLoad?: React.ReactEventHandler<HTMLImageElement> }) {
   return <div className="iad-image-frame"><MediaImage src={image.src} alt={image.title} width={image.width} height={image.height} data-media-label="图像" draggable={false} onLoad={onLoad} />
     {visible && image.annotationLayer && <AnnotationLayer source={image.annotationLayer} />}
+    <ImageQualityBadge label={image.qualityLabel} />
   </div>;
 }
 

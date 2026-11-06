@@ -1,6 +1,6 @@
 import hashlib
 import json
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field
 
@@ -37,17 +37,22 @@ class GroupAnalysisConclusion(AnalysisModel):
     references: list[GroupAnalysisReference] = Field(min_length=1, max_length=100)
 
 
+ConclusionPhrase = Annotated[str, Field(min_length=1, max_length=40,
+    description='确定性的简短结论，直接指出类别、位置、增减、拆分、合并等实际差异；多种差异并列，没有差异则明确写未发现标注差异。不写差在哪里、数值、原因、建议，不使用基本一致、可能、疑似、待核对等模糊话术')]
+
+
 class GroupPairAssessment(AnalysisModel):
     candidate_id: Identifier
-    verdict: ModelAssessmentVerdict = Field(description='当前候选的比较结论，使用本次提交的完整提示词判断')
-    explanation: str = Field(min_length=1,max_length=8000)
+    verdict: ModelAssessmentVerdict = Field(description='当前候选的内部检索判定，最终答案由conclusion陈述，explanation解释依据，不用该枚举标签代替结论')
+    conclusion: ConclusionPhrase | None = None
+    explanation: str = Field(min_length=1,max_length=8000,
+        description='当前图对的分析依据，具体说明差异发生在哪一侧、哪个对象或区域，位置、类别、数量及拆分合并等实际变化，解释conclusion；无差异时说明各项对应。不得用基本一致、可能、疑似、待核对等话术替代判断。真实缺失证据须指明缺失内容及其阻断的判断')
     findings: list[str] = Field(default_factory=list,max_length=100,
-        description='自由描述实际发现的问题，不受程序差异分类限制；视觉基本一致时可为空')
+        description='自由描述实际发现的问题，不受程序差异分类限制；未发现差异时可为空')
 
 
 class GroupOverallConclusion(GroupAnalysisConclusion):
-    text: str = Field(min_length=1, max_length=40, pattern=r'^[^\r\n。！？!?]+。?$',
-        description='仅用一句短语概括整组差异类型，如标注类别不同、标注位置或范围不同、缺少或多出标注；多种差异短语合并，其他发现据实概括。不写位置、数值、依据、建议或verdict，详细分析写入conclusions')
+    text: ConclusionPhrase
     verdict: ModelAssessmentVerdict = Field(description='根据逐候选结论汇总的整组结论')
 
 

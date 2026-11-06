@@ -1,5 +1,6 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Select } from './Select.js';
+import { ImageQualityBadge } from './ImageQualityBadge.js';
 import { IconButton } from "./IconButton.js";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from 'react-dom';
@@ -12,9 +13,9 @@ import { useResource } from '../useResource.js';
  * Standardized across Image Browsing and Direction Exploration pages.
  */
 export function FullscreenViewer({ open, item, items = [], currentIndex = -1, onClose, onNavigate, navigation, context, overlay, initialTransform, onTransform, onImageClick, }) {
-    const source = useResource(open && item?.sampleId && !item.annotationLayer
+    const source = useResource(open && item?.sampleId && item.annotationLayer === undefined && !item.qualityLabel
         ? `/sample/${encodeURIComponent(item.sampleId)}` : null);
-    const annotationLayer = item?.annotationLayer || (source.data ? { kind: 'sample',
+    const annotationLayer = item?.annotationLayer === null ? undefined : item?.annotationLayer || (source.data ? { kind: 'sample',
         sample: source.data.sample, annotations: source.data.annotations } : item?.bboxes?.length
         ? { kind: 'boxes', annotations: item.bboxes, width: item.width || 1, height: item.height || 1 } : undefined);
     const [zoomMode, setZoomMode] = useState("fit");
@@ -183,7 +184,7 @@ export function FullscreenViewer({ open, item, items = [], currentIndex = -1, on
                                             }, children: "\u2039" }), _jsx("button", { type: "button", className: "full-side-nav next", id: "next-img", "aria-label": "\u4E0B\u4E00\u5F20\u56FE\u50CF", title: "\u4E0B\u4E00\u5F20\u56FE\u50CF", disabled: navigation ? !navigation.next || navigation.busy : currentIndex >= items.length - 1, onClick: e => {
                                                 e.stopPropagation();
                                                 moveViewer(1);
-                                            }, children: "\u203A" })] }))] }), context && _jsx("aside", { className: "full-context", children: context })] })] }) }));
+                                            }, children: "\u203A" })] })), _jsx(ImageQualityBadge, { label: item.qualityLabel })] }), context && _jsx("aside", { className: "full-context", children: context })] })] }) }));
     const dialog = _jsx(Modal, { title: "\u539F\u56FE\u68C0\u89C6\u5668", frame: "fullscreen", header: false, onClose: onClose, onKeyDown: event => {
             if (event.key === 'Escape') {
                 event.preventDefault();

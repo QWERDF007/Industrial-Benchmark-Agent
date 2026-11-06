@@ -1,4 +1,6 @@
 import {SectionHeading} from './layout/SectionHeading.js';
+import {PromptDrawer} from './PromptDrawer.js';
+import {conflictCategories,conflictCategoryDefaults} from '../../shared/consistency.parameters.generated.js';
 import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {v4 as uuid} from 'uuid';
 import {ConsistencyStatisticsDialog,type ConsistencyStatisticAction} from './ConsistencyStatisticsDialog.js';
@@ -35,7 +37,7 @@ import {useJobs} from '../useJobs.js';
 import {useDatasetCatalog} from '../useDatasetCatalog.js';
 import type {Started,NoWork} from '../../shared/domain.generated.js';
 
-type ConsistencyJob = ConsistencyBatchSummary & {analysis:JobSnapshot};
+type ConsistencyJob = Pick<ConsistencyBatchSummary,'batch_id'|'status'|'created_at'|'duration_seconds'|'conflict_count'|'pair_count'> & {analysis:JobSnapshot;dataset_ids:string[]};
 
 function dcJobBadge(status: string) {
   const s = (status || '').toUpperCase();
@@ -48,7 +50,7 @@ function dcJobBadge(status: string) {
 
 // The job-list count is the unfiltered, raw conflict group count for that job.
 // Do not substitute the currently filtered grid count or model-confirmed count.
-const dcJobConflictTotal = (j: ConsistencyBatchSummary) =>
+const dcJobConflictTotal = (j: Pick<ConsistencyBatchSummary,'status'|'conflict_count'>) =>
   (j.status === 'COMPLETED' || j.status === 'PARTIAL') &&
   typeof j.conflict_count === 'number' &&
   Number.isFinite(j.conflict_count) &&
@@ -57,7 +59,7 @@ const dcJobConflictTotal = (j: ConsistencyBatchSummary) =>
     : '—';
 
 // Actual duration persisted by the job API (duration_seconds), not inferred from submission time.
-const dcJobElapsed = (j: ConsistencyBatchSummary) => {
+const dcJobElapsed = (j: Pick<ConsistencyBatchSummary,'duration_seconds'>) => {
   const sec = j.duration_seconds;
   if (typeof sec !== 'number' || !Number.isFinite(sec) || sec < 0) return '—';
   const m = Math.floor(sec / 60);
@@ -122,6 +124,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
   const [currentConflictId, setCurrentConflictId] = useState<string>('');
   const [activeQueryId, setActiveQueryId] = useState<string>('');
   const [statsModalJobId, setStatsModalJobId] = useState<string>('');
+  const [promptJob,setPromptJob]=useState<ConsistencyJob|null>(null);
 
   // Derive hierarchy groups
   const hierarchyGroups = useMemo(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
@@ -135,16 +138,17 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
   );
   const progress=useCallback(()=>setRevision(value=>value+1),[]);
   const polling=useJobs('consistency',selectedChildIds,progress);
-  const roots=polling.jobs.filter(job=>job.program_batch_id);
-  const programIds=[...new Set(roots.map(job=>job.program_batch_id!))].sort();
+  const roots=polling.jobs;
+  const programIds=[...new Set(roots.flatMap(job=>job.program_batch_id?[job.program_batch_id]:[]))].sort();
   const programs=useQueries({queries:programIds.map(id=>({queryKey:['iad','resource',`/consistency/runs/${id}`],
     queryFn:()=>request<ConsistencyBatch>(`/consistency/runs/${encodeURIComponent(id)}`),staleTime:Infinity,
   }))},queryClient);
-  const batches:ConsistencyJob[]=roots.flatMap(job=>{
+  const batches:ConsistencyJob[]=roots.map(job=>{
     const program=programs.find(item=>item.data?.batch_id===job.program_batch_id)?.data;
-    return program ? [{...program,analysis:job,status:job.status,total:job.total_samples,completed:job.completed,
-      failed:job.failed,unprocessed:job.unprocessed,cancel_requested:job.cancel_requested,created_at:job.submitted_at,
-      duration_seconds:job.finished_at&&job.started_at?Math.max(0,Math.round((Date.parse(job.finished_at)-Date.parse(job.started_at))/1000)):null}] : [];
+    return {batch_id:job.program_batch_id || job.run_id,analysis:job,status:job.status,
+      dataset_ids:job.dataset_ids,created_at:job.submitted_at,pair_count:program?.pair_count || 0,
+      conflict_count:program?.conflict_count ?? null,
+      duration_seconds:job.finished_at&&job.started_at?Math.max(0,Math.round((Date.parse(job.finished_at)-Date.parse(job.started_at))/1000)):null};
   });
 
   // Available jobs for current parent and child scope
@@ -153,9 +157,8 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
       return [];
     }
     return batches
-      .filter(b => b.kind === 'consistency')
       .filter(b => {
-        const jobDatasets = b.scopes?.subjects?.dataset_ids || [];
+        const jobDatasets = b.dataset_ids;
         return jobDatasets.some(id => selectedChildIds.includes(id));
       })
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -174,7 +177,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
   const selectedJob = useMemo(() => {
     if (!shownJobs.length) return null;
     if (selectedJobId) {
-      const match = shownJobs.find(j => j.batch_id === selectedJobId);
+      const match = shownJobs.find(j => j.analysis.root_run_id === selectedJobId);
       if (match) return match;
     }
     const withResults = shownJobs.find(
@@ -191,7 +194,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
     setJobPage(targetPage);
     const firstJobOnPage = availableJobs[(targetPage - 1) * IBA_JOBS_PAGE_SIZE];
     if (firstJobOnPage) {
-      setSelectedJobId(firstJobOnPage.batch_id);
+      setSelectedJobId(firstJobOnPage.analysis.root_run_id);
     }
     setPage(1);
   };
@@ -199,7 +202,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
   useEffect(() => {
     const controller=new AbortController();
     setJobConflicts([]);setActiveQueryId('');setError('');
-    if(!selectedJob || !['COMPLETED','PARTIAL'].includes(selectedJob.status))return;
+    if(!selectedJob?.analysis.program_batch_id || !['COMPLETED','PARTIAL'].includes(selectedJob.status))return;
     setConflictsLoading(true);
     ConsistencyView.load(selectedJob.batch_id,controller.signal)
       .then(value=>{if(!controller.signal.aborted){setJobConflicts(value.items);setActiveQueryId(value.queryId);}})
@@ -212,7 +215,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
   const visibleConflicts = useMemo(() => {
     let list = [...jobConflicts];
     if (kind !== 'all') {
-      list = list.filter(c => c.type === kind);
+      list = list.filter(c => c.types.some(type=>type===kind));
     }
     if (modelFilter !== 'all') {
       list = list.filter(c => c.model.modelType === modelFilter);
@@ -271,8 +274,8 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
   }, []);
 
   // Job selection
-  const selectJob = useCallback((batchId: string) => {
-    setSelectedJobId(batchId);
+  const selectJob = useCallback((runId: string) => {
+    setSelectedJobId(runId);
     setSearch('');
     setPage(1);
     setKind('all');
@@ -324,7 +327,11 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
     setRevision(value => value + 1);
   }
 
-  const availableTypes=useMemo(()=>[...new Set(jobConflicts.map(item=>item.type))],[jobConflicts]);
+  const availableTypes=useMemo(()=>{
+    const formats=datasets.filter(dataset=>selectedJob?.dataset_ids.includes(dataset.dataset_id)).map(dataset=>dataset.format);
+    const defaults=new Set<string>(formats.flatMap(format=>conflictCategoryDefaults[format]));
+    return conflictCategories.filter(type=>defaults.has(type)||jobConflicts.some(item=>item.types.includes(type)));
+  },[datasets,selectedJob?.batch_id,jobConflicts]);
   const modelTypes=useMemo(()=>[...new Set(jobConflicts.map(item=>item.model.modelType))],[jobConflicts]);
 
   // Raw conflict tabs
@@ -424,8 +431,8 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
                   </thead>
                   <tbody>
                     {shownJobs.map(j => {
-                      const isSelected = j.batch_id === selectedJob?.batch_id;
-                      const childNames = (j.scopes?.subjects?.dataset_ids || [])
+                      const isSelected = j.analysis.root_run_id === selectedJob?.analysis.root_run_id;
+                      const childNames = j.dataset_ids
                         .map(id => datasets.find(d => d.dataset_id === id)?.name || id)
                         .join('、');
                       const timeStr = j.created_at ? j.created_at.slice(0, 16).replace('T', ' ') : '—';
@@ -435,21 +442,21 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
                         j.conflict_count > 0;
                       return (
                         <tr
-                          key={j.batch_id}
+                          key={j.analysis.root_run_id}
                           tabIndex={0}
                           data-dc-row={j.batch_id}
                           data-selected={isSelected}
                           aria-selected={isSelected}
-                          onClick={() => selectJob(j.batch_id)}
+                          onClick={() => selectJob(j.analysis.root_run_id)}
                           onKeyDown={e => {
                             if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
-                              e.preventDefault();selectJob(j.batch_id);
+                              e.preventDefault();selectJob(j.analysis.root_run_id);
                             }
                           }}
                         >
                           <td className="dc-mono">{j.batch_id}</td>
                           <td>
-                            <JobStatusButton job={j.analysis} onClick={()=>setStatusJobId(j.batch_id)}>{dcJobBadge(j.status)}</JobStatusButton>
+                            <JobStatusButton job={j.analysis} onClick={()=>setStatusJobId(j.analysis.root_run_id)}>{dcJobBadge(j.status)}</JobStatusButton>
                           </td>
                           <td className="dc-job-datasets" title={childNames}>
                             {childNames || '全部'}
@@ -463,10 +470,11 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
                           <td className="dc-time">{timeStr}</td>
                           <td className="dc-elapsed dc-mono">{dcJobElapsed(j)}</td>
                           <td className="dc-operations" onClick={e => e.stopPropagation()}>
-                            <JobStatusAction job={j.analysis} onClick={()=>setStatusJobId(j.batch_id)} />
+                            <JobStatusAction job={j.analysis} onClick={()=>setStatusJobId(j.analysis.root_run_id)} />
+                            <IconButton icon="prompt" label="查看提示词" data-dc="view-prompt" data-id={j.batch_id} onClick={()=>setPromptJob(j)} />
                             <IconButton icon="stats" type="button" title="查看统计结果" label="查看统计结果" data-dc="stats" data-id={j.batch_id} disabled={j.status !== 'COMPLETED' && j.status !== 'PARTIAL'} onClick={() => {
-                                setSelectedJobId(j.batch_id);
-                                setStatsModalJobId(j.batch_id);
+                                setSelectedJobId(j.analysis.root_run_id);
+                                setStatsModalJobId(j.analysis.root_run_id);
                               }} />
                             <DeleteAction title="删除检查作业" name={j.batch_id} onDelete={() => handleDeleteJob(j)}
                               restoreFocus={() => document.getElementById('dc-parent')} />
@@ -509,7 +517,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
               {/* Conflict Type Tabs */}
               <TabBar label="原始标注冲突类型" value={kind} onChange={value => {setKind(value); setPage(1);}}
                 items={conflictTabs.map(tab => ({id: tab.value, label: <><span>{tab.label}</span><span className="iad-tab-count">{
-                  tab.value === 'all' ? jobConflicts.length : jobConflicts.filter(conflict => conflict.type === tab.value).length
+                  tab.value === 'all' ? jobConflicts.length : jobConflicts.filter(conflict => conflict.types.some(type=>type===tab.value)).length
                 }</span></>, buttonProps: {'data-dc': 'raw-tab', 'data-id': tab.value}}))} />
 
               {/* 文件名搜索、模型判断、结论一致性与人工复核 */}
@@ -688,11 +696,13 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
         queryId={activeQueryId} onSelect={setCurrentConflictId} onClose={()=>setModal('')}
         onReviewed={()=>setRevision(value=>value+1)} />}
 
+      {promptJob && <PromptDrawer title="查看提示词" text={promptJob.analysis.consistency_prompt || '该作业没有保存提示词。'} onClose={()=>setPromptJob(null)} />}
+
       {!!statsModalJobId && <ConsistencyStatisticsDialog items={jobConflicts} onFilter={handleStatClick}
         onClose={()=>setStatsModalJobId('')} />}
 
-      {statusJobId && batches.some(job=>job.batch_id===statusJobId) && <JobStatusDrawer
-        job={batches.find(job=>job.batch_id===statusJobId)!.analysis} onClose={()=>setStatusJobId('')} />}
+      {statusJobId && batches.some(job=>job.analysis.root_run_id===statusJobId) && <JobStatusDrawer
+        job={batches.find(job=>job.analysis.root_run_id===statusJobId)!.analysis} onClose={()=>setStatusJobId('')} />}
     </div>
   );
 }

@@ -4,6 +4,7 @@ from pydantic import ValidationError, model_validator
 from pydantic_core import InitErrorDetails, PydanticCustomError
 
 from iad_core.advisory.conclusions import descriptive_conclusion
+from iad_core.consistency.group_analysis_conclusions import assertive_conclusion
 from iad_core.advisory.output_validation import repairable_output_error
 from iad_core.consistency.group_analysis_models import GroupAnalysisDraft, GroupAnalysisSummary
 from iad_core.consistency.group_models import FrozenAnalysisGroup
@@ -34,6 +35,11 @@ class GroupAnalysisContract(Generic[Response]):
 
         def wire_schema(cls, **options):
             encoded = self.encode(response_type.model_json_schema(**options))
+            pair = encoded['$defs'].get('GroupPairAssessment')
+            if pair:
+                field = pair['properties']['conclusion']
+                pair['properties']['conclusion'] = next(option for option in field['anyOf'] if option.get('type') != 'null')
+                pair['required'] = list(dict.fromkeys([*pair.get('required', []), 'conclusion']))
             order = ('assessments', 'conclusions', 'limitations', 'overall')
             encoded['properties'] = {key: encoded['properties'][key] for key in order if key in encoded['properties']}
             encoded['required'] = [key for key in order if key in encoded.get('required', [])]
@@ -69,12 +75,15 @@ class GroupAnalysisContract(Generic[Response]):
             *[(('limitations', index), text) for index, text in enumerate(value.limitations)]]
         if isinstance(value, GroupAnalysisDraft):
             for index, item in enumerate(value.assessments):
-                fields.extend([(('assessments', index, 'explanation'), item.explanation),
+                fields.extend([(('assessments', index, 'conclusion'), item.conclusion),(('assessments', index, 'explanation'), item.explanation),
                     *[(('assessments', index, 'findings', finding), text) for finding, text in enumerate(item.findings)]])
         errors: list[InitErrorDetails] = []
         for location, text in fields:
             try:
-                descriptive_conclusion(text)
+                if text is None:
+                    raise repairable_output_error('missing_consistency_conclusion', '每个候选必须由模型给出conclusion简短结论，分析写入explanation，不能仅提供内部verdict')
+                is_conclusion = location == ('overall','text') or location[-1] == 'conclusion'
+                (assertive_conclusion if is_conclusion else descriptive_conclusion)(text)
             except PydanticCustomError as error:
                 errors.append(InitErrorDetails(type=error, loc=location, input=text))
         if errors:

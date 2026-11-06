@@ -15,6 +15,7 @@ import {createIadHttpHandler} from '../lib/server/routes/index.js';
 test('public HTTP runs frozen exploration and mining batches and persists criterion assessments', {timeout:30000}, async()=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-analysis-batches-'));
   execFileSync(resolvePythonPath(),[fileURLToPath(new URL('fixtures/knowledge_dataset.py',import.meta.url)),root,'--folder']);
+  await fs.copyFile(path.join(root,'folder-dataset/OK/batch/part-0.png'),path.join(root,'folder-dataset/unknown/part-3.png'));
   const unknownStages=new Set();
   const model=http.createServer(async(req,res)=>{
     let raw='';for await(const chunk of req)raw+=chunk;
@@ -30,8 +31,8 @@ test('public HTTP runs frozen exploration and mining batches and persists criter
       const scope=JSON.parse(prompt.split('冻结图组：')[1].split('\n请根据图像')[0]);
       const references=Object.entries(scope.candidates).map(([candidate_id,item])=>({candidate_id,
         comparison:{result_id:item.comparison.result_id,evidence_id:item.comparison.evidence_id}}));
-      result={overall:{verdict:'UNCERTAIN',text:'当前标注需核对',references},
-        assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'UNCERTAIN',explanation:'保留比较限制',findings:[]})),
+      result={overall:{verdict:'UNCERTAIN',text:'缺少标注对象对应依据',references},
+        assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'UNCERTAIN',conclusion:'缺少标注对象对应依据',explanation:'保留比较限制',findings:[]})),
         conclusions:[{text:'逐批核对实际图像与标签',references}],limitations:[]};
     }
     else if(body.response_format.json_schema.name==='KnowledgeDiscoveryLinks'){
@@ -97,11 +98,11 @@ test('public HTTP runs frozen exploration and mining batches and persists criter
     const secondDataset=await post('/datasets/import',{format:'folder_classification',name:'第二子集',root_dir:secondRoot,rules,preview_fingerprint:secondPreview.preview_fingerprint});
     const request={submission_id:randomUUID(),analysis_kind:'exploration',dataset_ids:[dataset.dataset_id,secondDataset.dataset_id],initial_batch_size:3,batch_size:2};
     const grouped=await terminal('analysis',await post('/analysis/start',request));
-    assert.equal(grouped.completed,8);assert.equal(grouped.dataset_results.length,2);
+    assert.equal(grouped.completed,10);assert.equal(grouped.dataset_results.length,2);
     assert.equal((await post('/analysis/start',request)).run_id,grouped.run_id);
     for(const datasetId of request.dataset_ids){
       const list=await get(`/analysis/jobs?dataset_id=${datasetId}&analysis_kind=exploration`);
-      assert.equal(list.jobs.length,1);assert.equal(list.jobs[0].completed,8);
+      assert.equal(list.jobs.length,1);assert.equal(list.jobs[0].completed,10);
       assert.ok(!('request' in list.jobs[0]),'Job lists omit the full frozen source manifest');
     }
     const results=await get('/analysis/results/'+grouped.run_id);

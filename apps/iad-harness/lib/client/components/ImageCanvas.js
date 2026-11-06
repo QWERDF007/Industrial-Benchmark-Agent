@@ -1,5 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Select } from './Select.js';
+import { ImageQualityBadge } from './ImageQualityBadge.js';
 import { IconButton } from "./IconButton.js";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { FloatingMenu } from "./FloatingMenu.js";
@@ -12,7 +13,7 @@ import { useWorkspace } from "../workspace.js";
 const emptyHover = { ids: [], dismissed: false, x: 0, y: 0 };
 const minScale = 0.02, maxScale = 16;
 export function AnnotatedImage({ image, visible = true, onLoad }) {
-    return _jsxs("div", { className: "iad-image-frame", children: [_jsx(MediaImage, { src: image.src, alt: image.title, width: image.width, height: image.height, "data-media-label": "\u56FE\u50CF", draggable: false, onLoad: onLoad }), visible && image.annotationLayer && _jsx(AnnotationLayer, { source: image.annotationLayer })] });
+    return _jsxs("div", { className: "iad-image-frame", children: [_jsx(MediaImage, { src: image.src, alt: image.title, width: image.width, height: image.height, "data-media-label": "\u56FE\u50CF", draggable: false, onLoad: onLoad }), visible && image.annotationLayer && _jsx(AnnotationLayer, { source: image.annotationLayer }), _jsx(ImageQualityBadge, { label: image.qualityLabel })] });
 }
 export function ImageCanvas({ image, navigation, onExpand, control, focusRegion, overlay }) {
     const { workspace } = useWorkspace();

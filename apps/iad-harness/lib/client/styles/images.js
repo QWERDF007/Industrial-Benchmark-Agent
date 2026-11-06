@@ -1,4 +1,7 @@
 export const imagesStyles = `
+.iad-image-quality{position:absolute;left:9px;top:9px;z-index:2;padding:4px 9px;border-radius:4px;background:var(--iad-surface);color:var(--iad-text);font-weight:650;pointer-events:none}
+.iad-image-quality[data-quality="OK"]{color:var(--iad-success,#24844b)}
+.iad-image-quality[data-quality="NG"]{color:var(--iad-danger,#c44545)}
 .main{width:100%;min-width:0;padding:0}
 .crumb{color:#8190a6;font-size:11px;margin:0 0 2px}
 .heading-side{font-size:12px;color:#8190a6}

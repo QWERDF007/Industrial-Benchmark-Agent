@@ -13,6 +13,7 @@ class GroupAnalysisRecord(AnalysisModel):
     run_id: str
     status: JobStatus
     verdict: ModelAssessmentVerdict | None
+    conclusion: str | None = None
 
     @property
     def model_state(self) -> ModelAssessmentState:
@@ -57,11 +58,12 @@ class GroupAnalysisStates:
                 json_extract(payload_json,'$.request.frozen_group.facts_state') facts_state,
                 json_extract(payload_json,'$.request.group_fingerprint') fingerprint,
                 json_extract(payload_json,'$.request.analysis_schema') schema,
-                json_extract(payload_json,'$.group_analysis.overall.verdict') verdict
+                json_extract(payload_json,'$.group_analysis.overall.verdict') verdict,
+                json_extract(payload_json,'$.group_analysis.overall.text') conclusion
                 FROM json_each(?) wanted CROSS JOIN job_runs WHERE job_type='CONSISTENCY_ANALYSIS' AND deleted_at IS NULL AND '''+clause+' ORDER BY job_runs.id DESC',args).fetchall()
         selected = {}
         for row in rows:
             for identity in grouped.get((row['kind'],row['group_id']),[]):
                 if identity.key not in selected and identity.fingerprint(row['schema'],facts_state=row['facts_state']) == row['fingerprint']:
-                    selected[identity.key] = GroupAnalysisRecord(run_id=row['job_id'],status=row['status'],verdict=row['verdict'])
+                    selected[identity.key] = GroupAnalysisRecord(run_id=row['job_id'],status=row['status'],verdict=row['verdict'],conclusion=row['conclusion'])
         return selected

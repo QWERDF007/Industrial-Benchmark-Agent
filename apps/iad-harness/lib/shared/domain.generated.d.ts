@@ -1255,6 +1255,7 @@ export type DefectVersionId1 = string | null;
 export type Kind13 = ("normal" | "defect") | null;
 export type KnowledgeVersionId6 = string | null;
 export type ExplorationVersionId1 = string | null;
+export type ConsistencyPrompt = string | null;
 export type InspectedRegions1 = number | null;
 export type PlannedRegions1 = number | null;
 export type CompletedBatches = number | null;
@@ -1523,6 +1524,7 @@ export type DefectVersionId2 = string | null;
 export type Kind14 = ("normal" | "defect") | null;
 export type KnowledgeVersionId8 = string | null;
 export type ExplorationVersionId2 = string | null;
+export type ConsistencyPrompt1 = string | null;
 export type InspectedRegions2 = number | null;
 export type PlannedRegions2 = number | null;
 export type CompletedBatches1 = number | null;
@@ -2286,8 +2288,11 @@ export type CandidateCount = number;
 export type DatasetCount1 = number;
 export type PairCount3 = number;
 export type DifferenceTypes = ("QUALITY_LABEL" | "CATEGORY" | "ONE_SIDED_REGION" | "GEOMETRY" | "SPLIT_MERGE" | "AMBIGUOUS_MATCH" | "POLICY_UNCONFIRMED" | "ANNOTATION_UNREADABLE")[];
+export type ConflictCategory = "类别不一致" | "位置差异" | "多类别" | "少类别" | "拆分" | "合并" | "对应关系差异";
+export type ConflictCategories = ConflictCategory[];
 export type ConfirmedConflict3 = boolean;
 export type ModelState = "NOT_ANALYZED" | "RUNNING" | "FAILED" | "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
+export type ModelConclusion1 = string | null;
 export type ReviewState2 = "pending" | "confirmed" | "rejected";
 export type Items13 = GalleryItem[];
 export type Total18 = number;
@@ -2310,7 +2315,7 @@ export type Status31 = ("PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILE
 export type RunId23 = string | null;
 export type ModelName8 = string | null;
 /**
- * 仅用一句短语概括整组差异类型，如标注类别不同、标注位置或范围不同、缺少或多出标注；多种差异短语合并，其他发现据实概括。不写位置、数值、依据、建议或verdict，详细分析写入conclusions
+ * 确定性的简短结论，直接指出类别、位置、增减、拆分、合并等实际差异；多种差异并列，没有差异则明确写未发现标注差异。不写差在哪里、数值、原因、建议，不使用基本一致、可能、疑似、待核对等模糊话术
  */
 export type Text6 = string;
 /**
@@ -2350,12 +2355,16 @@ export type Limitations17 = string[];
 export type Assessments = [GroupPairAssessment, ...GroupPairAssessment[]];
 export type CandidateId1 = string;
 /**
- * 当前候选的比较结论，使用本次提交的完整提示词判断
+ * 当前候选的内部检索判定，最终答案由conclusion陈述，explanation解释依据，不用该枚举标签代替结论
  */
 export type Verdict1 = "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
+export type Conclusion3 = string | null;
+/**
+ * 当前图对的分析依据，具体说明差异发生在哪一侧、哪个对象或区域，位置、类别、数量及拆分合并等实际变化，解释conclusion；无差异时说明各项对应。不得用基本一致、可能、疑似、待核对等话术替代判断。真实缺失证据须指明缺失内容及其阻断的判断
+ */
 export type Explanation = string;
 /**
- * 自由描述实际发现的问题，不受程序差异分类限制；视觉基本一致时可为空
+ * 自由描述实际发现的问题，不受程序差异分类限制；未发现差异时可为空
  *
  * @maxItems 100
  */
@@ -4030,6 +4039,7 @@ export interface JobSnapshot {
     exploration_prompt: FrozenExplorationPrompt | null;
     exploration_request: ExplorationStart | null;
     mining_prompt: FrozenMiningPrompt | null;
+    consistency_prompt: ConsistencyPrompt;
     inspected_regions: InspectedRegions1;
     planned_regions: PlannedRegions1;
     completed_batches: CompletedBatches;
@@ -4413,6 +4423,7 @@ export interface JobView {
     exploration_prompt: FrozenExplorationPrompt | null;
     exploration_request: ExplorationStart | null;
     mining_prompt: FrozenMiningPrompt | null;
+    consistency_prompt: ConsistencyPrompt1;
     inspected_regions: InspectedRegions2;
     planned_regions: PlannedRegions2;
     completed_batches: CompletedBatches1;
@@ -5467,8 +5478,10 @@ export interface GalleryItem {
     dataset_count: DatasetCount1;
     pair_count: PairCount3;
     difference_types: DifferenceTypes;
+    conflict_categories: ConflictCategories;
     confirmed_conflict: ConfirmedConflict3;
     model_state: ModelState;
+    model_conclusion: ModelConclusion1;
     review_state: ReviewState2;
 }
 export interface GalleryImage {
@@ -5542,6 +5555,7 @@ export interface GroupAnalysisConclusion {
 export interface GroupPairAssessment {
     candidate_id: CandidateId1;
     verdict: Verdict1;
+    conclusion: Conclusion3;
     explanation: Explanation;
     findings: Findings4;
 }

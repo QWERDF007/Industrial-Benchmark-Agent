@@ -107,6 +107,7 @@ class JobView(AnalysisModel):
     exploration_prompt: Optional[FrozenExplorationPrompt] = None
     exploration_request: Optional[ExplorationStart] = None
     mining_prompt: Optional[FrozenMiningPrompt] = None
+    consistency_prompt: Optional[str] = None
     inspected_regions: Optional[int] = None
     planned_regions: Optional[int] = None
     completed_batches: Optional[int] = None

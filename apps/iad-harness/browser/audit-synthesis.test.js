@@ -29,6 +29,7 @@ for i in range(3):
   const bundle = await build({stdin: {contents: `
     import React from 'react';import {createRoot} from 'react-dom/client';
     import {AuditSampleDialog} from './src/client/components/AuditSampleDialog.tsx';
+    import {ConsistencyConflictDialog} from './src/client/components/ConsistencyConflictDialog.tsx';
     import {DatasetReport} from './src/client/components/DatasetReport.tsx';
     import {AuditPage} from './src/client/components/AuditPage.tsx';
     import {KnowledgePage} from './src/client/components/KnowledgePage.tsx';
@@ -36,10 +37,11 @@ for i in range(3):
     import {WorkbenchModelProvider} from './src/client/models.tsx';
     import {workbenchStyles} from './src/client/styles.ts';
     const workspace=new Workspace(null);const style=document.createElement('style');style.textContent=workbenchStyles;document.head.append(style);
-    function App(){const [data,setData]=React.useState(null),[open,setOpen]=React.useState(false),[jobs,setJobs]=React.useState(false),[knowledge,setKnowledge]=React.useState(false);
+    function App(){const [data,setData]=React.useState(null),[open,setOpen]=React.useState(false),[jobs,setJobs]=React.useState(false),[knowledge,setKnowledge]=React.useState(false),[compare,setCompare]=React.useState(false);
       React.useEffect(()=>{fetch('/fixture').then(r=>r.json()).then(setData)},[]);
       return <WorkspaceContext.Provider value={workspace}><WorkbenchModelProvider><div id={jobs?undefined:'audit-page'} className="iad-workbench" data-page="industrial-audit">
         <button id="open" onClick={()=>setOpen(true)}>查看审计</button>{open&&data&&<AuditSampleDialog sample={data.sample} taskId={data.taskId} onClose={()=>setOpen(false)}/>}
+        {data?.conflict&&<button id="compare" onClick={()=>setCompare(true)}>查看一致性</button>}{compare&&data&&<ConsistencyConflictDialog conflict={data.conflict} items={[data.conflict]} queryId={data.queryId} onSelect={()=>{}} onClose={()=>setCompare(false)} onReviewed={()=>{}}/>}
         <button id="knowledge" onClick={()=>setKnowledge(true)}>知识挖掘</button><button id="jobs" onClick={()=>setJobs(true)}>审计作业</button>
         {data&&(knowledge?<KnowledgePage dataset={data.dataset} refreshRevision={0}/>:jobs?<AuditPage dataset={data.dataset} datasets={[data.dataset]} groups={[]} refreshRevision={0} onDatasetsChanged={()=>{}}/>
           :<DatasetReport datasetIds={data.datasetIds} onSample={()=>setOpen(true)}/>)}</div></WorkbenchModelProvider></WorkspaceContext.Provider>;
@@ -61,7 +63,7 @@ for i in range(3):
       let result;
       if (body.response_format.json_schema.name === 'KnowledgeDraft') result = {summary: '主体外观规律', checks: [{title: '外观规律', subject: '主体', location: '表面', criterion: '可见连续表面', allowed_variations: [], status: 'supported', limitations: [], support_evidence_ids: refs, counter_evidence_ids: []}], suspects: [], limitations: []};
       else if (body.response_format.json_schema.name === 'JointAnalysis') {
-        if(failing.has(views[0].annotations[0]?.sample_id)) {
+        if(failing.has(views[0].annotations?.[0]?.sample_id)) {
           res.statusCode=503;res.setHeader('Content-Type','application/json');res.end(JSON.stringify({error:'该图像的模型调用失败'}));return;
         }
         const knowledge = JSON.parse(text.split('冻结知识：')[1].split('\n')[0]);
@@ -73,7 +75,7 @@ for i in range(3):
         const scope=JSON.parse(text.split(visual?'冻结图组：':'冻结批次分析：')[1].split('\n请根据图像')[0]);
         const references=visual?Object.entries(scope.candidates).map(([candidate_id,item])=>({candidate_id,
           comparison:{result_id:item.comparison.result_id,evidence_id:item.comparison.evidence_id}})):scope.summaries.flatMap(item=>item.result.overall.references);
-        result={...(visual?{assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'MATERIAL',explanation:'对应标注类别不同。',findings:['标注类别不同']}))}:{}),
+        result={...(visual?{assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'MATERIAL',conclusion:'标注类别不同',explanation:'对应标注类别不同。',findings:['标注类别不同']}))}:{}),
           overall:{verdict:'MATERIAL',text:'标注类别不同',references},conclusions:[{text:'主图与候选的像素相同，原始标注类别不同。',references}],limitations:[]};
       } else if (body.response_format.json_schema.name === 'DatasetReportConclusion') {
         assert.ok(text.startsWith('本次完整报告提示词：核对冻结数据、独立依据和适用范围。\n冻结报告事实：'));
@@ -151,6 +153,7 @@ for i in range(3):
     assert.equal(evidenceStyle.border,'1px','各部分恢复原型分割线');
 
     await driver.wait(async () => (await dialog.findElements(By.css('.iad-image-pair .iad-annotation-layer rect'))).length === 2, 10000);
+    assert.equal((await dialog.findElements(By.css('.audit-evidence-item h4,.audit-original-label,.iad-image-quality'))).length,0,'LabelMe证据仅保留文件名及具体类别矩形');
     const expand = await dialog.findElements(By.css('.iad-image-pair button[aria-label^="放大"]'));
     assert.equal(expand.length, 2);
     await driver.executeScript('arguments[0].scrollIntoView({block:"center"})', expand[1]);await expand[1].click();
@@ -290,6 +293,44 @@ for i in range(3):
     assert.equal((await driver.findElements(By.css('meter,link[rel="stylesheet"]'))).length,0);
     await driver.executeAsyncScript('const done=arguments[arguments.length-1];requestAnimationFrame(()=>requestAnimationFrame(done))');
     await fs.writeFile(path.join(output,'report.png'),await driver.takeScreenshot(),'base64');
+    execFileSync(bridge.pythonPath,['-c',`import sys
+from pathlib import Path
+from PIL import Image
+p=Path(sys.argv[1])/'classification'
+for folder in ['OK','NG']:
+ (p/folder).mkdir(parents=True)
+ for i in range(2):Image.new('RGB',(640,480),(80+i*30,120,160)).save(p/folder/f'part-{i}.png')`,root]);
+    const preview=await bridge.execute('dataset_preview',{root_dir:path.join(root,'classification')});
+    const anomaly=await bridge.execute('dataset_import',{format:'folder_classification',name:'异常检测证据',root_dir:preview.root_dir,
+      rules:preview.items.map(({path,role})=>({path,role})),preview_fingerprint:preview.preview_fingerprint});
+    await wait('analysis_status',await bridge.execute('analysis_start',{request:{analysis_kind:'knowledge',dataset_ids:[anomaly.dataset_id],batch_size:4,
+      mining_prompt:{objective:'核对异常检测',directions:[],instruction:'核对完整原图。'}}}));
+    const pair=await bridge.execute('consistency_compare',{sample_a:anomaly.dataset_id+':OK/part-0.png',sample_b:anomaly.dataset_id+':NG/part-0.png'});
+    const anomalyAudit=await wait('audit_status',await bridge.execute('audit_start',{dataset_id:anomaly.dataset_id,sample_ids:[anomaly.dataset_id+':OK/part-0.png']}));
+    const report=await bridge.execute('consistency_report',{selection:{kind:'scope',subjects:{kind:'datasets',dataset_ids:[anomaly.dataset_id]}}});
+    const gallery=await bridge.execute('consistency_gallery',{query_id:report.page.query_id,kind:'conflicts'});
+    assert.deepEqual(gallery.items[0].conflict_categories,['类别不一致'],'异常检测统一归为类别不一致');
+    const item=gallery.items[0],media=`/api/iad/consistency/evidence/${item.anchor.evidence_id}/media/${item.anchor.side}-original`;
+    fixture={sample:(await bridge.execute('audit_job_samples',{run_id:anomalyAudit.run_id})).items[0],taskId:anomaly.task_id,datasetIds:[anomaly.dataset_id],dataset:anomaly,
+      queryId:report.page.query_id,conflict:{id:item.group_id,type:'类别不一致',types:item.conflict_categories,filename:'OK/part-0.png',url:media,fullUrl:media,
+        sourceWidth:640,sourceHeight:480,memberCount:item.member_count,review:item.review_state,model:{status:'unknown',modelType:'未分析'},rawItem:item}};
+    await driver.get(base);await(await driver.wait(until.elementLocated(By.id('open')),10000)).click();
+    const anomalyDialog=await driver.wait(until.elementLocated(By.css('dialog[aria-label="图像审计详情"]')),10000);
+    const ngCandidate=await driver.wait(until.elementLocated(By.css('button[aria-label="切换为候选图像 NG/part-0.png"]')),10000);
+    await ngCandidate.click();
+    await driver.wait(async()=>JSON.stringify(await Promise.all((await anomalyDialog.findElements(By.css('.iad-image-pair .iad-image-quality'))).map(e=>e.getText())))==='["OK","NG"]',10000);
+    assert.equal((await anomalyDialog.findElements(By.css('.iad-image-pair .iad-annotation-layer,.audit-original-label,.audit-evidence-item h4'))).length,0);
+    await anomalyDialog.findElement(By.css('button[aria-label="放大对照图像"]')).click();
+    await driver.wait(until.elementLocated(By.css('.full-stage>.iad-image-quality[data-quality="NG"]')),5000);
+    assert.equal((await driver.findElements(By.css('.full-image-world .iad-annotation-layer'))).length,0);
+    await driver.actions().sendKeys(Key.ESCAPE).perform();await driver.actions().sendKeys(Key.ESCAPE).perform();
+    await driver.findElement(By.id('compare')).click();
+    const compare=await driver.wait(until.elementLocated(By.id('dc-compare-mask')),10000);
+    await driver.wait(async()=>JSON.stringify(await Promise.all((await compare.findElements(By.css('.dc-compare .iad-image-quality'))).map(e=>e.getText())))==='["OK","NG"]',10000);
+    assert.equal((await compare.findElements(By.css('.dc-compare .iad-annotation-layer,.dc-source-label,.dc-compare-title'))).length,0);
+    await compare.findElement(By.css('[data-dc="zoom-candidate"]')).click();
+    await driver.wait(until.elementLocated(By.css('.full-stage>.iad-image-quality[data-quality="NG"]')),5000);
+    assert.equal((await driver.findElements(By.css('.full-image-world .iad-annotation-layer'))).length,0);
   } catch(error) {
     console.error(error.message);
     if(driver){console.error(await driver.executeScript('return {active:document.activeElement?.outerHTML.slice(0,300),dialogs:[...document.querySelectorAll("dialog")].map(d=>({open:d.open,modal:d.matches(":modal"),label:d.getAttribute("aria-label")}))}'));

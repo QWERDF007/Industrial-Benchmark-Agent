@@ -75,9 +75,9 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
                     assert actual.convert('RGB').getextrema()==((0,0),(0,0),(255,255)), '模型只接收原图/原始裁剪像素，不得绘制框或文字'
         entered.set()
         assert release.wait(10)
-        text = '标注类别不同' if verdict == 'MATERIAL' else '标注视觉基本一致'
+        text = '标注类别不同' if verdict == 'MATERIAL' else '未发现标注差异'
         result = {'assessments': [{'candidate_id':wire_citation['candidate_id'],
-            'verdict':verdict,'explanation':text,'findings':[text] if verdict == 'MATERIAL' else []}],
+            'verdict':verdict,'conclusion':text,'explanation':text,'findings':[text] if verdict == 'MATERIAL' else []}],
             'overall':{'verdict':verdict,'text':text,'references':[wire_citation.copy()]},
             'conclusions': [{'text': text, 'references': [wire_citation.copy()]}], 'limitations': []}
         return httpx.Response(200, json={'id': 'real-protocol-test', 'model': 'test-mllm', 'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
@@ -168,11 +168,11 @@ def test_group_assessments_require_full_unique_candidates_and_their_direct_evide
         frozen=json.JSONDecoder().raw_decode(body['messages'][0]['content'][0]['text'].split('冻结图组：')[1])[0]
         refs=[dict(candidate_id=sid,comparison=dict(result_id=member['comparison']['result_id'],evidence_id=member['comparison']['evidence_id']))
             for sid,member in frozen['candidates'].items()]
-        assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',explanation='需核对',findings=[]) for ref in refs]
+        assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',conclusion='缺少直接比较证据',explanation='当前候选缺少固定主图的直接比较证据',findings=[]) for ref in refs]
         if mode=='missing': assessments.pop()
         elif mode=='duplicate': assessments[1]=assessments[0].copy()
         else: refs[0]={**refs[0],'comparison':refs[1]['comparison']}
-        result=dict(assessments=assessments,overall=dict(verdict='UNCERTAIN',text='整组需核对',references=[refs[0]]),
+        result=dict(assessments=assessments,overall=dict(verdict='UNCERTAIN',text='缺少直接比较证据',references=[refs[0]]),
             conclusions=[dict(text='需逐图核对',references=[refs[0]])],limitations=[])
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
     runtime=WorkbenchRuntime(db,VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
@@ -194,7 +194,7 @@ def test_group_assessments_require_full_unique_candidates_and_their_direct_evide
 
 
 @pytest.mark.parametrize('corrected', [True, False])
-@pytest.mark.parametrize('error_kind', ['candidate_coverage', 'crossed_comparison', 'overall_verdict', 'descriptive_text'])
+@pytest.mark.parametrize('error_kind', ['candidate_coverage', 'crossed_comparison', 'overall_verdict', 'descriptive_text', 'assertive_text', 'missing_conclusion'])
 def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_output(dataset, tmp_path, error_kind, corrected):
     from copy import deepcopy
     from shutil import copyfile
@@ -226,13 +226,18 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
                 foreign = next(item for item in wire_refs if item['candidate_id']!=ref['candidate_id'])['comparison']['evidence_id']
                 assert all(foreign not in item['properties']['evidence_id']['enum'] for item in comparisons)
         result = dict(overall=dict(verdict='MATERIAL', text='标注存在差异', references=deepcopy(wire_refs)),
-            assessments=[dict(candidate_id=ref['candidate_id'], verdict='MATERIAL', explanation='对应标注存在差异', findings=['标注差异']) for ref in wire_refs],
+            assessments=[dict(candidate_id=ref['candidate_id'], verdict='MATERIAL', conclusion='标注类别不同', explanation='对应标注存在差异', findings=['标注差异']) for ref in wire_refs],
             conclusions=[dict(text='保留对应标注的差异与实际证据', references=deepcopy(wire_refs))], limitations=[])
         if len(calls) == 1 or not corrected:
             if error_kind == 'candidate_coverage':
                 result['assessments'].pop()
             elif error_kind == 'crossed_comparison':
                 result['overall']['references'][0]['comparison'] = deepcopy(wire_refs[1]['comparison'])
+            elif error_kind == 'missing_conclusion':
+                result['assessments'][0].pop('conclusion')
+            elif error_kind == 'assertive_text':
+                result['overall']['text'] = '标注视觉基本一致'
+                result['assessments'][0]['conclusion'] = '标注可能一致，仍待核对'
             elif error_kind == 'descriptive_text':
                 result['overall']['text'] = '候选@c1存在标注差异'
                 result['conclusions'][0]['text'] = 'part.png 的标注存在差异'
@@ -263,6 +268,11 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
         assert calls[1]['messages'][1]['content']
         if error_kind=='overall_verdict':
             assert 'MATERIAL' in feedback['schema_validation_errors'][0]['msg'] and 'EQUIVALENT' in feedback['schema_validation_errors'][0]['msg']
+        if error_kind=='missing_conclusion':
+            assert feedback['schema_validation_errors'][0]['loc']==['assessments',0,'conclusion']
+        if error_kind=='assertive_text':
+            assert {tuple(issue['loc']) for issue in feedback['schema_validation_errors']} == {('overall','text'),('assessments',0,'conclusion')}
+            assert json.loads(calls[1]['messages'][1]['content'])['overall']['text']=='标注视觉基本一致', '必须由模型重新给出明确结论，不能把原文字符串替换成确定语气'
         if error_kind=='descriptive_text':
             assert {tuple(issue['loc']) for issue in feedback['schema_validation_errors']} == {
                 ('overall','text'),('conclusions',0,'text'),('assessments',0,'explanation'),
@@ -305,9 +315,9 @@ def test_selected_workflow_owns_group_results_across_prompts_running_jobs_and_co
         refs=[dict(candidate_id=sid,comparison=dict(result_id=member['comparison']['result_id'],
             evidence_id=member['comparison']['evidence_id'])) for sid,member in frozen['candidates'].items()]
         verdict='MATERIAL' if text.startswith('作业甲') else 'UNCERTAIN'
-        label='标注存在差异' if verdict=='MATERIAL' else '对应依据待核对'
+        label='标注存在差异' if verdict=='MATERIAL' else '缺少直接比较依据'
         result=dict(overall=dict(verdict=verdict,text=label,references=refs),
-            assessments=[dict(candidate_id=ref['candidate_id'],verdict=verdict,explanation=label,findings=[]) for ref in refs],
+            assessments=[dict(candidate_id=ref['candidate_id'],verdict=verdict,conclusion=label,explanation=label,findings=[]) for ref in refs],
             conclusions=[dict(text=label,references=refs)],limitations=[])
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
 

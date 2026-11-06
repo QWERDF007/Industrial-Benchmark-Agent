@@ -111,7 +111,6 @@ export const auditStyles = `#audit-page { --audit-ink:#172338; --audit-border:#d
 #audit-page .audit-analysis-sections .iad-image-pair{gap:18px;align-items:start;margin:0}
 #audit-page .audit-evidence-item{min-width:0;border:1px solid var(--audit-border);background:var(--iad-surface);border-radius:var(--iad-radius);padding:11px;position:relative}
 #audit-page .audit-evidence-item h4{margin:0 0 10px;font-size:14px;font-weight:700}
-#audit-page .audit-original-label{position:absolute;left:9px;top:9px;max-width:calc(100% - 18px);padding:4px 7px;pointer-events:none;z-index:2;border:1px solid #dbe2eb;border-radius:4px;background:rgba(255,255,255,.92);font-size:12px;color:var(--audit-ink)}
 @media(max-width:750px){#audit-page .audit-analysis-sections .iad-image-pair{grid-template-columns:1fr}}
 #audit-page .audit-dialog-foot{border-top:1px solid var(--audit-border);min-height:58px;display:flex;align-items:center;justify-content:flex-end;gap:9px;padding:10px 24px}
 #audit-page .audit-lightbox{position:fixed;inset:0;z-index:350;background:#111b2fe8;display:flex;align-items:center;justify-content:center;padding:60px 75px}

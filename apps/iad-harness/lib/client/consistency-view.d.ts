@@ -2,6 +2,7 @@ import type { GalleryItem, GalleryMember, GalleryReference } from '../shared/dom
 export interface ConflictCardItem {
     id: string;
     type: string;
+    types: GalleryItem['conflict_categories'];
     filename: string;
     url: string;
     fullUrl: string;

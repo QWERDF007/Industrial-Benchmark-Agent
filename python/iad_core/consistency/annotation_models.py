@@ -8,6 +8,7 @@ from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.models import Count, DifferenceType, GalleryDifferenceKind, Identifier
 from iad_core.consistency.policy import PolicyRelation
 from iad_core.storage.models import Annotation
+from iad_core.consistency.conflict_categories import ConflictCategory
 
 
 ANNOTATION_DIFFERENCE_CATEGORIES: dict[DifferenceType, GalleryDifferenceKind] = {
@@ -76,6 +77,23 @@ class AnnotationComparison(AnalysisModel):
     @property
     def factual_difference_types(self) -> list[DifferenceType]:
         return sorted({difference.type for difference in self.factual_differences})
+
+    @property
+    def conflict_categories(self) -> list[ConflictCategory]:
+        categories = set()
+        for difference in self.factual_differences:
+            match difference.type:
+                case 'QUALITY_LABEL' | 'CATEGORY':
+                    categories.add(ConflictCategory.CATEGORY)
+                case 'GEOMETRY':
+                    categories.add(ConflictCategory.POSITION)
+                case 'ONE_SIDED_REGION':
+                    categories.add(ConflictCategory.EXTRA if difference.left else ConflictCategory.MISSING)
+                case 'SPLIT_MERGE':
+                    categories.add(ConflictCategory.SPLIT if len(difference.left)>len(difference.right) else ConflictCategory.MERGE)
+                case 'AMBIGUOUS_MATCH':
+                    categories.add(ConflictCategory.CORRESPONDENCE)
+        return [category for category in ConflictCategory if category in categories]
 
     @classmethod
     def json_difference_types(cls, annotation_json: str) -> str:

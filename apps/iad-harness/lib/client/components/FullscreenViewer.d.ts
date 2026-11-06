@@ -1,3 +1,4 @@
+import type { ImageQualityLabel } from '../dataset-image-annotations.js';
 import React from "react";
 import { type AnnotationLayerSource, type ImageBoxAnnotation } from './AnnotationLayer.js';
 import type { VisualEvidence } from '../../shared/contracts.js';
@@ -5,9 +6,10 @@ import type { ImageNavigation } from './ImageCanvas.js';
 import type { InspectionTransform } from '../inspection.js';
 export type FullscreenViewerAnnotation = ImageBoxAnnotation;
 export interface FullscreenViewerItem {
+    qualityLabel?: ImageQualityLabel;
     sampleId?: string;
     evidence?: VisualEvidence;
-    annotationLayer?: AnnotationLayerSource;
+    annotationLayer?: AnnotationLayerSource | null;
     id: string;
     title: string;
     imageUrl: string;

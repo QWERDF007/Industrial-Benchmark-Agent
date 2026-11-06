@@ -58,7 +58,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
       const references=visual?Object.entries(scope.candidates).map(([candidate_id,item])=>({candidate_id,
         comparison:{result_id:item.comparison.result_id,evidence_id:item.comparison.evidence_id}}))
         :scope.summaries.flatMap(item=>item.result.overall.references);
-      const result={...(visual?{assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'MATERIAL',explanation:'对应标注的原始类别值不同。',findings:['标注类别不同']}))}:{}),
+      const result={...(visual?{assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'MATERIAL',conclusion:'标注类别不同',explanation:'对应标注的原始类别值不同。',findings:['标注类别不同']}))}:{}),
         overall:{verdict:'MATERIAL',text:'标注类别不同',references},conclusions:[{text:'固定主图与候选的像素相同，对应标注的原始类别值不同。',references}],limitations:[]};
       res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({id:'local-group-analysis',model:'local-protocol-model',choices:[{finish_reason:'stop',message:{content:JSON.stringify(result)}}]}));
     }
@@ -72,7 +72,8 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
   });await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   let driver;
   try{
-    const workflow=await bridge.execute('analysis_start',{request:{analysis_kind:'consistency',mode:'exact',dataset_ids:[dataset.dataset_id]},
+    const frozenPrompt='逐项检查类别和位置。\n保留完整换行与创建时提示词。';
+    const workflow=await bridge.execute('analysis_start',{request:{analysis_kind:'consistency',mode:'exact',dataset_ids:[dataset.dataset_id],instruction:frozenPrompt},
       _model_execution:{profile:{endpoint:`http://127.0.0.1:${server.address().port}/v1`,model_id:'local-protocol-model',capacity_mode:'vllm_tokenize',max_visual_inputs:16}}});
     let workflowState;
     do {await new Promise(resolve=>setTimeout(resolve,20));workflowState=await bridge.execute('analysis_status',{run_id:workflow.run_id});}while(['PENDING','RUNNING'].includes(workflowState.status));
@@ -80,7 +81,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     batch=await bridge.execute('consistency_status',{batch_id:workflowState.program_batch_id});
     expectedReport=await bridge.execute('consistency_report',{selection:{kind:'batch',batch_id:batch.batch_id},relation:'EXACT',annotation_differences_only:true});
     expectedGallery=await bridge.execute('consistency_gallery',{query_id:expectedReport.page.query_id,kind:'conflicts',order:'members'});
-    const options=new firefox.Options().addArguments('-headless','--remote-allow-system-access');if(process.env.FIREFOX_PATH)options.setBinary(process.env.FIREFOX_PATH);
+    const options=new firefox.Options().addArguments('-headless','--remote-allow-system-access').setPreference('dom.events.testing.asyncClipboard',true);if(process.env.FIREFOX_PATH)options.setBinary(process.env.FIREFOX_PATH);
     driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
     const start=`http://127.0.0.1:${server.address().port}/?${new URLSearchParams({iad:JSON.stringify({pageId:"industrial-consistency"})})}`;
     const element=selector=>driver.wait(until.elementLocated(By.css(selector)),10000);
@@ -120,7 +121,27 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     assert.ok(!programReads.includes('/api/iad/consistency/runs'),'列表只读取当前范围作业引用的程序批次，不重算全局历史批次');
     assert.ok(programReads.includes('/api/iad/consistency/runs/'+batch.batch_id));
     assert.deepEqual(await Promise.all((await operations.findElements(By.css('button'))).map(button=>button.getAttribute('aria-label'))),
-      ['查看统计结果',`删除检查作业 ${batch.batch_id}`],'作业操作与HTML原型一致，不添加检查作业详情入口');
+      ['查看提示词','查看统计结果',`删除检查作业 ${batch.batch_id}`],'作业操作保留提示词、统计及删除');
+    const promptButton=await operations.findElement(By.css('button[aria-label="查看提示词"]'));await promptButton.click();
+    const promptDrawer=await element('dialog[aria-label="查看提示词"]');
+    assert.equal(await promptDrawer.findElement(By.css('pre')).getText(),frozenPrompt);
+    assert.equal(await driver.executeScript('return arguments[0].getBoundingClientRect().width',promptDrawer),560);
+    assert.equal(await driver.executeScript('return getComputedStyle(arguments[0]).whiteSpace',await promptDrawer.findElement(By.css('pre'))),'pre-wrap');
+    await promptDrawer.findElement(By.xpath('.//button[normalize-space(.)="复制提示词"]')).click();
+    await driver.wait(async()=>(await promptDrawer.getText()).includes('已复制'),5000);
+    assert.equal(await driver.executeAsyncScript('const done=arguments[0];navigator.clipboard.readText().then(done,e=>done(String(e)))'),frozenPrompt);
+    await driver.executeScript('window.actualClipboard=navigator.clipboard;Object.defineProperty(navigator,"clipboard",{configurable:true,value:undefined})');
+    await promptDrawer.findElement(By.xpath('.//button[normalize-space(.)="复制提示词"]')).click();
+    assert.equal(await driver.executeAsyncScript('const done=arguments[0];window.actualClipboard.readText().then(done,e=>done(String(e)))'),frozenPrompt,'HTTP局域网缺少Clipboard API时仍能复制完整提示词');
+    await driver.executeScript('delete navigator.clipboard');
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    await driver.wait(async()=>(await driver.findElements(By.css('dialog[aria-label="查看提示词"]'))).length===0,5000);
+    assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',promptButton),true);
+    await promptButton.click();await element('dialog[aria-label="查看提示词"]');
+    await driver.actions().move({origin:'viewport',x:20,y:300}).click().perform();
+    await driver.wait(async()=>(await driver.findElements(By.css('dialog[aria-label="查看提示词"]'))).length===0,5000);
+    await promptButton.click();await element('dialog[aria-label="查看提示词"]');
+    await click('关闭查看提示词抽屉');
     assert.equal((await driver.findElements(By.css('dialog[aria-label="检查作业详情"]'))).length,0);
     const stats=await operations.findElement(By.css('button[aria-label="查看统计结果"]'));await stats.click();
     const statistics=await element('.dc-stats-dialog');
@@ -132,9 +153,11 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     await driver.wait(async()=>(await driver.findElements(By.css('dialog:modal'))).length===0,5000);
     assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',stats),true,'统计关闭后焦点回到操作按钮');
     const cards=()=>driver.findElements(By.css('[data-dc="open-conflict"]'));
+    assert.deepEqual(await Promise.all((await driver.findElements(By.css('[role="tablist"][aria-label="原始标注冲突类型"] [role="tab"]>span:first-child'))).map(tab=>tab.getText())),
+      ['全部冲突','类别不一致','位置差异','多类别','少类别','拆分','合并']);
     await driver.wait(async()=>(await cards()).length===expectedGallery.total,10000);
     assert.equal(reviewContextReads,0,'图库首次渲染不能逐卡片读取完整图像复核上下文');
-    for(const card of await cards())assert.match(await card.getAttribute('aria-label'),/模型结论：存在实质差异/);
+    for(const card of await cards())assert.match(await card.getAttribute('aria-label'),/模型结论：标注类别不同/);
     const cardLayout=await driver.executeScript(`const card=document.querySelector('[data-dc="open-conflict"]'),image=card.querySelector('img'),values=card.querySelector('[aria-label="原始结论与模型结论"]');
       return {imageHeight:Math.round(image.getBoundingClientRect().height),values:values?[...values.children].map(e=>({text:e.textContent,y:e.getBoundingClientRect().top,align:getComputedStyle(e).textAlign})):[]};`);
     assert.equal(cardLayout.imageHeight,140,'V65冲突卡片保留140px图像区');
@@ -142,12 +165,13 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     assert.equal(cardLayout.values[0].y,cardLayout.values[1].y,'两种结论在卡片底部同排显示');
     assert.deepEqual(cardLayout.values.map(value=>value.align),['left','right']);
     const first=await element(`[data-dc="open-conflict"][data-id="${expectedGallery.items[0].group_id}"]`);await first.click();
-    await driver.wait(async()=>/固定主图与候选/.test(await (await element('[aria-label="模型分析"]')).getText()),10000);
+    await driver.wait(async()=>/对应标注的原始类别值不同/.test(await (await element('[aria-label="模型分析"]')).getText()),10000);
     await driver.wait(async()=>(await driver.findElements(By.css('[data-dc="candidate"]'))).length===22,10000);
     const comparison=await element('#dc-compare-mask');
-    assert.deepEqual(await Promise.all((await comparison.findElements(By.css('.dc-compare-cell h3'))).map(title=>title.getText())),['主图','对照图像']);
-    await driver.wait(async()=>(await comparison.findElements(By.css('.dc-source-label'))).length===2,5000);
-    for(const label of await comparison.findElements(By.css('.dc-source-label')))assert.match(await label.getText(),/原始标注 category-\d/);
+    assert.equal((await comparison.findElements(By.css('.dc-compare-cell h3'))).length,0);
+    assert.equal((await comparison.findElements(By.css('.dc-source-label,.iad-image-quality'))).length,0,'LabelMe只显示具体类别框');
+    await driver.wait(async()=>(await comparison.findElements(By.css('.dc-compare .iad-annotation-layer rect'))).length===2,5000);
+    assert.ok(await driver.executeScript('return [...arguments[0].querySelectorAll(".dc-compare .iad-annotation-layer text")].every(e=>e.getBoundingClientRect().height>=10)',comparison),'缩略显示的具体类别保持可读字号');
     assert.equal(await driver.executeScript('return getComputedStyle(arguments[0]).display',await comparison.findElement(By.css('.dc-dialog-body'))),'block','对比正文保留独立的文档流，不能继承方向详情的弹性布局');
     const compareLayout=await driver.executeScript('const r=arguments[0].getBoundingClientRect();return {modal:arguments[0].matches("dialog:modal"),width:r.width,x:r.x+r.width/2-innerWidth/2,y:r.y+r.height/2-innerHeight/2}',comparison);
     assert.equal(compareLayout.modal,true,'冲突对比应复用公共原生Modal');assert.equal(compareLayout.width,1380);assert.ok(Math.abs(compareLayout.x)<=1&&Math.abs(compareLayout.y)<=1);
@@ -169,7 +193,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     await driver.executeScript('arguments[0].scrollIntoView({block:"nearest",inline:"center"})',lastCandidate);
     await lastCandidate.click();
     await driver.wait(async()=>await driver.findElement(By.css('[data-dc="zoom-candidate"] img')).getAttribute('src')!==anchorSrc,5000);
-    await driver.wait(async()=>/原始标注 category-2/.test(await driver.findElement(By.css('.dc-compare-cell:last-child .dc-source-label')).getText()),5000);
+    await driver.wait(async()=>(await driver.findElement(By.css('.dc-compare-cell:last-child .iad-annotation-layer text')).getText())==='category-2',5000);
     assert.equal(await driver.findElement(By.css('[data-dc="zoom-anchor"] img')).getAttribute('src'),anchorSrc);
     assert.ok(anchorSrc.includes('/consistency/evidence/'));
     await fs.writeFile(path.join(output,'current-conflict-dialog.png'),await driver.takeScreenshot(),'base64');
@@ -199,6 +223,22 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     let followingState;
     do {await new Promise(resolve=>setTimeout(resolve,20));followingState=await bridge.execute('analysis_status',{run_id:following.run_id});}while(['PENDING','RUNNING'].includes(followingState.status));
     assert.equal(followingState.status,'COMPLETED',JSON.stringify(followingState.errors));
+    execFileSync(bridge.pythonPath,['-c',`import json,sqlite3,sys
+from pathlib import Path
+with sqlite3.connect(sys.argv[1]) as c:
+ p=c.execute('SELECT payload_json FROM job_runs WHERE job_id=?',(sys.argv[2],)).fetchone()[0]
+ Path(sys.argv[3]).write_text(p);p=json.loads(p);p['program_batch_id']=None
+ c.execute('UPDATE job_runs SET status=?,payload_json=? WHERE job_id=?',('RUNNING',json.dumps(p),sys.argv[2]))`,
+      path.join(root,'test.db'),workflow.run_id,path.join(root,'phase-job.json')]);
+    const preparingRow=await element(`[data-dc-row="${workflow.run_id}"]`);await preparingRow.findElement(By.css('td')).click();
+    execFileSync(bridge.pythonPath,['-c',`import sqlite3,sys
+from pathlib import Path
+with sqlite3.connect(sys.argv[1]) as c:c.execute('UPDATE job_runs SET payload_json=? WHERE job_id=?',(Path(sys.argv[3]).read_text(),sys.argv[2]))`,
+      path.join(root,'test.db'),workflow.run_id,path.join(root,'phase-job.json')]);
+    await driver.wait(async()=>(await driver.findElements(By.css(`[data-dc-row="${workflow.run_id}"]`))).length===0,10000);
+    assert.equal(await(await element(`[data-dc-row="${batch.batch_id}"]`)).getAttribute('aria-selected'),'true','作业进入程序阶段后仍按根作业身份保留选择');
+    execFileSync(bridge.pythonPath,['-c',`import sqlite3,sys
+with sqlite3.connect(sys.argv[1]) as c:c.execute('UPDATE job_runs SET status=? WHERE job_id=?',('COMPLETED',sys.argv[2]))`,path.join(root,'test.db'),workflow.run_id]);
     const followingDelete=await element(`[data-dc-row="${followingState.program_batch_id}"] [data-icon="delete"]`);
     assert.equal(await originalRow.getAttribute('aria-selected'),'true','后台新增记录不切换当前选中作业');
     await followingDelete.sendKeys(Key.ENTER);
@@ -215,6 +255,26 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
       .some(job=>job.root_run_id===following.run_id),10000,'轮询新增的作业应可直接删除');
     assert.equal((await bridge.execute('analysis_status',{run_id:workflow.run_id})).status,'COMPLETED','删除新增记录不影响原作业');
     await driver.wait(async()=>(await cards()).length===expectedGallery.total,10000);
+    execFileSync(bridge.pythonPath,['-c',`import json,sqlite3,sys
+from pathlib import Path
+with sqlite3.connect(sys.argv[1]) as c:
+ p=c.execute('SELECT payload_json FROM job_runs WHERE job_id=?',(sys.argv[2],)).fetchone()[0]
+ Path(sys.argv[3]).write_text(p)`,path.join(root,'test.db'),workflow.run_id,path.join(root,'frozen-job.json')]);
+    for(const status of ['RUNNING','FAILED','COMPLETED']){
+      execFileSync(bridge.pythonPath,['-c',`import json,sqlite3,sys
+from pathlib import Path
+p=json.loads(Path(sys.argv[3]).read_text());status=sys.argv[4]
+if status!='COMPLETED':
+ p['program_batch_id']=None;p['completed_sample_ids']=[];p['completed']=0
+ p['failed_sample_ids']=p['request']['sample_ids'] if status=='FAILED' else [];p['failed']=len(p['failed_sample_ids'])
+with sqlite3.connect(sys.argv[1]) as c:c.execute('UPDATE job_runs SET status=?,payload_json=? WHERE job_id=?',(status,json.dumps(p),sys.argv[2]))`,
+        path.join(root,'test.db'),workflow.run_id,path.join(root,'frozen-job.json'),status]);
+      await driver.get(start);
+      const row=await element(`[data-dc-row="${status==='COMPLETED'?batch.batch_id:workflow.run_id}"]`);
+      await row.findElement(By.css('[aria-label="查看提示词"]')).click();
+      assert.equal(await(await element('dialog[aria-label="查看提示词"] pre')).getText(),frozenPrompt,`${status}作业显示创建时冻结提示词`);
+      await driver.actions().sendKeys(Key.ESCAPE).perform();
+    }
     execFileSync(bridge.pythonPath,['-c','import sqlite3,sys\nwith sqlite3.connect(sys.argv[1]) as c:c.execute("UPDATE consistency_queries SET expires_at=?",("2000-01-01T00:00:00+00:00",))',path.join(root,'test.db')]);
     await (await cards())[0].click();
     await driver.wait(async()=>(await driver.findElement(By.css('#dc-compare-mask')).getText()).includes('snapshot'),10000);
@@ -225,6 +285,27 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     await driver.wait(async()=>(await driver.findElements(By.css('#dc-new-mask [role="alert"]'))).length>0,10000);
     assert.ok(await driver.findElement(By.id('dc-new-mask')).isDisplayed());
     assert.equal((await bridge.execute('consistency_list',{})).items.length,0,'创建失败不得留下假作业');
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    execFileSync(bridge.pythonPath,['-c',`import sys
+from pathlib import Path
+from PIL import Image
+p=Path(sys.argv[1])/'classification'
+for folder in ['OK','NG']:
+ (p/folder).mkdir(parents=True)
+ Image.new('RGB',(640,480),'#437d94').save(p/folder/'part.png')`,root]);
+    const anomalyGroup=await bridge.execute('dataset_group_create',{name:'异常检测分类'});
+    const anomalyPreview=await bridge.execute('dataset_preview',{root_dir:path.join(root,'classification')});
+    const anomaly=await bridge.execute('dataset_import',{format:'folder_classification',group_id:anomalyGroup.group_id,name:'图像级类别',root_dir:anomalyPreview.root_dir,
+      rules:anomalyPreview.items.map(({path,role})=>({path,role})),preview_fingerprint:anomalyPreview.preview_fingerprint});
+    let anomalyJob=await bridge.execute('analysis_start',{request:{analysis_kind:'consistency',mode:'exact',dataset_ids:[anomaly.dataset_id]},
+      _model_execution:{profile:{endpoint:`http://127.0.0.1:${server.address().port}/v1`,model_id:'local-protocol-model',capacity_mode:'vllm_tokenize',max_visual_inputs:16}}});
+    do {await new Promise(resolve=>setTimeout(resolve,20));anomalyJob=await bridge.execute('analysis_status',{run_id:anomalyJob.run_id});}while(['PENDING','RUNNING'].includes(anomalyJob.status));
+    assert.equal(anomalyJob.status,'COMPLETED',JSON.stringify(anomalyJob.errors));
+    await driver.get(start);await(await element(`#dc-parent option[value="${anomalyGroup.group_id}"]`)).click();
+    await element('[data-dc="open-conflict"]');
+    assert.deepEqual(await Promise.all((await driver.findElements(By.css('[aria-label="原始标注冲突类型"] [role="tab"]>span:first-child'))).map(tab=>tab.getText())),
+      ['全部冲突','类别不一致'],'异常检测同样使用类别不一致tab');
+    await fs.writeFile(path.join(output,'anomaly-categories.png'),await driver.takeScreenshot(),'base64');
     console.log(JSON.stringify({output,groups:expectedGallery.total,anchorCandidates:22,modelRequests:modelRequests.length}));
   }catch(error){if(driver){await fs.writeFile(path.join(output,'failure.png'),await driver.takeScreenshot(),'base64');console.error((await driver.findElement(By.css('body')).getText()).slice(-5000));}throw error;}
   finally{if(driver)await driver.quit();await new Promise(resolve=>server.close(resolve));}

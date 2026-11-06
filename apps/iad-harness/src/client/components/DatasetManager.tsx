@@ -1,3 +1,4 @@
+import {copyText} from '../clipboard.js';
 import {Select} from './Select.js';
 import {Button} from './Button.js';
 import {IconButton} from "./IconButton.js";
@@ -170,27 +171,9 @@ export function DatasetManager({
     setSelectedId(null);
   }
 
-  // Copy identifier
   async function copyIdentifier(val: string) {
-    try {
-      await navigator.clipboard.writeText(val);
-      announce("已复制数据集标识");
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = val;
-      ta.style.position = "fixed";
-      ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.select();
-      try {
-        document.execCommand("copy");
-        announce("已复制数据集标识");
-      } catch {
-        announce("无法复制，请手动选择标识");
-      } finally {
-        ta.remove();
-      }
-    }
+    try {await copyText(val);announce("已复制数据集标识");}
+    catch {announce("无法复制，请手动选择标识");}
   }
 
   // Rescan directory in drawer

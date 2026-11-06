@@ -7,6 +7,7 @@ import {useResource} from '../useResource.js';
 import {auditEvidenceUrl, auditImageIndex} from '../api.js';
 import {Modal} from './Modal.js';
 import {ImageViewer, type ImageSource} from './ImageViewer.js';
+import {datasetImageAnnotations} from '../dataset-image-annotations.js';
 import {auditSampleImage} from './AuditSampleMedia.js';
 
 export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampleItem; taskId: string; onClose(): void}) {
@@ -21,16 +22,11 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
     const analysis = detail.suggestion.analysis, images = auditImageIndex(analysis);
     return analysis.image_sources.map(source => {
       const image = images.get(source.overview_evidence_id)!;
-      const label = source.dataset_format === 'folder_classification'
-        ? ({PASS: 'OK', FAIL: 'NG', UNCERTAIN: '未知'})[source.sample.quality_status]
-        : [...new Set(source.annotations.map(annotation => annotation.raw_label))].join('、') || '未标注';
       const view: ImageSource = {src: auditEvidenceUrl(detail.suggestion!.suggestion_id, image),
-        title: source.sample.sample_id === sample.sample_id ? '审计主图' : '对照图像',
+        title: source.sample.relative_path,
         width: source.sample.width, height: source.sample.height, sampleId: source.sample.sample_id, evidence: image,
-        annotationLayer: {kind: 'sample', sample: source.sample, annotations: source.annotations,
-          maskUrls: Object.fromEntries(Object.entries(source.mask_evidence_ids).map(([id, evidenceId]) =>
-            [id, auditEvidenceUrl(detail.suggestion!.suggestion_id, {evidence_id: evidenceId})]))}};
-      return {view, label, filename:source.sample.relative_path,evidence: image};
+        ...datasetImageAnnotations(source.dataset_format,source.sample,source.annotations)};
+      return {view, filename:source.sample.relative_path,evidence: image};
     });
   }, [detail, sample.sample_id]);
   const mainImage = pictures[0]?.view || {src: detail?.suggestion?.analysis
@@ -55,9 +51,8 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
         {!!conclusion?.conflicts.length && <p>{conclusion.conflicts.join('；')}</p>}
       </section>
       <section data-audit-section="evidence"><h3>图像证据</h3>
-        <div className="iad-image-pair">{[{view:mainImage,label:pictures[0]?.label || '未记录标注',filename:pictures[0]?.filename || sample.filename},comparison].filter(Boolean).map((picture,index)=><section className="iad-image-pair-side audit-evidence-item" key={picture!.view.src}>
-          <h4>{index===0?'主图':'对照图像'}</h4>
-          <ThumbnailCard image={picture!.view} label={picture!.filename} variant="evidence" aria-label={index===0?'放大主图':'放大对照图像'} onClick={()=>setLightbox(picture!.view)} mediaOverlay={<span className="audit-original-label">原始标注 {picture!.label}</span>} />
+        <div className="iad-image-pair">{[{view:mainImage,filename:pictures[0]?.filename || sample.filename},comparison].filter(Boolean).map((picture,index)=><section className="iad-image-pair-side audit-evidence-item" key={picture!.view.src}>
+          <ThumbnailCard image={picture!.view} label={picture!.filename} variant="evidence" aria-label={index===0?'放大主图':'放大对照图像'} onClick={()=>setLightbox(picture!.view)} />
         </section>)}</div>
         {pictures.length>1&&<div className="iad-thumbnail-strip" role="group" aria-label="切换候选图像">
           {pictures.slice(1).map((picture,index)=><ThumbnailCard key={picture.evidence.evidence_id} image={picture.view}
