@@ -1,4 +1,5 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { v4 as uuid } from 'uuid';
 import { Button } from './Button.js';
 import { IconButton } from "./IconButton.js";
 import { useEffect, useState } from 'react';
@@ -32,7 +33,7 @@ export function KnowledgeEntryDialog({ versionId, checkId, onClose, onSaved }) {
                                         setSaving(true);
                                         setError('');
                                         try {
-                                            await request('/knowledge/check-review', { version_id: versionId, check_id: checkId, submission_id: crypto.randomUUID(),
+                                            await request('/knowledge/check-review', { version_id: versionId, check_id: checkId, submission_id: uuid(),
                                                 expected_revision: detail.check.review.revision, status, note });
                                             onSaved();
                                             onClose();

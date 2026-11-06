@@ -33,6 +33,7 @@ class ConsistencyWorker:
         context.update(phase='COMPARING')
         requests=[ImageRetrieve(query={'kind':'sample','sample_id':sample_id},
             corpus_scope=plan.scopes.corpus.selector,mode=plan.request.mode,
+            top_k=None,min_similarity=plan.request.min_similarity,
             profile_id=plan.encoder.profile.profile_id if plan.encoder else None) for sample_id in context.payload['sample_ids']]
         for outcome in service.retrieve_many(requests,frozen_scope=plan.scopes.corpus,
                 checkpoint=context.checkpoint,encoder=plan.encoder,prepare_query=False,

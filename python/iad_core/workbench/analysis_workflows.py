@@ -11,7 +11,7 @@ from iad_core.knowledge.repository import KnowledgeRepository
 from iad_core.knowledge.instructions import FrozenMiningPrompt, SubmittedMiningPrompt
 from iad_core.knowledge.sources import KnowledgeSources
 from iad_core.consistency.workflow import ConsistencyWorkflow
-from iad_core.consistency.models import Mode
+from iad_core.consistency.models import Mode, SimilarityThreshold, DEFAULT_MIN_SIMILARITY
 from iad_core.consistency.group_analysis_prompts import DEFAULT_CONSISTENCY_PROMPT
 from iad_core.consistency.group_analysis_models import DEFAULT_CANDIDATE_BATCH_SIZE
 from iad_core.workbench.jobs import JobContext
@@ -48,6 +48,7 @@ class KnowledgeWorkflowStart(SelectedDatasets):
 class ConsistencyWorkflowStart(SelectedDatasets):
     analysis_kind: Literal['consistency'] = 'consistency'
     mode: Mode = 'combined'
+    min_similarity: SimilarityThreshold = DEFAULT_MIN_SIMILARITY
     batch_size: int = Field(default=12, ge=2, le=200)
     candidate_batch_size: int = Field(default=DEFAULT_CANDIDATE_BATCH_SIZE, ge=1, le=200)
     instruction: NonBlankText = DEFAULT_CONSISTENCY_PROMPT

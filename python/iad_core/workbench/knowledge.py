@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from iad_core.evidence.images import EvidenceImages
-from iad_core.knowledge.models import KnowledgeEvidence, KnowledgeSnapshot
+from iad_core.knowledge.models import KnowledgeCheck, KnowledgeEvidence, KnowledgeSnapshot
 from iad_core.knowledge.support import KnowledgeSupport
 from iad_core.knowledge.repository import KnowledgeRepository
 from iad_core.storage.database import Database
@@ -21,6 +21,11 @@ class InspectionCriteria:
 @dataclass(frozen=True)
 class InspectionKnowledge:
     snapshot: KnowledgeSnapshot
+    check_ids: frozenset[str] | None = None
+
+    @property
+    def checks(self) -> List[KnowledgeCheck]:
+        return [check for check in self.snapshot.checks if self.check_ids is None or check.check_id in self.check_ids]
 
     @classmethod
     def resolve(cls, db: Database, dataset_id: str, knowledge_version_id: Optional[str] = None) -> 'InspectionKnowledge':
@@ -37,7 +42,7 @@ class InspectionKnowledge:
         snapshot = self.snapshot
         groups = KnowledgeSupport(db).groups(snapshot.sources, target_sample_id=sample_id)
         by_id = {item.image.evidence_id: item for item in snapshot.evidence}
-        for check in snapshot.checks:
+        for check in self.checks:
             independent = []
             for evidence_id in check.support_evidence_ids:
                 evidence = by_id[evidence_id]

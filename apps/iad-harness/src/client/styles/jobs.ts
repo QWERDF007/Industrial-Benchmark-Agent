@@ -1,4 +1,10 @@
 export const jobsStyles = `
+.iad-job-list{min-width:0;overflow:hidden;padding:0;background:var(--iad-surface);border:1px solid var(--iad-panel-border);border-radius:6px;margin-bottom:20px;font-size:var(--iad-font-size)}
+.iad-job-list-header{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:70px;padding:18px 22px;border-bottom:1px solid var(--iad-border)}
+.iad-job-list-header>h2{margin:0;font-size:15px;font-weight:650}
+.iad-job-list-header .exp-job-list-actions{margin-left:auto}
+.iad-job-list>nav.iad-pagination{margin:0;padding:11px 18px;border-top:1px solid var(--iad-border)}
+@media(max-width:650px){.iad-job-list-header{align-items:flex-start;flex-direction:column}.iad-job-list-header .exp-job-list-actions{margin-left:0}}
 .iad-job-panel{min-width:0}.iad-job-panel>h2{margin-top:26px}
 .iad-job-drawer-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:22px 24px 28px;color:var(--iad-text);font-size:var(--iad-font-size)}
 .iad-job-statusline{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
@@ -22,6 +28,7 @@ export const jobsStyles = `
 .iad-job-error{background:#faf5f5;border:1px solid #e7cfd0;border-radius:var(--iad-radius);padding:14px 15px;line-height:1.7;overflow-wrap:anywhere}
 .iad-job-error+.iad-job-error{margin-top:10px}.iad-job-error strong{display:block;font-size:var(--iad-font-size);margin-bottom:5px}.iad-job-error p{margin:0}.iad-job-error code{display:block;overflow-wrap:anywhere}
 .iad-job-note{font-size:12px;color:var(--iad-muted);line-height:1.65;margin:12px 0 0}
-.iad-job-drawer-footer{border-top:1px solid var(--iad-border);display:flex;justify-content:flex-end;padding:13px 24px;flex:none}
+.iad-job-drawer-footer{border-top:1px solid var(--iad-border);display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;padding:13px 24px;flex:none}
+.iad-job-drawer-footer p{flex-basis:100%;margin:0}
 @media(max-width:680px){.iad-job-drawer-body{padding:18px 16px}.iad-job-drawer-footer{padding:12px 16px}}
 `;

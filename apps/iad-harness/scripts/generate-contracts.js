@@ -12,6 +12,8 @@ from pydantic.json_schema import models_json_schema
 from iad_core.entry import QUERY_OPERATIONS
 from iad_core.consistency.group_analysis_prompts import DEFAULT_CONSISTENCY_PROMPT
 from iad_core.workbench.audit_prompts import DEFAULT_AUDIT_PROMPT
+from iad_core.workbench.audit_sources import AuditSourceCatalog
+from iad_core.workbench.report_presentation import REPORT_CHART_STYLES
 from iad_core.knowledge.prompt_text import mining_prompt_text
 from iad_core.knowledge.instructions import DEFAULT_OBJECTIVE, SubmittedMiningPrompt
 from iad_core.advisory.analysis import AuditAnalysis
@@ -67,7 +69,7 @@ models = [DatasetReportStart, DatasetReportSnapshot, DatasetReportView, ReportJo
 models.extend([JobView, ConsistencyStart, ImageRetrieve, ImageIndexPrepare, ConsistencyScopesSnapshot, ConsistencyCoverage, PixelDescriptor, PixelComparison, RetrievalCandidate])
 models.extend([AnnotationPolicy, AnnotationSet, AnnotationComparison, AnnotationDifference, AnnotationMatchingConfig])
 models.extend([RetrievalPage, TemporaryImageRef])
-models.extend([AuditConsistencyView])
+models.extend([AuditConsistencyView, AuditSourceCatalog])
 models.extend([AuditSampleQuery, AuditSamplePage, AuditSampleDetail, AuditRunReport])
 models.extend([KnowledgeCheckReviewSubmission])
 models.extend([KnowledgeBatchStart, SubmittedMiningPrompt])
@@ -85,6 +87,7 @@ schema.update(title='WorkbenchDomain', type='object', additionalProperties=False
     properties={model.__name__: references[(model, mode)] for model, mode in modes})
 schema['x-query-operations'] = sorted(QUERY_OPERATIONS)
 schema['x-audit-state-labels'] = AUDIT_STATE_LABELS
+schema['x-report-chart-styles'] = REPORT_CHART_STYLES
 schema['x-report-requirements'] = REPORT_REQUIREMENTS
 schema['x-model-assessment-labels'] = MODEL_ASSESSMENT_LABELS
 schema['x-model-defaults'] = ModelLimits().model_dump()
@@ -134,6 +137,7 @@ delete auditParameters.model_name;
 delete auditParameters.origin_session_id;
 auditParameters.knowledge_version_id.required = true;
 const targets = {
+  "report-chart-styles.generated.ts": `/* Generated from Python report presentation styles. */\nexport const reportChartStyles = ${JSON.stringify(schema['x-report-chart-styles'])};\n`,
   "prompt-defaults.generated.ts": `/* Generated from Python model prompt defaults. */\nexport const promptDefaults = ${JSON.stringify(schema['x-prompt-defaults'],null,2)} as const;\n`,
   "audit.generated.ts": `/* Generated from Python audit result models by scripts/generate-contracts.js. */\nexport const auditStateLabels = ${JSON.stringify(schema['x-audit-state-labels'], null, 2)} as const;\n`,
   "execution.generated.ts": `/* Generated from Python operation execution policy by scripts/generate-contracts.js. */\nexport const queryOperations = ${JSON.stringify(schema["x-query-operations"], null, 2)} as const;\n`,

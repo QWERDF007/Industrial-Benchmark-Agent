@@ -8,6 +8,7 @@ from iad_core.workbench.benchmark_report import BenchmarkFacts
 from iad_core.workbench.audit_result_models import AuditSampleItem
 from iad_core.workbench.job_models import JobStatus
 from iad_core.workbench.report_requirements import REPORT_REQUIREMENTS, DEFAULT_REPORT_PROMPT
+from iad_core.workbench.report_presentation import ReportPresentation
 
 
 class DatasetReportStart(AnalysisModel):
@@ -73,6 +74,7 @@ class ReportEvidence(AnalysisModel):
 
 
 class DatasetReportView(AnalysisModel):
+    presentation: ReportPresentation
     run_id: str
     scope_dataset_ids: list[str]
     signature: str

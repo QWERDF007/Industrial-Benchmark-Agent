@@ -253,6 +253,11 @@ export declare const consistencyStartParameters: {
         readonly title: "Mode";
         readonly default: "exact";
     };
+    readonly min_similarity: {
+        readonly type: "number";
+        readonly title: "Min Similarity";
+        readonly default: 0.95;
+    };
     readonly profile_id: {
         readonly type: "string";
         readonly title: "Profile Id";
@@ -361,6 +366,10 @@ export declare const imageRetrieveParameters: {
         readonly type: "integer";
         readonly title: "Top K";
         readonly default: 50;
+    };
+    readonly min_similarity: {
+        readonly type: "number";
+        readonly title: "Min Similarity";
     };
     readonly cursor: {
         readonly type: "string";
@@ -731,6 +740,11 @@ export declare const consistencyQueryParameters: {
                 readonly profile_id: {
                     readonly type: "string";
                     readonly title: "Profile Id";
+                };
+                readonly min_similarity: {
+                    readonly type: "number";
+                    readonly title: "Min Similarity";
+                    readonly default: 0.95;
                 };
             };
             readonly title: "ScopeSelection";

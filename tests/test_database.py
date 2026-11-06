@@ -144,3 +144,20 @@ def test_issue_repository(temp_db):
     issues = issue_repo.list_by_task("task_01")
     assert len(issues) == 1
     assert issues[0].issue_type == IssueType.UNKNOWN_LABEL
+def test_existing_database_refreshes_a_changed_scope_projection_before_deletion(dataset):
+    import json
+    import pytest
+    from iad_core.storage.database import Database
+    from iad_core.dataset.registry import DatasetRegistry
+    db, _, config = dataset
+    with db.connection() as conn:
+        definition = conn.execute("SELECT sql FROM sqlite_master WHERE name='job_dataset_scopes_source'").fetchone()[0]
+        previous = definition.replace("job_type IN ('ANALYSIS_WORKFLOW','MODEL_AUDIT')", "job_type='ANALYSIS_WORKFLOW'")
+        assert previous != definition
+        conn.execute('DROP VIEW job_dataset_scopes_source')
+        conn.execute(previous)
+        conn.execute("INSERT INTO job_runs(job_id,task_id,job_type,status,payload_json) VALUES('scope-upgrade',?,'MODEL_AUDIT','PENDING',?)",
+            (config.task.task_id,json.dumps({'request':{'dataset_id':'other-owner','dataset_ids':[config.dataset.id]}})))
+    reopened = Database(db.db_path)
+    with pytest.raises(ValueError,match='作业'):
+        DatasetRegistry(reopened).delete(config.dataset.id)

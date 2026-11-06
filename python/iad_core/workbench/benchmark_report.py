@@ -15,6 +15,14 @@ from iad_core.storage.database import Database
 from iad_core.workbench.audit_protocol import audit_generation_signature
 from iad_core.workbench.report import QualityRatio
 from iad_core.workbench.report_technical_evidence import ReportTechnicalEvidence
+from iad_core.workbench.audit_sources import FrozenAuditSources
+
+
+class ReportDatasetCoverage(AnalysisModel):
+    dataset_id: str
+    name: str
+    registered: int
+    audited: int
 
 
 class ReportAnnotationCoverage(AnalysisModel):
@@ -42,6 +50,8 @@ class ReportAuditCase(AnalysisModel):
 
 
 class BenchmarkFactsData(AnalysisModel):
+    dataset_coverage: list[ReportDatasetCoverage] = Field(default_factory=list)
+    source_selections: dict[str, FrozenAuditSources] = Field(default_factory=dict)
     scope_dataset_ids: list[str]
     registered_sample_ids: list[str]
     registered_samples: int
@@ -83,7 +93,8 @@ class BenchmarkReportFacts:
         placeholders = ','.join('?' for _ in selected)
         with self.db.connection() as conn:
             conn.execute('BEGIN')
-            registered = {row[0] for row in conn.execute(f'SELECT dataset_id FROM datasets WHERE dataset_id IN ({placeholders})', selected)}
+            dataset_rows = conn.execute(f"SELECT dataset_id,json_extract(config_json,'$.dataset.name') name FROM datasets WHERE dataset_id IN ({placeholders}) ORDER BY dataset_id", selected).fetchall()
+            registered = {row['dataset_id'] for row in dataset_rows}
             if registered != set(selected):
                 raise LookupError('报告范围包含未登记数据集')
             scope = DatasetScope(dataset_ids=selected)
@@ -96,7 +107,8 @@ class BenchmarkReportFacts:
                 FROM sample_pixel_index p JOIN samples s ON s.sample_id=p.sample_id
                 WHERE s.is_excluded=0 AND s.dataset_id IN ({placeholders})''', selected)]
             audits = [dict(row) for row in conn.execute(f'''SELECT a.suggestion_id,a.sample_id,a.audit_run_id,a.analysis_json,a.source_fingerprint,
-                json_extract(j.payload_json,'$.request.generation_signature') generation_signature
+                json_extract(j.payload_json,'$.request.generation_signature') generation_signature,
+                json_extract(j.payload_json,'$.request.sources') sources
                 FROM audit_suggestions a JOIN samples s ON s.sample_id=a.sample_id
                 JOIN job_runs j ON j.job_id=a.audit_run_id
                 WHERE s.is_excluded=0 AND s.dataset_id IN ({placeholders}) AND j.deleted_at IS NULL
@@ -173,6 +185,11 @@ class BenchmarkReportFacts:
             for candidate in getattr(case.analysis.conclusion, 'proposed_slice', []):
                 candidates.setdefault(candidate.name, []).append(case.sample_id)
         payload = dict(scope_dataset_ids=selected, registered_sample_ids=sorted(by_id), registered_samples=len(samples), audited_samples=len(cases),
+            dataset_coverage=[ReportDatasetCoverage(dataset_id=row['dataset_id'], name=row['name'],
+                registered=sum(sample['dataset_id']==row['dataset_id'] for sample in samples),
+                audited=sum(case.dataset_id==row['dataset_id'] for case in cases)) for row in dataset_rows],
+            source_selections={audit['audit_run_id']:FrozenAuditSources.model_validate_json(audit['sources']) for audit in audits
+                if audit['sources'] and audit['audit_run_id'] in {case.run_id for case in cases}},
             coverage=QualityRatio(numerator=len(cases), denominator=len(samples), basis='当前范围去重后有有效冻结审计记录的图像 / 去重登记图像'),
             technical_usability=QualityRatio(numerator=sum(sample['sample_id'] not in blocking and sample['width']>0 and sample['height']>0 for sample in samples),
                 denominator=len(observed), basis='有有效尺寸且无阻断导入问题的登记图像 / 登记与扫描拒绝的图像'),

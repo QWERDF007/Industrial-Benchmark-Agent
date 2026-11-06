@@ -3,6 +3,7 @@ export const baseStyles = `.iad-detail-dialog,.iad-floating-menu-panel{overflow-
 .iad-workbench {container:workbench / inline-size;height:100%;box-sizing:border-box;overflow:auto;scrollbar-gutter:stable;min-width:0;padding:var(--iad-page-padding);color:var(--iad-text);background:var(--iad-canvas);font:var(--dsh-content-font-size,.875rem)/1.571429 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;}
 :is(.iad-workbench,.iad-detail-dialog,.iad-floating-menu-panel) * {box-sizing:border-box;}
 .iad-plain-empty{margin:0;padding:24px;color:var(--iad-text);font-size:var(--iad-font-size);line-height:1.6;font-weight:400;text-align:left;background:var(--iad-surface)}
+.iad-workbench .iad-result-empty{margin:0;padding:28px 16px;min-height:88px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;line-height:1.5;font-weight:400;color:#65758c}
 .iad-visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .iad-field select {width:100%;}
 .iad-workbench h1 {font-size:var(--iad-title-size);line-height:1.285714;margin:0;font-weight:600;}

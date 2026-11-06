@@ -4,6 +4,13 @@ export declare const auditStartParameters: {
         readonly title: "Dataset Id";
         readonly required: true;
     };
+    readonly subset_ids: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "string";
+        };
+        readonly title: "Subset Ids";
+    };
     readonly submission_id: {
         readonly type: "string";
         readonly title: "Submission Id";
@@ -12,6 +19,24 @@ export declare const auditStartParameters: {
         readonly type: "string";
         readonly title: "Knowledge Version Id";
         readonly required: true;
+    };
+    readonly knowledge_job_id: {
+        readonly type: "string";
+        readonly title: "Knowledge Job Id";
+    };
+    readonly knowledge_entry_ids: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "string";
+        };
+        readonly title: "Knowledge Entry Ids";
+    };
+    readonly consistency_job_ids: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "string";
+        };
+        readonly title: "Consistency Job Ids";
     };
     readonly sample_ids: {
         readonly type: "array";

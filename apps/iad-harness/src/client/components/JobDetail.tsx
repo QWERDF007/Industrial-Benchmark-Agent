@@ -17,7 +17,7 @@ export function JobDetail({job,stale=false}: {job:JobSnapshot;stale?:boolean}) {
     ...(job.phase_started_at?[['阶段开始',new Date(job.phase_started_at).toLocaleString()]]:[]),
     ...(job.current_sample?[['当前图像',job.current_sample.relative_path || job.current_sample.sample_uuid]]:[])];
   return <div className="iad-job-drawer-body">
-    <div className="iad-job-statusline"><span className="iad-job-pill" data-status={job.status}>{jobStatuses[job.status]}</span>
+    <div className="iad-job-statusline"><span className="iad-job-pill" data-status={job.status}>{job.cancel_requested&&['PENDING','RUNNING'].includes(job.status)?'正在停止':jobStatuses[job.status]}</span>
       <strong>{pending?'等待资源调度':phase}</strong></div>
     <dl className="iad-job-meta">{meta.map(([label,value])=><React.Fragment key={label}><dt>{label}</dt><dd>{value}</dd></React.Fragment>)}</dl>
     <section className="iad-job-status-section" aria-label="执行阶段"><h3>执行阶段</h3>

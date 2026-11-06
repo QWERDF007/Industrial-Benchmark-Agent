@@ -19,6 +19,7 @@ class QueryCoverage:
     mode: Mode | None
     profile_id: str | None
     retrieval_completeness: ExecutionCompleteness
+    min_similarity: float | None = None
 
     @classmethod
     def capture(cls,db: Database,selection: ResultSelection,scopes: ConsistencyScopesSnapshot,connection: Connection) -> 'QueryCoverage':
@@ -28,10 +29,12 @@ class QueryCoverage:
             plans=[plan]
             mode=plan.request.mode if plan.kind=='consistency' else None
             profile=plan.encoder.profile.profile_id if plan.encoder else None
+            minimum=plan.request.min_similarity if mode!='exact' and mode is not None and 'min_similarity' in plan.request.model_fields_set else None
             targets=scopes.subjects.samples
         else:
             mode=selection.mode
             profile=ImageEncoders(db).profile(selection.profile_id).profile_id if mode!='exact' else None
+            minimum=selection.min_similarity if mode!='exact' else None
             plans=(BatchPlan.model_validate_json(row[0]) for row in connection.execute('''SELECT plan_json FROM consistency_runs
                 WHERE json_extract(plan_json,'$.kind')='consistency' AND json_extract(plan_json,'$.scopes.corpus.scope_id')=?''',(scopes.corpus.scope_id,)))
             targets=scopes.subjects.samples
@@ -59,6 +62,7 @@ class QueryCoverage:
             if not isinstance(selection,BatchSelection):
                 allowed={'exact','combined'} if mode=='exact' else {'visual','combined'} if mode=='visual' else {'combined'}
                 if plan.request.mode not in allowed or (profile is not None and (plan.encoder is None or plan.encoder.profile.profile_id!=profile)):continue
+                if mode!='exact' and ('min_similarity' not in plan.request.model_fields_set or plan.request.min_similarity>minimum):continue
                 old_scans={scan.dataset_id:scan.scan_ref for scan in plan.scopes.subjects.scans}
                 valid={sample.sample_id for sample in plan.scopes.subjects.samples if desired.get(sample.sample_id)==sample and old_scans.get(sample.dataset_id)==scans.get(sample.dataset_id)}
             else:valid=set(desired)
@@ -74,5 +78,5 @@ class QueryCoverage:
         corpus=CoverageCount(total=len(corpus_states),completed=corpus_states.count('COMPLETE'),failed=corpus_states.count('UNAVAILABLE'),
             unsupported=corpus_states.count('UNSUPPORTED'),pending=corpus_states.count('PENDING'))
         complete=execution.total>0 and execution.completed==execution.total and corpus.completed==corpus.total
-        kind='INDEX_ONLY' if mode is None else 'PARTIAL' if not complete else 'EXACT_SCOPE' if mode=='exact' else 'TOP_K'
-        return cls(execution,corpus,mode,profile,kind)
+        kind='INDEX_ONLY' if mode is None else 'PARTIAL' if not complete else 'EXACT_SCOPE' if mode=='exact' else 'SIMILARITY_THRESHOLD' if minimum is not None else 'TOP_K'
+        return cls(execution,corpus,mode,profile,kind,minimum)

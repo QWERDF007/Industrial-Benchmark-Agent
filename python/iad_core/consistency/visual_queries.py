@@ -58,7 +58,9 @@ class VisualQueries:
                 with self.runtime.indexes.acquire(scope, profile_id) as index:
                     if not index.info.vector_count and scope.sample_count:
                         raise ConsistencyError('INDEX_NOT_READY', 'Corpus vectors are not ready for this profile')
-                    hits = index.search(np.concatenate(vectors), top_k=requests[0].top_k + 1)
+                    selection=requests[0]
+                    hits = index.search(np.concatenate(vectors),
+                        top_k=selection.top_k+1 if selection.top_k is not None else None,min_similarity=selection.min_similarity)
                     members = {hit.group_id: index.members(hit.group_id) for row in hits for hit in row}
                     for query, position in positions:
                         query.info, query.hits, query.members = index.info, hits[position], members

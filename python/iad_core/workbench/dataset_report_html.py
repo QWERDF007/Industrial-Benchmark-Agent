@@ -7,6 +7,7 @@ from iad_core.storage.database import Database
 from iad_core.workbench.dataset_report_data import report_data
 from iad_core.workbench.dataset_report_models import DatasetReportSnapshot
 from iad_core.workbench.report_requirements import REPORT_REQUIREMENTS
+from iad_core.workbench.report_presentation import ReportPresentation, REPORT_CHART_STYLES
 
 
 class DatasetReportHtml:
@@ -67,18 +68,28 @@ class DatasetReportHtml:
                     f'<image href="data:image/png;base64,{encoded}" width="{width}" height="{height}"/><g class="annotations">{"".join(overlays)}</g></svg>'
                     f'<figcaption>{escape(eid)}</figcaption></figure>')
         conclusion = report.conclusion
+        presentation = ReportPresentation.capture(report.facts)
         charts = []
-        for title, values, labels in [
-            ('审计覆盖',dict(audited=report.facts.audited_samples,not_processed=report.facts.registered_samples-report.facts.audited_samples),dict(audited='已审计',not_processed='未审计')),
-            ('审计结果分布',report.facts.outcomes,dict(normal_candidate='未发现明确异常',anomaly_candidate='异常候选',insufficient='证据不足',not_processed='未处理')),
-            ('原始标签分布',report.facts.raw_labels,dict(PASS='OK',FAIL='NG',UNCERTAIN='待定'))]:
-            total = max(1,sum(values.values()))
-            bars = ''.join(f'<div class="bar"><span>{escape(labels.get(key,key))}</span><meter min="0" max="{total}" value="{value}">{value}</meter><span>{value}</span></div>' for key,value in values.items())
-            charts.append(f'<figure><figcaption>{title}</figcaption>{bars}</figure>')
+        for chart in presentation.charts:
+            axis = ''.join(f'<span>{chart.axis_max*(4-index)//4}</span>' for index in range(5))
+            columns = ''.join(f'<div class="iad-report-chart-column"><div class="iad-report-chart-slot">'
+                f'<div class="iad-report-chart-bar" data-muted="{str(column.muted).lower()}" style="height:{100*column.value/chart.axis_max}%">'
+                f'<span class="iad-report-chart-value">{column.value}</span></div></div>'
+                f'<span class="iad-report-chart-label">{escape(column.label)}</span></div>' for column in chart.columns)
+            charts.append(f'<figure class="iad-report-chart" aria-label="{escape(chart.title)}"><figcaption>{escape(chart.title)}</figcaption>'
+                f'<div class="iad-report-chart-body"><div class="iad-report-chart-axis" aria-hidden="true">{axis}</div>'
+                f'<div class="iad-report-chart-figure"><div class="iad-report-chart-grid" aria-hidden="true"></div>'
+                f'<div class="iad-report-chart-columns" style="--chart-columns:{max(1,len(chart.columns))}">{columns}</div></div></div></figure>')
+        sources = []
+        for source in presentation.sources:
+            rules = ''.join(f'<li>{escape(rule.title)}：{escape(rule.criterion)}</li>' for rule in source.rules)
+            sources.append(f'<section><h3>{escape(source.run_id)}</h3><p>知识挖掘 {escape(source.knowledge_job_id)}<br>'
+                f'知识版本 {escape(source.knowledge_version_id)}<br>数据一致性 {escape("、".join(source.consistency_job_ids))}</p><ul>{rules}</ul></section>')
         html = f'''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>数据集与模型能力报告</title><style>body{{font:14px/1.8 system-ui,sans-serif;max-width:1380px;margin:32px auto;padding:0 24px;color:#172338}}h1{{font-size:24px}}h2{{font-size:18px}}section{{margin:28px 0;break-inside:avoid}}table{{border-collapse:collapse;width:100%}}th,td{{text-align:left;padding:8px;border-bottom:1px solid #dbe2eb}}.pictures{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}}figure{{margin:0}}.evidence-image{{width:100%;height:320px;object-fit:contain}}figcaption{{overflow-wrap:anywhere}}p{{white-space:pre-wrap}}.annotations :is(rect,polygon){{fill:none;stroke:#ffb74c;stroke-width:2;vector-effect:non-scaling-stroke}}.annotations .annotation-mask{{fill:#ffb74c;fill-opacity:.45;stroke:none}}.annotations text{{fill:#fff;stroke:#152538;stroke-width:3;paint-order:stroke;font-size:12px}}.charts{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}}.bar{{display:grid;grid-template-columns:100px 1fr 40px;gap:8px;align-items:center}}meter{{width:100%}}@media(max-width:800px){{.charts{{grid-template-columns:1fr}}}}</style>
+<title>数据集与模型能力报告</title><style>body{{font:14px/1.8 system-ui,sans-serif;max-width:1380px;margin:32px auto;padding:0 24px;color:#172338}}h1{{font-size:24px}}h2{{font-size:18px}}section{{margin:28px 0;break-inside:avoid}}table{{border-collapse:collapse;width:100%}}th,td{{text-align:left;padding:8px;border-bottom:1px solid #dbe2eb}}.pictures{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}}figure{{margin:0}}.evidence-image{{width:100%;height:320px;object-fit:contain}}figcaption{{overflow-wrap:anywhere}}p{{white-space:pre-wrap}}.annotations :is(rect,polygon){{fill:none;stroke:#ffb74c;stroke-width:2;vector-effect:non-scaling-stroke}}.annotations .annotation-mask{{fill:#ffb74c;fill-opacity:.45;stroke:none}}.annotations text{{fill:#fff;stroke:#152538;stroke-width:3;paint-order:stroke;font-size:12px}}{REPORT_CHART_STYLES}</style>
 <h1>数据集与模型能力报告</h1><p>报告 {escape(report.run_id)}<br>冻结事实 {escape(report.facts.signature)}<br>生成时间 {escape(report.created_at)}</p>
-<p>有效审计 {report.facts.audited_samples} / 登记 {report.facts.registered_samples}</p><div class="charts">{''.join(charts)}</div>
+<p>有效审计 {report.facts.audited_samples} / 登记 {report.facts.registered_samples}</p><div class="iad-report-charts">{''.join(charts)}</div>
+<section><h2>审计来源</h2>{''.join(sources)}</section>
 {''.join(sections)}<section><h2>数据集能力结论</h2><p>{escape(conclusion.dataset_analysis)}</p><p>{escape(conclusion.dataset_conclusion)}</p></section>
 <section><h2>模型能力结论</h2><p>{escape(conclusion.model_analysis)}</p><p>{escape(conclusion.model_conclusion)}</p></section>
 <section><h2>冻结图像证据</h2><div class="pictures">{''.join(pictures)}</div></section></html>'''

@@ -24,6 +24,7 @@ def init_content_index_schema(connection: Connection) -> None:
         evidence_id TEXT NOT NULL REFERENCES consistency_results(evidence_id),
         request_sha256 TEXT NOT NULL,record_json TEXT NOT NULL CHECK(json_valid(record_json)))''')
     connection.execute('CREATE INDEX IF NOT EXISTS idx_correction_decision ON consistency_correction_checks(decision_id,id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_correction_evidence ON consistency_correction_checks(evidence_id)')
     connection.execute('''CREATE TABLE IF NOT EXISTS audit_consistency_checks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,check_id TEXT NOT NULL UNIQUE,
         run_id TEXT NOT NULL REFERENCES job_runs(job_id) ON DELETE CASCADE,sample_id TEXT NOT NULL,
@@ -37,6 +38,7 @@ def init_content_index_schema(connection: Connection) -> None:
         facts_state TEXT NOT NULL CHECK(facts_state IN ('CURRENT','HISTORICAL','UNKNOWN')),
         source_states_json TEXT NOT NULL CHECK(json_valid(source_states_json)),evidence_available INTEGER NOT NULL,
         PRIMARY KEY(query_id,position))''')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_consistency_query_evidence ON consistency_query_items(evidence_id)')
     connection.execute('CREATE INDEX IF NOT EXISTS idx_consistency_query_expiry ON consistency_queries(expires_at)')
     connection.execute('''CREATE TABLE IF NOT EXISTS consistency_runs (
         batch_id TEXT PRIMARY KEY,request_id TEXT NOT NULL UNIQUE,fingerprint TEXT NOT NULL,
@@ -52,6 +54,7 @@ def init_content_index_schema(connection: Connection) -> None:
         batch_id TEXT NOT NULL REFERENCES consistency_runs(batch_id),sample_a TEXT NOT NULL,sample_b TEXT NOT NULL,
         result_id TEXT NOT NULL,evidence_id TEXT NOT NULL REFERENCES consistency_results(evidence_id),
         PRIMARY KEY(batch_id,sample_a,sample_b))''')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_consistency_batch_evidence ON consistency_batch_results(evidence_id)')
     connection.execute('''CREATE TABLE IF NOT EXISTS consistency_results (
         evidence_id TEXT PRIMARY KEY,result_id TEXT NOT NULL UNIQUE,
         snapshot_json TEXT NOT NULL CHECK(json_valid(snapshot_json)),snapshot_sha256 TEXT NOT NULL)''')

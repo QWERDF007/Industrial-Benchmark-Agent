@@ -1,6 +1,7 @@
+import {v4 as uuid} from 'uuid';
 import {Select} from './Select.js';
 import React, {useEffect, useMemo, useState} from 'react';
-import type {AuditSampleItem, DatasetReportView, ReportEvidence, ReportJobState} from '../../shared/domain.generated.js';
+import type {AuditSampleItem, DatasetReportView, ReportEvidence, ReportJobState, ReportChart} from '../../shared/domain.generated.js';
 import {reportRequirements} from '../../shared/report-requirements.generated.js';
 import {promptDefaults} from '../../shared/prompt-defaults.generated.js';
 import {jobStatuses} from '../../shared/job-display.js';
@@ -12,13 +13,17 @@ import {ImageViewer, type ImageSource} from './ImageViewer.js';
 
 type ReportCatalog = {reports: Array<Pick<ReportJobState, 'run_id'|'status'|'created_at'> & {dataset_ids: string[]}>};
 const statuses = {evaluable:'可评估',limited:'限定评估',needs_evidence:'待补证',unsupported:'不支持该指标'};
-const outcomes = {normal_candidate:'未发现明确异常',anomaly_candidate:'异常候选',insufficient:'证据不足',not_processed:'未处理'};
-
-function CountChart({title, values, labels}: {title:string; values:Record<string,number>; labels:Record<string,string>}) {
-  const total=Object.values(values).reduce((sum,value)=>sum+value,0);
-  return <figure className="iad-report-chart" aria-label={title}><figcaption>{title}</figcaption>
-    {Object.entries(values).map(([key,value])=><div key={key} className="iad-report-bar"><span>{labels[key] || key}</span>
-      <meter min={0} max={Math.max(1,total)} value={value} aria-label={`${labels[key] || key} ${value}`} /><span>{value}</span></div>)}
+function CountChart({chart}: {chart:ReportChart}) {
+  return <figure className="iad-report-chart" aria-label={chart.title}><figcaption>{chart.title}</figcaption>
+    <div className="iad-report-chart-body"><div className="iad-report-chart-axis" aria-hidden="true">
+      {[4,3,2,1,0].map(index=><span key={index}>{chart.axis_max*index/4}</span>)}</div>
+      <div className="iad-report-chart-figure"><div className="iad-report-chart-grid" aria-hidden="true" />
+        <div className="iad-report-chart-columns" style={{'--chart-columns':Math.max(1,chart.columns.length)} as React.CSSProperties}>
+          {chart.columns.map((column,index)=><div className="iad-report-chart-column" key={index}>
+            <div className="iad-report-chart-slot"><div className="iad-report-chart-bar" data-muted={column.muted}
+              style={{height:`${100*column.value/chart.axis_max}%`}}><span className="iad-report-chart-value">{column.value}</span></div></div>
+            <span className="iad-report-chart-label">{column.label}</span></div>)}
+        </div></div></div>
   </figure>;
 }
 
@@ -46,7 +51,7 @@ export function DatasetReport({datasetIds,onSample}: {datasetIds:string[];onSamp
   async function generate(){
     setBusy(true);setError('');
     try{
-      const job=await request<ReportJobState>('/dataset-reports',{submission_id:crypto.randomUUID(),dataset_ids:datasetIds,instruction});
+      const job=await request<ReportJobState>('/dataset-reports',{submission_id:uuid(),dataset_ids:datasetIds,instruction});
       setChosen(job.run_id);setPoll(value=>value+1);setRevision(value=>value+1);
     }catch(failure){setError(message(failure));}finally{setBusy(false);}
   }
@@ -72,10 +77,14 @@ export function DatasetReport({datasetIds,onSample}: {datasetIds:string[];onSamp
       {state.data?.error&&<p role="alert">{state.data.error}</p>}
       {!runId&&!catalog.loading&&<p>当前范围还没有报告，可以生成新报告。</p>}
       {report&&<><div className="iad-report-charts">
-        <CountChart title="审计覆盖" values={{audited:report.audited_samples,unprocessed:report.registered_samples-report.audited_samples}} labels={{audited:'已审计',unprocessed:'未审计'}} />
-        <CountChart title="审计结果分布" values={report.outcomes} labels={outcomes} />
-        <CountChart title="原始标签分布" values={report.raw_labels} labels={{PASS:'OK',FAIL:'NG',UNCERTAIN:'待定'}} />
+        {report.presentation.charts.map(chart=><CountChart key={chart.title} chart={chart} />)}
       </div>
+      {!!report.presentation.sources.length&&<section className="iad-report-section"><h3>审计来源</h3>
+        {report.presentation.sources.map(source=><section key={source.run_id}><h4>{source.run_id}</h4>
+          <p>知识挖掘 {source.knowledge_job_id}<br/>知识版本 {source.knowledge_version_id}<br/>数据一致性 {source.consistency_job_ids.join('、')}</p>
+          <ul>{source.rules.map(rule=><li key={rule.check_id}>{rule.title}：{rule.criterion}</li>)}</ul>
+        </section>)}
+      </section>}
       {Object.entries(reportRequirements).map(([key,requirement])=>{
         const section=report.conclusion.sections[key];
         const data=requirement.data.flatMap(name=>report.data[name]||[]);

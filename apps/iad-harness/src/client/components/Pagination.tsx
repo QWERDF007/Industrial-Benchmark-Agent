@@ -3,10 +3,10 @@ import React from "react";
 export const pageSize = 24;
 export const IBA_JOBS_PAGE_SIZE = 8;
 
-export function Pagination({total, page, unit = '条', onPage, size = pageSize, label = '', id, availablePages}: {
-  total:number;page:number;unit?:string;onPage(page:number):void;size?:number;label?:string;id?:string;availablePages?:number;
+export function Pagination({total, page, unit = '条', onPage, size = pageSize, label = '', id, availablePages,hideSinglePage=false}: {
+  total:number;page:number;unit?:string;onPage(page:number):void;size?:number;label?:string;id?:string;availablePages?:number;hideSinglePage?:boolean;
 }) {
-  if (!total) return null;
+  if (!total || (hideSinglePage && total<=size)) return null;
   const pages=Math.max(1,Math.ceil(total/size));
   const current=Math.max(1,Math.min(page,pages));
   const start=Math.max(1,Math.min(current-2,pages-4));

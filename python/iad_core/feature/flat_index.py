@@ -44,11 +44,15 @@ class CpuFlatIndex:
         index.add(matrix)
         return cls(index,group_ids,members,limits)
 
-    def search(self, vectors: np.ndarray, top_k: int) -> tuple[tuple[GroupHit,...],...]:
+    def search(self, vectors: np.ndarray, top_k: int | None, *, min_similarity: float | None = None) -> tuple[tuple[GroupHit,...],...]:
         faiss=cpu_library()
-        if isinstance(top_k,bool) or not isinstance(top_k,int) or top_k<1:
+        if (top_k is None) == (min_similarity is None):
+            raise ValueError('Choose either a neighbor count or a minimum similarity')
+        if top_k is not None and (isinstance(top_k,bool) or not isinstance(top_k,int) or top_k<1):
             raise ValueError('Neighbor count must be a positive integer')
-        if top_k>self.limits.max_neighbors:
+        if min_similarity is not None and (isinstance(min_similarity,bool) or not 0 <= min_similarity <= 1):
+            raise ValueError('Minimum similarity must be finite and between zero and one')
+        if top_k is not None and top_k>self.limits.max_neighbors:
             raise ConsistencyError('RESOURCE_LIMIT','Neighbor count exceeds the configured output budget')
         queries=np.asarray(vectors,dtype=np.float32)
         if queries.ndim!=2 or queries.shape[1]!=self._index.d:
@@ -63,6 +67,13 @@ class CpuFlatIndex:
         queries=np.ascontiguousarray(queries.copy())
         faiss.normalize_L2(queries)
         faiss.omp_set_num_threads(self.limits.cpu_threads)
+        if min_similarity is not None:
+            threshold=np.float32(min_similarity)
+            offsets,scores,indices=self._index.range_search(queries,float(np.nextafter(threshold,np.float32(-np.inf))))
+            return tuple(tuple(GroupHit(self.group_ids[int(indices[position])],float(np.clip(scores[position],-1,1)),rank)
+                for rank,position in enumerate(sorted(range(int(start),int(end)),
+                    key=lambda position:(-scores[position],self.group_ids[int(indices[position])])),1))
+                for start,end in zip(offsets[:-1],offsets[1:]))
         scores,indices=self._index.search(queries,min(top_k,len(self.group_ids)))
         return tuple(tuple(GroupHit(self.group_ids[int(index)],float(np.clip(score,-1,1)),rank)
             for rank,(index,score) in enumerate(zip(row_indices,row_scores),1) if index>=0)

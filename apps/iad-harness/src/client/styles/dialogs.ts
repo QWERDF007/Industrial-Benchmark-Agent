@@ -233,7 +233,6 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
    New Consistency Check, Stats Modal, Exploration Prompts, Add/Edit Dataset, Knowledge Create
    ========================================================================== */
 #knowledge-page .kb-v45 #create-overlay > .modal,
-dialog.dc-new-dialog,
 dialog.iad-detail-dialog.iad-dialog-form {
   width: min(var(--iba-dialog-edit-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
   max-width: var(--iba-dialog-edit-width) !important;

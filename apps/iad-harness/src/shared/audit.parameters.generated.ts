@@ -5,6 +5,13 @@ export const auditStartParameters = {
     "title": "Dataset Id",
     "required": true
   },
+  "subset_ids": {
+    "type": "array",
+    "items": {
+      "type": "string"
+    },
+    "title": "Subset Ids"
+  },
   "submission_id": {
     "type": "string",
     "title": "Submission Id"
@@ -13,6 +20,24 @@ export const auditStartParameters = {
     "type": "string",
     "title": "Knowledge Version Id",
     "required": true
+  },
+  "knowledge_job_id": {
+    "type": "string",
+    "title": "Knowledge Job Id"
+  },
+  "knowledge_entry_ids": {
+    "type": "array",
+    "items": {
+      "type": "string"
+    },
+    "title": "Knowledge Entry Ids"
+  },
+  "consistency_job_ids": {
+    "type": "array",
+    "items": {
+      "type": "string"
+    },
+    "title": "Consistency Job Ids"
   },
   "sample_ids": {
     "type": "array",

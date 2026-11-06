@@ -11,6 +11,8 @@ from iad_core.consistency.policy import PolicyRelation, AnnotationRole, Annotati
 Identifier = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 Digest = Annotated[str, StringConstraints(pattern=r'^[a-f0-9]{64}$')]
 Count = Annotated[int, Field(ge=0, strict=True)]
+SimilarityThreshold = Annotated[FiniteFloat, Field(ge=0, le=1, strict=True)]
+DEFAULT_MIN_SIMILARITY = 0.95
 Mode = Literal['exact', 'visual', 'combined']
 Relation = Literal['EXACT', 'NEAR_CANDIDATE', 'VISUAL_REFERENCE', 'DIFFERENT', 'UNCHECKED']
 DifferenceType = Literal['QUALITY_LABEL', 'CATEGORY', 'ONE_SIDED_REGION', 'GEOMETRY',
@@ -118,6 +120,7 @@ class ConsistencyStart(AnalysisModel):
     subjects: ScopeSelector
     corpus_scope: CorpusScope = Field(default_factory=AllRegisteredScope)
     mode: Mode = 'exact'
+    min_similarity: SimilarityThreshold = DEFAULT_MIN_SIMILARITY
     profile_id: Optional[Identifier] = None
     request_id: Identifier
     model_analysis_prompt: Optional[str] = None
@@ -129,8 +132,15 @@ class ImageRetrieve(AnalysisModel):
     corpus_scope: CorpusScope = Field(default_factory=AllRegisteredScope)
     mode: Mode = 'combined'
     profile_id: Optional[Identifier] = None
-    top_k: int = Field(default=50, ge=1, le=200, strict=True)
+    top_k: int | None = Field(default=50, ge=1, le=200, strict=True)
+    min_similarity: SimilarityThreshold | None = None
     cursor: Optional[Identifier] = None
+
+    @model_validator(mode='after')
+    def visual_selection(self):
+        if (self.top_k is None) == (self.min_similarity is None):
+            raise ValueError('Choose either a neighbor count or a minimum similarity')
+        return self
 
 
 class ImageIndexPrepare(AnalysisModel):

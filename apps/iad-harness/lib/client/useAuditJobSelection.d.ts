@@ -10,6 +10,7 @@ export declare function useAuditJobSelection(jobs: JobSnapshot[], scope: string)
     selected: JobSnapshot;
     filtered: JobSnapshot[];
     page: number;
+    hasJobs: boolean;
     visible: JobSnapshot[];
     search: (search: string) => void;
     status: (status: string) => void;

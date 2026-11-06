@@ -132,7 +132,7 @@ class AuditConclusions:
         samples = {source.facts['image_owners'][image.evidence.evidence_id] for image in images}
         return {**source.facts,
             'input_scope':dict(reference_sample_ids=sorted(samples-{target}), visual_source_count=len(samples)),
-            'consistency': dict(record={**source.facts['consistency']['record'], 'references':references},
+            'consistency': dict(source.facts['consistency'], record={**source.facts['consistency']['record'], 'references':references},
                 results=[item for item in source.facts['consistency']['results'] if item['result_id'] in ids]),
             'image_owners':{image.evidence.evidence_id:source.facts['image_owners'][image.evidence.evidence_id] for image in images},
             'comparison_coverage':dict(total_results=len(source.facts['consistency']['results']), input_result_ids=sorted(ids))}

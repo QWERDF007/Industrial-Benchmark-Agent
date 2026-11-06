@@ -1,8 +1,6 @@
 export const imagesStyles = `
 .main{width:100%;min-width:0;padding:0}
-.heading{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:12px}
 .crumb{color:#8190a6;font-size:11px;margin:0 0 2px}
-.heading h1{font-size:20px;line-height:1.25;margin:0;font-weight:670;letter-spacing:-.4px}
 .heading-side{font-size:12px;color:#8190a6}
 
 .dataset-panel{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}

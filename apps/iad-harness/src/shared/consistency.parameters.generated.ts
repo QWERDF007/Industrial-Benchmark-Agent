@@ -361,6 +361,11 @@ export const consistencyStartParameters = {
     "title": "Mode",
     "default": "exact"
   },
+  "min_similarity": {
+    "type": "number",
+    "title": "Min Similarity",
+    "default": 0.95
+  },
   "profile_id": {
     "type": "string",
     "title": "Profile Id"
@@ -487,6 +492,10 @@ export const imageRetrieveParameters = {
     "type": "integer",
     "title": "Top K",
     "default": 50
+  },
+  "min_similarity": {
+    "type": "number",
+    "title": "Min Similarity"
   },
   "cursor": {
     "type": "string",
@@ -930,6 +939,11 @@ export const consistencyQueryParameters = {
           "profile_id": {
             "type": "string",
             "title": "Profile Id"
+          },
+          "min_similarity": {
+            "type": "number",
+            "title": "Min Similarity",
+            "default": 0.95
           }
         },
         "title": "ScopeSelection"

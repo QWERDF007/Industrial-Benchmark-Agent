@@ -44,4 +44,4 @@ class ResultQueries:
         if len(rows)>page_size:
             next_cursor=base64.urlsafe_b64encode(ResultCursor(query_id=snapshot.query_id,query_hash=fingerprint,after=selected[-1]['position']).model_dump_json().encode()).decode().rstrip('=')
         return ResultPage(query_id=snapshot.query_id,scopes=snapshot.scopes,observed_at=snapshot.observed_at,facts=snapshot.facts,items=items,total=snapshot.total,next_cursor=next_cursor,
-            execution=snapshot.execution,corpus=snapshot.corpus,mode=snapshot.mode,profile_id=snapshot.profile_id,retrieval_completeness=snapshot.retrieval_completeness)
+            execution=snapshot.execution,corpus=snapshot.corpus,mode=snapshot.mode,profile_id=snapshot.profile_id,min_similarity=snapshot.min_similarity,retrieval_completeness=snapshot.retrieval_completeness)

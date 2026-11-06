@@ -72,9 +72,9 @@ test('exploration uses shared modal selection, preset form and deletion with rea
    assert.ok(Math.abs(geometry.x)<=1&&Math.abs(geometry.y)<=1,JSON.stringify(geometry));
   };
   const row=await el('tr[data-action="select-job"]');
-  assert.ok((await(await el('.exp-selected-result')).getText()).startsWith('作业失败'));
-  assert.ok((await(await el('.exp-error-message')).getAttribute('textContent')).includes(failed.errors[0].message));
-  await el('.exp-selected-result button[data-exp=copy-job]');
+  assert.ok((await(await el('.exp-selected-result')).getText()).includes('当前作业没有已发布结果'));
+  assert.equal((await driver.findElements(By.css('.exp-error-message'))).length,0,'错误详情统一在状态抽屉');
+  await row.findElement(By.css('button[data-exp=copy-job]'));
   const status=await row.findElement(By.css('.iad-job-status-button'));await click(status);
   let drawer=await el('dialog[aria-label="作业状态"][open]');
   assert.ok((await drawer.getText()).includes('503'));
@@ -121,12 +121,12 @@ test('exploration uses shared modal selection, preset form and deletion with rea
   dialog=await el('dialog[aria-label="删除探索作业"][open]');await click(await dialog.findElement(By.css('button[data-variant="danger"]')));
   await driver.wait(async()=>(await read('analysis/jobs?'+new URLSearchParams({dataset_id:dataset.dataset_id,analysis_kind:'exploration'}))).jobs.length===0,5000);
   await driver.wait(async()=>(await driver.findElements(By.css('dialog[open]'))).length===0,5000);
-  assert.equal(await driver.executeScript('return document.activeElement.id'),'exp-jobsearch');
+  assert.equal(await driver.executeScript('return document.activeElement.id'),'exp-new');
   holdModel=true;
   const active=await post('analysis/start',{analysis_kind:'exploration',dataset_ids:[dataset.dataset_id]});
   await click(await el('button[aria-label="刷新探索作业"]'));
-  await driver.wait(async()=>(await driver.findElements(By.css('.exp-selected-result .exp-job-stages'))).length===1,10000);
-  assert.equal((await driver.findElements(By.css('.exp-selected-result .exp-job-stage'))).length,4,'运行状态沿用原型的阶段条');
+  await driver.wait(async()=>(await(await el('.exp-selected-result')).getText()).includes('当前作业没有已发布结果'),10000);
+  assert.equal((await driver.findElements(By.css('.exp-selected-result .exp-job-stage'))).length,0,'V72结果区只保留未发布空态');
   assert.equal((await driver.findElements(By.css('.exp-unified-layout>.exp-job-current'))).length,0,'不在所选结果之外再添加底部进度面板');
   const activeRow=await el('tr[data-id="'+active.run_id+'"]');
   await click(await activeRow.findElement(By.css('.iad-job-status-button')));

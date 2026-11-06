@@ -1,7 +1,6 @@
 import hashlib
 import json
 import resource
-import sqlite3
 import threading
 import time
 from contextlib import closing
@@ -71,8 +70,7 @@ def prepare_resource_index(workload: ResourceWorkload, config: ImageEncoderConfi
         repeated = cache.prepare(subjects, config, extractor=extractor)
         if repeated.encoded_content_count or repeated.encoded_pixels:
             raise ValueError('Unchanged resource inputs unexpectedly encoded again')
-        with db.connection() as source, sqlite3.connect(str(output / 'baseline.db')) as baseline:
-            source.backup(baseline)
+        db.backup(str(output / 'baseline.db'))
         gpu = None
         if extractor is None and config.device.startswith('cuda:'):
             import torch

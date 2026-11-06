@@ -1,16 +1,16 @@
 /** DSH owns theme selection. Standalone surfaces use the same semantic roles. */
-const darkColors = `--iad-canvas:#141B25;--iad-surface:#202B3A;--iad-navigation:#182231;--iad-surface-muted:#293648;--iad-text:#EDF2F8;--iad-muted:#B4C0D0;--iad-border:#4C5B6E;--iad-control-border:#8393AA;--iad-primary:#A7C5FF;--iad-primary-fill:#315FC9;--iad-hover:#293E60;--iad-success:#92D7B0;--iad-warning:#F3C280;--iad-danger:#FFB7B1;--iad-viewer:#10161F;`;
+const darkColors = `--iad-canvas:#141B25;--iad-surface:#202B3A;--iad-navigation:#182231;--iad-surface-muted:#293648;--iad-text:#EDF2F8;--iad-muted:#B4C0D0;--iad-border:#4C5B6E;--iad-panel-border:var(--iad-border);--iad-control-border:#8393AA;--iad-primary:#A7C5FF;--iad-primary-fill:#315FC9;--iad-hover:#293E60;--iad-success:#92D7B0;--iad-warning:#F3C280;--iad-danger:#FFB7B1;--iad-viewer:#10161F;`;
 
 export const themeStyles = `
 :root {
- --iad-canvas:#EEF1F5;
+ --iad-canvas:#F5F7FA;
  --iad-surface:#fff;
  --iad-navigation:#F5F7FA;
  --iad-surface-muted:#F2F5F9;
  --iad-text:#172338;
  --iad-muted:#536174;
  --iad-border:#CBD3DE;
- --iad-panel-border:var(--iad-border);
+ --iad-panel-border:#DBE2EB;
  --iad-control-border:#B9C7D9;
  --iad-primary:#285ED6;
  --iad-primary-fill:#285ED6;

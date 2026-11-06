@@ -68,7 +68,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
       if(req.url==='/api/iad/consistency/review/context')reviewContextReads++;
       return api(req,res);
     }
-    res.setHeader('Content-Type','text/html;charset=utf-8');res.end('<!doctype html><meta charset="utf-8"><style>html,body,#root{height:100%;margin:0}body{font-family:system-ui;font-size:14px}</style><div id="root"></div><script src="/browser.js"></script>');
+    res.setHeader('Content-Type','text/html;charset=utf-8');res.end('<!doctype html><meta charset="utf-8"><style>html,body,#root{height:100%;margin:0}body{font-family:system-ui;font-size:14px}</style><div id="root"></div><script>if(isSecureContext)Object.defineProperty(crypto,"randomUUID",{value:undefined});</script><script src="/browser.js"></script>');
   });await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   let driver;
   try{
@@ -87,6 +87,36 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     const click=async label=>(await driver.wait(until.elementLocated(By.xpath(`//button[normalize-space(.)='${label}' or @aria-label='${label}']`)),10000)).click();
     await driver.get(start);await viewport(driver,1920,1080);
     const operations=await element(`[data-dc-row="${batch.batch_id}"] .dc-operations`);
+    await element('.dc-conflict-grid .iad-thumbnail-card');
+    const surface=await driver.executeScript(`const panel=document.querySelector('.dc-results-section'),style=getComputedStyle(panel),grid=panel.querySelector('.dc-conflict-grid'),card=getComputedStyle(grid.firstElementChild);
+      return {background:style.backgroundColor,border:style.borderTop,borderRadius:style.borderRadius,padding:style.padding,gap:getComputedStyle(grid).gap,cardBorder:card.borderTop,cardRadius:card.borderRadius};`);
+    assert.deepEqual(surface,{background:'rgb(255, 255, 255)',border:'1px solid rgb(219, 226, 235)',borderRadius:'6px',padding:'18px 20px 22px',gap:'14px',cardBorder:'1px solid rgb(219, 226, 235)',cardRadius:'5px'},'V72标注冲突白底包住标题、筛选、卡片和分页');
+    await fs.writeFile(path.join(output,'annotation-conflicts.png'),await driver.takeScreenshot(),'base64');
+    const workspaceLayout=await driver.executeScript(`const panel=document.querySelector('.dc-jobs-section'),heading=panel.querySelector('h2'),header=heading.parentElement;
+      return {titleSize:getComputedStyle(document.querySelector('.dc-page-heading h1')).fontSize,
+        background:getComputedStyle(panel).backgroundColor,borderWidth:getComputedStyle(panel).borderTopWidth,
+        headerHeight:Math.round(header.getBoundingClientRect().height),headerPadding:getComputedStyle(header).paddingLeft,
+        singlePageControls:panel.querySelectorAll('nav[aria-label="检查作业分页"]').length};`);
+    assert.deepEqual(workspaceLayout,{titleSize:'24px',background:'rgb(255, 255, 255)',borderWidth:'1px',headerHeight:70,headerPadding:'22px',singlePageControls:0},
+      'V65检查作业标题和表格共用白色面板，单页不显示分页');
+    await click('新建检查');
+    const newCheck=await element('#dc-new-mask');
+    const formLayout=await driver.executeScript('const r=arguments[0].getBoundingClientRect();return {width:r.width,height:r.height,footerBottom:arguments[0].querySelector("footer").getBoundingClientRect().bottom,bottom:r.bottom}',newCheck);
+    assert.equal(formLayout.width,960,'新建检查使用V65表单宽度');
+    assert.ok(formLayout.height<700,JSON.stringify(formLayout));
+    assert.ok(Math.abs(formLayout.footerBottom-formLayout.bottom)<=2,'表单底部不能留下详情弹窗的空白区域');
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    await driver.executeScript(`const frame=document.createElement('iframe');frame.id='responsive-workbench';frame.src=arguments[0];
+      frame.style.cssText='position:fixed;inset:0;width:375px;height:812px;border:0;z-index:10000';document.body.append(frame);`,start);
+    await driver.switchTo().frame(await element('#responsive-workbench'));
+    await (await element('[data-dc="start-check"]')).click();
+    const narrowForm=await driver.executeScript('const e=arguments[0],r=e.getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,width:innerWidth,height:innerHeight,overflow:e.scrollWidth-e.clientWidth}',await element('#dc-new-mask'));
+    assert.equal(narrowForm.width,375,'使用实际375px内容视口');
+    assert.ok(narrowForm.left>=0&&narrowForm.right<=narrowForm.width&&narrowForm.bottom<=narrowForm.height,JSON.stringify(narrowForm));
+    assert.ok(narrowForm.overflow<=1,JSON.stringify(narrowForm));
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    await driver.switchTo().defaultContent();
+    await driver.executeScript('document.getElementById("responsive-workbench").remove()');
     assert.ok(!programReads.includes('/api/iad/consistency/runs'),'列表只读取当前范围作业引用的程序批次，不重算全局历史批次');
     assert.ok(programReads.includes('/api/iad/consistency/runs/'+batch.batch_id));
     assert.deepEqual(await Promise.all((await operations.findElements(By.css('button'))).map(button=>button.getAttribute('aria-label'))),
@@ -96,17 +126,28 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     const statistics=await element('.dc-stats-dialog');
     const statsLayout=await driver.executeScript('const r=arguments[0].getBoundingClientRect();return {modal:arguments[0].matches("dialog:modal"),width:r.width,x:r.x+r.width/2-innerWidth/2,y:r.y+r.height/2-innerHeight/2}',statistics);
     assert.equal(statsLayout.modal,true,'统计窗口应复用公共原生Modal');assert.equal(statsLayout.width,960);assert.ok(Math.abs(statsLayout.x)<=1&&Math.abs(statsLayout.y)<=1);
+    assert.equal((await statistics.findElements(By.css('.dc-vchart-panel'))).length,3);
+    assert.equal(await statistics.findElement(By.css('.dc-vchart-panel .dc-vchart-value')).getText(),String(expectedGallery.total),'统计图读取当前作业实际图组总数');
     await driver.actions().sendKeys(Key.ESCAPE).perform();
     await driver.wait(async()=>(await driver.findElements(By.css('dialog:modal'))).length===0,5000);
     assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',stats),true,'统计关闭后焦点回到操作按钮');
     const cards=()=>driver.findElements(By.css('[data-dc="open-conflict"]'));
     await driver.wait(async()=>(await cards()).length===expectedGallery.total,10000);
     assert.equal(reviewContextReads,0,'图库首次渲染不能逐卡片读取完整图像复核上下文');
-    for(const card of await cards())assert.match(await card.getText(),/模型：存在实质差异/);
+    for(const card of await cards())assert.match(await card.getAttribute('aria-label'),/模型结论：存在实质差异/);
+    const cardLayout=await driver.executeScript(`const card=document.querySelector('[data-dc="open-conflict"]'),image=card.querySelector('img'),values=card.querySelector('[aria-label="原始结论与模型结论"]');
+      return {imageHeight:Math.round(image.getBoundingClientRect().height),values:values?[...values.children].map(e=>({text:e.textContent,y:e.getBoundingClientRect().top,align:getComputedStyle(e).textAlign})):[]};`);
+    assert.equal(cardLayout.imageHeight,140,'V65冲突卡片保留140px图像区');
+    assert.equal(cardLayout.values.length,2,'同时展示原始结论与真实模型结论');
+    assert.equal(cardLayout.values[0].y,cardLayout.values[1].y,'两种结论在卡片底部同排显示');
+    assert.deepEqual(cardLayout.values.map(value=>value.align),['left','right']);
     const first=await element(`[data-dc="open-conflict"][data-id="${expectedGallery.items[0].group_id}"]`);await first.click();
     await driver.wait(async()=>/固定主图与候选/.test(await (await element('[aria-label="模型分析"]')).getText()),10000);
     await driver.wait(async()=>(await driver.findElements(By.css('[data-dc="candidate"]'))).length===22,10000);
     const comparison=await element('#dc-compare-mask');
+    assert.deepEqual(await Promise.all((await comparison.findElements(By.css('.dc-compare-cell h3'))).map(title=>title.getText())),['主图','对照图像']);
+    await driver.wait(async()=>(await comparison.findElements(By.css('.dc-source-label'))).length===2,5000);
+    for(const label of await comparison.findElements(By.css('.dc-source-label')))assert.match(await label.getText(),/原始标注 category-\d/);
     assert.equal(await driver.executeScript('return getComputedStyle(arguments[0]).display',await comparison.findElement(By.css('.dc-dialog-body'))),'block','对比正文保留独立的文档流，不能继承方向详情的弹性布局');
     const compareLayout=await driver.executeScript('const r=arguments[0].getBoundingClientRect();return {modal:arguments[0].matches("dialog:modal"),width:r.width,x:r.x+r.width/2-innerWidth/2,y:r.y+r.height/2-innerHeight/2}',comparison);
     assert.equal(compareLayout.modal,true,'冲突对比应复用公共原生Modal');assert.equal(compareLayout.width,1380);assert.ok(Math.abs(compareLayout.x)<=1&&Math.abs(compareLayout.y)<=1);
@@ -123,10 +164,12 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     const lastCandidate=(await driver.findElements(By.css('[data-dc="candidate"]')))[21];
     const candidateLayout=await driver.executeScript(`return [arguments[0],arguments[0].parentElement,arguments[0].parentElement.parentElement].map(element=>{
       const style=getComputedStyle(element),rect=element.getBoundingClientRect();return {className:element.className,display:style.display,height:rect.height,width:rect.width,maxHeight:style.maxHeight,overflow:style.overflow,flex:style.flex};})`,lastCandidate);
-    assert.ok(candidateLayout[0].height>100,JSON.stringify(candidateLayout));
+    assert.equal(candidateLayout[0].height,70,'候选缩略图采用V65的70px紧凑尺寸');
+    assert.ok(candidateLayout[1].height<=100,JSON.stringify(candidateLayout));
     await driver.executeScript('arguments[0].scrollIntoView({block:"nearest",inline:"center"})',lastCandidate);
     await lastCandidate.click();
     await driver.wait(async()=>await driver.findElement(By.css('[data-dc="zoom-candidate"] img')).getAttribute('src')!==anchorSrc,5000);
+    await driver.wait(async()=>/原始标注 category-2/.test(await driver.findElement(By.css('.dc-compare-cell:last-child .dc-source-label')).getText()),5000);
     assert.equal(await driver.findElement(By.css('[data-dc="zoom-anchor"] img')).getAttribute('src'),anchorSrc);
     assert.ok(anchorSrc.includes('/consistency/evidence/'));
     await fs.writeFile(path.join(output,'current-conflict-dialog.png'),await driver.takeScreenshot(),'base64');

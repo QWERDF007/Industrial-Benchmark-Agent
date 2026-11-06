@@ -37,6 +37,69 @@ def retrieval_vectors(dataset, tmp_path):
     close_workbenches()
 
 
+@pytest.mark.parametrize(('minimum','expected'),[(.95,{'scratch'}),(.8,{'scratch','normal'})])
+def test_similarity_retrieval_filters_by_score_and_preserves_exact_matches(retrieval_vectors,minimum,expected):
+    from iad_core.consistency.service import ConsistencyService
+
+    db,_,config,profile=retrieval_vectors
+    result=ConsistencyService(db).retrieve_full(ImageRetrieve(query={'kind':'sample','sample_id':config.dataset.id+':dent.png'},
+        mode='combined',profile_id=profile.profile_id,top_k=None,min_similarity=minimum))
+    assert result.retrieval_completeness=='SIMILARITY_THRESHOLD'
+    assert result.min_similarity==minimum and result.visual_k is None
+    assert {member.sample_id.rsplit(':',1)[1].removesuffix('.png') for branch in (result.exact,result.visual)
+        for group in branch.groups for member in group.members}==expected
+    assert {member.sample_id for group in result.exact.groups for member in group.members}=={config.dataset.id+':scratch.png'}
+
+
+def test_similarity_retrieval_keeps_all_qualifying_groups_beyond_fifty(retrieval_vectors,tmp_path):
+    from iad_core.consistency.service import ConsistencyService
+
+    db,registry,config,profile=retrieval_vectors
+    root=tmp_path/'threshold-corpus';root.mkdir()
+    for index in range(72):
+        Image.new('RGB',(16,16),(index,index*3,40)).save(root/f'{index:03}.png')
+    corpus=registry.import_labelme(DatasetImport(format='labelme',name='阈值检索',image_dir=str(root),annotation_dir=str(root)))
+    for index in range(72):
+        vector=np.zeros(profile.dim,dtype=np.float32)
+        vector[:2]=(.96,.28) if index<70 else (.8,.6)
+        group=PixelIndex(db).get(corpus.dataset.id+f':{index:03}.png').content_group_id
+        FeatureRepository(db).upsert(FeatureRecord(content_group_id=group,profile_id=profile.profile_id,
+            dim=profile.dim,dtype='float32',embedding_blob=vector.tobytes()))
+    result=ConsistencyService(db).retrieve_full(ImageRetrieve(query={'kind':'sample','sample_id':config.dataset.id+':dent.png'},
+        corpus_scope={'kind':'datasets','dataset_ids':[corpus.dataset.id]},mode='visual',profile_id=profile.profile_id,
+        top_k=None,min_similarity=.95))
+    assert result.visual.group_count==result.visual.member_count==70
+    assert {member.sample_id for group in result.visual.groups for member in group.members}=={
+        corpus.dataset.id+f':{index:03}.png' for index in range(70)}
+
+
+def test_consistency_jobs_freeze_the_default_similarity_and_exclude_lower_scores(retrieval_vectors):
+    from iad_core.consistency.models import ConsistencyStart
+    from iad_core.workbench.runtime import WorkbenchRuntime
+
+    db,_,config,profile=retrieval_vectors
+    runtime=WorkbenchRuntime(db)
+    try:
+        started=runtime.consistency.start(ConsistencyStart(subjects={'kind':'all_registered'},mode='combined',
+            profile_id=profile.profile_id,request_id='threshold-default'))
+        deadline=time.monotonic()+10
+        while time.monotonic()<deadline:
+            batch=runtime.consistency.status(started.batch_id)
+            if batch.status not in ('RUNNING','PENDING'):break
+            time.sleep(.01)
+        assert batch.status=='COMPLETED'
+        pairs=runtime.consistency.results(batch.batch_id)
+        assert len(pairs)==1
+        assert {pairs[0].sample_a,pairs[0].sample_b}=={config.dataset.id+':dent.png',config.dataset.id+':scratch.png'}
+        from iad_core.consistency.reports import ConsistencyReports
+        from iad_core.consistency.result_models import ConsistencyQuery
+        report=ConsistencyReports(db).report(ConsistencyQuery(selection={'kind':'batch','batch_id':batch.batch_id}))
+        assert report.page.retrieval_completeness=='SIMILARITY_THRESHOLD'
+        assert report.page.min_similarity==.95
+    finally:
+        runtime.close()
+
+
 def test_exact_retrieval_checks_the_eightieth_member_before_pagination(tmp_path):
     from iad_core.consistency.service import ConsistencyService
 

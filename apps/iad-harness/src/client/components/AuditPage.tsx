@@ -17,7 +17,7 @@ import {RefreshIconButton, ClearFilterButton} from './CommonFilterControls.js';
 import {AuditJobs} from './AuditJobs.js';
 import {DatasetReport} from './DatasetReport.js';
 import {AuditSampleDialog} from './AuditSampleDialog.js';
-import {AuditStatus, auditSampleImage} from './AuditSampleMedia.js';
+import {auditSampleImage} from './AuditSampleMedia.js';
 import {AuditSetup} from './AuditSetup.js';
 import {Pagination} from './Pagination.js';
 import {JobStatusDrawer} from './JobStatusDrawer.js';
@@ -51,8 +51,9 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
     }
   }, [datasets, hierarchy, groupId]);
   const query = new URLSearchParams({page: String(page), page_size: '18', status, search});
-  const result = useResource<AuditSamplePage>(job && !createOpen && tab === 'audit'
+  const result = useResource<AuditSamplePage>(job?.status==='COMPLETED' && !createOpen && tab === 'audit'
     ? `/audit/jobs/${encodeURIComponent(job.run_id)}/samples?${query}` : null, revision);
+  const hasResults=job?.status==='COMPLETED'&&!!result.data&&Object.values(result.data.distribution).some(value=>value>0);
   const setupDatasets = datasets.filter(item => ids.includes(item.dataset_id));
   const refresh = () => {jobs.refresh(); progress(); onDatasetsChanged();};
   return <div id="audit-page">
@@ -70,28 +71,28 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
       <RefreshIconButton onClick={refresh} />
     </DatasetScopeSelector>
     {jobs.error && <p role="alert">{jobs.error}</p>}
-    {createOpen && setupDatasets.length ? <section className="audit-panel"><header className="audit-panel-head"><h2>新建审计</h2></header>
-      <div className="audit-create"><AuditSetup datasets={setupDatasets} filters={initialFilters} jobs={jobs.jobs}
+    {createOpen ? <AuditSetup key={scope} datasets={setupDatasets} filters={initialFilters} jobs={jobs.jobs}
         revision={revision + refreshRevision} onBusyChange={setCreatingBusy} onCancel={()=>setCreateOpen(false)} onStarted={started => {
           workspace.updateView('industrial-audit', {job: started[0]?.run_id || ''});
           selection.clear(); setCreateOpen(false); setTab('audit'); refresh();
-        }} /></div></section> : <PageTabs<'audit' | 'reports'> label="审计视图" className="audit-tabs"
+        }} /> : <PageTabs<'audit' | 'reports'> label="审计视图" className="audit-tabs"
           items={[{id: 'audit', label: '模型审计'}, {id: 'reports', label: '报告'}]} value={tab} onChange={setTab}>
       <div hidden={tab !== 'audit'}>
         <AuditJobs loading={jobs.loading} selection={selection} datasets={datasets} onDetails={setJobDetails} />
         <section className="audit-panel" aria-label="审计图像"><header className="audit-panel-head"><h2>审计图像</h2>
-          <div className="audit-filters"><label className="audit-field"><span>文件名</span><input type="search" aria-label="搜索审计图像"
+          {hasResults&&<div className="audit-filters"><label className="audit-field"><span>文件名</span><input type="search" aria-label="搜索审计图像"
             value={search} onChange={event => {setSearch(event.target.value); setPage(1);}} /></label>
-            <ClearFilterButton onClick={() => {setSearch(''); setStatus('all'); setPage(1);}} /></div></header>
-          <TabBar label="审计图像状态" value={status} onChange={value => {setStatus(value); setPage(1);}}
+            <ClearFilterButton onClick={() => {setSearch(''); setStatus('all'); setPage(1);}} /></div>}</header>
+          {hasResults&&<TabBar label="审计图像状态" value={status} onChange={value => {setStatus(value); setPage(1);}}
             items={(['all', ...Object.keys(auditStateLabels)] as Array<'all' | keyof typeof auditStateLabels>).map(value => ({id: value,
               label: <>{value === 'all' ? '全部图像' : auditStateLabels[value]}{result.data && <span className="iad-tab-count">{value === 'all'
-                ? Object.values(result.data.distribution).reduce((sum, value) => sum + value, 0) : result.data.distribution[value]}</span>}</>}))} /><div id="audit-images">
-            {!job && <p className="audit-empty">没有选中的审计作业。</p>}
+                ? Object.values(result.data.distribution).reduce((sum, value) => sum + value, 0) : result.data.distribution[value]}</span>}</>}))} />}<div id="audit-images">
+            {!job && <p className="iad-result-empty" role="status">当前没有结果</p>}
+            {job&&job.status!=='COMPLETED'&&<p className="iad-result-empty" role="status">当前作业没有已发布结果</p>}
             {result.loading && <p className="audit-empty" role="status">正在读取作业图像…</p>}
             {result.error && <p role="alert">{result.error}</p>}
             {job && result.data && <><div className="iad-thumbnail-grid">{result.data.items.map(item=><ThumbnailCard key={item.sample_id} src={auditSampleImage(item,job.task_id)} label={item.filename}
-              onClick={()=>setSample(item)} data-sample-id={item.sample_id}><span className="iad-thumbnail-meta"><AuditStatus state={item.audit_state} /></span></ThumbnailCard>)}</div>{!result.data.items.length && <p className="audit-empty">没有匹配的审计图像。</p>}
+              onClick={()=>setSample(item)} data-sample-id={item.sample_id} />)}</div>{!result.data.items.length && <p className="audit-empty">没有匹配的审计图像。</p>}
               <Pagination total={result.data.total} page={page} size={18} unit="张图像" onPage={setPage} /></>}
           </div></section>
       </div>

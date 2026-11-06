@@ -1,3 +1,4 @@
+import {v4 as uuid} from 'uuid';
 import {Modal} from './Modal.js';
 import {DatasetScopeSelector} from './DatasetScopeSelector.js';
 import {TabBar} from './layout/TabBar.js';
@@ -205,7 +206,7 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
         directions:allSelectedDirItems.map(item=>({direction_id:item.id,title:item.name,instruction:item.text,enabled:true,
           origin:setupExplored.has(item.id) ? 'explored' : item.origin || 'preset'})),
       };
-      submission.current ||= crypto.randomUUID();
+      submission.current ||= uuid();
       const job=await request<JobSnapshot>('/analysis/start',{submission_id:submission.current,analysis_kind:'knowledge',
         dataset_ids:[...setupSubsets],batch_size:batchSize,mining_prompt:miningPrompt});
       started.current=job;

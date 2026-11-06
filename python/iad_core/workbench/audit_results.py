@@ -14,6 +14,7 @@ from iad_core.workbench.audit_result_models import (
 )
 from iad_core.workbench.job_models import JobSnapshot
 from iad_core.workbench.job_families import JobFamilies
+from iad_core.workbench.knowledge import InspectionKnowledge
 
 
 PROJECTION = """
@@ -32,7 +33,7 @@ WITH scope AS (
     SELECT *, ROW_NUMBER() OVER (PARTITION BY sample_id ORDER BY id DESC) AS position
     FROM audit_consistency_checks WHERE run_id IN (SELECT job_id FROM family)
 ), facts AS (
-    SELECT scope.value AS sample_id, scope.key AS ordinal, frozen.dataset_id,
+    SELECT scope.value AS sample_id, scope.key AS ordinal, COALESCE(s.dataset_id,frozen.dataset_id) AS dataset_id,
         COALESCE(a.audit_run_id,c.run_id,(SELECT job_id FROM family ORDER BY id DESC LIMIT 1)) AS run_id,
         COALESCE(s.relative_path, scope.value) AS filename,
         COALESCE(s.width, 0) AS width, COALESCE(s.height, 0) AS height,
@@ -91,12 +92,6 @@ class AuditResults:
         return AuditSamplePage(run_id=query.run_id, total=len(selected), page=query.page, page_size=query.page_size,
             distribution=distribution, items=selected[start:start + query.page_size])
 
-    def _knowledge(self, version_id: str | None) -> AuditKnowledgeReference | None:
-        if not version_id:
-            return None
-        snapshot = KnowledgeRepository(self.db).get(version_id)
-        return AuditKnowledgeReference(**snapshot.model_dump(include=set(AuditKnowledgeReference.model_fields)))
-
     def sample(self, run_id: str, sample_id: str) -> AuditSampleDetail:
         job, items = self._snapshot(run_id)
         item = next((item for item in items if item.sample_id == sample_id), None)
@@ -114,8 +109,16 @@ class AuditResults:
                 current = SampleContent.capture(self.db, sample_id).model_dump() == expected
             except (OSError, ValueError, LookupError):
                 current = False
+        knowledge = None
+        if job.knowledge_version_id:
+            snapshot = KnowledgeRepository(self.db).get(job.knowledge_version_id)
+            selection = job.model_extra['request'].get('sources')
+            checks = InspectionKnowledge(snapshot, frozenset(selection['knowledge_entry_ids']) if selection else None).checks
+            evidence_ids = {identity for check in checks for identity in [*check.support_evidence_ids, *check.counter_evidence_ids]}
+            knowledge = AuditKnowledgeReference(**(snapshot.model_dump(include=set(AuditKnowledgeReference.model_fields)) |
+                dict(checks=checks,evidence=[evidence for evidence in snapshot.evidence if evidence.image.evidence_id in evidence_ids])))
         return AuditSampleDetail(sample=item, suggestion=suggestion,
-            knowledge=self._knowledge(job.knowledge_version_id),
+            knowledge=knowledge,
             consistency=AuditConsistencyRepository(self.db).latest(sample_id, run_id=item.run_id),
             source_current=current, errors=[error.message for error in job.errors if error.sample_id == sample_id])
 

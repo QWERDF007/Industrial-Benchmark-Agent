@@ -305,6 +305,11 @@ def dataset_report_export(args, db_path):
     return DatasetReports.export(Database(db_path), args['run_id'])
 
 
+def audit_sources(args, db_path):
+    from iad_core.workbench.audit_sources import AuditSources
+    return AuditSources(Database(db_path)).catalog(args['dataset_ids']).model_dump(mode='json')
+
+
 def audit_start(args, db_path):
     return workbench(db_path).invoke_model(args.get('_model_execution'), lambda services:
         services.audit.start(**{key: value for key, value in args.items() if key != '_model_execution'}))
@@ -557,7 +562,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     review_queue, review_evidence, review_submit_decision, review_history,
     knowledge_review_context, knowledge_review_submit, knowledge_review_queue,
     review_stats, report_get, dataset_report_start, dataset_report_get, dataset_report_list, dataset_report_status, dataset_report_export,
-    audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_list, audit_job_samples, audit_job_sample, audit_job_report, audit_job_export, audit_evidence, inspection_context, directory_list,
+    audit_sources, audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_list, audit_job_samples, audit_job_sample, audit_job_report, audit_job_export, audit_evidence, inspection_context, directory_list,
     knowledge_scope_open, knowledge_scope_get, knowledge_scope_stop, knowledge_scope_resume,
     knowledge_get, knowledge_versions, knowledge_check_review, knowledge_presets, knowledge_prompt_get, knowledge_prompt_save, knowledge_details, knowledge_sources, knowledge_observations, knowledge_evidence, knowledge_start, knowledge_batch_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_retry_options, knowledge_list, knowledge_job_delete, knowledge_check_remove, model_call_get,
 )}
@@ -569,7 +574,7 @@ QUERY_OPERATIONS = frozenset({
     'direction_exploration_get', 'direction_exploration_evidence', 'direction_exploration_presets',
     'analysis_list', 'analysis_status', 'analysis_node', 'analysis_results',
     'consistency_model_status',
-    'audit_status', 'audit_list', 'audit_job_samples', 'audit_job_sample', 'audit_job_report', 'audit_job_export',
+    'audit_sources', 'audit_status', 'audit_list', 'audit_job_samples', 'audit_job_sample', 'audit_job_report', 'audit_job_export',
     'dataset_report_get', 'dataset_report_list', 'dataset_report_status', 'dataset_report_export',
     'dataset_list', 'dataset_get', 'dataset_group_list', 'sample_list', 'sample_get',
     'sample_image_path', 'sample_thumbnail', 'sample_mask_path', 'report_get',

@@ -6,7 +6,7 @@ from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.annotation_models import AnnotationComparison
 from iad_core.consistency.errors import ConsistencyErrorCode
 from iad_core.consistency.models import (ConsistencyCoverage, Count, CoverageCount, Identifier,
-    ImageQuery, Mode, PixelComparison, Relation)
+    ImageQuery, Mode, PixelComparison, Relation, SimilarityThreshold)
 from iad_core.storage.models import QualityStatus
 from iad_core.duplicate.verification_models import NearVerification, RegionPixelStatistics, Registration
 
@@ -62,8 +62,9 @@ class RetrievalPage(AnalysisModel):
     coverage: ConsistencyCoverage
     group_count: Count
     member_count: Count
-    visual_k: Count
-    retrieval_completeness: Literal['EXACT_SCOPE', 'TOP_K', 'PARTIAL']
+    visual_k: Count | None
+    min_similarity: SimilarityThreshold | None = None
+    retrieval_completeness: Literal['EXACT_SCOPE', 'TOP_K', 'SIMILARITY_THRESHOLD', 'PARTIAL']
 
 
 class RetrievalCursor(AnalysisModel):

@@ -10,7 +10,7 @@ export function useAuditJobSelection(jobs: JobSnapshot[], scope: string) {
   const selected = filtered.find(job => job.root_run_id === state.runId || job.run_id === state.runId) || filtered[0] || null;
   const page = Math.min(state.page, Math.max(1, Math.ceil(filtered.length / 8)));
   const update = (patch: Partial<typeof state>) => setSaved({...state, ...patch});
-  return {state, selected, filtered, page, visible: filtered.slice((page - 1) * 8, page * 8),
+  return {state, selected, filtered, page, hasJobs:jobs.length>0, visible: filtered.slice((page - 1) * 8, page * 8),
     search: (search: string) => update({search, page: 1}), status: (status: string) => update({status, page: 1}),
     select: (runId: string) => update({runId:jobs.find(job=>job.run_id===runId)?.root_run_id || runId}), setPage: (page: number) => update({page}),
     clear: () => setSaved(empty)};

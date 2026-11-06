@@ -86,9 +86,9 @@ class ConsistencyService:
         if not requests:
             return
         first = requests[0]
-        if any((request.corpus_scope, request.mode, request.profile_id, request.top_k) !=
-                (first.corpus_scope, first.mode, first.profile_id, first.top_k) for request in requests):
-            raise ConsistencyError('INVALID_SCOPE', 'A retrieval batch requires one corpus, mode, profile and neighbor budget')
+        if any((request.corpus_scope, request.mode, request.profile_id, request.top_k, request.min_similarity) !=
+                (first.corpus_scope, first.mode, first.profile_id, first.top_k, first.min_similarity) for request in requests):
+            raise ConsistencyError('INVALID_SCOPE', 'A retrieval batch requires one corpus, mode, profile and candidate selection')
         limit = self.runtime.indexes.limits.query_batch_size if first.mode != 'exact' else IndexLimits().query_batch_size
         for offset in range(0, len(requests), limit):
             if checkpoint:
@@ -195,10 +195,10 @@ class ConsistencyService:
                     for member in group.members):
                 branch.status = 'PARTIAL'
         completeness = ('PARTIAL' if any(branch.status not in ('READY', 'NOT_REQUESTED') for branch in (exact, visual))
-            else 'EXACT_SCOPE' if request.mode == 'exact' else 'TOP_K')
+            else 'EXACT_SCOPE' if request.mode == 'exact' else 'SIMILARITY_THRESHOLD' if request.min_similarity is not None else 'TOP_K')
         result = RetrievalPage(query=request.query, scope_id=scope.scope_id, mode=request.mode, profile_id=profile_id,
             exact=exact, visual=visual, coverage=ConsistencyCoverage(corpus=visual.corpus_coverage if request.mode == 'visual' else corpus,
                 verification=verified.verification, annotation=verified.annotation),
             group_count=len(verified.groups), member_count=sum(group.member_count for group in verified.groups.values()),
-            visual_k=request.top_k, retrieval_completeness=completeness)
+            visual_k=request.top_k, min_similarity=request.min_similarity, retrieval_completeness=completeness)
         return result

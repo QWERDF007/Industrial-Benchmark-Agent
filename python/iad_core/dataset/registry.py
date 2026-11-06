@@ -207,11 +207,10 @@ class DatasetRegistry:
             if not dataset:
                 raise LookupError("数据集不存在或已删除")
             task_id = dataset['task_id']
-            job_dataset = "COALESCE(json_extract(payload_json,'$.request.dataset_id'),json_extract(payload_json,'$.dataset_id'))"
-            if conn.execute(f"""SELECT 1 FROM job_runs WHERE status IN ('PENDING','RUNNING')
-                AND ({job_dataset}=? OR (task_id=? AND {job_dataset} IS NULL)
-                    OR (job_type='ANALYSIS_WORKFLOW' AND EXISTS (
-                        SELECT 1 FROM json_each(payload_json,'$.request.dataset_ids') WHERE value=?)))""", (dataset_id,task_id,dataset_id)).fetchone():
+            if conn.execute("""SELECT 1 FROM job_runs WHERE status IN ('PENDING','RUNNING')
+                AND (job_id IN (SELECT source_id FROM job_dataset_scopes WHERE dataset_id=? AND kind IN ('direct','workflow'))
+                    OR (task_id=? AND NOT EXISTS (
+                        SELECT 1 FROM job_dataset_scopes WHERE source_id=job_id AND kind='direct')))""", (dataset_id,task_id)).fetchone():
                 raise ValueError("数据集仍有执行中的作业，请先取消或等待作业结束后删除")
             exclusive_task = not conn.execute("""SELECT 1 FROM datasets WHERE task_id=? AND dataset_id!=?
                 UNION ALL SELECT 1 FROM samples WHERE task_id=? AND dataset_id!=? LIMIT 1""",
@@ -220,15 +219,11 @@ class DatasetRegistry:
                 raise ValueError("数据集仍有执行中的 Agent 作业，请等待作业结束后删除")
             from iad_core.consistency.deletion import ConsistencyDeletion
             ConsistencyDeletion(conn).delete_dataset(dataset_id)
-            related = [row[0] for row in conn.execute(f"""WITH RECURSIVE owned(job_id) AS (
-                SELECT job_id FROM job_runs WHERE ({job_dataset}=? OR (task_id=? AND ?)
-                    OR (job_type='ANALYSIS_WORKFLOW' AND EXISTS (
-                        SELECT 1 FROM json_each(payload_json,'$.request.dataset_ids') WHERE value=?)))
-                UNION SELECT child.value FROM job_runs owner JOIN owned ON owner.job_id=owned.job_id,
-                    json_each(owner.payload_json,'$.batch_runs') child
-                UNION SELECT child.job_id FROM job_runs child JOIN owned
-                    ON json_extract(child.payload_json,'$.parent_run_id')=owned.job_id)
-                SELECT job_id FROM owned""", (dataset_id,task_id,exclusive_task,dataset_id))]
+            related = [row[0] for row in conn.execute("""WITH RECURSIVE owned(job_id) AS (
+                SELECT source_id FROM job_dataset_scopes WHERE dataset_id=? AND kind IN ('direct','workflow')
+                UNION SELECT job_id FROM job_runs WHERE task_id=? AND ?
+                UNION SELECT child_id FROM job_ownership_edges JOIN owned ON parent_id=owned.job_id)
+                SELECT job_id FROM owned""", (dataset_id,task_id,exclusive_task))]
             jobs = 'SELECT value FROM json_each(?)'
             job_scope = (json.dumps(related),)
             conn.execute(f"DELETE FROM model_calls WHERE run_id IN ({jobs})", job_scope)

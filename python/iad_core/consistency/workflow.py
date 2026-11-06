@@ -3,7 +3,7 @@ from iad_core.workbench.job_models import ChildJobError
 from uuid import UUID, uuid5
 
 from iad_core.consistency.gallery import GalleryQueries
-from iad_core.consistency.model_batches import ConsistencyModelBatches
+from iad_core.consistency.group_analysis import GroupAnalyses
 from iad_core.consistency.group_models import FrozenAnalysisGroup
 from iad_core.consistency.group_analysis_models import GROUP_ANALYSIS_SCHEMA
 from iad_core.consistency.models import ConsistencyStart
@@ -12,52 +12,17 @@ from iad_core.consistency.result_models import ConsistencyQuery
 
 
 class ConsistencyWorkflow:
-    """Program facts, full-scope visual coverage and conflict groups share one job."""
+    """Freeze program candidates and analyze only their eligible visual groups."""
 
     def __init__(self, runtime, client):
         self.runtime, self.db = runtime, runtime.db
-        self.visuals = ConsistencyModelBatches(runtime,client)
-        self.analyses = self.visuals.analyses
+        self.analyses = GroupAnalyses(runtime,client)
 
     def execute(self, context):
         request = context.payload['request']
         plan = self.prepare(context)
         pending = set(context.payload['sample_ids']) - set(context.payload['completed_sample_ids']) - set(context.payload['failed_sample_ids'])
         self.finish(context,plan,pending)
-        wanted = {unit['dataset_id']:pending.intersection(unit['request']['sample_ids']) for unit in request['units']}
-        unit_runs = dict(context.payload['unit_runs'])
-
-        def children():
-            for unit in request['units']:
-                context.checkpoint()
-                selected = wanted[unit['dataset_id']]
-                if not selected:
-                    continue
-                if unit['dataset_id'] in unit_runs:
-                    child = self.runtime.jobs.status(unit_runs[unit['dataset_id']])
-                    if child['status'] not in ('PENDING','RUNNING','COMPLETED'):
-                        child = self.visuals.retry(child['run_id'])
-                else:
-                    child = self.runtime.jobs.start(unit['job_type'],unit['task_id'],
-                        dict(unit['request'],sample_ids=sorted(selected)),self.visuals.execute,'检查未覆盖的图像')
-                yield child
-
-        def observe(state):
-            dataset_id = state['dataset_id']
-            unit_runs[dataset_id] = state['run_id']
-            ready = wanted[dataset_id].intersection(state['completed_sample_ids'])
-            if ready:
-                context.record(sorted(ready))
-                pending.difference_update(ready)
-                wanted[dataset_id].difference_update(ready)
-            context.update(unit_runs=dict(unit_runs))
-
-        context.update(phase='ANALYZING_UNCOVERED_IMAGES')
-        for child in context.join_all(children(),on_progress=observe):
-            unresolved = wanted[child['dataset_id']]
-            if unresolved:
-                context.record(sorted(unresolved),ChildJobError(child))
-                pending.difference_update(unresolved)
         if pending:
             raise ValueError('所选范围仍有未完成检查的图像')
         state = AnalysisJobViews(self.db).status(context.run_id)
@@ -74,6 +39,7 @@ class ConsistencyWorkflow:
         started = self.runtime.consistency.start(ConsistencyStart(
             subjects=dict(kind='datasets', dataset_ids=request['dataset_ids']),
             corpus_scope=dict(kind='datasets', dataset_ids=request['dataset_ids']), mode=request['submission']['mode'],
+            min_similarity=request['submission']['min_similarity'],
             request_id=str(uuid5(UUID(request['submission']['submission_id']), 'program'))))
         if started.kind != 'started':
             raise ValueError('所选范围没有可比较图像')
@@ -125,6 +91,10 @@ class ConsistencyWorkflow:
                 requirements.setdefault(image.sample.sample_id, set()).add(group.group_id)
         finished = set()
         submission = context.payload['request']['submission']
+        unmatched = pending - requirements.keys()
+        if unmatched:
+            context.record(sorted(unmatched),no_candidate_sample_ids=sorted(unmatched))
+            pending.difference_update(unmatched)
         context.update(phase='ANALYZING_CONFLICT_GROUPS', total_gallery_groups=len(plan), completed_gallery_groups=0)
         for unit in plan:
             context.checkpoint()

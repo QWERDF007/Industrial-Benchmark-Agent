@@ -46,7 +46,7 @@ def report_data(facts: BenchmarkFacts) -> dict[str, list[dict[str, str]]]:
             dict(label='资格未知比较记录',value=str(consistency.facts.unknown),basis='来源或证据不可核验的记录不混入当前比较统计'),
             dict(label='严格同图检查覆盖',value=f'{consistency.execution.completed}/{consistency.execution.total}',
                 basis='复用匹配当前范围的既有检查；不把已检查图像数当成相似图穷举证明'),
-            dict(label='检查完整性',value={'EXACT_SCOPE':'严格同图范围完整','TOP_K':'候选检索 Top-K','PARTIAL':'部分完成','INDEX_ONLY':'仅索引'}[consistency.retrieval_completeness],
+            dict(label='检查完整性',value={'EXACT_SCOPE':'严格同图范围完整','TOP_K':'候选检索 Top-K','SIMILARITY_THRESHOLD':'相似度阈值检索','PARTIAL':'部分完成','INDEX_ONLY':'仅索引'}[consistency.retrieval_completeness],
                 basis='当前严格同图检查口径；未处理、失败与无匹配的来源分别保留')],
         'scope_dataset_ids': [dict(label='子数据集', value=str(len(facts.scope_dataset_ids)), basis='去重登记图像为覆盖率分母，未审计保留')],
     }

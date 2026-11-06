@@ -1,7 +1,6 @@
 import json
 import time
 import uuid
-import zlib
 from contextlib import contextmanager,nullcontext
 from contextvars import ContextVar
 from datetime import datetime, timezone
@@ -75,8 +74,9 @@ class ModelCalls:
             summary = ModelCallSummary(call_id='call_' + uuid.uuid4().hex, run_id=run_id, operation=operation,
                 schema_name=schema_name, phase=payload.get('phase'), sample_id=payload.get('current_sample_id'),
                 started_at=datetime.now(timezone.utc).isoformat())
-            conn.execute('INSERT INTO model_calls(call_id,run_id,summary_json,request_body) VALUES(?,?,?,?)',
-                         (summary.call_id, run_id, summary.model_dump_json(), zlib.compress(request.content)))
+            conn.execute('INSERT INTO model_calls(call_id,run_id,summary_json) VALUES(?,?,?)',
+                         (summary.call_id, run_id, summary.model_dump_json()))
+            repository.db.call_payloads.write(run_id, summary.call_id, 'request', request.content)
         response, capture, response_body = None, None, None
         started = time.perf_counter()
         try:
@@ -112,9 +112,10 @@ class ModelCalls:
                         summary.finish_reason = reason if isinstance(reason, str) else None
                 response.close()
             with repository.db.connection() as conn:
-                conn.execute('UPDATE model_calls SET summary_json=?,request_body=?,response_body=? WHERE call_id=?',
-                    (summary.model_dump_json(), zlib.compress(request.content),
-                     zlib.compress(response_body) if response_body is not None else None, summary.call_id))
+                updated = conn.execute('UPDATE model_calls SET summary_json=? WHERE call_id=?',
+                    (summary.model_dump_json(), summary.call_id))
+                if updated.rowcount and response_body is not None:
+                    repository.db.call_payloads.write(run_id, summary.call_id, 'response', response_body)
 
     def list(self, run_id: str, connection: Optional[Connection] = None) -> List[ModelCallSummary]:
         with nullcontext(connection) if connection is not None else self.db.connection() as conn:
@@ -132,9 +133,13 @@ class ModelCalls:
                                (summary.model_dump_json(), summary.call_id))
 
     def get(self, run_id: str, call_id: str) -> ModelCallDetail:
-        with self.db.connection() as conn:
+        with self.db.call_payloads.reading(), self.db.connection() as conn:
             row = conn.execute('SELECT * FROM model_calls WHERE run_id=? AND call_id=?', (run_id, call_id)).fetchone()
-        if row is None:
-            raise LookupError('Model call not found in this job')
-        return ModelCallDetail(**json.loads(row['summary_json']), request_body=zlib.decompress(row['request_body']).decode(),
-            response_body=zlib.decompress(row['response_body']).decode('utf-8', errors='replace') if row['response_body'] is not None else None)
+            if row is None:
+                raise LookupError('Model call not found in this job')
+            request, response = self.db.call_payloads.read(run_id, call_id)
+            summary = json.loads(row['summary_json'])
+            if summary.get('finished_at') and summary.get('http_status') is not None and response is None:
+                raise RuntimeError('模型调用响应正文缺失')
+        return ModelCallDetail(**summary, request_body=request.decode(),
+            response_body=response.decode('utf-8', errors='replace') if response is not None else None)

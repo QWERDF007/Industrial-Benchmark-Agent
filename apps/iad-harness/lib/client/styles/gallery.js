@@ -14,6 +14,16 @@ button.iad-thumbnail-card[data-variant=evidence]{max-width:none;height:auto;padd
 .iad-thumbnail-strip{display:flex;flex:none;gap:12px;overflow-x:auto;max-width:100%;min-height:0;padding:3px 2px 8px}
 .iad-thumbnail-card>.iad-thumbnail-caption{display:block;min-width:0;padding:6px 0 2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12px;font-weight:400;color:inherit;line-height:18px}
 .iad-thumbnail-card>small,.iad-thumbnail-card>.iad-thumbnail-meta{display:block;font-size:12px;line-height:18px;color:var(--iad-muted,#687990)}
+button.iad-thumbnail-card[data-variant=comparison]{max-width:none;height:auto;max-height:none;padding:0;border-color:var(--iad-border);border-radius:7px;flex:none}
+.iad-thumbnail-card[data-variant=comparison]>.iad-thumbnail-media{height:140px;flex:none}
+.iad-thumbnail-card[data-variant=comparison]>.iad-thumbnail-caption{padding:7px 9px 4px;font-weight:600}
+.iad-thumbnail-values{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px;padding:0 9px 8px;line-height:18px}
+.iad-thumbnail-values>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.iad-thumbnail-values>span:last-child{text-align:right}
+button.iad-thumbnail-card[data-variant=compact]{width:94px;max-width:none;height:70px;max-height:none;flex:0 0 94px;padding:0;border:2px solid transparent}
+.iad-thumbnail-card[data-variant=compact]>.iad-thumbnail-media{height:100%;flex:none}
+.iad-thumbnail-card[data-variant=compact]>.iad-thumbnail-caption{display:none}
+.iad-thumbnail-strip:has(>[data-variant=compact]){gap:9px;padding:6px 2px 8px;margin:10px 0 8px;scrollbar-width:thin}
 nav.iad-pagination{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:4px 0 2px;margin:10px 0 0;font-size:12px;color:var(--iad-text,#172338)}
 nav.iad-pagination>button{height:32px;min-height:32px;min-width:32px;padding:0 8px;border:1px solid var(--iad-control-border,#dbe2eb);border-radius:5px;background:var(--iad-surface,#fff);color:inherit;cursor:pointer;font-size:12px;font-weight:400;line-height:normal;box-shadow:none}
 nav.iad-pagination>button:disabled{opacity:.4;cursor:not-allowed}

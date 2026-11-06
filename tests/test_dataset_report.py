@@ -102,6 +102,13 @@ def test_scope_report_is_model_generated_from_frozen_facts_and_survives_new_audi
         runtime.audit.wait(second['run_id'], 5)
         assert DatasetReports.read(db, job['run_id']).model_dump_json(round_trip=True) == snapshot
         output = DatasetReports.export(db, job['run_id'])
+        view = DatasetReports.view(db, job['run_id'])
+        assert [chart.title for chart in view.presentation.charts] == ['数据集覆盖','审计结果分布','原始标注分布','子数据集审计覆盖']
+        assert [column.value for column in view.presentation.charts[0].columns] == [result.facts.audited_samples,4-result.facts.audited_samples]
+        assert view.presentation.charts[3].columns[0].value == result.facts.audited_samples
+        assert output['html'].count('class="iad-report-chart"') == 4
+        assert '<meter' not in output['html']
+        assert 'iad-report-chart-axis' in output['html'] and 'iad-report-chart-grid' in output['html']
         assert 'data:image/png;base64,' in output['html']
         assert '当前范围待补充独立确认。' in output['html']
         assert all(requirement['title'] in output['html'] for requirement in REPORT_REQUIREMENTS.values())
@@ -110,7 +117,6 @@ def test_scope_report_is_model_generated_from_frozen_facts_and_survives_new_audi
         assert '<rect x="10' in output['html']
         assert 'class="annotation-mask"' in output['html']
         assert '.annotations .annotation-mask{fill:#ffb74c;fill-opacity:.45;stroke:none}' in output['html'], '真实mask必须显示填充，不被共享框样式覆盖'
-        assert '<meter' in output['html'], '离线报告保留与页面同口径的统计图'
         assert reports.list([config.dataset.id])[0]['run_id']==job['run_id']
         state = DatasetReports.status(db, job['run_id'])
         assert state.status == 'COMPLETED' and state.total_samples == 4

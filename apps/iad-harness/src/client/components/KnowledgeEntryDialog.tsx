@@ -1,3 +1,4 @@
+import {v4 as uuid} from 'uuid';
 import {Button} from './Button.js';
 import {IconButton} from "./IconButton.js";
 import React, {useEffect, useState} from 'react';
@@ -53,7 +54,7 @@ export function KnowledgeEntryDialog({versionId, checkId, onClose, onSaved}: {
       <Button variant="primary" id="save-review" disabled={saving || !detail} onClick={async()=>{
         if(!detail)return;
         setSaving(true);setError('');
-        try{await request('/knowledge/check-review',{version_id:versionId,check_id:checkId,submission_id:crypto.randomUUID(),
+        try{await request('/knowledge/check-review',{version_id:versionId,check_id:checkId,submission_id:uuid(),
           expected_revision:detail.check.review.revision,status,note});onSaved();onClose();}
         catch(error){setError(message(error));}finally{setSaving(false);}
       }}>{saving?'保存中…':'保存'}</Button></div></footer>

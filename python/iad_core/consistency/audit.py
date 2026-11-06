@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, TYPE_CHECKING
 from uuid import uuid4
 
 from iad_core.consistency.audit_models import AuditConsistencyRecord, AuditResultReference
@@ -10,10 +10,25 @@ from iad_core.consistency.result_queries import ResultQueries
 from iad_core.consistency.scopes import ConsistencyScopes
 from iad_core.consistency.service import ConsistencyService
 
+if TYPE_CHECKING:
+    from iad_core.workbench.audit_sources import FrozenAuditSources
+
 
 class AuditConsistency:
     def __init__(self, service: ConsistencyService):
         self.service = service
+
+    def selected(self, run_id: str, sample_id: str, scopes: ConsistencyScopesSnapshot, sources: 'FrozenAuditSources') -> AuditConsistencyRecord:
+        references = []
+        for reference in sources.consistency_references:
+            left, right = reference.sample_id, reference.compared_sample_id
+            if sample_id in (left, right):
+                references.append(AuditResultReference(sample_id=right if left == sample_id else left,
+                    evidence_id=reference.evidence_id, result_id=reference.result_id))
+        return AuditConsistencyRecord(check_id='audit_check_' + uuid4().hex, run_id=run_id,
+            sample_id=sample_id, scope_id=scopes.corpus.scope_id, mode=sources.consistency_mode,
+            status='COMPLETE' if sample_id in sources.consistency_sample_ids else 'PARTIAL',
+            reason=None if sample_id in sources.consistency_sample_ids else '所选一致性作业未覆盖当前图像', references=references)
 
     def published(self, sample_id: str, scopes: ConsistencyScopesSnapshot) -> list[AuditResultReference]:
         references = []

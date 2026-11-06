@@ -11,6 +11,26 @@ from iad_core.workbench.audit import AuditService, VlmClient
 from iad_core.workbench.review import HumanReview, ReviewSubmission
 
 
+@pytest.fixture
+def sqlite_work(dataset, monkeypatch):
+    db = dataset[0]
+    work = {'instructions': 0}
+    connect = db.get_connection
+
+    def observed_connection():
+        conn = connect()
+
+        def count_instructions():
+            work['instructions'] += 1000
+            return 0
+
+        conn.set_progress_handler(count_instructions, 1000)
+        return conn
+
+    monkeypatch.setattr(db, 'get_connection', observed_connection)
+    return work
+
+
 def test_delete_removes_owned_records_and_preserves_other_dataset_and_sources(dataset, mllm_api, tmp_path):
     db, registry, config = dataset
     images, labels = tmp_path / 'other-images', tmp_path / 'other-labels'
@@ -92,8 +112,8 @@ def test_delete_is_scoped_when_datasets_share_task(dataset, tmp_path):
         for item in (config, other):
             conn.execute("INSERT INTO job_runs(job_id,task_id,job_type,status,payload_json) VALUES(?,?,?,?,?)",
                 (item.dataset.id, config.task.task_id, 'MODEL_AUDIT', 'COMPLETED', json.dumps({'request':{'dataset_id':item.dataset.id}})))
-            conn.execute("INSERT INTO model_calls(call_id,run_id,summary_json,request_body) VALUES(?,?,?,?)",
-                (item.dataset.id,item.dataset.id,'{}',b'{}'))
+            conn.execute("INSERT INTO model_calls(call_id,run_id,summary_json) VALUES(?,?,?)",
+                (item.dataset.id,item.dataset.id,'{}'))
         expected = {table:[tuple(r) for r in conn.execute(f'SELECT * FROM {table} WHERE {column}=?', (other.dataset.id,))]
             for table,column in [('datasets','dataset_id'),('samples','dataset_id'),('job_runs','job_id'),('model_calls','call_id')]}
     dataset_delete({'dataset_id':config.dataset.id}, db.db_path)
@@ -101,6 +121,72 @@ def test_delete_is_scoped_when_datasets_share_task(dataset, tmp_path):
         for table in expected:
             assert [tuple(r) for r in conn.execute(f'SELECT * FROM {table}')] == expected[table], table
         assert conn.execute('SELECT count(*) FROM inspection_tasks WHERE task_id=?',(config.task.task_id,)).fetchone()[0] == 1
+        assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
+
+
+def test_delete_collects_owned_jobs_once_with_large_unrelated_history(dataset, tmp_path, sqlite_work):
+    db, registry, config = dataset
+    images, labels = tmp_path / 'kept-images', tmp_path / 'kept-labels'
+    images.mkdir(); labels.mkdir()
+    Image.new('RGB', (32, 32), 'green').save(images / 'kept.png')
+    other = registry.import_labelme(DatasetImport(format='labelme', name='保留数据集', image_dir=str(images), annotation_dir=str(labels)))
+    rows = [('owner', config.task.task_id, 'MODEL_AUDIT', 'COMPLETED', json.dumps({
+        'request': {'dataset_id': config.dataset.id}, 'batch_runs': ['child-0']}))]
+    for index in range(100):
+        rows.append((f'child-{index}', other.task.task_id, 'MODEL_AUDIT_SAMPLE', 'COMPLETED', json.dumps({
+            'parent_run_id': None if index in (0, 99) else 'owner' if index == 1 else f'child-{index-2}',
+            'batch_runs': ['owner'] if index == 99 else [], 'frozen': 'evidence ' * 500})))
+    for index in range(1200):
+        rows.append((f'kept-{index}', other.task.task_id, 'MODEL_AUDIT_SAMPLE', 'COMPLETED', json.dumps({
+            'request': {'dataset_id': other.dataset.id}, 'frozen': 'evidence ' * 500})))
+    with db.connection() as conn:
+        conn.executemany('INSERT INTO job_runs(job_id,task_id,job_type,status,payload_json) VALUES(?,?,?,?,?)', rows)
+        conn.execute("UPDATE job_runs SET payload_json=json_set(payload_json,'$.parent_run_id','child-97') WHERE job_id='child-99'")
+        conn.executemany('INSERT INTO model_calls(call_id,run_id,summary_json) VALUES(?,?,?)',
+            [(identity, identity, '{}') for identity in ['owner', 'child-99', 'kept-0']])
+
+    sqlite_work['instructions'] = 0
+    bytes_before = int(Path('/proc/self/io').read_text().split('rchar: ')[1].splitlines()[0])
+    registry.delete(config.dataset.id)
+    bytes_read = int(Path('/proc/self/io').read_text().split('rchar: ')[1].splitlines()[0]) - bytes_before
+    assert bytes_read < 2_000_000, f'删除不应读取无关任务的冻结正文：{bytes_read}'
+    deletion_instructions = sqlite_work['instructions']
+    assert deletion_instructions < 500_000, f'删除不应逐个作业扫描无关历史：{deletion_instructions} SQLite VM instructions'
+    assert [item.dataset.id for item in registry.list()] == [other.dataset.id]
+    with db.connection() as conn:
+        assert conn.execute('SELECT count(*) FROM job_runs').fetchone()[0] == 1200
+        assert conn.execute('SELECT run_id FROM model_calls').fetchall()[0][0] == 'kept-0'
+        assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
+    assert (images / 'kept.png').is_file()
+    assert (Path(config.root) / 'dent.png').is_file()
+
+
+def test_delete_does_not_scan_unrelated_evidence_references(dataset, tmp_path, sqlite_work):
+    from iad_core.consistency.evidence_models import ConsistencyCompare
+    from iad_core.consistency.service import ConsistencyService
+
+    db, registry, config = dataset
+    images = tmp_path / 'independent-images'
+    images.mkdir()
+    for name in ('one', 'two'):
+        Image.new('RGB', (32, 32), 'green').save(images / f'{name}.png')
+    other = registry.import_dataset({'format': 'labelme', 'name': '保留集',
+        'image_dir': str(images), 'annotation_dir': str(images)})
+    service = ConsistencyService(db)
+    service.compare(ConsistencyCompare(sample_a=config.dataset.id + ':dent.png', sample_b=config.dataset.id + ':scratch.png'))
+    kept = service.compare(ConsistencyCompare(sample_a=other.dataset.id + ':one.png', sample_b=other.dataset.id + ':two.png'))
+    with db.connection() as conn:
+        plan = json.dumps({'scopes': {'subjects': {'dataset_ids': [other.dataset.id]}, 'corpus': {'dataset_ids': [other.dataset.id]}}})
+        conn.execute("INSERT INTO consistency_runs(batch_id,request_id,fingerprint,root_batch_id,plan_json) VALUES('kept','kept','kept','kept',?)", (plan,))
+        conn.executemany('INSERT INTO consistency_batch_results(batch_id,sample_a,sample_b,result_id,evidence_id) VALUES(?,?,?,?,?)',
+            [('kept', f'frozen-{index}', 'reference', kept.result_id, kept.evidence_id) for index in range(10_000)])
+
+    sqlite_work['instructions'] = 0
+    registry.delete(config.dataset.id)
+    assert sqlite_work['instructions'] < 100_000, '删除证据不应扫描其他数据集的历史引用'
+    assert service.evidence(kept.evidence_id).result == kept
+    with db.connection() as conn:
+        assert conn.execute('SELECT count(*) FROM consistency_batch_results').fetchone()[0] == 10_000
         assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
 
 
@@ -115,8 +201,8 @@ def test_delete_rolls_back_all_records_if_a_dependency_blocks_removal(dataset, t
     from iad_core.consistency.evidence_models import ConsistencyCompare
     ConsistencyService(db).compare(ConsistencyCompare(sample_a=config.dataset.id + ':dent.png', sample_b=config.dataset.id + ':scratch.png'))
     with db.connection() as conn:
-        conn.execute("INSERT INTO knowledge_versions VALUES('normal',?,'normal',NULL,NULL,'sig','{}','now')", (config.dataset.id,))
-        conn.execute("INSERT INTO knowledge_versions VALUES('dependent',?,'defect',NULL,'normal','sig','{}','now')", (other.dataset.id,))
+        conn.execute("INSERT INTO knowledge_versions(version_id,dataset_id,signature,snapshot_json,created_at) VALUES('normal',?,'sig','{}','now')", (config.dataset.id,))
+        conn.execute("INSERT INTO knowledge_versions(version_id,dataset_id,parent_version_id,signature,snapshot_json,created_at) VALUES('dependent',?,'normal','sig','{}','now')", (other.dataset.id,))
         before = {table:[tuple(r) for r in conn.execute(f'SELECT * FROM {table}')] for table in ('datasets','samples','annotations','knowledge_versions','consistency_results')}
     with pytest.raises(sqlite3.IntegrityError):
         dataset_delete({'dataset_id':config.dataset.id}, db.db_path)

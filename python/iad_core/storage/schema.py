@@ -1,4 +1,6 @@
 from sqlite3 import Connection
+from iad_core.storage.call_payloads import CallPayloads
+from iad_core.storage.deletion_indexes import initialize_deletion_indexes
 
 from iad_core.storage.review_schema import init_review_schema
 from iad_core.storage.job_schema import migrate_audit_jobs
@@ -6,7 +8,7 @@ from iad_core.storage.knowledge_schema import migrate_knowledge_sources, migrate
 from iad_core.storage.consistency_schema import init_content_index_schema
 
 
-def initialize_schema(conn: Connection) -> None:
+def initialize_schema(conn: Connection) -> bool:
     conn.execute("BEGIN IMMEDIATE")
     cursor = conn.cursor()
 
@@ -223,12 +225,11 @@ def initialize_schema(conn: Connection) -> None:
         CREATE TABLE IF NOT EXISTS model_calls (
             call_id TEXT PRIMARY KEY,
             run_id TEXT NOT NULL REFERENCES job_runs(job_id),
-            summary_json TEXT NOT NULL,
-            request_body BLOB NOT NULL,
-            response_body BLOB
+            summary_json TEXT NOT NULL
         )
     """)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_model_calls_run ON model_calls(run_id)")
+    externalized_calls = CallPayloads(conn.execute('PRAGMA database_list').fetchone()[2]).initialize(conn)
 
     # 13. agent_runs
     cursor.execute("""
@@ -343,6 +344,7 @@ def initialize_schema(conn: Connection) -> None:
                 except Exception:
                     pass
     init_content_index_schema(conn)
+    initialize_deletion_indexes(conn)
     cursor.execute('''CREATE TABLE IF NOT EXISTS knowledge_prompts (
         dataset_id TEXT NOT NULL REFERENCES datasets(dataset_id) ON DELETE CASCADE,
         kind TEXT NOT NULL CHECK(kind IN ('normal','defect')),
@@ -390,3 +392,4 @@ def initialize_schema(conn: Connection) -> None:
             PRIMARY KEY(dataset_id)
         )
     """)
+    return externalized_calls

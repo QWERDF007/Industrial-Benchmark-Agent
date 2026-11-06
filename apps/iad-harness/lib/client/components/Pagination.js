@@ -1,8 +1,8 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 export const pageSize = 24;
 export const IBA_JOBS_PAGE_SIZE = 8;
-export function Pagination({ total, page, unit = '条', onPage, size = pageSize, label = '', id, availablePages }) {
-    if (!total)
+export function Pagination({ total, page, unit = '条', onPage, size = pageSize, label = '', id, availablePages, hideSinglePage = false }) {
+    if (!total || (hideSinglePage && total <= size))
         return null;
     const pages = Math.max(1, Math.ceil(total / size));
     const current = Math.max(1, Math.min(page, pages));

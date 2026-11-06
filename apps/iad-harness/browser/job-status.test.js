@@ -14,7 +14,14 @@ const workspace={subscribe:()=>()=>{},getSnapshot:()=>state,view:()=>({job:''})}
 const initial={run_id:'analysis-real-contract',root_run_id:'analysis-real-contract',job_type:'ANALYSIS_WORKFLOW',analysis_kind:'consistency',status:'RUNNING',phase:'ANALYZING_CONFLICT_GROUPS',phase_started_at:'2026-11-05T12:00:00Z',message:'比较真实图组',completed:0,failed:0,unprocessed:100,total_samples:100,progress:0,total_gallery_groups:99,completed_gallery_groups:14,started_at:'2026-11-05T11:00:00Z',errors:[],batch_runs:[]};
 function App(){const [open,setOpen]=React.useState(false),[job,setJob]=React.useState(initial);return <WorkspaceContext.Provider value={workspace}><style>{workbenchStyles}</style><main className="iad-workbench"><div id="completed"><JobStatusButton job={{...initial,status:'COMPLETED'}} onClick={()=>setOpen(true)}/></div><div id="running"><JobStatusButton job={initial} onClick={()=>setOpen(true)}/></div><button key={job.run_id} data-job-root="analysis-real-contract" id="launch" onClick={()=>setOpen(true)}>查看状态</button><button id="stop" onClick={()=>setJob({...initial,run_id:'analysis-retry-attempt',status:'FAILED',message:'模型调用失败',failed:1,unprocessed:99,errors:[{sample_id:'sample-1',relative_path:'image.png',code:'MODEL_OUTPUT_INVALID',message:'真实响应格式不完整',source_run_id:'real-child-step',source_phase:'EXPLORING_DIRECTIONS'}]})}>更新服务快照</button>{open&&<JobStatusDrawer job={job} onClose={()=>setOpen(false)}/>}</main></WorkspaceContext.Provider>}
 createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolveDir:app},bundle:true,format:'iife',write:false,target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
- const server=http.createServer((req,res)=>{if(req.url==='/app.js'){res.setHeader('Content-Type','application/javascript');return res.end(bundle.outputFiles[0].contents);}res.setHeader('Content-Type','text/html;charset=utf-8');res.end('<!doctype html><meta charset="utf-8"><div id="root"></div><script src="/app.js"></script>');});
+ let cancelRequests=0;
+ const server=http.createServer((req,res)=>{
+ if(req.url==='/api/iad/analysis/cancel/analysis-real-contract'&&req.method==='POST'){
+  cancelRequests++;res.setHeader('Content-Type','application/json');
+  if(cancelRequests===1){res.statusCode=503;return res.end(JSON.stringify({error:{message:'取消暂时失败'}}));}
+  return res.end(JSON.stringify({run_id:'analysis-real-contract',root_run_id:'analysis-real-contract',job_type:'ANALYSIS_WORKFLOW',analysis_kind:'consistency',status:'RUNNING',cancel_requested:true,phase:'ANALYZING_CONFLICT_GROUPS',errors:[],completed:0,failed:0,total_samples:100,started_at:null}));
+ }
+ if(req.url==='/app.js'){res.setHeader('Content-Type','application/javascript');return res.end(bundle.outputFiles[0].contents);}res.setHeader('Content-Type','text/html;charset=utf-8');res.end('<!doctype html><meta charset="utf-8"><div id="root"></div><script src="/app.js"></script>');});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));let driver;
  try{
   const options=new firefox.Options().addArguments('-headless');if(process.env.FIREFOX_PATH)options.setBinary(process.env.FIREFOX_PATH);
@@ -34,9 +41,21 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
   assert.equal(appearance.top,64,'抽屉正文紧接64px标题栏');
   assert.equal((await drawer.findElements(By.css('.iad-job-metrics,.iad-job-progress-card,.iad-retry-scope'))).length,0,'抽屉不添加原型之外的统计卡片和表单');
   assert.equal((await drawer.findElements(By.css('.iad-job-stage'))).length,4,'阶段列表沿用HTML结构');
-  assert.deepEqual(await Promise.all((await drawer.findElements(By.css('footer button'))).map(button=>button.getText())),['关闭']);
+  assert.deepEqual(await Promise.all((await drawer.findElements(By.css('footer button'))).map(button=>button.getText())),['取消作业','关闭']);
+  await (await drawer.findElement(By.css('footer button'))).click();
+  assert.match(await drawer.getText(),/确定取消当前作业/);
+  assert.deepEqual(await Promise.all((await drawer.findElements(By.css('footer button'))).map(button=>button.getText())),['返回','确认取消','关闭']);
+  await (await drawer.findElement(By.xpath('.//footer//button[normalize-space(.)="返回"]'))).click();
   assert.match(await drawer.getText(),/14 \/ 99/);assert.match(await drawer.getText(),/分析冲突图组/);
   assert.match(await drawer.getText(),/2026/);assert.ok(!(await drawer.getText()).includes('准备图像已完成'),'current phase must not invent a history');
+  await (await drawer.findElement(By.xpath('.//footer//button[normalize-space(.)="取消作业"]'))).click();
+  await (await drawer.findElement(By.xpath('.//footer//button[normalize-space(.)="确认取消"]'))).click();
+  await driver.wait(async()=>/取消暂时失败/.test(await drawer.getText()),5000);
+  assert.equal(cancelRequests,1);
+  await (await drawer.findElement(By.xpath('.//footer//button[normalize-space(.)="确认取消"]'))).click();
+  await driver.wait(async()=>/正在停止/.test(await drawer.getText()),5000);
+  assert.equal(cancelRequests,2);
+  assert.deepEqual(await Promise.all((await drawer.findElements(By.css('footer button'))).map(button=>button.getText())),['关闭']);
   await driver.executeScript("document.getElementById('stop').click()");
   await driver.wait(async()=>/真实响应格式不完整/.test(await drawer.getText()),5000);
   assert.match(await drawer.getText(),/MODEL_OUTPUT_INVALID/);assert.match(await drawer.getText(),/image.png/);assert.match(await drawer.getText(),/real-child-step/);assert.match(await drawer.getText(),/模型联合分析/);

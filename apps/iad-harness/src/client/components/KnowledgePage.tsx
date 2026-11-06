@@ -1,3 +1,4 @@
+import {v4 as uuid} from 'uuid';
 import {PromptDrawer} from './PromptDrawer.js';
 import {Select} from './Select.js';
 import {Button} from './Button.js';
@@ -192,7 +193,7 @@ export function KnowledgePage({
     ? view.version : selectedJob?.knowledgeVersionId;
   const canMaintain = !!selectedVersionId && versionsResource.data?.current_version_id === selectedVersionId;
   const checkQuery = new URLSearchParams({version_id:selectedVersionId || '', page:String(entryPage), page_size:'8', search:knowledgeSearch, review_status:knowledgeStatus});
-  const checksResource = useResource<KnowledgeCheckPage>(selectedVersionId ? `/knowledge/details?${checkQuery}` : null, revision + refreshRevision);
+  const checksResource = useResource<KnowledgeCheckPage>(selectedJob?.status==='completed'&&selectedVersionId ? `/knowledge/details?${checkQuery}` : null, revision + refreshRevision);
   const filteredChecks = checksResource.data?.items || [];
   const maxEntryPages = Math.max(1, Math.ceil((checksResource.data?.total || 0) / 8));
   const currentEntryPage = Math.min(maxEntryPages, Math.max(1, entryPage));
@@ -232,7 +233,7 @@ export function KnowledgePage({
       onConfirm: async () => {
         try {
           const version = await request<KnowledgeVersion>(`/knowledge/versions/${encodeURIComponent(selectedVersionId)}/checks/remove`,
-            {submission_id:crypto.randomUUID(), check_id:item.id});
+            {submission_id:uuid(), check_id:item.id});
           workspace.updateView(pageId, {job:selectedJob.id, version:version.version_id}); updated(); toast('已生成维护版本');
         } catch (error) {toast(message(error));}
       }});
@@ -318,7 +319,7 @@ export function KnowledgePage({
                   <span aria-hidden="true" className="count hide" id="jobs-count"></span>
                 </h2>
               </div>
-              <div className="filterset">
+              {scopedJobs.length>0&&<div className="filterset" id="jobs-filterset">
                 <input
                   className="f"
                   id="job-search"
@@ -357,7 +358,7 @@ export function KnowledgePage({
                     setJobPage(1);
                   }}
                 />
-              </div>
+              </div>}
             </div>
             <div className="tableframe" id="jobs-table-frame" style={{ minHeight: maxJobPages > 1 ? "465px" : "" }}>
               {filteredJobs.length > 0 ? (
@@ -416,7 +417,7 @@ export function KnowledgePage({
                 </table>
               ) : (
                 <div id="jobs-empty" className="tableempty">
-                  {scopedJobs.length ? "没有符合筛选条件的挖掘作业。" : polling.loading?"正在读取挖掘作业…":"当前范围还没有挖掘作业，可以创建新挖掘。"}
+                  {scopedJobs.length ? "没有符合筛选条件的挖掘作业。" : polling.loading?"正在读取挖掘作业…":"当前没有挖掘作业"}
                 </div>
               )}
             </div>
@@ -433,7 +434,7 @@ export function KnowledgePage({
                 </h2>
                 <div className="scope-name hide" id="knowledge-job-name"></div>
               </div>
-              {selectedJob?.knowledgeVersionId ? (
+              {selectedJob?.status==='completed'&&versions.find(version=>version.version_id===selectedVersionId)?.check_count ? (
                 <div className="filterset" id="knowledge-filterset">
                   <input
                     className="f"
@@ -476,21 +477,17 @@ export function KnowledgePage({
                 </div>
               ) : null}
             </div>
-            {resultVersions.length > 1 && <label className="control">结果版本<Select className="f" aria-label="知识结果版本" value={selectedVersionId || ''}
+            {selectedJob?.status==='completed'&&resultVersions.length > 1 && <label className="control">结果版本<Select className="f" aria-label="知识结果版本" value={selectedVersionId || ''}
               onChange={event=>workspace.updateView(pageId,{job:selectedJob!.id,version:event.target.value})}>
               {resultVersions.map(version=><option key={version.version_id} value={version.version_id}>{version.manually_edited ? '维护版本' : '作业冻结版本'} {version.version_id.slice(-8)}</option>)}
             </Select></label>}
             <div className="knowledge-wrap" id="knowledge-body">
               {!selectedJob ? (
-                <div className="blank">
-                  请选择上方的挖掘作业查看知识条目。
-                </div>
-              ) : selectedJob.status==='failed'&&!selectedJob.knowledgeVersionId ? <p className="iad-plain-empty" role="status">当前作业下没有对应的知识</p> : !selectedJob.knowledgeVersionId ? (
-                <div className="blank">
-                  {selectedJob.status === "running"
-                    ? "作业正在运行，知识发布后将在这里显示。"
-                    : "当前作业下没有对应的知识"}
-                </div>
+                <p className="iad-result-empty" role="status">当前没有知识条目</p>
+              ) : selectedJob.status!=='completed' ? (
+                <p className="iad-result-empty" role="status">当前作业没有已发布结果</p>
+              ) : !selectedJob.knowledgeVersionId ? (
+                <p className="iad-result-empty" role="status">当前没有知识条目</p>
               ) : checksResource.error ? <p role="alert">{checksResource.error}</p>
                 : checksResource.loading ? <div className="blank">正在读取作业冻结知识</div>
                 : filteredChecks.length === 0 ? (

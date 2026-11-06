@@ -1,6 +1,10 @@
+import {v4 as uuid} from 'uuid';
+import {ConsistencyStatisticsDialog,type ConsistencyStatisticAction} from './ConsistencyStatisticsDialog.js';
+import {ConsistencyConflictDialog} from './ConsistencyConflictDialog.js';
 import {MultiSelect, Select} from './Select.js';
 import {Modal} from './Modal.js';
 import {JobStatusDrawer, JobStatusButton, JobStatusAction} from './JobStatusDrawer.js';
+import {JobListPanel} from './JobListPanel.js';
 import {TabBar} from './layout/TabBar.js';
 import {Button} from './Button.js';
 import {ThumbnailCard} from "./ThumbnailCard.js";
@@ -11,12 +15,9 @@ import type {
   DatasetCatalog,
   JobSnapshot
 } from '../../shared/contracts.js';
-import type { GalleryMember } from '../../shared/domain.generated.js';
-import { AnnotatedImageStage } from './AnnotatedImageStage.js';
 import { buildHierarchyGroups, getDatasetGroupId } from '../dataset-hierarchy.js';
 import { IconButton } from './IconButton.js';
 import {DeleteAction} from './DeleteAction.js';
-import { FullscreenViewer, type FullscreenViewerItem } from './FullscreenViewer.js';
 import { ConsistencyEvidencePage } from './ConsistencyEvidencePage.js';
 import { DatasetScopeSelector } from './DatasetScopeSelector.js';
 import { Pagination, IBA_JOBS_PAGE_SIZE } from './Pagination.js';
@@ -26,14 +27,11 @@ import { workbenchStyles } from '../styles.js';
 import { ClearFilterButton } from './CommonFilterControls.js';
 import {promptDefaults} from '../../shared/prompt-defaults.generated.js';
 import {ConsistencyView,type ConflictCardItem} from '../consistency-view.js';
-import {useGroupAnalysis} from '../useGroupAnalysis.js';
 import {useQueries} from '@tanstack/react-query';
 import {queryClient} from '../query-client.js';
 import {useJobs} from '../useJobs.js';
-import {useResource} from '../useResource.js';
 import {useDatasetCatalog} from '../useDatasetCatalog.js';
-import {annotationSummary} from '../../shared/consistency-presentation.js';
-import type {EvidenceBundle,ConsistencyReviewContext,ConsistencyReviewSubmission,GalleryReference,Started,NoWork} from '../../shared/domain.generated.js';
+import type {Started,NoWork} from '../../shared/domain.generated.js';
 
 type ConsistencyJob = ConsistencyBatchSummary & {analysis:JobSnapshot};
 
@@ -64,15 +62,6 @@ const dcJobElapsed = (j: ConsistencyBatchSummary) => {
   const r = Math.round(sec % 60);
   return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
 };
-
-function niceAxis(max: number): number {
-  const target = max / 4;
-  const magnitude = Math.pow(10, Math.floor(Math.log10(Math.max(target, 1))));
-  const normalized = target / magnitude;
-  const step =
-    (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 2.5 ? 2.5 : normalized <= 5 ? 5 : 10) * magnitude;
-  return Math.max(step * 4, Math.ceil(max / step) * step);
-}
 
 export const DEFAULT_CONSISTENCY_PROMPT = promptDefaults.consistency;
 
@@ -129,18 +118,8 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
   const newSubmission=useRef<{key:string;id:string}|null>(null);
   const [newPrompt, setNewPrompt] = useState<string>(DEFAULT_CONSISTENCY_PROMPT);
   const [currentConflictId, setCurrentConflictId] = useState<string>('');
-  const [candidateIndex, setCandidateIndex] = useState<number>(0);
   const [activeQueryId, setActiveQueryId] = useState<string>('');
-  const [conflictMembers, setConflictMembers] = useState<GalleryMember[]>([]);
-  const [membersError,setMembersError]=useState('');
-  const [reviewBusy,setReviewBusy]=useState(false);
-  const [reviewLoaded,setReviewLoaded]=useState(false);
-  const [reviewError,setReviewError]=useState('');
-  const pendingReview=useRef<ConsistencyReviewSubmission|null>(null);
-  const [reviewDecision, setReviewDecision] = useState<'pending' | 'confirmed' | 'rejected'>('pending');
-  const [reviewNote, setReviewNote] = useState<string>('');
   const [statsModalJobId, setStatsModalJobId] = useState<string>('');
-  const [zoomItem, setZoomItem] = useState<FullscreenViewerItem | null>(null);
 
   // Derive hierarchy groups
   const hierarchyGroups = useMemo(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
@@ -312,7 +291,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
     setNewCheckBusy(true);setError('');
     try {
       const key=JSON.stringify([modalChildIds,newPrompt]);
-      if(newSubmission.current?.key!==key)newSubmission.current={key,id:crypto.randomUUID()};
+      if(newSubmission.current?.key!==key)newSubmission.current={key,id:uuid()};
       await request<JobSnapshot>('/analysis/start',{submission_id:newSubmission.current.id,analysis_kind:'consistency',
         dataset_ids:modalChildIds,instruction:newPrompt.trim()});
       newSubmission.current=null;
@@ -333,105 +312,10 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
     }
   };
 
-  // Open conflict comparison modal
-  const openConflict = useCallback(
-    (c: ConflictCardItem) => {
-      setCurrentConflictId(c.id);
-      setCandidateIndex(0);
-      setReviewDecision(c.review);
-      setReviewNote('');
-      setModal('compare');
-    },
-    []
-  );
-
   const currentConflict = useMemo(
     () => jobConflicts.find(c => c.id === currentConflictId) || null,
     [jobConflicts, currentConflictId]
   );
-
-  const groupReference=useMemo<GalleryReference|null>(()=>modal==='compare' && currentConflict && activeQueryId ? {
-    query_id:activeQueryId,kind:'conflicts',group_id:currentConflict.rawItem.group_id,facts_state:currentConflict.rawItem.facts_state
-  }:null,[modal,currentConflict?.id,activeQueryId]);
-  const groupAnalysis=useGroupAnalysis(groupReference);
-  useEffect(()=>{
-    const controller=new AbortController();setConflictMembers([]);setMembersError('');setCandidateIndex(0);
-    if(!groupReference)return;
-    ConsistencyView.members(groupReference,controller.signal)
-      .then(items=>{if(!controller.signal.aborted)setConflictMembers(items);})
-      .catch(error=>{if(!controller.signal.aborted)setMembersError(message(error));});
-    return()=>controller.abort();
-  },[JSON.stringify(groupReference)]);
-  const selectedMember=conflictMembers[candidateIndex] || null;
-  const currentCandidate=useMemo(()=>{
-    const image=selectedMember?.image;
-    return {sampleId:image?.sample.sample_id || '',filename:image?.sample.relative_path.split('/').pop() || '',
-      thumbUrl:image?ConsistencyView.media(image,true):'',fullUrl:image?ConsistencyView.media(image):'',
-      width:image?.sample.width,height:image?.sample.height};
-  },[selectedMember]);
-  const compared=useResource<EvidenceBundle>(modal==='compare' && selectedMember?.comparison ?
-    `/consistency/evidence/${encodeURIComponent(selectedMember.comparison.evidence_id)}`:null);
-  const anchorSide=selectedMember?.comparison?.anchor_side;
-  const anchorSource=anchorSide?compared.data?.sources[anchorSide]:null;
-  const candidateSource=anchorSide?compared.data?.sources[anchorSide==='left'?'right':'left']:null;
-  const anchorBboxes=anchorSource?.annotations.annotations.filter(annotation=>annotation.bbox && annotation.geometry_status!=='INVALID') || [];
-  const candidateBboxes=candidateSource?.annotations.annotations.filter(annotation=>annotation.bbox && annotation.geometry_status!=='INVALID') || [];
-  const readReview=useCallback(async(signal?:AbortSignal)=>{
-    if(!selectedMember?.comparison)return;
-    const context=await request<ConsistencyReviewContext>('/consistency/review/context',{evidence_id:selectedMember.comparison.evidence_id},undefined,signal);
-    if(signal?.aborted)return;
-    const latest=context.decisions.at(-1),action=latest?.request.action.kind;
-    const decision=action==='CONFIRM_DIFFERENCE'?'confirmed':action==='REJECT_DIFFERENCE'?'rejected':'pending';
-    setReviewDecision(decision);setReviewNote(latest?.request.comment || '');
-    setReviewLoaded(true);
-  },[selectedMember?.comparison?.evidence_id,currentConflict?.id]);
-  useEffect(()=>{
-    const controller=new AbortController();setReviewLoaded(false);setReviewError('');setReviewDecision('pending');setReviewNote('');pendingReview.current=null;
-    void readReview(controller.signal).catch(error=>{if(!controller.signal.aborted)setReviewError(message(error));});
-    return()=>controller.abort();
-  },[readReview]);
-
-  const handlePrevConflict = useCallback(() => {
-    const list = visibleConflicts;
-    const idx = list.findIndex(c => c.id === currentConflictId);
-    if (idx > 0) {
-      const prev = list[idx - 1];
-      setCurrentConflictId(prev.id);
-      setCandidateIndex(0);
-      setReviewDecision(prev.review);
-      setReviewNote('');
-    }
-  }, [visibleConflicts, currentConflictId]);
-
-  const handleNextConflict = useCallback(() => {
-    const list = visibleConflicts;
-    const idx = list.findIndex(c => c.id === currentConflictId);
-    if (idx >= 0 && idx < list.length - 1) {
-      const next = list[idx + 1];
-      setCurrentConflictId(next.id);
-      setCandidateIndex(0);
-      setReviewDecision(next.review);
-      setReviewNote('');
-    }
-  }, [visibleConflicts, currentConflictId]);
-
-  const handleSaveReview = async () => {
-    if(!currentConflict || !compared.data || reviewBusy || !reviewLoaded)return;
-    if(reviewDecision==='pending' && !reviewNote.trim()){setModal('');return;}
-    if(!reviewNote.trim()){setReviewError('请填写复核依据');return;}
-    const [firstDifference,...otherDifferences]=compared.data.result.annotation.differences;
-    if(!firstDifference){setReviewError('当前比较没有可复核的差异');return;}
-    setReviewBusy(true);setReviewError('');
-    try{
-      if(!pendingReview.current)pendingReview.current={client_request_id:crypto.randomUUID(),
-        evidence_id:compared.data.result.evidence_id,result_id:compared.data.result.result_id,
-        difference_ids:[firstDifference.difference_id,...otherDifferences.map(item=>item.difference_id)],
-        reviewer:localStorage.getItem('iad.reviewer') || 'auditor_qc',comment:reviewNote.trim(),
-        action:{kind:reviewDecision==='confirmed'?'CONFIRM_DIFFERENCE':reviewDecision==='rejected'?'REJECT_DIFFERENCE':'NEEDS_CONTEXT'}};
-      await request('/consistency/review/submit',pendingReview.current);
-      await readReview();pendingReview.current=null;setModal('');setRevision(value=>value+1);
-    }catch(error){setReviewError(message(error));}finally{setReviewBusy(false);}
-  };
 
   async function handleDeleteJob(job: ConsistencyJob) {
     await request(`/analysis/delete/${encodeURIComponent(job.analysis.run_id)}`,{});
@@ -446,42 +330,8 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
     return [{ value: 'all', label: '全部冲突' }, ...availableTypes.map(t => ({ value: t, label: t }))];
   }, [availableTypes]);
 
-  // Chart statistics
-  const origStats = useMemo(() => {
-    return availableTypes.map(name => ({
-      name,
-      count: jobConflicts.filter(c => c.type === name).length
-    }));
-  }, [availableTypes, jobConflicts]);
-
-  const modelStats = useMemo(() => {
-    return modelTypes.map(name => ({
-      name,
-      count: jobConflicts.filter(c => c.model.modelType === name).length
-    }));
-  }, [availableTypes, jobConflicts]);
-
-  const agreementStats = useMemo(() => {
-    const same = jobConflicts.filter(c => c.model.status === 'conflict').length;
-    const different = jobConflicts.filter(c=>c.model.status==='no_conflict').length;
-    return [
-      { name: '一致', id: 'same', count: same },
-      { name: '不一致', id: 'different', count: different }
-    ];
-  }, [jobConflicts]);
-
-  const maxObserved = useMemo(() => {
-    return Math.max(1, ...origStats.map(x => x.count), ...modelStats.map(x => x.count));
-  }, [origStats, modelStats]);
-
-  const distributionAxis = useMemo(() => niceAxis(maxObserved), [maxObserved]);
-  const agreementAxis = useMemo(() => {
-    const same = jobConflicts.filter(c => c.model.status === 'conflict').length;
-    return niceAxis(Math.max(1,same,jobConflicts.filter(c=>c.model.status==='no_conflict').length));
-  }, [jobConflicts]);
-
   const handleStatClick = useCallback(
-    (action: 'stat-category' | 'stat-model' | 'stat-agreement', id: string) => {
+    (action: ConsistencyStatisticAction, id: string) => {
       if (action === 'stat-category') {
         setKind(id);
         setModelFilter('all');
@@ -558,10 +408,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
         </DatasetScopeSelector>
 
         {/* Consistency Jobs Table */}
-        <section className={`dc-section dc-jobs-section ${jobPages > 1 ? 'iba-job-multipage' : ''}`}>
-          <div className="dc-section-heading">
-            <h2>检查作业</h2>
-          </div>
+        <JobListPanel title="检查作业" className={`dc-section dc-jobs-section ${jobPages > 1 ? 'iba-job-multipage' : ''}`}>
           {availableJobs.length ? (
             <>
               <div className="dc-table-panel">
@@ -638,47 +485,26 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
                 onPage={handleJobPageChange}
                 label="检查作业"
                 size={IBA_JOBS_PAGE_SIZE}
+                hideSinglePage
               />
             </>
           ) : (
-            <div className="dc-empty">{polling.loading||programs.some(program=>program.isPending)?'正在读取检查作业…':'当前范围还没有检查作业，可以创建新检查。'}</div>
+            <div className="dc-empty">{polling.loading||programs.some(program=>program.isPending)?'正在读取检查作业…':'当前没有检查作业'}</div>
           )}
-        </section>
+        </JobListPanel>
 
         {/* Results Section */}
         <section className="dc-section dc-results-section">
           {!selectedJob||!['FAILED','CANCELLED','INTERRUPTED'].includes(selectedJob.status)?<div className="dc-section-heading"><h2>标注冲突</h2></div>:null}
 
           {!selectedJob ? (
-            <div className="dc-empty">选择上方的检查作业后查看结果。</div>
-          ) : ['FAILED','CANCELLED','INTERRUPTED'].includes(selectedJob.status) ? (
-            <p className="iad-plain-empty" role="status">当前作业下没有对应的冲突</p>
-          ) : selectedJob.status === 'PENDING' || selectedJob.status === 'RUNNING' ? (
-            <div className="dc-running">
-              <div className="dc-running-header">
-                <span>{selectedJob.status === 'PENDING' ? '等待执行'
-                  : selectedJob.analysis.phase === 'ANALYZING_CONFLICT_GROUPS' && selectedJob.analysis.total_gallery_groups != null
-                    ? `正在核对图组 ${selectedJob.analysis.completed_gallery_groups ?? 0} / ${selectedJob.analysis.total_gallery_groups} 组`
-                    : selectedJob.analysis.phase === 'ANALYZING_UNCOVERED_IMAGES' ? '正在补查图像' : '正在检查标注一致性'}</span>
-              </div>
-              <div className="dc-stages">
-                {['准备图像', '检索图像候选', '对比标注', '发布结果'].map((stageName, idx) => {
-                  const phase=selectedJob.analysis.phase;
-                  const currentStage=phase==='CONSISTENCY_FINISHED' ? 3
-                    : phase==='ANALYZING_CONFLICT_GROUPS'||phase==='ANALYZING_UNCOVERED_IMAGES' ? 2 : 1;
-                  return (
-                    <div
-                      key={stageName}
-                      className={`dc-stage ${
-                        idx < currentStage ? 'done' : idx === currentStage ? 'current' : ''
-                      }`}
-                    >
-                      {stageName}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <p className="iad-result-empty" role="status">当前没有结果</p>
+          ) : selectedJob.status !== 'COMPLETED' ? (
+            <p className="iad-result-empty" role="status">当前作业没有已发布结果</p>
+          ) : conflictsLoading ? (
+            <p className="iad-result-empty" role="status">正在读取结果…</p>
+          ) : !jobConflicts.length ? (
+            <p className="iad-result-empty" role="status">当前没有结果</p>
           ) : (
             <>
               {/* Conflict Type Tabs */}
@@ -778,17 +604,21 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
               </div>
 
               {/* Grid of conflict cards */}
-              {conflictsLoading ? (
-                <div className="dc-empty">正在加载冲突图组…</div>
-              ) : paginatedConflicts.length ? (
-                <div className="iad-thumbnail-grid">
+              {paginatedConflicts.length ? (
+                <div className="iad-thumbnail-grid dc-conflict-grid">
                   {paginatedConflicts.map(c => (
-                    <ThumbnailCard key={c.id} src={c.url} label={c.filename} data-dc="open-conflict" data-id={c.id}
-                      onClick={()=>openConflict(c)}><small>原始：{c.type}</small><small>模型：{c.model.modelType}</small></ThumbnailCard>
+                    <ThumbnailCard key={c.id} src={c.url} variant="comparison" label={c.filename} data-dc="open-conflict" data-id={c.id}
+                      aria-label={`${c.filename}，原始结论：${c.type}；模型结论：${c.model.modelType}`}
+                      onClick={()=>{setCurrentConflictId(c.id);setModal('compare');}}>
+                      <span className="iad-thumbnail-values" aria-label="原始结论与模型结论">
+                        <span title={`原始结论：${c.type}`}>{c.type}</span>
+                        <span title={`模型结论：${c.model.modelType}`}>{c.model.modelType}</span>
+                      </span>
+                    </ThumbnailCard>
                   ))}
                 </div>
               ) : (
-                <div className="dc-empty">当前筛选条件下没有匹配的冲突图组。</div>
+                <p className="iad-result-empty" role="status">当前筛选条件下没有匹配的冲突图组。</p>
               )}
 
               <Pagination total={visibleConflicts.length} page={currentPage} size={18} unit="组" onPage={setPage} />
@@ -799,7 +629,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
 
       {/* New Consistency Check Modal */}
       {modal === 'new' && (
-        <Modal title="新建一致性检查" id="dc-new-mask" className="dc-dialog dc-new-dialog" onClose={()=>setModal('')} header={false}>
+        <Modal title="新建一致性检查" size="form" id="dc-new-mask" className="dc-dialog dc-new-dialog" onClose={()=>setModal('')} header={false}>
             <header className="dc-dialog-head">
               <h2 id="dc-new-title">新建一致性检查</h2>
               <IconButton icon="close" type="button" title="关闭" label="关闭" onClick={() => {
@@ -854,355 +684,15 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
         </Modal>
       )}
 
-      {/* Conflict Comparison Dialog */}
-      {modal === 'compare' && currentConflict && (
-        <Modal title="标注冲突对比" id="dc-compare-mask" className="dc-dialog dc-conflict-dialog" header={false} onClose={()=>setModal('')}>
-            <header className="dc-dialog-head">
-              <h2 id="dc-dialog-title">标注冲突对比</h2>
-              <div className="dc-dialog-head-actions">
-                <Button type="button" onClick={handlePrevConflict}>
-                  上一组
-                </Button>
-                <Button type="button" onClick={handleNextConflict}>
-                  下一组
-                </Button>
-                <IconButton icon="close" type="button" title="关闭" label="关闭" onClick={() => setModal('')} />
-              </div>
-            </header>
-            <div className="dc-dialog-body">
-              <div className="dc-compare">
-                <div className="dc-compare-cell">
-                  <div
-                    className="dc-compare-photo"
-                    role="button"
-                    tabIndex={0}
-                    data-dc="zoom-anchor"
-                    aria-label="查看主图大图"
-                    title="点击查看大图"
-                    onClick={() =>
-                      setZoomItem({
-                        id: currentConflict.id + '_anchor',
-                        title: currentConflict.filename,
-                        imageUrl: currentConflict.fullUrl || currentConflict.url,
-                        width: currentConflict.sourceWidth,
-                        height: currentConflict.sourceHeight,
-                        bboxes: anchorBboxes,
-                      })
-                    }
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        setZoomItem({
-                          id: currentConflict.id + '_anchor',
-                          title: currentConflict.filename,
-                          imageUrl: currentConflict.fullUrl || currentConflict.url,
-                          width: currentConflict.sourceWidth,
-                          height: currentConflict.sourceHeight,
-                          bboxes: anchorBboxes,
-                        });
-                      }
-                    }}
-                  >
-                    <AnnotatedImageStage
-                      src={currentConflict.fullUrl || currentConflict.url}
-                      alt="主图"
-                      width={currentConflict.sourceWidth}
-                      height={currentConflict.sourceHeight}
-                      bboxes={anchorBboxes}
-                    />
-                  </div>
-                  <div className="dc-photo-filename" title={currentConflict.filename}>
-                    {currentConflict.filename}
-                  </div>
-                </div>
+      {modal==='compare' && currentConflict && <ConsistencyConflictDialog conflict={currentConflict} items={visibleConflicts}
+        queryId={activeQueryId} onSelect={setCurrentConflictId} onClose={()=>setModal('')}
+        onReviewed={()=>setRevision(value=>value+1)} />}
 
-                <div className="dc-compare-cell">
-                  <div
-                    className="dc-compare-photo"
-                    role="button"
-                    tabIndex={0}
-                    data-dc="zoom-candidate"
-                    aria-label="查看候选图大图"
-                    title="点击查看大图"
-                    onClick={() =>
-                      setZoomItem({
-                        id: currentConflict.id + '_candidate_' + candidateIndex,
-                        title: `${currentCandidate.filename} (候选图 ${candidateIndex + 1})`,
-                        imageUrl: currentCandidate.fullUrl,
-                        width: currentCandidate.width,
-                        height: currentCandidate.height,
-                        bboxes: candidateBboxes,
-                      })
-                    }
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        setZoomItem({
-                          id: currentConflict.id + '_candidate_' + candidateIndex,
-                          title: `${currentCandidate.filename} (候选图 ${candidateIndex + 1})`,
-                          imageUrl: currentCandidate.fullUrl,
-                          width: currentCandidate.width,
-                          height: currentCandidate.height,
-                          bboxes: candidateBboxes,
-                        });
-                      }
-                    }}
-                  >
-                    {selectedMember && <AnnotatedImageStage
-                      src={currentCandidate.fullUrl || currentCandidate.thumbUrl}
-                      alt="候选图"
-                      width={currentCandidate.width}
-                      height={currentCandidate.height}
-                      bboxes={candidateBboxes}
-                    />}
-                  </div>
-                  <div className="dc-photo-filename" title={currentCandidate.filename}>
-                    {currentCandidate.filename}
-                  </div>
-                </div>
-              </div>
-
-              {/* Candidate strip */}
-              <div className="iad-thumbnail-strip" aria-label="切换冲突图像">
-                {conflictMembers.map((m, i) => {
-                    const s = m.image.sample;
-                    const thumb = ConsistencyView.media(m.image,true);
-                    return (
-                      <ThumbnailCard key={s.sample_id || i} src={thumb} label={`候选 ${i+1}`} data-dc="candidate" data-id={i}
-                        aria-pressed={i===candidateIndex} onClick={()=>setCandidateIndex(i)} />
-                    );
-                })}
-              </div>
-              {membersError && <p role="alert" className="iad-error">{membersError}</p>}
-              {compared.error && <p role="alert" className="iad-error">{compared.error}</p>}
-
-              {/* 判定结论 */}
-              <section className="dc-fact-panel" aria-label="判定结论">
-                <h3>判定结论</h3>
-                <span className="dc-verdict-value">{currentConflict.type}</span>
-                <p className="dc-verdict-description">{compared.data?annotationSummary(compared.data.result.annotation):compared.error || '正在读取冻结比较记录…'}</p>
-              </section>
-
-              {/* 模型分析 */}
-              <section className="dc-model-panel" aria-label="模型分析">
-                <h3>模型分析</h3>
-                <p>{groupAnalysis.error || groupAnalysis.analysis?.error || groupAnalysis.analysis?.result?.conclusions.map(item=>item.text).join('\n') || '暂无已保存的模型分析结果。'}</p>
-              </section>
-
-              {/* 模型结论 */}
-              <section className="dc-conclusion-panel" aria-label="模型结论">
-                <h3>模型结论</h3>
-                <span className="dc-verdict-value">{groupAnalysis.analysis?.result?.overall.text || currentConflict.model.modelType}</span>
-                <p className="dc-verdict-description">{groupAnalysis.analysis?.result?.overall.text || groupAnalysis.error || groupAnalysis.analysis?.error || '暂无已保存的模型结论。'}</p>
-              </section>
-
-              {/* Human review panel */}
-              <section className="dc-review-panel" aria-label="人工复核">
-                <h3>人工复核</h3>
-                <div className="dc-decision-controls">
-                  <label>
-                    <input
-                      type="radio"
-                      disabled={reviewBusy || !reviewLoaded || !!pendingReview.current}
-                      name="dc-review"
-                      value="pending"
-                      checked={reviewDecision === 'pending'}
-                      onChange={() => setReviewDecision('pending')}
-                    />
-                    待确认
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      disabled={reviewBusy || !reviewLoaded || !!pendingReview.current}
-                      name="dc-review"
-                      value="confirmed"
-                      checked={reviewDecision === 'confirmed'}
-                      onChange={() => setReviewDecision('confirmed')}
-                    />
-                    确认冲突
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      disabled={reviewBusy || !reviewLoaded || !!pendingReview.current}
-                      name="dc-review"
-                      value="rejected"
-                      checked={reviewDecision === 'rejected'}
-                      onChange={() => setReviewDecision('rejected')}
-                    />
-                    排除冲突
-                  </label>
-                </div>
-                {reviewError && <p role="alert" className="iad-error">{reviewError}</p>}
-                <textarea
-                  disabled={reviewBusy || !reviewLoaded || !!pendingReview.current}
-                  className="dc-note"
-                  id="dc-note"
-                  placeholder="复核说明（可选）"
-                  value={reviewNote}
-                  onChange={e => setReviewNote(e.target.value)}
-                />
-              </section>
-            </div>
-            <footer className="dc-dialog-footer">
-              <Button type="button" onClick={() => setModal('')}>
-                取消
-              </Button>
-              <Button variant="primary" type="button" disabled={reviewBusy || !reviewLoaded || !compared.data} onClick={handleSaveReview}>
-                保存复核
-              </Button>
-            </footer>
-        </Modal>
-      )}
-
-      {/* Statistics dialog */}
-      {!!statsModalJobId && (
-        <Modal title="标注冲突统计" size="form" className="dc-stats-dialog" onClose={()=>setStatsModalJobId('')}>
-            <div className="dc-stats-content">
-              <div className="dc-stats-charts">
-                {/* 1. 原始差异类型 */}
-                {(() => {
-                  const ticks = [distributionAxis, distributionAxis * 0.75, distributionAxis * 0.5, distributionAxis * 0.25, 0].map(v => Math.round(v));
-                  return (
-                    <section className="dc-vchart-panel" aria-label="原始差异类型柱状图">
-                      <h3>原始差异类型</h3>
-                      <div className="dc-vchart-body">
-                        <div className="dc-vchart-axis" aria-hidden="true">
-                          {ticks.map((n, i) => (
-                            <span key={i}>{n}</span>
-                          ))}
-                        </div>
-                        <div className="dc-vchart-figure">
-                          <div className="dc-vchart-lines" aria-hidden="true" />
-                          <div className="dc-vchart-columns" style={{ ['--chart-cols' as any]: origStats.length }}>
-                            {origStats.map(row => {
-                              const height = (100 * row.count) / distributionAxis;
-                              return (
-                                <div className="dc-vchart-column" key={row.name}>
-                                  <div className="dc-vchart-barslot">
-                                    <button
-                                      type="button"
-                                      className={`dc-vchart-bar ${row.count ? '' : 'dc-vchart-zero'}`}
-                                      style={{ height: `${Math.max(0.6, height)}%` }}
-                                      data-dc="stat-category"
-                                      data-id={row.name}
-                                      aria-label={`${row.name} ${row.count} 组，点击查看`}
-                                      title={`${row.name}：${row.count} 组，点击筛选`}
-                                      onClick={() => handleStatClick('stat-category', row.name)}
-                                    >
-                                      <span className="dc-vchart-value">{row.count}</span>
-                                    </button>
-                                  </div>
-                                  <span className="dc-vchart-label" title={row.name}>{row.name}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    </section>
-                  );
-                })()}
-
-                {/* 2. 模型判断 */}
-                {(() => {
-                  const ticks = [distributionAxis, distributionAxis * 0.75, distributionAxis * 0.5, distributionAxis * 0.25, 0].map(v => Math.round(v));
-                  return (
-                    <section className="dc-vchart-panel" aria-label="模型判断柱状图">
-                      <h3>模型判断</h3>
-                      <div className="dc-vchart-body">
-                        <div className="dc-vchart-axis" aria-hidden="true">
-                          {ticks.map((n, i) => (
-                            <span key={i}>{n}</span>
-                          ))}
-                        </div>
-                        <div className="dc-vchart-figure">
-                          <div className="dc-vchart-lines" aria-hidden="true" />
-                          <div className="dc-vchart-columns" style={{ ['--chart-cols' as any]: modelStats.length }}>
-                            {modelStats.map(row => {
-                              const height = (100 * row.count) / distributionAxis;
-                              return (
-                                <div className="dc-vchart-column" key={row.name}>
-                                  <div className="dc-vchart-barslot">
-                                    <button
-                                      type="button"
-                                      className={`dc-vchart-bar ${row.count ? '' : 'dc-vchart-zero'}`}
-                                      style={{ height: `${Math.max(0.6, height)}%` }}
-                                      data-dc="stat-model"
-                                      data-id={row.name}
-                                      aria-label={`${row.name} ${row.count} 组，点击查看`}
-                                      title={`${row.name}：${row.count} 组，点击筛选`}
-                                      onClick={() => handleStatClick('stat-model', row.name)}
-                                    >
-                                      <span className="dc-vchart-value">{row.count}</span>
-                                    </button>
-                                  </div>
-                                  <span className="dc-vchart-label" title={row.name}>{row.name}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    </section>
-                  );
-                })()}
-
-                {/* 3. 结论一致性 */}
-                {(() => {
-                  const ticks = [agreementAxis, agreementAxis * 0.75, agreementAxis * 0.5, agreementAxis * 0.25, 0].map(v => Math.round(v));
-                  return (
-                    <section className="dc-vchart-panel dc-vchart-agreement" aria-label="结论一致性柱状图">
-                      <h3>结论一致性</h3>
-                      <div className="dc-vchart-body">
-                        <div className="dc-vchart-axis" aria-hidden="true">
-                          {ticks.map((n, i) => (
-                            <span key={i}>{n}</span>
-                          ))}
-                        </div>
-                        <div className="dc-vchart-figure">
-                          <div className="dc-vchart-lines" aria-hidden="true" />
-                          <div className="dc-vchart-columns" style={{ ['--chart-cols' as any]: agreementStats.length }}>
-                            {agreementStats.map(row => {
-                              const height = (100 * row.count) / agreementAxis;
-                              return (
-                                <div className="dc-vchart-column" key={row.id}>
-                                  <div className="dc-vchart-barslot">
-                                    <button
-                                      type="button"
-                                      className={`dc-vchart-bar ${row.count ? '' : 'dc-vchart-zero'}`}
-                                      style={{ height: `${Math.max(0.6, height)}%` }}
-                                      data-dc="stat-agreement"
-                                      data-id={row.id}
-                                      aria-label={`${row.name} ${row.count} 组，点击查看`}
-                                      title={`${row.name}：${row.count} 组，点击筛选`}
-                                      onClick={() => handleStatClick('stat-agreement', row.id)}
-                                    >
-                                      <span className="dc-vchart-value">{row.count}</span>
-                                    </button>
-                                  </div>
-                                  <span className="dc-vchart-label" title={row.name}>{row.name}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    </section>
-                  );
-                })()}
-              </div>
-            </div>
-        </Modal>
-      )}
+      {!!statsModalJobId && <ConsistencyStatisticsDialog items={jobConflicts} onFilter={handleStatClick}
+        onClose={()=>setStatsModalJobId('')} />}
 
       {statusJobId && batches.some(job=>job.batch_id===statusJobId) && <JobStatusDrawer
         job={batches.find(job=>job.batch_id===statusJobId)!.analysis} onClose={()=>setStatusJobId('')} />}
-      {/* Fullscreen Image Viewer Modal */}
-      <FullscreenViewer
-        open={!!zoomItem}
-        item={zoomItem}
-        onClose={() => setZoomItem(null)}
-      />
     </div>
   );
 }

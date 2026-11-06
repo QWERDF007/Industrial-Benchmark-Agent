@@ -14,6 +14,7 @@ from iad_core.storage.database import Database
 from iad_core.storage.repositories import AnnotationRepository, SampleRepository
 from iad_core.workbench.audit_conclusions import AuditConclusions, AuditConclusionInput
 from iad_core.workbench.knowledge import InspectionKnowledge
+from iad_core.workbench.audit_sources import AuditSources, FrozenAuditSources
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
 
@@ -111,6 +112,10 @@ class AuditSynthesis:
                 'reference_evidence':True, 'image_sources':True, 'consistency':True,
                 'conclusion':True, 'check_assessments':True,
                 'joint_steps':{'__all__':{'result':{'suggested_label','reason_category','confidence'}}}}), image_owners=owners)
+        if context.payload.get('sources'):
+            selected = FrozenAuditSources.model_validate(context.payload['sources'])
+            frozen['consistency']['source_job_ids'] = selected.consistency_job_ids
+            frozen['consistency']['prior_analyses'] = AuditSources(self.db).analyses(selected, axis.sample_id)
         prompt = instruction+'\n冻结综合审计：'+json.dumps(frozen, ensure_ascii=False)
         result = AuditConclusions(self.client).conclude(AuditConclusionInput(instruction, frozen, prepared,
             criteria.check_ids, model_name), context, progress)

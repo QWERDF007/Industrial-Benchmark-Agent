@@ -120,9 +120,6 @@ export const explorationStyles = `
 .exp-heading {margin-bottom:18px}
 .exp-heading h1 {font-size:24px}
 .exp-scope{margin-top:4px;margin-bottom:12px}
-.exp-job-list{padding:0;overflow:hidden}
-.exp-job-list-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 20px;border-bottom:1px solid #e2e8f0}
-.exp-job-list-head h2{font-size:15px;font-weight:650;margin:0}
 .exp-job-list-actions{display:flex;align-items:center;gap:12px}
 .exp-job-list-actions .exp-input{min-width:154px;gap:0}
 .exp-job-list-actions select{height:35px;width:158px}
@@ -142,36 +139,18 @@ export const explorationStyles = `
 .exp-job-dataset-children{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere;color:#172338;font-size:13px;margin-top:2px}
 .exp-job-time,.exp-job-duration{font-variant-numeric:tabular-nums;font-size:13px!important;color:#172338!important}
 .exp-job-empty{padding:36px;text-align:center;font-size:13px;color:#76869b}
-.exp-job-current{padding:20px 23px 20px;margin-bottom:16px}
-.exp-job-current-top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:18px}
-.exp-job-current-title{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.exp-job-current-title strong{font-size:16px;font-weight:650;color:#203650}
-.exp-job-current-top .iad-button{flex:none}
-.exp-job-stats{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:12px;color:#667890}
-.exp-job-stats strong{font-weight:600;color:#364a68}
-.exp-job-stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px}
-.exp-job-stage{display:flex;gap:10px;align-items:flex-start;position:relative;min-width:0;color:#8795a9;font-size:12px}
-.exp-job-stage:not(:last-child)::after{content:'';position:absolute;height:1px;background:#dce4ef;top:13px;left:37px;right:-4px}
-.exp-job-stage[data-state="done"]::after{background:#b6c8ef}
-.exp-job-stage-icon{position:relative;z-index:1;border:1px solid #cad5e4;background:white;color:#7a8aa2;border-radius:50%;display:grid;place-items:center;flex:none;width:27px;height:27px;font-size:12px}
-.exp-job-stage[data-state="done"] .exp-job-stage-icon{border-color:#a9c0eb;color:#285ecb;background:#edf3ff}
-.exp-job-stage[data-state="current"]{color:#2458c4;font-weight:600}
-.exp-job-stage[data-state="current"] .exp-job-stage-icon{background:#285ed6;color:#fff;border-color:#285ed6}
-.exp-job-stage-label{margin-top:4px;background:white;position:relative;z-index:1;padding-right:5px}
 .exp-job-running-indicator{display:inline-block;width:6px;height:6px;background:#3164d4;border-radius:50%;margin-right:2px}
 .exp-job-update-note{color:#667995;font-size:12px;margin:14px 0 0}
 .exp-job-table .exp-pill{font-size:12px;border-radius:4px;font-weight:500}
 .exp-pill.pending{color:#8e6d24;background:#fff5df}
 .exp-job-info{margin:0;color:#64758d;font-size:12px}
 .exp-job-prompt{white-space:pre-wrap;overflow-wrap:anywhere;background:#f7f9fc;border:1px solid #e2e8f0;border-radius:5px;padding:12px 14px;line-height:1.7;margin-top:6px;max-height:235px;overflow:auto;font-size:12px;color:#31425c}
-@media(max-width:980px){.exp-job-table{min-width:780px}.exp-job-stages{gap:7px}.exp-job-stage{font-size:11px}.exp-job-stats{gap:6px 12px}}
-@media(max-width:650px){.exp-job-current-top{flex-direction:column}.exp-job-stages{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:14px}.exp-job-stage::after{display:none}.exp-job-list-head{align-items:flex-start;flex-direction:column}.exp-job-list-actions{width:100%;justify-content:space-between}}
+@media(max-width:980px){.exp-job-table{min-width:780px}}
+@media(max-width:650px){.exp-job-list-actions{width:100%;justify-content:space-between}}
 
 
 .exp-unified-layout{display:flex;flex-direction:column;gap:18px;min-width:0}
 .exp-unified-layout>.exp-panel{width:100%;min-width:0;box-sizing:border-box}
-.exp-job-list-head{padding:18px 22px}
-.exp-job-list-head .exp-job-list-actions{margin-left:auto}
 .exp-job-table tbody tr[data-action="select-job"]{cursor:pointer;transition:background .12s}
 .exp-job-table tbody tr[data-action="select-job"]:hover{background:#f6f9ff}
 .exp-job-table tbody tr[data-selected="true"]{background:#eaf0ff}
@@ -181,7 +160,7 @@ export const explorationStyles = `
 .exp-selected-result{padding:22px 24px 24px}
 .exp-selected-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 19px}
 .exp-selected-head>div{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-.exp-selected-head h2,.exp-job-list-head h2{font-size:16px;font-weight:650;margin:0!important}
+.exp-selected-head h2{font-size:16px;font-weight:650;margin:0!important}
 .exp-selected-sub{font-size:12px;color:#6b7b93;line-height:1.4}
 .exp-result-summary{font-size:13px;color:#475a73;line-height:1.75;margin:0 0 22px;max-width:none}
 .exp-result-section-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 13px}

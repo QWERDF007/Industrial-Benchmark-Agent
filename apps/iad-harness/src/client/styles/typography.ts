@@ -208,41 +208,12 @@ export const typographyStyles = `
 }
 
 /* ==========================================================================
-   V51 Consistency Main Image Card (One single image, object-fit: contain)
-   ========================================================================== */
-.dc-grid .dc-card-img {
-  background: #eef2f7 !important;
-  height: 140px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  overflow: hidden !important;
-  position: relative !important;
-}
-.dc-grid .dc-card-img > img.dc-main-image {
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;
-  object-position: center !important;
-}
-
-/* Conflict card caption bottom judgments text: ordinary text color and regular weight */
-.dc-grid .dc-card-judgments > .dc-judgment-value,
-.dc-grid .dc-card-judgments > .dc-raw-value,
-.dc-grid .dc-card-judgments > .dc-model-value,
-.dc-grid .dc-card-judgments > .dc-judgment-clear {
-  color: var(--iba-font-color-base, #172338) !important;
-  font-weight: 400 !important;
-}
-
-/* ==========================================================================
    V51 Ordinary Data Text & Status Semantic Colors
    ========================================================================== */
 :is(.exp-job-table .exp-row-title, .exp-job-dataset, .exp-job-dataset *,
     .kb-v45 .jobtitle, .kb-v45 .knowledge-entry-name, .kb-v45 .knowledge-entry-description,
-    .dc-table .dc-mono, .dc-table .dc-job-datasets, .dc-card-caption strong,
-    #images-page .card-name, .exp-job-table td:not(:has(.exp-pill)), .dc-table td:not(:has(.exp-pill)):not(:has(.dc-state)), .dc-grid .dc-card-caption,
+    .dc-table .dc-mono, .dc-table .dc-job-datasets,
+    #images-page .card-name, .exp-job-table td:not(:has(.exp-pill)), .dc-table td:not(:has(.exp-pill)):not(:has(.dc-state)),
     .kb-v45 .jobs-table td, .kb-v45 .knowledge-row, .name-text) {
   font-family: var(--iba-unified-font) !important;
   font-weight: 400 !important;

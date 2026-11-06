@@ -4,12 +4,12 @@ from pydantic import AwareDatetime,Field,computed_field
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.evidence_models import ConsistencyResult,EvidenceSourceStates
-from iad_core.consistency.models import AllRegisteredScope,ConsistencyScopesSnapshot,ConsistencyScopesSummary,CorpusScope,Count,CoverageCount,DifferenceType,Identifier,Mode,Relation,ScopeSelector
+from iad_core.consistency.models import AllRegisteredScope,ConsistencyScopesSnapshot,ConsistencyScopesSummary,CorpusScope,Count,CoverageCount,DifferenceType,Identifier,Mode,Relation,ScopeSelector,SimilarityThreshold,DEFAULT_MIN_SIMILARITY
 from iad_core.consistency.review_models import ReviewState, CorrectionState
 from iad_core.gold.readiness import GoldAvailability
 
 FactState=Literal['CURRENT','HISTORICAL','UNKNOWN']
-ExecutionCompleteness=Literal['EXACT_SCOPE','TOP_K','PARTIAL','INDEX_ONLY']
+ExecutionCompleteness=Literal['EXACT_SCOPE','TOP_K','SIMILARITY_THRESHOLD','PARTIAL','INDEX_ONLY']
 
 
 class BatchSelection(AnalysisModel):
@@ -24,6 +24,7 @@ class ScopeSelection(AnalysisModel):
     facts: FactState = 'CURRENT'
     mode: Mode = 'exact'
     profile_id: Identifier | None = None
+    min_similarity: SimilarityThreshold = DEFAULT_MIN_SIMILARITY
 
 
 ResultSelection=Annotated[BatchSelection | ScopeSelection,Field(discriminator='kind')]
@@ -67,6 +68,7 @@ class ResultCoverage(AnalysisModel):
     corpus: CoverageCount
     mode: Mode | None
     profile_id: Identifier | None
+    min_similarity: SimilarityThreshold | None = None
     retrieval_completeness: ExecutionCompleteness
 
 

@@ -21,6 +21,7 @@ data/iad.db
 data/uploads/
 *.db-shm
 *.db-wal
+*.calls/
 *.schema.lock
 *.lock
 python/iad_core/exploration/presets/custom_*.txt

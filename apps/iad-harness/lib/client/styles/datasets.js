@@ -1,6 +1,6 @@
 export const datasetsStyles = `
 :root, [data-page="industrial-datasets"] {
-  --drawer-width: clamp(480px, 34vw, 560px);
+  --drawer-width: min(560px, 100vw);
   --line: #dfe5ee;
   --line-dark: #cbd5e1;
   --header: #f0f3f8;

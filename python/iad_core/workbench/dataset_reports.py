@@ -12,6 +12,8 @@ from iad_core.workbench.audit_result_models import AuditSampleItem
 from iad_core.workbench.jobs import JobContext, JobRunner
 from iad_core.workbench.report_requirements import REPORT_REQUIREMENTS
 from iad_core.workbench.report_synthesis import ReportSynthesis
+from iad_core.workbench.report_presentation import ReportPresentation
+from iad_core.workbench.knowledge import InspectionKnowledge
 from iad_core.workbench.vision import VlmClient
 
 
@@ -58,9 +60,13 @@ class DatasetReports:
                     source.sample, source.dataset_format, source.annotations)
                 owners[image.evidence_id] = source.sample.sample_id
         context.update(visual_evidence_ids=list(prepared))
-        statistics = facts.model_dump(mode='json', exclude={'cases', 'knowledge_versions', 'consistency_records', 'registered_sample_ids'})
+        statistics = facts.model_dump(mode='json', exclude={'cases', 'knowledge_versions', 'consistency_records', 'registered_sample_ids', 'source_selections'})
+        statistics['source_selections'] = [source.model_dump(mode='json') for source in ReportPresentation.capture(facts).sources]
+        full_versions = {case.analysis.knowledge_version_id for case in facts.cases if case.run_id not in facts.source_selections}
         statistics['knowledge_versions'] = [dict(version_id=version.version_id, summary=version.summary,
-            checks=[check.model_dump() for check in version.checks], limitations=version.limitations)
+            checks=[check.model_dump() for check in InspectionKnowledge(version, None if version.version_id in full_versions else
+                frozenset(identity for source in facts.source_selections.values() if source.knowledge_version_id==version.version_id
+                    for identity in source.knowledge_entry_ids)).checks], limitations=version.limitations)
             for version in facts.knowledge_versions]
         statistics['consistency_records'] = [record.model_dump(mode='json') for record in facts.consistency_records]
         observations = [dict(sample_id=case.sample_id, raw_label=case.raw_label, run_id=case.run_id,
@@ -115,7 +121,7 @@ class DatasetReports:
                 if image.evidence_id in snapshot.visual_evidence_ids:
                     evidence.setdefault(image.evidence_id, ReportEvidence(source=source, image=image,
                         suggestion_id=case.suggestion_id, audit_sample=sample))
-        return DatasetReportView(run_id=run_id, scope_dataset_ids=snapshot.facts.scope_dataset_ids,
+        return DatasetReportView(presentation=ReportPresentation.capture(snapshot.facts), run_id=run_id, scope_dataset_ids=snapshot.facts.scope_dataset_ids,
             signature=snapshot.facts.signature, created_at=snapshot.created_at, instruction=snapshot.instruction,
             registered_samples=snapshot.facts.registered_samples, audited_samples=snapshot.facts.audited_samples,
             outcomes=snapshot.facts.outcomes, raw_labels=snapshot.facts.raw_labels, data=report_data(snapshot.facts),

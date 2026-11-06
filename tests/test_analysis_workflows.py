@@ -14,6 +14,42 @@ from iad_core.workbench.vision import VlmClient
 from tests.knowledge_scenarios import frozen_observation_response
 
 
+def test_consistency_workflow_finishes_without_model_calls_when_no_pair_reaches_threshold(dataset,tmp_path):
+    import numpy as np
+    from PIL import Image
+    from iad_core.duplicate.index import PixelIndex
+    from iad_core.storage.features import FeatureRepository
+    from iad_core.storage.models import FeatureRecord
+    from tests.feature_fixtures import configure_test_encoder
+
+    db,registry,_=dataset
+    root=tmp_path/'distinct-images';root.mkdir()
+    for name,color in [('first','red'),('second','green')]:Image.new('RGB',(32,32),color).save(root/(name+'.png'))
+    config=registry.import_labelme(DatasetImport(format='labelme',name='无合格候选',image_dir=str(root),annotation_dir=str(root)))
+    encoder=configure_test_encoder(db,tmp_path)
+    for index,name in enumerate(['first','second']):
+        vector=np.zeros(encoder.profile.dim,dtype=encoder.profile.storage_dtype);vector[index]=1
+        group=PixelIndex(db).get(config.dataset.id+':'+name+'.png').content_group_id
+        FeatureRepository(db).upsert(FeatureRecord(content_group_id=group,profile_id=encoder.profile.profile_id,
+            dim=encoder.profile.dim,dtype=encoder.profile.storage_dtype,embedding_blob=vector.tobytes()))
+    calls=[]
+    def unexpected_call(request):
+        calls.append(str(request.url.path))
+        return httpx.Response(500,json={'error':'不应调用模型'})
+    runtime=WorkbenchRuntime(db,VlmClient(httpx.Client(transport=httpx.MockTransport(unexpected_call))))
+    try:
+        started=runtime.models.analysis_workflows.start(dict(analysis_kind='consistency',dataset_ids=[config.dataset.id]))
+        runtime.jobs.wait(started['run_id'],10)
+        final=runtime.models.analysis_workflows.status(started['run_id'])
+        assert final['status']=='COMPLETED',final['errors']
+        assert final['completed']==2 and final['total_gallery_groups']==0
+        assert final['request']['submission']['min_similarity']==.95
+        assert len(final['no_candidate_sample_ids'])==2 and not final['unit_runs']
+        assert calls==[]
+    finally:
+        runtime.close()
+
+
 @pytest.mark.parametrize('fail_second', [False, True])
 def test_one_exploration_workflow_covers_multiple_subsets_and_keeps_iterating(dataset, tmp_path, fail_second):
     db, registry, first = dataset
@@ -157,7 +193,7 @@ def test_knowledge_workflow_requires_the_complete_submitted_prompt_before_alloca
 
 @pytest.mark.parametrize('invalid_annotation',[False,True])
 @pytest.mark.parametrize('mode',['combined','exact'])
-def test_consistency_workflow_contains_program_comparison_and_full_visual_analysis(dataset,tmp_path,monkeypatch,invalid_annotation,mode):
+def test_consistency_workflow_contains_program_comparison_and_eligible_visual_analysis(dataset,tmp_path,monkeypatch,invalid_annotation,mode):
     db, _, config = dataset
     if invalid_annotation:
         label=tmp_path/'labels/dent.json'
@@ -204,15 +240,8 @@ def test_consistency_workflow_contains_program_comparison_and_full_visual_analys
             for member in unit['group']['members'])) for unit in state['gallery_plan']]
         summary=runtime.models.analysis_workflows.list(config.dataset.id,'consistency')[0]
         assert summary['completed_gallery_groups']==summary['total_gallery_groups']==len(planned_groups), '公开状态须保留实际图组进度，不能只显示最终样本完成数'
-        covered={sid for anchor,members in planned_groups for sid in [anchor,*members]}
-        if mode=='combined':
-            assert sorted(observed_groups)==sorted(planned_groups), '候选图组已覆盖的样本不应再随机重复分析'
-            assert not state['unit_runs']
-        else:
-            assert observed_groups[:len(planned_groups)]==planned_groups, '先检查真实候选组，再补查未覆盖图像'
-            fallback=runtime.jobs.status(state['unit_runs'][config.dataset.id])
-            assert set(fallback['sample_ids'])==set(state['sample_ids'])-covered
-            assert len(observed_groups)==len(planned_groups)+1
+        assert sorted(observed_groups)==sorted(planned_groups), '只分析通过检索条件的候选，不随机补组'
+        assert not state['unit_runs']
         assert state['program_batch_id']
         program=runtime.consistency.status(state['program_batch_id'])
         assert program.status==('PARTIAL' if invalid_annotation else 'COMPLETED')
@@ -243,7 +272,7 @@ def test_consistency_workflow_contains_program_comparison_and_full_visual_analys
 
 
 @pytest.mark.parametrize('invalid_annotation',[False,True])
-def test_consistency_retry_keeps_successful_uncovered_images_and_rechecks_only_the_failed_group(dataset,tmp_path,invalid_annotation):
+def test_consistency_retry_keeps_samples_without_candidates_and_rechecks_only_the_failed_group(dataset,tmp_path,invalid_annotation):
     db,registry,config=dataset
     if invalid_annotation:
         label=tmp_path/'labels/dent.json'
@@ -284,17 +313,17 @@ def test_consistency_retry_keeps_successful_uncovered_images_and_rechecks_only_t
             assert failure['source_phase']==source['phase']=='ANALYZING_GROUP_BATCHES'
             assert failure['source_phase']!=first['phase'],'子作业失败不能归因于父作业后续阶段'
         succeeded=set(first['completed_sample_ids'])
-        assert len(calls)==3
-        successful_child=runtime.jobs.status(first['unit_runs'][config.dataset.id])
+        assert len(calls)==2
+        assert succeeded==set(first['no_candidate_sample_ids'])
+        assert not first['unit_runs']
         repaired=True
         retried=runtime.models.analysis_workflows.retry(started['run_id'])
         runtime.jobs.wait(retried['run_id'],10)
         final=runtime.models.analysis_workflows.status(started['run_id'])
         assert final['status']=='COMPLETED',final['errors']
         assert final['completed']==final['total_samples']==4 and final['failed']==0
-        assert len(calls)==4 and calls[-1]==first_group
+        assert len(calls)==3 and calls[-1]==first_group
         assert set(runtime.jobs.status(retried['run_id'])['sample_ids']).isdisjoint(succeeded)
-        assert runtime.jobs.status(successful_child['run_id'])==successful_child
         assert runtime.jobs.status(started['run_id'])['completed_sample_ids']==first['completed_sample_ids']
         assert final['dataset_results'][0]['status']=='COMPLETED'
         from iad_core.consistency.gallery import GalleryQueries,GalleryQuery

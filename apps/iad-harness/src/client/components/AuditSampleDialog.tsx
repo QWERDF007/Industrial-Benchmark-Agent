@@ -1,4 +1,3 @@
-import {Select} from './Select.js';
 import {Button} from './Button.js';
 import {ThumbnailCard} from './ThumbnailCard.js';
 import {IconButton} from './IconButton.js';
@@ -56,14 +55,15 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
         {!!conclusion?.conflicts.length && <p>{conclusion.conflicts.join('；')}</p>}
       </section>
       <section data-audit-section="evidence"><h3>图像证据</h3>
-        {pictures.length > 2 && <label className="iad-field">对照图像<Select aria-label="选择审计对照图像" value={comparisonIndex}
-          onChange={event => setComparisonIndex(Number(event.target.value))}>
-          {pictures.slice(1).map((picture, index) => <option key={picture.evidence.evidence_id} value={index}>对照 {index + 1}，{picture.label}</option>)}
-        </Select></label>}
         <div className="iad-image-pair">{[{view:mainImage,label:pictures[0]?.label || '未记录标注',filename:pictures[0]?.filename || sample.filename},comparison].filter(Boolean).map((picture,index)=><section className="iad-image-pair-side audit-evidence-item" key={picture!.view.src}>
           <h4>{index===0?'主图':'对照图像'}</h4>
           <ThumbnailCard image={picture!.view} label={picture!.filename} variant="evidence" aria-label={index===0?'放大主图':'放大对照图像'} onClick={()=>setLightbox(picture!.view)} mediaOverlay={<span className="audit-original-label">原始标注 {picture!.label}</span>} />
         </section>)}</div>
+        {pictures.length>1&&<div className="iad-thumbnail-strip" role="group" aria-label="切换候选图像">
+          {pictures.slice(1).map((picture,index)=><ThumbnailCard key={picture.evidence.evidence_id} image={picture.view}
+            variant="compact" label={picture.filename} title={picture.filename} aria-label={`切换为候选图像 ${picture.filename}`}
+            aria-pressed={comparisonIndex===index} onClick={()=>setComparisonIndex(index)} />)}
+        </div>}
       </section>
     </div><footer className="audit-dialog-foot"><Button onClick={onClose}>关闭</Button></footer>
   </Modal>{lightbox && <ImageViewer image={lightbox} onClose={() => setLightbox(null)} />}</>;

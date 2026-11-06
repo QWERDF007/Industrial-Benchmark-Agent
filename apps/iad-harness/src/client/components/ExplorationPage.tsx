@@ -1,7 +1,9 @@
+import {v4 as uuid} from 'uuid';
 import {ExplorationPresetDialog} from './ExplorationPresetDialog.js';
 import {ExplorationSourceDialog} from './ExplorationSourceDialog.js';
 import {PromptDrawer} from './PromptDrawer.js';
 import {JobStatusDrawer, JobStatusButton, JobStatusAction} from './JobStatusDrawer.js';
+import {JobListPanel} from './JobListPanel.js';
 import {Select} from './Select.js';
 import {TabBar} from './layout/TabBar.js';
 import {Button} from './Button.js';
@@ -12,7 +14,7 @@ import { mediaUrl, message, request } from "../api.js";
 import {useWorkbenchModel} from "../models.js";
 import {useJobs} from "../useJobs.js";
 import {useDatasetCatalog} from '../useDatasetCatalog.js';
-import {jobStatuses,jobWorkflow} from "../../shared/job-display.js";
+import {jobStatuses} from "../../shared/job-display.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 import {PlusIcon} from "../AuditIcon.js";
 import { IconButton } from "./IconButton.js";
@@ -169,7 +171,6 @@ export function ExplorationPage({
     return shownJobs[0] || null;
   }, [shownJobs, selectedJobId]);
 
-  const selectedWorkflow=selectedJob ? jobWorkflow(selectedJob) : null;
   const selectedSnapshot=selectedJob;
   const versionKey=(selectedSnapshot?.dataset_results||[]).map(result=>result.exploration_version_id||'').join('|');
   const results=useResource<ExplorationResults>(selectedJob?`/analysis/results/${encodeURIComponent(selectedJob.run_id)}`:null,`${versionKey}|${refreshTick}`);
@@ -247,7 +248,7 @@ export function ExplorationPage({
     setSubmitting(true);setError('');
     try {
       const key=JSON.stringify([selectedChildIds,normalSelected,defectSelected,prompt,selectedPresetId]);
-      if(submission.current?.key!==key)submission.current={key,id:crypto.randomUUID()};
+      if(submission.current?.key!==key)submission.current={key,id:uuid()};
       const res=await request<JobSnapshot>('/analysis/start',{submission_id:submission.current.id,analysis_kind:'exploration',
         dataset_ids:selectedChildIds,normal_images:normalSelected,defect_images:defectSelected,
         prompt:{preset_id:selectedPresetId,preset_name:presets.find(preset=>preset.id===selectedPresetId)?.name||'自定义',text:prompt}});
@@ -295,6 +296,7 @@ export function ExplorationPage({
             </Button>
           ) : (
             <Button
+              id="exp-new"
               type="button"
               variant="primary"
               disabled={!!runningJob || submitting}
@@ -454,9 +456,7 @@ export function ExplorationPage({
         /* Unified Workspace Layout */
         <div className="exp-unified-layout">
           {/* Upper Panel: 探索作业 */}
-          <section className={`exp-panel exp-job-list ${jobPages > 1 ? 'iba-job-multipage' : ''}`} aria-label="探索作业">
-            <div className="exp-job-list-head">
-              <h2>探索作业</h2>
+          <JobListPanel title="探索作业" className={`exp-job-list ${jobPages > 1 ? 'iba-job-multipage' : ''}`} actions={jobs.length>0&&
               <div className="exp-job-list-actions">
                 <label className="exp-input exp-filter-control" aria-label="搜索作业">
                   <input
@@ -498,7 +498,7 @@ export function ExplorationPage({
                   }}
                 />
               </div>
-            </div>
+            }>
 
             {filteredJobs.length ? (
               <>
@@ -542,12 +542,14 @@ export function ExplorationPage({
                           <td className="exp-prompt-action-col">
                             <div className="exp-job-icon-actions" onClick={(e) => e.stopPropagation()}>
                               <JobStatusAction job={j} onClick={()=>setStatusJobId(j.root_run_id)} />
+                              {['FAILED','CANCELLED','INTERRUPTED'].includes(j.status)&&<IconButton icon="copy" label="使用该配置新建" data-exp="copy-job"
+                                disabled={!!runningJob||submitting} onClick={()=>void openSetup(j)} />}
                               <IconButton icon="prompt" label="查看提示词" title="查看提示词" data-exp="show-prompt" data-id={j.run_id} onClick={() => {
                                   setPromptText(j.exploration_prompt?.text||'');
                                   setModal("prompt");
                                 }} />
                               <DeleteAction title="删除探索作业" name={j.run_id} confirmLabel="删除作业" confirmation={<>确定删除作业 {j.run_id} 吗？</>} description="删除后不再显示该作业及其探索结果。" disabled={j.status === 'RUNNING' || j.status === 'PENDING'}
-                                restoreFocus={()=>document.querySelector<HTMLInputElement>('#exp-jobsearch')} onDelete={async()=>{
+                                restoreFocus={()=>document.getElementById(jobs.length>1?'exp-jobsearch':'exp-new')} onDelete={async()=>{
                                   await request(`/analysis/delete/${encodeURIComponent(j.run_id)}`,{});
                                   refreshJobs();
                                 }} />
@@ -564,14 +566,15 @@ export function ExplorationPage({
                   onPage={handleJobPageChange}
                   label="探索作业"
                   size={IBA_JOBS_PAGE_SIZE}
+                  hideSinglePage
                 />
               </>
             ) : (
               <div className="exp-job-empty" role="status">
-                {jobQuery.loading?"正在读取探索作业…":jobs.length ? "没有符合筛选条件的探索作业。" : "当前范围还没有探索作业，可以创建新探索。"}
+                {jobQuery.loading?"正在读取探索作业…":jobs.length ? "没有符合筛选条件的探索作业。" : "当前没有探索作业"}
               </div>
             )}
-          </section>
+          </JobListPanel>
 
           {/* Lower Panel: 探索结果 */}
           {!selectedJob ? (
@@ -581,29 +584,16 @@ export function ExplorationPage({
                   <h2>探索结果</h2>
                 </div>
               </div>
-              <div className="exp-result-empty-message" role="status">
-                请选择上方的探索作业查看结果。
+              <div className="iad-result-empty" role="status">
+                当前没有探索结果
               </div>
             </section>
           ) : ['PENDING','RUNNING'].includes(selectedJob.status) ? (
-            <section className="exp-panel exp-selected-result" aria-label="所选作业的执行阶段">
-              <div className="exp-selected-head"><div><h2>运行状态</h2><span className="exp-selected-sub">{selectedJob.run_id}</span></div></div>
-              <div className="exp-job-current-title"><span className={`exp-pill ${selectedJob.status==='PENDING'?'pending':'running'}`}>{jobStatuses[selectedJob.status]}</span>
-                <strong>{selectedJob.status==='PENDING'?'等待执行':selectedWorkflow!.stages[selectedWorkflow!.index]?.title || '正在执行'}</strong></div>
-              <div className="exp-job-stages" role="list" aria-label="执行阶段，不代表完成百分比">
-                {selectedWorkflow!.stages.map((stage,index)=><div key={stage.title} role="listitem" className="exp-job-stage"
-                  data-state={selectedJob.status==='RUNNING'&&index===selectedWorkflow!.index?'current':'waiting'}>
-                  <span className="exp-job-stage-icon">{index+1}</span><span className="exp-job-stage-label">{stage.title}</span></div>)}
-              </div>
-              <div className="exp-result-neutral">方向尚未发布，完成后将在这里显示本次作业的候选方向与整体限制。</div>
-            </section>
+            <section className="exp-panel exp-selected-result" aria-label="探索结果"><div className="exp-selected-head"><h2>探索结果</h2></div>
+              <p className="iad-result-empty" role="status">当前作业没有已发布结果</p></section>
           ) : ['FAILED','CANCELLED','INTERRUPTED'].includes(selectedJob.status) ? (
-            <section className="exp-panel exp-selected-result" aria-label="所选作业的错误信息">
-              <div className="exp-selected-head"><div><h2>作业失败</h2><span className="exp-selected-sub">{selectedJob.run_id}</span></div></div>
-              <p className="exp-error-message">{selectedJob.errors[0]?.message || '任务未成功完成，未生成探索结果。'}</p>
-              <p className="exp-lead">本次作业没有可用的候选方向或整体限制。</p>
-              <Button data-exp="copy-job" disabled={!!runningJob || submitting} onClick={()=>void openSetup(selectedJob)}>使用该配置新建</Button>
-            </section>
+            <section className="exp-panel exp-selected-result" aria-label="探索结果"><div className="exp-selected-head"><h2>探索结果</h2></div>
+              <p className="iad-result-empty" role="status">当前作业没有已发布结果</p></section>
           ) : (
             <section className="exp-panel exp-selected-result" aria-label="所选作业的探索结果">
               <div className="exp-selected-head">

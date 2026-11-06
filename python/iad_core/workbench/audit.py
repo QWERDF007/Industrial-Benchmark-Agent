@@ -2,7 +2,7 @@ import os
 import uuid
 from typing import List, Optional, TYPE_CHECKING
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from iad_core.advisory.repository import AuditSuggestionRepository
 from iad_core.advisory.analysis import AuditConsistencyReference, AuditConsistencyEvidenceReference, NonBlankText
@@ -29,6 +29,7 @@ from iad_core.consistency.audit_repository import AuditConsistencyRepository
 from iad_core.consistency.models import DatasetScope, ConsistencyScopesSnapshot, CorpusScope, Mode, SampleScope
 from iad_core.consistency.scopes import ConsistencyScopes
 from iad_core.feature.profiles import ImageEncoders
+from iad_core.workbench.audit_sources import AuditSources, FrozenAuditSources
 
 if TYPE_CHECKING:
     from iad_core.workbench.runtime import WorkbenchRuntime
@@ -36,16 +37,27 @@ if TYPE_CHECKING:
 class AuditStart(BaseModel):
     model_config = ConfigDict(extra="forbid")
     dataset_id: str
+    subset_ids: Optional[List[str]] = None
     submission_id: uuid.UUID = Field(default_factory=uuid.uuid4)
     origin_session_id: Optional[str] = None
     model_name: Optional[str] = None
     knowledge_version_id: Optional[str] = None
+    knowledge_job_id: Optional[str] = None
+    knowledge_entry_ids: Optional[List[str]] = None
+    consistency_job_ids: Optional[List[str]] = None
     sample_ids: Optional[List[str]] = None
     filters: SampleFilters = Field(default_factory=SampleFilters)
     consistency_mode: Mode = 'exact'
     consistency_profile_id: Optional[str] = None
     corpus_scope: CorpusScope = Field(default_factory=lambda data: DatasetScope(dataset_ids=[data['dataset_id']]))
     instruction: NonBlankText = DEFAULT_AUDIT_PROMPT
+
+    @model_validator(mode='after')
+    def selected_sources_complete(self):
+        if any(value is not None for value in (self.knowledge_job_id, self.knowledge_entry_ids, self.consistency_job_ids)):
+            if not all((self.knowledge_job_id, self.knowledge_version_id, self.knowledge_entry_ids, self.consistency_job_ids)):
+                raise ValueError('请选择知识挖掘作业、知识条目及已完成的一致性作业')
+        return self
 
 
 class AuditService:
@@ -78,6 +90,7 @@ class AuditService:
         def phase(progress):
             context.update(**progress.model_dump(), current_sample_id=sample_id)
         consistency = AuditConsistency(self.runtime.consistency_service)
+        selected_sources = context.payload.get('sources')
         scopes = ConsistencyScopesSnapshot.model_validate(context.payload['consistency_scopes'])
         axis_options = {'mode': context.payload['consistency_mode'], 'profile_id': context.payload['consistency_profile_id']}
         repository = AuditConsistencyRepository(self.db)
@@ -88,14 +101,16 @@ class AuditService:
                 analysis = self.inspection.inspect(sample_id, model_name, knowledge, context.cancel, phase,
                     instruction=context.payload['instruction'])
         except InterruptedError:
-            repository.save(consistency.retained(audit_run_id, sample_id, scopes, **axis_options))
+            repository.save(consistency.selected(audit_run_id, sample_id, scopes, FrozenAuditSources.model_validate(selected_sources))
+                if selected_sources else consistency.retained(audit_run_id, sample_id, scopes, **axis_options))
             raise
         except Exception as failure:
             error = context.failure(failure)
         if SampleContent.capture(self.db, sample_id).model_dump() != expected:
             raise ValueError('源图像或标注内容已变化，请重新启动审计')
         context.update(phase='COMPARING', current_sample_id=sample_id)
-        axis = consistency.check(audit_run_id, sample_id, scopes, **axis_options, checkpoint=context.checkpoint)
+        axis = consistency.selected(audit_run_id, sample_id, scopes, FrozenAuditSources.model_validate(selected_sources)) if selected_sources else consistency.check(
+            audit_run_id, sample_id, scopes, **axis_options, checkpoint=context.checkpoint)
         if error is not None:
             def persist_failure(conn):
                 repository.save(axis, conn)
@@ -149,22 +164,34 @@ class AuditService:
         if request.model_name:
             request.model_name = self.client.resolve_model(request.model_name)
         config = self.registry.resolve(dataset_id=request.dataset_id)
+        dataset_ids = request.subset_ids if request.subset_ids is not None else [request.dataset_id]
+        if not dataset_ids or request.dataset_id not in dataset_ids or len(set(dataset_ids)) != len(dataset_ids):
+            raise ValueError('审计子数据集范围不能为空、重复或遗漏知识来源子数据集')
+        if len(dataset_ids) > 1:
+            import json
+            with self.db.connection() as conn:
+                groups = conn.execute('SELECT dataset_id,COALESCE(group_id,dataset_id) group_id FROM datasets WHERE dataset_id IN (SELECT value FROM json_each(?))',
+                    (json.dumps(dataset_ids),)).fetchall()
+            if len(groups) != len(dataset_ids) or len({row['group_id'] for row in groups}) != 1:
+                raise ValueError('审计子数据集必须属于同一数据集')
         knowledge = InspectionKnowledge.resolve(self.db, request.dataset_id, request.knowledge_version_id)
+        sources = AuditSources(self.db).freeze(request.dataset_id, request.knowledge_job_id, request.knowledge_version_id,
+            request.knowledge_entry_ids, request.consistency_job_ids, dataset_ids=dataset_ids) if request.knowledge_job_id else None
         if request.sample_ids is None:
-            filters = {**request.filters.model_dump(), "dataset_id": request.dataset_id, "page": 1, "page_size": 200}
-            query = SampleQuery.model_validate(filters)
             sample_ids = []
-            while True:
-                page = WorkbenchQuery(self.db).samples(query)
-                sample_ids.extend(item["sample_id"] for item in page["items"])
-                if query.page * query.page_size >= page["total"]:
-                    break
-                query.page += 1
+            for dataset_id in dataset_ids:
+                query = SampleQuery.model_validate({**request.filters.model_dump(), 'dataset_id':dataset_id, 'page':1, 'page_size':200})
+                while True:
+                    page = WorkbenchQuery(self.db).samples(query)
+                    sample_ids.extend(item['sample_id'] for item in page['items'])
+                    if query.page * query.page_size >= page['total']:
+                        break
+                    query.page += 1
         else:
             sample_ids = list(dict.fromkeys(request.sample_ids))
             for sid in sample_ids:
                 sample = SampleRepository(self.db).get(sid)
-                if not sample or sample.dataset_id != request.dataset_id:
+                if not sample or sample.dataset_id not in dataset_ids:
                     raise ValueError("Audit samples must belong to the selected dataset")
         if not sample_ids:
             raise ValueError("No samples match the audit filters")
@@ -174,7 +201,7 @@ class AuditService:
             selected = encoders.read().selection
             if request.consistency_profile_id is not None or selected is not None:
                 request.consistency_profile_id = encoders.profile(request.consistency_profile_id).profile_id
-        payload = {"dataset_id": request.dataset_id, "model_name": request.model_name, "sample_ids": sample_ids,
+        payload = {"dataset_id": request.dataset_id, "dataset_ids":dataset_ids, "model_name": request.model_name, "sample_ids": sample_ids,
                    "instruction":request.instruction,
                    "submission": submission,
                    "origin_session_id": request.origin_session_id, "model_profile": self.client.profile.model_dump(),
@@ -184,6 +211,8 @@ class AuditService:
                    "consistency_profile_id": request.consistency_profile_id,
                    "input_sources": [source.model_dump() for source in SampleContent.capture_many(self.db, sample_ids)],
                    "knowledge_version_id": knowledge.snapshot.version_id}
+        if sources:
+            payload['sources'] = sources.model_dump(mode='json')
         return self.jobs.start("MODEL_AUDIT", config.task.task_id, payload, self.run, "准备冻结知识审计")
 
     def run(self, context: JobContext):
@@ -192,7 +221,9 @@ class AuditService:
             raise ValueError('模型审计规则已变化，请重新启动审计')
         from iad_core.knowledge.repository import KnowledgeRepository
         repository = KnowledgeRepository(self.db)
-        knowledge = InspectionKnowledge(repository.get(payload['knowledge_version_id']))
+        selection = FrozenAuditSources.model_validate(payload['sources']) if payload.get('sources') else None
+        knowledge = InspectionKnowledge(repository.get(payload['knowledge_version_id']),
+            frozenset(selection.knowledge_entry_ids) if selection else None)
         model_error = None
         model_name = payload['model_name']
         try:
@@ -202,7 +233,6 @@ class AuditService:
             model_error = context.failure(error)
         pending = set(payload['sample_ids'])
         sources = {source['sample_id']: source for source in payload['input_sources']}
-        task_id = self.registry.get(payload['dataset_id']).task.task_id
         context.update(phase='AUDITING_IMAGES')
 
         def execute_image(child):
@@ -210,14 +240,17 @@ class AuditService:
             child.payload.update(input_sources=[sources[sample_id]],
                 instruction=payload['instruction'],
                 **{key:payload[key] for key in ('consistency_scopes','consistency_mode','consistency_profile_id')})
+            if payload.get('sources'):
+                child.payload['sources'] = payload['sources']
             with ModelCalls(self.db).bind(context.run_id, child.checkpoint, state_run_id=child.run_id):
                 self.audit_sample(sample_id, model_name, knowledge, child, model_error, audit_run_id=context.run_id)
 
         def children():
             for sample_id in payload['sample_ids']:
                 context.checkpoint()
-                yield self.jobs.start('MODEL_AUDIT_SAMPLE', task_id,
-                    dict(dataset_id=payload['dataset_id'], sample_ids=[sample_id], audit_run_id=context.run_id,
+                sample = SampleRepository(self.db).get(sample_id)
+                yield self.jobs.start('MODEL_AUDIT_SAMPLE', sample.task_id,
+                    dict(dataset_id=sample.dataset_id, sample_ids=[sample_id], audit_run_id=context.run_id,
                         origin_session_id=payload.get('origin_session_id'),
                         model_name=model_name, model_profile=payload['model_profile'],
                         knowledge_version_id=payload['knowledge_version_id']),

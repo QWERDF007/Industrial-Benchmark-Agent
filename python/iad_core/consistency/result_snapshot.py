@@ -119,7 +119,7 @@ class ResultSnapshots:
             snapshot=ResultSnapshot(query_id='query_'+uuid4().hex,query_hash=fingerprint,request=request.model_copy(update={'cursor':None}),
                 scopes=scopes,observed_at=observed,expires_at=observed+self.TTL,facts=FactCounts(**counts),total=total,
                 execution=coverage.execution,corpus=coverage.corpus,mode=coverage.mode,profile_id=coverage.profile_id,
-                retrieval_completeness=coverage.retrieval_completeness,statistics=statistics.finish(),gold=gold)
+                min_similarity=coverage.min_similarity,retrieval_completeness=coverage.retrieval_completeness,statistics=statistics.finish(),gold=gold)
             connection.commit()
             connection.execute('BEGIN IMMEDIATE')
             connection.execute('DELETE FROM consistency_queries WHERE expires_at<=?',(observed.isoformat(),))

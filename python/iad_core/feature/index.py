@@ -74,10 +74,10 @@ class IndexLease:
     def vectors(self, start: int, count: int):
         with self._lock:return self._live().engine.vectors(start,count)
 
-    def search(self, vectors, top_k: int = 50):
+    def search(self, vectors, top_k: int | None = 50, *, min_similarity: float | None = None):
         with self._lock,self._slots:
             started=time.perf_counter()
-            result=self._live().engine.search(vectors,top_k)
+            result=self._live().engine.search(vectors,top_k,min_similarity=min_similarity)
             self._completed(len(result),time.perf_counter()-started)
             return result
 

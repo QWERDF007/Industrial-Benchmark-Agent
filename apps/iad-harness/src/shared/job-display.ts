@@ -43,7 +43,7 @@ const workflows = {
   consistency: {title:'数据一致性',stages:[
     {title:'准备输入及索引',phases:['ENCODING','INDEXING']},
     {title:'检索候选图像',phases:['ANALYZING_SELECTED_DATASETS','COMPARING_SELECTED_DATASETS']},
-    {title:'冲突比对与分析',phases:['COMPARING','ANALYZING_CONFLICT_GROUPS','ANALYZING_GROUP_BATCHES','SUMMARIZING_GROUP_BATCHES','ANALYZING_UNCOVERED_IMAGES','ANALYZING_CONSISTENCY_BATCHES']},
+    {title:'冲突比对与分析',phases:['COMPARING','ANALYZING_CONFLICT_GROUPS','ANALYZING_GROUP_BATCHES','SUMMARIZING_GROUP_BATCHES','ANALYZING_CONSISTENCY_BATCHES']},
     {title:'发布检查结果',phases:['CONSISTENCY_FINISHED','CONSISTENCY_MODEL_BATCHES_FINISHED']}]},
   audit: {title:'模型审计',stages:[
     {title:'准备样本和知识',phases:['PREPARING_KNOWLEDGE']},

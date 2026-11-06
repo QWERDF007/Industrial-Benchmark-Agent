@@ -45,7 +45,7 @@ var __IadClientBundle__ = (() => {
     inject: () => inject,
     name: () => name
   });
-  var import_react75 = __toESM(__require("react"), 1);
+  var import_react76 = __toESM(__require("react"), 1);
 
   // ../../node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/QueryClientProvider.js
   var React = __toESM(__require("react"), 1);
@@ -9329,8 +9329,8 @@ var __IadClientBundle__ = (() => {
   var import_jsx_runtime18 = __require("react/jsx-runtime");
   var pageSize = 24;
   var IBA_JOBS_PAGE_SIZE = 8;
-  function Pagination({ total, page, unit = "\u6761", onPage, size: size4 = pageSize, label = "", id, availablePages }) {
-    if (!total) return null;
+  function Pagination({ total, page, unit = "\u6761", onPage, size: size4 = pageSize, label = "", id, availablePages, hideSinglePage = false }) {
+    if (!total || hideSinglePage && total <= size4) return null;
     const pages2 = Math.max(1, Math.ceil(total / size4));
     const current = Math.max(1, Math.min(page, pages2));
     const start = Math.max(1, Math.min(current - 2, pages2 - 4));
@@ -9543,17 +9543,17 @@ var __IadClientBundle__ = (() => {
   var import_react21 = __require("react");
 
   // src/client/theme.ts
-  var darkColors = `--iad-canvas:#141B25;--iad-surface:#202B3A;--iad-navigation:#182231;--iad-surface-muted:#293648;--iad-text:#EDF2F8;--iad-muted:#B4C0D0;--iad-border:#4C5B6E;--iad-control-border:#8393AA;--iad-primary:#A7C5FF;--iad-primary-fill:#315FC9;--iad-hover:#293E60;--iad-success:#92D7B0;--iad-warning:#F3C280;--iad-danger:#FFB7B1;--iad-viewer:#10161F;`;
+  var darkColors = `--iad-canvas:#141B25;--iad-surface:#202B3A;--iad-navigation:#182231;--iad-surface-muted:#293648;--iad-text:#EDF2F8;--iad-muted:#B4C0D0;--iad-border:#4C5B6E;--iad-panel-border:var(--iad-border);--iad-control-border:#8393AA;--iad-primary:#A7C5FF;--iad-primary-fill:#315FC9;--iad-hover:#293E60;--iad-success:#92D7B0;--iad-warning:#F3C280;--iad-danger:#FFB7B1;--iad-viewer:#10161F;`;
   var themeStyles = `
 :root {
- --iad-canvas:#EEF1F5;
+ --iad-canvas:#F5F7FA;
  --iad-surface:#fff;
  --iad-navigation:#F5F7FA;
  --iad-surface-muted:#F2F5F9;
  --iad-text:#172338;
  --iad-muted:#536174;
  --iad-border:#CBD3DE;
- --iad-panel-border:var(--iad-border);
+ --iad-panel-border:#DBE2EB;
  --iad-control-border:#B9C7D9;
  --iad-primary:#285ED6;
  --iad-primary-fill:#285ED6;
@@ -11150,7 +11150,7 @@ var __IadClientBundle__ = (() => {
     consistency: { title: "\u6570\u636E\u4E00\u81F4\u6027", stages: [
       { title: "\u51C6\u5907\u8F93\u5165\u53CA\u7D22\u5F15", phases: ["ENCODING", "INDEXING"] },
       { title: "\u68C0\u7D22\u5019\u9009\u56FE\u50CF", phases: ["ANALYZING_SELECTED_DATASETS", "COMPARING_SELECTED_DATASETS"] },
-      { title: "\u51B2\u7A81\u6BD4\u5BF9\u4E0E\u5206\u6790", phases: ["COMPARING", "ANALYZING_CONFLICT_GROUPS", "ANALYZING_GROUP_BATCHES", "SUMMARIZING_GROUP_BATCHES", "ANALYZING_UNCOVERED_IMAGES", "ANALYZING_CONSISTENCY_BATCHES"] },
+      { title: "\u51B2\u7A81\u6BD4\u5BF9\u4E0E\u5206\u6790", phases: ["COMPARING", "ANALYZING_CONFLICT_GROUPS", "ANALYZING_GROUP_BATCHES", "SUMMARIZING_GROUP_BATCHES", "ANALYZING_CONSISTENCY_BATCHES"] },
       { title: "\u53D1\u5E03\u68C0\u67E5\u7ED3\u679C", phases: ["CONSISTENCY_FINISHED", "CONSISTENCY_MODEL_BATCHES_FINISHED"] }
     ] },
     audit: { title: "\u6A21\u578B\u5BA1\u8BA1", stages: [
@@ -11615,6 +11615,7 @@ var __IadClientBundle__ = (() => {
       selected,
       filtered,
       page,
+      hasJobs: jobs.length > 0,
       visible: filtered.slice((page - 1) * 8, page * 8),
       search: (search) => update({ search, page: 1 }),
       status: (status) => update({ status, page: 1 }),
@@ -11711,7 +11712,7 @@ var __IadClientBundle__ = (() => {
     ];
     return /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("div", { className: "iad-job-drawer-body", children: [
       /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("div", { className: "iad-job-statusline", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("span", { className: "iad-job-pill", "data-status": job.status, children: jobStatuses[job.status] }),
+        /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("span", { className: "iad-job-pill", "data-status": job.status, children: job.cancel_requested && ["PENDING", "RUNNING"].includes(job.status) ? "\u6B63\u5728\u505C\u6B62" : jobStatuses[job.status] }),
         /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("strong", { children: pending ? "\u7B49\u5F85\u8D44\u6E90\u8C03\u5EA6" : phase })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("dl", { className: "iad-job-meta", children: meta.map(([label, value]) => /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)(import_react41.default.Fragment, { children: [
@@ -11751,6 +11752,16 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/JobStatusDrawer.tsx
   var import_jsx_runtime45 = __require("react/jsx-runtime");
+  var cancellationRoutes = {
+    ANALYSIS_WORKFLOW: "analysis",
+    MODEL_AUDIT: "audit",
+    DIRECTION_EXPLORATION: "exploration",
+    EXPLORATION_BATCH: "exploration",
+    KNOWLEDGE: "knowledge",
+    KNOWLEDGE_BATCH: "knowledge",
+    NORMAL_KNOWLEDGE: "knowledge",
+    DEFECT_KNOWLEDGE: "knowledge"
+  };
   function JobStatusButton({ job, onClick, children }) {
     if (job.status === "COMPLETED") return /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("span", { children: children || jobStatuses[job.status] });
     return /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(
@@ -11788,6 +11799,32 @@ var __IadClientBundle__ = (() => {
     const page = (0, import_react42.useRef)(state.pageId);
     const trigger = (0, import_react42.useRef)(document.activeElement instanceof HTMLElement ? document.activeElement : null);
     const triggerId = (0, import_react42.useRef)(trigger.current?.id);
+    const [confirmation, setConfirmation] = (0, import_react42.useState)(false), [busy, setBusy] = (0, import_react42.useState)(false), [error2, setError] = (0, import_react42.useState)("");
+    const [cancelled, setCancelled] = (0, import_react42.useState)(null);
+    const active = ["PENDING", "RUNNING"].includes(job.status);
+    const response = cancelled?.run_id === job.run_id ? cancelled : null;
+    const displayed = active && response ? response : job;
+    const stopping = ["PENDING", "RUNNING"].includes(displayed.status) && displayed.cancel_requested;
+    const canCancel = active && !stopping && !!cancellationRoutes[job.job_type];
+    (0, import_react42.useEffect)(() => {
+      setConfirmation(false);
+      setError("");
+      setCancelled(null);
+    }, [job.run_id]);
+    async function cancel() {
+      if (!canCancel || busy) return;
+      setBusy(true);
+      setError("");
+      try {
+        const result = await request(`/${cancellationRoutes[job.job_type]}/cancel/${encodeURIComponent(job.run_id)}`, {});
+        setCancelled(result);
+        setConfirmation(false);
+      } catch (failure) {
+        setError(message(failure));
+      } finally {
+        setBusy(false);
+      }
+    }
     (0, import_react42.useEffect)(() => {
       if (state.pageId !== page.current) onClose();
     }, [state.pageId, onClose]);
@@ -11799,8 +11836,16 @@ var __IadClientBundle__ = (() => {
         onClose,
         restoreFocus: () => trigger.current?.isConnected ? trigger.current : (triggerId.current ? document.getElementById(triggerId.current) : null) || document.querySelector(`button[data-job-root="${CSS.escape(job.root_run_id)}"]`),
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(JobDetail, { job, stale }),
-          /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("footer", { className: "iad-job-drawer-footer", children: /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(Button, { onClick: onClose, children: "\u5173\u95ED" }) })
+          /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(JobDetail, { job: displayed, stale }),
+          /* @__PURE__ */ (0, import_jsx_runtime45.jsxs)("footer", { className: "iad-job-drawer-footer", children: [
+            error2 && /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("p", { role: "alert", children: error2 }),
+            stopping ? /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("span", { role: "status", children: "\u6B63\u5728\u505C\u6B62" }) : canCancel && (!response || ["PENDING", "RUNNING"].includes(response.status)) && (confirmation ? /* @__PURE__ */ (0, import_jsx_runtime45.jsxs)(import_jsx_runtime45.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("span", { children: "\u786E\u5B9A\u53D6\u6D88\u5F53\u524D\u4F5C\u4E1A\uFF1F" }),
+              /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(Button, { disabled: busy, onClick: () => setConfirmation(false), children: "\u8FD4\u56DE" }),
+              /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(Button, { disabled: busy, onClick: () => void cancel(), children: busy ? "\u6B63\u5728\u63D0\u4EA4\u2026" : "\u786E\u8BA4\u53D6\u6D88" })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(Button, { onClick: () => setConfirmation(true), children: "\u53D6\u6D88\u4F5C\u4E1A" })),
+            /* @__PURE__ */ (0, import_jsx_runtime45.jsx)(Button, { onClick: onClose, children: "\u5173\u95ED" })
+          ] })
         ]
       }
     );
@@ -11812,7 +11857,7 @@ var __IadClientBundle__ = (() => {
     return /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("section", { className: "audit-panel", "aria-label": "\u5BA1\u8BA1\u4F5C\u4E1A", children: [
       /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("header", { className: "audit-panel-head", children: [
         /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("h2", { children: "\u5BA1\u8BA1\u4F5C\u4E1A" }),
-        /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { className: "audit-filters", children: [
+        selection.hasJobs && /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("div", { className: "audit-filters", children: [
           /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("label", { className: "audit-field", children: [
             /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { children: "\u4F5C\u4E1A ID" }),
             /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(
@@ -11844,7 +11889,7 @@ var __IadClientBundle__ = (() => {
           /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(ClearFilterButton, { onClick: selection.clear })
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("div", { className: "iad-table-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("table", { className: "audit-table", children: [
+      !!selection.filtered.length && /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("div", { className: "iad-table-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("table", { className: "audit-table", children: [
         /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("tr", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("th", { children: "\u4F5C\u4E1A ID" }),
           /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("th", { children: "\u72B6\u6001" }),
@@ -11869,7 +11914,7 @@ var __IadClientBundle__ = (() => {
             children: [
               /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("td", { title: job.run_id, children: job.run_id }),
               /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(JobStatusButton, { job, onClick: () => onDetails(job) }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("td", { children: datasets.find((dataset) => dataset.dataset_id === job.dataset_id)?.name || "\u8303\u56F4\u540D\u79F0\u672A\u8BB0\u5F55" }),
+              /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("td", { children: (job.dataset_ids.length ? job.dataset_ids : [job.dataset_id]).map((id) => datasets.find((dataset) => dataset.dataset_id === id)?.name || id).join("\u3001") }),
               /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)("td", { children: [
                 job.completed,
                 " / ",
@@ -11888,8 +11933,8 @@ var __IadClientBundle__ = (() => {
           job.run_id
         )) })
       ] }) }),
-      !selection.filtered.length && /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("p", { className: "audit-empty", children: loading ? "\u6B63\u5728\u8BFB\u53D6\u5BA1\u8BA1\u4F5C\u4E1A\u2026" : selection.state.search || selection.state.status ? "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u5BA1\u8BA1\u4F5C\u4E1A\u3002" : "\u5F53\u524D\u8303\u56F4\u8FD8\u6CA1\u6709\u5BA1\u8BA1\u4F5C\u4E1A\uFF0C\u53EF\u4EE5\u521B\u5EFA\u65B0\u5BA1\u8BA1\u3002" }),
-      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(Pagination, { total: selection.filtered.length, page: selection.page, size: 8, unit: "\u4E2A\u4F5C\u4E1A", onPage: selection.setPage })
+      !selection.filtered.length && /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("p", { className: "iad-result-empty", children: loading ? "\u6B63\u5728\u8BFB\u53D6\u5BA1\u8BA1\u4F5C\u4E1A\u2026" : selection.state.search || selection.state.status ? "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u5BA1\u8BA1\u4F5C\u4E1A\u3002" : "\u5F53\u524D\u6CA1\u6709\u5BA1\u8BA1\u4F5C\u4E1A" }),
+      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(Pagination, { total: selection.filtered.length, page: selection.page, size: 8, unit: "\u4E2A\u4F5C\u4E1A", hideSinglePage: true, onPage: selection.setPage })
     ] });
   }
 
@@ -12109,16 +12154,27 @@ var __IadClientBundle__ = (() => {
   // src/client/components/DatasetReport.tsx
   var import_jsx_runtime47 = __require("react/jsx-runtime");
   var statuses3 = { evaluable: "\u53EF\u8BC4\u4F30", limited: "\u9650\u5B9A\u8BC4\u4F30", needs_evidence: "\u5F85\u8865\u8BC1", unsupported: "\u4E0D\u652F\u6301\u8BE5\u6307\u6807" };
-  var outcomes = { normal_candidate: "\u672A\u53D1\u73B0\u660E\u786E\u5F02\u5E38", anomaly_candidate: "\u5F02\u5E38\u5019\u9009", insufficient: "\u8BC1\u636E\u4E0D\u8DB3", not_processed: "\u672A\u5904\u7406" };
-  function CountChart({ title, values, labels }) {
-    const total = Object.values(values).reduce((sum, value) => sum + value, 0);
-    return /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("figure", { className: "iad-report-chart", "aria-label": title, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("figcaption", { children: title }),
-      Object.entries(values).map(([key, value]) => /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "iad-report-bar", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { children: labels[key] || key }),
-        /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("meter", { min: 0, max: Math.max(1, total), value, "aria-label": `${labels[key] || key} ${value}` }),
-        /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { children: value })
-      ] }, key))
+  function CountChart({ chart }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("figure", { className: "iad-report-chart", "aria-label": chart.title, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("figcaption", { children: chart.title }),
+      /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "iad-report-chart-body", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { className: "iad-report-chart-axis", "aria-hidden": "true", children: [4, 3, 2, 1, 0].map((index3) => /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { children: chart.axis_max * index3 / 4 }, index3)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "iad-report-chart-figure", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { className: "iad-report-chart-grid", "aria-hidden": "true" }),
+          /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { className: "iad-report-chart-columns", style: { "--chart-columns": Math.max(1, chart.columns.length) }, children: chart.columns.map((column, index3) => /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "iad-report-chart-column", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { className: "iad-report-chart-slot", children: /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(
+              "div",
+              {
+                className: "iad-report-chart-bar",
+                "data-muted": column.muted,
+                style: { height: `${100 * column.value / chart.axis_max}%` },
+                children: /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "iad-report-chart-value", children: column.value })
+              }
+            ) }),
+            /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("span", { className: "iad-report-chart-label", children: column.label })
+          ] }, index3)) })
+        ] })
+      ] })
     ] });
   }
   function DatasetReport({ datasetIds, onSample }) {
@@ -12158,7 +12214,7 @@ var __IadClientBundle__ = (() => {
       setBusy(true);
       setError("");
       try {
-        const job = await request("/dataset-reports", { submission_id: crypto.randomUUID(), dataset_ids: datasetIds, instruction });
+        const job = await request("/dataset-reports", { submission_id: v4_default(), dataset_ids: datasetIds, instruction });
         setChosen(job.run_id);
         setPoll((value) => value + 1);
         setRevision((value) => value + 1);
@@ -12211,10 +12267,27 @@ var __IadClientBundle__ = (() => {
         state.data?.error && /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("p", { role: "alert", children: state.data.error }),
         !runId && !catalog.loading && /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("p", { children: "\u5F53\u524D\u8303\u56F4\u8FD8\u6CA1\u6709\u62A5\u544A\uFF0C\u53EF\u4EE5\u751F\u6210\u65B0\u62A5\u544A\u3002" }),
         report && /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)(import_jsx_runtime47.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("div", { className: "iad-report-charts", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(CountChart, { title: "\u5BA1\u8BA1\u8986\u76D6", values: { audited: report.audited_samples, unprocessed: report.registered_samples - report.audited_samples }, labels: { audited: "\u5DF2\u5BA1\u8BA1", unprocessed: "\u672A\u5BA1\u8BA1" } }),
-            /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(CountChart, { title: "\u5BA1\u8BA1\u7ED3\u679C\u5206\u5E03", values: report.outcomes, labels: outcomes }),
-            /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(CountChart, { title: "\u539F\u59CB\u6807\u7B7E\u5206\u5E03", values: report.raw_labels, labels: { PASS: "OK", FAIL: "NG", UNCERTAIN: "\u5F85\u5B9A" } })
+          /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("div", { className: "iad-report-charts", children: report.presentation.charts.map((chart) => /* @__PURE__ */ (0, import_jsx_runtime47.jsx)(CountChart, { chart }, chart.title)) }),
+          !!report.presentation.sources.length && /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("section", { className: "iad-report-section", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("h3", { children: "\u5BA1\u8BA1\u6765\u6E90" }),
+            report.presentation.sources.map((source2) => /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("section", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("h4", { children: source2.run_id }),
+              /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("p", { children: [
+                "\u77E5\u8BC6\u6316\u6398 ",
+                source2.knowledge_job_id,
+                /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("br", {}),
+                "\u77E5\u8BC6\u7248\u672C ",
+                source2.knowledge_version_id,
+                /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("br", {}),
+                "\u6570\u636E\u4E00\u81F4\u6027 ",
+                source2.consistency_job_ids.join("\u3001")
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime47.jsx)("ul", { children: source2.rules.map((rule) => /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)("li", { children: [
+                rule.title,
+                "\uFF1A",
+                rule.criterion
+              ] }, rule.check_id)) })
+            ] }, source2.run_id))
           ] }),
           Object.entries(reportRequirements).map(([key, requirement]) => {
             const section = report.conclusion.sections[key];
@@ -12272,10 +12345,6 @@ var __IadClientBundle__ = (() => {
   var import_jsx_runtime48 = __require("react/jsx-runtime");
   function auditSampleImage(sample, taskId) {
     return sample.suggestion_id && sample.overview_evidence_id ? auditEvidenceUrl(sample.suggestion_id, { evidence_id: sample.overview_evidence_id }) : mediaUrl({ task_id: taskId, sample_id: sample.sample_id });
-  }
-  function AuditStatus({ state }) {
-    const colors = { suspect: "warn", insufficient: "neutral", normal: "done", unprocessed: "neutral" };
-    return /* @__PURE__ */ (0, import_jsx_runtime48.jsx)("span", { className: `audit-status ${colors[state]}`, children: auditStateLabels[state] });
   }
 
   // src/client/components/AuditSampleDialog.tsx
@@ -12344,30 +12413,26 @@ var __IadClientBundle__ = (() => {
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("section", { "data-audit-section": "evidence", children: [
             /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("h3", { children: "\u56FE\u50CF\u8BC1\u636E" }),
-            pictures.length > 2 && /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("label", { className: "iad-field", children: [
-              "\u5BF9\u7167\u56FE\u50CF",
-              /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
-                Select,
-                {
-                  "aria-label": "\u9009\u62E9\u5BA1\u8BA1\u5BF9\u7167\u56FE\u50CF",
-                  value: comparisonIndex,
-                  onChange: (event) => setComparisonIndex(Number(event.target.value)),
-                  children: pictures.slice(1).map((picture, index3) => /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("option", { value: index3, children: [
-                    "\u5BF9\u7167 ",
-                    index3 + 1,
-                    "\uFF0C",
-                    picture.label
-                  ] }, picture.evidence.evidence_id))
-                }
-              )
-            ] }),
             /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("div", { className: "iad-image-pair", children: [{ view: mainImage, label: pictures[0]?.label || "\u672A\u8BB0\u5F55\u6807\u6CE8", filename: pictures[0]?.filename || sample.filename }, comparison].filter(Boolean).map((picture, index3) => /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("section", { className: "iad-image-pair-side audit-evidence-item", children: [
               /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("h4", { children: index3 === 0 ? "\u4E3B\u56FE" : "\u5BF9\u7167\u56FE\u50CF" }),
               /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(ThumbnailCard, { image: picture.view, label: picture.filename, variant: "evidence", "aria-label": index3 === 0 ? "\u653E\u5927\u4E3B\u56FE" : "\u653E\u5927\u5BF9\u7167\u56FE\u50CF", onClick: () => setLightbox(picture.view), mediaOverlay: /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("span", { className: "audit-original-label", children: [
                 "\u539F\u59CB\u6807\u6CE8 ",
                 picture.label
               ] }) })
-            ] }, picture.view.src)) })
+            ] }, picture.view.src)) }),
+            pictures.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("div", { className: "iad-thumbnail-strip", role: "group", "aria-label": "\u5207\u6362\u5019\u9009\u56FE\u50CF", children: pictures.slice(1).map((picture, index3) => /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
+              ThumbnailCard,
+              {
+                image: picture.view,
+                variant: "compact",
+                label: picture.filename,
+                title: picture.filename,
+                "aria-label": `\u5207\u6362\u4E3A\u5019\u9009\u56FE\u50CF ${picture.filename}`,
+                "aria-pressed": comparisonIndex === index3,
+                onClick: () => setComparisonIndex(index3)
+              },
+              picture.evidence.evidence_id
+            )) })
           ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("footer", { className: "audit-dialog-foot", children: /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(Button, { onClick: onClose, children: "\u5173\u95ED" }) })
@@ -12379,138 +12444,247 @@ var __IadClientBundle__ = (() => {
   // src/client/components/AuditSetup.tsx
   var import_react45 = __require("react");
   var import_jsx_runtime50 = __require("react/jsx-runtime");
+  function sourceDuration(job) {
+    if (!job.started_at || !job.finished_at) return "\u2014";
+    const seconds = Math.max(0, Math.round((Date.parse(job.finished_at) - Date.parse(job.started_at)) / 1e3));
+    return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  }
   function AuditSetup({ datasets, filters, jobs, revision, onStarted, onCancel, onBusyChange }) {
-    const { workspace } = useWorkspace(), model = useWorkbenchModel();
-    const view = workspace.view("industrial-audit");
-    const identity = JSON.stringify([datasets.map((dataset) => dataset.dataset_id).sort(), filters, revision]);
-    const [result, setResult] = (0, import_react45.useState)();
-    const rows = result?.identity === identity ? result.rows : null;
+    const model = useWorkbenchModel();
+    const scope = JSON.stringify(datasets.map((dataset) => dataset.dataset_id).sort());
+    const catalog = useResource(`/audit/sources?${new URLSearchParams({ dataset_ids: scope })}`, revision);
+    const [versionId, setVersionId] = (0, import_react45.useState)(""), [entryIds, setEntryIds] = (0, import_react45.useState)(/* @__PURE__ */ new Set());
+    const [consistencyIds, setConsistencyIds] = (0, import_react45.useState)(/* @__PURE__ */ new Set());
+    const [knowledgePage, setKnowledgePage] = (0, import_react45.useState)(1), [entryPage, setEntryPage] = (0, import_react45.useState)(1), [consistencyPage, setConsistencyPage] = (0, import_react45.useState)(1);
     const [busy, setBusy] = (0, import_react45.useState)(false), [error2, setError] = (0, import_react45.useState)("");
-    const [instruction, setInstruction] = (0, import_react45.useState)(promptDefaults.audit);
-    const requests = (0, import_react45.useRef)(/* @__PURE__ */ new Map()), started = (0, import_react45.useRef)(/* @__PURE__ */ new Map());
-    (0, import_react45.useEffect)(() => {
-      const controller = new AbortController();
-      Promise.all(datasets.map(async (dataset) => {
-        const [catalog, samples] = await Promise.all([
-          request(`/knowledge/versions?${new URLSearchParams({ dataset_id: dataset.dataset_id })}`, void 0, void 0, controller.signal),
-          request(`/samples/${encodeURIComponent(dataset.task_id)}?${sampleQuery(dataset.dataset_id, filters, 1, 1)}`, void 0, void 0, controller.signal)
-        ]);
-        return { dataset, catalog, total: samples.total };
-      })).then((rows2) => {
-        if (!controller.signal.aborted) setResult({ identity, rows: rows2, error: "" });
-      }).catch((error3) => {
-        if (!controller.signal.aborted) setResult({ identity, rows: [], error: message(error3) });
-      });
-      return () => controller.abort();
-    }, [identity]);
-    const unavailable = rows?.find(({ catalog, total }) => !total || !catalog.versions.some((version) => version.version_id === catalog.current_version_id));
-    const reason = !model.ready ? model.error || model.view?.error || "\u8BF7\u5148\u914D\u7F6E\u5DE5\u4F5C\u53F0\u6A21\u578B" : !instruction.trim() ? "\u8BF7\u586B\u5199\u5BA1\u8BA1\u63D0\u793A\u8BCD" : result?.identity === identity && result.error ? result.error : !rows ? "\u6B63\u5728\u8BFB\u53D6\u8303\u56F4\u548C\u5DF2\u53D1\u5E03\u77E5\u8BC6" : !rows.length ? "\u8BF7\u9009\u62E9\u5B50\u6570\u636E\u96C6" : unavailable ? `${unavailable.dataset.name}\uFF1A${unavailable.total ? "\u8BF7\u5148\u751F\u6210\u7EDF\u4E00\u77E5\u8BC6" : "\u5F53\u524D\u8303\u56F4\u6CA1\u6709\u56FE\u50CF"}` : !started.current.size && jobs.some((job) => ["PENDING", "RUNNING"].includes(job.status)) ? "\u5F53\u524D\u8303\u56F4\u4ECD\u6709\u5BA1\u8BA1\u4F5C\u4E1A\u6267\u884C\u4E2D" : "";
-    const cancel = () => {
-      if (!busy) {
-        if (started.current.size) onStarted(Array.from(started.current.values()));
-        else onCancel();
-      }
-    };
-    const provider = model.view?.providers.find((provider2) => provider2.provider_id === model.view?.selection?.provider_id);
-    const selectedModel = provider?.models.find((item) => item.model_id === model.view?.selection?.model_id);
+    const submission = (0, import_react45.useRef)();
+    const knowledgeJobs = catalog.data?.knowledge_jobs || [], consistencyJobs = catalog.data?.consistency_jobs || [];
+    const chosen = knowledgeJobs.find((item) => item.version_id === versionId);
+    const selectedEntries = chosen?.entries.filter((item) => entryIds.has(item.check_id)) || [];
+    const selectedConsistency = consistencyJobs.filter((item) => consistencyIds.has(item.job_id));
+    const reason = catalog.error || (catalog.loading ? "\u6B63\u5728\u8BFB\u53D6\u6765\u6E90\u4F5C\u4E1A" : !datasets.length ? "\u8BF7\u9009\u62E9\u5BA1\u8BA1\u5B50\u6570\u636E\u96C6" : !chosen ? "\u8BF7\u9009\u62E9\u77E5\u8BC6\u6316\u6398\u4F5C\u4E1A" : !selectedEntries.length ? "\u8BF7\u9009\u62E9\u77E5\u8BC6\u6761\u76EE" : !selectedConsistency.length ? "\u8BF7\u9009\u62E9\u5DF2\u5B8C\u6210\u7684\u4E00\u81F4\u6027\u4F5C\u4E1A" : !model.ready ? model.error || model.view?.error || "\u8BF7\u5148\u914D\u7F6E\u5DE5\u4F5C\u53F0\u6A21\u578B" : jobs.some((job) => ["PENDING", "RUNNING"].includes(job.status)) ? "\u5F53\u524D\u8303\u56F4\u4ECD\u6709\u5BA1\u8BA1\u4F5C\u4E1A\u6267\u884C\u4E2D" : "");
+    function selectKnowledge(job) {
+      if (job.version_id === versionId) return;
+      setVersionId(job.version_id);
+      setEntryIds(/* @__PURE__ */ new Set());
+      setEntryPage(1);
+      setError("");
+    }
     async function start() {
-      if (reason || !rows?.length || busy) return;
-      const corpus_scope = {
-        kind: "datasets",
-        dataset_ids: [rows[0].dataset.dataset_id, ...rows.slice(1).map((row) => row.dataset.dataset_id)]
+      if (reason || !chosen || busy) return;
+      const body = {
+        dataset_id: chosen.dataset_id,
+        subset_ids: datasets.map((dataset) => dataset.dataset_id),
+        knowledge_job_id: chosen.job_id,
+        knowledge_version_id: chosen.version_id,
+        knowledge_entry_ids: selectedEntries.map((item) => item.check_id),
+        consistency_job_ids: selectedConsistency.map((item) => item.job_id),
+        corpus_scope: { kind: "datasets", dataset_ids: [datasets[0].dataset_id, ...datasets.slice(1).map((dataset) => dataset.dataset_id)] },
+        filters
       };
+      const identity = JSON.stringify(body);
+      if (submission.current?.identity !== identity) submission.current = { identity, id: v4_default() };
       setBusy(true);
       onBusyChange(true);
       setError("");
       try {
-        for (const { dataset, catalog } of rows) {
-          if (started.current.has(dataset.dataset_id)) continue;
-          if (!requests.current.has(dataset.dataset_id)) {
-            const knowledge = catalog.current_version_id;
-            requests.current.set(dataset.dataset_id, {
-              submission_id: crypto.randomUUID(),
-              dataset_id: dataset.dataset_id,
-              knowledge_version_id: knowledge,
-              filters,
-              consistency_mode: view.auditConsistencyMode,
-              instruction,
-              corpus_scope
-            });
-          }
-          const job = await request("/audit/start", requests.current.get(dataset.dataset_id));
-          started.current.set(dataset.dataset_id, job);
-        }
-        onStarted(Array.from(started.current.values()));
-      } catch (error3) {
-        setError(`${started.current.size ? `\u5DF2\u542F\u52A8 ${started.current.size} \u4E2A\u5B50\u6570\u636E\u96C6\u3002` : ""}${message(error3)}`);
+        onStarted([await request("/audit/start", { ...body, submission_id: submission.current.id })]);
+      } catch (failure) {
+        setError(message(failure));
       } finally {
         setBusy(false);
         onBusyChange(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_jsx_runtime50.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "audit-create-grid", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("label", { className: "audit-field", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { children: "\u6A21\u578B" }),
-          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Select, { id: "audit-create-model", "aria-label": "\u5BA1\u8BA1\u6A21\u578B", disabled: true, children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("option", { children: selectedModel?.name || model.view?.selection?.model_id || "\u672A\u914D\u7F6E" }) })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("label", { className: "audit-field", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { children: "\u4E00\u81F4\u6027\u68C0\u67E5" }),
-          /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(
-            Select,
-            {
-              id: "audit-create-mode",
-              "aria-label": "\u5BA1\u8BA1\u4E00\u81F4\u6027\u6A21\u5F0F",
-              value: view.auditConsistencyMode,
-              disabled: busy || requests.current.size > 0,
-              onChange: (event) => workspace.updateView("industrial-audit", { auditConsistencyMode: event.target.value }),
-              children: [
-                /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("option", { value: "exact", children: "\u7CBE\u786E\u68C0\u67E5" }),
-                /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("option", { value: "combined", children: "\u7CBE\u786E\u4E0E\u89C6\u89C9\u68C0\u67E5" })
-              ]
-            }
-          )
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("label", { className: "audit-field", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { children: "\u5B8C\u6574\u63D0\u793A\u8BCD" }),
-          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
-            "textarea",
-            {
-              id: "audit-create-prompt",
-              "aria-label": "\u5BA1\u8BA1\u5B8C\u6574\u63D0\u793A\u8BCD",
-              disabled: busy || requests.current.size > 0,
-              value: instruction,
-              onChange: (event) => setInstruction(event.target.value)
-            }
-          )
+    return /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "audit-create-page", id: "audit-create-view", "aria-busy": busy, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("section", { className: "audit-panel audit-source-panel", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("header", { className: "audit-panel-head", children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("h2", { children: "\u77E5\u8BC6\u6316\u6398" }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("div", { id: "audit-create-knowledge-jobs", children: knowledgeJobs.length ? /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_jsx_runtime50.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("div", { className: "audit-source-table", children: /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("table", { className: "audit-table", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("colgroup", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: "35%" } }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: "12%" } }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: "11%" } }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: "21%" } }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: "11%" } }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: "10%" } })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("tr", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u4F5C\u4E1A\u540D\u79F0" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u72B6\u6001" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u5224\u636E\u6570" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u8017\u65F6" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u9009\u62E9" })
+            ] }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("tbody", { children: knowledgeJobs.slice((knowledgePage - 1) * 6, knowledgePage * 6).map((job) => /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(
+              "tr",
+              {
+                "aria-selected": job.version_id === versionId,
+                onClick: () => !busy && selectKnowledge(job),
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { title: job.name, children: job.name }),
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { className: "audit-status done", children: "\u5DF2\u5B8C\u6210" }) }),
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: job.entries.length }),
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: new Date(job.submitted_at).toLocaleString("zh-CN", { hour12: false }) }),
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: sourceDuration(job) }),
+                  /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
+                    "input",
+                    {
+                      type: "radio",
+                      name: "audit-knowledge-source",
+                      "aria-label": `\u9009\u62E9${job.name}`,
+                      checked: job.version_id === versionId,
+                      disabled: busy,
+                      onChange: () => selectKnowledge(job)
+                    }
+                  ) })
+                ]
+              },
+              job.version_id
+            )) })
+          ] }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Pagination, { total: knowledgeJobs.length, page: knowledgePage, size: 6, label: "\u77E5\u8BC6\u6316\u6398\u6765\u6E90", hideSinglePage: true, onPage: setKnowledgePage })
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("p", { className: "iad-result-empty", role: "status", children: catalog.loading ? "\u6B63\u5728\u8BFB\u53D6\u6765\u6E90\u4F5C\u4E1A\u2026" : "\u5F53\u524D\u6CA1\u6709\u5DF2\u5B8C\u6210\u5E76\u53D1\u5E03\u77E5\u8BC6\u7684\u6316\u6398\u4F5C\u4E1A" }) }),
+        chosen && /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { id: "audit-create-entries", className: "audit-entry-area", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("header", { className: "audit-entry-header", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("h3", { children: "\u77E5\u8BC6\u6761\u76EE" }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("label", { className: "audit-pick-all", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
+                "input",
+                {
+                  id: "audit-entries-all",
+                  type: "checkbox",
+                  disabled: busy,
+                  checked: !!selectedEntries.length && selectedEntries.length === chosen.entries.length,
+                  onChange: (event) => setEntryIds(event.target.checked ? new Set(chosen.entries.map((item) => item.check_id)) : /* @__PURE__ */ new Set())
+                }
+              ),
+              "\u5168\u9009"
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("div", { className: "audit-source-table", children: /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("table", { className: "audit-table", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("colgroup", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: 64 } }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: "27%" } }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", {}),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: "14%" } })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("tr", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u9009\u62E9" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u77E5\u8BC6\u6761\u76EE" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u63CF\u8FF0" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u652F\u6301/\u53CD\u5BF9" })
+            ] }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("tbody", { children: chosen.entries.slice((entryPage - 1) * 8, entryPage * 8).map((entry) => /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("tr", { "aria-selected": entryIds.has(entry.check_id), children: [
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
+                "input",
+                {
+                  type: "checkbox",
+                  "aria-label": `\u9009\u62E9\u77E5\u8BC6\u6761\u76EE ${entry.title}`,
+                  checked: entryIds.has(entry.check_id),
+                  disabled: busy,
+                  onChange: (event) => setEntryIds((previous) => {
+                    const next = new Set(previous);
+                    event.target.checked ? next.add(entry.check_id) : next.delete(entry.check_id);
+                    return next;
+                  })
+                }
+              ) }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: entry.title }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { className: "audit-description", children: entry.criterion }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("td", { children: [
+                entry.support_count,
+                "/",
+                entry.counter_count
+              ] })
+            ] }, entry.check_id)) })
+          ] }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Pagination, { total: chosen.entries.length, page: entryPage, size: 8, label: "\u77E5\u8BC6\u6761\u76EE", hideSinglePage: true, onPage: setEntryPage })
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "audit-confirm", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("h3", { children: "\u786E\u8BA4\u5E76\u542F\u52A8" }),
-          /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("p", { id: "audit-create-summary", children: [
-            datasets.length,
-            " \u4E2A\u5B50\u6570\u636E\u96C6\uFF0C",
-            rows ? rows.reduce((total, row) => total + row.total, 0) : "\u2026",
-            " \u5F20\u56FE\u50CF\uFF0C",
-            selectedModel?.name || model.view?.selection?.model_id || "\u672A\u914D\u7F6E\u6A21\u578B",
-            "\uFF0C\u5F53\u524D\u5DF2\u53D1\u5E03\u77E5\u8BC6"
+      /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("section", { className: "audit-panel audit-source-panel", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("header", { className: "audit-panel-head", children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("h2", { children: "\u6570\u636E\u4E00\u81F4\u6027" }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("div", { id: "audit-create-consistency-jobs", children: consistencyJobs.length ? /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)(import_jsx_runtime50.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("div", { className: "audit-source-table", children: /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("table", { className: "audit-table", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("colgroup", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: 64 } }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: "20%" } }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: "10%" } }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: "23%" } }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: "11%" } }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", { style: { width: "20%" } }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("col", {})
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("tr", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u9009\u62E9" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u4F5C\u4E1A" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u72B6\u6001" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u68C0\u67E5\u8303\u56F4" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u51B2\u7A81\u603B\u6570" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("th", { children: "\u8017\u65F6" })
+            ] }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("tbody", { children: consistencyJobs.slice((consistencyPage - 1) * 7, consistencyPage * 7).map((job) => /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("tr", { "aria-selected": consistencyIds.has(job.job_id), children: [
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(
+                "input",
+                {
+                  type: "checkbox",
+                  "aria-label": `\u9009\u62E9\u4E00\u81F4\u6027\u4F5C\u4E1A ${job.job_id}`,
+                  checked: consistencyIds.has(job.job_id),
+                  disabled: busy,
+                  onChange: (event) => setConsistencyIds((previous) => {
+                    const next = new Set(previous);
+                    event.target.checked ? next.add(job.job_id) : next.delete(job.job_id);
+                    return next;
+                  })
+                }
+              ) }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { title: job.job_id, children: job.job_id }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("span", { className: "audit-status done", children: "\u5DF2\u5B8C\u6210" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { title: job.dataset_ids.map((id) => datasets.find((dataset) => dataset.dataset_id === id)?.name || id).join("\u3001"), children: job.dataset_ids.map((id) => datasets.find((dataset) => dataset.dataset_id === id)?.name || id).join("\u3001") }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: job.conflict_count }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: new Date(job.submitted_at).toLocaleString("zh-CN", { hour12: false }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("td", { children: sourceDuration(job) })
+            ] }, job.job_id)) })
+          ] }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Pagination, { total: consistencyJobs.length, page: consistencyPage, size: 7, label: "\u4E00\u81F4\u6027\u6765\u6E90", hideSinglePage: true, onPage: setConsistencyPage })
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("p", { className: "iad-result-empty", role: "status", children: catalog.loading ? "\u6B63\u5728\u8BFB\u53D6\u6765\u6E90\u4F5C\u4E1A\u2026" : "\u5F53\u524D\u6CA1\u6709\u5DF2\u5B8C\u6210\u7684\u6570\u636E\u4E00\u81F4\u6027\u68C0\u67E5\u4F5C\u4E1A" }) })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("section", { className: "audit-panel audit-source-panel", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("header", { className: "audit-panel-head", children: /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("h2", { children: "\u786E\u8BA4\u5E76\u542F\u52A8" }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "audit-create-confirm", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("dl", { className: "audit-create-facts", id: "audit-create-summary", "aria-live": "polite", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dt", { children: "\u5BA1\u8BA1\u8303\u56F4" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dd", { children: datasets.map((dataset) => dataset.name).join("\u3001") || "\u672A\u9009\u62E9" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dt", { children: "\u77E5\u8BC6\u6316\u6398" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dd", { children: chosen?.name || "\u672A\u9009\u62E9" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dt", { children: "\u77E5\u8BC6\u6761\u76EE" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("dd", { children: [
+                selectedEntries.length,
+                " \u6761"
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("dt", { children: "\u6570\u636E\u4E00\u81F4\u6027" }),
+              /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("dd", { children: [
+                selectedConsistency.length,
+                " \u4E2A\u5DF2\u5B8C\u6210\u4F5C\u4E1A"
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "audit-create-actions", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Button, { id: "audit-create-cancel", disabled: busy, onClick: onCancel, children: "\u53D6\u6D88" }),
+            /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Button, { id: "audit-create-submit", variant: "primary", disabled: busy || !!reason, title: reason, onClick: () => void start(), children: busy ? "\u542F\u52A8\u4E2D\u2026" : "\u5F00\u59CB\u5BA1\u8BA1" })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { className: "audit-create-actions", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Button, { type: "button", id: "audit-create-cancel", disabled: busy, onClick: cancel, children: "\u53D6\u6D88" }),
-          /* @__PURE__ */ (0, import_jsx_runtime50.jsx)(Button, { type: "button", variant: "primary", id: "audit-create-submit", disabled: busy || !!reason, onClick: () => void start(), children: busy ? "\u542F\u52A8\u4E2D\u2026" : started.current.size ? "\u7EE7\u7EED\u542F\u52A8\u5269\u4F59\u5BA1\u8BA1" : "\u5F00\u59CB\u5BA1\u8BA1" })
-        ] })
-      ] }),
-      reason && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("p", { role: "status", children: reason }),
-      error2 && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("p", { role: "alert", children: error2 }),
-      !!rows?.length && /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("details", { className: "audit-create-versions", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("summary", { children: "\u67E5\u770B\u51BB\u7ED3\u77E5\u8BC6\u4F9D\u636E" }),
-        /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("ul", { children: rows.map(({ dataset, catalog }) => /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("li", { children: [
-          dataset.name,
-          "\uFF1A",
-          catalog.current_version_id || "\u6682\u65E0\u77E5\u8BC6"
-        ] }, dataset.dataset_id)) })
+        error2 && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("p", { className: "audit-source-error", role: "alert", children: error2 }),
+        catalog.error && /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("p", { className: "audit-source-error", role: "alert", children: catalog.error })
       ] })
     ] });
   }
@@ -12549,7 +12723,8 @@ var __IadClientBundle__ = (() => {
       }
     }, [datasets, hierarchy, groupId]);
     const query = new URLSearchParams({ page: String(page), page_size: "18", status, search });
-    const result = useResource(job && !createOpen && tab === "audit" ? `/audit/jobs/${encodeURIComponent(job.run_id)}/samples?${query}` : null, revision);
+    const result = useResource(job?.status === "COMPLETED" && !createOpen && tab === "audit" ? `/audit/jobs/${encodeURIComponent(job.run_id)}/samples?${query}` : null, revision);
+    const hasResults = job?.status === "COMPLETED" && !!result.data && Object.values(result.data.distribution).some((value) => value > 0);
     const setupDatasets = datasets.filter((item) => ids.includes(item.dataset_id));
     const refresh = () => {
       jobs.refresh();
@@ -12595,27 +12770,25 @@ var __IadClientBundle__ = (() => {
         }
       ),
       jobs.error && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("p", { role: "alert", children: jobs.error }),
-      createOpen && setupDatasets.length ? /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("section", { className: "audit-panel", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("header", { className: "audit-panel-head", children: /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("h2", { children: "\u65B0\u5EFA\u5BA1\u8BA1" }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("div", { className: "audit-create", children: /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(
-          AuditSetup,
-          {
-            datasets: setupDatasets,
-            filters: initialFilters,
-            jobs: jobs.jobs,
-            revision: revision + refreshRevision,
-            onBusyChange: setCreatingBusy,
-            onCancel: () => setCreateOpen(false),
-            onStarted: (started) => {
-              workspace.updateView("industrial-audit", { job: started[0]?.run_id || "" });
-              selection.clear();
-              setCreateOpen(false);
-              setTab("audit");
-              refresh();
-            }
+      createOpen ? /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(
+        AuditSetup,
+        {
+          datasets: setupDatasets,
+          filters: initialFilters,
+          jobs: jobs.jobs,
+          revision: revision + refreshRevision,
+          onBusyChange: setCreatingBusy,
+          onCancel: () => setCreateOpen(false),
+          onStarted: (started) => {
+            workspace.updateView("industrial-audit", { job: started[0]?.run_id || "" });
+            selection.clear();
+            setCreateOpen(false);
+            setTab("audit");
+            refresh();
           }
-        ) })
-      ] }) : /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)(
+        },
+        scope
+      ) : /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)(
         PageTabs,
         {
           label: "\u5BA1\u8BA1\u89C6\u56FE",
@@ -12629,7 +12802,7 @@ var __IadClientBundle__ = (() => {
               /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("section", { className: "audit-panel", "aria-label": "\u5BA1\u8BA1\u56FE\u50CF", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("header", { className: "audit-panel-head", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("h2", { children: "\u5BA1\u8BA1\u56FE\u50CF" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("div", { className: "audit-filters", children: [
+                  hasResults && /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("div", { className: "audit-filters", children: [
                     /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("label", { className: "audit-field", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("span", { children: "\u6587\u4EF6\u540D" }),
                       /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(
@@ -12652,7 +12825,7 @@ var __IadClientBundle__ = (() => {
                     } })
                   ] })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(
+                hasResults && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(
                   TabBar,
                   {
                     label: "\u5BA1\u8BA1\u56FE\u50CF\u72B6\u6001",
@@ -12671,7 +12844,8 @@ var __IadClientBundle__ = (() => {
                   }
                 ),
                 /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("div", { id: "audit-images", children: [
-                  !job && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("p", { className: "audit-empty", children: "\u6CA1\u6709\u9009\u4E2D\u7684\u5BA1\u8BA1\u4F5C\u4E1A\u3002" }),
+                  !job && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" }),
+                  job && job.status !== "COMPLETED" && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u4F5C\u4E1A\u6CA1\u6709\u5DF2\u53D1\u5E03\u7ED3\u679C" }),
                   result.loading && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("p", { className: "audit-empty", role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u4F5C\u4E1A\u56FE\u50CF\u2026" }),
                   result.error && /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("p", { role: "alert", children: result.error }),
                   job && result.data && /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)(import_jsx_runtime51.Fragment, { children: [
@@ -12681,8 +12855,7 @@ var __IadClientBundle__ = (() => {
                         src: auditSampleImage(item, job.task_id),
                         label: item.filename,
                         onClick: () => setSample(item),
-                        "data-sample-id": item.sample_id,
-                        children: /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("span", { className: "iad-thumbnail-meta", children: /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(AuditStatus, { state: item.audit_state }) })
+                        "data-sample-id": item.sample_id
                       },
                       item.sample_id
                     )) }),
@@ -13030,6 +13203,18 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
+  // src/client/components/JobListPanel.tsx
+  var import_jsx_runtime56 = __require("react/jsx-runtime");
+  function JobListPanel({ title, actions: actions3, children, className = "", ...props }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)("section", { ...props, "aria-label": title, className: `iad-job-list ${className}`, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)("header", { className: "iad-job-list-header", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime56.jsx)("h2", { children: title }),
+        actions3
+      ] }),
+      children
+    ] });
+  }
+
   // src/client/components/ExplorationPage.tsx
   var import_react53 = __require("react");
 
@@ -13048,7 +13233,7 @@ var __IadClientBundle__ = (() => {
   var import_react52 = __require("react");
 
   // src/client/direction-evidence.tsx
-  var import_jsx_runtime56 = __require("react/jsx-runtime");
+  var import_jsx_runtime57 = __require("react/jsx-runtime");
   function referencePattern(aliases) {
     const groups = { image: [], other: [] };
     for (const alias of [...aliases].sort((a, b) => b.length - a.length)) {
@@ -13118,7 +13303,7 @@ var __IadClientBundle__ = (() => {
     return { entries, references, counters };
   }
   function ReferencedText({ text, references, onReference, onPreview, className = "iad-evidence-ref", highlightedId }) {
-    if (!references.size) return /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(import_jsx_runtime56.Fragment, { children: text });
+    if (!references.size) return /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(import_jsx_runtime57.Fragment, { children: text });
     const rendered = [];
     const cited = /* @__PURE__ */ new Set();
     let separator = "";
@@ -13138,7 +13323,7 @@ var __IadClientBundle__ = (() => {
         separator = "";
         continue;
       }
-      rendered.push(separator, /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(
+      rendered.push(separator, /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(
         "button",
         {
           type: "button",
@@ -13158,11 +13343,11 @@ var __IadClientBundle__ = (() => {
       cited.add(reference.id);
     }
     rendered.push(separator);
-    return /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(import_jsx_runtime56.Fragment, { children: rendered });
+    return /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(import_jsx_runtime57.Fragment, { children: rendered });
   }
 
   // src/client/components/DirectionDetailDialog.tsx
-  var import_jsx_runtime57 = __require("react/jsx-runtime");
+  var import_jsx_runtime58 = __require("react/jsx-runtime");
   function DirectionDetailDialog({
     direction: dir,
     evidence,
@@ -13185,7 +13370,7 @@ var __IadClientBundle__ = (() => {
         else if (right > vp.scrollLeft + vp.clientWidth - 6) vp.scrollTo({ left: right - vp.clientWidth + 4, behavior: "smooth" });
       }
     };
-    const renderText = (text) => /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(
+    const renderText = (text) => /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
       ReferencedText,
       {
         text,
@@ -13199,28 +13384,28 @@ var __IadClientBundle__ = (() => {
         }
       }
     );
-    return /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)(Modal, { title: dir.title, className: "exp-dialog exp-direction-dialog", id: "exp-modal", header: false, onClose, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("div", { className: "exp-dialog-head", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("strong", { children: dir.title }),
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(IconButton, { icon: "close", label: "\u5173\u95ED\u65B9\u5411\u8BE6\u60C5", title: "\u5173\u95ED", onClick: onClose })
+    return /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)(Modal, { title: dir.title, className: "exp-dialog exp-direction-dialog", id: "exp-modal", header: false, onClose, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-dialog-head", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("strong", { children: dir.title }),
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(IconButton, { icon: "close", label: "\u5173\u95ED\u65B9\u5411\u8BE6\u60C5", title: "\u5173\u95ED", onClick: onClose })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("div", { className: "exp-dialog-main", ref: evidenceContainerRef, children: /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("div", { className: "exp-direction-body", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("section", { className: "exp-direction-goal", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("h3", { children: "\u89C2\u5BDF\u76EE\u6807" }),
-          /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("p", { children: renderText(dir.brief) })
+      /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-dialog-main", ref: evidenceContainerRef, children: /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-direction-body", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("section", { className: "exp-direction-goal", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h3", { children: "\u89C2\u5BDF\u76EE\u6807" }),
+          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { children: renderText(dir.brief) })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("section", { className: "exp-direction-rationale", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("h3", { children: "\u6BD4\u8F83\u4F9D\u636E" }),
-          /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("p", { children: renderText(dir.rationale) })
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("section", { className: "exp-direction-rationale", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h3", { children: "\u6BD4\u8F83\u4F9D\u636E" }),
+          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { children: renderText(dir.rationale) })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("section", { className: "exp-direction-limitations", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("h3", { children: "\u9650\u5236\u4E0E\u5F85\u786E\u8BA4" }),
-          dir.limitations.length ? /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("ul", { children: dir.limitations.map((lim, i) => /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("li", { children: renderText(lim) }, i)) }) : /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("p", { children: "\u672A\u8BB0\u5F55\u9650\u5236" })
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("section", { className: "exp-direction-limitations", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h3", { children: "\u9650\u5236\u4E0E\u5F85\u786E\u8BA4" }),
+          dir.limitations.length ? /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("ul", { children: dir.limitations.map((lim, i) => /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("li", { children: renderText(lim) }, i)) }) : /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { children: "\u672A\u8BB0\u5F55\u9650\u5236" })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("section", { className: "exp-direction-evidence", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("div", { className: "exp-direction-evidence-head", children: /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("h3", { children: "\u56FE\u50CF\u8BC1\u636E" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime57.jsxs)("div", { className: "exp-direction-evidence-groups", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("section", { className: "exp-scroll-group", "data-evidence-kind": "normal", children: /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("section", { className: "exp-direction-evidence", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-direction-evidence-head", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h3", { children: "\u56FE\u50CF\u8BC1\u636E" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-direction-evidence-groups", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("section", { className: "exp-scroll-group", "data-evidence-kind": "normal", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
               "div",
               {
                 className: "exp-evidence-viewport",
@@ -13231,7 +13416,7 @@ var __IadClientBundle__ = (() => {
                   const motion = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
                   if (motion) e.currentTarget.scrollLeft += motion;
                 },
-                children: evidence.normals.length ? evidence.normals.map((image) => /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(
+                children: evidence.normals.length ? evidence.normals.map((image) => /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
                   ThumbnailCard,
                   {
                     type: "button",
@@ -13247,10 +13432,10 @@ var __IadClientBundle__ = (() => {
                     onClick: () => onOpenFullscreen(image.ref)
                   },
                   image.ref
-                )) : /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("p", { className: "exp-direction-empty", children: "\u6682\u65E0\u53EF\u7528\u826F\u54C1\u8BC1\u636E" })
+                )) : /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { className: "exp-direction-empty", children: "\u6682\u65E0\u53EF\u7528\u826F\u54C1\u8BC1\u636E" })
               }
             ) }),
-            /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("section", { className: "exp-scroll-group", "data-evidence-kind": "defect", children: /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("section", { className: "exp-scroll-group", "data-evidence-kind": "defect", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
               "div",
               {
                 className: "exp-evidence-viewport",
@@ -13261,7 +13446,7 @@ var __IadClientBundle__ = (() => {
                   const motion = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
                   if (motion) e.currentTarget.scrollLeft += motion;
                 },
-                children: evidence.defects.length ? evidence.defects.map((image) => /* @__PURE__ */ (0, import_jsx_runtime57.jsx)(
+                children: evidence.defects.length ? evidence.defects.map((image) => /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
                   ThumbnailCard,
                   {
                     type: "button",
@@ -13277,7 +13462,7 @@ var __IadClientBundle__ = (() => {
                     onClick: () => onOpenFullscreen(image.ref)
                   },
                   image.ref
-                )) : /* @__PURE__ */ (0, import_jsx_runtime57.jsx)("p", { className: "exp-direction-empty", children: "\u6682\u65E0\u53EF\u7528\u5F02\u5E38\u8BC1\u636E" })
+                )) : /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { className: "exp-direction-empty", children: "\u6682\u65E0\u53EF\u7528\u5F02\u5E38\u8BC1\u636E" })
               }
             ) })
           ] })
@@ -13353,7 +13538,7 @@ var __IadClientBundle__ = (() => {
   }
 
   // src/client/components/ExplorationPage.tsx
-  var import_jsx_runtime58 = __require("react/jsx-runtime");
+  var import_jsx_runtime59 = __require("react/jsx-runtime");
   function expElapsed(sec) {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
@@ -13472,7 +13657,6 @@ var __IadClientBundle__ = (() => {
       }
       return shownJobs[0] || null;
     }, [shownJobs, selectedJobId]);
-    const selectedWorkflow = selectedJob ? jobWorkflow(selectedJob) : null;
     const selectedSnapshot = selectedJob;
     const versionKey = (selectedSnapshot?.dataset_results || []).map((result) => result.exploration_version_id || "").join("|");
     const results = useResource(selectedJob ? `/analysis/results/${encodeURIComponent(selectedJob.run_id)}` : null, `${versionKey}|${refreshTick}`);
@@ -13556,7 +13740,7 @@ var __IadClientBundle__ = (() => {
       setError("");
       try {
         const key = JSON.stringify([selectedChildIds, normalSelected, defectSelected, prompt, selectedPresetId]);
-        if (submission.current?.key !== key) submission.current = { key, id: crypto.randomUUID() };
+        if (submission.current?.key !== key) submission.current = { key, id: v4_default() };
         const res = await request("/analysis/start", {
           submission_id: submission.current.id,
           analysis_kind: "exploration",
@@ -13600,13 +13784,14 @@ var __IadClientBundle__ = (() => {
         currentIndex: index3
       });
     };
-    return /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { id: "exploration-page", className: "iad-exploration-page", children: [
-      (error2 || results.error || jobQuery.error) && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { role: "alert", className: "iad-error", children: error2 || results.error || jobQuery.error }),
-      /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-heading", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h1", { children: view === "setup" ? "\u65B0\u5EFA\u63A2\u7D22" : "\u65B9\u5411\u63A2\u7D22" }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-heading-actions", children: view === "setup" ? /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(Button, { type: "button", onClick: () => setView("jobs"), children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" }) : /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { id: "exploration-page", className: "iad-exploration-page", children: [
+      (error2 || results.error || jobQuery.error) && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("p", { role: "alert", className: "iad-error", children: error2 || results.error || jobQuery.error }),
+      /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { className: "exp-heading", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("h1", { children: view === "setup" ? "\u65B0\u5EFA\u63A2\u7D22" : "\u65B9\u5411\u63A2\u7D22" }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-heading-actions", children: view === "setup" ? /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(Button, { type: "button", onClick: () => setView("jobs"), children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" }) : /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
           Button,
           {
+            id: "exp-new",
             type: "button",
             variant: "primary",
             disabled: !!runningJob || submitting,
@@ -13616,7 +13801,7 @@ var __IadClientBundle__ = (() => {
           }
         ) })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
         DatasetScopeSelector,
         {
           className: "exp-scope",
@@ -13630,35 +13815,35 @@ var __IadClientBundle__ = (() => {
           groupId: "exp-parent",
           childId: "exp-child-toggle",
           childMenuId: "exp-child-menu",
-          children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(IconButton, { icon: "refresh", id: "refresh", type: "button", title: "\u5237\u65B0\u63A2\u7D22\u4F5C\u4E1A", label: "\u5237\u65B0\u63A2\u7D22\u4F5C\u4E1A", disabled: submitting, onClick: () => {
+          children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(IconButton, { icon: "refresh", id: "refresh", type: "button", title: "\u5237\u65B0\u63A2\u7D22\u4F5C\u4E1A", label: "\u5237\u65B0\u63A2\u7D22\u4F5C\u4E1A", disabled: submitting, onClick: () => {
             refreshJobs();
           } })
         }
       ),
-      view === "setup" ? /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("section", { className: "exp-panel", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-panel-title", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h2", { children: "\u9009\u62E9\u5BF9\u6BD4\u6837\u4F8B" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-tab-header", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(TabBar, { label: "\u5BF9\u6BD4\u6837\u4F8B", value: sampleTab, onChange: setSampleTab, items: [
+      view === "setup" ? /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("section", { className: "exp-panel", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-panel-title", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("h2", { children: "\u9009\u62E9\u5BF9\u6BD4\u6837\u4F8B" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { className: "exp-tab-header", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(TabBar, { label: "\u5BF9\u6BD4\u6837\u4F8B", value: sampleTab, onChange: setSampleTab, items: [
               { id: "normal", label: `\u826F\u54C1\u6837\u4F8B (${normalSelected.length})` },
               { id: "defect", label: `\u5F02\u5E38\u6837\u4F8B (${defectSelected.length})` }
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(IconButton, { icon: "delete", type: "button", disabled: sampleTab === "normal" ? !normalSelected.length : !defectSelected.length, title: "\u6E05\u7A7A\u5F53\u524D\u9875\u5DF2\u9009\u56FE\u50CF", label: `\u6E05\u7A7A${sampleTab === "normal" ? "\u826F\u54C1" : "\u5F02\u5E38"}\u5DF2\u9009\u56FE\u50CF`, onClick: () => {
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(IconButton, { icon: "delete", type: "button", disabled: sampleTab === "normal" ? !normalSelected.length : !defectSelected.length, title: "\u6E05\u7A7A\u5F53\u524D\u9875\u5DF2\u9009\u56FE\u50CF", label: `\u6E05\u7A7A${sampleTab === "normal" ? "\u826F\u54C1" : "\u5F02\u5E38"}\u5DF2\u9009\u56FE\u50CF`, onClick: () => {
               if (sampleTab === "normal") setNormalSelected([]);
               else setDefectSelected([]);
             } })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-sample-body", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-previews exp-previews-wide", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-sample-body", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { className: "exp-previews exp-previews-wide", children: [
             (sampleTab === "normal" ? normalSelected : defectSelected).map((id) => {
               const item = sampleById.get(id);
-              return /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-preview", children: item && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(ThumbnailCard, { src: item.url, label: item.filename, onClick: () => setViewerData({ items: [{
+              return /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-preview", children: item && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(ThumbnailCard, { src: item.url, label: item.filename, onClick: () => setViewerData({ items: [{
                 id: item.id,
                 sampleId: item.id,
                 title: item.filename,
                 imageUrl: mediaUrl({ task_id: item.datasetId, sample_id: item.id })
               }], currentIndex: 0 }) }) }, id);
             }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-preview add-tile", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)(
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-preview add-tile", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)(
               "button",
               {
                 type: "button",
@@ -13669,29 +13854,29 @@ var __IadClientBundle__ = (() => {
                   setModal("source");
                 },
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(PlusIcon, { size: 24 }),
-                  !(sampleTab === "normal" ? normalSelected : defectSelected).length && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("span", { children: "\u6DFB\u52A0\u56FE\u50CF" })
+                  /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(PlusIcon, { size: 24 }),
+                  !(sampleTab === "normal" ? normalSelected : defectSelected).length && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("span", { children: "\u6DFB\u52A0\u56FE\u50CF" })
                 ]
               }
             ) })
           ] }) })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("section", { className: "exp-panel", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-panel-title", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h2", { children: "\u63A2\u7D22\u63D0\u793A\u8BCD" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-prompt-head", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("label", { className: "exp-input", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("section", { className: "exp-panel", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-panel-title", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("h2", { children: "\u63A2\u7D22\u63D0\u793A\u8BCD" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { className: "exp-prompt-head", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("label", { className: "exp-input", children: [
               "\u63D0\u793A\u8BCD\u9884\u8BBE",
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
                 Select,
                 {
                   id: "exp-preset",
                   value: selectedPresetId,
                   onChange: (e) => handlePresetChange(e.target.value),
-                  children: presets.map((p) => /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("option", { value: p.id, children: p.name }, p.id))
+                  children: presets.map((p) => /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("option", { value: p.id, children: p.name }, p.id))
                 }
               )
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
               Button,
               {
                 type: "button",
@@ -13700,7 +13885,7 @@ var __IadClientBundle__ = (() => {
                 children: "\u91CD\u7F6E\u4E3A\u9884\u8BBE"
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
               Button,
               {
                 type: "button",
@@ -13712,9 +13897,9 @@ var __IadClientBundle__ = (() => {
               }
             )
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("label", { className: "exp-input", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("label", { className: "exp-input", children: [
             "\u63D0\u793A\u8BCD\u6B63\u6587",
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
               "textarea",
               {
                 id: "exp-prompt",
@@ -13725,29 +13910,29 @@ var __IadClientBundle__ = (() => {
             )
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("section", { className: "exp-panel", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-panel-title", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h2", { children: "\u786E\u8BA4\u5E76\u542F\u52A8" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-brief", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("span", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("section", { className: "exp-panel", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-panel-title", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("h2", { children: "\u786E\u8BA4\u5E76\u542F\u52A8" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { className: "exp-brief", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("span", { children: [
               "\u6240\u9009\u5B50\u6570\u636E\u96C6 ",
               selectedChildIds.length,
               " \u4E2A"
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("span", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("span", { children: [
               "\u4F18\u5148\u6837\u4F8B\uFF1A\u826F\u54C1 ",
               normalSelected.length,
               "\uFF0C\u5F02\u5E38 ",
               defectSelected.length
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("span", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("span", { children: [
               "\u6A21\u578B ",
               model.view?.selection?.model_id || "\u672A\u914D\u7F6E"
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("span", { children: "\u6267\u884C\uFF1A\u6240\u9009\u5B50\u96C6\u5168\u91CF\u5206\u6279\u8FED\u4EE3" })
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("span", { children: "\u6267\u884C\uFF1A\u6240\u9009\u5B50\u96C6\u5168\u91CF\u5206\u6279\u8FED\u4EE3" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-summarybar", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("span", { children: runReason || "\u53EF\u542F\u52A8" }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { className: "exp-summarybar", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("span", { children: runReason || "\u53EF\u542F\u52A8" }),
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
               Button,
               {
                 type: "button",
@@ -13761,189 +13946,169 @@ var __IadClientBundle__ = (() => {
         ] })
       ] }) : (
         /* Unified Workspace Layout */
-        /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-unified-layout", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("section", { className: `exp-panel exp-job-list ${jobPages > 1 ? "iba-job-multipage" : ""}`, "aria-label": "\u63A2\u7D22\u4F5C\u4E1A", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-job-list-head", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h2", { children: "\u63A2\u7D22\u4F5C\u4E1A" }),
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-job-list-actions", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("label", { className: "exp-input exp-filter-control", "aria-label": "\u641C\u7D22\u4F5C\u4E1A", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
-                  "input",
+        /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { className: "exp-unified-layout", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(JobListPanel, { title: "\u63A2\u7D22\u4F5C\u4E1A", className: `exp-job-list ${jobPages > 1 ? "iba-job-multipage" : ""}`, actions: jobs.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { className: "exp-job-list-actions", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("label", { className: "exp-input exp-filter-control", "aria-label": "\u641C\u7D22\u4F5C\u4E1A", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
+              "input",
+              {
+                id: "exp-jobsearch",
+                type: "search",
+                placeholder: "\u641C\u7D22\u4F5C\u4E1A ID",
+                value: jobSearch,
+                "aria-label": "\u641C\u7D22\u4F5C\u4E1A ID",
+                autoComplete: "off",
+                onChange: (e) => {
+                  setJobSearch(e.target.value);
+                  setJobPage(1);
+                }
+              }
+            ) }),
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("label", { className: "exp-input exp-filter-control", "aria-label": "\u7B5B\u9009\u4F5C\u4E1A\u72B6\u6001", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)(
+              Select,
+              {
+                id: "exp-jobfilter",
+                "aria-label": "\u4EFB\u52A1\u72B6\u6001",
+                value: jobFilter,
+                onChange: (e) => {
+                  setJobFilter(e.target.value);
+                  setJobPage(1);
+                },
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("option", { value: "\u5168\u90E8", children: "\u5168\u90E8\u72B6\u6001" }),
+                  Object.entries(jobStatuses).map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("option", { value, children: label }, value))
+                ]
+              }
+            ) }),
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
+              ClearFilterButton,
+              {
+                "data-exp": "clear-job-filters",
+                ariaLabel: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6",
+                title: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6",
+                disabled: !jobSearch && jobFilter === "\u5168\u90E8",
+                onClick: () => {
+                  setJobSearch("");
+                  setJobFilter("\u5168\u90E8");
+                  setJobPage(1);
+                }
+              }
+            )
+          ] }), children: filteredJobs.length ? /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)(import_jsx_runtime59.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-job-table-wrap", role: "region", "aria-label": "\u63A2\u7D22\u4F5C\u4E1A\u5217\u8868", tabIndex: 0, children: /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("table", { className: "exp-job-table", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("th", { children: "\u4F5C\u4E1A ID" }),
+                /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("th", { children: "\u72B6\u6001" }),
+                /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("th", { children: "\u6570\u636E\u96C6" }),
+                /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }),
+                /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("th", { children: "\u8017\u65F6" }),
+                /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("th", { className: "exp-prompt-action-col", children: "\u64CD\u4F5C" })
+              ] }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("tbody", { children: shownJobs.map((j) => {
+                const datasetNames = j.dataset_ids.map((id) => datasets.find((dataset2) => dataset2.dataset_id === id)?.name || id).join("\u3001");
+                const elapsed = j.started_at ? Math.max(0, Math.round(((j.finished_at ? Date.parse(j.finished_at) : Date.now()) - Date.parse(j.started_at)) / 1e3)) : 0;
+                return /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)(
+                  "tr",
                   {
-                    id: "exp-jobsearch",
-                    type: "search",
-                    placeholder: "\u641C\u7D22\u4F5C\u4E1A ID",
-                    value: jobSearch,
-                    "aria-label": "\u641C\u7D22\u4F5C\u4E1A ID",
-                    autoComplete: "off",
-                    onChange: (e) => {
-                      setJobSearch(e.target.value);
-                      setJobPage(1);
-                    }
-                  }
-                ) }),
-                /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("label", { className: "exp-input exp-filter-control", "aria-label": "\u7B5B\u9009\u4F5C\u4E1A\u72B6\u6001", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)(
-                  Select,
-                  {
-                    id: "exp-jobfilter",
-                    "aria-label": "\u4EFB\u52A1\u72B6\u6001",
-                    value: jobFilter,
-                    onChange: (e) => {
-                      setJobFilter(e.target.value);
-                      setJobPage(1);
+                    "data-action": "select-job",
+                    "data-id": j.run_id,
+                    "data-selected": selectedJob?.run_id === j.run_id,
+                    "aria-selected": selectedJob?.run_id === j.run_id,
+                    tabIndex: 0,
+                    "aria-label": `\u9009\u62E9\u4F5C\u4E1A ${j.run_id}`,
+                    onClick: () => setSelectedJobId(j.root_run_id),
+                    onKeyDown: (event) => {
+                      if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                        event.preventDefault();
+                        setSelectedJobId(j.root_run_id);
+                      }
                     },
                     children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("option", { value: "\u5168\u90E8", children: "\u5168\u90E8\u72B6\u6001" }),
-                      Object.entries(jobStatuses).map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("option", { value, children: label }, value))
-                    ]
-                  }
-                ) }),
-                /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
-                  ClearFilterButton,
-                  {
-                    "data-exp": "clear-job-filters",
-                    ariaLabel: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6",
-                    title: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6",
-                    disabled: !jobSearch && jobFilter === "\u5168\u90E8",
-                    onClick: () => {
-                      setJobSearch("");
-                      setJobFilter("\u5168\u90E8");
-                      setJobPage(1);
-                    }
-                  }
-                )
-              ] })
-            ] }),
-            filteredJobs.length ? /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)(import_jsx_runtime58.Fragment, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-job-table-wrap", role: "region", "aria-label": "\u63A2\u7D22\u4F5C\u4E1A\u5217\u8868", tabIndex: 0, children: /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("table", { className: "exp-job-table", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("tr", { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("th", { children: "\u4F5C\u4E1A ID" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("th", { children: "\u72B6\u6001" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("th", { children: "\u6570\u636E\u96C6" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("th", { children: "\u8017\u65F6" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("th", { className: "exp-prompt-action-col", children: "\u64CD\u4F5C" })
-                ] }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("tbody", { children: shownJobs.map((j) => {
-                  const datasetNames = j.dataset_ids.map((id) => datasets.find((dataset2) => dataset2.dataset_id === id)?.name || id).join("\u3001");
-                  const elapsed = j.started_at ? Math.max(0, Math.round(((j.finished_at ? Date.parse(j.finished_at) : Date.now()) - Date.parse(j.started_at)) / 1e3)) : 0;
-                  return /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)(
-                    "tr",
-                    {
-                      "data-action": "select-job",
-                      "data-id": j.run_id,
-                      "data-selected": selectedJob?.run_id === j.run_id,
-                      "aria-selected": selectedJob?.run_id === j.run_id,
-                      tabIndex: 0,
-                      "aria-label": `\u9009\u62E9\u4F5C\u4E1A ${j.run_id}`,
-                      onClick: () => setSelectedJobId(j.root_run_id),
-                      onKeyDown: (event) => {
-                        if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
-                          event.preventDefault();
-                          setSelectedJobId(j.root_run_id);
-                        }
-                      },
-                      children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("strong", { className: "exp-row-title", children: j.run_id }) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(JobStatusButton, { job: j, onClick: () => setStatusJobId(j.root_run_id) }) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-job-dataset", title: datasetNames, children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("span", { className: "exp-job-dataset-name", children: datasetNames }) }) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("td", { className: "exp-job-time", children: new Date(j.submitted_at).toLocaleString("zh-CN", { hour12: false }) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("td", { className: "exp-job-duration", children: j.status === "PENDING" ? "\u2014" : expElapsed(elapsed) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("td", { className: "exp-prompt-action-col", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-job-icon-actions", onClick: (e) => e.stopPropagation(), children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(JobStatusAction, { job: j, onClick: () => setStatusJobId(j.root_run_id) }),
-                          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(IconButton, { icon: "prompt", label: "\u67E5\u770B\u63D0\u793A\u8BCD", title: "\u67E5\u770B\u63D0\u793A\u8BCD", "data-exp": "show-prompt", "data-id": j.run_id, onClick: () => {
-                            setPromptText(j.exploration_prompt?.text || "");
-                            setModal("prompt");
-                          } }),
-                          /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
-                            DeleteAction,
-                            {
-                              title: "\u5220\u9664\u63A2\u7D22\u4F5C\u4E1A",
-                              name: j.run_id,
-                              confirmLabel: "\u5220\u9664\u4F5C\u4E1A",
-                              confirmation: /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)(import_jsx_runtime58.Fragment, { children: [
-                                "\u786E\u5B9A\u5220\u9664\u4F5C\u4E1A ",
-                                j.run_id,
-                                " \u5417\uFF1F"
-                              ] }),
-                              description: "\u5220\u9664\u540E\u4E0D\u518D\u663E\u793A\u8BE5\u4F5C\u4E1A\u53CA\u5176\u63A2\u7D22\u7ED3\u679C\u3002",
-                              disabled: j.status === "RUNNING" || j.status === "PENDING",
-                              restoreFocus: () => document.querySelector("#exp-jobsearch"),
-                              onDelete: async () => {
-                                await request(`/analysis/delete/${encodeURIComponent(j.run_id)}`, {});
-                                refreshJobs();
-                              }
+                      /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("strong", { className: "exp-row-title", children: j.run_id }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(JobStatusButton, { job: j, onClick: () => setStatusJobId(j.root_run_id) }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-job-dataset", title: datasetNames, children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("span", { className: "exp-job-dataset-name", children: datasetNames }) }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("td", { className: "exp-job-time", children: new Date(j.submitted_at).toLocaleString("zh-CN", { hour12: false }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("td", { className: "exp-job-duration", children: j.status === "PENDING" ? "\u2014" : expElapsed(elapsed) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("td", { className: "exp-prompt-action-col", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { className: "exp-job-icon-actions", onClick: (e) => e.stopPropagation(), children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(JobStatusAction, { job: j, onClick: () => setStatusJobId(j.root_run_id) }),
+                        ["FAILED", "CANCELLED", "INTERRUPTED"].includes(j.status) && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
+                          IconButton,
+                          {
+                            icon: "copy",
+                            label: "\u4F7F\u7528\u8BE5\u914D\u7F6E\u65B0\u5EFA",
+                            "data-exp": "copy-job",
+                            disabled: !!runningJob || submitting,
+                            onClick: () => void openSetup(j)
+                          }
+                        ),
+                        /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(IconButton, { icon: "prompt", label: "\u67E5\u770B\u63D0\u793A\u8BCD", title: "\u67E5\u770B\u63D0\u793A\u8BCD", "data-exp": "show-prompt", "data-id": j.run_id, onClick: () => {
+                          setPromptText(j.exploration_prompt?.text || "");
+                          setModal("prompt");
+                        } }),
+                        /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
+                          DeleteAction,
+                          {
+                            title: "\u5220\u9664\u63A2\u7D22\u4F5C\u4E1A",
+                            name: j.run_id,
+                            confirmLabel: "\u5220\u9664\u4F5C\u4E1A",
+                            confirmation: /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)(import_jsx_runtime59.Fragment, { children: [
+                              "\u786E\u5B9A\u5220\u9664\u4F5C\u4E1A ",
+                              j.run_id,
+                              " \u5417\uFF1F"
+                            ] }),
+                            description: "\u5220\u9664\u540E\u4E0D\u518D\u663E\u793A\u8BE5\u4F5C\u4E1A\u53CA\u5176\u63A2\u7D22\u7ED3\u679C\u3002",
+                            disabled: j.status === "RUNNING" || j.status === "PENDING",
+                            restoreFocus: () => document.getElementById(jobs.length > 1 ? "exp-jobsearch" : "exp-new"),
+                            onDelete: async () => {
+                              await request(`/analysis/delete/${encodeURIComponent(j.run_id)}`, {});
+                              refreshJobs();
                             }
-                          )
-                        ] }) })
-                      ]
-                    },
-                    j.run_id
-                  );
-                }) })
-              ] }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
-                Pagination,
-                {
-                  total: filteredJobs.length,
-                  page: currentJobPage,
-                  onPage: handleJobPageChange,
-                  label: "\u63A2\u7D22\u4F5C\u4E1A",
-                  size: IBA_JOBS_PAGE_SIZE
-                }
-              )
-            ] }) : /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-job-empty", role: "status", children: jobQuery.loading ? "\u6B63\u5728\u8BFB\u53D6\u63A2\u7D22\u4F5C\u4E1A\u2026" : jobs.length ? "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u63A2\u7D22\u4F5C\u4E1A\u3002" : "\u5F53\u524D\u8303\u56F4\u8FD8\u6CA1\u6709\u63A2\u7D22\u4F5C\u4E1A\uFF0C\u53EF\u4EE5\u521B\u5EFA\u65B0\u63A2\u7D22\u3002" })
-          ] }),
-          !selectedJob ? /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("section", { className: "exp-panel exp-selected-result exp-empty-result", "aria-label": "\u63A2\u7D22\u7ED3\u679C", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-selected-head", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }) }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-result-empty-message", role: "status", children: "\u8BF7\u9009\u62E9\u4E0A\u65B9\u7684\u63A2\u7D22\u4F5C\u4E1A\u67E5\u770B\u7ED3\u679C\u3002" })
-          ] }) : ["PENDING", "RUNNING"].includes(selectedJob.status) ? /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u6267\u884C\u9636\u6BB5", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-selected-head", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h2", { children: "\u8FD0\u884C\u72B6\u6001" }),
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("span", { className: "exp-selected-sub", children: selectedJob.run_id })
+                          }
+                        )
+                      ] }) })
+                    ]
+                  },
+                  j.run_id
+                );
+              }) })
             ] }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-job-current-title", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("span", { className: `exp-pill ${selectedJob.status === "PENDING" ? "pending" : "running"}`, children: jobStatuses[selectedJob.status] }),
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("strong", { children: selectedJob.status === "PENDING" ? "\u7B49\u5F85\u6267\u884C" : selectedWorkflow.stages[selectedWorkflow.index]?.title || "\u6B63\u5728\u6267\u884C" })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-job-stages", role: "list", "aria-label": "\u6267\u884C\u9636\u6BB5\uFF0C\u4E0D\u4EE3\u8868\u5B8C\u6210\u767E\u5206\u6BD4", children: selectedWorkflow.stages.map((stage, index3) => /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)(
-              "div",
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
+              Pagination,
               {
-                role: "listitem",
-                className: "exp-job-stage",
-                "data-state": selectedJob.status === "RUNNING" && index3 === selectedWorkflow.index ? "current" : "waiting",
-                children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("span", { className: "exp-job-stage-icon", children: index3 + 1 }),
-                  /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("span", { className: "exp-job-stage-label", children: stage.title })
-                ]
-              },
-              stage.title
-            )) }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-result-neutral", children: "\u65B9\u5411\u5C1A\u672A\u53D1\u5E03\uFF0C\u5B8C\u6210\u540E\u5C06\u5728\u8FD9\u91CC\u663E\u793A\u672C\u6B21\u4F5C\u4E1A\u7684\u5019\u9009\u65B9\u5411\u4E0E\u6574\u4F53\u9650\u5236\u3002" })
-          ] }) : ["FAILED", "CANCELLED", "INTERRUPTED"].includes(selectedJob.status) ? /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u9519\u8BEF\u4FE1\u606F", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-selected-head", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h2", { children: "\u4F5C\u4E1A\u5931\u8D25" }),
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("span", { className: "exp-selected-sub", children: selectedJob.run_id })
+                total: filteredJobs.length,
+                page: currentJobPage,
+                onPage: handleJobPageChange,
+                label: "\u63A2\u7D22\u4F5C\u4E1A",
+                size: IBA_JOBS_PAGE_SIZE,
+                hideSinglePage: true
+              }
+            )
+          ] }) : /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-job-empty", role: "status", children: jobQuery.loading ? "\u6B63\u5728\u8BFB\u53D6\u63A2\u7D22\u4F5C\u4E1A\u2026" : jobs.length ? "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u63A2\u7D22\u4F5C\u4E1A\u3002" : "\u5F53\u524D\u6CA1\u6709\u63A2\u7D22\u4F5C\u4E1A" }) }),
+          !selectedJob ? /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("section", { className: "exp-panel exp-selected-result exp-empty-result", "aria-label": "\u63A2\u7D22\u7ED3\u679C", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-selected-head", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }) }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u63A2\u7D22\u7ED3\u679C" })
+          ] }) : ["PENDING", "RUNNING"].includes(selectedJob.status) ? /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("section", { className: "exp-panel exp-selected-result", "aria-label": "\u63A2\u7D22\u7ED3\u679C", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-selected-head", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u4F5C\u4E1A\u6CA1\u6709\u5DF2\u53D1\u5E03\u7ED3\u679C" })
+          ] }) : ["FAILED", "CANCELLED", "INTERRUPTED"].includes(selectedJob.status) ? /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("section", { className: "exp-panel exp-selected-result", "aria-label": "\u63A2\u7D22\u7ED3\u679C", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-selected-head", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u4F5C\u4E1A\u6CA1\u6709\u5DF2\u53D1\u5E03\u7ED3\u679C" })
+          ] }) : /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u63A2\u7D22\u7ED3\u679C", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-selected-head", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }),
+              /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("span", { className: "exp-selected-sub", children: selectedJob.run_id })
             ] }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { className: "exp-error-message", children: selectedJob.errors[0]?.message || "\u4EFB\u52A1\u672A\u6210\u529F\u5B8C\u6210\uFF0C\u672A\u751F\u6210\u63A2\u7D22\u7ED3\u679C\u3002" }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { className: "exp-lead", children: "\u672C\u6B21\u4F5C\u4E1A\u6CA1\u6709\u53EF\u7528\u7684\u5019\u9009\u65B9\u5411\u6216\u6574\u4F53\u9650\u5236\u3002" }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(Button, { "data-exp": "copy-job", disabled: !!runningJob || submitting, onClick: () => void openSetup(selectedJob), children: "\u4F7F\u7528\u8BE5\u914D\u7F6E\u65B0\u5EFA" })
-          ] }) : /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u63A2\u7D22\u7ED3\u679C", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-selected-head", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }),
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("span", { className: "exp-selected-sub", children: selectedJob.run_id })
-            ] }) }),
-            selectedJobSummary && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { className: "exp-result-summary", children: selectedJobSummary }),
-            selectedJobDirections.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-job-table-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("table", { className: "exp-job-table exp-direction-table", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("tr", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("th", { children: "\u65B9\u5411" }),
-                /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("th", { children: "\u63CF\u8FF0" }),
-                /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("th", { children: "\u9002\u7528\u77E5\u8BC6" }),
-                /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("th", { className: "iad-number", children: "\u8BC1\u636E" }),
-                /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("th", { children: "\u64CD\u4F5C" })
+            selectedJobSummary && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("p", { className: "exp-result-summary", children: selectedJobSummary }),
+            selectedJobDirections.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-job-table-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("table", { className: "exp-job-table exp-direction-table", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("th", { children: "\u65B9\u5411" }),
+                /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("th", { children: "\u63CF\u8FF0" }),
+                /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("th", { children: "\u9002\u7528\u77E5\u8BC6" }),
+                /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("th", { className: "iad-number", children: "\u8BC1\u636E" }),
+                /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("th", { children: "\u64CD\u4F5C" })
               ] }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("tbody", { children: selectedJobDirections.map((d) => {
+              /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("tbody", { children: selectedJobDirections.map((d) => {
                 const evidenceCount = d.evidences?.length || 0;
-                return /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)(
+                return /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)(
                   "tr",
                   {
                     tabIndex: 0,
@@ -13955,19 +14120,19 @@ var __IadClientBundle__ = (() => {
                       setModal("direction");
                     },
                     children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("td", { className: "exp-direction-name", children: d.title }),
-                      /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("td", { className: "exp-direction-description", title: d.brief, children: d.brief }),
-                      /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("td", { children: d.applies }),
-                      /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("td", { className: "iad-number", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("td", { className: "exp-direction-name", children: d.title }),
+                      /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("td", { className: "exp-direction-description", title: d.brief, children: d.brief }),
+                      /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("td", { children: d.applies }),
+                      /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("td", { className: "iad-number", children: [
                         evidenceCount,
                         " \u5F20"
                       ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("td", { className: "exp-direction-action", onClick: (e) => e.stopPropagation(), children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(IconButton, { icon: "details", label: "\u67E5\u770B\u65B9\u5411", title: "\u67E5\u770B\u65B9\u5411", className: "exp-direction-view-icon exp-view-detail-button", onClick: () => {
+                      /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("td", { className: "exp-direction-action", onClick: (e) => e.stopPropagation(), children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(IconButton, { icon: "details", label: "\u67E5\u770B\u65B9\u5411", title: "\u67E5\u770B\u65B9\u5411", className: "exp-direction-view-icon exp-view-detail-button", onClick: () => {
                           setViewingDirection(d);
                           setModal("direction");
                         } }),
-                        /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(DeleteAction, { title: "\u5220\u9664\u65B9\u5411", name: d.title, description: "\u4FDD\u7559\u539F\u59CB\u6A21\u578B\u7ED3\u679C\u548C\u5386\u53F2\u5F15\u7528\u3002", onDelete: async () => {
+                        /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(DeleteAction, { title: "\u5220\u9664\u65B9\u5411", name: d.title, description: "\u4FDD\u7559\u539F\u59CB\u6A21\u578B\u7ED3\u679C\u548C\u5386\u53F2\u5F15\u7528\u3002", onDelete: async () => {
                           const removal = { dataset_id: d.datasetId, version_id: d.versionId, direction_id: d.id };
                           await request("/exploration/directions/remove", removal);
                           setRefreshTick((value) => value + 1);
@@ -13978,15 +14143,15 @@ var __IadClientBundle__ = (() => {
                   d.id
                 );
               }) })
-            ] }) }) : /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { className: "exp-lead", children: "\u672C\u6B21\u6CA1\u6709\u5F62\u6210\u53EF\u7528\u7684\u5019\u9009\u65B9\u5411\u3002" }),
-            /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "exp-limitations", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "exp-result-section-head", children: /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("h3", { children: "\u6574\u4F53\u9650\u5236" }) }),
-              selectedJobLimitations.length ? /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("ol", { children: selectedJobLimitations.map((text, i) => /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("li", { children: text }, i)) }) : /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("p", { className: "exp-lead", children: "\u672C\u6B21\u672A\u8BB0\u5F55\u6574\u4F53\u9650\u5236\u3002" })
+            ] }) }) : /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("p", { className: "exp-lead", children: "\u672C\u6B21\u6CA1\u6709\u5F62\u6210\u53EF\u7528\u7684\u5019\u9009\u65B9\u5411\u3002" }),
+            /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { className: "exp-limitations", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-result-section-head", children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("h3", { children: "\u6574\u4F53\u9650\u5236" }) }),
+              selectedJobLimitations.length ? /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("ol", { children: selectedJobLimitations.map((text, i) => /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("li", { children: text }, i)) }) : /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("p", { className: "exp-lead", children: "\u672C\u6B21\u672A\u8BB0\u5F55\u6574\u4F53\u9650\u5236\u3002" })
             ] })
           ] })
         ] })
       ),
-      modal === "prompt" && promptText !== null && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
+      modal === "prompt" && promptText !== null && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
         PromptDrawer,
         {
           title: "\u63A2\u7D22\u63D0\u793A\u8BCD",
@@ -13994,13 +14159,13 @@ var __IadClientBundle__ = (() => {
           onClose: () => setModal("")
         }
       ),
-      modal === "save" && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(ExplorationPresetDialog, { text: prompt, onClose: () => setModal(""), onSaved: (saved) => {
+      modal === "save" && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(ExplorationPresetDialog, { text: prompt, onClose: () => setModal(""), onSaved: (saved) => {
         setPresets((values) => [...values, saved]);
         setSelectedPresetId(saved.id);
         setOriginalPrompt(saved.text);
         setModal("");
       } }),
-      modal === "source" && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
+      modal === "source" && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
         ExplorationSourceDialog,
         {
           kind: sampleTab,
@@ -14011,7 +14176,7 @@ var __IadClientBundle__ = (() => {
           onClose: () => setModal("")
         }
       ),
-      modal === "direction" && viewingDirection && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
+      modal === "direction" && viewingDirection && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
         DirectionDetailDialog,
         {
           direction: viewingDirection,
@@ -14026,7 +14191,7 @@ var __IadClientBundle__ = (() => {
           }
         }
       ),
-      viewerData && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
+      viewerData && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
         FullscreenViewer,
         {
           open: true,
@@ -14037,7 +14202,7 @@ var __IadClientBundle__ = (() => {
           onNavigate: (idx) => setViewerData((prev) => prev ? { ...prev, currentIndex: idx } : null)
         }
       ),
-      statusJobId && jobs.some((job) => job.run_id === statusJobId || job.root_run_id === statusJobId) && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
+      statusJobId && jobs.some((job) => job.run_id === statusJobId || job.root_run_id === statusJobId) && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
         JobStatusDrawer,
         {
           job: jobs.find((job) => job.run_id === statusJobId || job.root_run_id === statusJobId),
@@ -14055,7 +14220,7 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/KnowledgeCheckEvidence.tsx
   var import_react54 = __require("react");
-  var import_jsx_runtime59 = __require("react/jsx-runtime");
+  var import_jsx_runtime60 = __require("react/jsx-runtime");
   function KnowledgeCheckEvidence({ versionId, checkId, role, active, onOpen, onLoaded }) {
     const grid = (0, import_react54.useRef)(null);
     const [paging, setPaging] = (0, import_react54.useState)({ page: 1, size: 0 });
@@ -14083,10 +14248,10 @@ var __IadClientBundle__ = (() => {
       if (detail) onLoaded?.(detail);
     }, [detail, onLoaded]);
     const label = role === "support" ? "\u652F\u6301\u8BC1\u636E" : "\u53CD\u5BF9\u8BC1\u636E";
-    return /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("section", { "data-evidence-role": role, "aria-label": label, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { ref: grid, className: "iad-thumbnail-grid", "aria-busy": result.loading, children: detail?.items.map((item, index3) => {
+    return /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("section", { "data-evidence-role": role, "aria-label": label, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("div", { ref: grid, className: "iad-thumbnail-grid", "aria-busy": result.loading, children: detail?.items.map((item, index3) => {
         const number = (paging.page - 1) * paging.size + index3 + 1;
-        return /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
+        return /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(
           ThumbnailCard,
           {
             label: `${label} ${number}`,
@@ -14097,9 +14262,9 @@ var __IadClientBundle__ = (() => {
           item.image.evidence_id
         );
       }) }),
-      result.error && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("p", { role: "alert", children: result.error }),
-      result.loading && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("p", { children: "\u6B63\u5728\u8BFB\u53D6\u8BC1\u636E\u2026" }),
-      detail && (detail.total ? /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
+      result.error && /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("p", { role: "alert", children: result.error }),
+      result.loading && /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("p", { children: "\u6B63\u5728\u8BFB\u53D6\u8BC1\u636E\u2026" }),
+      detail && (detail.total ? /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(
         Pagination,
         {
           total: detail.total,
@@ -14109,7 +14274,7 @@ var __IadClientBundle__ = (() => {
           label,
           onPage: (page) => setPaging((previous) => ({ ...previous, page }))
         }
-      ) : /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("p", { children: [
+      ) : /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("p", { children: [
         "\u6682\u65E0",
         label
       ] }))
@@ -14117,7 +14282,7 @@ var __IadClientBundle__ = (() => {
   }
 
   // src/client/components/KnowledgeEntryDialog.tsx
-  var import_jsx_runtime60 = __require("react/jsx-runtime");
+  var import_jsx_runtime61 = __require("react/jsx-runtime");
   function KnowledgeEntryDialog({ versionId, checkId, onClose, onSaved }) {
     const [image, setImage] = (0, import_react55.useState)(null);
     const [detail, setDetail] = (0, import_react55.useState)(null);
@@ -14139,34 +14304,34 @@ var __IadClientBundle__ = (() => {
       sampleId: item.sample_id,
       evidence: item.image
     });
-    return /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)(import_jsx_runtime60.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)(Modal, { title: "\u77E5\u8BC6\u6761\u76EE\u8BE6\u60C5", className: "detail-modal knowledge-entry-dialog v46-app", header: false, onClose: () => {
+    return /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)(import_jsx_runtime61.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)(Modal, { title: "\u77E5\u8BC6\u6761\u76EE\u8BE6\u60C5", className: "detail-modal knowledge-entry-dialog v46-app", header: false, onClose: () => {
         if (!saving) onClose();
       }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("header", { className: "modalheader", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("h2", { id: "kb-detail-title", children: detail?.check.title || "\u6B63\u5728\u8BFB\u53D6\u77E5\u8BC6\u6761\u76EE" }),
-          /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(IconButton, { icon: "close", type: "button", id: "close-detail", label: "\u5173\u95ED\u77E5\u8BC6\u8BE6\u60C5", disabled: saving, onClick: onClose })
+        /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("header", { className: "modalheader", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("h2", { id: "kb-detail-title", children: detail?.check.title || "\u6B63\u5728\u8BFB\u53D6\u77E5\u8BC6\u6761\u76EE" }),
+          /* @__PURE__ */ (0, import_jsx_runtime61.jsx)(IconButton, { icon: "close", type: "button", id: "close-detail", label: "\u5173\u95ED\u77E5\u8BC6\u8BE6\u60C5", disabled: saving, onClick: onClose })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("div", { className: "modalcontent", id: "entry-dialog", children: [
-          detail && /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)(import_jsx_runtime60.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("section", { className: "detail-section", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("h3", { children: "\u77E5\u8BC6\u7ED3\u8BBA" }),
-              /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("p", { children: detail.check.criterion })
+        /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("div", { className: "modalcontent", id: "entry-dialog", children: [
+          detail && /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)(import_jsx_runtime61.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("section", { className: "detail-section", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("h3", { children: "\u77E5\u8BC6\u7ED3\u8BBA" }),
+              /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("p", { children: detail.check.criterion })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("section", { className: "detail-section", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("h3", { children: "\u5BF9\u8C61\u4E0E\u4F4D\u7F6E" }),
-              /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("p", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("section", { className: "detail-section", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("h3", { children: "\u5BF9\u8C61\u4E0E\u4F4D\u7F6E" }),
+              /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("p", { children: [
                 detail.check.subject,
                 "\uFF0C",
                 detail.check.location
               ] })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("section", { className: "detail-section", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("h3", { children: "\u5141\u8BB8\u53D8\u5316" }),
-              /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("p", { children: detail.check.allowed_variations.join("\uFF1B") || "\u672A\u8BB0\u5F55\u5141\u8BB8\u53D8\u5316" })
+            /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("section", { className: "detail-section", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("h3", { children: "\u5141\u8BB8\u53D8\u5316" }),
+              /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("p", { children: detail.check.allowed_variations.join("\uFF1B") || "\u672A\u8BB0\u5F55\u5141\u8BB8\u53D8\u5316" })
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("section", { className: "detail-section", children: /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)(
+          /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("section", { className: "detail-section", children: /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)(
             PageTabs,
             {
               label: "\u77E5\u8BC6\u56FE\u50CF\u8BC1\u636E",
@@ -14174,7 +14339,7 @@ var __IadClientBundle__ = (() => {
               value: evidenceRole,
               onChange: setEvidenceRole,
               children: [
-                /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("div", { hidden: evidenceRole !== "support", children: /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("div", { hidden: evidenceRole !== "support", children: /* @__PURE__ */ (0, import_jsx_runtime61.jsx)(
                   KnowledgeCheckEvidence,
                   {
                     versionId,
@@ -14185,7 +14350,7 @@ var __IadClientBundle__ = (() => {
                     onLoaded: setDetail
                   }
                 ) }),
-                /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("div", { hidden: evidenceRole !== "counter", children: /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("div", { hidden: evidenceRole !== "counter", children: /* @__PURE__ */ (0, import_jsx_runtime61.jsx)(
                   KnowledgeCheckEvidence,
                   {
                     versionId,
@@ -14198,26 +14363,26 @@ var __IadClientBundle__ = (() => {
               ]
             }
           ) }),
-          detail && /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)(import_jsx_runtime60.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("section", { className: "detail-section", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("h3", { children: "\u9002\u7528\u9650\u5236" }),
-              /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("p", { children: [...detail.check.limitations, ...detail.check.support_limitations].join("\uFF1B") || "\u672A\u8BB0\u5F55\u9002\u7528\u9650\u5236" })
+          detail && /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)(import_jsx_runtime61.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("section", { className: "detail-section", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("h3", { children: "\u9002\u7528\u9650\u5236" }),
+              /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("p", { children: [...detail.check.limitations, ...detail.check.support_limitations].join("\uFF1B") || "\u672A\u8BB0\u5F55\u9002\u7528\u9650\u5236" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("section", { className: "detail-section detail-review", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("h3", { children: "\u4EBA\u5DE5\u6838\u5B9E" }),
-              /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("div", { className: "knowledge-review-options", role: "radiogroup", "aria-label": "\u4EBA\u5DE5\u6838\u5B9E\u7ED3\u8BBA", children: [["pending", "\u5F85\u6838\u5B9E"], ["confirmed", "\u6838\u5B9E\u901A\u8FC7"], ["rejected", "\u9A73\u56DE"]].map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("label", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("input", { type: "radio", name: "knowledge-review", value, checked: status === value, disabled: saving, onChange: () => setStatus(value) }),
+            /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("section", { className: "detail-section detail-review", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("h3", { children: "\u4EBA\u5DE5\u6838\u5B9E" }),
+              /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("div", { className: "knowledge-review-options", role: "radiogroup", "aria-label": "\u4EBA\u5DE5\u6838\u5B9E\u7ED3\u8BBA", children: [["pending", "\u5F85\u6838\u5B9E"], ["confirmed", "\u6838\u5B9E\u901A\u8FC7"], ["rejected", "\u9A73\u56DE"]].map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("label", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("input", { type: "radio", name: "knowledge-review", value, checked: status === value, disabled: saving, onChange: () => setStatus(value) }),
                 label
               ] }, value)) }),
-              /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("label", { className: "label", htmlFor: "review-note", children: "\u590D\u6838\u5907\u6CE8" }),
-              /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("textarea", { className: "f textarea", id: "review-note", placeholder: "\u586B\u5199\u590D\u6838\u4F9D\u636E\uFF08\u53EF\u9009\uFF09", value: note, disabled: saving, onChange: (event) => setNote(event.target.value) })
+              /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("label", { className: "label", htmlFor: "review-note", children: "\u590D\u6838\u5907\u6CE8" }),
+              /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("textarea", { className: "f textarea", id: "review-note", placeholder: "\u586B\u5199\u590D\u6838\u4F9D\u636E\uFF08\u53EF\u9009\uFF09", value: note, disabled: saving, onChange: (event) => setNote(event.target.value) })
             ] })
           ] }),
-          error2 && /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("p", { role: "alert", children: error2 })
+          error2 && /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("p", { role: "alert", children: error2 })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("footer", { className: "modalfooter", children: /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("div", { className: "actions", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(Button, { id: "cancel-review", disabled: saving, onClick: onClose, children: "\u53D6\u6D88" }),
-          /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(Button, { variant: "primary", id: "save-review", disabled: saving || !detail, onClick: async () => {
+        /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("footer", { className: "modalfooter", children: /* @__PURE__ */ (0, import_jsx_runtime61.jsxs)("div", { className: "actions", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime61.jsx)(Button, { id: "cancel-review", disabled: saving, onClick: onClose, children: "\u53D6\u6D88" }),
+          /* @__PURE__ */ (0, import_jsx_runtime61.jsx)(Button, { variant: "primary", id: "save-review", disabled: saving || !detail, onClick: async () => {
             if (!detail) return;
             setSaving(true);
             setError("");
@@ -14225,7 +14390,7 @@ var __IadClientBundle__ = (() => {
               await request("/knowledge/check-review", {
                 version_id: versionId,
                 check_id: checkId,
-                submission_id: crypto.randomUUID(),
+                submission_id: v4_default(),
                 expected_revision: detail.check.review.revision,
                 status,
                 note
@@ -14240,7 +14405,7 @@ var __IadClientBundle__ = (() => {
           }, children: saving ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58" })
         ] }) })
       ] }),
-      image && /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(ImageViewer, { image, onClose: () => setImage(null) })
+      image && /* @__PURE__ */ (0, import_jsx_runtime61.jsx)(ImageViewer, { image, onClose: () => setImage(null) })
     ] });
   }
 
@@ -14263,13 +14428,13 @@ var __IadClientBundle__ = (() => {
   var import_react56 = __require("react");
 
   // src/client/components/KnowledgeConfirmation.tsx
-  var import_jsx_runtime61 = __require("react/jsx-runtime");
+  var import_jsx_runtime62 = __require("react/jsx-runtime");
   function KnowledgeConfirmation({ state, onClose }) {
-    return state && /* @__PURE__ */ (0, import_jsx_runtime61.jsx)(ConfirmationDialog, { title: state.title, danger: state.danger, confirmLabel: state.confirmLabel, onClose, onConfirm: state.onConfirm, children: /* @__PURE__ */ (0, import_jsx_runtime61.jsx)("p", { id: "confirm-message", children: state.message }) });
+    return state && /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(ConfirmationDialog, { title: state.title, danger: state.danger, confirmLabel: state.confirmLabel, onClose, onConfirm: state.onConfirm, children: /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("p", { id: "confirm-message", children: state.message }) });
   }
 
   // src/client/components/KnowledgeMiningCreate.tsx
-  var import_jsx_runtime62 = __require("react/jsx-runtime");
+  var import_jsx_runtime63 = __require("react/jsx-runtime");
   function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParentId, selectedChildId, onClose, onStarted }) {
     const parentGroups = groups.filter((group) => group.group_id !== "single");
     const model = useWorkbenchModel();
@@ -14452,7 +14617,7 @@ var __IadClientBundle__ = (() => {
             origin: setupExplored.has(item.id) ? "explored" : item.origin || "preset"
           }))
         };
-        submission.current ||= crypto.randomUUID();
+        submission.current ||= v4_default();
         const job = await request("/analysis/start", {
           submission_id: submission.current,
           analysis_kind: "knowledge",
@@ -14468,17 +14633,17 @@ var __IadClientBundle__ = (() => {
         setSubmitting(false);
       }
     };
-    return /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)(import_jsx_runtime62.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)(
+    return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(import_jsx_runtime63.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
         "section",
         {
           id: "kb-setup-page",
           className: "kb-setup-page",
           "aria-label": "\u65B0\u5EFA\u77E5\u8BC6\u6316\u6398\u914D\u7F6E",
           children: [
-            /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("header", { className: "exp-heading kb-setup-heading", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("h1", { children: "\u65B0\u5EFA\u6316\u6398" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("header", { className: "exp-heading kb-setup-heading", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h1", { children: "\u65B0\u5EFA\u6316\u6398" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
                 Button,
                 {
                   type: "button",
@@ -14489,8 +14654,8 @@ var __IadClientBundle__ = (() => {
                 }
               )
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("fieldset", { className: "kb-create-fields", disabled: submitting || directionsLoading || presetsLoading || !!started.current, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("fieldset", { className: "kb-create-fields", disabled: submitting || directionsLoading || presetsLoading || !!started.current, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
                 DatasetScopeSelector,
                 {
                   className: "kb-setup-scope",
@@ -14516,31 +14681,31 @@ var __IadClientBundle__ = (() => {
                   childMenuId: "kb-setup-child-menu"
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("section", { className: "exp-panel kb-setup-directions", "aria-labelledby": "kb-direction-heading", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("h2", { id: "kb-direction-heading", children: "\u9009\u62E9\u6316\u6398\u65B9\u5411" }),
-                /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(TabBar, { label: "\u6316\u6398\u65B9\u5411\u7C7B\u578B", value: setupTab, onChange: setSetupTab, items: [
+              /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "exp-panel kb-setup-directions", "aria-labelledby": "kb-direction-heading", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h2", { id: "kb-direction-heading", children: "\u9009\u62E9\u6316\u6398\u65B9\u5411" }),
+                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(TabBar, { label: "\u6316\u6398\u65B9\u5411\u7C7B\u578B", value: setupTab, onChange: setSetupTab, items: [
                   { id: "preset", label: "\u901A\u7528\u9884\u8BBE\u65B9\u5411", buttonProps: { id: "kb-tab-preset", "aria-controls": "kb-preset-panel", "data-kb-tab": "preset" } },
                   { id: "explore", label: "\u65B9\u5411\u63A2\u7D22", buttonProps: { id: "kb-tab-explore", "aria-controls": "kb-explore-panel", "data-kb-tab": "explore" } }
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
                   "div",
                   {
                     id: "kb-preset-panel",
                     role: "tabpanel",
                     "aria-labelledby": "kb-tab-preset",
                     className: setupTab !== "preset" ? "hide" : "",
-                    children: /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("div", { className: "kb-direction-table-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("table", { className: "kb-direction-table", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("tr", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("th", { className: "kb-dir-check", children: /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("span", { className: "sr-only", children: "\u9009\u62E9" }) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("th", { className: "kb-dir-title", children: "\u65B9\u5411" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("th", { children: "\u63CF\u8FF0" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("th", { className: "kb-dir-action", children: "\u64CD\u4F5C" })
+                    children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "kb-direction-table-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("table", { className: "kb-direction-table", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("tr", { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { className: "kb-dir-check", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "sr-only", children: "\u9009\u62E9" }) }),
+                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { className: "kb-dir-title", children: "\u65B9\u5411" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { children: "\u63CF\u8FF0" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { className: "kb-dir-action", children: "\u64CD\u4F5C" })
                       ] }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("tbody", { id: "general-directions", children: presetDirections.map((p) => {
+                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("tbody", { id: "general-directions", children: presetDirections.map((p) => {
                         const info = getDirInfo(p, "preset");
                         const checked = setupGeneral.has(p.id);
-                        return /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("tr", { children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("td", { className: "kb-dir-check", children: /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(
+                        return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("tr", { children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { className: "kb-dir-check", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
                             "input",
                             {
                               type: "checkbox",
@@ -14556,9 +14721,9 @@ var __IadClientBundle__ = (() => {
                               }
                             }
                           ) }),
-                          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("td", { children: info.name }),
-                          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("td", { children: info.text }),
-                          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("td", { className: "kb-dir-action", children: /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(IconButton, { icon: "edit", type: "button", "data-edit-kind": "preset", "data-edit-id": p.id, label: `\u7F16\u8F91\u65B9\u5411 ${info.name}`, title: "\u7F16\u8F91\u65B9\u5411", onClick: () => {
+                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { children: info.name }),
+                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { children: info.text }),
+                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { className: "kb-dir-action", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(IconButton, { icon: "edit", type: "button", "data-edit-kind": "preset", "data-edit-id": p.id, label: `\u7F16\u8F91\u65B9\u5411 ${info.name}`, title: "\u7F16\u8F91\u65B9\u5411", onClick: () => {
                             setEditingDir({ kind: "preset", id: p.id });
                             setEditingName(info.name);
                             setEditingText(info.text);
@@ -14569,25 +14734,25 @@ var __IadClientBundle__ = (() => {
                     ] }) })
                   }
                 ),
-                /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
                   "div",
                   {
                     id: "kb-explore-panel",
                     role: "tabpanel",
                     "aria-labelledby": "kb-tab-explore",
                     className: setupTab !== "explore" ? "hide" : "",
-                    children: /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("div", { className: "kb-direction-table-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("table", { className: "kb-direction-table", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("tr", { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("th", { className: "kb-dir-check", children: /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("span", { className: "sr-only", children: "\u9009\u62E9" }) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("th", { className: "kb-dir-title", children: "\u65B9\u5411" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("th", { children: "\u63CF\u8FF0" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("th", { className: "kb-dir-action", children: "\u64CD\u4F5C" })
+                    children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "kb-direction-table-wrap", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("table", { className: "kb-direction-table", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("tr", { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { className: "kb-dir-check", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "sr-only", children: "\u9009\u62E9" }) }),
+                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { className: "kb-dir-title", children: "\u65B9\u5411" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { children: "\u63CF\u8FF0" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { className: "kb-dir-action", children: "\u64CD\u4F5C" })
                       ] }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("tbody", { id: "explored-directions", children: kbExploredDirs.length ? kbExploredDirs.map((e) => {
+                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("tbody", { id: "explored-directions", children: kbExploredDirs.length ? kbExploredDirs.map((e) => {
                         const info = getDirInfo(e, "explore");
                         const checked = setupExplored.has(e.id);
-                        return /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("tr", { children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("td", { className: "kb-dir-check", children: /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(
+                        return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("tr", { children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { className: "kb-dir-check", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
                             "input",
                             {
                               type: "checkbox",
@@ -14603,24 +14768,24 @@ var __IadClientBundle__ = (() => {
                               }
                             }
                           ) }),
-                          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("td", { children: info.name }),
-                          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("td", { children: info.text }),
-                          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("td", { className: "kb-dir-action", children: /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(IconButton, { icon: "edit", type: "button", "data-edit-kind": "explore", "data-edit-id": e.id, label: `\u7F16\u8F91\u65B9\u5411 ${info.name}`, title: "\u7F16\u8F91\u65B9\u5411", onClick: () => {
+                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { children: info.name }),
+                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { children: info.text }),
+                          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { className: "kb-dir-action", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(IconButton, { icon: "edit", type: "button", "data-edit-kind": "explore", "data-edit-id": e.id, label: `\u7F16\u8F91\u65B9\u5411 ${info.name}`, title: "\u7F16\u8F91\u65B9\u5411", onClick: () => {
                             setEditingDir({ kind: "explore", id: e.id });
                             setEditingName(info.name);
                             setEditingText(info.text);
                             setDirEditError("");
                           } }) })
                         ] }, e.id);
-                      }) : /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("tr", { children: /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("td", { colSpan: 4, className: "kb-directions-empty", children: "\u6240\u9009\u5B50\u6570\u636E\u96C6\u6682\u65E0\u65B9\u5411\u63A2\u7D22\u7ED3\u679C\u3002" }) }) })
+                      }) : /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("tr", { children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { colSpan: 4, className: "kb-directions-empty", children: "\u6240\u9009\u5B50\u6570\u636E\u96C6\u6682\u65E0\u65B9\u5411\u63A2\u7D22\u7ED3\u679C\u3002" }) }) })
                     ] }) })
                   }
                 )
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("section", { className: "exp-panel kb-setup-prompt", "aria-labelledby": "kb-prompt-title", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("div", { className: "kb-prompt-header", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("h2", { id: "kb-prompt-title", children: "\u5B8C\u6574\u63D0\u793A\u8BCD" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "exp-panel kb-setup-prompt", "aria-labelledby": "kb-prompt-title", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "kb-prompt-header", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h2", { id: "kb-prompt-title", children: "\u5B8C\u6574\u63D0\u793A\u8BCD" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
                     Button,
                     {
                       type: "button",
@@ -14630,7 +14795,7 @@ var __IadClientBundle__ = (() => {
                     }
                   )
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
                   "textarea",
                   {
                     className: "f",
@@ -14644,35 +14809,35 @@ var __IadClientBundle__ = (() => {
                     }
                   }
                 ),
-                /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("div", { className: "kb-prompt-note", id: "prompt-note", "aria-live": "polite", children: setupPromptDirty ? "\u5DF2\u624B\u52A8\u4FEE\u6539\uFF0C\u65B9\u5411\u8C03\u6574\u540E\u4FDD\u6301\u5F53\u524D\u5185\u5BB9\u3002" : "" })
+                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "kb-prompt-note", id: "prompt-note", "aria-live": "polite", children: setupPromptDirty ? "\u5DF2\u624B\u52A8\u4FEE\u6539\uFF0C\u65B9\u5411\u8C03\u6574\u540E\u4FDD\u6301\u5F53\u524D\u5185\u5BB9\u3002" : "" })
               ] })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("section", { className: "exp-panel kb-setup-confirm", "aria-labelledby": "kb-confirm-title", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("div", { className: "exp-panel-title", children: /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("h2", { id: "kb-confirm-title", children: "\u786E\u8BA4\u5E76\u542F\u52A8" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("div", { className: "exp-brief", id: "kb-run-summary", "aria-live": "polite", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("span", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "exp-panel kb-setup-confirm", "aria-labelledby": "kb-confirm-title", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "exp-panel-title", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h2", { id: "kb-confirm-title", children: "\u786E\u8BA4\u5E76\u542F\u52A8" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "exp-brief", id: "kb-run-summary", "aria-live": "polite", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("span", { children: [
                   "\u5B50\u6570\u636E\u96C6 ",
                   setupSubsets.size,
                   " \u4E2A"
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("span", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("span", { children: [
                   "\u6316\u6398\u65B9\u5411 ",
                   allSelectedDirItems.length,
                   " \u9879"
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("span", { children: "\u8303\u56F4 \u5168\u90E8\u5408\u683C\u6765\u6E90" }),
-                /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("label", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { children: "\u8303\u56F4 \u5168\u90E8\u5408\u683C\u6765\u6E90" }),
+                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("label", { children: [
                   "\u6BCF\u6279\u56FE\u50CF\u6570 ",
-                  /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("input", { className: "f", "aria-label": "\u6BCF\u6279\u6316\u6398\u56FE\u50CF\u6570", type: "number", min: "1", max: "200", value: batchSize, disabled: submitting || !!started.current, onChange: (e) => setBatchSize(Number(e.target.value)) })
+                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("input", { className: "f", "aria-label": "\u6BCF\u6279\u6316\u6398\u56FE\u50CF\u6570", type: "number", min: "1", max: "200", value: batchSize, disabled: submitting || !!started.current, onChange: (e) => setBatchSize(Number(e.target.value)) })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("span", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("span", { children: [
                   "\u6A21\u578B ",
                   model.view?.selection?.model_id || "\u672A\u914D\u7F6E"
                 ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("div", { className: "exp-summarybar", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("span", { id: "kb-run-check", role: "status", children: validationProblem || "\u5DF2\u6EE1\u8DB3\u542F\u52A8\u6761\u4EF6" }),
-                /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("div", { className: "exp-actions", children: /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "exp-summarybar", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { id: "kb-run-check", role: "status", children: validationProblem || "\u5DF2\u6EE1\u8DB3\u542F\u52A8\u6761\u4EF6" }),
+                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "exp-actions", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
                   Button,
                   {
                     type: "button",
@@ -14684,34 +14849,34 @@ var __IadClientBundle__ = (() => {
                   }
                 ) })
               ] }),
-              formError && /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("div", { id: "form-alert", className: "kb-setup-error", role: "alert", children: formError })
+              formError && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { id: "form-alert", className: "kb-setup-error", role: "alert", children: formError })
             ] })
           ]
         }
       ),
-      editingDir && /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)(Modal, { title: "\u7F16\u8F91\u6316\u6398\u65B9\u5411", className: "iad-drawer", id: "kb-dir-drawer", onClose: closeDirDrawer, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("div", { className: "iad-dialog-body", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("label", { className: "iad-field", htmlFor: "kb-dir-edit-name", children: [
+      editingDir && /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(Modal, { title: "\u7F16\u8F91\u6316\u6398\u65B9\u5411", className: "iad-drawer", id: "kb-dir-drawer", onClose: closeDirDrawer, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "iad-dialog-body", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("label", { className: "iad-field", htmlFor: "kb-dir-edit-name", children: [
             "\u6807\u9898",
-            /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("input", { id: "kb-dir-edit-name", maxLength: 120, value: editingName, onChange: (event) => setEditingName(event.target.value) })
+            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("input", { id: "kb-dir-edit-name", maxLength: 120, value: editingName, onChange: (event) => setEditingName(event.target.value) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("label", { className: "iad-field", htmlFor: "kb-dir-edit-text", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("label", { className: "iad-field", htmlFor: "kb-dir-edit-text", children: [
             "\u63CF\u8FF0",
-            /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("textarea", { id: "kb-dir-edit-text", rows: 9, value: editingText, onChange: (event) => setEditingText(event.target.value) })
+            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("textarea", { id: "kb-dir-edit-text", rows: 9, value: editingText, onChange: (event) => setEditingText(event.target.value) })
           ] }),
-          dirEditError && /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("p", { id: "kb-dir-edit-error", role: "alert", children: dirEditError })
+          dirEditError && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("p", { id: "kb-dir-edit-error", role: "alert", children: dirEditError })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("footer", { className: "iad-dialog-footer", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(Button, { id: "kb-dir-cancel", onClick: closeDirDrawer, children: "\u53D6\u6D88" }),
-          /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(Button, { variant: "primary", id: "kb-dir-save", onClick: saveDirEdit, children: "\u4FDD\u5B58" })
+        /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("footer", { className: "iad-dialog-footer", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(Button, { id: "kb-dir-cancel", onClick: closeDirDrawer, children: "\u53D6\u6D88" }),
+          /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(Button, { variant: "primary", id: "kb-dir-save", onClick: saveDirEdit, children: "\u4FDD\u5B58" })
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(KnowledgeConfirmation, { state: confirmState, onClose: () => setConfirmState(null) })
+      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(KnowledgeConfirmation, { state: confirmState, onClose: () => setConfirmState(null) })
     ] });
   }
 
   // src/client/components/KnowledgePage.tsx
-  var import_jsx_runtime63 = __require("react/jsx-runtime");
+  var import_jsx_runtime64 = __require("react/jsx-runtime");
   function formatDuration(sec) {
     if (sec == null) return "\u2014";
     const m = Math.floor(sec / 60);
@@ -14838,7 +15003,7 @@ var __IadClientBundle__ = (() => {
     const selectedVersionId = view.job === selectedJob?.id && resultVersions.some((version) => version.version_id === view.version) ? view.version : selectedJob?.knowledgeVersionId;
     const canMaintain = !!selectedVersionId && versionsResource.data?.current_version_id === selectedVersionId;
     const checkQuery = new URLSearchParams({ version_id: selectedVersionId || "", page: String(entryPage), page_size: "8", search: knowledgeSearch, review_status: knowledgeStatus });
-    const checksResource = useResource(selectedVersionId ? `/knowledge/details?${checkQuery}` : null, revision + refreshRevision);
+    const checksResource = useResource(selectedJob?.status === "completed" && selectedVersionId ? `/knowledge/details?${checkQuery}` : null, revision + refreshRevision);
     const filteredChecks = checksResource.data?.items || [];
     const maxEntryPages = Math.max(1, Math.ceil((checksResource.data?.total || 0) / 8));
     const currentEntryPage = Math.min(maxEntryPages, Math.max(1, entryPage));
@@ -14901,7 +15066,7 @@ var __IadClientBundle__ = (() => {
           try {
             const version = await request(
               `/knowledge/versions/${encodeURIComponent(selectedVersionId)}/checks/remove`,
-              { submission_id: crypto.randomUUID(), check_id: item.id }
+              { submission_id: v4_default(), check_id: item.id }
             );
             workspace.updateView(pageId, { job: selectedJob.id, version: version.version_id });
             updated();
@@ -14913,17 +15078,17 @@ var __IadClientBundle__ = (() => {
       });
     };
     const openCreate = () => workspace.updateView(pageId, { tab: "setup" });
-    return /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { id: "knowledge-page", className: "iad-knowledge-page", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: `kb-v45 v46-app ${createOpen ? "kb-creating" : ""}`, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "kb-v45-main", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "main-inner", children: [
-        !createOpen && /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(import_jsx_runtime63.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("header", { className: "topline", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "titlebar", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h1", { children: "\u77E5\u8BC6\u6316\u6398" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "actions", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(Button, { variant: "primary", id: "create-btn", onClick: openCreate, children: "\uFF0B \u65B0\u5EFA\u6316\u6398" }) })
+    return /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { id: "knowledge-page", className: "iad-knowledge-page", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: `kb-v45 v46-app ${createOpen ? "kb-creating" : ""}`, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "kb-v45-main", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "main-inner", children: [
+        !createOpen && /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(import_jsx_runtime64.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("header", { className: "topline", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "titlebar", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h1", { children: "\u77E5\u8BC6\u6316\u6398" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "actions", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(Button, { variant: "primary", id: "create-btn", onClick: openCreate, children: "\uFF0B \u65B0\u5EFA\u6316\u6398" }) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "context", "aria-label": "\u9009\u62E9\u6570\u636E\u8303\u56F4", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "control", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("label", { className: "label", htmlFor: "dataset", children: "\u6570\u636E\u96C6" }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("section", { className: "context", "aria-label": "\u9009\u62E9\u6570\u636E\u8303\u56F4", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "control", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("label", { className: "label", htmlFor: "dataset", children: "\u6570\u636E\u96C6" }),
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                 Select,
                 {
                   id: "dataset",
@@ -14931,13 +15096,13 @@ var __IadClientBundle__ = (() => {
                   "aria-label": "\u5F53\u524D\u6570\u636E\u96C6",
                   value: selectedParentId,
                   onChange: (e) => handleParentChange(e.target.value),
-                  children: parentGroups.map((g) => /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: g.group_id, children: g.name }, g.group_id))
+                  children: parentGroups.map((g) => /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: g.group_id, children: g.name }, g.group_id))
                 }
               )
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "control", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("label", { className: "label", htmlFor: "subset", children: "\u5B50\u6570\u636E\u96C6" }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "control", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("label", { className: "label", htmlFor: "subset", children: "\u5B50\u6570\u636E\u96C6" }),
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                 Select,
                 {
                   id: "subset",
@@ -14945,11 +15110,11 @@ var __IadClientBundle__ = (() => {
                   "aria-label": "\u5B50\u6570\u636E\u96C6",
                   value: selectedChildId,
                   onChange: (e) => handleChildChange(e.target.value),
-                  children: currentChildDatasets.map((d) => /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: d.dataset_id, children: d.name }, d.dataset_id))
+                  children: currentChildDatasets.map((d) => /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: d.dataset_id, children: d.name }, d.dataset_id))
                 }
               )
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "kb-context-actions", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "kb-context-actions", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
               RefreshIconButton,
               {
                 id: "kb-refresh",
@@ -14958,16 +15123,16 @@ var __IadClientBundle__ = (() => {
                 onClick: handleRefresh
               }
             ) }),
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "context-info", id: "dataset-info" })
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "context-info", id: "dataset-info" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "panel", "aria-labelledby": "jobs-heading", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "panelbar", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("h2", { id: "jobs-heading", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("section", { className: "panel", "aria-labelledby": "jobs-heading", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "panelbar", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("h2", { id: "jobs-heading", children: [
                 "\u6316\u6398\u4F5C\u4E1A",
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { "aria-hidden": "true", className: "count hide", id: "jobs-count" })
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { "aria-hidden": "true", className: "count hide", id: "jobs-count" })
               ] }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "filterset", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+              scopedJobs.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "filterset", id: "jobs-filterset", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                   "input",
                   {
                     className: "f",
@@ -14981,7 +15146,7 @@ var __IadClientBundle__ = (() => {
                     }
                   }
                 ),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
                   Select,
                   {
                     className: "f",
@@ -14993,15 +15158,15 @@ var __IadClientBundle__ = (() => {
                       setJobPage(1);
                     },
                     children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "all", children: "\u5168\u90E8\u72B6\u6001" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "completed", children: "\u5DF2\u5B8C\u6210" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "running", children: "\u8FD0\u884C\u4E2D" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "interrupted", children: "\u5DF2\u4E2D\u65AD" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "failed", children: "\u5931\u8D25" })
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "all", children: "\u5168\u90E8\u72B6\u6001" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "completed", children: "\u5DF2\u5B8C\u6210" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "running", children: "\u8FD0\u884C\u4E2D" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "interrupted", children: "\u5DF2\u4E2D\u65AD" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "failed", children: "\u5931\u8D25" })
                     ]
                   }
                 ),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                   ClearFilterButton,
                   {
                     id: "kb-clear-job-filters",
@@ -15017,16 +15182,16 @@ var __IadClientBundle__ = (() => {
                 )
               ] })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "tableframe", id: "jobs-table-frame", style: { minHeight: maxJobPages > 1 ? "465px" : "" }, children: filteredJobs.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("table", { className: "jobs-table", id: "jobs-table", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("tr", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { style: { width: "36%" }, children: "\u4F5C\u4E1A\u540D\u79F0" }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { children: "\u72B6\u6001" }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { className: "num", title: "\u5173\u8054\u53D1\u5E03\u77E5\u8BC6\u7248\u672C\u4E2D\u7684\u5224\u636E\u6570\u91CF", children: "\u5224\u636E\u6570" }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { children: "\u8017\u65F6" }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("th", { className: "right", children: "\u64CD\u4F5C" })
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "tableframe", id: "jobs-table-frame", style: { minHeight: maxJobPages > 1 ? "465px" : "" }, children: filteredJobs.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("table", { className: "jobs-table", id: "jobs-table", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { style: { width: "36%" }, children: "\u4F5C\u4E1A\u540D\u79F0" }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { children: "\u72B6\u6001" }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { className: "num", title: "\u5173\u8054\u53D1\u5E03\u77E5\u8BC6\u7248\u672C\u4E2D\u7684\u5224\u636E\u6570\u91CF", children: "\u5224\u636E\u6570" }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { children: "\u8017\u65F6" }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { className: "right", children: "\u64CD\u4F5C" })
               ] }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("tbody", { id: "job-rows", children: pageJobs.map((j) => /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("tbody", { id: "job-rows", children: pageJobs.map((j) => /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
                 "tr",
                 {
                   tabIndex: 0,
@@ -15042,34 +15207,34 @@ var __IadClientBundle__ = (() => {
                     }
                   },
                   children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "jobtitle", title: j.name, children: j.name }) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(JobStatusButton, { job: polling.jobs.find((job) => job.run_id === j.id), onClick: () => setJobDetails(polling.jobs.find((job) => job.run_id === j.id).root_run_id), children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: `status ${j.statusBadgeClass}`, children: j.statusLabel }) }) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { className: "num", children: j.count ?? "\u2014" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { children: j.at }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { children: j.durationText }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "jobact", onClick: (e) => e.stopPropagation(), children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(JobStatusAction, { job: polling.jobs.find((job) => job.run_id === j.id), onClick: () => setJobDetails(polling.jobs.find((job) => job.run_id === j.id).root_run_id) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(IconButton, { icon: "prompt", type: "button", title: "\u67E5\u770B\u63D0\u793A\u8BCD", label: "\u67E5\u770B\u63D0\u793A\u8BCD", "data-job-prompt": j.id, onClick: () => openJobPrompt(j.id) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(IconButton, { icon: "delete", type: "button", title: "\u5220\u9664\u4F5C\u4E1A", label: `\u5220\u9664\u4F5C\u4E1A ${j.name}`, "data-remove-job": j.id, onClick: () => askDeleteJob(j.id) })
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "jobtitle", title: j.name, children: j.name }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(JobStatusButton, { job: polling.jobs.find((job) => job.run_id === j.id), onClick: () => setJobDetails(polling.jobs.find((job) => job.run_id === j.id).root_run_id), children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: `status ${j.statusBadgeClass}`, children: j.statusLabel }) }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { className: "num", children: j.count ?? "\u2014" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { children: j.at }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { children: j.durationText }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "jobact", onClick: (e) => e.stopPropagation(), children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(JobStatusAction, { job: polling.jobs.find((job) => job.run_id === j.id), onClick: () => setJobDetails(polling.jobs.find((job) => job.run_id === j.id).root_run_id) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(IconButton, { icon: "prompt", type: "button", title: "\u67E5\u770B\u63D0\u793A\u8BCD", label: "\u67E5\u770B\u63D0\u793A\u8BCD", "data-job-prompt": j.id, onClick: () => openJobPrompt(j.id) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(IconButton, { icon: "delete", type: "button", title: "\u5220\u9664\u4F5C\u4E1A", label: `\u5220\u9664\u4F5C\u4E1A ${j.name}`, "data-remove-job": j.id, onClick: () => askDeleteJob(j.id) })
                     ] }) })
                   ]
                 },
                 j.id
               )) })
-            ] }) : /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { id: "jobs-empty", className: "tableempty", children: scopedJobs.length ? "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u6316\u6398\u4F5C\u4E1A\u3002" : polling.loading ? "\u6B63\u5728\u8BFB\u53D6\u6316\u6398\u4F5C\u4E1A\u2026" : "\u5F53\u524D\u8303\u56F4\u8FD8\u6CA1\u6709\u6316\u6398\u4F5C\u4E1A\uFF0C\u53EF\u4EE5\u521B\u5EFA\u65B0\u6316\u6398\u3002" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(Pagination, { id: "job-pager", total: filteredJobs.length, page: currentJobPage, size: jobsPerPage, onPage: setJobPage, label: "\u6316\u6398\u4F5C\u4E1A" })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { id: "jobs-empty", className: "tableempty", children: scopedJobs.length ? "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u6316\u6398\u4F5C\u4E1A\u3002" : polling.loading ? "\u6B63\u5728\u8BFB\u53D6\u6316\u6398\u4F5C\u4E1A\u2026" : "\u5F53\u524D\u6CA1\u6709\u6316\u6398\u4F5C\u4E1A" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(Pagination, { id: "job-pager", total: filteredJobs.length, page: currentJobPage, size: jobsPerPage, onPage: setJobPage, label: "\u6316\u6398\u4F5C\u4E1A" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("section", { className: "panel", id: "knowledge-panel", "aria-labelledby": "knowledge-heading", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "panelbar knowledgebar", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("h2", { id: "knowledge-heading", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("section", { className: "panel", id: "knowledge-panel", "aria-labelledby": "knowledge-heading", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "panelbar knowledgebar", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("h2", { id: "knowledge-heading", children: [
                   "\u77E5\u8BC6\u6761\u76EE",
-                  /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { "aria-hidden": "true", className: "count hide", id: "knowledge-count" })
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { "aria-hidden": "true", className: "count hide", id: "knowledge-count" })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "scope-name hide", id: "knowledge-job-name" })
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "scope-name hide", id: "knowledge-job-name" })
               ] }),
-              selectedJob?.knowledgeVersionId ? /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "filterset", id: "knowledge-filterset", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+              selectedJob?.status === "completed" && versions.find((version) => version.version_id === selectedVersionId)?.check_count ? /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "filterset", id: "knowledge-filterset", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                   "input",
                   {
                     className: "f",
@@ -15083,7 +15248,7 @@ var __IadClientBundle__ = (() => {
                     }
                   }
                 ),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
                   Select,
                   {
                     className: "f",
@@ -15095,15 +15260,15 @@ var __IadClientBundle__ = (() => {
                       setEntryPage(1);
                     },
                     children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "all", children: "\u5168\u90E8\u6761\u76EE" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "pending", children: "\u5F85\u6838\u5B9E" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "confirmed", children: "\u5DF2\u901A\u8FC7" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "rejected", children: "\u5DF2\u9A73\u56DE" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("option", { value: "conflict", children: "\u5B58\u5728\u77DB\u76FE" })
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "all", children: "\u5168\u90E8\u6761\u76EE" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "pending", children: "\u5F85\u6838\u5B9E" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "confirmed", children: "\u5DF2\u901A\u8FC7" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "rejected", children: "\u5DF2\u9A73\u56DE" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "conflict", children: "\u5B58\u5728\u77DB\u76FE" })
                     ]
                   }
                 ),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                   ClearFilterButton,
                   {
                     id: "kb-clear-knowledge-filters",
@@ -15119,16 +15284,16 @@ var __IadClientBundle__ = (() => {
                 )
               ] }) : null
             ] }),
-            resultVersions.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("label", { className: "control", children: [
+            selectedJob?.status === "completed" && resultVersions.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("label", { className: "control", children: [
               "\u7ED3\u679C\u7248\u672C",
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                 Select,
                 {
                   className: "f",
                   "aria-label": "\u77E5\u8BC6\u7ED3\u679C\u7248\u672C",
                   value: selectedVersionId || "",
                   onChange: (event) => workspace.updateView(pageId, { job: selectedJob.id, version: event.target.value }),
-                  children: resultVersions.map((version) => /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("option", { value: version.version_id, children: [
+                  children: resultVersions.map((version) => /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("option", { value: version.version_id, children: [
                     version.manually_edited ? "\u7EF4\u62A4\u7248\u672C" : "\u4F5C\u4E1A\u51BB\u7ED3\u7248\u672C",
                     " ",
                     version.version_id.slice(-8)
@@ -15136,14 +15301,14 @@ var __IadClientBundle__ = (() => {
                 }
               )
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "knowledge-wrap", id: "knowledge-body", children: !selectedJob ? /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "blank", children: "\u8BF7\u9009\u62E9\u4E0A\u65B9\u7684\u6316\u6398\u4F5C\u4E1A\u67E5\u770B\u77E5\u8BC6\u6761\u76EE\u3002" }) : selectedJob.status === "failed" && !selectedJob.knowledgeVersionId ? /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("p", { className: "iad-plain-empty", role: "status", children: "\u5F53\u524D\u4F5C\u4E1A\u4E0B\u6CA1\u6709\u5BF9\u5E94\u7684\u77E5\u8BC6" }) : !selectedJob.knowledgeVersionId ? /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "blank", children: selectedJob.status === "running" ? "\u4F5C\u4E1A\u6B63\u5728\u8FD0\u884C\uFF0C\u77E5\u8BC6\u53D1\u5E03\u540E\u5C06\u5728\u8FD9\u91CC\u663E\u793A\u3002" : "\u5F53\u524D\u4F5C\u4E1A\u4E0B\u6CA1\u6709\u5BF9\u5E94\u7684\u77E5\u8BC6" }) : checksResource.error ? /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("p", { role: "alert", children: checksResource.error }) : checksResource.loading ? /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "blank", children: "\u6B63\u5728\u8BFB\u53D6\u4F5C\u4E1A\u51BB\u7ED3\u77E5\u8BC6" }) : filteredChecks.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "blank", children: knowledgeSearch || knowledgeStatus !== "all" ? "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u77E5\u8BC6\u6761\u76EE\u3002" : "\u5F53\u524D\u4F5C\u4E1A\u6682\u65E0\u77E5\u8BC6\u6761\u76EE\u3002" }) : /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "knowledge-list", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "knowledge-head", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { children: "\u77E5\u8BC6\u6761\u76EE" }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { children: "\u63CF\u8FF0" }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { children: "\u652F\u6301/\u53CD\u5BF9" }),
-                /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { children: "\u64CD\u4F5C" })
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "knowledge-wrap", id: "knowledge-body", children: !selectedJob ? /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u77E5\u8BC6\u6761\u76EE" }) : selectedJob.status !== "completed" ? /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u4F5C\u4E1A\u6CA1\u6709\u5DF2\u53D1\u5E03\u7ED3\u679C" }) : !selectedJob.knowledgeVersionId ? /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u77E5\u8BC6\u6761\u76EE" }) : checksResource.error ? /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { role: "alert", children: checksResource.error }) : checksResource.loading ? /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "blank", children: "\u6B63\u5728\u8BFB\u53D6\u4F5C\u4E1A\u51BB\u7ED3\u77E5\u8BC6" }) : filteredChecks.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "blank", children: knowledgeSearch || knowledgeStatus !== "all" ? "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u77E5\u8BC6\u6761\u76EE\u3002" : "\u5F53\u524D\u4F5C\u4E1A\u6682\u65E0\u77E5\u8BC6\u6761\u76EE\u3002" }) : /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "knowledge-list", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "knowledge-head", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { children: "\u77E5\u8BC6\u6761\u76EE" }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { children: "\u63CF\u8FF0" }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { children: "\u652F\u6301/\u53CD\u5BF9" }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { children: "\u64CD\u4F5C" })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: "knowledge-items", children: pagedChecks.map((item) => /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "knowledge-items", children: pagedChecks.map((item) => /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
                 "div",
                 {
                   className: "knowledge-row",
@@ -15159,9 +15324,9 @@ var __IadClientBundle__ = (() => {
                     }
                   },
                   children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "row-title knowledge-entry-name", children: item.name }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("span", { className: "row-desc knowledge-entry-description", title: item.summary, children: item.summary }),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "row-title knowledge-entry-name", children: item.name }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "row-desc knowledge-entry-description", title: item.summary, children: item.summary }),
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
                       "span",
                       {
                         className: "row-count col-evidence-count",
@@ -15173,20 +15338,20 @@ var __IadClientBundle__ = (() => {
                         ]
                       }
                     ),
-                    /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("span", { className: "col-action jobact", onClick: (e) => e.stopPropagation(), children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(IconButton, { icon: "details", type: "button", className: "knowledge-entry-view", "data-view-entry": item.id, label: `\u67E5\u770B\u77E5\u8BC6\u6761\u76EE ${item.name}`, title: "\u67E5\u770B\u77E5\u8BC6\u6761\u76EE", onClick: () => openDetail(item) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(IconButton, { icon: "delete", type: "button", className: "knowledge-entry-delete", "data-delete-entry": item.id, disabled: !canMaintain, label: `\u5220\u9664\u77E5\u8BC6\u6761\u76EE ${item.name}`, title: "\u5220\u9664\u77E5\u8BC6\u6761\u76EE", onClick: () => askDeleteEntry(item) })
+                    /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("span", { className: "col-action jobact", onClick: (e) => e.stopPropagation(), children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(IconButton, { icon: "details", type: "button", className: "knowledge-entry-view", "data-view-entry": item.id, label: `\u67E5\u770B\u77E5\u8BC6\u6761\u76EE ${item.name}`, title: "\u67E5\u770B\u77E5\u8BC6\u6761\u76EE", onClick: () => openDetail(item) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(IconButton, { icon: "delete", type: "button", className: "knowledge-entry-delete", "data-delete-entry": item.id, disabled: !canMaintain, label: `\u5220\u9664\u77E5\u8BC6\u6761\u76EE ${item.name}`, title: "\u5220\u9664\u77E5\u8BC6\u6761\u76EE", onClick: () => askDeleteEntry(item) })
                     ] })
                   ]
                 },
                 item.id
               )) }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(Pagination, { total: checksResource.data?.total || 0, page: currentEntryPage, size: 8, onPage: setEntryPage, label: "\u77E5\u8BC6\u6761\u76EE" })
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(Pagination, { total: checksResource.data?.total || 0, page: currentEntryPage, size: 8, onPage: setEntryPage, label: "\u77E5\u8BC6\u6761\u76EE" })
             ] }) })
           ] }),
-          (loadError || polling.error || versionsResource.error) && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("p", { role: "alert", children: loadError || polling.error || versionsResource.error })
+          (loadError || polling.error || versionsResource.error) && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { role: "alert", children: loadError || polling.error || versionsResource.error })
         ] }),
-        createOpen && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+        createOpen && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
           KnowledgeMiningCreate,
           {
             dataset,
@@ -15209,8 +15374,8 @@ var __IadClientBundle__ = (() => {
           selectedChildId
         )
       ] }) }),
-      promptJob && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(PromptDrawer, { title: "\u67E5\u770B\u63D0\u793A\u8BCD", text: promptJob.prompt || "\u8BE5\u5386\u53F2\u4F5C\u4E1A\u672A\u8BB0\u5F55\u51BB\u7ED3\u63D0\u793A\u8BCD\u3002", onClose: closePrompt }),
-      detailItem && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+      promptJob && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(PromptDrawer, { title: "\u67E5\u770B\u63D0\u793A\u8BCD", text: promptJob.prompt || "\u8BE5\u5386\u53F2\u4F5C\u4E1A\u672A\u8BB0\u5F55\u51BB\u7ED3\u63D0\u793A\u8BCD\u3002", onClose: closePrompt }),
+      detailItem && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
         KnowledgeEntryDialog,
         {
           ...detailItem,
@@ -15222,7 +15387,7 @@ var __IadClientBundle__ = (() => {
         },
         `${detailItem.versionId}:${detailItem.checkId}`
       ),
-      jobDetails && polling.jobs.some((job) => job.run_id === jobDetails || job.root_run_id === jobDetails) && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+      jobDetails && polling.jobs.some((job) => job.run_id === jobDetails || job.root_run_id === jobDetails) && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
         JobStatusDrawer,
         {
           job: polling.jobs.find((job) => job.run_id === jobDetails || job.root_run_id === jobDetails),
@@ -15230,14 +15395,14 @@ var __IadClientBundle__ = (() => {
           stale: polling.syncState === "stale"
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(KnowledgeConfirmation, { state: confirmState, onClose: () => setConfirmState(null) }),
-      /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { className: `toast ${toastMsg ? "show" : ""}`, id: "toast", role: "status", children: toastMsg })
+      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(KnowledgeConfirmation, { state: confirmState, onClose: () => setConfirmState(null) }),
+      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: `toast ${toastMsg ? "show" : ""}`, id: "toast", role: "status", children: toastMsg })
     ] }) });
   }
 
   // src/client/components/ReviewRecords.tsx
   var import_react58 = __require("react");
-  var import_jsx_runtime64 = __require("react/jsx-runtime");
+  var import_jsx_runtime65 = __require("react/jsx-runtime");
   function ReviewRecords({ datasetId, page, search, selected, revision, onPage, onSearch, onSelect, onQueue, detail }) {
     const [result, setResult] = (0, import_react58.useState)(null);
     const [loading, setLoading] = (0, import_react58.useState)(true), [error2, setError] = (0, import_react58.useState)("");
@@ -15256,43 +15421,43 @@ var __IadClientBundle__ = (() => {
       });
       return () => controller.abort();
     }, [datasetId, page, search, revision, retry]);
-    const pagination = result && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(Pagination, { total: result.total, page, unit: "\u6761\u8BB0\u5F55", onPage });
+    const pagination = result && /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(Pagination, { total: result.total, page, unit: "\u6761\u8BB0\u5F55", onPage });
     const showingDetail = !loading && !error2 && result?.items.some((record) => record.sample_id === selected);
-    return /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: showingDetail ? "iad-main" : "", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("section", { className: "iad-review-records", "aria-label": "\u590D\u6838\u8BB0\u5F55", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("label", { className: "iad-field", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: showingDetail ? "iad-main" : "", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("section", { className: "iad-review-records", "aria-label": "\u590D\u6838\u8BB0\u5F55", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("label", { className: "iad-field", children: [
           "\u641C\u7D22\u590D\u6838\u8BB0\u5F55",
-          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("input", { "aria-label": "\u641C\u7D22\u590D\u6838\u8BB0\u5F55", placeholder: "\u56FE\u50CF\u540D\u3001\u590D\u6838\u4EBA\u6216\u8BF4\u660E", value: search, onChange: (event) => onSearch(event.target.value) })
+          /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("input", { "aria-label": "\u641C\u7D22\u590D\u6838\u8BB0\u5F55", placeholder: "\u56FE\u50CF\u540D\u3001\u590D\u6838\u4EBA\u6216\u8BF4\u660E", value: search, onChange: (event) => onSearch(event.target.value) })
         ] }),
-        error2 ? /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { role: "alert", className: "iad-error", children: [
+        error2 ? /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { role: "alert", className: "iad-error", children: [
           error2,
-          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("button", { onClick: () => setRetry((value) => value + 1), children: "\u91CD\u65B0\u52A0\u8F7D\u8BB0\u5F55" })
-        ] }) : loading ? /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { role: "status", children: "\u52A0\u8F7D\u590D\u6838\u8BB0\u5F55\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(import_jsx_runtime64.Fragment, { children: [
-          result?.items.length ? /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "iad-table-scroll", role: "region", "aria-label": "\u590D\u6838\u5386\u53F2\u8868\u683C", tabIndex: 0, onFocus: (event) => {
+          /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("button", { onClick: () => setRetry((value) => value + 1), children: "\u91CD\u65B0\u52A0\u8F7D\u8BB0\u5F55" })
+        ] }) : loading ? /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { role: "status", children: "\u52A0\u8F7D\u590D\u6838\u8BB0\u5F55\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(import_jsx_runtime65.Fragment, { children: [
+          result?.items.length ? /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("div", { className: "iad-table-scroll", role: "region", "aria-label": "\u590D\u6838\u5386\u53F2\u8868\u683C", tabIndex: 0, onFocus: (event) => {
             if (event.target === event.currentTarget) event.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" });
-          }, children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("table", { className: "iad-resource-table", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("caption", { children: "\u4EBA\u5DE5\u88C1\u51B3\u5386\u53F2" }),
-            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("tr", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { children: "\u56FE\u50CF" }),
-              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { children: "\u4EBA\u5DE5\u88C1\u51B3" }),
-              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { children: "\u590D\u6838\u4EBA / \u65F6\u95F4" }),
-              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { children: "\u590D\u6838\u8BF4\u660E" }),
-              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("th", { children: "\u64CD\u4F5C" })
+          }, children: /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("table", { className: "iad-resource-table", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("caption", { children: "\u4EBA\u5DE5\u88C1\u51B3\u5386\u53F2" }),
+            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("tr", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u56FE\u50CF" }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u4EBA\u5DE5\u88C1\u51B3" }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u590D\u6838\u4EBA / \u65F6\u95F4" }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u590D\u6838\u8BF4\u660E" }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u64CD\u4F5C" })
             ] }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("tbody", { children: result.items.map((record) => /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("tr", { "data-decision-id": record.decision_id, "data-selected": record.sample_id === selected, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { title: record.relative_path, children: record.relative_path }),
-              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { children: reviewLabel(record.decision) }),
-              /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("td", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("tbody", { children: result.items.map((record) => /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("tr", { "data-decision-id": record.decision_id, "data-selected": record.sample_id === selected, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { title: record.relative_path, children: record.relative_path }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: reviewLabel(record.decision) }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("td", { children: [
                 record.reviewer,
-                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("br", {}),
-                record.submitted_at ? /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("time", { dateTime: record.submitted_at, children: new Date(record.submitted_at).toLocaleString() }) : "\u672A\u8BB0\u5F55\u63D0\u4EA4\u65F6\u95F4"
+                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("br", {}),
+                record.submitted_at ? /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("time", { dateTime: record.submitted_at, children: new Date(record.submitted_at).toLocaleString() }) : "\u672A\u8BB0\u5F55\u63D0\u4EA4\u65F6\u95F4"
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { children: record.comment || "\u2014" }),
-              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("button", { onClick: () => onSelect(record.sample_id), children: "\u67E5\u770B\u6837\u672C" }) })
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: record.comment || "\u2014" }),
+              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("button", { onClick: () => onSelect(record.sample_id), children: "\u67E5\u770B\u6837\u672C" }) })
             ] }, record.decision_id)) })
-          ] }) }) : /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "iad-empty", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { children: search ? "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u590D\u6838\u8BB0\u5F55\u3002" : "\u5F53\u524D\u8303\u56F4\u6682\u65E0\u590D\u6838\u8BB0\u5F55\u3002" }),
-            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("button", { onClick: onQueue, children: "\u524D\u5F80\u590D\u6838\u961F\u5217" })
+          ] }) }) : /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "iad-empty", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { children: search ? "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u590D\u6838\u8BB0\u5F55\u3002" : "\u5F53\u524D\u8303\u56F4\u6682\u65E0\u590D\u6838\u8BB0\u5F55\u3002" }),
+            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("button", { onClick: onQueue, children: "\u524D\u5F80\u590D\u6838\u961F\u5217" })
           ] }),
           pagination
         ] })
@@ -15471,9 +15636,6 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 .exp-heading {margin-bottom:18px}
 .exp-heading h1 {font-size:24px}
 .exp-scope{margin-top:4px;margin-bottom:12px}
-.exp-job-list{padding:0;overflow:hidden}
-.exp-job-list-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 20px;border-bottom:1px solid #e2e8f0}
-.exp-job-list-head h2{font-size:15px;font-weight:650;margin:0}
 .exp-job-list-actions{display:flex;align-items:center;gap:12px}
 .exp-job-list-actions .exp-input{min-width:154px;gap:0}
 .exp-job-list-actions select{height:35px;width:158px}
@@ -15493,36 +15655,18 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 .exp-job-dataset-children{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere;color:#172338;font-size:13px;margin-top:2px}
 .exp-job-time,.exp-job-duration{font-variant-numeric:tabular-nums;font-size:13px!important;color:#172338!important}
 .exp-job-empty{padding:36px;text-align:center;font-size:13px;color:#76869b}
-.exp-job-current{padding:20px 23px 20px;margin-bottom:16px}
-.exp-job-current-top{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:18px}
-.exp-job-current-title{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.exp-job-current-title strong{font-size:16px;font-weight:650;color:#203650}
-.exp-job-current-top .iad-button{flex:none}
-.exp-job-stats{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:12px;color:#667890}
-.exp-job-stats strong{font-weight:600;color:#364a68}
-.exp-job-stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px}
-.exp-job-stage{display:flex;gap:10px;align-items:flex-start;position:relative;min-width:0;color:#8795a9;font-size:12px}
-.exp-job-stage:not(:last-child)::after{content:'';position:absolute;height:1px;background:#dce4ef;top:13px;left:37px;right:-4px}
-.exp-job-stage[data-state="done"]::after{background:#b6c8ef}
-.exp-job-stage-icon{position:relative;z-index:1;border:1px solid #cad5e4;background:white;color:#7a8aa2;border-radius:50%;display:grid;place-items:center;flex:none;width:27px;height:27px;font-size:12px}
-.exp-job-stage[data-state="done"] .exp-job-stage-icon{border-color:#a9c0eb;color:#285ecb;background:#edf3ff}
-.exp-job-stage[data-state="current"]{color:#2458c4;font-weight:600}
-.exp-job-stage[data-state="current"] .exp-job-stage-icon{background:#285ed6;color:#fff;border-color:#285ed6}
-.exp-job-stage-label{margin-top:4px;background:white;position:relative;z-index:1;padding-right:5px}
 .exp-job-running-indicator{display:inline-block;width:6px;height:6px;background:#3164d4;border-radius:50%;margin-right:2px}
 .exp-job-update-note{color:#667995;font-size:12px;margin:14px 0 0}
 .exp-job-table .exp-pill{font-size:12px;border-radius:4px;font-weight:500}
 .exp-pill.pending{color:#8e6d24;background:#fff5df}
 .exp-job-info{margin:0;color:#64758d;font-size:12px}
 .exp-job-prompt{white-space:pre-wrap;overflow-wrap:anywhere;background:#f7f9fc;border:1px solid #e2e8f0;border-radius:5px;padding:12px 14px;line-height:1.7;margin-top:6px;max-height:235px;overflow:auto;font-size:12px;color:#31425c}
-@media(max-width:980px){.exp-job-table{min-width:780px}.exp-job-stages{gap:7px}.exp-job-stage{font-size:11px}.exp-job-stats{gap:6px 12px}}
-@media(max-width:650px){.exp-job-current-top{flex-direction:column}.exp-job-stages{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:14px}.exp-job-stage::after{display:none}.exp-job-list-head{align-items:flex-start;flex-direction:column}.exp-job-list-actions{width:100%;justify-content:space-between}}
+@media(max-width:980px){.exp-job-table{min-width:780px}}
+@media(max-width:650px){.exp-job-list-actions{width:100%;justify-content:space-between}}
 
 
 .exp-unified-layout{display:flex;flex-direction:column;gap:18px;min-width:0}
 .exp-unified-layout>.exp-panel{width:100%;min-width:0;box-sizing:border-box}
-.exp-job-list-head{padding:18px 22px}
-.exp-job-list-head .exp-job-list-actions{margin-left:auto}
 .exp-job-table tbody tr[data-action="select-job"]{cursor:pointer;transition:background .12s}
 .exp-job-table tbody tr[data-action="select-job"]:hover{background:#f6f9ff}
 .exp-job-table tbody tr[data-selected="true"]{background:#eaf0ff}
@@ -15532,7 +15676,7 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 .exp-selected-result{padding:22px 24px 24px}
 .exp-selected-head{display:flex;align-items:center;justify-content:space-between;gap:18px;margin:0 0 19px}
 .exp-selected-head>div{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-.exp-selected-head h2,.exp-job-list-head h2{font-size:16px;font-weight:650;margin:0!important}
+.exp-selected-head h2{font-size:16px;font-weight:650;margin:0!important}
 .exp-selected-sub{font-size:12px;color:#6b7b93;line-height:1.4}
 .exp-result-summary{font-size:13px;color:#475a73;line-height:1.75;margin:0 0 22px;max-width:none}
 .exp-result-section-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 13px}
@@ -15672,6 +15816,7 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 .iad-workbench {container:workbench / inline-size;height:100%;box-sizing:border-box;overflow:auto;scrollbar-gutter:stable;min-width:0;padding:var(--iad-page-padding);color:var(--iad-text);background:var(--iad-canvas);font:var(--dsh-content-font-size,.875rem)/1.571429 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;}
 :is(.iad-workbench,.iad-detail-dialog,.iad-floating-menu-panel) * {box-sizing:border-box;}
 .iad-plain-empty{margin:0;padding:24px;color:var(--iad-text);font-size:var(--iad-font-size);line-height:1.6;font-weight:400;text-align:left;background:var(--iad-surface)}
+.iad-workbench .iad-result-empty{margin:0;padding:28px 16px;min-height:88px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;line-height:1.5;font-weight:400;color:#65758c}
 .iad-visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .iad-field select {width:100%;}
 .iad-workbench h1 {font-size:var(--iad-title-size);line-height:1.285714;margin:0;font-weight:600;}
@@ -15752,6 +15897,12 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 
   // src/client/styles/jobs.ts
   var jobsStyles = `
+.iad-job-list{min-width:0;overflow:hidden;padding:0;background:var(--iad-surface);border:1px solid var(--iad-panel-border);border-radius:6px;margin-bottom:20px;font-size:var(--iad-font-size)}
+.iad-job-list-header{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:70px;padding:18px 22px;border-bottom:1px solid var(--iad-border)}
+.iad-job-list-header>h2{margin:0;font-size:15px;font-weight:650}
+.iad-job-list-header .exp-job-list-actions{margin-left:auto}
+.iad-job-list>nav.iad-pagination{margin:0;padding:11px 18px;border-top:1px solid var(--iad-border)}
+@media(max-width:650px){.iad-job-list-header{align-items:flex-start;flex-direction:column}.iad-job-list-header .exp-job-list-actions{margin-left:0}}
 .iad-job-panel{min-width:0}.iad-job-panel>h2{margin-top:26px}
 .iad-job-drawer-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:22px 24px 28px;color:var(--iad-text);font-size:var(--iad-font-size)}
 .iad-job-statusline{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
@@ -15775,7 +15926,8 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 .iad-job-error{background:#faf5f5;border:1px solid #e7cfd0;border-radius:var(--iad-radius);padding:14px 15px;line-height:1.7;overflow-wrap:anywhere}
 .iad-job-error+.iad-job-error{margin-top:10px}.iad-job-error strong{display:block;font-size:var(--iad-font-size);margin-bottom:5px}.iad-job-error p{margin:0}.iad-job-error code{display:block;overflow-wrap:anywhere}
 .iad-job-note{font-size:12px;color:var(--iad-muted);line-height:1.65;margin:12px 0 0}
-.iad-job-drawer-footer{border-top:1px solid var(--iad-border);display:flex;justify-content:flex-end;padding:13px 24px;flex:none}
+.iad-job-drawer-footer{border-top:1px solid var(--iad-border);display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;padding:13px 24px;flex:none}
+.iad-job-drawer-footer p{flex-basis:100%;margin:0}
 @media(max-width:680px){.iad-job-drawer-body{padding:18px 16px}.iad-job-drawer-footer{padding:12px 16px}}
 `;
 
@@ -17079,7 +17231,7 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
   // src/client/styles/datasets.ts
   var datasetsStyles = `
 :root, [data-page="industrial-datasets"] {
-  --drawer-width: clamp(480px, 34vw, 560px);
+  --drawer-width: min(560px, 100vw);
   --line: #dfe5ee;
   --line-dark: #cbd5e1;
   --header: #f0f3f8;
@@ -17525,141 +17677,6 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 .iad-consistency-filter-chips{display:flex;gap:10px;padding:12px 16px 0;flex-wrap:wrap}
 @container workbench (max-width:1200px){.iad-consistency-gallery{grid-template-columns:repeat(4,minmax(0,1fr))}}
 
-
-/* =================== V26 Data Consistency Styles =================== */
-.dc-root{min-width:0}.dc-root .heading{margin-bottom:24px}.dc-scope{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin-bottom:22px}.dc-scope .field{gap:7px}.dc-scope .dc-parent{width:265px}.dc-scope .dc-children{width:410px}.dc-scope select{height:38px}
-.dc-section{margin:0 0 24px}.dc-section-heading{display:flex;align-items:center;justify-content:space-between;margin:0 0 12px;min-height:38px;gap:14px}.dc-section-heading h2{font-size:16px;font-weight:650;margin:0}.dc-actionbar{display:flex;gap:9px;align-items:center}.dc-icn{vertical-align:middle}
-.dc-table-panel{overflow:hidden;background:#fff;border:1px solid var(--border);border-radius:7px}.dc-table{border-collapse:collapse;width:100%;text-align:left;font-size:13px}.dc-table th{font-weight:600;color:#172338;background:#f6f8fb;padding:12px 18px;border-bottom:1px solid var(--border)}.dc-table td{padding:16px 18px;border-bottom:1px solid #ecf0f5;color:#172338;font-size:13px}.dc-table tbody tr:last-child td{border-bottom:0}.dc-table tbody tr{cursor:pointer}.dc-table tbody tr:hover{background:#f7f9fd}.dc-table tbody tr[data-selected=true]{background:#eaf0ff}.dc-table .dc-operations{text-align:right;white-space:nowrap;width:120px}.dc-mono{font-variant-numeric:tabular-nums}.dc-muted{color:#8190a5}.dc-state{color:#477cbe}.dc-state.completed{color:#177b53}.dc-state.failed{color:#b23c43}.dc-state.running{color:#285ed6}.dc-state.pending{color:#285ed6}.dc-table .dc-time{white-space:nowrap}.dc-empty{min-height:132px;display:flex;align-items:center;justify-content:center;color:#8492a6;background:#fff;border:1px solid var(--border);border-radius:7px;padding:24px;text-align:center}
-.dc-running{display:grid;gap:10px;padding:17px 20px;border:1px solid #d7e2f9;border-radius:7px;background:#f8fbff;margin-bottom:14px}.dc-running-header{display:flex;justify-content:space-between;align-items:center}.dc-stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.dc-stage{min-width:0;border-top:3px solid #dce3ed;padding-top:8px;font-size:12px;color:#8b99ab}.dc-stage.done{color:#28795f;border-color:#51a881}.dc-stage.current{color:#2558c4;border-color:#356be4;font-weight:600}
-.dc-result-tools{display:flex;align-items:center;gap:10px}.dc-result-tools select,.dc-result-tools input{height:36px}.dc-result-tools input{width:240px}.dc-result-tools select{width:140px}.dc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:15px}.dc-card{border:1px solid var(--border2);border-radius:7px;background:#fff;overflow:hidden;color:var(--ink);text-align:left;padding:0;transition:box-shadow .15s,border-color .15s}.dc-card:hover{border-color:#91aee8;box-shadow:0 5px 16px #183a6720}.dc-card-img{height:140px;display:flex;align-items:center;justify-content:center;background:#eef2f7;overflow:hidden;position:relative}.dc-card-img img{width:100%;height:100%;object-fit:cover}.dc-card-caption{padding:11px 12px 12px;min-width:0}.dc-card-caption strong{display:block;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;font-size:12px;font-weight:600}.dc-card-caption small{display:block;color:#7f8da2;font-size:11px;margin-top:3px}.dc-counter-pager{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:18px}.dc-counter-pager button{min-width:32px}
-.dc-drawer{width:min(510px,100vw);height:100dvh;overflow:auto;background:white;box-shadow:-15px 0 40px #11213b25;display:flex;flex-direction:column}.dc-drawer-header{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid var(--border)}.dc-drawer-header h2{margin:0;font-size:18px}.dc-drawer-content{padding:20px 24px}.dc-stats{display:grid;grid-template-columns:1fr 1fr;gap:14px}.dc-stat{padding:14px;border:1px solid var(--border);border-radius:5px}.dc-stat strong{display:block;font-size:26px;font-weight:650;line-height:1.5}.dc-stat span{font-size:12px;color:#7e8da1}.dc-stats-label{font-size:13px;margin:24px 0 10px;font-weight:600}.dc-metrics{border-collapse:collapse;width:100%}.dc-metrics td{border-bottom:1px solid var(--border2);padding:11px 4px;font-size:12px}.dc-metrics td+td{text-align:right}
-.dc-dialog-head{height:58px;padding:0 23px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex:none}.dc-dialog-head h2{font-size:17px;margin:0;font-weight:650}.dc-dialog-head-actions{display:flex;align-items:center;gap:8px}.dc-dialog-body{padding:20px 24px 24px;min-height:0;overflow:auto;flex:1}.dc-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.dc-compare-cell{min-width:0}.dc-compare-title{font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;margin:0 0 10px}.dc-compare-photo{height:268px;border:1px solid var(--border);border-radius:6px;background:#f0f3f7;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:zoom-in}.dc-compare-photo img{height:100%;width:100%;object-fit:contain}.dc-compare-photo .dc-bbox{position:absolute;border:2px solid #e88c26;background:transparent !important;box-shadow:none !important;pointer-events:none;box-sizing:border-box;left:32%;top:31%;width:16%;height:14%}.dc-compare-caption{font-size:12px;display:flex;gap:10px;justify-content:space-between;padding:10px 0;color:#53647c}.dc-candidate-strip{display:flex;gap:9px;overflow:auto;padding:10px 0 5px;scrollbar-width:thin}.dc-candidate{flex:none;position:relative;width:96px;height:80px;border:2px solid transparent;background:#f0f3f7;padding:0;border-radius:5px;overflow:hidden}.dc-candidate[aria-pressed=true]{border-color:var(--blue)}.dc-candidate:hover{border-color:#91aee8}.dc-candidate img{width:100%;height:100%;object-fit:cover}.dc-candidate small{position:absolute;bottom:2px;left:4px;background:#172b41c9;color:white;border-radius:3px;padding:1px 5px;font-size:11px}.dc-info{border-top:1px solid var(--border);margin-top:19px;padding-top:18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.dc-info h3{font-size:13px;margin:0 0 10px}.dc-info p{font-size:12px;color:#485972;line-height:1.8;margin:5px 0}.dc-decision-controls{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0}.dc-decision-controls label{display:inline-flex;align-items:center;gap:7px;font-size:12px}.dc-decision-controls input{height:16px;width:16px;accent-color:var(--blue)}.dc-note{width:100%;height:66px;padding:10px;border:1px solid #b7c5d9;border-radius:5px;resize:vertical;color:var(--ink)}.dc-dialog-footer{display:flex;gap:8px;justify-content:flex-end;padding:13px 24px;border-top:1px solid var(--border);flex:none}.dc-small-muted{font-size:11px;color:#8794a6}.dc-alert{border:1px solid #f3d4d4;background:#fff7f7;padding:12px;color:#ac4343;font-size:12px;border-radius:5px}.dc-dialog .dc-dialog-body label{font-size:12px}.dc-esc{display:none}
-@media(max-width:1000px){.dc-compare,.dc-info{grid-template-columns:1fr}.dc-compare-photo{height:230px}.dc-section-heading{flex-wrap:wrap}.dc-grid{grid-template-columns:repeat(auto-fill,minmax(154px,1fr))}}@media(max-width:650px){.dc-scope .dc-parent,.dc-scope .dc-children{width:100%}.dc-scope{display:grid}.dc-result-tools{width:100%;flex-wrap:wrap}.dc-result-tools input{width:100%}.dc-compare-photo{height:190px}.dc-table{min-width:720px}.dc-table-panel{overflow:auto}}
-
-/* V18: \u7EDF\u8BA1\u4E0E\u51B2\u7A81\u7F51\u683C\u5171\u7528\u540C\u4E00\u5957\u7C7B\u578B\u53E3\u5F84\uFF1B\u4FDD\u7559\u539F\u6709\u8868\u683C/\u56FE\u50CF\u6837\u5F0F\u3002 */
-.dc-stat-type:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
-.dc-drawer-total{display:flex;align-items:baseline;gap:12px;padding:6px 0 20px;border-bottom:1px solid var(--border)}
-.dc-drawer-total strong{font-size:33px;line-height:1.25;font-variant-numeric:tabular-nums;font-weight:650}
-.dc-drawer-total span{font-size:14px;color:#607087}
-.dc-drawer-type-list{display:grid;gap:0}
-.dc-stat-type{display:grid;grid-template-columns:1fr auto;align-items:center;gap:5px 16px;text-align:left;background:transparent;color:var(--ink);border:0;border-bottom:1px solid var(--border2);padding:15px 2px;cursor:pointer;width:100%;font:inherit}
-.dc-stat-type:hover{background:var(--surface-alt)}
-.dc-stat-type .dc-stat-label{font-size:13px;font-weight:550}
-.dc-stat-type .dc-stat-value{color:#1e3d7c;font-variant-numeric:tabular-nums;font-size:17px;font-weight:600}
-.dc-stat-track{height:5px;background:#ecf0f6;border-radius:4px;overflow:hidden;grid-column:1/-1}
-.dc-stat-track>span{display:block;height:100%;background:#4f7be2;border-radius:4px}
-.dc-result-tools{margin-left:auto}
-@media(max-width:650px){.dc-result-tools{margin-left:0}.dc-result-tools input{width:100%;max-width:240px}}
-
-/* V19 \u2013 compact model reasoning + final model verdict below the image comparison. */
-.dc-model-panel{border-top:1px solid var(--border);margin-top:16px;padding-top:17px}
-.dc-model-panel h3,.dc-review-panel h3{font-size:14px;font-weight:650;margin:0 0 9px;color:var(--ink)}
-.dc-model-panel p{margin:0;font-size:13px;line-height:1.85;color:#394b65}
-.dc-model-verdict{display:flex;align-items:center;flex-wrap:wrap;gap:10px 15px;background:#f4f7fc;border:1px solid #d9e3f4;border-radius:6px;margin-top:14px;padding:13px 15px}
-.dc-model-verdict .dc-verdict-label{font-size:13px;color:#53657f}
-.dc-model-verdict strong{font-size:14px;font-weight:650;color:#244b96}
-.dc-model-verdict .dc-verdict-pending{margin-left:auto;font-size:12px;color:#607189}
-.dc-review-panel{padding-top:16px;margin-top:17px;border-top:1px solid var(--border)}
-.dc-review-panel .dc-decision-controls{margin:10px 0 14px}
-.dc-review-panel .dc-note{height:58px;min-height:58px}
-.dc-dialog-body{scrollbar-gutter:stable}
-.dc-compare-photo{height:235px}
-.dc-dialog-head-actions button{white-space:nowrap}
-@media(max-width:1000px){.dc-compare-photo{height:210px}.dc-model-verdict .dc-verdict-pending{margin-left:0}}
-
-/* V22: Shared 38px controls, 8px icon spacing, page headings, one unified table/section rhythm. */
-.exp-heading,.dc-page-heading{min-height:42px;display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 18px}
-.dc-page-heading h1,.exp-heading h1{margin:0;font-size:24px;font-weight:670;letter-spacing:-.4px;line-height:1.35}
-.exp-heading-actions,.dc-heading-actions{display:flex;align-items:center;gap:8px}
-.exp-scope,.dc-scope{display:flex;align-items:flex-end;gap:16px;margin:0 0 18px;flex-wrap:wrap}
-.exp-parent-controls,.dc-parent-controls{display:flex;align-items:flex-end;gap:8px;min-width:0}
-.exp-child-controls,.dc-child-controls{display:flex;align-items:flex-end;gap:8px;min-width:0;flex:0 1 auto}
-.exp-child-controls .exp-child-wrap,.dc-child-controls .dc-children{flex:0 1 410px;min-width:0;width:410px}
-.exp-parent-controls .exp-input{width:265px;min-width:0}
-.exp-parent-controls .exp-select{min-width:0;width:100%;height:38px}
-.exp-child-controls .exp-scope-refresh,.dc-child-controls .dc-icn,.dc-parent-controls .dc-icn{align-self:flex-end}
-.dc-scope .dc-parent{width:265px;min-width:0}
-.dc-scope .dc-children{width:410px}
-.dc-section{margin-bottom:20px}
-.dc-section-heading{min-height:36px;margin-bottom:12px}
-.dc-result-tools input,.dc-result-tools select{height:36px;font-size:12px}
-.dc-results-section{min-width:0}
-.dc-result-views{display:flex;align-items:center;gap:24px;border-bottom:1px solid #dce5f0;margin-bottom:14px}
-.dc-result-views button{white-space:nowrap}
-.dc-results-toolbar{display:flex;align-items:flex-start;justify-content:space-between;gap:12px 20px;margin-bottom:16px;min-width:0;flex-wrap:wrap}
-.dc-results-tabs{min-width:0;flex:1 1 550px}
-.dc-results-toolbar .dc-result-tools{margin:0;flex:0 1 auto}
-.dc-card-verdict[data-state="retained"]{color:#2456b0}.dc-card-verdict[data-state="excluded"]{color:#407e69}.dc-card-verdict[data-state="uncertain"]{color:#946923}
-.dc-card-caption .dc-card-raw{color:#8592a4;font-size:11px}
-.dc-model-stats-heading{margin-top:30px!important}
-.dc-verdict-explanation{margin-top:7px!important}
-@media(max-width:850px){.dc-results-tabs{flex-basis:100%}.dc-results-toolbar .dc-result-tools{width:100%;justify-content:flex-start}.dc-results-toolbar .dc-result-tools input{flex:1;min-width:140px}.dc-scope .dc-parent,.exp-parent-controls .exp-input{width:min(265px,calc(100vw - 110px))}.dc-scope .dc-children{width:min(410px,100%)}}
-@media(max-width:580px){.exp-heading,.dc-page-heading{margin-bottom:14px}.exp-scope,.dc-scope{gap:12px}.dc-results-toolbar .dc-result-tools select{width:135px}.dc-result-views{gap:16px}}
-
-/* V23: \u6570\u636E\u96C6\u9009\u62E9\u5668\u53EA\u663E\u793A\u540D\u79F0\uFF0C\u4E0D\u91CD\u590D\u663E\u793A\u6570\u91CF\uFF1B\u8D85\u957F\u540D\u79F0\u4FDD\u7559\u5B8C\u6574\u60AC\u505C\u63D0\u793A\u3002 */
-
-
-
-.dc-job-datasets{max-width:280px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-
-/* V24: one linked conflict view, compact common filters; uncommon filters in covering drawer. */
-.dc-refined-filterbar{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:0 0 18px;min-height:56px}
-.dc-filter-field{display:flex;flex-direction:column;gap:7px;color:#536783;font-size:12px;font-weight:550;min-width:190px}
-.dc-filter-field select{height:38px;width:215px;max-width:100%;border:1px solid #b9c7d9;border-radius:5px;padding:0 12px;background:#fff;color:#24364e;font:inherit;font-size:13px}
-.dc-more-filters{height:38px;display:inline-flex;align-items:center;justify-content:center;gap:7px;margin-left:2px;padding:0 12px;background:#fff;border:1px solid #c3cfdd;border-radius:5px;color:#465b73;font-size:13px;font-weight:550;cursor:pointer;position:relative}
-.dc-more-filters:hover,.dc-more-active{border-color:#7f9bdf;color:#245bd1;background:#f5f8ff}
-.dc-more-filters svg{width:17px;height:17px}
-.dc-active-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#3266de;margin-left:1px}
-.dc-card-caption{padding:11px 12px 12px;gap:8px}
-.dc-card-judgments{display:grid;gap:6px}
-.dc-card-judgments small{display:flex;align-items:baseline;gap:9px;font-size:12px;line-height:1.45;color:#3b506b;min-width:0}
-.dc-card-judgments small em{font-size:11px;color:#8490a2;min-width:24px;flex:none;font-style:normal}
-.dc-card-judgments small span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dc-model-retained{color:#2855ab}.dc-model-excluded{color:#417965}.dc-model-uncertain{color:#8f6a31}
-.dc-filters-drawer .dc-drawer-content{flex:1}
-.dc-advanced-fields{display:grid;align-content:start;gap:23px;padding-top:28px}
-.dc-advanced-fields>label:not(.dc-different-only){display:grid;gap:9px;font-weight:550;color:#4b6079;font-size:13px}
-.dc-advanced-fields select{height:40px;width:100%;border:1px solid #b9c7d9;border-radius:5px;padding:0 11px;background:white;color:#263954;font:inherit}
-.dc-different-only{display:flex;gap:10px;align-items:center;line-height:1.5;font-size:13px;color:#304662;cursor:pointer}
-.dc-different-only input{width:16px;height:16px;accent-color:#3568d8}
-.dc-filter-footer{margin-top:auto;border-top:1px solid var(--border);padding:16px 24px;display:flex;justify-content:flex-end;gap:10px}
-@media(max-width:600px){.dc-filter-field{min-width:0;flex:1 1 175px}.dc-filter-field select{width:100%}.dc-more-filters{margin-left:0;align-self:flex-end}}
-
-/* V25: raw-conflict type is the main result navigation, model conclusion is a compact icon. */
-.dc-results-section .dc-refined-filterbar{margin-bottom:17px}
-.dc-card-final{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
-.dc-card-raw-label{font-size:12px;font-weight:550;color:#4b5f7b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.dc-verdict-symbol{display:inline-flex;align-items:center;justify-content:center;flex:none;width:25px;height:25px;border-radius:5px}
-.dc-verdict-symbol svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-.dc-verdict-symbol.retained{color:#bc6030;background:#fff2e8}
-.dc-verdict-symbol.excluded{color:#2a8367;background:#e8f5ee}
-.dc-verdict-symbol.uncertain{color:#98702b;background:#fff6df}
-.dc-verdict-symbol:focus-visible{outline:2px solid #3873dd}
-.dc-new-body{padding:22px 24px 24px;display:grid;gap:20px}
-.dc-new-field{display:grid;gap:9px;font-size:13px;color:#405574;font-weight:600}
-.dc-new-parent{min-height:38px;display:flex;align-items:center;padding:0 12px;background:#f6f8fb;border:1px solid #dce4ef;border-radius:5px;color:#283b56;font-weight:500}
-.dc-new-child-options{display:grid;gap:0;border:1px solid #cbd5e3;border-radius:6px;max-height:280px;overflow:auto}
-.dc-new-child-option{display:flex;align-items:center;gap:11px;padding:11px 13px;min-height:43px;font-size:13px;color:#30445f;cursor:pointer;font-weight:500}
-.dc-new-child-option+.dc-new-child-option{border-top:1px solid #edf1f6}
-.dc-new-child-option:hover{background:#f5f8fd}
-.dc-new-child-option:has(input:checked){background:#f1f5ff}
-.dc-new-child-option input{width:16px;height:16px;margin:0;accent-color:#2e64da;flex:none}
-.dc-new-dialog{overflow:visible}
-.dc-new-dialog .dc-dialog-body{overflow:visible}
-
-
-
-.dc-new-option:has(input:checked){background:#f1f5ff}
-
-.dc-search-field{min-width:190px;flex:1 1 200px;max-width:270px}
-.dc-search-field input{box-sizing:border-box;width:100%;height:38px;border:1px solid #b9c7d9;border-radius:5px;background:#fff;padding:0 12px;font-size:13px;color:#24364e;outline-offset:2px}
-.dc-search-field input:focus{outline:2px solid #bad0f7;border-color:#6d93d7}
-@media(max-height:550px){.dc-new-dialog .dc-dialog-body{overflow-y:auto}}
-@media(max-width:640px){.dc-new-body{padding:16px}}
-
-/* =========================================================================
-   V26 High-Specificity Overrides to Prevent .iad-workbench Button Collision
-   ========================================================================= */
 :root {
   --blue: #285ed6;
   --blue-light: #eaf0ff;
@@ -17670,198 +17687,62 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
   --surface-alt: #f9fafc;
 }
 
-:is(.iad-workbench, body) button.dc-icn,button.dc-icn {
-  vertical-align: middle !important;
-}
-
-.dc-icn {
-  vertical-align: middle !important;
-}
-
-:is(.iad-workbench, body) .dc-child-controls button.dc-icn,:is(.iad-workbench, body) .dc-parent-controls button.dc-icn {
-  align-self: flex-end !important;
-}
-
-.dc-child-controls .dc-icn,.dc-parent-controls .dc-icn {
-  align-self: flex-end !important;
-}
-
-/* Statistics Drawer Rows: Flat 2-column grid with bottom hairline */
-:is(.iad-workbench, body) button.dc-stat-type,button.dc-stat-type {
-  display: grid !important;
-  grid-template-columns: 1fr auto !important;
-  align-items: center !important;
-  gap: 5px 16px !important;
-  text-align: left !important;
-  width: 100% !important;
-}
-.dc-stat-type {
-  display: grid !important;
-  grid-template-columns: 1fr auto !important;
-  align-items: center !important;
-  gap: 5px 16px !important;
-  text-align: left !important;
-  background: transparent !important;
-  color: var(--ink, #17233a) !important;
-  border: 0 !important;
-  border-bottom: 1px solid var(--border2, #e6ebf1) !important;
-  border-radius: 0 !important;
-  padding: 15px 2px !important;
-  cursor: pointer !important;
-  width: 100% !important;
-  min-height: 0 !important;
-  font: inherit !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-.dc-stat-type:hover {
-  background: var(--surface-alt, #f9fafc) !important;
-}
-.dc-stat-type .dc-stat-label {
-  font-size: 13px !important;
-  font-weight: 550 !important;
-  color: var(--ink, #17233a) !important;
-}
-.dc-stat-type .dc-stat-value {
-  color: #1e3d7c !important;
-  font-variant-numeric: tabular-nums !important;
-  font-size: 17px !important;
-  font-weight: 600 !important;
-}
-.dc-stat-track {
-  height: 5px !important;
-  background: #ecf0f6 !important;
-  border-radius: 4px !important;
-  overflow: hidden !important;
-  grid-column: 1 / -1 !important;
-  margin-top: 5px !important;
-}
-.dc-stat-track > span {
-  display: block !important;
-  height: 100% !important;
-  background: #4f7be2 !important;
-  border-radius: 4px !important;
-}
-
-.dc-drawer-total {
-  display: flex !important;
-  align-items: baseline !important;
-  gap: 12px !important;
-  padding: 6px 0 20px !important;
-  border-bottom: 1px solid var(--border, #dbe2eb) !important;
-}
-.dc-drawer-total strong {
-  font-size: 33px !important;
-  line-height: 1.25 !important;
-  font-variant-numeric: tabular-nums !important;
-  font-weight: 650 !important;
-  color: var(--ink, #17233a) !important;
-}
-.dc-drawer-total span {
-  font-size: 14px !important;
-  color: #607087 !important;
-}
-.dc-stats-label {
-  font-size: 13px !important;
-  margin: 24px 0 10px !important;
-  font-weight: 600 !important;
-  color: #3b4e68 !important;
-}
-.dc-model-stats-heading {
-  margin-top: 30px !important;
-}
-
-:is(.iad-workbench, body) button.dc-more-filters,button.dc-more-filters {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 7px !important;
-  margin-left: 2px !important;
-  position: relative !important;
-}
-
-.dc-more-filters {
-  height: 38px !important;
-  min-height: 38px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 7px !important;
-  margin-left: 2px !important;
-  padding: 0 12px !important;
-  background: #fff !important;
-  border: 1px solid #c3cfdd !important;
-  border-radius: 5px !important;
-  color: #465b73 !important;
-  font-size: 13px !important;
-  font-weight: 550 !important;
-  cursor: pointer !important;
-  position: relative !important;
-  box-shadow: none !important;
-}
-.dc-more-filters:hover,.dc-more-active {
-  border-color: #7f9bdf !important;
-  color: #245bd1 !important;
-  background: #f5f8ff !important;
-}
-
-:is(.iad-workbench, body) button.dc-card,button.dc-card {
-  overflow: hidden !important;
-  text-align: left !important;
-}
-
-.dc-card {
-  border: 1px solid var(--border2, #e6ebf1) !important;
-  border-radius: 7px !important;
-  background: #fff !important;
-  overflow: hidden !important;
-  color: var(--ink, #17233a) !important;
-  text-align: left !important;
-  padding: 0 !important;
-  min-height: 0 !important;
-  box-shadow: none !important;
-  cursor: pointer !important;
-  transition: box-shadow .15s, border-color .15s !important;
-}
-.dc-card:hover {
-  border-color: #91aee8 !important;
-  box-shadow: 0 5px 16px #183a6720 !important;
-}
-
-
-
-
-
-/* =================== V30 Styles =================== */
-.dc-verdict-symbol {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex: none !important;
-  width: 25px !important;
-  height: 25px !important;
-  border-radius: 5px !important;
-}
-.dc-verdict-symbol svg {
-  width: 17px !important;
-  height: 17px !important;
-  stroke: currentColor !important;
-  fill: none !important;
-  stroke-width: 1.9 !important;
-  stroke-linecap: round !important;
-  stroke-linejoin: round !important;
-}
-.dc-verdict-symbol.conflict {
-  color: #bc6030 !important;
-  background: #fff2e8 !important;
-}
-.dc-verdict-symbol.no_conflict {
-  color: #2a8367 !important;
-  background: #e8f5ee !important;
-}
-.dc-verdict-symbol:focus-visible {
-  outline: 2px solid #3873dd !important;
-}
+.dc-root{min-width:0}
+.exp-heading,.dc-page-heading{min-height:42px;display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 24px}
+.dc-page-heading h1,.exp-heading h1{margin:0;font-size:24px;font-weight:670;letter-spacing:-.4px;line-height:1.35}
+.dc-heading-actions{display:flex;align-items:center;gap:8px}
+.dc-scope{display:flex;align-items:flex-end;gap:16px;margin:0 0 18px;flex-wrap:wrap}
+.dc-section{margin:0 0 20px}
+.dc-results-section{background:var(--iad-surface);border:1px solid var(--iad-panel-border);border-radius:6px;box-shadow:none;padding:18px 20px 22px}
+.dc-section-heading{display:flex;align-items:center;justify-content:space-between;margin:0 0 12px;min-height:36px;gap:14px}
+.dc-section-heading h2{font-size:16px;font-weight:650;margin:0}
+.dc-table-panel{overflow-x:auto}
+.dc-table{border-collapse:collapse;width:100%;min-width:1050px;text-align:left;font-size:13px}
+.dc-table th{font-weight:400;background:var(--iad-surface-muted);padding:12px 18px;border-bottom:1px solid var(--iad-border)}
+.dc-table td{padding:14px 18px;border-bottom:1px solid var(--iad-border);font-size:13px}
+.dc-table tbody tr:last-child td{border-bottom:0}
+.dc-table tbody tr{cursor:pointer}
+.dc-table tbody tr:hover{background:var(--iad-hover)}
+.dc-table tbody tr[data-selected=true]{background:var(--iad-hover)}
+.dc-table tbody tr:focus-visible{outline:2px solid var(--iad-primary);outline-offset:-2px}
+.dc-table .dc-operations{text-align:right;white-space:nowrap;width:120px}
+.dc-job-datasets{max-width:280px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.dc-mono,.dc-total,.dc-elapsed{font-variant-numeric:tabular-nums}
+.dc-time,.dc-total,.dc-elapsed{white-space:nowrap}
+.dc-state.exp-pill{font-weight:650}
+.dc-empty{min-height:132px;display:flex;align-items:center;justify-content:center;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:7px;padding:24px;text-align:center}
+.dc-jobs-section>.dc-empty{border:0;border-radius:0}
+.dc-jobs-section.iba-job-multipage .dc-table-panel{min-height:530px}
+.dc-refined-filterbar{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:0 0 17px;min-height:56px}
+.dc-filter-field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.dc-search-field input{width:100%;height:38px;border:1px solid var(--iad-control-border);border-radius:5px;background:var(--iad-surface);padding:0 12px;font:inherit;color:var(--iad-text)}
+.dc-results-section .dc-conflict-grid{gap:14px}
+.dc-results-section .dc-conflict-grid>button.iad-thumbnail-card{border-color:var(--iad-panel-border);border-radius:5px}
+.dc-dialog-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex:none}
+.dc-dialog-head-actions{display:flex;align-items:center;gap:8px}
+.dc-dialog-head-actions button{white-space:nowrap}
+.dc-dialog-body{display:block;min-height:0;overflow:auto;flex:1;scrollbar-gutter:stable}
+.dc-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.dc-compare-cell{min-width:0}
+.dc-compare-cell>.dc-compare-title{font-size:14px;font-weight:700;margin:0 0 9px}
+.dc-compare-photo{height:235px;border:1px solid var(--iad-border);border-radius:6px;background:var(--iad-surface-muted);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:zoom-in}
+.dc-compare-photo img{height:100%;width:100%;object-fit:contain}
+.dc-source-label{position:absolute;left:9px;top:9px;max-width:calc(100% - 18px);padding:4px 7px;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;pointer-events:none;z-index:2}
+.dc-photo-filename{line-height:20px;margin:7px 2px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.dc-decision-controls{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 14px}
+.dc-decision-controls label{display:inline-flex;align-items:center;gap:7px}
+.dc-decision-controls input{height:16px;width:16px;accent-color:var(--iad-primary)}
+.dc-note{width:100%;height:58px;min-height:58px;padding:10px;border:1px solid var(--iad-control-border);border-radius:5px;resize:vertical;color:var(--iad-text);background:var(--iad-surface)}
+.dc-dialog-footer{display:flex;gap:8px;justify-content:flex-end;flex:none}
+.dc-new-body{padding:22px 26px 24px;display:grid;gap:20px}
+.dc-new-field{display:grid;gap:9px;font-size:13px;font-weight:600}
+.dc-new-parent{min-height:38px;display:flex;align-items:center;padding:0 12px;background:var(--iad-surface-muted);border:1px solid var(--iad-border);border-radius:5px;font-weight:400}
+.dc-prompt-editor{display:flex;flex-direction:column;gap:8px}
+.dc-prompt-editor label{font-weight:600}
+#dc-new-prompt{box-sizing:border-box;width:100%;min-height:180px;height:205px;resize:vertical;border:1px solid var(--iad-control-border);border-radius:5px;padding:12px 13px;font:inherit;font-weight:400;line-height:1.75;color:var(--iad-text);background:var(--iad-surface);white-space:pre-wrap}
+#dc-new-prompt:focus-visible{outline:2px solid var(--iad-primary);outline-offset:1px}
+@media(max-width:1000px){.dc-compare{grid-template-columns:1fr}.dc-section-heading{flex-wrap:wrap}}
+@media(max-width:650px){.dc-scope{display:grid}.dc-dialog-head-actions{gap:4px}}
 
 .dc-stats-content {
   overflow-y: auto !important;
@@ -18009,7 +17890,6 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
   width: min(54px, 62%) !important;
 }
 
-/* V30 Comparison Dialog Panels */
 .dc-fact-panel,
 .dc-model-panel,
 .dc-conclusion-panel,
@@ -18047,186 +17927,12 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
   line-height: 1.7 !important;
   margin: 5px 0 0 !important;
 }
-
-/* V30 Filter Bar layout */
-.dc-results-section .dc-refined-filterbar .dc-search-field {
-  order: 0 !important;
-  flex: 0 1 248px !important;
-  max-width: 300px !important;
-  min-width: 185px !important;
-}
-.dc-results-section .dc-refined-filterbar .dc-filter-field:not(.dc-search-field) {
-  order: 1 !important;
-  flex: 0 1 205px !important;
-}
-.dc-results-section .dc-refined-filterbar .dc-more-filters {
-  order: 2 !important;
-}
-
-/* V30 Comparison Dialog Photo & Bounding Box rules */
-.dc-compare-photo .dc-compare-stage-wrapper {
-  width: 100% !important;
-  height: 100% !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  position: relative !important;
-  overflow: hidden !important;
-}
-
-.dc-compare-photo .dc-photo-stage {
-  position: relative !important;
-  line-height: 0 !important;
-  display: block !important;
-}
-
-.dc-compare-photo .dc-photo-stage img {
-  width: 100% !important;
-  height: 100% !important;
-  display: block !important;
-  pointer-events: none !important;
-  user-select: none !important;
-}
-
-.dc-compare-photo .dc-bbox {
-  position: absolute !important;
-  border: 2px solid #e88c26 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  pointer-events: none !important;
-  box-sizing: border-box !important;
-}
-
-#dc-compare-mask .dc-candidate-strip,
-.dc-conflict-dialog .dc-candidate-strip,
-.dc-candidate-strip {
-  display: flex !important;
-  flex: 0 0 auto !important;
-  flex-shrink: 0 !important;
-  min-height: 86px !important;
-  height: 86px !important;
-  gap: 9px !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  padding: 6px 2px 8px !important;
-  margin: 10px 0 8px !important;
-  box-sizing: border-box !important;
-  scrollbar-width: thin !important;
-}
-
-#dc-compare-mask .dc-candidate,
-.dc-conflict-dialog .dc-candidate,
-.dc-candidate {
-  flex: 0 0 94px !important;
-  width: 94px !important;
-  height: 70px !important;
-  min-width: 94px !important;
-  min-height: 70px !important;
-  box-sizing: border-box !important;
-  position: relative !important;
-  border: 2px solid transparent !important;
-  background: #f0f3f7 !important;
-  padding: 0 !important;
-  border-radius: 5px !important;
-  overflow: hidden !important;
-  cursor: pointer !important;
-}
-#dc-compare-mask .dc-candidate[aria-pressed="true"],
-.dc-candidate[aria-pressed="true"] {
-  border-color: var(--blue, #285ed6) !important;
-}
-#dc-compare-mask .dc-candidate:hover,
-.dc-candidate:hover {
-  border-color: #91aee8 !important;
-}
-#dc-compare-mask .dc-candidate img,
-.dc-candidate img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  display: block !important;
-}
-
-#dc-new-mask .dc-prompt-editor {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 8px !important;
-}
-#dc-new-mask .dc-prompt-editor label {
-  font-weight: 600 !important;
-  font-size: 13px !important;
-  color: #17233a !important;
-}
-#dc-new-mask #dc-new-prompt {
-  box-sizing: border-box !important;
-  width: 100% !important;
-  min-height: 180px !important;
-  height: 205px !important;
-  resize: vertical !important;
-  border: 1px solid #b9c7d9 !important;
-  border-radius: 5px !important;
-  padding: 12px 13px !important;
-  font-family: inherit !important;
-  font-size: 13px !important;
-  font-weight: 400 !important;
-  line-height: 1.75 !important;
-  color: #293c54 !important;
-  background: #fff !important;
-  white-space: pre-wrap !important;
-}
-#dc-new-mask #dc-new-prompt:focus { outline: 2px solid #80a9ff !important; outline-offset: 1px !important; }
-
-/* V38: \u6570\u636E\u4E00\u81F4\u6027\u68C0\u67E5\u4F5C\u4E1A\u5206\u9875\u4E0E\u5BF9\u9F50\u89C4\u8303 */
-.dc-section.dc-jobs-section.iba-job-multipage .dc-table-panel{min-height:530px}
-.dc-section.dc-jobs-section .dc-table-panel{overflow-x:auto;overflow-y:visible;max-height:none}
-.dc-section.dc-jobs-section.iba-job-multipage .dc-table-panel{border-bottom-left-radius:0;border-bottom-right-radius:0}
-
-@media(max-width:650px){
-  .dc-section.dc-jobs-section.iba-job-multipage .dc-table-panel{min-height:530px}
-}
-
-/* V33: common filter controls in one row; the lone review filter no longer needs a drawer. */
-.dc-results-section .dc-refined-filterbar .dc-review-field{order:2;flex:0 1 188px}
-.dc-results-section .dc-refined-filterbar .dc-review-field select{width:100%}
-/* Compact two-line judgments, no cryptic verdict glyph and no card stretch. */
-.dc-grid{align-items:start}
-.dc-grid .dc-card{display:flex;flex-direction:column;align-self:start;min-width:0;min-height:0}
-.dc-card-caption{padding:9px 11px 10px;flex:none}
-.dc-card-caption>strong{margin-bottom:8px;line-height:18px}
-.dc-card-judgments{display:flex;flex-direction:column;gap:4px;min-width:0}
-.dc-judgment-line{display:flex;align-items:baseline;gap:8px;min-width:0;line-height:18px;font-size:12px}
-.dc-judgment-key{color:#718197;flex:none;min-width:58px;font-weight:450}
-.dc-judgment-value{color:#334b6d;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.dc-judgment-clear{color:#267657}
-@media(max-width:900px){.dc-results-section .dc-refined-filterbar .dc-review-field{flex:1 1 170px}}
-
-/* V35: compact one-line card footer; left aligned raw type, right aligned model type.
-   Explanations remain accessible via title/aria-label; no duplicated visible labels. */
-.dc-grid .dc-card{height:auto!important;min-height:0!important;align-self:start!important;font-family:inherit!important;}
-.dc-grid .dc-card-img{height:140px;flex:none;}
-.dc-grid .dc-card-caption{padding:7px 9px 8px!important;flex:none;min-height:0!important;}
-.dc-grid .dc-card-caption>strong{margin-bottom:4px!important;line-height:18px!important;font-size:12px!important;font-weight:600!important;color:var(--iba-font-color-base,#172338)!important;font-family:inherit!important;}
-.dc-grid .dc-card-judgments{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;column-gap:7px;min-width:0;line-height:18px;}
-.dc-grid .dc-card-judgments>.dc-judgment-value{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:inherit!important;font-size:12px!important;line-height:18px!important;font-weight:400!important;color:var(--iba-font-color-base,#172338)!important;}
-.dc-grid .dc-card-judgments>.dc-raw-value{color:var(--iba-font-color-base,#172338)!important;text-align:left;}
-.dc-grid .dc-card-judgments>.dc-model-value{color:var(--iba-font-color-base,#172338)!important;text-align:right;}
-.dc-grid .dc-card-judgments>.dc-judgment-clear{color:var(--iba-font-color-base,#172338)!important;}
-
-/* V39: data-consistency job table only \u2014 two compact status columns, no new vertical scrolling. */
-.dc-section.dc-jobs-section .dc-table{min-width:1050px}
-.dc-section.dc-jobs-section .dc-table .dc-total,
-.dc-section.dc-jobs-section .dc-table .dc-elapsed{white-space:nowrap;font-variant-numeric:tabular-nums}
-.dc-section.dc-jobs-section .dc-table .dc-has-conflicts{font-weight:650}
-
-
 `;
 
   // src/client/styles/images.ts
   var imagesStyles = `
 .main{width:100%;min-width:0;padding:0}
-.heading{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:12px}
 .crumb{color:#8190a6;font-size:11px;margin:0 0 2px}
-.heading h1{font-size:20px;line-height:1.25;margin:0;font-weight:670;letter-spacing:-.4px}
 .heading-side{font-size:12px;color:#8190a6}
 
 .dataset-panel{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
@@ -18607,7 +18313,6 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
    New Consistency Check, Stats Modal, Exploration Prompts, Add/Edit Dataset, Knowledge Create
    ========================================================================== */
 #knowledge-page .kb-v45 #create-overlay > .modal,
-dialog.dc-new-dialog,
 dialog.iad-detail-dialog.iad-dialog-form {
   width: min(var(--iba-dialog-edit-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
   max-width: var(--iba-dialog-edit-width) !important;
@@ -18986,41 +18691,12 @@ dialog.iad-drawer>.iad-dialog-header{height:64px!important;min-height:64px!impor
 }
 
 /* ==========================================================================
-   V51 Consistency Main Image Card (One single image, object-fit: contain)
-   ========================================================================== */
-.dc-grid .dc-card-img {
-  background: #eef2f7 !important;
-  height: 140px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  overflow: hidden !important;
-  position: relative !important;
-}
-.dc-grid .dc-card-img > img.dc-main-image {
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain !important;
-  object-position: center !important;
-}
-
-/* Conflict card caption bottom judgments text: ordinary text color and regular weight */
-.dc-grid .dc-card-judgments > .dc-judgment-value,
-.dc-grid .dc-card-judgments > .dc-raw-value,
-.dc-grid .dc-card-judgments > .dc-model-value,
-.dc-grid .dc-card-judgments > .dc-judgment-clear {
-  color: var(--iba-font-color-base, #172338) !important;
-  font-weight: 400 !important;
-}
-
-/* ==========================================================================
    V51 Ordinary Data Text & Status Semantic Colors
    ========================================================================== */
 :is(.exp-job-table .exp-row-title, .exp-job-dataset, .exp-job-dataset *,
     .kb-v45 .jobtitle, .kb-v45 .knowledge-entry-name, .kb-v45 .knowledge-entry-description,
-    .dc-table .dc-mono, .dc-table .dc-job-datasets, .dc-card-caption strong,
-    #images-page .card-name, .exp-job-table td:not(:has(.exp-pill)), .dc-table td:not(:has(.exp-pill)):not(:has(.dc-state)), .dc-grid .dc-card-caption,
+    .dc-table .dc-mono, .dc-table .dc-job-datasets,
+    #images-page .card-name, .exp-job-table td:not(:has(.exp-pill)), .dc-table td:not(:has(.exp-pill)):not(:has(.dc-state)),
     .kb-v45 .jobs-table td, .kb-v45 .knowledge-row, .name-text) {
   font-family: var(--iba-unified-font) !important;
   font-weight: 400 !important;
@@ -19190,15 +18866,29 @@ dialog.iad-drawer>.iad-dialog-header{height:64px!important;min-height:64px!impor
 #audit-page .audit-evidence-link img{width:100px;height:66px;object-fit:contain;background:#f0f4f9}
 #audit-page .audit-evidence-link span{min-width:0;line-height:1.7}
 #audit-page .audit-disclaimer{margin-top:20px;color:var(--audit-ink);font-size:13px}
-#audit-page .audit-create{padding:22px}
-#audit-page .audit-create-actions{display:flex;gap:9px}
-#audit-page .audit-create-versions{margin-top:18px}
-#audit-page .audit-create-versions li{overflow-wrap:anywhere}
-#audit-page .audit-create-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
-#audit-page .audit-create-grid .audit-field select{width:100%}
-#audit-page .audit-create-grid{align-items:start}
-#audit-page .audit-create-grid .audit-field textarea{height:160px;padding:10px 12px;resize:vertical;line-height:1.65}
-#audit-page .audit-confirm{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;padding-top:16px;margin-top:20px;border-top:1px solid var(--audit-border)}
+#audit-page .audit-create-page{display:grid;gap:16px;min-width:0}
+#audit-page .audit-source-panel{margin:0;min-width:0}
+#audit-page .audit-source-panel .audit-panel-head{padding:16px 20px}
+#audit-page .audit-source-panel .audit-panel-head h2{font-size:16px}
+#audit-page .audit-source-table{width:100%;overflow:auto;max-height:350px;scrollbar-width:thin}
+#audit-page .audit-source-table .audit-table{font-size:13px;min-width:720px;table-layout:fixed}
+#audit-page .audit-source-table th{position:sticky;top:0;z-index:1;background:#f1f4f9}
+#audit-page .audit-source-table .audit-table :is(th,td){padding:11px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#audit-page .audit-source-table .audit-table .audit-description{white-space:normal;line-height:1.6;overflow-wrap:anywhere}
+#audit-page .audit-source-table input{width:16px;height:16px;accent-color:var(--audit-blue);cursor:pointer}
+#audit-page .audit-entry-area{border-top:1px solid var(--audit-border)}
+#audit-page .audit-entry-header{padding:15px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+#audit-page .audit-entry-header h3{font-size:15px;margin:0}
+#audit-page .audit-pick-all{display:inline-flex;align-items:center;gap:7px;font-size:13px;cursor:pointer}
+#audit-page .audit-pick-all input{width:16px;height:16px;accent-color:var(--audit-blue)}
+#audit-page .audit-create-confirm{padding:20px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+#audit-page .audit-create-facts{display:grid;grid-template-columns:minmax(0,1fr);gap:7px;margin:0;min-width:0;flex:1 1 500px}
+#audit-page .audit-create-facts>div{display:grid;grid-template-columns:95px minmax(0,1fr);gap:12px;line-height:1.75}
+#audit-page .audit-create-facts dd{margin:0;overflow-wrap:anywhere;max-width:720px}
+#audit-page .audit-create-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
+#audit-page .audit-create-actions button{min-width:100px}
+#audit-page .audit-source-error{padding:0 20px 16px;margin:0}
+
 #audit-page .audit-overlay{position:fixed;inset:0;z-index:310;display:flex;align-items:center;justify-content:center;background:#17243ab8;padding:30px}
 #audit-page .audit-overlay[hidden]{display:none!important}
 #audit-page dialog.audit-dialog{margin:auto!important;width:min(1380px,calc(100vw - 60px));height:min(820px,calc(100dvh - 60px));background:#fff;border:1px solid var(--audit-border);border-radius:7px;box-shadow:0 20px 65px #15233e42;display:flex;flex-direction:column;min-height:0;overflow:hidden;color:var(--audit-ink)}
@@ -19224,7 +18914,7 @@ dialog.iad-drawer>.iad-dialog-header{height:64px!important;min-height:64px!impor
 #audit-page .audit-lightbox .next{right:24px;top:50%}
 #audit-page .audit-lightbox .caption{position:absolute;bottom:20px;left:20px;right:20px;text-align:center;color:#fff;font-size:13px}
 @media(max-width:1100px){#audit-page .audit-report-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}#audit-page .audit-kpi:nth-child(3){border-right:0}#audit-page .audit-kpi:nth-child(n+4){border-top:1px solid var(--audit-border)}}
-@media(max-width:780px){#audit-page{padding:18px 14px}#audit-page .audit-scope-parent,#audit-page .audit-scope-child{width:100%}#audit-page .audit-report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#audit-page .audit-kpi{border-top:1px solid var(--audit-border)}#audit-page .audit-report-columns,#audit-page .audit-create-grid{grid-template-columns:1fr}#audit-page .audit-overlay{padding:12px}#audit-page .audit-dialog{width:calc(100vw - 24px);height:calc(100dvh - 24px)}#audit-page .audit-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px;padding:12px}#audit-page .audit-thumb{height:122px}#audit-page .audit-dialog-body{padding:16px}}`;
+@media(max-width:780px){#audit-page{padding:18px 14px}#audit-page .audit-scope-parent,#audit-page .audit-scope-child{width:100%}#audit-page .audit-report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#audit-page .audit-kpi{border-top:1px solid var(--audit-border)}#audit-page .audit-report-columns{grid-template-columns:1fr}#audit-page .audit-overlay{padding:12px}#audit-page .audit-dialog{width:calc(100vw - 24px);height:calc(100dvh - 24px)}#audit-page .audit-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px;padding:12px}#audit-page .audit-thumb{height:122px}#audit-page .audit-dialog-body{padding:16px}}`;
 
   // src/client/styles/gallery.ts
   var galleryStyles = `
@@ -19243,6 +18933,16 @@ button.iad-thumbnail-card[data-variant=evidence]{max-width:none;height:auto;padd
 .iad-thumbnail-strip{display:flex;flex:none;gap:12px;overflow-x:auto;max-width:100%;min-height:0;padding:3px 2px 8px}
 .iad-thumbnail-card>.iad-thumbnail-caption{display:block;min-width:0;padding:6px 0 2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12px;font-weight:400;color:inherit;line-height:18px}
 .iad-thumbnail-card>small,.iad-thumbnail-card>.iad-thumbnail-meta{display:block;font-size:12px;line-height:18px;color:var(--iad-muted,#687990)}
+button.iad-thumbnail-card[data-variant=comparison]{max-width:none;height:auto;max-height:none;padding:0;border-color:var(--iad-border);border-radius:7px;flex:none}
+.iad-thumbnail-card[data-variant=comparison]>.iad-thumbnail-media{height:140px;flex:none}
+.iad-thumbnail-card[data-variant=comparison]>.iad-thumbnail-caption{padding:7px 9px 4px;font-weight:600}
+.iad-thumbnail-values{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px;padding:0 9px 8px;line-height:18px}
+.iad-thumbnail-values>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.iad-thumbnail-values>span:last-child{text-align:right}
+button.iad-thumbnail-card[data-variant=compact]{width:94px;max-width:none;height:70px;max-height:none;flex:0 0 94px;padding:0;border:2px solid transparent}
+.iad-thumbnail-card[data-variant=compact]>.iad-thumbnail-media{height:100%;flex:none}
+.iad-thumbnail-card[data-variant=compact]>.iad-thumbnail-caption{display:none}
+.iad-thumbnail-strip:has(>[data-variant=compact]){gap:9px;padding:6px 2px 8px;margin:10px 0 8px;scrollbar-width:thin}
 nav.iad-pagination{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:4px 0 2px;margin:10px 0 0;font-size:12px;color:var(--iad-text,#172338)}
 nav.iad-pagination>button{height:32px;min-height:32px;min-width:32px;padding:0 8px;border:1px solid var(--iad-control-border,#dbe2eb);border-radius:5px;background:var(--iad-surface,#fff);color:inherit;cursor:pointer;font-size:12px;font-weight:400;line-height:normal;box-shadow:none}
 nav.iad-pagination>button:disabled{opacity:.4;cursor:not-allowed}
@@ -19259,21 +18959,20 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 .full-content{display:flex;flex:1;min-height:0;min-width:0}.full-context{width:288px;min-width:0;overflow:auto;background:var(--iad-surface,#fff);padding:16px;color:var(--iad-text,#172338)}.full-context .iad-thumbnail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 `;
 
+  // src/shared/report-chart-styles.generated.ts
+  var reportChartStyles = '\n.iad-report-charts{display:grid;gap:24px;min-width:0}\n.iad-report-chart{margin:0;min-width:0;padding:18px 16px 12px;background:#fff;border-radius:6px;break-inside:avoid}\n.iad-report-chart figcaption{font-size:16px;font-weight:600;margin-bottom:26px}\n.iad-report-chart-body{display:grid;grid-template-columns:36px minmax(0,1fr);gap:13px;min-width:0}\n.iad-report-chart-axis{height:188px;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;font-size:12px;color:#65758c;font-variant-numeric:tabular-nums}\n.iad-report-chart-axis span{height:0;line-height:1;transform:translateY(-6px)}\n.iad-report-chart-figure{position:relative;min-width:0}\n.iad-report-chart-grid{position:absolute;inset:0 0 auto;height:188px;pointer-events:none;background:repeating-linear-gradient(to top,#e2e8f0 0 1px,transparent 1px 25%)}\n.iad-report-chart-columns{position:relative;display:grid;grid-template-columns:repeat(var(--chart-columns),minmax(0,1fr));gap:12px;min-width:0}\n.iad-report-chart-column{min-width:0;text-align:center}\n.iad-report-chart-slot{height:188px;display:flex;align-items:flex-end;justify-content:center}\n.iad-report-chart-bar{position:relative;width:min(62%,56px);background:#5379d2;border-radius:4px 4px 0 0}\n.iad-report-chart-bar[data-muted="true"]{background:#b3c1d6}\n.iad-report-chart-value{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:#172338}\n.iad-report-chart-label{display:block;padding-top:11px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}\n@media(max-width:600px){.iad-report-chart{padding:14px 8px}.iad-report-chart-body{grid-template-columns:28px minmax(0,1fr);gap:7px}.iad-report-chart-columns{gap:4px}}\n';
+
   // src/client/styles/reports.ts
-  var reportStyles = `
+  var reportStyles = reportChartStyles + `
 .iad-report-body{padding:24px;display:grid;gap:22px;min-width:0}
 .iad-report-prompt textarea{width:100%;min-height:260px;margin-top:12px}
-.iad-report-charts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
-.iad-report-chart{margin:0;min-width:0}.iad-report-chart figcaption{margin-bottom:12px;font-weight:600}
-.iad-report-bar{display:grid;grid-template-columns:100px minmax(0,1fr) 40px;align-items:center;gap:8px;margin:9px 0}
-.iad-report-bar meter{width:100%;height:20px;accent-color:var(--iad-primary)}
 .iad-report-section{min-width:0;display:grid;gap:12px}
 .iad-report-section p{white-space:pre-wrap;line-height:1.85;overflow-wrap:anywhere}
 .iad-report-data{margin:0;display:grid;gap:9px}
 .iad-report-data>div{display:grid;grid-template-columns:minmax(100px,1fr) minmax(65px,.5fr) minmax(0,3fr);gap:14px}
 .iad-report-data dt,.iad-report-data dd{margin:0;overflow-wrap:anywhere}
 .iad-dataset-report .iad-thumbnail-grid>div{min-width:0;display:grid;justify-items:start;gap:8px}
-@media(max-width:1000px){.iad-report-charts{grid-template-columns:1fr}.iad-report-data>div{grid-template-columns:minmax(0,1fr) 70px}.iad-report-data dd:last-child{grid-column:1/-1}}
+@media(max-width:1000px){.iad-report-data>div{grid-template-columns:minmax(0,1fr) 70px}.iad-report-data dd:last-child{grid-column:1/-1}}
 `;
 
   // src/client/styles/tabs.ts
@@ -19397,7 +19096,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 
   // src/client/components/ImagesPage.tsx
   var import_react61 = __require("react");
-  var import_jsx_runtime65 = __require("react/jsx-runtime");
+  var import_jsx_runtime66 = __require("react/jsx-runtime");
   function ImagesPage({ datasets, groups, onDatasetsChanged }) {
     const hierarchyGroups = (0, import_react61.useMemo)(() => {
       return buildHierarchyGroups(datasets, groups);
@@ -19511,9 +19210,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     }, [detailAnnotations]);
     const imgW = sampleDetail?.sample.width || activeSample?.width || 955;
     const imgH = sampleDetail?.sample.height || activeSample?.height || 713;
-    return /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "main", style: { minWidth: 0, width: "100%", padding: 0 }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(WorkbenchHeader, { pageId: "industrial-images" }),
-      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("div", { className: "main", style: { minWidth: 0, width: "100%", padding: 0 }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(WorkbenchHeader, { pageId: "industrial-images" }),
+      /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(
         DatasetScopeSelector,
         {
           className: "dataset-panel",
@@ -19535,16 +19234,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           groupId: "parent",
           childId: "child",
           childMenuId: "child-menu",
-          children: /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(IconButton, { icon: "refresh", id: "refresh", type: "button", title: "\u5237\u65B0\u56FE\u50CF", label: "\u5237\u65B0\u56FE\u50CF", onClick: () => {
+          children: /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(IconButton, { icon: "refresh", id: "refresh", type: "button", title: "\u5237\u65B0\u56FE\u50CF", label: "\u5237\u65B0\u56FE\u50CF", onClick: () => {
             setRefreshRev((r) => r + 1);
             onDatasetsChanged?.();
           } })
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("section", { className: "filter-bar", "aria-label": "\u56FE\u50CF\u7B5B\u9009", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "filter-item filter-search", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("label", { htmlFor: "search", children: "\u6587\u4EF6\u540D\u641C\u7D22" }),
-          /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("section", { className: "filter-bar", "aria-label": "\u56FE\u50CF\u7B5B\u9009", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("div", { className: "filter-item filter-search", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("label", { htmlFor: "search", children: "\u6587\u4EF6\u540D\u641C\u7D22" }),
+          /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(
             "input",
             {
               id: "search",
@@ -19559,9 +19258,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             }
           )
         ] }),
-        hasAnomaly && /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "filter-item filter-status", id: "quality-wrap", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("label", { htmlFor: "quality", title: "\u56FE\u50CF\u7EA7\u7C7B\u522B\uFF08OK / NG / \u672A\u5224\u5B9A\uFF09", children: hasLabelme ? "\u6807\u6CE8\u7C7B\u522B (\u56FE\u50CF)" : "\u6807\u6CE8\u7C7B\u522B" }),
-          /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(
+        hasAnomaly && /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("div", { className: "filter-item filter-status", id: "quality-wrap", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("label", { htmlFor: "quality", title: "\u56FE\u50CF\u7EA7\u7C7B\u522B\uFF08OK / NG / \u672A\u5224\u5B9A\uFF09", children: hasLabelme ? "\u6807\u6CE8\u7C7B\u522B (\u56FE\u50CF)" : "\u6807\u6CE8\u7C7B\u522B" }),
+          /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)(
             Select,
             {
               id: "quality",
@@ -19571,18 +19270,18 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                 setPage(1);
               },
               children: [
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("option", { value: "PASS", children: "OK" }),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("option", { value: "FAIL", children: "NG" }),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("option", { value: "UNCERTAIN", title: "\u539F\u59CB\u89C4\u5219\u65E0\u6CD5\u5224\u5B9A\u4E3A OK \u6216 NG", children: "\u672A\u5224\u5B9A" })
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("option", { value: "PASS", children: "OK" }),
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("option", { value: "FAIL", children: "NG" }),
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("option", { value: "UNCERTAIN", title: "\u539F\u59CB\u89C4\u5219\u65E0\u6CD5\u5224\u5B9A\u4E3A OK \u6216 NG", children: "\u672A\u5224\u5B9A" })
               ]
             }
           )
         ] }),
-        hasLabelme && /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(import_jsx_runtime65.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "filter-item filter-ann", id: "annotation-wrap", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("label", { htmlFor: "annotation", children: "\u6807\u6CE8\u60C5\u51B5" }),
-            /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(
+        hasLabelme && /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)(import_jsx_runtime66.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("div", { className: "filter-item filter-ann", id: "annotation-wrap", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("label", { htmlFor: "annotation", children: "\u6807\u6CE8\u60C5\u51B5" }),
+            /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)(
               Select,
               {
                 id: "annotation",
@@ -19592,16 +19291,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                   setPage(1);
                 },
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("option", { value: "present", children: "\u6709\u6807\u6CE8" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("option", { value: "none", children: "\u65E0\u6807\u6CE8" })
+                  /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("option", { value: "present", children: "\u6709\u6807\u6CE8" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("option", { value: "none", children: "\u65E0\u6807\u6CE8" })
                 ]
               }
             )
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "filter-item filter-category", id: "category-wrap", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("label", { htmlFor: "category", children: hasAnomaly ? "\u6807\u6CE8\u7C7B\u522B (\u76EE\u6807)" : "\u6807\u6CE8\u7C7B\u522B" }),
-            /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(
+          /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("div", { className: "filter-item filter-category", id: "category-wrap", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("label", { htmlFor: "category", children: hasAnomaly ? "\u6807\u6CE8\u7C7B\u522B (\u76EE\u6807)" : "\u6807\u6CE8\u7C7B\u522B" }),
+            /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)(
               Select,
               {
                 id: "category",
@@ -19611,14 +19310,14 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                   setPage(1);
                 },
                 children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
-                  availableCategories.map((cat) => /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("option", { value: cat, children: cat.startsWith("\u7C7B\u522B ") || isNaN(Number(cat)) ? cat : `\u7C7B\u522B ${cat}` }, cat))
+                  /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
+                  availableCategories.map((cat) => /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("option", { value: cat, children: cat.startsWith("\u7C7B\u522B ") || isNaN(Number(cat)) ? cat : `\u7C7B\u522B ${cat}` }, cat))
                 ]
               }
             )
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(
           ClearFilterButton,
           {
             id: "reset",
@@ -19629,10 +19328,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           }
         )
       ] }),
-      error2 && /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
-      total > 0 ? /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("section", { id: "grid", className: "iad-thumbnail-grid", "aria-label": "\u56FE\u50CF\u7F51\u683C", children: samples.map((s, idx) => {
+      error2 && /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
+      total > 0 ? /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("section", { id: "grid", className: "iad-thumbnail-grid", "aria-label": "\u56FE\u50CF\u7F51\u683C", children: samples.map((s, idx) => {
         const filename = s.relative_path.split("/").pop() || s.relative_path;
-        return /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(
+        return /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(
           ThumbnailCard,
           {
             src: mediaUrl(s, "thumbnail"),
@@ -19646,18 +19345,18 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           },
           s.sample_id
         );
-      }) }) : /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("div", { id: "grid", className: "empty", "aria-label": "\u56FE\u50CF\u7F51\u683C", children: selectedChildIds.size === 0 ? "\u8BF7\u9009\u62E9\u81F3\u5C11\u4E00\u4E2A\u5B50\u6570\u636E\u96C6" : loading ? "\u6B63\u5728\u8BFB\u53D6\u56FE\u50CF\u2026" : "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u56FE\u50CF" }),
-      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(Pagination, { id: "pager", total, page, size: pageSize2, unit: "\u5F20\u56FE\u50CF", label: "\u56FE\u50CF", onPage: (number) => {
+      }) }) : /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("div", { id: "grid", className: "empty", "aria-label": "\u56FE\u50CF\u7F51\u683C", children: selectedChildIds.size === 0 ? "\u8BF7\u9009\u62E9\u81F3\u5C11\u4E00\u4E2A\u5B50\u6570\u636E\u96C6" : loading ? "\u6B63\u5728\u8BFB\u53D6\u56FE\u50CF\u2026" : "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u56FE\u50CF" }),
+      /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(Pagination, { id: "pager", total, page, size: pageSize2, unit: "\u5F20\u56FE\u50CF", label: "\u56FE\u50CF", onPage: (number) => {
         setPage(number);
         document.getElementById("grid")?.scrollIntoView({ block: "start", behavior: "smooth" });
       } }),
-      activeSample && /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(Modal, { title: "\u56FE\u50CF\u8BE6\u60C5", id: "overlay", className: "detail-dialog", onClose: () => {
+      activeSample && /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(Modal, { title: "\u56FE\u50CF\u8BE6\u60C5", id: "overlay", className: "detail-dialog", onClose: () => {
         setViewerIndex(-1);
         setFullscreen(false);
-      }, children: /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "detail-scroll", "aria-busy": detailLoading, children: [
-        detailError && /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { role: "alert", className: "iad-error", children: detailError }),
-        activeSample && /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(import_jsx_runtime65.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(
+      }, children: /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("div", { className: "detail-scroll", "aria-busy": detailLoading, children: [
+        detailError && /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("p", { role: "alert", className: "iad-error", children: detailError }),
+        activeSample && /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)(import_jsx_runtime66.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)(
             "button",
             {
               id: "detail-preview",
@@ -19667,7 +19366,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
               title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE\u4E0E\u6807\u6CE8",
               onClick: () => setFullscreen(true),
               children: [
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(
                   AnnotatedImageStage,
                   {
                     src: mediaUrl(activeSample, "image"),
@@ -19678,67 +19377,67 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                     annotationLayer: sampleDetail ? { kind: "sample", sample: sampleDetail.sample, annotations: sampleDetail.annotations } : void 0
                   }
                 ),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("span", { className: "detail-preview-hint", children: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE" })
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("span", { className: "detail-preview-hint", children: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE" })
               ]
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("section", { className: "detail-content", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("h3", { className: "detail-section-heading", children: "\u56FE\u50CF\u4FE1\u606F" }),
-            /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("dl", { className: "detail-meta", id: "detail-fields", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dt", { children: "\u56FE\u50CF\u8DEF\u5F84" }),
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dd", { className: "path-value", children: sampleDetail?.sample.image_path || activeSample.relative_path }),
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dt", { children: "\u56FE\u50CF\u540D" }),
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dd", { children: activeSample.relative_path.split("/").pop() }),
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dt", { children: "UUID" }),
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dd", { children: activeSample.sample_uuid }),
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dt", { children: "\u5206\u8FA8\u7387" }),
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("dd", { children: `${sampleDetail?.sample.width || activeSample.width} \xD7 ${sampleDetail?.sample.height || activeSample.height}` })
+          /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("section", { className: "detail-content", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("h3", { className: "detail-section-heading", children: "\u56FE\u50CF\u4FE1\u606F" }),
+            /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("dl", { className: "detail-meta", id: "detail-fields", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("dt", { children: "\u56FE\u50CF\u8DEF\u5F84" }),
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("dd", { className: "path-value", children: sampleDetail?.sample.image_path || activeSample.relative_path }),
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("dt", { children: "\u56FE\u50CF\u540D" }),
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("dd", { children: activeSample.relative_path.split("/").pop() }),
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("dt", { children: "UUID" }),
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("dd", { children: activeSample.sample_uuid }),
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("dt", { children: "\u5206\u8FA8\u7387" }),
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("dd", { children: `${sampleDetail?.sample.width || activeSample.width} \xD7 ${sampleDetail?.sample.height || activeSample.height}` })
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("section", { className: "detail-part", id: "detail-ann-section", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("div", { className: "detail-annotation-heading", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("h3", { className: "detail-section-heading", id: "detail-ann-title", children: "\u6807\u6CE8\u4FE1\u606F" }),
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("span", { className: "detail-ann-summary", id: "detail-ann-count", children: sampleDataset?.format === "folder_classification" ? "\u5171 1 \u4E2A\u6807\u6CE8" : `\u5171 ${detailAnnotations.length} \u4E2A\u6807\u6CE8` })
+          /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("section", { className: "detail-part", id: "detail-ann-section", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("div", { className: "detail-annotation-heading", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("h3", { className: "detail-section-heading", id: "detail-ann-title", children: "\u6807\u6CE8\u4FE1\u606F" }),
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("span", { className: "detail-ann-summary", id: "detail-ann-count", children: sampleDataset?.format === "folder_classification" ? "\u5171 1 \u4E2A\u6807\u6CE8" : `\u5171 ${detailAnnotations.length} \u4E2A\u6807\u6CE8` })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("div", { id: "detail-ann-content", children: detailLoading ? /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { children: "\u6B63\u5728\u8BFB\u53D6\u6807\u6CE8\u2026" }) : detailError ? null : sampleDataset?.format === "folder_classification" ? /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("table", { className: "detail-ann-table", "aria-label": "\u5F02\u5E38\u68C0\u6D4B\u6807\u6CE8\u5217\u8868", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("tr", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "#" }),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u6807\u6CE8\u7C7B\u522B" }),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u7C7B\u578B" })
+            /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("div", { id: "detail-ann-content", children: detailLoading ? /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("p", { children: "\u6B63\u5728\u8BFB\u53D6\u6807\u6CE8\u2026" }) : detailError ? null : sampleDataset?.format === "folder_classification" ? /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("table", { className: "detail-ann-table", "aria-label": "\u5F02\u5E38\u68C0\u6D4B\u6807\u6CE8\u5217\u8868", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("th", { children: "#" }),
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("th", { children: "\u6807\u6CE8\u7C7B\u522B" }),
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("th", { children: "\u7C7B\u578B" })
               ] }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("tbody", { children: /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("tr", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: "1" }),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: activeSample.quality_status === "FAIL" ? "NG" : "OK" }),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: "\u5F02\u5E38\u68C0\u6D4B" })
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("tbody", { children: /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("td", { children: "1" }),
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("td", { children: activeSample.quality_status === "FAIL" ? "NG" : "OK" }),
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("td", { children: "\u5F02\u5E38\u68C0\u6D4B" })
               ] }) })
-            ] }) : detailAnnotations.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("table", { className: "detail-ann-table", "aria-label": "Labelme \u6807\u6CE8\u5217\u8868", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("tr", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "#" }),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u6807\u6CE8\u7C7B\u522B" }),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u7C7B\u578B" }),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("th", { children: "\u6570\u636E" })
+            ] }) : detailAnnotations.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("table", { className: "detail-ann-table", "aria-label": "Labelme \u6807\u6CE8\u5217\u8868", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("th", { children: "#" }),
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("th", { children: "\u6807\u6CE8\u7C7B\u522B" }),
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("th", { children: "\u7C7B\u578B" }),
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("th", { children: "\u6570\u636E" })
               ] }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("tbody", { children: detailAnnotations.map((a, k) => /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("tr", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: k + 1 }),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: a.raw_label }),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { children: a.annotation_type || "bbox" }),
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("td", { className: "ann-value", children: a.bbox ? a.bbox.map((v) => Number(v).toFixed(0)).join(", ") : "-" })
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("tbody", { children: detailAnnotations.map((a, k) => /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("td", { children: k + 1 }),
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("td", { children: a.raw_label }),
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("td", { children: a.annotation_type || "bbox" }),
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("td", { className: "ann-value", children: a.bbox ? a.bbox.map((v) => Number(v).toFixed(0)).join(", ") : "-" })
               ] }, a.annotation_id || k)) })
-            ] }) : /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { className: "detail-fallback", children: "\u65E0\u6807\u6CE8" }) })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("p", { className: "detail-fallback", children: "\u65E0\u6807\u6CE8" }) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("section", { className: "detail-model-section", "aria-labelledby": "detail-model-title", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("h3", { className: "detail-section-heading", id: "detail-model-title", children: "\u6A21\u578B\u89C2\u5BDF" }),
-            /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("div", { id: "detail-model-content", children: detailLoading ? /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { children: "\u6B63\u5728\u8BFB\u53D6\u89C2\u5BDF\u2026" }) : detailError ? null : sampleDetail?.suggestion ? /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)(import_jsx_runtime65.Fragment, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsxs)("p", { className: "detail-model-result", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("strong", { children: sampleDetail.suggestion.suggested_label === "FAIL" ? "\u53D1\u73B0\u7591\u70B9" : sampleDetail.suggestion.suggested_label === "PASS" ? "\u5224\u5B9A\u6B63\u5E38" : "\u672A\u5224\u5B9A" }),
+          /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("section", { className: "detail-model-section", "aria-labelledby": "detail-model-title", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("h3", { className: "detail-section-heading", id: "detail-model-title", children: "\u6A21\u578B\u89C2\u5BDF" }),
+            /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("div", { id: "detail-model-content", children: detailLoading ? /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("p", { children: "\u6B63\u5728\u8BFB\u53D6\u89C2\u5BDF\u2026" }) : detailError ? null : sampleDetail?.suggestion ? /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)(import_jsx_runtime66.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("p", { className: "detail-model-result", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("strong", { children: sampleDetail.suggestion.suggested_label === "FAIL" ? "\u53D1\u73B0\u7591\u70B9" : sampleDetail.suggestion.suggested_label === "PASS" ? "\u5224\u5B9A\u6B63\u5E38" : "\u672A\u5224\u5B9A" }),
                 sampleDetail.suggestion.reason_category ? `\uFF08${sampleDetail.suggestion.reason_category}\uFF09` : ""
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { className: "detail-model-text", children: sampleDetail.suggestion.notes || "\u65E0\u9644\u6CE8\u3002" })
-            ] }) : /* @__PURE__ */ (0, import_jsx_runtime65.jsx)("p", { className: "detail-model-text", children: "\u5C1A\u65E0\u6A21\u578B\u89C2\u5BDF\u3002" }) })
+              /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("p", { className: "detail-model-text", children: sampleDetail.suggestion.notes || "\u65E0\u9644\u6CE8\u3002" })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("p", { className: "detail-model-text", children: "\u5C1A\u65E0\u6A21\u578B\u89C2\u5BDF\u3002" }) })
           ] })
         ] })
       ] }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime65.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(
         FullscreenViewer,
         {
           open: fullscreen,
@@ -19769,7 +19468,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // src/client/WorkbenchPage.tsx
-  var import_jsx_runtime66 = __require("react/jsx-runtime");
+  var import_jsx_runtime67 = __require("react/jsx-runtime");
   var emptyCatalog = { datasets: [], groups: [] };
   function WorkbenchPage({ pageId }) {
     const { workspace, state } = useWorkspace();
@@ -19834,30 +19533,30 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       changed();
     }
     const updateFilters = (filters) => workspace.updateView(pageId, { filters, page: 1, selected: "" });
-    const grid = dataset && /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(SampleGrid, { layout: pageId === "industrial-review" ? "queue" : "grid", showFilters: pageId === "industrial-images", dataset, filters: view.filters, onFilters: updateFilters, items: result.query === query ? result.items : [], total: result.query === query ? result.total : 0, page: view.page, onPage: (page) => workspace.updateView(pageId, { page, selected: "" }), selected: view.selected, onSelect: (selected) => workspace.updateView(pageId, { selected }), loading, sourceManagement: pageId === "industrial-images" ? { active: view.tab === "sources", onChanged: changed } : void 0 }, datasetId);
+    const grid = dataset && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(SampleGrid, { layout: pageId === "industrial-review" ? "queue" : "grid", showFilters: pageId === "industrial-images", dataset, filters: view.filters, onFilters: updateFilters, items: result.query === query ? result.items : [], total: result.query === query ? result.total : 0, page: view.page, onPage: (page) => workspace.updateView(pageId, { page, selected: "" }), selected: view.selected, onSelect: (selected) => workspace.updateView(pageId, { selected }), loading, sourceManagement: pageId === "industrial-images" ? { active: view.tab === "sources", onChanged: changed } : void 0 }, datasetId);
     const inspectedSample = pageId === "industrial-review" && view.tab === "records" ? view.historySampleId : view.selected;
-    const inspector = dataset && /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(SampleInspector, { dataset, sampleId: inspectedSample, mode: pageId === "industrial-review" ? "review" : pageId === "industrial-images" ? "browse" : "model", queue: pageId === "industrial-review" && view.tab === "results" ? grid : void 0, filters: /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(SampleFilters, { defaults: initialReviewFilters, dataset, filters: view.filters, onFilters: updateFilters }), advanceOnSubmit: view.tab === "results" && view.filters.review_status === "pending", revision, onReviewed: reviewed, jobs: [], onJobsChanged: changed, navigation: gallery ? navigation2 : void 0 }, pageId === "industrial-review" && view.tab === "results" ? datasetId : `${datasetId}:${inspectedSample}`);
-    const datasetControls = /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)(import_jsx_runtime66.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)(Select, { "aria-label": "\u5F53\u524D\u6570\u636E\u96C6", value: datasetId, onChange: (event) => workspace.selectDataset(event.target.value), children: [
-        /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("option", { value: "", disabled: true, children: "\u9009\u62E9\u6570\u636E\u96C6" }),
-        datasets.map((item) => /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("option", { value: item.dataset_id, children: item.name }, item.dataset_id))
+    const inspector = dataset && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(SampleInspector, { dataset, sampleId: inspectedSample, mode: pageId === "industrial-review" ? "review" : pageId === "industrial-images" ? "browse" : "model", queue: pageId === "industrial-review" && view.tab === "results" ? grid : void 0, filters: /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(SampleFilters, { defaults: initialReviewFilters, dataset, filters: view.filters, onFilters: updateFilters }), advanceOnSubmit: view.tab === "results" && view.filters.review_status === "pending", revision, onReviewed: reviewed, jobs: [], onJobsChanged: changed, navigation: gallery ? navigation2 : void 0 }, pageId === "industrial-review" && view.tab === "results" ? datasetId : `${datasetId}:${inspectedSample}`);
+    const datasetControls = /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)(import_jsx_runtime67.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)(Select, { "aria-label": "\u5F53\u524D\u6570\u636E\u96C6", value: datasetId, onChange: (event) => workspace.selectDataset(event.target.value), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("option", { value: "", disabled: true, children: "\u9009\u62E9\u6570\u636E\u96C6" }),
+        datasets.map((item) => /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("option", { value: item.dataset_id, children: item.name }, item.dataset_id))
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(IconButton, { icon: "refresh", label: "\u5237\u65B0", onClick: changed })
+      /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(IconButton, { icon: "refresh", label: "\u5237\u65B0", onClick: changed })
     ] });
-    return /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("div", { ref: surface, className: "iad-workbench", "data-page": pageId, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("style", { children: workbenchStyles }),
-      (!catalog.data || pageId !== "industrial-datasets" && pageId !== "industrial-images" && pageId !== "industrial-audit" && (!dataset || pageId !== "industrial-exploration" && pageId !== "industrial-knowledge")) && /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(WorkbenchHeader, { pageId, children: catalog.data && datasetControls }),
-      (error2 || catalog.error) && /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("p", { role: "alert", className: "iad-error", children: error2 || catalog.error }),
-      !catalog.data ? /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("p", { role: "status", children: catalog.loading ? "\u6B63\u5728\u52A0\u8F7D\u6570\u636E\u96C6\u2026" : "\u6570\u636E\u96C6\u52A0\u8F7D\u5931\u8D25\u3002" }) : pageId === "industrial-datasets" ? /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(import_jsx_runtime66.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(DatasetManager, { datasets, groups, onChanged: (id) => {
+    return /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)("div", { ref: surface, className: "iad-workbench", "data-page": pageId, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("style", { children: workbenchStyles }),
+      (!catalog.data || pageId !== "industrial-datasets" && pageId !== "industrial-images" && pageId !== "industrial-audit" && (!dataset || pageId !== "industrial-exploration" && pageId !== "industrial-knowledge")) && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(WorkbenchHeader, { pageId, children: catalog.data && datasetControls }),
+      (error2 || catalog.error) && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("p", { role: "alert", className: "iad-error", children: error2 || catalog.error }),
+      !catalog.data ? /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("p", { role: "status", children: catalog.loading ? "\u6B63\u5728\u52A0\u8F7D\u6570\u636E\u96C6\u2026" : "\u6570\u636E\u96C6\u52A0\u8F7D\u5931\u8D25\u3002" }) : pageId === "industrial-datasets" ? /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(import_jsx_runtime67.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(DatasetManager, { datasets, groups, onChanged: (id) => {
         void loadDatasets(id);
         setRevision((v) => v + 1);
-      } }) }) : pageId === "industrial-images" ? /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(import_jsx_runtime66.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(ImagesPage, { datasets, groups, onDatasetsChanged: () => void loadDatasets() }) }) : !dataset ? /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("section", { className: "iad-job-section", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("p", { children: "\u8BF7\u5148\u6DFB\u52A0\u670D\u52A1\u5668\u4E0A\u7684\u6570\u636E\u96C6\u3002" }),
-        /* @__PURE__ */ (0, import_jsx_runtime66.jsx)("button", { onClick: () => workspace.navigate("industrial-datasets"), children: "\u524D\u5F80\u6570\u636E\u96C6\u7BA1\u7406" })
-      ] }) : /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)(import_jsx_runtime66.Fragment, { children: [
-        pageId === "industrial-exploration" && /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(ExplorationPage, { dataset, refreshRevision: revision }, datasetId),
-        pageId === "industrial-knowledge" && /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(KnowledgePage, { dataset, refreshRevision: revision }, datasetId),
-        pageId === "industrial-audit" && /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(
+      } }) }) : pageId === "industrial-images" ? /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(import_jsx_runtime67.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(ImagesPage, { datasets, groups, onDatasetsChanged: () => void loadDatasets() }) }) : !dataset ? /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)("section", { className: "iad-job-section", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("p", { children: "\u8BF7\u5148\u6DFB\u52A0\u670D\u52A1\u5668\u4E0A\u7684\u6570\u636E\u96C6\u3002" }),
+        /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("button", { onClick: () => workspace.navigate("industrial-datasets"), children: "\u524D\u5F80\u6570\u636E\u96C6\u7BA1\u7406" })
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)(import_jsx_runtime67.Fragment, { children: [
+        pageId === "industrial-exploration" && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(ExplorationPage, { dataset, refreshRevision: revision }, datasetId),
+        pageId === "industrial-knowledge" && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(KnowledgePage, { dataset, refreshRevision: revision }, datasetId),
+        pageId === "industrial-audit" && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(
           AuditPage,
           {
             dataset,
@@ -19867,10 +19566,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             onDatasetsChanged: changed
           }
         ),
-        pageId === "industrial-review" && /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)(PageTabs, { label: "\u590D\u6838\u89C6\u56FE", items: [{ id: "results", label: "\u590D\u6838\u961F\u5217" }, { id: "conflicts", label: "\u77E5\u8BC6\u51B2\u7A81" }, { id: "records", label: "\u590D\u6838\u8BB0\u5F55" }], value: view.tab, onChange: (tab) => workspace.updateView(pageId, { tab }), children: [
-          view.tab === "conflicts" && /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(KnowledgeConflictReview, { datasetId }, datasetId),
-          view.tab === "results" && /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)(import_jsx_runtime66.Fragment, { children: [
-            reviewConfirmation?.datasetId === datasetId && /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("p", { role: "status", className: "iad-review-confirmation", children: [
+        pageId === "industrial-review" && /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)(PageTabs, { label: "\u590D\u6838\u89C6\u56FE", items: [{ id: "results", label: "\u590D\u6838\u961F\u5217" }, { id: "conflicts", label: "\u77E5\u8BC6\u51B2\u7A81" }, { id: "records", label: "\u590D\u6838\u8BB0\u5F55" }], value: view.tab, onChange: (tab) => workspace.updateView(pageId, { tab }), children: [
+          view.tab === "conflicts" && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(KnowledgeConflictReview, { datasetId }, datasetId),
+          view.tab === "results" && /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)(import_jsx_runtime67.Fragment, { children: [
+            reviewConfirmation?.datasetId === datasetId && /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)("p", { role: "status", className: "iad-review-confirmation", children: [
               "\u5DF2\u63D0\u4EA4 ",
               reviewConfirmation.name,
               "\uFF0C",
@@ -19878,7 +19577,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             ] }),
             inspector
           ] }),
-          view.tab === "records" && /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(
+          view.tab === "records" && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(
             ReviewRecords,
             {
               datasetId,
@@ -19972,13 +19671,13 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   };
 
   // src/client/components/SessionResult.tsx
-  var import_jsx_runtime67 = __require("react/jsx-runtime");
+  var import_jsx_runtime68 = __require("react/jsx-runtime");
   function SessionResult(props) {
     const { workspace } = useWorkspace();
     const meta = props.phase === "result" ? props.block.meta : null;
     const result = meta?.type === "industrial-workbench" ? meta : null;
-    return /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)("section", { className: "iad-tool-card", "aria-label": props.title, "data-iad-tool": props.toolName, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)("style", { children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("section", { className: "iad-tool-card", "aria-label": props.title, "data-iad-tool": props.toolName, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("style", { children: [
         themeStyles,
         controlStyles,
         `
@@ -19987,8 +19686,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 
     `
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("strong", { children: props.title }),
-      props.phase !== "result" ? /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("p", { role: "status", children: props.phase === "preparing" ? "\u51C6\u5907\u8C03\u7528\u2026" : "\u5DE5\u5177\u6267\u884C\u4E2D\u2026" }) : props.block.isError ? /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("p", { role: "alert", children: "\u8C03\u7528\u5931\u8D25\uFF0C\u8BF7\u67E5\u770B\u8C03\u7528\u8BE6\u60C5\u3002" }) : result?.job && /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)("p", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("strong", { children: props.title }),
+      props.phase !== "result" ? /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("p", { role: "status", children: props.phase === "preparing" ? "\u51C6\u5907\u8C03\u7528\u2026" : "\u5DE5\u5177\u6267\u884C\u4E2D\u2026" }) : props.block.isError ? /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("p", { role: "alert", children: "\u8C03\u7528\u5931\u8D25\uFF0C\u8BF7\u67E5\u770B\u8C03\u7528\u8BE6\u60C5\u3002" }) : result?.job && /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("p", { children: [
         "\u8C03\u7528\u65F6\u72B6\u6001\uFF1A",
         jobStatuses[result.job.status],
         "\uFF0C\u5B8C\u6210 ",
@@ -19999,9 +19698,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         result.job.total_samples,
         " \u5F20"
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)("nav", { "aria-label": "\u67E5\u770B\u5DE5\u5177\u7ED3\u679C", children: [
-        result?.links.map((link, index3) => /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("button", { "data-iad-page": link.location.pageId, "data-iad-scope-id": link.location.pageId === "industrial-consistency" ? void 0 : link.location.scopeRunId, "data-iad-run-id": link.location.pageId === "industrial-consistency" ? link.location.batchId : link.location.job, "data-iad-version-id": link.location.pageId === "industrial-consistency" ? void 0 : link.location.version, onClick: () => workspace.openLocation(link.location), children: link.label }, index3)),
-        props.inspect && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("button", { onClick: props.inspect, children: "\u8C03\u7528\u8BE6\u60C5" })
+      /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("nav", { "aria-label": "\u67E5\u770B\u5DE5\u5177\u7ED3\u679C", children: [
+        result?.links.map((link, index3) => /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("button", { "data-iad-page": link.location.pageId, "data-iad-scope-id": link.location.pageId === "industrial-consistency" ? void 0 : link.location.scopeRunId, "data-iad-run-id": link.location.pageId === "industrial-consistency" ? link.location.batchId : link.location.job, "data-iad-version-id": link.location.pageId === "industrial-consistency" ? void 0 : link.location.version, onClick: () => workspace.openLocation(link.location), children: link.label }, index3)),
+        props.inspect && /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("button", { onClick: props.inspect, children: "\u8C03\u7528\u8BE6\u60C5" })
       ] })
     ] });
   }
@@ -20072,15 +19771,15 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 
   // src/client/components/ProviderManager.tsx
   var import_react63 = __require("react");
-  var import_jsx_runtime68 = __require("react/jsx-runtime");
+  var import_jsx_runtime69 = __require("react/jsx-runtime");
   function ProviderManager() {
     const { view, refresh } = useWorkbenchModel();
     const [editing, setEditing] = (0, import_react63.useState)(null);
     const [notice, setNotice] = (0, import_react63.useState)("");
-    return /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)(import_jsx_runtime68.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("header", { className: "iad-section-header", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("h2", { children: "\u63D0\u4F9B\u5546" }),
-        /* @__PURE__ */ (0, import_jsx_runtime68.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)(import_jsx_runtime69.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("header", { className: "iad-section-header", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("h2", { children: "\u63D0\u4F9B\u5546" }),
+        /* @__PURE__ */ (0, import_jsx_runtime69.jsx)(
           Button,
           {
             variant: "primary",
@@ -20090,24 +19789,24 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           }
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("p", { className: "iad-muted", children: "\u4E0E DSH \u8BBE\u7F6E\u5171\u7528\u63D0\u4F9B\u5546\u8D44\u6599\u548C\u51ED\u636E\u3002" }),
-      /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("div", { className: "iad-table-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("table", { className: "iad-resource-table", "aria-label": "\u63D0\u4F9B\u5546\u5217\u8868", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("th", { children: "\u63D0\u4F9B\u5546\u540D\u79F0" }),
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("th", { children: "\u670D\u52A1\u5730\u5740" }),
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("th", { className: "iad-number", children: "\u6A21\u578B\u6570" }),
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("th", { children: "\u64CD\u4F5C" })
+      /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("p", { className: "iad-muted", children: "\u4E0E DSH \u8BBE\u7F6E\u5171\u7528\u63D0\u4F9B\u5546\u8D44\u6599\u548C\u51ED\u636E\u3002" }),
+      /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("div", { className: "iad-table-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("table", { className: "iad-resource-table", "aria-label": "\u63D0\u4F9B\u5546\u5217\u8868", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("tr", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("th", { children: "\u63D0\u4F9B\u5546\u540D\u79F0" }),
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("th", { children: "\u670D\u52A1\u5730\u5740" }),
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("th", { className: "iad-number", children: "\u6A21\u578B\u6570" }),
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("th", { children: "\u64CD\u4F5C" })
         ] }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("tbody", { children: view?.providers.map((provider) => /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("td", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("strong", { children: provider.name }),
-            provider.error && /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("p", { className: "iad-error", children: provider.error })
+        /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("tbody", { children: view?.providers.map((provider) => /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("tr", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("td", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("strong", { children: provider.name }),
+            provider.error && /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("p", { className: "iad-error", children: provider.error })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("td", { className: "iad-provider-endpoint", children: provider.endpoint || provider.api || "\u5C1A\u672A\u914D\u7F6E" }),
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("td", { className: "iad-number", children: provider.models.length }),
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("div", { className: "iad-row", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime68.jsx)(IconButton, { icon: "edit", label: `\u7F16\u8F91\u63D0\u4F9B\u5546 ${provider.name}`, title: "\u7F16\u8F91\u63D0\u4F9B\u5546", disabled: !provider.editable, onClick: () => setEditing({ provider, revision: view.provider_revision }) }),
-            provider.removable && /* @__PURE__ */ (0, import_jsx_runtime68.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("td", { className: "iad-provider-endpoint", children: provider.endpoint || provider.api || "\u5C1A\u672A\u914D\u7F6E" }),
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("td", { className: "iad-number", children: provider.models.length }),
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("div", { className: "iad-row", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime69.jsx)(IconButton, { icon: "edit", label: `\u7F16\u8F91\u63D0\u4F9B\u5546 ${provider.name}`, title: "\u7F16\u8F91\u63D0\u4F9B\u5546", disabled: !provider.editable, onClick: () => setEditing({ provider, revision: view.provider_revision }) }),
+            provider.removable && /* @__PURE__ */ (0, import_jsx_runtime69.jsx)(
               DeleteAction,
               {
                 title: "\u5220\u9664\u63D0\u4F9B\u5546",
@@ -20123,8 +19822,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           ] }) })
         ] }, provider.provider_id)) })
       ] }) }),
-      notice && /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("p", { role: "status", children: notice }),
-      editing && /* @__PURE__ */ (0, import_jsx_runtime68.jsx)(
+      notice && /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("p", { role: "status", children: notice }),
+      editing && /* @__PURE__ */ (0, import_jsx_runtime69.jsx)(
         ProviderEditor,
         {
           provider: editing.provider,
@@ -20174,22 +19873,22 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         setBusy(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime68.jsx)(Modal, { title: provider ? "\u7F16\u8F91\u63D0\u4F9B\u5546" : "\u6DFB\u52A0\u63D0\u4F9B\u5546", className: "iad-provider-dialog", onClose: () => {
+    return /* @__PURE__ */ (0, import_jsx_runtime69.jsx)(Modal, { title: provider ? "\u7F16\u8F91\u63D0\u4F9B\u5546" : "\u6DFB\u52A0\u63D0\u4F9B\u5546", className: "iad-provider-dialog", onClose: () => {
       if (!busy) onClose();
-    }, children: /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("form", { onSubmit: save, children: /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("fieldset", { disabled: busy, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("div", { className: "iad-model-fields", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("label", { className: "iad-field", children: [
+    }, children: /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("form", { onSubmit: save, children: /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("fieldset", { disabled: busy, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("div", { className: "iad-model-fields", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
           "\u63D0\u4F9B\u5546\u540D\u79F0",
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("input", { autoFocus: true, required: true, "aria-label": "\u63D0\u4F9B\u5546\u540D\u79F0", value: name2, onChange: (event) => setName(event.target.value) })
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("input", { autoFocus: true, required: true, "aria-label": "\u63D0\u4F9B\u5546\u540D\u79F0", value: name2, onChange: (event) => setName(event.target.value) })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("label", { className: "iad-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
           "\u670D\u52A1\u5730\u5740",
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("input", { required: true, type: "url", "aria-label": "\u670D\u52A1\u5730\u5740", placeholder: "https://\u2026/v1", value: endpoint, onChange: (event) => setEndpoint(event.target.value) })
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("input", { required: true, type: "url", "aria-label": "\u670D\u52A1\u5730\u5740", placeholder: "https://\u2026/v1", value: endpoint, onChange: (event) => setEndpoint(event.target.value) })
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("label", { className: "iad-field", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
         "API \u5BC6\u94A5",
-        /* @__PURE__ */ (0, import_jsx_runtime68.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime69.jsx)(
           "input",
           {
             type: "password",
@@ -20202,44 +19901,44 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           }
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("header", { className: "iad-section-header", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("h3", { children: "\u6A21\u578B" }),
-        /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("button", { type: "button", disabled: !endpoint, onClick: () => void discover(), children: "\u8BFB\u53D6\u6A21\u578B" }),
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("button", { type: "button", onClick: () => setModels([...models, { model_id: "", name: "", input_modalities: ["text"], context_tokens: null, max_output_tokens: null }]), children: "\u6DFB\u52A0\u6A21\u578B" })
+      /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("header", { className: "iad-section-header", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("h3", { children: "\u6A21\u578B" }),
+        /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("button", { type: "button", disabled: !endpoint, onClick: () => void discover(), children: "\u8BFB\u53D6\u6A21\u578B" }),
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("button", { type: "button", onClick: () => setModels([...models, { model_id: "", name: "", input_modalities: ["text"], context_tokens: null, max_output_tokens: null }]), children: "\u6DFB\u52A0\u6A21\u578B" })
         ] })
       ] }),
-      models.map((model, index3) => /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("div", { className: "iad-provider-model", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("div", { className: "iad-model-fields", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("label", { className: "iad-field", children: [
+      models.map((model, index3) => /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("div", { className: "iad-provider-model", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("div", { className: "iad-model-fields", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
             "\u6A21\u578B ID",
-            /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("input", { "aria-label": `\u6A21\u578B ID ${index3 + 1}`, required: true, value: model.model_id, onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, model_id: event.target.value } : row)) })
+            /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("input", { "aria-label": `\u6A21\u578B ID ${index3 + 1}`, required: true, value: model.model_id, onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, model_id: event.target.value } : row)) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("label", { className: "iad-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
             "\u663E\u793A\u540D\u79F0",
-            /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("input", { "aria-label": `\u6A21\u578B\u540D\u79F0 ${index3 + 1}`, value: model.name, onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, name: event.target.value } : row)) })
+            /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("input", { "aria-label": `\u6A21\u578B\u540D\u79F0 ${index3 + 1}`, value: model.name, onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, name: event.target.value } : row)) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("label", { className: "iad-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
             "\u4E0A\u4E0B\u6587\u4E0A\u9650",
-            /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("input", { type: "number", min: "1", placeholder: "\u672A\u58F0\u660E", value: model.context_tokens ?? "", onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, context_tokens: event.target.value ? Number(event.target.value) : null } : row)) })
+            /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("input", { type: "number", min: "1", placeholder: "\u672A\u58F0\u660E", value: model.context_tokens ?? "", onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, context_tokens: event.target.value ? Number(event.target.value) : null } : row)) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("label", { className: "iad-field", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
             "\u8F93\u51FA\u4E0A\u9650",
-            /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("input", { type: "number", min: "1", placeholder: "\u672A\u58F0\u660E", value: model.max_output_tokens ?? "", onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, max_output_tokens: event.target.value ? Number(event.target.value) : null } : row)) })
+            /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("input", { type: "number", min: "1", placeholder: "\u672A\u58F0\u660E", value: model.max_output_tokens ?? "", onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, max_output_tokens: event.target.value ? Number(event.target.value) : null } : row)) })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("input", { type: "checkbox", checked: model.input_modalities?.includes("image") || false, onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, input_modalities: event.target.checked ? ["text", "image"] : ["text"] } : row)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("input", { type: "checkbox", checked: model.input_modalities?.includes("image") || false, onChange: (event) => setModels(models.map((row, position) => position === index3 ? { ...row, input_modalities: event.target.checked ? ["text", "image"] : ["text"] } : row)) }),
             " \u652F\u6301\u56FE\u50CF\u8F93\u5165"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime68.jsx)(IconButton, { icon: "delete", label: `\u79FB\u9664\u6A21\u578B ${model.name || model.model_id || index3 + 1}`, title: "\u79FB\u9664\u6A21\u578B", onClick: () => setModels(models.filter((_, position) => position !== index3)) })
+          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)(IconButton, { icon: "delete", label: `\u79FB\u9664\u6A21\u578B ${model.name || model.model_id || index3 + 1}`, title: "\u79FB\u9664\u6A21\u578B", onClick: () => setModels(models.filter((_, position) => position !== index3)) })
         ] })
       ] }, index3)),
-      error2 && /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
-      /* @__PURE__ */ (0, import_jsx_runtime68.jsxs)("div", { className: "iad-form-actions", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime68.jsx)("button", { type: "button", onClick: onClose, children: "\u53D6\u6D88" }),
-        /* @__PURE__ */ (0, import_jsx_runtime68.jsx)(Button, { variant: "primary", disabled: !name2.trim() || !endpoint || !models.length, type: "submit", children: busy ? "\u5904\u7406\u4E2D\u2026" : "\u4FDD\u5B58\u63D0\u4F9B\u5546" })
+      error2 && /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
+      /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("div", { className: "iad-form-actions", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("button", { type: "button", onClick: onClose, children: "\u53D6\u6D88" }),
+        /* @__PURE__ */ (0, import_jsx_runtime69.jsx)(Button, { variant: "primary", disabled: !name2.trim() || !endpoint || !models.length, type: "submit", children: busy ? "\u5904\u7406\u4E2D\u2026" : "\u4FDD\u5B58\u63D0\u4F9B\u5546" })
       ] })
     ] }) }) });
   }
@@ -20306,7 +20005,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // src/client/components/ImageEncoderSettings.tsx
-  var import_jsx_runtime69 = __require("react/jsx-runtime");
+  var import_jsx_runtime70 = __require("react/jsx-runtime");
   function editable(view) {
     const selection = view.selection, resources = view.resources;
     return {
@@ -20402,35 +20101,35 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         setBusy(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("section", { className: "iad-model-configuration", "aria-label": "\u56FE\u50CF\u68C0\u7D22\u8BBE\u7F6E", "aria-busy": busy || loading, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("h2", { children: "\u56FE\u50CF\u68C0\u7D22" }),
-      error2 && /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
-      !draft ? /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u914D\u7F6E\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("form", { "aria-label": "\u56FE\u50CF\u68C0\u7D22\u914D\u7F6E", className: "iad-model-form", onSubmit: save, children: /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("fieldset", { disabled: busy || loading, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("section", { className: "iad-section-layout", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("h3", { children: "\u56FE\u50CF\u7F16\u7801\u5668" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("div", { className: "iad-model-fields", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("section", { className: "iad-model-configuration", "aria-label": "\u56FE\u50CF\u68C0\u7D22\u8BBE\u7F6E", "aria-busy": busy || loading, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("h2", { children: "\u56FE\u50CF\u68C0\u7D22" }),
+      error2 && /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
+      !draft ? /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u914D\u7F6E\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("form", { "aria-label": "\u56FE\u50CF\u68C0\u7D22\u914D\u7F6E", className: "iad-model-form", onSubmit: save, children: /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("fieldset", { disabled: busy || loading, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("section", { className: "iad-section-layout", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("h3", { children: "\u56FE\u50CF\u7F16\u7801\u5668" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("div", { className: "iad-model-fields", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
               "\u6A21\u578B",
-              /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)(Select, { "aria-label": "\u56FE\u50CF\u7F16\u7801\u5668", value: draft.model_id, onChange: (event) => {
+              /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)(Select, { "aria-label": "\u56FE\u50CF\u7F16\u7801\u5668", value: draft.model_id, onChange: (event) => {
                 setDraft({ ...draft, model_id: event.target.value, weights_ref: "", source_ref: "" });
                 setError("");
                 setNotice("");
               }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("option", { value: "", children: "\u4EC5\u4E25\u683C\u540C\u56FE" }),
-                Object.keys(imageBackbones).map((id) => /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("option", { value: id, children: id }, id))
+                /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("option", { value: "", children: "\u4EC5\u4E25\u683C\u540C\u56FE" }),
+                Object.keys(imageBackbones).map((id) => /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("option", { value: id, children: id }, id))
               ] })
             ] }),
-            draft.model_id && /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)(import_jsx_runtime69.Fragment, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
+            draft.model_id && /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)(import_jsx_runtime70.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
                 "\u6743\u91CD\u8DEF\u5F84",
-                /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u6743\u91CD\u8DEF\u5F84", required: true, value: draft.weights_ref, onChange: (event) => setDraft({ ...draft, weights_ref: event.target.value }) })
+                /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u6743\u91CD\u8DEF\u5F84", required: true, value: draft.weights_ref, onChange: (event) => setDraft({ ...draft, weights_ref: event.target.value }) })
               ] }),
-              backbone?.backend === "torch_hub" && /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
+              backbone?.backend === "torch_hub" && /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
                 "\u5B98\u65B9\u6E90\u7801\u76EE\u5F55",
                 backbone.local_snapshot ? "\uFF08.pth \u5FC5\u586B\uFF09" : "",
-                /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u6E90\u7801\u76EE\u5F55", required: !backbone.local_snapshot, value: draft.source_ref, onChange: (event) => setDraft({ ...draft, source_ref: event.target.value }) })
+                /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u6E90\u7801\u76EE\u5F55", required: !backbone.local_snapshot, value: draft.source_ref, onChange: (event) => setDraft({ ...draft, source_ref: event.target.value }) })
               ] }),
-              backbone && /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("p", { className: "iad-muted", children: [
+              backbone && /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("p", { className: "iad-muted", children: [
                 backbone.dim,
                 " \u7EF4\uFF0C",
                 backbone.local_snapshot ? "\u672C\u5730\u6A21\u578B\u76EE\u5F55\u6216 .pth \u6743\u91CD" : `${backbone.input_size} px\uFF0C${backbone.processor}`
@@ -20438,53 +20137,53 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             ] })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("section", { className: "iad-section-layout", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("h3", { children: "\u8FD0\u884C\u8D44\u6E90" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("div", { className: "iad-model-fields", children: [
-            draft.model_id && /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)(import_jsx_runtime69.Fragment, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("section", { className: "iad-section-layout", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("h3", { children: "\u8FD0\u884C\u8D44\u6E90" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("div", { className: "iad-model-fields", children: [
+            draft.model_id && /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)(import_jsx_runtime70.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
                 "\u8BBE\u5907",
-                /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u8BBE\u5907", required: true, pattern: "cpu|cuda:[0-9]+", value: draft.device, onChange: (event) => setDraft({ ...draft, device: event.target.value }) })
+                /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u8BBE\u5907", required: true, pattern: "cpu|cuda:[0-9]+", value: draft.device, onChange: (event) => setDraft({ ...draft, device: event.target.value }) })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
                 "\u6279\u91CF",
-                /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u6279\u91CF", type: "number", min: 1, max: 256, value: draft.batch_size, onChange: (event) => setDraft({ ...draft, batch_size: Number(event.target.value) }) })
+                /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u6279\u91CF", type: "number", min: 1, max: 256, value: draft.batch_size, onChange: (event) => setDraft({ ...draft, batch_size: Number(event.target.value) }) })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
                 "\u663E\u5B58\u9884\u7B97\uFF08MiB\uFF09",
-                /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u663E\u5B58\u9884\u7B97", type: "number", min: 256, max: 12288, value: draft.gpu_memory_mb, onChange: (event) => setDraft({ ...draft, gpu_memory_mb: Number(event.target.value) }) })
+                /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("input", { "aria-label": "\u56FE\u50CF\u7F16\u7801\u663E\u5B58\u9884\u7B97", type: "number", min: 256, max: 12288, value: draft.gpu_memory_mb, onChange: (event) => setDraft({ ...draft, gpu_memory_mb: Number(event.target.value) }) })
               ] })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
               "\u89E3\u7801\u7EBF\u7A0B",
-              /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("input", { "aria-label": "\u56FE\u50CF\u89E3\u7801\u7EBF\u7A0B", type: "number", min: 1, max: 8, value: draft.decode_workers, onChange: (event) => setDraft({ ...draft, decode_workers: Number(event.target.value) }) })
+              /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("input", { "aria-label": "\u56FE\u50CF\u89E3\u7801\u7EBF\u7A0B", type: "number", min: 1, max: 8, value: draft.decode_workers, onChange: (event) => setDraft({ ...draft, decode_workers: Number(event.target.value) }) })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
               "\u89E3\u7801\u5185\u5B58\uFF08MiB\uFF09",
-              /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("input", { "aria-label": "\u56FE\u50CF\u89E3\u7801\u5185\u5B58\u9884\u7B97", type: "number", min: 1, max: 1024, value: draft.decode_memory_mb, onChange: (event) => setDraft({ ...draft, decode_memory_mb: Number(event.target.value) }) })
+              /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("input", { "aria-label": "\u56FE\u50CF\u89E3\u7801\u5185\u5B58\u9884\u7B97", type: "number", min: 1, max: 1024, value: draft.decode_memory_mb, onChange: (event) => setDraft({ ...draft, decode_memory_mb: Number(event.target.value) }) })
             ] }),
-            draft.model_id && /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)(import_jsx_runtime69.Fragment, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
+            draft.model_id && /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)(import_jsx_runtime70.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
                 "\u8BA1\u7B97\u7CBE\u5EA6",
-                /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)(Select, { "aria-label": "\u56FE\u50CF\u7F16\u7801\u8BA1\u7B97\u7CBE\u5EA6", value: draft.compute_dtype, onChange: (event) => setDraft({ ...draft, compute_dtype: event.target.value }), children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("option", { value: "float32", children: "FP32" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("option", { value: "float16", disabled: draft.device === "cpu", children: "FP16" })
+                /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)(Select, { "aria-label": "\u56FE\u50CF\u7F16\u7801\u8BA1\u7B97\u7CBE\u5EA6", value: draft.compute_dtype, onChange: (event) => setDraft({ ...draft, compute_dtype: event.target.value }), children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("option", { value: "float32", children: "FP32" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("option", { value: "float16", disabled: draft.device === "cpu", children: "FP16" })
                 ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("label", { className: "iad-field", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
                 "\u5411\u91CF\u5B58\u50A8",
-                /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)(Select, { "aria-label": "\u56FE\u50CF\u5411\u91CF\u5B58\u50A8\u7CBE\u5EA6", value: draft.storage_dtype, onChange: (event) => setDraft({ ...draft, storage_dtype: event.target.value }), children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("option", { value: "float32", children: "FP32" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("option", { value: "float16", children: "FP16" })
+                /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)(Select, { "aria-label": "\u56FE\u50CF\u5411\u91CF\u5B58\u50A8\u7CBE\u5EA6", value: draft.storage_dtype, onChange: (event) => setDraft({ ...draft, storage_dtype: event.target.value }), children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("option", { value: "float32", children: "FP32" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("option", { value: "float16", children: "FP16" })
                 ] })
               ] })
             ] })
           ] })
         ] }),
-        view?.selection && /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("details", { className: "iad-model-advanced", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("summary", { children: "\u5DF2\u4FDD\u5B58\u914D\u7F6E" }),
-          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("code", { children: view.selection.profile.profile_id }),
-          /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("p", { className: "iad-muted", children: [
+        view?.selection && /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("details", { className: "iad-model-advanced", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("summary", { children: "\u5DF2\u4FDD\u5B58\u914D\u7F6E" }),
+          /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("code", { children: view.selection.profile.profile_id }),
+          /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("p", { className: "iad-muted", children: [
             view.selection.profile.input_size,
             " px\uFF0C",
             view.selection.profile.pooling,
@@ -20492,11 +20191,11 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             view.selection.profile.color_conversion
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("div", { className: "iad-form-footer", children: [
-          changed && /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("span", { className: "iad-muted", children: "\u6709\u672A\u4FDD\u5B58\u7684\u66F4\u6539" }),
-          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("button", { type: "button", disabled: !valid || !draft.model_id, onClick: () => void check(), children: busy ? "\u5904\u7406\u4E2D\u2026" : "\u68C0\u67E5\u52A0\u8F7D" }),
-          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)(Button, { variant: "primary", type: "submit", disabled: !changed || !valid, children: "\u4FDD\u5B58\u56FE\u50CF\u914D\u7F6E" }),
-          /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("button", { type: "button", disabled: !changed, onClick: () => {
+        /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("div", { className: "iad-form-footer", children: [
+          changed && /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("span", { className: "iad-muted", children: "\u6709\u672A\u4FDD\u5B58\u7684\u66F4\u6539" }),
+          /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("button", { type: "button", disabled: !valid || !draft.model_id, onClick: () => void check(), children: busy ? "\u5904\u7406\u4E2D\u2026" : "\u68C0\u67E5\u52A0\u8F7D" }),
+          /* @__PURE__ */ (0, import_jsx_runtime70.jsx)(Button, { variant: "primary", type: "submit", disabled: !changed || !valid, children: "\u4FDD\u5B58\u56FE\u50CF\u914D\u7F6E" }),
+          /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("button", { type: "button", disabled: !changed, onClick: () => {
             if (view) setDraft(editable(view));
             setRevision(view?.revision || 0);
             setError("");
@@ -20504,12 +20203,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           }, children: "\u91CD\u7F6E\u56FE\u50CF\u914D\u7F6E" })
         ] })
       ] }) }),
-      notice && /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("p", { role: "status", children: notice })
+      notice && /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("p", { role: "status", children: notice })
     ] });
   }
 
   // src/client/components/ModelSettingsPage.tsx
-  var import_jsx_runtime70 = __require("react/jsx-runtime");
+  var import_jsx_runtime71 = __require("react/jsx-runtime");
   var numbers = [
     ["context_tokens", "\u4E0A\u4E0B\u6587\u4E0A\u9650"],
     ["max_output_tokens", "\u5355\u6B21\u8F93\u51FA\u4E0A\u9650"],
@@ -20587,90 +20286,90 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         setBusy(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("div", { className: "iad-workbench", "data-page": "industrial-model-settings", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("style", { children: workbenchStyles }),
-      /* @__PURE__ */ (0, import_jsx_runtime70.jsx)(WorkbenchHeader, { pageId: "industrial-model-settings", children: /* @__PURE__ */ (0, import_jsx_runtime70.jsx)(IconButton, { icon: "refresh", label: "\u5237\u65B0", disabled: busy || loading || imageState.busy, onClick: () => tab === "images" ? setImageRefresh((value) => value + 1) : void refresh() }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)(PageTabs, { label: "\u6A21\u578B\u8BBE\u7F6E\u5206\u533A", items: [{ id: "model", label: "\u5DE5\u4F5C\u53F0\u6A21\u578B" }, { id: "providers", label: "\u63D0\u4F9B\u5546" }, { id: "images", label: "\u56FE\u50CF\u68C0\u7D22" }], value: tab, onChange: (value) => {
+    return /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("div", { className: "iad-workbench", "data-page": "industrial-model-settings", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("style", { children: workbenchStyles }),
+      /* @__PURE__ */ (0, import_jsx_runtime71.jsx)(WorkbenchHeader, { pageId: "industrial-model-settings", children: /* @__PURE__ */ (0, import_jsx_runtime71.jsx)(IconButton, { icon: "refresh", label: "\u5237\u65B0", disabled: busy || loading || imageState.busy, onClick: () => tab === "images" ? setImageRefresh((value) => value + 1) : void refresh() }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)(PageTabs, { label: "\u6A21\u578B\u8BBE\u7F6E\u5206\u533A", items: [{ id: "model", label: "\u5DE5\u4F5C\u53F0\u6A21\u578B" }, { id: "providers", label: "\u63D0\u4F9B\u5546" }, { id: "images", label: "\u56FE\u50CF\u68C0\u7D22" }], value: tab, onChange: (value) => {
         if (tab === "images" && (imageState.busy || imageState.dirty && !window.confirm("\u6709\u672A\u4FDD\u5B58\u7684\u56FE\u50CF\u914D\u7F6E\uFF0C\u786E\u8BA4\u653E\u5F03\u4FEE\u6539\uFF1F"))) return;
         setTab(value);
         setImageState({ dirty: false, busy: false });
         if (value === "model") void refresh();
       }, children: [
-        (loadError || error2) && /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("p", { role: "alert", className: "iad-error", children: error2 || loadError }),
-        tab === "images" ? /* @__PURE__ */ (0, import_jsx_runtime70.jsx)(ImageEncoderSettings, { refreshVersion: imageRefresh, onStateChange: setImageState }) : tab === "providers" ? /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("section", { className: "iad-provider-manager", "aria-label": "\u63D0\u4F9B\u5546\u7BA1\u7406", children: /* @__PURE__ */ (0, import_jsx_runtime70.jsx)(ProviderManager, {}) }) : /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("section", { className: "iad-model-configuration", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("h2", { children: "\u5DE5\u4F5C\u53F0\u6A21\u578B" }),
-          /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("p", { className: "iad-muted", children: "\u63A2\u7D22\u3001\u6316\u6398\u548C\u5BA1\u8BA1\u5171\u7528\u6B64\u914D\u7F6E\uFF1B\u4F1A\u8BDD\u6A21\u578B\u72EC\u7ACB\u9009\u62E9\u3002" }),
-          view?.error && /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("p", { role: "status", className: "iad-muted", children: [
+        (loadError || error2) && /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("p", { role: "alert", className: "iad-error", children: error2 || loadError }),
+        tab === "images" ? /* @__PURE__ */ (0, import_jsx_runtime71.jsx)(ImageEncoderSettings, { refreshVersion: imageRefresh, onStateChange: setImageState }) : tab === "providers" ? /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("section", { className: "iad-provider-manager", "aria-label": "\u63D0\u4F9B\u5546\u7BA1\u7406", children: /* @__PURE__ */ (0, import_jsx_runtime71.jsx)(ProviderManager, {}) }) : /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("section", { className: "iad-model-configuration", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("h2", { children: "\u5DE5\u4F5C\u53F0\u6A21\u578B" }),
+          /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("p", { className: "iad-muted", children: "\u63A2\u7D22\u3001\u6316\u6398\u548C\u5BA1\u8BA1\u5171\u7528\u6B64\u914D\u7F6E\uFF1B\u4F1A\u8BDD\u6A21\u578B\u72EC\u7ACB\u9009\u62E9\u3002" }),
+          view?.error && /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("p", { role: "status", className: "iad-muted", children: [
             "\u5DF2\u4FDD\u5B58\u914D\u7F6E\uFF1A",
             view.error
           ] }),
-          !draft ? /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u914D\u7F6E\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("form", { className: "iad-model-form", onSubmit: save, children: /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("fieldset", { disabled: busy || loading, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("section", { className: "iad-section-layout", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("h3", { children: "\u6A21\u578B\u9009\u62E9" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("div", { className: "iad-model-fields", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
+          !draft ? /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u914D\u7F6E\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("form", { className: "iad-model-form", onSubmit: save, children: /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("fieldset", { disabled: busy || loading, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("section", { className: "iad-section-layout", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("h3", { children: "\u6A21\u578B\u9009\u62E9" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("div", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("div", { className: "iad-model-fields", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("label", { className: "iad-field", children: [
                     "\u63D0\u4F9B\u5546",
-                    /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)(Select, { "aria-label": "\u5DE5\u4F5C\u53F0\u63D0\u4F9B\u5546", value: draft.provider_id, onChange: (event) => {
+                    /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)(Select, { "aria-label": "\u5DE5\u4F5C\u53F0\u63D0\u4F9B\u5546", value: draft.provider_id, onChange: (event) => {
                       setDraft({ provider_id: event.target.value, model_id: "", limits: { ...defaultModelLimits } });
                       setParameters("{}");
                       setError("");
                       setNotice("");
                     }, children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("option", { value: "", children: "\u9009\u62E9\u63D0\u4F9B\u5546" }),
-                      draft.provider_id && !provider && /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("option", { value: draft.provider_id, children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("option", { value: "", children: "\u9009\u62E9\u63D0\u4F9B\u5546" }),
+                      draft.provider_id && !provider && /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("option", { value: draft.provider_id, children: [
                         "\u5DF2\u5931\u6548\uFF0C",
                         draft.provider_id
                       ] }),
-                      view?.providers.map((row) => /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("option", { value: row.provider_id, disabled: !!row.error, children: [
+                      view?.providers.map((row) => /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("option", { value: row.provider_id, disabled: !!row.error, children: [
                         row.name,
                         row.error ? "\uFF0C\u6682\u4E0D\u53EF\u7528" : ""
                       ] }, row.provider_id))
                     ] })
                   ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("label", { className: "iad-field", children: [
                     "\u6A21\u578B",
-                    /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)(Select, { "aria-label": "\u5DE5\u4F5C\u53F0\u6A21\u578B", value: draft.model_id, disabled: !provider || !!provider.error, onChange: (event) => {
+                    /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)(Select, { "aria-label": "\u5DE5\u4F5C\u53F0\u6A21\u578B", value: draft.model_id, disabled: !provider || !!provider.error, onChange: (event) => {
                       setDraft({ ...draft, model_id: event.target.value });
                       setError("");
                       setNotice("");
                     }, children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("option", { value: "", children: "\u9009\u62E9\u6A21\u578B" }),
-                      draft.model_id && !provider?.models.some((row) => row.model_id === draft.model_id) && /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("option", { value: draft.model_id, children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("option", { value: "", children: "\u9009\u62E9\u6A21\u578B" }),
+                      draft.model_id && !provider?.models.some((row) => row.model_id === draft.model_id) && /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("option", { value: draft.model_id, children: [
                         "\u5DF2\u5931\u6548\uFF0C",
                         draft.model_id
                       ] }),
-                      provider?.models.map((row) => /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("option", { value: row.model_id, disabled: !row.input_modalities?.includes("image"), children: [
+                      provider?.models.map((row) => /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("option", { value: row.model_id, disabled: !row.input_modalities?.includes("image"), children: [
                         row.name,
                         row.input_modalities?.includes("image") ? "" : "\uFF0C\u672A\u58F0\u660E\u56FE\u50CF\u80FD\u529B"
                       ] }, row.model_id))
                     ] })
                   ] })
                 ] }),
-                provider && /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("div", { className: "iad-model-endpoint", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("span", { className: "iad-muted", children: "\u670D\u52A1\u5730\u5740" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("p", { children: provider.endpoint || provider.error })
+                provider && /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("div", { className: "iad-model-endpoint", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("span", { className: "iad-muted", children: "\u670D\u52A1\u5730\u5740" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("p", { children: provider.endpoint || provider.error })
                 ] })
               ] })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("section", { className: "iad-section-layout", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("h3", { children: "\u9AD8\u7EA7\u8BBE\u7F6E" }),
-                /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("p", { className: "iad-muted", children: "\u672A\u586B\u5199\u65F6\u4F7F\u7528\u670D\u52A1\u58F0\u660E\u503C" })
+            /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("section", { className: "iad-section-layout", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("div", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("h3", { children: "\u9AD8\u7EA7\u8BBE\u7F6E" }),
+                /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("p", { className: "iad-muted", children: "\u672A\u586B\u5199\u65F6\u4F7F\u7528\u670D\u52A1\u58F0\u660E\u503C" })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("details", { className: "iad-model-advanced", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("summary", { children: "\u5BB9\u91CF\u4E0E\u8D85\u65F6" }),
-                /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("div", { className: "iad-model-fields", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("details", { className: "iad-model-advanced", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("summary", { children: "\u5BB9\u91CF\u4E0E\u8D85\u65F6" }),
+                /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("div", { className: "iad-model-fields", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("label", { className: "iad-field", children: [
                     "\u5BB9\u91CF\u9884\u68C0",
-                    /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)(Select, { "aria-label": "\u5BB9\u91CF\u9884\u68C0\u534F\u8BAE", value: draft.limits.capacity_mode || "", onChange: (event) => setDraft({ ...draft, limits: { ...draft.limits, capacity_mode: event.target.value === "vllm_tokenize" ? "vllm_tokenize" : null } }), children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("option", { value: "", children: "\u5C1A\u672A\u786E\u8BA4" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("option", { value: "vllm_tokenize", children: "vLLM /tokenize" })
+                    /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)(Select, { "aria-label": "\u5BB9\u91CF\u9884\u68C0\u534F\u8BAE", value: draft.limits.capacity_mode || "", onChange: (event) => setDraft({ ...draft, limits: { ...draft.limits, capacity_mode: event.target.value === "vllm_tokenize" ? "vllm_tokenize" : null } }), children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("option", { value: "", children: "\u5C1A\u672A\u786E\u8BA4" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("option", { value: "vllm_tokenize", children: "vLLM /tokenize" })
                     ] })
                   ] }),
-                  numbers.map(([key, label]) => /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
+                  numbers.map(([key, label]) => /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("label", { className: "iad-field", children: [
                     label,
-                    /* @__PURE__ */ (0, import_jsx_runtime70.jsx)(
+                    /* @__PURE__ */ (0, import_jsx_runtime71.jsx)(
                       "input",
                       {
                         type: "number",
@@ -20684,21 +20383,21 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                     )
                   ] }, key))
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("label", { className: "iad-field", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("label", { className: "iad-field", children: [
                   "\u670D\u52A1\u6269\u5C55\u53C2\u6570\uFF08JSON\uFF09",
-                  /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("textarea", { "aria-label": "\u670D\u52A1\u6269\u5C55\u53C2\u6570", "aria-invalid": parametersError ? true : void 0, "aria-describedby": parametersError ? parametersId : void 0, rows: 4, value: parameters, onChange: (event) => setParameters(event.target.value) })
+                  /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("textarea", { "aria-label": "\u670D\u52A1\u6269\u5C55\u53C2\u6570", "aria-invalid": parametersError ? true : void 0, "aria-describedby": parametersError ? parametersId : void 0, rows: 4, value: parameters, onChange: (event) => setParameters(event.target.value) })
                 ] }),
-                parametersError && /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("p", { id: parametersId, role: "alert", className: "iad-error", children: parametersError })
+                parametersError && /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("p", { id: parametersId, role: "alert", className: "iad-error", children: parametersError })
               ] })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime70.jsxs)("div", { className: "iad-form-footer", children: [
-              changed && /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("span", { className: "iad-muted", children: "\u6709\u672A\u4FDD\u5B58\u7684\u66F4\u6539" }),
-              /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("button", { type: "button", disabled: !draft.provider_id || !draft.model_id || !!parametersError, onClick: () => void check(), children: "\u68C0\u67E5\u8FDE\u63A5" }),
-              /* @__PURE__ */ (0, import_jsx_runtime70.jsx)(Button, { variant: "primary", type: "submit", disabled: !changed || !draft.provider_id || !draft.model_id || !!parametersError, children: busy ? "\u5904\u7406\u4E2D\u2026" : "\u4FDD\u5B58\u914D\u7F6E" }),
-              /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("button", { type: "button", disabled: !changed, onClick: reset, children: "\u91CD\u7F6E" })
+            /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("div", { className: "iad-form-footer", children: [
+              changed && /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("span", { className: "iad-muted", children: "\u6709\u672A\u4FDD\u5B58\u7684\u66F4\u6539" }),
+              /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("button", { type: "button", disabled: !draft.provider_id || !draft.model_id || !!parametersError, onClick: () => void check(), children: "\u68C0\u67E5\u8FDE\u63A5" }),
+              /* @__PURE__ */ (0, import_jsx_runtime71.jsx)(Button, { variant: "primary", type: "submit", disabled: !changed || !draft.provider_id || !draft.model_id || !!parametersError, children: busy ? "\u5904\u7406\u4E2D\u2026" : "\u4FDD\u5B58\u914D\u7F6E" }),
+              /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("button", { type: "button", disabled: !changed, onClick: reset, children: "\u91CD\u7F6E" })
             ] })
           ] }) }),
-          notice && /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("p", { role: "status", children: notice })
+          notice && /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("p", { role: "status", children: notice })
         ] })
       ] })
     ] });
@@ -20706,14 +20405,14 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 
   // src/client/host/IndustrialSidebar.tsx
   var import_react67 = __toESM(__require("react"), 1);
-  var import_jsx_runtime71 = __require("react/jsx-runtime");
+  var import_jsx_runtime72 = __require("react/jsx-runtime");
   function IndustrialSidebar({ wide, panels, renderPanel, renderWorkspaces }) {
     const [sessionsOpen, setSessionsOpen] = (0, import_react67.useState)(true);
     const workspacesId = (0, import_react67.useId)();
     const business = panels.filter((panel) => panel.id in navigation && navigation[panel.id].chapter !== "\u5DE5\u5177");
     const auxiliary = panels.filter((panel) => !business.includes(panel));
-    return /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("div", { className: `iad-sidebar-content ${wide ? "iad-sidebar-wide" : "iad-sidebar-rail"}`, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("style", { children: themeStyles + `
+    return /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("div", { className: `iad-sidebar-content ${wide ? "iad-sidebar-wide" : "iad-sidebar-rail"}`, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("style", { children: themeStyles + `
       .iad-sidebar-content{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;gap:16px;background:var(--iad-navigation);color:var(--iad-text);font-size:14px}
       .iad-sidebar-content>nav{display:flex;flex-direction:column;gap:20px;min-height:0;overflow:auto;flex:0 1 auto}.iad-sidebar-content>nav>section,.iad-sidebar-tools{display:flex;flex-direction:column;gap:4px}
       .iad-sidebar-content h2{margin:0 10px 4px;font-size:12px;font-weight:500;color:var(--dsw-alias-label-secondary)}
@@ -20725,26 +20424,515 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       .iad-sidebar-wide>nav{flex:1 1 0;overscroll-behavior:contain}.iad-sidebar-wide>nav>section{flex:none}.iad-sidebar-wide>.iad-sidebar-sessions[data-open=true]{flex:1 1 0}
       .iad-sidebar-tools{margin-top:auto;flex:none}.iad-sidebar-rail{gap:12px}.iad-sidebar-rail>nav{gap:12px}
     ` }),
-      /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("nav", { "aria-label": "\u5DE5\u4E1A\u5DE5\u4F5C\u53F0\u5BFC\u822A", children: ["\u6570\u636E\u51C6\u5907", "\u77E5\u8BC6\u6784\u5EFA", "\u8D28\u91CF\u5BA1\u6838"].map((chapter) => /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("section", { "aria-label": chapter, children: [
-        wide && /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("h2", { children: chapter }),
-        business.filter((panel) => navigation[panel.id].chapter === chapter).map((panel) => /* @__PURE__ */ (0, import_jsx_runtime71.jsx)(import_react67.default.Fragment, { children: renderPanel(panel) }, panel.id))
+      /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("nav", { "aria-label": "\u5DE5\u4E1A\u5DE5\u4F5C\u53F0\u5BFC\u822A", children: ["\u6570\u636E\u51C6\u5907", "\u77E5\u8BC6\u6784\u5EFA", "\u8D28\u91CF\u5BA1\u6838"].map((chapter) => /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("section", { "aria-label": chapter, children: [
+        wide && /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("h2", { children: chapter }),
+        business.filter((panel) => navigation[panel.id].chapter === chapter).map((panel) => /* @__PURE__ */ (0, import_jsx_runtime72.jsx)(import_react67.default.Fragment, { children: renderPanel(panel) }, panel.id))
       ] }, chapter)) }),
-      wide ? /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("section", { className: "iad-sidebar-sessions", "data-native-workspaces": true, "data-open": sessionsOpen, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("button", { type: "button", className: "iad-sidebar-disclosure", "aria-expanded": sessionsOpen, "aria-controls": workspacesId, onClick: () => setSessionsOpen((value) => !value), children: [
-          /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("span", { "aria-hidden": "true", children: sessionsOpen ? "\u25BE" : "\u25B8" }),
+      wide ? /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("section", { className: "iad-sidebar-sessions", "data-native-workspaces": true, "data-open": sessionsOpen, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("button", { type: "button", className: "iad-sidebar-disclosure", "aria-expanded": sessionsOpen, "aria-controls": workspacesId, onClick: () => setSessionsOpen((value) => !value), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("span", { "aria-hidden": "true", children: sessionsOpen ? "\u25BE" : "\u25B8" }),
           "\u4F1A\u8BDD\u4E0E\u5DE5\u4F5C\u533A"
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("div", { id: workspacesId, className: "iad-native-workspace-content", hidden: !sessionsOpen, children: renderWorkspaces() })
+        /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("div", { id: workspacesId, className: "iad-native-workspace-content", hidden: !sessionsOpen, children: renderWorkspaces() })
       ] }) : renderWorkspaces(),
-      /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("section", { className: "iad-sidebar-tools", "aria-label": "\u5DE5\u5177", children: auxiliary.map((panel) => /* @__PURE__ */ (0, import_jsx_runtime71.jsx)(import_react67.default.Fragment, { children: renderPanel(panel) }, panel.id)) })
+      /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("section", { className: "iad-sidebar-tools", "aria-label": "\u5DE5\u5177", children: auxiliary.map((panel) => /* @__PURE__ */ (0, import_jsx_runtime72.jsx)(import_react67.default.Fragment, { children: renderPanel(panel) }, panel.id)) })
+    ] });
+  }
+
+  // src/client/components/ConsistencyStatisticsDialog.tsx
+  var import_jsx_runtime73 = __require("react/jsx-runtime");
+  function niceAxis(max2) {
+    const target = max2 / 4;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(Math.max(target, 1))));
+    const normalized = target / magnitude;
+    const step = (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 2.5 ? 2.5 : normalized <= 5 ? 5 : 10) * magnitude;
+    return Math.max(step * 4, Math.ceil(max2 / step) * step);
+  }
+  function StatisticChart({ title, rows, action, axis, onFilter }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("section", { className: `dc-vchart-panel ${action === "stat-agreement" ? "dc-vchart-agreement" : ""}`, "aria-label": `${title}\u67F1\u72B6\u56FE`, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("h3", { children: title }),
+      /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("div", { className: "dc-vchart-body", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: [axis, axis * 0.75, axis * 0.5, axis * 0.25, 0].map((value, index3) => /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("span", { children: Math.round(value) }, index3)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("div", { className: "dc-vchart-figure", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
+          /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("div", { className: "dc-vchart-columns", style: { "--chart-cols": rows.length }, children: rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("div", { className: "dc-vchart-column", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime73.jsx)(
+              "button",
+              {
+                type: "button",
+                className: `dc-vchart-bar ${row.count ? "" : "dc-vchart-zero"}`,
+                style: { height: `${Math.max(0.6, 100 * row.count / axis)}%` },
+                "data-dc": action,
+                "data-id": row.id || row.name,
+                "aria-label": `${row.name} ${row.count} \u7EC4\uFF0C\u70B9\u51FB\u67E5\u770B`,
+                title: `${row.name}\uFF1A${row.count} \u7EC4\uFF0C\u70B9\u51FB\u7B5B\u9009`,
+                onClick: () => onFilter(action, row.id || row.name),
+                children: /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("span", { className: "dc-vchart-value", children: row.count })
+              }
+            ) }),
+            /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
+          ] }, row.name)) })
+        ] })
+      ] })
+    ] });
+  }
+  function ConsistencyStatisticsDialog({ items, onFilter, onClose }) {
+    const original = [...new Set(items.map((item) => item.type))].map((name2) => ({ name: name2, count: items.filter((item) => item.type === name2).length }));
+    const model = [...new Set(items.map((item) => item.model.modelType))].map((name2) => ({ name: name2, count: items.filter((item) => item.model.modelType === name2).length }));
+    const agreement = [
+      { name: "\u4E00\u81F4", id: "same", count: items.filter((item) => item.model.status === "conflict").length },
+      { name: "\u4E0D\u4E00\u81F4", id: "different", count: items.filter((item) => item.model.status === "no_conflict").length }
+    ];
+    const distributionAxis = niceAxis(Math.max(1, ...original.map((row) => row.count), ...model.map((row) => row.count)));
+    return /* @__PURE__ */ (0, import_jsx_runtime73.jsx)(Modal, { title: "\u6807\u6CE8\u51B2\u7A81\u7EDF\u8BA1", size: "form", className: "dc-stats-dialog", onClose, children: /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("div", { className: "dc-stats-content", children: /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("div", { className: "dc-stats-charts", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime73.jsx)(StatisticChart, { title: "\u539F\u59CB\u5DEE\u5F02\u7C7B\u578B", rows: original, action: "stat-category", axis: distributionAxis, onFilter }),
+      /* @__PURE__ */ (0, import_jsx_runtime73.jsx)(StatisticChart, { title: "\u6A21\u578B\u5224\u65AD", rows: model, action: "stat-model", axis: distributionAxis, onFilter }),
+      /* @__PURE__ */ (0, import_jsx_runtime73.jsx)(StatisticChart, { title: "\u7ED3\u8BBA\u4E00\u81F4\u6027", rows: agreement, action: "stat-agreement", axis: niceAxis(Math.max(1, ...agreement.map((row) => row.count))), onFilter })
+    ] }) }) });
+  }
+
+  // src/client/components/ConsistencyConflictDialog.tsx
+  var import_react69 = __require("react");
+
+  // src/client/consistency-view.ts
+  var ConsistencyView = class {
+    static media(image, thumbnail = false) {
+      return `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-original${thumbnail ? "?max_side=480" : ""}`;
+    }
+    static async load(batchId, signal) {
+      const report = await request("/consistency/report", {
+        selection: { kind: "batch", batch_id: batchId },
+        page_size: 1
+      }, void 0, signal);
+      const queryId = report.page.query_id, items = [];
+      for (let page = 1; ; page++) {
+        const result = await request("/consistency/gallery", { query_id: queryId, kind: "conflicts", page, page_size: 200 }, void 0, signal);
+        items.push(...result.items);
+        if (items.length >= result.total) break;
+      }
+      const cards = items.map((item) => ({
+        id: item.group_id,
+        type: item.difference_types.map((type) => differenceLabels[type]).join("\u3001") || "\u6807\u6CE8\u5F85\u6838\u5BF9",
+        filename: item.anchor.sample.relative_path.split("/").pop(),
+        url: this.media(item.anchor, true),
+        fullUrl: this.media(item.anchor),
+        sourceWidth: item.anchor.sample.width,
+        sourceHeight: item.anchor.sample.height,
+        memberCount: item.member_count,
+        review: item.review_state,
+        model: {
+          status: item.model_state === "MATERIAL" ? "conflict" : item.model_state === "EQUIVALENT" ? "no_conflict" : "unknown",
+          modelType: modelAssessmentLabels[item.model_state]
+        },
+        rawItem: item
+      }));
+      return { queryId, items: cards };
+    }
+    static async members(reference, signal) {
+      const items = [];
+      for (let page = 1; ; page++) {
+        const result = await request("/consistency/gallery/members", { ...reference, page, page_size: 200 }, void 0, signal);
+        items.push(...result.items);
+        if (items.length >= result.total) return items;
+      }
+    }
+  };
+
+  // src/client/useGroupAnalysis.ts
+  var import_react68 = __require("react");
+  function useGroupAnalysis(reference) {
+    const [snapshot, setSnapshot] = (0, import_react68.useState)();
+    const key = JSON.stringify(reference);
+    (0, import_react68.useEffect)(() => {
+      const controller = new AbortController();
+      let timer;
+      setSnapshot(void 0);
+      if (!reference) return;
+      async function read() {
+        try {
+          const value = await request("/consistency/gallery/analysis", reference, void 0, controller.signal);
+          if (controller.signal.aborted) return;
+          setSnapshot({ key, analysis: value, error: "" });
+          if (value.status === "RUNNING" || value.status === "PENDING" || value.status === "NOT_ANALYZED") timer = setTimeout(read, value.status === "NOT_ANALYZED" ? 5e3 : 1200);
+        } catch (failure) {
+          if (!controller.signal.aborted) setSnapshot({ key, analysis: null, error: message(failure) });
+        }
+      }
+      void read();
+      return () => {
+        controller.abort();
+        clearTimeout(timer);
+      };
+    }, [key]);
+    return snapshot?.key === key ? snapshot : { analysis: null, error: "" };
+  }
+
+  // src/client/components/ConsistencyConflictDialog.tsx
+  var import_jsx_runtime74 = __require("react/jsx-runtime");
+  function OriginalAnnotationLabel({ source }) {
+    if (!source) return null;
+    const categories = [...new Set(source.annotations.annotations.map((annotation) => annotation.raw_label))];
+    const label = categories.join("\u3001") || { PASS: "OK", FAIL: "NG", UNCERTAIN: "\u672A\u6807\u6CE8" }[source.sample.quality_status];
+    return /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("span", { className: "dc-source-label", title: `\u539F\u59CB\u6807\u6CE8 ${label}`, children: [
+      "\u539F\u59CB\u6807\u6CE8 ",
+      label
+    ] });
+  }
+  function ConsistencyConflictDialog({
+    conflict: currentConflict,
+    items: visibleConflicts,
+    queryId: activeQueryId,
+    onSelect,
+    onClose,
+    onReviewed
+  }) {
+    const currentConflictId = currentConflict.id;
+    const [candidateIndex, setCandidateIndex] = (0, import_react69.useState)(0);
+    const [conflictMembers, setConflictMembers] = (0, import_react69.useState)([]);
+    const [membersError, setMembersError] = (0, import_react69.useState)("");
+    const [reviewBusy, setReviewBusy] = (0, import_react69.useState)(false);
+    const [reviewLoaded, setReviewLoaded] = (0, import_react69.useState)(false);
+    const [reviewError, setReviewError] = (0, import_react69.useState)("");
+    const pendingReview = (0, import_react69.useRef)(null);
+    const [reviewDecision, setReviewDecision] = (0, import_react69.useState)("pending");
+    const [reviewNote, setReviewNote] = (0, import_react69.useState)("");
+    const [zoomItem, setZoomItem] = (0, import_react69.useState)(null);
+    const groupReference = (0, import_react69.useMemo)(() => activeQueryId ? {
+      query_id: activeQueryId,
+      kind: "conflicts",
+      group_id: currentConflict.rawItem.group_id,
+      facts_state: currentConflict.rawItem.facts_state
+    } : null, [currentConflict.rawItem.group_id, currentConflict.rawItem.facts_state, activeQueryId]);
+    const groupAnalysis = useGroupAnalysis(groupReference);
+    (0, import_react69.useEffect)(() => {
+      const controller = new AbortController();
+      setConflictMembers([]);
+      setMembersError("");
+      setCandidateIndex(0);
+      if (!groupReference) return;
+      ConsistencyView.members(groupReference, controller.signal).then((items) => {
+        if (!controller.signal.aborted) setConflictMembers(items);
+      }).catch((error2) => {
+        if (!controller.signal.aborted) setMembersError(message(error2));
+      });
+      return () => controller.abort();
+    }, [groupReference]);
+    const selectedMember = conflictMembers[candidateIndex] || null;
+    const currentCandidate = (0, import_react69.useMemo)(() => {
+      const image = selectedMember?.image;
+      return {
+        sampleId: image?.sample.sample_id || "",
+        filename: image?.sample.relative_path.split("/").pop() || "",
+        thumbUrl: image ? ConsistencyView.media(image, true) : "",
+        fullUrl: image ? ConsistencyView.media(image) : "",
+        width: image?.sample.width,
+        height: image?.sample.height
+      };
+    }, [selectedMember]);
+    const compared = useResource(selectedMember?.comparison ? `/consistency/evidence/${encodeURIComponent(selectedMember.comparison.evidence_id)}` : null);
+    const anchorSide = selectedMember?.comparison?.anchor_side;
+    const anchorSource = anchorSide ? compared.data?.sources[anchorSide] : null;
+    const candidateSource = anchorSide ? compared.data?.sources[anchorSide === "left" ? "right" : "left"] : null;
+    const anchorBboxes = anchorSource?.annotations.annotations.filter((annotation) => annotation.bbox && annotation.geometry_status !== "INVALID") || [];
+    const candidateBboxes = candidateSource?.annotations.annotations.filter((annotation) => annotation.bbox && annotation.geometry_status !== "INVALID") || [];
+    const readReview = (0, import_react69.useCallback)(async (signal) => {
+      if (!selectedMember?.comparison) return;
+      const context = await request("/consistency/review/context", { evidence_id: selectedMember.comparison.evidence_id }, void 0, signal);
+      if (signal?.aborted) return;
+      const latest = context.decisions.at(-1), action = latest?.request.action.kind;
+      const decision = action === "CONFIRM_DIFFERENCE" ? "confirmed" : action === "REJECT_DIFFERENCE" ? "rejected" : "pending";
+      setReviewDecision(decision);
+      setReviewNote(latest?.request.comment || "");
+      setReviewLoaded(true);
+    }, [selectedMember?.comparison?.evidence_id, currentConflictId]);
+    (0, import_react69.useEffect)(() => {
+      const controller = new AbortController();
+      setReviewLoaded(false);
+      setReviewError("");
+      setReviewDecision("pending");
+      setReviewNote("");
+      pendingReview.current = null;
+      void readReview(controller.signal).catch((error2) => {
+        if (!controller.signal.aborted) setReviewError(message(error2));
+      });
+      return () => controller.abort();
+    }, [readReview]);
+    const handlePrevConflict = (0, import_react69.useCallback)(() => {
+      const list = visibleConflicts;
+      const idx = list.findIndex((c) => c.id === currentConflictId);
+      if (idx > 0) {
+        const prev = list[idx - 1];
+        onSelect(prev.id);
+        setCandidateIndex(0);
+        setReviewDecision(prev.review);
+        setReviewNote("");
+      }
+    }, [visibleConflicts, currentConflictId, onSelect]);
+    const handleNextConflict = (0, import_react69.useCallback)(() => {
+      const list = visibleConflicts;
+      const idx = list.findIndex((c) => c.id === currentConflictId);
+      if (idx >= 0 && idx < list.length - 1) {
+        const next = list[idx + 1];
+        onSelect(next.id);
+        setCandidateIndex(0);
+        setReviewDecision(next.review);
+        setReviewNote("");
+      }
+    }, [visibleConflicts, currentConflictId, onSelect]);
+    const handleSaveReview = async () => {
+      if (!compared.data || reviewBusy || !reviewLoaded) return;
+      if (reviewDecision === "pending" && !reviewNote.trim()) {
+        onClose();
+        return;
+      }
+      if (!reviewNote.trim()) {
+        setReviewError("\u8BF7\u586B\u5199\u590D\u6838\u4F9D\u636E");
+        return;
+      }
+      const [firstDifference, ...otherDifferences] = compared.data.result.annotation.differences;
+      if (!firstDifference) {
+        setReviewError("\u5F53\u524D\u6BD4\u8F83\u6CA1\u6709\u53EF\u590D\u6838\u7684\u5DEE\u5F02");
+        return;
+      }
+      setReviewBusy(true);
+      setReviewError("");
+      try {
+        if (!pendingReview.current) pendingReview.current = {
+          client_request_id: v4_default(),
+          evidence_id: compared.data.result.evidence_id,
+          result_id: compared.data.result.result_id,
+          difference_ids: [firstDifference.difference_id, ...otherDifferences.map((item) => item.difference_id)],
+          reviewer: localStorage.getItem("iad.reviewer") || "auditor_qc",
+          comment: reviewNote.trim(),
+          action: { kind: reviewDecision === "confirmed" ? "CONFIRM_DIFFERENCE" : reviewDecision === "rejected" ? "REJECT_DIFFERENCE" : "NEEDS_CONTEXT" }
+        };
+        await request("/consistency/review/submit", pendingReview.current);
+        await readReview();
+        pendingReview.current = null;
+        onClose();
+        onReviewed();
+      } catch (error2) {
+        setReviewError(message(error2));
+      } finally {
+        setReviewBusy(false);
+      }
+    };
+    return /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)(import_jsx_runtime74.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)(Modal, { title: "\u6807\u6CE8\u51B2\u7A81\u5BF9\u6BD4", id: "dc-compare-mask", className: "dc-dialog dc-conflict-dialog", header: false, onClose, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("header", { className: "dc-dialog-head", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("h2", { id: "dc-dialog-title", children: "\u6807\u6CE8\u51B2\u7A81\u5BF9\u6BD4" }),
+          /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("div", { className: "dc-dialog-head-actions", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(Button, { type: "button", onClick: handlePrevConflict, children: "\u4E0A\u4E00\u7EC4" }),
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(Button, { type: "button", onClick: handleNextConflict, children: "\u4E0B\u4E00\u7EC4" }),
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(IconButton, { icon: "close", type: "button", title: "\u5173\u95ED", label: "\u5173\u95ED", onClick: onClose })
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("div", { className: "dc-dialog-body", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("div", { className: "dc-compare", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("div", { className: "dc-compare-cell", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("h3", { className: "dc-compare-title", children: "\u4E3B\u56FE" }),
+              /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)(
+                "div",
+                {
+                  className: "dc-compare-photo",
+                  role: "button",
+                  tabIndex: 0,
+                  "data-dc": "zoom-anchor",
+                  "aria-label": "\u67E5\u770B\u4E3B\u56FE\u5927\u56FE",
+                  title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE",
+                  onClick: () => setZoomItem({
+                    id: currentConflict.id + "_anchor",
+                    title: currentConflict.filename,
+                    imageUrl: currentConflict.fullUrl || currentConflict.url,
+                    width: currentConflict.sourceWidth,
+                    height: currentConflict.sourceHeight,
+                    bboxes: anchorBboxes
+                  }),
+                  onKeyDown: (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      setZoomItem({
+                        id: currentConflict.id + "_anchor",
+                        title: currentConflict.filename,
+                        imageUrl: currentConflict.fullUrl || currentConflict.url,
+                        width: currentConflict.sourceWidth,
+                        height: currentConflict.sourceHeight,
+                        bboxes: anchorBboxes
+                      });
+                    }
+                  },
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(
+                      AnnotatedImageStage,
+                      {
+                        src: currentConflict.fullUrl || currentConflict.url,
+                        alt: "\u4E3B\u56FE",
+                        width: currentConflict.sourceWidth,
+                        height: currentConflict.sourceHeight,
+                        bboxes: anchorBboxes
+                      }
+                    ),
+                    /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(OriginalAnnotationLabel, { source: anchorSource })
+                  ]
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("div", { className: "dc-photo-filename", title: currentConflict.filename, children: currentConflict.filename })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("div", { className: "dc-compare-cell", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("h3", { className: "dc-compare-title", children: "\u5BF9\u7167\u56FE\u50CF" }),
+              /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)(
+                "div",
+                {
+                  className: "dc-compare-photo",
+                  role: "button",
+                  tabIndex: 0,
+                  "data-dc": "zoom-candidate",
+                  "aria-label": "\u67E5\u770B\u5019\u9009\u56FE\u5927\u56FE",
+                  title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE",
+                  onClick: () => setZoomItem({
+                    id: currentConflict.id + "_candidate_" + candidateIndex,
+                    title: `${currentCandidate.filename} (\u5019\u9009\u56FE ${candidateIndex + 1})`,
+                    imageUrl: currentCandidate.fullUrl,
+                    width: currentCandidate.width,
+                    height: currentCandidate.height,
+                    bboxes: candidateBboxes
+                  }),
+                  onKeyDown: (e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      setZoomItem({
+                        id: currentConflict.id + "_candidate_" + candidateIndex,
+                        title: `${currentCandidate.filename} (\u5019\u9009\u56FE ${candidateIndex + 1})`,
+                        imageUrl: currentCandidate.fullUrl,
+                        width: currentCandidate.width,
+                        height: currentCandidate.height,
+                        bboxes: candidateBboxes
+                      });
+                    }
+                  },
+                  children: [
+                    selectedMember && /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(
+                      AnnotatedImageStage,
+                      {
+                        src: currentCandidate.fullUrl || currentCandidate.thumbUrl,
+                        alt: "\u5019\u9009\u56FE",
+                        width: currentCandidate.width,
+                        height: currentCandidate.height,
+                        bboxes: candidateBboxes
+                      }
+                    ),
+                    /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(OriginalAnnotationLabel, { source: candidateSource })
+                  ]
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("div", { className: "dc-photo-filename", title: currentCandidate.filename, children: currentCandidate.filename })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("div", { className: "iad-thumbnail-strip", "aria-label": "\u5207\u6362\u51B2\u7A81\u56FE\u50CF", children: conflictMembers.map((m, i) => {
+            const s = m.image.sample;
+            const thumb = ConsistencyView.media(m.image, true);
+            return /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(
+              ThumbnailCard,
+              {
+                src: thumb,
+                variant: "compact",
+                label: `\u5019\u9009 ${i + 1}`,
+                "data-dc": "candidate",
+                "data-id": i,
+                "aria-pressed": i === candidateIndex,
+                onClick: () => setCandidateIndex(i)
+              },
+              s.sample_id || i
+            );
+          }) }),
+          membersError && /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { role: "alert", className: "iad-error", children: membersError }),
+          compared.error && /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { role: "alert", className: "iad-error", children: compared.error }),
+          /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("section", { className: "dc-fact-panel", "aria-label": "\u5224\u5B9A\u7ED3\u8BBA", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("h3", { children: "\u5224\u5B9A\u7ED3\u8BBA" }),
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("span", { className: "dc-verdict-value", children: currentConflict.type }),
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { className: "dc-verdict-description", children: compared.data ? annotationSummary(compared.data.result.annotation) : compared.error || "\u6B63\u5728\u8BFB\u53D6\u51BB\u7ED3\u6BD4\u8F83\u8BB0\u5F55\u2026" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("section", { className: "dc-model-panel", "aria-label": "\u6A21\u578B\u5206\u6790", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("h3", { children: "\u6A21\u578B\u5206\u6790" }),
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { children: groupAnalysis.error || groupAnalysis.analysis?.error || groupAnalysis.analysis?.result?.conclusions.map((item) => item.text).join("\n") || "\u6682\u65E0\u5DF2\u4FDD\u5B58\u7684\u6A21\u578B\u5206\u6790\u7ED3\u679C\u3002" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("section", { className: "dc-conclusion-panel", "aria-label": "\u6A21\u578B\u7ED3\u8BBA", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("h3", { children: "\u6A21\u578B\u7ED3\u8BBA" }),
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("span", { className: "dc-verdict-value", children: groupAnalysis.analysis?.result?.overall.text || currentConflict.model.modelType }),
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { className: "dc-verdict-description", children: groupAnalysis.analysis?.result?.overall.text || groupAnalysis.error || groupAnalysis.analysis?.error || "\u6682\u65E0\u5DF2\u4FDD\u5B58\u7684\u6A21\u578B\u7ED3\u8BBA\u3002" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("section", { className: "dc-review-panel", "aria-label": "\u4EBA\u5DE5\u590D\u6838", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("h3", { children: "\u4EBA\u5DE5\u590D\u6838" }),
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("div", { className: "dc-decision-controls", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("label", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(
+                  "input",
+                  {
+                    type: "radio",
+                    disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
+                    name: "dc-review",
+                    value: "pending",
+                    checked: reviewDecision === "pending",
+                    onChange: () => setReviewDecision("pending")
+                  }
+                ),
+                "\u5F85\u786E\u8BA4"
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("label", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(
+                  "input",
+                  {
+                    type: "radio",
+                    disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
+                    name: "dc-review",
+                    value: "confirmed",
+                    checked: reviewDecision === "confirmed",
+                    onChange: () => setReviewDecision("confirmed")
+                  }
+                ),
+                "\u786E\u8BA4\u51B2\u7A81"
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("label", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(
+                  "input",
+                  {
+                    type: "radio",
+                    disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
+                    name: "dc-review",
+                    value: "rejected",
+                    checked: reviewDecision === "rejected",
+                    onChange: () => setReviewDecision("rejected")
+                  }
+                ),
+                "\u6392\u9664\u51B2\u7A81"
+              ] })
+            ] }),
+            reviewError && /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { role: "alert", className: "iad-error", children: reviewError }),
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(
+              "textarea",
+              {
+                disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
+                className: "dc-note",
+                id: "dc-note",
+                placeholder: "\u590D\u6838\u8BF4\u660E\uFF08\u53EF\u9009\uFF09",
+                value: reviewNote,
+                onChange: (e) => setReviewNote(e.target.value)
+              }
+            )
+          ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("footer", { className: "dc-dialog-footer", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(Button, { type: "button", onClick: () => onClose(), children: "\u53D6\u6D88" }),
+          /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(Button, { variant: "primary", type: "button", disabled: reviewBusy || !reviewLoaded || !compared.data, onClick: handleSaveReview, children: "\u4FDD\u5B58\u590D\u6838" })
+        ] })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(FullscreenViewer, { open: !!zoomItem, item: zoomItem, onClose: () => setZoomItem(null) })
     ] });
   }
 
   // src/client/components/ConsistencyPage.tsx
-  var import_react74 = __require("react");
+  var import_react75 = __require("react");
 
   // src/client/components/ConsistencyEvidencePage.tsx
-  var import_react72 = __require("react");
+  var import_react74 = __require("react");
 
   // src/client/consistency-images.ts
   function frozenConsistencyImage(bundle, side) {
@@ -20782,20 +20970,20 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // src/client/components/ConsistencyComparison.tsx
-  var import_react69 = __require("react");
+  var import_react71 = __require("react");
 
   // src/client/components/AnnotatedImagePair.tsx
-  var import_react68 = __require("react");
-  var import_jsx_runtime72 = __require("react/jsx-runtime");
+  var import_react70 = __require("react");
+  var import_jsx_runtime75 = __require("react/jsx-runtime");
   function AnnotatedImagePair({ sources, labels, synchronized = false, focusRegion, overlays, onExpand }) {
-    const [transform, setTransform] = (0, import_react68.useState)({ zoom: 0, x: 0, y: 0 });
-    const [rightTransform, setRightTransform] = (0, import_react68.useState)({ zoom: 0, x: 0, y: 0 });
-    (0, import_react68.useLayoutEffect)(() => {
+    const [transform, setTransform] = (0, import_react70.useState)({ zoom: 0, x: 0, y: 0 });
+    const [rightTransform, setRightTransform] = (0, import_react70.useState)({ zoom: 0, x: 0, y: 0 });
+    (0, import_react70.useLayoutEffect)(() => {
       if (!synchronized) setRightTransform(transform);
     }, [synchronized]);
-    return /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("div", { className: "iad-image-pair", children: sources.map((source, index3) => /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("div", { className: "iad-image-pair-side", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("p", { children: labels[index3] }),
-      source ? /* @__PURE__ */ (0, import_jsx_runtime72.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("div", { className: "iad-image-pair", children: sources.map((source, index3) => /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("div", { className: "iad-image-pair-side", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("p", { children: labels[index3] }),
+      source ? /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(
         ImageCanvas,
         {
           image: source,
@@ -20804,16 +20992,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           focusRegion,
           overlay: overlays?.[index3]
         }
-      ) : /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("p", { className: "iad-empty", children: "\u6682\u65E0\u5BF9\u7167\u56FE\u50CF\u3002" })
+      ) : /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("p", { className: "iad-empty", children: "\u6682\u65E0\u5BF9\u7167\u56FE\u50CF\u3002" })
     ] }, index3)) });
   }
 
   // src/client/components/ConsistencyCanvasPair.tsx
-  var import_jsx_runtime73 = __require("react/jsx-runtime");
+  var import_jsx_runtime76 = __require("react/jsx-runtime");
   function ConsistencyCanvasPair({ sources, selected, synchronized = true, showDifferences = true, onExpand, anchorSide = "left", labels = ["\u67E5\u8BE2\u56FE\u50CF", "\u5019\u9009\u56FE\u50CF"] }) {
     const region = showDifferences && selected?.region ? { id: selected.difference_id, bbox: selected.region } : void 0;
-    const overlays = sources.map((source, index3) => region && source?.width && source.height ? /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("svg", { className: "iad-finding-layer iad-consistency-region", viewBox: `0 0 ${source.width} ${source.height}`, children: /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("rect", { x: region.bbox[0], y: region.bbox[1], width: region.bbox[2] - region.bbox[0], height: region.bbox[3] - region.bbox[1], strokeDasharray: selected?.reference_from_other === (index3 ? anchorSide === "left" ? "right" : "left" : anchorSide) ? "6 4" : void 0 }) }) : void 0);
-    return /* @__PURE__ */ (0, import_jsx_runtime73.jsx)(
+    const overlays = sources.map((source, index3) => region && source?.width && source.height ? /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("svg", { className: "iad-finding-layer iad-consistency-region", viewBox: `0 0 ${source.width} ${source.height}`, children: /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("rect", { x: region.bbox[0], y: region.bbox[1], width: region.bbox[2] - region.bbox[0], height: region.bbox[3] - region.bbox[1], strokeDasharray: selected?.reference_from_other === (index3 ? anchorSide === "left" ? "right" : "left" : anchorSide) ? "6 4" : void 0 }) }) : void 0);
+    return /* @__PURE__ */ (0, import_jsx_runtime76.jsx)(
       AnnotatedImagePair,
       {
         sources,
@@ -20827,70 +21015,70 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // src/client/components/ConsistencyDifferences.tsx
-  var import_jsx_runtime74 = __require("react/jsx-runtime");
+  var import_jsx_runtime77 = __require("react/jsx-runtime");
   function ConsistencyDifferences({ member, differenceId, onDifference, anchorSide = "left" }) {
     const selected = member.annotation?.differences.find((row) => row.difference_id === differenceId);
-    return /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("aside", { className: "iad-consistency-differences", "aria-label": "\u6807\u6CE8\u5DEE\u5F02", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("h2", { children: "\u6807\u6CE8\u5DEE\u5F02" }),
-      /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { className: "iad-muted", children: member.annotation ? `\u89C4\u8303${{ SAME: "\u76F8\u540C", DIFFERENT: "\u4E0D\u540C", UNKNOWN: "\u672A\u77E5" }[member.annotation.policy_relation]}\uFF0C${member.annotation.status === "COMPLETE" ? "\u6BD4\u8F83\u5B8C\u6210" : "\u6BD4\u8F83\u4E0D\u5B8C\u6574"}` : "\u5C1A\u672A\u6BD4\u8F83\u6807\u6CE8" }),
-      member.pixel.status === "COMPLETE" && /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("dl", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("dt", { children: "\u6BD4\u8F83\u50CF\u7D20" }),
-        /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("dd", { children: member.pixel.compared_pixels.toLocaleString() }),
-        /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("dt", { children: "\u53D8\u5316\u50CF\u7D20" }),
-        /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("dd", { children: member.pixel.changed_pixels === null ? "\u672A\u8BA1\u7B97" : member.pixel.changed_pixels.toLocaleString() })
+    return /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("aside", { className: "iad-consistency-differences", "aria-label": "\u6807\u6CE8\u5DEE\u5F02", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("h2", { children: "\u6807\u6CE8\u5DEE\u5F02" }),
+      /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("p", { className: "iad-muted", children: member.annotation ? `\u89C4\u8303${{ SAME: "\u76F8\u540C", DIFFERENT: "\u4E0D\u540C", UNKNOWN: "\u672A\u77E5" }[member.annotation.policy_relation]}\uFF0C${member.annotation.status === "COMPLETE" ? "\u6BD4\u8F83\u5B8C\u6210" : "\u6BD4\u8F83\u4E0D\u5B8C\u6574"}` : "\u5C1A\u672A\u6BD4\u8F83\u6807\u6CE8" }),
+      member.pixel.status === "COMPLETE" && /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("dl", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("dt", { children: "\u6BD4\u8F83\u50CF\u7D20" }),
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("dd", { children: member.pixel.compared_pixels.toLocaleString() }),
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("dt", { children: "\u53D8\u5316\u50CF\u7D20" }),
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("dd", { children: member.pixel.changed_pixels === null ? "\u672A\u8BA1\u7B97" : member.pixel.changed_pixels.toLocaleString() })
       ] }),
-      member.local && (member.local.status === "COMPLETE" ? /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("dl", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("dt", { children: "\u6709\u6548\u533A\u57DF\u50CF\u7D20" }),
-        /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("dd", { "data-stat": "local-compared", children: member.local.compared_pixels.toLocaleString() }),
-        /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("dt", { children: "\u5C40\u90E8\u53D8\u5316\u50CF\u7D20" }),
-        /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("dd", { children: member.local.changed_pixels?.toLocaleString() }),
-        /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("dt", { children: "\u5C40\u90E8\u6700\u5927\u5DEE\u503C" }),
-        /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("dd", { children: member.local.max_abs_diff })
-      ] }) : /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("p", { className: "iad-muted", children: [
+      member.local && (member.local.status === "COMPLETE" ? /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("dl", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("dt", { children: "\u6709\u6548\u533A\u57DF\u50CF\u7D20" }),
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("dd", { "data-stat": "local-compared", children: member.local.compared_pixels.toLocaleString() }),
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("dt", { children: "\u5C40\u90E8\u53D8\u5316\u50CF\u7D20" }),
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("dd", { children: member.local.changed_pixels?.toLocaleString() }),
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("dt", { children: "\u5C40\u90E8\u6700\u5927\u5DEE\u503C" }),
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("dd", { children: member.local.max_abs_diff })
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("p", { className: "iad-muted", children: [
         "\u5C40\u90E8\u5DEE\u5F02\u4E0D\u53EF\u6BD4\u8F83\uFF1A",
         member.local.reason
       ] })),
-      member.near && /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)(import_jsx_runtime74.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { children: imageRelations[member.relation] }),
-        /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { className: "iad-muted", children: "\u7F29\u7565\u56FE\u8FD1\u4F3C\u590D\u6838\u4EC5\u7528\u4E8E\u5019\u9009\u5206\u7EA7\u3002" }),
-        member.near.pixel_cosine !== null && /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("dl", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("dt", { children: "\u7070\u5EA6\u4F59\u5F26" }),
-          /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("dd", { children: member.near.pixel_cosine.toFixed(4) }),
-          /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("dt", { children: "NCC" }),
-          /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("dd", { children: member.near.ncc?.toFixed(4) })
+      member.near && /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)(import_jsx_runtime77.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("p", { children: imageRelations[member.relation] }),
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("p", { className: "iad-muted", children: "\u7F29\u7565\u56FE\u8FD1\u4F3C\u590D\u6838\u4EC5\u7528\u4E8E\u5019\u9009\u5206\u7EA7\u3002" }),
+        member.near.pixel_cosine !== null && /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("dl", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("dt", { children: "\u7070\u5EA6\u4F59\u5F26" }),
+          /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("dd", { children: member.near.pixel_cosine.toFixed(4) }),
+          /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("dt", { children: "NCC" }),
+          /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("dd", { children: member.near.ncc?.toFixed(4) })
         ] }),
-        member.registration?.status === "UNSUPPORTED" && /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { className: "iad-muted", children: "\u5C40\u90E8\u914D\u51C6\u672A\u542F\u7528\uFF0C\u4E0D\u8FDB\u884C\u8DE8\u5750\u6807\u6807\u6CE8\u5BF9\u8D26\u3002" })
+        member.registration?.status === "UNSUPPORTED" && /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("p", { className: "iad-muted", children: "\u5C40\u90E8\u914D\u51C6\u672A\u542F\u7528\uFF0C\u4E0D\u8FDB\u884C\u8DE8\u5750\u6807\u6807\u6CE8\u5BF9\u8D26\u3002" })
       ] }),
-      member.reason && /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { className: "iad-error", children: member.reason }),
-      member.annotation?.differences.map((difference2) => /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("button", { "data-difference": difference2.type, className: selected === difference2 ? "is-selected" : "", "aria-pressed": selected === difference2, onClick: () => onDifference(difference2.difference_id), children: [
-        /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("strong", { children: [
+      member.reason && /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("p", { className: "iad-error", children: member.reason }),
+      member.annotation?.differences.map((difference2) => /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("button", { "data-difference": difference2.type, className: selected === difference2 ? "is-selected" : "", "aria-pressed": selected === difference2, onClick: () => onDifference(difference2.difference_id), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("strong", { children: [
           differenceLabels[difference2.type],
           "\uFF0C",
           difference2.confirmed_conflict ? "\u5DF2\u786E\u8BA4\u51B2\u7A81" : "\u5F85\u5B9A"
         ] }),
-        difference2.type !== "POLICY_UNCONFIRMED" && /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)(import_jsx_runtime74.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("span", { children: [
+        difference2.type !== "POLICY_UNCONFIRMED" && /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)(import_jsx_runtime77.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("span", { children: [
             anchorSide === "left" ? "\u67E5\u8BE2" : "\u5019\u9009",
             "\uFF1A",
             difference2.type === "QUALITY_LABEL" ? String(difference2.facts.left_quality) : difference2.left.map((annotation) => annotation.raw_label).join("\u3001") || "\u65E0\u5BF9\u5E94\u6807\u6CE8"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("span", { children: [
             anchorSide === "left" ? "\u5019\u9009" : "\u67E5\u8BE2",
             "\uFF1A",
             difference2.type === "QUALITY_LABEL" ? String(difference2.facts.right_quality) : difference2.right.map((annotation) => annotation.raw_label).join("\u3001") || "\u65E0\u5BF9\u5E94\u6807\u6CE8"
           ] })
         ] }),
-        difference2.reference_from_other && /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("small", { children: [
+        difference2.reference_from_other && /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("small", { children: [
           "\u865A\u7EBF\u4F4D\u7F6E\u6765\u81EA",
           difference2.reference_from_other === anchorSide ? "\u5019\u9009" : "\u67E5\u8BE2",
           "\u56FE\u50CF\u6807\u6CE8\uFF0C\u4EC5\u4F5C\u53C2\u8003"
         ] }),
-        difference2.pending.map((reason, index3) => /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("small", { children: reason }, index3))
+        difference2.pending.map((reason, index3) => /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("small", { children: reason }, index3))
       ] }, difference2.difference_id)),
-      member.annotation?.differences.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { children: member.annotation.status === "COMPLETE" ? "\u5F53\u524D\u53EF\u6BD4\u8F83\u6807\u6CE8\u672A\u53D1\u73B0\u5DEE\u5F02" : "\u5F53\u524D\u672A\u53D6\u5F97\u53EF\u5224\u5B9A\u5DEE\u5F02" }),
-      !!member.annotation?.masking.length && /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("details", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("summary", { children: "\u5FFD\u7565\u533A\u57DF" }),
-        member.annotation.masking.map((row) => /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("p", { children: [
+      member.annotation?.differences.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("p", { children: member.annotation.status === "COMPLETE" ? "\u5F53\u524D\u53EF\u6BD4\u8F83\u6807\u6CE8\u672A\u53D1\u73B0\u5DEE\u5F02" : "\u5F53\u524D\u672A\u53D6\u5F97\u53EF\u5224\u5B9A\u5DEE\u5F02" }),
+      !!member.annotation?.masking.length && /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("details", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("summary", { children: "\u5FFD\u7565\u533A\u57DF" }),
+        member.annotation.masking.map((row) => /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("p", { children: [
           "\u53EF\u89C1 ",
           row.visible_pixels,
           "/",
@@ -20902,16 +21090,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // src/client/components/ConsistencyComparison.tsx
-  var import_jsx_runtime75 = __require("react/jsx-runtime");
+  var import_jsx_runtime78 = __require("react/jsx-runtime");
   function ConsistencyComparison({ member, query, temporary, differenceId, onDifference, frozen }) {
     const { workspace } = useWorkspace();
-    const [saving, setSaving] = (0, import_react69.useState)(false);
-    const saveRequest = (0, import_react69.useRef)(null);
-    (0, import_react69.useEffect)(() => () => saveRequest.current?.abort(), []);
-    const [detail, setDetail] = (0, import_react69.useState)(null), [error2, setError] = (0, import_react69.useState)("");
-    const [synchronized, setSynchronized] = (0, import_react69.useState)(true);
-    const [showDifferences, setShowDifferences] = (0, import_react69.useState)(true);
-    (0, import_react69.useEffect)(() => {
+    const [saving, setSaving] = (0, import_react71.useState)(false);
+    const saveRequest = (0, import_react71.useRef)(null);
+    (0, import_react71.useEffect)(() => () => saveRequest.current?.abort(), []);
+    const [detail, setDetail] = (0, import_react71.useState)(null), [error2, setError] = (0, import_react71.useState)("");
+    const [synchronized, setSynchronized] = (0, import_react71.useState)(true);
+    const [showDifferences, setShowDifferences] = (0, import_react71.useState)(true);
+    (0, import_react71.useEffect)(() => {
       if (frozen) return;
       const controller = new AbortController();
       request(`/sample/${encodeURIComponent(member.sample_id)}`, void 0, void 0, controller.signal).then((data) => {
@@ -20946,33 +21134,33 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         if (!controller.signal.aborted) setSaving(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)(import_jsx_runtime75.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("section", { className: "iad-consistency-comparison", "aria-label": "\u53CC\u56FE\u6BD4\u8F83", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("input", { type: "checkbox", checked: synchronized, onChange: (event) => setSynchronized(event.target.checked) }),
+    return /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)(import_jsx_runtime78.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("section", { className: "iad-consistency-comparison", "aria-label": "\u53CC\u56FE\u6BD4\u8F83", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("input", { type: "checkbox", checked: synchronized, onChange: (event) => setSynchronized(event.target.checked) }),
             "\u540C\u6B65\u7F29\u653E\u4E0E\u5E73\u79FB"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("input", { type: "checkbox", checked: showDifferences, onChange: (event) => setShowDifferences(event.target.checked) }),
+          /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("input", { type: "checkbox", checked: showDifferences, onChange: (event) => setShowDifferences(event.target.checked) }),
             "\u5DEE\u5F02\u533A\u57DF"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("span", { className: "iad-muted", children: member.relation === "EXACT" ? "\u5DF2\u6309\u539F\u59CB\u89E3\u7801\u50CF\u7D20\u6838\u9A8C" : "\u5C1A\u65E0\u4E25\u683C\u540C\u56FE\u8BC1\u660E" }),
-          !frozen && query && /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("button", { disabled: saving || !detail, onClick: () => void save(), children: saving ? "\u6B63\u5728\u4FDD\u5B58\u2026" : "\u4FDD\u5B58\u6BD4\u8F83\u8BC1\u636E" })
+          /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("span", { className: "iad-muted", children: member.relation === "EXACT" ? "\u5DF2\u6309\u539F\u59CB\u89E3\u7801\u50CF\u7D20\u6838\u9A8C" : "\u5C1A\u65E0\u4E25\u683C\u540C\u56FE\u8BC1\u660E" }),
+          !frozen && query && /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("button", { disabled: saving || !detail, onClick: () => void save(), children: saving ? "\u6B63\u5728\u4FDD\u5B58\u2026" : "\u4FDD\u5B58\u6BD4\u8F83\u8BC1\u636E" })
         ] }),
-        error2 && /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("p", { className: "iad-error", role: "alert", children: error2 }),
-        /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(ConsistencyCanvasPair, { sources, selected, synchronized, showDifferences })
+        error2 && /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("p", { className: "iad-error", role: "alert", children: error2 }),
+        /* @__PURE__ */ (0, import_jsx_runtime78.jsx)(ConsistencyCanvasPair, { sources, selected, synchronized, showDifferences })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(ConsistencyDifferences, { member, differenceId, onDifference })
+      /* @__PURE__ */ (0, import_jsx_runtime78.jsx)(ConsistencyDifferences, { member, differenceId, onDifference })
     ] });
   }
 
   // src/client/components/FrozenConsistencyComparison.tsx
-  var import_jsx_runtime76 = __require("react/jsx-runtime");
+  var import_jsx_runtime79 = __require("react/jsx-runtime");
   function FrozenConsistencyComparison({ bundle }) {
     const { state, workspace } = useWorkspace();
     const member = frozenConsistencyMember(bundle);
-    return /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("div", { className: "iad-consistency-layout iad-frozen-comparison", children: /* @__PURE__ */ (0, import_jsx_runtime76.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("div", { className: "iad-consistency-layout iad-frozen-comparison", children: /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
       ConsistencyComparison,
       {
         member,
@@ -20986,16 +21174,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // src/client/components/ConsistencyReviewPanel.tsx
-  var import_react71 = __require("react");
+  var import_react73 = __require("react");
 
   // src/client/components/ConsistencyRegionProposal.tsx
-  var import_react70 = __require("react");
-  var import_jsx_runtime77 = __require("react/jsx-runtime");
+  var import_react72 = __require("react");
+  var import_jsx_runtime80 = __require("react/jsx-runtime");
   function ConsistencyRegionProposal({ sources, differences, onChange }) {
-    const [sampleId, setSampleId] = (0, import_react70.useState)(""), [annotationId, setAnnotationId] = (0, import_react70.useState)(""), [operation, setOperation] = (0, import_react70.useState)("relabel");
-    const [category, setCategory] = (0, import_react70.useState)(""), [geometryKind, setGeometryKind] = (0, import_react70.useState)("bbox"), [geometryText, setGeometryText] = (0, import_react70.useState)("");
+    const [sampleId, setSampleId] = (0, import_react72.useState)(""), [annotationId, setAnnotationId] = (0, import_react72.useState)(""), [operation, setOperation] = (0, import_react72.useState)("relabel");
+    const [category, setCategory] = (0, import_react72.useState)(""), [geometryKind, setGeometryKind] = (0, import_react72.useState)("bbox"), [geometryText, setGeometryText] = (0, import_react72.useState)("");
     const annotations = differences.flatMap((diff) => [...diff.left, ...diff.right]).filter((item, index3, items) => items.findIndex((other) => other.annotation_id === item.annotation_id) === index3 && item.sample_id === sampleId);
-    const value = (0, import_react70.useMemo)(() => {
+    const value = (0, import_react72.useMemo)(() => {
       if (!sampleId || operation !== "add" && !annotationId) return null;
       if (operation === "remove") return { kind: "PROPOSE_REGION_CHANGE", changes: [{ operation, sample_id: sampleId, annotation_id: annotationId }] };
       if (operation === "relabel") return category.trim() ? { kind: "PROPOSE_REGION_CHANGE", changes: [{ operation, sample_id: sampleId, annotation_id: annotationId, category: category.trim() }] } : null;
@@ -21007,78 +21195,78 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       const change = operation === "add" ? { operation, sample_id: sampleId, category: category.trim(), geometry } : { operation, sample_id: sampleId, annotation_id: annotationId, geometry };
       return { kind: "PROPOSE_REGION_CHANGE", changes: [change] };
     }, [sampleId, annotationId, operation, category, geometryKind, geometryText]);
-    (0, import_react70.useEffect)(() => onChange(value), [value, onChange]);
-    return /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("section", { "aria-label": "\u533A\u57DF\u4FEE\u6B63\u5EFA\u8BAE", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("p", { className: "iad-muted", children: "\u5EFA\u8BAE\u4E0D\u4F1A\u6539\u5199\u6E90\u6807\u6CE8\u3002\u5B9E\u9645\u4FEE\u6B63\u5E76\u91CD\u626B\u540E\u518D\u9A8C\u8BC1\u3002" }),
-      /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("div", { className: "iad-config-bar", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("label", { className: "iad-field", children: [
+    (0, import_react72.useEffect)(() => onChange(value), [value, onChange]);
+    return /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("section", { "aria-label": "\u533A\u57DF\u4FEE\u6B63\u5EFA\u8BAE", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("p", { className: "iad-muted", children: "\u5EFA\u8BAE\u4E0D\u4F1A\u6539\u5199\u6E90\u6807\u6CE8\u3002\u5B9E\u9645\u4FEE\u6B63\u5E76\u91CD\u626B\u540E\u518D\u9A8C\u8BC1\u3002" }),
+      /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "iad-config-bar", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("label", { className: "iad-field", children: [
           "\u76EE\u6807\u6837\u672C",
-          /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)(Select, { "aria-label": "\u533A\u57DF\u5EFA\u8BAE\u76EE\u6807", value: sampleId, onChange: (event) => {
+          /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(Select, { "aria-label": "\u533A\u57DF\u5EFA\u8BAE\u76EE\u6807", value: sampleId, onChange: (event) => {
             setSampleId(event.target.value);
             setAnnotationId("");
           }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("option", { value: "", children: "\u8BF7\u9009\u62E9" }),
-            sources.map((source) => /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("option", { value: source.sample.sample_id, children: source.sample.relative_path }, source.sample.sample_id))
+            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "", children: "\u8BF7\u9009\u62E9" }),
+            sources.map((source) => /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: source.sample.sample_id, children: source.sample.relative_path }, source.sample.sample_id))
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("label", { className: "iad-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("label", { className: "iad-field", children: [
           "\u4FEE\u6B63\u65B9\u5F0F",
-          /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)(Select, { "aria-label": "\u533A\u57DF\u4FEE\u6B63\u65B9\u5F0F", value: operation, onChange: (event) => setOperation(event.target.value), children: [
-            /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("option", { value: "relabel", children: "\u4FEE\u6539\u7C7B\u522B" }),
-            /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("option", { value: "reshape", children: "\u4FEE\u6539\u5F62\u72B6" }),
-            /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("option", { value: "add", children: "\u65B0\u589E\u533A\u57DF" }),
-            /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("option", { value: "remove", children: "\u5220\u9664\u533A\u57DF" })
+          /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(Select, { "aria-label": "\u533A\u57DF\u4FEE\u6B63\u65B9\u5F0F", value: operation, onChange: (event) => setOperation(event.target.value), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "relabel", children: "\u4FEE\u6539\u7C7B\u522B" }),
+            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "reshape", children: "\u4FEE\u6539\u5F62\u72B6" }),
+            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "add", children: "\u65B0\u589E\u533A\u57DF" }),
+            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "remove", children: "\u5220\u9664\u533A\u57DF" })
           ] })
         ] })
       ] }),
-      operation !== "add" && /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("label", { className: "iad-field", children: [
+      operation !== "add" && /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("label", { className: "iad-field", children: [
         "\u6240\u9009\u5DEE\u5F02\u4E2D\u7684\u533A\u57DF",
-        /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)(Select, { "aria-label": "\u5EFA\u8BAE\u76EE\u6807\u533A\u57DF", value: annotationId, onChange: (event) => setAnnotationId(event.target.value), children: [
-          /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("option", { value: "", children: "\u8BF7\u9009\u62E9" }),
-          annotations.map((annotation) => /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("option", { value: annotation.annotation_id, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(Select, { "aria-label": "\u5EFA\u8BAE\u76EE\u6807\u533A\u57DF", value: annotationId, onChange: (event) => setAnnotationId(event.target.value), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "", children: "\u8BF7\u9009\u62E9" }),
+          annotations.map((annotation) => /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("option", { value: annotation.annotation_id, children: [
             annotation.raw_label,
             "\uFF0C",
             annotation.bbox?.join(", ")
           ] }, annotation.annotation_id))
         ] })
       ] }),
-      (operation === "add" || operation === "relabel") && /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("label", { className: "iad-field", children: [
+      (operation === "add" || operation === "relabel") && /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("label", { className: "iad-field", children: [
         "\u5EFA\u8BAE\u7C7B\u522B",
-        /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("input", { "aria-label": "\u5EFA\u8BAE\u7C7B\u522B", value: category, onChange: (event) => setCategory(event.target.value) })
+        /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("input", { "aria-label": "\u5EFA\u8BAE\u7C7B\u522B", value: category, onChange: (event) => setCategory(event.target.value) })
       ] }),
-      (operation === "add" || operation === "reshape") && /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)(import_jsx_runtime77.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("label", { className: "iad-field", children: [
+      (operation === "add" || operation === "reshape") && /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(import_jsx_runtime80.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("label", { className: "iad-field", children: [
           "\u5F62\u72B6",
-          /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)(Select, { value: geometryKind, onChange: (event) => setGeometryKind(event.target.value), children: [
-            /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("option", { value: "bbox", children: "\u77E9\u5F62" }),
-            /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("option", { value: "polygon", children: "\u591A\u8FB9\u5F62" })
+          /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(Select, { value: geometryKind, onChange: (event) => setGeometryKind(event.target.value), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "bbox", children: "\u77E9\u5F62" }),
+            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "polygon", children: "\u591A\u8FB9\u5F62" })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("label", { className: "iad-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("label", { className: "iad-field", children: [
           geometryKind === "bbox" ? "\u539F\u56FE\u5750\u6807 x1, y1, x2, y2" : "\u539F\u56FE\u9876\u70B9 x1, y1, x2, y2, \u2026",
-          /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("input", { "aria-label": "\u5EFA\u8BAE\u533A\u57DF\u5750\u6807", value: geometryText, onChange: (event) => setGeometryText(event.target.value) })
+          /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("input", { "aria-label": "\u5EFA\u8BAE\u533A\u57DF\u5750\u6807", value: geometryText, onChange: (event) => setGeometryText(event.target.value) })
         ] })
       ] })
     ] });
   }
 
   // src/client/components/ConsistencyReviewPanel.tsx
-  var import_jsx_runtime78 = __require("react/jsx-runtime");
+  var import_jsx_runtime81 = __require("react/jsx-runtime");
   var actions2 = { CONFIRM_DIFFERENCE: "\u786E\u8BA4\u5DEE\u5F02\uFF0C\u5F85\u4FEE\u6B63", EXPECTED_POLICY_DIFFERENCE: "\u5C5E\u4E8E\u4E0D\u540C\u89C4\u8303", REJECT_DIFFERENCE: "\u6392\u9664\u51B2\u7A81", NEEDS_CONTEXT: "\u9700\u8981\u8865\u5145\u4F9D\u636E", SET_EFFECTIVE_QUALITY: "\u63D0\u4EA4\u6709\u6548\u8D28\u91CF\u88C1\u51B3", PROPOSE_REGION_CHANGE: "\u63D0\u51FA\u533A\u57DF\u4FEE\u6B63\u5EFA\u8BAE" };
   var reviewStates = { OPEN: "\u5F85\u590D\u6838", NEEDS_CONTEXT: "\u5F85\u8865\u5145\u4F9D\u636E", RESOLVED: "\u5DF2\u88C1\u51B3" };
   var correctionStates = { NOT_REQUIRED: "\u65E0\u9700\u4FEE\u6B63", PROPOSED: "\u5EFA\u8BAE\u672A\u5E94\u7528", AWAITING_RESCAN: "\u7B49\u5F85\u6E90\u4FEE\u6B63\u53CA\u91CD\u626B", VERIFIED: "\u91CD\u626B\u5DF2\u9A8C\u8BC1" };
   function ConsistencyReviewPanel({ bundle }) {
     const { workspace } = useWorkspace();
     const { result } = bundle, key = "iad.consistency-pending:" + result.evidence_id;
-    const [context, setContext] = (0, import_react71.useState)(null), [error2, setError] = (0, import_react71.useState)(""), [notice, setNotice] = (0, import_react71.useState)(""), [busy, setBusy] = (0, import_react71.useState)(false);
-    const [selected, setSelected] = (0, import_react71.useState)([]), [kind, setKind] = (0, import_react71.useState)("CONFIRM_DIFFERENCE");
-    const [reviewer, setReviewer] = (0, import_react71.useState)(() => localStorage.getItem("iad.reviewer") || "auditor_qc"), [comment, setComment] = (0, import_react71.useState)("");
-    const [quality, setQuality] = (0, import_react71.useState)({});
-    const [region, setRegion] = (0, import_react71.useState)(null);
-    const pending = (0, import_react71.useRef)(null), active = (0, import_react71.useRef)(true);
-    const [hasPending, setHasPending] = (0, import_react71.useState)(false);
+    const [context, setContext] = (0, import_react73.useState)(null), [error2, setError] = (0, import_react73.useState)(""), [notice, setNotice] = (0, import_react73.useState)(""), [busy, setBusy] = (0, import_react73.useState)(false);
+    const [selected, setSelected] = (0, import_react73.useState)([]), [kind, setKind] = (0, import_react73.useState)("CONFIRM_DIFFERENCE");
+    const [reviewer, setReviewer] = (0, import_react73.useState)(() => localStorage.getItem("iad.reviewer") || "auditor_qc"), [comment, setComment] = (0, import_react73.useState)("");
+    const [quality, setQuality] = (0, import_react73.useState)({});
+    const [region, setRegion] = (0, import_react73.useState)(null);
+    const pending = (0, import_react73.useRef)(null), active = (0, import_react73.useRef)(true);
+    const [hasPending, setHasPending] = (0, import_react73.useState)(false);
     const sources = [bundle.sources.left, bundle.sources.right];
-    (0, import_react71.useEffect)(() => {
+    (0, import_react73.useEffect)(() => {
       active.current = true;
       const controller = new AbortController();
       try {
@@ -21163,106 +21351,106 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         if (active.current) setBusy(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("section", { className: "iad-job-panel iad-consistency-review", "aria-label": "\u4E00\u81F4\u6027\u4EBA\u5DE5\u5904\u7F6E", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("h2", { children: "\u4EBA\u5DE5\u5904\u7F6E" }),
-      context && /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("div", { className: "iad-table-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("table", { className: "iad-resource-table", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("th", { children: "\u5DEE\u5F02" }),
-          /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("th", { children: "\u590D\u6838" }),
-          /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("th", { children: "\u6E90\u4FEE\u6B63" })
+    return /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("section", { className: "iad-job-panel iad-consistency-review", "aria-label": "\u4E00\u81F4\u6027\u4EBA\u5DE5\u5904\u7F6E", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("h2", { children: "\u4EBA\u5DE5\u5904\u7F6E" }),
+      context && /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("div", { className: "iad-table-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("table", { className: "iad-resource-table", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("tr", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("th", { children: "\u5DEE\u5F02" }),
+          /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("th", { children: "\u590D\u6838" }),
+          /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("th", { children: "\u6E90\u4FEE\u6B63" })
         ] }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("tbody", { children: context.differences.map((item) => /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("tr", { "data-review-state": item.review_state, "data-correction-state": item.correction_state, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("input", { type: "checkbox", "aria-label": `\u5904\u7F6E\u5DEE\u5F02 ${result.annotation.differences.find((diff) => diff.difference_id === item.difference_id)?.type}`, disabled: busy || hasPending, checked: selected.includes(item.difference_id), onChange: (event) => setSelected(event.target.checked ? [...selected, item.difference_id] : selected.filter((id) => id !== item.difference_id)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("tbody", { children: context.differences.map((item) => /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("tr", { "data-review-state": item.review_state, "data-correction-state": item.correction_state, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("input", { type: "checkbox", "aria-label": `\u5904\u7F6E\u5DEE\u5F02 ${result.annotation.differences.find((diff) => diff.difference_id === item.difference_id)?.type}`, disabled: busy || hasPending, checked: selected.includes(item.difference_id), onChange: (event) => setSelected(event.target.checked ? [...selected, item.difference_id] : selected.filter((id) => id !== item.difference_id)) }),
             differenceLabels[result.annotation.differences.find((diff) => diff.difference_id === item.difference_id).type]
           ] }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("td", { children: reviewStates[item.review_state] }),
-          /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("td", { children: correctionStates[item.correction_state] })
+          /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("td", { children: reviewStates[item.review_state] }),
+          /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("td", { children: correctionStates[item.correction_state] })
         ] }, item.difference_id)) })
       ] }) }),
-      !current && /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("div", { className: "iad-row", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("p", { className: "iad-muted", children: "\u5386\u53F2\u6765\u6E90\u53EF\u8865\u5145\u5904\u7F6E\u8BF4\u660E\uFF1B\u8D28\u91CF\u88C1\u51B3\u548C\u533A\u57DF\u5EFA\u8BAE\u9700\u91CD\u65B0\u6BD4\u8F83\u5F53\u524D\u6765\u6E90\u3002" }),
-        /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("button", { disabled: busy || hasPending, onClick: () => void compareCurrent(), children: "\u91CD\u65B0\u6BD4\u8F83\u5F53\u524D\u6765\u6E90" })
+      !current && /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("div", { className: "iad-row", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("p", { className: "iad-muted", children: "\u5386\u53F2\u6765\u6E90\u53EF\u8865\u5145\u5904\u7F6E\u8BF4\u660E\uFF1B\u8D28\u91CF\u88C1\u51B3\u548C\u533A\u57DF\u5EFA\u8BAE\u9700\u91CD\u65B0\u6BD4\u8F83\u5F53\u524D\u6765\u6E90\u3002" }),
+        /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("button", { disabled: busy || hasPending, onClick: () => void compareCurrent(), children: "\u91CD\u65B0\u6BD4\u8F83\u5F53\u524D\u6765\u6E90" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("form", { onSubmit: (event) => {
+      /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("form", { onSubmit: (event) => {
         event.preventDefault();
         void submit();
       }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("fieldset", { disabled: busy || hasPending, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("div", { className: "iad-config-bar", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("label", { className: "iad-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("fieldset", { disabled: busy || hasPending, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("div", { className: "iad-config-bar", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("label", { className: "iad-field", children: [
               "\u5904\u7F6E\u52A8\u4F5C",
-              /* @__PURE__ */ (0, import_jsx_runtime78.jsx)(Select, { "aria-label": "\u4E00\u81F4\u6027\u5904\u7F6E\u52A8\u4F5C", value: kind, onChange: (event) => setKind(event.target.value), children: Object.entries(actions2).map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("option", { value, children: label }, value)) })
+              /* @__PURE__ */ (0, import_jsx_runtime81.jsx)(Select, { "aria-label": "\u4E00\u81F4\u6027\u5904\u7F6E\u52A8\u4F5C", value: kind, onChange: (event) => setKind(event.target.value), children: Object.entries(actions2).map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("option", { value, children: label }, value)) })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("label", { className: "iad-field", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("label", { className: "iad-field", children: [
               "\u590D\u6838\u4EBA",
-              /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("input", { "aria-label": "\u4E00\u81F4\u6027\u590D\u6838\u4EBA", value: reviewer, onChange: (event) => setReviewer(event.target.value), required: true })
+              /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("input", { "aria-label": "\u4E00\u81F4\u6027\u590D\u6838\u4EBA", value: reviewer, onChange: (event) => setReviewer(event.target.value), required: true })
             ] })
           ] }),
-          kind === "SET_EFFECTIVE_QUALITY" && /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("section", { "aria-label": "\u8D28\u91CF\u88C1\u51B3\u76EE\u6807", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("h3", { children: "\u5B9E\u9645\u76EE\u6807\u6837\u672C" }),
-            sources.map((source) => /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("label", { className: "iad-field", children: [
+          kind === "SET_EFFECTIVE_QUALITY" && /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("section", { "aria-label": "\u8D28\u91CF\u88C1\u51B3\u76EE\u6807", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("h3", { children: "\u5B9E\u9645\u76EE\u6807\u6837\u672C" }),
+            sources.map((source) => /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("label", { className: "iad-field", children: [
               source.sample.relative_path,
-              /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)(Select, { "aria-label": `\u8D28\u91CF\u88C1\u51B3 ${source.sample.relative_path}`, value: quality[source.sample.sample_id] || "", onChange: (event) => setQuality({ ...quality, [source.sample.sample_id]: event.target.value }), children: [
-                /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("option", { value: "", children: "\u4E0D\u4FEE\u6539" }),
-                ["PASS", "FAIL", "HARD_NORMAL", "UNCERTAIN"].map((value) => /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("option", { value, children: reviewLabel(value) }, value))
+              /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)(Select, { "aria-label": `\u8D28\u91CF\u88C1\u51B3 ${source.sample.relative_path}`, value: quality[source.sample.sample_id] || "", onChange: (event) => setQuality({ ...quality, [source.sample.sample_id]: event.target.value }), children: [
+                /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("option", { value: "", children: "\u4E0D\u4FEE\u6539" }),
+                ["PASS", "FAIL", "HARD_NORMAL", "UNCERTAIN"].map((value) => /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("option", { value, children: reviewLabel(value) }, value))
               ] })
             ] }, source.sample.sample_id))
           ] }),
-          kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime78.jsx)(ConsistencyRegionProposal, { sources, differences: selectedDiffs, onChange: setRegion }),
-          /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("label", { className: "iad-field", children: [
+          kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime81.jsx)(ConsistencyRegionProposal, { sources, differences: selectedDiffs, onChange: setRegion }),
+          /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("label", { className: "iad-field", children: [
             "\u5904\u7F6E\u8BF4\u660E",
-            /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("textarea", { "aria-label": "\u4E00\u81F4\u6027\u5904\u7F6E\u8BF4\u660E", required: true, value: comment, onChange: (event) => setComment(event.target.value) })
+            /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("textarea", { "aria-label": "\u4E00\u81F4\u6027\u5904\u7F6E\u8BF4\u660E", required: true, value: comment, onChange: (event) => setComment(event.target.value) })
           ] })
         ] }),
-        hasPending && pending.current && /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("div", { role: "status", children: [
+        hasPending && pending.current && /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("div", { role: "status", children: [
           "\u63D0\u4EA4\u7ED3\u679C\u5F85\u786E\u8BA4\uFF0C",
           actions2[pending.current.action.kind],
           "\uFF0C",
           pending.current.reviewer,
-          /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("p", { children: pending.current.comment }),
-          pending.current.action.kind === "SET_EFFECTIVE_QUALITY" && /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("ul", { children: pending.current.action.targets.map((target) => /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("li", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("p", { children: pending.current.comment }),
+          pending.current.action.kind === "SET_EFFECTIVE_QUALITY" && /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("ul", { children: pending.current.action.targets.map((target) => /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("li", { children: [
             sources.find((source) => source.sample.sample_id === target.sample_id)?.sample.relative_path,
             "\uFF0C",
             reviewLabel(target.quality)
           ] }, target.sample_id)) }),
-          pending.current.action.kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("ul", { children: pending.current.action.changes.map((change, index3) => /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("li", { children: [
+          pending.current.action.kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("ul", { children: pending.current.action.changes.map((change, index3) => /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("li", { children: [
             sources.find((source) => source.sample.sample_id === change.sample_id)?.sample.relative_path,
             "\uFF0C",
             change.operation
           ] }, index3)) })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime78.jsx)(Button, { variant: "primary", disabled: busy || !hasPending && !canSubmit, children: busy ? "\u63D0\u4EA4\u4E2D\u2026" : hasPending ? "\u91CD\u8BD5\u540C\u4E00\u5904\u7F6E" : "\u63D0\u4EA4\u5904\u7F6E" })
+        /* @__PURE__ */ (0, import_jsx_runtime81.jsx)(Button, { variant: "primary", disabled: busy || !hasPending && !canSubmit, children: busy ? "\u63D0\u4EA4\u4E2D\u2026" : hasPending ? "\u91CD\u8BD5\u540C\u4E00\u5904\u7F6E" : "\u63D0\u4EA4\u5904\u7F6E" })
       ] }),
-      error2 && /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
-      notice && /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("p", { role: "status", children: notice }),
-      !!context?.decisions.length && /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("details", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("summary", { children: [
+      error2 && /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
+      notice && /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("p", { role: "status", children: notice }),
+      !!context?.decisions.length && /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("details", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("summary", { children: [
           "\u5904\u7F6E\u8BB0\u5F55\uFF0C",
           context.decisions.length
         ] }),
-        context.decisions.map((decision) => /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("p", { children: [
+        context.decisions.map((decision) => /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime81.jsxs)("p", { children: [
             actions2[decision.request.action.kind],
             "\uFF0C",
             decision.request.reviewer,
             "\uFF0C",
             decision.request.comment
           ] }),
-          decision.request.action.kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("button", { disabled: busy || hasPending || !reviewer.trim(), onClick: () => void verify(decision.decision_id), children: "\u9A8C\u8BC1\u91CD\u626B\u7ED3\u679C" })
+          decision.request.action.kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("button", { disabled: busy || hasPending || !reviewer.trim(), onClick: () => void verify(decision.decision_id), children: "\u9A8C\u8BC1\u91CD\u626B\u7ED3\u679C" })
         ] }, decision.decision_id))
       ] })
     ] });
   }
 
   // src/client/components/ConsistencyEvidencePage.tsx
-  var import_jsx_runtime79 = __require("react/jsx-runtime");
+  var import_jsx_runtime82 = __require("react/jsx-runtime");
   var sourceStates = { CURRENT: "\u6765\u6E90\u4E0E\u5F53\u6B21\u68C0\u67E5\u4E00\u81F4", CHANGED: "\u6765\u6E90\u5DF2\u53D8\u5316", MISSING: "\u6765\u6E90\u5DF2\u79FB\u9664", UNKNOWN: "\u6765\u6E90\u72B6\u6001\u672A\u77E5" };
   function ConsistencyEvidencePage({ evidenceId }) {
     const { workspace, state } = useWorkspace();
-    const [bundle, setBundle] = (0, import_react72.useState)(null), [error2, setError] = (0, import_react72.useState)("");
-    const [asking, setAsking] = (0, import_react72.useState)(false);
-    (0, import_react72.useEffect)(() => {
+    const [bundle, setBundle] = (0, import_react74.useState)(null), [error2, setError] = (0, import_react74.useState)("");
+    const [asking, setAsking] = (0, import_react74.useState)(false);
+    (0, import_react74.useEffect)(() => {
       const controller = new AbortController();
       setBundle(null);
       setError("");
@@ -21273,16 +21461,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       });
       return () => controller.abort();
     }, [evidenceId]);
-    return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "iad-workbench iad-consistency", "data-page": "industrial-consistency", "data-evidence-id": evidenceId, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("style", { children: workbenchStyles }),
-      /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)(WorkbenchHeader, { pageId: "industrial-consistency", title: "\u6BD4\u8F83\u8BC1\u636E", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("button", { disabled: !!state.consistency.returnPage && !bundle, onClick: () => {
+    return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "iad-workbench iad-consistency", "data-page": "industrial-consistency", "data-evidence-id": evidenceId, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("style", { children: workbenchStyles }),
+      /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)(WorkbenchHeader, { pageId: "industrial-consistency", title: "\u6BD4\u8F83\u8BC1\u636E", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("button", { disabled: !!state.consistency.returnPage && !bundle, onClick: () => {
           const pageId = state.consistency.returnPage, queryId = state.consistency.query?.sample_id;
           const source = queryId && bundle ? [bundle.sources.left.sample, bundle.sources.right.sample].find((sample) => sample.sample_id === queryId) : bundle?.sources.left.sample;
           if (pageId && source?.dataset_id) workspace.openLocation({ pageId, datasetId: source.dataset_id, selected: source.sample_id });
           else workspace.updateConsistency({ evidenceId: void 0, resultId: state.consistency.tab === "conflicts" ? state.consistency.resultId : void 0, tab: state.consistency.batchId ? "jobs" : state.consistency.tab || "search" }, true);
         }, children: state.consistency.returnPage === "industrial-audit" ? "\u8FD4\u56DE\u5BA1\u8BA1" : state.consistency.returnPage === "industrial-review" ? "\u8FD4\u56DE\u590D\u6838" : state.consistency.returnPage === "industrial-images" ? "\u8FD4\u56DE\u56FE\u50CF" : state.consistency.batchId ? "\u8FD4\u56DE\u6279\u6B21" : state.consistency.tab === "conflicts" || state.consistency.tab === "groups" ? "\u8FD4\u56DE\u7ED3\u679C" : "\u8FD4\u56DE\u68C0\u7D22" }),
-        /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("button", { disabled: !bundle || asking, onClick: async () => {
+        /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("button", { disabled: !bundle || asking, onClick: async () => {
           if (!bundle) return;
           setAsking(true);
           setError("");
@@ -21294,109 +21482,36 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             setAsking(false);
           }
         }, children: asking ? "\u6B63\u5728\u6253\u5F00\u4F1A\u8BDD\u2026" : "\u5728 DSH \u4E2D\u89E3\u91CA" }),
-        /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("button", { disabled: !bundle, onClick: () => window.location.assign(`/api/iad/consistency/evidence/${encodeURIComponent(evidenceId)}/export`), children: "\u4E0B\u8F7D\u8BC1\u636E" })
+        /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("button", { disabled: !bundle, onClick: () => window.location.assign(`/api/iad/consistency/evidence/${encodeURIComponent(evidenceId)}/export`), children: "\u4E0B\u8F7D\u8BC1\u636E" })
       ] }),
-      error2 && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
-      !bundle && !error2 && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u51BB\u7ED3\u8BC1\u636E\u2026" }),
-      bundle && /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)(import_jsx_runtime79.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("strong", { children: "\u5F53\u6B21\u68C0\u67E5\u7684\u51BB\u7ED3\u5185\u5BB9" }),
-          /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("time", { dateTime: bundle.checked_at, children: new Date(bundle.checked_at).toLocaleString() })
+      error2 && /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("p", { role: "alert", className: "iad-error", children: error2 }),
+      !bundle && !error2 && /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u51BB\u7ED3\u8BC1\u636E\u2026" }),
+      bundle && /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)(import_jsx_runtime82.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("strong", { children: "\u5F53\u6B21\u68C0\u67E5\u7684\u51BB\u7ED3\u5185\u5BB9" }),
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("time", { dateTime: bundle.checked_at, children: new Date(bundle.checked_at).toLocaleString() })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("p", { className: "iad-muted", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("p", { className: "iad-muted", children: [
           "\u67E5\u8BE2\uFF1A",
           sourceStates[bundle.source_states.left],
           "\uFF0C\u5019\u9009\uFF1A",
           sourceStates[bundle.source_states.right]
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(FrozenConsistencyComparison, { bundle }),
-        /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(ConsistencyReviewPanel, { bundle }, bundle.result.evidence_id)
+        /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(FrozenConsistencyComparison, { bundle }),
+        /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ConsistencyReviewPanel, { bundle }, bundle.result.evidence_id)
       ] })
     ] });
   }
 
-  // src/client/consistency-view.ts
-  var ConsistencyView = class {
-    static media(image, thumbnail = false) {
-      return `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-original${thumbnail ? "?max_side=480" : ""}`;
-    }
-    static async load(batchId, signal) {
-      const report = await request("/consistency/report", {
-        selection: { kind: "batch", batch_id: batchId },
-        page_size: 1
-      }, void 0, signal);
-      const queryId = report.page.query_id, items = [];
-      for (let page = 1; ; page++) {
-        const result = await request("/consistency/gallery", { query_id: queryId, kind: "conflicts", page, page_size: 200 }, void 0, signal);
-        items.push(...result.items);
-        if (items.length >= result.total) break;
-      }
-      const cards = items.map((item) => ({
-        id: item.group_id,
-        type: item.difference_types.map((type) => differenceLabels[type]).join("\u3001") || "\u6807\u6CE8\u5F85\u6838\u5BF9",
-        filename: item.anchor.sample.relative_path.split("/").pop(),
-        url: this.media(item.anchor, true),
-        fullUrl: this.media(item.anchor),
-        sourceWidth: item.anchor.sample.width,
-        sourceHeight: item.anchor.sample.height,
-        memberCount: item.member_count,
-        review: item.review_state,
-        model: {
-          status: item.model_state === "MATERIAL" ? "conflict" : item.model_state === "EQUIVALENT" ? "no_conflict" : "unknown",
-          modelType: modelAssessmentLabels[item.model_state]
-        },
-        rawItem: item
-      }));
-      return { queryId, items: cards };
-    }
-    static async members(reference, signal) {
-      const items = [];
-      for (let page = 1; ; page++) {
-        const result = await request("/consistency/gallery/members", { ...reference, page, page_size: 200 }, void 0, signal);
-        items.push(...result.items);
-        if (items.length >= result.total) return items;
-      }
-    }
-  };
-
-  // src/client/useGroupAnalysis.ts
-  var import_react73 = __require("react");
-  function useGroupAnalysis(reference) {
-    const [snapshot, setSnapshot] = (0, import_react73.useState)();
-    const key = JSON.stringify(reference);
-    (0, import_react73.useEffect)(() => {
-      const controller = new AbortController();
-      let timer;
-      setSnapshot(void 0);
-      if (!reference) return;
-      async function read() {
-        try {
-          const value = await request("/consistency/gallery/analysis", reference, void 0, controller.signal);
-          if (controller.signal.aborted) return;
-          setSnapshot({ key, analysis: value, error: "" });
-          if (value.status === "RUNNING" || value.status === "PENDING" || value.status === "NOT_ANALYZED") timer = setTimeout(read, value.status === "NOT_ANALYZED" ? 5e3 : 1200);
-        } catch (failure) {
-          if (!controller.signal.aborted) setSnapshot({ key, analysis: null, error: message(failure) });
-        }
-      }
-      void read();
-      return () => {
-        controller.abort();
-        clearTimeout(timer);
-      };
-    }, [key]);
-    return snapshot?.key === key ? snapshot : { analysis: null, error: "" };
-  }
-
   // src/client/components/ConsistencyPage.tsx
-  var import_jsx_runtime80 = __require("react/jsx-runtime");
+  var import_jsx_runtime83 = __require("react/jsx-runtime");
   function dcJobBadge(status) {
     const s = (status || "").toUpperCase();
-    if (s === "COMPLETED") return /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { className: "dc-state exp-pill ok", children: "\u5DF2\u5B8C\u6210" });
-    if (s === "PARTIAL") return /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { className: "dc-state exp-pill ok", children: "\u90E8\u5206\u5B8C\u6210" });
-    if (s === "RUNNING") return /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { className: "dc-state exp-pill running", children: "\u8FD0\u884C\u4E2D" });
-    if (s === "PENDING") return /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { className: "dc-state exp-pill pending", children: "\u6392\u961F\u4E2D" });
-    return /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { className: "dc-state exp-pill fail", children: "\u5931\u8D25" });
+    if (s === "COMPLETED") return /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("span", { className: "dc-state exp-pill ok", children: "\u5DF2\u5B8C\u6210" });
+    if (s === "PARTIAL") return /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("span", { className: "dc-state exp-pill ok", children: "\u90E8\u5206\u5B8C\u6210" });
+    if (s === "RUNNING") return /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("span", { className: "dc-state exp-pill running", children: "\u8FD0\u884C\u4E2D" });
+    if (s === "PENDING") return /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("span", { className: "dc-state exp-pill pending", children: "\u6392\u961F\u4E2D" });
+    return /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("span", { className: "dc-state exp-pill fail", children: "\u5931\u8D25" });
   }
   var dcJobConflictTotal = (j) => (j.status === "COMPLETED" || j.status === "PARTIAL") && typeof j.conflict_count === "number" && Number.isFinite(j.conflict_count) && j.conflict_count >= 0 ? String(j.conflict_count) : "\u2014";
   var dcJobElapsed = (j) => {
@@ -21406,76 +21521,59 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const r = Math.round(sec % 60);
     return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
   };
-  function niceAxis(max2) {
-    const target = max2 / 4;
-    const magnitude = Math.pow(10, Math.floor(Math.log10(Math.max(target, 1))));
-    const normalized = target / magnitude;
-    const step = (normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 2.5 ? 2.5 : normalized <= 5 ? 5 : 10) * magnitude;
-    return Math.max(step * 4, Math.ceil(max2 / step) * step);
-  }
   var DEFAULT_CONSISTENCY_PROMPT = promptDefaults.consistency;
   function ConsistencyPage() {
     const { state } = useWorkspace();
     const catalog = useDatasetCatalog();
     const evidenceId = state.consistency.evidenceId;
-    const [visited, setVisited] = (0, import_react74.useState)(!evidenceId);
-    (0, import_react74.useEffect)(() => {
+    const [visited, setVisited] = (0, import_react75.useState)(!evidenceId);
+    (0, import_react75.useEffect)(() => {
       if (!evidenceId) setVisited(true);
     }, [evidenceId]);
-    return /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(import_jsx_runtime80.Fragment, { children: [
-      visited && /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { hidden: !!evidenceId, style: { height: "100%" }, children: catalog.data ? /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(ConsistencyIntegratedWorkspace, { ...catalog.data }) : /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "iad-workbench", "data-page": "industrial-consistency", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("style", { children: workbenchStyles }),
-        /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("h1", { children: "\u6570\u636E\u4E00\u81F4\u6027" }),
-        /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("p", { role: catalog.error ? "alert" : "status", children: catalog.error || "\u6B63\u5728\u52A0\u8F7D\u6570\u636E\u96C6\u2026" })
+    return /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)(import_jsx_runtime83.Fragment, { children: [
+      visited && /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("div", { hidden: !!evidenceId, style: { height: "100%" }, children: catalog.data ? /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(ConsistencyIntegratedWorkspace, { ...catalog.data }) : /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("div", { className: "iad-workbench", "data-page": "industrial-consistency", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("style", { children: workbenchStyles }),
+        /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("h1", { children: "\u6570\u636E\u4E00\u81F4\u6027" }),
+        /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("p", { role: catalog.error ? "alert" : "status", children: catalog.error || "\u6B63\u5728\u52A0\u8F7D\u6570\u636E\u96C6\u2026" })
       ] }) }),
-      evidenceId && /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(ConsistencyEvidencePage, { evidenceId })
+      evidenceId && /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(ConsistencyEvidencePage, { evidenceId })
     ] });
   }
   function ConsistencyIntegratedWorkspace({ datasets, groups }) {
     const initialParent = buildHierarchyGroups(datasets, groups)[0]?.group_id || "";
-    const [selectedParentId, setSelectedParentId] = (0, import_react74.useState)(initialParent);
-    const [selectedChildIds, setSelectedChildIds] = (0, import_react74.useState)(() => datasets.filter((item) => getDatasetGroupId(item) === initialParent).map((item) => item.dataset_id));
-    const [error2, setError] = (0, import_react74.useState)("");
-    const [statusJobId, setStatusJobId] = (0, import_react74.useState)("");
-    const [selectedJobId, setSelectedJobId] = (0, import_react74.useState)("");
-    const [jobPage, setJobPage] = (0, import_react74.useState)(1);
-    const [revision, setRevision] = (0, import_react74.useState)(0);
-    const [jobConflicts, setJobConflicts] = (0, import_react74.useState)([]);
-    const [conflictsLoading, setConflictsLoading] = (0, import_react74.useState)(false);
-    const [kind, setKind] = (0, import_react74.useState)("all");
-    const [modelFilter, setModelFilter] = (0, import_react74.useState)("all");
-    const [agreement, setAgreement] = (0, import_react74.useState)("all");
-    const [search, setSearch] = (0, import_react74.useState)("");
-    const [page, setPage] = (0, import_react74.useState)(1);
-    const [reviewFilter, setReviewFilter] = (0, import_react74.useState)("all");
-    const [modal, setModal] = (0, import_react74.useState)("");
-    const [modalChildIds, setModalChildIds] = (0, import_react74.useState)([]);
-    const [newCheckBusy, setNewCheckBusy] = (0, import_react74.useState)(false);
-    const newSubmission = (0, import_react74.useRef)(null);
-    const [newPrompt, setNewPrompt] = (0, import_react74.useState)(DEFAULT_CONSISTENCY_PROMPT);
-    const [currentConflictId, setCurrentConflictId] = (0, import_react74.useState)("");
-    const [candidateIndex, setCandidateIndex] = (0, import_react74.useState)(0);
-    const [activeQueryId, setActiveQueryId] = (0, import_react74.useState)("");
-    const [conflictMembers, setConflictMembers] = (0, import_react74.useState)([]);
-    const [membersError, setMembersError] = (0, import_react74.useState)("");
-    const [reviewBusy, setReviewBusy] = (0, import_react74.useState)(false);
-    const [reviewLoaded, setReviewLoaded] = (0, import_react74.useState)(false);
-    const [reviewError, setReviewError] = (0, import_react74.useState)("");
-    const pendingReview = (0, import_react74.useRef)(null);
-    const [reviewDecision, setReviewDecision] = (0, import_react74.useState)("pending");
-    const [reviewNote, setReviewNote] = (0, import_react74.useState)("");
-    const [statsModalJobId, setStatsModalJobId] = (0, import_react74.useState)("");
-    const [zoomItem, setZoomItem] = (0, import_react74.useState)(null);
-    const hierarchyGroups = (0, import_react74.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
-    const currentParent = (0, import_react74.useMemo)(
+    const [selectedParentId, setSelectedParentId] = (0, import_react75.useState)(initialParent);
+    const [selectedChildIds, setSelectedChildIds] = (0, import_react75.useState)(() => datasets.filter((item) => getDatasetGroupId(item) === initialParent).map((item) => item.dataset_id));
+    const [error2, setError] = (0, import_react75.useState)("");
+    const [statusJobId, setStatusJobId] = (0, import_react75.useState)("");
+    const [selectedJobId, setSelectedJobId] = (0, import_react75.useState)("");
+    const [jobPage, setJobPage] = (0, import_react75.useState)(1);
+    const [revision, setRevision] = (0, import_react75.useState)(0);
+    const [jobConflicts, setJobConflicts] = (0, import_react75.useState)([]);
+    const [conflictsLoading, setConflictsLoading] = (0, import_react75.useState)(false);
+    const [kind, setKind] = (0, import_react75.useState)("all");
+    const [modelFilter, setModelFilter] = (0, import_react75.useState)("all");
+    const [agreement, setAgreement] = (0, import_react75.useState)("all");
+    const [search, setSearch] = (0, import_react75.useState)("");
+    const [page, setPage] = (0, import_react75.useState)(1);
+    const [reviewFilter, setReviewFilter] = (0, import_react75.useState)("all");
+    const [modal, setModal] = (0, import_react75.useState)("");
+    const [modalChildIds, setModalChildIds] = (0, import_react75.useState)([]);
+    const [newCheckBusy, setNewCheckBusy] = (0, import_react75.useState)(false);
+    const newSubmission = (0, import_react75.useRef)(null);
+    const [newPrompt, setNewPrompt] = (0, import_react75.useState)(DEFAULT_CONSISTENCY_PROMPT);
+    const [currentConflictId, setCurrentConflictId] = (0, import_react75.useState)("");
+    const [activeQueryId, setActiveQueryId] = (0, import_react75.useState)("");
+    const [statsModalJobId, setStatsModalJobId] = (0, import_react75.useState)("");
+    const hierarchyGroups = (0, import_react75.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
+    const currentParent = (0, import_react75.useMemo)(
       () => hierarchyGroups.find((g) => g.group_id === selectedParentId) || hierarchyGroups[0],
       [hierarchyGroups, selectedParentId]
     );
-    const currentChildDatasets = (0, import_react74.useMemo)(
+    const currentChildDatasets = (0, import_react75.useMemo)(
       () => datasets.filter((d) => getDatasetGroupId(d) === currentParent?.group_id),
       [datasets, hierarchyGroups, currentParent]
     );
-    const progress = (0, import_react74.useCallback)(() => setRevision((value) => value + 1), []);
+    const progress = (0, import_react75.useCallback)(() => setRevision((value) => value + 1), []);
     const polling = useJobs("consistency", selectedChildIds, progress);
     const roots = polling.jobs.filter((job) => job.program_batch_id);
     const programIds = [...new Set(roots.map((job) => job.program_batch_id))].sort();
@@ -21499,7 +21597,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         duration_seconds: job.finished_at && job.started_at ? Math.max(0, Math.round((Date.parse(job.finished_at) - Date.parse(job.started_at)) / 1e3)) : null
       }] : [];
     });
-    const availableJobs = (0, import_react74.useMemo)(() => {
+    const availableJobs = (0, import_react75.useMemo)(() => {
       if (!selectedChildIds.length) {
         return [];
       }
@@ -21510,13 +21608,13 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     }, [batches, selectedChildIds]);
     const jobPages = Math.max(1, Math.ceil(availableJobs.length / IBA_JOBS_PAGE_SIZE));
     const currentJobPage = Math.max(1, Math.min(jobPages, jobPage));
-    const shownJobs = (0, import_react74.useMemo)(() => {
+    const shownJobs = (0, import_react75.useMemo)(() => {
       return availableJobs.slice(
         (currentJobPage - 1) * IBA_JOBS_PAGE_SIZE,
         currentJobPage * IBA_JOBS_PAGE_SIZE
       );
     }, [availableJobs, currentJobPage]);
-    const selectedJob = (0, import_react74.useMemo)(() => {
+    const selectedJob = (0, import_react75.useMemo)(() => {
       if (!shownJobs.length) return null;
       if (selectedJobId) {
         const match = shownJobs.find((j) => j.batch_id === selectedJobId);
@@ -21539,7 +21637,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       }
       setPage(1);
     };
-    (0, import_react74.useEffect)(() => {
+    (0, import_react75.useEffect)(() => {
       const controller = new AbortController();
       setJobConflicts([]);
       setActiveQueryId("");
@@ -21558,7 +21656,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       });
       return () => controller.abort();
     }, [selectedJob?.batch_id, selectedJob?.status, revision]);
-    const visibleConflicts = (0, import_react74.useMemo)(() => {
+    const visibleConflicts = (0, import_react75.useMemo)(() => {
       let list = [...jobConflicts];
       if (kind !== "all") {
         list = list.filter((c) => c.type === kind);
@@ -21580,11 +21678,11 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     }, [jobConflicts, kind, modelFilter, agreement, search, reviewFilter]);
     const totalPages = Math.max(1, Math.ceil(visibleConflicts.length / 18));
     const currentPage = Math.min(totalPages, Math.max(1, page));
-    const paginatedConflicts = (0, import_react74.useMemo)(() => {
+    const paginatedConflicts = (0, import_react75.useMemo)(() => {
       const start = (currentPage - 1) * 18;
       return visibleConflicts.slice(start, start + 18);
     }, [visibleConflicts, currentPage]);
-    const handleParentChange = (0, import_react74.useCallback)(
+    const handleParentChange = (0, import_react75.useCallback)(
       (newParentId) => {
         setSelectedParentId(newParentId);
         const newChildren = datasets.filter((d) => getDatasetGroupId(d) === newParentId);
@@ -21600,7 +21698,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       },
       [datasets, hierarchyGroups]
     );
-    const handleChildToggle = (0, import_react74.useCallback)((childId) => {
+    const handleChildToggle = (0, import_react75.useCallback)((childId) => {
       setSelectedChildIds((prev) => {
         const next = prev.includes(childId) ? prev.filter((id) => id !== childId) : [...prev, childId];
         return next;
@@ -21613,7 +21711,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       setModelFilter("all");
       setAgreement("all");
     }, []);
-    const selectJob = (0, import_react74.useCallback)((batchId) => {
+    const selectJob = (0, import_react75.useCallback)((batchId) => {
       setSelectedJobId(batchId);
       setSearch("");
       setPage(1);
@@ -21622,7 +21720,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       setAgreement("all");
       setReviewFilter("all");
     }, []);
-    const handleRefresh = (0, import_react74.useCallback)(() => {
+    const handleRefresh = (0, import_react75.useCallback)(() => {
       setJobPage(1);
       polling.refresh();
       programs.forEach((program) => void program.refetch({ cancelRefetch: false }));
@@ -21634,7 +21732,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       setError("");
       try {
         const key = JSON.stringify([modalChildIds, newPrompt]);
-        if (newSubmission.current?.key !== key) newSubmission.current = { key, id: crypto.randomUUID() };
+        if (newSubmission.current?.key !== key) newSubmission.current = { key, id: v4_default() };
         await request("/analysis/start", {
           submission_id: newSubmission.current.id,
           analysis_kind: "consistency",
@@ -21658,178 +21756,20 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         setNewCheckBusy(false);
       }
     };
-    const openConflict = (0, import_react74.useCallback)(
-      (c) => {
-        setCurrentConflictId(c.id);
-        setCandidateIndex(0);
-        setReviewDecision(c.review);
-        setReviewNote("");
-        setModal("compare");
-      },
-      []
-    );
-    const currentConflict = (0, import_react74.useMemo)(
+    const currentConflict = (0, import_react75.useMemo)(
       () => jobConflicts.find((c) => c.id === currentConflictId) || null,
       [jobConflicts, currentConflictId]
     );
-    const groupReference = (0, import_react74.useMemo)(() => modal === "compare" && currentConflict && activeQueryId ? {
-      query_id: activeQueryId,
-      kind: "conflicts",
-      group_id: currentConflict.rawItem.group_id,
-      facts_state: currentConflict.rawItem.facts_state
-    } : null, [modal, currentConflict?.id, activeQueryId]);
-    const groupAnalysis = useGroupAnalysis(groupReference);
-    (0, import_react74.useEffect)(() => {
-      const controller = new AbortController();
-      setConflictMembers([]);
-      setMembersError("");
-      setCandidateIndex(0);
-      if (!groupReference) return;
-      ConsistencyView.members(groupReference, controller.signal).then((items) => {
-        if (!controller.signal.aborted) setConflictMembers(items);
-      }).catch((error3) => {
-        if (!controller.signal.aborted) setMembersError(message(error3));
-      });
-      return () => controller.abort();
-    }, [JSON.stringify(groupReference)]);
-    const selectedMember = conflictMembers[candidateIndex] || null;
-    const currentCandidate = (0, import_react74.useMemo)(() => {
-      const image = selectedMember?.image;
-      return {
-        sampleId: image?.sample.sample_id || "",
-        filename: image?.sample.relative_path.split("/").pop() || "",
-        thumbUrl: image ? ConsistencyView.media(image, true) : "",
-        fullUrl: image ? ConsistencyView.media(image) : "",
-        width: image?.sample.width,
-        height: image?.sample.height
-      };
-    }, [selectedMember]);
-    const compared = useResource(modal === "compare" && selectedMember?.comparison ? `/consistency/evidence/${encodeURIComponent(selectedMember.comparison.evidence_id)}` : null);
-    const anchorSide = selectedMember?.comparison?.anchor_side;
-    const anchorSource = anchorSide ? compared.data?.sources[anchorSide] : null;
-    const candidateSource = anchorSide ? compared.data?.sources[anchorSide === "left" ? "right" : "left"] : null;
-    const anchorBboxes = anchorSource?.annotations.annotations.filter((annotation) => annotation.bbox && annotation.geometry_status !== "INVALID") || [];
-    const candidateBboxes = candidateSource?.annotations.annotations.filter((annotation) => annotation.bbox && annotation.geometry_status !== "INVALID") || [];
-    const readReview = (0, import_react74.useCallback)(async (signal) => {
-      if (!selectedMember?.comparison) return;
-      const context = await request("/consistency/review/context", { evidence_id: selectedMember.comparison.evidence_id }, void 0, signal);
-      if (signal?.aborted) return;
-      const latest = context.decisions.at(-1), action = latest?.request.action.kind;
-      const decision = action === "CONFIRM_DIFFERENCE" ? "confirmed" : action === "REJECT_DIFFERENCE" ? "rejected" : "pending";
-      setReviewDecision(decision);
-      setReviewNote(latest?.request.comment || "");
-      setReviewLoaded(true);
-    }, [selectedMember?.comparison?.evidence_id, currentConflict?.id]);
-    (0, import_react74.useEffect)(() => {
-      const controller = new AbortController();
-      setReviewLoaded(false);
-      setReviewError("");
-      setReviewDecision("pending");
-      setReviewNote("");
-      pendingReview.current = null;
-      void readReview(controller.signal).catch((error3) => {
-        if (!controller.signal.aborted) setReviewError(message(error3));
-      });
-      return () => controller.abort();
-    }, [readReview]);
-    const handlePrevConflict = (0, import_react74.useCallback)(() => {
-      const list = visibleConflicts;
-      const idx = list.findIndex((c) => c.id === currentConflictId);
-      if (idx > 0) {
-        const prev = list[idx - 1];
-        setCurrentConflictId(prev.id);
-        setCandidateIndex(0);
-        setReviewDecision(prev.review);
-        setReviewNote("");
-      }
-    }, [visibleConflicts, currentConflictId]);
-    const handleNextConflict = (0, import_react74.useCallback)(() => {
-      const list = visibleConflicts;
-      const idx = list.findIndex((c) => c.id === currentConflictId);
-      if (idx >= 0 && idx < list.length - 1) {
-        const next = list[idx + 1];
-        setCurrentConflictId(next.id);
-        setCandidateIndex(0);
-        setReviewDecision(next.review);
-        setReviewNote("");
-      }
-    }, [visibleConflicts, currentConflictId]);
-    const handleSaveReview = async () => {
-      if (!currentConflict || !compared.data || reviewBusy || !reviewLoaded) return;
-      if (reviewDecision === "pending" && !reviewNote.trim()) {
-        setModal("");
-        return;
-      }
-      if (!reviewNote.trim()) {
-        setReviewError("\u8BF7\u586B\u5199\u590D\u6838\u4F9D\u636E");
-        return;
-      }
-      const [firstDifference, ...otherDifferences] = compared.data.result.annotation.differences;
-      if (!firstDifference) {
-        setReviewError("\u5F53\u524D\u6BD4\u8F83\u6CA1\u6709\u53EF\u590D\u6838\u7684\u5DEE\u5F02");
-        return;
-      }
-      setReviewBusy(true);
-      setReviewError("");
-      try {
-        if (!pendingReview.current) pendingReview.current = {
-          client_request_id: crypto.randomUUID(),
-          evidence_id: compared.data.result.evidence_id,
-          result_id: compared.data.result.result_id,
-          difference_ids: [firstDifference.difference_id, ...otherDifferences.map((item) => item.difference_id)],
-          reviewer: localStorage.getItem("iad.reviewer") || "auditor_qc",
-          comment: reviewNote.trim(),
-          action: { kind: reviewDecision === "confirmed" ? "CONFIRM_DIFFERENCE" : reviewDecision === "rejected" ? "REJECT_DIFFERENCE" : "NEEDS_CONTEXT" }
-        };
-        await request("/consistency/review/submit", pendingReview.current);
-        await readReview();
-        pendingReview.current = null;
-        setModal("");
-        setRevision((value) => value + 1);
-      } catch (error3) {
-        setReviewError(message(error3));
-      } finally {
-        setReviewBusy(false);
-      }
-    };
     async function handleDeleteJob(job) {
       await request(`/analysis/delete/${encodeURIComponent(job.analysis.run_id)}`, {});
       setRevision((value) => value + 1);
     }
-    const availableTypes = (0, import_react74.useMemo)(() => [...new Set(jobConflicts.map((item) => item.type))], [jobConflicts]);
-    const modelTypes = (0, import_react74.useMemo)(() => [...new Set(jobConflicts.map((item) => item.model.modelType))], [jobConflicts]);
-    const conflictTabs = (0, import_react74.useMemo)(() => {
+    const availableTypes = (0, import_react75.useMemo)(() => [...new Set(jobConflicts.map((item) => item.type))], [jobConflicts]);
+    const modelTypes = (0, import_react75.useMemo)(() => [...new Set(jobConflicts.map((item) => item.model.modelType))], [jobConflicts]);
+    const conflictTabs = (0, import_react75.useMemo)(() => {
       return [{ value: "all", label: "\u5168\u90E8\u51B2\u7A81" }, ...availableTypes.map((t) => ({ value: t, label: t }))];
     }, [availableTypes]);
-    const origStats = (0, import_react74.useMemo)(() => {
-      return availableTypes.map((name2) => ({
-        name: name2,
-        count: jobConflicts.filter((c) => c.type === name2).length
-      }));
-    }, [availableTypes, jobConflicts]);
-    const modelStats = (0, import_react74.useMemo)(() => {
-      return modelTypes.map((name2) => ({
-        name: name2,
-        count: jobConflicts.filter((c) => c.model.modelType === name2).length
-      }));
-    }, [availableTypes, jobConflicts]);
-    const agreementStats = (0, import_react74.useMemo)(() => {
-      const same = jobConflicts.filter((c) => c.model.status === "conflict").length;
-      const different = jobConflicts.filter((c) => c.model.status === "no_conflict").length;
-      return [
-        { name: "\u4E00\u81F4", id: "same", count: same },
-        { name: "\u4E0D\u4E00\u81F4", id: "different", count: different }
-      ];
-    }, [jobConflicts]);
-    const maxObserved = (0, import_react74.useMemo)(() => {
-      return Math.max(1, ...origStats.map((x) => x.count), ...modelStats.map((x) => x.count));
-    }, [origStats, modelStats]);
-    const distributionAxis = (0, import_react74.useMemo)(() => niceAxis(maxObserved), [maxObserved]);
-    const agreementAxis = (0, import_react74.useMemo)(() => {
-      const same = jobConflicts.filter((c) => c.model.status === "conflict").length;
-      return niceAxis(Math.max(1, same, jobConflicts.filter((c) => c.model.status === "no_conflict").length));
-    }, [jobConflicts]);
-    const handleStatClick = (0, import_react74.useCallback)(
+    const handleStatClick = (0, import_react75.useCallback)(
       (action, id) => {
         if (action === "stat-category") {
           setKind(id);
@@ -21860,12 +21800,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       },
       []
     );
-    return /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "iad-workbench iad-consistency", "data-page": "industrial-consistency", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("style", { children: workbenchStyles }),
-      /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-root", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("header", { className: "heading dc-page-heading", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("h1", { children: "\u6570\u636E\u4E00\u81F4\u6027" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-heading-actions", children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("div", { className: "iad-workbench iad-consistency", "data-page": "industrial-consistency", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("style", { children: workbenchStyles }),
+      /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("div", { className: "dc-root", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("header", { className: "heading dc-page-heading", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("h1", { children: "\u6570\u636E\u4E00\u81F4\u6027" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("div", { className: "dc-heading-actions", children: /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
             Button,
             {
               type: "button",
@@ -21880,8 +21820,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             }
           ) })
         ] }),
-        (error2 || polling.error || programs.some((program) => program.error)) && /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("p", { role: "alert", className: "iad-error", children: error2 || polling.error || message(programs.find((program) => program.error)?.error) }),
-        /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
+        (error2 || polling.error || programs.some((program) => program.error)) && /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("p", { role: "alert", className: "iad-error", children: error2 || polling.error || message(programs.find((program) => program.error)?.error) }),
+        /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
           DatasetScopeSelector,
           {
             className: "dc-scope",
@@ -21894,107 +21834,91 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             groupId: "dc-parent",
             childId: "dc-child-trigger",
             childMenuId: "dc-child-options",
-            children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(IconButton, { icon: "refresh", type: "button", title: "\u5237\u65B0\u68C0\u67E5\u4F5C\u4E1A", label: "\u5237\u65B0\u68C0\u67E5\u4F5C\u4E1A", onClick: handleRefresh })
+            children: /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(IconButton, { icon: "refresh", type: "button", title: "\u5237\u65B0\u68C0\u67E5\u4F5C\u4E1A", label: "\u5237\u65B0\u68C0\u67E5\u4F5C\u4E1A", onClick: handleRefresh })
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("section", { className: `dc-section dc-jobs-section ${jobPages > 1 ? "iba-job-multipage" : ""}`, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-section-heading", children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("h2", { children: "\u68C0\u67E5\u4F5C\u4E1A" }) }),
-          availableJobs.length ? /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(import_jsx_runtime80.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-table-panel", children: /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("table", { className: "dc-table", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("tr", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("th", { children: "\u4F5C\u4E1A" }),
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("th", { children: "\u72B6\u6001" }),
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("th", { children: "\u68C0\u67E5\u8303\u56F4" }),
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("th", { children: "\u51B2\u7A81\u603B\u6570" }),
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }),
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("th", { children: "\u8017\u65F6" }),
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("th", { className: "dc-operations", children: "\u64CD\u4F5C" })
-              ] }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("tbody", { children: shownJobs.map((j) => {
-                const isSelected = j.batch_id === selectedJob?.batch_id;
-                const childNames = (j.scopes?.subjects?.dataset_ids || []).map((id) => datasets.find((d) => d.dataset_id === id)?.name || id).join("\u3001");
-                const timeStr = j.created_at ? j.created_at.slice(0, 16).replace("T", " ") : "\u2014";
-                const hasConflicts = (j.status === "COMPLETED" || j.status === "PARTIAL") && typeof j.conflict_count === "number" && j.conflict_count > 0;
-                return /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(
-                  "tr",
-                  {
-                    tabIndex: 0,
-                    "data-dc-row": j.batch_id,
-                    "data-selected": isSelected,
-                    "aria-selected": isSelected,
-                    onClick: () => selectJob(j.batch_id),
-                    onKeyDown: (e) => {
-                      if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
-                        e.preventDefault();
-                        selectJob(j.batch_id);
-                      }
-                    },
-                    children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("td", { className: "dc-mono", children: j.batch_id }),
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(JobStatusButton, { job: j.analysis, onClick: () => setStatusJobId(j.batch_id), children: dcJobBadge(j.status) }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("td", { className: "dc-job-datasets", title: childNames, children: childNames || "\u5168\u90E8" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-                        "td",
-                        {
-                          className: `dc-total ${hasConflicts ? "dc-has-conflicts" : ""}`,
-                          title: "\u539F\u59CB\u68C0\u67E5\u68C0\u6D4B\u51FA\u7684\u51B2\u7A81\u56FE\u7EC4\u6570",
-                          children: dcJobConflictTotal(j)
-                        }
-                      ),
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("td", { className: "dc-time", children: timeStr }),
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("td", { className: "dc-elapsed dc-mono", children: dcJobElapsed(j) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("td", { className: "dc-operations", onClick: (e) => e.stopPropagation(), children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(JobStatusAction, { job: j.analysis, onClick: () => setStatusJobId(j.batch_id) }),
-                        /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(IconButton, { icon: "stats", type: "button", title: "\u67E5\u770B\u7EDF\u8BA1\u7ED3\u679C", label: "\u67E5\u770B\u7EDF\u8BA1\u7ED3\u679C", "data-dc": "stats", "data-id": j.batch_id, disabled: j.status !== "COMPLETED" && j.status !== "PARTIAL", onClick: () => {
-                          setSelectedJobId(j.batch_id);
-                          setStatsModalJobId(j.batch_id);
-                        } }),
-                        /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-                          DeleteAction,
-                          {
-                            title: "\u5220\u9664\u68C0\u67E5\u4F5C\u4E1A",
-                            name: j.batch_id,
-                            onDelete: () => handleDeleteJob(j),
-                            restoreFocus: () => document.getElementById("dc-parent")
-                          }
-                        )
-                      ] })
-                    ]
-                  },
-                  j.batch_id
-                );
-              }) })
+        /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(JobListPanel, { title: "\u68C0\u67E5\u4F5C\u4E1A", className: `dc-section dc-jobs-section ${jobPages > 1 ? "iba-job-multipage" : ""}`, children: availableJobs.length ? /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)(import_jsx_runtime83.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("div", { className: "dc-table-panel", children: /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("table", { className: "dc-table", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("tr", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("th", { children: "\u4F5C\u4E1A" }),
+              /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("th", { children: "\u72B6\u6001" }),
+              /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("th", { children: "\u68C0\u67E5\u8303\u56F4" }),
+              /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("th", { children: "\u51B2\u7A81\u603B\u6570" }),
+              /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }),
+              /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("th", { children: "\u8017\u65F6" }),
+              /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("th", { className: "dc-operations", children: "\u64CD\u4F5C" })
             ] }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-              Pagination,
-              {
-                total: availableJobs.length,
-                page: currentJobPage,
-                onPage: handleJobPageChange,
-                label: "\u68C0\u67E5\u4F5C\u4E1A",
-                size: IBA_JOBS_PAGE_SIZE
-              }
-            )
-          ] }) : /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-empty", children: polling.loading || programs.some((program) => program.isPending) ? "\u6B63\u5728\u8BFB\u53D6\u68C0\u67E5\u4F5C\u4E1A\u2026" : "\u5F53\u524D\u8303\u56F4\u8FD8\u6CA1\u6709\u68C0\u67E5\u4F5C\u4E1A\uFF0C\u53EF\u4EE5\u521B\u5EFA\u65B0\u68C0\u67E5\u3002" })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("section", { className: "dc-section dc-results-section", children: [
-          !selectedJob || !["FAILED", "CANCELLED", "INTERRUPTED"].includes(selectedJob.status) ? /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-section-heading", children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("h2", { children: "\u6807\u6CE8\u51B2\u7A81" }) }) : null,
-          !selectedJob ? /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-empty", children: "\u9009\u62E9\u4E0A\u65B9\u7684\u68C0\u67E5\u4F5C\u4E1A\u540E\u67E5\u770B\u7ED3\u679C\u3002" }) : ["FAILED", "CANCELLED", "INTERRUPTED"].includes(selectedJob.status) ? /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("p", { className: "iad-plain-empty", role: "status", children: "\u5F53\u524D\u4F5C\u4E1A\u4E0B\u6CA1\u6709\u5BF9\u5E94\u7684\u51B2\u7A81" }) : selectedJob.status === "PENDING" || selectedJob.status === "RUNNING" ? /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-running", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-running-header", children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { children: selectedJob.status === "PENDING" ? "\u7B49\u5F85\u6267\u884C" : selectedJob.analysis.phase === "ANALYZING_CONFLICT_GROUPS" && selectedJob.analysis.total_gallery_groups != null ? `\u6B63\u5728\u6838\u5BF9\u56FE\u7EC4 ${selectedJob.analysis.completed_gallery_groups ?? 0} / ${selectedJob.analysis.total_gallery_groups} \u7EC4` : selectedJob.analysis.phase === "ANALYZING_UNCOVERED_IMAGES" ? "\u6B63\u5728\u8865\u67E5\u56FE\u50CF" : "\u6B63\u5728\u68C0\u67E5\u6807\u6CE8\u4E00\u81F4\u6027" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-stages", children: ["\u51C6\u5907\u56FE\u50CF", "\u68C0\u7D22\u56FE\u50CF\u5019\u9009", "\u5BF9\u6BD4\u6807\u6CE8", "\u53D1\u5E03\u7ED3\u679C"].map((stageName, idx) => {
-              const phase = selectedJob.analysis.phase;
-              const currentStage = phase === "CONSISTENCY_FINISHED" ? 3 : phase === "ANALYZING_CONFLICT_GROUPS" || phase === "ANALYZING_UNCOVERED_IMAGES" ? 2 : 1;
-              return /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-                "div",
+            /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("tbody", { children: shownJobs.map((j) => {
+              const isSelected = j.batch_id === selectedJob?.batch_id;
+              const childNames = (j.scopes?.subjects?.dataset_ids || []).map((id) => datasets.find((d) => d.dataset_id === id)?.name || id).join("\u3001");
+              const timeStr = j.created_at ? j.created_at.slice(0, 16).replace("T", " ") : "\u2014";
+              const hasConflicts = (j.status === "COMPLETED" || j.status === "PARTIAL") && typeof j.conflict_count === "number" && j.conflict_count > 0;
+              return /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)(
+                "tr",
                 {
-                  className: `dc-stage ${idx < currentStage ? "done" : idx === currentStage ? "current" : ""}`,
-                  children: stageName
+                  tabIndex: 0,
+                  "data-dc-row": j.batch_id,
+                  "data-selected": isSelected,
+                  "aria-selected": isSelected,
+                  onClick: () => selectJob(j.batch_id),
+                  onKeyDown: (e) => {
+                    if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      selectJob(j.batch_id);
+                    }
+                  },
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("td", { className: "dc-mono", children: j.batch_id }),
+                    /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(JobStatusButton, { job: j.analysis, onClick: () => setStatusJobId(j.batch_id), children: dcJobBadge(j.status) }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("td", { className: "dc-job-datasets", title: childNames, children: childNames || "\u5168\u90E8" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
+                      "td",
+                      {
+                        className: `dc-total ${hasConflicts ? "dc-has-conflicts" : ""}`,
+                        title: "\u539F\u59CB\u68C0\u67E5\u68C0\u6D4B\u51FA\u7684\u51B2\u7A81\u56FE\u7EC4\u6570",
+                        children: dcJobConflictTotal(j)
+                      }
+                    ),
+                    /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("td", { className: "dc-time", children: timeStr }),
+                    /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("td", { className: "dc-elapsed dc-mono", children: dcJobElapsed(j) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("td", { className: "dc-operations", onClick: (e) => e.stopPropagation(), children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(JobStatusAction, { job: j.analysis, onClick: () => setStatusJobId(j.batch_id) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(IconButton, { icon: "stats", type: "button", title: "\u67E5\u770B\u7EDF\u8BA1\u7ED3\u679C", label: "\u67E5\u770B\u7EDF\u8BA1\u7ED3\u679C", "data-dc": "stats", "data-id": j.batch_id, disabled: j.status !== "COMPLETED" && j.status !== "PARTIAL", onClick: () => {
+                        setSelectedJobId(j.batch_id);
+                        setStatsModalJobId(j.batch_id);
+                      } }),
+                      /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
+                        DeleteAction,
+                        {
+                          title: "\u5220\u9664\u68C0\u67E5\u4F5C\u4E1A",
+                          name: j.batch_id,
+                          onDelete: () => handleDeleteJob(j),
+                          restoreFocus: () => document.getElementById("dc-parent")
+                        }
+                      )
+                    ] })
+                  ]
                 },
-                stageName
+                j.batch_id
               );
             }) })
-          ] }) : /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(import_jsx_runtime80.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
+          ] }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
+            Pagination,
+            {
+              total: availableJobs.length,
+              page: currentJobPage,
+              onPage: handleJobPageChange,
+              label: "\u68C0\u67E5\u4F5C\u4E1A",
+              size: IBA_JOBS_PAGE_SIZE,
+              hideSinglePage: true
+            }
+          )
+        ] }) : /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("div", { className: "dc-empty", children: polling.loading || programs.some((program) => program.isPending) ? "\u6B63\u5728\u8BFB\u53D6\u68C0\u67E5\u4F5C\u4E1A\u2026" : "\u5F53\u524D\u6CA1\u6709\u68C0\u67E5\u4F5C\u4E1A" }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("section", { className: "dc-section dc-results-section", children: [
+          !selectedJob || !["FAILED", "CANCELLED", "INTERRUPTED"].includes(selectedJob.status) ? /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("div", { className: "dc-section-heading", children: /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("h2", { children: "\u6807\u6CE8\u51B2\u7A81" }) }) : null,
+          !selectedJob ? /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" }) : selectedJob.status !== "COMPLETED" ? /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u4F5C\u4E1A\u6CA1\u6709\u5DF2\u53D1\u5E03\u7ED3\u679C" }) : conflictsLoading ? /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u7ED3\u679C\u2026" }) : !jobConflicts.length ? /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" }) : /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)(import_jsx_runtime83.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
               TabBar,
               {
                 label: "\u539F\u59CB\u6807\u6CE8\u51B2\u7A81\u7C7B\u578B",
@@ -22003,16 +21927,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                   setKind(value);
                   setPage(1);
                 },
-                items: conflictTabs.map((tab) => ({ id: tab.value, label: /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(import_jsx_runtime80.Fragment, { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { children: tab.label }),
-                  /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { className: "iad-tab-count", children: tab.value === "all" ? jobConflicts.length : jobConflicts.filter((conflict) => conflict.type === tab.value).length })
+                items: conflictTabs.map((tab) => ({ id: tab.value, label: /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)(import_jsx_runtime83.Fragment, { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("span", { children: tab.label }),
+                  /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("span", { className: "iad-tab-count", children: tab.value === "all" ? jobConflicts.length : jobConflicts.filter((conflict) => conflict.type === tab.value).length })
                 ] }), buttonProps: { "data-dc": "raw-tab", "data-id": tab.value } }))
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-refined-filterbar", role: "group", "aria-label": "\u51B2\u7A81\u7B5B\u9009", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("label", { className: "dc-filter-field dc-search-field", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("div", { className: "dc-refined-filterbar", role: "group", "aria-label": "\u51B2\u7A81\u7B5B\u9009", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("label", { className: "dc-filter-field dc-search-field", children: [
                 "\u6587\u4EF6\u540D\u641C\u7D22",
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
                   "input",
                   {
                     type: "search",
@@ -22029,9 +21953,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                   }
                 )
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("label", { className: "dc-filter-field", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("label", { className: "dc-filter-field", children: [
                 "\u6A21\u578B\u5224\u65AD",
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(
+                /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)(
                   Select,
                   {
                     id: "dc-model-filter",
@@ -22042,15 +21966,15 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                       setPage(1);
                     },
                     children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "all", children: "\u5168\u90E8\u5224\u65AD" }),
-                      modelTypes.map((name2) => /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: name2, children: name2 }, name2))
+                      /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("option", { value: "all", children: "\u5168\u90E8\u5224\u65AD" }),
+                      modelTypes.map((name2) => /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("option", { value: name2, children: name2 }, name2))
                     ]
                   }
                 )
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("label", { className: "dc-filter-field", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("label", { className: "dc-filter-field", children: [
                 "\u7ED3\u8BBA\u4E00\u81F4\u6027",
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(
+                /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)(
                   Select,
                   {
                     id: "dc-agreement",
@@ -22061,16 +21985,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                       setPage(1);
                     },
                     children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "same", children: "\u4E00\u81F4" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "different", children: "\u4E0D\u4E00\u81F4" })
+                      /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("option", { value: "same", children: "\u4E00\u81F4" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("option", { value: "different", children: "\u4E0D\u4E00\u81F4" })
                     ]
                   }
                 )
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("label", { className: "dc-filter-field dc-review-field", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("label", { className: "dc-filter-field dc-review-field", children: [
                 "\u4EBA\u5DE5\u590D\u6838",
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(
+                /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)(
                   Select,
                   {
                     id: "dc-review-filter",
@@ -22081,15 +22005,15 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                       setPage(1);
                     },
                     children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "all", children: "\u5168\u90E8\u72B6\u6001" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "pending", children: "\u5F85\u590D\u6838" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "confirmed", children: "\u786E\u8BA4\u51B2\u7A81" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("option", { value: "rejected", children: "\u6392\u9664\u51B2\u7A81" })
+                      /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("option", { value: "all", children: "\u5168\u90E8\u72B6\u6001" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("option", { value: "pending", children: "\u5F85\u590D\u6838" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("option", { value: "confirmed", children: "\u786E\u8BA4\u51B2\u7A81" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("option", { value: "rejected", children: "\u6392\u9664\u51B2\u7A81" })
                     ]
                   }
                 )
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
                 ClearFilterButton,
                 {
                   "data-dc": "clear-conflict-filters",
@@ -22106,46 +22030,45 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                 }
               )
             ] }),
-            conflictsLoading ? /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-empty", children: "\u6B63\u5728\u52A0\u8F7D\u51B2\u7A81\u56FE\u7EC4\u2026" }) : paginatedConflicts.length ? /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "iad-thumbnail-grid", children: paginatedConflicts.map((c) => /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(
+            paginatedConflicts.length ? /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("div", { className: "iad-thumbnail-grid dc-conflict-grid", children: paginatedConflicts.map((c) => /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
               ThumbnailCard,
               {
                 src: c.url,
+                variant: "comparison",
                 label: c.filename,
                 "data-dc": "open-conflict",
                 "data-id": c.id,
-                onClick: () => openConflict(c),
-                children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("small", { children: [
-                    "\u539F\u59CB\uFF1A",
-                    c.type
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("small", { children: [
-                    "\u6A21\u578B\uFF1A",
-                    c.model.modelType
-                  ] })
-                ]
+                "aria-label": `${c.filename}\uFF0C\u539F\u59CB\u7ED3\u8BBA\uFF1A${c.type}\uFF1B\u6A21\u578B\u7ED3\u8BBA\uFF1A${c.model.modelType}`,
+                onClick: () => {
+                  setCurrentConflictId(c.id);
+                  setModal("compare");
+                },
+                children: /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("span", { className: "iad-thumbnail-values", "aria-label": "\u539F\u59CB\u7ED3\u8BBA\u4E0E\u6A21\u578B\u7ED3\u8BBA", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("span", { title: `\u539F\u59CB\u7ED3\u8BBA\uFF1A${c.type}`, children: c.type }),
+                  /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("span", { title: `\u6A21\u578B\u7ED3\u8BBA\uFF1A${c.model.modelType}`, children: c.model.modelType })
+                ] })
               },
               c.id
-            )) }) : /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-empty", children: "\u5F53\u524D\u7B5B\u9009\u6761\u4EF6\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u51B2\u7A81\u56FE\u7EC4\u3002" }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(Pagination, { total: visibleConflicts.length, page: currentPage, size: 18, unit: "\u7EC4", onPage: setPage })
+            )) }) : /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u7B5B\u9009\u6761\u4EF6\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u51B2\u7A81\u56FE\u7EC4\u3002" }),
+            /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(Pagination, { total: visibleConflicts.length, page: currentPage, size: 18, unit: "\u7EC4", onPage: setPage })
           ] })
         ] })
       ] }),
-      modal === "new" && /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(Modal, { title: "\u65B0\u5EFA\u4E00\u81F4\u6027\u68C0\u67E5", id: "dc-new-mask", className: "dc-dialog dc-new-dialog", onClose: () => setModal(""), header: false, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("header", { className: "dc-dialog-head", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("h2", { id: "dc-new-title", children: "\u65B0\u5EFA\u4E00\u81F4\u6027\u68C0\u67E5" }),
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(IconButton, { icon: "close", type: "button", title: "\u5173\u95ED", label: "\u5173\u95ED", onClick: () => {
+      modal === "new" && /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)(Modal, { title: "\u65B0\u5EFA\u4E00\u81F4\u6027\u68C0\u67E5", size: "form", id: "dc-new-mask", className: "dc-dialog dc-new-dialog", onClose: () => setModal(""), header: false, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("header", { className: "dc-dialog-head", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("h2", { id: "dc-new-title", children: "\u65B0\u5EFA\u4E00\u81F4\u6027\u68C0\u67E5" }),
+          /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(IconButton, { icon: "close", type: "button", title: "\u5173\u95ED", label: "\u5173\u95ED", onClick: () => {
             setModal("");
           } })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-dialog-body dc-new-body", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-new-field", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { children: "\u6570\u636E\u96C6" }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-new-parent", children: currentParent?.name || "\u2014" })
+        /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("div", { className: "dc-dialog-body dc-new-body", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("div", { className: "dc-new-field", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("span", { children: "\u6570\u636E\u96C6" }),
+            /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("div", { className: "dc-new-parent", children: currentParent?.name || "\u2014" })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-new-field", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { children: "\u5B50\u6570\u636E\u96C6" }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("div", { className: "dc-new-field", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("span", { children: "\u5B50\u6570\u636E\u96C6" }),
+            /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
               MultiSelect,
               {
                 id: "dc-new-child-trigger",
@@ -22158,10 +22081,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
               }
             )
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-new-field dc-prompt-editor", children: [
-            (error2 || polling.error || programs.some((program) => program.error)) && /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("p", { role: "alert", className: "iad-error", children: error2 || polling.error || message(programs.find((program) => program.error)?.error) }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("label", { htmlFor: "dc-new-prompt", children: "\u6A21\u578B\u5206\u6790\u63D0\u793A\u8BCD" }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("div", { className: "dc-new-field dc-prompt-editor", children: [
+            (error2 || polling.error || programs.some((program) => program.error)) && /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("p", { role: "alert", className: "iad-error", children: error2 || polling.error || message(programs.find((program) => program.error)?.error) }),
+            /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("label", { htmlFor: "dc-new-prompt", children: "\u6A21\u578B\u5206\u6790\u63D0\u793A\u8BCD" }),
+            /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
               "textarea",
               {
                 id: "dc-new-prompt",
@@ -22174,8 +22097,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             )
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("footer", { className: "dc-dialog-footer", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("footer", { className: "dc-dialog-footer", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
             Button,
             {
               type: "button",
@@ -22186,7 +22109,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
               children: "\u53D6\u6D88"
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
             Button,
             {
               type: "button",
@@ -22199,314 +22122,30 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           )
         ] })
       ] }),
-      modal === "compare" && currentConflict && /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)(Modal, { title: "\u6807\u6CE8\u51B2\u7A81\u5BF9\u6BD4", id: "dc-compare-mask", className: "dc-dialog dc-conflict-dialog", header: false, onClose: () => setModal(""), children: [
-        /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("header", { className: "dc-dialog-head", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("h2", { id: "dc-dialog-title", children: "\u6807\u6CE8\u51B2\u7A81\u5BF9\u6BD4" }),
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-dialog-head-actions", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(Button, { type: "button", onClick: handlePrevConflict, children: "\u4E0A\u4E00\u7EC4" }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(Button, { type: "button", onClick: handleNextConflict, children: "\u4E0B\u4E00\u7EC4" }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(IconButton, { icon: "close", type: "button", title: "\u5173\u95ED", label: "\u5173\u95ED", onClick: () => setModal("") })
-          ] })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-dialog-body", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-compare", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-compare-cell", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-                "div",
-                {
-                  className: "dc-compare-photo",
-                  role: "button",
-                  tabIndex: 0,
-                  "data-dc": "zoom-anchor",
-                  "aria-label": "\u67E5\u770B\u4E3B\u56FE\u5927\u56FE",
-                  title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE",
-                  onClick: () => setZoomItem({
-                    id: currentConflict.id + "_anchor",
-                    title: currentConflict.filename,
-                    imageUrl: currentConflict.fullUrl || currentConflict.url,
-                    width: currentConflict.sourceWidth,
-                    height: currentConflict.sourceHeight,
-                    bboxes: anchorBboxes
-                  }),
-                  onKeyDown: (e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      setZoomItem({
-                        id: currentConflict.id + "_anchor",
-                        title: currentConflict.filename,
-                        imageUrl: currentConflict.fullUrl || currentConflict.url,
-                        width: currentConflict.sourceWidth,
-                        height: currentConflict.sourceHeight,
-                        bboxes: anchorBboxes
-                      });
-                    }
-                  },
-                  children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-                    AnnotatedImageStage,
-                    {
-                      src: currentConflict.fullUrl || currentConflict.url,
-                      alt: "\u4E3B\u56FE",
-                      width: currentConflict.sourceWidth,
-                      height: currentConflict.sourceHeight,
-                      bboxes: anchorBboxes
-                    }
-                  )
-                }
-              ),
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-photo-filename", title: currentConflict.filename, children: currentConflict.filename })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-compare-cell", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-                "div",
-                {
-                  className: "dc-compare-photo",
-                  role: "button",
-                  tabIndex: 0,
-                  "data-dc": "zoom-candidate",
-                  "aria-label": "\u67E5\u770B\u5019\u9009\u56FE\u5927\u56FE",
-                  title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE",
-                  onClick: () => setZoomItem({
-                    id: currentConflict.id + "_candidate_" + candidateIndex,
-                    title: `${currentCandidate.filename} (\u5019\u9009\u56FE ${candidateIndex + 1})`,
-                    imageUrl: currentCandidate.fullUrl,
-                    width: currentCandidate.width,
-                    height: currentCandidate.height,
-                    bboxes: candidateBboxes
-                  }),
-                  onKeyDown: (e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      setZoomItem({
-                        id: currentConflict.id + "_candidate_" + candidateIndex,
-                        title: `${currentCandidate.filename} (\u5019\u9009\u56FE ${candidateIndex + 1})`,
-                        imageUrl: currentCandidate.fullUrl,
-                        width: currentCandidate.width,
-                        height: currentCandidate.height,
-                        bboxes: candidateBboxes
-                      });
-                    }
-                  },
-                  children: selectedMember && /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-                    AnnotatedImageStage,
-                    {
-                      src: currentCandidate.fullUrl || currentCandidate.thumbUrl,
-                      alt: "\u5019\u9009\u56FE",
-                      width: currentCandidate.width,
-                      height: currentCandidate.height,
-                      bboxes: candidateBboxes
-                    }
-                  )
-                }
-              ),
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-photo-filename", title: currentCandidate.filename, children: currentCandidate.filename })
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "iad-thumbnail-strip", "aria-label": "\u5207\u6362\u51B2\u7A81\u56FE\u50CF", children: conflictMembers.map((m, i) => {
-            const s = m.image.sample;
-            const thumb = ConsistencyView.media(m.image, true);
-            return /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-              ThumbnailCard,
-              {
-                src: thumb,
-                label: `\u5019\u9009 ${i + 1}`,
-                "data-dc": "candidate",
-                "data-id": i,
-                "aria-pressed": i === candidateIndex,
-                onClick: () => setCandidateIndex(i)
-              },
-              s.sample_id || i
-            );
-          }) }),
-          membersError && /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("p", { role: "alert", className: "iad-error", children: membersError }),
-          compared.error && /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("p", { role: "alert", className: "iad-error", children: compared.error }),
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("section", { className: "dc-fact-panel", "aria-label": "\u5224\u5B9A\u7ED3\u8BBA", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("h3", { children: "\u5224\u5B9A\u7ED3\u8BBA" }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { className: "dc-verdict-value", children: currentConflict.type }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("p", { className: "dc-verdict-description", children: compared.data ? annotationSummary(compared.data.result.annotation) : compared.error || "\u6B63\u5728\u8BFB\u53D6\u51BB\u7ED3\u6BD4\u8F83\u8BB0\u5F55\u2026" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("section", { className: "dc-model-panel", "aria-label": "\u6A21\u578B\u5206\u6790", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("h3", { children: "\u6A21\u578B\u5206\u6790" }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("p", { children: groupAnalysis.error || groupAnalysis.analysis?.error || groupAnalysis.analysis?.result?.conclusions.map((item) => item.text).join("\n") || "\u6682\u65E0\u5DF2\u4FDD\u5B58\u7684\u6A21\u578B\u5206\u6790\u7ED3\u679C\u3002" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("section", { className: "dc-conclusion-panel", "aria-label": "\u6A21\u578B\u7ED3\u8BBA", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("h3", { children: "\u6A21\u578B\u7ED3\u8BBA" }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { className: "dc-verdict-value", children: groupAnalysis.analysis?.result?.overall.text || currentConflict.model.modelType }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("p", { className: "dc-verdict-description", children: groupAnalysis.analysis?.result?.overall.text || groupAnalysis.error || groupAnalysis.analysis?.error || "\u6682\u65E0\u5DF2\u4FDD\u5B58\u7684\u6A21\u578B\u7ED3\u8BBA\u3002" })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("section", { className: "dc-review-panel", "aria-label": "\u4EBA\u5DE5\u590D\u6838", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("h3", { children: "\u4EBA\u5DE5\u590D\u6838" }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-decision-controls", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("label", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-                  "input",
-                  {
-                    type: "radio",
-                    disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
-                    name: "dc-review",
-                    value: "pending",
-                    checked: reviewDecision === "pending",
-                    onChange: () => setReviewDecision("pending")
-                  }
-                ),
-                "\u5F85\u786E\u8BA4"
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("label", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-                  "input",
-                  {
-                    type: "radio",
-                    disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
-                    name: "dc-review",
-                    value: "confirmed",
-                    checked: reviewDecision === "confirmed",
-                    onChange: () => setReviewDecision("confirmed")
-                  }
-                ),
-                "\u786E\u8BA4\u51B2\u7A81"
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("label", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-                  "input",
-                  {
-                    type: "radio",
-                    disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
-                    name: "dc-review",
-                    value: "rejected",
-                    checked: reviewDecision === "rejected",
-                    onChange: () => setReviewDecision("rejected")
-                  }
-                ),
-                "\u6392\u9664\u51B2\u7A81"
-              ] })
-            ] }),
-            reviewError && /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("p", { role: "alert", className: "iad-error", children: reviewError }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-              "textarea",
-              {
-                disabled: reviewBusy || !reviewLoaded || !!pendingReview.current,
-                className: "dc-note",
-                id: "dc-note",
-                placeholder: "\u590D\u6838\u8BF4\u660E\uFF08\u53EF\u9009\uFF09",
-                value: reviewNote,
-                onChange: (e) => setReviewNote(e.target.value)
-              }
-            )
-          ] })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("footer", { className: "dc-dialog-footer", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(Button, { type: "button", onClick: () => setModal(""), children: "\u53D6\u6D88" }),
-          /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(Button, { variant: "primary", type: "button", disabled: reviewBusy || !reviewLoaded || !compared.data, onClick: handleSaveReview, children: "\u4FDD\u5B58\u590D\u6838" })
-        ] })
-      ] }),
-      !!statsModalJobId && /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(Modal, { title: "\u6807\u6CE8\u51B2\u7A81\u7EDF\u8BA1", size: "form", className: "dc-stats-dialog", onClose: () => setStatsModalJobId(""), children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-stats-content", children: /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-stats-charts", children: [
-        (() => {
-          const ticks = [distributionAxis, distributionAxis * 0.75, distributionAxis * 0.5, distributionAxis * 0.25, 0].map((v) => Math.round(v));
-          return /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("section", { className: "dc-vchart-panel", "aria-label": "\u539F\u59CB\u5DEE\u5F02\u7C7B\u578B\u67F1\u72B6\u56FE", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("h3", { children: "\u539F\u59CB\u5DEE\u5F02\u7C7B\u578B" }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-vchart-body", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { children: n }, i)) }),
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-vchart-figure", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: origStats.length }, children: origStats.map((row) => {
-                  const height = 100 * row.count / distributionAxis;
-                  return /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-vchart-column", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-                      "button",
-                      {
-                        type: "button",
-                        className: `dc-vchart-bar ${row.count ? "" : "dc-vchart-zero"}`,
-                        style: { height: `${Math.max(0.6, height)}%` },
-                        "data-dc": "stat-category",
-                        "data-id": row.name,
-                        "aria-label": `${row.name} ${row.count} \u7EC4\uFF0C\u70B9\u51FB\u67E5\u770B`,
-                        title: `${row.name}\uFF1A${row.count} \u7EC4\uFF0C\u70B9\u51FB\u7B5B\u9009`,
-                        onClick: () => handleStatClick("stat-category", row.name),
-                        children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { className: "dc-vchart-value", children: row.count })
-                      }
-                    ) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
-                  ] }, row.name);
-                }) })
-              ] })
-            ] })
-          ] });
-        })(),
-        (() => {
-          const ticks = [distributionAxis, distributionAxis * 0.75, distributionAxis * 0.5, distributionAxis * 0.25, 0].map((v) => Math.round(v));
-          return /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("section", { className: "dc-vchart-panel", "aria-label": "\u6A21\u578B\u5224\u65AD\u67F1\u72B6\u56FE", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("h3", { children: "\u6A21\u578B\u5224\u65AD" }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-vchart-body", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { children: n }, i)) }),
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-vchart-figure", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: modelStats.length }, children: modelStats.map((row) => {
-                  const height = 100 * row.count / distributionAxis;
-                  return /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-vchart-column", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-                      "button",
-                      {
-                        type: "button",
-                        className: `dc-vchart-bar ${row.count ? "" : "dc-vchart-zero"}`,
-                        style: { height: `${Math.max(0.6, height)}%` },
-                        "data-dc": "stat-model",
-                        "data-id": row.name,
-                        "aria-label": `${row.name} ${row.count} \u7EC4\uFF0C\u70B9\u51FB\u67E5\u770B`,
-                        title: `${row.name}\uFF1A${row.count} \u7EC4\uFF0C\u70B9\u51FB\u7B5B\u9009`,
-                        onClick: () => handleStatClick("stat-model", row.name),
-                        children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { className: "dc-vchart-value", children: row.count })
-                      }
-                    ) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
-                  ] }, row.name);
-                }) })
-              ] })
-            ] })
-          ] });
-        })(),
-        (() => {
-          const ticks = [agreementAxis, agreementAxis * 0.75, agreementAxis * 0.5, agreementAxis * 0.25, 0].map((v) => Math.round(v));
-          return /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("section", { className: "dc-vchart-panel dc-vchart-agreement", "aria-label": "\u7ED3\u8BBA\u4E00\u81F4\u6027\u67F1\u72B6\u56FE", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("h3", { children: "\u7ED3\u8BBA\u4E00\u81F4\u6027" }),
-            /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-vchart-body", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-vchart-axis", "aria-hidden": "true", children: ticks.map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { children: n }, i)) }),
-              /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-vchart-figure", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-vchart-lines", "aria-hidden": "true" }),
-                /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-vchart-columns", style: { ["--chart-cols"]: agreementStats.length }, children: agreementStats.map((row) => {
-                  const height = 100 * row.count / agreementAxis;
-                  return /* @__PURE__ */ (0, import_jsx_runtime80.jsxs)("div", { className: "dc-vchart-column", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("div", { className: "dc-vchart-barslot", children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-                      "button",
-                      {
-                        type: "button",
-                        className: `dc-vchart-bar ${row.count ? "" : "dc-vchart-zero"}`,
-                        style: { height: `${Math.max(0.6, height)}%` },
-                        "data-dc": "stat-agreement",
-                        "data-id": row.id,
-                        "aria-label": `${row.name} ${row.count} \u7EC4\uFF0C\u70B9\u51FB\u67E5\u770B`,
-                        title: `${row.name}\uFF1A${row.count} \u7EC4\uFF0C\u70B9\u51FB\u7B5B\u9009`,
-                        onClick: () => handleStatClick("stat-agreement", row.id),
-                        children: /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { className: "dc-vchart-value", children: row.count })
-                      }
-                    ) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime80.jsx)("span", { className: "dc-vchart-label", title: row.name, children: row.name })
-                  ] }, row.id);
-                }) })
-              ] })
-            ] })
-          ] });
-        })()
-      ] }) }) }),
-      statusJobId && batches.some((job) => job.batch_id === statusJobId) && /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
+      modal === "compare" && currentConflict && /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
+        ConsistencyConflictDialog,
+        {
+          conflict: currentConflict,
+          items: visibleConflicts,
+          queryId: activeQueryId,
+          onSelect: setCurrentConflictId,
+          onClose: () => setModal(""),
+          onReviewed: () => setRevision((value) => value + 1)
+        }
+      ),
+      !!statsModalJobId && /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
+        ConsistencyStatisticsDialog,
+        {
+          items: jobConflicts,
+          onFilter: handleStatClick,
+          onClose: () => setStatsModalJobId("")
+        }
+      ),
+      statusJobId && batches.some((job) => job.batch_id === statusJobId) && /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(
         JobStatusDrawer,
         {
           job: batches.find((job) => job.batch_id === statusJobId).analysis,
           onClose: () => setStatusJobId("")
-        }
-      ),
-      /* @__PURE__ */ (0, import_jsx_runtime80.jsx)(
-        FullscreenViewer,
-        {
-          open: !!zoomItem,
-          item: zoomItem,
-          onClose: () => setZoomItem(null)
         }
       )
     ] });
@@ -22520,7 +22159,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const icons2 = { "industrial-datasets": DatasetIcon, "industrial-images": ImagesIcon, "industrial-exploration": ExplorationIcon, "industrial-knowledge": KnowledgeIcon, "industrial-consistency": ImagesIcon, "industrial-audit": AuditIcon, "industrial-review": ReviewIcon, "industrial-model-settings": ModelSettingsIcon };
     ctx.slots.inject("sidebar.content", () => ctx.slots.register({ name: "sidebar.content" }, IndustrialSidebar));
     ctx.slots.inject("tool.call.toolview", () => {
-      for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props) => import_react75.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react75.default.createElement(SessionResult, { ...props, title })));
+      for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props) => import_react76.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react76.default.createElement(SessionResult, { ...props, title })));
     });
     ctx.slots.inject("sidebar.panellist", () => {
       const disposers = Object.entries(pages).map(([id, label], index3) => ctx.slots.register({ name: "sidebar.panellist", id, order: index3 + 1, label }, icons2[id]));
@@ -22530,12 +22169,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       for (const id of Object.keys(pages)) {
         ctx.slots.register(
           { name: "main", key: id },
-          () => import_react75.default.createElement(QueryClientProvider, { client: queryClient }, import_react75.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react75.default.createElement(WorkbenchModelProvider, { children: import_react75.default.createElement(
+          () => import_react76.default.createElement(QueryClientProvider, { client: queryClient }, import_react76.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react76.default.createElement(WorkbenchModelProvider, { children: import_react76.default.createElement(
             "div",
             { className: "iad-workspace", onFocusCapture: (event) => {
               if (event.target instanceof HTMLElement) event.target.scrollIntoView({ block: "nearest", inline: "nearest" });
             }, style: { height: "100%", minWidth: 0, containerType: "inline-size", containerName: "workbench" } },
-            id === "industrial-model-settings" ? import_react75.default.createElement(ModelSettingsPage) : id === "industrial-consistency" ? import_react75.default.createElement(ConsistencyPage) : import_react75.default.createElement(WorkbenchPage, { pageId: id })
+            id === "industrial-model-settings" ? import_react76.default.createElement(ModelSettingsPage) : id === "industrial-consistency" ? import_react76.default.createElement(ConsistencyPage) : import_react76.default.createElement(WorkbenchPage, { pageId: id })
           ) })))
         );
       }
