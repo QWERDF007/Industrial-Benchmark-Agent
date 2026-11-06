@@ -56,6 +56,32 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
       assert.equal(await control.getAttribute('value'),dataset.group_id,'首次绘制已有目录，不闪空白');
       assert.ok(!(await driver.findElement(By.css('body')).getText()).includes('请先添加服务器上的数据集'));
     }
+    const headings=[];
+    for(const width of [1440,1920]){
+      await driver.manage().window().setRect({width,height:1000});
+      for(const label of ['数据集管理','图像浏览','方向探索','知识挖掘','数据一致性','模型审计']){
+        await driver.findElement(By.css(`button[aria-label="${label}"]`)).click();
+        await driver.wait(()=>driver.executeScript('return document.querySelector(".iad-workbench h1")?.textContent===arguments[0]',label),10000);
+        const metrics=await driver.executeScript(()=>{
+          const root=document.querySelector('.iad-workbench'),title=root.querySelector('h1'),header=title.closest('.iad-header,.exp-heading,.dc-page-heading,.topline,.audit-heading');
+          const r=root.getBoundingClientRect(),t=title.getBoundingClientRect(),h=header.getBoundingClientRect(),s=getComputedStyle(title),hs=getComputedStyle(header);
+          return {font:s.fontSize,weight:s.fontWeight,lineHeight:s.lineHeight,letterSpacing:s.letterSpacing,left:t.left-r.left,top:t.top-r.top,height:h.height,gap:hs.marginBottom,rootPadding:getComputedStyle(root).paddingTop,extra:!!root.querySelector('.eyebrow,.audit-kicker,[aria-label="所在章节"]')};
+        });
+        headings.push({width,page:label,...metrics});
+        assert.equal(metrics.font,'24px',label+'标题字号');assert.equal(metrics.weight,'670',label+'标题字重');
+        assert.equal(metrics.lineHeight,'32.4px');assert.equal(metrics.letterSpacing,'-0.4px');
+        assert.equal(metrics.left,32,label+'标题左侧位置');assert.equal(metrics.rootPadding,'25px',label+'页面顶部内边距');
+        assert.equal(metrics.height,42,label+'标题行高');assert.equal(metrics.gap,'18px',label+'标题下方间距');assert.equal(metrics.extra,false,label+'不显示额外章节小字');
+      }
+    }
+    for(const heading of headings)assert.ok(Math.abs(heading.top-headings[0].top)<.1,JSON.stringify(headings));
+    await fs.writeFile('/tmp/iad-v76-headings.json',JSON.stringify(headings,null,2));
+    await driver.findElement(By.css('button[aria-label="知识挖掘"]')).click();
+    await driver.findElement(By.id('create-btn')).click();
+    await driver.wait(until.elementLocated(By.id('kb-setup-page')),5000);
+    const creationHeading=await driver.executeScript('const h=document.querySelector("#kb-setup-page h1");return {font:getComputedStyle(h).fontSize,weight:getComputedStyle(h).fontWeight,display:getComputedStyle(h.closest("header")).display}');
+    assert.deepEqual(creationHeading,{font:'24px',weight:'670',display:'flex'},'新建挖掘沿用共享标题，移除旧标题规则后仍保留布局');
+    await driver.findElement(By.id('kb-setup-back')).click();
     await driver.findElement(By.css('button[aria-label="数据集管理"]')).click();
     await driver.wait(until.elementLocated(By.css('.dataset-table button[data-edit="'+dataset.dataset_id+'"]')),5000);
     assert.equal((await driver.findElements(By.id('summaryCount'))).length,0,'数据集表格上方不重复展示标题与数量');
@@ -82,7 +108,11 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     const after=await preview.getRect();assert.ok(before.height>=310);
     assert.ok(Math.abs(before.height-after.height)<1,JSON.stringify({before,after})+'，标注返回后不能挤压图片预览区');
     assert.equal((await preview.findElements(By.css('svg.iad-annotation-layer > g > rect'))).length,40);
-
-
+    const deleted=await driver.executeAsyncScript("const done=arguments[arguments.length-1];fetch('/api/iad/datasets/'+encodeURIComponent(arguments[0]),{method:'DELETE'}).then(async response=>done({status:response.status,data:await response.json()}));",dataset.dataset_id);
+    assert.equal(deleted.status,200);await driver.navigate().refresh();
+    for(const label of ['数据集管理','图像浏览','方向探索','知识挖掘','数据一致性','模型审计']){
+      await driver.findElement(By.css(`button[aria-label="${label}"]`)).click();
+      await driver.wait(()=>driver.executeScript('return document.querySelector(".iad-workbench h1")?.textContent===arguments[0]',label),5000,label+'无数据时保留页面标题');
+    }
   }finally{releaseSample();releaseCatalog();await driver?.quit();bridge.destroy();await new Promise(resolve=>server.close(resolve));}
 });

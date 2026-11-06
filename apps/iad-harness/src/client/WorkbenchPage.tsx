@@ -83,8 +83,8 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
 
   const datasetControls = <><Select aria-label="当前数据集" value={datasetId} onChange={event => workspace.selectDataset(event.target.value)}><option value="" disabled>选择数据集</option>{datasets.map(item => <option key={item.dataset_id} value={item.dataset_id}>{item.name}</option>)}</Select><IconButton icon="refresh" label="刷新" onClick={changed} /></>;
 
-  return <div ref={surface} className="iad-workbench" data-page={pageId}><style>{workbenchStyles}</style>
-    {(!catalog.data || (pageId !== "industrial-datasets" && pageId !== "industrial-images" && pageId !== "industrial-audit" && (!dataset || (pageId !== "industrial-exploration" && pageId !== "industrial-knowledge")))) && <WorkbenchHeader pageId={pageId}>
+  return <div ref={surface} className={`iad-workbench${pageId !== 'industrial-review' && pageId !== 'industrial-model-settings' ? ' iad-business-page' : ''}`} data-page={pageId}><style>{workbenchStyles}</style>
+    {(!catalog.data || (pageId !== "industrial-datasets" && pageId !== "industrial-images" && (!dataset || (pageId !== "industrial-exploration" && pageId !== "industrial-knowledge" && pageId !== "industrial-audit")))) && <WorkbenchHeader pageId={pageId}>
       {catalog.data && datasetControls}
     </WorkbenchHeader>}
     {(error || catalog.error) && <p role="alert" className="iad-error">{error || catalog.error}</p>}

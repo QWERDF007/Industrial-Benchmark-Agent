@@ -1,3 +1,4 @@
+import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {v4 as uuid} from 'uuid';
 import {ExplorationPresetDialog} from './ExplorationPresetDialog.js';
 import {ExplorationSourceDialog} from './ExplorationSourceDialog.js';
@@ -284,11 +285,7 @@ export function ExplorationPage({
   return (
     <div id="exploration-page" className="iad-exploration-page">
       {(error||results.error||jobQuery.error)&&<p role="alert" className="iad-error">{error||results.error||jobQuery.error}</p>}
-      {/* Top Heading */}
-      <div className="exp-heading">
-        <div>
-          <h1>{view === "setup" ? "新建探索" : "方向探索"}</h1>
-        </div>
+      <WorkbenchHeader pageId="industrial-exploration" className="exp-heading" title={view === "setup" ? "新建探索" : undefined}>
         <div className="exp-heading-actions">
           {view === "setup" ? (
             <Button type="button"  onClick={() => setView("jobs")}>
@@ -307,7 +304,7 @@ export function ExplorationPage({
             </Button>
           )}
         </div>
-      </div>
+      </WorkbenchHeader>
 
       {/* Dataset & Child Scope Selector (Shared Component) */}
       <DatasetScopeSelector

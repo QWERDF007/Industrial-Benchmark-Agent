@@ -1,5 +1,6 @@
 # 文档索引
 
+- [V76 完整交互原型](Industrial_Benchmark_Agent_V76_AEE6B48FE4A4BA%2592.html)。
 - [V75 完整交互原型](Industrial_Benchmark_Agent_V75_完整可交互.html)。
 - [V74 完整交互原型](Industrial_Benchmark_Agent_V74_完整可交互.html)。
 - [V72 完整交互原型](Industrial_Benchmark_Agent_V72_AEE6B48FE4A4BA%2592.html)。

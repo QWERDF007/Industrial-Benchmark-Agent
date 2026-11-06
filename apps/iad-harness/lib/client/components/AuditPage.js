@@ -1,4 +1,5 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { WorkbenchHeader } from './layout/WorkbenchHeader.js';
 import { TabBar } from './layout/TabBar.js';
 import { Button } from './Button.js';
 import { ThumbnailCard } from "./ThumbnailCard.js";
@@ -52,12 +53,12 @@ export function AuditPage({ dataset, datasets, groups, refreshRevision, onDatase
     const hasResults = job?.status === 'COMPLETED' && !!result.data && Object.values(result.data.distribution).some(value => value > 0);
     const setupDatasets = datasets.filter(item => ids.includes(item.dataset_id));
     const refresh = () => { jobs.refresh(); progress(); onDatasetsChanged(); };
-    return _jsxs("div", { id: "audit-page", children: [_jsxs("header", { className: "audit-heading", children: [_jsx("h1", { children: createOpen ? '新建审计' : '模型审计' }), createOpen
-                        ? _jsx(Button, { type: "button", disabled: creatingBusy, onClick: () => setCreateOpen(false), children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" })
-                        : _jsx(Button, { variant: "primary", type: "button", disabled: !ids.length, title: "\u65B0\u5EFA\u5BA1\u8BA1", onClick: () => {
-                                workspace.selectDataset(ids[0]);
-                                setCreateOpen(true);
-                            }, children: "\u65B0\u5EFA\u5BA1\u8BA1" })] }), _jsx(DatasetScopeSelector, { groups: hierarchy, selectedGroupId: groupId, onGroupChange: next => {
+    return _jsxs("div", { id: "audit-page", children: [_jsx(WorkbenchHeader, { pageId: "industrial-audit", className: "audit-heading", title: createOpen ? '新建审计' : undefined, children: createOpen
+                    ? _jsx(Button, { type: "button", disabled: creatingBusy, onClick: () => setCreateOpen(false), children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" })
+                    : _jsx(Button, { variant: "primary", type: "button", disabled: !ids.length, title: "\u65B0\u5EFA\u5BA1\u8BA1", onClick: () => {
+                            workspace.selectDataset(ids[0]);
+                            setCreateOpen(true);
+                        }, children: "\u65B0\u5EFA\u5BA1\u8BA1" }) }), _jsx(DatasetScopeSelector, { groups: hierarchy, selectedGroupId: groupId, onGroupChange: next => {
                     setGroupId(next);
                     setSelectedIds(datasets.filter(item => getDatasetGroupId(item) === next).slice(0, 1).map(item => item.dataset_id));
                 }, childDatasets: children, selectedChildIds: ids, onChildToggle: id => setSelectedIds(previous => previous.includes(id)

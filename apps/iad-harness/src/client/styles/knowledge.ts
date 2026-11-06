@@ -14,9 +14,7 @@ export const knowledgeStyles = `
   --iad-content-modal-radius: 8px;
   --iad-content-modal-width: 1380px;
   --iad-content-modal-height: 820px;
-  max-width: 1580px;
   min-width: 0;
-  margin: auto;
   --bg: #edf1f5;
   --side: #f7f9fc;
   --panel: #fff;
@@ -65,35 +63,6 @@ export const knowledgeStyles = `
 .kb-v45-main {
   min-width: 0;
   padding: 0;
-}
-
-.main-inner {
-  max-width: 1550px;
-  margin: 0 auto;
-}
-
-/* Header & Topline */
-.kb-v45 .topline {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin: 0 0 18px;
-}
-
-.kb-v45 .titlebar .eyebrow {
-  font-size: 13px !important;
-  color: #172338 !important;
-  font-weight: 400 !important;
-}
-
-.kb-v45 .titlebar h1 {
-  font-size: 23px !important;
-  margin: 0;
-  line-height: 1.5;
-  letter-spacing: -0.4px;
-  color: #172338 !important;
-  font-weight: 650 !important;
 }
 
 .kb-v45 .actions {
@@ -1051,9 +1020,7 @@ export const knowledgeStyles = `
 
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page.hide { display: none !important; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page { font: 13px/1.55 system-ui, "Microsoft YaHei", sans-serif; color: #172338; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page h1 { font-size: 24px; margin: 0; font-weight: 650; color: #172338; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page h2 { font-size: 16px; font-weight: 650; margin: 0; color: #172338; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-heading { margin: 0 0 22px; display: flex; align-items: center; justify-content: space-between; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-scope { display: flex; gap: 14px; align-items: end; flex-wrap: wrap; margin: 0 0 18px; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-control { width: 250px; max-width: 100%; min-width: 0; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-child-control { width: 390px; }

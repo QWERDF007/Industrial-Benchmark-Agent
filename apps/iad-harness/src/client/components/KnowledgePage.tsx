@@ -1,3 +1,4 @@
+import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {v4 as uuid} from 'uuid';
 import {PromptDrawer} from './PromptDrawer.js';
 import {Select} from './Select.js';
@@ -249,17 +250,13 @@ export function KnowledgePage({
         <div className="kb-v45-main">
         <div className="main-inner">
           {!createOpen && <>
-          {/* Topline Header */}
-          <header className="topline">
-            <div className="titlebar">
-              <h1>知识挖掘</h1>
-            </div>
+          <WorkbenchHeader pageId="industrial-knowledge" className="topline">
             <div className="actions">
               <Button variant="primary" id="create-btn" onClick={openCreate}>
                 ＋ 新建挖掘
               </Button>
             </div>
-          </header>
+          </WorkbenchHeader>
 
           {/* Context Scope Selector */}
           <section className="context" aria-label="选择数据范围">

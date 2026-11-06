@@ -8100,9 +8100,9 @@ var __IadClientBundle__ = (() => {
 
   // src/client/components/layout/WorkbenchHeader.tsx
   var import_jsx_runtime8 = __require("react/jsx-runtime");
-  function WorkbenchHeader({ pageId, children, title }) {
+  function WorkbenchHeader({ pageId, children, title, className = "" }) {
     const page = navigation[pageId];
-    return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("header", { className: "iad-header", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("header", { className: `iad-header ${className}`, children: [
       /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { children: title || page.label }),
       children && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "iad-header-actions", children })
     ] });
@@ -12956,23 +12956,20 @@ var __IadClientBundle__ = (() => {
       onDatasetsChanged();
     };
     return /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("div", { id: "audit-page", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("header", { className: "audit-heading", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("h1", { children: createOpen ? "\u65B0\u5EFA\u5BA1\u8BA1" : "\u6A21\u578B\u5BA1\u8BA1" }),
-        createOpen ? /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(Button, { type: "button", disabled: creatingBusy, onClick: () => setCreateOpen(false), children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" }) : /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(
-          Button,
-          {
-            variant: "primary",
-            type: "button",
-            disabled: !ids.length,
-            title: "\u65B0\u5EFA\u5BA1\u8BA1",
-            onClick: () => {
-              workspace.selectDataset(ids[0]);
-              setCreateOpen(true);
-            },
-            children: "\u65B0\u5EFA\u5BA1\u8BA1"
-          }
-        )
-      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(WorkbenchHeader, { pageId: "industrial-audit", className: "audit-heading", title: createOpen ? "\u65B0\u5EFA\u5BA1\u8BA1" : void 0, children: createOpen ? /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(Button, { type: "button", disabled: creatingBusy, onClick: () => setCreateOpen(false), children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" }) : /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(
+        Button,
+        {
+          variant: "primary",
+          type: "button",
+          disabled: !ids.length,
+          title: "\u65B0\u5EFA\u5BA1\u8BA1",
+          onClick: () => {
+            workspace.selectDataset(ids[0]);
+            setCreateOpen(true);
+          },
+          children: "\u65B0\u5EFA\u5BA1\u8BA1"
+        }
+      ) }),
       /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(
         DatasetScopeSelector,
         {
@@ -14010,21 +14007,18 @@ var __IadClientBundle__ = (() => {
     };
     return /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { id: "exploration-page", className: "iad-exploration-page", children: [
       (error2 || results.error || jobQuery.error) && /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("p", { role: "alert", className: "iad-error", children: error2 || results.error || jobQuery.error }),
-      /* @__PURE__ */ (0, import_jsx_runtime59.jsxs)("div", { className: "exp-heading", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("h1", { children: view === "setup" ? "\u65B0\u5EFA\u63A2\u7D22" : "\u65B9\u5411\u63A2\u7D22" }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-heading-actions", children: view === "setup" ? /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(Button, { type: "button", onClick: () => setView("jobs"), children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" }) : /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
-          Button,
-          {
-            id: "exp-new",
-            type: "button",
-            variant: "primary",
-            disabled: !!runningJob || submitting,
-            title: runningJob ? "\u5DF2\u6709\u63A2\u7D22\u4EFB\u52A1\u8FD0\u884C\u6216\u6392\u961F" : "\u65B0\u5EFA\u63A2\u7D22",
-            onClick: () => void openSetup(),
-            children: "\u65B0\u5EFA\u63A2\u7D22"
-          }
-        ) })
-      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(WorkbenchHeader, { pageId: "industrial-exploration", className: "exp-heading", title: view === "setup" ? "\u65B0\u5EFA\u63A2\u7D22" : void 0, children: /* @__PURE__ */ (0, import_jsx_runtime59.jsx)("div", { className: "exp-heading-actions", children: view === "setup" ? /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(Button, { type: "button", onClick: () => setView("jobs"), children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" }) : /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
+        Button,
+        {
+          id: "exp-new",
+          type: "button",
+          variant: "primary",
+          disabled: !!runningJob || submitting,
+          title: runningJob ? "\u5DF2\u6709\u63A2\u7D22\u4EFB\u52A1\u8FD0\u884C\u6216\u6392\u961F" : "\u65B0\u5EFA\u63A2\u7D22",
+          onClick: () => void openSetup(),
+          children: "\u65B0\u5EFA\u63A2\u7D22"
+        }
+      ) }) }),
       /* @__PURE__ */ (0, import_jsx_runtime59.jsx)(
         DatasetScopeSelector,
         {
@@ -14865,19 +14859,16 @@ var __IadClientBundle__ = (() => {
           className: "kb-setup-page",
           "aria-label": "\u65B0\u5EFA\u77E5\u8BC6\u6316\u6398\u914D\u7F6E",
           children: [
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("header", { className: "exp-heading kb-setup-heading", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h1", { children: "\u65B0\u5EFA\u6316\u6398" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
-                Button,
-                {
-                  type: "button",
-                  id: "kb-setup-back",
-                  onClick: closeCreate,
-                  disabled: submitting,
-                  children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C"
-                }
-              )
-            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(WorkbenchHeader, { pageId: "industrial-knowledge", title: "\u65B0\u5EFA\u6316\u6398", children: /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
+              Button,
+              {
+                type: "button",
+                id: "kb-setup-back",
+                onClick: closeCreate,
+                disabled: submitting,
+                children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C"
+              }
+            ) }),
             /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("fieldset", { className: "kb-create-fields", disabled: submitting || directionsLoading || presetsLoading || !!started.current, children: [
               /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(
                 DatasetScopeSelector,
@@ -15305,10 +15296,7 @@ var __IadClientBundle__ = (() => {
     return /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { id: "knowledge-page", className: "iad-knowledge-page", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: `kb-v45 v46-app ${createOpen ? "kb-creating" : ""}`, children: [
       /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "kb-v45-main", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "main-inner", children: [
         !createOpen && /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(import_jsx_runtime64.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("header", { className: "topline", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "titlebar", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h1", { children: "\u77E5\u8BC6\u6316\u6398" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "actions", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(Button, { variant: "primary", id: "create-btn", onClick: openCreate, children: "\uFF0B \u65B0\u5EFA\u6316\u6398" }) })
-          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(WorkbenchHeader, { pageId: "industrial-knowledge", className: "topline", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "actions", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(Button, { variant: "primary", id: "create-btn", onClick: openCreate, children: "\uFF0B \u65B0\u5EFA\u6316\u6398" }) }) }),
           /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("section", { className: "context", "aria-label": "\u9009\u62E9\u6570\u636E\u8303\u56F4", children: [
             /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "control", children: [
               /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("label", { className: "label", htmlFor: "dataset", children: "\u6570\u636E\u96C6" }),
@@ -15758,12 +15746,10 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
   --canvas:#f5f7fa;--surface:#fff;--surface-alt:#f9fafc;--border:#dbe2eb;--border2:#e6ebf1;
   --ink:#17233a;--sub:#64748b;--blue:#285ed6;--blue-light:#eaf0ff;--hover:#f0f4fb;
   --ok:#177b53;--ok-bg:#e7f5ed;--ng:#bf394a;--ng-bg:#fdecef;--unknown:#607087;--unknown-bg:#eff2f6;
-  max-width: 1580px; min-width: 0; margin: auto;
+  min-width: 0;
 }
 
-.exp-heading{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:20px;flex-wrap:wrap}
-.exp-heading h1{margin:0;font-size:24px;font-weight:670;letter-spacing:-.4px}
-.exp-heading .crumb{margin-bottom:4px}.exp-heading-actions{display:flex;align-items:center;gap:11px;min-width:0}
+.exp-heading-actions{display:flex;align-items:center;gap:11px;min-width:0}
 .exp-heading-actions select{width:min(350px,35vw);height:38px;text-overflow:ellipsis}
 .exp-select{min-width:260px}
 .exp-sync{display:flex;align-items:center;gap:13px;min-height:36px;font-size:12px;color:#6a7a91;margin:0 0 11px}
@@ -15857,8 +15843,6 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 .exp-add-image.exp-add-empty svg{width:23px;height:23px}
 
 
-.exp-heading {margin-bottom:18px}
-.exp-heading h1 {font-size:24px}
 .exp-scope{margin-top:4px;margin-bottom:12px}
 .exp-job-list-actions{display:flex;align-items:center;gap:12px}
 .exp-job-list-actions .exp-input{min-width:154px;gap:0}
@@ -16049,7 +16033,7 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 :is(.iad-workbench,.iad-detail-dialog) p {margin:0;}:is(.iad-workbench,.iad-detail-dialog) p+p {margin-top:12px;}
 .iad-header,.iad-row {display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
 .iad-action-end {margin-inline-start:auto;flex:none;}
-.iad-header {flex-shrink:0;justify-content:space-between;align-items:end;margin-bottom:var(--iad-section-gap);}.iad-header-actions{display:flex;align-items:center;gap:var(--iad-space-3);min-width:0;flex-wrap:wrap}.iad-header-actions select{max-width:min(100%,24rem)}.iad-breadcrumb{color:var(--iad-muted);font-size:.75rem;margin:0 0 var(--iad-space-2)}
+.iad-header {flex-shrink:0;justify-content:space-between;align-items:end;margin-bottom:var(--iad-section-gap);}.iad-header-actions{display:flex;align-items:center;gap:var(--iad-space-3);min-width:0;flex-wrap:wrap}.iad-header-actions select{max-width:min(100%,24rem)}
 
 
 
@@ -16332,9 +16316,7 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
   --iad-content-modal-radius: 8px;
   --iad-content-modal-width: 1380px;
   --iad-content-modal-height: 820px;
-  max-width: 1580px;
   min-width: 0;
-  margin: auto;
   --bg: #edf1f5;
   --side: #f7f9fc;
   --panel: #fff;
@@ -16383,35 +16365,6 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 .kb-v45-main {
   min-width: 0;
   padding: 0;
-}
-
-.main-inner {
-  max-width: 1550px;
-  margin: 0 auto;
-}
-
-/* Header & Topline */
-.kb-v45 .topline {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin: 0 0 18px;
-}
-
-.kb-v45 .titlebar .eyebrow {
-  font-size: 13px !important;
-  color: #172338 !important;
-  font-weight: 400 !important;
-}
-
-.kb-v45 .titlebar h1 {
-  font-size: 23px !important;
-  margin: 0;
-  line-height: 1.5;
-  letter-spacing: -0.4px;
-  color: #172338 !important;
-  font-weight: 650 !important;
 }
 
 .kb-v45 .actions {
@@ -17369,9 +17322,7 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page.hide { display: none !important; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page { font: 13px/1.55 system-ui, "Microsoft YaHei", sans-serif; color: #172338; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page h1 { font-size: 24px; margin: 0; font-weight: 650; color: #172338; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-page h2 { font-size: 16px; font-weight: 650; margin: 0; color: #172338; }
-:is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-heading { margin: 0 0 22px; display: flex; align-items: center; justify-content: space-between; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-scope { display: flex; gap: 14px; align-items: end; flex-wrap: wrap; margin: 0 0 18px; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-control { width: 250px; max-width: 100%; min-width: 0; }
 :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-child-control { width: 390px; }
@@ -17482,17 +17433,8 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 }
 
 :is(.iad-workbench[data-page="industrial-datasets"], .iad-workbench[data-page="industrial-images"]) {
-  padding-top: 28px;
   position: relative;
   min-height: 100%;
-}
-
-:is([data-page="industrial-datasets"], [data-page="industrial-images"]) .iad-breadcrumb {
-  display: none !important;
-}
-
-:is([data-page="industrial-datasets"], [data-page="industrial-images"]) .iad-header {
-  align-items: center;
 }
 
 .iad-dataset-page-wrap {
@@ -17857,7 +17799,6 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 
   // src/client/styles/consistency.ts
   var consistencyStyles = `
-.iad-workbench.iad-consistency{padding:28px 30px 36px}.iad-consistency .iad-header{margin-bottom:20px}.iad-consistency .iad-header h1{font-size:27px}
 .iad-consistency .iad-consistency-query{padding:18px 20px 16px;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:7px;margin-bottom:14px}
 .iad-consistency .iad-consistency-query .iad-row{align-items:end;gap:12px;flex-wrap:wrap}.iad-consistency-query .iad-filter{min-width:145px;gap:7px;color:var(--iad-muted);font-size:12px}.iad-consistency-query .iad-filter :is(select,input){font-size:14px;height:40px}
 .iad-consistency-summary{margin:12px 0 14px}.iad-consistency-status{display:flex;align-items:center;flex-wrap:wrap;gap:10px 24px;padding:11px 15px;border:1px solid var(--iad-border);border-radius:6px;background:var(--iad-surface-muted);font-size:12px}.iad-consistency-status strong{font-weight:650}.iad-consistency-status>span{white-space:nowrap}
@@ -17912,8 +17853,6 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 }
 
 .dc-root{min-width:0}
-.exp-heading,.dc-page-heading{min-height:42px;display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 24px}
-.dc-page-heading h1,.exp-heading h1{margin:0;font-size:24px;font-weight:670;letter-spacing:-.4px;line-height:1.35}
 .dc-heading-actions{display:flex;align-items:center;gap:8px}
 .dc-scope{display:flex;align-items:flex-end;gap:16px;margin:0 0 18px;flex-wrap:wrap}
 .dc-section{margin:0 0 20px}
@@ -18273,17 +18212,6 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 #reset{margin-left:0;align-self:flex-end}
 #refresh{align-self:flex-end}
 
-:is(.iad-workbench, body) [data-page="industrial-images"],
-.iad-workbench[data-page="industrial-images"] {
-  padding: 12px 28px 14px !important;
-  overflow-y: auto !important;
-}
-.iad-workbench[data-page="industrial-images"] .heading {
-  margin-bottom: 8px !important;
-}
-.iad-workbench[data-page="industrial-images"] .heading h1 {
-  font-size: 20px !important;
-}
 .iad-workbench[data-page="industrial-images"] .dataset-panel {
   margin-bottom: 8px !important;
 }
@@ -19013,14 +18941,10 @@ dialog.iad-drawer>.iad-dialog-header{height:64px!important;min-height:64px!impor
 `;
 
   // src/client/styles/audit.ts
-  var auditStyles = `.iad-workbench[data-page="industrial-audit"]{padding:0}
-#audit-page { --audit-ink:#172338; --audit-border:#dbe2eb; --audit-blue:#285ed6; --audit-bg:#fff; color:var(--audit-ink); font:13px/1.55 system-ui,"Microsoft YaHei","PingFang SC",sans-serif; max-width:1580px; margin:0 auto; padding:32px 30px 64px; min-width:0; }
+  var auditStyles = `#audit-page { --audit-ink:#172338; --audit-border:#dbe2eb; --audit-blue:#285ed6; --audit-bg:#fff; color:var(--audit-ink); font:13px/1.55 system-ui,"Microsoft YaHei","PingFang SC",sans-serif; padding:0 0 64px; min-width:0; }
 #audit-page[hidden] {display:none!important}
 #audit-page *,#audit-page *::before,#audit-page *::after{box-sizing:border-box}
 #audit-page input,#audit-page select,#audit-page textarea{font-family:inherit;font-size:13px}
-#audit-page .audit-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
-#audit-page .audit-heading h1{font-size:24px;line-height:1.4;letter-spacing:0;font-weight:700;margin:0;color:var(--audit-ink)}
-#audit-page .audit-kicker{font-size:12px;color:var(--audit-ink);margin:0 0 2px}
 #audit-page h2{font-size:16px;line-height:1.5;font-weight:700;margin:0;color:var(--audit-ink)}
 #audit-page h3{font-size:14px;line-height:1.5;font-weight:700;margin:0;color:var(--audit-ink)}
 #audit-page p{margin:0}
@@ -19138,7 +19062,7 @@ dialog.iad-drawer>.iad-dialog-header{height:64px!important;min-height:64px!impor
 #audit-page .audit-lightbox .next{right:24px;top:50%}
 #audit-page .audit-lightbox .caption{position:absolute;bottom:20px;left:20px;right:20px;text-align:center;color:#fff;font-size:13px}
 @media(max-width:1100px){#audit-page .audit-report-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}#audit-page .audit-kpi:nth-child(3){border-right:0}#audit-page .audit-kpi:nth-child(n+4){border-top:1px solid var(--audit-border)}}
-@media(max-width:780px){#audit-page{padding:18px 14px}#audit-page .audit-scope-parent,#audit-page .audit-scope-child{width:100%}#audit-page .audit-report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#audit-page .audit-kpi{border-top:1px solid var(--audit-border)}#audit-page .audit-report-columns{grid-template-columns:1fr}#audit-page .audit-overlay{padding:12px}#audit-page .audit-dialog{width:calc(100vw - 24px);height:calc(100dvh - 24px)}#audit-page .audit-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px;padding:12px}#audit-page .audit-thumb{height:122px}#audit-page .audit-dialog-body{padding:16px}}`;
+@media(max-width:780px){#audit-page{padding:0 0 40px}#audit-page .audit-scope-parent,#audit-page .audit-scope-child{width:100%}#audit-page .audit-report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#audit-page .audit-kpi{border-top:1px solid var(--audit-border)}#audit-page .audit-report-columns{grid-template-columns:1fr}#audit-page .audit-overlay{padding:12px}#audit-page .audit-dialog{width:calc(100vw - 24px);height:calc(100dvh - 24px)}#audit-page .audit-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px;padding:12px}#audit-page .audit-thumb{height:122px}#audit-page .audit-dialog-body{padding:16px}}`;
 
   // src/client/styles/gallery.ts
   var galleryStyles = `
@@ -19181,6 +19105,14 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 .iad-annotation-layer text{fill:#fff;stroke:#152538;stroke-width:3;paint-order:stroke;font-size:12px}
 .iad-annotation-layer .iad-annotation-mask>g>rect{fill:#ffb74c;fill-opacity:.45;stroke:none}
 .full-content{display:flex;flex:1;min-height:0;min-width:0}.full-context{width:288px;min-width:0;overflow:auto;background:var(--iad-surface,#fff);padding:16px;color:var(--iad-text,#172338)}.full-context .iad-thumbnail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+`;
+
+  // src/client/styles/page-heading.ts
+  var pageHeadingStyles = `
+.iad-workbench.iad-business-page{padding:25px 32px 52px}
+.iad-business-page .iad-header{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:42px;margin:0 0 18px}
+.iad-business-page .iad-header h1{margin:0;padding:0;color:var(--iad-text);font-size:24px;font-weight:670;line-height:1.35;letter-spacing:-.4px}
+@media(max-width:760px){.iad-workbench.iad-business-page{padding:20px 12px 50px}}
 `;
 
   // src/shared/report-chart-styles.generated.ts
@@ -19237,7 +19169,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 `;
 
   // src/client/styles.ts
-  var workbenchStyles = themeStyles + modelsStyles + explorationStyles + baseStyles + collectionsStyles + jobsStyles + overlaysStyles + formsStyles + reviewStyles + knowledgeStyles + setupStyles + datasetsStyles + consistencyStyles + imagesStyles + dialogsStyles + typographyStyles + auditStyles + controlStyles + selectStyles + tabStyles + galleryStyles + reportStyles;
+  var workbenchStyles = themeStyles + modelsStyles + explorationStyles + baseStyles + collectionsStyles + jobsStyles + overlaysStyles + formsStyles + reviewStyles + knowledgeStyles + setupStyles + datasetsStyles + consistencyStyles + imagesStyles + dialogsStyles + typographyStyles + auditStyles + controlStyles + selectStyles + tabStyles + galleryStyles + reportStyles + pageHeadingStyles;
 
   // src/client/useSampleNavigation.ts
   var import_react59 = __require("react");
@@ -19767,9 +19699,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(IconButton, { icon: "refresh", label: "\u5237\u65B0", onClick: changed })
     ] });
-    return /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)("div", { ref: surface, className: "iad-workbench", "data-page": pageId, children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)("div", { ref: surface, className: `iad-workbench${pageId !== "industrial-review" && pageId !== "industrial-model-settings" ? " iad-business-page" : ""}`, "data-page": pageId, children: [
       /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("style", { children: workbenchStyles }),
-      (!catalog.data || pageId !== "industrial-datasets" && pageId !== "industrial-images" && pageId !== "industrial-audit" && (!dataset || pageId !== "industrial-exploration" && pageId !== "industrial-knowledge")) && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(WorkbenchHeader, { pageId, children: catalog.data && datasetControls }),
+      (!catalog.data || pageId !== "industrial-datasets" && pageId !== "industrial-images" && (!dataset || pageId !== "industrial-exploration" && pageId !== "industrial-knowledge" && pageId !== "industrial-audit")) && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(WorkbenchHeader, { pageId, children: catalog.data && datasetControls }),
       (error2 || catalog.error) && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("p", { role: "alert", className: "iad-error", children: error2 || catalog.error }),
       !catalog.data ? /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("p", { role: "status", children: catalog.loading ? "\u6B63\u5728\u52A0\u8F7D\u6570\u636E\u96C6\u2026" : "\u6570\u636E\u96C6\u52A0\u8F7D\u5931\u8D25\u3002" }) : pageId === "industrial-datasets" ? /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(import_jsx_runtime67.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime67.jsx)(DatasetManager, { datasets, groups, onChanged: (id) => {
         void loadDatasets(id);
@@ -21916,9 +21848,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       if (!evidenceId) setVisited(true);
     }, [evidenceId]);
     return /* @__PURE__ */ (0, import_jsx_runtime86.jsxs)(import_jsx_runtime86.Fragment, { children: [
-      visited && /* @__PURE__ */ (0, import_jsx_runtime86.jsx)("div", { hidden: !!evidenceId, style: { height: "100%" }, children: catalog.data ? /* @__PURE__ */ (0, import_jsx_runtime86.jsx)(ConsistencyIntegratedWorkspace, { ...catalog.data }) : /* @__PURE__ */ (0, import_jsx_runtime86.jsxs)("div", { className: "iad-workbench", "data-page": "industrial-consistency", children: [
+      visited && /* @__PURE__ */ (0, import_jsx_runtime86.jsx)("div", { hidden: !!evidenceId, style: { height: "100%" }, children: catalog.data ? /* @__PURE__ */ (0, import_jsx_runtime86.jsx)(ConsistencyIntegratedWorkspace, { ...catalog.data }) : /* @__PURE__ */ (0, import_jsx_runtime86.jsxs)("div", { className: "iad-workbench iad-business-page", "data-page": "industrial-consistency", children: [
         /* @__PURE__ */ (0, import_jsx_runtime86.jsx)("style", { children: workbenchStyles }),
-        /* @__PURE__ */ (0, import_jsx_runtime86.jsx)("h1", { children: "\u6570\u636E\u4E00\u81F4\u6027" }),
+        /* @__PURE__ */ (0, import_jsx_runtime86.jsx)(WorkbenchHeader, { pageId: "industrial-consistency" }),
         /* @__PURE__ */ (0, import_jsx_runtime86.jsx)("p", { role: catalog.error ? "alert" : "status", children: catalog.error || "\u6B63\u5728\u52A0\u8F7D\u6570\u636E\u96C6\u2026" })
       ] }) }),
       evidenceId && /* @__PURE__ */ (0, import_jsx_runtime86.jsx)(ConsistencyEvidencePage, { evidenceId })
@@ -22185,26 +22117,23 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       },
       []
     );
-    return /* @__PURE__ */ (0, import_jsx_runtime86.jsxs)("div", { className: "iad-workbench iad-consistency", "data-page": "industrial-consistency", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime86.jsxs)("div", { className: "iad-workbench iad-business-page iad-consistency", "data-page": "industrial-consistency", children: [
       /* @__PURE__ */ (0, import_jsx_runtime86.jsx)("style", { children: workbenchStyles }),
       /* @__PURE__ */ (0, import_jsx_runtime86.jsxs)("div", { className: "dc-root", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime86.jsxs)("header", { className: "heading dc-page-heading", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime86.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime86.jsx)("h1", { children: "\u6570\u636E\u4E00\u81F4\u6027" }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime86.jsx)("div", { className: "dc-heading-actions", children: /* @__PURE__ */ (0, import_jsx_runtime86.jsx)(
-            Button,
-            {
-              type: "button",
-              variant: "primary",
-              "data-dc": "start-check",
-              onClick: () => {
-                setNewPrompt(DEFAULT_CONSISTENCY_PROMPT);
-                setModalChildIds([...selectedChildIds]);
-                setModal("new");
-              },
-              children: "\u65B0\u5EFA\u68C0\u67E5"
-            }
-          ) })
-        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime86.jsx)(WorkbenchHeader, { pageId: "industrial-consistency", className: "heading dc-page-heading", children: /* @__PURE__ */ (0, import_jsx_runtime86.jsx)("div", { className: "dc-heading-actions", children: /* @__PURE__ */ (0, import_jsx_runtime86.jsx)(
+          Button,
+          {
+            type: "button",
+            variant: "primary",
+            "data-dc": "start-check",
+            onClick: () => {
+              setNewPrompt(DEFAULT_CONSISTENCY_PROMPT);
+              setModalChildIds([...selectedChildIds]);
+              setModal("new");
+            },
+            children: "\u65B0\u5EFA\u68C0\u67E5"
+          }
+        ) }) }),
         (error2 || polling.error || programs.some((program) => program.error)) && /* @__PURE__ */ (0, import_jsx_runtime86.jsx)("p", { role: "alert", className: "iad-error", children: error2 || polling.error || message(programs.find((program) => program.error)?.error) }),
         /* @__PURE__ */ (0, import_jsx_runtime86.jsx)(
           DatasetScopeSelector,

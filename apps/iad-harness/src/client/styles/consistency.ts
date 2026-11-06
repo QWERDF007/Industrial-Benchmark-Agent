@@ -1,5 +1,4 @@
 export const consistencyStyles=`
-.iad-workbench.iad-consistency{padding:28px 30px 36px}.iad-consistency .iad-header{margin-bottom:20px}.iad-consistency .iad-header h1{font-size:27px}
 .iad-consistency .iad-consistency-query{padding:18px 20px 16px;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:7px;margin-bottom:14px}
 .iad-consistency .iad-consistency-query .iad-row{align-items:end;gap:12px;flex-wrap:wrap}.iad-consistency-query .iad-filter{min-width:145px;gap:7px;color:var(--iad-muted);font-size:12px}.iad-consistency-query .iad-filter :is(select,input){font-size:14px;height:40px}
 .iad-consistency-summary{margin:12px 0 14px}.iad-consistency-status{display:flex;align-items:center;flex-wrap:wrap;gap:10px 24px;padding:11px 15px;border:1px solid var(--iad-border);border-radius:6px;background:var(--iad-surface-muted);font-size:12px}.iad-consistency-status strong{font-weight:650}.iad-consistency-status>span{white-space:nowrap}
@@ -54,8 +53,6 @@ export const consistencyStyles=`
 }
 
 .dc-root{min-width:0}
-.exp-heading,.dc-page-heading{min-height:42px;display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 24px}
-.dc-page-heading h1,.exp-heading h1{margin:0;font-size:24px;font-weight:670;letter-spacing:-.4px;line-height:1.35}
 .dc-heading-actions{display:flex;align-items:center;gap:8px}
 .dc-scope{display:flex;align-items:flex-end;gap:16px;margin:0 0 18px;flex-wrap:wrap}
 .dc-section{margin:0 0 20px}

@@ -1,4 +1,5 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { WorkbenchHeader } from './layout/WorkbenchHeader.js';
 import { v4 as uuid } from 'uuid';
 import { Modal } from './Modal.js';
 import { DatasetScopeSelector } from './DatasetScopeSelector.js';
@@ -221,7 +222,7 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
             setSubmitting(false);
         }
     };
-    return _jsxs(_Fragment, { children: [_jsxs("section", { id: "kb-setup-page", className: "kb-setup-page", "aria-label": "\u65B0\u5EFA\u77E5\u8BC6\u6316\u6398\u914D\u7F6E", children: [_jsxs("header", { className: "exp-heading kb-setup-heading", children: [_jsx("div", { children: _jsx("h1", { children: "\u65B0\u5EFA\u6316\u6398" }) }), _jsx(Button, { type: "button", id: "kb-setup-back", onClick: closeCreate, disabled: submitting, children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" })] }), _jsxs("fieldset", { className: "kb-create-fields", disabled: submitting || directionsLoading || presetsLoading || !!started.current, children: [_jsx(DatasetScopeSelector, { className: "kb-setup-scope", groups: parentGroups, selectedGroupId: setupDataset, onGroupChange: id => {
+    return _jsxs(_Fragment, { children: [_jsxs("section", { id: "kb-setup-page", className: "kb-setup-page", "aria-label": "\u65B0\u5EFA\u77E5\u8BC6\u6316\u6398\u914D\u7F6E", children: [_jsx(WorkbenchHeader, { pageId: "industrial-knowledge", title: "\u65B0\u5EFA\u6316\u6398", children: _jsx(Button, { type: "button", id: "kb-setup-back", onClick: closeCreate, disabled: submitting, children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" }) }), _jsxs("fieldset", { className: "kb-create-fields", disabled: submitting || directionsLoading || presetsLoading || !!started.current, children: [_jsx(DatasetScopeSelector, { className: "kb-setup-scope", groups: parentGroups, selectedGroupId: setupDataset, onGroupChange: id => {
                                     setSetupDataset(id);
                                     const first = datasets.find(item => getDatasetGroupId(item) === id)?.dataset_id;
                                     setSetupSubsets(new Set(first ? [first] : []));

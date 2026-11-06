@@ -1,3 +1,4 @@
+import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {TabBar} from './layout/TabBar.js';
 import {Button} from './Button.js';
 import {ThumbnailCard} from "./ThumbnailCard.js";
@@ -57,12 +58,12 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
   const setupDatasets = datasets.filter(item => ids.includes(item.dataset_id));
   const refresh = () => {jobs.refresh(); progress(); onDatasetsChanged();};
   return <div id="audit-page">
-    <header className="audit-heading"><h1>{createOpen?'新建审计':'模型审计'}</h1>{createOpen
+    <WorkbenchHeader pageId="industrial-audit" className="audit-heading" title={createOpen?'新建审计':undefined}>{createOpen
       ? <Button type="button" disabled={creatingBusy} onClick={() => setCreateOpen(false)}>返回作业与结果</Button>
       : <Button variant="primary" type="button" disabled={!ids.length}
         title="新建审计" onClick={() => {
           workspace.selectDataset(ids[0]); setCreateOpen(true);
-        }}>新建审计</Button>}</header>
+        }}>新建审计</Button>}</WorkbenchHeader>
     <DatasetScopeSelector groups={hierarchy} selectedGroupId={groupId} onGroupChange={next => {
       setGroupId(next); setSelectedIds(datasets.filter(item => getDatasetGroupId(item) === next).slice(0, 1).map(item => item.dataset_id));
     }} childDatasets={children} selectedChildIds={ids} onChildToggle={id => setSelectedIds(previous => previous.includes(id)

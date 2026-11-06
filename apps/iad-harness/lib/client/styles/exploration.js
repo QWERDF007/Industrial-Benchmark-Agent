@@ -18,12 +18,10 @@ export const explorationStyles = `
   --canvas:#f5f7fa;--surface:#fff;--surface-alt:#f9fafc;--border:#dbe2eb;--border2:#e6ebf1;
   --ink:#17233a;--sub:#64748b;--blue:#285ed6;--blue-light:#eaf0ff;--hover:#f0f4fb;
   --ok:#177b53;--ok-bg:#e7f5ed;--ng:#bf394a;--ng-bg:#fdecef;--unknown:#607087;--unknown-bg:#eff2f6;
-  max-width: 1580px; min-width: 0; margin: auto;
+  min-width: 0;
 }
 
-.exp-heading{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:20px;flex-wrap:wrap}
-.exp-heading h1{margin:0;font-size:24px;font-weight:670;letter-spacing:-.4px}
-.exp-heading .crumb{margin-bottom:4px}.exp-heading-actions{display:flex;align-items:center;gap:11px;min-width:0}
+.exp-heading-actions{display:flex;align-items:center;gap:11px;min-width:0}
 .exp-heading-actions select{width:min(350px,35vw);height:38px;text-overflow:ellipsis}
 .exp-select{min-width:260px}
 .exp-sync{display:flex;align-items:center;gap:13px;min-height:36px;font-size:12px;color:#6a7a91;margin:0 0 11px}
@@ -117,8 +115,6 @@ export const explorationStyles = `
 .exp-add-image.exp-add-empty svg{width:23px;height:23px}
 
 
-.exp-heading {margin-bottom:18px}
-.exp-heading h1 {font-size:24px}
 .exp-scope{margin-top:4px;margin-bottom:12px}
 .exp-job-list-actions{display:flex;align-items:center;gap:12px}
 .exp-job-list-actions .exp-input{min-width:154px;gap:0}

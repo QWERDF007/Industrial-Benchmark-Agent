@@ -1,3 +1,4 @@
+import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {v4 as uuid} from 'uuid';
 import {Modal} from './Modal.js';
 import {DatasetScopeSelector} from './DatasetScopeSelector.js';
@@ -220,10 +221,7 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
               className="kb-setup-page"
               aria-label="新建知识挖掘配置"
             >
-              <header className="exp-heading kb-setup-heading">
-                <div>
-                  <h1>新建挖掘</h1>
-                </div>
+              <WorkbenchHeader pageId="industrial-knowledge" title="新建挖掘">
                 <Button
                   type="button"
 
@@ -233,7 +231,7 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
                 >
                   返回作业与结果
                 </Button>
-              </header>
+              </WorkbenchHeader>
 
               <fieldset className="kb-create-fields" disabled={submitting || directionsLoading || presetsLoading || !!started.current}>
               <DatasetScopeSelector className="kb-setup-scope" groups={parentGroups} selectedGroupId={setupDataset}

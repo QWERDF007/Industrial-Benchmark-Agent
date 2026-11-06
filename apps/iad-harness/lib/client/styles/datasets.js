@@ -27,17 +27,8 @@ export const datasetsStyles = `
 }
 
 :is(.iad-workbench[data-page="industrial-datasets"], .iad-workbench[data-page="industrial-images"]) {
-  padding-top: 28px;
   position: relative;
   min-height: 100%;
-}
-
-:is([data-page="industrial-datasets"], [data-page="industrial-images"]) .iad-breadcrumb {
-  display: none !important;
-}
-
-:is([data-page="industrial-datasets"], [data-page="industrial-images"]) .iad-header {
-  align-items: center;
 }
 
 .iad-dataset-page-wrap {

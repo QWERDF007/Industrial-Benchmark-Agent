@@ -1,3 +1,4 @@
+import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {v4 as uuid} from 'uuid';
 import {ConsistencyStatisticsDialog,type ConsistencyStatisticAction} from './ConsistencyStatisticsDialog.js';
 import {ConsistencyConflictDialog} from './ConsistencyConflictDialog.js';
@@ -80,7 +81,7 @@ export function ConsistencyPage() {
       {visited && (
         <div hidden={!!evidenceId} style={{ height: '100%' }}>
           {catalog.data ? <ConsistencyIntegratedWorkspace {...catalog.data} /> :
-            <div className="iad-workbench" data-page="industrial-consistency"><style>{workbenchStyles}</style><h1>数据一致性</h1>
+            <div className="iad-workbench iad-business-page" data-page="industrial-consistency"><style>{workbenchStyles}</style><WorkbenchHeader pageId="industrial-consistency" />
               <p role={catalog.error?'alert':'status'}>{catalog.error || '正在加载数据集…'}</p></div>}
         </div>
       )}
@@ -364,15 +365,11 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
 
 
   return (
-    <div className="iad-workbench iad-consistency" data-page="industrial-consistency">
+    <div className="iad-workbench iad-business-page iad-consistency" data-page="industrial-consistency">
       <style>{workbenchStyles}</style>
 
       <div className="dc-root">
-        {/* Header */}
-        <header className="heading dc-page-heading">
-          <div>
-            <h1>数据一致性</h1>
-          </div>
+        <WorkbenchHeader pageId="industrial-consistency" className="heading dc-page-heading">
           <div className="dc-heading-actions">
             <Button
               type="button"
@@ -387,7 +384,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
               新建检查
             </Button>
           </div>
-        </header>
+        </WorkbenchHeader>
 
         {(error||polling.error||programs.some(program=>program.error))&&<p role="alert" className="iad-error">{error||polling.error||message(programs.find(program=>program.error)?.error)}</p>}
 

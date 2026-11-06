@@ -1,11 +1,7 @@
-export const auditStyles = `.iad-workbench[data-page="industrial-audit"]{padding:0}
-#audit-page { --audit-ink:#172338; --audit-border:#dbe2eb; --audit-blue:#285ed6; --audit-bg:#fff; color:var(--audit-ink); font:13px/1.55 system-ui,"Microsoft YaHei","PingFang SC",sans-serif; max-width:1580px; margin:0 auto; padding:32px 30px 64px; min-width:0; }
+export const auditStyles = `#audit-page { --audit-ink:#172338; --audit-border:#dbe2eb; --audit-blue:#285ed6; --audit-bg:#fff; color:var(--audit-ink); font:13px/1.55 system-ui,"Microsoft YaHei","PingFang SC",sans-serif; padding:0 0 64px; min-width:0; }
 #audit-page[hidden] {display:none!important}
 #audit-page *,#audit-page *::before,#audit-page *::after{box-sizing:border-box}
 #audit-page input,#audit-page select,#audit-page textarea{font-family:inherit;font-size:13px}
-#audit-page .audit-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
-#audit-page .audit-heading h1{font-size:24px;line-height:1.4;letter-spacing:0;font-weight:700;margin:0;color:var(--audit-ink)}
-#audit-page .audit-kicker{font-size:12px;color:var(--audit-ink);margin:0 0 2px}
 #audit-page h2{font-size:16px;line-height:1.5;font-weight:700;margin:0;color:var(--audit-ink)}
 #audit-page h3{font-size:14px;line-height:1.5;font-weight:700;margin:0;color:var(--audit-ink)}
 #audit-page p{margin:0}
@@ -123,4 +119,4 @@ export const auditStyles = `.iad-workbench[data-page="industrial-audit"]{padding
 #audit-page .audit-lightbox .next{right:24px;top:50%}
 #audit-page .audit-lightbox .caption{position:absolute;bottom:20px;left:20px;right:20px;text-align:center;color:#fff;font-size:13px}
 @media(max-width:1100px){#audit-page .audit-report-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}#audit-page .audit-kpi:nth-child(3){border-right:0}#audit-page .audit-kpi:nth-child(n+4){border-top:1px solid var(--audit-border)}}
-@media(max-width:780px){#audit-page{padding:18px 14px}#audit-page .audit-scope-parent,#audit-page .audit-scope-child{width:100%}#audit-page .audit-report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#audit-page .audit-kpi{border-top:1px solid var(--audit-border)}#audit-page .audit-report-columns{grid-template-columns:1fr}#audit-page .audit-overlay{padding:12px}#audit-page .audit-dialog{width:calc(100vw - 24px);height:calc(100dvh - 24px)}#audit-page .audit-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px;padding:12px}#audit-page .audit-thumb{height:122px}#audit-page .audit-dialog-body{padding:16px}}`;
+@media(max-width:780px){#audit-page{padding:0 0 40px}#audit-page .audit-scope-parent,#audit-page .audit-scope-child{width:100%}#audit-page .audit-report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#audit-page .audit-kpi{border-top:1px solid var(--audit-border)}#audit-page .audit-report-columns{grid-template-columns:1fr}#audit-page .audit-overlay{padding:12px}#audit-page .audit-dialog{width:calc(100vw - 24px);height:calc(100dvh - 24px)}#audit-page .audit-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px;padding:12px}#audit-page .audit-thumb{height:122px}#audit-page .audit-dialog-body{padding:16px}}`;

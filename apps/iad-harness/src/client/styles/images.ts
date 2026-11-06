@@ -117,17 +117,6 @@ export const imagesStyles = `
 #reset{margin-left:0;align-self:flex-end}
 #refresh{align-self:flex-end}
 
-:is(.iad-workbench, body) [data-page="industrial-images"],
-.iad-workbench[data-page="industrial-images"] {
-  padding: 12px 28px 14px !important;
-  overflow-y: auto !important;
-}
-.iad-workbench[data-page="industrial-images"] .heading {
-  margin-bottom: 8px !important;
-}
-.iad-workbench[data-page="industrial-images"] .heading h1 {
-  font-size: 20px !important;
-}
 .iad-workbench[data-page="industrial-images"] .dataset-panel {
   margin-bottom: 8px !important;
 }
