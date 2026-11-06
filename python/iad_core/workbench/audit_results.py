@@ -1,6 +1,7 @@
-import json
 from collections import Counter
+from contextlib import nullcontext
 from datetime import datetime, timezone
+from sqlite3 import Connection
 
 from iad_core.advisory.repository import AuditSuggestionRepository
 from iad_core.consistency.audit_repository import AuditConsistencyRepository
@@ -16,8 +17,14 @@ from iad_core.workbench.job_families import JobFamilies
 
 
 PROJECTION = """
-WITH family AS (
-    SELECT job_id FROM job_runs WHERE job_type='MODEL_AUDIT' AND json_extract(payload_json,'$.root_run_id')=?
+WITH scope AS (
+    SELECT root.job_id AS root_run_id, json_extract(root.payload_json,'$.request.dataset_id') AS dataset_id,
+        json_extract(root.payload_json,'$.request.sample_ids') AS sample_ids
+    FROM job_runs selected JOIN job_runs root ON root.job_id=json_extract(selected.payload_json,'$.root_run_id')
+    WHERE selected.job_id=? AND selected.job_type='MODEL_AUDIT' AND root.job_type='MODEL_AUDIT'
+), family AS (
+    SELECT job.id,job.job_id FROM job_runs job,scope
+    WHERE job.job_type='MODEL_AUDIT' AND json_extract(job.payload_json,'$.root_run_id')=scope.root_run_id
 ), advice AS (
     SELECT *, ROW_NUMBER() OVER (PARTITION BY sample_id ORDER BY id DESC) AS position
     FROM audit_suggestions WHERE audit_run_id IN (SELECT job_id FROM family)
@@ -25,8 +32,8 @@ WITH family AS (
     SELECT *, ROW_NUMBER() OVER (PARTITION BY sample_id ORDER BY id DESC) AS position
     FROM audit_consistency_checks WHERE run_id IN (SELECT job_id FROM family)
 ), facts AS (
-    SELECT scope.value AS sample_id, scope.key AS ordinal,
-        COALESCE(a.audit_run_id,c.run_id,?) AS run_id,
+    SELECT scope.value AS sample_id, scope.key AS ordinal, frozen.dataset_id,
+        COALESCE(a.audit_run_id,c.run_id,(SELECT job_id FROM family ORDER BY id DESC LIMIT 1)) AS run_id,
         COALESCE(s.relative_path, scope.value) AS filename,
         COALESCE(s.width, 0) AS width, COALESCE(s.height, 0) AS height,
         a.suggestion_id, c.check_id AS consistency_check_id,
@@ -43,7 +50,7 @@ WITH family AS (
         EXISTS(SELECT 1 FROM json_each(c.record_json, '$.references') ref
             JOIN consistency_results r ON r.evidence_id=json_extract(ref.value, '$.evidence_id')
             WHERE json_array_length(r.snapshot_json, '$.result.annotation.differences')>0) AS consistency_pending
-    FROM json_each(?) scope
+    FROM scope frozen,json_each(frozen.sample_ids) scope
     LEFT JOIN samples s ON s.sample_id=scope.value
     LEFT JOIN advice a ON a.sample_id=scope.value AND a.position=1
     LEFT JOIN checks c ON c.sample_id=scope.value AND c.position=1
@@ -60,17 +67,22 @@ class AuditResults:
     def __init__(self, db: Database):
         self.db = db
 
-    def _projection(self, run_id: str) -> tuple[JobSnapshot, list[AuditSampleItem]]:
+    def _projection(self, run_id: str, connection: Connection | None = None) -> list[AuditSampleItem]:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+            rows = conn.execute(PROJECTION, (run_id,)).fetchall()
+        if not rows:
+            raise LookupError('Job not found')
+        return [AuditSampleItem(**{key: row[key] for key in AuditSampleItem.model_fields}) for row in rows]
+
+    def _snapshot(self, run_id: str) -> tuple[JobSnapshot, list[AuditSampleItem]]:
         with self.db.connection() as connection:
             connection.execute('BEGIN')
             job = JobFamilies(self.db).snapshot(run_id, ('MODEL_AUDIT',), connection=connection)
-            rows = connection.execute(PROJECTION, (job.root_run_id, job.run_id, json.dumps(job.sample_ids))).fetchall()
-        items = [AuditSampleItem(dataset_id=job.dataset_id,
-            **{key: row[key] for key in AuditSampleItem.model_fields if key != 'dataset_id'}) for row in rows]
+            items = self._projection(run_id, connection)
         return job, items
 
     def samples(self, query: AuditSampleQuery) -> AuditSamplePage:
-        _, items = self._projection(query.run_id)
+        items = self._projection(query.run_id)
         distribution = {state: sum(item.audit_state == state for item in items)
                         for state in ('suspect', 'insufficient', 'normal', 'unprocessed')}
         selected = [item for item in items if (query.status == 'all' or item.audit_state == query.status)
@@ -86,7 +98,7 @@ class AuditResults:
         return AuditKnowledgeReference(**snapshot.model_dump(include=set(AuditKnowledgeReference.model_fields)))
 
     def sample(self, run_id: str, sample_id: str) -> AuditSampleDetail:
-        job, items = self._projection(run_id)
+        job, items = self._snapshot(run_id)
         item = next((item for item in items if item.sample_id == sample_id), None)
         if item is None:
             raise LookupError('该图像不属于所选审计作业的冻结范围')
@@ -108,7 +120,7 @@ class AuditResults:
             source_current=current, errors=[error.message for error in job.errors if error.sample_id == sample_id])
 
     def report(self, run_id: str) -> AuditRunReport:
-        job, items = self._projection(run_id)
+        job, items = self._snapshot(run_id)
         audited = sum(item.suggestion_id is not None for item in items)
         suspects = sum(item.has_findings for item in items)
         insufficient = sum(item.insufficient_evidence for item in items)

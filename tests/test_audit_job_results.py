@@ -224,6 +224,16 @@ def test_partial_audit_retries_keep_one_full_scope_job_and_each_samples_actual_s
         assert listed[0]['model_calls'] == state['model_calls']
         payload_reads = [query for query in queries if query.startswith('SELECT * FROM job_runs WHERE job_id=')]
         assert len(payload_reads) <= 3, '列表只为读取根ID而重复加载冻结请求和调用记录：' + str(payload_reads)
+        queries.clear()
+        with monkeypatch.context() as tracing:
+            tracing.setattr(Database, 'get_connection', traced_connection)
+            for handle in (root['run_id'], second['run_id'], third['run_id']):
+                page = audit_job_samples(dict(run_id=handle, page=2, page_size=1), db.db_path)
+                assert page['total'] == 3 and page['distribution']['normal'] == 3
+                assert [item['sample_id'] for item in page['items']] == [ids[1]]
+                assert page['items'][0]['run_id'] == second['run_id']
+        assert not any('FROM model_calls WHERE run_id=' in query for query in queries), '缩略图分页不读取模型调用元数据'
+        assert not any(query.startswith('SELECT * FROM job_runs WHERE job_id=') for query in queries), '缩略图分页不加载完整冻结作业'
     finally:
         runtime.close()
 
