@@ -22,7 +22,7 @@ export function apply(ctx) {
             ctx.slots.register({ name: "tool.call.toolview", key }, (props) => React.createElement(WorkspaceContext.Provider, { value: workspace }, React.createElement(SessionResult, { ...props, title })));
     });
     ctx.slots.inject("sidebar.panellist", () => {
-        const disposers = Object.entries(pages).map(([id, label], index) => ctx.slots.register({ name: "sidebar.panellist", id, order: index + 1, label }, icons[id]));
+        const disposers = Object.entries(pages).filter(([id]) => id !== 'industrial-model-settings').map(([id, label], index) => ctx.slots.register({ name: "sidebar.panellist", id, order: index + 1, label }, icons[id]));
         return () => disposers.forEach(dispose => dispose());
     });
     ctx.slots.inject("main", () => {

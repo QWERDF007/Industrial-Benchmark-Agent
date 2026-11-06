@@ -10,7 +10,7 @@ export async function waitForWorkbenchPage(driver, label) {
   await driver.wait(() => driver.executeScript("const root=document.querySelector('.iad-workbench');return root && arguments[0].includes(root.querySelector('h1')?.textContent) && !root.textContent.includes('正在读取知识…')", titles), 10000);
 }
 
-const pages = ["数据集管理", "图像浏览", "方向探索", "知识挖掘", "模型审计", "人工复核", "模型设置"];
+const pages = ["数据集管理", "图像浏览", "方向探索", "知识挖掘", "模型审计", "人工复核"];
 const viewports = [[1920, 1080]];
 
 export async function verifySidebarLayout(driver, output) {

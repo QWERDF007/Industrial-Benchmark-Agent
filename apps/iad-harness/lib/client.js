@@ -9808,6 +9808,7 @@ var __IadClientBundle__ = (() => {
  --iad-title-size:calc(var(--dsh-content-font-size,.875rem)*2);--iad-section-size:calc(var(--dsh-content-font-size,.875rem)*1.285714);--iad-group-size:calc(var(--dsh-content-font-size,.875rem)*1.071429);
 }
 [data-ds-dark-theme] {${darkColors}}
+[data-shortcut-modal="settings"] > nav {border-inline-end:1px solid var(--iad-panel-border)}
 `;
 
   // src/client/components/Tooltip.tsx
@@ -22477,7 +22478,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props) => import_react77.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react77.default.createElement(SessionResult, { ...props, title })));
     });
     ctx.slots.inject("sidebar.panellist", () => {
-      const disposers = Object.entries(pages).map(([id, label], index3) => ctx.slots.register({ name: "sidebar.panellist", id, order: index3 + 1, label }, icons2[id]));
+      const disposers = Object.entries(pages).filter(([id]) => id !== "industrial-model-settings").map(([id, label], index3) => ctx.slots.register({ name: "sidebar.panellist", id, order: index3 + 1, label }, icons2[id]));
       return () => disposers.forEach((dispose) => dispose());
     });
     ctx.slots.inject("main", () => {

@@ -41,4 +41,5 @@ export const themeStyles = `
  --iad-title-size:calc(var(--dsh-content-font-size,.875rem)*2);--iad-section-size:calc(var(--dsh-content-font-size,.875rem)*1.285714);--iad-group-size:calc(var(--dsh-content-font-size,.875rem)*1.071429);
 }
 [data-ds-dark-theme] {${darkColors}}
+[data-shortcut-modal="settings"] > nav {border-inline-end:1px solid var(--iad-panel-border)}
 `;

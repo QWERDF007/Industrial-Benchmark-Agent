@@ -93,7 +93,8 @@ test('authenticated LAN browser saves provider settings and switches models', {t
     await driver.wait(async () => (await selector.getAttribute('aria-label')).includes('Second model'), 10000);
     assert.equal((await api()).data.selection.model_id, 'first-model', 'DSH session selection must not change the shared workbench model');
     phase = 'independent model settings page';
-    await (await driver.wait(until.elementLocated(By.css('button[aria-label="模型设置"]')), 10000)).click();
+    const configurationUrl=new URL(url.href);configurationUrl.searchParams.set('iad',JSON.stringify({pageId:'industrial-model-settings'}));
+    await driver.get(configurationUrl.href);
     await driver.wait(until.elementLocated(By.css('[data-page="industrial-model-settings"]')), 10000);
     const width=await driver.executeScript('const root=document.querySelector(".iad-workbench"),panel=document.querySelector(".iad-model-configuration"),s=getComputedStyle(root);return {available:root.clientWidth-parseFloat(s.paddingLeft)-parseFloat(s.paddingRight),panel:panel.getBoundingClientRect().width}');
     assert.ok(Math.abs(width.available-width.panel)<2,`模型设置使用完整桌面宽度：${JSON.stringify(width)}`);

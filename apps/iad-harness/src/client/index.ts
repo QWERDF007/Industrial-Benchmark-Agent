@@ -24,7 +24,7 @@ export function apply(ctx: any) {
     for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props: ToolCallViewProps) => React.createElement(WorkspaceContext.Provider, { value: workspace }, React.createElement(SessionResult, { ...props, title })));
   });
   ctx.slots.inject("sidebar.panellist", () => {
-    const disposers = (Object.entries(pages) as [PageId, string][]).map(([id, label], index) =>
+    const disposers = (Object.entries(pages) as [PageId, string][]).filter(([id]) => id !== 'industrial-model-settings').map(([id, label], index) =>
       ctx.slots.register({ name: "sidebar.panellist", id, order: index + 1, label }, icons[id]));
     return () => disposers.forEach(dispose => dispose());
   });

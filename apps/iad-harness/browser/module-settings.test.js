@@ -34,7 +34,12 @@ test('native settings preserve General and Models while business settings persis
       },15000);
     };
     const section=async label=>{await click(label);await driver.wait(until.elementLocated(By.css('[data-module-settings]')),10000);await driver.wait(until.elementLocated(By.css('select[aria-label="分析模型"]')),10000);};
+    phase='single settings entrance';
+    assert.equal((await driver.findElements(By.css('button[aria-label="模型设置"]'))).length,0,'侧栏只保留原生设置入口');
+    assert.equal((await driver.findElements(By.css('button[aria-label="Settings"]'))).length,1);
     phase='native sections unchanged';await open();await click('General');
+    const divider=await driver.executeScript('const s=getComputedStyle(document.querySelector("[data-shortcut-modal=settings] > nav"));return {width:s.borderRightWidth,style:s.borderRightStyle}');
+    assert.deepEqual(divider,{width:'1px',style:'solid'},'设置分类与内容区之间显示分割线');
     await driver.wait(until.elementLocated(By.xpath("//*[@data-shortcut-modal='settings']//button[normalize-space(.)='Light']")),5000);
     await click('Models');await driver.wait(until.elementLocated(By.css('button[aria-label^="Edit First service"]')),10000);
     assert.equal((await driver.findElements(By.css('[data-module-settings]'))).length,0);
@@ -137,6 +142,7 @@ test('native settings preserve General and Models while business settings persis
     await click('General');await click('Dark');await section('数据一致性');
     await driver.wait(()=>driver.executeScript("return document.body.hasAttribute('data-ds-dark-theme')"),5000);
     await fs.writeFile('/tmp/iad-v75-business-settings-dark.png',await driver.takeScreenshot(),'base64');
+    assert.equal(await driver.executeScript('return getComputedStyle(document.querySelector("[data-shortcut-modal=settings] > nav")).borderRightColor'),'rgb(76, 91, 110)','分割线跟随深色主题');
     const dark=await driver.executeScript("const e=document.querySelector('[data-module-settings] select');return {text:getComputedStyle(e).color,background:getComputedStyle(e).backgroundColor}");
     const rgb=value=>value.match(/\d+/g).slice(0,3).map(Number);
     assert.ok(contrast.rgb(rgb(dark.text),rgb(dark.background))>=4.5,'深色输入文字对比度达标');

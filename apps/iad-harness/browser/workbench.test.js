@@ -162,7 +162,7 @@ for name in ['normal','normal2','dent']:
     const gridCount = count => driver.wait(async () => await driver.executeScript("return document.querySelectorAll('.iad-grid .iad-sample').length===arguments[0] && !!document.querySelector('.iad-gallery') && !document.querySelector('.iad-gallery').textContent.includes('加载中');", count), 15000, `Expected ${count} grid images`);
     await element("#test-navigation button");
     assert.deepEqual(await driver.executeScript("return [...document.querySelectorAll('#test-navigation button')].map(b=>b.textContent)"),
-      ["数据集管理", "图像浏览", "方向探索", "知识挖掘", "数据一致性", "模型审计", "人工复核", "模型设置"]);
+      ["数据集管理", "图像浏览", "方向探索", "知识挖掘", "数据一致性", "模型审计", "人工复核"]);
     assert.equal((await driver.findElements(By.css(".iad-header select,.iad-kpis"))).length, 0, "数据集管理由卡片选择数据集，不重复显示头部控件和统计");
     await button("添加数据集");
     await element("dialog[aria-label='添加数据集']");
