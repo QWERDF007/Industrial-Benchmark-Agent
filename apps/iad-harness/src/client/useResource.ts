@@ -1,21 +1,18 @@
-import {useEffect, useMemo, useState} from 'react';
-import {message, request} from './api.js';
+import {useEffect,useRef} from 'react';
+import {useQuery} from '@tanstack/react-query';
+import {message,request} from './api.js';
+import {queryClient} from './query-client.js';
 
-export function useResource<T>(path: string | null, revision: number | string = 0) {
-  const query = useMemo(() => ({path, revision}), [path, revision]);
-  const [result, setResult] = useState<{query: typeof query; data: T | null; error: string}>();
-  useEffect(() => {
-    if (!path) return;
-    const controller = new AbortController();
-    request<T>(path, undefined, undefined, controller.signal)
-      .then(data => {if (!controller.signal.aborted) setResult({query, data, error: ''});})
-      .catch(error => {if (!controller.signal.aborted) setResult(previous => ({query,
-        data: previous?.query.path === path ? previous.data : null, error: message(error)}));});
-    return () => controller.abort();
-  }, [query]);
-  return {
-    data: path && result?.query.path === path ? result.data : null,
-    error: path && result?.query === query ? result.error : '',
-    loading: !!path && result?.query !== query,
-  };
+export function useResource<T>(path:string|null,revision:number|string=0) {
+  const result=useQuery({queryKey:['iad','resource',path],enabled:!!path,
+    queryFn:()=>request<T>(path!),
+  },queryClient);
+  const previous=useRef({path,revision});
+  useEffect(()=>{
+    if(previous.current.path===path && previous.current.revision!==revision && path)
+      void queryClient.invalidateQueries({queryKey:['iad','resource',path],exact:true},{cancelRefetch:false});
+    previous.current={path,revision};
+  },[path,revision]);
+  return {data:path ? result.data ?? null : null,error:path && result.error ? message(result.error) : '',
+    loading:!!path && result.isPending,refreshing:!!path && result.isFetching};
 }

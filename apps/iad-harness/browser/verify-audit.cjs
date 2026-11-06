@@ -104,7 +104,7 @@ const firefox=require('selenium-webdriver/firefox.js');
       proof.selected_pair=await verifyPair([pictures[0],pictures[next]]);
     }
     await fs.writeFile(path.join(output,'evidence.png'),await driver.takeScreenshot(),'base64');
-    const expand=await dialog.findElement(By.css('button[aria-label="全屏检视"]'));await click(expand);
+    const expand=await dialog.findElement(By.css('button[aria-label="放大主图"]'));await click(expand);
     const viewer=await element('dialog[aria-label="原图检视器"][open]');
     assert.equal(await driver.executeScript('return arguments[0].matches(":modal")',viewer),true);
     await driver.actions().sendKeys(Key.ESCAPE).perform();

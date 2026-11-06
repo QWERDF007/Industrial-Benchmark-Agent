@@ -1,3 +1,4 @@
+import { queryClient } from './query-client.js';
 export class ApiError extends Error {
     code;
     status;
@@ -18,6 +19,8 @@ export async function request(path, body, method, signal) {
     const data = await response.json();
     if (!response.ok)
         throw new ApiError(data.error?.code, data.error?.message || `请求失败 (${response.status})`, response.status);
+    if (!['GET', 'HEAD'].includes((method || (body === undefined ? 'GET' : 'POST')).toUpperCase()) && path !== '/datasets/preview')
+        void queryClient.invalidateQueries({ queryKey: ['iad'] }, { cancelRefetch: false });
     return data;
 }
 export const initialFilters = { raw_label_filters: [], annotation_filters: [], model_status: "all", review_status: "all", technical: "all", reference_status: "all", search: "", sort_by: "default" };

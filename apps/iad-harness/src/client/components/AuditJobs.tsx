@@ -1,4 +1,4 @@
-import {JobStatusButton} from './JobStatusDrawer.js';
+import {JobStatusButton, JobStatusAction} from './JobStatusDrawer.js';
 import {Select} from './Select.js';
 import {IconButton} from "./IconButton.js";
 import React from 'react';
@@ -9,8 +9,8 @@ import {ClearFilterButton} from './CommonFilterControls.js';
 import {Pagination} from './Pagination.js';
 
 
-export function AuditJobs({selection, datasets, onDetails}: {
-  selection: ReturnType<typeof useAuditJobSelection>; datasets: Dataset[]; onDetails(job: JobSnapshot): void;
+export function AuditJobs({selection, datasets, onDetails, loading=false}: {
+  selection: ReturnType<typeof useAuditJobSelection>; datasets: Dataset[];loading?:boolean; onDetails(job: JobSnapshot): void;
 }) {
   return <section className="audit-panel" aria-label="审计作业">
     <header className="audit-panel-head"><h2>审计作业</h2><div className="audit-filters">
@@ -29,9 +29,9 @@ export function AuditJobs({selection, datasets, onDetails}: {
       <td title={job.run_id}>{job.run_id}</td><td><JobStatusButton job={job} onClick={()=>onDetails(job)} /></td>
       <td>{datasets.find(dataset => dataset.dataset_id === job.dataset_id)?.name || '范围名称未记录'}</td>
       <td>{job.completed} / {job.total_samples}</td><td>{new Date(job.submitted_at).toLocaleString()}</td>
-      <td className="audit-ops"><IconButton icon="details" type="button" label={`查看作业 ${job.run_id}`} onClick={event => {event.stopPropagation(); onDetails(job);}} /></td>
+      <td className="audit-ops"><JobStatusAction job={job} onClick={()=>onDetails(job)} /><IconButton icon="prompt" type="button" title="查看作业详情" label={`查看作业 ${job.run_id}`} onClick={event => {event.stopPropagation(); selection.select(job.run_id);}} /></td>
     </tr>)}</tbody></table></div>
-    {!selection.filtered.length && <p className="audit-empty">{selection.state.search || selection.state.status ? '没有符合筛选条件的审计作业。' : '当前范围还没有审计作业，可以创建新审计。'}</p>}
+    {!selection.filtered.length && <p className="audit-empty">{loading?'正在读取审计作业…':selection.state.search || selection.state.status ? '没有符合筛选条件的审计作业。' : '当前范围还没有审计作业，可以创建新审计。'}</p>}
     <Pagination total={selection.filtered.length} page={selection.page} size={8} unit="个作业" onPage={selection.setPage} />
   </section>;
 }

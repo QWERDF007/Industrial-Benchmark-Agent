@@ -2,7 +2,7 @@ import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-run
 import { ExplorationPresetDialog } from './ExplorationPresetDialog.js';
 import { ExplorationSourceDialog } from './ExplorationSourceDialog.js';
 import { PromptDrawer } from './PromptDrawer.js';
-import { JobStatusDrawer, JobStatusButton } from './JobStatusDrawer.js';
+import { JobStatusDrawer, JobStatusButton, JobStatusAction } from './JobStatusDrawer.js';
 import { Select } from './Select.js';
 import { TabBar } from './layout/TabBar.js';
 import { Button } from './Button.js';
@@ -11,7 +11,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mediaUrl, message, request } from "../api.js";
 import { useWorkbenchModel } from "../models.js";
 import { useJobs } from "../useJobs.js";
-import { jobStatuses } from "../../shared/job-display.js";
+import { useDatasetCatalog } from '../useDatasetCatalog.js';
+import { jobStatuses, jobWorkflow } from "../../shared/job-display.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 import { PlusIcon } from "../AuditIcon.js";
 import { IconButton } from "./IconButton.js";
@@ -28,14 +29,12 @@ function expElapsed(sec) {
     const s = sec % 60;
     return (m > 0 ? `${m}分` : "") + `${s}秒`;
 }
-let cachedDatasets = null;
-let cachedGroups = null;
 export function ExplorationPage({ dataset, refreshRevision, }) {
     const model = useWorkbenchModel();
+    const catalog = useDatasetCatalog();
+    const datasets = catalog.data?.datasets || [dataset], groups = catalog.data?.groups || [];
     const initialParentId = getDatasetGroupId(dataset);
-    const initialChildren = (cachedDatasets || [dataset]).filter((d) => getDatasetGroupId(d) === initialParentId);
-    const [datasets, setDatasets] = useState(() => cachedDatasets || [dataset]);
-    const [groups, setGroups] = useState(() => cachedGroups || []);
+    const initialChildren = datasets.filter((d) => getDatasetGroupId(d) === initialParentId);
     const [selectedParentId, setSelectedParentId] = useState(() => initialParentId);
     const [selectedChildIds, setSelectedChildIds] = useState(() => initialChildren.length > 0 ? initialChildren.map((c) => c.dataset_id) : [dataset.dataset_id]);
     // View state: 'jobs' (unified layout) or 'setup' (3-step creation)
@@ -75,27 +74,11 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
     const refreshJobs = () => { jobQuery.refresh(); progress(); };
     // Load datasets and hierarchy
     useEffect(() => {
-        let active = true;
-        request("/datasets")
-            .then((res) => {
-            if (!active)
-                return;
-            const dsList = res.datasets;
-            cachedDatasets = dsList;
-            cachedGroups = res.groups;
-            setDatasets(dsList);
-            setGroups(res.groups);
-            const parentId = getDatasetGroupId(dataset);
-            setSelectedParentId(parentId);
-            const children = dsList.filter((d) => getDatasetGroupId(d) === parentId);
-            setSelectedChildIds(children.length > 0 ? children.map((c) => c.dataset_id) : [dataset.dataset_id]);
-        })
-            .catch(failure => { if (active)
-            setError(message(failure)); });
-        return () => {
-            active = false;
-        };
-    }, [dataset, refreshRevision]);
+        const parentId = getDatasetGroupId(dataset);
+        setSelectedParentId(parentId);
+        const children = datasets.filter(item => getDatasetGroupId(item) === parentId);
+        setSelectedChildIds(children.map(item => item.dataset_id));
+    }, [dataset.dataset_id]);
     // Load presets from server if available
     useEffect(() => {
         let active = true;
@@ -115,15 +98,6 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
             active = false;
         };
     }, [refreshRevision]);
-    useEffect(() => {
-        if (view !== 'setup')
-            return;
-        setSamplePool([]);
-        setNormalSelected([]);
-        setDefectSelected([]);
-        setSamplesLoaded(false);
-        setSamplesLoading(false);
-    }, [selectedChildIds, view]);
     useEffect(() => {
         if (view !== 'setup' || modal !== 'source' || samplesLoaded)
             return;
@@ -167,6 +141,7 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
         }
         return shownJobs[0] || null;
     }, [shownJobs, selectedJobId]);
+    const selectedWorkflow = selectedJob ? jobWorkflow(selectedJob) : null;
     const selectedSnapshot = selectedJob;
     const versionKey = (selectedSnapshot?.dataset_results || []).map(result => result.exploration_version_id || '').join('|');
     const results = useResource(selectedJob ? `/analysis/results/${encodeURIComponent(selectedJob.run_id)}` : null, `${versionKey}|${refreshTick}`);
@@ -188,8 +163,45 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
             : !model.ready ? model.loading ? '正在读取模型' : '请先配置工作台模型'
                 : !prompt.trim() ? '请填写探索提示词' : '';
     const canRun = !submitting && !runReason;
+    const resetSamples = () => {
+        setSamplePool([]);
+        setNormalSelected([]);
+        setDefectSelected([]);
+        setSamplesLoaded(false);
+        setSamplesLoading(false);
+    };
+    const openSetup = async (copy) => {
+        setSubmitting(true);
+        setError('');
+        try {
+            const frozen = copy ? await request(`/analysis/node/${encodeURIComponent(copy.root_run_id)}`) : null;
+            const original = frozen?.request.submission;
+            const ids = original?.dataset_ids || selectedChildIds;
+            const normals = original?.normal_images || [], defects = original?.defect_images || [];
+            const pool = normals.length || defects.length ? await explorationCandidates(ids) : [];
+            setSelectedChildIds(ids);
+            setSamplePool(pool);
+            setSamplesLoaded(pool.length > 0);
+            setNormalSelected(normals);
+            setDefectSelected(defects);
+            const frozenPrompt = original?.prompt || copy?.exploration_prompt;
+            if (frozenPrompt) {
+                setPrompt(frozenPrompt.text);
+                setOriginalPrompt(frozenPrompt.text);
+                setSelectedPresetId(frozenPrompt.preset_id || '');
+            }
+            setView('setup');
+        }
+        catch (error) {
+            setError(message(error));
+        }
+        finally {
+            setSubmitting(false);
+        }
+    };
     // Handle parent group change
     const handleParentChange = (newParentId) => {
+        resetSamples();
         setSelectedParentId(newParentId);
         const children = datasets.filter((d) => getDatasetGroupId(d) === newParentId);
         setSelectedChildIds(children.map((c) => c.dataset_id));
@@ -197,6 +209,7 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
     };
     // Toggle child dataset selection
     const handleChildToggle = (cid) => {
+        resetSamples();
         setSelectedChildIds((prev) => prev.includes(cid) ? prev.filter((id) => id !== cid) : [...prev, cid]);
         setJobPage(1);
     };
@@ -259,7 +272,7 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
             currentIndex: index,
         });
     };
-    return (_jsxs("div", { id: "exploration-page", className: "iad-exploration-page", children: [(error || results.error || jobQuery.error) && _jsx("p", { role: "alert", className: "iad-error", children: error || results.error || jobQuery.error }), _jsxs("div", { className: "exp-heading", children: [_jsx("div", { children: _jsx("h1", { children: view === "setup" ? "新建探索" : "方向探索" }) }), _jsx("div", { className: "exp-heading-actions", children: view === "setup" ? (_jsx(Button, { type: "button", onClick: () => setView("jobs"), children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" })) : (_jsx(Button, { type: "button", variant: "primary", disabled: !!runningJob, title: runningJob ? "已有探索任务运行或排队" : "新建探索", onClick: () => setView("setup"), children: "\u65B0\u5EFA\u63A2\u7D22" })) })] }), _jsx(DatasetScopeSelector, { className: "exp-scope", groups: parentGroups, selectedGroupId: selectedParentId, onGroupChange: handleParentChange, childDatasets: currentChildDatasets, selectedChildIds: selectedChildIds, onChildToggle: handleChildToggle, disabled: submitting, groupId: "exp-parent", childId: "exp-child-toggle", childMenuId: "exp-child-menu", children: _jsx(IconButton, { icon: "refresh", id: "refresh", type: "button", title: "\u5237\u65B0\u63A2\u7D22\u4F5C\u4E1A", label: "\u5237\u65B0\u63A2\u7D22\u4F5C\u4E1A", disabled: submitting, onClick: () => {
+    return (_jsxs("div", { id: "exploration-page", className: "iad-exploration-page", children: [(error || results.error || jobQuery.error) && _jsx("p", { role: "alert", className: "iad-error", children: error || results.error || jobQuery.error }), _jsxs("div", { className: "exp-heading", children: [_jsx("div", { children: _jsx("h1", { children: view === "setup" ? "新建探索" : "方向探索" }) }), _jsx("div", { className: "exp-heading-actions", children: view === "setup" ? (_jsx(Button, { type: "button", onClick: () => setView("jobs"), children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" })) : (_jsx(Button, { type: "button", variant: "primary", disabled: !!runningJob || submitting, title: runningJob ? "已有探索任务运行或排队" : "新建探索", onClick: () => void openSetup(), children: "\u65B0\u5EFA\u63A2\u7D22" })) })] }), _jsx(DatasetScopeSelector, { className: "exp-scope", groups: parentGroups, selectedGroupId: selectedParentId, onGroupChange: handleParentChange, childDatasets: currentChildDatasets, selectedChildIds: selectedChildIds, onChildToggle: handleChildToggle, disabled: submitting, groupId: "exp-parent", childId: "exp-child-toggle", childMenuId: "exp-child-menu", children: _jsx(IconButton, { icon: "refresh", id: "refresh", type: "button", title: "\u5237\u65B0\u63A2\u7D22\u4F5C\u4E1A", label: "\u5237\u65B0\u63A2\u7D22\u4F5C\u4E1A", disabled: submitting, onClick: () => {
                         refreshJobs();
                     } }) }), view === "setup" ? (_jsxs("div", { children: [_jsxs("section", { className: "exp-panel", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { children: "\u9009\u62E9\u5BF9\u6BD4\u6837\u4F8B" }) }), _jsxs("div", { className: "exp-tab-header", children: [_jsx(TabBar, { label: "\u5BF9\u6BD4\u6837\u4F8B", value: sampleTab, onChange: setSampleTab, items: [
                                             { id: 'normal', label: `良品样例 (${normalSelected.length})` },
@@ -294,14 +307,14 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
                                                         return (_jsxs("tr", { "data-action": "select-job", "data-id": j.run_id, "data-selected": selectedJob?.run_id === j.run_id, "aria-selected": selectedJob?.run_id === j.run_id, tabIndex: 0, "aria-label": `选择作业 ${j.run_id}`, onClick: () => setSelectedJobId(j.root_run_id), onKeyDown: event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
                                                                 event.preventDefault();
                                                                 setSelectedJobId(j.root_run_id);
-                                                            } }, children: [_jsx("td", { children: _jsx("strong", { className: "exp-row-title", children: j.run_id }) }), _jsx("td", { children: _jsx(JobStatusButton, { job: j, onClick: () => setStatusJobId(j.root_run_id) }) }), _jsx("td", { children: _jsx("div", { className: "exp-job-dataset", title: datasetNames, children: _jsx("span", { className: "exp-job-dataset-name", children: datasetNames }) }) }), _jsx("td", { className: "exp-job-time", children: new Date(j.submitted_at).toLocaleString('zh-CN', { hour12: false }) }), _jsx("td", { className: "exp-job-duration", children: j.status === "PENDING" ? "—" : expElapsed(elapsed) }), _jsx("td", { className: "exp-prompt-action-col", children: _jsxs("div", { className: "exp-job-icon-actions", onClick: (e) => e.stopPropagation(), children: [j.status !== 'COMPLETED' && _jsx(IconButton, { icon: "details", label: `查看作业状态 ${j.run_id}`, onClick: () => setStatusJobId(j.root_run_id) }), _jsx(IconButton, { icon: "prompt", label: "\u67E5\u770B\u63D0\u793A\u8BCD", title: "\u67E5\u770B\u63D0\u793A\u8BCD", "data-exp": "show-prompt", "data-id": j.run_id, onClick: () => {
+                                                            } }, children: [_jsx("td", { children: _jsx("strong", { className: "exp-row-title", children: j.run_id }) }), _jsx("td", { children: _jsx(JobStatusButton, { job: j, onClick: () => setStatusJobId(j.root_run_id) }) }), _jsx("td", { children: _jsx("div", { className: "exp-job-dataset", title: datasetNames, children: _jsx("span", { className: "exp-job-dataset-name", children: datasetNames }) }) }), _jsx("td", { className: "exp-job-time", children: new Date(j.submitted_at).toLocaleString('zh-CN', { hour12: false }) }), _jsx("td", { className: "exp-job-duration", children: j.status === "PENDING" ? "—" : expElapsed(elapsed) }), _jsx("td", { className: "exp-prompt-action-col", children: _jsxs("div", { className: "exp-job-icon-actions", onClick: (e) => e.stopPropagation(), children: [_jsx(JobStatusAction, { job: j, onClick: () => setStatusJobId(j.root_run_id) }), _jsx(IconButton, { icon: "prompt", label: "\u67E5\u770B\u63D0\u793A\u8BCD", title: "\u67E5\u770B\u63D0\u793A\u8BCD", "data-exp": "show-prompt", "data-id": j.run_id, onClick: () => {
                                                                                     setPromptText(j.exploration_prompt?.text || '');
                                                                                     setModal("prompt");
-                                                                                } }), _jsx(DeleteAction, { title: "\u5220\u9664\u63A2\u7D22\u4F5C\u4E1A", name: j.run_id, disabled: j.status === 'RUNNING' || j.status === 'PENDING', restoreFocus: () => document.querySelector('#exp-jobsearch'), onDelete: async () => {
+                                                                                } }), _jsx(DeleteAction, { title: "\u5220\u9664\u63A2\u7D22\u4F5C\u4E1A", name: j.run_id, confirmLabel: "\u5220\u9664\u4F5C\u4E1A", confirmation: _jsxs(_Fragment, { children: ["\u786E\u5B9A\u5220\u9664\u4F5C\u4E1A ", j.run_id, " \u5417\uFF1F"] }), description: "\u5220\u9664\u540E\u4E0D\u518D\u663E\u793A\u8BE5\u4F5C\u4E1A\u53CA\u5176\u63A2\u7D22\u7ED3\u679C\u3002", disabled: j.status === 'RUNNING' || j.status === 'PENDING', restoreFocus: () => document.querySelector('#exp-jobsearch'), onDelete: async () => {
                                                                                     await request(`/analysis/delete/${encodeURIComponent(j.run_id)}`, {});
                                                                                     refreshJobs();
                                                                                 } })] }) })] }, j.run_id));
-                                                    }) })] }) }), _jsx(Pagination, { total: filteredJobs.length, page: currentJobPage, onPage: handleJobPageChange, label: "\u63A2\u7D22\u4F5C\u4E1A", size: IBA_JOBS_PAGE_SIZE })] })) : (_jsx("div", { className: "exp-job-empty", role: "status", children: jobs.length ? "没有符合筛选条件的探索作业。" : "当前范围还没有探索作业，可以创建新探索。" }))] }), !selectedJob ? (_jsxs("section", { className: "exp-panel exp-selected-result exp-empty-result", "aria-label": "\u63A2\u7D22\u7ED3\u679C", children: [_jsx("div", { className: "exp-selected-head", children: _jsx("div", { children: _jsx("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }) }) }), _jsx("div", { className: "exp-result-empty-message", role: "status", children: "\u8BF7\u9009\u62E9\u4E0A\u65B9\u7684\u63A2\u7D22\u4F5C\u4E1A\u67E5\u770B\u7ED3\u679C\u3002" })] })) : selectedJob.status !== 'COMPLETED' && !selectedJobDirections.length ? (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u63A2\u7D22\u7ED3\u679C", children: [_jsx("div", { className: "exp-selected-head", children: _jsx("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }) }), _jsx("p", { children: "\u5F53\u524D\u4F5C\u4E1A\u4E0B\u6CA1\u6709\u5BF9\u5E94\u7684\u63A2\u7D22\u7ED3\u679C\u3002" })] })) : (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u63A2\u7D22\u7ED3\u679C", children: [_jsx("div", { className: "exp-selected-head", children: _jsxs("div", { children: [_jsx("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }), _jsx("span", { className: "exp-selected-sub", children: selectedJob.run_id })] }) }), selectedJobSummary && _jsx("p", { className: "exp-result-summary", children: selectedJobSummary }), selectedJobDirections.length > 0 ? (_jsx("div", { className: "exp-job-table-wrap", children: _jsxs("table", { className: "exp-job-table exp-direction-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u65B9\u5411" }), _jsx("th", { children: "\u63CF\u8FF0" }), _jsx("th", { children: "\u9002\u7528\u77E5\u8BC6" }), _jsx("th", { className: "iad-number", children: "\u8BC1\u636E" }), _jsx("th", { children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { children: selectedJobDirections.map((d) => {
+                                                    }) })] }) }), _jsx(Pagination, { total: filteredJobs.length, page: currentJobPage, onPage: handleJobPageChange, label: "\u63A2\u7D22\u4F5C\u4E1A", size: IBA_JOBS_PAGE_SIZE })] })) : (_jsx("div", { className: "exp-job-empty", role: "status", children: jobQuery.loading ? "正在读取探索作业…" : jobs.length ? "没有符合筛选条件的探索作业。" : "当前范围还没有探索作业，可以创建新探索。" }))] }), !selectedJob ? (_jsxs("section", { className: "exp-panel exp-selected-result exp-empty-result", "aria-label": "\u63A2\u7D22\u7ED3\u679C", children: [_jsx("div", { className: "exp-selected-head", children: _jsx("div", { children: _jsx("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }) }) }), _jsx("div", { className: "exp-result-empty-message", role: "status", children: "\u8BF7\u9009\u62E9\u4E0A\u65B9\u7684\u63A2\u7D22\u4F5C\u4E1A\u67E5\u770B\u7ED3\u679C\u3002" })] })) : ['PENDING', 'RUNNING'].includes(selectedJob.status) ? (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u6267\u884C\u9636\u6BB5", children: [_jsx("div", { className: "exp-selected-head", children: _jsxs("div", { children: [_jsx("h2", { children: "\u8FD0\u884C\u72B6\u6001" }), _jsx("span", { className: "exp-selected-sub", children: selectedJob.run_id })] }) }), _jsxs("div", { className: "exp-job-current-title", children: [_jsx("span", { className: `exp-pill ${selectedJob.status === 'PENDING' ? 'pending' : 'running'}`, children: jobStatuses[selectedJob.status] }), _jsx("strong", { children: selectedJob.status === 'PENDING' ? '等待执行' : selectedWorkflow.stages[selectedWorkflow.index]?.title || '正在执行' })] }), _jsx("div", { className: "exp-job-stages", role: "list", "aria-label": "\u6267\u884C\u9636\u6BB5\uFF0C\u4E0D\u4EE3\u8868\u5B8C\u6210\u767E\u5206\u6BD4", children: selectedWorkflow.stages.map((stage, index) => _jsxs("div", { role: "listitem", className: "exp-job-stage", "data-state": selectedJob.status === 'RUNNING' && index === selectedWorkflow.index ? 'current' : 'waiting', children: [_jsx("span", { className: "exp-job-stage-icon", children: index + 1 }), _jsx("span", { className: "exp-job-stage-label", children: stage.title })] }, stage.title)) }), _jsx("div", { className: "exp-result-neutral", children: "\u65B9\u5411\u5C1A\u672A\u53D1\u5E03\uFF0C\u5B8C\u6210\u540E\u5C06\u5728\u8FD9\u91CC\u663E\u793A\u672C\u6B21\u4F5C\u4E1A\u7684\u5019\u9009\u65B9\u5411\u4E0E\u6574\u4F53\u9650\u5236\u3002" })] })) : ['FAILED', 'CANCELLED', 'INTERRUPTED'].includes(selectedJob.status) ? (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u9519\u8BEF\u4FE1\u606F", children: [_jsx("div", { className: "exp-selected-head", children: _jsxs("div", { children: [_jsx("h2", { children: "\u4F5C\u4E1A\u5931\u8D25" }), _jsx("span", { className: "exp-selected-sub", children: selectedJob.run_id })] }) }), _jsx("p", { className: "exp-error-message", children: selectedJob.errors[0]?.message || '任务未成功完成，未生成探索结果。' }), _jsx("p", { className: "exp-lead", children: "\u672C\u6B21\u4F5C\u4E1A\u6CA1\u6709\u53EF\u7528\u7684\u5019\u9009\u65B9\u5411\u6216\u6574\u4F53\u9650\u5236\u3002" }), _jsx(Button, { "data-exp": "copy-job", disabled: !!runningJob || submitting, onClick: () => void openSetup(selectedJob), children: "\u4F7F\u7528\u8BE5\u914D\u7F6E\u65B0\u5EFA" })] })) : (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u63A2\u7D22\u7ED3\u679C", children: [_jsx("div", { className: "exp-selected-head", children: _jsxs("div", { children: [_jsx("h2", { children: "\u63A2\u7D22\u7ED3\u679C" }), _jsx("span", { className: "exp-selected-sub", children: selectedJob.run_id })] }) }), selectedJobSummary && _jsx("p", { className: "exp-result-summary", children: selectedJobSummary }), selectedJobDirections.length > 0 ? (_jsx("div", { className: "exp-job-table-wrap", children: _jsxs("table", { className: "exp-job-table exp-direction-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u65B9\u5411" }), _jsx("th", { children: "\u63CF\u8FF0" }), _jsx("th", { children: "\u9002\u7528\u77E5\u8BC6" }), _jsx("th", { className: "iad-number", children: "\u8BC1\u636E" }), _jsx("th", { children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { children: selectedJobDirections.map((d) => {
                                                 const evidenceCount = d.evidences?.length || 0;
                                                 return (_jsxs("tr", { tabIndex: 0, "data-action": "direction", "data-id": d.id, "aria-label": `查看方向 ${d.title}`, onClick: () => {
                                                         setViewingDirection(d);
@@ -319,5 +332,5 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
                     setSelectedPresetId(saved.id);
                     setOriginalPrompt(saved.text);
                     setModal('');
-                } }), modal === 'source' && _jsx(ExplorationSourceDialog, { kind: sampleTab, candidates: samplePool, selected: sampleTab === 'normal' ? normalSelected : defectSelected, loading: samplesLoading, onChange: sampleTab === 'normal' ? setNormalSelected : setDefectSelected, onClose: () => setModal('') }), modal === "direction" && viewingDirection && (_jsx(DirectionDetailDialog, { direction: viewingDirection, evidence: currentEvidence, highlightRef: highlightRef, onHighlightRef: setHighlightRef, onChipFocus: handleChipFocus, onOpenFullscreen: handleOpenEvidenceFullscreen, onClose: () => { setModal(""); setViewingDirection(null); } })), viewerData && (_jsx(FullscreenViewer, { open: true, item: viewerData.items[viewerData.currentIndex] || null, items: viewerData.items, currentIndex: viewerData.currentIndex, onClose: () => setViewerData(null), onNavigate: (idx) => setViewerData((prev) => (prev ? { ...prev, currentIndex: idx } : null)) })), statusJobId && jobs.some(job => job.run_id === statusJobId || job.root_run_id === statusJobId) && _jsx(JobStatusDrawer, { job: jobs.find(job => job.run_id === statusJobId || job.root_run_id === statusJobId), onClose: () => setStatusJobId(null), onChanged: refreshJobs })] }));
+                } }), modal === 'source' && _jsx(ExplorationSourceDialog, { kind: sampleTab, candidates: samplePool, selected: sampleTab === 'normal' ? normalSelected : defectSelected, loading: samplesLoading, onChange: sampleTab === 'normal' ? setNormalSelected : setDefectSelected, onClose: () => setModal('') }), modal === "direction" && viewingDirection && (_jsx(DirectionDetailDialog, { direction: viewingDirection, evidence: currentEvidence, highlightRef: highlightRef, onHighlightRef: setHighlightRef, onChipFocus: handleChipFocus, onOpenFullscreen: handleOpenEvidenceFullscreen, onClose: () => { setModal(""); setViewingDirection(null); } })), viewerData && (_jsx(FullscreenViewer, { open: true, item: viewerData.items[viewerData.currentIndex] || null, items: viewerData.items, currentIndex: viewerData.currentIndex, onClose: () => setViewerData(null), onNavigate: (idx) => setViewerData((prev) => (prev ? { ...prev, currentIndex: idx } : null)) })), statusJobId && jobs.some(job => job.run_id === statusJobId || job.root_run_id === statusJobId) && _jsx(JobStatusDrawer, { job: jobs.find(job => job.run_id === statusJobId || job.root_run_id === statusJobId), onClose: () => setStatusJobId(null) })] }));
 }

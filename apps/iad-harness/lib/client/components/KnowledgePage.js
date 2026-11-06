@@ -8,16 +8,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { message, request } from "../api.js";
 import { useJobs } from "../useJobs.js";
 import { useResource } from "../useResource.js";
+import { useDatasetCatalog } from '../useDatasetCatalog.js';
 import { useWorkspace } from "../workspace.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 import { jobStatuses } from '../../shared/job-display.js';
-import { JobStatusDrawer, JobStatusButton } from './JobStatusDrawer.js';
+import { JobStatusDrawer, JobStatusButton, JobStatusAction } from './JobStatusDrawer.js';
 import { KnowledgeEntryDialog } from "./KnowledgeEntryDialog.js";
 import { KnowledgeMiningCreate } from "./KnowledgeMiningCreate.js";
 import { KnowledgeConfirmation } from "./KnowledgeConfirmation.js";
 import { ClearFilterButton, RefreshIconButton } from "./CommonFilterControls.js";
-let cachedDatasets = null;
-let cachedGroups = null;
 function formatDuration(sec) {
     if (sec == null)
         return "—";
@@ -29,10 +28,10 @@ export function KnowledgePage({ dataset, refreshRevision }) {
     const { workspace } = useWorkspace();
     const pageId = "industrial-knowledge";
     const view = workspace.view(pageId);
+    const catalog = useDatasetCatalog();
+    const datasets = catalog.data?.datasets || [dataset], groups = catalog.data?.groups || [];
     // Hierarchy
     const initialParentId = getDatasetGroupId(dataset);
-    const [datasets, setDatasets] = useState(() => cachedDatasets || [dataset]);
-    const [groups, setGroups] = useState(() => cachedGroups || []);
     const [selectedParentId, setSelectedParentId] = useState(() => initialParentId);
     const [selectedChildId, setSelectedChildId] = useState(() => dataset.dataset_id);
     // Jobs & Knowledge hooks
@@ -41,7 +40,7 @@ export function KnowledgePage({ dataset, refreshRevision }) {
     const polling = useJobs("knowledge", selectedChildId, updated, view.job);
     const versionsResource = useResource(`/knowledge/versions?${new URLSearchParams({ dataset_id: selectedChildId })}`, revision + refreshRevision);
     const versions = versionsResource.data?.versions || [];
-    const [loadError, setLoadError] = useState("");
+    const loadError = catalog.error;
     // Local job list & selection
     const [selectedJobId, setSelectedJobId] = useState(view.job || null);
     const [jobDetails, setJobDetails] = useState(null);
@@ -64,26 +63,9 @@ export function KnowledgePage({ dataset, refreshRevision }) {
         return; const timer = setTimeout(() => setToastMsg(""), 2800); return () => clearTimeout(timer); }, [toastMsg]);
     // Sync datasets and hierarchy
     useEffect(() => {
-        let active = true;
-        request("/datasets")
-            .then(res => {
-            if (!active)
-                return;
-            const dsList = res.datasets;
-            cachedDatasets = dsList;
-            cachedGroups = res.groups;
-            setDatasets(dsList);
-            setGroups(res.groups);
-            const parentId = getDatasetGroupId(dataset);
-            setSelectedParentId(parentId);
-            setSelectedChildId(dataset.dataset_id);
-        })
-            .catch(error => { if (active)
-            setLoadError(message(error)); });
-        return () => {
-            active = false;
-        };
-    }, [dataset, refreshRevision]);
+        setSelectedParentId(getDatasetGroupId(dataset));
+        setSelectedChildId(dataset.dataset_id);
+    }, [dataset.dataset_id]);
     const jobList = polling.jobs.map(job => {
         const status = job.status === 'COMPLETED' ? 'completed' : ['RUNNING', 'PENDING'].includes(job.status) ? 'running'
             : ['INTERRUPTED', 'CANCELLED'].includes(job.status) ? 'interrupted' : 'failed';
@@ -193,7 +175,7 @@ export function KnowledgePage({ dataset, refreshRevision }) {
         const job = jobList.find(item => item.id === id);
         if (!job)
             return;
-        setConfirmState({ title: '删除挖掘作业', message: `确定删除“${job.name}”的作业记录吗？`, danger: true,
+        setConfirmState({ title: '删除挖掘作业', message: `确定删除“${job.name}”的作业记录吗？`, danger: true, confirmLabel: '删除',
             onConfirm: async () => {
                 try {
                     await request(`/analysis/delete/${encodeURIComponent(id)}`, {});
@@ -238,7 +220,7 @@ export function KnowledgePage({ dataset, refreshRevision }) {
                                                                         e.preventDefault();
                                                                         selectJob(j.id);
                                                                     }
-                                                                }, children: [_jsx("td", { children: _jsx("div", { className: "jobtitle", title: j.name, children: j.name }) }), _jsx("td", { children: _jsx(JobStatusButton, { job: polling.jobs.find(job => job.run_id === j.id), onClick: () => setJobDetails(polling.jobs.find(job => job.run_id === j.id).root_run_id), children: _jsx("span", { className: `status ${j.statusBadgeClass}`, children: j.statusLabel }) }) }), _jsx("td", { className: "num", children: j.count ?? "—" }), _jsx("td", { children: j.at }), _jsx("td", { children: j.durationText }), _jsx("td", { children: _jsxs("div", { className: "jobact", onClick: e => e.stopPropagation(), children: [_jsx(IconButton, { icon: "details", type: "button", label: `查看作业 ${j.id}`, title: "\u67E5\u770B\u4F5C\u4E1A\u8BE6\u60C5", onClick: () => setJobDetails(polling.jobs.find(job => job.run_id === j.id).root_run_id) }), _jsx(IconButton, { icon: "prompt", type: "button", title: "\u67E5\u770B\u63D0\u793A\u8BCD", label: "\u67E5\u770B\u63D0\u793A\u8BCD", "data-job-prompt": j.id, onClick: () => openJobPrompt(j.id) }), _jsx(IconButton, { icon: "delete", type: "button", title: "\u5220\u9664\u4F5C\u4E1A", label: `删除作业 ${j.name}`, "data-remove-job": j.id, onClick: () => askDeleteJob(j.id) })] }) })] }, j.id))) })] })) : (_jsx("div", { id: "jobs-empty", className: "tableempty", children: scopedJobs.length ? "没有符合筛选条件的挖掘作业。" : "当前范围还没有挖掘作业，可以创建新挖掘。" })) }), _jsx(Pagination, { id: "job-pager", total: filteredJobs.length, page: currentJobPage, size: jobsPerPage, onPage: setJobPage, label: "\u6316\u6398\u4F5C\u4E1A" })] }), _jsxs("section", { className: "panel", id: "knowledge-panel", "aria-labelledby": "knowledge-heading", children: [_jsxs("div", { className: "panelbar knowledgebar", children: [_jsxs("div", { children: [_jsxs("h2", { id: "knowledge-heading", children: ["\u77E5\u8BC6\u6761\u76EE", _jsx("span", { "aria-hidden": "true", className: "count hide", id: "knowledge-count" })] }), _jsx("div", { className: "scope-name hide", id: "knowledge-job-name" })] }), selectedJob?.knowledgeVersionId ? (_jsxs("div", { className: "filterset", id: "knowledge-filterset", children: [_jsx("input", { className: "f", id: "knowledge-search", placeholder: "\u641C\u7D22\u77E5\u8BC6\u6761\u76EE", "aria-label": "\u641C\u7D22\u77E5\u8BC6\u6761\u76EE", value: knowledgeSearch, onChange: e => {
+                                                                }, children: [_jsx("td", { children: _jsx("div", { className: "jobtitle", title: j.name, children: j.name }) }), _jsx("td", { children: _jsx(JobStatusButton, { job: polling.jobs.find(job => job.run_id === j.id), onClick: () => setJobDetails(polling.jobs.find(job => job.run_id === j.id).root_run_id), children: _jsx("span", { className: `status ${j.statusBadgeClass}`, children: j.statusLabel }) }) }), _jsx("td", { className: "num", children: j.count ?? "—" }), _jsx("td", { children: j.at }), _jsx("td", { children: j.durationText }), _jsx("td", { children: _jsxs("div", { className: "jobact", onClick: e => e.stopPropagation(), children: [_jsx(JobStatusAction, { job: polling.jobs.find(job => job.run_id === j.id), onClick: () => setJobDetails(polling.jobs.find(job => job.run_id === j.id).root_run_id) }), _jsx(IconButton, { icon: "prompt", type: "button", title: "\u67E5\u770B\u63D0\u793A\u8BCD", label: "\u67E5\u770B\u63D0\u793A\u8BCD", "data-job-prompt": j.id, onClick: () => openJobPrompt(j.id) }), _jsx(IconButton, { icon: "delete", type: "button", title: "\u5220\u9664\u4F5C\u4E1A", label: `删除作业 ${j.name}`, "data-remove-job": j.id, onClick: () => askDeleteJob(j.id) })] }) })] }, j.id))) })] })) : (_jsx("div", { id: "jobs-empty", className: "tableempty", children: scopedJobs.length ? "没有符合筛选条件的挖掘作业。" : polling.loading ? "正在读取挖掘作业…" : "当前范围还没有挖掘作业，可以创建新挖掘。" })) }), _jsx(Pagination, { id: "job-pager", total: filteredJobs.length, page: currentJobPage, size: jobsPerPage, onPage: setJobPage, label: "\u6316\u6398\u4F5C\u4E1A" })] }), _jsxs("section", { className: "panel", id: "knowledge-panel", "aria-labelledby": "knowledge-heading", children: [_jsxs("div", { className: "panelbar knowledgebar", children: [_jsxs("div", { children: [_jsxs("h2", { id: "knowledge-heading", children: ["\u77E5\u8BC6\u6761\u76EE", _jsx("span", { "aria-hidden": "true", className: "count hide", id: "knowledge-count" })] }), _jsx("div", { className: "scope-name hide", id: "knowledge-job-name" })] }), selectedJob?.knowledgeVersionId ? (_jsxs("div", { className: "filterset", id: "knowledge-filterset", children: [_jsx("input", { className: "f", id: "knowledge-search", placeholder: "\u641C\u7D22\u77E5\u8BC6\u6761\u76EE", "aria-label": "\u641C\u7D22\u77E5\u8BC6\u6761\u76EE", value: knowledgeSearch, onChange: e => {
                                                                     setKnowledgeSearch(e.target.value);
                                                                     setEntryPage(1);
                                                                 } }), _jsxs(Select, { className: "f", id: "knowledge-status", "aria-label": "\u7B5B\u9009\u6838\u5B9E\u72B6\u6001", value: knowledgeStatus, onChange: e => {
@@ -248,7 +230,7 @@ export function KnowledgePage({ dataset, refreshRevision }) {
                                                                     setKnowledgeSearch("");
                                                                     setKnowledgeStatus("all");
                                                                     setEntryPage(1);
-                                                                } })] })) : null] }), resultVersions.length > 1 && _jsxs("label", { className: "control", children: ["\u7ED3\u679C\u7248\u672C", _jsx(Select, { className: "f", "aria-label": "\u77E5\u8BC6\u7ED3\u679C\u7248\u672C", value: selectedVersionId || '', onChange: event => workspace.updateView(pageId, { job: selectedJob.id, version: event.target.value }), children: resultVersions.map(version => _jsxs("option", { value: version.version_id, children: [version.manually_edited ? '维护版本' : '作业冻结版本', " ", version.version_id.slice(-8)] }, version.version_id)) })] }), _jsx("div", { className: "knowledge-wrap", id: "knowledge-body", children: !selectedJob ? (_jsx("div", { className: "blank", children: "\u8BF7\u9009\u62E9\u4E0A\u65B9\u7684\u6316\u6398\u4F5C\u4E1A\u67E5\u770B\u77E5\u8BC6\u6761\u76EE\u3002" })) : !selectedJob.knowledgeVersionId ? (_jsx("div", { className: "blank", children: selectedJob.status === "running"
+                                                                } })] })) : null] }), resultVersions.length > 1 && _jsxs("label", { className: "control", children: ["\u7ED3\u679C\u7248\u672C", _jsx(Select, { className: "f", "aria-label": "\u77E5\u8BC6\u7ED3\u679C\u7248\u672C", value: selectedVersionId || '', onChange: event => workspace.updateView(pageId, { job: selectedJob.id, version: event.target.value }), children: resultVersions.map(version => _jsxs("option", { value: version.version_id, children: [version.manually_edited ? '维护版本' : '作业冻结版本', " ", version.version_id.slice(-8)] }, version.version_id)) })] }), _jsx("div", { className: "knowledge-wrap", id: "knowledge-body", children: !selectedJob ? (_jsx("div", { className: "blank", children: "\u8BF7\u9009\u62E9\u4E0A\u65B9\u7684\u6316\u6398\u4F5C\u4E1A\u67E5\u770B\u77E5\u8BC6\u6761\u76EE\u3002" })) : selectedJob.status === 'failed' && !selectedJob.knowledgeVersionId ? _jsx("p", { className: "iad-plain-empty", role: "status", children: "\u5F53\u524D\u4F5C\u4E1A\u4E0B\u6CA1\u6709\u5BF9\u5E94\u7684\u77E5\u8BC6" }) : !selectedJob.knowledgeVersionId ? (_jsx("div", { className: "blank", children: selectedJob.status === "running"
                                                         ? "作业正在运行，知识发布后将在这里显示。"
                                                         : "当前作业下没有对应的知识" })) : checksResource.error ? _jsx("p", { role: "alert", children: checksResource.error })
                                                     : checksResource.loading ? _jsx("div", { className: "blank", children: "\u6B63\u5728\u8BFB\u53D6\u4F5C\u4E1A\u51BB\u7ED3\u77E5\u8BC6" })
@@ -266,5 +248,5 @@ export function KnowledgePage({ dataset, refreshRevision }) {
                                     polling.refresh();
                                     updated();
                                     toast('挖掘作业已启动');
-                                } }, selectedChildId)] }) }), promptJob && _jsx(PromptDrawer, { title: "\u67E5\u770B\u63D0\u793A\u8BCD", text: promptJob.prompt || '该历史作业未记录冻结提示词。', onClose: closePrompt }), detailItem && _jsx(KnowledgeEntryDialog, { ...detailItem, onClose: closeDetail, onSaved: () => { updated(); toast('人工核实已保存'); } }, `${detailItem.versionId}:${detailItem.checkId}`), jobDetails && polling.jobs.some(job => job.run_id === jobDetails || job.root_run_id === jobDetails) && _jsx(JobStatusDrawer, { job: polling.jobs.find(job => job.run_id === jobDetails || job.root_run_id === jobDetails), onClose: () => setJobDetails(null), onChanged: handleRefresh, stale: polling.syncState === 'stale', lastSyncedAt: polling.lastSyncedAt }), _jsx(KnowledgeConfirmation, { state: confirmState, onClose: () => setConfirmState(null) }), _jsx("div", { className: `toast ${toastMsg ? "show" : ""}`, id: "toast", role: "status", children: toastMsg })] }) }));
+                                } }, selectedChildId)] }) }), promptJob && _jsx(PromptDrawer, { title: "\u67E5\u770B\u63D0\u793A\u8BCD", text: promptJob.prompt || '该历史作业未记录冻结提示词。', onClose: closePrompt }), detailItem && _jsx(KnowledgeEntryDialog, { ...detailItem, onClose: closeDetail, onSaved: () => { updated(); toast('人工核实已保存'); } }, `${detailItem.versionId}:${detailItem.checkId}`), jobDetails && polling.jobs.some(job => job.run_id === jobDetails || job.root_run_id === jobDetails) && _jsx(JobStatusDrawer, { job: polling.jobs.find(job => job.run_id === jobDetails || job.root_run_id === jobDetails), onClose: () => setJobDetails(null), stale: polling.syncState === 'stale' }), _jsx(KnowledgeConfirmation, { state: confirmState, onClose: () => setConfirmState(null) }), _jsx("div", { className: `toast ${toastMsg ? "show" : ""}`, id: "toast", role: "status", children: toastMsg })] }) }));
 }

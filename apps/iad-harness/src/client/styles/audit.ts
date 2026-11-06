@@ -90,13 +90,15 @@ export const auditStyles = `.iad-workbench[data-page="industrial-audit"]{padding
 #audit-page .audit-dialog-head{height:66px;flex:none;padding:0 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid var(--audit-border)}
 #audit-page .audit-dialog-head h2{font-size:17px}
 #audit-page .audit-dialog-body{flex:1;min-height:0;overflow:auto;padding:22px 24px 26px}
-#audit-page .audit-analysis-sections{display:flex;flex-direction:column;gap:24px}
-#audit-page .audit-analysis-sections section{min-width:0}
-#audit-page .audit-analysis-sections h3{margin-bottom:10px}
-#audit-page .audit-analysis-sections p{line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere}
-#audit-page .audit-analysis-sections ul{margin:0;padding-left:20px;display:grid;gap:12px}
-#audit-page .audit-analysis-sections .iad-embedded-canvas{height:clamp(280px,40vh,430px)}
-#audit-page .audit-analysis-sections .iad-image-pair{margin-top:10px}
+#audit-page .audit-analysis-sections>section{padding:0 0 18px;margin:0 0 19px;border-bottom:1px solid var(--audit-border);min-width:0}
+#audit-page .audit-analysis-sections>section:last-child{border:0;margin-bottom:0;padding-bottom:0}
+#audit-page .audit-analysis-sections h3{font-weight:700;font-size:15px;margin:0 0 12px}
+#audit-page .audit-analysis-sections p{font-size:13px;line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere}
+#audit-page .audit-analysis-sections .iad-image-pair{gap:18px;align-items:start;margin:0}
+#audit-page .audit-evidence-item{min-width:0;border:1px solid var(--audit-border);background:var(--iad-surface);border-radius:var(--iad-radius);padding:11px;position:relative}
+#audit-page .audit-evidence-item h4{margin:0 0 10px;font-size:14px;font-weight:700}
+#audit-page .audit-original-label{position:absolute;left:9px;top:9px;max-width:calc(100% - 18px);padding:4px 7px;pointer-events:none;z-index:2;border:1px solid #dbe2eb;border-radius:4px;background:rgba(255,255,255,.92);font-size:12px;color:var(--audit-ink)}
+@media(max-width:750px){#audit-page .audit-analysis-sections .iad-image-pair{grid-template-columns:1fr}}
 #audit-page .audit-dialog-foot{border-top:1px solid var(--audit-border);min-height:58px;display:flex;align-items:center;justify-content:flex-end;gap:9px;padding:10px 24px}
 #audit-page .audit-lightbox{position:fixed;inset:0;z-index:350;background:#111b2fe8;display:flex;align-items:center;justify-content:center;padding:60px 75px}
 #audit-page .audit-lightbox[hidden]{display:none!important}

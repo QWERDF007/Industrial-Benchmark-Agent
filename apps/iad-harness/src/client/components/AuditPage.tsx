@@ -78,7 +78,7 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
         }} /></div></section> : <PageTabs<'audit' | 'reports'> label="审计视图" className="audit-tabs"
           items={[{id: 'audit', label: '模型审计'}, {id: 'reports', label: '报告'}]} value={tab} onChange={setTab}>
       <div hidden={tab !== 'audit'}>
-        <AuditJobs selection={selection} datasets={datasets} onDetails={setJobDetails} />
+        <AuditJobs loading={jobs.loading} selection={selection} datasets={datasets} onDetails={setJobDetails} />
         <section className="audit-panel" aria-label="审计图像"><header className="audit-panel-head"><h2>审计图像</h2>
           <div className="audit-filters"><label className="audit-field"><span>文件名</span><input type="search" aria-label="搜索审计图像"
             value={search} onChange={event => {setSearch(event.target.value); setPage(1);}} /></label>
@@ -100,7 +100,7 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
     {sample && <AuditSampleDialog key={`${sample.run_id}:${sample.sample_id}`} sample={sample}
       taskId={datasets.find(item=>item.dataset_id===sample.dataset_id)?.task_id || dataset.task_id} onClose={() => setSample(null)} />}
     {jobDetails && <JobStatusDrawer job={jobs.jobs.find(job => job.root_run_id === jobDetails.root_run_id) || jobDetails}
-      onClose={()=>setJobDetails(null)} onChanged={refresh} stale={jobs.syncState === 'stale'} lastSyncedAt={jobs.lastSyncedAt} />}
+      onClose={()=>setJobDetails(null)} stale={jobs.syncState === 'stale'} />}
 
   </div>;
 }

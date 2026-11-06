@@ -3,6 +3,7 @@ export interface KnowledgeConfirmationState {
     title: string;
     message: string;
     danger?: boolean;
+    confirmLabel?: string;
     onConfirm(): void | Promise<void>;
 }
 export declare function KnowledgeConfirmation({ state, onClose }: {

@@ -11,7 +11,7 @@ export interface ExplorationCandidate {
   datasetId: string;
 }
 
-export async function explorationCandidates(datasetIds: string[], signal: AbortSignal): Promise<ExplorationCandidate[]> {
+export async function explorationCandidates(datasetIds: string[], signal?: AbortSignal): Promise<ExplorationCandidate[]> {
   const groups = await Promise.all(datasetIds.map(async datasetId => {
     const sources = await Promise.all((['normal','defect'] as const).map(async kind => {
       const items: ExplorationCandidate[]=[];

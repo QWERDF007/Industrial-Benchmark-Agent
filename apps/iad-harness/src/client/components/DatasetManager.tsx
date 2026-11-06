@@ -259,8 +259,6 @@ export function DatasetManager({
 
   // Filter logic
   const q = search.trim().toLocaleLowerCase();
-  const totalGroups = groups.length;
-  const totalDatasets = datasets.length;
 
   return (
     <div className={`iad-dataset-page-wrap ${drawerOpen && (activeDataset || activeGroup) ? "has-drawer" : ""}`}>
@@ -269,14 +267,7 @@ export function DatasetManager({
       </WorkbenchHeader>
 
       <section aria-label="数据集列表">
-        <div className="section-bar">
-          <h2>
-            数据集
-            <span className="count" id="summaryCount">
-              {totalGroups} 个数据集，{totalDatasets} 个子数据集
-            </span>
-          </h2>
-          <div className="iad-manager-search-wrap" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div className="iad-manager-search-wrap">
             <input
               id="search"
               className="search"
@@ -284,7 +275,6 @@ export function DatasetManager({
               autoComplete="off"
               placeholder="搜索数据集"
               aria-label="搜索数据集"
-              style={{ width: "220px", height: "38px", boxSizing: "border-box" }}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -295,7 +285,6 @@ export function DatasetManager({
               disabled={!search}
               onClick={() => setSearch("")}
             />
-          </div>
         </div>
 
         <div className="table-wrap">
@@ -382,7 +371,7 @@ export function DatasetManager({
                       <td>
                         {group.kind==='group'&&<div className="actions">
                           <IconButton icon="add" type="button" data-add-parent={group.group_id} label={`为 ${group.name} 添加子数据集`} title="添加子数据集" onClick={e => { e.stopPropagation(); openAddModal(group.group_id); }} />
-                          <DeleteAction title="删除大数据集" name={group.name} description={`同时移除 ${children.length} 个子数据集，保留源文件。`}
+                          <DeleteAction title="删除大数据集" name={group.name} confirmDisabled={children.length>0} description={children.length?`该数据集包含 ${children.length} 个子数据集，请先处理其中的子数据集，再删除父级。`:'该大数据集没有子数据集。'}
                             restoreFocus={()=>document.getElementById('search')} onDelete={()=>deleteDataset({kind:'group',group})}/>
                         </div>}
                       </td>

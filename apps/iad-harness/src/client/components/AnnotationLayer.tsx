@@ -19,7 +19,7 @@ export type AnnotationLayerSource = {
   kind:'boxes';annotations:ImageBoxAnnotation[];width:number;height:number;
 };
 
-export function AnnotationLayer({ source, viewport }: { source: AnnotationLayerSource; viewport?: readonly number[] }) {
+export function AnnotationLayer({ source, viewport, fit="stretch" }: { source: AnnotationLayerSource; viewport?: readonly number[];fit?:"stretch"|"contain" }) {
   const namespace = useId();
   const [width, height] = source.kind === "sample" ? [source.sample.width, source.sample.height]
     : source.kind==='boxes' ? [source.width,source.height] : source.analysis.overview.original_size;
@@ -33,7 +33,7 @@ export function AnnotationLayer({ source, viewport }: { source: AnnotationLayerS
       id: image.evidence_id, bbox: image.crop_bbox, url: auditEvidenceUrl(source.suggestionId, image),
     })) : [];
   const [x1,y1,x2,y2]=viewport || [0,0,width,height];
-  return <svg className="iad-annotation-layer" viewBox={`${x1} ${y1} ${x2-x1} ${y2-y1}`} preserveAspectRatio="none" aria-label="Labelme 标注">
+  return <svg className="iad-annotation-layer" viewBox={`${x1} ${y1} ${x2-x1} ${y2-y1}`} preserveAspectRatio={fit==="contain"?"xMidYMid meet":"none"} aria-label="Labelme 标注">
     {!!masks.length && <g className="iad-annotation-mask">{masks.map((mask, index) => {
       const maskId = `${namespace}-mask-${index}`;
       const [x1, y1, x2, y2] = mask.bbox;

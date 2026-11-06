@@ -1,4 +1,15 @@
 export const formsStyles = `
+.iad-form-fields{display:grid;gap:19px;align-content:start}
+.iad-form-fields>.iad-field{margin:0;gap:8px}
+.iad-form-fields>.iad-field>label{font-weight:600}
+.iad-choice-group{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;border:0;padding:0;margin:0;min-width:0}
+.iad-choice-group legend{font-size:var(--iad-font-size);font-weight:600;padding:0;margin-bottom:8px}
+.iad-choice-group label{display:flex;align-items:center;gap:6px;min-height:49px;padding:10px 16px;border:1px solid var(--iad-control-border);border-radius:var(--iad-radius);font-weight:400;cursor:pointer}
+.iad-choice-group label:has(input:checked){border-color:var(--iad-primary);background:var(--iad-hover)}
+.iad-choice-group label:has(input:disabled){opacity:.48;cursor:not-allowed}
+.iad-path-input{display:flex;align-items:center;gap:9px;flex-wrap:nowrap}
+.iad-path-input>input{flex:1;min-width:0}.iad-path-input>button{flex:none}
+
 .iad-directory-list {display:grid;gap:var(--iad-space-2);list-style:none;padding:0;margin:var(--iad-space-4) 0;max-height:320px;overflow:auto;}
 .iad-directory-list .iad-button {width:100%;justify-content:flex-start;}
 .iad-prompt-text{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:var(--iad-font-size);line-height:1.7;color:var(--iad-text)}
@@ -42,7 +53,7 @@ export const formsStyles = `
 .iad-detail-dialog.iad-inline-dialog {position:sticky;inset:auto;top:0;width:100%;max-width:none;max-height:none;margin:0;padding:0;overflow:visible;background:transparent;}.iad-inline-dialog .iad-inspector{position:static}
 .iad-detail-dialog.iad-drawer {width:min(560px,100%);max-width:100%;height:100dvh;max-height:100dvh;margin:0 0 0 auto;border-radius:0;padding:0;overflow:hidden;display:flex;flex-direction:column;}.iad-drawer .iad-config-bar {padding:24px;overflow:auto;display:grid;gap:16px;}.iad-drawer .iad-config-bar>.iad-field {margin:0;}.iad-drawer .iad-job-panel {min-width:0;}
 .iad-detail-dialog.iad-viewer-dialog {width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;padding:0;background:var(--iad-viewer);overflow:hidden;}
-.iad-detail-dialog::backdrop {background:var(--iad-scrim);}
+.iad-detail-dialog::backdrop {background:var(--iad-modal-backdrop);}
 .iad-detail-dialog>.iad-row {margin-bottom:16px;}
 .iad-detail-dialog .iad-inspector {border:0;box-shadow:none;}
 .iad-browse {min-width:0;}

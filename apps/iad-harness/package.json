@@ -78,6 +78,7 @@
     "@deepseek-ai/dsh-web-app": "0.2.0-rc.2",
     "@fastify/busboy": "3.2.4",
     "@floating-ui/react": "^0.27.16",
+    "@tanstack/react-query": "5",
     "uuid": "13.0.0"
   },
   "devDependencies": {

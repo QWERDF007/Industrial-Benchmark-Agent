@@ -2,7 +2,7 @@ import {Select} from './components/Select.js';
 import {IconButton} from "./components/IconButton.js";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import type { Dataset, DatasetCatalog, DatasetGroup, Filters, ReviewDecisionRecord, SamplePage } from "../shared/contracts.js";
+import type { DatasetCatalog, Filters, ReviewDecisionRecord, SamplePage } from "../shared/contracts.js";
 import { initialReviewFilters, message, request, reviewLabel, sampleQuery } from "./api.js";
 import { DatasetManager } from "./components/DatasetManager.js";
 import { SampleFilters } from "./components/SampleFilters.js";
@@ -21,32 +21,28 @@ import { usePagePosition } from "./usePagePosition.js";
 import {PageTabs} from "./components/layout/PageTabs.js";
 import {WorkbenchHeader} from './components/layout/WorkbenchHeader.js';
 import { ImagesPage } from "./components/ImagesPage.js";
+import {useDatasetCatalog} from './useDatasetCatalog.js';
+
+const emptyCatalog: DatasetCatalog = {datasets:[],groups:[]};
 
 export function WorkbenchPage({ pageId }: { pageId: PageId }) {
   const { workspace, state } = useWorkspace();
-  const datasetId = state.datasetId, view = workspace.view(pageId);
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
-  const [groups, setGroups] = useState<DatasetGroup[]>([]);
+  const catalog = useDatasetCatalog();
+  const {datasets,groups} = catalog.data || emptyCatalog;
+  const dataset = datasets.find(d => d.dataset_id === state.datasetId) || datasets[0];
+  const datasetId = dataset?.dataset_id || '', view = workspace.view(pageId,datasetId);
   const [result, setResult] = useState<SampleWindow>({ query: "", items: [], total: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
   const advance = useRef<{ query: string; sampleId: string; position: number } | null>(null);
   const [reviewConfirmation, setReviewConfirmation] = useState<{ datasetId: string; name: string; decision: string } | null>(null);
-  const dataset = datasets.find(d => d.dataset_id === datasetId);
-  const loadDatasets = useCallback(async (preferred?: string, signal?: AbortSignal) => {
-    try {
-      const result = await request<DatasetCatalog>("/datasets", undefined, undefined, signal);
-      if (signal?.aborted) return;
-      setDatasets(result.datasets);
-      setGroups(result.groups);
-      const current = workspace.getSnapshot().datasetId;
-      workspace.selectDataset(preferred || (result.datasets.some(d => d.dataset_id === current) ? current : result.datasets[0]?.dataset_id || ""), true);
-      setError("");
-    } catch (e) { if (!signal?.aborted) setError(message(e)); }
-  }, [workspace]);
+  const loadDatasets = useCallback(async (preferred?: string) => {
+    const result = await catalog.refresh();
+    if (result && preferred) workspace.selectDataset(preferred,true);
+  }, [catalog.refresh,workspace]);
   const changed = useCallback(() => { setRevision(v => v + 1); void loadDatasets(); }, [loadDatasets]);
-  useEffect(() => { const controller = new AbortController(); void loadDatasets(undefined, controller.signal); return () => controller.abort(); }, [loadDatasets]);
+  useEffect(() => {if (catalog.data && datasetId !== state.datasetId) workspace.selectDataset(datasetId,true);},[catalog.data,datasetId,state.datasetId,workspace]);
   const gallery = pageId === "industrial-review" && view.tab === "results";
   const query = sampleQuery(datasetId, view.filters, view.page, pageSize);
   const navigation = useSampleNavigation(pageId, dataset?.task_id, query, result, gallery);
@@ -88,11 +84,11 @@ export function WorkbenchPage({ pageId }: { pageId: PageId }) {
   const datasetControls = <><Select aria-label="当前数据集" value={datasetId} onChange={event => workspace.selectDataset(event.target.value)}><option value="" disabled>选择数据集</option>{datasets.map(item => <option key={item.dataset_id} value={item.dataset_id}>{item.name}</option>)}</Select><IconButton icon="refresh" label="刷新" onClick={changed} /></>;
 
   return <div ref={surface} className="iad-workbench" data-page={pageId}><style>{workbenchStyles}</style>
-    {pageId !== "industrial-datasets" && pageId !== "industrial-images" && pageId !== "industrial-audit" && (!dataset || (pageId !== "industrial-exploration" && pageId !== "industrial-knowledge")) && <WorkbenchHeader pageId={pageId}>
-      {datasetControls}
+    {(!catalog.data || (pageId !== "industrial-datasets" && pageId !== "industrial-images" && pageId !== "industrial-audit" && (!dataset || (pageId !== "industrial-exploration" && pageId !== "industrial-knowledge")))) && <WorkbenchHeader pageId={pageId}>
+      {catalog.data && datasetControls}
     </WorkbenchHeader>}
-    {error && <p role="alert" className="iad-error">{error}</p>}
-    {pageId === "industrial-datasets" ? <>
+    {(error || catalog.error) && <p role="alert" className="iad-error">{error || catalog.error}</p>}
+    {!catalog.data ? <p role="status">{catalog.loading ? '正在加载数据集…' : '数据集加载失败。'}</p> : pageId === "industrial-datasets" ? <>
       <DatasetManager datasets={datasets} groups={groups} onChanged={id => { void loadDatasets(id); setRevision(v => v + 1); }} />
     </> : pageId === "industrial-images" ? <>
       <ImagesPage datasets={datasets} groups={groups} onDatasetsChanged={() => void loadDatasets()} />

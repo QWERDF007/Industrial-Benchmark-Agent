@@ -1,3 +1,4 @@
+import {queryClient} from './query-client.js';
 import type { AuditAnalysis, Decision, Filters, Sample, VisualEvidence } from "../shared/contracts.js";
 
 export class ApiError extends Error {
@@ -16,6 +17,8 @@ export async function request<T>(path: string, body?: unknown, method?: string, 
   });
   const data = await response.json();
   if (!response.ok) throw new ApiError(data.error?.code, data.error?.message || `请求失败 (${response.status})`, response.status);
+  if (!['GET','HEAD'].includes((method || (body===undefined?'GET':'POST')).toUpperCase()) && path!=='/datasets/preview')
+    void queryClient.invalidateQueries({queryKey:['iad']},{cancelRefetch:false});
   return data as T;
 }
 export const initialFilters: Filters = { raw_label_filters: [], annotation_filters: [], model_status: "all", review_status: "all", technical: "all", reference_status: "all", search: "", sort_by: "default" };

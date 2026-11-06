@@ -1,12 +1,17 @@
 import React from 'react';
 import type { JobSnapshot } from '../../shared/contracts.js';
-import { type JobDetailProps } from './JobDetail.js';
 export declare function JobStatusButton({ job, onClick, children }: {
     job: JobSnapshot;
     onClick(): void;
     children?: React.ReactNode;
 }): React.JSX.Element;
-export declare function JobStatusDrawer({ job, onClose, onChanged, stale, lastSyncedAt }: {
+export declare function JobStatusAction({ job, onClick }: {
+    job: JobSnapshot;
+    onClick(): void;
+}): React.JSX.Element | null;
+export declare function JobStatusDrawer({ job, onClose, stale }: {
+    job: JobSnapshot;
     onClose(): void;
-} & Pick<JobDetailProps, 'job' | 'onChanged' | 'stale' | 'lastSyncedAt'>): React.JSX.Element;
+    stale?: boolean;
+}): React.JSX.Element;
 //# sourceMappingURL=JobStatusDrawer.d.ts.map

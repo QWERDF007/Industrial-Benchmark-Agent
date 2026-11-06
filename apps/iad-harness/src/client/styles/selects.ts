@@ -14,7 +14,7 @@ export const selectStyles = `
 .iad-select-popover{box-sizing:border-box;margin:0;padding:5px;inset:auto;max-width:calc(100vw - 24px);overflow:auto;overscroll-behavior:contain;border:1px solid var(--iad-border);border-radius:var(--iad-radius);background:var(--iad-surface);color:var(--iad-text);font:var(--iad-font-size) var(--iad-font-family);box-shadow:0 8px 24px #1723381a}
 .iad-select-popover .iad-select-option{display:flex;align-items:center;gap:10px;min-height:36px;padding:6px 9px;border-radius:var(--iad-radius);cursor:pointer;font-size:var(--iad-font-size);font-weight:400;color:var(--iad-text)}
 .iad-select-option:hover,.iad-select-option:focus-within{background:var(--iad-hover)}
-.iad-select-option input[type=checkbox]{flex:none;width:18px;height:18px;min-height:18px;margin:0;accent-color:var(--iad-primary)}
+.iad-select-option input[type=checkbox]{flex:none;width:15px;height:15px;min-height:15px;margin:0;accent-color:var(--iad-primary)}
 .iad-select-option span{min-width:0;overflow-wrap:anywhere;line-height:1.5}
 .iad-select-option:has(:disabled){cursor:default;color:var(--iad-muted)}
 .iad-select-empty{padding:10px;margin:0}

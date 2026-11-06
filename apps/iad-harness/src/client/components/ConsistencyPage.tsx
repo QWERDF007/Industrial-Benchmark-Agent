@@ -1,6 +1,6 @@
 import {MultiSelect, Select} from './Select.js';
 import {Modal} from './Modal.js';
-import {JobStatusDrawer, JobStatusButton} from './JobStatusDrawer.js';
+import {JobStatusDrawer, JobStatusButton, JobStatusAction} from './JobStatusDrawer.js';
 import {TabBar} from './layout/TabBar.js';
 import {Button} from './Button.js';
 import {ThumbnailCard} from "./ThumbnailCard.js";
@@ -8,8 +8,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   ConsistencyBatchSummary,
   ConsistencyBatch,
-  Dataset,
-  DatasetGroup,
   DatasetCatalog,
   JobSnapshot
 } from '../../shared/contracts.js';
@@ -29,7 +27,11 @@ import { ClearFilterButton } from './CommonFilterControls.js';
 import {promptDefaults} from '../../shared/prompt-defaults.generated.js';
 import {ConsistencyView,type ConflictCardItem} from '../consistency-view.js';
 import {useGroupAnalysis} from '../useGroupAnalysis.js';
+import {useQueries} from '@tanstack/react-query';
+import {queryClient} from '../query-client.js';
+import {useJobs} from '../useJobs.js';
 import {useResource} from '../useResource.js';
+import {useDatasetCatalog} from '../useDatasetCatalog.js';
 import {annotationSummary} from '../../shared/consistency-presentation.js';
 import type {EvidenceBundle,ConsistencyReviewContext,ConsistencyReviewSubmission,GalleryReference,Started,NoWork} from '../../shared/domain.generated.js';
 
@@ -76,6 +78,7 @@ export const DEFAULT_CONSISTENCY_PROMPT = promptDefaults.consistency;
 
 export function ConsistencyPage() {
   const { state } = useWorkspace();
+  const catalog=useDatasetCatalog();
   const evidenceId = state.consistency.evidenceId;
   const [visited, setVisited] = useState(!evidenceId);
 
@@ -87,7 +90,9 @@ export function ConsistencyPage() {
     <>
       {visited && (
         <div hidden={!!evidenceId} style={{ height: '100%' }}>
-          <ConsistencyIntegratedWorkspace />
+          {catalog.data ? <ConsistencyIntegratedWorkspace {...catalog.data} /> :
+            <div className="iad-workbench" data-page="industrial-consistency"><style>{workbenchStyles}</style><h1>数据一致性</h1>
+              <p role={catalog.error?'alert':'status'}>{catalog.error || '正在加载数据集…'}</p></div>}
         </div>
       )}
       {evidenceId && <ConsistencyEvidencePage evidenceId={evidenceId} />}
@@ -95,16 +100,13 @@ export function ConsistencyPage() {
   );
 }
 
-function ConsistencyIntegratedWorkspace() {
-  // Datasets and hierarchy state
-  const [datasets, setDatasets] = useState<Dataset[]>([]);
-  const [groups, setGroups] = useState<DatasetGroup[]>([]);
-  const [selectedParentId, setSelectedParentId] = useState<string>('');
-  const [selectedChildIds, setSelectedChildIds] = useState<string[]>([]);
+function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
+  const initialParent=buildHierarchyGroups(datasets,groups)[0]?.group_id || '';
+  const [selectedParentId, setSelectedParentId] = useState<string>(initialParent);
+  const [selectedChildIds, setSelectedChildIds] = useState<string[]>(()=>datasets.filter(item=>getDatasetGroupId(item)===initialParent).map(item=>item.dataset_id));
   const [error, setError] = useState('');
 
   // Consistency jobs state
-  const [batches, setBatches] = useState<ConsistencyJob[]>([]);
   const [statusJobId, setStatusJobId] = useState('');
   const [selectedJobId, setSelectedJobId] = useState<string>('');
   const [jobPage, setJobPage] = useState<number>(1);
@@ -150,61 +152,19 @@ function ConsistencyIntegratedWorkspace() {
     () => datasets.filter(d => getDatasetGroupId(d) === currentParent?.group_id),
     [datasets, hierarchyGroups, currentParent]
   );
-  // Initial load of datasets
-  useEffect(() => {
-    const controller = new AbortController();
-    request<DatasetCatalog>('/datasets', undefined, undefined, controller.signal)
-      .then(res => {
-        if (controller.signal.aborted) return;
-        setDatasets(res.datasets);
-        setGroups(res.groups);
-        const derived = buildHierarchyGroups(res.datasets, res.groups || []);
-        const parentId = derived[0]?.group_id || '';
-        setSelectedParentId(parentId);
-        const children = res.datasets.filter(d => getDatasetGroupId(d) === parentId);
-        setSelectedChildIds(children.map(c => c.dataset_id));
-      })
-      .catch(err => {
-        if (!controller.signal.aborted) setError(message(err));
-      })
-      ;
-    return () => controller.abort();
-  }, []);
-
-  // Poll consistency runs
-  useEffect(() => {
-    const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout>;
-
-    async function poll() {
-      try {
-        const groups=await Promise.all(selectedChildIds.map(dataset_id=>request<{jobs:JobSnapshot[]}>(
-          `/analysis/jobs?${new URLSearchParams({dataset_id,analysis_kind:'consistency'})}`,undefined,undefined,controller.signal)));
-        if(controller.signal.aborted)return;
-        const roots=[...new Map(groups.flatMap(group=>group.jobs).map(job=>[job.run_id,job])).values()];
-        const rows=await Promise.all(roots.filter(job=>job.program_batch_id).map(async job=>{
-          const program=await request<ConsistencyBatch>(`/consistency/runs/${encodeURIComponent(job.program_batch_id!)}`,undefined,undefined,controller.signal);
-          return {...program,analysis:job,status:job.status,
-            total:job.total_samples,completed:job.completed,failed:job.failed,unprocessed:job.unprocessed,cancel_requested:job.cancel_requested,
-            created_at:job.submitted_at,duration_seconds:job.finished_at&&job.started_at?Math.max(0,Math.round((Date.parse(job.finished_at)-Date.parse(job.started_at))/1000)):null};
-        }));
-        if(controller.signal.aborted)return;
-        setBatches(rows);
-        const hasActive=roots.some(item=>['RUNNING','PENDING'].includes(item.status));
-        timer = setTimeout(poll, hasActive ? 1200 : 5000);
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          timer = setTimeout(poll, 5000);
-        }
-      }
-    }
-
-    void poll();
-    return () => {
-      controller.abort();
-      clearTimeout(timer);
-    };
-  }, [revision,JSON.stringify(selectedChildIds)]);
+  const progress=useCallback(()=>setRevision(value=>value+1),[]);
+  const polling=useJobs('consistency',selectedChildIds,progress);
+  const roots=polling.jobs.filter(job=>job.program_batch_id);
+  const programIds=[...new Set(roots.map(job=>job.program_batch_id!))].sort();
+  const programs=useQueries({queries:programIds.map(id=>({queryKey:['iad','resource',`/consistency/runs/${id}`],
+    queryFn:()=>request<ConsistencyBatch>(`/consistency/runs/${encodeURIComponent(id)}`),staleTime:Infinity,
+  }))},queryClient);
+  const batches:ConsistencyJob[]=roots.flatMap(job=>{
+    const program=programs.find(item=>item.data?.batch_id===job.program_batch_id)?.data;
+    return program ? [{...program,analysis:job,status:job.status,total:job.total_samples,completed:job.completed,
+      failed:job.failed,unprocessed:job.unprocessed,cancel_requested:job.cancel_requested,created_at:job.submitted_at,
+      duration_seconds:job.finished_at&&job.started_at?Math.max(0,Math.round((Date.parse(job.finished_at)-Date.parse(job.started_at))/1000)):null}] : [];
+  });
 
   // Available jobs for current parent and child scope
   const availableJobs = useMemo(() => {
@@ -342,9 +302,9 @@ function ConsistencyIntegratedWorkspace() {
 
   // Refresh consistency data
   const handleRefresh = useCallback(() => {
-    setJobPage(1);
+    setJobPage(1);polling.refresh();programs.forEach(program=>void program.refetch({cancelRefetch:false}));
     setRevision(v => v + 1);
-  }, []);
+  }, [polling.refresh,programs]);
 
   // Start new consistency check
   const handleCreateJob = async () => {
@@ -475,7 +435,6 @@ function ConsistencyIntegratedWorkspace() {
 
   async function handleDeleteJob(job: ConsistencyJob) {
     await request(`/analysis/delete/${encodeURIComponent(job.analysis.run_id)}`,{});
-    setBatches(previous => previous.filter(item => item.batch_id !== job.batch_id));
     setRevision(value => value + 1);
   }
 
@@ -580,7 +539,7 @@ function ConsistencyIntegratedWorkspace() {
           </div>
         </header>
 
-        {error && <p role="alert" className="iad-error">{error}</p>}
+        {(error||polling.error||programs.some(program=>program.error))&&<p role="alert" className="iad-error">{error||polling.error||message(programs.find(program=>program.error)?.error)}</p>}
 
         {/* Scope Selector */}
         <DatasetScopeSelector
@@ -659,7 +618,7 @@ function ConsistencyIntegratedWorkspace() {
                           <td className="dc-time">{timeStr}</td>
                           <td className="dc-elapsed dc-mono">{dcJobElapsed(j)}</td>
                           <td className="dc-operations" onClick={e => e.stopPropagation()}>
-                            {j.status !== 'COMPLETED' && <IconButton icon="details" type="button" label={`查看作业状态 ${j.analysis.run_id}`} onClick={()=>setStatusJobId(j.batch_id)} />}
+                            <JobStatusAction job={j.analysis} onClick={()=>setStatusJobId(j.batch_id)} />
                             <IconButton icon="stats" type="button" title="查看统计结果" label="查看统计结果" data-dc="stats" data-id={j.batch_id} disabled={j.status !== 'COMPLETED' && j.status !== 'PARTIAL'} onClick={() => {
                                 setSelectedJobId(j.batch_id);
                                 setStatsModalJobId(j.batch_id);
@@ -682,20 +641,18 @@ function ConsistencyIntegratedWorkspace() {
               />
             </>
           ) : (
-            <div className="dc-empty">当前范围还没有检查作业，可以创建新检查。</div>
+            <div className="dc-empty">{polling.loading||programs.some(program=>program.isPending)?'正在读取检查作业…':'当前范围还没有检查作业，可以创建新检查。'}</div>
           )}
         </section>
 
         {/* Results Section */}
         <section className="dc-section dc-results-section">
-          <div className="dc-section-heading">
-            <h2>标注冲突</h2>
-          </div>
+          {!selectedJob||!['FAILED','CANCELLED','INTERRUPTED'].includes(selectedJob.status)?<div className="dc-section-heading"><h2>标注冲突</h2></div>:null}
 
           {!selectedJob ? (
             <div className="dc-empty">选择上方的检查作业后查看结果。</div>
           ) : ['FAILED','CANCELLED','INTERRUPTED'].includes(selectedJob.status) ? (
-            <div className="dc-empty">当前作业下没有对应的冲突</div>
+            <p className="iad-plain-empty" role="status">当前作业下没有对应的冲突</p>
           ) : selectedJob.status === 'PENDING' || selectedJob.status === 'RUNNING' ? (
             <div className="dc-running">
               <div className="dc-running-header">
@@ -861,7 +818,7 @@ function ConsistencyIntegratedWorkspace() {
                   onToggle={id=>setModalChildIds(previous=>previous.includes(id)?previous.filter(value=>value!==id):[...previous,id])} disabled={newCheckBusy} />
               </div>
               <div className="dc-new-field dc-prompt-editor">
-                {error && <p role="alert" className="iad-error">{error}</p>}
+                {(error||polling.error||programs.some(program=>program.error))&&<p role="alert" className="iad-error">{error||polling.error||message(programs.find(program=>program.error)?.error)}</p>}
                 <label htmlFor="dc-new-prompt">模型分析提示词</label>
                 <textarea
                   id="dc-new-prompt"
@@ -1239,7 +1196,7 @@ function ConsistencyIntegratedWorkspace() {
       )}
 
       {statusJobId && batches.some(job=>job.batch_id===statusJobId) && <JobStatusDrawer
-        job={batches.find(job=>job.batch_id===statusJobId)!.analysis} onClose={()=>setStatusJobId('')} onChanged={()=>setRevision(value=>value+1)} />}
+        job={batches.find(job=>job.batch_id===statusJobId)!.analysis} onClose={()=>setStatusJobId('')} />}
       {/* Fullscreen Image Viewer Modal */}
       <FullscreenViewer
         open={!!zoomItem}

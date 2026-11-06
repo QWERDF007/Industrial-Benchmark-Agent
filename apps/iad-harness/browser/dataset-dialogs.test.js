@@ -96,13 +96,19 @@ for filename,color in [('images/source.png','blue'),('incoming/images/batch/next
   const create=await el('#addBtn');await click(create);
   const creation=await el('[aria-label="添加数据集"]');
   assert.equal(await driver.executeScript('return arguments[0].matches("dialog:modal")',creation),true,'数据集表单也必须使用共享Modal');
-  assert.equal(await driver.executeScript('return arguments[0].getBoundingClientRect().width',creation),530);
+  assert.equal(await driver.executeScript('return arguments[0].getBoundingClientRect().width',creation),740,'添加数据集使用原型的表单尺寸');
+  assert.ok((await creation.getRect()).height<400,'添加数据集按字段撑高');
+  const choices=await driver.executeScript(()=>[...document.querySelectorAll('dialog[open] input[name="new-kind"]')].map(input=>{const label=input.parentElement,r=label.getBoundingClientRect(),s=getComputedStyle(label);return {x:r.x,y:r.y,width:r.width,height:r.height,border:s.borderTopWidth}}));
+  assert.ok(choices.every(choice=>choice.border==='1px'&&choice.height>=49),'添加类型恢复HTML的并排选项卡片');
+  assert.equal(choices[0].y,choices[1].y);assert.ok(choices[0].x<choices[1].x);
+
   await driver.actions().sendKeys(Key.ESCAPE).perform();
   await driver.wait(async()=>(await driver.findElements(By.css('dialog[open]'))).length===0,5000);
   assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',create),true);
   await click(await el(`button[aria-label="为 ${group.name} 添加子数据集"]`));
   const form=await el('dialog[aria-label="添加数据集"][open]');
-  assert.equal(await driver.executeScript('return arguments[0].getBoundingClientRect().width',form),960);
+  assert.equal(await driver.executeScript('return arguments[0].getBoundingClientRect().width',form),740,'同一添加表单不随添加类型变成其他弹窗尺寸');
+  assert.ok((await form.getRect()).height<700,'子数据集表单不拉满屏幕');
   assert.equal(await(await el('#new-parent')).isEnabled(),false);
   assert.equal(await(await el('input[name="new-kind"][value="group"]')).isEnabled(),false);
   await(await el('#new-name')).sendKeys('新增真实子集');
@@ -175,7 +181,15 @@ for filename,color in [('images/source.png','blue'),('incoming/images/batch/next
   await click(await el(`tr[data-id="${anomalyGroup.group_id}"] button[data-icon="delete"]`));
   const cascade=await el('dialog[aria-label="删除大数据集"][open]');
   assert.ok((await cascade.getText()).includes('1 个子数据集'));
-  await click(await cascade.findElement(By.css('button[data-variant="danger"]')));
+  assert.equal(await cascade.findElement(By.css('button[data-variant="danger"]')).isEnabled(),false,'父级包含子集时按原型先处理子集');
+  await driver.actions().sendKeys(Key.ESCAPE).perform();
+  await click(await el(`tr[data-id="${anomaly[0].dataset_id}"] button[data-icon="delete"]`));
+  await click(await el('dialog[open] button[data-variant="danger"]'));
+  await driver.wait(async()=>(await driver.findElements(By.css('dialog[open]'))).length===0,10000);
+  await click(await el(`tr[data-id="${anomalyGroup.group_id}"] button[data-icon="delete"]`));
+  const emptyGroup=await el('dialog[aria-label="删除大数据集"][open]');
+  assert.equal(await emptyGroup.findElement(By.css('button[data-variant="danger"]')).isEnabled(),true);
+  await click(await emptyGroup.findElement(By.css('button[data-variant="danger"]')));
   await driver.wait(async()=>(await driver.findElements(By.css('dialog[open]'))).length===0,10000);
   assert.equal((await call('datasets')).datasets.length,1);
   assert.equal((await call('datasets/groups')).groups.length,1);

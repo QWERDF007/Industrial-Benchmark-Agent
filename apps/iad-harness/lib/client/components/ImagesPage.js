@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { Modal } from "./Modal.js";
 import { useResource } from "../useResource.js";
 import { WorkbenchHeader } from "./layout/WorkbenchHeader.js";
-import { mediaUrl, request, message } from "../api.js";
+import { mediaUrl } from "../api.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 import { FullscreenViewer } from "./FullscreenViewer.js";
 import { AnnotatedImageStage } from "./AnnotatedImageStage.js";
@@ -95,24 +95,10 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
         setCategory("all");
         setPage(1);
     }, []);
-    // Sample listing state
-    const [samples, setSamples] = useState([]);
-    const [total, setTotal] = useState(0);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
     const [refreshRev, setRefreshRev] = useState(0);
-    // Query samples
-    useEffect(() => {
-        if (selectedChildIds.size === 0) {
-            setSamples([]);
-            setTotal(0);
-            return;
-        }
-        const controller = new AbortController();
-        setLoading(true);
-        setError("");
+    const params = useMemo(() => {
         const params = new URLSearchParams();
-        params.set("dataset_ids", Array.from(selectedChildIds).join(","));
+        params.set("dataset_ids", Array.from(selectedChildIds).sort().join(","));
         if (hasAnomaly && quality !== "all") {
             params.set("raw_label_filters", JSON.stringify([quality]));
         }
@@ -135,23 +121,10 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
         }
         params.set("page", String(page));
         params.set("page_size", String(pageSize));
-        request(`/samples?${params.toString()}`, undefined, undefined, controller.signal)
-            .then(res => {
-            if (controller.signal.aborted)
-                return;
-            setSamples(res.items);
-            setTotal(res.total);
-        })
-            .catch(err => {
-            if (!controller.signal.aborted)
-                setError(message(err));
-        })
-            .finally(() => {
-            if (!controller.signal.aborted)
-                setLoading(false);
-        });
-        return () => controller.abort();
-    }, [selectedChildIds, quality, annotation, category, search, page, pageSize, refreshRev]);
+        return params;
+    }, [selectedChildIds, quality, annotation, category, search, page, hasAnomaly, hasLabelme]);
+    const result = useResource(selectedChildIds.size ? `/samples?${params}` : null, refreshRev);
+    const samples = result.data?.items || [], total = result.data?.total || 0, loading = result.loading, error = result.error;
     // Viewer State (Stage 1 & Stage 2)
     const [viewerIndex, setViewerIndex] = useState(-1);
     const [fullscreen, setFullscreen] = useState(false);
@@ -206,7 +179,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
                         : "没有符合筛选条件的图像" })), _jsx(Pagination, { id: "pager", total: total, page: page, size: pageSize, unit: "\u5F20\u56FE\u50CF", label: "\u56FE\u50CF", onPage: number => {
                     setPage(number);
                     document.getElementById("grid")?.scrollIntoView({ block: "start", behavior: "smooth" });
-                } }), activeSample && _jsx(Modal, { title: "\u56FE\u50CF\u8BE6\u60C5", id: "overlay", className: "detail-dialog", onClose: () => { setViewerIndex(-1); setFullscreen(false); }, children: _jsxs("div", { className: "detail-scroll", "aria-busy": detailLoading, children: [detailError && _jsx("p", { role: "alert", className: "iad-error", children: detailError }), activeSample && (_jsxs(_Fragment, { children: [_jsxs("button", { id: "detail-preview", type: "button", className: "detail-preview", "aria-label": "\u6253\u5F00\u5927\u56FE\u68C0\u89C6\u5668", title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE\u4E0E\u6807\u6CE8", onClick: () => setFullscreen(true), children: [_jsx(AnnotatedImageStage, { src: mediaUrl(activeSample, "image"), alt: activeSample.relative_path.split("/").pop(), width: imgW, height: imgH, bboxes: bboxes }), _jsx("span", { className: "detail-preview-hint", children: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE" })] }), _jsxs("section", { className: "detail-content", children: [_jsx("h3", { className: "detail-section-heading", children: "\u56FE\u50CF\u4FE1\u606F" }), _jsxs("dl", { className: "detail-meta", id: "detail-fields", children: [_jsx("dt", { children: "\u56FE\u50CF\u8DEF\u5F84" }), _jsx("dd", { className: "path-value", children: sampleDetail?.sample.image_path || activeSample.relative_path }), _jsx("dt", { children: "\u56FE\u50CF\u540D" }), _jsx("dd", { children: activeSample.relative_path.split("/").pop() }), _jsx("dt", { children: "UUID" }), _jsx("dd", { children: activeSample.sample_uuid }), _jsx("dt", { children: "\u5206\u8FA8\u7387" }), _jsx("dd", { children: `${sampleDetail?.sample.width || activeSample.width} × ${sampleDetail?.sample.height || activeSample.height}` })] })] }), _jsxs("section", { className: "detail-part", id: "detail-ann-section", children: [_jsxs("div", { className: "detail-annotation-heading", children: [_jsx("h3", { className: "detail-section-heading", id: "detail-ann-title", children: "\u6807\u6CE8\u4FE1\u606F" }), _jsx("span", { className: "detail-ann-summary", id: "detail-ann-count", children: sampleDataset?.format === "folder_classification"
+                } }), activeSample && _jsx(Modal, { title: "\u56FE\u50CF\u8BE6\u60C5", id: "overlay", className: "detail-dialog", onClose: () => { setViewerIndex(-1); setFullscreen(false); }, children: _jsxs("div", { className: "detail-scroll", "aria-busy": detailLoading, children: [detailError && _jsx("p", { role: "alert", className: "iad-error", children: detailError }), activeSample && (_jsxs(_Fragment, { children: [_jsxs("button", { id: "detail-preview", type: "button", className: "detail-preview", "aria-label": "\u6253\u5F00\u5927\u56FE\u68C0\u89C6\u5668", title: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE\u4E0E\u6807\u6CE8", onClick: () => setFullscreen(true), children: [_jsx(AnnotatedImageStage, { src: mediaUrl(activeSample, "image"), alt: activeSample.relative_path.split("/").pop(), width: imgW, height: imgH, bboxes: bboxes, annotationLayer: sampleDetail ? { kind: 'sample', sample: sampleDetail.sample, annotations: sampleDetail.annotations } : undefined }), _jsx("span", { className: "detail-preview-hint", children: "\u70B9\u51FB\u67E5\u770B\u5927\u56FE" })] }), _jsxs("section", { className: "detail-content", children: [_jsx("h3", { className: "detail-section-heading", children: "\u56FE\u50CF\u4FE1\u606F" }), _jsxs("dl", { className: "detail-meta", id: "detail-fields", children: [_jsx("dt", { children: "\u56FE\u50CF\u8DEF\u5F84" }), _jsx("dd", { className: "path-value", children: sampleDetail?.sample.image_path || activeSample.relative_path }), _jsx("dt", { children: "\u56FE\u50CF\u540D" }), _jsx("dd", { children: activeSample.relative_path.split("/").pop() }), _jsx("dt", { children: "UUID" }), _jsx("dd", { children: activeSample.sample_uuid }), _jsx("dt", { children: "\u5206\u8FA8\u7387" }), _jsx("dd", { children: `${sampleDetail?.sample.width || activeSample.width} × ${sampleDetail?.sample.height || activeSample.height}` })] })] }), _jsxs("section", { className: "detail-part", id: "detail-ann-section", children: [_jsxs("div", { className: "detail-annotation-heading", children: [_jsx("h3", { className: "detail-section-heading", id: "detail-ann-title", children: "\u6807\u6CE8\u4FE1\u606F" }), _jsx("span", { className: "detail-ann-summary", id: "detail-ann-count", children: sampleDataset?.format === "folder_classification"
                                                         ? "共 1 个标注"
                                                         : `共 ${detailAnnotations.length} 个标注` })] }), _jsx("div", { id: "detail-ann-content", children: detailLoading ? _jsx("p", { children: "\u6B63\u5728\u8BFB\u53D6\u6807\u6CE8\u2026" }) : detailError ? null : sampleDataset?.format === "folder_classification" ? (_jsxs("table", { className: "detail-ann-table", "aria-label": "\u5F02\u5E38\u68C0\u6D4B\u6807\u6CE8\u5217\u8868", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "#" }), _jsx("th", { children: "\u6807\u6CE8\u7C7B\u522B" }), _jsx("th", { children: "\u7C7B\u578B" })] }) }), _jsx("tbody", { children: _jsxs("tr", { children: [_jsx("td", { children: "1" }), _jsx("td", { children: activeSample.quality_status === "FAIL" ? "NG" : "OK" }), _jsx("td", { children: "\u5F02\u5E38\u68C0\u6D4B" })] }) })] })) : detailAnnotations.length > 0 ? (_jsxs("table", { className: "detail-ann-table", "aria-label": "Labelme \u6807\u6CE8\u5217\u8868", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "#" }), _jsx("th", { children: "\u6807\u6CE8\u7C7B\u522B" }), _jsx("th", { children: "\u7C7B\u578B" }), _jsx("th", { children: "\u6570\u636E" })] }) }), _jsx("tbody", { children: detailAnnotations.map((a, k) => (_jsxs("tr", { children: [_jsx("td", { children: k + 1 }), _jsx("td", { children: a.raw_label }), _jsx("td", { children: a.annotation_type || "bbox" }), _jsx("td", { className: "ann-value", children: a.bbox ? a.bbox.map(v => Number(v).toFixed(0)).join(", ") : "-" })] }, a.annotation_id || k))) })] })) : (_jsx("p", { className: "detail-fallback", children: "\u65E0\u6807\u6CE8" })) })] }), _jsxs("section", { className: "detail-model-section", "aria-labelledby": "detail-model-title", children: [_jsx("h3", { className: "detail-section-heading", id: "detail-model-title", children: "\u6A21\u578B\u89C2\u5BDF" }), _jsx("div", { id: "detail-model-content", children: detailLoading ? _jsx("p", { children: "\u6B63\u5728\u8BFB\u53D6\u89C2\u5BDF\u2026" }) : detailError ? null : sampleDetail?.suggestion ? (_jsxs(_Fragment, { children: [_jsxs("p", { className: "detail-model-result", children: [_jsx("strong", { children: sampleDetail.suggestion.suggested_label === "FAIL"
                                                                     ? "发现疑点"

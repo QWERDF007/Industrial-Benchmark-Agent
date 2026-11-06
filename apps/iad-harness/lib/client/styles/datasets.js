@@ -50,27 +50,9 @@ export const datasetsStyles = `
   padding-right: 0 !important;
 }
 
-.section-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 14px;
-}
-
-.section-bar h2 {
-  font-size: 17px;
-  letter-spacing: -.2px;
-  margin: 0;
-  font-weight: 700;
-}
-
-.section-bar .count {
-  font-size: 13px;
-  color: var(--sub);
-  font-weight: 400;
-  margin-left: 7px;
-}
+.iad-dataset-form{--iba-dialog-edit-width:740px}
+.iad-manager-search-wrap{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.iad-manager-search-wrap .search{width:220px;height:var(--iad-control-height)}
 
 .search {
   width: 220px;
@@ -144,6 +126,7 @@ export const datasetsStyles = `
   min-width: 0;
 }
 
+.name-area>button[data-icon=edit]{margin-left:auto}
 .name-area.child { padding-left: 33px; }
 .expand[data-expanded="false"] svg { transform: rotate(-90deg); }
 
@@ -152,18 +135,15 @@ export const datasetsStyles = `
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 400;
-  flex: 0 1 auto;
+  flex: 1;
   min-width: 0;
-  max-width: calc(100% - 40px);
+  max-width: 100%;
 }
 
 .parent-row .name-text { font-weight: 400; }
 .dataset-table tr[data-selected="true"] .name-text { color: #153b8e; }
 [data-ds-dark-theme] .dataset-table tr[data-selected="true"] .name-text { color: var(--primary); }
 
-.pencil {
-  margin-left: auto;
-}
 
 .actions {
   display: flex;

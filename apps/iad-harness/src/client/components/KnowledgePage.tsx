@@ -4,16 +4,17 @@ import {Button} from './Button.js';
 import {IconButton} from "./IconButton.js";
 import {Pagination} from "./Pagination.js";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import type { Dataset, DatasetCatalog, DatasetGroup, JobSnapshot } from "../../shared/contracts.js";
+import type { Dataset, JobSnapshot } from "../../shared/contracts.js";
 import { message, request } from "../api.js";
 import { useJobs } from "../useJobs.js";
 import { useResource } from "../useResource.js";
+import {useDatasetCatalog} from '../useDatasetCatalog.js';
 import { useWorkspace } from "../workspace.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 
 import type { KnowledgeCheckPage, KnowledgeCheckReview, KnowledgeVersion, KnowledgeVersionCatalog } from "../../shared/domain.generated.js";
 import {jobStatuses} from '../../shared/job-display.js';
-import {JobStatusDrawer, JobStatusButton} from './JobStatusDrawer.js';
+import {JobStatusDrawer, JobStatusButton, JobStatusAction} from './JobStatusDrawer.js';
 import {KnowledgeEntryDialog} from "./KnowledgeEntryDialog.js";
 import {KnowledgeMiningCreate} from "./KnowledgeMiningCreate.js";
 import {KnowledgeConfirmation, type KnowledgeConfirmationState} from "./KnowledgeConfirmation.js";
@@ -42,9 +43,6 @@ interface UiJobItem {
   knowledgeVersionId: string | null;
 }
 
-let cachedDatasets: Dataset[] | null = null;
-let cachedGroups: DatasetGroup[] | null = null;
-
 function formatDuration(sec: number | null): string {
   if (sec == null) return "—";
   const m = Math.floor(sec / 60);
@@ -62,11 +60,11 @@ export function KnowledgePage({
   const { workspace } = useWorkspace();
   const pageId = "industrial-knowledge";
   const view = workspace.view(pageId);
+  const catalog=useDatasetCatalog();
+  const datasets=catalog.data?.datasets || [dataset], groups=catalog.data?.groups || [];
 
   // Hierarchy
   const initialParentId = getDatasetGroupId(dataset);
-  const [datasets, setDatasets] = useState<Dataset[]>(() => cachedDatasets || [dataset]);
-  const [groups, setGroups] = useState<DatasetGroup[]>(() => cachedGroups || []);
   const [selectedParentId, setSelectedParentId] = useState<string>(() => initialParentId);
   const [selectedChildId, setSelectedChildId] = useState<string>(() => dataset.dataset_id);
 
@@ -76,7 +74,7 @@ export function KnowledgePage({
   const polling = useJobs("knowledge", selectedChildId, updated, view.job);
   const versionsResource = useResource<KnowledgeVersionCatalog>(`/knowledge/versions?${new URLSearchParams({dataset_id: selectedChildId})}`, revision + refreshRevision);
   const versions = versionsResource.data?.versions || [];
-  const [loadError, setLoadError] = useState("");
+  const loadError=catalog.error;
 
   // Local job list & selection
   const [selectedJobId, setSelectedJobId] = useState<string | null>(view.job || null);
@@ -103,24 +101,9 @@ export function KnowledgePage({
 
   // Sync datasets and hierarchy
   useEffect(() => {
-    let active = true;
-    request<DatasetCatalog>("/datasets")
-      .then(res => {
-        if (!active) return;
-        const dsList = res.datasets;
-        cachedDatasets = dsList;
-        cachedGroups = res.groups;
-        setDatasets(dsList);
-        setGroups(res.groups);
-        const parentId = getDatasetGroupId(dataset);
-        setSelectedParentId(parentId);
-        setSelectedChildId(dataset.dataset_id);
-      })
-      .catch(error => {if (active) setLoadError(message(error));});
-    return () => {
-      active = false;
-    };
-  }, [dataset, refreshRevision]);
+    setSelectedParentId(getDatasetGroupId(dataset));
+    setSelectedChildId(dataset.dataset_id);
+  }, [dataset.dataset_id]);
 
   const jobList: UiJobItem[] = polling.jobs.map(job => {
     const status = job.status === 'COMPLETED' ? 'completed' : ['RUNNING', 'PENDING'].includes(job.status) ? 'running'
@@ -237,7 +220,7 @@ export function KnowledgePage({
   const askDeleteJob = (id: string) => {
     const job = jobList.find(item => item.id === id);
     if (!job) return;
-    setConfirmState({title:'删除挖掘作业', message:`确定删除“${job.name}”的作业记录吗？`, danger:true,
+    setConfirmState({title:'删除挖掘作业', message:`确定删除“${job.name}”的作业记录吗？`, danger:true,confirmLabel:'删除',
       onConfirm: async () => {
         try {await request(`/analysis/delete/${encodeURIComponent(id)}`, {}); polling.refresh(); updated(); toast('作业已删除');}
         catch (error) {toast(message(error));}
@@ -422,7 +405,7 @@ export function KnowledgePage({
                         <td>{j.durationText}</td>
                         <td>
                           <div className="jobact" onClick={e => e.stopPropagation()}>
-                            <IconButton icon="details" type="button" label={`查看作业 ${j.id}`} title="查看作业详情" onClick={()=>setJobDetails(polling.jobs.find(job=>job.run_id===j.id)!.root_run_id)} />
+                            <JobStatusAction job={polling.jobs.find(job=>job.run_id===j.id)!} onClick={()=>setJobDetails(polling.jobs.find(job=>job.run_id===j.id)!.root_run_id)} />
                             <IconButton icon="prompt" type="button" title="查看提示词" label="查看提示词" data-job-prompt={j.id} onClick={() => openJobPrompt(j.id)} />
                             <IconButton icon="delete" type="button" title="删除作业" label={`删除作业 ${j.name}`} data-remove-job={j.id} onClick={() => askDeleteJob(j.id)} />
                           </div>
@@ -433,7 +416,7 @@ export function KnowledgePage({
                 </table>
               ) : (
                 <div id="jobs-empty" className="tableempty">
-                  {scopedJobs.length ? "没有符合筛选条件的挖掘作业。" : "当前范围还没有挖掘作业，可以创建新挖掘。"}
+                  {scopedJobs.length ? "没有符合筛选条件的挖掘作业。" : polling.loading?"正在读取挖掘作业…":"当前范围还没有挖掘作业，可以创建新挖掘。"}
                 </div>
               )}
             </div>
@@ -502,7 +485,7 @@ export function KnowledgePage({
                 <div className="blank">
                   请选择上方的挖掘作业查看知识条目。
                 </div>
-              ) : !selectedJob.knowledgeVersionId ? (
+              ) : selectedJob.status==='failed'&&!selectedJob.knowledgeVersionId ? <p className="iad-plain-empty" role="status">当前作业下没有对应的知识</p> : !selectedJob.knowledgeVersionId ? (
                 <div className="blank">
                   {selectedJob.status === "running"
                     ? "作业正在运行，知识发布后将在这里显示。"
@@ -582,8 +565,8 @@ export function KnowledgePage({
             {detailItem && <KnowledgeEntryDialog key={`${detailItem.versionId}:${detailItem.checkId}`} {...detailItem}
               onClose={closeDetail} onSaved={()=>{updated();toast('人工核实已保存');}} />}
             {jobDetails && polling.jobs.some(job=>job.run_id===jobDetails || job.root_run_id===jobDetails) && <JobStatusDrawer
-              job={polling.jobs.find(job=>job.run_id===jobDetails || job.root_run_id===jobDetails)!} onClose={()=>setJobDetails(null)} onChanged={handleRefresh}
-              stale={polling.syncState === 'stale'} lastSyncedAt={polling.lastSyncedAt} />}
+              job={polling.jobs.find(job=>job.run_id===jobDetails || job.root_run_id===jobDetails)!} onClose={()=>setJobDetails(null)}
+              stale={polling.syncState === 'stale'} />}
 <KnowledgeConfirmation state={confirmState} onClose={()=>setConfirmState(null)} />
             {/* 6. Toast */}
             <div className={`toast ${toastMsg ? "show" : ""}`} id="toast" role="status">

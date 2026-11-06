@@ -1,17 +1,18 @@
 import {ExplorationPresetDialog} from './ExplorationPresetDialog.js';
 import {ExplorationSourceDialog} from './ExplorationSourceDialog.js';
 import {PromptDrawer} from './PromptDrawer.js';
-import {JobStatusDrawer, JobStatusButton} from './JobStatusDrawer.js';
+import {JobStatusDrawer, JobStatusButton, JobStatusAction} from './JobStatusDrawer.js';
 import {Select} from './Select.js';
 import {TabBar} from './layout/TabBar.js';
 import {Button} from './Button.js';
 import {ThumbnailCard} from "./ThumbnailCard.js";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Dataset, DatasetCatalog, DatasetGroup, JobSnapshot } from "../../shared/contracts.js";
+import type { Dataset, JobSnapshot } from "../../shared/contracts.js";
 import { mediaUrl, message, request } from "../api.js";
 import {useWorkbenchModel} from "../models.js";
 import {useJobs} from "../useJobs.js";
-import {jobStatuses} from "../../shared/job-display.js";
+import {useDatasetCatalog} from '../useDatasetCatalog.js';
+import {jobStatuses,jobWorkflow} from "../../shared/job-display.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 import {PlusIcon} from "../AuditIcon.js";
 import { IconButton } from "./IconButton.js";
@@ -22,7 +23,7 @@ import { FullscreenViewer, type FullscreenViewerItem } from "./FullscreenViewer.
 import { Pagination, IBA_JOBS_PAGE_SIZE } from "./Pagination.js";
 import { ClearFilterButton } from "./CommonFilterControls.js";
 
-import type {ExplorationResults, DirectionRemoval, ExplorationPromptPreset} from "../../shared/domain.generated.js";
+import type {ExplorationResults, DirectionRemoval, ExplorationPromptPreset, ExplorationWorkflowStart} from "../../shared/domain.generated.js";
 import {useResource} from "../useResource.js";
 import {explorationCandidates,explorationDirections,type ExplorationCandidate} from "../exploration-view.js";
 
@@ -32,9 +33,6 @@ function expElapsed(sec: number): string {
   return (m > 0 ? `${m}分` : "") + `${s}秒`;
 }
 
-let cachedDatasets: Dataset[] | null = null;
-let cachedGroups: DatasetGroup[] | null = null;
-
 export function ExplorationPage({
   dataset,
   refreshRevision,
@@ -43,12 +41,12 @@ export function ExplorationPage({
   refreshRevision: number;
 }) {
   const model=useWorkbenchModel();
+  const catalog=useDatasetCatalog();
+  const datasets=catalog.data?.datasets || [dataset], groups=catalog.data?.groups || [];
   const initialParentId = getDatasetGroupId(dataset);
-  const initialChildren = (cachedDatasets || [dataset]).filter(
+  const initialChildren = datasets.filter(
     (d) => getDatasetGroupId(d) === initialParentId
   );
-  const [datasets, setDatasets] = useState<Dataset[]>(() => cachedDatasets || [dataset]);
-  const [groups, setGroups] = useState<DatasetGroup[]>(() => cachedGroups || []);
   const [selectedParentId, setSelectedParentId] = useState<string>(() => initialParentId);
   const [selectedChildIds, setSelectedChildIds] = useState<string[]>(() =>
     initialChildren.length > 0 ? initialChildren.map((c) => c.dataset_id) : [dataset.dataset_id]
@@ -104,25 +102,11 @@ export function ExplorationPage({
 
   // Load datasets and hierarchy
   useEffect(() => {
-    let active = true;
-    request<DatasetCatalog>("/datasets")
-      .then((res) => {
-        if (!active) return;
-        const dsList = res.datasets;
-        cachedDatasets = dsList;
-        cachedGroups = res.groups;
-        setDatasets(dsList);
-        setGroups(res.groups);
-        const parentId = getDatasetGroupId(dataset);
-        setSelectedParentId(parentId);
-        const children = dsList.filter((d) => getDatasetGroupId(d) === parentId);
-        setSelectedChildIds(children.length > 0 ? children.map((c) => c.dataset_id) : [dataset.dataset_id]);
-      })
-      .catch(failure => {if(active)setError(message(failure));});
-    return () => {
-      active = false;
-    };
-  }, [dataset, refreshRevision]);
+    const parentId = getDatasetGroupId(dataset);
+    setSelectedParentId(parentId);
+    const children = datasets.filter(item=>getDatasetGroupId(item)===parentId);
+    setSelectedChildIds(children.map(item=>item.dataset_id));
+  }, [dataset.dataset_id]);
 
   // Load presets from server if available
   useEffect(() => {
@@ -142,11 +126,6 @@ export function ExplorationPage({
       active = false;
     };
   }, [refreshRevision]);
-
-  useEffect(() => {
-    if(view!=='setup')return;
-    setSamplePool([]);setNormalSelected([]);setDefectSelected([]);setSamplesLoaded(false);setSamplesLoading(false);
-  },[selectedChildIds,view]);
 
   useEffect(() => {
     if(view!=='setup'||modal!=='source'||samplesLoaded)return;
@@ -190,6 +169,7 @@ export function ExplorationPage({
     return shownJobs[0] || null;
   }, [shownJobs, selectedJobId]);
 
+  const selectedWorkflow=selectedJob ? jobWorkflow(selectedJob) : null;
   const selectedSnapshot=selectedJob;
   const versionKey=(selectedSnapshot?.dataset_results||[]).map(result=>result.exploration_version_id||'').join('|');
   const results=useResource<ExplorationResults>(selectedJob?`/analysis/results/${encodeURIComponent(selectedJob.run_id)}`:null,`${versionKey}|${refreshTick}`);
@@ -215,8 +195,28 @@ export function ExplorationPage({
     : !prompt.trim() ? '请填写探索提示词' : '';
   const canRun = !submitting && !runReason;
 
+  const resetSamples = () => {
+    setSamplePool([]);setNormalSelected([]);setDefectSelected([]);setSamplesLoaded(false);setSamplesLoading(false);
+  };
+  const openSetup = async (copy?:JobSnapshot) => {
+    setSubmitting(true);setError('');
+    try {
+      const frozen=copy ? await request<JobSnapshot & {request:{submission:ExplorationWorkflowStart}}>(`/analysis/node/${encodeURIComponent(copy.root_run_id)}`) : null;
+      const original=frozen?.request.submission;
+      const ids=original?.dataset_ids || selectedChildIds;
+      const normals=original?.normal_images || [],defects=original?.defect_images || [];
+      const pool=normals.length || defects.length ? await explorationCandidates(ids) : [];
+      setSelectedChildIds(ids);setSamplePool(pool);setSamplesLoaded(pool.length>0);
+      setNormalSelected(normals);setDefectSelected(defects);
+      const frozenPrompt=original?.prompt || copy?.exploration_prompt;
+      if(frozenPrompt){setPrompt(frozenPrompt.text);setOriginalPrompt(frozenPrompt.text);setSelectedPresetId(frozenPrompt.preset_id || '');}
+      setView('setup');
+    } catch(error){setError(message(error));} finally {setSubmitting(false);}
+  };
+
   // Handle parent group change
   const handleParentChange = (newParentId: string) => {
+    resetSamples();
     setSelectedParentId(newParentId);
     const children = datasets.filter((d) => getDatasetGroupId(d) === newParentId);
     setSelectedChildIds(children.map((c) => c.dataset_id));
@@ -225,6 +225,7 @@ export function ExplorationPage({
 
   // Toggle child dataset selection
   const handleChildToggle = (cid: string) => {
+    resetSamples();
     setSelectedChildIds((prev) =>
       prev.includes(cid) ? prev.filter((id) => id !== cid) : [...prev, cid]
     );
@@ -296,9 +297,9 @@ export function ExplorationPage({
             <Button
               type="button"
               variant="primary"
-              disabled={!!runningJob}
+              disabled={!!runningJob || submitting}
               title={runningJob ? "已有探索任务运行或排队" : "新建探索"}
-              onClick={() => setView("setup")}
+              onClick={() => void openSetup()}
             >
               新建探索
             </Button>
@@ -540,12 +541,12 @@ export function ExplorationPage({
                           </td>
                           <td className="exp-prompt-action-col">
                             <div className="exp-job-icon-actions" onClick={(e) => e.stopPropagation()}>
-                              {j.status !== 'COMPLETED' && <IconButton icon="details" label={`查看作业状态 ${j.run_id}`} onClick={()=>setStatusJobId(j.root_run_id)} />}
+                              <JobStatusAction job={j} onClick={()=>setStatusJobId(j.root_run_id)} />
                               <IconButton icon="prompt" label="查看提示词" title="查看提示词" data-exp="show-prompt" data-id={j.run_id} onClick={() => {
                                   setPromptText(j.exploration_prompt?.text||'');
                                   setModal("prompt");
                                 }} />
-                              <DeleteAction title="删除探索作业" name={j.run_id} disabled={j.status === 'RUNNING' || j.status === 'PENDING'}
+                              <DeleteAction title="删除探索作业" name={j.run_id} confirmLabel="删除作业" confirmation={<>确定删除作业 {j.run_id} 吗？</>} description="删除后不再显示该作业及其探索结果。" disabled={j.status === 'RUNNING' || j.status === 'PENDING'}
                                 restoreFocus={()=>document.querySelector<HTMLInputElement>('#exp-jobsearch')} onDelete={async()=>{
                                   await request(`/analysis/delete/${encodeURIComponent(j.run_id)}`,{});
                                   refreshJobs();
@@ -567,7 +568,7 @@ export function ExplorationPage({
               </>
             ) : (
               <div className="exp-job-empty" role="status">
-                {jobs.length ? "没有符合筛选条件的探索作业。" : "当前范围还没有探索作业，可以创建新探索。"}
+                {jobQuery.loading?"正在读取探索作业…":jobs.length ? "没有符合筛选条件的探索作业。" : "当前范围还没有探索作业，可以创建新探索。"}
               </div>
             )}
           </section>
@@ -584,10 +585,24 @@ export function ExplorationPage({
                 请选择上方的探索作业查看结果。
               </div>
             </section>
-          ) : selectedJob.status!=='COMPLETED'&&!selectedJobDirections.length ? (
-            <section className="exp-panel exp-selected-result" aria-label="探索结果">
-              <div className="exp-selected-head"><h2>探索结果</h2></div>
-              <p>当前作业下没有对应的探索结果。</p>
+          ) : ['PENDING','RUNNING'].includes(selectedJob.status) ? (
+            <section className="exp-panel exp-selected-result" aria-label="所选作业的执行阶段">
+              <div className="exp-selected-head"><div><h2>运行状态</h2><span className="exp-selected-sub">{selectedJob.run_id}</span></div></div>
+              <div className="exp-job-current-title"><span className={`exp-pill ${selectedJob.status==='PENDING'?'pending':'running'}`}>{jobStatuses[selectedJob.status]}</span>
+                <strong>{selectedJob.status==='PENDING'?'等待执行':selectedWorkflow!.stages[selectedWorkflow!.index]?.title || '正在执行'}</strong></div>
+              <div className="exp-job-stages" role="list" aria-label="执行阶段，不代表完成百分比">
+                {selectedWorkflow!.stages.map((stage,index)=><div key={stage.title} role="listitem" className="exp-job-stage"
+                  data-state={selectedJob.status==='RUNNING'&&index===selectedWorkflow!.index?'current':'waiting'}>
+                  <span className="exp-job-stage-icon">{index+1}</span><span className="exp-job-stage-label">{stage.title}</span></div>)}
+              </div>
+              <div className="exp-result-neutral">方向尚未发布，完成后将在这里显示本次作业的候选方向与整体限制。</div>
+            </section>
+          ) : ['FAILED','CANCELLED','INTERRUPTED'].includes(selectedJob.status) ? (
+            <section className="exp-panel exp-selected-result" aria-label="所选作业的错误信息">
+              <div className="exp-selected-head"><div><h2>作业失败</h2><span className="exp-selected-sub">{selectedJob.run_id}</span></div></div>
+              <p className="exp-error-message">{selectedJob.errors[0]?.message || '任务未成功完成，未生成探索结果。'}</p>
+              <p className="exp-lead">本次作业没有可用的候选方向或整体限制。</p>
+              <Button data-exp="copy-job" disabled={!!runningJob || submitting} onClick={()=>void openSetup(selectedJob)}>使用该配置新建</Button>
             </section>
           ) : (
             <section className="exp-panel exp-selected-result" aria-label="所选作业的探索结果">
@@ -711,7 +726,7 @@ export function ExplorationPage({
         />
       )}
       {statusJobId && jobs.some(job=>job.run_id===statusJobId || job.root_run_id===statusJobId) && <JobStatusDrawer job={jobs.find(job=>job.run_id===statusJobId || job.root_run_id===statusJobId)!}
-        onClose={()=>setStatusJobId(null)} onChanged={refreshJobs} />}
+        onClose={()=>setStatusJobId(null)} />}
     </div>
   );
 }

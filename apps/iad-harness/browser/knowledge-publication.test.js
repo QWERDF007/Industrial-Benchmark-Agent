@@ -66,6 +66,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
   await driver.manage().window().setRect({width:1600,height:1100});await driver.get(base);
   const element=selector=>driver.wait(until.elementLocated(By.css(selector)),10000);
   await(await element('button[data-view-entry]')).click();const note=await element('#review-note');await note.sendKeys('保留尚未提交的复核依据');
+  assert.equal(await driver.executeScript('return getComputedStyle(arguments[0]).display',await element('.detail-modal .modalcontent')),'block','知识详情保留分节正文，不能继承方向详情的弹性布局');
   const evidenceBefore=await(await element('[data-evidence-role="support"] img')).getAttribute('src');assert.ok(evidenceBefore.includes(firstVersion));
   release();
   for(let i=0;i<300;i++){job=await read('analysis/status/'+job.run_id);if(!['RUNNING','PENDING'].includes(job.status))break;await delay(30);}

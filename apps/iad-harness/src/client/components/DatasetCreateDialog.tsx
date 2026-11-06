@@ -36,10 +36,10 @@ export function DatasetCreateDialog({groups, parentId, onCreated, onClose}: {
     finally{setBusy(false);}
   }
   return <>
-    <Modal title="添加数据集" size={kind==='group'?'compact':'form'} initialFocus={nameInput} onClose={()=>{if(!busy)onClose();}}>
+    <Modal title="添加数据集" size="form" className="iad-dataset-form" initialFocus={nameInput} onClose={()=>{if(!busy)onClose();}}>
       <form className="iad-dialog-form-layout" onSubmit={event=>void create(event)}>
-        <div className="iad-dialog-body">
-          <fieldset className="iad-review-options"><legend>添加类型</legend>
+        <div className="iad-dialog-body iad-form-fields">
+          <fieldset className="iad-choice-group"><legend>添加类型</legend>
             <label><input type="radio" name="new-kind" value="group" disabled={busy||Boolean(parentId)} checked={kind==='group'} onChange={()=>setKind('group')}/>数据集</label>
             <label><input type="radio" name="new-kind" value="child" disabled={busy||!groups.length} checked={kind==='child'} onChange={()=>setKind('child')}/>子数据集</label>
           </fieldset>
@@ -49,21 +49,21 @@ export function DatasetCreateDialog({groups, parentId, onCreated, onClose}: {
                 {groups.map(group=><option key={group.group_id} value={group.group_id}>{group.name}</option>)}
               </Select>
             </div>
-            <fieldset className="iad-review-options"><legend>数据格式</legend>
+            <fieldset className="iad-choice-group"><legend>数据格式</legend>
               <label><input type="radio" name="new-format" value="labelme" disabled={busy} checked={format==='labelme'} onChange={()=>setFormat('labelme')}/>Labelme</label>
               <label><input type="radio" name="new-format" value="folder_classification" disabled={busy} checked={format==='folder_classification'} onChange={()=>setFormat('folder_classification')}/>异常检测目录</label>
             </fieldset>
           </>}
           <div className="iad-field"><label htmlFor="new-name">{kind==='child'?'子数据集名称':'数据集名称'}</label>
-            <input id="new-name" ref={nameInput} maxLength={120} autoComplete="off" disabled={busy} required value={name} onChange={event=>setName(event.target.value)}/>
+            <input id="new-name" placeholder="请输入数据集名称" ref={nameInput} maxLength={120} autoComplete="off" disabled={busy} required value={name} onChange={event=>setName(event.target.value)}/>
           </div>
           {kind==='child'&&<>
-            <div className="iad-field"><label htmlFor="new-path">{format==='labelme'?'图像目录':'根目录'}</label><div className="iad-row">
-              <input id="new-path" disabled={busy} required value={imagePath} onChange={event=>setImagePath(event.target.value)}/>
+            <div className="iad-field"><label htmlFor="new-path">{format==='labelme'?'图像目录':'根目录'}</label><div className="iad-path-input">
+              <input id="new-path" placeholder="服务器上的目录" disabled={busy} required value={imagePath} onChange={event=>setImagePath(event.target.value)}/>
               <Button disabled={busy} onClick={()=>setBrowse('image')}>浏览</Button>
             </div></div>
-            {format==='labelme'&&<div className="iad-field"><label htmlFor="new-label-path">标注目录</label><div className="iad-row">
-              <input id="new-label-path" disabled={busy} required value={labelPath} onChange={event=>setLabelPath(event.target.value)}/>
+            {format==='labelme'&&<div className="iad-field"><label htmlFor="new-label-path">标注目录</label><div className="iad-path-input">
+              <input id="new-label-path" placeholder="服务器上的目录" disabled={busy} required value={labelPath} onChange={event=>setLabelPath(event.target.value)}/>
               <Button disabled={busy} onClick={()=>setBrowse('label')}>浏览</Button>
             </div></div>}
           </>}

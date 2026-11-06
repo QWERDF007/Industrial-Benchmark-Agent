@@ -107,6 +107,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     await driver.wait(async()=>/固定主图与候选/.test(await (await element('[aria-label="模型分析"]')).getText()),10000);
     await driver.wait(async()=>(await driver.findElements(By.css('[data-dc="candidate"]'))).length===22,10000);
     const comparison=await element('#dc-compare-mask');
+    assert.equal(await driver.executeScript('return getComputedStyle(arguments[0]).display',await comparison.findElement(By.css('.dc-dialog-body'))),'block','对比正文保留独立的文档流，不能继承方向详情的弹性布局');
     const compareLayout=await driver.executeScript('const r=arguments[0].getBoundingClientRect();return {modal:arguments[0].matches("dialog:modal"),width:r.width,x:r.x+r.width/2-innerWidth/2,y:r.y+r.height/2-innerHeight/2}',comparison);
     assert.equal(compareLayout.modal,true,'冲突对比应复用公共原生Modal');assert.equal(compareLayout.width,1380);assert.ok(Math.abs(compareLayout.x)<=1&&Math.abs(compareLayout.y)<=1);
     const zoom=await element('[data-dc="zoom-anchor"]');await zoom.click();

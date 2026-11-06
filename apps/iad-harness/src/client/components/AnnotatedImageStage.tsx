@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import {AnnotationLayer,type ImageBoxAnnotation} from "./AnnotationLayer.js";
+import {AnnotationLayer,type ImageBoxAnnotation,type AnnotationLayerSource} from "./AnnotationLayer.js";
 
 export interface AnnotatedImageStageProps {
   src: string;
@@ -7,6 +7,7 @@ export interface AnnotatedImageStageProps {
   width?: number;
   height?: number;
   bboxes?: ImageBoxAnnotation[];
+  annotationLayer?:AnnotationLayerSource;
   showAnnotations?: boolean;
   className?: string;
   style?: React.CSSProperties;
@@ -25,6 +26,7 @@ export function AnnotatedImageStage({
   width,
   height,
   bboxes = [],
+  annotationLayer,
   showAnnotations = true,
   className = "",
   style,
@@ -53,20 +55,7 @@ export function AnnotatedImageStage({
         ...style,
       }}
     >
-      <span
-        className="preview-image-frame"
-        style={{
-          aspectRatio: `${imgW} / ${imgH}`,
-          maxWidth: "100%",
-          maxHeight: "100%",
-          height: "100%",
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <img
+        <img data-media-label="图像"
           src={src}
           alt={alt}
           draggable={false}
@@ -89,9 +78,8 @@ export function AnnotatedImageStage({
           }}
         />
 
-        {showAnnotations && bboxes.length>0 && <AnnotationLayer source={{kind:'boxes',annotations:bboxes,width:imgW,height:imgH}} />}
+        {showAnnotations && (annotationLayer || bboxes.length>0) && <AnnotationLayer fit="contain" source={annotationLayer || {kind:'boxes',annotations:bboxes,width:imgW,height:imgH}} />}
         {children}
-      </span>
     </div>
   );
 }

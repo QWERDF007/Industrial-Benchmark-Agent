@@ -2,7 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useId } from "react";
 import { MediaMask } from "./MediaLoad.js";
 import { auditEvidenceUrl, mediaUrl } from "../api.js";
-export function AnnotationLayer({ source, viewport }) {
+export function AnnotationLayer({ source, viewport, fit = "stretch" }) {
     const namespace = useId();
     const [width, height] = source.kind === "sample" ? [source.sample.width, source.sample.height]
         : source.kind === 'boxes' ? [source.width, source.height] : source.analysis.overview.original_size;
@@ -16,7 +16,7 @@ export function AnnotationLayer({ source, viewport }) {
             id: image.evidence_id, bbox: image.crop_bbox, url: auditEvidenceUrl(source.suggestionId, image),
         })) : [];
     const [x1, y1, x2, y2] = viewport || [0, 0, width, height];
-    return _jsxs("svg", { className: "iad-annotation-layer", viewBox: `${x1} ${y1} ${x2 - x1} ${y2 - y1}`, preserveAspectRatio: "none", "aria-label": "Labelme \u6807\u6CE8", children: [!!masks.length && _jsx("g", { className: "iad-annotation-mask", children: masks.map((mask, index) => {
+    return _jsxs("svg", { className: "iad-annotation-layer", viewBox: `${x1} ${y1} ${x2 - x1} ${y2 - y1}`, preserveAspectRatio: fit === "contain" ? "xMidYMid meet" : "none", "aria-label": "Labelme \u6807\u6CE8", children: [!!masks.length && _jsx("g", { className: "iad-annotation-mask", children: masks.map((mask, index) => {
                     const maskId = `${namespace}-mask-${index}`;
                     const [x1, y1, x2, y2] = mask.bbox;
                     return _jsxs("g", { children: [_jsx("defs", { children: _jsx("mask", { id: maskId, x: 0, y: 0, width: width, height: height, maskUnits: "userSpaceOnUse", maskContentUnits: "userSpaceOnUse", style: { maskType: "luminance" }, children: _jsx(MediaMask, { href: mask.url, x: x1, y: y1, width: x2 - x1, height: y2 - y1, preserveAspectRatio: "none", style: { imageRendering: "pixelated" } }) }) }), _jsx("rect", { x: 0, y: 0, width: width, height: height, mask: `url(#${maskId})` })] }, mask.id);

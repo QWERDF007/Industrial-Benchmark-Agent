@@ -1,7 +1,5 @@
 /**
- * Single Source of Truth (SSOT) for all modals, dialogs, backdrops, and actions across the workbench.
- * Standardizes sizes, typography, borders, headers, and buttons across Image Browser, Exploration,
- * Consistency Check, and Dataset Management.
+ * Shared dialog frames and type-specific layouts. Each content type owns its body structure.
  */
 export const dialogsStyles = `
 dialog.iad-detail-dialog {text-align:left;}
@@ -125,23 +123,20 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
 }
 
 /* Detail dialog internal scrollable body - scrolls only when needed */
-.detail-scroll,
 .exp-direction-dialog .exp-dialog-main,
 #dc-compare-mask .dc-dialog-body,
 .dc-conflict-dialog .dc-dialog-body,
 #knowledge-page .kb-v45 .detail-modal .modalcontent,
 #knowledge-page .detail-modal .modalcontent,
 .detail-modal .modalcontent {
-  display: flex !important;
-  flex-direction: column !important;
   flex: 1 1 auto !important;
   min-height: 0 !important;
   overflow-y: auto !important;
   overscroll-behavior: contain !important;
 }
 
-.detail-scroll { padding: 22px 28px 28px !important; }
-.exp-direction-dialog .exp-dialog-main { padding: 15px 28px 24px !important; flex:1 1 0!important; overflow:hidden!important; }
+.detail-scroll{display:block;flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:22px 28px 28px!important}
+.exp-direction-dialog .exp-dialog-main { display:flex;flex-direction:column;padding:15px 28px 24px!important;flex:1 1 0!important;overflow:hidden!important; }
 #dc-compare-mask .dc-dialog-body,
 .dc-conflict-dialog .dc-dialog-body { padding: 20px 26px 24px !important; }
 
@@ -241,14 +236,14 @@ dialog.dc-new-dialog,
 dialog.iad-detail-dialog.iad-dialog-form {
   width: min(var(--iba-dialog-edit-width), calc(100vw - 2 * var(--iba-dialog-gap))) !important;
   max-width: var(--iba-dialog-edit-width) !important;
-  height: auto !important;
+  height: fit-content !important;
   max-height: min(var(--iba-dialog-max-height), calc(100dvh - 2 * var(--iba-dialog-gap))) !important;
   min-height: 0 !important;
   border-radius: 7px !important;
 }
 
 #knowledge-page .kb-v45 #create-overlay > .modal {
-  height: auto !important;
+  height: fit-content !important;
 }
 
 #knowledge-page .kb-v45 #create-overlay > .modal > .modalcontent,
@@ -267,7 +262,7 @@ dialog.dc-new-dialog .dc-new-body,
 dialog.iad-detail-dialog.iad-dialog-compact {
   width: min(var(--iad-dialog-small-width), calc(100vw - 32px)) !important;
   max-width: var(--iad-dialog-small-width) !important;
-  height: auto !important;
+  height: fit-content !important;
   max-height: calc(100dvh - 32px) !important;
   min-height: 0 !important;
 }
@@ -282,6 +277,7 @@ dialog.iad-detail-dialog.iad-dialog-compact {
   align-items: center !important;
   justify-content: space-between !important;
   gap: 12px !important;
+  margin: 0 !important;
   min-height: 56px !important;
   height: 56px !important;
   flex: none !important;
@@ -401,5 +397,7 @@ dialog.iad-detail-dialog.iad-dialog-compact {
 }
 
 
+dialog.iad-drawer{--iad-dialog-radius:0px;--iad-dialog-border:0;--iad-dialog-shadow:-12px 0 28px rgba(17,28,45,.1)}
+dialog.iad-drawer::backdrop{background:rgba(17,28,45,.49)}
 dialog.iad-drawer>.iad-dialog-header{height:64px!important;min-height:64px!important}
 `;

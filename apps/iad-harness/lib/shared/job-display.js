@@ -24,3 +24,36 @@ export const jobPhases = {
     ANALYZING_CONSISTENCY_BATCHES: "逐批核验标注一致性",
     CONSISTENCY_MODEL_BATCHES_FINISHED: "一致性批次处理已结束",
 };
+const workflows = {
+    exploration: { title: '方向探索', stages: [
+            { title: '准备图像', phases: ['PREPARING_EXPLORATION'] },
+            { title: '容量检查', phases: ['CHECKING_CAPACITY'] },
+            { title: '模型联合分析', phases: ['ANALYZING_SELECTED_DATASETS', 'EXPLORING_BATCHES', 'EXPLORING_DIRECTIONS'] },
+            { title: '校验并发布方向', phases: ['PUBLISHING_DIRECTIONS', 'DIRECTIONS_PUBLISHED'] }
+        ] },
+    knowledge: { title: '知识挖掘', stages: [
+            { title: '准备数据范围', phases: ['PREPARING_KNOWLEDGE'] },
+            { title: '读取与整理图像', phases: ['GLOBAL', 'REGIONS'] },
+            { title: '模型挖掘知识', phases: ['ANALYZING_SELECTED_DATASETS', 'MINING_BATCHES', 'LEARNING_KNOWLEDGE', 'LEARNING_NORMAL', 'LEARNING_DEFECT', 'COMPARING_KNOWLEDGE'] },
+            { title: '校验与整理证据', phases: ['VERIFYING_KNOWLEDGE', 'VERIFYING_NORMAL', 'VERIFYING_DEFECT', 'LINKING_KNOWLEDGE_DISCOVERY', 'RECHECKING_CRITERIA'] },
+            { title: '发布知识版本', phases: ['KNOWLEDGE_PUBLISHED', 'KNOWLEDGE_REUSED'] }
+        ] },
+    consistency: { title: '数据一致性', stages: [
+            { title: '准备输入及索引', phases: ['ENCODING', 'INDEXING'] },
+            { title: '检索候选图像', phases: ['ANALYZING_SELECTED_DATASETS', 'COMPARING_SELECTED_DATASETS'] },
+            { title: '冲突比对与分析', phases: ['COMPARING', 'ANALYZING_CONFLICT_GROUPS', 'ANALYZING_GROUP_BATCHES', 'SUMMARIZING_GROUP_BATCHES', 'ANALYZING_UNCOVERED_IMAGES', 'ANALYZING_CONSISTENCY_BATCHES'] },
+            { title: '发布检查结果', phases: ['CONSISTENCY_FINISHED', 'CONSISTENCY_MODEL_BATCHES_FINISHED'] }
+        ] },
+    audit: { title: '模型审计', stages: [
+            { title: '准备样本和知识', phases: ['PREPARING_KNOWLEDGE'] },
+            { title: '检查数据一致性', phases: ['COMPARING'] },
+            { title: '执行逐图模型审计', phases: ['AUDITING_IMAGES', 'GLOBAL', 'REGIONS', 'SYNTHESIS'] },
+            { title: '保存审计与证据', phases: ['SAMPLE_COMPLETED'] }
+        ] },
+};
+export function jobWorkflow(job) {
+    const kind = job.analysis_kind || (['MODEL_AUDIT', 'MODEL_AUDIT_SAMPLE'].includes(job.job_type) ? 'audit'
+        : ['DIRECTION_EXPLORATION', 'EXPLORATION_BATCH'].includes(job.job_type) ? 'exploration' : 'knowledge');
+    const workflow = workflows[kind];
+    return { ...workflow, index: workflow.stages.findIndex(stage => stage.phases.includes(job.phase || '')) };
+}

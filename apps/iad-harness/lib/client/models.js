@@ -1,37 +1,15 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext } from 'react';
 import { message, request } from './api.js';
+import { useQuery } from '@tanstack/react-query';
+import { queryClient } from './query-client.js';
 import { useWorkspace } from './workspace.js';
 const ModelContext = createContext(null);
 export function WorkbenchModelProvider({ children }) {
-    const [view, setView] = useState(null), [loading, setLoading] = useState(true), [error, setError] = useState('');
-    const pending = useRef(null);
-    const refresh = useCallback(async () => {
-        pending.current?.abort();
-        const controller = pending.current = new AbortController();
-        setLoading(true);
-        try {
-            const value = await request('/models', undefined, undefined, controller.signal);
-            if (!controller.signal.aborted) {
-                setView(value);
-                setError('');
-            }
-        }
-        catch (failure) {
-            if (!controller.signal.aborted)
-                setError(message(failure));
-        }
-        finally {
-            if (!controller.signal.aborted)
-                setLoading(false);
-        }
-    }, []);
-    useEffect(() => {
-        void refresh();
-        const focus = () => { void refresh(); };
-        window.addEventListener('focus', focus);
-        return () => { pending.current?.abort(); window.removeEventListener('focus', focus); };
-    }, [refresh]);
+    const resource = useQuery({ queryKey: ['iad', 'resource', '/models'], queryFn: () => request('/models'),
+        staleTime: 10000, refetchOnWindowFocus: true }, queryClient);
+    const view = resource.data ?? null, loading = resource.isPending, error = resource.error ? message(resource.error) : '';
+    const refresh = useCallback(async () => { await resource.refetch({ cancelRefetch: false }); }, [resource.refetch]);
     return _jsx(ModelContext.Provider, { value: { view, loading, error, refresh }, children: children });
 }
 export function useWorkbenchModel() {

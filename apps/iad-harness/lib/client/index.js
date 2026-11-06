@@ -1,4 +1,6 @@
 import React from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./query-client.js";
 import { AuditIcon, ReviewIcon, DatasetIcon, ImagesIcon, KnowledgeIcon, ExplorationIcon, ModelSettingsIcon } from "./AuditIcon.js";
 import { WorkbenchPage } from "./WorkbenchPage.js";
 import { pages, Workspace, WorkspaceContext } from "./workspace.js";
@@ -25,12 +27,12 @@ export function apply(ctx) {
     });
     ctx.slots.inject("main", () => {
         for (const id of Object.keys(pages)) {
-            ctx.slots.register({ name: "main", key: id }, () => React.createElement(WorkspaceContext.Provider, { value: workspace }, React.createElement(WorkbenchModelProvider, { children: React.createElement('div', { className: 'iad-workspace', onFocusCapture: (event) => {
+            ctx.slots.register({ name: "main", key: id }, () => React.createElement(QueryClientProvider, { client: queryClient }, React.createElement(WorkspaceContext.Provider, { value: workspace }, React.createElement(WorkbenchModelProvider, { children: React.createElement('div', { className: 'iad-workspace', onFocusCapture: (event) => {
                         if (event.target instanceof HTMLElement)
                             event.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                     }, style: { height: '100%', minWidth: 0, containerType: 'inline-size', containerName: 'workbench' } }, id === 'industrial-model-settings' ? React.createElement(ModelSettingsPage)
                     : id === 'industrial-consistency' ? React.createElement(ConsistencyPage)
-                        : React.createElement(WorkbenchPage, { pageId: id })) })));
+                        : React.createElement(WorkbenchPage, { pageId: id })) }))));
         }
         return workspace.connect(ctx.layout);
     });

@@ -16,8 +16,9 @@ export type AnnotationLayerSource = {
     width: number;
     height: number;
 };
-export declare function AnnotationLayer({ source, viewport }: {
+export declare function AnnotationLayer({ source, viewport, fit }: {
     source: AnnotationLayerSource;
     viewport?: readonly number[];
+    fit?: "stretch" | "contain";
 }): React.JSX.Element;
 //# sourceMappingURL=AnnotationLayer.d.ts.map

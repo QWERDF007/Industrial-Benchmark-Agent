@@ -1,23 +1,18 @@
-import React, {createContext, useCallback, useContext, useEffect, useRef, useState} from 'react';
+import React, {createContext, useCallback, useContext} from 'react';
 import type {WorkbenchModelView} from '../shared/domain.generated.js';
 import {message, request} from './api.js';
+import {useQuery} from '@tanstack/react-query';
+import {queryClient} from './query-client.js';
 import {useWorkspace} from './workspace.js';
 
 interface ModelState {view: WorkbenchModelView | null; loading: boolean; error: string; refresh(): Promise<void>}
 const ModelContext = createContext<ModelState | null>(null);
 
 export function WorkbenchModelProvider({children}: {children: React.ReactNode}) {
-  const [view, setView] = useState<WorkbenchModelView | null>(null), [loading, setLoading] = useState(true), [error, setError] = useState('');
-  const pending = useRef<AbortController | null>(null);
-  const refresh = useCallback(async () => {
-    pending.current?.abort(); const controller = pending.current = new AbortController(); setLoading(true);
-    try {const value = await request<WorkbenchModelView>('/models', undefined, undefined, controller.signal);
-      if (!controller.signal.aborted) {setView(value); setError('');}}
-    catch (failure) {if (!controller.signal.aborted) setError(message(failure));}
-    finally {if (!controller.signal.aborted) setLoading(false);}
-  }, []);
-  useEffect(() => {void refresh(); const focus = () => {void refresh();}; window.addEventListener('focus', focus);
-    return () => {pending.current?.abort(); window.removeEventListener('focus', focus);};}, [refresh]);
+  const resource=useQuery({queryKey:['iad','resource','/models'],queryFn:()=>request<WorkbenchModelView>('/models'),
+    staleTime:10000,refetchOnWindowFocus:true},queryClient);
+  const view=resource.data ?? null,loading=resource.isPending,error=resource.error?message(resource.error):'';
+  const refresh=useCallback(async()=>{await resource.refetch({cancelRefetch:false});},[resource.refetch]);
   return <ModelContext.Provider value={{view, loading, error, refresh}}>{children}</ModelContext.Provider>;
 }
 

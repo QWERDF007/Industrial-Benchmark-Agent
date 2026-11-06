@@ -9,7 +9,9 @@ export const controlStyles = `
 :is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) :is(input,textarea)::placeholder {color:var(--iad-muted);opacity:1;}
 :is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) textarea {min-height:80px;resize:vertical;}
 :is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) :is(button,input,select,textarea,summary,[tabindex]):focus-visible {outline:2px solid var(--iad-primary);outline-offset:3px;}
-:is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) :is(input[type=checkbox],input[type=radio]) {min-height:20px;width:20px;margin:0;accent-color:var(--iad-primary);}
+:is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) :is(input[type=checkbox],input[type=radio]) {appearance:auto;flex:none;min-height:15px;height:15px;width:15px;padding:0;margin:0;accent-color:var(--iad-primary);}
+:is(.iad-workbench,.iad-tool-card,.iad-detail-dialog) button.iad-job-status-button {border:0;border-radius:0;background:transparent;padding:0;min-height:32px;text-align:left;font:inherit;}
+:is(.iad-workbench,.iad-tool-card,.iad-detail-dialog) button.iad-job-status-button:hover {background:transparent;text-decoration:underline;}
 button.iad-button {display:inline-flex;align-items:center;justify-content:center;gap:var(--iad-space-2);box-sizing:border-box;height:var(--iad-control-height);min-height:var(--iad-control-height);padding:0 14px;font-size:var(--iad-font-size);font-weight:400;line-height:1.4;white-space:nowrap;}
 button.iad-button svg {width:var(--iad-icon-size);height:var(--iad-icon-size);fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 button.iad-button[data-variant=primary] {background:var(--iad-primary-fill);border-color:var(--iad-primary-fill);color:var(--iad-on-primary);font-weight:500;}

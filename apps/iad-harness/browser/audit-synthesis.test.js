@@ -13,7 +13,7 @@ import {PythonBridge, createIadHttpHandler} from '../lib/server/index.js';
 
 const app = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-test('audit detail, scope report and selected retry family keep frozen evidence and shared controls', {timeout: 90000}, async t => {
+test('audit detail, scope report and job selection keep frozen evidence and prototype interactions', {timeout: 90000}, async t => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-audit-synthesis-'));
   const bridge = new PythonBridge({cwd: path.resolve(app, '../..'), dbPath: path.join(root, 'test.db')});
   t.after(() => bridge.destroy());
@@ -123,8 +123,13 @@ for i in range(3):
     const bounds = await Promise.all(sections.map(section => section.getRect()));
     for (let index=1; index<bounds.length; index++) assert.ok(bounds[index].y > bounds[index-1].y+bounds[index-1].height);
     assert.equal((await dialog.findElements(By.css('.iad-image-pair-side'))).length, 2);
+    assert.equal((await dialog.findElements(By.css('.iad-embedded-canvas'))).length,0,'原型证据区使用图片卡片，不嵌入图像操作工具栏');
+    assert.equal(await(await dialog.findElement(By.css('.audit-dialog-head h2'))).getText(),'图像审计详情');
+    const evidenceStyle=await driver.executeScript('const s=getComputedStyle(arguments[0]);return {border:s.borderBottomWidth,padding:s.paddingBottom}',sections[0]);
+    assert.equal(evidenceStyle.border,'1px','各部分恢复原型分割线');
+
     await driver.wait(async () => (await dialog.findElements(By.css('.iad-image-pair .iad-annotation-layer rect'))).length === 2, 10000);
-    const expand = await dialog.findElements(By.css('button[aria-label="全屏检视"]'));
+    const expand = await dialog.findElements(By.css('.iad-image-pair button[aria-label^="放大"]'));
     assert.equal(expand.length, 2);
     await driver.executeScript('arguments[0].scrollIntoView({block:"center"})', expand[1]);await expand[1].click();
     await driver.wait(until.elementLocated(By.css('dialog[aria-label="原图检视器"][open]')), 5000);
@@ -172,29 +177,17 @@ for i in range(3):
       await (await selected.findElement(By.css('.iad-job-status-button'))).click();
       return driver.wait(until.elementLocated(By.css('dialog[aria-label="作业状态"][open]')),5000);
     };
-    let drawer=await openStatus();
-    for(let step=0;step<2;step++){
-      const choose=await drawer.findElement(By.xpath('.//button[normalize-space(.)="选择重试范围"]'));
-      await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',choose);await choose.click();
-      await driver.wait(async()=>(await drawer.findElements(By.css('.iad-retry-samples input'))).length===2-step,5000);
-      if(step===0)await (await drawer.findElements(By.css('.iad-retry-samples input')))[1].click();
-      const retry=await drawer.findElement(By.xpath('.//button[normalize-space(.)="重试所选 1 张"]'));
-      await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',retry);await retry.click();
-      await driver.wait(async()=>{
-        const state=await bridge.execute('audit_status',{run_id:partial.run_id});
-        return state.completed===2+step&&!['PENDING','RUNNING'].includes(state.status);
-      },10000);
-      await driver.wait(async()=>(await driver.findElement(By.css('dialog[aria-label="作业状态"][open] .iad-job-progress-card')).getText()).includes(`${2+step} / 3`),10000);
-      await driver.actions().sendKeys(Key.ESCAPE).perform();
-      await driver.wait(async()=>(await driver.findElements(By.css('dialog[open]'))).length===0,5000);
-      const selected=await driver.findElement(By.css('tr[aria-selected="true"]'));
-      const state=await bridge.execute('audit_status',{run_id:partial.run_id});
-      assert.equal(await selected.getAttribute('data-run-id'),state.run_id,'补跑后必须继续选中原逻辑作业');
-      assert.equal((await driver.findElements(By.css('.audit-table tbody tr'))).length,3,'内部补跑不能增加作业行');
-      assert.equal((await driver.findElements(By.css('#audit-images .iad-thumbnail-card'))).length,3);
-      if(step===0)drawer=await openStatus();
-    }
-    assert.equal((await bridge.execute('audit_job_report',{run_id:partial.run_id})).audited_samples,3);
+    const drawer=await openStatus();
+    assert.equal((await drawer.findElements(By.css('.iad-job-stage'))).length,4);
+    assert.equal((await drawer.findElements(By.css('.iad-retry-scope,.iad-job-metrics,.iad-job-progress-card'))).length,0);
+    assert.deepEqual(await Promise.all((await drawer.findElements(By.css('footer button'))).map(button=>button.getText())),['关闭']);
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    await driver.wait(async()=>(await driver.findElements(By.css('dialog[open]'))).length===0,5000);
+    const complete=await driver.findElement(By.css('tr[data-run-id="'+audit.run_id+'"]'));
+    assert.equal((await complete.findElements(By.css('.iad-job-status-button'))).length,0,'成功状态不打开抽屉');
+    await (await complete.findElement(By.css('button[aria-label="查看作业 '+audit.run_id+'"]'))).click();
+    await driver.wait(async()=>await complete.getAttribute('aria-selected')==='true',5000);
+    assert.equal((await driver.findElements(By.css('dialog[open]'))).length,0,'查看作业详情选中结果，不打开状态抽屉');
   } catch(error) {
     if(driver){console.error(await driver.executeScript('return {active:document.activeElement?.outerHTML.slice(0,300),dialogs:[...document.querySelectorAll("dialog")].map(d=>({open:d.open,modal:d.matches(":modal"),label:d.getAttribute("aria-label")}))}'));
       await fs.writeFile('/tmp/iad-audit-synthesis-failure.png',await driver.takeScreenshot(),'base64');}

@@ -23,7 +23,10 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
   const el=id=>driver.wait(until.elementLocated(By.id(id)),5000), click=async id=>(await el(id)).click();
   const expanded=async(id,value)=>driver.wait(async()=>await(await el(id+'-trigger')).getAttribute('aria-expanded')===String(value),5000);
   await click('first-trigger');await expanded('first',true);
-  const option=await driver.findElement(By.css('#first-menu input[value=one]'));await option.click();assert.equal(await option.isSelected(),true);
+  const option=await driver.findElement(By.css('#first-menu input[value=one]'));assert.equal(await option.isDisplayed(),true);
+  const checkStyle=await driver.executeScript('const s=getComputedStyle(arguments[0]);return [s.width,s.height,s.appearance]',option);
+  assert.deepEqual(checkStyle,['15px','15px','auto']);
+  await option.click();assert.equal(await option.isSelected(),true);
   await click('first-trigger');await expanded('first',false);
   await(await el('first-trigger')).sendKeys(Key.SPACE);await expanded('first',true);
   await(await el('first-trigger')).sendKeys(Key.ENTER);await expanded('first',false);

@@ -5,7 +5,7 @@ import {Modal} from "./Modal.js";
 import {useResource} from "../useResource.js";
 import { WorkbenchHeader } from "./layout/WorkbenchHeader.js";
 import type { Dataset, DatasetGroup, Sample, SampleDetail } from "../../shared/contracts.js";
-import { mediaUrl, request, message } from "../api.js";
+import { mediaUrl } from "../api.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 import { FullscreenViewer } from "./FullscreenViewer.js";
 import { AnnotatedImageStage } from "./AnnotatedImageStage.js";
@@ -112,26 +112,10 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
     setPage(1);
   }, []);
 
-  // Sample listing state
-  const [samples, setSamples] = useState<Sample[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [refreshRev, setRefreshRev] = useState(0);
-
-  // Query samples
-  useEffect(() => {
-    if (selectedChildIds.size === 0) {
-      setSamples([]);
-      setTotal(0);
-      return;
-    }
-    const controller = new AbortController();
-    setLoading(true);
-    setError("");
-
+  const [refreshRev,setRefreshRev]=useState(0);
+  const params=useMemo(()=>{
     const params = new URLSearchParams();
-    params.set("dataset_ids", Array.from(selectedChildIds).join(","));
+    params.set("dataset_ids", Array.from(selectedChildIds).sort().join(","));
     if (hasAnomaly && quality !== "all") {
       params.set("raw_label_filters", JSON.stringify([quality]));
     }
@@ -155,21 +139,10 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
     params.set("page", String(page));
     params.set("page_size", String(pageSize));
 
-    request<{ items: Sample[]; total: number }>(`/samples?${params.toString()}`, undefined, undefined, controller.signal)
-      .then(res => {
-        if (controller.signal.aborted) return;
-        setSamples(res.items);
-        setTotal(res.total);
-      })
-      .catch(err => {
-        if (!controller.signal.aborted) setError(message(err));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-
-    return () => controller.abort();
-  }, [selectedChildIds, quality, annotation, category, search, page, pageSize, refreshRev]);
+    return params;
+  },[selectedChildIds,quality,annotation,category,search,page,hasAnomaly,hasLabelme]);
+  const result=useResource<{items:Sample[];total:number}>(selectedChildIds.size?`/samples?${params}`:null,refreshRev);
+  const samples=result.data?.items || [],total=result.data?.total || 0,loading=result.loading,error=result.error;
 
   // Viewer State (Stage 1 & Stage 2)
   const [viewerIndex, setViewerIndex] = useState<number>(-1);
@@ -360,7 +333,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
                     alt={activeSample.relative_path.split("/").pop()}
                     width={imgW}
                     height={imgH}
-                    bboxes={bboxes}
+                    bboxes={bboxes} annotationLayer={sampleDetail?{kind:'sample',sample:sampleDetail.sample,annotations:sampleDetail.annotations}:undefined}
                   />
                   <span className="detail-preview-hint">点击查看大图</span>
                 </button>

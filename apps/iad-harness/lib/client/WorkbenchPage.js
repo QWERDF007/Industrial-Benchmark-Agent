@@ -20,36 +20,28 @@ import { usePagePosition } from "./usePagePosition.js";
 import { PageTabs } from "./components/layout/PageTabs.js";
 import { WorkbenchHeader } from './components/layout/WorkbenchHeader.js';
 import { ImagesPage } from "./components/ImagesPage.js";
+import { useDatasetCatalog } from './useDatasetCatalog.js';
+const emptyCatalog = { datasets: [], groups: [] };
 export function WorkbenchPage({ pageId }) {
     const { workspace, state } = useWorkspace();
-    const datasetId = state.datasetId, view = workspace.view(pageId);
-    const [datasets, setDatasets] = useState([]);
-    const [groups, setGroups] = useState([]);
+    const catalog = useDatasetCatalog();
+    const { datasets, groups } = catalog.data || emptyCatalog;
+    const dataset = datasets.find(d => d.dataset_id === state.datasetId) || datasets[0];
+    const datasetId = dataset?.dataset_id || '', view = workspace.view(pageId, datasetId);
     const [result, setResult] = useState({ query: "", items: [], total: 0 });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [revision, setRevision] = useState(0);
     const advance = useRef(null);
     const [reviewConfirmation, setReviewConfirmation] = useState(null);
-    const dataset = datasets.find(d => d.dataset_id === datasetId);
-    const loadDatasets = useCallback(async (preferred, signal) => {
-        try {
-            const result = await request("/datasets", undefined, undefined, signal);
-            if (signal?.aborted)
-                return;
-            setDatasets(result.datasets);
-            setGroups(result.groups);
-            const current = workspace.getSnapshot().datasetId;
-            workspace.selectDataset(preferred || (result.datasets.some(d => d.dataset_id === current) ? current : result.datasets[0]?.dataset_id || ""), true);
-            setError("");
-        }
-        catch (e) {
-            if (!signal?.aborted)
-                setError(message(e));
-        }
-    }, [workspace]);
+    const loadDatasets = useCallback(async (preferred) => {
+        const result = await catalog.refresh();
+        if (result && preferred)
+            workspace.selectDataset(preferred, true);
+    }, [catalog.refresh, workspace]);
     const changed = useCallback(() => { setRevision(v => v + 1); void loadDatasets(); }, [loadDatasets]);
-    useEffect(() => { const controller = new AbortController(); void loadDatasets(undefined, controller.signal); return () => controller.abort(); }, [loadDatasets]);
+    useEffect(() => { if (catalog.data && datasetId !== state.datasetId)
+        workspace.selectDataset(datasetId, true); }, [catalog.data, datasetId, state.datasetId, workspace]);
     const gallery = pageId === "industrial-review" && view.tab === "results";
     const query = sampleQuery(datasetId, view.filters, view.page, pageSize);
     const navigation = useSampleNavigation(pageId, dataset?.task_id, query, result, gallery);
@@ -97,5 +89,5 @@ export function WorkbenchPage({ pageId }) {
     const inspectedSample = pageId === "industrial-review" && view.tab === "records" ? view.historySampleId : view.selected;
     const inspector = dataset && _jsx(SampleInspector, { dataset: dataset, sampleId: inspectedSample, mode: pageId === "industrial-review" ? "review" : pageId === "industrial-images" ? "browse" : "model", queue: pageId === "industrial-review" && view.tab === "results" ? grid : undefined, filters: _jsx(SampleFilters, { defaults: initialReviewFilters, dataset: dataset, filters: view.filters, onFilters: updateFilters }), advanceOnSubmit: view.tab === "results" && view.filters.review_status === "pending", revision: revision, onReviewed: reviewed, jobs: [], onJobsChanged: changed, navigation: gallery ? navigation : undefined }, pageId === "industrial-review" && view.tab === "results" ? datasetId : `${datasetId}:${inspectedSample}`);
     const datasetControls = _jsxs(_Fragment, { children: [_jsxs(Select, { "aria-label": "\u5F53\u524D\u6570\u636E\u96C6", value: datasetId, onChange: event => workspace.selectDataset(event.target.value), children: [_jsx("option", { value: "", disabled: true, children: "\u9009\u62E9\u6570\u636E\u96C6" }), datasets.map(item => _jsx("option", { value: item.dataset_id, children: item.name }, item.dataset_id))] }), _jsx(IconButton, { icon: "refresh", label: "\u5237\u65B0", onClick: changed })] });
-    return _jsxs("div", { ref: surface, className: "iad-workbench", "data-page": pageId, children: [_jsx("style", { children: workbenchStyles }), pageId !== "industrial-datasets" && pageId !== "industrial-images" && pageId !== "industrial-audit" && (!dataset || (pageId !== "industrial-exploration" && pageId !== "industrial-knowledge")) && _jsx(WorkbenchHeader, { pageId: pageId, children: datasetControls }), error && _jsx("p", { role: "alert", className: "iad-error", children: error }), pageId === "industrial-datasets" ? _jsx(_Fragment, { children: _jsx(DatasetManager, { datasets: datasets, groups: groups, onChanged: id => { void loadDatasets(id); setRevision(v => v + 1); } }) }) : pageId === "industrial-images" ? _jsx(_Fragment, { children: _jsx(ImagesPage, { datasets: datasets, groups: groups, onDatasetsChanged: () => void loadDatasets() }) }) : !dataset ? _jsxs("section", { className: "iad-job-section", children: [_jsx("p", { children: "\u8BF7\u5148\u6DFB\u52A0\u670D\u52A1\u5668\u4E0A\u7684\u6570\u636E\u96C6\u3002" }), _jsx("button", { onClick: () => workspace.navigate("industrial-datasets"), children: "\u524D\u5F80\u6570\u636E\u96C6\u7BA1\u7406" })] }) : _jsxs(_Fragment, { children: [pageId === "industrial-exploration" && _jsx(ExplorationPage, { dataset: dataset, refreshRevision: revision }, datasetId), pageId === "industrial-knowledge" && _jsx(KnowledgePage, { dataset: dataset, refreshRevision: revision }, datasetId), pageId === "industrial-audit" && _jsx(AuditPage, { dataset: dataset, datasets: datasets, groups: groups, refreshRevision: revision, onDatasetsChanged: changed }), pageId === "industrial-review" && _jsxs(PageTabs, { label: "\u590D\u6838\u89C6\u56FE", items: [{ id: "results", label: "复核队列" }, { id: "conflicts", label: "知识冲突" }, { id: "records", label: "复核记录" }], value: view.tab, onChange: tab => workspace.updateView(pageId, { tab }), children: [view.tab === "conflicts" && _jsx(KnowledgeConflictReview, { datasetId: datasetId }, datasetId), view.tab === "results" && _jsxs(_Fragment, { children: [reviewConfirmation?.datasetId === datasetId && _jsxs("p", { role: "status", className: "iad-review-confirmation", children: ["\u5DF2\u63D0\u4EA4 ", reviewConfirmation.name, "\uFF0C", reviewLabel(reviewConfirmation.decision)] }), inspector] }), view.tab === "records" && _jsx(ReviewRecords, { datasetId: datasetId, page: view.historyPage, search: view.historySearch, selected: view.historySampleId, revision: revision, onPage: historyPage => workspace.updateView(pageId, { historyPage }), onSearch: historySearch => workspace.updateView(pageId, { historySearch, historyPage: 1 }, true), onSelect: historySampleId => workspace.updateView(pageId, { historySampleId }), onQueue: () => workspace.updateView(pageId, { tab: "results" }), detail: inspector }, datasetId)] })] })] });
+    return _jsxs("div", { ref: surface, className: "iad-workbench", "data-page": pageId, children: [_jsx("style", { children: workbenchStyles }), (!catalog.data || (pageId !== "industrial-datasets" && pageId !== "industrial-images" && pageId !== "industrial-audit" && (!dataset || (pageId !== "industrial-exploration" && pageId !== "industrial-knowledge")))) && _jsx(WorkbenchHeader, { pageId: pageId, children: catalog.data && datasetControls }), (error || catalog.error) && _jsx("p", { role: "alert", className: "iad-error", children: error || catalog.error }), !catalog.data ? _jsx("p", { role: "status", children: catalog.loading ? '正在加载数据集…' : '数据集加载失败。' }) : pageId === "industrial-datasets" ? _jsx(_Fragment, { children: _jsx(DatasetManager, { datasets: datasets, groups: groups, onChanged: id => { void loadDatasets(id); setRevision(v => v + 1); } }) }) : pageId === "industrial-images" ? _jsx(_Fragment, { children: _jsx(ImagesPage, { datasets: datasets, groups: groups, onDatasetsChanged: () => void loadDatasets() }) }) : !dataset ? _jsxs("section", { className: "iad-job-section", children: [_jsx("p", { children: "\u8BF7\u5148\u6DFB\u52A0\u670D\u52A1\u5668\u4E0A\u7684\u6570\u636E\u96C6\u3002" }), _jsx("button", { onClick: () => workspace.navigate("industrial-datasets"), children: "\u524D\u5F80\u6570\u636E\u96C6\u7BA1\u7406" })] }) : _jsxs(_Fragment, { children: [pageId === "industrial-exploration" && _jsx(ExplorationPage, { dataset: dataset, refreshRevision: revision }, datasetId), pageId === "industrial-knowledge" && _jsx(KnowledgePage, { dataset: dataset, refreshRevision: revision }, datasetId), pageId === "industrial-audit" && _jsx(AuditPage, { dataset: dataset, datasets: datasets, groups: groups, refreshRevision: revision, onDatasetsChanged: changed }), pageId === "industrial-review" && _jsxs(PageTabs, { label: "\u590D\u6838\u89C6\u56FE", items: [{ id: "results", label: "复核队列" }, { id: "conflicts", label: "知识冲突" }, { id: "records", label: "复核记录" }], value: view.tab, onChange: tab => workspace.updateView(pageId, { tab }), children: [view.tab === "conflicts" && _jsx(KnowledgeConflictReview, { datasetId: datasetId }, datasetId), view.tab === "results" && _jsxs(_Fragment, { children: [reviewConfirmation?.datasetId === datasetId && _jsxs("p", { role: "status", className: "iad-review-confirmation", children: ["\u5DF2\u63D0\u4EA4 ", reviewConfirmation.name, "\uFF0C", reviewLabel(reviewConfirmation.decision)] }), inspector] }), view.tab === "records" && _jsx(ReviewRecords, { datasetId: datasetId, page: view.historyPage, search: view.historySearch, selected: view.historySampleId, revision: revision, onPage: historyPage => workspace.updateView(pageId, { historyPage }), onSearch: historySearch => workspace.updateView(pageId, { historySearch, historyPage: 1 }, true), onSelect: historySampleId => workspace.updateView(pageId, { historySampleId }), onQueue: () => workspace.updateView(pageId, { tab: "results" }), detail: inspector }, datasetId)] })] })] });
 }
