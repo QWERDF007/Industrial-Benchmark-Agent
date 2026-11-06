@@ -1,3 +1,4 @@
+import { businessModules } from '../../shared/business-modules.js';
 import { ModelConfigurationError, NativeProviders } from './providers.js';
 const starts = {
     dataset_report_start: null, analysis_start: null, direction_exploration_start: 'exploration', direction_exploration_batch_start: 'exploration',
@@ -83,6 +84,8 @@ export class WorkbenchModelRouting {
         if (Object.hasOwn(starts, operation)) {
             const module = operation === 'analysis_start' ? args.request?.analysis_kind : starts[operation];
             const options = module ? await dispatch('module_settings_get', { module }, signal) : null;
+            if (options && !options.settings.model)
+                throw new ModelConfigurationError(`请在设置的「${businessModules[options.module]}」中选择分析模型`);
             const settings = await this.settings(dispatch);
             if (!settings.selection)
                 throw Object.assign(new Error('请先在模型设置中选择工作台提供商和模型'), { statusCode: 422 });

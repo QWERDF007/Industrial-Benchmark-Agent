@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
 import os from 'node:os';
+import contrast from 'wcag-contrast';
 import {setTimeout as delay} from 'node:timers/promises';
 import {Builder,By,until} from 'selenium-webdriver';
 import firefox from 'selenium-webdriver/firefox.js';
+import {Select as NativeSelect} from 'selenium-webdriver/lib/select.js';
 import {startNativeModelHost} from './native-model-host.js';
 import {viewport} from './workbench-layout.js';
 
@@ -39,33 +41,76 @@ test('native settings preserve General and Models while business settings persis
     for(const label of ['方向探索','知识挖掘','数据一致性','模型审计'])assert.equal((await driver.findElements(By.xpath(`//*[@data-shortcut-modal='settings']//button[normalize-space(.)='${label}']`))).length,1);
     const shared=await api(null,'/models');
     const configured=await api({expected_revision:shared.data.revision,selection:{provider_id:'first-service',model_id:'first-model',limits:{capacity_mode:'vllm_tokenize'}}},'/models');assert.equal(configured.status,200);
+    phase='explicit module model required';
+    const unconfigured=await api({dataset_id:'unconfigured-module',normal_images:['n'],defect_images:['d']},'/exploration/start');
+    assert.equal(unconfigured.status,422);assert.match(unconfigured.data.error.message,/方向探索.*分析模型/);
     phase='per-module model persistence';
     for(const [module,label] of Object.entries({exploration:'方向探索',knowledge:'知识挖掘',audit:'模型审计'})){
       await section(label);const selected=await driver.findElement(By.css('select[aria-label="分析模型"]'));
       assert.equal(await selected.getAttribute('value'),'');
-      await selected.sendKeys('Second model（Second service）');await click('保存设置');
+      assert.equal((await selected.findElements(By.xpath(".//option[.='使用工作台模型']"))).length,0,'业务设置只选择具体模型');
+      assert.equal((await driver.findElements(By.xpath("//*[@data-module-settings]//button[.='保存设置' or .='恢复默认']"))).length,0,'修改后自动保存');
+      await new NativeSelect(selected).selectByVisibleText('Second model（Second service）');
       await driver.wait(async()=>(await api(null,`/settings/modules/${module}`)).data.settings.model?.model_id==='second-model',5000);
       assert.equal((await driver.findElements(By.css('[data-module-settings] input'))).length,0,'业务分类只配置分析模型');
     }
     phase='consistency defaults';await section('数据一致性');
     const settings=await api(null,'/settings/modules/consistency');assert.equal(settings.data.settings.min_similarity,.95);
     const threshold=await driver.findElement(By.css('input[aria-label="相似度阈值"]'));
-    await threshold.clear();await threshold.sendKeys('0.97');await click('保存设置');
+    await threshold.clear();await threshold.sendKeys('0.97');await threshold.sendKeys('\uE004');
     await driver.wait(async()=>(await api(null,'/settings/modules/consistency')).data.settings.min_similarity===.97,5000);
     assert.notEqual((await api({expected_revision:0,settings:{mode:'exact'}},'/settings/modules/consistency')).status,200);
     const invalid=await api({expected_revision:0,settings:{model:{provider_id:'missing-provider',model_id:'missing'}}},'/settings/modules/audit');assert.notEqual(invalid.status,200);
     assert.equal((await api(null,'/settings/modules/audit')).data.settings.model.model_id,'second-model');
-    await driver.findElement(By.css('select[aria-label="检索方式"]')).sendKeys('完全一致');
-    assert.equal((await driver.findElements(By.css('input[aria-label="相似度阈值"]'))).length,0);await click('保存设置');
+    await new NativeSelect(await driver.findElement(By.css('select[aria-label="检索方式"]'))).selectByVisibleText('完全一致');
+    assert.equal((await driver.findElements(By.css('input[aria-label="相似度阈值"]'))).length,0);
     await driver.wait(async()=>(await api(null,'/settings/modules/consistency')).data.settings.mode==='exact',5000);
-    await fs.writeFile('/tmp/iad-v74-business-settings.png',await driver.takeScreenshot(),'base64');
+    await fs.writeFile('/tmp/iad-v75-business-settings.png',await driver.takeScreenshot(),'base64');
     await driver.navigate().refresh();await open();await section('数据一致性');
     await driver.wait(async()=>await driver.findElement(By.css('select[aria-label="检索方式"]')).getAttribute('value')==='exact',5000);
     assert.equal((await api(null,'/models')).data.selection.model_id,'first-model','模块配置不改变工作台模型');
     assert.equal((await api(null,'/settings/modules/knowledge')).data.settings.model.model_id,'second-model');
-    phase='reset current section';await click('恢复默认');await click('保存设置');
-    await driver.wait(async()=>(await api(null,'/settings/modules/consistency')).data.settings.min_similarity===.95,5000);
-    assert.equal((await api(null,'/settings/modules/audit')).data.settings.model.model_id,'second-model');
+    phase='rapid autosave survives section changes';
+    await driver.executeScript(`window.originalModuleFetch=window.fetch;window.fetch=async(...args)=>{const response=await window.originalModuleFetch(...args);if(String(args[0]).includes('/settings/modules/')&&args[1]?.method==='POST')await new Promise(resolve=>setTimeout(resolve,500));return response;};`);
+    await new NativeSelect(await driver.findElement(By.css('select[aria-label="分析模型"]'))).selectByVisibleText('Second model（Second service）');
+    await new NativeSelect(await driver.findElement(By.css('select[aria-label="检索方式"]'))).selectByVisibleText('一致+相似');
+    const rapidThreshold=await driver.wait(until.elementLocated(By.css('input[aria-label="相似度阈值"]')),5000);
+    await rapidThreshold.clear();await rapidThreshold.sendKeys('0.96');await rapidThreshold.sendKeys('\uE004');
+    await section('方向探索');
+    await driver.wait(async()=>{const value=(await api(null,'/settings/modules/consistency')).data.settings;return value.model?.model_id==='second-model'&&value.mode==='combined'&&value.min_similarity===.96;},10000,'rapid changes committed');
+    await section('数据一致性');
+    await driver.wait(async()=>(await driver.findElement(By.css('[data-module-settings] [role="status"]')).getText())==='已保存',10000);
+    assert.equal(await driver.findElement(By.css('input[aria-label="相似度阈值"]')).getAttribute('value'),'0.96');
+    await driver.executeScript('window.fetch=window.originalModuleFetch;');
+    phase='failed autosave retains field while other fields save';
+    await driver.executeScript(`window.fetch=async(...args)=>{if(String(args[0]).endsWith('/settings/modules/consistency')&&args[1]?.method==='POST'&&JSON.parse(args[1].body).settings.min_similarity!=null){window.fetch=window.originalModuleFetch;return new Response(JSON.stringify({error:{message:'暂时无法保存设置'}}),{status:503,headers:{'Content-Type':'application/json'}});}return window.originalModuleFetch(...args);};`);
+    const failedThreshold=await driver.findElement(By.css('input[aria-label="相似度阈值"]'));
+    await failedThreshold.clear();await failedThreshold.sendKeys('0.98');await failedThreshold.sendKeys('\uE004');
+    await driver.wait(until.elementLocated(By.xpath("//*[@data-module-settings]//*[@role='alert'][contains(.,'暂时无法保存设置')]")),5000);
+    assert.equal((await api(null,'/settings/modules/consistency')).data.settings.min_similarity,.96);
+    await new NativeSelect(await driver.findElement(By.css('select[aria-label="检索方式"]'))).selectByVisibleText('完全一致');
+    await driver.wait(async()=>(await api(null,'/settings/modules/consistency')).data.settings.mode==='exact',5000);
+    assert.ok((await driver.findElement(By.css('[data-module-settings] [role="alert"]')).getText()).includes('暂时无法保存设置'));
+    await click('重试保存');
+    await driver.wait(async()=>{const value=(await api(null,'/settings/modules/consistency')).data.settings;return value.min_similarity===.98&&value.mode==='exact'&&value.model?.model_id==='second-model';},5000);
+    await driver.wait(async()=>(await driver.findElements(By.css('[data-module-settings] [role="alert"]'))).length===0,5000);
+    phase='validation does not save intermediate numbers';
+    await new NativeSelect(await driver.findElement(By.css('select[aria-label="检索方式"]'))).selectByVisibleText('一致+相似');
+    await driver.wait(async()=>(await api(null,'/settings/modules/consistency')).data.settings.mode==='combined',5000);
+    const number=await driver.wait(until.elementLocated(By.css('input[aria-label="相似度阈值"]')),5000);
+    const beforeInvalid=(await api(null,'/settings/modules/consistency')).data.revision;
+    await number.clear();await number.sendKeys('1.2');await number.sendKeys('\uE004');
+    assert.equal(await number.getAttribute('aria-invalid'),'true');assert.equal((await api(null,'/settings/modules/consistency')).data.revision,beforeInvalid);
+    await number.clear();await number.sendKeys('0.98');await number.sendKeys('\uE004');
+    phase='concurrent edit requires retry and preserves unrelated fields';
+    const external=await api({expected_revision:beforeInvalid,settings:{model:{provider_id:'first-service',model_id:'first-model'}}},'/settings/modules/consistency');assert.equal(external.status,200);
+    await number.clear();await number.sendKeys('0.99');await number.sendKeys('\uE004');
+    await driver.wait(until.elementLocated(By.xpath("//*[@data-module-settings]//*[@role='alert'][contains(.,'配置已变化')]")),5000);
+    await click('重试保存');
+    await driver.wait(async()=>{const value=(await api(null,'/settings/modules/consistency')).data.settings;return value.min_similarity===.99&&value.model?.model_id==='first-model'&&value.mode==='combined';},5000);
+    const appearance=await driver.executeScript(`const root=document.querySelector('[data-module-settings]'),row=root.querySelector('.iad-module-row'),control=root.querySelector('select');return {title:getComputedStyle(root.querySelector('h2')).fontSize,row:row.getBoundingClientRect().height,radius:getComputedStyle(control).borderRadius,width:control.getBoundingClientRect().width};`);
+    assert.equal(appearance.title,'14px');assert.equal(appearance.row,74);assert.equal(appearance.radius,'8px');assert.equal(appearance.width,240);
+    await fs.writeFile('/tmp/iad-v75-business-settings.png',await driver.takeScreenshot(),'base64');
     phase='real job model routing';
     const imported=await api({format:'labelme',name:'Module settings routing',image_dir:root+'/images',annotation_dir:root+'/labels'},'/datasets/import');assert.equal(imported.status,200);
     const dataset=imported.data.dataset_id;
@@ -74,7 +119,7 @@ test('native settings preserve General and Models while business settings persis
     assert.equal(job.status,'COMPLETED',JSON.stringify(job.errors));assert.equal(job.model_profile.model_id,'second-model');assert.equal(job.model_profile.provider_id,'second-service');
     assert.ok(calls.some(call=>call.path.startsWith('/second/')&&call.body?.model==='second-model'&&call.authorization==='Bearer second-isolated-key'));
     phase='program retrieval reads module defaults';
-    const exact=await api({expected_revision:3,settings:{mode:'exact',min_similarity:.98}},'/settings/modules/consistency');assert.equal(exact.status,200,JSON.stringify(exact));
+    const exact=await api({expected_revision:(await api(null,'/settings/modules/consistency')).data.revision,settings:{mode:'exact',min_similarity:.98}},'/settings/modules/consistency');assert.equal(exact.status,200,JSON.stringify(exact));
     const program=await api({request_id:'module-exact-default',subjects:{kind:'datasets',dataset_ids:[dataset]},corpus_scope:{kind:'datasets',dataset_ids:[dataset]}},'/consistency/start');assert.equal(program.status,200,JSON.stringify(program));
     const frozen=JSON.parse(execFileSync('/home/dell/anaconda3/envs/iad_agent/bin/python',['-c',
       "import json,sqlite3,sys; c=sqlite3.connect(sys.argv[1]); print(c.execute('SELECT plan_json FROM consistency_runs WHERE batch_id=?',(sys.argv[2],)).fetchone()[0])",root+'/workbench.db',program.data.batch_id],{encoding:'utf8'}));
@@ -89,12 +134,20 @@ test('native settings preserve General and Models while business settings persis
     const frozenAgain=await api(null,`/analysis/node/${analysis.data.run_id}`);
     assert.equal(frozenAgain.data.model_profile.model_id,'second-model');assert.equal(frozenAgain.data.request.submission.min_similarity,.98);
 
+    await click('General');await click('Dark');await section('数据一致性');
+    await driver.wait(()=>driver.executeScript("return document.body.hasAttribute('data-ds-dark-theme')"),5000);
+    await fs.writeFile('/tmp/iad-v75-business-settings-dark.png',await driver.takeScreenshot(),'base64');
+    const dark=await driver.executeScript("const e=document.querySelector('[data-module-settings] select');return {text:getComputedStyle(e).color,background:getComputedStyle(e).backgroundColor}");
+    const rgb=value=>value.match(/\d+/g).slice(0,3).map(Number);
+    assert.ok(contrast.rgb(rgb(dark.text),rgb(dark.background))>=4.5,'深色输入文字对比度达标');
+    await click('General');await click('Light');await section('数据一致性');
     assert.equal(await driver.executeScript('return document.documentElement.scrollWidth>innerWidth'),false);
-    await viewport(driver,800,800);await fs.writeFile('/tmp/iad-v74-business-settings-compact.png',await driver.takeScreenshot(),'base64');
+    await viewport(driver,800,800);await fs.writeFile('/tmp/iad-v75-business-settings-compact.png',await driver.takeScreenshot(),'base64');
     await click('General');await driver.wait(until.elementLocated(By.xpath("//*[@data-shortcut-modal='settings']//button[normalize-space(.)='Light']")),5000);
     await click('Models');await driver.wait(until.elementLocated(By.css('button[aria-label^="Edit First service"]')),10000);
   }catch(error){
-    if(driver){console.error(phase+'\n'+(await driver.findElement(By.css('body')).getText()).slice(-4000));await fs.writeFile('/tmp/iad-v74-module-failure.png',await driver.takeScreenshot(),'base64');}
+    if(driver){console.error(phase+'\n'+(await driver.findElement(By.css('body')).getText()).slice(-4000));await fs.writeFile('/tmp/iad-v75-module-failure.png',await driver.takeScreenshot(),'base64');}
+    if(driver)console.error(JSON.stringify(await driver.executeAsyncScript("const done=arguments[arguments.length-1];Promise.all(['exploration','knowledge','consistency','audit'].map(async module=>{const r=await fetch('/api/iad/settings/modules/'+module);return [module,await r.json()]})).then(done)")));
     console.error(readLog().slice(-2500).replace(/(token=)[^\s&]+/g,'$1<redacted>'));throw error;
   }finally{await driver?.quit();await fixture.close();}
 });

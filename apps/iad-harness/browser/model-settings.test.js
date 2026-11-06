@@ -234,6 +234,10 @@ test('authenticated LAN browser saves provider settings and switches models', {t
     await driver.wait(async()=>!(await api()).data.providers.some(row=>row.provider_id===added.provider_id),10000);
     assert.equal((await api()).data.selection.model_id,'first-model');
     phase='all industrial functions share selected routing';
+    for(const module of ['exploration','knowledge','consistency','audit']){
+      const options=await api(null,`/settings/modules/${module}`);
+      assert.equal((await api({expected_revision:options.data.revision,settings:{model:{provider_id:'first-service',model_id:'first-model'}}},`/settings/modules/${module}`)).status,200);
+    }
     const imported=await api({format:'labelme',name:'Model route test',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')},'/datasets/import');
     assert.equal(imported.status,200);const dataset=imported.data.dataset_id;
     const waitJob=async(kind,job)=>{

@@ -36,3 +36,16 @@ def test_consistency_defaults_preserve_explicit_request_and_freeze_values(tmp_pa
     assert store.consistency_request({'mode': 'combined', 'min_similarity': .96}) == {'mode': 'combined', 'min_similarity': .96}
     store.save({'module': 'consistency', 'expected_revision': 1, 'settings': {'mode': 'combined', 'min_similarity': .99}})
     assert frozen['mode'] == 'exact' and frozen['min_similarity'] == .97
+
+
+def test_saving_one_field_preserves_other_module_settings(tmp_path):
+    from iad_core.entry import module_settings_get, module_settings_save, module_settings_validate
+    database = str(tmp_path / 'module-patches.db')
+    first = module_settings_save({'module': 'consistency', 'expected_revision': 0,
+        'settings': {'model': {'provider_id': 'vision', 'model_id': 'v2'}, 'mode': 'exact', 'min_similarity': .97}}, database)
+    patch = module_settings_validate({'module': 'consistency', 'expected_revision': first['revision'],
+        'settings': {'min_similarity': .98}}, database)
+    assert patch['settings'] == {'min_similarity': .98}
+    changed = module_settings_save(patch, database)
+    assert changed['settings'] == {'model': {'provider_id': 'vision', 'model_id': 'v2'}, 'mode': 'exact', 'min_similarity': .98}
+    assert module_settings_get({'module': 'consistency'}, database) == changed

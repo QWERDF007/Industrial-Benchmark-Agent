@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import Field, computed_field, model_validator
+from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.consistency.models import DEFAULT_MIN_SIMILARITY, SimilarityThreshold
@@ -40,11 +40,6 @@ class ModuleSettingsPayload(AnalysisModel):
 class ModuleSettingsSnapshot(ModuleSettingsPayload):
     revision: int = Field(ge=0)
 
-    @computed_field
-    @property
-    def defaults(self) -> ModuleSettingsValues | ConsistencySettingsValues:
-        return type(self.settings)()
-
 
 class ModuleSettingsEdit(ModuleSettingsPayload):
     expected_revision: int = Field(ge=0)
@@ -68,14 +63,17 @@ class ModuleSettings:
         edit = ModuleSettingsEdit.model_validate(edit)
         with self.db.connection() as conn:
             conn.execute('BEGIN IMMEDIATE')
-            row = conn.execute('SELECT revision FROM workbench_module_settings WHERE module=?', (edit.module,)).fetchone()
+            row = conn.execute('SELECT revision,settings_json FROM workbench_module_settings WHERE module=?', (edit.module,)).fetchone()
             revision = row['revision'] if row else 0
             if revision != edit.expected_revision:
                 raise ValueError('模块配置已变化，请刷新后再保存')
+            schema = type(ModuleSettingsSnapshot(module=edit.module, revision=0, settings={}).settings)
+            current = schema.model_validate_json(row['settings_json']) if row else schema()
+            values = schema.model_validate({**current.model_dump(), **edit.settings.model_dump(exclude_unset=True)})
             conn.execute('''INSERT INTO workbench_module_settings(module,revision,settings_json) VALUES(?,?,?)
                 ON CONFLICT(module) DO UPDATE SET revision=excluded.revision,settings_json=excluded.settings_json''',
-                (edit.module, revision + 1, edit.settings.model_dump_json()))
-        return ModuleSettingsSnapshot(module=edit.module, revision=revision + 1, settings=edit.settings)
+                (edit.module, revision + 1, values.model_dump_json()))
+        return ModuleSettingsSnapshot(module=edit.module, revision=revision + 1, settings=values)
 
     def consistency_request(self, request: dict) -> dict:
         defaults = self.read('consistency').settings.model_dump(exclude={'model'})
@@ -91,4 +89,4 @@ def module_settings_save(args, db_path):
 
 
 def module_settings_validate(args, db_path):
-    return ModuleSettingsEdit.model_validate(args).model_dump(mode='json')
+    return ModuleSettingsEdit.model_validate(args).model_dump(mode='json', exclude_unset=True)

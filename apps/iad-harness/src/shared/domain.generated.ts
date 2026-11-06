@@ -2581,9 +2581,10 @@ export type ModelId11 = string;
 export type Mode9 = "exact" | "combined";
 export type MinSimilarity7 = number;
 export type Revision5 = number;
-export type Defaults = ModuleSettingsValues | ConsistencySettingsValues;
 export type Module1 = "exploration" | "knowledge" | "consistency" | "audit";
-export type Settings1 = ModuleSettingsValues | ConsistencySettingsValues;
+export type Settings1 = ModuleSettingsValues1 | ConsistencySettingsValues1;
+export type Mode10 = "exact" | "combined";
+export type MinSimilarity8 = number;
 export type ExpectedRevision7 = number;
 
 export interface WorkbenchDomain {
@@ -5774,7 +5775,6 @@ export interface ModuleSettingsSnapshot {
   module: Module;
   settings: Settings;
   revision: Revision5;
-  defaults: Defaults;
 }
 export interface ModuleSettingsValues {
   model: ModuleModelReference | null;
@@ -5792,4 +5792,12 @@ export interface ModuleSettingsEdit {
   module: Module1;
   settings: Settings1;
   expected_revision: ExpectedRevision7;
+}
+export interface ModuleSettingsValues1 {
+  model?: ModuleModelReference | null;
+}
+export interface ConsistencySettingsValues1 {
+  model?: ModuleModelReference | null;
+  mode?: Mode10;
+  min_similarity?: MinSimilarity8;
 }

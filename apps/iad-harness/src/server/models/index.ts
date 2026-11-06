@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis';
 import type { JobView, ModelLimits, ModuleSettingsSnapshot, WorkbenchModelSettings, WorkbenchModelView } from '../../shared/domain.generated.js';
 import type { BridgeDispatch, ModelRouting } from '../python-bridge/index.js';
+import {businessModules} from '../../shared/business-modules.js';
 import { ModelConfigurationError, NativeProviders } from './providers.js';
 
 const starts: Readonly<Record<string, ModuleSettingsSnapshot['module'] | null>> = {
@@ -73,6 +74,7 @@ export class WorkbenchModelRouting implements ModelRouting {
     if (Object.hasOwn(starts,operation)) {
       const module = operation === 'analysis_start' ? args.request?.analysis_kind : starts[operation];
       const options: ModuleSettingsSnapshot | null = module ? await dispatch('module_settings_get', {module}, signal) : null;
+      if(options&&!options.settings.model)throw new ModelConfigurationError(`请在设置的「${businessModules[options.module]}」中选择分析模型`);
       const settings = await this.settings(dispatch);
       if (!settings.selection) throw Object.assign(new Error('请先在模型设置中选择工作台提供商和模型'), {statusCode: 422});
       const selection = {...settings.selection, ...options?.settings.model};

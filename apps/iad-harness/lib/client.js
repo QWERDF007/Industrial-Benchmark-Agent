@@ -6434,6 +6434,184 @@ var __IadClientBundle__ = (() => {
     return mutation.options.scope?.id;
   }
 
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/mutationObserver.js
+  var MutationObserver = class extends Subscribable {
+    #client;
+    #currentResult = void 0;
+    #currentMutation;
+    #mutateOptions;
+    constructor(client, options) {
+      super();
+      this.#client = client;
+      this.setOptions(options);
+      this.bindMethods();
+      this.#updateResult();
+    }
+    /**
+    * Binds the methods of the result (`mutate` and `reset`) to the observer, so they keep working when
+    * destructured from it.
+    */
+    bindMethods() {
+      this.mutate = this.mutate.bind(this);
+      this.reset = this.reset.bind(this);
+    }
+    /**
+    * Updates the observer's options.
+    *
+    * If the new `mutationKey` differs from the previous one (and both were
+    * defined), the observer is reset, detaching it from the mutation it was
+    * observing. Otherwise, if the currently observed mutation is still
+    * `pending`, its options are updated in place as well.
+    * @param options - The new mutation observer options. They are defaulted with {@link
+    * QueryClient#defaultMutationOptions} before being applied.
+    * @example
+    * ```ts
+    * observer.setOptions({
+    *   mutationFn: (variables: { title: string }) => addPost(variables),
+    *   onSuccess: (data) => console.log(data),
+    * })
+    * ```
+    */
+    setOptions(options) {
+      const prevOptions = this.options;
+      this.options = this.#client.defaultMutationOptions(options);
+      if (!shallowEqualObjects(this.options, prevOptions)) this.#client.getMutationCache().notify({
+        type: "observerOptionsUpdated",
+        mutation: this.#currentMutation,
+        observer: this
+      });
+      if (prevOptions?.mutationKey && this.options.mutationKey && hashKey(prevOptions.mutationKey) !== hashKey(this.options.mutationKey)) this.reset();
+      else if (this.#currentMutation?.state.status === "pending") this.#currentMutation.setOptions(this.options);
+    }
+    onSubscribe() {
+      if (this.listeners.size === 1 && this.#currentMutation) {
+        this.#currentMutation.addObserver(this);
+        this.#updateResult();
+      }
+    }
+    onUnsubscribe() {
+      if (!this.hasListeners()) this.#currentMutation?.removeObserver(this);
+    }
+    /**
+    * Updates the observer's result when the observed mutation changes, and notifies its listeners.
+    * @internal
+    * @param action - The action that updated the observed mutation, passed on to the observer's
+    * callbacks.
+    */
+    onMutationUpdate(action) {
+      this.#updateResult();
+      this.#notify(action);
+    }
+    /**
+    * Returns the observer's current result, derived from the observed
+    * mutation's state (or the default, `idle` state if no mutation has been
+    * built yet, e.g. before the first `mutate()` call or after `reset()`).
+    * @returns The observer's latest result.
+    */
+    getCurrentResult() {
+      return this.#currentResult;
+    }
+    /**
+    * Detaches the observer from the mutation it is currently observing (if
+    * any) and resets the observed result back to its default, `idle` state.
+    *
+    * This does not cancel an in-flight mutation; the mutation itself keeps
+    * running to completion and its own callbacks still fire, but this
+    * observer stops reflecting its state and a subsequent `mutate()` call
+    * will build a brand new mutation.
+    * @see {@link MutationObserver#mutate}
+    * @example
+    * ```ts
+    * observer.reset()
+    * ```
+    */
+    reset() {
+      this.#currentMutation?.removeObserver(this);
+      this.#currentMutation = void 0;
+      this.#updateResult();
+      this.#notify();
+    }
+    /**
+    * Builds a new `Mutation` in the `MutationCache` using the observer's
+    * current options, detaches this observer from any previously observed
+    * mutation, attaches it to the new one, and executes it with the given
+    * variables.
+    *
+    * The optional per-call `options` (`onSuccess`/`onError`/`onSettled`) are
+    * invoked once the mutation settles, in addition to any callbacks defined
+    * on the observer's own options.
+    * @param variables - The variables passed to the `mutationFn`.
+    * @param options - Per-call `onSuccess`, `onError`, and `onSettled` callbacks.
+    * @returns A promise that resolves with the mutation's data, or rejects with its error.
+    * @example
+    * ```ts
+    * await observer.mutate(
+    *   { title: 'New post' },
+    *   { onSuccess: (data) => console.log(data) },
+    * )
+    * ```
+    */
+    mutate(variables, options) {
+      this.#mutateOptions = options;
+      this.#currentMutation?.removeObserver(this);
+      this.#currentMutation = this.#client.getMutationCache().build(this.#client, this.options);
+      this.#currentMutation.addObserver(this);
+      return this.#currentMutation.execute(variables);
+    }
+    #updateResult() {
+      const state = this.#currentMutation?.state ?? getDefaultState2();
+      this.#currentResult = {
+        ...state,
+        isPending: state.status === "pending",
+        isSuccess: state.status === "success",
+        isError: state.status === "error",
+        isIdle: state.status === "idle",
+        mutate: this.mutate,
+        reset: this.reset
+      };
+    }
+    #notify(action) {
+      notifyManager.batch(() => {
+        const mutateOptions = this.#mutateOptions;
+        if (mutateOptions && this.hasListeners()) {
+          const variables = this.#currentResult.variables;
+          const onMutateResult = this.#currentResult.context;
+          const context = {
+            client: this.#client,
+            meta: this.options.meta,
+            mutationKey: this.options.mutationKey
+          };
+          if (action?.type === "success") {
+            try {
+              mutateOptions.onSuccess?.(action.data, variables, onMutateResult, context);
+            } catch (e) {
+              Promise.reject(e);
+            }
+            try {
+              mutateOptions.onSettled?.(action.data, null, variables, onMutateResult, context);
+            } catch (e) {
+              Promise.reject(e);
+            }
+          } else if (action?.type === "error") {
+            try {
+              mutateOptions.onError?.(action.error, variables, onMutateResult, context);
+            } catch (e) {
+              Promise.reject(e);
+            }
+            try {
+              mutateOptions.onSettled?.(void 0, action.error, variables, onMutateResult, context);
+            } catch (e) {
+              Promise.reject(e);
+            }
+          }
+        }
+        this.listeners.forEach((listener) => {
+          listener(this.#currentResult);
+        });
+      });
+    }
+  };
+
   // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/queriesObserver.js
   function difference(array1, array2) {
     const excludeSet = new Set(array2);
@@ -7755,6 +7933,52 @@ var __IadClientBundle__ = (() => {
   // ../../node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/useQuery.js
   function useQuery(options, queryClient2) {
     return useBaseQuery(options, QueryObserver, queryClient2);
+  }
+
+  // ../../node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/useMutationState.js
+  var React12 = __toESM(__require("react"), 1);
+  function createSnapshotFactory() {
+    let previousResult;
+    return (mutationCache, options) => {
+      let inputs = [];
+      let snapshot;
+      return () => {
+        const mutations = mutationCache.findAll(options.filters);
+        const nextInputs = mutations.flatMap((mutation) => [mutation, mutation.state]);
+        if (!snapshot || nextInputs.length !== inputs.length || nextInputs.some((input, index3) => !Object.is(input, inputs[index3]))) {
+          inputs = nextInputs;
+          snapshot = replaceEqualDeep(previousResult, mutations.map((mutation) => options.select ? options.select(mutation) : mutation.state));
+          previousResult = snapshot;
+        }
+        return snapshot;
+      };
+    };
+  }
+  function useMutationState(options = {}, queryClient2) {
+    const mutationCache = useQueryClient(queryClient2).getMutationCache();
+    const [createSnapshot] = React12.useState(() => createSnapshotFactory());
+    const getSnapshot = createSnapshot(mutationCache, options);
+    return React12.useSyncExternalStore(React12.useCallback((onStoreChange) => mutationCache.subscribe(notifyManager.batchCalls(onStoreChange)), [mutationCache]), getSnapshot, getSnapshot);
+  }
+
+  // ../../node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/useMutation.js
+  var React13 = __toESM(__require("react"), 1);
+  function useMutation(options, queryClient2) {
+    const client = useQueryClient(queryClient2);
+    const [observer] = React13.useState(() => new MutationObserver(client, options));
+    React13.useEffect(() => {
+      observer.setOptions(options);
+    }, [observer, options]);
+    const result = React13.useSyncExternalStore(React13.useCallback((onStoreChange) => observer.subscribe(notifyManager.batchCalls(onStoreChange)), [observer]), () => observer.getCurrentResult(), () => observer.getCurrentResult());
+    const mutate = React13.useCallback((...args) => {
+      observer.mutate(args[0], args[1]).catch(noop5);
+    }, [observer]);
+    if (result.error && shouldThrowError(observer.options.throwOnError, [result.error])) throw result.error;
+    return {
+      ...result,
+      mutate,
+      mutateAsync: result.mutate
+    };
   }
 
   // src/client/query-client.ts
@@ -20415,93 +20639,139 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   // src/client/components/ModuleSettingsSection.tsx
   var import_react67 = __require("react");
 
+  // src/client/useModuleSettings.ts
+  function useModuleSettings(module) {
+    const client = useQueryClient(), key = ["iad", "module-settings", module], path = `/settings/modules/${module}`;
+    const resource = useQuery({ queryKey: key, queryFn: ({ signal }) => request(path, void 0, void 0, signal) });
+    const mutations = useMutationState({ filters: { mutationKey: key, exact: true } });
+    const edits = /* @__PURE__ */ new Map();
+    for (const state of mutations) {
+      for (const [field, value] of Object.entries(state.variables ?? {})) {
+        if (state.status === "success") edits.delete(field);
+        else if (state.status === "pending" || state.status === "error") edits.set(field, { value, status: state.status, error: state.error });
+      }
+    }
+    const failed = [...edits].filter(([, edit]) => edit.status === "error");
+    const settings = resource.data ? { ...resource.data.settings, ...Object.fromEntries([...edits].map(([field, edit]) => [field, edit.value])) } : void 0;
+    const mutation = useMutation({
+      mutationKey: key,
+      scope: { id: `iad-module-settings-${module}` },
+      retry: false,
+      mutationFn: async (patch) => {
+        const current = client.getQueryData(key);
+        if (!current) throw new Error("\u8BBE\u7F6E\u5C1A\u672A\u8BFB\u53D6\u5B8C\u6210");
+        return request(path, { expected_revision: current.revision, settings: patch });
+      },
+      onSuccess: async (saved) => {
+        await client.cancelQueries({ queryKey: key, exact: true });
+        client.setQueryData(key, saved);
+      },
+      onError: () => client.invalidateQueries({ queryKey: key, exact: true })
+    });
+    return {
+      settings,
+      save: (patch) => mutation.mutate(patch),
+      retry: () => mutation.mutate(Object.fromEntries(failed.map(([field, edit]) => [field, edit.value]))),
+      loading: resource.isPending,
+      saving: mutations.some((state) => state.status === "pending"),
+      saved: mutations.length > 0 && edits.size === 0,
+      error: failed.length ? [...new Set(failed.map(([, edit]) => message(edit.error)))].join("\uFF1B") : resource.error ? message(resource.error) : ""
+    };
+  }
+
   // src/client/styles/module-settings.ts
   var moduleSettingsStyles = `
-.iad-module-settings{color:var(--iad-text);font:13px var(--iad-font-family);min-width:0;max-width:820px}
-.iad-module-settings h2{font-size:20px;font-weight:650;margin:0 0 24px}
-.iad-module-settings fieldset{border:0;padding:0;margin:0;min-width:0}
-.iad-module-row{display:grid;grid-template-columns:minmax(100px,1fr) minmax(180px,320px);align-items:center;gap:20px;margin-bottom:22px}
-.iad-module-row>span{font-weight:500}.iad-module-settings :is(select,input){box-sizing:border-box;width:100%;height:38px;padding:0 12px;border:1px solid var(--iad-control-border);border-radius:6px;background:var(--iad-surface);color:inherit;font:inherit;min-width:0}
-.iad-module-settings footer{display:flex;align-items:center;gap:10px;justify-content:flex-end;margin-top:34px}.iad-module-settings footer>span{flex:1;color:var(--iad-muted)}
-.iad-module-settings button{font:inherit;border:1px solid var(--iad-control-border);border-radius:6px;padding:9px 14px;background:var(--iad-surface);color:inherit;cursor:pointer}.iad-module-settings button[data-variant=primary]{background:var(--iad-primary-fill);border-color:var(--iad-primary-fill);color:var(--iad-on-primary)}
-.iad-module-settings :is(button,input,select):focus-visible{outline:2px solid var(--iad-primary);outline-offset:2px}.iad-module-settings :disabled{cursor:default;opacity:.55}.iad-module-settings [role=alert]{color:var(--iad-danger)}
-@media(max-width:640px){.iad-module-row{grid-template-columns:minmax(0,1fr);gap:10px}.iad-module-settings footer{flex-wrap:wrap}.iad-module-settings footer>span{flex-basis:100%}}
+.iad-module-settings{color:var(--iad-text);font:13px/1.45 var(--iad-font-family);min-width:0;max-width:820px}
+.iad-module-settings *{box-sizing:border-box}
+.iad-module-settings h2{font-size:14px;font-weight:500;line-height:1.5;margin:10px 0 13px}
+.iad-module-row{min-height:74px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 0;border-bottom:1px solid var(--iad-panel-border)}
+.iad-module-row>span{font-weight:500;flex:1;min-width:0}
+.iad-module-settings :is(select,input){height:38px;padding:9px 12px;border:1px solid var(--iad-control-border);border-radius:8px;background:var(--iad-surface);color:inherit;font:inherit;min-width:0;max-width:53%;box-shadow:none}
+.iad-module-settings select{width:240px;flex:0 1 240px}.iad-module-settings input{width:145px;flex:0 1 145px}
+.iad-module-settings :is(button,input,select):focus-visible{outline:2px solid var(--iad-primary);outline-offset:2px}.iad-module-settings :disabled{cursor:default;opacity:.55}
+.iad-module-status{font-size:12px;color:var(--iad-muted);min-height:18px;margin:12px 0 0}
+.iad-module-settings [role=alert]{color:var(--iad-danger);font-size:12px}.iad-module-error{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}.iad-module-error button{border:1px solid var(--iad-control-border);border-radius:8px;background:var(--iad-surface);color:var(--iad-text);font:inherit;padding:8px 12px;cursor:pointer;white-space:nowrap}
+@media(max-width:620px){.iad-module-row{gap:8px}.iad-module-settings :is(select,input){max-width:64%}.iad-module-settings select{min-width:120px}.iad-module-error{flex-wrap:wrap}}
 `;
 
   // src/client/components/ModuleSettingsSection.tsx
   var import_jsx_runtime73 = __require("react/jsx-runtime");
   function ModuleSettingsSection({ module }) {
-    const client = useQueryClient();
-    const resource = useQuery({ queryKey: ["iad", "module-settings", module], queryFn: () => request(`/settings/modules/${module}`) });
-    const { view } = useWorkbenchModel();
-    const [draft, setDraft] = (0, import_react67.useState)(null), [revision, setRevision] = (0, import_react67.useState)(0);
-    const [busy, setBusy] = (0, import_react67.useState)(false), [error2, setError] = (0, import_react67.useState)(""), [notice, setNotice] = (0, import_react67.useState)("");
-    (0, import_react67.useEffect)(() => {
-      if (resource.data && !draft) {
-        setDraft(structuredClone(resource.data.settings));
-        setRevision(resource.data.revision);
-      }
-    }, [resource.data, draft]);
-    const changed = !!draft && JSON.stringify(draft) !== JSON.stringify(resource.data?.settings);
+    const { settings, save, retry, loading, saving, saved, error: error2 } = useModuleSettings(module);
+    const { view, loading: modelsLoading, error: modelError } = useWorkbenchModel();
+    const [thresholdInput, setThresholdInput] = (0, import_react67.useState)(null), [thresholdError, setThresholdError] = (0, import_react67.useState)("");
     const choices = (view?.providers || []).filter((provider) => !provider.error).flatMap((provider) => provider.models.filter((model) => model.input_modalities?.includes("image")).map((model) => ({ model: { provider_id: provider.provider_id, model_id: model.model_id }, label: `${model.name}\uFF08${provider.name}\uFF09` })));
-    const selection = draft?.model ? JSON.stringify(draft.model) : "";
-    async function save(event) {
-      event.preventDefault();
-      if (!draft) return;
-      setBusy(true);
-      setError("");
-      setNotice("");
-      try {
-        const saved = await request(`/settings/modules/${module}`, { expected_revision: revision, settings: draft });
-        client.setQueryData(["iad", "module-settings", module], saved);
-        setDraft(saved.settings);
-        setRevision(saved.revision);
-        setNotice("\u5DF2\u4FDD\u5B58");
-      } catch (failure) {
-        setError(message(failure));
-      } finally {
-        setBusy(false);
-      }
-    }
+    const selection = settings?.model ? JSON.stringify(settings.model) : "";
+    const unavailable = !!selection && !choices.some((choice) => JSON.stringify(choice.model) === selection);
     return /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("section", { className: "iad-module-settings", "aria-label": `${businessModules[module]}\u8BBE\u7F6E`, "data-module-settings": module, children: [
       /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("style", { children: moduleSettingsStyles }),
       /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("h2", { children: businessModules[module] }),
-      resource.isPending ? /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u8BBE\u7F6E\u2026" }) : resource.error ? /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("p", { role: "alert", children: message(resource.error) }) : draft && /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("form", { onSubmit: save, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("fieldset", { disabled: busy, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("label", { className: "iad-module-row", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("span", { children: "\u5206\u6790\u6A21\u578B" }),
-            /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)(Select, { "aria-label": "\u5206\u6790\u6A21\u578B", value: selection, onChange: (event) => {
-              setDraft({ ...draft, model: choices.find((choice) => JSON.stringify(choice.model) === event.target.value)?.model ?? null });
-              setNotice("");
-            }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("option", { value: "", children: "\u4F7F\u7528\u5DE5\u4F5C\u53F0\u6A21\u578B" }),
-              selection && !choices.some((choice) => JSON.stringify(choice.model) === selection) && /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("option", { value: selection, disabled: true, children: "\u6240\u9009\u6A21\u578B\u4E0D\u53EF\u7528" }),
-              choices.map((choice) => /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("option", { value: JSON.stringify(choice.model), children: choice.label }, JSON.stringify(choice.model)))
-            ] })
-          ] }),
-          "mode" in draft && /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)(import_jsx_runtime73.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("label", { className: "iad-module-row", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("span", { children: "\u68C0\u7D22\u65B9\u5F0F" }),
-              /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)(Select, { "aria-label": "\u68C0\u7D22\u65B9\u5F0F", value: draft.mode, onChange: (event) => setDraft({ ...draft, mode: event.target.value }), children: [
-                /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("option", { value: "exact", children: "\u5B8C\u5168\u4E00\u81F4" }),
-                /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("option", { value: "combined", children: "\u4E00\u81F4+\u76F8\u4F3C" })
-              ] })
-            ] }),
-            draft.mode === "combined" && /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("label", { className: "iad-module-row", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("span", { children: "\u76F8\u4F3C\u5EA6\u9608\u503C" }),
-              /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("input", { "aria-label": "\u76F8\u4F3C\u5EA6\u9608\u503C", type: "number", min: "0", max: "1", step: "0.01", required: true, value: draft.min_similarity, onChange: (event) => setDraft({ ...draft, min_similarity: event.target.valueAsNumber }) })
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("footer", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("span", { role: "status", children: changed ? "\u6709\u672A\u4FDD\u5B58\u7684\u66F4\u6539" : notice }),
-            /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("button", { type: "button", onClick: () => {
-              setDraft(structuredClone(resource.data.defaults));
-              setNotice("");
-            }, children: "\u6062\u590D\u9ED8\u8BA4" }),
-            /* @__PURE__ */ (0, import_jsx_runtime73.jsx)(Button, { variant: "primary", type: "submit", disabled: !changed, children: busy ? "\u4FDD\u5B58\u4E2D\u2026" : "\u4FDD\u5B58\u8BBE\u7F6E" })
+      loading && !settings ? /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u8BBE\u7F6E\u2026" }) : settings && /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("label", { className: "iad-module-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("span", { children: "\u5206\u6790\u6A21\u578B" }),
+          /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)(Select, { "aria-label": "\u5206\u6790\u6A21\u578B", disabled: modelsLoading || !choices.length, value: selection, onChange: (event) => {
+            const model = choices.find((choice) => JSON.stringify(choice.model) === event.target.value)?.model;
+            if (model) save({ model });
+          }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("option", { value: "", disabled: true, children: modelsLoading ? "\u6B63\u5728\u8BFB\u53D6\u6A21\u578B\u2026" : choices.length ? "\u8BF7\u9009\u62E9\u5177\u4F53\u6A21\u578B" : "\u6682\u65E0\u53EF\u9009\u6A21\u578B" }),
+            unavailable && /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("option", { value: selection, disabled: true, children: "\u6240\u9009\u6A21\u578B\u4E0D\u53EF\u7528" }),
+            choices.map((choice) => /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("option", { value: JSON.stringify(choice.model), children: choice.label }, JSON.stringify(choice.model)))
           ] })
         ] }),
-        error2 && /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("p", { role: "alert", children: error2 })
+        "mode" in settings && /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)(import_jsx_runtime73.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("label", { className: "iad-module-row", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("span", { children: "\u68C0\u7D22\u65B9\u5F0F" }),
+            /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)(Select, { "aria-label": "\u68C0\u7D22\u65B9\u5F0F", value: settings.mode, onChange: (event) => {
+              save({ mode: event.target.value });
+              setThresholdInput(null);
+              setThresholdError("");
+            }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("option", { value: "exact", children: "\u5B8C\u5168\u4E00\u81F4" }),
+              /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("option", { value: "combined", children: "\u4E00\u81F4+\u76F8\u4F3C" })
+            ] })
+          ] }),
+          settings.mode === "combined" && /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("label", { className: "iad-module-row", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("span", { children: "\u76F8\u4F3C\u5EA6\u9608\u503C" }),
+            /* @__PURE__ */ (0, import_jsx_runtime73.jsx)(
+              "input",
+              {
+                "aria-label": "\u76F8\u4F3C\u5EA6\u9608\u503C",
+                type: "number",
+                min: "0",
+                max: "1",
+                step: "0.01",
+                required: true,
+                "aria-invalid": thresholdError ? true : void 0,
+                value: thresholdInput ?? settings.min_similarity,
+                onChange: (event) => {
+                  setThresholdInput(event.target.value);
+                  setThresholdError("");
+                },
+                onKeyDown: (event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                },
+                onBlur: (event) => {
+                  if (!event.currentTarget.validity.valid || !Number.isFinite(event.currentTarget.valueAsNumber)) {
+                    setThresholdError("\u76F8\u4F3C\u5EA6\u9608\u503C\u9700\u8981\u5728 0\uFF5E1 \u4E4B\u95F4");
+                    return;
+                  }
+                  const value = event.currentTarget.valueAsNumber;
+                  if (value !== settings.min_similarity) save({ min_similarity: value });
+                  setThresholdInput(null);
+                  setThresholdError("");
+                }
+              }
+            )
+          ] })
+        ] }),
+        thresholdError && /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("p", { role: "alert", children: thresholdError }),
+        modelError && /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("p", { role: "alert", children: modelError }),
+        unavailable && !modelsLoading && /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("p", { role: "alert", children: "\u6240\u9009\u6A21\u578B\u5DF2\u4E0D\u53EF\u7528\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9" }),
+        /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("p", { className: "iad-module-status", role: "status", "aria-live": "polite", children: saving ? "\u6B63\u5728\u4FDD\u5B58\u2026" : !error2 && saved ? "\u5DF2\u4FDD\u5B58" : "" })
+      ] }),
+      error2 && /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("div", { className: "iad-module-error", role: "alert", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("span", { children: error2 }),
+        settings && /* @__PURE__ */ (0, import_jsx_runtime73.jsx)(Button, { onClick: retry, children: "\u91CD\u8BD5\u4FDD\u5B58" })
       ] })
     ] });
   }
