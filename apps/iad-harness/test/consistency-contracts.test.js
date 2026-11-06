@@ -31,3 +31,8 @@ test('native consistency schemas preserve discriminated scopes and managed image
   assert.equal(temporary.properties.image_ref.required,true);
   assert.equal(temporary.properties.path,undefined);
 });
+
+test('consistency start leaves module defaults to the server',()=>{
+  assert.equal('default' in consistencyStartParameters.mode,false);
+  assert.equal('default' in consistencyStartParameters.min_similarity,false);
+});

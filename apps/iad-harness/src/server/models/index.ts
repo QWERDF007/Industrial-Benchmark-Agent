@@ -1,9 +1,13 @@
 import type { Context } from '@deepseek-ai/cordis';
-import type { JobView, ModelLimits, WorkbenchModelSettings, WorkbenchModelView } from '../../shared/domain.generated.js';
+import type { JobView, ModelLimits, ModuleSettingsSnapshot, WorkbenchModelSettings, WorkbenchModelView } from '../../shared/domain.generated.js';
 import type { BridgeDispatch, ModelRouting } from '../python-bridge/index.js';
 import { ModelConfigurationError, NativeProviders } from './providers.js';
 
-const starts = new Set(['dataset_report_start', 'analysis_start', 'direction_exploration_start', 'direction_exploration_batch_start', 'knowledge_start', 'knowledge_batch_start', 'audit_start', 'consistency_group_analyze', 'consistency_model_start']);
+const starts: Readonly<Record<string, ModuleSettingsSnapshot['module'] | null>> = {
+  dataset_report_start:null,analysis_start:null,direction_exploration_start:'exploration',direction_exploration_batch_start:'exploration',
+  knowledge_start:'knowledge',knowledge_batch_start:'knowledge',audit_start:'audit',
+  consistency_group_analyze:'consistency',consistency_model_start:'consistency',
+};
 const retries: Record<string, string> = {analysis_retry:'analysis_node',direction_exploration_retry: 'direction_exploration_status', knowledge_retry: 'knowledge_status', audit_retry: 'audit_status',consistency_model_retry:'consistency_model_status'};
 const normalized = (endpoint: string) => endpoint.replace(/\/$/, '').replace(/\/chat\/completions$/, '');
 
@@ -57,11 +61,26 @@ export class WorkbenchModelRouting implements ModelRouting {
       await dispatch('model_settings_save', {expected_revision: args.expected_revision, selection}, signal);
       return this.view(dispatch);
     }
-    if (starts.has(operation)) {
+    if (operation === 'module_settings_save') {
+      const edit = await dispatch('module_settings_validate', args, signal);
+      if (edit.settings.model) {
+        const base = await this.settings(dispatch);
+        if (!base.selection) throw new ModelConfigurationError('请先配置工作台模型及容量预检协议');
+        await this.providers.resolve({...base.selection, ...edit.settings.model}, 'inspect', signal);
+      }
+      return dispatch(operation, edit, signal);
+    }
+    if (Object.hasOwn(starts,operation)) {
+      const module = operation === 'analysis_start' ? args.request?.analysis_kind : starts[operation];
+      const options: ModuleSettingsSnapshot | null = module ? await dispatch('module_settings_get', {module}, signal) : null;
       const settings = await this.settings(dispatch);
       if (!settings.selection) throw Object.assign(new Error('请先在模型设置中选择工作台提供商和模型'), {statusCode: 422});
-      const execution = await this.providers.resolve(settings.selection, 'start', signal);
-      return dispatch(operation, {...args, model_name: settings.selection.model_id, _model_execution: execution}, signal);
+      const selection = {...settings.selection, ...options?.settings.model};
+      const execution = await this.providers.resolve(selection, 'start', signal);
+      if (operation === 'analysis_start' && options?.module === 'consistency' && 'mode' in options.settings) {
+        args = {...args, request:{mode:options.settings.mode,min_similarity:options.settings.min_similarity,...args.request}};
+      }
+      return dispatch(operation, {...args, model_name: selection.model_id, _model_execution: execution}, signal);
     }
     if (retries[operation]) {
       const job: JobView = await dispatch(retries[operation], {run_id: args.run_id}, signal);

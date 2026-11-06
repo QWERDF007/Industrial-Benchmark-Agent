@@ -12,6 +12,10 @@ def initialize_schema(conn: Connection) -> bool:
     conn.execute("BEGIN IMMEDIATE")
     cursor = conn.cursor()
 
+    cursor.execute('''CREATE TABLE IF NOT EXISTS workbench_module_settings (
+        module TEXT PRIMARY KEY CHECK(module IN ('exploration','knowledge','consistency','audit')),
+        revision INTEGER NOT NULL CHECK(revision>0), settings_json TEXT NOT NULL)''')
+
     cursor.execute('''CREATE TABLE IF NOT EXISTS workbench_model_settings (
         id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL CHECK(revision>0),
         selection_json TEXT NOT NULL)''')

@@ -43,6 +43,7 @@ export const queryOperations = [
     "knowledge_prompt_get",
     "knowledge_sources",
     "knowledge_versions",
+    "module_settings_get",
     "report_get",
     "review_history",
     "review_stats",

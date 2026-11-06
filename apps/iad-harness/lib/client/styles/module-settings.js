@@ -1,0 +1,11 @@
+export const moduleSettingsStyles = `
+.iad-module-settings{color:var(--iad-text);font:13px var(--iad-font-family);min-width:0;max-width:820px}
+.iad-module-settings h2{font-size:20px;font-weight:650;margin:0 0 24px}
+.iad-module-settings fieldset{border:0;padding:0;margin:0;min-width:0}
+.iad-module-row{display:grid;grid-template-columns:minmax(100px,1fr) minmax(180px,320px);align-items:center;gap:20px;margin-bottom:22px}
+.iad-module-row>span{font-weight:500}.iad-module-settings :is(select,input){box-sizing:border-box;width:100%;height:38px;padding:0 12px;border:1px solid var(--iad-control-border);border-radius:6px;background:var(--iad-surface);color:inherit;font:inherit;min-width:0}
+.iad-module-settings footer{display:flex;align-items:center;gap:10px;justify-content:flex-end;margin-top:34px}.iad-module-settings footer>span{flex:1;color:var(--iad-muted)}
+.iad-module-settings button{font:inherit;border:1px solid var(--iad-control-border);border-radius:6px;padding:9px 14px;background:var(--iad-surface);color:inherit;cursor:pointer}.iad-module-settings button[data-variant=primary]{background:var(--iad-primary-fill);border-color:var(--iad-primary-fill);color:var(--iad-on-primary)}
+.iad-module-settings :is(button,input,select):focus-visible{outline:2px solid var(--iad-primary);outline-offset:2px}.iad-module-settings :disabled{cursor:default;opacity:.55}.iad-module-settings [role=alert]{color:var(--iad-danger)}
+@media(max-width:640px){.iad-module-row{grid-template-columns:minmax(0,1fr);gap:10px}.iad-module-settings footer{flex-wrap:wrap}.iad-module-settings footer>span{flex-basis:100%}}
+`;

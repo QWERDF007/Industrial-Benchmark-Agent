@@ -143,6 +143,11 @@ export function createIadHttpHandler(bridge) {
                 return await call("feature_connection_check", body);
             if (pathname === "/api/iad/images/profiles" && method === "POST")
                 return await call("feature_profile_create", body);
+            const moduleSettings = pathname.match(/^\/api\/iad\/settings\/modules\/([^/]+)$/);
+            if (moduleSettings && method === 'GET')
+                return await call('module_settings_get', { module: moduleSettings[1] });
+            if (moduleSettings && method === 'POST')
+                return await call('module_settings_save', { ...body, module: moduleSettings[1] });
             if (pathname === "/api/iad/models" && method === "GET")
                 return await call("model_settings_view");
             if (pathname === "/api/iad/models" && method === "POST")

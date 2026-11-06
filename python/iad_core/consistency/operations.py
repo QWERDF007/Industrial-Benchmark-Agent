@@ -76,7 +76,10 @@ def image_index_prepare(args: dict,db_path: str) -> dict:
 
 
 def consistency_start(args: dict,db_path: str) -> dict:
-    return workbench(db_path).consistency.start(ConsistencyStart.model_validate(args)).model_dump(mode='json')
+    from iad_core.workbench.module_settings import ModuleSettings
+    runtime = workbench(db_path)
+    request = ModuleSettings(runtime.db).consistency_request(args)
+    return runtime.consistency.start(ConsistencyStart.model_validate(request)).model_dump(mode='json')
 
 
 def consistency_status(args: dict,db_path: str) -> dict:

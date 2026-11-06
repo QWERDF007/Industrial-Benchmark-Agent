@@ -1,0 +1,1 @@
+{"version":3,"file":"WorkbenchProviders.d.ts","sourceRoot":"","sources":["../../../src/client/host/WorkbenchProviders.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,MAAM,OAAO,CAAC;AAG1B,OAAO,EAAC,SAAS,EAAkB,MAAM,iBAAiB,CAAC;AAG3D,wBAAgB,kBAAkB,CAAC,EAAC,SAAS,EAAC,QAAQ,EAAC,EAAC;IAAC,SAAS,EAAC,SAAS,CAAC;IAAA,QAAQ,EAAC,KAAK,CAAC,SAAS,CAAA;CAAC,qBAIrG"}

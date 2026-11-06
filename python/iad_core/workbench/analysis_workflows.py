@@ -68,6 +68,9 @@ class AnalysisWorkflows:
         self.jobs, self.db = runtime.jobs, runtime.db
 
     def start(self, request: dict, *, model_name: str | None = None) -> dict:
+        if request.get('analysis_kind') == 'consistency':
+            from iad_core.workbench.module_settings import ModuleSettings
+            request = ModuleSettings(self.db).consistency_request(request)
         selected = AnalysisWorkflowStart.model_validate(request).root
         submission = selected.model_dump(mode='json')
         if existing := self.jobs.submitted('ANALYSIS_WORKFLOW', submission):

@@ -358,13 +358,11 @@ export const consistencyStartParameters = {
             "visual",
             "combined"
         ],
-        "title": "Mode",
-        "default": "exact"
+        "title": "Mode"
     },
     "min_similarity": {
         "type": "number",
-        "title": "Min Similarity",
-        "default": 0.95
+        "title": "Min Similarity"
     },
     "profile_id": {
         "type": "string",

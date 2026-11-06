@@ -2574,6 +2574,17 @@ export type ModelId10 = "dinov2_vitb14_reg" | "dinov3_vitb16" | "sscd_disc_mixup
 export type WeightsRef2 = string;
 export type SourceRef2 = string | null;
 export type StorageDtype2 = "float32" | "float16";
+export type Module = "exploration" | "knowledge" | "consistency" | "audit";
+export type Settings = ModuleSettingsValues | ConsistencySettingsValues;
+export type ProviderId9 = string;
+export type ModelId11 = string;
+export type Mode9 = "exact" | "combined";
+export type MinSimilarity7 = number;
+export type Revision5 = number;
+export type Defaults = ModuleSettingsValues | ConsistencySettingsValues;
+export type Module1 = "exploration" | "knowledge" | "consistency" | "audit";
+export type Settings1 = ModuleSettingsValues | ConsistencySettingsValues;
+export type ExpectedRevision7 = number;
 
 export interface WorkbenchDomain {
   DatasetReportStart?: DatasetReportStart;
@@ -2709,6 +2720,11 @@ export interface WorkbenchDomain {
   ImageEncoderSettings?: ImageEncoderSettings;
   ImageEncoderEdit?: ImageEncoderEdit;
   ImageProfileCreate?: ImageProfileCreate;
+  ModuleSettingsSnapshot?: ModuleSettingsSnapshot;
+  ModuleSettingsEdit?: ModuleSettingsEdit;
+  ModuleModelReference?: ModuleModelReference;
+  ModuleSettingsValues?: ModuleSettingsValues;
+  ConsistencySettingsValues?: ConsistencySettingsValues;
 }
 export interface DatasetReportStart {
   submission_id?: SubmissionId;
@@ -5753,4 +5769,27 @@ export interface ImageProfileCreate {
   weights_ref: WeightsRef2;
   source_ref?: SourceRef2;
   storage_dtype?: StorageDtype2;
+}
+export interface ModuleSettingsSnapshot {
+  module: Module;
+  settings: Settings;
+  revision: Revision5;
+  defaults: Defaults;
+}
+export interface ModuleSettingsValues {
+  model: ModuleModelReference | null;
+}
+export interface ModuleModelReference {
+  provider_id: ProviderId9;
+  model_id: ModelId11;
+}
+export interface ConsistencySettingsValues {
+  model: ModuleModelReference | null;
+  mode: Mode9;
+  min_similarity: MinSimilarity7;
+}
+export interface ModuleSettingsEdit {
+  module: Module1;
+  settings: Settings1;
+  expected_revision: ExpectedRevision7;
 }

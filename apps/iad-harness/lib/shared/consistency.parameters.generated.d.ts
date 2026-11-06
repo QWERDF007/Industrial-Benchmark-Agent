@@ -251,12 +251,10 @@ export declare const consistencyStartParameters: {
         readonly type: "string";
         readonly enum: readonly ["exact", "visual", "combined"];
         readonly title: "Mode";
-        readonly default: "exact";
     };
     readonly min_similarity: {
         readonly type: "number";
         readonly title: "Min Similarity";
-        readonly default: 0.95;
     };
     readonly profile_id: {
         readonly type: "string";

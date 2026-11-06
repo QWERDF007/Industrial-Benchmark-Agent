@@ -27,6 +27,7 @@ from iad_core.exploration.operations import (direction_exploration_start, direct
     direction_exploration_cancel, direction_exploration_delete, direction_exploration_retry, direction_exploration_get, direction_exploration_evidence, direction_exploration_remove_direction,
     direction_exploration_presets, direction_exploration_preset_save)
 
+from iad_core.workbench.module_settings import module_settings_get, module_settings_save, module_settings_validate
 from iad_core.workbench.model_operations import (model_settings_get, model_settings_save, model_settings_view,
     model_settings_validate, model_environment_get, model_connection_check, model_provider_validate)
 from iad_core.feature.operations import feature_settings_view, feature_settings_save, feature_profile_create, feature_connection_check
@@ -552,6 +553,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     image_index_prepare,consistency_start,consistency_status,consistency_list,consistency_cancel,consistency_delete,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_group_analyze,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context,
     consistency_model_start, consistency_model_status, consistency_model_cancel, consistency_model_retry,
     feature_settings_view, feature_settings_save, feature_profile_create, feature_connection_check,
+    module_settings_get, module_settings_save, module_settings_validate,
     model_settings_get, model_settings_save, model_settings_view, model_settings_validate, model_environment_get, model_connection_check, model_provider_validate,
     direction_exploration_presets, direction_exploration_preset_save,
     knowledge_directions_adopt, direction_exploration_start, direction_exploration_batch_start, direction_exploration_status, direction_exploration_list, direction_exploration_cancel,
@@ -569,6 +571,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
 
 
 QUERY_OPERATIONS = frozenset({
+    'module_settings_get',
     'knowledge_observations', 'knowledge_evidence',
     'knowledge_get', 'knowledge_details', 'knowledge_versions', 'knowledge_presets', 'knowledge_prompt_get', 'knowledge_sources',
     'direction_exploration_get', 'direction_exploration_evidence', 'direction_exploration_presets',
