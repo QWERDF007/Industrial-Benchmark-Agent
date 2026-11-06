@@ -70,6 +70,16 @@ def test_default_joint_analysis_uses_one_model_batch_when_it_fits_and_splits_wit
         assert set.union(*observed) == expected
         assert sum(map(len,observed)) == len(expected)
         assert {item.candidate_id for item in result.result.assessments} == expected
+        generated=len(observed)
+        next_request=request.model_copy(update={'request_id':'reuse-capacity-qualified-batches'})
+        reused=analyses.start(next_request)
+        runtime.jobs.wait(reused.run_id,10)
+        next_result=analyses.read(next_request)
+        assert next_result.status=='COMPLETED',next_result.error
+        assert len(observed)==generated, '容量动态拆分后仍应复用实际输入完全一致的合格批次'
+        saved=runtime.jobs.status(reused.run_id)
+        assert all(batch['run_id']==started.run_id for batch in saved['group_analysis_batches'])
+        assert {item.candidate_id for item in next_result.result.assessments}==expected
     finally:
         runtime.close()
 

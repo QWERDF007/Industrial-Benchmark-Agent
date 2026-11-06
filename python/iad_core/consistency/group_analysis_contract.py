@@ -58,28 +58,28 @@ class GroupAnalysisContract(Generic[Response]):
                             target[field] = self.references[identity]
             return value
 
-        @model_validator(mode='after')
-        def descriptive_output(value):
-            fields = [(('overall', 'text'), value.overall.text),
-                *[(('conclusions', index, 'text'), item.text) for index, item in enumerate(value.conclusions)],
-                *[(('limitations', index), text) for index, text in enumerate(value.limitations)]]
-            if isinstance(value, GroupAnalysisDraft):
-                for index, item in enumerate(value.assessments):
-                    fields.extend([(('assessments', index, 'explanation'), item.explanation),
-                        *[(('assessments', index, 'findings', finding), text) for finding, text in enumerate(item.findings)]])
-            errors: list[InitErrorDetails] = []
-            for location, text in fields:
-                try:
-                    descriptive_conclusion(text)
-                except PydanticCustomError as error:
-                    errors.append(InitErrorDetails(type=error, loc=location, input=text))
-            if errors:
-                raise ValidationError.from_exception_data(type(value).__name__, errors)
-            return value
-
         self.response_type = type(response_type.__name__, (response_type,), {
             'model_json_schema': classmethod(wire_schema), 'canonical_output': canonical_output,
-            'descriptive_output': descriptive_output})
+            'descriptive_output': model_validator(mode='after')(self.validate_descriptions)})
+
+    @staticmethod
+    def validate_descriptions(value: Response) -> Response:
+        fields = [(('overall', 'text'), value.overall.text),
+            *[(('conclusions', index, 'text'), item.text) for index, item in enumerate(value.conclusions)],
+            *[(('limitations', index), text) for index, text in enumerate(value.limitations)]]
+        if isinstance(value, GroupAnalysisDraft):
+            for index, item in enumerate(value.assessments):
+                fields.extend([(('assessments', index, 'explanation'), item.explanation),
+                    *[(('assessments', index, 'findings', finding), text) for finding, text in enumerate(item.findings)]])
+        errors: list[InitErrorDetails] = []
+        for location, text in fields:
+            try:
+                descriptive_conclusion(text)
+            except PydanticCustomError as error:
+                errors.append(InitErrorDetails(type=error, loc=location, input=text))
+        if errors:
+            raise ValidationError.from_exception_data(type(value).__name__, errors)
+        return value
 
     def encode(self, value):
         return self.vocabulary.encode(value)

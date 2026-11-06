@@ -125,6 +125,7 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
         assert any(part['type'] == 'image_url' for part in requests[0]['messages'][0]['content'])
         assert runtime.jobs.status(started.run_id)['completed'] == 2
         citation['comparison']['evidence_id'] = 'invented-evidence'
+        runtime.client.profile = runtime.client.profile.model_copy(update={'request_parameters':{'temperature':0.2}})
         bad = analyses.start(request.model_copy(update={'request_id': 'reject-invented-reference'}))
         deadline = time.monotonic() + 10
         while time.monotonic() < deadline:
@@ -133,6 +134,7 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
                 break
             time.sleep(.01)
         assert result.run_id == bad.run_id and result.status == 'FAILED' and result.result is None
+        assert len(requests) == 3, '配置变化后应实际生成并执行一次格式纠正，不能使用旧批次'
         assert 'reference' in result.error.lower()
     finally:
         release.set()

@@ -1,5 +1,7 @@
 import json
 
+from pydantic import ValidationError
+
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.gallery import GalleryQueries, GalleryReference
 from iad_core.consistency.group_models import FrozenAnalysisGroup
@@ -9,6 +11,7 @@ from iad_core.consistency.group_analysis_models import (GROUP_ANALYSIS_SCHEMA, D
     GroupAnalysisDraft, GroupAnalysisStart, GroupAnalysisView, GroupAnalysisBatch)
 from iad_core.consistency.group_analysis_inputs import GroupAnalysisInputs
 from iad_core.consistency.group_analysis_contract import GroupAnalysisContract
+from iad_core.consistency.group_batch_reuse import GroupBatchReuse
 from iad_core.consistency.group_analysis_synthesis import GroupAnalysisSynthesis
 from iad_core.consistency.group_analysis_validation import GroupAnalysisValidation
 from iad_core.storage.database import Database
@@ -109,6 +112,8 @@ class GroupAnalyses(GroupAnalysisQueries):
             raise ValueError('冻结批次须无遗漏、无重复地覆盖全部候选')
         cached = {tuple(item.candidate_ids):item for value in context.payload.get('prior_group_batches',[])
                   if (item := GroupAnalysisBatch.model_validate(value))}
+        reusable = GroupBatchReuse(self.db, context.payload['request'], context.run_id)
+        summaries_unchanged = True
         results, pending, index = [], set(context.payload['sample_ids']), 0
         context.update(phase='ANALYZING_GROUP_BATCHES', total_batches=len(batches), completed_batches=0)
         while index < len(batches):
@@ -118,7 +123,17 @@ class GroupAnalyses(GroupAnalysisQueries):
             try:
                 prepared = self.inputs.prepare(context, subset)
                 fingerprint = self.inputs.input_fingerprint(prepared.instruction(prepared.facts), prepared.images)
-                batch = cached.get(tuple(ids))
+                prior = cached.get(tuple(ids))
+                if prior is not None and prior.input_fingerprint != fingerprint:
+                    raise ValueError('已完成批次的图像、标注或复核上下文已变化，请建立新作业')
+                batch = prior
+                if batch is not None:
+                    try:
+                        GroupAnalysisContract.validate_descriptions(batch.result)
+                    except ValidationError:
+                        batch = None
+                if batch is None:
+                    batch = reusable.find(ids, fingerprint)
                 if batch is None:
                     response_type = self.validation.response_type(GroupAnalysisDraft, subset)
                     contract = GroupAnalysisContract(response_type, group, prepared.images)
@@ -140,8 +155,8 @@ class GroupAnalyses(GroupAnalysisQueries):
                 batch = GroupAnalysisBatch(run_id=context.run_id,candidate_ids=ids,input_fingerprint=fingerprint,result=result)
             else:
                 self.validation.validate(batch.result,subset)
-            if batch.input_fingerprint != fingerprint:
-                raise ValueError('已完成批次的图像、标注或复核上下文已变化，请建立新作业')
+            if prior is None or prior.result.model_dump(mode='json') != batch.result.model_dump(mode='json'):
+                summaries_unchanged = False
             results.append(batch)
             values = dict(group_analysis_batches=[item.model_dump(mode='json') for item in results],
                           completed_batches=index+1,total_batches=len(batches),analysis_plan=batches)
@@ -153,6 +168,8 @@ class GroupAnalyses(GroupAnalysisQueries):
                 context.update(**values)
             index += 1
         context.update(phase='SUMMARIZING_GROUP_BATCHES')
+        if not summaries_unchanged and context.payload.get('prior_summary_steps'):
+            context.update(prior_summary_steps=[])
         summary = GroupAnalysisSynthesis(self.client,self.validation).summarize(context,group,results)
         final = GroupAnalysisDraft(**summary.model_dump(),assessments=[item for batch in results for item in batch.result.assessments])
         self.validation.validate(final,group)

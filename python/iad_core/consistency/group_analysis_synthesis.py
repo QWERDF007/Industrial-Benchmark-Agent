@@ -1,6 +1,8 @@
 import hashlib
 import json
 
+from pydantic import ValidationError
+
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.group_analysis_models import GroupAnalysisSummary
 from iad_core.consistency.group_analysis_contract import GroupAnalysisContract
@@ -15,7 +17,19 @@ class GroupAnalysisSynthesis:
     def summarize(self, context, group, batches) -> GroupAnalysisSummary:
         nodes = [dict(node_id=batch.input_fingerprint, result=GroupAnalysisSummary.model_validate(
             batch.result.model_dump(exclude={'assessments'}))) for batch in batches]
-        cached = {tuple(step['input_node_ids']): step for step in context.payload.get('prior_summary_steps', [])}
+        cached = {}
+        invalidated = set()
+        for step in context.payload.get('prior_summary_steps', []):
+            if invalidated.intersection(step['input_node_ids']):
+                invalidated.add(step['node_id'])
+                continue
+            result = GroupAnalysisSummary.model_validate(step['result'])
+            try:
+                GroupAnalysisContract.validate_descriptions(result)
+            except ValidationError:
+                invalidated.add(step['node_id'])
+                continue
+            cached[tuple(step['input_node_ids'])] = step
         steps = []
         while len(nodes) > 1:
             queue = [nodes[start:start + 8] for start in range(0, len(nodes), 8)]
