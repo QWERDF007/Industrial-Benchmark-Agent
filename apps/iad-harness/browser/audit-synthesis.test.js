@@ -75,7 +75,7 @@ for i in range(3):
         const scope=JSON.parse(text.split(visual?'冻结图组：':'冻结批次分析：')[1].split('\n请根据图像')[0]);
         const references=visual?Object.entries(scope.candidates).map(([candidate_id,item])=>({candidate_id,
           comparison:{result_id:item.comparison.result_id,evidence_id:item.comparison.evidence_id}})):scope.summaries.flatMap(item=>item.result.overall.references);
-        result={...(visual?{assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'MATERIAL',conclusion:'标注类别不同',explanation:'对应标注类别不同。',findings:['标注类别不同']}))}:{}),
+        result={...(visual?{assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'MATERIAL',categories:['类别不一致'],conclusion:'标注类别不同',explanation:'对应标注类别不同。',findings:['标注类别不同']}))}:{}),
           overall:{verdict:'MATERIAL',text:'标注类别不同',references},conclusions:[{text:'主图与候选的像素相同，原始标注类别不同。',references}],limitations:[]};
       } else if (body.response_format.json_schema.name === 'DatasetReportConclusion') {
         assert.ok(text.startsWith('本次完整报告提示词：核对冻结数据、独立依据和适用范围。\n冻结报告事实：'));

@@ -12,7 +12,7 @@ from iad_core.consistency.conflict_categories import ConflictCategory
 
 
 ANNOTATION_DIFFERENCE_CATEGORIES: dict[DifferenceType, GalleryDifferenceKind] = {
-    'CATEGORY': 'category', 'GEOMETRY': 'geometry', 'ONE_SIDED_REGION': 'presence',
+    'CATEGORY': 'category', 'GEOMETRY': 'geometry', 'ONE_SIDED_REGION': 'presence', 'ANNOTATION_COUNT':'presence',
     'SPLIT_MERGE': 'instances', 'AMBIGUOUS_MATCH': 'instances', 'QUALITY_LABEL': 'category',
 }
 
@@ -89,6 +89,8 @@ class AnnotationComparison(AnalysisModel):
                     categories.add(ConflictCategory.POSITION)
                 case 'ONE_SIDED_REGION':
                     categories.add(ConflictCategory.EXTRA if difference.left else ConflictCategory.MISSING)
+                case 'ANNOTATION_COUNT':
+                    categories.add(ConflictCategory.EXTRA if difference.facts['left_count']>difference.facts['right_count'] else ConflictCategory.MISSING)
                 case 'SPLIT_MERGE':
                     categories.add(ConflictCategory.SPLIT if len(difference.left)>len(difference.right) else ConflictCategory.MERGE)
                 case 'AMBIGUOUS_MATCH':

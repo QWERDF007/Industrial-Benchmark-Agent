@@ -37,7 +37,7 @@ async function main(){const result=window.fixture;createRoot(document.getElement
     const encoded=JSON.stringify(source);
     const verdict=encoded.includes('equivalent.png')?'EQUIVALENT':'MATERIAL';
     const conclusion=encoded.includes('different.png')?'标注类别不同':encoded.includes('shifted.png')?'标注位置偏移':'未发现标注差异';
-    return {candidate_id,verdict,conclusion,explanation:verdict==='EQUIVALENT'?'两侧均有5个类别15的标注，位置与覆盖范围对应，无漏标或多标。':encoded.includes('different.png')?'对应标注的类别值从15变为18。':'标注框左边界向右偏移4像素。',findings:verdict==='MATERIAL'?[conclusion]:[]};
+    return {candidate_id,verdict,categories:conclusion==='标注类别不同'?['类别不一致']:conclusion==='标注位置偏移'?['位置差异']:[],conclusion,explanation:verdict==='EQUIVALENT'?'两侧均有5个类别15的标注，位置与覆盖范围对应，无漏标或多标。':encoded.includes('different.png')?'对应标注的类别值从15变为18。':'标注框左边界向右偏移4像素。',findings:verdict==='MATERIAL'?[conclusion]:[]};
    });
    const references=Object.entries(frozen.candidates).map(([candidate_id,member])=>({candidate_id,comparison:{result_id:member.comparison.result_id,evidence_id:member.comparison.evidence_id}}));
    const result={assessments,overall:{verdict:'MATERIAL',text:'标注类别和位置不同',references},conclusions:[{text:'本组分别存在标注类别改变与标注框左边界偏移。',references}],limitations:[]};
@@ -77,7 +77,7 @@ async function main(){const result=window.fixture;createRoot(document.getElement
    assert.ok(index>=0,name);await(await element('[data-dc="candidate"][data-id="'+index+'"]')).click();
    await driver.wait(async()=>(await(await driver.findElements(By.css('.dc-photo-filename')))[1].getText()).includes(name),5000);
    await driver.wait(async()=>await(await element('.dc-conclusion-panel .dc-verdict-value')).getText()===verdict,5000,'当前候选必须展示模型实际写出的结论，不能用图组文案或二分类标签代替');
-   assert.equal(await(await element('.dc-fact-panel h3')).getText(),'程序比对');
+   assert.equal(await(await element('.dc-fact-panel h3')).getText(),'判定结论');
   }
  }finally{await driver?.quit();bridge.destroy();await new Promise(resolve=>server.close(resolve));for(const [k,v] of Object.entries(previous))if(v===undefined)delete process.env[k];else process.env[k]=v;await fs.rm(root,{recursive:true,force:true});}
 });

@@ -219,7 +219,7 @@ def test_consistency_workflow_contains_program_comparison_and_eligible_visual_an
         refs=[dict(candidate_id=sid,comparison=dict(result_id=member['comparison']['result_id'],
             evidence_id=member['comparison']['evidence_id'])) for sid,member in group['candidates'].items()]
         result=dict(overall=dict(verdict='UNCERTAIN',text='需核查标注策略',references=refs),
-            assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',conclusion='缺少标注对象对应依据',explanation='现有标注策略未确认',findings=[]) for ref in refs],
+            assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',categories=[],conclusion='缺少标注对象对应依据',explanation='现有标注策略未确认',findings=[]) for ref in refs],
             conclusions=[dict(text='需人工核查策略',references=refs)],limitations=['标签非人工真值'])
         return httpx.Response(200,json={'choices':[{'message':{'content':json.dumps(result)}}]})
 
@@ -266,7 +266,7 @@ def test_consistency_workflow_contains_program_comparison_and_eligible_visual_an
         assert groups.total>0
         assert program.conflict_count==groups.total, '作业计数和当前候选卡片共用筛选口径'
         if mode=='combined':
-            assert any(not group.difference_types for group in groups.items), '相似图未确认标注差异时也须进入模型核对'
+            assert any(not group.confirmed_conflict for group in groups.items), '相似图原始数量/类别差异不等于已裁定的标注错误，仍须进入模型核对'
         for group in groups.items:
             view=runtime.models.consistency_model_batches.analyses.read(GroupAnalysisStart(query_id=report.page.query_id,
                 kind='conflicts',group_id=group.group_id,facts_state=group.facts_state,request_id='read-only'))
@@ -301,7 +301,7 @@ def test_consistency_retry_keeps_samples_without_candidates_and_rechecks_only_th
         refs=[dict(candidate_id=sid,comparison=dict(result_id=member['comparison']['result_id'],evidence_id=member['comparison']['evidence_id']))
             for sid,member in group['candidates'].items()]
         result=dict(overall=dict(verdict='UNCERTAIN',text='缺少标注对象对应依据',references=refs),
-            assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',conclusion='缺少标注对象对应依据',explanation='保留实际标注依据与未知项',findings=[]) for ref in refs],
+            assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',categories=[],conclusion='缺少标注对象对应依据',explanation='保留实际标注依据与未知项',findings=[]) for ref in refs],
             conclusions=[dict(text='保留该图组的真实比较依据',references=refs)],limitations=[])
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
 

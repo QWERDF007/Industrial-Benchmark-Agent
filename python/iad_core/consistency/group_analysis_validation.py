@@ -8,6 +8,8 @@ from iad_core.consistency.group_models import FrozenAnalysisGroup
 from iad_core.consistency.group_analysis_models import GroupAnalysisDraft, GroupAnalysisSummary
 from iad_core.consistency.models import ModelAssessmentVerdict
 from iad_core.consistency.repository import ConsistencyRepository
+from iad_core.consistency.annotation_inventory import AnnotationInventory
+from iad_core.consistency.conflict_categories import ConflictCategory
 
 Summary = TypeVar('Summary', bound=GroupAnalysisSummary)
 
@@ -87,6 +89,18 @@ class GroupAnalysisValidation:
             for assessment in result.assessments:
                 if members[assessment.candidate_id].comparison is None and assessment.verdict != 'UNCERTAIN':
                     raise ValueError('A candidate without direct evidence must remain uncertain')
+                reference=members[assessment.candidate_id].comparison
+                if reference and assessment.categories is not None:
+                    frozen=self.repository.get(reference.evidence_id)
+                    main=getattr(frozen.sources,reference.anchor_side).annotations
+                    candidate=getattr(frozen.sources,'right' if reference.anchor_side=='left' else 'left').annotations
+                    inventory=AnnotationInventory.compare(main,candidate)
+                    if inventory.complete and (not inventory.left or not inventory.right) and inventory.left!=inventory.right:
+                        expected_category=ConflictCategory.EXTRA if inventory.left else ConflictCategory.MISSING
+                        opposite=ConflictCategory.MISSING if inventory.left else ConflictCategory.EXTRA
+                        if opposite in assessment.categories:
+                            raise repairable_output_error('incorrect_annotation_direction',
+                                f'主图{sum(inventory.left.values())}个标注、候选{sum(inventory.right.values())}个标注，数量方向是{expected_category.value}，不能反向；请据此重新核对categories、conclusion及分析，不裁定哪侧正确。')
             expected = self.verdict(item.verdict for item in result.assessments)
             if result.overall.verdict != expected:
                 raise ValueError(f'整组结论不得否定已确认差异或遗漏证据不足的成员：'

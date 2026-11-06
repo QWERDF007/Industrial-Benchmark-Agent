@@ -37,9 +37,10 @@ class GroupAnalysisContract(Generic[Response]):
             encoded = self.encode(response_type.model_json_schema(**options))
             pair = encoded['$defs'].get('GroupPairAssessment')
             if pair:
-                field = pair['properties']['conclusion']
-                pair['properties']['conclusion'] = next(option for option in field['anyOf'] if option.get('type') != 'null')
-                pair['required'] = list(dict.fromkeys([*pair.get('required', []), 'conclusion']))
+                for name in ('conclusion','categories'):
+                    field = pair['properties'][name]
+                    pair['properties'][name] = next(option for option in field['anyOf'] if option.get('type') != 'null')
+                pair['required'] = list(dict.fromkeys([*pair.get('required', []), 'conclusion','categories']))
             order = ('assessments', 'conclusions', 'limitations', 'overall')
             encoded['properties'] = {key: encoded['properties'][key] for key in order if key in encoded['properties']}
             encoded['required'] = [key for key in order if key in encoded.get('required', [])]
@@ -78,6 +79,16 @@ class GroupAnalysisContract(Generic[Response]):
                 fields.extend([(('assessments', index, 'conclusion'), item.conclusion),(('assessments', index, 'explanation'), item.explanation),
                     *[(('assessments', index, 'findings', finding), text) for finding, text in enumerate(item.findings)]])
         errors: list[InitErrorDetails] = []
+        if isinstance(value,GroupAnalysisDraft):
+            for index,item in enumerate(value.assessments):
+                if item.categories is None:
+                    errors.append(InitErrorDetails(type=repairable_output_error('missing_consistency_categories',
+                        '逐候选必须给出categories结构化分类，按主图相对候选的方向区分类别、位置、增减、拆分、合并，无差异时返回空数组。'),
+                        loc=('assessments',index,'categories'),input=None))
+                elif item.verdict=='MATERIAL' and not item.categories:
+                    errors.append(InitErrorDetails(type=repairable_output_error('missing_difference_category',
+                        '已确认存在差异时categories不能留空，必须给出全部对应差异分类，以便进入相应tab；不要仅在分析正文中描述差异。'),
+                        loc=('assessments',index,'categories'),input=[]))
         for location, text in fields:
             try:
                 if text is None:

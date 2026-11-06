@@ -17,6 +17,8 @@ from iad_core.dataset.registry import DatasetRegistry
 from iad_core.duplicate.index import PixelIndex
 from iad_core.storage.database import Database
 from iad_core.storage.models import Annotation, QualityStatus
+from iad_core.consistency.annotation_inventory import AnnotationInventory
+from iad_core.consistency.conflict_categories import ConflictCategory
 from iad_core.storage.repositories import AnnotationRepository, SampleRepository
 
 
@@ -98,6 +100,11 @@ class AnnotationMatcher:
                 facts['errors'] = issue.source_errors
             difference('ANNOTATION_UNREADABLE', indices if issue.side == 0 else [], indices if issue.side == 1 else [], facts=facts)
         if domain.unavailable_reason is not None:
+            inventory=AnnotationInventory.compare(left,right)
+            if inventory.categories.intersection({ConflictCategory.EXTRA,ConflictCategory.MISSING}):
+                difference('ANNOTATION_COUNT',facts={'left_count':sum(inventory.left.values()),'right_count':sum(inventory.right.values())})
+            if ConflictCategory.CATEGORY in inventory.categories:
+                difference('CATEGORY',facts={'comparison_kind':'CATEGORY_INVENTORY','left_categories':inventory.left,'right_categories':inventory.right})
             difference('POLICY_UNCONFIRMED', facts={'reason': domain.unavailable_reason},
                 extra_pending=['Verify the original coordinate and ignore domain before geometric reconciliation'])
             captured = relation != 'EXACT' and not any(invalid) and all(side.annotation_coordinates == 'RAW' for side in sides)

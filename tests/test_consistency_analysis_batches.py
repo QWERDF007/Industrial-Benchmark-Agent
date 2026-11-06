@@ -47,7 +47,7 @@ def test_default_joint_analysis_uses_one_model_batch_when_it_fits_and_splits_wit
         result = dict(overall=dict(verdict='UNCERTAIN', text='缺少直接比较证据', references=refs),
             conclusions=[dict(text='保留当前图像的标注比较依据', references=refs)], limitations=[])
         if visual:
-            result['assessments'] = [dict(candidate_id=ref['candidate_id'], verdict='UNCERTAIN', conclusion='缺少直接比较证据', explanation='当前缺少直接比较证据', findings=[]) for ref in refs]
+            result['assessments'] = [dict(candidate_id=ref['candidate_id'], verdict='UNCERTAIN', categories=[],conclusion='缺少直接比较证据', explanation='当前缺少直接比较证据', findings=[]) for ref in refs]
         return httpx.Response(200, json={'choices':[{'finish_reason':'stop', 'message':{'content':json.dumps(result)}}]})
 
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond)),
@@ -118,7 +118,7 @@ def test_group_analysis_persists_visual_batches_and_resumes_before_model_synthes
             if len(calls) in (2, 3):
                 return httpx.Response(200,json={'choices':[{'message':{'content':'{}'}}]})
             result=dict(overall=dict(verdict='MATERIAL',text='标注存在差异',references=refs),
-                assessments=[dict(candidate_id=ref['candidate_id'],verdict='MATERIAL',conclusion='标注类别不同',explanation='本批图像存在标注差异',findings=['标注不同']) for ref in refs],
+                assessments=[dict(candidate_id=ref['candidate_id'],verdict='MATERIAL',categories=['类别不一致'],conclusion='标注类别不同',explanation='本批图像存在标注差异',findings=['标注不同']) for ref in refs],
                 conclusions=[dict(text='本批标注不同',references=refs)],limitations=[])
         else:
             assert schema=='GroupAnalysisSummary'
@@ -184,7 +184,7 @@ def test_group_synthesis_corrects_its_output_once_and_keeps_completed_visual_bat
             names={source['sample_id']:source['name'] for source in payload['sources'].values()}
             verdict = 'MATERIAL' if names[candidate]=='scratch.png' else 'UNCERTAIN'
             result = dict(overall=dict(verdict=verdict, text='标注类别不同且部分候选缺少直接证据', references=[citation]),
-                assessments=[dict(candidate_id=candidate, verdict=verdict, conclusion='标注类别不同' if verdict=='MATERIAL' else '缺少直接比较证据', explanation='保留原始标注的可见差异或证据限制', findings=[])],
+                assessments=[dict(candidate_id=candidate, verdict=verdict, categories=['类别不一致'] if verdict=='MATERIAL' else [], conclusion='标注类别不同' if verdict=='MATERIAL' else '缺少直接比较证据', explanation='保留原始标注的可见差异或证据限制', findings=[])],
                 conclusions=[dict(text='仅概括本批实际观察', references=[citation])], limitations=[])
         else:
             assert name == 'GroupAnalysisSummary'
@@ -258,7 +258,7 @@ def test_full_scope_consistency_sends_distinct_images_to_mllm_without_requiring_
         refs=[dict(candidate_id=identity,comparison=dict(result_id=member['comparison']['result_id'],evidence_id=member['comparison']['evidence_id']))
               for identity,member in payload['candidates'].items()]
         result=dict(overall=dict(verdict='UNCERTAIN',text='标注差异证据不足',references=refs),
-            assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',conclusion='缺少直接比较证据',explanation='逐批查看原图后仍需补充可比较部位',findings=[]) for ref in refs],
+            assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',categories=[],conclusion='缺少直接比较证据',explanation='逐批查看原图后仍需补充可比较部位',findings=[]) for ref in refs],
             conclusions=[dict(text='保留不同图像的比较限制',references=refs)],limitations=['图像并非严格相同'])
         return httpx.Response(200,json={'choices':[{'message':{'content':json.dumps(result)}}]})
 
@@ -303,7 +303,7 @@ def test_labelme_mask_consistency_sends_frozen_annotation_shape_with_full_and_cr
         refs=[dict(candidate_id=identity,comparison=dict(result_id=member['comparison']['result_id'],evidence_id=member['comparison']['evidence_id']))
               for identity,member in payload['candidates'].items()]
         result=dict(overall=dict(verdict='UNCERTAIN',text='缺少直接比较证据',references=refs),
-            assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',conclusion='缺少直接比较证据',explanation='真实图像与标注已提供',findings=[]) for ref in refs],
+            assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',categories=[],conclusion='缺少直接比较证据',explanation='真实图像与标注已提供',findings=[]) for ref in refs],
             conclusions=[dict(text='保留差异与限制',references=refs)],limitations=[])
         masks=[index for index,item in enumerate(descriptors) if item['representation']=='annotation_mask']
         assert masks,'Labelme mask须随JSON、整图及裁剪一起送入模型'
@@ -391,7 +391,7 @@ def test_consistency_keeps_all_annotation_crops_when_actual_model_capacity_allow
         refs=[dict(candidate_id=identity,comparison=dict(result_id=member['comparison']['result_id'],evidence_id=member['comparison']['evidence_id']))
             for identity,member in payload['candidates'].items()]
         result=dict(overall=dict(verdict='MATERIAL',text='标注类别不同',references=refs),
-            assessments=[dict(candidate_id=ref['candidate_id'],verdict='MATERIAL',conclusion='标注类别不同',explanation='对应标注类别不同',findings=['类别不同']) for ref in refs],
+            assessments=[dict(candidate_id=ref['candidate_id'],verdict='MATERIAL',categories=['类别不一致'],conclusion='标注类别不同',explanation='对应标注类别不同',findings=['类别不同']) for ref in refs],
             conclusions=[dict(text='全部标注位置与裁剪已保留',references=refs)],limitations=[])
         return httpx.Response(200,json={'choices':[{'message':{'content':json.dumps(result)}}]})
 

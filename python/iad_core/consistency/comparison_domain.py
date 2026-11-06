@@ -27,6 +27,10 @@ class ComparisonDomain:
     masking: list[AnnotationMasking]
 
     @staticmethod
+    def coordinates_correspond(left:'AnnotationSet',right:'AnnotationSet',relation:Relation) -> bool:
+        return relation=='EXACT' and (left.width,left.height)==(right.width,right.height) and all(side.annotation_coordinates=='RAW' for side in (left,right))
+
+    @staticmethod
     def pixel_statistics(sides: list['AnnotationSet'], left, right):
         from iad_core.duplicate.verification_models import RegionPixelStatistics
         regions=[item.bbox for source in sides for item in source.annotations
@@ -41,7 +45,7 @@ class ComparisonDomain:
     def prepare(cls, sides: list['AnnotationSet'], relation: Relation, config: AnnotationMatchingConfig) -> 'ComparisonDomain':
         domain = cls([{}, {}], [0, 0], [],
             [annotation for side in sides for annotation in side.annotations if annotation.is_ignored], [], None)
-        if relation != 'EXACT' or (sides[0].width, sides[0].height) != (sides[1].width, sides[1].height) or any(side.annotation_coordinates != 'RAW' for side in sides):
+        if not cls.coordinates_correspond(*sides,relation):
             domain.unavailable_reason = 'Original coordinate correspondence is not verified'
         cached_pixels = 0
         invalid_ignore = False

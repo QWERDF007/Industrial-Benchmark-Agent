@@ -771,7 +771,7 @@ export declare const consistencyQueryParameters: {
     };
     readonly difference_type: {
         readonly type: "string";
-        readonly enum: readonly ["QUALITY_LABEL", "CATEGORY", "ONE_SIDED_REGION", "GEOMETRY", "SPLIT_MERGE", "AMBIGUOUS_MATCH", "POLICY_UNCONFIRMED", "ANNOTATION_UNREADABLE"];
+        readonly enum: readonly ["QUALITY_LABEL", "CATEGORY", "ANNOTATION_COUNT", "ONE_SIDED_REGION", "GEOMETRY", "SPLIT_MERGE", "AMBIGUOUS_MATCH", "POLICY_UNCONFIRMED", "ANNOTATION_UNREADABLE"];
         readonly title: "Difference Type";
     };
     readonly review_state: {

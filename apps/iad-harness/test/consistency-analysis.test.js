@@ -20,7 +20,7 @@ test('HTTP group analysis saves real model conclusions against frozen candidate 
     if(req.url==='/v1/chat/completions'){
       const chunks=[];for await(const chunk of req)chunks.push(chunk);
       const request=JSON.parse(Buffer.concat(chunks));const frozen=JSON.parse(request.messages[0].content[0].text.split('冻结图组：')[1]);const [candidate_id,candidate]=Object.entries(frozen.candidates)[0];const wireCitation={candidate_id,comparison:{result_id:candidate.comparison.result_id,evidence_id:candidate.comparison.evidence_id,difference_id:null}};assert.ok(request.messages[0].content.some(part=>part.type==='image_url'));generated++;
-      res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({assessments:[{candidate_id,verdict:'UNCERTAIN',conclusion:'缺少标注对象对应依据',explanation:'当前图像缺少标注对象的对应依据。',findings:[]}],overall:{verdict:'UNCERTAIN',text:'整组证据不足。',references:[wireCitation]},conclusions:[{text:'当前图像缺少标注对象的对应依据。',references:[wireCitation]}],limitations:[]})}}]}));
+      res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify({assessments:[{candidate_id,verdict:'UNCERTAIN',categories:[],conclusion:'缺少标注对象对应依据',explanation:'当前图像缺少标注对象的对应依据。',findings:[]}],overall:{verdict:'UNCERTAIN',text:'整组证据不足。',references:[wireCitation]},conclusions:[{text:'当前图像缺少标注对象的对应依据。',references:[wireCitation]}],limitations:[]})}}]}));
     }
     return api(req,res);
   });

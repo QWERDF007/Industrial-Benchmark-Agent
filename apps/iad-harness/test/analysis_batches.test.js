@@ -32,7 +32,7 @@ test('public HTTP runs frozen exploration and mining batches and persists criter
       const references=Object.entries(scope.candidates).map(([candidate_id,item])=>({candidate_id,
         comparison:{result_id:item.comparison.result_id,evidence_id:item.comparison.evidence_id}}));
       result={overall:{verdict:'UNCERTAIN',text:'缺少标注对象对应依据',references},
-        assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'UNCERTAIN',conclusion:'缺少标注对象对应依据',explanation:'保留比较限制',findings:[]})),
+        assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'UNCERTAIN',categories:[],conclusion:'缺少标注对象对应依据',explanation:'保留比较限制',findings:[]})),
         conclusions:[{text:'逐批核对实际图像与标签',references}],limitations:[]};
     }
     else if(body.response_format.json_schema.name==='KnowledgeDiscoveryLinks'){

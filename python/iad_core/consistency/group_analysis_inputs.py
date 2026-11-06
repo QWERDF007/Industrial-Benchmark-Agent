@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from iad_core.consistency.errors import ConsistencyError
+from iad_core.consistency.group_analysis_prompts import GROUP_DIRECTION_INSTRUCTION
 from iad_core.consistency.group_models import FrozenAnalysisGroup
 from iad_core.consistency.review import ConsistencyReview
 from iad_core.dataset.registry import DatasetRegistry
@@ -21,7 +22,8 @@ class PreparedGroupInput:
     images: list[PreparedImage]
 
     def instruction(self, facts: dict) -> str:
-        return self.prompt + '\n冻结图组：' + json.dumps(facts, ensure_ascii=False, separators=(',', ':'))
+        return (self.prompt + '\n' + GROUP_DIRECTION_INSTRUCTION
+            + '\n冻结图组：' + json.dumps(facts, ensure_ascii=False, separators=(',', ':')))
 
 
 class GroupAnalysisInputs:

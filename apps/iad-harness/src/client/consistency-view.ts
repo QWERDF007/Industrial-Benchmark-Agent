@@ -1,5 +1,5 @@
 import type {ConsistencyReport, GalleryItem, GalleryPage, GalleryMember, GalleryMemberPage, GalleryReference} from '../shared/domain.generated.js';
-import {modelAssessmentLabels} from '../shared/consistency.parameters.generated.js';
+import {conflictCategories,modelAssessmentLabels} from '../shared/consistency.parameters.generated.js';
 import {request} from './api.js';
 
 export interface ConflictCardItem {
@@ -33,8 +33,8 @@ export class ConsistencyView {
       if(items.length>=result.total)break;
     }
     const cards:ConflictCardItem[]=items.map(item=>({id:item.group_id,
-      types:item.conflict_categories,
-      type:item.conflict_categories.join('、') || '程序未检出标注差异',
+      types:conflictCategories.filter(category=>item.conflict_categories.includes(category)||item.model_categories.includes(category)),
+      type:item.conflict_categories.join('、') || '类别及数量相同，位置未比对',
       filename:item.anchor.sample.relative_path.split('/').pop()!,url:this.media(item.anchor,true),fullUrl:this.media(item.anchor),
       sourceWidth:item.anchor.sample.width,sourceHeight:item.anchor.sample.height,memberCount:item.member_count,review:item.review_state,
       model:{status:item.model_state==='MATERIAL'?'conflict':item.model_state==='EQUIVALENT'?'no_conflict':'unknown',

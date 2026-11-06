@@ -1635,7 +1635,7 @@ export type GeometryEqual = boolean;
 export type ComparisonKind = "LOCATION_ONLY" | "SEGMENTATION" | "IMAGE_LABEL";
 export type Matches = InstanceMatch[];
 export type DifferenceId = string;
-export type Type1 = "QUALITY_LABEL" | "CATEGORY" | "ONE_SIDED_REGION" | "GEOMETRY" | "SPLIT_MERGE" | "AMBIGUOUS_MATCH" | "POLICY_UNCONFIRMED" | "ANNOTATION_UNREADABLE";
+export type Type1 = "QUALITY_LABEL" | "CATEGORY" | "ANNOTATION_COUNT" | "ONE_SIDED_REGION" | "GEOMETRY" | "SPLIT_MERGE" | "AMBIGUOUS_MATCH" | "POLICY_UNCONFIRMED" | "ANNOTATION_UNREADABLE";
 export type Left = Annotation[];
 export type Right = Annotation[];
 export type Region = [number, number, number, number] | null;
@@ -2042,6 +2042,10 @@ export type Normalization = "RAW" | "UINT8_DISPLAY" | "UINT16_FULL_RANGE_DISPLAY
 export type Available = boolean;
 export type Reason15 = string | null;
 export type Media = EvidenceMedia[];
+export type ConflictCategory = "类别不一致" | "位置差异" | "多类别" | "少类别" | "拆分" | "合并" | "对应关系差异";
+export type Categories1 = ConflictCategory[];
+export type Summary5 = string;
+export type GeometryCompared = boolean;
 export type EvidenceId12 = string;
 export type EvidenceId13 = string;
 export type MediaId1 = string;
@@ -2059,7 +2063,7 @@ export type Uri = string;
  * Absolute local filesystem path
  */
 export type Path3 = string;
-export type Summary5 = string | null;
+export type Summary6 = string | null;
 export type EvidenceId14 = string;
 export type ResultId6 = string;
 /**
@@ -2197,7 +2201,7 @@ export type MinSimilarity5 = number;
 export type AnnotationDifferencesOnly = boolean;
 export type Relation3 = ("EXACT" | "NEAR_CANDIDATE" | "VISUAL_REFERENCE" | "DIFFERENT" | "UNCHECKED") | null;
 export type ConfirmedConflict2 = boolean | null;
-export type DifferenceType = ("QUALITY_LABEL" | "CATEGORY" | "ONE_SIDED_REGION" | "GEOMETRY" | "SPLIT_MERGE" | "AMBIGUOUS_MATCH" | "POLICY_UNCONFIRMED" | "ANNOTATION_UNREADABLE") | null;
+export type DifferenceType = ("QUALITY_LABEL" | "CATEGORY" | "ANNOTATION_COUNT" | "ONE_SIDED_REGION" | "GEOMETRY" | "SPLIT_MERGE" | "AMBIGUOUS_MATCH" | "POLICY_UNCONFIRMED" | "ANNOTATION_UNREADABLE") | null;
 export type ReviewState1 = ("OPEN" | "NEEDS_CONTEXT" | "RESOLVED") | null;
 export type CorrectionState2 = ("NOT_REQUIRED" | "PROPOSED" | "AWAITING_RESCAN" | "VERIFIED") | null;
 export type Cursor2 = string | null;
@@ -2287,9 +2291,9 @@ export type MemberCount4 = number;
 export type CandidateCount = number;
 export type DatasetCount1 = number;
 export type PairCount3 = number;
-export type DifferenceTypes = ("QUALITY_LABEL" | "CATEGORY" | "ONE_SIDED_REGION" | "GEOMETRY" | "SPLIT_MERGE" | "AMBIGUOUS_MATCH" | "POLICY_UNCONFIRMED" | "ANNOTATION_UNREADABLE")[];
-export type ConflictCategory = "类别不一致" | "位置差异" | "多类别" | "少类别" | "拆分" | "合并" | "对应关系差异";
+export type DifferenceTypes = ("QUALITY_LABEL" | "CATEGORY" | "ANNOTATION_COUNT" | "ONE_SIDED_REGION" | "GEOMETRY" | "SPLIT_MERGE" | "AMBIGUOUS_MATCH" | "POLICY_UNCONFIRMED" | "ANNOTATION_UNREADABLE")[];
 export type ConflictCategories = ConflictCategory[];
+export type ModelCategories = ConflictCategory[];
 export type ConfirmedConflict3 = boolean;
 export type ModelState = "NOT_ANALYZED" | "RUNNING" | "FAILED" | "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
 export type ModelConclusion1 = string | null;
@@ -2359,6 +2363,10 @@ export type CandidateId1 = string;
  */
 export type Verdict1 = "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
 export type Conclusion3 = string | null;
+/**
+ * 当前主图相对本候选图的全部差异分类，可多选；主图比候选少标注为少类别，多标注为多类别；主图同一对象多个框而候选一个为拆分，反之为合并；未发现差异时为空。类别/数量事实可直接比较，不等于裁决哪一侧正确。
+ */
+export type Categories2 = ConflictCategory[] | null;
 /**
  * 当前图对的分析依据，具体说明差异发生在哪一侧、哪个对象或区域，位置、类别、数量及拆分合并等实际变化，解释conclusion；无差异时说明各项对应。不得用基本一致、可能、疑似、待核对等话术替代判断。真实缺失证据须指明缺失内容及其阻断的判断
  */
@@ -5081,6 +5089,7 @@ export interface EvidenceBundle {
     checked_at: CheckedAt2;
     media: Media;
     source_states: EvidenceSourceStates;
+    annotation_observations: AnnotationObservations;
 }
 export interface EvidenceSources {
     left: FrozenEvidenceSource;
@@ -5141,6 +5150,14 @@ export interface EvidenceMedia {
     available: Available;
     reason: Reason15;
 }
+export interface AnnotationObservations {
+    [k: string]: AnnotationObservation;
+}
+export interface AnnotationObservation {
+    categories: Categories1;
+    summary: Summary5;
+    geometry_compared: GeometryCompared;
+}
 export interface ConsistencyEvidenceReference {
     evidence_id: EvidenceId12;
 }
@@ -5154,7 +5171,7 @@ export interface ArtifactRef {
     artifact_type: ArtifactType;
     uri: Uri;
     path: Path3;
-    summary?: Summary5;
+    summary?: Summary6;
 }
 export interface ConsistencyContextRequest {
     evidence_id: EvidenceId14;
@@ -5479,6 +5496,7 @@ export interface GalleryItem {
     pair_count: PairCount3;
     difference_types: DifferenceTypes;
     conflict_categories: ConflictCategories;
+    model_categories: ModelCategories;
     confirmed_conflict: ConfirmedConflict3;
     model_state: ModelState;
     model_conclusion: ModelConclusion1;
@@ -5556,6 +5574,7 @@ export interface GroupPairAssessment {
     candidate_id: CandidateId1;
     verdict: Verdict1;
     conclusion: Conclusion3;
+    categories: Categories2;
     explanation: Explanation;
     findings: Findings4;
 }

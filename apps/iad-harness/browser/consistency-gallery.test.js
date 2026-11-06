@@ -58,8 +58,14 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
       const references=visual?Object.entries(scope.candidates).map(([candidate_id,item])=>({candidate_id,
         comparison:{result_id:item.comparison.result_id,evidence_id:item.comparison.evidence_id}}))
         :scope.summaries.flatMap(item=>item.result.overall.references);
-      const result={...(visual?{assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'MATERIAL',conclusion:'标注类别不同',explanation:'对应标注的原始类别值不同。',findings:['标注类别不同']}))}:{}),
-        overall:{verdict:'MATERIAL',text:'标注类别不同',references},conclusions:[{text:'固定主图与候选的像素相同，对应标注的原始类别值不同。',references}],limitations:[]};
+      const direction=visual&&Object.values(scope.sources).some(source=>source.name.includes('missing-main.png'));
+      const position=visual&&Object.values(scope.sources).some(source=>source.name.includes('position-main.png'));
+      const main=visual?Object.values(scope.sources).find(source=>source.sample_id===scope.anchor.sample_id):null;
+      const directionCategory=main?.annotations.length?'多类别':'少类别',directionText=main?.annotations.length?'主图多出标注':'主图缺少标注';
+      const conclusion=direction?directionText:position?'主图标注位置偏移':'标注类别不同';
+      const explanation=direction?'主图与候选的标注数量分别为0和1，按主图方向陈述差异。':position?'主图标注框比候选向左偏移5像素，类别和数量对应。':'对应标注的原始类别值不同。';
+      const result={...(visual?{assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'MATERIAL',categories:direction?[directionCategory]:position?['位置差异']:['类别不一致'],conclusion,explanation,findings:[conclusion]}))}:{}),
+        overall:{verdict:'MATERIAL',text:conclusion,references},conclusions:[{text:explanation,references}],limitations:[]};
       res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({id:'local-group-analysis',model:'local-protocol-model',choices:[{finish_reason:'stop',message:{content:JSON.stringify(result)}}]}));
     }
     if(req.url==='/browser.js'){res.setHeader('Content-Type','application/javascript');return res.end(bundle.outputFiles[0].contents);}
@@ -306,6 +312,80 @@ for folder in ['OK','NG']:
     assert.deepEqual(await Promise.all((await driver.findElements(By.css('[aria-label="原始标注冲突类型"] [role="tab"]>span:first-child'))).map(tab=>tab.getText())),
       ['全部冲突','类别不一致'],'异常检测同样使用类别不一致tab');
     await fs.writeFile(path.join(output,'anomaly-categories.png'),await driver.takeScreenshot(),'base64');
+    execFileSync(bridge.pythonPath,['-c',`import sys,json
+from pathlib import Path
+from PIL import Image
+p=Path(sys.argv[1]);(p/'similar-images').mkdir();(p/'similar-labels').mkdir()
+for name,width,shapes in [('missing-main',320,[]),('missing-zcandidate',321,[{'label':'12','shape_type':'rectangle','points':[[240,10],[250,20]]}])]:
+ Image.new('RGB',(width,240),'#197fe5').save(p/'similar-images'/f'{name}.png')
+ (p/'similar-labels'/f'{name}.json').write_text(json.dumps({'imageWidth':width,'imageHeight':240,'shapes':shapes}))`,root]);
+    const similarGroup=await bridge.execute('dataset_group_create',{name:'非同像素方向判定'});
+    const similar=await bridge.execute('dataset_import',{format:'labelme',group_id:similarGroup.group_id,name:'主图方向',image_dir:path.join(root,'similar-images'),annotation_dir:path.join(root,'similar-labels')});
+    execFileSync(bridge.pythonPath,['-c',`import sys,numpy as np
+from pathlib import Path
+from iad_core.storage.database import Database
+from iad_core.storage.features import FeatureRepository
+from iad_core.storage.models import FeatureRecord
+from iad_core.storage.repositories import SampleRepository
+from iad_core.duplicate.index import PixelIndex
+from tests.feature_fixtures import configure_test_encoder
+db=Database(sys.argv[1]);encoder=configure_test_encoder(db,Path(sys.argv[2]));profile=encoder.profile
+for sample in SampleRepository(db).list_by_task(sys.argv[3]):
+ group=PixelIndex(db).get(sample.sample_id).content_group_id
+ vector=np.ones(profile.dim,dtype=profile.storage_dtype);vector/=np.linalg.norm(vector)
+ FeatureRepository(db).upsert(FeatureRecord(content_group_id=group,profile_id=profile.profile_id,dim=profile.dim,dtype=profile.storage_dtype,embedding_blob=vector.tobytes()))`,path.join(root,'test.db'),root,similar.task_id],{env:{...process.env,PYTHONPATH:path.resolve(app,'../../python')+':'+path.resolve(app,'../..')}});
+    let similarJob=await bridge.execute('analysis_start',{request:{analysis_kind:'consistency',mode:'combined',dataset_ids:[similar.dataset_id]},
+      _model_execution:{profile:{endpoint:`http://127.0.0.1:${server.address().port}/v1`,model_id:'local-protocol-model',capacity_mode:'vllm_tokenize',max_visual_inputs:16}}});
+    const deadline=Date.now()+15000;
+    do {await new Promise(resolve=>setTimeout(resolve,20));similarJob=await bridge.execute('analysis_status',{run_id:similarJob.run_id});}while(['PENDING','RUNNING'].includes(similarJob.status)&&Date.now()<deadline);
+    assert.equal(similarJob.status,'COMPLETED',JSON.stringify(similarJob.errors));
+    await driver.get(start);await(await element(`#dc-parent option[value="${similarGroup.group_id}"]`)).click();
+    await element('[data-dc="open-conflict"]');
+    await(await element('[role="tab"][data-id="少类别"]')).click();
+    await driver.wait(async()=>(await cards()).length===1,5000);
+    assert.match(await(await cards())[0].getAttribute('aria-label'),/missing-main.png/);
+    await(await cards())[0].click();
+    const mainConclusion=await element('.dc-fact-panel');
+    await driver.wait(async()=>(await mainConclusion.getText()).includes('主图 0 个标注，候选图 1 个标注'),5000);
+    assert.equal(await mainConclusion.findElement(By.css('h3')).getText(),'判定结论');
+    assert.equal(await mainConclusion.findElement(By.css('.dc-verdict-value')).getText(),'少类别');
+    assert.equal(await(await element('.dc-conclusion-panel .dc-verdict-value')).getText(),'主图缺少标注');
+    await fs.writeFile(path.join(output,'directional-missing.png'),await driver.takeScreenshot(),'base64');
+    await click('关闭');await(await element('[role="tab"][data-id="多类别"]')).click();
+    await driver.wait(async()=>(await cards()).length===0,5000);
+    execFileSync(bridge.pythonPath,['-c',`import sys,json
+from pathlib import Path
+from PIL import Image
+p=Path(sys.argv[1]);(p/'position-images').mkdir();(p/'position-labels').mkdir()
+for name,width,x in [('position-main',320,20),('position-zcandidate',321,25)]:
+ Image.new('RGB',(width,240),'#197fe5').save(p/'position-images'/f'{name}.png')
+ (p/'position-labels'/f'{name}.json').write_text(json.dumps({'imageWidth':width,'imageHeight':240,'shapes':[{'label':'12','shape_type':'rectangle','points':[[x,30],[x+30,60]]}]}))`,root]);
+    const positionGroup=await bridge.execute('dataset_group_create',{name:'模型发现位置差异'});
+    const positioned=await bridge.execute('dataset_import',{format:'labelme',group_id:positionGroup.group_id,name:'模型位置分类',image_dir:path.join(root,'position-images'),annotation_dir:path.join(root,'position-labels')});
+    execFileSync(bridge.pythonPath,['-c',`import sys,numpy as np
+from iad_core.storage.database import Database
+from iad_core.storage.features import FeatureRepository
+from iad_core.storage.models import FeatureRecord
+from iad_core.storage.repositories import SampleRepository
+from iad_core.feature.profiles import ImageEncoders
+from iad_core.duplicate.index import PixelIndex
+db=Database(sys.argv[1]);profile=ImageEncoders(db).profile()
+for sample in SampleRepository(db).list_by_task(sys.argv[2]):
+ group=PixelIndex(db).get(sample.sample_id).content_group_id
+ vector=np.ones(profile.dim,dtype=profile.storage_dtype);vector/=np.linalg.norm(vector)
+ FeatureRepository(db).upsert(FeatureRecord(content_group_id=group,profile_id=profile.profile_id,dim=profile.dim,dtype=profile.storage_dtype,embedding_blob=vector.tobytes()))`,path.join(root,'test.db'),positioned.task_id],{env:{...process.env,PYTHONPATH:path.resolve(app,'../../python')}});
+    let positionJob=await bridge.execute('analysis_start',{request:{analysis_kind:'consistency',mode:'combined',dataset_ids:[positioned.dataset_id]},
+      _model_execution:{profile:{endpoint:`http://127.0.0.1:${server.address().port}/v1`,model_id:'local-protocol-model',capacity_mode:'vllm_tokenize',max_visual_inputs:16}}});
+    const positionDeadline=Date.now()+15000;
+    do {await new Promise(resolve=>setTimeout(resolve,20));positionJob=await bridge.execute('analysis_status',{run_id:positionJob.run_id});}while(['PENDING','RUNNING'].includes(positionJob.status)&&Date.now()<positionDeadline);
+    assert.equal(positionJob.status,'COMPLETED',JSON.stringify(positionJob.errors));
+    const positionReport=await bridge.execute('consistency_report',{selection:{kind:'batch',batch_id:positionJob.program_batch_id}});
+    const positionGallery=await bridge.execute('consistency_gallery',{query_id:positionReport.page.query_id,kind:'conflicts'});
+    assert.ok(positionGallery.items.length);
+    for(const item of positionGallery.items){assert.deepEqual(item.conflict_categories,[]);assert.deepEqual(item.model_categories,['位置差异']);}
+    await driver.get(start);await(await element(`#dc-parent option[value="${positionGroup.group_id}"]`)).click();
+    await element('[data-dc="open-conflict"]');await(await element('[role="tab"][data-id="位置差异"]')).click();
+    await driver.wait(async()=>(await cards()).length===positionGallery.total,5000,'模型独立发现的差异也必须归入对应tab，不能仅出现在全部冲突');
     console.log(JSON.stringify({output,groups:expectedGallery.total,anchorCandidates:22,modelRequests:modelRequests.length}));
   }catch(error){if(driver){await fs.writeFile(path.join(output,'failure.png'),await driver.takeScreenshot(),'base64');console.error((await driver.findElement(By.css('body')).getText()).slice(-5000));}throw error;}
   finally{if(driver)await driver.quit();await new Promise(resolve=>server.close(resolve));}

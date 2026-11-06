@@ -21,6 +21,18 @@ def side(identity, annotations, **policy):
             annotation_coverage='EXHAUSTIVE', **policy))
 
 
+@pytest.mark.parametrize('relation',['VISUAL_REFERENCE','NEAR_CANDIDATE'])
+def test_annotation_count_difference_does_not_require_coordinate_registration(relation):
+    left=side('main',[])
+    right=side('candidate',[box('candidate','one','12',[120,10,130,20])])
+    result=AnnotationMatcher().compare(left,right,relation=relation)
+    assert result.conflict_categories==['少类别']
+    assert any(item.type=='ANNOTATION_COUNT' and item.facts=={'left_count':0,'right_count':1} for item in result.differences)
+    assert not result.matches and not result.confirmed_conflict
+    reverse=AnnotationMatcher().compare(right,left,relation=relation)
+    assert reverse.conflict_categories==['多类别']
+
+
 def test_seven_vs_four_instances_locate_b_e_f_with_same_coordinate_reference():
     left = side('left', [box('left', label, label, [i*20,10,i*20+10,30]) for i,label in enumerate('ABCDEFG')])
     right = side('right', [box('right', label+'-copy',label,[i*20,10,i*20+10,30]) for i,label in enumerate('ABCDEFG') if label in 'ACDG'])

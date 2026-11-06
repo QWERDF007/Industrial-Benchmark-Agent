@@ -997,6 +997,7 @@ export const consistencyQueryParameters = {
     "enum": [
       "QUALITY_LABEL",
       "CATEGORY",
+      "ANNOTATION_COUNT",
       "ONE_SIDED_REGION",
       "GEOMETRY",
       "SPLIT_MERGE",

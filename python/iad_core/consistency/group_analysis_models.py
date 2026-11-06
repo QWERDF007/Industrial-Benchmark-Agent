@@ -9,7 +9,8 @@ from iad_core.consistency.gallery import GalleryReference
 from iad_core.consistency.models import Identifier, ModelAssessmentVerdict
 from iad_core.workbench.job_models import JobStatus
 from iad_core.evidence.images import MODEL_INPUT_VERSION
-from iad_core.consistency.group_analysis_prompts import GROUP_ANALYSIS_INSTRUCTION, GROUP_SUMMARY_INSTRUCTION, DEFAULT_CONSISTENCY_PROMPT
+from iad_core.consistency.conflict_categories import ConflictCategory
+from iad_core.consistency.group_analysis_prompts import GROUP_ANALYSIS_INSTRUCTION, GROUP_SUMMARY_INSTRUCTION, GROUP_DIRECTION_INSTRUCTION, DEFAULT_CONSISTENCY_PROMPT
 from iad_core.workbench.vision import MODEL_PROMPT_CONTRACT, GENERATION_PARAMETERS
 
 DEFAULT_CANDIDATE_BATCH_SIZE = 12
@@ -45,6 +46,8 @@ class GroupPairAssessment(AnalysisModel):
     candidate_id: Identifier
     verdict: ModelAssessmentVerdict = Field(description='当前候选的内部检索判定，最终答案由conclusion陈述，explanation解释依据，不用该枚举标签代替结论')
     conclusion: ConclusionPhrase | None = None
+    categories: list[ConflictCategory] | None = Field(default=None,
+        description='当前主图相对本候选图的全部差异分类，可多选；主图比候选少标注为少类别，多标注为多类别；主图同一对象多个框而候选一个为拆分，反之为合并；未发现差异时为空。类别/数量事实可直接比较，不等于裁决哪一侧正确。')
     explanation: str = Field(min_length=1,max_length=8000,
         description='当前图对的分析依据，具体说明差异发生在哪一侧、哪个对象或区域，位置、类别、数量及拆分合并等实际变化，解释conclusion；无差异时说明各项对应。不得用基本一致、可能、疑似、待核对等话术替代判断。真实缺失证据须指明缺失内容及其阻断的判断')
     findings: list[str] = Field(default_factory=list,max_length=100,
@@ -75,7 +78,7 @@ class GroupAnalysisBatch(AnalysisModel):
 
 
 GROUP_ANALYSIS_SCHEMA = hashlib.sha256(json.dumps([GroupAnalysisDraft.model_json_schema(),GroupAnalysisSummary.model_json_schema(),
-    GROUP_ANALYSIS_INSTRUCTION,GROUP_SUMMARY_INSTRUCTION,MODEL_PROMPT_CONTRACT,GENERATION_PARAMETERS,
+    GROUP_ANALYSIS_INSTRUCTION,GROUP_SUMMARY_INSTRUCTION,GROUP_DIRECTION_INSTRUCTION,MODEL_PROMPT_CONTRACT,GENERATION_PARAMETERS,
     'raw-originals-and-annotation-rois', 'frozen-reference-enums-v1', 'frozen-analysis-instruction-v1', MODEL_INPUT_VERSION],sort_keys=True).encode()).hexdigest()
 
 

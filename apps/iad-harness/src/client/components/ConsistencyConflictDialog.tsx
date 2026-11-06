@@ -7,7 +7,6 @@ import {ConsistencyView,type ConflictCardItem} from '../consistency-view.js';
 import {useGroupAnalysis} from '../useGroupAnalysis.js';
 import {useResource} from '../useResource.js';
 import {message,request} from '../api.js';
-import {annotationSummary,differenceLabels} from '../../shared/consistency-presentation.js';
 import {Modal} from './Modal.js';
 import {Button} from './Button.js';
 import {IconButton} from './IconButton.js';
@@ -245,12 +244,12 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
               {compared.error && <p role="alert" className="iad-error">{compared.error}</p>}
 
               {/* Program observations remain separate from the model's conclusion. */}
-              <section className="dc-fact-panel" aria-label="程序比对">
-                <h3>程序比对</h3>
-                <span className="dc-verdict-value">{compared.data
-                  ? [...new Set(compared.data.result.annotation.differences.filter(item=>item.type!=='POLICY_UNCONFIRMED').map(item=>differenceLabels[item.type]))].join('、') || '程序未检出标注差异'
-                  : compared.error || '正在读取程序比对…'}</span>
-                <p className="dc-verdict-description">{compared.data?annotationSummary(compared.data.result.annotation):compared.error || '正在读取冻结比较记录…'}</p>
+              <section className="dc-fact-panel" aria-label="判定结论">
+                <h3>判定结论</h3>
+                <span className="dc-verdict-value">{compared.data&&anchorSide
+                  ? compared.data.annotation_observations[anchorSide].categories.join('、') || (compared.data.annotation_observations[anchorSide].geometry_compared?'未发现标注差异':'类别及数量相同，位置未比对')
+                  : compared.error || '正在读取判定结论…'}</span>
+                <p className="dc-verdict-description">{compared.data&&anchorSide?compared.data.annotation_observations[anchorSide].summary:compared.error || '正在读取冻结比较记录…'}</p>
               </section>
 
               {/* 模型分析 */}

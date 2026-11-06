@@ -49,7 +49,7 @@ export function ConsistencyStatisticsDialog({items,onFilter,onClose}:{items:Conf
   const distributionAxis=niceAxis(Math.max(1,...original.map(row=>row.count),...model.map(row=>row.count)));
   return <Modal title="标注冲突统计" size="form" className="dc-stats-dialog" onClose={onClose}>
     <div className="dc-stats-content"><div className="dc-stats-charts">
-      <StatisticChart title="原始差异类型" rows={original} action="stat-category" axis={distributionAxis} onFilter={onFilter} />
+      <StatisticChart title="差异类型" rows={original} action="stat-category" axis={distributionAxis} onFilter={onFilter} />
       <StatisticChart title="模型判断" rows={model} action="stat-model" axis={distributionAxis} onFilter={onFilter} />
       <StatisticChart title="结论一致性" rows={agreement} action="stat-agreement" axis={niceAxis(Math.max(1,...agreement.map(row=>row.count)))} onFilter={onFilter} />
     </div></div>

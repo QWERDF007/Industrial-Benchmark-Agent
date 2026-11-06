@@ -11,10 +11,14 @@ _HEDGED_CONCLUSION = re.compile(
     r'largely consistent|mostly consistent|appears to|possibly|probably|may be',
     re.IGNORECASE,
 )
+_ALTERNATIVE_DIRECTION = re.compile(r'(?:缺少|缺失|漏标).{0,4}(?:或|/|／).{0,4}(?:多出|多标|增加)|(?:多出|多标|增加).{0,4}(?:或|/|／).{0,4}(?:缺少|缺失|漏标)|拆分.{0,3}(?:或|/|／).{0,3}合并|合并.{0,3}(?:或|/|／).{0,3}拆分')
 
 
 def assertive_conclusion(value: str) -> str:
     descriptive_conclusion(value)
+    if _ALTERNATIVE_DIRECTION.search(value):
+        raise repairable_output_error('ambiguous_consistency_direction',
+            '最终结论不得使用缺少或多出、拆分或合并等方向二选一表达。以anchor主图为主语，相对当前候选图明确选择缺少、多出、拆分或合并；多种实际差异可用顿号并列，分析说明具体位置和依据。')
     if match := _HEDGED_CONCLUSION.search(value):
         raise repairable_output_error('hedged_consistency_conclusion',
             f'结论使用了模糊表述“{match.group()}”。请重新核对图像和标注，直接陈述已观察的类别、位置、数量、'

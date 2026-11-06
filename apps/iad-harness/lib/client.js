@@ -11142,6 +11142,7 @@ var __IadClientBundle__ = (() => {
     QUALITY_LABEL: "\u8D28\u91CF\u6807\u7B7E\u4E0D\u540C",
     CATEGORY: "\u7C7B\u522B\u4E0D\u540C",
     GEOMETRY: "\u51E0\u4F55\u4E0D\u540C",
+    ANNOTATION_COUNT: "\u6807\u6CE8\u6570\u91CF\u4E0D\u540C",
     ONE_SIDED_REGION: "\u5355\u4FA7\u6807\u6CE8",
     SPLIT_MERGE: "\u5B9E\u4F8B\u62C6\u5206\u6216\u5408\u5E76",
     AMBIGUOUS_MATCH: "\u5339\u914D\u6709\u6B67\u4E49",
@@ -20802,7 +20803,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ];
     const distributionAxis = niceAxis(Math.max(1, ...original.map((row) => row.count), ...model.map((row) => row.count)));
     return /* @__PURE__ */ (0, import_jsx_runtime78.jsx)(Modal, { title: "\u6807\u6CE8\u51B2\u7A81\u7EDF\u8BA1", size: "form", className: "dc-stats-dialog", onClose, children: /* @__PURE__ */ (0, import_jsx_runtime78.jsx)("div", { className: "dc-stats-content", children: /* @__PURE__ */ (0, import_jsx_runtime78.jsxs)("div", { className: "dc-stats-charts", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime78.jsx)(StatisticChart, { title: "\u539F\u59CB\u5DEE\u5F02\u7C7B\u578B", rows: original, action: "stat-category", axis: distributionAxis, onFilter }),
+      /* @__PURE__ */ (0, import_jsx_runtime78.jsx)(StatisticChart, { title: "\u5DEE\u5F02\u7C7B\u578B", rows: original, action: "stat-category", axis: distributionAxis, onFilter }),
       /* @__PURE__ */ (0, import_jsx_runtime78.jsx)(StatisticChart, { title: "\u6A21\u578B\u5224\u65AD", rows: model, action: "stat-model", axis: distributionAxis, onFilter }),
       /* @__PURE__ */ (0, import_jsx_runtime78.jsx)(StatisticChart, { title: "\u7ED3\u8BBA\u4E00\u81F4\u6027", rows: agreement, action: "stat-agreement", axis: niceAxis(Math.max(1, ...agreement.map((row) => row.count))), onFilter })
     ] }) }) });
@@ -20829,8 +20830,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       }
       const cards = items.map((item) => ({
         id: item.group_id,
-        types: item.conflict_categories,
-        type: item.conflict_categories.join("\u3001") || "\u7A0B\u5E8F\u672A\u68C0\u51FA\u6807\u6CE8\u5DEE\u5F02",
+        types: conflictCategories.filter((category) => item.conflict_categories.includes(category) || item.model_categories.includes(category)),
+        type: item.conflict_categories.join("\u3001") || "\u7C7B\u522B\u53CA\u6570\u91CF\u76F8\u540C\uFF0C\u4F4D\u7F6E\u672A\u6BD4\u5BF9",
         filename: item.anchor.sample.relative_path.split("/").pop(),
         url: this.media(item.anchor, true),
         fullUrl: this.media(item.anchor),
@@ -21150,10 +21151,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           }) }),
           membersError && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { role: "alert", className: "iad-error", children: membersError }),
           compared.error && /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { role: "alert", className: "iad-error", children: compared.error }),
-          /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-fact-panel", "aria-label": "\u7A0B\u5E8F\u6BD4\u5BF9", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u7A0B\u5E8F\u6BD4\u5BF9" }),
-            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-verdict-value", children: compared.data ? [...new Set(compared.data.result.annotation.differences.filter((item) => item.type !== "POLICY_UNCONFIRMED").map((item) => differenceLabels[item.type]))].join("\u3001") || "\u7A0B\u5E8F\u672A\u68C0\u51FA\u6807\u6CE8\u5DEE\u5F02" : compared.error || "\u6B63\u5728\u8BFB\u53D6\u7A0B\u5E8F\u6BD4\u5BF9\u2026" }),
-            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { className: "dc-verdict-description", children: compared.data ? annotationSummary(compared.data.result.annotation) : compared.error || "\u6B63\u5728\u8BFB\u53D6\u51BB\u7ED3\u6BD4\u8F83\u8BB0\u5F55\u2026" })
+          /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-fact-panel", "aria-label": "\u5224\u5B9A\u7ED3\u8BBA", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u5224\u5B9A\u7ED3\u8BBA" }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-verdict-value", children: compared.data && anchorSide ? compared.data.annotation_observations[anchorSide].categories.join("\u3001") || (compared.data.annotation_observations[anchorSide].geometry_compared ? "\u672A\u53D1\u73B0\u6807\u6CE8\u5DEE\u5F02" : "\u7C7B\u522B\u53CA\u6570\u91CF\u76F8\u540C\uFF0C\u4F4D\u7F6E\u672A\u6BD4\u5BF9") : compared.error || "\u6B63\u5728\u8BFB\u53D6\u5224\u5B9A\u7ED3\u8BBA\u2026" }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { className: "dc-verdict-description", children: compared.data && anchorSide ? compared.data.annotation_observations[anchorSide].summary : compared.error || "\u6B63\u5728\u8BFB\u53D6\u51BB\u7ED3\u6BD4\u8F83\u8BB0\u5F55\u2026" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-model-panel", "aria-label": "\u6A21\u578B\u5206\u6790", children: [
             /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u6A21\u578B\u5206\u6790" }),

@@ -1,6 +1,16 @@
 from iad_core.workbench.prompt_text import RESPONSE_FORMAT_INSTRUCTION
 
 
+GROUP_DIRECTION_INSTRUCTION = (
+    '比较方向：anchor始终是主图。'
+    '每条conclusion和categories描述主图相对于当前candidate的差异：主图0框、候选1框为主图缺少标注/少类别；反过来为主图多出标注/多类别。'
+    '主图同对象多个框、候选一个框为拆分，反之为合并。'
+    '不得写缺少或多出、拆分或合并；观察到的数量差异不需要裁定漏标还是候选多标。'
+    '几何未配准不能否定已读取的类别和数量事实；仍需独立查看原图判断位置及可见现象。'
+    'categories列出全部实际差异，无差异返回空数组。'
+    'explanation、findings及所有正文只用主图、候选图等自然语言称呼，不能附带@c0、@c1、文件名或具体引用；这些引用仅用于结构化引用字段。'
+)
+
 GROUP_ANALYSIS_INSTRUCTION = ('分析整个冻结图组；每条结论引用真实candidate_id。引用比较证据时填写comparison对象，'
             '其中result_id和evidence_id必须完整复制上下文中的配对引用，difference_id可选；无直接比较依据时comparison为null。'
             '像素/几何事实、模型视觉解释、标注规范和人工质量裁决必须区分；相似度不能证明缺陷，不能写Gold或人工裁决。'

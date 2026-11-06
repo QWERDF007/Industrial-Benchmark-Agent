@@ -6,7 +6,7 @@ export const imageRelations:Record<RetrievalMember['relation'],string>={
 };
 
 export const differenceLabels:Record<AnnotationDifference['type'],string>={
-  QUALITY_LABEL:'质量标签不同', CATEGORY:'类别不同', GEOMETRY:'几何不同',
+  QUALITY_LABEL:'质量标签不同', CATEGORY:'类别不同', GEOMETRY:'几何不同', ANNOTATION_COUNT:'标注数量不同',
   ONE_SIDED_REGION:'单侧标注', SPLIT_MERGE:'实例拆分或合并', AMBIGUOUS_MATCH:'匹配有歧义',
   POLICY_UNCONFIRMED:'标注规范未确认', ANNOTATION_UNREADABLE:'标注不可读取',
 };

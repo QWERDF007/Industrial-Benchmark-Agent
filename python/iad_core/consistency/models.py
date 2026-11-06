@@ -15,7 +15,7 @@ SimilarityThreshold = Annotated[FiniteFloat, Field(ge=0, le=1, strict=True)]
 DEFAULT_MIN_SIMILARITY = 0.95
 Mode = Literal['exact', 'visual', 'combined']
 Relation = Literal['EXACT', 'NEAR_CANDIDATE', 'VISUAL_REFERENCE', 'DIFFERENT', 'UNCHECKED']
-DifferenceType = Literal['QUALITY_LABEL', 'CATEGORY', 'ONE_SIDED_REGION', 'GEOMETRY',
+DifferenceType = Literal['QUALITY_LABEL', 'CATEGORY', 'ANNOTATION_COUNT', 'ONE_SIDED_REGION', 'GEOMETRY',
     'SPLIT_MERGE', 'AMBIGUOUS_MATCH', 'POLICY_UNCONFIRMED', 'ANNOTATION_UNREADABLE']
 
 

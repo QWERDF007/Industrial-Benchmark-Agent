@@ -7,6 +7,37 @@ from iad_core.consistency.result_queries import ResultQueries
 from iad_core.consistency.service import ConsistencyService
 
 
+def test_legacy_similar_pair_is_classified_from_frozen_annotation_inventory(dataset,tmp_path):
+    import json,hashlib
+    from PIL import Image
+    from iad_core.consistency.gallery import GalleryQueries,GalleryQuery
+    db,registry,config=dataset
+    from tests.feature_fixtures import configure_test_encoder
+    configure_test_encoder(db,tmp_path)
+    for name,width,shapes in [('main',320,[]),('candidate',321,[{'label':'12','shape_type':'rectangle','points':[[240,10],[250,20]]}])]:
+        Image.new('RGB',(width,240),'#197fe5').save(tmp_path/'images'/f'{name}.png')
+        (tmp_path/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':width,'imageHeight':240,'shapes':shapes}))
+    registry.rescan(config.dataset.id)
+    service=ConsistencyService(db)
+    result=service.compare(ConsistencyCompare(sample_a=config.dataset.id+':main.png',sample_b=config.dataset.id+':candidate.png'))
+    assert result.verification.relation=='VISUAL_REFERENCE'
+    with db.connection() as conn:
+        snapshot=json.loads(conn.execute('SELECT snapshot_json FROM consistency_results WHERE evidence_id=?',(result.evidence_id,)).fetchone()[0])
+        snapshot['result']['annotation']['differences']=[item for item in snapshot['result']['annotation']['differences'] if item['type']!='ANNOTATION_COUNT']
+        payload=json.dumps(snapshot)
+        conn.execute('UPDATE consistency_results SET snapshot_json=?,snapshot_sha256=? WHERE evidence_id=?',(payload,hashlib.sha256(payload.encode()).hexdigest(),result.evidence_id))
+    old=service.evidence(result.evidence_id)
+    assert old.result.annotation.conflict_categories==[]
+    assert old.annotation_observations['left'].categories==['少类别']
+    assert old.annotation_observations['right'].categories==['多类别']
+    assert old.annotation_observations['left'].summary=='主图 0 个标注，候选图 1 个标注；位置及范围未进行坐标匹配'
+    report=ResultQueries(db).query(ConsistencyQuery(selection={'kind':'scope','subjects':{'kind':'all_registered'},'mode':'combined'}))
+    gallery=GalleryQueries(db).query(GalleryQuery(query_id=report.query_id,kind='conflicts'))
+    assert len(gallery.items)==1 and gallery.items[0].conflict_categories==['少类别']
+    with db.connection() as conn:
+        assert conn.execute('SELECT snapshot_json FROM consistency_results WHERE evidence_id=?',(result.evidence_id,)).fetchone()[0]==payload
+
+
 @pytest.mark.parametrize('left_boxes,right_boxes,expected', [
     ([('15',[10,10,30,30])],[('18',[10,10,30,30])],['类别不一致']),
     ([('15',[10,10,30,30])],[('15',[11,10,31,30])],['位置差异']),

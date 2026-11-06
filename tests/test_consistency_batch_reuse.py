@@ -36,7 +36,7 @@ def test_new_group_execution_reuses_only_qualified_identical_visual_batches(data
         result = dict(overall=dict(verdict='UNCERTAIN', text='缺少标注对象对应依据', references=refs),
             conclusions=[dict(text='保留所选图像的标注比较依据', references=refs)], limitations=[])
         if visual:
-            result['assessments'] = [dict(candidate_id=ref['candidate_id'], verdict='UNCERTAIN', conclusion='缺少标注对象对应依据', explanation='原始标注的对应关系尚需核对', findings=[]) for ref in refs]
+            result['assessments'] = [dict(candidate_id=ref['candidate_id'], verdict='UNCERTAIN', categories=[],conclusion='缺少标注对象对应依据', explanation='原始标注的对应关系尚需核对', findings=[]) for ref in refs]
         return httpx.Response(200, json={'choices':[{'finish_reason':'stop', 'message':{'content':json.dumps(result)}}]})
 
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
@@ -113,7 +113,7 @@ def test_retry_revalidates_legacy_text_and_drops_summaries_of_changed_batch_resu
         result = dict(overall=dict(verdict=verdict, text='保留实际标注比较结果', references=refs),
             conclusions=[dict(text='基于当前批次保留差异和未知项', references=refs)], limitations=[])
         if visual:
-            result['assessments'] = [dict(candidate_id=ref['candidate_id'], verdict=verdict, conclusion='标注类别不同' if verdict=='MATERIAL' else '缺少标注对象对应依据', explanation='保留可见的标注对应依据', findings=[]) for ref in refs]
+            result['assessments'] = [dict(candidate_id=ref['candidate_id'], verdict=verdict, categories=['类别不一致'] if verdict=='MATERIAL' else [], conclusion='标注类别不同' if verdict=='MATERIAL' else '缺少标注对象对应依据', explanation='保留可见的标注对应依据', findings=[]) for ref in refs]
         return httpx.Response(200, json={'choices':[{'finish_reason':'stop', 'message':{'content':json.dumps(result)}}]})
 
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))

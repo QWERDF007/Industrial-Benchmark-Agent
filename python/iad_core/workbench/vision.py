@@ -111,7 +111,7 @@ class VlmClient:
         messages = [{"role": "user", "content": content}]
         if correction is not None:
             messages.extend([{"role": "assistant", "content": correction.response},
-                {"role": "user", "content": '输出校验结果：' + json.dumps(
+                {"role": "user", "content": '请根据以下校验结果修正上一条回答，重新输出完整结果，保持原任务的JSON结构。不要复述校验错误对象，不要只返回修改字段。输出校验结果：' + json.dumps(
                     {'schema_validation_errors': correction.issues}, ensure_ascii=False)}])
         body = {
             "model": model_name, "messages": messages,

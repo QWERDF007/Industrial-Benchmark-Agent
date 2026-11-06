@@ -77,7 +77,7 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
         assert release.wait(10)
         text = '标注类别不同' if verdict == 'MATERIAL' else '未发现标注差异'
         result = {'assessments': [{'candidate_id':wire_citation['candidate_id'],
-            'verdict':verdict,'conclusion':text,'explanation':text,'findings':[text] if verdict == 'MATERIAL' else []}],
+            'verdict':verdict,'categories':['类别不一致'] if verdict=='MATERIAL' else [],'conclusion':text,'explanation':text,'findings':[text] if verdict == 'MATERIAL' else []}],
             'overall':{'verdict':verdict,'text':text,'references':[wire_citation.copy()]},
             'conclusions': [{'text': text, 'references': [wire_citation.copy()]}], 'limitations': []}
         return httpx.Response(200, json={'id': 'real-protocol-test', 'model': 'test-mllm', 'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(result)}}]})
@@ -168,7 +168,7 @@ def test_group_assessments_require_full_unique_candidates_and_their_direct_evide
         frozen=json.JSONDecoder().raw_decode(body['messages'][0]['content'][0]['text'].split('冻结图组：')[1])[0]
         refs=[dict(candidate_id=sid,comparison=dict(result_id=member['comparison']['result_id'],evidence_id=member['comparison']['evidence_id']))
             for sid,member in frozen['candidates'].items()]
-        assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',conclusion='缺少直接比较证据',explanation='当前候选缺少固定主图的直接比较证据',findings=[]) for ref in refs]
+        assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',categories=[],conclusion='缺少直接比较证据',explanation='当前候选缺少固定主图的直接比较证据',findings=[]) for ref in refs]
         if mode=='missing': assessments.pop()
         elif mode=='duplicate': assessments[1]=assessments[0].copy()
         else: refs[0]={**refs[0],'comparison':refs[1]['comparison']}
@@ -194,7 +194,7 @@ def test_group_assessments_require_full_unique_candidates_and_their_direct_evide
 
 
 @pytest.mark.parametrize('corrected', [True, False])
-@pytest.mark.parametrize('error_kind', ['candidate_coverage', 'crossed_comparison', 'overall_verdict', 'descriptive_text', 'assertive_text', 'missing_conclusion'])
+@pytest.mark.parametrize('error_kind', ['candidate_coverage', 'crossed_comparison', 'overall_verdict', 'descriptive_text', 'assertive_text', 'missing_conclusion', 'direction_alternative', 'missing_categories', 'empty_categories'])
 def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_output(dataset, tmp_path, error_kind, corrected):
     from copy import deepcopy
     from shutil import copyfile
@@ -226,7 +226,7 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
                 foreign = next(item for item in wire_refs if item['candidate_id']!=ref['candidate_id'])['comparison']['evidence_id']
                 assert all(foreign not in item['properties']['evidence_id']['enum'] for item in comparisons)
         result = dict(overall=dict(verdict='MATERIAL', text='标注存在差异', references=deepcopy(wire_refs)),
-            assessments=[dict(candidate_id=ref['candidate_id'], verdict='MATERIAL', conclusion='标注类别不同', explanation='对应标注存在差异', findings=['标注差异']) for ref in wire_refs],
+            assessments=[dict(candidate_id=ref['candidate_id'], verdict='MATERIAL', categories=['类别不一致'],conclusion='标注类别不同', explanation='对应标注存在差异', findings=['标注差异']) for ref in wire_refs],
             conclusions=[dict(text='保留对应标注的差异与实际证据', references=deepcopy(wire_refs))], limitations=[])
         if len(calls) == 1 or not corrected:
             if error_kind == 'candidate_coverage':
@@ -235,9 +235,15 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
                 result['overall']['references'][0]['comparison'] = deepcopy(wire_refs[1]['comparison'])
             elif error_kind == 'missing_conclusion':
                 result['assessments'][0].pop('conclusion')
+            elif error_kind == 'missing_categories':
+                result['assessments'][0].pop('categories')
+            elif error_kind == 'empty_categories':
+                result['assessments'][0]['categories']=[]
             elif error_kind == 'assertive_text':
                 result['overall']['text'] = '标注视觉基本一致'
                 result['assessments'][0]['conclusion'] = '标注可能一致，仍待核对'
+            elif error_kind == 'direction_alternative':
+                result['assessments'][0]['conclusion'] = '缺少或多出标注。'
             elif error_kind == 'descriptive_text':
                 result['overall']['text'] = '候选@c1存在标注差异'
                 result['conclusions'][0]['text'] = 'part.png 的标注存在差异'
@@ -264,6 +270,7 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
         view = analyses.read(request)
         assert len(calls) == 2, '冻结引用错误应允许模型自行纠正一次，持续错误也不能无限重试'
         feedback = json.loads(calls[1]['messages'][-1]['content'].split('输出校验结果：', 1)[1])
+        assert '重新输出完整结果' in calls[1]['messages'][-1]['content'], '纠错请求应要求重答原任务，不能让模型回显校验错误对象'
         assert all(issue['ctx']['repairable_output'] for issue in feedback['schema_validation_errors'])
         assert calls[1]['messages'][1]['content']
         if error_kind=='overall_verdict':
@@ -317,7 +324,7 @@ def test_selected_workflow_owns_group_results_across_prompts_running_jobs_and_co
         verdict='MATERIAL' if text.startswith('作业甲') else 'UNCERTAIN'
         label='标注存在差异' if verdict=='MATERIAL' else '缺少直接比较依据'
         result=dict(overall=dict(verdict=verdict,text=label,references=refs),
-            assessments=[dict(candidate_id=ref['candidate_id'],verdict=verdict,conclusion=label,explanation=label,findings=[]) for ref in refs],
+            assessments=[dict(candidate_id=ref['candidate_id'],verdict=verdict,categories=['类别不一致'] if verdict=='MATERIAL' else [],conclusion=label,explanation=label,findings=[]) for ref in refs],
             conclusions=[dict(text=label,references=refs)],limitations=[])
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
 
