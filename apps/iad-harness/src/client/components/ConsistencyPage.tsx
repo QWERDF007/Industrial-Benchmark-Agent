@@ -1,3 +1,4 @@
+import {SectionHeading} from './layout/SectionHeading.js';
 import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {v4 as uuid} from 'uuid';
 import {ConsistencyStatisticsDialog,type ConsistencyStatisticAction} from './ConsistencyStatisticsDialog.js';
@@ -492,7 +493,8 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
 
         {/* Results Section */}
         <section className="dc-section dc-results-section">
-          {!selectedJob||!['FAILED','CANCELLED','INTERRUPTED'].includes(selectedJob.status)?<div className="dc-section-heading"><h2>标注冲突</h2></div>:null}
+          <SectionHeading title="标注冲突" />
+          <div className="dc-results-body">
 
           {!selectedJob ? (
             <p className="iad-result-empty" role="status">当前没有结果</p>
@@ -621,6 +623,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
               <Pagination total={visibleConflicts.length} page={currentPage} size={18} unit="组" onPage={setPage} />
             </>
           )}
+          </div>
         </section>
       </div>
 

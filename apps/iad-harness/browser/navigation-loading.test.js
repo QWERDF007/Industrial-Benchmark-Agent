@@ -68,6 +68,19 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
           return {font:s.fontSize,weight:s.fontWeight,lineHeight:s.lineHeight,letterSpacing:s.letterSpacing,left:t.left-r.left,top:t.top-r.top,height:h.height,gap:hs.marginBottom,rootPadding:getComputedStyle(root).paddingTop,extra:!!root.querySelector('.eyebrow,.audit-kicker,[aria-label="所在章节"]')};
         });
         headings.push({width,page:label,...metrics});
+        const sections={'方向探索':['探索作业','探索结果'],'知识挖掘':['挖掘作业','知识条目'],'数据一致性':['检查作业','标注冲突'],'模型审计':['审计作业','审计结果']}[label];
+        if(sections)for(const title of sections){
+          const section=await driver.executeScript(name=>{
+            const h=[...document.querySelectorAll('.iad-workbench h2')].find(e=>e.textContent.trim()===name);
+            if(!h)return null;
+            const header=h.closest('header,.panelbar,.exp-selected-head,.dc-section-heading'),s=getComputedStyle(h),hs=getComputedStyle(header),r=header.getBoundingClientRect(),t=h.getBoundingClientRect();
+            return {font:s.fontSize,weight:s.fontWeight,line:s.lineHeight,height:r.height,left:hs.paddingLeft,right:hs.paddingRight,border:hs.borderBottomWidth,borderStyle:hs.borderBottomStyle,align:hs.alignItems,offset:t.left-r.left,center:t.top+t.height/2-r.top-r.height/2};
+          },title);
+          assert.ok(section,label+'显示'+title);
+          assert.equal(section.font,'16px',title+'字号');assert.equal(section.weight,'650',title+'字重');assert.equal(section.line,'24px',title+'行高');
+          assert.equal(section.height,70,title+'标题栏高度');assert.equal(section.left,'20px');assert.equal(section.right,'20px');
+          assert.equal(section.border,'1px');assert.equal(section.borderStyle,'solid');assert.equal(section.align,'center');assert.equal(section.offset,20);assert.ok(Math.abs(section.center)<1,title+'垂直居中');
+        }
         assert.equal(metrics.font,'24px',label+'标题字号');assert.equal(metrics.weight,'670',label+'标题字重');
         assert.equal(metrics.lineHeight,'32.4px');assert.equal(metrics.letterSpacing,'-0.4px');
         assert.equal(metrics.left,32,label+'标题左侧位置');assert.equal(metrics.rootPadding,'25px',label+'页面顶部内边距');

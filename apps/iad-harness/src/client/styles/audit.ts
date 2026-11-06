@@ -2,7 +2,7 @@ export const auditStyles = `#audit-page { --audit-ink:#172338; --audit-border:#d
 #audit-page[hidden] {display:none!important}
 #audit-page *,#audit-page *::before,#audit-page *::after{box-sizing:border-box}
 #audit-page input,#audit-page select,#audit-page textarea{font-family:inherit;font-size:13px}
-#audit-page h2{font-size:16px;line-height:1.5;font-weight:700;margin:0;color:var(--audit-ink)}
+#audit-page h2:not(.iad-section-title){font-size:16px;line-height:1.5;font-weight:700;margin:0;color:var(--audit-ink)}
 #audit-page h3{font-size:14px;line-height:1.5;font-weight:700;margin:0;color:var(--audit-ink)}
 #audit-page p{margin:0}
 #audit-page .audit-scope{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:21px}
@@ -21,8 +21,12 @@ export const auditStyles = `#audit-page { --audit-ink:#172338; --audit-border:#d
 #audit-page .audit-panel{border:1px solid var(--audit-border);background:#fff;border-radius:6px;margin-bottom:18px;min-width:0;overflow:hidden}
 #audit-page .audit-panel-head{min-height:66px;padding:17px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-bottom:1px solid var(--audit-border)}
 #audit-page .audit-panel-head.audit-compact-head{border-bottom:0;padding-bottom:14px}
-#audit-page .audit-filters{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+#audit-page .audit-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 #audit-page .audit-filters .audit-field{width:220px}
+#audit-page .iad-section-heading .audit-field{display:flex;flex-direction:row;align-items:center;gap:8px;width:auto}
+#audit-page .iad-section-heading .audit-field>span{white-space:nowrap}
+#audit-page .audit-job-heading input{width:200px}
+#audit-page .audit-job-heading select{width:155px}
 #audit-page .audit-scroll-table{overflow-x:auto;max-width:100%}
 #audit-page .audit-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;color:var(--audit-ink)}
 #audit-page .audit-table thead{background:#f1f4f9}

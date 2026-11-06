@@ -89,15 +89,15 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     const operations=await element(`[data-dc-row="${batch.batch_id}"] .dc-operations`);
     await element('.dc-conflict-grid .iad-thumbnail-card');
     const surface=await driver.executeScript(`const panel=document.querySelector('.dc-results-section'),style=getComputedStyle(panel),grid=panel.querySelector('.dc-conflict-grid'),card=getComputedStyle(grid.firstElementChild);
-      return {background:style.backgroundColor,border:style.borderTop,borderRadius:style.borderRadius,padding:style.padding,gap:getComputedStyle(grid).gap,cardBorder:card.borderTop,cardRadius:card.borderRadius};`);
-    assert.deepEqual(surface,{background:'rgb(255, 255, 255)',border:'1px solid rgb(219, 226, 235)',borderRadius:'6px',padding:'18px 20px 22px',gap:'14px',cardBorder:'1px solid rgb(219, 226, 235)',cardRadius:'5px'},'V72标注冲突白底包住标题、筛选、卡片和分页');
+      return {background:style.backgroundColor,border:style.borderTop,borderRadius:style.borderRadius,padding:style.padding,bodyPadding:getComputedStyle(panel.querySelector('.dc-results-body')).padding,gap:getComputedStyle(grid).gap,cardBorder:card.borderTop,cardRadius:card.borderRadius};`);
+    assert.deepEqual(surface,{background:'rgb(255, 255, 255)',border:'1px solid rgb(219, 226, 235)',borderRadius:'6px',padding:'0px',bodyPadding:'18px 20px 22px',gap:'14px',cardBorder:'1px solid rgb(219, 226, 235)',cardRadius:'5px'},'V72标注冲突白底包住标题、筛选、卡片和分页');
     await fs.writeFile(path.join(output,'annotation-conflicts.png'),await driver.takeScreenshot(),'base64');
     const workspaceLayout=await driver.executeScript(`const panel=document.querySelector('.dc-jobs-section'),heading=panel.querySelector('h2'),header=heading.parentElement;
       return {titleSize:getComputedStyle(document.querySelector('.dc-page-heading h1')).fontSize,
         background:getComputedStyle(panel).backgroundColor,borderWidth:getComputedStyle(panel).borderTopWidth,
         headerHeight:Math.round(header.getBoundingClientRect().height),headerPadding:getComputedStyle(header).paddingLeft,
         singlePageControls:panel.querySelectorAll('nav[aria-label="检查作业分页"]').length};`);
-    assert.deepEqual(workspaceLayout,{titleSize:'24px',background:'rgb(255, 255, 255)',borderWidth:'1px',headerHeight:70,headerPadding:'22px',singlePageControls:0},
+    assert.deepEqual(workspaceLayout,{titleSize:'24px',background:'rgb(255, 255, 255)',borderWidth:'1px',headerHeight:70,headerPadding:'20px',singlePageControls:0},
       'V65检查作业标题和表格共用白色面板，单页不显示分页');
     await click('新建检查');
     const newCheck=await element('#dc-new-mask');

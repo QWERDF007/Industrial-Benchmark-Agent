@@ -76,6 +76,12 @@ export const typographyStyles = `
   box-sizing: border-box !important;
 }
 
+/* Controls inside fixed-width fields fill their owner; direct flex controls retain their declared width. */
+:is(.filter-bar .filter-item input, .filter-bar .filter-item select,
+    .dc-results-section .dc-refined-filterbar input, .dc-results-section .dc-refined-filterbar select,
+    .exp-job-list-actions input, .exp-job-list-actions select,
+    .iad-dataset-page-wrap #search) {width:100% !important;}
+
 /* All search inputs & select elements */
 :is(.filter-bar .filter-item input, .filter-bar .filter-item select,
     .dc-results-section .dc-refined-filterbar input, .dc-results-section .dc-refined-filterbar select,
@@ -84,7 +90,6 @@ export const typographyStyles = `
     .kb-v45 .filterset > .f,
     .iad-dataset-page-wrap #search) {
   display: block !important;
-  width: 100% !important;
   height: var(--iba-field-height) !important;
   min-height: var(--iba-field-height) !important;
   max-height: var(--iba-field-height) !important;
@@ -132,16 +137,6 @@ export const typographyStyles = `
   align-self: flex-end !important;
 }
 
-/* Panel bars alignment */
-.kb-v45 .panelbar {
-  align-items: center;
-  gap: 16px;
-}
-.kb-v45 .panelbar .filterset {
-  margin-left: auto !important;
-  width: auto !important;
-  margin: 0 !important;
-}
 .kb-v45 .filterset > .f {
   margin: 0 !important;
 }
@@ -292,9 +287,6 @@ export const typographyStyles = `
     flex: 1 1 180px !important;
     width: auto !important;
     max-width: none !important;
-  }
-  .kb-v45 .panelbar .filterset {
-    margin-left: 0 !important;
   }
   :is(.kb-v45 .context .control:first-child, .kb-v45 .context .control:nth-child(2)) {
     flex: 1 1 240px !important;

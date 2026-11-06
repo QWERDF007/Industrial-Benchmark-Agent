@@ -72,6 +72,8 @@ test('exploration uses shared modal selection, preset form and deletion with rea
    assert.ok(Math.abs(geometry.x)<=1&&Math.abs(geometry.y)<=1,JSON.stringify(geometry));
   };
   const row=await el('tr[data-action="select-job"]');
+  const heading=await driver.executeScript(`const header=document.querySelector('.iad-job-list-header'),r=header.getBoundingClientRect();return {height:r.height,centers:[...header.querySelectorAll('input,select')].map(e=>{const c=e.getBoundingClientRect();return c.top+c.height/2-r.top-r.height/2})}`);
+  assert.equal(heading.height,70);assert.ok(heading.centers.length);assert.ok(heading.centers.every(center=>Math.abs(center)<1),'探索筛选控件与标题垂直对齐');
   assert.ok((await(await el('.exp-selected-result')).getText()).includes('当前作业没有已发布结果'));
   assert.equal((await driver.findElements(By.css('.exp-error-message'))).length,0,'错误详情统一在状态抽屉');
   await row.findElement(By.css('button[data-exp=copy-job]'));

@@ -31,16 +31,17 @@ for i in range(3):
     import {AuditSampleDialog} from './src/client/components/AuditSampleDialog.tsx';
     import {DatasetReport} from './src/client/components/DatasetReport.tsx';
     import {AuditPage} from './src/client/components/AuditPage.tsx';
+    import {KnowledgePage} from './src/client/components/KnowledgePage.tsx';
     import {Workspace,WorkspaceContext} from './src/client/workspace.tsx';
     import {WorkbenchModelProvider} from './src/client/models.tsx';
     import {workbenchStyles} from './src/client/styles.ts';
     const workspace=new Workspace(null);const style=document.createElement('style');style.textContent=workbenchStyles;document.head.append(style);
-    function App(){const [data,setData]=React.useState(null),[open,setOpen]=React.useState(false),[jobs,setJobs]=React.useState(false);
+    function App(){const [data,setData]=React.useState(null),[open,setOpen]=React.useState(false),[jobs,setJobs]=React.useState(false),[knowledge,setKnowledge]=React.useState(false);
       React.useEffect(()=>{fetch('/fixture').then(r=>r.json()).then(setData)},[]);
       return <WorkspaceContext.Provider value={workspace}><WorkbenchModelProvider><div id={jobs?undefined:'audit-page'} className="iad-workbench" data-page="industrial-audit">
         <button id="open" onClick={()=>setOpen(true)}>查看审计</button>{open&&data&&<AuditSampleDialog sample={data.sample} taskId={data.taskId} onClose={()=>setOpen(false)}/>}
-        <button id="jobs" onClick={()=>setJobs(true)}>审计作业</button>
-        {data&&(jobs?<AuditPage dataset={data.dataset} datasets={[data.dataset]} groups={[]} refreshRevision={0} onDatasetsChanged={()=>{}}/>
+        <button id="knowledge" onClick={()=>setKnowledge(true)}>知识挖掘</button><button id="jobs" onClick={()=>setJobs(true)}>审计作业</button>
+        {data&&(knowledge?<KnowledgePage dataset={data.dataset} refreshRevision={0}/>:jobs?<AuditPage dataset={data.dataset} datasets={[data.dataset]} groups={[]} refreshRevision={0} onDatasetsChanged={()=>{}}/>
           :<DatasetReport datasetIds={data.datasetIds} onSample={()=>setOpen(true)}/>)}</div></WorkbenchModelProvider></WorkspaceContext.Provider>;
     }createRoot(document.getElementById('root')).render(<App/>);
   `, loader: 'tsx', resolveDir: app}, bundle: true, format: 'iife', write: false, target: 'es2022', define: {'process.env.NODE_ENV': '"production"'}});
@@ -209,6 +210,11 @@ for i in range(3):
     await (await complete.findElement(By.css('button[aria-label="查看作业 '+audit.run_id+'"]'))).click();
     await driver.wait(async()=>await complete.getAttribute('aria-selected')==='true',5000);
     assert.equal((await driver.findElements(By.css('dialog[open]'))).length,0,'查看作业详情选中结果，不打开状态抽屉');
+    await driver.wait(until.elementLocated(By.css('input[aria-label="搜索审计图像"]')),5000);
+    const headers=await driver.executeScript(`return [...document.querySelectorAll('#audit-page .iad-section-heading')].map(header=>{const h=header.querySelector('h2'),r=header.getBoundingClientRect(),s=getComputedStyle(h);return {title:h.textContent,font:s.fontSize,weight:s.fontWeight,height:r.height,padding:getComputedStyle(header).paddingLeft,controls:[...header.querySelectorAll('input,select')].map(e=>{const c=e.getBoundingClientRect();return {center:c.top+c.height/2-r.top-r.height/2,inline:getComputedStyle(e.closest('label')).display}})}})`);
+    assert.deepEqual(headers.map(h=>h.title),['审计作业','审计结果']);
+    for(const header of headers){assert.equal(header.font,'16px');assert.equal(header.weight,'650');assert.equal(header.height,70);assert.equal(header.padding,'20px');assert.ok(header.controls.length);for(const control of header.controls){assert.ok(Math.abs(control.center)<1,'筛选控件在标题栏中居中');assert.equal(control.inline,'flex');}}
+
     await (await driver.findElement(By.css('button[title="新建审计"]'))).click();
     await driver.wait(until.elementLocated(By.id('audit-create-knowledge-jobs')),5000);
     assert.deepEqual(await Promise.all((await driver.findElements(By.css('.audit-source-panel > header h2'))).map(node=>node.getText())),
@@ -274,6 +280,11 @@ for i in range(3):
     assert.ok(offlineHtml.includes(saved.request.sources.knowledge_job_id));
     assert.ok(offlineHtml.includes('可见连续表面'));
     await fs.writeFile(path.join(output,'report.html'),offlineHtml);
+    await driver.findElement(By.id('knowledge')).click();
+    await driver.wait(until.elementLocated(By.id('knowledge-search')),10000);
+    const knowledgeHeadings=await driver.executeScript(`return [...document.querySelectorAll('.iad-knowledge-page .iad-section-heading')].map(header=>{const r=header.getBoundingClientRect();return {height:r.height,controls:[...header.querySelectorAll('input,select')].map(e=>{const c=e.getBoundingClientRect();return c.top+c.height/2-r.top-r.height/2})}})`);
+    assert.equal(knowledgeHeadings.length,2);
+    for(const header of knowledgeHeadings){assert.equal(header.height,70,'知识板块有筛选控件时保持70px');assert.equal(header.controls.length,2);assert.ok(header.controls.every(center=>Math.abs(center)<1));}
     await driver.get(base+'/offline.html');
     assert.equal((await driver.findElements(By.css('.iad-report-chart'))).length,4);
     assert.equal((await driver.findElements(By.css('meter,link[rel="stylesheet"]'))).length,0);

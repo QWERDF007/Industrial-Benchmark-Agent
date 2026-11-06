@@ -17,6 +17,7 @@ import { dialogsStyles } from "./styles/dialogs.js";
 import { typographyStyles } from "./styles/typography.js";
 import { auditStyles } from './styles/audit.js';
 import {galleryStyles} from './styles/gallery.js';
+import {sectionHeadingStyles} from './styles/section-heading.js';
 import {pageHeadingStyles} from './styles/page-heading.js';
 import {reportStyles} from './styles/reports.js';
 import {tabStyles} from './styles/tabs.js';
@@ -46,4 +47,5 @@ export const workbenchStyles = themeStyles
   + galleryStyles
   + reportStyles
   + pageHeadingStyles
+  + sectionHeadingStyles
 ;

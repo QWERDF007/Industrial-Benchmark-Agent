@@ -1,3 +1,4 @@
+import {SectionHeading} from './layout/SectionHeading.js';
 import React from 'react';
 
 interface JobListPanelProps extends React.ComponentPropsWithoutRef<'section'> {
@@ -7,7 +8,7 @@ interface JobListPanelProps extends React.ComponentPropsWithoutRef<'section'> {
 
 export function JobListPanel({title,actions,children,className='',...props}:JobListPanelProps) {
   return <section {...props} aria-label={title} className={`iad-job-list ${className}`}>
-    <header className="iad-job-list-header"><h2>{title}</h2>{actions}</header>
+    <SectionHeading className="iad-job-list-header" title={title}>{actions}</SectionHeading>
     {children}
   </section>;
 }

@@ -1,3 +1,4 @@
+import {SectionHeading} from './layout/SectionHeading.js';
 import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {v4 as uuid} from 'uuid';
 import {PromptDrawer} from './PromptDrawer.js';
@@ -309,13 +310,7 @@ export function KnowledgePage({
 
           {/* Upper Panel: 挖掘作业 */}
           <section className="panel" aria-labelledby="jobs-heading">
-            <div className="panelbar">
-              <div>
-                <h2 id="jobs-heading">
-                  挖掘作业
-                  <span aria-hidden="true" className="count hide" id="jobs-count"></span>
-                </h2>
-              </div>
+            <SectionHeading title="挖掘作业" titleId="jobs-heading">
               {scopedJobs.length>0&&<div className="filterset" id="jobs-filterset">
                 <input
                   className="f"
@@ -356,7 +351,7 @@ export function KnowledgePage({
                   }}
                 />
               </div>}
-            </div>
+            </SectionHeading>
             <div className="tableframe" id="jobs-table-frame" style={{ minHeight: maxJobPages > 1 ? "465px" : "" }}>
               {filteredJobs.length > 0 ? (
                 <table className="jobs-table" id="jobs-table">
@@ -423,14 +418,7 @@ export function KnowledgePage({
 
           {/* Lower Panel: 知识条目 */}
           <section className="panel" id="knowledge-panel" aria-labelledby="knowledge-heading">
-            <div className="panelbar knowledgebar">
-              <div>
-                <h2 id="knowledge-heading">
-                  知识条目
-                  <span aria-hidden="true" className="count hide" id="knowledge-count"></span>
-                </h2>
-                <div className="scope-name hide" id="knowledge-job-name"></div>
-              </div>
+            <SectionHeading title="知识条目" titleId="knowledge-heading">
               {selectedJob?.status==='completed'&&versions.find(version=>version.version_id===selectedVersionId)?.check_count ? (
                 <div className="filterset" id="knowledge-filterset">
                   <input
@@ -473,7 +461,7 @@ export function KnowledgePage({
                   />
                 </div>
               ) : null}
-            </div>
+            </SectionHeading>
             {selectedJob?.status==='completed'&&resultVersions.length > 1 && <label className="control">结果版本<Select className="f" aria-label="知识结果版本" value={selectedVersionId || ''}
               onChange={event=>workspace.updateView(pageId,{job:selectedJob!.id,version:event.target.value})}>
               {resultVersions.map(version=><option key={version.version_id} value={version.version_id}>{version.manually_edited ? '维护版本' : '作业冻结版本'} {version.version_id.slice(-8)}</option>)}

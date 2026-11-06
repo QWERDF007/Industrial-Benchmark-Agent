@@ -1,3 +1,4 @@
+import {SectionHeading} from './layout/SectionHeading.js';
 import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {v4 as uuid} from 'uuid';
 import {ExplorationPresetDialog} from './ExplorationPresetDialog.js';
@@ -576,29 +577,21 @@ export function ExplorationPage({
           {/* Lower Panel: 探索结果 */}
           {!selectedJob ? (
             <section className="exp-panel exp-selected-result exp-empty-result" aria-label="探索结果">
-              <div className="exp-selected-head">
-                <div>
-                  <h2>探索结果</h2>
-                </div>
-              </div>
+              <SectionHeading title="探索结果" />
               <div className="iad-result-empty" role="status">
                 当前没有探索结果
               </div>
             </section>
           ) : ['PENDING','RUNNING'].includes(selectedJob.status) ? (
-            <section className="exp-panel exp-selected-result" aria-label="探索结果"><div className="exp-selected-head"><h2>探索结果</h2></div>
+            <section className="exp-panel exp-selected-result" aria-label="探索结果"><SectionHeading title="探索结果" />
               <p className="iad-result-empty" role="status">当前作业没有已发布结果</p></section>
           ) : ['FAILED','CANCELLED','INTERRUPTED'].includes(selectedJob.status) ? (
-            <section className="exp-panel exp-selected-result" aria-label="探索结果"><div className="exp-selected-head"><h2>探索结果</h2></div>
+            <section className="exp-panel exp-selected-result" aria-label="探索结果"><SectionHeading title="探索结果" />
               <p className="iad-result-empty" role="status">当前作业没有已发布结果</p></section>
           ) : (
             <section className="exp-panel exp-selected-result" aria-label="所选作业的探索结果">
-              <div className="exp-selected-head">
-                <div>
-                  <h2>探索结果</h2>
-                  <span className="exp-selected-sub">{selectedJob.run_id}</span>
-                </div>
-              </div>
+              <SectionHeading title="探索结果"><span className="exp-selected-sub">{selectedJob.run_id}</span></SectionHeading>
+              <div className="exp-result-content">
               {selectedJobSummary && <p className="exp-result-summary">{selectedJobSummary}</p>}
               {selectedJobDirections.length > 0 ? (
                 <div className="exp-job-table-wrap">
@@ -669,6 +662,7 @@ export function ExplorationPage({
                 ) : (
                   <p className="exp-lead">本次未记录整体限制。</p>
                 )}
+              </div>
               </div>
             </section>
           )}

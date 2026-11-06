@@ -1,3 +1,4 @@
+import {SectionHeading} from './layout/SectionHeading.js';
 import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {TabBar} from './layout/TabBar.js';
 import {Button} from './Button.js';
@@ -80,10 +81,10 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
           items={[{id: 'audit', label: '模型审计'}, {id: 'reports', label: '报告'}]} value={tab} onChange={setTab}>
       <div hidden={tab !== 'audit'}>
         <AuditJobs loading={jobs.loading} selection={selection} datasets={datasets} onDetails={setJobDetails} />
-        <section className="audit-panel" aria-label="审计图像"><header className="audit-panel-head"><h2>审计图像</h2>
+        <section className="audit-panel" aria-label="审计结果"><SectionHeading title="审计结果">
           {hasResults&&<div className="audit-filters"><label className="audit-field"><span>文件名</span><input type="search" aria-label="搜索审计图像"
             value={search} onChange={event => {setSearch(event.target.value); setPage(1);}} /></label>
-            <ClearFilterButton onClick={() => {setSearch(''); setStatus('all'); setPage(1);}} /></div>}</header>
+            <ClearFilterButton onClick={() => {setSearch(''); setStatus('all'); setPage(1);}} /></div>}</SectionHeading>
           {hasResults&&<TabBar label="审计图像状态" value={status} onChange={value => {setStatus(value); setPage(1);}}
             items={(['all', ...Object.keys(auditStateLabels)] as Array<'all' | keyof typeof auditStateLabels>).map(value => ({id: value,
               label: <>{value === 'all' ? '全部图像' : auditStateLabels[value]}{result.data && <span className="iad-tab-count">{value === 'all'

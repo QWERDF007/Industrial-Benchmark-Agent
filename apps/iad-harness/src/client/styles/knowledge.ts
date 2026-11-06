@@ -157,23 +157,6 @@ export const knowledgeStyles = `
   box-shadow: none;
 }
 
-.kb-v45 .panelbar {
-  padding: 17px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.kb-v45 .panelbar h2 {
-  font-size: 16px !important;
-  font-weight: 650 !important;
-  margin: 0;
-  line-height: 1.3;
-  color: #172338 !important;
-}
-
 .kb-v45 .count {
   color: #172338 !important;
   font-size: 13px !important;
@@ -190,14 +173,6 @@ export const knowledgeStyles = `
 .kb-v45 .filterset .f {
   height: 34px;
   min-height: 34px;
-}
-
-.kb-v45 .filterset input {
-  width: 220px;
-}
-
-.kb-v45 .filterset select {
-  width: 143px;
 }
 
 /* Jobs Table */
@@ -332,14 +307,6 @@ export const knowledgeStyles = `
 }
 
 /* Lower Panel: Knowledge Entries */
-.kb-v45 .knowledgebar {
-  align-items: center;
-}
-
-.kb-v45 .knowledge-wrap {
-  border-top: 1px solid #e8edf4;
-}
-
 .kb-v45 .knowledge-list {
   width: 100%;
   min-width: 0;

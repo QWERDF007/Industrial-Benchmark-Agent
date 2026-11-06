@@ -1,10 +1,6 @@
 export const jobsStyles = `
 .iad-job-list{min-width:0;overflow:hidden;padding:0;background:var(--iad-surface);border:1px solid var(--iad-panel-border);border-radius:6px;margin-bottom:20px;font-size:var(--iad-font-size)}
-.iad-job-list-header{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:70px;padding:18px 22px;border-bottom:1px solid var(--iad-border)}
-.iad-job-list-header>h2{margin:0;font-size:15px;font-weight:650}
-.iad-job-list-header .exp-job-list-actions{margin-left:auto}
 .iad-job-list>nav.iad-pagination{margin:0;padding:11px 18px;border-top:1px solid var(--iad-border)}
-@media(max-width:650px){.iad-job-list-header{align-items:flex-start;flex-direction:column}.iad-job-list-header .exp-job-list-actions{margin-left:0}}
 .iad-job-panel{min-width:0}.iad-job-panel>h2{margin-top:26px}
 .iad-job-drawer-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:22px 24px 28px;color:var(--iad-text);font-size:var(--iad-font-size)}
 .iad-job-statusline{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
