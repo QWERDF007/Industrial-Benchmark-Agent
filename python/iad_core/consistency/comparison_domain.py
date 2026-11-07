@@ -27,8 +27,9 @@ class ComparisonDomain:
     masking: list[AnnotationMasking]
 
     @staticmethod
-    def coordinates_correspond(left:'AnnotationSet',right:'AnnotationSet',relation:Relation) -> bool:
-        return relation=='EXACT' and (left.width,left.height)==(right.width,right.height) and all(side.annotation_coordinates=='RAW' for side in (left,right))
+    def can_compare_layout(left:'AnnotationSet',right:'AnnotationSet',relation:Relation) -> bool:
+        return (relation!='UNCHECKED' and all(side.annotation_coordinates=='RAW' for side in (left,right))
+            and (relation!='EXACT' or (left.width,left.height)==(right.width,right.height)))
 
     @staticmethod
     def pixel_statistics(sides: list['AnnotationSet'], left, right):
@@ -45,10 +46,11 @@ class ComparisonDomain:
     def prepare(cls, sides: list['AnnotationSet'], relation: Relation, config: AnnotationMatchingConfig) -> 'ComparisonDomain':
         domain = cls([{}, {}], [0, 0], [],
             [annotation for side in sides for annotation in side.annotations if annotation.is_ignored], [], None)
-        if not cls.coordinates_correspond(*sides,relation):
-            domain.unavailable_reason = 'Original coordinate correspondence is not verified'
+        if not cls.can_compare_layout(*sides,relation):
+            domain.unavailable_reason = 'Raw annotation coordinate frames are unavailable'
         cached_pixels = 0
         invalid_ignore = False
+        frame=(max(side.width for side in sides),max(side.height for side in sides))
         for side_index, side in enumerate(sides):
             if side.errors:
                 domain.issues.append(GeometryIssue(side_index, None, 'Imported annotation records are unreadable', side.errors))
@@ -63,6 +65,7 @@ class ComparisonDomain:
                     if annotation.sample_id != side.sample_id:
                         raise ValueError('Annotation belongs to a different sample')
                     geometry = InstanceGeometry.prepare(annotation, side, config.max_roi_pixels)
+                    geometry = geometry.in_frame(side,frame,config.max_roi_pixels)
                     size = geometry.pixels.size if geometry.pixels is not None else 0
                     if cached_pixels + size > config.max_cached_pixels:
                         raise ValueError('RESOURCE_LIMIT: prepared annotations exceed matching budget')

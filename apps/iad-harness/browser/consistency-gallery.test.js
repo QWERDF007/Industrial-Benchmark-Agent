@@ -382,7 +382,7 @@ for sample in SampleRepository(db).list_by_task(sys.argv[2]):
     const positionReport=await bridge.execute('consistency_report',{selection:{kind:'batch',batch_id:positionJob.program_batch_id}});
     const positionGallery=await bridge.execute('consistency_gallery',{query_id:positionReport.page.query_id,kind:'conflicts'});
     assert.ok(positionGallery.items.length);
-    for(const item of positionGallery.items){assert.deepEqual(item.conflict_categories,[]);assert.deepEqual(item.model_categories,['位置差异']);}
+    for(const item of positionGallery.items){assert.deepEqual(item.conflict_categories,['位置差异']);assert.deepEqual(item.model_categories,['位置差异']);}
     await driver.get(start);await(await element(`#dc-parent option[value="${positionGroup.group_id}"]`)).click();
     await element('[data-dc="open-conflict"]');await(await element('[role="tab"][data-id="位置差异"]')).click();
     await driver.wait(async()=>(await cards()).length===positionGallery.total,5000,'模型独立发现的差异也必须归入对应tab，不能仅出现在全部冲突');

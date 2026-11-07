@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.group_analysis_models import GroupAnalysisSummary
 from iad_core.consistency.group_analysis_contract import GroupAnalysisContract
+from iad_core.consistency.group_analysis_prompts import GROUP_DIRECTION_INSTRUCTION
 from iad_core.workbench.vision import ModelCapacityError
 
 
@@ -53,7 +54,7 @@ class GroupAnalysisSynthesis:
                     try:
                         response_type = self.validation.response_type(GroupAnalysisSummary, group, allowed, expected_verdict=expected)
                         contract = GroupAnalysisContract(response_type, group)
-                        instruction = context.payload['request']['analysis_instruction'] + '\n冻结批次分析：' + json.dumps(
+                        instruction = context.payload['request']['analysis_instruction'] + '\n' + GROUP_DIRECTION_INSTRUCTION + '\n冻结批次分析：' + json.dumps(
                             contract.encode(facts), ensure_ascii=False, separators=(',', ':'))
                         if len(instruction.encode()) > self.MAX_TEXT_BYTES:
                             raise ConsistencyError('RESOURCE_LIMIT', '批次汇总超过文本容量')

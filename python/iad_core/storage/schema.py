@@ -306,6 +306,10 @@ def initialize_schema(conn: Connection) -> bool:
         ON job_runs(json_extract(payload_json,'$.request.analysis_request_id'),id) WHERE job_type='CONSISTENCY_ANALYSIS'""")
     cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_analysis_group
         ON job_runs(json_extract(payload_json,'$.request.frozen_group.group_id'),id) WHERE job_type='CONSISTENCY_ANALYSIS'""")
+    cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_analysis_selection
+        ON job_runs(json_extract(payload_json,'$.request.analysis_selection.batch_id'),
+            json_extract(payload_json,'$.request.frozen_group.group_id'),id) WHERE job_type='CONSISTENCY_ANALYSIS'
+            AND json_extract(payload_json,'$.request.analysis_selection.kind')='batch'""")
     cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_program_batch
         ON job_runs(json_extract(payload_json,'$.program_batch_id'),id) WHERE job_type='ANALYSIS_WORKFLOW'""")
     migrate_audit_jobs(conn)

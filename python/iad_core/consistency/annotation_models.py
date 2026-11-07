@@ -58,6 +58,7 @@ class AnnotationComparison(AnalysisModel):
     confirmed_conflict: bool
     ignore_regions: list[Annotation] = Field(default_factory=list)
     masking: list[AnnotationMasking] = Field(default_factory=list)
+    coordinate_frame: Literal['RAW_EXACT','RELATIVE_IMAGE','UNAVAILABLE'] = 'UNAVAILABLE'
 
     @property
     def factual_differences(self) -> list[AnnotationDifference]:

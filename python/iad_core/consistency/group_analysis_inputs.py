@@ -101,6 +101,7 @@ class GroupAnalysisInputs:
             contexts.append({'evidence_id':evidence_id,'result_id':saved.result.result_id,
                 'source_states':saved.source_states.model_dump(mode='json'),'sources':source_refs,
                 'verification':saved.result.verification.model_dump(mode='json'),
+                'annotation_observations':{side:observation.model_dump(mode='json') for side,observation in saved.annotation_observations.items()},
                 'differences':[difference.model_dump(mode='json') for difference in saved.result.annotation.differences],
                 'review':ConsistencyReview(self.db).context(evidence_id).model_dump(mode='json')})
         facts = {'anchor': {'sample_id':group.anchor.sample.sample_id,'evidence_id':group.anchor.evidence_id,'side':group.anchor.side},

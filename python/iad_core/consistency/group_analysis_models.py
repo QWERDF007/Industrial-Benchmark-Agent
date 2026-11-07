@@ -39,7 +39,7 @@ class GroupAnalysisConclusion(AnalysisModel):
 
 
 ConclusionPhrase = Annotated[str, Field(min_length=1, max_length=40,
-    description='确定性的简短结论，直接指出类别、位置、增减、拆分、合并等实际差异；多种差异并列，没有差异则明确写未发现标注差异。不写差在哪里、数值、原因、建议，不使用基本一致、可能、疑似、待核对等模糊话术')]
+    description='以主图相对候选图为方向的确定性简短结论：一致、主图缺少标注、主图多出标注、位置差异、类别不一致、拆分、合并等具体类型；同时存在的类型用顿号并列，禁止A或B及基本一致。位置、数值、依据只写在分析中')]
 
 
 class GroupPairAssessment(AnalysisModel):

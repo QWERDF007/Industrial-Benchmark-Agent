@@ -53,6 +53,13 @@ class GroupAnalyses(GroupAnalysisQueries):
     def start(self, request: GroupAnalysisStart, origin_session_id: str | None = None) -> GroupAnalysisView:
         request = GroupAnalysisStart.model_validate(request)
         frozen = GalleryQueries(self.db).freeze(request)
+        if 'instruction' not in request.model_fields_set or 'batch_size' not in request.model_fields_set:
+            previous=GroupAnalysisStates(self.db).read(frozen.selection,[frozen.identity]).get(frozen.identity.key)
+            if previous:
+                original=self.runtime.jobs.status(previous.run_id)['request']
+                inherited={name:original[field] for name,field in (('instruction','analysis_instruction'),('batch_size','analysis_batch_size'))
+                    if name not in request.model_fields_set}
+                request=request.model_copy(update=inherited)
         return self.start_frozen(frozen.group, frozen.identity.fingerprint(GROUP_ANALYSIS_SCHEMA), request.request_id, request.batch_size, origin_session_id,
             instruction=request.instruction,selection=frozen.selection)
 

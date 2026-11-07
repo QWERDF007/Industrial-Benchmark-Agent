@@ -8,8 +8,10 @@ from iad_core.consistency.group_models import FrozenAnalysisGroup
 from iad_core.consistency.group_analysis_models import GroupAnalysisDraft, GroupAnalysisSummary
 from iad_core.consistency.models import ModelAssessmentVerdict
 from iad_core.consistency.repository import ConsistencyRepository
-from iad_core.consistency.annotation_inventory import AnnotationInventory
+from iad_core.consistency.annotation_inventory import AnnotationInventory, AnnotationObservation
 from iad_core.consistency.conflict_categories import ConflictCategory
+from iad_core.evidence.consistency_sources import EvidenceSourcesCapture
+from iad_core.evidence.retained import RetainedImages
 
 Summary = TypeVar('Summary', bound=GroupAnalysisSummary)
 
@@ -17,6 +19,7 @@ Summary = TypeVar('Summary', bound=GroupAnalysisSummary)
 class GroupAnalysisValidation:
     def __init__(self, db):
         self.repository = ConsistencyRepository(db)
+        self.sources = EvidenceSourcesCapture(RetainedImages(db))
 
     def response_type(self, response_type: type[Summary], group: FrozenAnalysisGroup,
                       allowed_ids: set[str] | None = None, *, expected_verdict: ModelAssessmentVerdict | None = None) -> type[Summary]:
@@ -92,13 +95,27 @@ class GroupAnalysisValidation:
                 reference=members[assessment.candidate_id].comparison
                 if reference and assessment.categories is not None:
                     frozen=self.repository.get(reference.evidence_id)
-                    main=getattr(frozen.sources,reference.anchor_side).annotations
-                    candidate=getattr(frozen.sources,'right' if reference.anchor_side=='left' else 'left').annotations
+                    bound=[self.sources.annotations(source) for source in (frozen.sources.left,frozen.sources.right)]
+                    main,candidate=bound if reference.anchor_side=='left' else bound[::-1]
                     inventory=AnnotationInventory.compare(main,candidate)
-                    if inventory.complete and (not inventory.left or not inventory.right) and inventory.left!=inventory.right:
-                        expected_category=ConflictCategory.EXTRA if inventory.left else ConflictCategory.MISSING
-                        opposite=ConflictCategory.MISSING if inventory.left else ConflictCategory.EXTRA
-                        if opposite in assessment.categories:
+                    observation=AnnotationObservation.capture(*bound,
+                        frozen.result.annotation,frozen.result.verification.relation,reverse=reference.anchor_side=='right',matching=frozen.parameters.matching)
+                    measured=set(inventory.categories)
+                    if observation.geometry_compared:
+                        measured.update(set(observation.categories)-{ConflictCategory.CORRESPONDENCE})
+                    if assessment.verdict=='EQUIVALENT' and measured:
+                        raise repairable_output_error('contradictory_consistency_conclusion',
+                            '冻结的原始标注数据已测得主图相对候选图的差异：'+ '、'.join(category.value for category in ConflictCategory if category in measured)
+                            +'。未提供容差标准，不能自行以合理浮动、语义相同或未构成实质冲突将标注数据差异判为一致。'
+                            '请重新查看原图和标注，以主图为主语给出具体差异类型，更新verdict、categories和conclusion；具体坐标及差异位置写入分析。')
+                    main_count,candidate_count=sum(inventory.left.values()),sum(inventory.right.values())
+                    if inventory.complete and main_count!=candidate_count:
+                        expected_category=ConflictCategory.EXTRA if main_count>candidate_count else ConflictCategory.MISSING
+                        opposite=ConflictCategory.MISSING if main_count>candidate_count else ConflictCategory.EXTRA
+                        direction_known=(not inventory.left or not inventory.right or
+                            observation.geometry_compared and ConflictCategory.CORRESPONDENCE not in observation.categories
+                            and opposite not in observation.categories)
+                        if direction_known and opposite in assessment.categories:
                             raise repairable_output_error('incorrect_annotation_direction',
                                 f'主图{sum(inventory.left.values())}个标注、候选{sum(inventory.right.values())}个标注，数量方向是{expected_category.value}，不能反向；请据此重新核对categories、conclusion及分析，不裁定哪侧正确。')
             expected = self.verdict(item.verdict for item in result.assessments)

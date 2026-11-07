@@ -27,7 +27,7 @@ def test_annotation_count_difference_does_not_require_coordinate_registration(re
     right=side('candidate',[box('candidate','one','12',[120,10,130,20])])
     result=AnnotationMatcher().compare(left,right,relation=relation)
     assert result.conflict_categories==['少类别']
-    assert any(item.type=='ANNOTATION_COUNT' and item.facts=={'left_count':0,'right_count':1} for item in result.differences)
+    assert any(item.type=='ONE_SIDED_REGION' and item.right[0].raw_label=='12' for item in result.differences)
     assert not result.matches and not result.confirmed_conflict
     reverse=AnnotationMatcher().compare(right,left,relation=relation)
     assert reverse.conflict_categories==['多类别']

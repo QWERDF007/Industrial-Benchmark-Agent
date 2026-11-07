@@ -22,7 +22,10 @@ from iad_core.storage.database import Database
 from iad_core.storage.models import Sample
 from iad_core.consistency.conflict_categories import ConflictCategory
 from iad_core.consistency.annotation_inventory import AnnotationObservation
-from iad_core.consistency.annotations import AnnotationSet
+from iad_core.consistency.annotation_models import AnnotationMatchingConfig
+from iad_core.consistency.evidence_models import FrozenEvidenceSource
+from iad_core.evidence.consistency_sources import EvidenceSourcesCapture
+from iad_core.evidence.retained import RetainedImages
 
 
 class GalleryQuery(AnalysisModel):
@@ -62,6 +65,7 @@ class GalleryItem(AnalysisModel):
     confirmed_conflict: bool
     model_state: ModelAssessmentState
     model_conclusion: str | None = None
+    annotation_conclusion: str
     review_state: ReviewDisposition
 
 
@@ -113,6 +117,7 @@ class GalleryQueries:
             json_extract(r.snapshot_json,'$.sources.right') right_source,
             json_extract(r.snapshot_json,'$.result.annotation.differences') differences,
             json_extract(r.snapshot_json,'$.result.annotation') annotation,
+            json_extract(r.snapshot_json,'$.parameters.matching') matching,
             annotation_difference_types(json_extract(r.snapshot_json,'$.result.annotation')) difference_types,
             json_extract(r.snapshot_json,'$.result.annotation.confirmed_conflict') confirmed,
             json_extract(r.snapshot_json,'$.result.verification.relation') relation,
@@ -161,7 +166,7 @@ class GalleryQueries:
                 COALESCE((SELECT json_group_array(type) FROM types t WHERE t.group_id=g.group_id AND t.facts_state=g.facts_state),'[]') difference_types,
                 (SELECT json_group_array(e.evidence_id) FROM edges e WHERE e.group_id=g.group_id AND e.facts_state=g.facts_state) evidence_ids,
                 (SELECT json_group_array(json_object('comparison',json(e.annotation),
-                    'left',json_extract(e.left_source,'$.annotations'),'right',json_extract(e.right_source,'$.annotations'),'relation',e.relation))
+                    'left',json(e.left_source),'right',json(e.right_source),'relation',e.relation,'matching',json(e.matching)))
                     FROM edges e WHERE e.group_id=g.group_id AND e.facts_state=g.facts_state) annotations,
                 (SELECT json_group_object(e.evidence_id,(SELECT json_group_array(json_extract(d.value,'$.difference_id')) FROM json_each(e.differences) d))
                     FROM edges e WHERE e.group_id=g.group_id AND e.facts_state=g.facts_state) review_facts
@@ -172,13 +177,21 @@ class GalleryQueries:
             facts_state=row['facts_state'],anchor=self.image(row),evidence_ids=tuple(json.loads(row['evidence_ids']))) for row in rows}
         group_states=GroupAnalysisStates(self.db).read(snapshot.request.selection,identities.values())
         selected = []
+        sources=EvidenceSourcesCapture(RetainedImages(self.db))
         for row in rows:
-            observed={category for annotation in json.loads(row['annotations'])
-                for category in AnnotationObservation.capture(AnnotationSet.model_validate(annotation['left']),AnnotationSet.model_validate(annotation['right']),
-                    AnnotationComparison.model_validate(annotation['comparison']),annotation['relation']).categories}
+            observations=[]
+            for annotation in json.loads(row['annotations']):
+                frozen=[FrozenEvidenceSource.model_validate(annotation[side]) for side in ('left','right')]
+                comparison=AnnotationComparison.model_validate(annotation['comparison'])
+                bound=[sources.annotations(source) for source in frozen] if comparison.coordinate_frame=='UNAVAILABLE' and annotation['relation']!='EXACT' else [source.annotations for source in frozen]
+                observations.append(AnnotationObservation.capture(*bound,comparison,annotation['relation'],
+                    matching=AnnotationMatchingConfig.model_validate(annotation['matching'])))
+            observed={category for observation in observations for category in observation.categories}
             categories = {ANNOTATION_DIFFERENCE_CATEGORIES[kind] for kind in json.loads(row['difference_types'])}
             if observed.intersection({ConflictCategory.MISSING,ConflictCategory.EXTRA}):categories.add('presence')
             if ConflictCategory.CATEGORY in observed:categories.add('category')
+            if ConflictCategory.POSITION in observed:categories.add('geometry')
+            if observed.intersection({ConflictCategory.SPLIT,ConflictCategory.MERGE,ConflictCategory.CORRESPONDENCE}):categories.add('instances')
             category = next(iter(categories)) if len(categories) == 1 else 'multiple' if categories else None
             state=group_states.get(identities[row['group_id'],row['facts_state']].key)
             model_state=state.model_state if state else 'NOT_ANALYZED'
@@ -187,10 +200,10 @@ class GalleryQueries:
             if model_matches:counts[category] += 1
             if category_matches:model_counts[model_state] += 1
             if category_matches and model_matches:
-                selected.append((row,model_state,state,observed))
+                selected.append((row,model_state,state,observed,all(item.geometry_compared for item in observations)))
         total = len(selected)
         rows = selected[(request.page - 1) * request.page_size:request.page * request.page_size]
-        review_facts = {(row['group_id'],row['facts_state']):json.loads(row['review_facts']) for row,_,_,_ in rows}
+        review_facts = {(row['group_id'],row['facts_state']):json.loads(row['review_facts']) for row,_,_,_,_ in rows}
         histories = ConsistencyDecisionRepository(self.db).histories({identity for pairs in review_facts.values() for identity in pairs})
         reviews = {}
         for key,pairs in review_facts.items():
@@ -203,8 +216,9 @@ class GalleryQueries:
                 member_count=row['member_count'],candidate_count=row['member_count']-1,dataset_count=row['dataset_count'],
                 pair_count=row['pair_count'],difference_types=json.loads(row['difference_types']),confirmed_conflict=bool(row['confirmed']),model_state=model_state,
                 conflict_categories=[category for category in ConflictCategory if category in observed],
+                annotation_conclusion=AnnotationObservation.conclusion_for([category for category in ConflictCategory if category in observed],geometry_compared),
                 model_categories=state.categories if state and state.status=='COMPLETED' else [],
-                model_conclusion=state.conclusion if state and state.status=='COMPLETED' else None,review_state=reviews[row['group_id'],row['facts_state']]) for row,model_state,state,observed in rows])
+                model_conclusion=state.conclusion if state and state.status=='COMPLETED' else None,review_state=reviews[row['group_id'],row['facts_state']]) for row,model_state,state,observed,geometry_compared in rows])
 
     def members(self, request: GalleryMemberQuery) -> GalleryMemberPage:
         ResultSnapshots(self.db).get(request.query_id)

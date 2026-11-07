@@ -82,6 +82,21 @@ class InstanceGeometry:
             return None
         return self.pixel_iou(other)
 
+    def in_frame(self, source: ImageDimensions, size: tuple[int,int], max_roi_pixels: int) -> 'InstanceGeometry':
+        if (source.width,source.height)==size:
+            return self
+        sx,sy=size[0]/source.width,size[1]/source.height
+        bounds=tuple(value*scale for value,scale in zip(self.bounds,(sx,sy,sx,sy)))
+        pixels=None
+        origin=(math.floor(bounds[0]),math.floor(bounds[1]))
+        if self.pixels is not None:
+            width,height=math.ceil(bounds[2])-origin[0],math.ceil(bounds[3])-origin[1]
+            if width*height>max_roi_pixels:
+                raise ValueError('RESOURCE_LIMIT: relative annotation ROI exceeds the configured pixel budget')
+            pixels=np.asarray(Image.fromarray(self.pixels).resize((width,height),Image.Resampling.NEAREST))
+            pixels.setflags(write=False)
+        return InstanceGeometry(self.annotation,bounds,pixels,origin,self.masked_domain)
+
     @property
     def pixel_area(self) -> int:
         if self.pixels is not None:

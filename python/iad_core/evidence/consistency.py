@@ -7,6 +7,7 @@ from typing import Callable
 
 from iad_core.consistency import annotations, geometry, comparison_domain, policy
 from iad_core.consistency.annotations import AnnotationMatcher, AnnotationSet
+from iad_core.consistency.annotation_inventory import AnnotationObservation
 from iad_core.consistency.comparison_domain import ComparisonDomain
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.models import ConsistencyScopesSnapshot
@@ -92,7 +93,10 @@ class ConsistencyEvidence:
                 connection.execute('BEGIN')
                 current=CurrentSource.capture(self.db,frozen.sample.sample_id,connection)
             states[side]=current.state(frozen)
-        return EvidenceBundle(**saved.model_dump(),source_states=EvidenceSourceStates(**states))
+        bound=[self.sources.annotations(source) for source in (saved.sources.left,saved.sources.right)]
+        observed={side:AnnotationObservation.capture(*bound,saved.result.annotation,saved.result.verification.relation,
+            reverse=side=='right',matching=saved.parameters.matching) for side in ('left','right')}
+        return EvidenceBundle(**saved.model_dump(),source_states=EvidenceSourceStates(**states),annotation_observations=observed)
 
     def media(self, evidence_id: str, media_id: str, *, max_side: int | None = None) -> dict:
         bundle=self.repository.get(evidence_id)

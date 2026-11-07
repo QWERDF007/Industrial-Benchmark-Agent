@@ -84,6 +84,7 @@ function ConsistencyIntegratedWorkspace({ datasets, groups }) {
     const [revision, setRevision] = useState(0);
     // Conflicts list and filter state
     const [jobConflicts, setJobConflicts] = useState([]);
+    const conflictScope = useRef('');
     const [conflictsLoading, setConflictsLoading] = useState(false);
     const [kind, setKind] = useState('all');
     const [modelFilter, setModelFilter] = useState('all');
@@ -163,11 +164,19 @@ function ConsistencyIntegratedWorkspace({ datasets, groups }) {
     };
     useEffect(() => {
         const controller = new AbortController();
-        setJobConflicts([]);
-        setActiveQueryId('');
         setError('');
-        if (!selectedJob?.analysis.program_batch_id || !['COMPLETED', 'PARTIAL'].includes(selectedJob.status))
+        if (!selectedJob?.analysis.program_batch_id || !['COMPLETED', 'PARTIAL'].includes(selectedJob.status)) {
+            setJobConflicts([]);
+            setActiveQueryId('');
+            setConflictsLoading(false);
+            conflictScope.current = '';
             return;
+        }
+        if (conflictScope.current !== selectedJob.batch_id) {
+            setJobConflicts([]);
+            setActiveQueryId('');
+            conflictScope.current = selectedJob.batch_id;
+        }
         setConflictsLoading(true);
         ConsistencyView.load(selectedJob.batch_id, controller.signal)
             .then(value => { if (!controller.signal.aborted) {
@@ -180,6 +189,12 @@ function ConsistencyIntegratedWorkspace({ datasets, groups }) {
             setConflictsLoading(false); });
         return () => controller.abort();
     }, [selectedJob?.batch_id, selectedJob?.status, revision]);
+    useEffect(() => {
+        if (modal === 'compare' || !jobConflicts.some(item => item.rawItem.model_state === 'RUNNING'))
+            return;
+        const timer = setTimeout(() => setRevision(value => value + 1), 1200);
+        return () => clearTimeout(timer);
+    }, [jobConflicts, modal]);
     // Visible conflicts filtered by kind, modelFilter, agreement, search, reviewFilter
     const visibleConflicts = useMemo(() => {
         let list = [...jobConflicts];

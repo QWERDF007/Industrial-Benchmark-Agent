@@ -20,8 +20,10 @@ from pathlib import Path
 from PIL import Image,ImageDraw
 p=Path(sys.argv[1]);(p/'images').mkdir();(p/'labels').mkdir()
 for name,width,label in [('anchor',945,'15'),('equivalent',945,'15'),('different',945,'18'),('shifted',945,'15')]:
- im=Image.new('RGB',(width,678),'#197fe5');ImageDraw.Draw(im).rectangle((40,60,70,600),fill='#47c3ea');im.save(p/'images'/f'{name}.png')
- (p/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':width,'imageHeight':678,'shapes':[{'label':label,'shape_type':'rectangle','points':[[40+i+(0.2 if name=='equivalent' else 4 if name=='shifted' else 0),60+i*100],[50+i,90+i*100]]} for i in range(5)]}))`,root]);
+ im=Image.new('RGB',(width,678),'#197fe5');ImageDraw.Draw(im).rectangle((40,60,70,600),fill='#47c3ea')
+ if name=='equivalent':im.putpixel((0,0),(1,2,3))
+ im.save(p/'images'/f'{name}.png')
+ (p/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':width,'imageHeight':678,'shapes':[{'label':label,'shape_type':'rectangle','points':[[40+i+(4 if name=='shifted' else 0),60+i*100],[50+i,90+i*100]]} for i in range(5)]}))`,root]);
  const bundle=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';
 import {ConsistencyConflictDialog} from './src/client/components/ConsistencyConflictDialog.tsx';
 import {workbenchStyles} from './src/client/styles.ts';
@@ -53,11 +55,16 @@ async function main(){const result=window.fixture;createRoot(document.getElement
  let driver;
  try{
   const dataset=await bridge.execute('dataset_import',{format:'labelme',name:'一致性判定',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')});
+  execFileSync(bridge.pythonPath,['-c',`import sys
+from pathlib import Path
+from tests.feature_fixtures import configure_test_encoder
+from iad_core.storage.database import Database
+configure_test_encoder(Database(sys.argv[1]),Path(sys.argv[2]))`,path.join(root,'test.db'),root],{env:{...process.env,PYTHONPATH:path.resolve(app,'../../python')+':'+path.resolve(app,'../..')}});
   for(const name of ['equivalent','different','shifted']){
    const pair=await bridge.execute('consistency_compare',{sample_a:dataset.dataset_id+':anchor.png',sample_b:dataset.dataset_id+':'+name+'.png'});
-   assert.equal(pair.verification.relation,'EXACT');
+   assert.equal(pair.verification.relation,name==='equivalent'?'NEAR_CANDIDATE':'EXACT');
   }
-  const report=await bridge.execute('consistency_report',{selection:{kind:'scope',subjects:{kind:'all_registered'}}});
+  const report=await bridge.execute('consistency_report',{selection:{kind:'scope',subjects:{kind:'all_registered'},mode:'combined'}});
   const gallery=await bridge.execute('consistency_gallery',{query_id:report.page.query_id,kind:'conflicts'});assert.equal(gallery.total,1);
   const reference={query_id:report.page.query_id,kind:'conflicts',group_id:gallery.items[0].group_id};
   const started=await bridge.execute('consistency_group_analyze',{request:{...reference,request_id:'verdict-regression'}});
@@ -79,5 +86,23 @@ async function main(){const result=window.fixture;createRoot(document.getElement
    await driver.wait(async()=>await(await element('.dc-conclusion-panel .dc-verdict-value')).getText()===verdict,5000,'当前候选必须展示模型实际写出的结论，不能用图组文案或二分类标签代替');
    assert.equal(await(await element('.dc-fact-panel h3')).getText(),'判定结论');
   }
+  execFileSync(bridge.pythonPath,['-c',`import sqlite3,json,sys
+c=sqlite3.connect(sys.argv[1]);raw=c.execute('SELECT payload_json FROM job_runs WHERE job_id=?',(sys.argv[2],)).fetchone()[0];p=json.loads(raw)
+for result in [p['group_analysis'],*[batch['result'] for batch in p['group_analysis_batches']]]:
+ result['overall']['text']='类别或位置不同'
+ for item in result['assessments']:item['conclusion']='缺少或多出标注'
+c.execute('UPDATE job_runs SET payload_json=? WHERE job_id=?',(json.dumps(p),sys.argv[2]));c.commit()`,path.join(root,'test.db'),started.run_id]);
+  await driver.navigate().refresh();
+  await driver.wait(async()=>(await(await element('.dc-conclusion-panel .dc-verdict-value')).getText()).includes('或'),5000);
+  await(await element('[data-dc="reanalyze"]')).click();
+  await driver.wait(async()=>{
+   const view=await bridge.execute('consistency_group_analysis',reference);
+   return view.run_id!==started.run_id&&view.status==='COMPLETED';
+  },10000,'重新分析必须在原图组上保存并显示新的模型输出');
+  await driver.wait(async()=>!(await(await element('.dc-conclusion-panel .dc-verdict-value')).getText()).includes('或'),5000);
+  assert.equal(modelCalls,2,'历史备选答案必须实际重新请求模型，不得通过前端改字或直接复用旧回答');
+  const historical=execFileSync(bridge.pythonPath,['-c',`import sqlite3,json,sys
+c=sqlite3.connect(sys.argv[1]);print(json.loads(c.execute('SELECT payload_json FROM job_runs WHERE job_id=?',(sys.argv[2],)).fetchone()[0])['group_analysis']['overall']['text'])`,path.join(root,'test.db'),started.run_id],{encoding:'utf8'}).trim();
+  assert.equal(historical,'类别或位置不同');
  }finally{await driver?.quit();bridge.destroy();await new Promise(resolve=>server.close(resolve));for(const [k,v] of Object.entries(previous))if(v===undefined)delete process.env[k];else process.env[k]=v;await fs.rm(root,{recursive:true,force:true});}
 });

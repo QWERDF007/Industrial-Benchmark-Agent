@@ -248,7 +248,8 @@ class AnnotationMatcher:
                         extra_pending=[] if suspect else ['Confirm annotation coverage before inferring a missing instance'],conflict=suspect)
         return AnnotationComparison(status='PARTIAL' if any(invalid) else 'COMPLETE',policy_relation=policy_relation,
             matches=matches,differences=differences,invalid_left=invalid[0],invalid_right=invalid[1],
-            confirmed_conflict=any(d.confirmed_conflict for d in differences),ignore_regions=ignore_regions,masking=masking)
+            confirmed_conflict=any(d.confirmed_conflict for d in differences),ignore_regions=ignore_regions,masking=masking,
+            coordinate_frame='RAW_EXACT' if relation=='EXACT' else 'RELATIVE_IMAGE')
 
     def cost_matrix(self, rows, cols, scores) -> np.ndarray:
         n,m=len(rows),len(cols)

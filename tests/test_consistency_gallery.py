@@ -23,14 +23,15 @@ def test_legacy_similar_pair_is_classified_from_frozen_annotation_inventory(data
     assert result.verification.relation=='VISUAL_REFERENCE'
     with db.connection() as conn:
         snapshot=json.loads(conn.execute('SELECT snapshot_json FROM consistency_results WHERE evidence_id=?',(result.evidence_id,)).fetchone()[0])
-        snapshot['result']['annotation']['differences']=[item for item in snapshot['result']['annotation']['differences'] if item['type']!='ANNOTATION_COUNT']
+        snapshot['result']['annotation']['differences']=[item for item in snapshot['result']['annotation']['differences'] if item['type'] not in ('ANNOTATION_COUNT','ONE_SIDED_REGION')]
+        snapshot['result']['annotation'].pop('coordinate_frame')
         payload=json.dumps(snapshot)
         conn.execute('UPDATE consistency_results SET snapshot_json=?,snapshot_sha256=? WHERE evidence_id=?',(payload,hashlib.sha256(payload.encode()).hexdigest(),result.evidence_id))
     old=service.evidence(result.evidence_id)
     assert old.result.annotation.conflict_categories==[]
     assert old.annotation_observations['left'].categories==['少类别']
     assert old.annotation_observations['right'].categories==['多类别']
-    assert old.annotation_observations['left'].summary=='主图 0 个标注，候选图 1 个标注；位置及范围未进行坐标匹配'
+    assert old.annotation_observations['left'].summary=='主图 0 个标注，候选图 1 个标注；已匹配 0 对标注的位置及范围（按图像尺寸归一化）'
     report=ResultQueries(db).query(ConsistencyQuery(selection={'kind':'scope','subjects':{'kind':'all_registered'},'mode':'combined'}))
     gallery=GalleryQueries(db).query(GalleryQuery(query_id=report.query_id,kind='conflicts'))
     assert len(gallery.items)==1 and gallery.items[0].conflict_categories==['少类别']

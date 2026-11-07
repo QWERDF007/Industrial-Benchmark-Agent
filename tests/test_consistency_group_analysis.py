@@ -23,8 +23,6 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
         path = tmp_path / 'labels' / (name + '.json')
         content = json.loads(path.read_text())
         content['shapes'][0]['label'] = label
-        if verdict == 'EQUIVALENT' and name == 'scratch':
-            content['shapes'][0]['points'][0][0] = 10.2
         path.write_text(json.dumps(content))
     registry.rescan(config.dataset.id)
     entered, release = threading.Event(), threading.Event()
@@ -47,7 +45,7 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
             assert '不得预设类别映射或语义相近' in instruction
             assert '视觉相近可以写入详细分析，但不能否定类别差异' in instruction
             assert '非同像素的相似图' in instruction
-            assert '不能仅因OK/NG不同' in instruction
+            assert '不得自定合理浮动范围' in instruction
             assert '不能仅因没有精确配准' in instruction
         assert '明确未核实规范' not in instruction
         for label in labels:
@@ -87,14 +85,15 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
         compared = runtime.consistency_service.compare(ConsistencyCompare(sample_a=a, sample_b=b))
         citation.update(candidate_id=b, comparison={'result_id':compared.result_id, 'evidence_id':compared.evidence_id, 'difference_id':compared.annotation.differences[0].difference_id})
         snapshot = ResultQueries(db).query(ConsistencyQuery(selection={'kind': 'scope', 'subjects': {'kind': 'all_registered'}}))
-        group = GalleryQueries(db).query(GalleryQuery(query_id=snapshot.query_id, kind='conflicts')).items[0]
-        request = GroupAnalysisStart(query_id=snapshot.query_id, kind='conflicts', group_id=group.group_id, request_id='one-group-analysis',
+        kind='groups' if verdict=='EQUIVALENT' else 'conflicts'
+        group = GalleryQueries(db).query(GalleryQuery(query_id=snapshot.query_id, kind=kind)).items[0]
+        request = GroupAnalysisStart(query_id=snapshot.query_id, kind=kind, group_id=group.group_id, request_id='one-group-analysis',
             **({'instruction':prompt} if prompt else {}))
         analyses = GroupAnalyses(runtime, runtime.client)
         assert analyses.read(request).status == 'NOT_ANALYZED'
         started = analyses.start(request)
         assert entered.wait(5), analyses.read(request).model_dump()
-        assert GalleryQueries(db).query(GalleryQuery(query_id=snapshot.query_id,kind='conflicts')).items[0].model_state=='RUNNING'
+        assert GalleryQueries(db).query(GalleryQuery(query_id=snapshot.query_id,kind=kind)).items[0].model_state=='RUNNING'
         running = analyses.read(request)
         assert running.status == 'RUNNING' and running.result is None
         assert analyses.start(request).run_id == started.run_id
@@ -115,8 +114,8 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
         wire=json.JSONDecoder().raw_decode(requests[0]['messages'][0]['content'][0]['text'].split('冻结图组：')[1])[0]
         assert bindings[wire['candidates']['@c1']['comparison']['evidence_id']]==compared.evidence_id
         gallery = GalleryQueries(db)
-        query = GalleryQuery(query_id=snapshot.query_id,kind='conflicts')
-        assert gallery.query(query).total == 1, 'MLLM基本一致不得从默认问题网格删除'
+        query = GalleryQuery(query_id=snapshot.query_id,kind=kind)
+        assert gallery.query(query).total == 1
         assert gallery.query(query).items[0].model_state == verdict
         assert gallery.query(query.model_copy(update={'model_filter':verdict})).total == 1
         assert gallery.query(query.model_copy(update={'model_filter':'UNCERTAIN'})).total == 0
@@ -139,6 +138,58 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
     finally:
         release.set()
         runtime.close()
+
+
+@pytest.mark.parametrize('difference,wrong_verdict,wrong_categories,wrong_conclusion,expected',[
+    ('position','EQUIVALENT',[],'一致','位置差异'),
+    ('missing','MATERIAL',['多类别'],'主图多出标注','少类别'),
+    ('extra','MATERIAL',['少类别'],'主图缺少标注','多类别'),
+    ('both','MATERIAL',['多类别','少类别'],'缺少或多出标注','both'),
+])
+def test_model_rechecks_measured_positions_and_main_relative_quantity(dataset,tmp_path,difference,wrong_verdict,wrong_categories,wrong_conclusion,expected):
+    from iad_core.consistency.group_analysis import GroupAnalyses
+    from iad_core.consistency.group_analysis_models import GroupAnalysisStart
+    db,registry,config=dataset
+    path=tmp_path/'labels/scratch.json'
+    labels=json.loads(path.read_text());labels['shapes'][0]['label']='dent'
+    if difference=='position':labels['shapes'][0]['points'][0][0]=11
+    if difference=='missing':labels['shapes'].append({'label':'dent','shape_type':'rectangle','points':[[80,10],[100,30]]})
+    if difference=='both':labels['shapes'] += [{'label':'dent','shape_type':'rectangle','points':[[x,10],[x+20,30]]} for x in (130,180)]
+    if difference in ('extra','both'):
+        main_path=tmp_path/'labels/dent.json';main=json.loads(main_path.read_text())
+        main['shapes'].append({'label':'dent','shape_type':'rectangle','points':[[80,10],[100,30]]});main_path.write_text(json.dumps(main))
+    path.write_text(json.dumps(labels));registry.rescan(config.dataset.id)
+    calls=[]
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):return httpx.Response(200,json={'count':1000,'max_model_len':262144})
+        body=json.loads(request.content);calls.append(body)
+        facts=json.JSONDecoder().raw_decode(body['messages'][0]['content'][0]['text'].split('冻结图组：')[1])[0]
+        candidate,member=next(iter(facts['candidates'].items()))
+        refs=[dict(candidate_id=candidate,comparison={key:member['comparison'][key] for key in ('result_id','evidence_id')})]
+        verdict=wrong_verdict if len(calls)==1 else 'MATERIAL'
+        expected_categories=['多类别','少类别'] if expected=='both' else [expected]
+        conclusion=wrong_conclusion if len(calls)==1 else {'位置差异':'位置差异','少类别':'主图缺少标注','多类别':'主图多出标注','both':'主图缺少标注、主图多出标注'}[expected]
+        explanation=('主图左边界10，候选图11。'+('该变化属于合理浮动。' if len(calls)==1 else '主图相对候选图向左偏移1像素。')
+            if difference=='position' else '主图1个框，候选图2个框，主图缺少右侧标注。' if difference=='missing' else
+            '主图2个框，候选图1个框，主图多出右侧标注。' if difference=='extra' else '主图多出中间框，同时缺少候选图最右边的两个框。')
+        result=dict(overall=dict(verdict=verdict,text=conclusion,references=refs),
+            assessments=[dict(candidate_id=candidate,verdict=verdict,conclusion=conclusion,categories=wrong_categories if len(calls)==1 else expected_categories,
+                explanation=explanation,findings=[])],
+            conclusions=[dict(text=explanation,references=refs)],limitations=[])
+        return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
+    runtime=WorkbenchRuntime(db,VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
+    try:
+        runtime.consistency_service.compare(ConsistencyCompare(sample_a=config.dataset.id+':dent.png',sample_b=config.dataset.id+':scratch.png'))
+        page=ResultQueries(db).query(ConsistencyQuery(selection={'kind':'scope','subjects':{'kind':'all_registered'}}))
+        card=GalleryQueries(db).query(GalleryQuery(query_id=page.query_id,kind='conflicts')).items[0]
+        request=GroupAnalysisStart(query_id=page.query_id,kind='conflicts',group_id=card.group_id,request_id='measured-position')
+        analyses=GroupAnalyses(runtime,runtime.client);started=analyses.start(request);runtime.jobs.wait(started.run_id,5)
+        result=analyses.read(request)
+        assert result.status=='COMPLETED',result.error
+        assert len(calls)==2,'模型结论与已测得的位置或主图数量方向矛盾时，必须要求模型重新判断'
+        assert json.loads(calls[1]['messages'][1]['content'])['assessments'][0]['conclusion']==wrong_conclusion
+        assert result.result.assessments[0].categories==(['多类别','少类别'] if expected=='both' else [expected])
+    finally:runtime.close()
 
 
 def test_group_reference_schema_requires_complete_comparison():
@@ -194,7 +245,7 @@ def test_group_assessments_require_full_unique_candidates_and_their_direct_evide
 
 
 @pytest.mark.parametrize('corrected', [True, False])
-@pytest.mark.parametrize('error_kind', ['candidate_coverage', 'crossed_comparison', 'overall_verdict', 'descriptive_text', 'assertive_text', 'missing_conclusion', 'direction_alternative', 'missing_categories', 'empty_categories'])
+@pytest.mark.parametrize('error_kind', ['candidate_coverage', 'crossed_comparison', 'overall_verdict', 'descriptive_text', 'assertive_text', 'missing_conclusion', 'direction_alternative', 'choice_final', 'approximate_final', 'missing_categories', 'empty_categories'])
 def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_output(dataset, tmp_path, error_kind, corrected):
     from copy import deepcopy
     from shutil import copyfile
@@ -244,6 +295,12 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
                 result['assessments'][0]['conclusion'] = '标注可能一致，仍待核对'
             elif error_kind == 'direction_alternative':
                 result['assessments'][0]['conclusion'] = '缺少或多出标注。'
+            elif error_kind == 'choice_final':
+                result['overall']['text']='类别不一致或位置差异'
+                result['assessments'][0]['conclusion']='主图多或少标注'
+            elif error_kind == 'approximate_final':
+                result['overall']['text']='标注几乎一致'
+                result['assessments'][0]['conclusion']='标注近似相同'
             elif error_kind == 'descriptive_text':
                 result['overall']['text'] = '候选@c1存在标注差异'
                 result['conclusions'][0]['text'] = 'part.png 的标注存在差异'
@@ -363,11 +420,26 @@ def test_selected_workflow_owns_group_results_across_prompts_running_jobs_and_co
         assert analyses.read(reference_a)==original
         assert analyses.read(reference_b).result.overall.verdict=='UNCERTAIN'
         assert analyses.read(reference_b).run_id!=original.run_id
+        from iad_core.consistency.group_analysis import GroupAnalyses
+        from iad_core.consistency.group_analysis_models import GroupAnalysisStart
+        initial_run_id=original.run_id
+        with db.connection() as connection:
+            original_payload=connection.execute('SELECT payload_json FROM job_runs WHERE job_id=?',(original.run_id,)).fetchone()[0]
+        replacement=GroupAnalyses(runtime,runtime.client).start(GroupAnalysisStart(**reference_a.model_dump(),
+            request_id='explicit-reanalysis'))
+        assert runtime.jobs.status(replacement.run_id)['request']['analysis_instruction']==json.loads(original_payload)['request']['analysis_instruction'], '重新分析沿用所选作业冻结提示词，不能暗中改用默认提示词'
+        runtime.jobs.wait(replacement.run_id,10)
+        updated=analyses.read(reference_a)
+        assert updated.run_id==replacement.run_id and updated.status=='COMPLETED','所选作业必须展示其新建的重新分析结果'
+        assert analyses.read(reference_b).run_id!=updated.run_id,'重分析不能覆盖另一作业的同一图组'
+        with db.connection() as connection:
+            assert connection.execute('SELECT payload_json FROM job_runs WHERE job_id=?',(original.run_id,)).fetchone()[0]==original_payload
+        original=updated
         with db.connection() as connection:
             connection.executemany('''INSERT INTO job_runs(job_id,task_id,job_type,status,progress,message,payload_json)
                 SELECT ?,task_id,job_type,status,progress,message,json_set(payload_json,'$.root_run_id',?,
                     '$.request.analysis_request_id',?) FROM job_runs WHERE job_id=?''',
-                [(f'unrelated-{index}',f'unrelated-{index}',f'unrelated-request-{index}',original.run_id) for index in range(1200)])
+                [(f'unrelated-{index}',f'unrelated-{index}',f'unrelated-request-{index}',initial_run_id) for index in range(1200)])
             connection.execute('ANALYZE job_runs')
         connect=db.get_connection
         instructions=0

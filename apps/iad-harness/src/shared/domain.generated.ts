@@ -1722,6 +1722,7 @@ export type TotalPixels = number;
 export type VisiblePixels = number;
 export type IgnoreAnnotationIds = string[];
 export type Masking = AnnotationMasking[];
+export type CoordinateFrame = "RAW_EXACT" | "RELATIVE_IMAGE" | "UNAVAILABLE";
 /**
  * Minimum overlap for confident instance correspondence; lower positive overlap remains a geometry difference requiring correspondence review
  */
@@ -2152,6 +2153,7 @@ export type ConflictCategory = "类别不一致" | "位置差异" | "多类别" 
 export type Categories1 = ConflictCategory[];
 export type Summary5 = string;
 export type GeometryCompared = boolean;
+export type Conclusion3 = string;
 export type EvidenceId12 = string;
 export type EvidenceId13 = string;
 export type MediaId1 = string;
@@ -2450,6 +2452,7 @@ export type ModelCategories = ConflictCategory[];
 export type ConfirmedConflict3 = boolean;
 export type ModelState = "NOT_ANALYZED" | "RUNNING" | "FAILED" | "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
 export type ModelConclusion1 = string | null;
+export type AnnotationConclusion = string;
 export type ReviewState2 = "pending" | "confirmed" | "rejected";
 export type Items13 = GalleryItem[];
 export type Total18 = number;
@@ -2473,7 +2476,7 @@ export type Status31 =
 export type RunId23 = string | null;
 export type ModelName8 = string | null;
 /**
- * 确定性的简短结论，直接指出类别、位置、增减、拆分、合并等实际差异；多种差异并列，没有差异则明确写未发现标注差异。不写差在哪里、数值、原因、建议，不使用基本一致、可能、疑似、待核对等模糊话术
+ * 以主图相对候选图为方向的确定性简短结论：一致、主图缺少标注、主图多出标注、位置差异、类别不一致、拆分、合并等具体类型；同时存在的类型用顿号并列，禁止A或B及基本一致。位置、数值、依据只写在分析中
  */
 export type Text6 = string;
 /**
@@ -2516,7 +2519,7 @@ export type CandidateId1 = string;
  * 当前候选的内部检索判定，最终答案由conclusion陈述，explanation解释依据，不用该枚举标签代替结论
  */
 export type Verdict1 = "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
-export type Conclusion3 = string | null;
+export type Conclusion4 = string | null;
 /**
  * 当前主图相对本候选图的全部差异分类，可多选；主图比候选少标注为少类别，多标注为多类别；主图同一对象多个框而候选一个为拆分，反之为合并；未发现差异时为空。类别/数量事实可直接比较，不等于裁决哪一侧正确。
  */
@@ -4740,6 +4743,7 @@ export interface AnnotationComparison {
   confirmed_conflict: ConfirmedConflict1;
   ignore_regions: IgnoreRegions;
   masking: Masking;
+  coordinate_frame: CoordinateFrame;
 }
 export interface InstanceMatch {
   left_id: LeftId;
@@ -5312,6 +5316,7 @@ export interface AnnotationObservation {
   categories: Categories1;
   summary: Summary5;
   geometry_compared: GeometryCompared;
+  conclusion: Conclusion3;
 }
 export interface ConsistencyEvidenceReference {
   evidence_id: EvidenceId12;
@@ -5655,6 +5660,7 @@ export interface GalleryItem {
   confirmed_conflict: ConfirmedConflict3;
   model_state: ModelState;
   model_conclusion: ModelConclusion1;
+  annotation_conclusion: AnnotationConclusion;
   review_state: ReviewState2;
 }
 export interface GalleryImage {
@@ -5728,7 +5734,7 @@ export interface GroupAnalysisConclusion {
 export interface GroupPairAssessment {
   candidate_id: CandidateId1;
   verdict: Verdict1;
-  conclusion: Conclusion3;
+  conclusion: Conclusion4;
   categories: Categories2;
   explanation: Explanation;
   findings: Findings4;

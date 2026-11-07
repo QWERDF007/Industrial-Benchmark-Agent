@@ -54,7 +54,7 @@ class GroupAnalysisStates:
                 if isinstance(selection,BatchSelection):
                     clause += " AND json_extract(payload_json,'$.request.analysis_selection.kind')='batch' AND json_extract(payload_json,'$.request.analysis_selection.batch_id')=?"
                     args.append(selection.batch_id)
-            rows = connection.execute('''SELECT job_id,status,
+            statement = '''SELECT job_runs.id sequence,job_id,status,
                 json_extract(payload_json,'$.request.frozen_group.kind') kind,
                 json_extract(payload_json,'$.request.frozen_group.group_id') group_id,
                 json_extract(payload_json,'$.request.frozen_group.facts_state') facts_state,
@@ -63,7 +63,14 @@ class GroupAnalysisStates:
                 json_extract(payload_json,'$.group_analysis.overall.verdict') verdict,
                 json_extract(payload_json,'$.group_analysis.overall.text') conclusion,
                 json_extract(payload_json,'$.group_analysis.assessments') assessments
-                FROM json_each(?) wanted CROSS JOIN job_runs WHERE job_type='CONSISTENCY_ANALYSIS' AND deleted_at IS NULL AND '''+clause+' ORDER BY job_runs.id DESC',args).fetchall()
+                FROM json_each(?) wanted CROSS JOIN job_runs WHERE job_type='CONSISTENCY_ANALYSIS' AND deleted_at IS NULL AND '''
+            rows = connection.execute(statement+clause+' ORDER BY job_runs.id DESC',args).fetchall()
+            if owner:
+                rows += connection.execute(statement+"""json_extract(payload_json,'$.request.analysis_selection.batch_id')=?
+                    AND json_extract(payload_json,'$.request.frozen_group.group_id')=wanted.value
+                    AND json_extract(payload_json,'$.request.analysis_selection.kind')='batch' ORDER BY job_runs.id DESC""",
+                    (json.dumps(sorted({identity.group_id for identity in facts})),selection.batch_id)).fetchall()
+                rows.sort(key=lambda row:row['sequence'],reverse=True)
         selected = {}
         for row in rows:
             for identity in grouped.get((row['kind'],row['group_id']),[]):

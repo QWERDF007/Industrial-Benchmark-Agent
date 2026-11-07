@@ -24,7 +24,7 @@ interface ConsistencyConflictDialogProps {
 }
 
 export function ConsistencyConflictDialog({conflict:currentConflict,items:visibleConflicts,queryId:activeQueryId,
-  onSelect,onClose,onReviewed}:ConsistencyConflictDialogProps) {
+  onSelect,onClose:close,onReviewed}:ConsistencyConflictDialogProps) {
   const currentConflictId=currentConflict.id;
   const catalog=useDatasetCatalog();
   const [candidateIndex, setCandidateIndex] = useState<number>(0);
@@ -41,6 +41,8 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
     query_id:activeQueryId,kind:'conflicts',group_id:currentConflict.rawItem.group_id,facts_state:currentConflict.rawItem.facts_state
   }:null,[currentConflict.rawItem.group_id,currentConflict.rawItem.facts_state,activeQueryId]);
   const groupAnalysis=useGroupAnalysis(groupReference);
+  const analysisChanged=useRef(false);
+  const onClose=()=>{close();if(analysisChanged.current)onReviewed();};
   useEffect(()=>{
     const controller=new AbortController();setConflictMembers([]);setMembersError('');setCandidateIndex(0);
     if(!groupReference)return;
@@ -120,7 +122,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
         reviewer:localStorage.getItem('iad.reviewer') || 'auditor_qc',comment:reviewNote.trim(),
         action:{kind:reviewDecision==='confirmed'?'CONFIRM_DIFFERENCE':reviewDecision==='rejected'?'REJECT_DIFFERENCE':'NEEDS_CONTEXT'}};
       await request('/consistency/review/submit',pendingReview.current);
-      await readReview();pendingReview.current=null;onClose();onReviewed();
+      await readReview();pendingReview.current=null;analysisChanged.current=true;onClose();
     }catch(error){setReviewError(message(error));}finally{setReviewBusy(false);}
   };
 
@@ -129,6 +131,8 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
             <header className="dc-dialog-head">
               <h2 id="dc-dialog-title">标注冲突对比</h2>
               <div className="dc-dialog-head-actions">
+                <Button type="button" data-dc="reanalyze" disabled={!groupReference||groupAnalysis.busy} aria-busy={groupAnalysis.busy}
+                  onClick={()=>{analysisChanged.current=true;void groupAnalysis.analyze();}}>重新分析</Button>
                 <Button type="button" onClick={handlePrevConflict}>
                   上一组
                 </Button>
@@ -247,7 +251,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
               <section className="dc-fact-panel" aria-label="判定结论">
                 <h3>判定结论</h3>
                 <span className="dc-verdict-value">{compared.data&&anchorSide
-                  ? compared.data.annotation_observations[anchorSide].categories.join('、') || (compared.data.annotation_observations[anchorSide].geometry_compared?'未发现标注差异':'类别及数量相同，位置未比对')
+                  ? compared.data.annotation_observations[anchorSide].conclusion
                   : compared.error || '正在读取判定结论…'}</span>
                 <p className="dc-verdict-description">{compared.data&&anchorSide?compared.data.annotation_observations[anchorSide].summary:compared.error || '正在读取冻结比较记录…'}</p>
               </section>
@@ -255,13 +259,13 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
               {/* 模型分析 */}
               <section className="dc-model-panel" aria-label="模型分析">
                 <h3>模型分析</h3>
-                <p>{groupAnalysis.error || groupAnalysis.analysis?.error || assessment?.explanation || '暂无已保存的当前图对分析。'}</p>
+                <p>{groupAnalysis.busy?'正在比较主图与候选图的标注…':groupAnalysis.error || groupAnalysis.analysis?.error || assessment?.explanation || '暂无已保存的当前图对分析。'}</p>
               </section>
 
               {/* 模型结论 */}
               <section className="dc-conclusion-panel" aria-label="模型结论">
                 <h3>模型结论</h3>
-                <span className="dc-verdict-value">{pairConclusion || groupAnalysis.error || groupAnalysis.analysis?.error || '暂无已保存的当前图对结论。'}</span>
+                <span className="dc-verdict-value" role="status">{groupAnalysis.busy?'正在重新分析…':pairConclusion || groupAnalysis.error || groupAnalysis.analysis?.error || '暂无已保存的当前图对结论。'}</span>
                 {conflictMembers.length>1&&modelResult&&<p className="dc-verdict-description">图组结论：{modelResult.overall.text}</p>}
               </section>
 

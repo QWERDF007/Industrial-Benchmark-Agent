@@ -17,7 +17,7 @@ export class ConsistencyView {
         }
         const cards = items.map(item => ({ id: item.group_id,
             types: conflictCategories.filter(category => item.conflict_categories.includes(category) || item.model_categories.includes(category)),
-            type: item.conflict_categories.join('、') || '类别及数量相同，位置未比对',
+            type: item.annotation_conclusion,
             filename: item.anchor.sample.relative_path.split('/').pop(), url: this.media(item.anchor, true), fullUrl: this.media(item.anchor),
             sourceWidth: item.anchor.sample.width, sourceHeight: item.anchor.sample.height, memberCount: item.member_count, review: item.review_state,
             model: { status: item.model_state === 'MATERIAL' ? 'conflict' : item.model_state === 'EQUIVALENT' ? 'no_conflict' : 'unknown',

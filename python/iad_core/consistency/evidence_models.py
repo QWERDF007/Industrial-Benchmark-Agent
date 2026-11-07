@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import AwareDatetime, Field,computed_field
+from pydantic import AwareDatetime, Field
 from iad_core.consistency.annotation_inventory import AnnotationObservation
 
 from iad_core.advisory.analysis import AnalysisModel
@@ -90,9 +90,4 @@ class EvidenceSourceStates(AnalysisModel):
 
 class EvidenceBundle(FrozenEvidence):
     source_states: EvidenceSourceStates
-
-    @computed_field
-    @property
-    def annotation_observations(self) -> dict[Literal['left','right'],AnnotationObservation]:
-        return {side:AnnotationObservation.capture(self.sources.left.annotations,self.sources.right.annotations,self.result.annotation,self.result.verification.relation,reverse=side=='right')
-            for side in ('left','right')}
+    annotation_observations: dict[Literal['left','right'],AnnotationObservation]

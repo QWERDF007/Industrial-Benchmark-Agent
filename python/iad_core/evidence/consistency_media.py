@@ -1,11 +1,12 @@
 import io
 import math
+from typing import Literal
 
 from PIL import Image, ImageDraw
 
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.evidence_models import EvidenceMedia, EvidenceSources, FrozenEvidence
-from iad_core.consistency.annotation_models import AnnotationComparison
+from iad_core.consistency.annotation_models import AnnotationComparison, AnnotationDifference
 from iad_core.evidence.consistency_sources import EvidenceSourcesCapture
 from iad_core.evidence.images import EvidenceImages, OVERVIEW_MAX_SIDE
 from iad_core.evidence.files import ImageFiles
@@ -19,6 +20,13 @@ class ConsistencyMedia:
         self.images=RetainedImages(db)
         self.sources=EvidenceSourcesCapture(self.images)
         self.previews=EvidenceImages(db.db_path)
+
+    @staticmethod
+    def source_region(difference: AnnotationDifference, sources: EvidenceSources, comparison: AnnotationComparison, side: Literal['left','right']) -> list[float]:
+        if comparison.coordinate_frame!='RELATIVE_IMAGE':return list(difference.region)
+        size=(max(sources.left.sample.width,sources.right.sample.width),max(sources.left.sample.height,sources.right.sample.height))
+        target=getattr(sources,side).sample
+        return [value*scale for value,scale in zip(difference.region,(target.width/size[0],target.height/size[1])*2)]
 
     @staticmethod
     def describe(evidence_sources: EvidenceSources, annotation: AnnotationComparison) -> list[EvidenceMedia]:
@@ -40,7 +48,8 @@ class ConsistencyMedia:
                     reason='Annotation coordinates were unavailable at capture' if unavailable else None))
             for difference in annotation.differences:
                 if difference.region is None:continue
-                raw_box=[math.floor(difference.region[0]),math.floor(difference.region[1]),math.ceil(difference.region[2]),math.ceil(difference.region[3])]
+                region=ConsistencyMedia.source_region(difference,evidence_sources,annotation,side)
+                raw_box=[math.floor(region[0]),math.floor(region[1]),math.ceil(region[2]),math.ceil(region[3])]
                 box=tuple(padded_bbox(source.sample,raw_box,.2))
                 if box[0]>=box[2] or box[1]>=box[3]:continue
                 reference=side if difference.reference_from_other==side else None
@@ -69,7 +78,8 @@ class ConsistencyMedia:
             with Image.open(path) as original:
                 image=original.copy()
             sx,sy=image.width/(media.bbox[2]-media.bbox[0]),image.height/(media.bbox[3]-media.bbox[1])
-            x1,y1,x2,y2=[(value-media.bbox[index%2])* (sx if index%2==0 else sy) for index,value in enumerate(difference.region)]
+            region=self.source_region(difference,evidence.sources,evidence.result.annotation,media.side)
+            x1,y1,x2,y2=[(value-media.bbox[index%2])* (sx if index%2==0 else sy) for index,value in enumerate(region)]
             draw=ImageDraw.Draw(image)
             for start in range(math.floor(x1),math.ceil(x2),10):
                 for y in (y1,y2):draw.line((start,y,min(start+6,x2),y),fill='red',width=2)
