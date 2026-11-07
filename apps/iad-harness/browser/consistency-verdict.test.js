@@ -78,6 +78,7 @@ configure_test_encoder(Database(sys.argv[1]),Path(sys.argv[2]))`,path.join(root,
   await driver.manage().window().setRect({width:1600,height:1100});await driver.get(base);
   const element=selector=>driver.wait(until.elementLocated(By.css(selector)),10000);
   await element('[data-dc="candidate"]');
+  assert.equal((await driver.findElements(By.css('[data-dc="reanalyze"]'))).length,0,'图像弹窗不提供单独重新分析入口');
   for(const [name,verdict] of [['equivalent','未发现标注差异'],['different','标注类别不同'],['shifted','标注位置偏移']]){
    const members=await bridge.execute('consistency_gallery_members',reference);
    const index=members.items.findIndex(m=>m.image.sample.relative_path.includes(name));
@@ -86,23 +87,5 @@ configure_test_encoder(Database(sys.argv[1]),Path(sys.argv[2]))`,path.join(root,
    await driver.wait(async()=>await(await element('.dc-conclusion-panel .dc-verdict-value')).getText()===verdict,5000,'当前候选必须展示模型实际写出的结论，不能用图组文案或二分类标签代替');
    assert.equal(await(await element('.dc-fact-panel h3')).getText(),'判定结论');
   }
-  execFileSync(bridge.pythonPath,['-c',`import sqlite3,json,sys
-c=sqlite3.connect(sys.argv[1]);raw=c.execute('SELECT payload_json FROM job_runs WHERE job_id=?',(sys.argv[2],)).fetchone()[0];p=json.loads(raw)
-for result in [p['group_analysis'],*[batch['result'] for batch in p['group_analysis_batches']]]:
- result['overall']['text']='类别或位置不同'
- for item in result['assessments']:item['conclusion']='缺少或多出标注'
-c.execute('UPDATE job_runs SET payload_json=? WHERE job_id=?',(json.dumps(p),sys.argv[2]));c.commit()`,path.join(root,'test.db'),started.run_id]);
-  await driver.navigate().refresh();
-  await driver.wait(async()=>(await(await element('.dc-conclusion-panel .dc-verdict-value')).getText()).includes('或'),5000);
-  await(await element('[data-dc="reanalyze"]')).click();
-  await driver.wait(async()=>{
-   const view=await bridge.execute('consistency_group_analysis',reference);
-   return view.run_id!==started.run_id&&view.status==='COMPLETED';
-  },10000,'重新分析必须在原图组上保存并显示新的模型输出');
-  await driver.wait(async()=>!(await(await element('.dc-conclusion-panel .dc-verdict-value')).getText()).includes('或'),5000);
-  assert.equal(modelCalls,2,'历史备选答案必须实际重新请求模型，不得通过前端改字或直接复用旧回答');
-  const historical=execFileSync(bridge.pythonPath,['-c',`import sqlite3,json,sys
-c=sqlite3.connect(sys.argv[1]);print(json.loads(c.execute('SELECT payload_json FROM job_runs WHERE job_id=?',(sys.argv[2],)).fetchone()[0])['group_analysis']['overall']['text'])`,path.join(root,'test.db'),started.run_id],{encoding:'utf8'}).trim();
-  assert.equal(historical,'类别或位置不同');
  }finally{await driver?.quit();bridge.destroy();await new Promise(resolve=>server.close(resolve));for(const [k,v] of Object.entries(previous))if(v===undefined)delete process.env[k];else process.env[k]=v;await fs.rm(root,{recursive:true,force:true});}
 });

@@ -20862,9 +20862,6 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   function useGroupAnalysis(reference) {
     const [snapshot, setSnapshot] = (0, import_react69.useState)();
     const key = JSON.stringify(reference);
-    const [revision, setRevision] = (0, import_react69.useState)(0);
-    const [starting, setStarting] = (0, import_react69.useState)(false);
-    const [startFailure, setStartFailure] = (0, import_react69.useState)();
     (0, import_react69.useEffect)(() => {
       const controller = new AbortController();
       let timer;
@@ -20885,28 +20882,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         controller.abort();
         clearTimeout(timer);
       };
-    }, [key, revision]);
-    const analyze = (0, import_react69.useCallback)(async () => {
-      if (!reference || starting) return;
-      setStarting(true);
-      setStartFailure(void 0);
-      try {
-        const analysis = await request("/consistency/gallery/analyze", { ...reference, request_id: v4_default() });
-        setSnapshot({ key, analysis, error: "" });
-        setRevision((value) => value + 1);
-      } catch (error2) {
-        setStartFailure({ key, error: message(error2) });
-      } finally {
-        setStarting(false);
-      }
-    }, [key, starting]);
-    const current = snapshot?.key === key ? snapshot : { analysis: null, error: "" };
-    return {
-      ...current,
-      error: (startFailure?.key === key ? startFailure.error : "") || current.error,
-      analyze,
-      busy: starting || current.analysis?.status === "RUNNING" || current.analysis?.status === "PENDING"
-    };
+    }, [key]);
+    return snapshot?.key === key ? snapshot : { analysis: null, error: "" };
   }
 
   // src/client/components/ConsistencyConflictDialog.tsx
@@ -20916,7 +20893,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     items: visibleConflicts,
     queryId: activeQueryId,
     onSelect,
-    onClose: close,
+    onClose,
     onReviewed
   }) {
     const currentConflictId = currentConflict.id;
@@ -20938,11 +20915,6 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       facts_state: currentConflict.rawItem.facts_state
     } : null, [currentConflict.rawItem.group_id, currentConflict.rawItem.facts_state, activeQueryId]);
     const groupAnalysis = useGroupAnalysis(groupReference);
-    const analysisChanged = (0, import_react70.useRef)(false);
-    const onClose = () => {
-      close();
-      if (analysisChanged.current) onReviewed();
-    };
     (0, import_react70.useEffect)(() => {
       const controller = new AbortController();
       setConflictMembers([]);
@@ -21051,8 +21023,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         await request("/consistency/review/submit", pendingReview.current);
         await readReview();
         pendingReview.current = null;
-        analysisChanged.current = true;
         onClose();
+        onReviewed();
       } catch (error2) {
         setReviewError(message(error2));
       } finally {
@@ -21064,20 +21036,6 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("header", { className: "dc-dialog-head", children: [
           /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h2", { id: "dc-dialog-title", children: "\u6807\u6CE8\u51B2\u7A81\u5BF9\u6BD4" }),
           /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "dc-dialog-head-actions", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(
-              Button,
-              {
-                type: "button",
-                "data-dc": "reanalyze",
-                disabled: !groupReference || groupAnalysis.busy,
-                "aria-busy": groupAnalysis.busy,
-                onClick: () => {
-                  analysisChanged.current = true;
-                  void groupAnalysis.analyze();
-                },
-                children: "\u91CD\u65B0\u5206\u6790"
-              }
-            ),
             /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(Button, { type: "button", onClick: handlePrevConflict, children: "\u4E0A\u4E00\u7EC4" }),
             /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(Button, { type: "button", onClick: handleNextConflict, children: "\u4E0B\u4E00\u7EC4" }),
             /* @__PURE__ */ (0, import_jsx_runtime79.jsx)(IconButton, { icon: "close", type: "button", title: "\u5173\u95ED", label: "\u5173\u95ED", onClick: onClose })
@@ -21200,11 +21158,11 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-model-panel", "aria-label": "\u6A21\u578B\u5206\u6790", children: [
             /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u6A21\u578B\u5206\u6790" }),
-            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { children: groupAnalysis.busy ? "\u6B63\u5728\u6BD4\u8F83\u4E3B\u56FE\u4E0E\u5019\u9009\u56FE\u7684\u6807\u6CE8\u2026" : groupAnalysis.error || groupAnalysis.analysis?.error || assessment?.explanation || "\u6682\u65E0\u5DF2\u4FDD\u5B58\u7684\u5F53\u524D\u56FE\u5BF9\u5206\u6790\u3002" })
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("p", { children: groupAnalysis.error || groupAnalysis.analysis?.error || assessment?.explanation || "\u6682\u65E0\u5DF2\u4FDD\u5B58\u7684\u5F53\u524D\u56FE\u5BF9\u5206\u6790\u3002" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("section", { className: "dc-conclusion-panel", "aria-label": "\u6A21\u578B\u7ED3\u8BBA", children: [
             /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("h3", { children: "\u6A21\u578B\u7ED3\u8BBA" }),
-            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-verdict-value", role: "status", children: groupAnalysis.busy ? "\u6B63\u5728\u91CD\u65B0\u5206\u6790\u2026" : pairConclusion || groupAnalysis.error || groupAnalysis.analysis?.error || "\u6682\u65E0\u5DF2\u4FDD\u5B58\u7684\u5F53\u524D\u56FE\u5BF9\u7ED3\u8BBA\u3002" }),
+            /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "dc-verdict-value", children: pairConclusion || groupAnalysis.error || groupAnalysis.analysis?.error || "\u6682\u65E0\u5DF2\u4FDD\u5B58\u7684\u5F53\u524D\u56FE\u5BF9\u7ED3\u8BBA\u3002" }),
             conflictMembers.length > 1 && modelResult && /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("p", { className: "dc-verdict-description", children: [
               "\u56FE\u7EC4\u7ED3\u8BBA\uFF1A",
               modelResult.overall.text
@@ -21900,7 +21858,6 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const [jobPage, setJobPage] = (0, import_react76.useState)(1);
     const [revision, setRevision] = (0, import_react76.useState)(0);
     const [jobConflicts, setJobConflicts] = (0, import_react76.useState)([]);
-    const conflictScope = (0, import_react76.useRef)("");
     const [conflictsLoading, setConflictsLoading] = (0, import_react76.useState)(false);
     const [kind, setKind] = (0, import_react76.useState)("all");
     const [modelFilter, setModelFilter] = (0, import_react76.useState)("all");
@@ -21990,19 +21947,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     };
     (0, import_react76.useEffect)(() => {
       const controller = new AbortController();
+      setJobConflicts([]);
+      setActiveQueryId("");
       setError("");
-      if (!selectedJob?.analysis.program_batch_id || !["COMPLETED", "PARTIAL"].includes(selectedJob.status)) {
-        setJobConflicts([]);
-        setActiveQueryId("");
-        setConflictsLoading(false);
-        conflictScope.current = "";
-        return;
-      }
-      if (conflictScope.current !== selectedJob.batch_id) {
-        setJobConflicts([]);
-        setActiveQueryId("");
-        conflictScope.current = selectedJob.batch_id;
-      }
+      if (!selectedJob?.analysis.program_batch_id || !["COMPLETED", "PARTIAL"].includes(selectedJob.status)) return;
       setConflictsLoading(true);
       ConsistencyView.load(selectedJob.batch_id, controller.signal).then((value) => {
         if (!controller.signal.aborted) {
@@ -22016,11 +21964,6 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       });
       return () => controller.abort();
     }, [selectedJob?.batch_id, selectedJob?.status, revision]);
-    (0, import_react76.useEffect)(() => {
-      if (modal === "compare" || !jobConflicts.some((item) => item.rawItem.model_state === "RUNNING")) return;
-      const timer = setTimeout(() => setRevision((value) => value + 1), 1200);
-      return () => clearTimeout(timer);
-    }, [jobConflicts, modal]);
     const visibleConflicts = (0, import_react76.useMemo)(() => {
       let list = [...jobConflicts];
       if (kind !== "all") {

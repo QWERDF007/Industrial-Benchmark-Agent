@@ -420,26 +420,11 @@ def test_selected_workflow_owns_group_results_across_prompts_running_jobs_and_co
         assert analyses.read(reference_a)==original
         assert analyses.read(reference_b).result.overall.verdict=='UNCERTAIN'
         assert analyses.read(reference_b).run_id!=original.run_id
-        from iad_core.consistency.group_analysis import GroupAnalyses
-        from iad_core.consistency.group_analysis_models import GroupAnalysisStart
-        initial_run_id=original.run_id
-        with db.connection() as connection:
-            original_payload=connection.execute('SELECT payload_json FROM job_runs WHERE job_id=?',(original.run_id,)).fetchone()[0]
-        replacement=GroupAnalyses(runtime,runtime.client).start(GroupAnalysisStart(**reference_a.model_dump(),
-            request_id='explicit-reanalysis'))
-        assert runtime.jobs.status(replacement.run_id)['request']['analysis_instruction']==json.loads(original_payload)['request']['analysis_instruction'], '重新分析沿用所选作业冻结提示词，不能暗中改用默认提示词'
-        runtime.jobs.wait(replacement.run_id,10)
-        updated=analyses.read(reference_a)
-        assert updated.run_id==replacement.run_id and updated.status=='COMPLETED','所选作业必须展示其新建的重新分析结果'
-        assert analyses.read(reference_b).run_id!=updated.run_id,'重分析不能覆盖另一作业的同一图组'
-        with db.connection() as connection:
-            assert connection.execute('SELECT payload_json FROM job_runs WHERE job_id=?',(original.run_id,)).fetchone()[0]==original_payload
-        original=updated
         with db.connection() as connection:
             connection.executemany('''INSERT INTO job_runs(job_id,task_id,job_type,status,progress,message,payload_json)
                 SELECT ?,task_id,job_type,status,progress,message,json_set(payload_json,'$.root_run_id',?,
                     '$.request.analysis_request_id',?) FROM job_runs WHERE job_id=?''',
-                [(f'unrelated-{index}',f'unrelated-{index}',f'unrelated-request-{index}',initial_run_id) for index in range(1200)])
+                [(f'unrelated-{index}',f'unrelated-{index}',f'unrelated-request-{index}',original.run_id) for index in range(1200)])
             connection.execute('ANALYZE job_runs')
         connect=db.get_connection
         instructions=0
