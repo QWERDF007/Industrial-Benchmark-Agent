@@ -39,7 +39,7 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
             assert '不限于工具已报出的差异' not in instruction[len(prompt):]
         else:
             assert '不限于工具已报出的差异' in instruction
-            assert 'overall.text只写一句简短的差异结论' in instruction
+            assert '冲突结论只能精确单选' in instruction
             assert '类别值不同就是标注类别不同' in instruction
             assert '不裁决哪一侧标注正确' in instruction
             assert '不得预设类别映射或语义相近' in instruction
@@ -51,7 +51,9 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
         for label in labels:
             assert f'"raw_label":"{label}"' in instruction
         schema = body['response_format']['json_schema']['schema']
-        assert schema['$defs']['GroupOverallConclusion']['properties']['text']['maxLength'] == 40
+        assert schema['$defs']['GroupOverallConclusion']['properties']['text']['anyOf'][0]['enum'] == ['类别不一致','位置差异','多类别','少类别','拆分','合并','一致']
+        assert schema['$defs']['GroupPairAssessment']['properties']['conclusion']['anyOf'][0]['enum'] == ['类别不一致','位置差异','多类别','少类别','拆分','合并','一致']
+        assert schema['$defs']['GroupPairAssessment']['properties']['categories']['maxItems'] == 1
         assert list(schema['properties']) == ['assessments','conclusions','limitations','overall'], '先逐候选判断，再作整组结论'
         frozen=json.JSONDecoder().raw_decode(instruction.split('冻结图组：')[1])[0]
         candidate,member=next(iter(frozen['candidates'].items()))
@@ -73,7 +75,7 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
                     assert actual.convert('RGB').getextrema()==((0,0),(0,0),(255,255)), '模型只接收原图/原始裁剪像素，不得绘制框或文字'
         entered.set()
         assert release.wait(10)
-        text = '标注类别不同' if verdict == 'MATERIAL' else '未发现标注差异'
+        text = '类别不一致' if verdict == 'MATERIAL' else '一致'
         result = {'assessments': [{'candidate_id':wire_citation['candidate_id'],
             'verdict':verdict,'categories':['类别不一致'] if verdict=='MATERIAL' else [],'conclusion':text,'explanation':text,'findings':[text] if verdict == 'MATERIAL' else []}],
             'overall':{'verdict':verdict,'text':text,'references':[wire_citation.copy()]},
@@ -142,9 +144,11 @@ def test_group_model_analysis_is_completed_only_after_saved_valid_citations(data
 
 @pytest.mark.parametrize('difference,wrong_verdict,wrong_categories,wrong_conclusion,expected',[
     ('position','EQUIVALENT',[],'一致','位置差异'),
-    ('missing','MATERIAL',['多类别'],'主图多出标注','少类别'),
-    ('extra','MATERIAL',['少类别'],'主图缺少标注','多类别'),
+    ('missing','MATERIAL',['多类别'],'多类别','少类别'),
+    ('extra','MATERIAL',['少类别'],'少类别','多类别'),
     ('both','MATERIAL',['多类别','少类别'],'缺少或多出标注','both'),
+    ('missing_all','UNCERTAIN',[],None,'少类别'),
+    ('extra_all','UNCERTAIN',[],None,'多类别'),
 ])
 def test_model_rechecks_measured_positions_and_main_relative_quantity(dataset,tmp_path,difference,wrong_verdict,wrong_categories,wrong_conclusion,expected):
     from iad_core.consistency.group_analysis import GroupAnalyses
@@ -155,9 +159,12 @@ def test_model_rechecks_measured_positions_and_main_relative_quantity(dataset,tm
     if difference=='position':labels['shapes'][0]['points'][0][0]=11
     if difference=='missing':labels['shapes'].append({'label':'dent','shape_type':'rectangle','points':[[80,10],[100,30]]})
     if difference=='both':labels['shapes'] += [{'label':'dent','shape_type':'rectangle','points':[[x,10],[x+20,30]]} for x in (130,180)]
+    if difference=='extra_all':labels['shapes']=[]
     if difference in ('extra','both'):
         main_path=tmp_path/'labels/dent.json';main=json.loads(main_path.read_text())
         main['shapes'].append({'label':'dent','shape_type':'rectangle','points':[[80,10],[100,30]]});main_path.write_text(json.dumps(main))
+    if difference=='missing_all':
+        main_path=tmp_path/'labels/dent.json';main=json.loads(main_path.read_text());main['shapes']=[];main_path.write_text(json.dumps(main))
     path.write_text(json.dumps(labels));registry.rescan(config.dataset.id)
     calls=[]
     def respond(request):
@@ -167,8 +174,8 @@ def test_model_rechecks_measured_positions_and_main_relative_quantity(dataset,tm
         candidate,member=next(iter(facts['candidates'].items()))
         refs=[dict(candidate_id=candidate,comparison={key:member['comparison'][key] for key in ('result_id','evidence_id')})]
         verdict=wrong_verdict if len(calls)==1 else 'MATERIAL'
-        expected_categories=['多类别','少类别'] if expected=='both' else [expected]
-        conclusion=wrong_conclusion if len(calls)==1 else {'位置差异':'位置差异','少类别':'主图缺少标注','多类别':'主图多出标注','both':'主图缺少标注、主图多出标注'}[expected]
+        expected_categories=['少类别'] if expected=='both' else [expected]
+        conclusion=wrong_conclusion if len(calls)==1 else {'位置差异':'位置差异','少类别':'少类别','多类别':'多类别','both':'少类别'}[expected]
         explanation=('主图左边界10，候选图11。'+('该变化属于合理浮动。' if len(calls)==1 else '主图相对候选图向左偏移1像素。')
             if difference=='position' else '主图1个框，候选图2个框，主图缺少右侧标注。' if difference=='missing' else
             '主图2个框，候选图1个框，主图多出右侧标注。' if difference=='extra' else '主图多出中间框，同时缺少候选图最右边的两个框。')
@@ -188,7 +195,7 @@ def test_model_rechecks_measured_positions_and_main_relative_quantity(dataset,tm
         assert result.status=='COMPLETED',result.error
         assert len(calls)==2,'模型结论与已测得的位置或主图数量方向矛盾时，必须要求模型重新判断'
         assert json.loads(calls[1]['messages'][1]['content'])['assessments'][0]['conclusion']==wrong_conclusion
-        assert result.result.assessments[0].categories==(['多类别','少类别'] if expected=='both' else [expected])
+        assert result.result.assessments[0].categories==(['少类别'] if expected=='both' else [expected])
     finally:runtime.close()
 
 
@@ -211,6 +218,7 @@ def test_group_assessments_require_full_unique_candidates_and_their_direct_evide
     from iad_core.consistency.group_analysis_models import GroupAnalysisStart
     db,registry,config=dataset
     copyfile(tmp_path/'images/dent.png',tmp_path/'images/third.png')
+    copyfile(tmp_path/'labels/dent.json',tmp_path/'labels/third.json')
     registry.rescan(config.dataset.id)
     def respond(request):
         if request.url.path.endswith('/tokenize'):
@@ -219,11 +227,11 @@ def test_group_assessments_require_full_unique_candidates_and_their_direct_evide
         frozen=json.JSONDecoder().raw_decode(body['messages'][0]['content'][0]['text'].split('冻结图组：')[1])[0]
         refs=[dict(candidate_id=sid,comparison=dict(result_id=member['comparison']['result_id'],evidence_id=member['comparison']['evidence_id']))
             for sid,member in frozen['candidates'].items()]
-        assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',categories=[],conclusion='缺少直接比较证据',explanation='当前候选缺少固定主图的直接比较证据',findings=[]) for ref in refs]
+        assessments=[dict(candidate_id=ref['candidate_id'],verdict='UNCERTAIN',categories=[],conclusion=None,explanation='当前候选缺少固定主图的直接比较证据',findings=[]) for ref in refs]
         if mode=='missing': assessments.pop()
         elif mode=='duplicate': assessments[1]=assessments[0].copy()
         else: refs[0]={**refs[0],'comparison':refs[1]['comparison']}
-        result=dict(assessments=assessments,overall=dict(verdict='UNCERTAIN',text='缺少直接比较证据',references=[refs[0]]),
+        result=dict(assessments=assessments,overall=dict(verdict='UNCERTAIN',text=None,references=[refs[0]]),
             conclusions=[dict(text='需逐图核对',references=[refs[0]])],limitations=[])
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
     runtime=WorkbenchRuntime(db,VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
@@ -245,7 +253,7 @@ def test_group_assessments_require_full_unique_candidates_and_their_direct_evide
 
 
 @pytest.mark.parametrize('corrected', [True, False])
-@pytest.mark.parametrize('error_kind', ['candidate_coverage', 'crossed_comparison', 'overall_verdict', 'descriptive_text', 'assertive_text', 'missing_conclusion', 'direction_alternative', 'choice_final', 'approximate_final', 'missing_categories', 'empty_categories'])
+@pytest.mark.parametrize('error_kind', ['candidate_coverage', 'crossed_comparison', 'overall_verdict', 'descriptive_text', 'assertive_text', 'missing_conclusion', 'direction_alternative', 'choice_final', 'approximate_final', 'missing_categories', 'empty_categories', 'outside_categories', 'compound_final', 'primary_category', 'invented_summary'])
 def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_output(dataset, tmp_path, error_kind, corrected):
     from copy import deepcopy
     from shutil import copyfile
@@ -254,6 +262,7 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
 
     db, registry, config = dataset
     copyfile(tmp_path/'images/dent.png', tmp_path/'images/third.png')
+    copyfile(tmp_path/'labels/dent.json', tmp_path/'labels/third.json')
     registry.rescan(config.dataset.id)
     calls, refs = [], []
 
@@ -276,8 +285,8 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
                     and item['properties']['result_id']['enum']==[ref['comparison']['result_id']] for item in comparisons)
                 foreign = next(item for item in wire_refs if item['candidate_id']!=ref['candidate_id'])['comparison']['evidence_id']
                 assert all(foreign not in item['properties']['evidence_id']['enum'] for item in comparisons)
-        result = dict(overall=dict(verdict='MATERIAL', text='标注存在差异', references=deepcopy(wire_refs)),
-            assessments=[dict(candidate_id=ref['candidate_id'], verdict='MATERIAL', categories=['类别不一致'],conclusion='标注类别不同', explanation='对应标注存在差异', findings=['标注差异']) for ref in wire_refs],
+        result = dict(overall=dict(verdict='MATERIAL', text='类别不一致', references=deepcopy(wire_refs)),
+            assessments=[dict(candidate_id=ref['candidate_id'], verdict='MATERIAL', categories=['类别不一致'],conclusion='类别不一致', explanation='对应标注存在差异', findings=['标注差异']) for ref in wire_refs],
             conclusions=[dict(text='保留对应标注的差异与实际证据', references=deepcopy(wire_refs))], limitations=[])
         if len(calls) == 1 or not corrected:
             if error_kind == 'candidate_coverage':
@@ -290,6 +299,16 @@ def test_group_model_can_correct_frozen_associations_once_without_rewriting_its_
                 result['assessments'][0].pop('categories')
             elif error_kind == 'empty_categories':
                 result['assessments'][0]['categories']=[]
+            elif error_kind == 'outside_categories':
+                result['overall']['text']='范围差异'
+                result['assessments'][0]['conclusion']='范围差异'
+            elif error_kind == 'compound_final':
+                result['overall']['text']='类别不一致、位置差异'
+                result['assessments'][0]['conclusion']='类别不一致、位置差异'
+            elif error_kind == 'primary_category':
+                result['assessments'][0]['categories']=['类别不一致','位置差异']
+            elif error_kind == 'invented_summary':
+                result['overall']['text']='位置差异'
             elif error_kind == 'assertive_text':
                 result['overall']['text'] = '标注视觉基本一致'
                 result['assessments'][0]['conclusion'] = '标注可能一致，仍待核对'
@@ -379,10 +398,10 @@ def test_selected_workflow_owns_group_results_across_prompts_running_jobs_and_co
         refs=[dict(candidate_id=sid,comparison=dict(result_id=member['comparison']['result_id'],
             evidence_id=member['comparison']['evidence_id'])) for sid,member in frozen['candidates'].items()]
         verdict='MATERIAL' if text.startswith('作业甲') else 'UNCERTAIN'
-        label='标注存在差异' if verdict=='MATERIAL' else '缺少直接比较依据'
+        label='类别不一致' if verdict=='MATERIAL' else None
         result=dict(overall=dict(verdict=verdict,text=label,references=refs),
-            assessments=[dict(candidate_id=ref['candidate_id'],verdict=verdict,categories=['类别不一致'] if verdict=='MATERIAL' else [],conclusion=label,explanation=label,findings=[]) for ref in refs],
-            conclusions=[dict(text=label,references=refs)],limitations=[])
+            assessments=[dict(candidate_id=ref['candidate_id'],verdict=verdict,categories=['类别不一致'] if verdict=='MATERIAL' else [],conclusion=label,explanation='保留实际标注比较依据',findings=[]) for ref in refs],
+            conclusions=[dict(text='保留实际标注比较依据',references=refs)],limitations=[])
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
 
     runtime=WorkbenchRuntime(db,VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))

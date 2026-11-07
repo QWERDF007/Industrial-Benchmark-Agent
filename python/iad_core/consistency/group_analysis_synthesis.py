@@ -42,6 +42,7 @@ class GroupAnalysisSynthesis:
                     continue
                 ids = tuple(node['node_id'] for node in selected)
                 expected = self.validation.verdict(node['result'].overall.verdict for node in selected)
+                expected_conclusions = {node['result'].overall.text for node in selected if node['result'].overall.verdict=='MATERIAL'}
                 allowed = {ref.candidate_id for node in selected for ref in [*node['result'].overall.references,
                     *[ref for conclusion in node['result'].conclusions for ref in conclusion.references]]}
                 facts = dict(expected_verdict=expected,
@@ -49,10 +50,11 @@ class GroupAnalysisSynthesis:
                 if ids in cached:
                     step = cached[ids]
                     result = GroupAnalysisSummary.model_validate(step['result'])
-                    self.validation.validate(result, group, allowed, expected_verdict=expected)
+                    self.validation.validate(result, group, allowed, expected_verdict=expected,expected_conclusions=expected_conclusions)
                 else:
                     try:
-                        response_type = self.validation.response_type(GroupAnalysisSummary, group, allowed, expected_verdict=expected)
+                        response_type = self.validation.response_type(GroupAnalysisSummary, group, allowed,
+                            expected_verdict=expected,expected_conclusions=expected_conclusions)
                         contract = GroupAnalysisContract(response_type, group)
                         instruction = context.payload['request']['analysis_instruction'] + '\n' + GROUP_DIRECTION_INSTRUCTION + '\n冻结批次分析：' + json.dumps(
                             contract.encode(facts), ensure_ascii=False, separators=(',', ':'))

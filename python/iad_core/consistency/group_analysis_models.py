@@ -39,7 +39,7 @@ class GroupAnalysisConclusion(AnalysisModel):
 
 
 ConclusionPhrase = Annotated[str, Field(min_length=1, max_length=40,
-    description='以主图相对候选图为方向的确定性简短结论：一致、主图缺少标注、主图多出标注、位置差异、类别不一致、拆分、合并等具体类型；同时存在的类型用顿号并列，禁止A或B及基本一致。位置、数值、依据只写在分析中')]
+    description='冲突结论只能从类别不一致、位置差异、多类别、少类别、拆分、合并中单选，按主图相对候选图的方向判断；无差异为一致，证据缺失为null。位置、数值及全部具体差异依据只写在分析中')]
 
 
 class GroupPairAssessment(AnalysisModel):
@@ -47,7 +47,7 @@ class GroupPairAssessment(AnalysisModel):
     verdict: ModelAssessmentVerdict = Field(description='当前候选的内部检索判定，最终答案由conclusion陈述，explanation解释依据，不用该枚举标签代替结论')
     conclusion: ConclusionPhrase | None = None
     categories: list[ConflictCategory] | None = Field(default=None,
-        description='当前主图相对本候选图的全部差异分类，可多选；主图比候选少标注为少类别，多标注为多类别；主图同一对象多个框而候选一个为拆分，反之为合并；未发现差异时为空。类别/数量事实可直接比较，不等于裁决哪一侧正确。')
+        description='与conclusion相同的唯一主要冲突分类；主图比候选少标注为少类别，多标注为多类别；主图同一对象多个框而候选一个为拆分，反之为合并。无差异及缺失证据时为空，其他实际差异保留在分析中。')
     explanation: str = Field(min_length=1,max_length=8000,
         description='当前图对的分析依据，具体说明差异发生在哪一侧、哪个对象或区域，位置、类别、数量及拆分合并等实际变化，解释conclusion；无差异时说明各项对应。不得用基本一致、可能、疑似、待核对等话术替代判断。真实缺失证据须指明缺失内容及其阻断的判断')
     findings: list[str] = Field(default_factory=list,max_length=100,
@@ -55,7 +55,7 @@ class GroupPairAssessment(AnalysisModel):
 
 
 class GroupOverallConclusion(GroupAnalysisConclusion):
-    text: ConclusionPhrase
+    text: ConclusionPhrase | None
     verdict: ModelAssessmentVerdict = Field(description='根据逐候选结论汇总的整组结论')
 
 

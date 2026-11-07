@@ -20,6 +20,7 @@ from iad_core.workbench.vision import VlmClient
 def test_new_group_execution_reuses_only_qualified_identical_visual_batches(dataset, tmp_path, change):
     db, registry, config = dataset
     copyfile(tmp_path/'images/dent.png', tmp_path/'images/third.png')
+    copyfile(tmp_path/'labels/dent.json', tmp_path/'labels/third.json')
     registry.rescan(config.dataset.id)
     calls = []
 
@@ -33,10 +34,10 @@ def test_new_group_execution_reuses_only_qualified_identical_visual_batches(data
         facts = json.JSONDecoder().raw_decode(text.split('冻结图组：' if visual else '冻结批次分析：', 1)[1])[0]
         refs = [dict(candidate_id=sid, comparison=dict(result_id=member['comparison']['result_id'], evidence_id=member['comparison']['evidence_id']))
             for sid, member in facts['candidates'].items()] if visual else [ref for node in facts['summaries'] for ref in node['result']['overall']['references']]
-        result = dict(overall=dict(verdict='UNCERTAIN', text='缺少标注对象对应依据', references=refs),
+        result = dict(overall=dict(verdict='UNCERTAIN', text=None, references=refs),
             conclusions=[dict(text='保留所选图像的标注比较依据', references=refs)], limitations=[])
         if visual:
-            result['assessments'] = [dict(candidate_id=ref['candidate_id'], verdict='UNCERTAIN', categories=[],conclusion='缺少标注对象对应依据', explanation='原始标注的对应关系尚需核对', findings=[]) for ref in refs]
+            result['assessments'] = [dict(candidate_id=ref['candidate_id'], verdict='UNCERTAIN', categories=[],conclusion=None, explanation='原始标注的对应关系尚需核对', findings=[]) for ref in refs]
         return httpx.Response(200, json={'choices':[{'finish_reason':'stop', 'message':{'content':json.dumps(result)}}]})
 
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
@@ -93,6 +94,7 @@ def test_retry_revalidates_legacy_text_and_drops_summaries_of_changed_batch_resu
     db, registry, config = dataset
     for index in range(8):
         copyfile(tmp_path/'images/dent.png', tmp_path/f'images/candidate-{index}.png')
+        copyfile(tmp_path/'labels/dent.json', tmp_path/f'labels/candidate-{index}.json')
     registry.rescan(config.dataset.id)
     calls, retrying = [], False
 
@@ -110,10 +112,10 @@ def test_retry_revalidates_legacy_text_and_drops_summaries_of_changed_batch_resu
         refs = [dict(candidate_id=sid, comparison=dict(result_id=member['comparison']['result_id'], evidence_id=member['comparison']['evidence_id']))
             for sid, member in facts['candidates'].items()] if visual else [ref for node in facts['summaries'] for ref in node['result']['overall']['references']]
         verdict = ('MATERIAL' if retrying and mutation == 'visual' else 'UNCERTAIN') if visual else facts['expected_verdict']
-        result = dict(overall=dict(verdict=verdict, text='保留实际标注比较结果', references=refs),
+        result = dict(overall=dict(verdict=verdict, text='类别不一致' if verdict=='MATERIAL' else None, references=refs),
             conclusions=[dict(text='基于当前批次保留差异和未知项', references=refs)], limitations=[])
         if visual:
-            result['assessments'] = [dict(candidate_id=ref['candidate_id'], verdict=verdict, categories=['类别不一致'] if verdict=='MATERIAL' else [], conclusion='标注类别不同' if verdict=='MATERIAL' else '缺少标注对象对应依据', explanation='保留可见的标注对应依据', findings=[]) for ref in refs]
+            result['assessments'] = [dict(candidate_id=ref['candidate_id'], verdict=verdict, categories=['类别不一致'] if verdict=='MATERIAL' else [], conclusion='类别不一致' if verdict=='MATERIAL' else None, explanation='保留可见的标注对应依据', findings=[]) for ref in refs]
         return httpx.Response(200, json={'choices':[{'finish_reason':'stop', 'message':{'content':json.dumps(result)}}]})
 
     runtime = WorkbenchRuntime(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))

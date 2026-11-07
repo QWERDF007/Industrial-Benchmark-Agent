@@ -38,11 +38,11 @@ async function main(){const result=window.fixture;createRoot(document.getElement
     const source=Object.values(frozen.sources).find(source=>source.sample_id===candidate_id);
     const encoded=JSON.stringify(source);
     const verdict=encoded.includes('equivalent.png')?'EQUIVALENT':'MATERIAL';
-    const conclusion=encoded.includes('different.png')?'标注类别不同':encoded.includes('shifted.png')?'标注位置偏移':'未发现标注差异';
-    return {candidate_id,verdict,categories:conclusion==='标注类别不同'?['类别不一致']:conclusion==='标注位置偏移'?['位置差异']:[],conclusion,explanation:verdict==='EQUIVALENT'?'两侧均有5个类别15的标注，位置与覆盖范围对应，无漏标或多标。':encoded.includes('different.png')?'对应标注的类别值从15变为18。':'标注框左边界向右偏移4像素。',findings:verdict==='MATERIAL'?[conclusion]:[]};
+    const conclusion=encoded.includes('different.png')?'类别不一致':encoded.includes('shifted.png')?'位置差异':'一致';
+    return {candidate_id,verdict,categories:conclusion==='类别不一致'?['类别不一致']:conclusion==='位置差异'?['位置差异']:[],conclusion,explanation:verdict==='EQUIVALENT'?'两侧均有5个类别15的标注，位置与覆盖范围对应，无漏标或多标。':encoded.includes('different.png')?'对应标注的类别值从15变为18。':'标注框左边界向右偏移4像素。',findings:verdict==='MATERIAL'?[conclusion]:[]};
    });
    const references=Object.entries(frozen.candidates).map(([candidate_id,member])=>({candidate_id,comparison:{result_id:member.comparison.result_id,evidence_id:member.comparison.evidence_id}}));
-   const result={assessments,overall:{verdict:'MATERIAL',text:'标注类别和位置不同',references},conclusions:[{text:'本组分别存在标注类别改变与标注框左边界偏移。',references}],limitations:[]};
+   const result={assessments,overall:{verdict:'MATERIAL',text:'类别不一致',references},conclusions:[{text:'本组分别存在标注类别改变与标注框左边界偏移。',references}],limitations:[]};
    res.setHeader('Content-Type','application/json');res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify(result)}}]}));return;
   }
   if(req.url==='/browser.js'){res.setHeader('Content-Type','application/javascript');res.end(bundle.outputFiles[0].contents);return;}
@@ -79,7 +79,7 @@ configure_test_encoder(Database(sys.argv[1]),Path(sys.argv[2]))`,path.join(root,
   const element=selector=>driver.wait(until.elementLocated(By.css(selector)),10000);
   await element('[data-dc="candidate"]');
   assert.equal((await driver.findElements(By.css('[data-dc="reanalyze"]'))).length,0,'图像弹窗不提供单独重新分析入口');
-  for(const [name,verdict] of [['equivalent','未发现标注差异'],['different','标注类别不同'],['shifted','标注位置偏移']]){
+  for(const [name,verdict] of [['equivalent','一致'],['different','类别不一致'],['shifted','位置差异']]){
    const members=await bridge.execute('consistency_gallery_members',reference);
    const index=members.items.findIndex(m=>m.image.sample.relative_path.includes(name));
    assert.ok(index>=0,name);await(await element('[data-dc="candidate"][data-id="'+index+'"]')).click();

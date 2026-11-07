@@ -61,8 +61,8 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
       const direction=visual&&Object.values(scope.sources).some(source=>source.name.includes('missing-main.png'));
       const position=visual&&Object.values(scope.sources).some(source=>source.name.includes('position-main.png'));
       const main=visual?Object.values(scope.sources).find(source=>source.sample_id===scope.anchor.sample_id):null;
-      const directionCategory=main?.annotations.length?'多类别':'少类别',directionText=main?.annotations.length?'主图多出标注':'主图缺少标注';
-      const conclusion=direction?directionText:position?'主图标注位置偏移':'标注类别不同';
+      const directionCategory=main?.annotations.length?'多类别':'少类别',directionText=directionCategory;
+      const conclusion=direction?directionText:position?'位置差异':'类别不一致';
       const explanation=direction?'主图与候选的标注数量分别为0和1，按主图方向陈述差异。':position?'主图标注框比候选向左偏移5像素，类别和数量对应。':'对应标注的原始类别值不同。';
       const result={...(visual?{assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'MATERIAL',categories:direction?[directionCategory]:position?['位置差异']:['类别不一致'],conclusion,explanation,findings:[conclusion]}))}:{}),
         overall:{verdict:'MATERIAL',text:conclusion,references},conclusions:[{text:explanation,references}],limitations:[]};
@@ -163,7 +163,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
       ['全部冲突','类别不一致','位置差异','多类别','少类别','拆分','合并']);
     await driver.wait(async()=>(await cards()).length===expectedGallery.total,10000);
     assert.equal(reviewContextReads,0,'图库首次渲染不能逐卡片读取完整图像复核上下文');
-    for(const card of await cards())assert.match(await card.getAttribute('aria-label'),/模型结论：标注类别不同/);
+    for(const card of await cards())assert.match(await card.getAttribute('aria-label'),/模型结论：类别不一致/);
     const cardLayout=await driver.executeScript(`const card=document.querySelector('[data-dc="open-conflict"]'),image=card.querySelector('img'),values=card.querySelector('[aria-label="原始结论与模型结论"]');
       return {imageHeight:Math.round(image.getBoundingClientRect().height),values:values?[...values.children].map(e=>({text:e.textContent,y:e.getBoundingClientRect().top,align:getComputedStyle(e).textAlign})):[]};`);
     assert.equal(cardLayout.imageHeight,140,'V65冲突卡片保留140px图像区');
@@ -349,7 +349,7 @@ for sample in SampleRepository(db).list_by_task(sys.argv[3]):
     await driver.wait(async()=>(await mainConclusion.getText()).includes('主图 0 个标注，候选图 1 个标注'),5000);
     assert.equal(await mainConclusion.findElement(By.css('h3')).getText(),'判定结论');
     assert.equal(await mainConclusion.findElement(By.css('.dc-verdict-value')).getText(),'少类别');
-    assert.equal(await(await element('.dc-conclusion-panel .dc-verdict-value')).getText(),'主图缺少标注');
+    assert.equal(await(await element('.dc-conclusion-panel .dc-verdict-value')).getText(),'少类别');
     await fs.writeFile(path.join(output,'directional-missing.png'),await driver.takeScreenshot(),'base64');
     await click('关闭');await(await element('[role="tab"][data-id="多类别"]')).click();
     await driver.wait(async()=>(await cards()).length===0,5000);

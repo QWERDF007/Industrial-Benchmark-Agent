@@ -2475,10 +2475,7 @@ export type Status31 =
   ("PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED") | "NOT_ANALYZED";
 export type RunId23 = string | null;
 export type ModelName8 = string | null;
-/**
- * 以主图相对候选图为方向的确定性简短结论：一致、主图缺少标注、主图多出标注、位置差异、类别不一致、拆分、合并等具体类型；同时存在的类型用顿号并列，禁止A或B及基本一致。位置、数值、依据只写在分析中
- */
-export type Text6 = string;
+export type Text6 = string | null;
 /**
  * @minItems 1
  * @maxItems 100
@@ -2521,7 +2518,7 @@ export type CandidateId1 = string;
 export type Verdict1 = "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
 export type Conclusion4 = string | null;
 /**
- * 当前主图相对本候选图的全部差异分类，可多选；主图比候选少标注为少类别，多标注为多类别；主图同一对象多个框而候选一个为拆分，反之为合并；未发现差异时为空。类别/数量事实可直接比较，不等于裁决哪一侧正确。
+ * 与conclusion相同的唯一主要冲突分类；主图比候选少标注为少类别，多标注为多类别；主图同一对象多个框而候选一个为拆分，反之为合并。无差异及缺失证据时为空，其他实际差异保留在分析中。
  */
 export type Categories2 = ConflictCategory[] | null;
 /**

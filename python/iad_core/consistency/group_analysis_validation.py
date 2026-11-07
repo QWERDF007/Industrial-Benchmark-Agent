@@ -10,6 +10,7 @@ from iad_core.consistency.models import ModelAssessmentVerdict
 from iad_core.consistency.repository import ConsistencyRepository
 from iad_core.consistency.annotation_inventory import AnnotationInventory, AnnotationObservation
 from iad_core.consistency.conflict_categories import ConflictCategory
+from iad_core.consistency.group_analysis_conclusions import CONCLUSION_CATEGORIES
 from iad_core.evidence.consistency_sources import EvidenceSourcesCapture
 from iad_core.evidence.retained import RetainedImages
 
@@ -22,7 +23,8 @@ class GroupAnalysisValidation:
         self.sources = EvidenceSourcesCapture(RetainedImages(db))
 
     def response_type(self, response_type: type[Summary], group: FrozenAnalysisGroup,
-                      allowed_ids: set[str] | None = None, *, expected_verdict: ModelAssessmentVerdict | None = None) -> type[Summary]:
+                      allowed_ids: set[str] | None = None, *, expected_verdict: ModelAssessmentVerdict | None = None,
+                      expected_conclusions: set[str] | None = None) -> type[Summary]:
         """Derive the provider's reference vocabulary from these frozen facts."""
         members = [member for member in group.members if allowed_ids is None or member.image.sample.sample_id in allowed_ids]
         candidates = sorted(member.image.sample.sample_id for member in members)
@@ -68,7 +70,8 @@ class GroupAnalysisValidation:
         @model_validator(mode='after')
         def frozen_output(result):
             try:
-                self.validate(result, group, allowed_ids, expected_verdict=expected_verdict, comparisons=comparisons)
+                self.validate(result, group, allowed_ids, expected_verdict=expected_verdict,
+                    expected_conclusions=expected_conclusions, comparisons=comparisons)
             except ValueError as error:
                 raise repairable_output_error('frozen_group_association', str(error)) from error
             return result
@@ -82,10 +85,13 @@ class GroupAnalysisValidation:
         return max(values, key=priority.__getitem__)
 
     def validate(self, result: GroupAnalysisSummary, group: FrozenAnalysisGroup, allowed_ids: set[str] | None = None, *,
-                 expected_verdict: ModelAssessmentVerdict | None = None, comparisons: dict[str, ConsistencyResult] | None = None):
+                 expected_verdict: ModelAssessmentVerdict | None = None, expected_conclusions: set[str] | None = None,
+                 comparisons: dict[str, ConsistencyResult] | None = None):
         members = {member.image.sample.sample_id: member for member in group.members}
         if expected_verdict is not None and result.overall.verdict != expected_verdict:
             raise ValueError('批次汇总结论与实际逐批结论不一致')
+        if expected_conclusions is not None and result.overall.verdict=='MATERIAL' and result.overall.text in CONCLUSION_CATEGORIES and result.overall.text not in expected_conclusions:
+            raise ValueError('汇总结论必须从输入批次的实际主要冲突分类中单选，不能发明新类型')
         if isinstance(result, GroupAnalysisDraft):
             if len(result.assessments) != len(members) or {item.candidate_id for item in result.assessments} != set(members):
                 raise ValueError('Model assessments must cover every frozen candidate exactly once')
@@ -112,6 +118,13 @@ class GroupAnalysisValidation:
                     if inventory.complete and main_count!=candidate_count:
                         expected_category=ConflictCategory.EXTRA if main_count>candidate_count else ConflictCategory.MISSING
                         opposite=ConflictCategory.MISSING if main_count>candidate_count else ConflictCategory.EXTRA
+                        if (main_count==0 or candidate_count==0) and (
+                            assessment.verdict!='MATERIAL' or assessment.conclusion!=expected_category
+                            or assessment.categories!=[expected_category]):
+                            raise repairable_output_error('incorrect_annotation_direction',
+                                f'主图{main_count}个标注、参考图{candidate_count}个标注；空数组表示已知的0个标注，不是缺失证据。'
+                                f'这是确定的数量方向，verdict必须为MATERIAL，conclusion只能是{expected_category.value}，'
+                                'categories必须只包含同名分类。具体差异依据写在explanation。')
                         direction_known=(not inventory.left or not inventory.right or
                             observation.geometry_compared and ConflictCategory.CORRESPONDENCE not in observation.categories
                             and opposite not in observation.categories)
