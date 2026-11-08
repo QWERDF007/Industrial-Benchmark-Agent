@@ -2847,19 +2847,6 @@ export type Fingerprint6 = string;
  * @minItems 1
  */
 export type AssessmentIds = [number, ...number[]];
-/**
- * 本场最新已保存评估的整数ID
- */
-export type AssessmentId = number;
-/**
- * @minItems 1
- * @maxItems 100
- */
-export type Conclusions2 = [string, ...string[]];
-/**
- * @maxItems 100
- */
-export type Limitations20 = string[];
 export type SchemaVersion4 = 1;
 export type JobId4 = string;
 export type AnchorId5 = string;
@@ -2889,7 +2876,7 @@ export type DiagnosticsRef = string;
 export type Result2 = (NoCandidateResult | ModelReviewedResult) | null;
 export type Requests = AnchorVisualRequest[];
 export type Observations3 = AnchorObservation[];
-export type AssessmentId1 = number;
+export type AssessmentId = number;
 export type Fingerprint7 = string;
 /**
  * @minItems 1
@@ -6506,15 +6493,6 @@ export interface AnchorAssessmentDecision {
 export interface AnchorReviewSubmission {
   fingerprint: Fingerprint6;
   assessment_ids: AssessmentIds;
-  overall: AnchorAssessmentSelection;
-  conclusions: Conclusions2;
-  limitations?: Limitations20;
-}
-/**
- * 从全部最新评估中选择符合汇总优先级的一个主评估，作为整场主结论来源
- */
-export interface AnchorAssessmentSelection {
-  assessment_id: AssessmentId;
 }
 export interface AnchorResultDetail {
   schema_version: SchemaVersion4;
@@ -6555,7 +6533,7 @@ export interface AnchorResultDetail {
   error_history: ErrorHistory2;
 }
 export interface AnchorAssessmentRecord {
-  assessment_id: AssessmentId1;
+  assessment_id: AssessmentId;
   submission: AnchorAssessmentSubmission;
 }
 export interface AnchorAssessmentSubmission {

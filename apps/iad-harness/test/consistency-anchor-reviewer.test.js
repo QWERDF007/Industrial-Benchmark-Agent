@@ -30,7 +30,7 @@ test('two independent schedulers cannot dispatch the same accepted job twice', {
     fixture.release.resolve();await fixture.scheduler.whenIdle();
     const detail = await fixture.bridge.execute('consistency_agent_detail', {run_id: started.run_id, anchor_id: active.anchor_id});
     assert.equal(detail.state, 'COMPLETED');assert.equal(detail.result.reason, 'MODEL_REVIEWED');
-    assert.equal(fixture.wires.filter(body => body.model === 'planner').length, 5);
+    assert.equal(fixture.wires.filter(body => body.model === 'planner').length, 4);
     assert.equal(fixture.wires.filter(body => body.model === 'vision').length, 1);
     assert.deepEqual(errors, []);assert.deepEqual(fixture.errors, []);
   } finally {
@@ -129,13 +129,13 @@ test('a native private Agent requests real visual media and submits its own anch
     assert.equal(completed.result.overall.text, '多类别');
     assert.equal(completed.result.reason, 'MODEL_REVIEWED');
     assert.equal(wires.filter(body => body.model === 'vision').length, 1);
-    assert.equal(wires.filter(body => body.model === 'planner').length, 5);
+    assert.equal(wires.filter(body => body.model === 'planner').length, 4);
     assert.ok(wires.filter(body => body.model === 'planner').every(body => body.temperature === 0.2));
     assert.ok(wires.find(body => body.model === 'planner').messages.some(message => message.content === snapshot.agent_instruction));
     assert.ok(wires.find(body => body.model === 'vision').messages[0].content[0].text.startsWith(snapshot.visual_instruction));
     const persisted = await host.read(anchor.session_id);
-    assert.equal(persisted.events.filter(event => event.type === 'assistant/message').length, 5);
-    assert.equal(new Set(persisted.events.filter(event => event.type === 'tool/result').map(event => event.data.message.toolCallId)).size, 5);
+    assert.equal(persisted.events.filter(event => event.type === 'assistant/message').length, 4);
+    assert.equal(new Set(persisted.events.filter(event => event.type === 'tool/result').map(event => event.data.message.toolCallId)).size, 4);
     const transcript = JSON.stringify(persisted.events);
     for (const name of ['anchor_context', 'anchor_observe', 'anchor_assess', 'anchor_submit']) assert.ok(transcript.includes(name));
     const finished = await bridge.execute('analysis_status', {run_id: started.run_id});
@@ -144,7 +144,7 @@ test('a native private Agent requests real visual media and submits its own anch
     assert.equal(finished.model_profile.endpoint, endpoint);
     assert.equal(finished.model_calls.filter(call => call.operation === 'generate' && call.role === 'vision').length, 1);
     const agentCalls = finished.model_calls.filter(call => call.role === 'agent' && call.operation === 'generate');
-    assert.equal(agentCalls.length, 5);
+    assert.equal(agentCalls.length, 4);
     assert.ok(agentCalls.every(call => call.source === 'native_llm' && call.session_id === anchor.session_id && call.attempt === 1));
     assert.ok(agentCalls.every(call => call.schema_name === null && call.http_status === null && call.response_id === null));
     assert.ok(agentCalls.every(call => call.usage.inputTokens === 1000 && call.usage.outputTokens === 100));
@@ -165,8 +165,8 @@ test('a native private Agent requests real visual media and submits its own anch
     assert.equal(diagnostics.phases.at(-1).duration_seconds, 0);
     assert.deepEqual([diagnostics.roles.agent.requests, diagnostics.roles.agent.generation_requests,
       diagnostics.roles.agent.input_tokens, diagnostics.roles.agent.output_tokens, diagnostics.roles.agent.total_tokens],
-      [10, 5, 5000, 500, 5500]);
-    assert.equal(diagnostics.roles.agent.tokenization_requests, 5);
+      [8, 4, 4000, 400, 4400]);
+    assert.equal(diagnostics.roles.agent.tokenization_requests, 4);
     assert.deepEqual([diagnostics.roles.vision.requests, diagnostics.roles.vision.tokenization_requests,
       diagnostics.roles.vision.generation_requests, diagnostics.roles.vision.input_tokens], [3, 2, 1, 1000]);
     assert.equal(diagnostics.roles.agent.failed_requests, 0);
@@ -216,13 +216,13 @@ test('a native private Agent requests real visual media and submits its own anch
     assert.equal(resumedStatus.failed, 0);
     assert.equal(resumedStatus.status, 'COMPLETED');
     const attempts = resumedStatus.model_calls.filter(call => call.role === 'agent' && call.operation === 'generate');
-    assert.equal(attempts.length, 6);
-    assert.equal(new Set(attempts.map(call => call.call_id)).size, 6);
-    assert.deepEqual(attempts.map(call => call.attempt), [1, 2, 2, 2, 2, 2]);
+    assert.equal(attempts.length, 5);
+    assert.equal(new Set(attempts.map(call => call.call_id)).size, 5);
+    assert.deepEqual(attempts.map(call => call.attempt), [1, 2, 2, 2, 2]);
     const resumedDiagnostics = await bridge.execute('consistency_agent_diagnostics', {run_id: resumed.run_id, anchor_id: after.anchor_id});
     assert.deepEqual(resumedDiagnostics.phases.slice(0, cancelledDiagnostics.phases.length), cancelledDiagnostics.phases);
-    assert.equal(resumedDiagnostics.roles.agent.requests, 12);
-    assert.equal(resumedDiagnostics.roles.agent.tokenization_requests, 6);
+    assert.equal(resumedDiagnostics.roles.agent.requests, 10);
+    assert.equal(resumedDiagnostics.roles.agent.tokenization_requests, 5);
     assert.equal(resumedDiagnostics.roles.agent.failed_requests, 1);
     assert.equal(resumedDiagnostics.roles.agent.usage_missing, 1);
     assert.equal(resumedDiagnostics.roles.agent.total_tokens, null);
@@ -300,7 +300,7 @@ test('visual JSON generation parameters do not constrain the native tool-calling
     assert.equal(snapshot.roles.agent.profile.request_parameters.response_format, undefined);
     assert.equal(snapshot.roles.vision.profile.request_parameters.response_format.type, 'json_object');
     assert.equal(wires.find(body => body.model === 'vision').response_format.type, 'json_object');
-    assert.equal(wires.filter(body => body.model === 'planner').length, 5);
+    assert.equal(wires.filter(body => body.model === 'planner').length, 4);
   } finally {await fixture.close();}
 });
 
@@ -341,11 +341,11 @@ test('native cache accounting preserves raw SDK counters and aggregates complete
       {run_id: job.run_id, anchor_id: fixture.datasetId + ':A.png'});
     assert.equal(diagnostics.state, 'COMPLETED');
     const calls = diagnostics.calls.filter(call => call.role === 'agent' && call.operation === 'generate');
-    assert.equal(calls.length, 5);
+    assert.equal(calls.length, 4);
     assert.ok(calls.every(call => call.usage.inputTokens === 600 && call.usage.cacheReadTokens === 400));
-    assert.equal(diagnostics.roles.agent.input_tokens, 5000);
-    assert.equal(diagnostics.roles.agent.output_tokens, 500);
-    assert.equal(diagnostics.roles.agent.total_tokens, 5500);
+    assert.equal(diagnostics.roles.agent.input_tokens, 4000);
+    assert.equal(diagnostics.roles.agent.output_tokens, 400);
+    assert.equal(diagnostics.roles.agent.total_tokens, 4400);
   } finally {await fixture.close();}
 });
 
@@ -358,10 +358,10 @@ test('a successful provider response without usage stays unknown despite SDK zer
     const diagnostics = await fixture.bridge.execute('consistency_agent_diagnostics',
       {run_id: job.run_id, anchor_id: fixture.datasetId + ':A.png'});
     assert.equal(diagnostics.state, 'COMPLETED');
-    assert.equal(diagnostics.roles.agent.requests, 10);
-    assert.equal(diagnostics.roles.agent.tokenization_requests, 5);
+    assert.equal(diagnostics.roles.agent.requests, 8);
+    assert.equal(diagnostics.roles.agent.tokenization_requests, 4);
     assert.equal(diagnostics.roles.agent.failed_requests, 0);
-    assert.equal(diagnostics.roles.agent.usage_missing, 5);
+    assert.equal(diagnostics.roles.agent.usage_missing, 4);
     assert.equal(diagnostics.roles.agent.input_tokens, null);
     assert.equal(diagnostics.roles.agent.total_tokens, null);
     assert.ok(diagnostics.calls.filter(call => call.role === 'agent').every(call => call.usage === null));
@@ -383,7 +383,7 @@ test('combined checks wait for the frozen shared index preparation before native
     assert.equal(preparation.status, 'COMPLETED');
     assert.equal(preparation.completed, 2);
     assert.ok(preparation.children.every(child => child.job_type === 'IMAGE_INDEX' && child.model_calls.length === 0));
-    assert.equal(fixture.wires.filter(body => body.model === 'planner').length, 5);
+    assert.equal(fixture.wires.filter(body => body.model === 'planner').length, 4);
     assert.equal(fixture.wires.filter(body => body.model === 'vision').length, 1);
   } finally {await fixture.close();}
 });

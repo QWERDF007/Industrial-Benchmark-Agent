@@ -5,7 +5,6 @@ export declare class ConsistencyEvidenceRetention {
     private readonly scope;
     private readonly calls;
     private readonly assessed;
-    private readonly observations;
     private readonly contexts;
     private readonly deliveredContexts;
     constructor(scope: Context, events: readonly SessionEvent[]);

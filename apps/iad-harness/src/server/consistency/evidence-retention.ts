@@ -8,7 +8,6 @@ type ContextFacts = {anchor?: unknown; assessments?: {candidate_id: string}[]; o
 export class ConsistencyEvidenceRetention {
   private readonly calls = new Map<string, string>();
   private readonly assessed = new Set<string>();
-  private readonly observations = new Map<SessionSeq, {event: SessionEvent<'tool/result'>; id: string; requestId: string; candidates: string[]}>();
   private readonly contexts = new Map<SessionSeq, {event: SessionEvent<'tool/result'>; value: ContextFacts}>();
   private readonly deliveredContexts = new Set<SessionSeq>();
 
@@ -25,24 +24,16 @@ export class ConsistencyEvidenceRetention {
     const text = event.data.message.content.find(block => block.type === 'text');
     if (!text || text.type !== 'text') return;
     const value = JSON.parse(text.text);
-    if (name === 'anchor_context') {
+    if (name === 'anchor_context' || name === 'anchor_observe') {
       if (!('observations' in value)) return;
       if (value.assessments) for (const item of value.assessments) this.assessed.add(item.candidate_id);
       this.contexts.set(event.seq, {event, value});
     } else if (name === 'anchor_assess') this.assessed.add(value.candidate_id);
-    else if (value.request) this.observations.set(event.seq, {event, id: value.observation_id,
-      requestId: value.request.request_id, candidates: value.request.candidate_ids});
   }
 
   retainPending(session: Session): void {
     const visible = new Set(session.surface.nodes);
-    for (const [seq, item] of this.observations) {
-      if (!visible.has(seq)) {this.observations.delete(seq);continue;}
-      this.replace(session, item.event, {observation_id: item.id, request_id: item.requestId, candidate_ids: item.candidates,
-        retained: true, read_tool: 'anchor_context'});
-      this.observations.delete(seq);
-    }
-    const current = session.surface.nodes.filter(seq => this.contexts.has(seq)).at(-1);
+    const current = session.surface.nodes.filter(seq => this.contexts.get(seq)?.value.anchor).at(-1);
     const latest = new Map<string, SessionSeq>();
     for (const seq of session.surface.nodes) {
       const context = this.contexts.get(seq);
@@ -55,7 +46,7 @@ export class ConsistencyEvidenceRetention {
       const pending = value.observations.filter(item => latest.get(item.candidate_id) === seq
         && (!delivered || !this.assessed.has(item.candidate_id)));
       if (pending.length === value.observations.length && (seq === current || !value.anchor)) continue;
-      const projection = seq === current && value.anchor ? {...value, observations: pending}
+      const projection = seq === current || 'observation_id' in value ? {...value, observations: pending}
         : pending.length ? {observations: pending}
         : {retained: true, read_tool: 'anchor_context', candidate_ids: value.observations.map(item => item.candidate_id)};
       this.replace(session, event, projection);

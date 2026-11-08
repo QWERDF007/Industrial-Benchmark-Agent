@@ -14,7 +14,7 @@ import {ConsistencyAnchorReviewer} from '../../lib/server/consistency/anchor-rev
 import {ConsistencyCheckScheduler} from '../../lib/server/consistency/scheduler.js';
 import {NativeProviders} from '../../lib/server/models/providers.js';
 
-export async function createConsistencyAgentHost({multiCandidate = false, candidateCount, maxVisualInputs, maxCandidatesPerPage, observeAllPages = false, readAhead = 1, agentUsage, agentFinish, agentTokenize, agentServerContext = 32768, indexMode, afterSubmission} = {}) {
+export async function createConsistencyAgentHost({multiCandidate = false, candidateCount, maxVisualInputs, maxCandidatesPerPage, observeAllPages = false, splitFirstPage = false, agentUsage, agentFinish, agentTokenize, agentServerContext = 32768, indexMode, afterSubmission} = {}) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-anchor-agent-'));
   const workspace = findWorkspaceRoot();
   const database = path.join(root, 'checks.db');
@@ -99,7 +99,7 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
           const pendingAssessment = context.candidate_ids.find(identity => bound.has(identity) && !assessed.has(identity));
           const pendingRead = context.candidate_ids.filter(identity => !assessed.has(identity)
             && [...observed.values()].some(item => item.candidate_ids.includes(identity)))
-            .slice(0, readAhead).find(identity => !bound.has(identity));
+            .find(identity => !bound.has(identity));
           const pendingPage = context.anchor.visual_plan.pages.find(page => !observed.has(page.request_id)
             && page.candidate_ids.some(identity => !assessed.has(identity)));
           const candidateSubmission = candidate_id => {
@@ -118,16 +118,13 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
           else if (pendingAssessment) {name = 'anchor_assess';args = candidateSubmission(pendingAssessment);}
           else if (pendingPage) {
             name = 'anchor_observe';args = pendingPage;
+            if (splitFirstPage) {args = {...pendingPage, candidate_ids: pendingPage.candidate_ids.slice(0, 3)};splitFirstPage = false;}
             if (observeAllPages) observationRequests = context.anchor.visual_plan.pages.filter(page => !observed.has(page.request_id));
           }
           else {
             const records = context.candidate_ids.map(identity => assessed.get(identity));
-            const conflict = records.find(item => item.verdict === 'MATERIAL');
-            const primary = conflict || records.find(item => item.verdict === 'UNCERTAIN') || records[0];
             name = 'anchor_submit';
-            args = {fingerprint: context.fingerprint, assessment_ids: records.map(item => item.assessment_id),
-              overall: {assessment_id: primary.assessment_id},
-              conclusions: ['依据两侧原图和原始标注核对可比现象、类别和数量'], limitations: []};
+            args = {fingerprint: context.fingerprint, assessment_ids: records.map(item => item.assessment_id)};
             const pendingFault = submissionFaults[0];
             const needed = pendingFault?.kind === 'foreign-reference' ? context.candidate_ids.slice(0, 1)
               : pendingFault?.kind === 'foreign-observation' ? [pendingFault.candidate_id] : [];
@@ -138,7 +135,6 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
             switch (fault?.kind) {
               case 'duplicate': args.assessment_ids[args.assessment_ids.length - 1] = args.assessment_ids[0];break;
               case 'omit': args.assessment_ids.pop();break;
-              case 'weak-primary': args.overall.assessment_id = records.find(item => item.verdict === 'EQUIVALENT').assessment_id;break;
               case 'foreign-reference':
                 name = 'anchor_assess';args = candidateSubmission(context.candidate_ids[0]);
                 args.assessment.candidate_id = 'candidate-outside-this-scene';break;

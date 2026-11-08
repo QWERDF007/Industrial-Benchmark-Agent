@@ -116,13 +116,6 @@ class AnchorAssessmentRecord(AnalysisModel):
     submission: AnchorAssessmentSubmission
 
 
-class AnchorAssessmentSelection(AnalysisModel):
-    assessment_id: CandidateLimit = Field(description='本场最新已保存评估的整数ID')
-
-
 class AnchorReviewSubmission(AnalysisModel):
     fingerprint: Digest
     assessment_ids: list[CandidateLimit] = Field(min_length=1)
-    overall: AnchorAssessmentSelection = Field(description='从全部最新评估中选择符合汇总优先级的一个主评估，作为整场主结论来源')
-    conclusions: list[NonBlankText] = Field(min_length=1, max_length=100)
-    limitations: list[NonBlankText] = Field(default_factory=list, max_length=100)

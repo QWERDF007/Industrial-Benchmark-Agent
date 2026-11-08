@@ -35,6 +35,8 @@ export class ConsistencyAnchorReviewer {
             agentOptions: { provider, model: profile.model_id, maxTokens: profile.max_output_tokens },
             setup: async (scope) => {
                 const events = (await this.host.read(task.sessionId)).events;
+                const saved = await this.bridge.execute('consistency_agent_context', { ...identity, query: {} });
+                const pending = new Set(saved.observations.map(item => item.candidate_id));
                 let retention;
                 await scope.inject(['tokenMeter'], injected => { retention = new ConsistencyEvidenceRetention(injected, events); });
                 new ConsistencyAgentCalls(this.bridge).attach(scope, identity);
@@ -58,19 +60,35 @@ export class ConsistencyAnchorReviewer {
                     };
                 });
                 scope.systemPrompt.section({ name: 'consistency-anchor-review', order: 100, text: task.snapshot.agent_instruction });
-                scope.tools.register(defineTool({ name: 'anchor_context', description: '无参数读取冻结清单、观察索引及评估回执；传candidate_id读取该候选完整视觉观察与原始标注。',
+                scope.tools.register(defineTool({ name: 'anchor_context', description: '读取冻结清单、待评估候选的完整事实及评估回执；传candidate_id复查该候选原始事实。',
                     parameters: anchorContextQueryParameters, output: workbenchJsonOutput,
                     execute: (query, execution) => this.bridge.execute('consistency_agent_context', { ...identity, query }, execution.signal) }));
-                scope.tools.register(defineTool({ name: 'anchor_observe', description: '向冻结视觉模型发送本场指定候选和主图的实际原图与局部，保存完整观察并返回回执；用anchor_context按候选读取事实。',
+                scope.tools.register(defineTool({ name: 'anchor_observe', description: '按冻结页发送主图和候选的实际原图与局部，保存并返回各候选完整视觉观察、原始标注和证据，可直接据此评估。',
                     parameters: anchorVisualStartParameters, output: workbenchJsonOutput,
                     execute: async (request, execution) => {
-                        const model = await this.providers.credentialsFor(vision.profile);
-                        return this.bridge.execute('consistency_agent_observe', { ...identity, request, _model_execution: model }, execution.signal);
+                        if (pending.size && request.candidate_ids.some(id => !pending.has(id)))
+                            throw new Error('先完成已观察页的候选评估，再观察下一页；可继续为当前页补充原像素证据。');
+                        const reserved = request.candidate_ids.filter(id => !pending.has(id));
+                        for (const id of request.candidate_ids)
+                            pending.add(id);
+                        try {
+                            const model = await this.providers.credentialsFor(vision.profile);
+                            return await this.bridge.execute('consistency_agent_observe', { ...identity, request, _model_execution: model }, execution.signal);
+                        }
+                        catch (error) {
+                            for (const id of reserved)
+                                pending.delete(id);
+                            throw error;
+                        }
                     } }));
                 scope.tools.register(defineTool({ name: 'anchor_assess', description: '校验并保存一个候选的方向性评估及本场观察引用，返回终稿使用的assessment_id；不会完成主图。',
                     parameters: anchorAssessmentInputParameters, output: workbenchJsonOutput,
-                    execute: (submission, execution) => this.bridge.execute('consistency_agent_assess', { ...identity, submission }, execution.signal) }));
-                scope.tools.register(defineTool({ name: 'anchor_submit', description: '校验全部候选覆盖、实际观察和方向性终稿，原子提交本主图。',
+                    execute: async (submission, execution) => {
+                        const result = await this.bridge.execute('consistency_agent_assess', { ...identity, submission }, execution.signal);
+                        pending.delete(submission.assessment.candidate_id);
+                        return result;
+                    } }));
+                scope.tools.register(defineTool({ name: 'anchor_submit', description: '提交全部最新assessment_ids；服务端从已保存评估派生主结论和分析，保留视觉限制，原子完成本主图。',
                     parameters: anchorReviewSubmissionParameters, output: workbenchJsonOutput,
                     execute: async (submission, execution) => {
                         const result = await this.bridge.execute('consistency_agent_submit', { ...identity, submission }, execution.signal);

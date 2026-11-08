@@ -30,6 +30,10 @@ class AnchorAgentContext:
                     'verification': {key: row['verification'][key] for key in ('relation', 'registration')}}
                     for row in facts['evidence'] if row['evidence_id'] == selected['comparison']['evidence_id']]}}
 
+    @classmethod
+    def observed(cls, item: AnchorObservation) -> dict:
+        return {**cls.receipt(item), 'observations': [cls.observation(item, identity) for identity in item.request.candidate_ids]}
+
     @staticmethod
     def assessment(item: AnchorAssessmentRecord) -> dict:
         return {'assessment_id': item.assessment_id,
@@ -42,10 +46,11 @@ class AnchorAgentContext:
             raise ValueError('上下文候选不属于本场冻结清单')
         assessments = self.review.assessments(run_id, anchor_id)
         observations = self.review.observations(run_id, anchor_id)
+        assessed = {item.submission.assessment.candidate_id for item in assessments}
         return {'anchor': anchor.model_dump(mode='json', include={'anchor_id', 'session_id', 'attempt', 'state', 'visual_plan'}),
             'fingerprint': anchor.candidates.fingerprint,
             'candidate_ids': [item.sample_id for item in anchor.candidates.candidates],
             'observation_index': [self.receipt(item) for item in observations],
-            'observations': [self.observation(item, requested) for item in observations
-                if requested is not None and requested in item.request.candidate_ids],
+            'observations': [self.observation(item, identity) for item in observations for identity in item.request.candidate_ids
+                if identity == requested or requested is None and identity not in assessed],
             'assessments': [self.assessment(item) for item in assessments]}

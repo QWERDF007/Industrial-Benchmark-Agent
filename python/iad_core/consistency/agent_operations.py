@@ -192,7 +192,7 @@ def consistency_agent_capacity(args, db_path):
 def consistency_agent_observe(args, db_path):
     from iad_core.consistency.agent_context import AnchorAgentContext
     with _visual_review(args, db_path) as review:
-        return AnchorAgentContext.receipt(review.observe(args['run_id'], args['anchor_id'], args['request'], attempt=args.get('attempt', 1)))
+        return AnchorAgentContext.observed(review.observe(args['run_id'], args['anchor_id'], args['request'], attempt=args.get('attempt', 1)))
 
 
 def consistency_agent_assess(args, db_path):

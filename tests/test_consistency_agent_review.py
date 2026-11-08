@@ -39,7 +39,7 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         answer = {'observations': [{'candidate_id': config.dataset.id + ':scratch.png',
             'description': '两侧原始像素相同，主图和参考图的类别名称不同',
             'phenomena_comparable': True, 'appearance_explains_annotation_difference': False,
-            'media_ids': [item['evidence_id'] for item in media], 'limitations': []}]}
+            'media_ids': [item['evidence_id'] for item in media], 'limitations': ['仅核对标注一致性，不裁决哪侧标注正确']}]}
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop',
             'message': {'content': json.dumps(answer)}}]})
 
@@ -125,13 +125,11 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         assert review.assessments(job_id, anchor_id) == [assessment]
         assert review.assess(job_id, anchor_id, submitted) == assessment
         assert checks.anchor(job_id, anchor_id).result is None
-        final = {'fingerprint': selected.fingerprint, 'assessment_ids': [assessment.assessment_id],
-            'overall': {'assessment_id': assessment.assessment_id},
-            'conclusions': [item['text'] for item in draft['conclusions']], 'limitations': []}
+        final = {'fingerprint': selected.fingerprint, 'assessment_ids': [assessment.assessment_id]}
+        with pytest.raises(ValidationError, match='conclusions'):
+            review.finalize(job_id, anchor_id, {**final, 'conclusions': ['没有来源的新事实']})
         with pytest.raises(ValueError, match='恰好引用'):
             review.finalize(job_id, anchor_id, {**final, 'assessment_ids': [assessment.assessment_id, assessment.assessment_id]})
-        with pytest.raises(ValueError, match='主评估'):
-            review.finalize(job_id, anchor_id, {**final, 'overall': {'assessment_id': assessment.assessment_id + 1000}})
         changed = {**submitted, 'assessment': {**submitted['assessment'],
             'explanation': '同像素图像中主图标注类别与参考图不同，已复查原始类别名称'}}
         revised = review.assess(job_id, anchor_id, changed)
@@ -140,12 +138,12 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
             review.finalize(job_id, anchor_id, final)
         assessment = review.assess(job_id, anchor_id, submitted)
         final['assessment_ids'] = [assessment.assessment_id]
-        final['overall'] = {'assessment_id': assessment.assessment_id}
         result = review.finalize(job_id, anchor_id, final)
         assert result.reason == 'MODEL_REVIEWED'
         assert result.overall.verdict == 'MATERIAL'
+        assert result.limitations == ['仅核对标注一致性，不裁决哪侧标注正确']
         assert checks.anchor(job_id, anchor_id).result == result
-        assert review.submit(job_id, anchor_id, submission) == result
+        assert result.conclusions[0].text == result.assessments[0].explanation
         assert review.finalize(job_id, anchor_id, final) == result
         assert runtime.jobs.status(job_id)['completed'] == 1
         from iad_core.consistency.agent_results import ConsistencyAgentResults
@@ -258,8 +256,7 @@ def test_visual_comparability_keeps_physical_changes_distinct_from_exact_annotat
                 explanation='保留两侧标注框位置差异，但缺少可靠坐标对应，不能判定位置冲突')
             saved = review.assess(job_id, main_id, decision)
             result = review.finalize(job_id, main_id, {'fingerprint': candidates.fingerprint,
-                'assessment_ids': [saved.assessment_id], 'overall': {'assessment_id': saved.assessment_id},
-                'conclusions': ['缺少可靠配准，位置差异尚不可判定'], 'limitations': ['两侧原像素坐标没有可靠变换']})
+                'assessment_ids': [saved.assessment_id]})
             assert result.overall.verdict == 'UNCERTAIN'
             assert result.assessments[0].conclusion is None
             assert result.assessments[0].findings == ['主图框的左边界比参考图向左两像素']

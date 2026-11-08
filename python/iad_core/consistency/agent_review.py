@@ -38,6 +38,10 @@ class ConsistencyAgentReview:
         anchor = self.checks.attempt(run_id, anchor_id, attempt)
         if anchor.candidates is None or anchor.candidates.fingerprint != request.fingerprint:
             raise ValueError('视觉请求与本场冻结候选指纹不一致')
+        if anchor.visual_plan is not None:
+            planned = next((page for page in anchor.visual_plan.pages if page.request_id == request.request_id), None)
+            if planned is not None and planned != request:
+                raise ValueError('冻结页request_id必须保持该页完整参数，不得拆分候选。补充观察须使用新的request_id。')
         if len(set(request.candidate_ids)) != len(request.candidate_ids):
             raise ValueError('视觉请求候选不可重复')
         with self.db.connection() as connection:
@@ -121,17 +125,20 @@ class ConsistencyAgentReview:
             records = {item.assessment_id: item.submission for item in self.assessments(run_id, anchor_id)}
             if len(submission.assessment_ids) != len(set(submission.assessment_ids)) or set(submission.assessment_ids) != set(records):
                 raise ValueError('终稿必须恰好引用本场每个候选的最新评估一次')
-            if submission.overall.assessment_id not in records:
-                raise ValueError('终稿主评估必须引用本场最新已保存的评估')
-            primary = records[submission.overall.assessment_id].assessment
             selected = [records[identity] for identity in submission.assessment_ids]
+            verdict = GroupAnalysisValidation.verdict(item.assessment.verdict for item in selected)
+            primary = next(item.assessment for item in selected if item.assessment.verdict == verdict)
             references = [item.reference for item in selected]
+            observed = {item.observation_id: item for item in self.observations(run_id, anchor_id)}
+            limitations = list(dict.fromkeys(limitation for item in selected for reference in item.observation_ids
+                for finding in observed[reference].result.observations if finding.candidate_id == item.assessment.candidate_id
+                for limitation in finding.limitations))
             return self.submit(run_id, anchor_id, {'fingerprint': submission.fingerprint,
                 'observation_ids': {item.assessment.candidate_id: item.observation_ids for item in selected},
                 'draft': {'assessments': [item.assessment for item in selected],
                     'overall': {'verdict': primary.verdict, 'text': primary.conclusion, 'references': references},
-                    'conclusions': [{'text': text, 'references': references} for text in submission.conclusions],
-                    'limitations': submission.limitations}}, attempt=attempt)
+                    'conclusions': [{'text': item.assessment.explanation, 'references': [item.reference]} for item in selected],
+                    'limitations': limitations}}, attempt=attempt)
 
     def submit(self, run_id: str, anchor_id: str, submission: dict | AnchorDraftSubmission, *, attempt: int = 1) -> ModelReviewedResult:
         submission = AnchorDraftSubmission.model_validate(submission)

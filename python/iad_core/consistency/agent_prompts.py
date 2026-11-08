@@ -3,7 +3,8 @@ VISUAL_PAGE_QUESTION = '核对本页主图与全部候选的原图、原始标�
 
 ANNOTATION_TASK_INSTRUCTION = (
     '先按dataset_format区分标注任务：folder_classification的原始标注是image_label，'
-    '实例框未提供或空间覆盖UNKNOWN不表示图像级标签缺失；此类任务以有效image_label和实际外观核对分类一致性。'
+    '有效OK/NG就是非空的图像级标注，annotations空数组及空间覆盖UNKNOWN只描述实例标注，不表示图像级标签缺失。'
+    '此类任务只以实际image_label和外观核对分类一致性，不套用实例数量、位置、拆分合并规则。'
     '实例标注任务则按实例类别、数量、位置及对应区域覆盖核对。缺失哪一类关键证据须明确说明。'
 )
 
@@ -12,10 +13,13 @@ AGENT_REVIEW_INSTRUCTION = (
     '你在一场独立主图审核中工作。主图固定，所有发现均相对当前候选，不能读取其他场或人审结论。'
     + ANNOTATION_TASK_INSTRUCTION
     + '先用anchor_context读取冻结清单，再用anchor_observe请求真实视觉观察。'
-    '候选多时分多次观察，所有入选候选都必须被视觉模型看到。预算不够时保留进度，不能将未覆盖候选判为通过。'
-    'anchor_context不带参数返回冻结的anchor.visual_plan.pages、已保存页的observation_index及评估回执。'
-    '按页完整传递请求给anchor_observe；返回成功保存的观察回执，成功页复用原observation_id，不重复推理。'
-    '用anchor_context(candidate_id=候选ID)逐候选读取完整视觉观察、原始标注与适用性，再立即评估该候选。'
+    '首次观察严格使用已经按实际容量规划的anchor.visual_plan.pages，不自行拆分一页或改写request_id；所有入选候选都必须被视觉模型看到。'
+    'anchor_context不带参数返回冻结清单、已保存页索引、待评估候选的完整事实及评估回执。'
+    '按页完整传递请求给anchor_observe；返回本页每个候选的真实视觉观察、原始标注和适用性，不只有回执。成功页复用原观察，不重复推理。'
+    '每页观察后先完成该页候选评估，再展开下一页，不在同一轮并行观察多个页。'
+    '直接依据工具已经返回的对应候选事实评估，不为同一事实反复调用anchor_context；缺少或需要复查时才按candidate_id重读。'
+    '不得在拿到该候选事实之前推演或提交判断，不得把其他候选的观察、实例框或标签移用到当前候选。'
+    '原始标签、实例框、像素关系与视觉描述以工具返回为准，不虚构坐标、框或类别，不把SIMILAR改写为完全相同的像素。'
     '未评估候选的详细事实保持可读，重复读取复用本场最新记录；已评估事实可精简为可重读引用。'
     '全部观察及原始事件均保存。全部页完成后才能汇总终稿。'
     '可补充问题核实细节。相似度和归一化标注布局不是可靠配准，不同实物的真实外观差异可以解释标注差异。'
@@ -23,8 +27,9 @@ AGENT_REVIEW_INSTRUCTION = (
     'visual_window仅表示自主定位的观察范围，不是人工标注，不能读取本页以外的样本。'
     '已建立同一或可比现象时，类别不同为类别不一致；主图多标为多类别，少标为少类别；'
     '主图将一个对象分成多个实例为拆分，反之合并。位置差异必须有同图像素证据或可靠配准。'
-    '每页观察后用anchor_assess逐候选保存判定、主分类、分析和observation_ids，引用本场实际观察，记录返回的assessment_id；结论编码由该判定派生。'
-    '用anchor_submit提交全部最新assessment_ids，通过overall选择主评估，并提交conclusions文本列表和limitations，不能重发完整逐候选结论。'
+    '每页观察后用anchor_assess逐候选保存判定、主分类、分析和observation_ids；同页独立候选可在同一轮发起多个anchor_assess调用。'
+    '记录返回的assessment_id；结论编码由该判定派生。'
+    '用anchor_submit仅提交fingerprint和全部最新assessment_ids；主结论、分析汇总及原始视觉限制由服务端从已保存记录派生，不重新撰写。'
     '需要复查时用anchor_context(candidate_id=候选ID)重新读取本场保存的原始观察和标注。'
     '逐候选及汇总MATERIAL/冲突优先于UNCERTAIN，其他为EQUIVALENT。'
     '冲突结论只选类别不一致、位置差异、多类别、少类别、拆分、合并之一，通过写一致，缺少领域证据写null并说明具体限制。'

@@ -40,7 +40,7 @@ test('a native Agent covers thirty paged candidates and resumes without repeatin
     const sharedCandidate = foreignObservation.request.candidate_ids.find(candidate => candidate !== identity.anchor_id);
     assert.ok(sharedCandidate);
     const foreignCalls = wires.length;
-    fixture.queueSubmissionFaults([{kind: 'duplicate'}, {kind: 'omit'}, {kind: 'weak-primary'}, {kind: 'foreign-reference'},
+    fixture.queueSubmissionFaults([{kind: 'duplicate'}, {kind: 'omit'}, {kind: 'foreign-reference'},
       {kind: 'foreign-observation', candidate_id: sharedCandidate, observation_id: foreignObservation.observation_id}]);
     await scheduler.resume(started.run_id);await scheduler.whenIdle();
     const after = await bridge.execute('consistency_agent_detail', identity);
@@ -57,9 +57,7 @@ test('a native Agent covers thirty paged candidates and resumes without repeatin
     const calls = new Map(transcript.events.filter(event => event.type === 'tool/call').map(event => [event.data.callId, event.data.name]));
     const rejected = transcript.events.filter(event => event.type === 'tool/result' && event.data.message.isError
       && ['anchor_submit', 'anchor_assess'].includes(calls.get(event.data.message.toolCallId)));
-    assert.equal(rejected.length, 5);
-    assert.ok(rejected.some(event => event.data.message.content.some(block => block.type === 'text'
-      && block.text.includes('逐候选verdict汇总为MATERIAL'))));
+    assert.equal(rejected.length, 4);
     assert.ok(transcript.events.some(event => event.type === 'compaction/prune'));
     if (agentTokenize) assert.ok(transcript.events.some(event => event.type === 'compaction/summary'));
     assert.equal(after.assessments.length, 30);

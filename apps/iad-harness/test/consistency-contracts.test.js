@@ -53,8 +53,7 @@ test('native decisions exclude derived conclusions and preserve nullable context
   const invalid = structuredClone(input);invalid.assessment.candidate_id = null;
   assert.notDeepEqual(validateArgs(anchorAssessmentInputParameters, invalid), []);
   assert.deepEqual(validateArgs(anchorReviewSubmissionParameters, {fingerprint: input.fingerprint,
-    assessment_ids: [1], overall: {assessment_id: 1},
-    conclusions: ['两侧未提供标注，无法确认标注规则和覆盖范围'], limitations: []}), []);
+    assessment_ids: [1]}), []);
   assert.deepEqual(validateArgs(anchorContextQueryParameters, {candidate_id: null}), []);
   assert.deepEqual(validateArgs(anchorContextQueryParameters, {}), []);
 });
