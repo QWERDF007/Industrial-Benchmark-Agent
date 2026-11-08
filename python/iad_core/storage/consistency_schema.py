@@ -14,6 +14,15 @@ def init_content_index_schema(connection: Connection) -> None:
         visual_plan_json TEXT CHECK(visual_plan_json IS NULL OR json_valid(visual_plan_json)),
         result_json TEXT CHECK(result_json IS NULL OR json_valid(result_json)),
         PRIMARY KEY(job_id,anchor_id),UNIQUE(job_id,ordinal))''')
+    columns = {row[1] for row in connection.execute('PRAGMA table_info(consistency_anchor_runs)')}
+    for column, definition in {
+        'attempt': 'INTEGER NOT NULL DEFAULT 1 CHECK(attempt>0)',
+        'trace_state': "TEXT NOT NULL DEFAULT 'OPEN' CHECK(trace_state IN ('OPEN','PENDING','CLOSED'))",
+        'trace_error': 'TEXT',
+        'visual_plan_json': 'TEXT CHECK(visual_plan_json IS NULL OR json_valid(visual_plan_json))',
+    }.items():
+        if column not in columns:
+            connection.execute(f'ALTER TABLE consistency_anchor_runs ADD COLUMN {column} {definition}')
     connection.execute('''CREATE TABLE IF NOT EXISTS consistency_candidate_assessments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,candidate_id TEXT NOT NULL,
         submission_json TEXT NOT NULL CHECK(json_valid(submission_json)),
