@@ -31,7 +31,8 @@ from iad_core.consistency.agent_operations import (consistency_agent_start, cons
     consistency_agent_trace_event, consistency_agent_trace_status, consistency_agent_cancel, consistency_agent_resume,
     consistency_agent_interrupt, consistency_agent_detail, consistency_agent_results, consistency_agent_report,
     consistency_agent_export, consistency_agent_gallery, consistency_agent_members, consistency_agent_analysis, consistency_agent_plan, consistency_agent_capacity,
-    consistency_agent_model_call_start, consistency_agent_model_call_end, consistency_agent_diagnostics, consistency_agent_prepare)
+    consistency_agent_model_call_start, consistency_agent_model_call_end, consistency_agent_diagnostics, consistency_agent_prepare,
+    consistency_agent_session_location)
 from iad_core.exploration.operations import (direction_exploration_start, direction_exploration_batch_start, direction_exploration_status, direction_exploration_list,
     direction_exploration_cancel, direction_exploration_delete, direction_exploration_retry, direction_exploration_get, direction_exploration_evidence, direction_exploration_remove_direction,
     direction_exploration_presets, direction_exploration_preset_save)
@@ -569,6 +570,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     consistency_agent_model_call_start, consistency_agent_model_call_end,
     consistency_agent_diagnostics,
     consistency_agent_prepare,
+    consistency_agent_session_location,
     consistency_review_context, consistency_review_submit, consistency_correction_verify,
     analysis_start, analysis_list, analysis_status, analysis_node, analysis_results, analysis_cancel, analysis_retry, analysis_delete,
     image_retrieve, temporary_image_accept, temporary_image_release, temporary_image_release_owner,
@@ -598,6 +600,7 @@ QUERY_OPERATIONS = frozenset({
     'consistency_agent_detail', 'consistency_agent_results', 'consistency_agent_report', 'consistency_agent_export',
     'consistency_agent_gallery', 'consistency_agent_members', 'consistency_agent_analysis',
     'consistency_agent_diagnostics',
+    'consistency_agent_session_location',
     'module_settings_get',
     'knowledge_observations', 'knowledge_evidence',
     'knowledge_get', 'knowledge_details', 'knowledge_versions', 'knowledge_presets', 'knowledge_prompt_get', 'knowledge_sources',

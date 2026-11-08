@@ -10,7 +10,8 @@ import {ConsistencyAnchorReviewer} from '../lib/server/consistency/anchor-review
 
 test('two independent schedulers cannot dispatch the same accepted job twice', {timeout: 30000}, async () => {
   const fixture = await createConsistencyAgentHost();
-  const otherHost = await ConsistencySessionHost.open(path.join(fixture.root, 'sessions'));
+  const otherHost = await ConsistencySessionHost.open(path.join(fixture.root, 'sessions'),
+    session_id => fixture.bridge.execute('consistency_agent_session_location', {session_id}));
   const errors = [];
   const reviewer = new ConsistencyAnchorReviewer(fixture.bridge, otherHost, fixture.native);
   const other = new ConsistencyCheckScheduler(fixture.bridge, otherHost, fixture.native,

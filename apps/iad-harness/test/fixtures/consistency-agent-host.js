@@ -205,7 +205,8 @@ WorkbenchModels(db).save({'expected_revision':0,'selection':{'provider_id':'isol
 print(json.dumps({'dataset_id':config.dataset.id}))
 `, root, database, multiCandidate ? 'multi' : 'pair', JSON.stringify(maxVisualInputs ?? null), indexMode ?? 'none', JSON.stringify(candidateCount ?? null)], {cwd: workspace, env: {...process.env, PYTHONPATH: path.join(workspace, 'python')}, encoding: 'utf8'}));
   const bridge = new PythonBridge({cwd: workspace, dbPath: database});
-  const host = await ConsistencySessionHost.open(path.join(root, 'sessions'));
+  const host = await ConsistencySessionHost.open(path.join(root, 'sessions'),
+    session_id => bridge.execute('consistency_agent_session_location', {session_id}));
   const ctx = new Context();
   new LlmRuntime(ctx);
   const providers = {isolated: {api: 'openai-completions', baseURL: endpoint.replace('/chat/completions', ''),

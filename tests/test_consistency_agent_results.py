@@ -27,6 +27,12 @@ def test_business_results_export_every_frozen_anchor_in_order_with_real_terminal
         results = ConsistencyAgentResults(database)
         frozen = results.snapshot(job_id)
         anchors = results.anchors(job_id)
+        location = results.session_location(results.anchor(job_id, identities[0]).session_id)
+        assert location.job_id == job_id
+        assert location.image_name == 'normal.png'
+        from iad_core.storage.models import sample_uuid
+        assert location.image_id == sample_uuid(identities[0])
+        assert location.submitted_at == job['submitted_at']
         exported = tmp_path / 'results.jsonl'
         with exported.open('w', encoding='utf-8') as output:
             results.export(job_id, output)

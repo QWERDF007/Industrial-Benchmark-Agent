@@ -34,7 +34,8 @@ ModuleSettings(db).save({'module':'consistency','expected_revision':0,'settings'
 print(json.dumps({'dataset_id':config.dataset.id}))
 `, root, database], {cwd: workspace, env: {...process.env, PYTHONPATH: path.join(workspace, 'python')}, encoding: 'utf8'}));
   const bridge = new PythonBridge({cwd: workspace, dbPath: database});
-  const host = await ConsistencySessionHost.open(path.join(root, 'sessions'));
+  const host = await ConsistencySessionHost.open(path.join(root, 'sessions'),
+    session_id => bridge.execute('consistency_agent_session_location', {session_id}));
   const unexpected = [];
   const errors = [];
   const scheduler = new ConsistencyCheckScheduler(bridge, host, new NativeProviders(() => new Context()),

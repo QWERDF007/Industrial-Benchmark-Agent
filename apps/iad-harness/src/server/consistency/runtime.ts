@@ -6,12 +6,14 @@ import type {ModelRouting, PythonBridge} from '../python-bridge/index.js';
 import {ConsistencyAnchorReviewer} from './anchor-reviewer.js';
 import {ConsistencyCheckScheduler} from './scheduler.js';
 import {ConsistencySessionHost} from './session-host.js';
+import type {ConsistencySessionLocation} from '../../shared/domain.generated.js';
 
 export const name = 'iad-consistency-runtime';
 
 export async function apply(ctx: Context, {bridge}: {bridge: PythonBridge}) {
   const database = path.resolve(bridge.cwd, bridge.dbPath || process.env.IAD_DB_PATH || 'data/benchmark.db');
-  const host = await ConsistencySessionHost.open(path.join(path.dirname(database), 'consistency-sessions', path.basename(database)));
+  const host = await ConsistencySessionHost.open(path.join(path.dirname(database), 'consistency-sessions'),
+    session_id => bridge.execute<ConsistencySessionLocation>('consistency_agent_session_location', {session_id}));
   let modelContext: Context | undefined;
   const providers = new NativeProviders(() => {
     if (!modelContext) throw new ModelConfigurationError('原生模型服务尚未加载');

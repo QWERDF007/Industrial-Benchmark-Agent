@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
+import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { consistencySessionPath } from './session-persistence.js';
 export class ConsistencyCheckScheduler {
     bridge;
     host;
@@ -19,7 +21,8 @@ export class ConsistencyCheckScheduler {
             const anchor = await dispatch('consistency_agent_anchor', { run_id: args.run_id, anchor_id: args.anchor_id }, signal);
             if (!anchor.session_created)
                 throw new Error('主图会话尚未创建');
-            return { filename: anchor.session_id + '.jsonl', jsonl: await this.host.exportJsonl(anchor.session_id) };
+            const location = await dispatch('consistency_agent_session_location', { session_id: anchor.session_id }, signal);
+            return { filename: path.basename(consistencySessionPath('', location)), jsonl: await this.host.exportJsonl(anchor.session_id) };
         }
         if (operation === 'analysis_start' && args.request?.analysis_kind === 'consistency')
             return this.start(args.request);

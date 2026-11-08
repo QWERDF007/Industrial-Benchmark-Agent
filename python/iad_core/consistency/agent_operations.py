@@ -43,6 +43,10 @@ def consistency_agent_anchor(args, db_path):
     return ConsistencyAgentResults(Database(db_path)).anchor(args['run_id'], args['anchor_id']).model_dump(mode='json')
 
 
+def consistency_agent_session_location(args, db_path):
+    return ConsistencyAgentResults(Database(db_path)).session_location(args['session_id']).model_dump(mode='json')
+
+
 def consistency_agent_model_call_start(args, db_path):
     from iad_core.workbench.calls import ModelCalls, NativeModelCallStart
     runtime = workbench(db_path)

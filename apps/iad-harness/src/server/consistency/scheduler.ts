@@ -1,8 +1,10 @@
 import {createHash} from 'node:crypto';
+import path from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
-import type {AnchorCandidates, AnchorTraceEvent, ConsistencyAnchorRun, ConsistencyBatchSummary, ConsistencyCheckConfiguration, ConsistencyCheckSnapshot, JobFailure, JobSnapshot, JobView} from '../../shared/domain.generated.js';
+import type {AnchorCandidates, AnchorTraceEvent, ConsistencyAnchorRun, ConsistencyBatchSummary, ConsistencyCheckConfiguration, ConsistencyCheckSnapshot, ConsistencySessionLocation, JobFailure, JobSnapshot, JobView} from '../../shared/domain.generated.js';
 import type {BridgeDispatch, ModelRouting, PythonBridge} from '../python-bridge/index.js';
 import {ConsistencySessionHost} from './session-host.js';
+import {consistencySessionPath} from './session-persistence.js';
 import type {NativeProviders} from '../models/providers.js';
 
 export interface AnchorReviewTask {
@@ -28,7 +30,8 @@ export class ConsistencyCheckScheduler implements ModelRouting {
     if (operation === 'consistency_agent_session_export') {
       const anchor = await dispatch('consistency_agent_anchor', {run_id: args.run_id, anchor_id: args.anchor_id}, signal) as ConsistencyAnchorRun;
       if (!anchor.session_created) throw new Error('主图会话尚未创建');
-      return {filename: anchor.session_id + '.jsonl', jsonl: await this.host.exportJsonl(anchor.session_id)};
+      const location = await dispatch('consistency_agent_session_location', {session_id: anchor.session_id}, signal) as ConsistencySessionLocation;
+      return {filename: path.basename(consistencySessionPath('', location)), jsonl: await this.host.exportJsonl(anchor.session_id)};
     }
     if (operation === 'analysis_start' && args.request?.analysis_kind === 'consistency') return this.start(args.request);
     if (operation === 'analysis_cancel' || operation === 'analysis_retry') {

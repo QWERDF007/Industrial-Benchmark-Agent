@@ -1,4 +1,5 @@
 import json
+from pathlib import PurePosixPath
 from collections import Counter
 from contextlib import contextmanager
 from sqlite3 import Row
@@ -9,7 +10,7 @@ from iad_core.consistency.agent_models import ConsistencyAnchorRun, ConsistencyC
 from iad_core.consistency.agent_assessments import AnchorAssessments
 from iad_core.consistency.agent_evidence_records import AnchorEvidenceRecords
 from iad_core.consistency.agent_result_models import (AnchorResultDetail,
-    AnchorResultPage, AnchorResultSummary, ConsistencyCheckReport, AnchorDiagnostics, AnchorPhaseTiming, ModelRoleDiagnostics, ModelRolesDiagnostics)
+    AnchorResultPage, AnchorResultSummary, ConsistencyCheckReport, AnchorDiagnostics, AnchorPhaseTiming, ModelRoleDiagnostics, ModelRolesDiagnostics, ConsistencySessionLocation)
 from iad_core.consistency.agent_review_models import AnchorObservation, AnchorVisualRequest
 from iad_core.consistency.annotation_inventory import AnnotationObservation
 from iad_core.consistency.conflict_categories import ConflictCategory
@@ -20,6 +21,7 @@ from iad_core.consistency.group_analysis_models import GroupAnalysisDraft, Group
 from iad_core.consistency.review_repository import ConsistencyDecisionRepository
 from iad_core.consistency.review_states import ReviewStates
 from iad_core.storage.database import Database
+from iad_core.storage.models import sample_uuid
 from iad_core.workbench.job_models import JobFailure
 from iad_core.workbench.calls import ModelCalls
 
@@ -27,6 +29,16 @@ from iad_core.workbench.calls import ModelCalls
 class ConsistencyAgentResults:
     def __init__(self, db: Database):
         self.db = db
+
+    def session_location(self, session_id: str) -> ConsistencySessionLocation:
+        with self.db.connection() as connection:
+            row = connection.execute('''SELECT a.job_id,a.anchor_id,j.payload_json FROM consistency_anchor_runs a
+                JOIN job_runs j ON j.job_id=a.job_id WHERE a.session_id=?''', (session_id,)).fetchone()
+            if row is None:
+                raise LookupError('主图审核会话不存在')
+            return ConsistencySessionLocation(job_id=row['job_id'], submitted_at=json.loads(row['payload_json'])['submitted_at'],
+                image_name=PurePosixPath(row['anchor_id'].split(':', 1)[1]).name,
+                image_id=sample_uuid(row['anchor_id']))
 
     @contextmanager
     def _read(self, run_id: str):

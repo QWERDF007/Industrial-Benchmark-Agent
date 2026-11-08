@@ -7,7 +7,7 @@ import { ConsistencySessionHost } from './session-host.js';
 export const name = 'iad-consistency-runtime';
 export async function apply(ctx, { bridge }) {
     const database = path.resolve(bridge.cwd, bridge.dbPath || process.env.IAD_DB_PATH || 'data/benchmark.db');
-    const host = await ConsistencySessionHost.open(path.join(path.dirname(database), 'consistency-sessions', path.basename(database)));
+    const host = await ConsistencySessionHost.open(path.join(path.dirname(database), 'consistency-sessions'), session_id => bridge.execute('consistency_agent_session_location', { session_id }));
     let modelContext;
     const providers = new NativeProviders(() => {
         if (!modelContext)

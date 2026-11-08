@@ -20,7 +20,7 @@ const app=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 test('new consistency checks submit and retry without native randomUUID over HTTP', {timeout:45000}, async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-consistency-submission-'));
   const bridge=new PythonBridge({cwd:path.resolve(app,'../..'),dbPath:path.join(root,'test.db')});
-  const sessions=await ConsistencySessionHost.open(path.join(root,'sessions'));
+  const sessions=await ConsistencySessionHost.open(path.join(root,'sessions'), session_id => bridge.execute('consistency_agent_session_location', {session_id}));
   const failures=[];
   const scheduler=new ConsistencyCheckScheduler(bridge,sessions,new NativeProviders(() => new Context()),
     async()=>{throw new Error('零候选不应进入模型审核');},failure=>failures.push(failure));

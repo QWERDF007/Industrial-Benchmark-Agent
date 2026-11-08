@@ -2991,6 +2991,10 @@ export type TotalTokens = number | null;
  */
 export type Cost = number | null;
 export type Calls = ModelCallSummary[];
+export type JobId9 = string;
+export type SubmittedAt8 = string;
+export type ImageName = string;
+export type ImageId = string;
 
 export interface WorkbenchDomain {
   DatasetReportStart?: DatasetReportStart;
@@ -3150,6 +3154,7 @@ export interface WorkbenchDomain {
   TokenBudget?: TokenBudget;
   AnchorObservationReceipt?: AnchorObservationReceipt;
   AnchorDiagnostics?: AnchorDiagnostics;
+  ConsistencySessionLocation?: ConsistencySessionLocation;
 }
 export interface DatasetReportStart {
   submission_id?: SubmissionId;
@@ -6689,4 +6694,10 @@ export interface ModelRoleDiagnostics {
   output_tokens: OutputTokens;
   total_tokens: TotalTokens;
   cost: Cost;
+}
+export interface ConsistencySessionLocation {
+  job_id: JobId9;
+  submitted_at: SubmittedAt8;
+  image_name: ImageName;
+  image_id: ImageId;
 }

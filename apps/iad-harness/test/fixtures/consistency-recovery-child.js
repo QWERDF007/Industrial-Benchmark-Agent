@@ -24,7 +24,8 @@ if (mode === 'commit') {
   await fixture.scheduler.whenIdle();
 } else if (mode === 'recover') {
   const bridge = new PythonBridge({cwd: findWorkspaceRoot(), dbPath: path.join(root, 'checks.db')});
-  const host = await ConsistencySessionHost.open(path.join(root, 'sessions'));
+  const host = await ConsistencySessionHost.open(path.join(root, 'sessions'),
+    session_id => bridge.execute('consistency_agent_session_location', {session_id}));
   const ctx = new Context();
   const providers = new NativeProviders(() => ctx);
   const reviewer = new ConsistencyAnchorReviewer(bridge, host, providers);

@@ -5,23 +5,25 @@ import { SessionStore, SessionId, SessionSeq } from '@deepseek-ai/dsh-session';
 import { SessionProjectionRegistry } from '@deepseek-ai/dsh-session-projection';
 import { SystemPrompt } from '@deepseek-ai/dsh-system-prompt';
 import { ToolRuntime } from '@deepseek-ai/dsh-tools';
-import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl';
+import { ConsistencySessionPersistence } from './session-persistence.js';
 import * as SessionCheckpoints from '@deepseek-ai/dsh-session-checkpoint-policy';
 import { sessionFormatCatalog } from '@deepseek-ai/dsh-session-format-catalog';
 import TokenMeter from '@deepseek-ai/dsh-token-meter';
 export class ConsistencySessionHost {
     root;
+    locate;
     ctx;
     sessions;
     stop;
     active = new Map();
-    constructor(root, ctx, sessions, stop) {
+    constructor(root, locate, ctx, sessions, stop) {
         this.root = root;
+        this.locate = locate;
         this.ctx = ctx;
         this.sessions = sessions;
         this.stop = stop;
     }
-    static async open(root) {
+    static async open(root, locate) {
         const ctx = new Context();
         let sessions;
         let owner;
@@ -33,11 +35,11 @@ export class ConsistencySessionHost {
                 await scope.plugin(TokenMeter, {});
                 new SystemPrompt(scope, { includeHarnessIdentity: false, includeRuntimeContext: false });
                 new ToolRuntime(scope);
-                await scope.plugin(JsonlSessionPersistence, { root });
+                new ConsistencySessionPersistence(scope, root, locate);
                 await scope.plugin(SessionCheckpoints);
                 await scope.inject(['sessionPersistence', 'agents'], injected => { owner = injected; });
             } });
-        return new ConsistencySessionHost(root, owner, sessions, () => fork.dispose());
+        return new ConsistencySessionHost(root, locate, owner, sessions, () => fork.dispose());
     }
     async create(id) {
         const sessionId = SessionId(id);
@@ -65,7 +67,7 @@ export class ConsistencySessionHost {
         const stored = await this.ctx.sessionPersistence.stat(sessionId);
         if (!stored)
             throw new Error('主图真实内部会话缺失，不能用同 ID 新建会话代替恢复');
-        const runtime = await ConsistencySessionHost.open(this.root);
+        const runtime = await ConsistencySessionHost.open(this.root, this.locate);
         this.active.set(id, runtime);
         const dispose = this.ctx.effect(() => async () => {
             this.active.delete(id);

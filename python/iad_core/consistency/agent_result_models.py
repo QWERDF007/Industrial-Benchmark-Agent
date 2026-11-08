@@ -14,6 +14,13 @@ from iad_core.workbench.calls import ModelCallSummary
 DiagnosticRecording = Literal['COMPLETE', 'UNAVAILABLE']
 
 
+class ConsistencySessionLocation(AnalysisModel):
+    job_id: Identifier
+    submitted_at: str
+    image_name: str
+    image_id: str
+
+
 class AnchorResultSummary(AnalysisModel):
     schema_version: Literal[1] = 1
     job_id: Identifier

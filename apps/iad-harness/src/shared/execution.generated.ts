@@ -21,6 +21,7 @@ export const queryOperations = [
   "consistency_agent_members",
   "consistency_agent_report",
   "consistency_agent_results",
+  "consistency_agent_session_location",
   "consistency_agent_snapshot",
   "consistency_context",
   "consistency_evidence",
