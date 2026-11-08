@@ -15,11 +15,19 @@ export declare const knowledgeScopeParameters: {
         readonly default: "";
     };
     readonly seed: {
-        readonly type: "integer";
+        readonly oneOf: readonly [{
+            readonly type: "integer";
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Seed";
     };
     readonly starting_version_id: {
-        readonly type: "string";
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Starting Version Id";
     };
 };

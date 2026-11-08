@@ -1,32 +1,18 @@
 from iad_core.workbench.job_models import ChildJobError
 import json
 from typing import Annotated, Literal
-from uuid import UUID, uuid4, uuid5
+from uuid import uuid5
 
-from pydantic import Field, RootModel, model_validator
+from pydantic import Field, RootModel
 
-from iad_core.advisory.analysis import AnalysisModel, NonBlankText
+from iad_core.advisory.analysis import NonBlankText
 from iad_core.exploration.models import FrozenExplorationPrompt
 from iad_core.knowledge.repository import KnowledgeRepository
 from iad_core.knowledge.instructions import FrozenMiningPrompt, SubmittedMiningPrompt
 from iad_core.knowledge.sources import KnowledgeSources
-from iad_core.consistency.workflow import ConsistencyWorkflow
-from iad_core.consistency.models import Mode, SimilarityThreshold, DEFAULT_MIN_SIMILARITY
-from iad_core.consistency.group_analysis_prompts import DEFAULT_CONSISTENCY_PROMPT
-from iad_core.consistency.group_analysis_models import DEFAULT_CANDIDATE_BATCH_SIZE
 from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.analysis_job_views import AnalysisJobViews
-
-
-class SelectedDatasets(AnalysisModel):
-    submission_id: UUID = Field(default_factory=uuid4)
-    dataset_ids: list[str] = Field(min_length=1)
-
-    @model_validator(mode='after')
-    def distinct_datasets(self):
-        if len(self.dataset_ids) != len(set(self.dataset_ids)):
-            raise ValueError('子数据集不能重复')
-        return self
+from iad_core.workbench.analysis_requests import SelectedDatasets
 
 
 class ExplorationWorkflowStart(SelectedDatasets):
@@ -45,17 +31,8 @@ class KnowledgeWorkflowStart(SelectedDatasets):
     mining_prompt: SubmittedMiningPrompt
 
 
-class ConsistencyWorkflowStart(SelectedDatasets):
-    analysis_kind: Literal['consistency'] = 'consistency'
-    mode: Mode = 'combined'
-    min_similarity: SimilarityThreshold = DEFAULT_MIN_SIMILARITY
-    batch_size: int = Field(default=12, ge=2, le=200)
-    candidate_batch_size: int = Field(default=DEFAULT_CANDIDATE_BATCH_SIZE, ge=1, le=200)
-    instruction: NonBlankText = DEFAULT_CONSISTENCY_PROMPT
-
-
 class AnalysisWorkflowStart(RootModel[Annotated[
-    ExplorationWorkflowStart | KnowledgeWorkflowStart | ConsistencyWorkflowStart,
+    ExplorationWorkflowStart | KnowledgeWorkflowStart,
     Field(discriminator='analysis_kind')]]):
     pass
 
@@ -68,9 +45,6 @@ class AnalysisWorkflows:
         self.jobs, self.db = runtime.jobs, runtime.db
 
     def start(self, request: dict, *, model_name: str | None = None) -> dict:
-        if request.get('analysis_kind') == 'consistency':
-            from iad_core.workbench.module_settings import ModuleSettings
-            request = ModuleSettings(self.db).consistency_request(request)
         selected = AnalysisWorkflowStart.model_validate(request).root
         submission = selected.model_dump(mode='json')
         if existing := self.jobs.submitted('ANALYSIS_WORKFLOW', submission):
@@ -99,11 +73,6 @@ class AnalysisWorkflows:
                         submission_id=identity, batch_size=selected.batch_size,
                         mining_prompt=selected.mining_prompt.model_dump()), model_name=model_name)
                     job_type = 'KNOWLEDGE_BATCH'
-                else:
-                    payload = self.services.consistency_model_batches.prepare(dict(submission_id=identity,
-                        subjects=dict(kind='datasets', dataset_ids=[dataset_id]), batch_size=selected.batch_size,
-                        candidate_batch_size=selected.candidate_batch_size, instruction=selected.instruction), model_name=model_name)
-                    job_type = 'CONSISTENCY_MODEL_BATCH'
                 units.append(dict(dataset_id=dataset_id, task_id=config.task.task_id, job_type=job_type, request=payload))
             payload = dict(submission=submission, dataset_id=selected.dataset_ids[0], dataset_ids=selected.dataset_ids,
                 analysis_kind=selected.analysis_kind,
@@ -124,8 +93,7 @@ class AnalysisWorkflows:
 
     def engine(self, job_type):
         return {'EXPLORATION_BATCH': self.services.exploration_batches,
-                'KNOWLEDGE_BATCH': self.services.knowledge_batches,
-                'CONSISTENCY_MODEL_BATCH': self.services.consistency_model_batches}[job_type]
+                'KNOWLEDGE_BATCH': self.services.knowledge_batches}[job_type]
 
     def validate(self, request):
         for unit in request['units']:
@@ -150,9 +118,6 @@ class AnalysisWorkflows:
         unit_runs = {key: rid for row in rows for key, rid in json.loads(row[0]).get('unit_runs', {}).items()}
         pending, results = set(request['sample_ids']), {}
         context.update(unit_runs=unit_runs, dataset_results=[], phase='ANALYZING_SELECTED_DATASETS')
-        if request['analysis_kind']=='consistency':
-            ConsistencyWorkflow(self.runtime,self.services.client).execute(context)
-            return
         model_completed = set()
         wanted = {unit['dataset_id']:pending.intersection(unit['request']['sample_ids']) for unit in request['units']}
 

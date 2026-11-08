@@ -26,27 +26,43 @@ export declare const explorationParameters: {
         readonly default: "联合比较候选良品和异常样例，自行提出适合此数据集的可观察检查方向。";
     };
     readonly prompt: {
-        readonly type: "object";
-        readonly additionalProperties: false;
-        readonly properties: {
-            readonly preset_id: {
-                readonly type: "string";
-                readonly title: "Preset Id";
+        readonly oneOf: readonly [{
+            readonly type: "object";
+            readonly additionalProperties: false;
+            readonly properties: {
+                readonly preset_id: {
+                    readonly oneOf: readonly [{
+                        readonly type: "string";
+                    }, {
+                        readonly type: "null";
+                    }];
+                    readonly title: "Preset Id";
+                };
+                readonly preset_name: {
+                    readonly oneOf: readonly [{
+                        readonly type: "string";
+                    }, {
+                        readonly type: "null";
+                    }];
+                    readonly title: "Preset Name";
+                };
+                readonly text: {
+                    readonly type: "string";
+                    readonly title: "Text";
+                    readonly required: true;
+                };
             };
-            readonly preset_name: {
-                readonly type: "string";
-                readonly title: "Preset Name";
-            };
-            readonly text: {
-                readonly type: "string";
-                readonly title: "Text";
-                readonly required: true;
-            };
-        };
-        readonly title: "FrozenExplorationPrompt";
+            readonly title: "FrozenExplorationPrompt";
+        }, {
+            readonly type: "null";
+        }];
     };
     readonly parent_version_id: {
-        readonly type: "string";
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Parent Version Id";
     };
 };
@@ -91,11 +107,19 @@ export declare const directionAdoptionParameters: {
                     readonly required: true;
                 };
                 readonly title: {
-                    readonly type: "string";
+                    readonly oneOf: readonly [{
+                        readonly type: "string";
+                    }, {
+                        readonly type: "null";
+                    }];
                     readonly title: "Title";
                 };
                 readonly instruction: {
-                    readonly type: "string";
+                    readonly oneOf: readonly [{
+                        readonly type: "string";
+                    }, {
+                        readonly type: "null";
+                    }];
                     readonly title: "Instruction";
                 };
                 readonly enabled: {

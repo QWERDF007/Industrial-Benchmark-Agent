@@ -13,12 +13,6 @@ from iad_core.entry import dataset_import, dataset_preview
 from iad_core.entry import direction_exploration_get
 from iad_core.storage.database import Database
 from tests.knowledge_scenarios import selected_group
-from iad_core.consistency.evidence_models import ConsistencyCompare
-from iad_core.consistency.gallery import GalleryQueries, GalleryQuery
-from iad_core.consistency.result_models import ConsistencyQuery
-from iad_core.consistency.result_queries import ResultQueries
-from iad_core.consistency.group_analysis import GroupAnalyses
-from iad_core.consistency.group_analysis_models import GroupAnalysisStart
 from iad_core.exploration.models import DirectionDraft
 
 
@@ -92,53 +86,6 @@ def test_model_repairs_structural_errors_once(corrected,initial_shape):
     assert '输出校验结果：' in calls[1]['messages'][-1]['content']
 
 
-def test_folder_consistency_sends_original_labels_without_synthetic_crops(tmp_path):
-    root = tmp_path / 'same-image-different-label'
-    rules = [{'path': 'OK', 'role': 'normal'}, {'path': 'NG', 'role': 'anomaly'}]
-    for folder in ('OK', 'NG'):
-        (root / folder).mkdir(parents=True)
-        Image.new('RGB', (320, 240), 'blue').save(root / folder / 'part.png')
-    db_path = str(tmp_path / 'consistency.db')
-    preview = dataset_preview({'root_dir': str(root), 'rules': rules}, db_path)
-    imported = dataset_import({'format': 'folder_classification', 'name': '同图标签差异', 'root_dir': str(root),
-        'rules': rules, 'preview_fingerprint': preview['preview_fingerprint']}, db_path)
-    db, calls = Database(db_path), []
-
-    def respond(request):
-        body = json.loads(request.content)
-        if request.url.path.endswith('/tokenize'):
-            return httpx.Response(200, json={'count': 1000, 'max_model_len': 262144})
-        calls.append(body)
-        frozen=json.loads(body['messages'][0]['content'][0]['text'].split('冻结图组：',1)[1].split('\n请根据图像',1)[0])
-        candidate_id,candidate=next(iter(frozen['candidates'].items()))
-        citation=dict(candidate_id=candidate_id,comparison={field:candidate['comparison'][field] for field in ['result_id','evidence_id']})
-        return httpx.Response(200, json={'choices': [{'message': {'content': json.dumps({
-            'overall': {'verdict': 'MATERIAL', 'text': '图像级标签不同', 'references': [citation]},
-            'assessments': [{'candidate_id': citation['candidate_id'], 'verdict': 'MATERIAL',
-                'explanation': '相同图像对应不同原始标签', 'findings': ['OK与NG不同']}],
-            'conclusions': [{'text': '仅比较标签差异', 'references': [citation]}], 'limitations': [],
-        })}}]})
-
-    runtime = WorkbenchRuntime(db, VlmClient(http_client=httpx.Client(transport=httpx.MockTransport(respond))))
-    try:
-        left, right = [imported['dataset_id'] + ':' + folder + '/part.png' for folder in ('OK', 'NG')]
-        runtime.consistency_service.compare(ConsistencyCompare(sample_a=left, sample_b=right))
-        query = ResultQueries(db).query(ConsistencyQuery(selection={'kind': 'scope', 'subjects': {'kind': 'all_registered'}}))
-        group = GalleryQueries(db).query(GalleryQuery(query_id=query.query_id, kind='conflicts')).items[0]
-        analyses = GroupAnalyses(runtime, runtime.client)
-        started = analyses.start(GroupAnalysisStart(query_id=query.query_id, kind='conflicts',
-            group_id=group.group_id, request_id='image-level-input'))
-        runtime.jobs.wait(started.run_id, 5)
-        finished = runtime.jobs.status(started.run_id)
-        assert finished['status'] == 'COMPLETED', finished['errors']
-        content = calls[0]['messages'][0]['content']
-        descriptors = [json.loads(p['text'].removeprefix('视觉证据：')) for p in content
-                       if p['type'] == 'text' and p['text'].startswith('视觉证据：')]
-        assert all(item['role'] == 'overview' for item in descriptors)
-        frozen=json.loads(content[0]['text'].split('冻结图组：',1)[1].split('\n请根据图像',1)[0])
-        assert {source['image_label'] for source in frozen['sources'].values()}=={'OK','NG'}
-    finally:
-        runtime.close()
 
 
 def test_labelme_exploration_sends_annotations_full_images_and_matching_crops(dataset):

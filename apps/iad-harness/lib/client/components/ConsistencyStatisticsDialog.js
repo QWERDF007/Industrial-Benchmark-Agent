@@ -14,9 +14,10 @@ function StatisticChart({ title, rows, action, axis, onFilter }) {
 export function ConsistencyStatisticsDialog({ items, onFilter, onClose }) {
     const original = conflictCategories.filter(name => items.some(item => item.types.includes(name)))
         .map(name => ({ name, count: items.filter(item => item.types.includes(name)).length }));
-    const model = [...new Set(items.map(item => item.model.modelType))].map(name => ({ name, count: items.filter(item => item.model.modelType === name).length }));
-    const agreement = [{ name: '一致', id: 'same', count: items.filter(item => item.model.status === 'conflict').length },
-        { name: '不一致', id: 'different', count: items.filter(item => item.model.status === 'no_conflict').length }];
+    const judged = items.filter(item => item.model.status !== 'unknown');
+    const model = [...new Set(judged.map(item => item.model.modelType))].map(name => ({ name, count: judged.filter(item => item.model.modelType === name).length }));
+    const agreement = [{ name: '一致', id: 'same', count: items.filter(item => item.agreement === 'same').length },
+        { name: '不一致', id: 'different', count: items.filter(item => item.agreement === 'different').length }];
     const distributionAxis = niceAxis(Math.max(1, ...original.map(row => row.count), ...model.map(row => row.count)));
     return _jsx(Modal, { title: "\u6807\u6CE8\u51B2\u7A81\u7EDF\u8BA1", size: "form", className: "dc-stats-dialog", onClose: onClose, children: _jsx("div", { className: "dc-stats-content", children: _jsxs("div", { className: "dc-stats-charts", children: [_jsx(StatisticChart, { title: "\u5DEE\u5F02\u7C7B\u578B", rows: original, action: "stat-category", axis: distributionAxis, onFilter: onFilter }), _jsx(StatisticChart, { title: "\u6A21\u578B\u5224\u65AD", rows: model, action: "stat-model", axis: distributionAxis, onFilter: onFilter }), _jsx(StatisticChart, { title: "\u7ED3\u8BBA\u4E00\u81F4\u6027", rows: agreement, action: "stat-agreement", axis: niceAxis(Math.max(1, ...agreement.map(row => row.count))), onFilter: onFilter })] }) }) });
 }

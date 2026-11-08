@@ -258,21 +258,13 @@ def test_mask_and_polygon_follow_the_explicit_source_size_scaling_policy(tmp_pat
         assert set(image.tobytes())=={0,255}
 
 
-def test_mask_clipping_retains_only_the_actual_in_frame_foreground(tmp_path):
-    from iad_core.dataset.registry import DatasetRegistry
-    from iad_core.storage.database import Database
-
+def test_mask_keeps_source_bounds_and_renders_only_the_actual_in_frame_foreground(tmp_path):
     db_path,dataset_id,_ = mask_dataset(tmp_path,points=[[-2,15],[8,25]])
     annotation, = sample_get({'sample_id':dataset_id+':part.png'},db_path)['annotations']
-    assert annotation['geometry_status']=='INVALID'
-    registry = DatasetRegistry(Database(db_path))
-    config = registry.get(dataset_id)
-    config.annotations.bbox_policy.out_of_bounds='clip'
-    registry.save(config)
+    assert annotation['bbox']==[-2,15,9,26]
+    assert annotation['geometry_status']=='VALID'
     dataset_scan({'dataset_id':dataset_id},db_path)
-    annotation, = sample_get({'sample_id':dataset_id+':part.png'},db_path)['annotations']
-    assert annotation['bbox']==[0,15,9,26]
-    assert annotation['geometry_status']=='CLIPPED'
+    assert sample_get({'sample_id':dataset_id+':part.png'},db_path)['annotations']==[annotation]
     with Image.open(annotation['mask_path']) as image:
         assert image.getpixel((0,18))==255
         assert image.getpixel((8,25))==255

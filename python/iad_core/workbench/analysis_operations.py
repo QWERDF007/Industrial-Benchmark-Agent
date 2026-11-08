@@ -5,6 +5,8 @@ from iad_core.workbench.job_snapshots import JobSnapshots
 
 
 def analysis_start(args, db_path):
+    if args['request'].get('analysis_kind') == 'consistency':
+        raise ValueError('数据一致性审核需要原生宿主，请通过 /api/iad/analysis/start 提交')
     return workbench(db_path).invoke_model(args.get('_model_execution'), lambda services:
         services.analysis_workflows.start(args['request'], model_name=args.get('model_name')))
 
@@ -39,6 +41,9 @@ def analysis_cancel(args, db_path):
 
 
 def analysis_retry(args, db_path):
+    state = JobSnapshots(Database(db_path)).snapshot(args['run_id'])
+    if state.analysis_kind == 'consistency':
+        raise ValueError('一致性作业须由原生宿主继续；历史作业仅支持读取，请创建新的检查')
     return workbench(db_path).invoke_model(args.get('_model_execution'),
         lambda services: services.analysis_workflows.retry(args['run_id']), args['run_id'])
 

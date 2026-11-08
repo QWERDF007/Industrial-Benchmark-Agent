@@ -147,10 +147,10 @@ class EvidenceImages:
         return views
 
     @staticmethod
-    def tiles(sample: Sample, bbox: List[int], padding: float) -> List[List[int]]:
-        if not (0 <= bbox[0] < bbox[2] <= sample.width and 0 <= bbox[1] < bbox[3] <= sample.height):
-            raise ValueError(f"Invalid original image region: {bbox}")
-        x1, y1, x2, y2 = padded_bbox(sample, bbox, padding)
+    def tiles(sample: Sample, bbox: List[int], padding: float, *, padding_pixels: int = 0) -> List[List[int]]:
+        x1, y1, x2, y2 = padded_bbox(sample, bbox, padding, padding_pixels=padding_pixels)
+        if x1 >= x2 or y1 >= y2:
+            return []
         axes = []
         for start, end in [(x1, x2), (y1, y2)]:
             distance = max(0, end - start - ROI_MAX_SIDE)

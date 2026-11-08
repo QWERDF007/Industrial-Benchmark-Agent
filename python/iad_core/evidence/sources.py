@@ -2,6 +2,7 @@ import hashlib
 import json
 from sqlite3 import Connection
 from typing import Optional
+from pydantic import Field
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.dataset.path_safety import AuthorizedDatasetPaths
@@ -9,7 +10,7 @@ from iad_core.evidence.images import file_sha256
 from iad_core.evidence.masks import MaskImages
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import AnnotationRepository, SampleRepository
-from iad_core.storage.models import Sample, Annotation
+from iad_core.storage.models import AnnotationAvailability, Sample, Annotation
 
 
 class SampleContent(AnalysisModel):
@@ -18,6 +19,7 @@ class SampleContent(AnalysisModel):
     annotations_sha256: str
     quality_status: Optional[str] = None
     quality_source: Optional[str] = None
+    annotation_availability: AnnotationAvailability = Field(default_factory=AnnotationAvailability)
 
     @property
     def fingerprint(self) -> str:
@@ -28,7 +30,8 @@ class SampleContent(AnalysisModel):
         return cls(sample_id=sample.sample_id, sha256=sha256,
             annotations_sha256=hashlib.sha256(json.dumps(
                 [a.model_dump(mode='json') for a in annotations], sort_keys=True).encode()).hexdigest(),
-            quality_status=sample.quality_status, quality_source=sample.quality_source)
+            quality_status=sample.quality_status, quality_source=sample.quality_source,
+            annotation_availability=sample.annotation_availability)
 
     @classmethod
     def capture(cls, db: Database, sample_id: str, *, paths: Optional[AuthorizedDatasetPaths] = None,

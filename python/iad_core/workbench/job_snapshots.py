@@ -81,7 +81,16 @@ class JobSnapshots:
             if not values['exploration_prompt'] and frozen.get('instruction'):
                 values['exploration_prompt'] = {'text': frozen['instruction']}
         if row['job_type'] == 'ANALYSIS_WORKFLOW' and values.get('analysis_kind') == 'consistency':
-            values['consistency_prompt'] = payload.get('request', {}).get('submission', {}).get('instruction')
+            request = payload['request']
+            values['consistency_prompt'] = (request['consistency_check']['instruction'] if 'consistency_check' in request
+                else request.get('submission', {}).get('instruction'))
+            if 'consistency_check' in request:
+                check = request['consistency_check']
+                values['consistency_check_version'] = check['schema_version']
+                profile = check['roles']['vision']['profile']
+                values['model_profile'] = profile
+                model = profile if profile is not None else check['model']
+                values['model_name'] = model['model_id'] if model else None
         current = payload.get('current_sample_id')
         samples = self.samples(values['dataset_id'], [error['sample_id'] for error in payload['errors']] + ([current] if current else []),connection=connection)
         values['current_sample'] = samples[current] if current else None

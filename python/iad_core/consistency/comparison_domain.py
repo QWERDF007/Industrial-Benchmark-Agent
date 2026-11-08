@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 from iad_core.consistency.annotation_models import AnnotationMasking, AnnotationMatchingConfig
 from iad_core.consistency.geometry import InstanceGeometry
+from iad_core.consistency.errors import ConsistencyError, ConsistencyErrorCode
 from iad_core.consistency.models import Relation
 from iad_core.storage.models import Annotation
 
@@ -16,6 +17,7 @@ class GeometryIssue:
     index: int | None
     reason: str
     source_errors: list[str] = field(default_factory=list)
+    code: ConsistencyErrorCode = 'ANNOTATION_UNREADABLE'
 
 
 @dataclass
@@ -56,7 +58,7 @@ class ComparisonDomain:
                 domain.issues.append(GeometryIssue(side_index, None, 'Imported annotation records are unreadable', side.errors))
                 domain.invalid[side_index] += len(side.errors)
             if len(side.annotations) > config.max_instances:
-                domain.issues.append(GeometryIssue(side_index, None, 'RESOURCE_LIMIT: instance count exceeds matching budget'))
+                domain.issues.append(GeometryIssue(side_index, None, 'instance count exceeds matching budget', code='RESOURCE_LIMIT'))
                 domain.invalid[side_index] += len(side.annotations)
                 invalid_ignore |= any(annotation.is_ignored for annotation in side.annotations)
                 continue
@@ -68,11 +70,12 @@ class ComparisonDomain:
                     geometry = geometry.in_frame(side,frame,config.max_roi_pixels)
                     size = geometry.pixels.size if geometry.pixels is not None else 0
                     if cached_pixels + size > config.max_cached_pixels:
-                        raise ValueError('RESOURCE_LIMIT: prepared annotations exceed matching budget')
+                        raise ConsistencyError('RESOURCE_LIMIT', 'Prepared annotations exceed matching budget')
                     cached_pixels += size
                     domain.sides[side_index][index] = geometry
                 except (ValueError, OSError) as error:
-                    domain.issues.append(GeometryIssue(side_index, index, str(error)))
+                    domain.issues.append(GeometryIssue(side_index, index, str(error),
+                        code=error.code if isinstance(error, ConsistencyError) else 'ANNOTATION_UNREADABLE'))
                     domain.invalid[side_index] += 1
                     invalid_ignore |= annotation.is_ignored
         if invalid_ignore:
@@ -90,7 +93,7 @@ class ComparisonDomain:
                     visible, record = geometry.exclude(ignores, config.max_roi_pixels)
                     size = visible.pixels.size if visible is not None and visible.pixels is not None else 0
                     if cached_pixels - previous_size + size > config.max_cached_pixels:
-                        raise ValueError('RESOURCE_LIMIT: masked annotations exceed the prepared pixel budget')
+                        raise ConsistencyError('RESOURCE_LIMIT', 'Masked annotations exceed the prepared pixel budget')
                     cached_pixels += size - previous_size
                     if record is not None:
                         domain.masking.append(record)
@@ -102,5 +105,6 @@ class ComparisonDomain:
                     del prepared[index]
                     cached_pixels -= previous_size
                     domain.invalid[side_index] += 1
-                    domain.issues.append(GeometryIssue(side_index, index, str(error)))
+                    domain.issues.append(GeometryIssue(side_index, index, str(error),
+                        code=error.code if isinstance(error, ConsistencyError) else 'ANNOTATION_UNREADABLE'))
         return domain

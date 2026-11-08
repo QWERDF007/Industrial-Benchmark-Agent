@@ -10,17 +10,26 @@ import {build} from 'esbuild';
 import {Builder, By, until} from 'selenium-webdriver';
 import firefox from 'selenium-webdriver/firefox.js';
 import {PythonBridge, createIadHttpHandler} from '../lib/server/index.js';
+import {Context} from '@deepseek-ai/cordis';
+import {NativeProviders} from '../lib/server/models/providers.js';
+import {ConsistencySessionHost} from '../lib/server/consistency/session-host.js';
+import {ConsistencyCheckScheduler} from '../lib/server/consistency/scheduler.js';
 
 const app=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 
 test('new consistency checks submit and retry without native randomUUID over HTTP', {timeout:45000}, async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-consistency-submission-'));
   const bridge=new PythonBridge({cwd:path.resolve(app,'../..'),dbPath:path.join(root,'test.db')});
+  const sessions=await ConsistencySessionHost.open(path.join(root,'sessions'));
+  const failures=[];
+  const scheduler=new ConsistencyCheckScheduler(bridge,sessions,new NativeProviders(() => new Context()),
+    async()=>{throw new Error('零候选不应进入模型审核');},failure=>failures.push(failure));
+  const removeRouting=bridge.useModelRouting(scheduler);
   let server,driver;
   t.after(async()=>{
-    if(driver)await driver.quit();
+    if(driver){t.diagnostic(JSON.stringify(await driver.executeScript('return window.renderErrors')));await fs.writeFile('/tmp/consistency-dsh-submission-browser.png',await driver.takeScreenshot(),'base64');await driver.quit();}
     if(server?.listening)await new Promise(resolve=>server.close(resolve));
-    bridge.destroy();await fs.rm(root,{recursive:true,force:true});
+    await scheduler.dispose();removeRouting();bridge.destroy();await sessions.dispose();await fs.rm(root,{recursive:true,force:true});
   });
   const bundle=await build({stdin:{contents:`
     import React from 'react';import {createRoot} from 'react-dom/client';
@@ -44,7 +53,7 @@ test('new consistency checks submit and retry without native randomUUID over HTT
     }
     if(req.url.startsWith('/api/iad'))return api(req,res);
     res.setHeader('Content-Type','text/html;charset=utf-8');
-    res.end('<!doctype html><meta charset="utf-8"><style>html,body,#root{height:100%;margin:0}</style><div id="root"></div><script>if(isSecureContext)Object.defineProperty(crypto,"randomUUID",{value:undefined});</script><script src="/browser.js"></script>');
+    res.end('<!doctype html><meta charset="utf-8"><style>html,body,#root{height:100%;margin:0}</style><div id="root"></div><script>window.renderErrors=[];addEventListener("error",event=>renderErrors.push(event.message));if(isSecureContext)Object.defineProperty(crypto,"randomUUID",{value:undefined});</script><script src="/browser.js"></script>');
   });
   const host=process.env.IAD_CONSISTENCY_BROWSER_HOST||'127.0.0.1';
   await new Promise(resolve=>server.listen(0,host,resolve));
@@ -64,6 +73,7 @@ for i,color in enumerate(['red','blue']):
 `,root]);
   const group=await bridge.execute('dataset_group_create',{name:'HTTP提交验收'});
   const dataset=await bridge.execute('dataset_import',{format:'labelme',group_id:group.group_id,name:'无重复图像',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')});
+  await bridge.execute('module_settings_save',{module:'consistency',expected_revision:0,settings:{mode:'exact'}});
   const options=new firefox.Options().addArguments('-headless','--remote-allow-system-access');
   if(process.env.FIREFOX_PATH)options.setBinary(process.env.FIREFOX_PATH);
   driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
@@ -87,5 +97,13 @@ for i,color in enumerate(['red','blue']):
   assert.deepEqual(submissions[1].dataset_ids,[dataset.dataset_id]);
   const jobs=await bridge.execute('analysis_list',{dataset_id:dataset.dataset_id,analysis_kind:'consistency'});
   assert.equal(jobs.jobs.length,1,'重试只创建一个实际作业');
-  await bridge.execute('analysis_cancel',{run_id:jobs.jobs[0].run_id});
+  await scheduler.whenIdle();
+  const finished=await bridge.execute('analysis_status',{run_id:jobs.jobs[0].run_id});
+  assert.equal(finished.status,'COMPLETED');assert.equal(finished.completed,2);
+  assert.equal(finished.consistency_check_version,1);assert.deepEqual(failures,[]);
+  await driver.wait(async()=>{
+    const rows=await driver.findElements(By.css(`[data-dc-row="${finished.run_id}"]`));
+    return rows.length&&(await rows[0].getText()).includes('已完成')&&await rows[0].findElement(By.css('.dc-total')).getText()==='0';
+  },10000,'新主图作业读取真实业务统计');
+  assert.equal((await driver.findElements(By.css('[data-dc="open-conflict"]'))).length,0,'零候选通过不出现在原始冲突网格');
 });

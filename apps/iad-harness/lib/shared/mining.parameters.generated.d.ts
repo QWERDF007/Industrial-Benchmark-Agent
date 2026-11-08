@@ -1,9 +1,13 @@
 export declare const miningParameters: {
     readonly knowledge_preset: {
-        readonly type: "array";
-        readonly items: {
-            readonly type: "string";
-        };
+        readonly oneOf: readonly [{
+            readonly type: "array";
+            readonly items: {
+                readonly type: "string";
+            };
+        }, {
+            readonly type: "null";
+        }];
         readonly description: "可选父知识版本引用；省略或空列表表示不使用预设，不隐式读取当前版本";
         readonly title: "Knowledge Preset";
     };

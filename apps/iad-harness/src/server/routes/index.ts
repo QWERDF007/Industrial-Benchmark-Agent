@@ -3,6 +3,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import { PythonBridge } from "../python-bridge/index.js";
 import { ImageHttpQueries } from '../images/http.js';
+import {ConsistencyHttpQueries} from '../consistency/http.js';
 
 function sendJson(res: ServerResponse, statusCode: number, data: unknown) {
   const body = JSON.stringify(data);
@@ -31,6 +32,7 @@ async function sendMedia(res: ServerResponse, info: { path: string; media_type: 
 
 export function createIadHttpHandler(bridge: PythonBridge) {
   const images = new ImageHttpQueries(bridge);
+  const consistency = new ConsistencyHttpQueries(bridge);
   return async function iadHttpHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
       const url = new URL(req.url || "/", "http://localhost");
@@ -55,6 +57,18 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         const data = await bridge.execute(operation, args);
         sendJson(res, 200, data);
       };
+      const anchorResult = pathname.match(/^\/api\/iad\/consistency\/checks\/([^/]+)\/anchors\/([^/]+)(?:\/(session\.jsonl|members|analysis|diagnostics))?$/);
+      if (anchorResult && method === 'GET') {
+        const run_id = decodeURIComponent(anchorResult[1]), anchor_id = decodeURIComponent(anchorResult[2]);
+        if (anchorResult[3] === 'session.jsonl') return await consistency.session(res, run_id, anchor_id);
+        return await call('consistency_agent_' + (anchorResult[3] || 'detail'), {run_id, anchor_id});
+      }
+      const check = pathname.match(/^\/api\/iad\/consistency\/checks\/([^/]+)\/(config|anchors|report|gallery|export\.jsonl)$/);
+      if (check && method === 'GET') {
+        const run_id = decodeURIComponent(check[1]);
+        if (check[2] === 'export.jsonl') return await consistency.export(res, run_id);
+        return await call('consistency_agent_' + (check[2] === 'config' ? 'snapshot' : check[2] === 'anchors' ? 'results' : check[2]), {...query, run_id});
+      }
       if (pathname === "/api/iad/images/settings" && method === "GET") return await call("feature_settings_view");
       if(pathname==='/api/iad/images/index/prepare' && method==='POST')return await call('image_index_prepare',body);
       if(pathname==='/api/iad/consistency/start' && method==='POST')return await call('consistency_start',body);
@@ -65,14 +79,12 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       if(pathname==='/api/iad/consistency/gallery' && method==='POST')return await call('consistency_gallery',body);
       if(pathname==='/api/iad/consistency/gallery/members' && method==='POST')return await call('consistency_gallery_members',body);
       if(pathname==='/api/iad/consistency/gallery/analysis' && method==='POST')return await call('consistency_group_analysis',body);
-      if(pathname==='/api/iad/consistency/gallery/analyze' && method==='POST')return await call('consistency_group_analyze',{request:body});
-      if(pathname==='/api/iad/consistency/model-batches/start' && method==='POST')return await call('consistency_model_start',{request:body});
       if (pathname === '/api/iad/analysis/start' && method === 'POST') return await call('analysis_start', {request:body});
       if (pathname === '/api/iad/analysis/jobs' && method === 'GET') return await call('analysis_list', query);
       const analysis = pathname.match(/^\/api\/iad\/analysis\/(status|node|results|cancel|retry|delete)\/([^/]+)$/);
       if (analysis && ((['status','node','results'].includes(analysis[1]) && method === 'GET') || (!['status','node','results'].includes(analysis[1]) && method === 'POST')))
         return await call('analysis_'+analysis[1], {run_id:decodeURIComponent(analysis[2])});
-      const modelBatch=pathname.match(/^\/api\/iad\/consistency\/model-batches\/([^/]+)(?:\/(cancel|retry))?$/);
+      const modelBatch=pathname.match(/^\/api\/iad\/consistency\/model-batches\/([^/]+)(?:\/(cancel))?$/);
       if(modelBatch && ((!modelBatch[2] && method==='GET') || (modelBatch[2] && method==='POST')))
         return await call('consistency_model_'+(modelBatch[2] || 'status'),{run_id:decodeURIComponent(modelBatch[1])});
       if(pathname==='/api/iad/consistency/context' && method==='POST')return await call('consistency_context',body);

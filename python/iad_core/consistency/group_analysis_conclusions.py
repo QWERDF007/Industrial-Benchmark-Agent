@@ -4,7 +4,8 @@ from iad_core.consistency.conflict_categories import CONFLICT_CATEGORY_DEFAULTS
 
 
 CONCLUSION_CATEGORIES = tuple(CONFLICT_CATEGORY_DEFAULTS['labelme'])
-CONCLUSION_CHOICES = (*CONCLUSION_CATEGORIES, '一致')
+EQUIVALENT_CONCLUSION = '一致'
+CONCLUSION_CHOICES = (*CONCLUSION_CATEGORIES, EQUIVALENT_CONCLUSION)
 
 
 def assertive_conclusion(value: str | None, verdict: str) -> str | None:
@@ -17,7 +18,7 @@ def assertive_conclusion(value: str | None, verdict: str) -> str | None:
         raise repairable_output_error('missing_consistency_conclusion',
             '已完成比较必须给出结论：MATERIAL从六类冲突中单选，EQUIVALENT只写一致。')
     descriptive_conclusion(value)
-    allowed = CONCLUSION_CATEGORIES if verdict == 'MATERIAL' else ('一致',)
+    allowed = CONCLUSION_CATEGORIES if verdict == 'MATERIAL' else (EQUIVALENT_CONCLUSION,)
     if value not in allowed:
         raise repairable_output_error('unsupported_consistency_conclusion',
             'conclusion和overall.text必须精确匹配一个允许值：' + '、'.join(allowed)

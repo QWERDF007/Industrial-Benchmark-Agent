@@ -1,10 +1,17 @@
 /* Generated from Python MiningStart by scripts/generate-contracts.js. */
 export const miningParameters = {
     "knowledge_preset": {
-        "type": "array",
-        "items": {
-            "type": "string"
-        },
+        "oneOf": [
+            {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            {
+                "type": "null"
+            }
+        ],
         "description": "可选父知识版本引用；省略或空列表表示不使用预设，不隐式读取当前版本",
         "title": "Knowledge Preset"
     },

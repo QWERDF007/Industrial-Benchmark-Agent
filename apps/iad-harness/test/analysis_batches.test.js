@@ -27,14 +27,6 @@ test('public HTTP runs frozen exploration and mining batches and persists criter
     if(images.some(image=>image.image_label==='UNKNOWN'))unknownStages.add(body.response_format.json_schema.name);
     let result;
     if(body.response_format.json_schema.name==='DirectionDraft')result={summary:'孔位方向',directions:[{title:'孔位关系',instruction:'联合比较孔位与光照',applies_to:'both',rationale:'本批可见孔位',evidence_ids:[images[0].evidence_id],limitations:[]}],limitations:[]};
-    else if(body.response_format.json_schema.name==='GroupAnalysisDraft'){
-      const scope=JSON.parse(prompt.split('冻结图组：')[1].split('\n请根据图像')[0]);
-      const references=Object.entries(scope.candidates).map(([candidate_id,item])=>({candidate_id,
-        comparison:{result_id:item.comparison.result_id,evidence_id:item.comparison.evidence_id}}));
-      result={overall:{verdict:'UNCERTAIN',text:'缺少标注对象对应依据',references},
-        assessments:references.map(ref=>({candidate_id:ref.candidate_id,verdict:'UNCERTAIN',categories:[],conclusion:'缺少标注对象对应依据',explanation:'保留比较限制',findings:[]})),
-        conclusions:[{text:'逐批核对实际图像与标签',references}],limitations:[]};
-    }
     else if(body.response_format.json_schema.name==='KnowledgeDiscoveryLinks'){
       const scope=JSON.parse(prompt.split('冻结视觉提取：').at(-1).split('\n请根据图像')[0]);
       result=Object.fromEntries(scope.discovery.areas.map((area,index)=>['area_'+index,
@@ -82,16 +74,6 @@ test('public HTTP runs frozen exploration and mining batches and persists criter
     const page=await get(`/knowledge/details?version_id=${job.knowledge_version_id}&review_status=rejected`);
     assert.equal(page.total,1);assert.deepEqual(page.items[0].review,review);
     assert.deepEqual((await get('/knowledge?version_id='+job.knowledge_version_id)).knowledge,original.knowledge);
-    let consistency=await post('/consistency/model-batches/start',{submission_id:randomUUID(),subjects:{kind:'samples',
-      sample_ids:[...normal.items,...defect.items].map(item=>item.sample_id)},batch_size:3});
-    const deadline=Date.now()+10000;
-    while(['PENDING','RUNNING'].includes(consistency.status)&&Date.now()<deadline){await delay(20);consistency=await get('/consistency/model-batches/'+consistency.run_id);}
-    assert.equal(consistency.status,'COMPLETED',JSON.stringify(consistency.errors));
-    assert.equal(consistency.completed,4);assert.equal(consistency.batch_runs.length,2);
-    for(const id of consistency.batch_runs){
-      const child=await get('/consistency/model-batches/'+id);
-      assert.equal(child.group_analysis.overall.verdict,'UNCERTAIN');
-    }
     const secondRoot=path.join(root,'second-folder');
     await fs.cp(root_dir,secondRoot,{recursive:true});
     const secondPreview=await post('/datasets/preview',{root_dir:secondRoot,rules});
@@ -117,10 +99,7 @@ test('public HTTP runs frozen exploration and mining batches and persists criter
       const snapshot=(await get('/knowledge?'+new URLSearchParams({version_id:result.knowledge_version_id}))).knowledge;
       assert.equal(snapshot.mining_prompt.instruction,miningPrompt.instruction);
     }
-    const checked=await terminal('analysis',await post('/analysis/start',{analysis_kind:'consistency',mode:'exact',dataset_ids:request.dataset_ids,batch_size:4}));
-    assert.equal(checked.completed,10);assert.ok(checked.program_batch_id);
-    assert.equal((await get('/consistency/runs/'+checked.program_batch_id)).status,'COMPLETED');
-    assert.ok(unknownStages.has('KnowledgeDraft')&&unknownStages.has('GroupAnalysisDraft'),'未分类图像保留UNKNOWN并参与知识与一致性全范围观察');
+    assert.ok(unknownStages.has('KnowledgeDraft'),'未分类图像保留UNKNOWN并参与知识全范围观察');
     const snapshot=results.snapshots[0], direction=snapshot.directions[0];
     const removal={dataset_id:snapshot.dataset_id,version_id:snapshot.version_id,direction_id:direction.direction_id};
     assert.deepEqual(await post('/exploration/directions/remove',removal),removal);

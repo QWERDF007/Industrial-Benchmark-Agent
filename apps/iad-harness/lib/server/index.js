@@ -17,7 +17,7 @@ import { DATASET_ANALYSIS_SKILL } from "./workbench-tools/skill.js";
 import { createKnowledgeTools } from "./knowledge/index.js";
 import { createExplorationTools, DIRECTION_EXPLORATION_SKILL } from "./exploration/index.js";
 import { createWorkbenchTools } from "./workbench-tools/index.js";
-import { WorkbenchModelRouting } from "./models/index.js";
+import * as consistencyRuntime from './consistency/runtime.js';
 import { NativeImageQueries, createImageTools } from './images/native.js';
 import { createConsistencyTools } from './consistency/index.js';
 import { AUDIT_DATA_CONSISTENCY_SKILL } from './consistency/skill.js';
@@ -34,16 +34,13 @@ export { createKnowledgeTools } from "./knowledge/index.js";
 export { createWorkbenchTools } from "./workbench-tools/index.js";
 export const name = "iad-harness";
 export const inject = ["tools", "systemPrompt", "skills", "attachments"];
-export function apply(ctx, config = {}) {
+export async function apply(ctx, config = {}) {
     // 1. Initialize PythonBridge singleton
     const bridge = new PythonBridge(config);
     ctx.effect(() => () => bridge.destroy());
     ctx.provide?.("iadPythonBridge", bridge);
     ctx.iadPythonBridge = bridge;
-    if (typeof ctx.inject === 'function')
-        ctx.inject(['llm', 'settings', 'credentials'], (scope) => {
-            scope.effect(() => bridge.useModelRouting(new WorkbenchModelRouting(scope)));
-        });
+    await ctx.plugin(consistencyRuntime, { bridge });
     // 2. Initialize shared CoreClient backed by PythonBridge
     coreClient.apply(ctx, { ...config, bridge });
     // 3. Register Typert Remote service for `ctx.remote.iad`

@@ -1,4 +1,4 @@
-import type { GalleryItem, GalleryMember, GalleryReference } from '../shared/domain.generated.js';
+import type { ConsistencyAnchorRun, GalleryItem, GalleryMember, GalleryReference } from '../shared/domain.generated.js';
 export interface ConflictCardItem {
     id: string;
     type: string;
@@ -15,13 +15,22 @@ export interface ConflictCardItem {
         modelType: string;
     };
     rawItem: GalleryItem;
+    checkId?: string;
+    agreement: 'same' | 'different' | null;
 }
+export type AnchorReviewReference = Pick<ConsistencyAnchorRun, 'job_id' | 'anchor_id'>;
+export type ConsistencyAnalysisReference = GalleryReference | AnchorReviewReference;
 export declare class ConsistencyView {
     static media(image: GalleryItem['anchor'], thumbnail?: boolean): string;
     static load(batchId: string, signal: AbortSignal): Promise<{
         queryId: string;
         items: ConflictCardItem[];
     }>;
-    static members(reference: GalleryReference, signal: AbortSignal): Promise<GalleryMember[]>;
+    static loadCheck(runId: string, signal: AbortSignal): Promise<{
+        queryId: string;
+        items: ConflictCardItem[];
+    }>;
+    private static cards;
+    static members(reference: ConsistencyAnalysisReference, signal: AbortSignal): Promise<GalleryMember[]>;
 }
 //# sourceMappingURL=consistency-view.d.ts.map

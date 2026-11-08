@@ -1,0 +1,187 @@
+import { createHash } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
+export class ConsistencyCheckScheduler {
+    bridge;
+    host;
+    providers;
+    review;
+    onError;
+    tasks = new Map();
+    constructor(bridge, host, providers, review, onError) {
+        this.bridge = bridge;
+        this.host = host;
+        this.providers = providers;
+        this.review = review;
+        this.onError = onError;
+    }
+    async execute(operation, args, signal, dispatch) {
+        if (operation === 'consistency_agent_session_export') {
+            const anchor = await dispatch('consistency_agent_anchor', { run_id: args.run_id, anchor_id: args.anchor_id }, signal);
+            if (!anchor.session_created)
+                throw new Error('主图会话尚未创建');
+            return { filename: anchor.session_id + '.jsonl', jsonl: await this.host.exportJsonl(anchor.session_id) };
+        }
+        if (operation === 'analysis_start' && args.request?.analysis_kind === 'consistency')
+            return this.start(args.request);
+        if (operation === 'analysis_cancel' || operation === 'analysis_retry') {
+            const node = await dispatch('analysis_node', { run_id: args.run_id }, signal);
+            if (node.request && Object.hasOwn(node.request, 'consistency_check'))
+                return operation === 'analysis_cancel' ? this.cancel(args.run_id) : this.resume(args.run_id);
+        }
+        return dispatch(operation, args, signal);
+    }
+    async start(request) {
+        const configuration = await this.bridge.execute('consistency_agent_configuration');
+        const roles = {
+            agent: await this.providers.freeze(configuration.settings.agent_model, configuration.settings.agent_limits, 'agent'),
+            vision: await this.providers.freeze(configuration.settings.model, configuration.model_limits, 'vision'),
+        };
+        const { created, ...job } = await this.bridge.execute('consistency_agent_start', { request, configuration, roles });
+        if (created && ['PENDING', 'RUNNING'].includes(job.status)) {
+            this.launch(job.run_id);
+        }
+        return job;
+    }
+    launch(runId) {
+        const controller = new AbortController();
+        const promise = this.run(runId, controller.signal).finally(() => this.tasks.delete(runId));
+        this.tasks.set(runId, { promise, controller });
+        void promise.catch(this.onError);
+    }
+    async run(runId, signal) {
+        const snapshot = await this.bridge.execute('consistency_agent_snapshot', { run_id: runId });
+        const { anchors } = await this.bridge.execute('consistency_agent_anchors', { run_id: runId });
+        const ready = [];
+        for (const anchor of anchors) {
+            if (signal.aborted)
+                break;
+            if (anchor.state === 'COMPLETED') {
+                if (anchor.trace_state !== 'CLOSED')
+                    await this.closeTrace(runId, anchor.anchor_id);
+                continue;
+            }
+            const identity = { run_id: runId, anchor_id: anchor.anchor_id, attempt: anchor.attempt };
+            try {
+                if (!anchor.session_created) {
+                    await this.host.create(anchor.session_id);
+                    await this.host.notice(anchor.session_id, '主图审核会话已创建', { job_id: runId, anchor_id: anchor.anchor_id });
+                    await this.bridge.execute('consistency_agent_session_created', identity);
+                }
+                ready.push(anchor);
+            }
+            catch (error) {
+                await this.failure(identity, error, signal);
+            }
+        }
+        let preparationError;
+        if (ready.length && !signal.aborted && snapshot.retrieval.mode === 'combined') {
+            try {
+                while (true) {
+                    const { preparation } = await this.bridge.execute('consistency_agent_prepare', { run_id: runId }, signal);
+                    if (!preparation || preparation.status === 'COMPLETED')
+                        break;
+                    await delay(250, undefined, { signal });
+                }
+            }
+            catch (error) {
+                preparationError = error;
+            }
+        }
+        for (const anchor of ready) {
+            if (signal.aborted)
+                break;
+            const identity = { run_id: runId, anchor_id: anchor.anchor_id, attempt: anchor.attempt };
+            try {
+                if (preparationError)
+                    throw preparationError;
+                const candidates = await this.bridge.execute('consistency_agent_retrieve', identity);
+                await this.host.notice(anchor.session_id, '主图候选检索已完成', { job_id: runId, anchor_id: anchor.anchor_id, retrieval: candidates });
+                if (candidates.candidates.length === 0) {
+                    await this.bridge.execute('consistency_agent_submit_empty', identity);
+                }
+                else {
+                    await this.review({ runId, anchorId: anchor.anchor_id, sessionId: anchor.session_id, snapshot, candidates, attempt: anchor.attempt, signal });
+                    const completed = await this.bridge.execute('consistency_agent_anchor', identity);
+                    if (completed.state !== 'COMPLETED')
+                        throw new Error('审核会话未提交主图结果');
+                }
+                await this.closeTrace(runId, anchor.anchor_id);
+            }
+            catch (error) {
+                await this.failure(identity, error, signal);
+            }
+        }
+        const node = await this.bridge.execute('analysis_node', { run_id: runId });
+        if (node.status === 'RUNNING')
+            await this.bridge.execute('consistency_agent_finish', { run_id: runId });
+    }
+    async failure(identity, error, signal) {
+        const current = await this.bridge.execute('consistency_agent_anchor', identity);
+        if (current.state === 'COMPLETED') {
+            await this.pendingTrace(identity.run_id, identity.anchor_id, error);
+        }
+        else if (!signal.aborted) {
+            const details = error instanceof Error && 'details' in error ? error.details : undefined;
+            const failed = await this.bridge.execute('consistency_agent_failure', { ...identity,
+                message: error instanceof Error ? error.message : String(error),
+                code: error instanceof Error && 'code' in error ? error.code : undefined,
+                source_run_id: details?.source_run_id, source_phase: details?.source_phase });
+            if (failed.session_created) {
+                try {
+                    await this.closeTrace(identity.run_id, identity.anchor_id);
+                }
+                catch (traceError) {
+                    await this.pendingTrace(identity.run_id, identity.anchor_id, traceError);
+                }
+            }
+        }
+    }
+    async closeTrace(runId, anchorId) {
+        const identity = { run_id: runId, anchor_id: anchorId };
+        const event = await this.bridge.execute('consistency_agent_trace_event', identity);
+        const submissionId = createHash('sha256').update(JSON.stringify([runId, anchorId, event.attempt, event.state, event.result])).digest('hex');
+        await this.host.notice(event.session_id, event.state === 'COMPLETED' ? '主图终稿已提交' : '主图执行失败', event, submissionId);
+        await this.bridge.execute('consistency_agent_trace_status', identity);
+    }
+    async pendingTrace(runId, anchorId, error) {
+        await this.bridge.execute('consistency_agent_trace_status', { run_id: runId, anchor_id: anchorId,
+            error: error instanceof Error ? error.message : String(error) });
+        this.onError(error);
+    }
+    async reconcile(runId) {
+        const { anchors } = await this.bridge.execute('consistency_agent_anchors', { run_id: runId });
+        for (const anchor of anchors) {
+            if (anchor.state === 'COMPLETED' && anchor.trace_state !== 'CLOSED')
+                await this.closeTrace(runId, anchor.anchor_id);
+        }
+    }
+    async cancel(runId) {
+        const task = this.tasks.get(runId);
+        await this.bridge.execute('consistency_agent_cancel', { run_id: runId });
+        task?.controller.abort();
+        await task?.promise;
+        return this.bridge.execute('analysis_status', { run_id: runId });
+    }
+    async resume(runId) {
+        if (this.tasks.has(runId))
+            return this.bridge.execute('analysis_status', { run_id: runId });
+        const node = await this.bridge.execute('analysis_node', { run_id: runId });
+        if (node.status === 'COMPLETED') {
+            await this.reconcile(runId);
+            return this.bridge.execute('analysis_status', { run_id: runId });
+        }
+        const job = await this.bridge.execute('consistency_agent_resume', { run_id: runId });
+        this.launch(runId);
+        return job;
+    }
+    async whenIdle() {
+        await Promise.all([...this.tasks.values()].map(task => task.promise));
+    }
+    async dispose() {
+        for (const [runId, task] of this.tasks) {
+            await this.bridge.execute('consistency_agent_interrupt', { run_id: runId });
+            task.controller.abort();
+        }
+        await this.whenIdle();
+    }
+}

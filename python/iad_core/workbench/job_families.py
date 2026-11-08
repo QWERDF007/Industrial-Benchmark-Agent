@@ -17,7 +17,10 @@ class JobFamilies:
         with nullcontext(connection) if connection is not None else self.db.connection() as conn:
             if connection is None:
                 conn.execute('BEGIN')
-            current = self.snapshots.snapshot(run_id, job_types, connection=conn).model_dump(exclude_computed_fields=True)
+            snapshot = self.snapshots.snapshot(run_id, job_types, connection=conn)
+            if 'request' not in snapshot.model_extra:
+                return snapshot
+            current = snapshot.model_dump(exclude_computed_fields=True)
             root = current if current['root_run_id']==run_id else self.snapshots.snapshot(
                 current['root_run_id'], job_types, connection=conn).model_dump(exclude_computed_fields=True)
             ids = [row[0] for row in conn.execute('''SELECT job_id FROM job_runs

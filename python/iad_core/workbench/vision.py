@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Generic, List, Optional, Type, TypeVar
 
 import httpx
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, computed_field
 from iad_core.evidence.images import PreparedImage, file_sha256
 from iad_core.advisory.output_validation import REPAIRABLE_OUTPUT
 from iad_core.workbench.calls import ModelCalls
@@ -24,6 +24,17 @@ class ModelCapacityError(ValueError):
 class TokenCapacity(BaseModel):
     count: int = Field(ge=0)
     max_model_len: int = Field(gt=0)
+
+
+class TokenBudget(BaseModel):
+    input_tokens: int = Field(ge=0)
+    context_tokens: int = Field(gt=0)
+    output_reserve: int = Field(gt=0)
+
+    @computed_field
+    @property
+    def fits(self) -> bool:
+        return self.input_tokens + self.output_reserve <= self.context_tokens
 
 
 @dataclass(frozen=True)
@@ -91,6 +102,18 @@ class VlmClient:
     def _headers(self) -> dict[str, str]:
         return {"Authorization": "Bearer " + self._api_key} if self._api_key else {}
 
+    def token_budget(self, body: dict, output_reserve: int, schema_name: str) -> TokenBudget:
+        root = self.endpoint.rsplit('/chat/completions', 1)[0].removesuffix('/v1')
+        request = self.client.build_request('POST', root + '/tokenize', headers=self._headers,
+            json={key: body[key] for key in ('model', 'messages', 'tools', 'tool_choice',
+                'parallel_tool_calls', 'chat_template_kwargs') if key in body})
+        with ModelCalls.exchange(self.client, request, 'tokenize', schema_name) as response:
+            response.raise_for_status()
+            capacity = TokenCapacity.model_validate(response.json())
+        return TokenBudget(input_tokens=capacity.count,
+            context_tokens=min(capacity.max_model_len, self.profile.context_tokens or capacity.max_model_len),
+            output_reserve=min(output_reserve, self.profile.max_output_tokens or output_reserve))
+
     def plan(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str,
              output_reserve: int = 2048, *, correction: Optional[ModelOutputError] = None) -> GenerationRequest[T]:
         if self.profile.capacity_mode is None:
@@ -121,18 +144,11 @@ class VlmClient:
         }
         if not self.within_limits(body, images):
             raise ModelCapacityError(f'完整图组请求体超过已配置上限 {self.profile.max_request_bytes} 字节；未拆组，请确认是否减少图像数量')
-        root = self.endpoint.rsplit('/chat/completions', 1)[0].removesuffix('/v1')
-        request = self.client.build_request('POST', root + '/tokenize', headers=self._headers,
-                                    json={key: body[key] for key in ('model', 'messages', 'chat_template_kwargs') if key in body})
-        with ModelCalls.exchange(self.client, request, 'tokenize', response_type.__name__) as response:
-            response.raise_for_status()
-            capacity = TokenCapacity.model_validate(response.json())
-            maximum = min(capacity.max_model_len, self.profile.context_tokens or capacity.max_model_len)
-            available = maximum - capacity.count
-            required = min(output_reserve, self.profile.max_output_tokens or output_reserve)
-            if available < required:
-                raise ModelCapacityError(f'完整图组输入 {capacity.count} token，上下文上限 {maximum}，输出至少预留 {required}；未拆组，请确认是否减少图像数量')
-            body['max_tokens'] = min(available, self.profile.max_output_tokens or available)
+        budget = self.token_budget(body, output_reserve, response_type.__name__)
+        if not budget.fits:
+            raise ModelCapacityError(f'完整图组输入 {budget.input_tokens} token，上下文上限 {budget.context_tokens}，输出至少预留 {budget.output_reserve}；未拆组，请确认是否减少图像数量')
+        available = budget.context_tokens - budget.input_tokens
+        body['max_tokens'] = min(available, self.profile.max_output_tokens or available)
         if not self.within_limits(body, images):
             raise ModelCapacityError(f'完整图组请求体超过已配置上限 {self.profile.max_request_bytes} 字节；未拆组，请确认是否减少图像数量')
         return GenerationRequest(response_type, body, tuple(images), output_reserve)

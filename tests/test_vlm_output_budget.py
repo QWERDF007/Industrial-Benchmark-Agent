@@ -13,7 +13,7 @@ from tests.knowledge_scenarios import frozen_observation_response, selected_grou
 
 @pytest.mark.parametrize('output_cap', [None, 32768])
 @pytest.mark.parametrize('initial_count', [20, 50])
-def test_selected_groups_use_actual_context_for_complete_knowledge(tmp_path, monkeypatch, output_cap, initial_count):
+def test_selected_groups_use_actual_context_for_complete_knowledge(tmp_path, monkeypatch, output_cap, initial_count, self_discovery_prompt):
     monkeypatch.setenv('IAD_VLM_MAX_VISUAL_INPUTS', str(initial_count))
     if output_cap is None:
         monkeypatch.delenv('LIVE_VLM_MAX_OUTPUT_TOKENS', raising=False)
@@ -52,12 +52,14 @@ def test_selected_groups_use_actual_context_for_complete_knowledge(tmp_path, mon
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        first = service.start(request=selected_group(db, dataset['dataset_id'], 'normal', ids[:initial_count]), kind='normal', model_name='configured-mllm')
+        first = service.start(request=selected_group(db, dataset['dataset_id'], 'normal', ids[:initial_count]),
+            mining_prompt=self_discovery_prompt, model_name='configured-mllm')
         service.wait(first['run_id'], 10)
         status = service.status(first['run_id'])
         assert status['status'] == 'COMPLETED', status['errors']
         v1 = status['knowledge_version_id']
-        second = service.start(request=selected_group(db, dataset['dataset_id'], 'normal', ids[initial_count:], [v1]), kind='normal', model_name='configured-mllm')
+        second = service.start(request=selected_group(db, dataset['dataset_id'], 'normal', ids[initial_count:], [v1]),
+            mining_prompt=self_discovery_prompt, model_name='configured-mllm')
         service.wait(second['run_id'], 10)
         status = service.status(second['run_id'])
         assert status['status'] == 'COMPLETED', status['errors']
@@ -70,7 +72,7 @@ def test_selected_groups_use_actual_context_for_complete_knowledge(tmp_path, mon
         service.close()
 
 
-def test_explicit_output_cap_preserves_truncated_response_and_rejects_changed_retry(knowledge_dataset, monkeypatch):
+def test_explicit_output_cap_preserves_truncated_response_and_rejects_changed_retry(knowledge_dataset, monkeypatch, self_discovery_prompt):
     monkeypatch.setenv('LIVE_VLM_MAX_OUTPUT_TOKENS', '8192')
     db, config = knowledge_dataset
     calls = []
@@ -85,7 +87,8 @@ def test_explicit_output_cap_preserves_truncated_response_and_rejects_changed_re
 
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
-        started = service.start(request=selected_group(db, config.dataset.id, 'normal'), kind='normal', model_name='configured-mllm')
+        started = service.start(request=selected_group(db, config.dataset.id, 'normal'),
+            mining_prompt=self_discovery_prompt, model_name='configured-mllm')
         service.wait(started['run_id'], 5)
         status = service.status(started['run_id'])
         assert status['status'] == 'FAILED'
@@ -107,7 +110,7 @@ def test_explicit_output_cap_preserves_truncated_response_and_rejects_changed_re
         changed.close()
 
 
-def test_fifty_selected_images_stay_together_with_and_without_a_preset(tmp_path, monkeypatch):
+def test_fifty_selected_images_stay_together_with_and_without_a_preset(tmp_path, monkeypatch, self_discovery_prompt):
     monkeypatch.delenv('IAD_VLM_MAX_VISUAL_INPUTS', raising=False)
     monkeypatch.delenv('LIVE_VLM_MAX_IMAGES', raising=False)
     images, labels = tmp_path / 'images', tmp_path / 'labels'
@@ -142,7 +145,8 @@ def test_fifty_selected_images_stay_together_with_and_without_a_preset(tmp_path,
     try:
         preset = []
         for group in (ids[:50], ids[50:]):
-            job = service.start(request=selected_group(db, dataset['dataset_id'], 'normal', group, preset), kind='normal', model_name='configured-mllm')
+            job = service.start(request=selected_group(db, dataset['dataset_id'], 'normal', group, preset),
+                mining_prompt=self_discovery_prompt, model_name='configured-mllm')
             service.wait(job['run_id'], 15)
             status = service.status(job['run_id'])
             assert status['status'] == 'COMPLETED', status['errors']
@@ -152,7 +156,7 @@ def test_fifty_selected_images_stay_together_with_and_without_a_preset(tmp_path,
         service.close()
 
 
-def test_capacity_failure_keeps_the_whole_group_until_user_selects_a_smaller_one(knowledge_dataset, monkeypatch):
+def test_capacity_failure_keeps_the_whole_group_until_user_selects_a_smaller_one(knowledge_dataset, monkeypatch, self_discovery_prompt):
     monkeypatch.setenv('LIVE_VLM_MAX_IMAGES', '2')
     db, config = knowledge_dataset
     generations = []
@@ -169,7 +173,7 @@ def test_capacity_failure_keeps_the_whole_group_until_user_selects_a_smaller_one
     service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
     try:
         group = selected_group(db, config.dataset.id, 'normal')
-        first = service.start(request=group, kind='normal', model_name='configured-mllm')
+        first = service.start(request=group, mining_prompt=self_discovery_prompt, model_name='configured-mllm')
         service.wait(first['run_id'], 10)
         failed = service.status(first['run_id'])
         assert failed['status'] == 'FAILED'
@@ -179,7 +183,7 @@ def test_capacity_failure_keeps_the_whole_group_until_user_selects_a_smaller_one
         assert generations == [], 'Do not try smaller groups after the complete group fails'
         assert '请确认是否减少图像数量' in failed['errors'][0]['message']
         smaller = selected_group(db, config.dataset.id, 'normal', group.images[:2])
-        accepted = service.start(request=smaller, kind='normal', model_name='configured-mllm')
+        accepted = service.start(request=smaller, mining_prompt=self_discovery_prompt, model_name='configured-mllm')
         service.wait(accepted['run_id'], 10)
         assert service.status(accepted['run_id'])['status'] == 'COMPLETED'
         assert service.status(first['run_id']) == failed

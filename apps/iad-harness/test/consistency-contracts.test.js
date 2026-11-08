@@ -1,16 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { defineTool } from '@deepseek-ai/dsh-tools';
+import { defineTool, validateArgs } from '@deepseek-ai/dsh-tools';
 import { annotationPolicyParameter } from '../lib/shared/dataset.parameters.generated.js';
 import { explorationParameters, explorationPresetParameters, directionAdoptionParameters } from '../lib/shared/exploration.parameters.generated.js';
 import { miningParameters } from '../lib/shared/mining.parameters.generated.js';
 import { knowledgeScopeParameters } from '../lib/shared/knowledge-scope.parameters.generated.js';
 import { knowledgeDetailParameters } from '../lib/shared/knowledge-detail.parameters.generated.js';
 import { knowledgeSourceParameters } from '../lib/shared/knowledge-source.parameters.generated.js';
-import {groupAnalysisStartParameters,galleryReferenceParameters,consistencyStartParameters, imageRetrieveParameters, imageIndexPrepareParameters,consistencyCompareParameters,consistencyEvidenceParameters,consistencyQueryParameters,consistencyGroupParameters,consistencyGroupMemberParameters} from '../lib/shared/consistency.parameters.generated.js';
+import {galleryReferenceParameters,consistencyStartParameters, imageRetrieveParameters, imageIndexPrepareParameters,consistencyCompareParameters,consistencyEvidenceParameters,consistencyQueryParameters,consistencyGroupParameters,consistencyGroupMemberParameters} from '../lib/shared/consistency.parameters.generated.js';
+import {anchorContextQueryParameters, anchorAssessmentInputParameters, anchorReviewSubmissionParameters, consistencyAgentStartParameters,consistencyCheckReferenceParameters,consistencyAnchorReferenceParameters,consistencyCheckResultsQueryParameters} from '../lib/shared/consistency-agent.parameters.generated.js';
 
 test('generated parameters register with the installed native SDK', () => {
-  for (const parameters of [groupAnalysisStartParameters,galleryReferenceParameters,knowledgeScopeParameters, miningParameters, explorationParameters,
+  for (const parameters of [consistencyAgentStartParameters,consistencyCheckReferenceParameters,consistencyAnchorReferenceParameters,consistencyCheckResultsQueryParameters,galleryReferenceParameters,knowledgeScopeParameters, miningParameters, explorationParameters,
     explorationPresetParameters, directionAdoptionParameters, knowledgeDetailParameters,
     knowledgeSourceParameters, consistencyStartParameters, imageRetrieveParameters, imageIndexPrepareParameters,consistencyCompareParameters,consistencyEvidenceParameters,consistencyQueryParameters,consistencyGroupParameters,consistencyGroupMemberParameters,
     {annotation_policy:annotationPolicyParameter}]) {
@@ -35,4 +36,25 @@ test('native consistency schemas preserve discriminated scopes and managed image
 test('consistency start leaves module defaults to the server',()=>{
   assert.equal('default' in consistencyStartParameters.mode,false);
   assert.equal('default' in consistencyStartParameters.min_similarity,false);
+});
+
+test('native decisions exclude derived conclusions and preserve nullable context queries', () => {
+  const input = {fingerprint: 'a'.repeat(64), observation_ids: ['observation-one'], assessment: {
+    candidate_id: 'candidate-one', verdict: 'UNCERTAIN', categories: [],
+    explanation: '两侧未提供标注，无法确认标注规则和覆盖范围', findings: [],
+  }};
+  assert.deepEqual(validateArgs(anchorAssessmentInputParameters, input), []);
+  const quoted = structuredClone(input);quoted.assessment.conclusion = 'null';
+  assert.notDeepEqual(validateArgs(anchorAssessmentInputParameters, quoted), []);
+  const literal = structuredClone(input);literal.assessment.conclusion = null;
+  assert.notDeepEqual(validateArgs(anchorAssessmentInputParameters, literal), []);
+  const internal = structuredClone(input);internal.assessment.categories = ['对应关系差异'];
+  assert.notDeepEqual(validateArgs(anchorAssessmentInputParameters, internal), []);
+  const invalid = structuredClone(input);invalid.assessment.candidate_id = null;
+  assert.notDeepEqual(validateArgs(anchorAssessmentInputParameters, invalid), []);
+  assert.deepEqual(validateArgs(anchorReviewSubmissionParameters, {fingerprint: input.fingerprint,
+    assessment_ids: [1], overall: {assessment_id: 1},
+    conclusions: ['两侧未提供标注，无法确认标注规则和覆盖范围'], limitations: []}), []);
+  assert.deepEqual(validateArgs(anchorContextQueryParameters, {candidate_id: null}), []);
+  assert.deepEqual(validateArgs(anchorContextQueryParameters, {}), []);
 });

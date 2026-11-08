@@ -32,7 +32,14 @@ export const annotationPolicyParameter = {
     "additionalProperties": false,
     "properties": {
         "policy_id": {
-            "type": "string",
+            "oneOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
             "title": "Policy Id"
         },
         "annotation_role": {

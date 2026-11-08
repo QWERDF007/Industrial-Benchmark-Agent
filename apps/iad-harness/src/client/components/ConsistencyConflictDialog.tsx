@@ -1,9 +1,9 @@
 import {v4 as uuid} from 'uuid';
 import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import type {EvidenceBundle,GalleryMember,GalleryReference,ConsistencyReviewContext,ConsistencyReviewSubmission} from '../../shared/domain.generated.js';
+import type {EvidenceBundle,GalleryMember,ConsistencyReviewContext,ConsistencyReviewSubmission} from '../../shared/domain.generated.js';
 import {datasetImageAnnotations} from '../dataset-image-annotations.js';
 import {useDatasetCatalog} from '../useDatasetCatalog.js';
-import {ConsistencyView,type ConflictCardItem} from '../consistency-view.js';
+import {ConsistencyView,type ConflictCardItem,type ConsistencyAnalysisReference} from '../consistency-view.js';
 import {useGroupAnalysis} from '../useGroupAnalysis.js';
 import {useResource} from '../useResource.js';
 import {message,request} from '../api.js';
@@ -37,9 +37,9 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
   const [reviewDecision, setReviewDecision] = useState<'pending' | 'confirmed' | 'rejected'>('pending');
   const [reviewNote, setReviewNote] = useState<string>('');
   const [zoomItem, setZoomItem] = useState<FullscreenViewerItem | null>(null);
-  const groupReference=useMemo<GalleryReference|null>(()=>activeQueryId ? {
+  const groupReference=useMemo<ConsistencyAnalysisReference|null>(()=>currentConflict.checkId ? {job_id:currentConflict.checkId,anchor_id:currentConflict.rawItem.group_id} : activeQueryId ? {
     query_id:activeQueryId,kind:'conflicts',group_id:currentConflict.rawItem.group_id,facts_state:currentConflict.rawItem.facts_state
-  }:null,[currentConflict.rawItem.group_id,currentConflict.rawItem.facts_state,activeQueryId]);
+  }:null,[currentConflict.checkId,currentConflict.rawItem.group_id,currentConflict.rawItem.facts_state,activeQueryId]);
   const groupAnalysis=useGroupAnalysis(groupReference);
   useEffect(()=>{
     const controller=new AbortController();setConflictMembers([]);setMembersError('');setCandidateIndex(0);

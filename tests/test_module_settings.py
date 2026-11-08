@@ -6,7 +6,9 @@ def test_module_settings_persist_separately_and_reject_stale_writes(tmp_path):
     database = str(tmp_path / 'modules.db')
     initial = module_settings_get({'module': 'consistency'}, database)
     assert initial['revision'] == 0
-    assert initial['settings'] == {'model': None, 'mode': 'combined', 'min_similarity': .95}
+    assert initial['settings'] == {'model': None, 'agent_model': None, 'mode': 'combined', 'min_similarity': .98,
+        'max_exact_candidates': 5, 'max_similar_candidates': 10,
+        'agent_limits': {'context_tokens': None, 'max_output_tokens': None, 'request_parameters': {}, 'generation_timeout_seconds': None}}
     saved = module_settings_save({'module': 'consistency', 'expected_revision': 0,
         'settings': {'model': {'provider_id': 'vision', 'model_id': 'v2'}, 'mode': 'exact', 'min_similarity': .97}}, database)
     assert saved['revision'] == 1
@@ -47,5 +49,82 @@ def test_saving_one_field_preserves_other_module_settings(tmp_path):
         'settings': {'min_similarity': .98}}, database)
     assert patch['settings'] == {'min_similarity': .98}
     changed = module_settings_save(patch, database)
-    assert changed['settings'] == {'model': {'provider_id': 'vision', 'model_id': 'v2'}, 'mode': 'exact', 'min_similarity': .98}
+    assert changed['settings'] == {'model': {'provider_id': 'vision', 'model_id': 'v2'}, 'agent_model': None,
+        'mode': 'exact', 'min_similarity': .98, 'max_exact_candidates': 5, 'max_similar_candidates': 10,
+        'agent_limits': {'context_tokens': None, 'max_output_tokens': None, 'request_parameters': {}, 'generation_timeout_seconds': None}}
     assert module_settings_get({'module': 'consistency'}, database) == changed
+
+
+def test_consistency_roles_and_candidate_limits_persist_without_leaking_into_retrieval(tmp_path):
+    from iad_core.workbench.module_settings import ModuleSettings
+    from iad_core.storage.database import Database
+    from iad_core.consistency.models import ConsistencyStart
+
+    store = ModuleSettings(Database(str(tmp_path / 'roles.db')))
+    saved = store.save({'module': 'consistency', 'expected_revision': 0, 'settings': {
+        'agent_model': {'provider_id': 'agent', 'model_id': 'planner'},
+        'model': {'provider_id': 'vision', 'model_id': 'observer'},
+        'max_exact_candidates': 3, 'max_similar_candidates': 7, 'min_similarity': .90}})
+    assert store.read('consistency') == saved
+    assert saved.settings.agent_model.provider_id == 'agent'
+    assert saved.settings.model.provider_id == 'vision'
+    assert saved.settings.max_exact_candidates == 3
+    assert saved.settings.max_similar_candidates == 7
+    request = store.consistency_request({'subjects': {'kind': 'all_registered'}, 'request_id': 'retrieval'})
+    parsed = ConsistencyStart.model_validate(request)
+    assert parsed.min_similarity == .90
+    assert not {'agent_model', 'model', 'max_exact_candidates', 'max_similar_candidates'} & request.keys()
+
+
+@pytest.mark.parametrize('field', ['max_exact_candidates', 'max_similar_candidates'])
+@pytest.mark.parametrize('invalid', [0, -1, 1.5, True, '3', None])
+def test_candidate_limits_reject_invalid_values_without_changing_settings(tmp_path, field, invalid):
+    from iad_core.workbench.module_settings import ModuleSettings
+    from iad_core.storage.database import Database
+    store = ModuleSettings(Database(str(tmp_path / 'limits.db')))
+    saved = store.save({'module': 'consistency', 'expected_revision': 0,
+        'settings': {'max_exact_candidates': 3, 'max_similar_candidates': 7}})
+    with pytest.raises(ValueError):
+        store.save({'module': 'consistency', 'expected_revision': 1, 'settings': {field: invalid}})
+    assert store.read('consistency') == saved
+
+
+def test_legacy_consistency_settings_preserve_threshold_and_only_supply_missing_defaults(tmp_path):
+    from iad_core.workbench.module_settings import ModuleSettings
+    from iad_core.storage.database import Database
+    database = Database(str(tmp_path / 'legacy.db'))
+    with database.connection() as conn:
+        conn.execute('INSERT INTO workbench_module_settings(module,revision,settings_json) VALUES(?,?,?)',
+            ('consistency', 4, '{"model":null,"mode":"combined","min_similarity":0.90}'))
+    snapshot = ModuleSettings(database).read('consistency')
+    assert snapshot.revision == 4
+    assert snapshot.settings.min_similarity == .90
+    assert snapshot.settings.max_exact_candidates == 5
+    assert snapshot.settings.max_similar_candidates == 10
+    assert snapshot.settings.agent_model is None
+def test_agent_generation_limits_are_independent_of_visual_capacity_settings(dataset):
+    from iad_core.workbench.model_settings import WorkbenchModels
+    from iad_core.workbench.module_settings import ModuleSettings
+    from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+    from iad_core.workbench.runtime import WorkbenchRuntime
+
+    database, _, _ = dataset
+    WorkbenchModels(database).save({'expected_revision': 0, 'selection': {'provider_id': 'visual', 'model_id': 'image',
+        'limits': {'capacity_mode': 'vllm_tokenize', 'max_visual_inputs': 4,
+            'request_parameters': {'response_format': {'type': 'json_object'}}}}})
+    modules = ModuleSettings(database)
+    modules.save({'module': 'consistency', 'expected_revision': 0, 'settings': {'agent_limits': {
+        'context_tokens': 4096, 'max_output_tokens': 512, 'generation_timeout_seconds': 30,
+        'request_parameters': {'temperature': .6}}}})
+    runtime = WorkbenchRuntime(database)
+    try:
+        configuration = ConsistencyAgentJobs(runtime).configuration()
+        assert configuration.settings.agent_limits.context_tokens == 4096
+        assert configuration.settings.agent_limits.max_output_tokens == 512
+        assert configuration.settings.agent_limits.request_parameters == {'temperature': .6}
+        assert configuration.model_limits.request_parameters == {'response_format': {'type': 'json_object'}}
+        assert configuration.model_limits.max_visual_inputs == 4
+        with pytest.raises(ValueError):
+            modules.save({'module': 'consistency', 'expected_revision': 1, 'settings': {'agent_limits': {'max_visual_inputs': 2}}})
+    finally:
+        runtime.close()

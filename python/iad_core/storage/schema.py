@@ -70,6 +70,8 @@ def initialize_schema(conn: Connection) -> bool:
     )
     """)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_task_id ON samples(task_id)")
+    if 'annotation_availability_json' not in {row[1] for row in cursor.execute('PRAGMA table_info(samples)')}:
+        cursor.execute("ALTER TABLE samples ADD COLUMN annotation_availability_json TEXT NOT NULL DEFAULT '{}'")
     if 'source_fingerprint' not in {row[1] for row in cursor.execute('PRAGMA table_info(samples)')}:
         cursor.execute('ALTER TABLE samples ADD COLUMN source_fingerprint TEXT')
     if 'is_excluded' not in {row[1] for row in cursor.execute('PRAGMA table_info(samples)')}:

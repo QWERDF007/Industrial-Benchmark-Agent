@@ -27,7 +27,6 @@ export const ALLOWED_TOOL_SURFACE = [
   "dataset_rescan",
   "dataset_archive_inspect",
   "dataset_report",
-  'dataset_report_start', 'dataset_report_get', 'dataset_report_status', 'dataset_report_list', 'dataset_report_export',
   "model_audit_start",
   "model_audit_status",
   "model_audit_cancel",
@@ -61,8 +60,8 @@ export const ALLOWED_TOOL_SURFACE = [
   // Vision & Mining
   "task_inspect",
   "image_retrieve",
-  'image_index_prepare','consistency_start','consistency_status','consistency_cancel','consistency_delete','consistency_retry',
-  'consistency_group_analyze','consistency_group_analysis','consistency_query','consistency_report','consistency_groups','consistency_group_members','consistency_compare',
+  'image_index_prepare','consistency_start','consistency_status','consistency_cancel','consistency_retry',
+  'consistency_check_results','consistency_check_result','consistency_check_start','consistency_check_status','consistency_check_cancel','consistency_check_retry','consistency_group_analysis','consistency_query','consistency_report','consistency_groups','consistency_group_members','consistency_compare',
   'consistency_context','consistency_evidence','consistency_evidence_media','consistency_evidence_export',
   "duplicate_audit",
   "candidate_mine",

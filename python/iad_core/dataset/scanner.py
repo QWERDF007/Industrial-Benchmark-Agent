@@ -2,6 +2,7 @@ import logging
 import io
 import os
 import hashlib
+import math
 from pathlib import Path
 from typing import Optional, List
 from collections import defaultdict
@@ -15,6 +16,7 @@ from iad_core.storage.models import (
     Annotation,
     ImportIssue,
     GeometryStatus,
+    AnnotationAvailability,
 )
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import AnnotationRepository
@@ -94,8 +96,9 @@ def scan_dataset(
                     INSERT INTO samples (
                         sample_id, task_id, dataset_id, image_path, relative_path,
                         data_origin, physical_sample_id, capture_sequence_id,
-                        batch_id, station, camera, width, height, quality_status, quality_source, source_fingerprint, is_excluded
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        batch_id, station, camera, width, height, quality_status, quality_source, source_fingerprint,
+                        annotation_availability_json, is_excluded
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                     ON CONFLICT(dataset_id, relative_path) DO UPDATE SET
                         task_id = excluded.task_id,
                         image_path = excluded.image_path,
@@ -110,6 +113,7 @@ def scan_dataset(
                         quality_status = excluded.quality_status,
                         quality_source = excluded.quality_source,
                         source_fingerprint = excluded.source_fingerprint,
+                        annotation_availability_json = excluded.annotation_availability_json,
                         updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
                 """, [
                     (
@@ -120,6 +124,7 @@ def scan_dataset(
                         s.quality_status.value if hasattr(s.quality_status, "value") else str(s.quality_status),
                         s.quality_source,
                         SampleContent.describe(s, by_sample[s.sample_id], source_hashes[s.sample_id]).fingerprint,
+                        s.annotation_availability.model_dump_json(),
                     )
                     for s in sample_batch
                 ])
@@ -200,7 +205,9 @@ def scan_dataset(
             sample_batch.append(sample)
 
             try:
-                raw_anns = adapter.load_annotations(raw_img, width, height)
+                document = adapter.load_annotations(raw_img, width, height)
+                sample.annotation_availability = document.availability
+                raw_anns = document.annotations
             except Exception as e:
                 logger.error(f"Failed to load annotations for {raw_img.relative_path}: {e}")
                 issue_batch.append(
@@ -214,6 +221,7 @@ def scan_dataset(
                     )
                 )
                 total_issues += 1
+                sample.annotation_availability = AnnotationAvailability(status='UNREADABLE')
                 raw_anns = []
 
             for ann_idx, raw_ann in enumerate(raw_anns):
@@ -273,28 +281,12 @@ def scan_dataset(
 
                 if raw_ann.bbox and geometry_status != GeometryStatus.INVALID:
                     xmin, ymin, xmax, ymax = raw_ann.bbox
-                    if xmin < 0 or ymin < 0 or xmax > width or ymax > height:
-                        issue_batch.append(
-                            ImportIssue(
-                                task_id=config.task.task_id,
-                                dataset_id=config.dataset.id,
-                                sample_id=sample_id,
-                                issue_type="INVALID_BBOX",
-                                severity="WARNING" if bbox_policy.out_of_bounds == "clip" else "ERROR",
-                                message=f"BBox out of bounds: [{xmin}, {ymin}, {xmax}, {ymax}] for image size {width}x{height}",
-                            )
-                        )
+                    if not (all(math.isfinite(value) for value in raw_ann.bbox) and xmin < xmax and ymin < ymax):
+                        geometry_status = GeometryStatus.INVALID
+                        issue_batch.append(ImportIssue(task_id=config.task.task_id, dataset_id=config.dataset.id,
+                            sample_id=sample_id, issue_type="INVALID_BBOX", severity="ERROR",
+                            message=f"BBox requires finite coordinates and positive area: {raw_ann.bbox}"))
                         total_issues += 1
-                        if bbox_policy.out_of_bounds == "clip":
-                            raw_ann.bbox = [
-                                max(0.0, min(float(width), xmin)),
-                                max(0.0, min(float(height), ymin)),
-                                max(0.0, min(float(width), xmax)),
-                                max(0.0, min(float(height), ymax)),
-                            ]
-                            geometry_status = GeometryStatus.CLIPPED
-                        else:
-                            geometry_status = GeometryStatus.INVALID
 
                 mask_path, mask_sha256 = MaskImages(db_path).store(mask_png) if mask_png else (None, None)
                 annotation = Annotation(

@@ -32,6 +32,8 @@ class RetrievalVerifier:
     def verify(self, scope: FrozenScope, pixels: PixelContent, query_id: str | None,
                candidates: dict[str, list[PixelIndexEntry]], origins: dict[str, list[RetrievalOrigin]],
                *, checkpoint: Callable[[],None] | None = None, resources: ImageResources | None = None) -> VerifiedCandidates:
+        if not candidates:
+            return VerifiedCandidates({}, CoverageCount(total=0), CoverageCount(total=0))
         samples, annotations = {}, {}
         with self.db.connection() as connection:
             connection.execute('BEGIN')

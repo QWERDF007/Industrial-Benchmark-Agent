@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {WorkbenchModelRouting} from '../lib/server/models/index.js';
 
 for (const [operation,query] of Object.entries({analysis_retry:'analysis_node',direction_exploration_retry:'direction_exploration_status',
-  knowledge_retry:'knowledge_status',audit_retry:'audit_status',consistency_model_retry:'consistency_model_status'})) {
+  knowledge_retry:'knowledge_status',audit_retry:'audit_status'})) {
   test(`${operation} uses the frozen model profile exposed by the job view`,async()=>{
     const profile={endpoint:'http://frozen.example/v1/chat/completions',provider_id:'original-provider',provider_name:'原模型',
       model_id:'original-model',credential_ref:'IAD_FROZEN_TEST_KEY',api:'openai-completions',capacity_mode:'vllm_tokenize',

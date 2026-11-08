@@ -8,6 +8,7 @@ from PIL import Image, ImageDraw
 from iad_core.evidence.masks import ImageDimensions, MaskImages
 from iad_core.storage.models import Annotation
 from iad_core.consistency.annotation_models import AnnotationMasking
+from iad_core.consistency.errors import ConsistencyError
 
 
 def bbox_iou(left, right) -> float:
@@ -46,23 +47,22 @@ class InstanceGeometry:
         elif polygon is not None:
             if len(polygon) < 3 or any(len(p) != 2 or not all(math.isfinite(v) for v in p) for p in polygon):
                 raise ValueError('Polygon must have at least three finite points')
-            if any(not (0 <= x <= sample.width and 0 <= y <= sample.height) for x,y in polygon):
-                raise ValueError('Polygon coordinates are outside the original image')
             bounds = (min(p[0] for p in polygon), min(p[1] for p in polygon),
-                min(sample.width,max(p[0] for p in polygon)+1), min(sample.height,max(p[1] for p in polygon)+1))
+                max(p[0] for p in polygon)+1, max(p[1] for p in polygon)+1)
         else:
             bounds = annotation.bbox
         if bounds is None or len(bounds) != 4 or not all(math.isfinite(v) for v in bounds):
             raise ValueError('Region requires finite xyxy coordinates')
         x1,y1,x2,y2 = bounds
-        if not (0 <= x1 < x2 <= sample.width and 0 <= y1 < y2 <= sample.height):
-            raise ValueError('Region coordinates are outside the original image')
+        if x1 >= x2 or y1 >= y2:
+            raise ValueError('Region requires positive area')
         pixels = None
         origin = (math.floor(x1), math.floor(y1))
         if mask is not None or polygon is not None:
-            roi = (*origin, math.ceil(x2), math.ceil(y2))
+            origin = (max(0, origin[0]), max(0, origin[1]))
+            roi = (*origin, min(sample.width, math.ceil(x2)), min(sample.height, math.ceil(y2)))
             if (roi[2]-roi[0])*(roi[3]-roi[1]) > max_roi_pixels:
-                raise ValueError('RESOURCE_LIMIT: annotation ROI exceeds the configured pixel budget')
+                raise ConsistencyError('RESOURCE_LIMIT', 'Annotation ROI exceeds the configured pixel budget')
             if mask is not None:
                 raster = mask.crop(roi)
                 mask.close()
@@ -92,7 +92,7 @@ class InstanceGeometry:
         if self.pixels is not None:
             width,height=math.ceil(bounds[2])-origin[0],math.ceil(bounds[3])-origin[1]
             if width*height>max_roi_pixels:
-                raise ValueError('RESOURCE_LIMIT: relative annotation ROI exceeds the configured pixel budget')
+                raise ConsistencyError('RESOURCE_LIMIT', 'Relative annotation ROI exceeds the configured pixel budget')
             pixels=np.asarray(Image.fromarray(self.pixels).resize((width,height),Image.Resampling.NEAREST))
             pixels.setflags(write=False)
         return InstanceGeometry(self.annotation,bounds,pixels,origin,self.masked_domain)
@@ -133,7 +133,7 @@ class InstanceGeometry:
             return self,None
         bounds = (math.floor(self.bounds[0]),math.floor(self.bounds[1]),math.ceil(self.bounds[2]),math.ceil(self.bounds[3]))
         if (bounds[2]-bounds[0])*(bounds[3]-bounds[1])>max_roi_pixels:
-            raise ValueError('RESOURCE_LIMIT: ignored-region comparison exceeds the ROI budget')
+            raise ConsistencyError('RESOURCE_LIMIT', 'Ignored-region comparison exceeds the ROI budget')
         original = self.raster(bounds)
         excluded = np.zeros_like(original)
         applied = []

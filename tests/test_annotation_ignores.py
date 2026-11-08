@@ -16,6 +16,7 @@ from iad_core.consistency.annotation_models import AnnotationMatchingConfig
 def side(identity, annotations):
     return AnnotationSet(sample_id=identity, dataset_id=identity, width=40, height=30,
         quality_status='PASS', quality_source='source:OK', annotations=annotations,
+        availability={'status': 'VALID_NONEMPTY' if annotations else 'VALID_EMPTY', 'origin': 'FILE', 'source': 'fixture.json'},
         policy=AnnotationPolicy(policy_id='surface', annotation_role='REFERENCE', annotation_coverage='EXHAUSTIVE'))
 
 
@@ -99,7 +100,7 @@ def test_masked_bbox_preparation_respects_the_shared_prepared_pixel_budget():
         side('left', [ignore]), side('right', [defect]), relation='EXACT')
     assert result.status == 'PARTIAL' and result.invalid_right == 1
     assert not result.confirmed_conflict
-    assert any(difference.type == 'ANNOTATION_UNREADABLE' and 'RESOURCE_LIMIT' in difference.facts['reason'] for difference in result.differences)
+    assert any(difference.type == 'ANNOTATION_UNREADABLE' and difference.facts['code'] == 'RESOURCE_LIMIT' for difference in result.differences)
 
 
 @pytest.mark.parametrize('kind', ['polygon', 'mask'])

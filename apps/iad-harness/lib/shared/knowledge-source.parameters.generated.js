@@ -1,7 +1,14 @@
 /* Generated from Python KnowledgeSourceQuery by scripts/generate-contracts.js. */
 export const knowledgeSourceParameters = {
     "recheck_from_version": {
-        "type": "string",
+        "oneOf": [
+            {
+                "type": "string"
+            },
+            {
+                "type": "null"
+            }
+        ],
         "description": "仅查询所选版本中判据修订后尚待视觉重核验的历史合格来源",
         "title": "Recheck From Version"
     },
@@ -12,7 +19,14 @@ export const knowledgeSourceParameters = {
         "default": false
     },
     "scope_run_id": {
-        "type": "string",
+        "oneOf": [
+            {
+                "type": "string"
+            },
+            {
+                "type": "null"
+            }
+        ],
         "title": "Scope Run Id"
     },
     "dataset_id": {
@@ -21,19 +35,40 @@ export const knowledgeSourceParameters = {
         "required": true
     },
     "kind": {
-        "type": "string",
-        "enum": [
-            "normal",
-            "defect"
+        "oneOf": [
+            {
+                "type": "string",
+                "enum": [
+                    "normal",
+                    "defect"
+                ]
+            },
+            {
+                "type": "null"
+            }
         ],
         "title": "Kind"
     },
     "normal_version_id": {
-        "type": "string",
+        "oneOf": [
+            {
+                "type": "string"
+            },
+            {
+                "type": "null"
+            }
+        ],
         "title": "Normal Version Id"
     },
     "uncovered_from_version": {
-        "type": "string",
+        "oneOf": [
+            {
+                "type": "string"
+            },
+            {
+                "type": "null"
+            }
+        ],
         "description": "仅查询指定版本语义链尚未观察的新来源；已变更旧来源单列待重核验",
         "title": "Uncovered From Version"
     },

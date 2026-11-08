@@ -11,7 +11,7 @@ from iad_core.consistency.batch_repository import BatchRepository
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.job_models import BatchFailure,BatchPlan,BatchStep,ConsistencyBatch,ConsistencyBatchList,NoWork,Started,StartResult
 from iad_core.consistency.job_worker import ConsistencyWorker
-from iad_core.consistency.models import ConsistencyCoverage,ConsistencyStart,CoverageCount,ImageIndexPrepare
+from iad_core.consistency.models import ConsistencyCoverage,ConsistencyScopesSnapshot,ConsistencyStart,CoverageCount,ImageIndexPrepare
 from iad_core.consistency.scopes import ConsistencyScopes
 from iad_core.feature.profiles import ImageEncoderConfig,ImageEncoders
 from iad_core.duplicate.index import PixelIndex
@@ -72,17 +72,34 @@ class ConsistencyJobs:
             scopes=ConsistencyScopes(self.db).freeze(request.corpus_scope,request.corpus_scope)
             PixelIndex(self.db).assert_indexed(sample.sample_id for sample in scopes.corpus.samples)
             encoder=self.encoder(request.profile_id) if scopes.corpus.samples else None
-            steps=[]
-            for dataset_id in scopes.corpus.dataset_ids:
-                selected=[sample for sample in scopes.corpus.samples if sample.dataset_id==dataset_id]
-                if selected:steps.append(BatchStep(dataset_id=dataset_id,task_id=selected[0].task_id,
-                    sample_ids=[sample.sample_id for sample in selected],kind='IMAGE_INDEX'))
-            identity='batch_'+uuid4().hex
-            plan=self.repository.save(BatchPlan(batch_id=identity,request=request,fingerprint=fingerprint,kind='index',scopes=scopes,
-                encoder=encoder,selected_ids=[sample.sample_id for sample in scopes.corpus.samples],steps=steps,
-                created_at=datetime.now(timezone.utc),root_batch_id=identity))
-            self._advance(plan.batch_id)
-            return self._start_result(plan)
+            return self._prepare(request,fingerprint,scopes,encoder)
+
+    def prepare_frozen(self,scopes: ConsistencyScopesSnapshot,encoder: ImageEncoderConfig,*,request_id: str) -> StartResult:
+        request=ImageIndexPrepare(corpus_scope=scopes.corpus.selector,profile_id=encoder.profile.profile_id,request_id=request_id)
+        fingerprint=hashlib.sha256(json.dumps({'request':request.model_dump(mode='json'),
+            'scopes':scopes.model_dump(mode='json'),'encoder':encoder.model_dump(mode='json')},sort_keys=True).encode()).hexdigest()
+        with self.lock:
+            existing=self.repository.request(request.request_id,fingerprint)
+            if existing:return self._start_result(existing)
+            with self.db.connection() as connection:
+                connection.execute('BEGIN')
+                for scope in (scopes.subjects,scopes.corpus):ConsistencyScopes(self.db).assert_current(scope,connection)
+            PixelIndex(self.db).assert_indexed(sample.sample_id for scope in (scopes.subjects,scopes.corpus) for sample in scope.samples)
+            return self._prepare(request,fingerprint,scopes,encoder)
+
+    def _prepare(self,request: ImageIndexPrepare,fingerprint: str,scopes: ConsistencyScopesSnapshot,
+                 encoder: ImageEncoderConfig | None) -> StartResult:
+        indexed={sample.sample_id:sample for scope in (scopes.corpus,scopes.subjects) for sample in scope.samples}
+        steps=[]
+        for dataset_id in sorted({sample.dataset_id for sample in indexed.values()}):
+            selected=sorted((sample for sample in indexed.values() if sample.dataset_id==dataset_id),key=lambda sample:sample.sample_id)
+            steps.append(BatchStep(dataset_id=dataset_id,task_id=selected[0].task_id,
+                sample_ids=[sample.sample_id for sample in selected],kind='IMAGE_INDEX'))
+        identity='batch_'+uuid4().hex
+        plan=self.repository.save(BatchPlan(batch_id=identity,request=request,fingerprint=fingerprint,kind='index',scopes=scopes,
+            encoder=encoder,selected_ids=sorted(indexed),steps=steps,created_at=datetime.now(timezone.utc),root_batch_id=identity))
+        self._advance(plan.batch_id)
+        return self._start_result(plan)
 
     def _start_result(self,plan: BatchPlan) -> StartResult:
         if not plan.selected_ids or not plan.steps:

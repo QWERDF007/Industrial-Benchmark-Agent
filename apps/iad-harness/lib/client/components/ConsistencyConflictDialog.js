@@ -26,9 +26,9 @@ export function ConsistencyConflictDialog({ conflict: currentConflict, items: vi
     const [reviewDecision, setReviewDecision] = useState('pending');
     const [reviewNote, setReviewNote] = useState('');
     const [zoomItem, setZoomItem] = useState(null);
-    const groupReference = useMemo(() => activeQueryId ? {
+    const groupReference = useMemo(() => currentConflict.checkId ? { job_id: currentConflict.checkId, anchor_id: currentConflict.rawItem.group_id } : activeQueryId ? {
         query_id: activeQueryId, kind: 'conflicts', group_id: currentConflict.rawItem.group_id, facts_state: currentConflict.rawItem.facts_state
-    } : null, [currentConflict.rawItem.group_id, currentConflict.rawItem.facts_state, activeQueryId]);
+    } : null, [currentConflict.checkId, currentConflict.rawItem.group_id, currentConflict.rawItem.facts_state, activeQueryId]);
     const groupAnalysis = useGroupAnalysis(groupReference);
     useEffect(() => {
         const controller = new AbortController();

@@ -108,6 +108,7 @@ class JobView(AnalysisModel):
     exploration_request: Optional[ExplorationStart] = None
     mining_prompt: Optional[FrozenMiningPrompt] = None
     consistency_prompt: Optional[str] = None
+    consistency_check_version: Literal[1] | None = None
     inspected_regions: Optional[int] = None
     planned_regions: Optional[int] = None
     completed_batches: Optional[int] = None
@@ -115,6 +116,7 @@ class JobView(AnalysisModel):
     batch_runs: list[str] = Field(default_factory=list)
     active_batch_run_id: Optional[str] = None
     errors: list[JobFailure]
+    error_history: list[JobFailure] = Field(default_factory=list)
     model_calls: list[ModelCallSummary]
 
     @classmethod

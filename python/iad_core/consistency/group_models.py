@@ -4,12 +4,21 @@ from dataclasses import dataclass
 
 from typing import Literal
 
-from iad_core.advisory.analysis import AnalysisModel
-from iad_core.consistency.models import Identifier
+from pydantic import Field
+
+from iad_core.advisory.analysis import AnalysisModel, NonBlankText
+from iad_core.consistency.models import Count, Identifier
 from iad_core.consistency.result_models import FactState, ResultSelection
 from iad_core.storage.models import Sample
 
 GalleryKind = Literal['conflicts', 'groups']
+
+
+class VisualWindow(AnalysisModel):
+    sample_id: Identifier
+    bbox: tuple[Count, Count, Count, Count] = Field(description='原图像素半开窗口[x0,y0,x1,y1)')
+    padding: Count = Field(default=0, description='四侧扩边的像素数，实际窗口裁至原图画布')
+    reason: NonBlankText
 
 
 class GalleryImage(AnalysisModel):

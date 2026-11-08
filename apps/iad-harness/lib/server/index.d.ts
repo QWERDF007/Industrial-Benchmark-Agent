@@ -20,5 +20,5 @@ export interface IADHarnessConfig extends PythonBridgeConfig {
 }
 export declare const name = "iad-harness";
 export declare const inject: string[];
-export declare function apply(ctx: any, config?: IADHarnessConfig): void;
+export declare function apply(ctx: any, config?: IADHarnessConfig): Promise<void>;
 //# sourceMappingURL=index.d.ts.map

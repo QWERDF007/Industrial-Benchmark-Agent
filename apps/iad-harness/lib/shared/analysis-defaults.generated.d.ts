@@ -6,9 +6,5 @@ export declare const analysisDefaults: {
     readonly knowledge: {
         readonly batch_size: 12;
     };
-    readonly consistency: {
-        readonly batch_size: 12;
-        readonly candidate_batch_size: 12;
-    };
 };
 //# sourceMappingURL=analysis-defaults.generated.d.ts.map

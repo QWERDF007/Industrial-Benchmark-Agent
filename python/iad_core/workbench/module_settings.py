@@ -3,8 +3,9 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
-from iad_core.consistency.models import DEFAULT_MIN_SIMILARITY, SimilarityThreshold
+from iad_core.consistency.models import ConsistencyRetrievalSettings
 from iad_core.storage.database import Database
+from iad_core.workbench.model_profile import GenerationLimits
 
 BusinessModule = Literal['exploration', 'knowledge', 'consistency', 'audit']
 
@@ -18,9 +19,9 @@ class ModuleSettingsValues(AnalysisModel):
     model: ModuleModelReference | None = None
 
 
-class ConsistencySettingsValues(ModuleSettingsValues):
-    mode: Literal['exact', 'combined'] = 'combined'
-    min_similarity: SimilarityThreshold = DEFAULT_MIN_SIMILARITY
+class ConsistencySettingsValues(ModuleSettingsValues, ConsistencyRetrievalSettings):
+    agent_model: ModuleModelReference | None = None
+    agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
 
 
 class ModuleSettingsPayload(AnalysisModel):
@@ -76,7 +77,7 @@ class ModuleSettings:
         return ModuleSettingsSnapshot(module=edit.module, revision=revision + 1, settings=values)
 
     def consistency_request(self, request: dict) -> dict:
-        defaults = self.read('consistency').settings.model_dump(exclude={'model'})
+        defaults = self.read('consistency').settings.model_dump(include={'mode', 'min_similarity'})
         return {**defaults, **request}
 
 

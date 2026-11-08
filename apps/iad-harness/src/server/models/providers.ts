@@ -2,7 +2,8 @@ import type { Context } from '@deepseek-ai/cordis';
 import { credentialRef } from '@deepseek-ai/dsh-credentials';
 import type {} from '@deepseek-ai/dsh-settings';
 import {assertUsableApiKey} from '@deepseek-ai/dsh-llm';
-import type { ModelExecution, ModelProfile, ProviderEdit, ProviderDiscovery, ProviderReference, ProviderModel, WorkbenchModelSettings, WorkbenchProvider } from '../../shared/domain.generated.js';
+import type { FrozenModelRole, GenerationLimits, ModelExecution, ModelLimits, ModelProfile, ModuleModelReference, ProviderEdit, ProviderDiscovery, ProviderReference, ProviderModel, WorkbenchModelSettings, WorkbenchProvider } from '../../shared/domain.generated.js';
+import {defaultModelLimits} from '../../shared/model-settings.generated.js';
 
 export class ModelConfigurationError extends Error {readonly statusCode = 422;}
 
@@ -18,7 +19,11 @@ const apiEndpoint = (value: string) => {
 
 export class NativeProviders {
   private readonly editing = new Set<string>();
-  constructor(private readonly ctx: Context) {}
+  constructor(private readonly context: () => Context) {}
+
+  private get ctx(): Context {return this.context();}
+
+  get credentials() {return this.ctx.credentials;}
 
   private namespace() {
     const namespace = this.ctx.settings.describe({redactSecrets: true}).find(row => row.ns === 'llm-pi-ai');
@@ -70,7 +75,7 @@ export class NativeProviders {
     }));
   }
 
-  async resolve(selection: Selection, purpose: 'inspect' | 'start' | 'probe', signal?: AbortSignal): Promise<ModelExecution> {
+  private async configuration(selection: Selection, role: 'agent' | 'vision', requireCapacity: boolean, signal?: AbortSignal) {
     signal?.throwIfAborted();
     const source = this.source(selection.provider_id);
     if (source.error) throw new ModelConfigurationError(source.error);
@@ -79,18 +84,52 @@ export class NativeProviders {
     const listed = models.find(model => model.id === selection.model_id);
     if (!listed) throw new ModelConfigurationError('所选模型已移除，请重新选择');
     const metadata = await this.ctx.llm.resolveModelInfo(selection.provider_id, selection.model_id, signal);
-    if (!metadata.inputModalities?.includes('image')) throw new ModelConfigurationError('所选模型未声明图像输入能力，请核实提供商的模型配置');
-    if (purpose !== 'probe' && selection.limits.capacity_mode !== 'vllm_tokenize') throw new ModelConfigurationError('请在高级设置中选择已确认的容量预检协议');
+    if (!metadata.inputModalities?.includes(role === 'vision' ? 'image' : 'text'))
+      throw new ModelConfigurationError(role === 'vision' ? '所选模型未声明图像输入能力，请核实提供商的模型配置' : 'Agent 模型未声明文本输入能力');
+    if (requireCapacity && selection.limits.capacity_mode !== 'vllm_tokenize') throw new ModelConfigurationError('请在高级设置中选择已确认的容量预检协议');
     const endpoint = base + '/chat/completions';
     const cap = (configured: number | null, declared?: number) => declared && declared > 0
       ? Math.min(configured ?? declared, declared) : configured;
     const declared = Array.isArray(source.profile.models)
-      ? object(source.profile.models.find(item => object(item).id === selection.model_id)) : {};
+      ? object(source.profile.models.find(item => object(item).id === selection.model_id))
+      : object(object(source.profile.modelOverrides)[selection.model_id]);
     const profile: ModelProfile = {...selection.limits, endpoint, api: 'openai-completions',
       provider_id: selection.provider_id, provider_name: source.entry.displayName, model_id: selection.model_id,
       credential_ref: typeof source.profile.apiKeyEnv === 'string' && source.profile.apiKeyEnv ? source.profile.apiKeyEnv : null,
-      context_tokens: cap(selection.limits.context_tokens, typeof declared.contextWindow === 'number' ? declared.contextWindow : undefined),
-      max_output_tokens: cap(selection.limits.max_output_tokens, typeof declared.maxTokens === 'number' ? declared.maxTokens : undefined)};
+      context_tokens: cap(selection.limits.context_tokens, typeof declared.contextWindow === 'number' ? declared.contextWindow : metadata.context?.contextWindow),
+      max_output_tokens: cap(selection.limits.max_output_tokens, typeof declared.maxTokens === 'number' ? declared.maxTokens : metadata.defaultMaxTokens)};
+    return {profile, source, metadata, declared};
+  }
+
+  async freeze(reference: ModuleModelReference | null, limits: GenerationLimits | ModelLimits, role: 'agent' | 'vision'): Promise<FrozenModelRole> {
+    if (!reference) return {profile: null, input_modalities: [], native_profile: null, error: null};
+    try {
+      const {profile, source, metadata, declared} = await this.configuration({...reference, limits: {...defaultModelLimits, ...limits}}, role, role === 'vision');
+      const model = {...declared, id: reference.model_id, contextWindow: profile.context_tokens,
+        maxTokens: profile.max_output_tokens, input: metadata.inputModalities};
+      const native: Record<string, unknown> = {...source.profile, models: [model]};
+      delete native.modelOverrides;
+      if (profile.generation_timeout_seconds !== null) native.timeoutMs = profile.generation_timeout_seconds * 1000;
+      if (role === 'agent') {
+        const parameters = profile.request_parameters;
+        const unsupported = Object.keys(parameters).filter(name => !['temperature', 'stop', 'chat_template_kwargs'].includes(name));
+        if (unsupported.length) throw new ModelConfigurationError('Agent 适配器不支持生成参数：' + unsupported.join('、'));
+        if (parameters.chat_template_kwargs) {
+          const compat = {...object(source.profile.compat), ...object(declared.compat)};
+          if (compat.thinkingFormat !== 'chat-template' || !metadata.reasoning)
+            throw new ModelConfigurationError('Agent 的 chat_template_kwargs 需要提供商声明 chat-template 协议及 reasoningEfforts');
+          native.models = [{...model,
+            compat: {...object(declared.compat), chatTemplateKwargs: parameters.chat_template_kwargs}}];
+        }
+      }
+      return {profile, input_modalities: [...metadata.inputModalities!], native_profile: native, error: null};
+    } catch (error) {
+      return {profile: null, input_modalities: [], native_profile: null, error: error instanceof Error ? error.message : String(error)};
+    }
+  }
+
+  async resolve(selection: Selection, purpose: 'inspect' | 'start' | 'probe', signal?: AbortSignal): Promise<ModelExecution> {
+    const {profile, source} = await this.configuration(selection, 'vision', purpose !== 'probe', signal);
     let key: string | null = null;
     if (profile.credential_ref) {
       const ref = credentialRef(profile.credential_ref);

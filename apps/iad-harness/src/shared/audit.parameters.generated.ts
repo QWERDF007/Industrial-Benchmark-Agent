@@ -6,10 +6,17 @@ export const auditStartParameters = {
     "required": true
   },
   "subset_ids": {
-    "type": "array",
-    "items": {
-      "type": "string"
-    },
+    "oneOf": [
+      {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      {
+        "type": "null"
+      }
+    ],
     "title": "Subset Ids"
   },
   "submission_id": {
@@ -17,33 +24,68 @@ export const auditStartParameters = {
     "title": "Submission Id"
   },
   "knowledge_version_id": {
-    "type": "string",
+    "oneOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "null"
+      }
+    ],
     "title": "Knowledge Version Id",
     "required": true
   },
   "knowledge_job_id": {
-    "type": "string",
+    "oneOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "null"
+      }
+    ],
     "title": "Knowledge Job Id"
   },
   "knowledge_entry_ids": {
-    "type": "array",
-    "items": {
-      "type": "string"
-    },
+    "oneOf": [
+      {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      {
+        "type": "null"
+      }
+    ],
     "title": "Knowledge Entry Ids"
   },
   "consistency_job_ids": {
-    "type": "array",
-    "items": {
-      "type": "string"
-    },
+    "oneOf": [
+      {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      {
+        "type": "null"
+      }
+    ],
     "title": "Consistency Job Ids"
   },
   "sample_ids": {
-    "type": "array",
-    "items": {
-      "type": "string"
-    },
+    "oneOf": [
+      {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      {
+        "type": "null"
+      }
+    ],
     "title": "Sample Ids"
   },
   "filters": {
@@ -146,7 +188,14 @@ export const auditStartParameters = {
     "default": "exact"
   },
   "consistency_profile_id": {
-    "type": "string",
+    "oneOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "null"
+      }
+    ],
     "title": "Consistency Profile Id"
   },
   "corpus_scope": {

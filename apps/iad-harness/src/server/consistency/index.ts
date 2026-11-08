@@ -4,9 +4,10 @@ import type {ContentBlock} from '@deepseek-ai/dsh-llm';
 import type {ImageAttachmentRef} from '@deepseek-ai/dsh-attachment';
 import type {Session} from '@deepseek-ai/dsh-session';
 import type {ConsistencyContext} from '../../shared/domain.generated.js';
-import {groupAnalysisStartParameters,galleryReferenceParameters,consistencyStartParameters,imageIndexPrepareParameters,consistencyCompareParameters,consistencyContextParameters,
+import {galleryReferenceParameters,consistencyStartParameters,imageIndexPrepareParameters,consistencyCompareParameters,consistencyContextParameters,
   consistencyBatchParameters,consistencyRetryParameters,consistencyMediaParameters,consistencyQueryParameters,
   consistencyGroupParameters,consistencyGroupMemberParameters,consistencyEvidenceParameters} from '../../shared/consistency.parameters.generated.js';
+import {consistencyAgentStartParameters, consistencyCheckReferenceParameters, consistencyAnchorReferenceParameters, consistencyCheckResultsQueryParameters} from '../../shared/consistency-agent.parameters.generated.js';
 import type {PythonBridge} from '../python-bridge/index.js';
 import {workbenchJsonOutput} from '../tool-output.js';
 import {readEvidenceAttachment} from '../evidence-attachment.js';
@@ -16,7 +17,12 @@ type Attachment={media_id:string;attachment:ImageAttachmentRef};
 export function createConsistencyTools(bridge:PythonBridge,ctx:Context){
   const knownImages=new WeakMap<Session,Map<string,ImageAttachmentRef>>();
   return [
-    defineTool({name:'consistency_group_analyze',description:'仅明确要求解释当前冻结图组时执行模型分析，复用既有作业与模型配置。完整读取组成员和冻结证据，结论引用经核验后保存；不写人审、原标注或Gold。相同request_id重用原作业。',parameters:groupAnalysisStartParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('consistency_group_analyze',{request:args,origin_session_id:exec.agent?.session.id},exec.signal)}),
+    defineTool({name:'consistency_check_start',description:'仅用户要求模型审核时，按当前设置及冻结范围创建逐主图审核。相同submission_id复用原作业，不写人审或Gold。',parameters:consistencyAgentStartParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('analysis_start',{request:{...args,analysis_kind:'consistency'}},exec.signal)}),
+    defineTool({name:'consistency_check_status',description:'读取主图审核作业真实状态、结果计数和调用记录，不启动推理。',parameters:consistencyCheckReferenceParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('analysis_status',args,exec.signal)}),
+    defineTool({name:'consistency_check_results',description:'按页读取本作业每张受检主图的已保存结果，失败和未知保留真实状态，不启动推理。',parameters:consistencyCheckResultsQueryParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('consistency_agent_results',args,exec.signal)}),
+    defineTool({name:'consistency_check_result',description:'只读指定作业及主图的完整结论、候选、观察和证据引用，不重新审核。',parameters:consistencyAnchorReferenceParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('consistency_agent_detail',args,exec.signal)}),
+    defineTool({name:'consistency_check_cancel',description:'按用户要求停止同一主图审核作业，保留已完成结果。',parameters:consistencyCheckReferenceParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('analysis_cancel',args,exec.signal)}),
+    defineTool({name:'consistency_check_retry',description:'仅用户要求继续时恢复同一主图审核作业，复用原配置、Session和成功观察。',parameters:consistencyCheckReferenceParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('analysis_retry',args,exec.signal)}),
     defineTool({name:'consistency_group_analysis',description:'只读当前冻结图组的真实模型分析状态与已保存结构化引用。没有完成结果时不得宣称已分析。',parameters:galleryReferenceParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('consistency_group_analysis',args,exec.signal)}),
     defineTool({name:'image_index_prepare',description:'仅用户要求建库或完整检查时准备共享图像索引。corpus_scope 独立于检查/质量筛选，使用已配置图像编码器，返回真实批次引用。',parameters:imageIndexPrepareParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('image_index_prepare',args,exec.signal)}),
     defineTool({name:'consistency_start',description:'按明确请求冻结检查范围与独立检索库，未指定检索方式或阈值时使用数据一致性设置。相同 request_id 重用原批次；不启动聊天模型、知识挖掘或人工复核。',parameters:consistencyStartParameters,output:workbenchJsonOutput,execute:(args,exec)=>bridge.execute('consistency_start',args,exec.signal)}),

@@ -6,9 +6,5 @@ export const analysisDefaults = {
     },
     "knowledge": {
         "batch_size": 12
-    },
-    "consistency": {
-        "batch_size": 12,
-        "candidate_batch_size": 12
     }
 };

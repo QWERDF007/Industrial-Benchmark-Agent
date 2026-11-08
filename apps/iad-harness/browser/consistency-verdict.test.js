@@ -32,18 +32,7 @@ async function main(){const result=window.fixture;createRoot(document.getElement
  const server=http.createServer(async(req,res)=>{
   if(req.url==='/tokenize'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({count:1000,max_model_len:262144}));return;}
   if(req.url==='/v1/chat/completions'){
-   const chunks=[];for await(const chunk of req)chunks.push(chunk);const body=JSON.parse(Buffer.concat(chunks));modelCalls++;
-   const frozen=JSON.parse(body.messages[0].content[0].text.split('冻结图组：')[1]);
-   const assessments=Object.entries(frozen.candidates).map(([candidate_id,member])=>{
-    const source=Object.values(frozen.sources).find(source=>source.sample_id===candidate_id);
-    const encoded=JSON.stringify(source);
-    const verdict=encoded.includes('equivalent.png')?'EQUIVALENT':'MATERIAL';
-    const conclusion=encoded.includes('different.png')?'类别不一致':encoded.includes('shifted.png')?'位置差异':'一致';
-    return {candidate_id,verdict,categories:conclusion==='类别不一致'?['类别不一致']:conclusion==='位置差异'?['位置差异']:[],conclusion,explanation:verdict==='EQUIVALENT'?'两侧均有5个类别15的标注，位置与覆盖范围对应，无漏标或多标。':encoded.includes('different.png')?'对应标注的类别值从15变为18。':'标注框左边界向右偏移4像素。',findings:verdict==='MATERIAL'?[conclusion]:[]};
-   });
-   const references=Object.entries(frozen.candidates).map(([candidate_id,member])=>({candidate_id,comparison:{result_id:member.comparison.result_id,evidence_id:member.comparison.evidence_id}}));
-   const result={assessments,overall:{verdict:'MATERIAL',text:'类别不一致',references},conclusions:[{text:'本组分别存在标注类别改变与标注框左边界偏移。',references}],limitations:[]};
-   res.setHeader('Content-Type','application/json');res.end(JSON.stringify({choices:[{finish_reason:'stop',message:{content:JSON.stringify(result)}}]}));return;
+   modelCalls++;res.writeHead(500);res.end('Historical result reads must not invoke a model');return;
   }
   if(req.url==='/browser.js'){res.setHeader('Content-Type','application/javascript');res.end(bundle.outputFiles[0].contents);return;}
   if(req.url==='/'){res.setHeader('Content-Type','text/html;charset=utf-8');res.end('<meta charset="utf-8"><div id="root"></div><script>window.fixture='+JSON.stringify(fixture)+'</script><script src="/browser.js"></script>');return;}
@@ -67,10 +56,12 @@ configure_test_encoder(Database(sys.argv[1]),Path(sys.argv[2]))`,path.join(root,
   const report=await bridge.execute('consistency_report',{selection:{kind:'scope',subjects:{kind:'all_registered'},mode:'combined'}});
   const gallery=await bridge.execute('consistency_gallery',{query_id:report.page.query_id,kind:'conflicts'});assert.equal(gallery.total,1);
   const reference={query_id:report.page.query_id,kind:'conflicts',group_id:gallery.items[0].group_id};
-  const started=await bridge.execute('consistency_group_analyze',{request:{...reference,request_id:'verdict-regression'}});
-  let analysis;
-  for(let i=0;i<300;i++){analysis=await bridge.execute('consistency_group_analysis',reference);if(!['RUNNING','PENDING'].includes(analysis.status))break;await new Promise(r=>setTimeout(r,30));}
-  assert.equal(analysis.status,'COMPLETED',JSON.stringify(analysis));assert.ok(modelCalls);assert.equal(analysis.result.overall.verdict,'MATERIAL');
+  execFileSync(bridge.pythonPath,['-c',`import sys,json
+from iad_core.storage.database import Database
+from tests.consistency_history import save_group_history
+save_group_history(Database(sys.argv[1]),json.loads(sys.argv[2]),{'equivalent.png':'一致','different.png':'类别不一致','shifted.png':'位置差异'})`,path.join(root,'test.db'),JSON.stringify(reference)],{env:{...process.env,PYTHONPATH:path.resolve(app,'../../python')+':'+path.resolve(app,'../..')}});
+  const analysis=await bridge.execute('consistency_group_analysis',reference);
+  assert.equal(analysis.status,'COMPLETED',JSON.stringify(analysis));assert.equal(modelCalls,0);assert.equal(analysis.result.overall.verdict,'MATERIAL');
   const item=gallery.items[0];
   fixture={queryId:report.page.query_id,conflict:{id:item.group_id,type:'标注待核对',types:item.conflict_categories,filename:'anchor.png',url:'',fullUrl:'',sourceWidth:945,sourceHeight:678,memberCount:item.member_count,review:'pending',model:{status:'conflict',modelType:'存在实质差异'},rawItem:item}};
   const options=new firefox.Options().addArguments('-headless').setBinary(process.env.FIREFOX_PATH||'/tmp/iad-firefox128/firefox/firefox');

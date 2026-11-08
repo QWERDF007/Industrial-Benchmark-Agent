@@ -28,7 +28,7 @@ test("DSH discovers independent exploration and full-analysis skills with standa
   new SkillRegistry(ctx);
   new LocalAttachmentStore(ctx, { dshHome: root });
   skillTool.apply(ctx);
-  const fork = await ctx.plugin(harness);
+  const fork = await ctx.plugin(harness, {dbPath: path.join(root, 'test.db')});
   try {
     const catalog = await ctx.skills.list();
     assert.deepEqual(catalog.map(skill => skill.name).sort(), ["analyze-dataset", "audit-data-consistency", "explore-inspection-directions"]);

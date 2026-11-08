@@ -1,6 +1,10 @@
 export declare const knowledgeSourceParameters: {
     readonly recheck_from_version: {
-        readonly type: "string";
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
         readonly description: "仅查询所选版本中判据修订后尚待视觉重核验的历史合格来源";
         readonly title: "Recheck From Version";
     };
@@ -11,7 +15,11 @@ export declare const knowledgeSourceParameters: {
         readonly default: false;
     };
     readonly scope_run_id: {
-        readonly type: "string";
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Scope Run Id";
     };
     readonly dataset_id: {
@@ -20,16 +28,28 @@ export declare const knowledgeSourceParameters: {
         readonly required: true;
     };
     readonly kind: {
-        readonly type: "string";
-        readonly enum: readonly ["normal", "defect"];
+        readonly oneOf: readonly [{
+            readonly type: "string";
+            readonly enum: readonly ["normal", "defect"];
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Kind";
     };
     readonly normal_version_id: {
-        readonly type: "string";
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Normal Version Id";
     };
     readonly uncovered_from_version: {
-        readonly type: "string";
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
         readonly description: "仅查询指定版本语义链尚未观察的新来源；已变更旧来源单列待重核验";
         readonly title: "Uncovered From Version";
     };

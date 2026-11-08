@@ -60,7 +60,17 @@ test('native settings preserve General and Models while business settings persis
       assert.equal((await driver.findElements(By.css('[data-module-settings] input'))).length,0,'业务分类只配置分析模型');
     }
     phase='consistency defaults';await section('数据一致性');
-    const settings=await api(null,'/settings/modules/consistency');assert.equal(settings.data.settings.min_similarity,.95);
+    const settings=await api(null,'/settings/modules/consistency');assert.equal(settings.data.settings.min_similarity,.98);
+    assert.equal(await driver.findElement(By.css('input[aria-label="完全一致图上限"]')).getAttribute('value'),'5');
+    assert.equal(await driver.findElement(By.css('input[aria-label="相似图上限"]')).getAttribute('value'),'10');
+    const exactLimit=await driver.findElement(By.css('input[aria-label="完全一致图上限"]'));
+    await exactLimit.clear();await exactLimit.sendKeys('3');await exactLimit.sendKeys('\uE004');
+    const similarLimit=await driver.findElement(By.css('input[aria-label="相似图上限"]'));
+    await similarLimit.clear();await similarLimit.sendKeys('7');await similarLimit.sendKeys('\uE004');
+    await driver.wait(async()=>{const current=(await api(null,'/settings/modules/consistency')).data.settings;return current.max_exact_candidates===3&&current.max_similar_candidates===7;},5000);
+    const agent=await driver.findElement(By.css('select[aria-label="Agent 模型"]'));
+    await new NativeSelect(agent).selectByVisibleText('First model（First service）');
+    await driver.wait(async()=>(await api(null,'/settings/modules/consistency')).data.settings.agent_model?.model_id==='first-model',5000);
     const threshold=await driver.findElement(By.css('input[aria-label="相似度阈值"]'));
     await threshold.clear();await threshold.sendKeys('0.97');await threshold.sendKeys('\uE004');
     await driver.wait(async()=>(await api(null,'/settings/modules/consistency')).data.settings.min_similarity===.97,5000);
@@ -69,6 +79,8 @@ test('native settings preserve General and Models while business settings persis
     assert.equal((await api(null,'/settings/modules/audit')).data.settings.model.model_id,'second-model');
     await new NativeSelect(await driver.findElement(By.css('select[aria-label="检索方式"]'))).selectByVisibleText('完全一致');
     assert.equal((await driver.findElements(By.css('input[aria-label="相似度阈值"]'))).length,0);
+    assert.equal((await driver.findElements(By.css('input[aria-label="相似图上限"]'))).length,0);
+    assert.equal(await driver.findElement(By.css('input[aria-label="完全一致图上限"]')).getAttribute('value'),'3');
     await driver.wait(async()=>(await api(null,'/settings/modules/consistency')).data.settings.mode==='exact',5000);
     await fs.writeFile('/tmp/iad-v75-business-settings.png',await driver.takeScreenshot(),'base64');
     await driver.navigate().refresh();await open();await section('数据一致性');
@@ -134,10 +146,13 @@ test('native settings preserve General and Models while business settings persis
     const analysis=await api({analysis_kind:'consistency',dataset_ids:[dataset]},'/analysis/start');assert.equal(analysis.status,200,JSON.stringify(analysis));
     const node=await api(null,`/analysis/node/${analysis.data.run_id}`);assert.equal(node.status,200);
     assert.equal(node.data.model_profile.model_id,'second-model');
-    assert.equal(node.data.request.submission.mode,'exact');assert.equal(node.data.request.submission.min_similarity,.98);
+    assert.equal(node.data.request.consistency_check.retrieval.mode,'exact');
+    assert.equal(node.data.request.consistency_check.retrieval.min_similarity,null);
+    assert.equal(node.data.request.consistency_check.retrieval.max_exact_candidates,3);
     await api({expected_revision:overridden.data.revision,settings:{mode:'combined',min_similarity:.95}},'/settings/modules/consistency');
     const frozenAgain=await api(null,`/analysis/node/${analysis.data.run_id}`);
-    assert.equal(frozenAgain.data.model_profile.model_id,'second-model');assert.equal(frozenAgain.data.request.submission.min_similarity,.98);
+    assert.equal(frozenAgain.data.model_profile.model_id,'second-model');
+    assert.deepEqual(frozenAgain.data.request.consistency_check,node.data.request.consistency_check);
 
     await click('General');await click('Dark');await section('数据一致性');
     await driver.wait(()=>driver.executeScript("return document.body.hasAttribute('data-ds-dark-theme')"),5000);

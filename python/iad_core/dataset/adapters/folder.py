@@ -1,8 +1,8 @@
 from pathlib import Path
-from typing import Generator, List, Optional, Tuple
+from typing import Generator, Optional, Tuple
 
-from iad_core.dataset.adapters.base import DatasetAdapter, RawImage, RawAnnotation, RawQuality
-from iad_core.storage.models import QualityStatus
+from iad_core.dataset.adapters.base import AnnotationDocument, DatasetAdapter, RawImage, RawQuality
+from iad_core.storage.models import AnnotationAvailability, QualityStatus
 from iad_core.dataset.folder_rules import FolderRules
 from iad_core.task.config import FolderRule
 
@@ -46,5 +46,9 @@ class GenericFolderAdapter(DatasetAdapter):
 
     def load_annotations(
         self, image: RawImage, width: int, height: int
-    ) -> List[RawAnnotation]:
-        return []
+    ) -> AnnotationDocument:
+        rule, path = self.resolve_rule(image.relative_path)
+        if rule and rule.role == 'normal':
+            return AnnotationDocument(availability=AnnotationAvailability(status='VALID_EMPTY',
+                origin='FOLDER_RULE', source=path))
+        return AnnotationDocument(availability=AnnotationAvailability(status='NOT_PROVIDED'))

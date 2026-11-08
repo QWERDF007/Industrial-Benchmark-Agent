@@ -152,7 +152,8 @@ export class Workspace {
           if(consistencyRouteEnums.facts.includes(route.facts))consistency.facts=route.facts;
           if(route.scope?.kind==='datasets' && Array.isArray(route.scope.dataset_ids) && route.scope.dataset_ids.length && route.scope.dataset_ids.every((id:unknown)=>typeof id==='string' && id.length)) consistency.scope=route.scope;
           if(route.query?.kind==='sample' && typeof route.query.sample_id==='string' && route.query.sample_id)consistency.query=route.query;
-          for(const key of ['batchId','resultId','evidenceId','groupId','memberId','differenceId','sessionId','queryId','gallerySearch','subjectId'] as const)if(typeof route[key]==='string')consistency[key]=route[key];
+          for(const key of ['parentId','batchId','resultId','evidenceId','groupId','memberId','differenceId','sessionId','queryId','gallerySearch','subjectId'] as const)if(typeof route[key]==='string')consistency[key]=route[key];
+          if(Array.isArray(route.datasetIds)&&route.datasetIds.every((id:unknown)=>typeof id==='string'&&id.length))consistency.datasetIds=route.datasetIds;
           for(const key of ['groupPage','memberPage','galleryPage'] as const)if(Number.isSafeInteger(route[key]) && route[key]>0)consistency[key]=route[key];
           if(consistencyRouteEnums.differenceFilter.includes(route.differenceFilter))consistency.differenceFilter=route.differenceFilter;
           if(consistencyRouteEnums.modelFilter.includes(route.modelFilter))consistency.modelFilter=route.modelFilter;

@@ -7,13 +7,21 @@ import {fileURLToPath} from 'node:url';
 import {setTimeout as delay} from 'node:timers/promises';
 const workspace=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../../..');
 
-export async function startNativeModelHost() {
+export async function startNativeModelHost({bundlePath = path.join(workspace, 'apps/iad-harness'), launchCwd = workspace, plugins = [], profilePatch = ''} = {}) {
   const calls = [];
   const external = http.createServer(async (req, res) => {
     const chunks=[]; for await (const chunk of req) chunks.push(chunk);
     const body=chunks.length ? JSON.parse(Buffer.concat(chunks)) : null;
     calls.push({path:req.url, authorization:req.headers.authorization, body});
     const model = req.url.startsWith('/second/') ? 'second-model' : 'first-model';
+    if (body?.stream && !body.response_format) {
+      res.writeHead(200, {'Content-Type': 'text/event-stream'});
+      for (const choice of [{index: 0, delta: {role: 'assistant', content: '普通会话已保存'}, finish_reason: null},
+        {index: 0, delta: {}, finish_reason: 'stop'}])
+        res.write('data: ' + JSON.stringify({id: 'ordinary-fixture', object: 'chat.completion.chunk', model, choices: [choice]}) + '\n\n');
+      res.end('data: [DONE]\n\n');
+      return;
+    }
     let result;
     if (req.url.endsWith('/models')) result={data:[{id:model}]};
     else if (req.url.endsWith('/tokenize')) result={count:1000,max_model_len:262144};
@@ -42,7 +50,7 @@ export async function startNativeModelHost() {
   const profile = path.join(root, 'home/profiles/web');
   await fs.mkdir(profile, {recursive: true});
   await fs.mkdir(path.join(profile, 'node_modules/@industrial-benchmark'), {recursive: true});
-  await fs.symlink(path.join(workspace, 'apps/iad-harness'), path.join(profile, 'node_modules/@industrial-benchmark/iad-harness'));
+  await fs.symlink(bundlePath, path.join(profile, 'node_modules/@industrial-benchmark/iad-harness'));
   await fs.writeFile(path.join(profile, 'package.json'), JSON.stringify({name: 'iad-model-settings', private: true, type: 'module',
     dsh: {profile: {bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app']}}}));
   await fs.writeFile(path.join(profile, 'cordis.yml'), '[]\n');
@@ -61,7 +69,7 @@ export async function startNativeModelHost() {
       config:
         cwd: ${JSON.stringify(workspace)}
         dbPath: ${JSON.stringify(path.join(root, 'workbench.db'))}
-`);
+${plugins.map((name, index) => `    - id: fixture-${index}\n      name: ${JSON.stringify(name)}\n`).join('')}`);
   await fs.writeFile(path.join(profile, 'cordis.patch.yml'), `- id: ui-settings-general
   config:
     welcomeNoticeVersion: 2026-09-28.1
@@ -77,6 +85,8 @@ export async function startNativeModelHost() {
           - id: first-model
             name: First model
             input: [text, image]
+            contextWindow: 262144
+            maxTokens: 8192
       second-service:
         displayName: Second service
         api: openai-completions
@@ -86,21 +96,36 @@ export async function startNativeModelHost() {
           - id: second-model
             name: Second model
             input: [text, image]
+            contextWindow: 262144
+            maxTokens: 8192
 - id: agent-default-model
   config:
     provider: first-service
     model: first-model
-`);
-  const host = spawn(process.env.IAD_NODE_PATH || process.execPath,
-    [path.join(workspace, 'node_modules/@deepseek-ai/dsh/lib/bin.js'), '--profile', 'web', '--patch', patch, '--port', String(port), '--no-open'],
-    {cwd: workspace, env: {...process.env, DSH_HOME: path.join(root, 'home'), IAD_FIRST_TEST_KEY:'first-isolated-key', IAD_SECOND_TEST_KEY:'second-isolated-key', IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES:'2'}, stdio: ['ignore', 'pipe', 'pipe']});
-  let log='';
-  host.stdout.on('data',data=>{log+=data;});host.stderr.on('data',data=>{log+=data;});
-  return {root,host,modelBase,calls,readLog:()=>log,async close(){
+${profilePatch}`);
+  const args = [path.join(bundlePath, 'node_modules/@deepseek-ai/dsh/lib/bin.js'), '--profile', 'web', '--patch', patch, '--port', String(port), '--no-open'];
+  const options = {cwd: launchCwd, env: {...process.env, DSH_HOME: path.join(root, 'home'), IAD_FIRST_TEST_KEY:'first-isolated-key', IAD_SECOND_TEST_KEY:'second-isolated-key', IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES:'2'}, stdio: ['ignore', 'pipe', 'pipe']};
+  let host, log = '';
+  function launch() {
+    log = '';
+    host = spawn(process.env.IAD_NODE_PATH || process.execPath, args, options);
+    host.stdout.on('data', data => {log += data;});
+    host.stderr.on('data', data => {log += data;});
+  }
+  async function stop() {
+    if (host.exitCode !== null || host.signalCode !== null) return;
+    const exited = new Promise(resolve => host.once('exit', resolve));
     host.kill('SIGTERM');
-    await Promise.race([new Promise(resolve=>host.once('exit',resolve)),delay(3000)]);
-    if(host.exitCode===null)host.kill('SIGKILL');
-    await new Promise(resolve=>external.close(resolve));
-    await fs.rm(root,{recursive:true,force:true});
-  }};
+    await Promise.race([exited, delay(3000)]);
+    if (host.exitCode === null) host.kill('SIGKILL');
+    await exited;
+  }
+  launch();
+  return {root, get host() {return host;}, modelBase, calls, readLog: () => log,
+    async restart() {await stop();launch();},
+    async close() {
+      await stop();
+      await new Promise(resolve => external.close(resolve));
+      await fs.rm(root, {recursive: true, force: true});
+    }};
 }

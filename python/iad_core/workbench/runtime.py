@@ -34,8 +34,6 @@ class ModelServices:
         self.exploration = DirectionExploration(db, self.client, self.jobs)
         from iad_core.exploration.batches import ExplorationBatches
         self.exploration_batches = ExplorationBatches(self.exploration)
-        from iad_core.consistency.model_batches import ConsistencyModelBatches
-        self.consistency_model_batches = ConsistencyModelBatches(runtime, self.client)
         from iad_core.workbench.analysis_workflows import AnalysisWorkflows
         self.analysis_workflows = AnalysisWorkflows(self, runtime)
         from iad_core.workbench.dataset_reports import DatasetReports

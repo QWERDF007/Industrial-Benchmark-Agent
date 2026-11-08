@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any, Generator, Iterator
 from pydantic import BaseModel, Field
 
-from iad_core.storage.models import QualityStatus, DataOrigin
+from iad_core.storage.models import QualityStatus, DataOrigin, AnnotationAvailability
 from iad_core.storage.models import AnnotationType, AnnotationSource, GeometryStatus
 from iad_core.task.config import DatasetConfig, MetadataRule
 
@@ -34,6 +34,16 @@ class RawAnnotation(BaseModel):
     source_width: Optional[int] = None
     source_height: Optional[int] = None
     source: AnnotationSource = AnnotationSource.IMPORTED
+
+
+class AnnotationDocument(BaseModel):
+    annotations: list[RawAnnotation] = Field(default_factory=list)
+    availability: AnnotationAvailability
+
+    @classmethod
+    def from_file(cls, annotations: list[RawAnnotation], path: str) -> 'AnnotationDocument':
+        return cls(annotations=annotations, availability=AnnotationAvailability(
+            status='VALID_NONEMPTY' if annotations else 'VALID_EMPTY', origin='FILE', source=path))
 
 
 class DatasetAdapter(ABC):
@@ -199,6 +209,12 @@ class DatasetAdapter(ABC):
     @abstractmethod
     def load_annotations(
         self, image: RawImage, width: int, height: int
-    ) -> List[RawAnnotation]:
+    ) -> AnnotationDocument:
         """Load annotations associated with the image."""
         ...
+
+    def missing_annotations(self, image: RawImage) -> AnnotationDocument:
+        if self.config.dataset.unannotated_is_normal and self.load_quality(image).quality_status != QualityStatus.FAIL:
+            return AnnotationDocument(availability=AnnotationAvailability(status='VALID_EMPTY',
+                origin='DATASET_CONVENTION', source='dataset.unannotated_is_normal'))
+        return AnnotationDocument(availability=AnnotationAvailability(status='NOT_PROVIDED'))

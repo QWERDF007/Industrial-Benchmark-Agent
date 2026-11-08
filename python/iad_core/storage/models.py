@@ -91,6 +91,13 @@ class InspectionTask(BaseModel):
     description: Optional[str] = None
 
 
+class AnnotationAvailability(BaseModel):
+    model_config = ConfigDict(extra='forbid', frozen=True)
+    status: Literal['VALID_NONEMPTY', 'VALID_EMPTY', 'NOT_PROVIDED', 'UNREADABLE', 'UNKNOWN'] = 'UNKNOWN'
+    origin: Literal['FILE', 'DATASET_CONVENTION', 'FOLDER_RULE', 'UNKNOWN'] = 'UNKNOWN'
+    source: Optional[str] = None
+
+
 # 2. Sample
 class Sample(BaseModel):
     sample_id: str
@@ -109,6 +116,7 @@ class Sample(BaseModel):
     camera: Optional[str] = None
     width: int
     height: int
+    annotation_availability: AnnotationAvailability = Field(default_factory=AnnotationAvailability)
 
     @computed_field
     @property

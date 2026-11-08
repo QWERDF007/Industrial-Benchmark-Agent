@@ -177,9 +177,11 @@ export class Workspace {
                         consistency.scope = route.scope;
                     if (route.query?.kind === 'sample' && typeof route.query.sample_id === 'string' && route.query.sample_id)
                         consistency.query = route.query;
-                    for (const key of ['batchId', 'resultId', 'evidenceId', 'groupId', 'memberId', 'differenceId', 'sessionId', 'queryId', 'gallerySearch', 'subjectId'])
+                    for (const key of ['parentId', 'batchId', 'resultId', 'evidenceId', 'groupId', 'memberId', 'differenceId', 'sessionId', 'queryId', 'gallerySearch', 'subjectId'])
                         if (typeof route[key] === 'string')
                             consistency[key] = route[key];
+                    if (Array.isArray(route.datasetIds) && route.datasetIds.every((id) => typeof id === 'string' && id.length))
+                        consistency.datasetIds = route.datasetIds;
                     for (const key of ['groupPage', 'memberPage', 'galleryPage'])
                         if (Number.isSafeInteger(route[key]) && route[key] > 0)
                             consistency[key] = route[key];

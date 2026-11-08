@@ -59,7 +59,7 @@ def generate_sample_view(
     }
 
 
-def padded_bbox(sample: Sample, bbox_xyxy: List[int], padding_ratio: float) -> List[int]:
+def padded_bbox(sample: Sample, bbox_xyxy: List[int], padding_ratio: float, *, padding_pixels: int = 0) -> List[int]:
     if len(bbox_xyxy) != 4:
         raise ValueError(f"bbox_xyxy must contain 4 integers [x1, y1, x2, y2], got {bbox_xyxy}")
 
@@ -69,8 +69,8 @@ def padded_bbox(sample: Sample, bbox_xyxy: List[int], padding_ratio: float) -> L
 
     bw = x2 - x1
     bh = y2 - y1
-    pad_w = int(bw * padding_ratio)
-    pad_h = int(bh * padding_ratio)
+    pad_w = int(bw * padding_ratio) + padding_pixels
+    pad_h = int(bh * padding_ratio) + padding_pixels
 
     crop_x1 = max(0, x1 - pad_w)
     crop_y1 = max(0, y1 - pad_h)

@@ -17,6 +17,8 @@ class ConsistencyReturnLocation(AnalysisModel):
     pageId: Literal['industrial-consistency'] = 'industrial-consistency'
     tab: Literal['conflicts','search','groups','jobs'] | None = None
     scope: CorpusScope | None = None
+    parentId: Identifier | None = None
+    datasetIds: list[Identifier] | None = None
     query: SampleImageQuery | None = None
     batchId: Identifier | None = None
     resultId: Identifier | None = None

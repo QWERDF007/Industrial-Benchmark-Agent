@@ -27,27 +27,55 @@ export const explorationParameters = {
     "default": "联合比较候选良品和异常样例，自行提出适合此数据集的可观察检查方向。"
   },
   "prompt": {
-    "type": "object",
-    "additionalProperties": false,
-    "properties": {
-      "preset_id": {
-        "type": "string",
-        "title": "Preset Id"
+    "oneOf": [
+      {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "preset_id": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset Id"
+          },
+          "preset_name": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset Name"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "required": true
+          }
+        },
+        "title": "FrozenExplorationPrompt"
       },
-      "preset_name": {
-        "type": "string",
-        "title": "Preset Name"
-      },
-      "text": {
-        "type": "string",
-        "title": "Text",
-        "required": true
+      {
+        "type": "null"
       }
-    },
-    "title": "FrozenExplorationPrompt"
+    ]
   },
   "parent_version_id": {
-    "type": "string",
+    "oneOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "null"
+      }
+    ],
     "title": "Parent Version Id"
   }
 } as const;
@@ -95,11 +123,25 @@ export const directionAdoptionParameters = {
           "required": true
         },
         "title": {
-          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "title": "Title"
         },
         "instruction": {
-          "type": "string",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
           "title": "Instruction"
         },
         "enabled": {

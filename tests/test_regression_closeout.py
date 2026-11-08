@@ -141,91 +141,29 @@ def test_chinese_folder_exact_match(tmp_path):
     assert q.quality_status == QualityStatus.UNCERTAIN
 
 
-def test_bbox_reject(tmp_path):
-    """13.4: With out_of_bounds='reject', out-of-bound coordinates become INVALID."""
-    root = tmp_path / "bbox_reject_ds"
+@pytest.mark.parametrize('bbox', [[-5., 10., 50., 50.], [-2., 10., 102., 50.],
+    [-2.123456, 10.345678, 102.876543, 50.987654]])
+def test_bbox_import_preserves_original_out_of_frame_coordinates(tmp_path, bbox):
+    root = tmp_path / "bbox_ds"
     img_path = root / "sample_01.png"
     lbl_path = root / "sample_01.json"
     create_dummy_image(img_path, width=100, height=100)
-
-    with open(lbl_path, "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "shapes": [
-                    {"label": "scratch", "shape_type": "rectangle", "points": [[-5.0, 10.0], [50.0, 50.0]]}
-                ]
-            },
-            f,
-        )
-
+    original = json.dumps({"shapes": [
+        {"label": "scratch", "shape_type": "rectangle", "points": [bbox[:2], bbox[2:]]}]})
+    lbl_path.write_text(original)
     cfg = DatasetConfig(
-        dataset=DatasetInfo(id="ds_reject"),
-        root=str(root),
-        task=TaskConfig(task_id="task_reject", inspection_target="defect"),
-        annotations=AnnotationsConfig(
-            format="labelme",
-            labels={"scratch": "scratch"},
-            location_mode="sidecar",
-            bbox_policy=BBoxPolicyConfig(out_of_bounds="reject"),
-        ),
-    )
-
-    cfg_file = tmp_path / "config_reject.yaml"
+        dataset=DatasetInfo(id="ds_bbox"), root=str(root),
+        task=TaskConfig(task_id="task_bbox", inspection_target="defect"),
+        annotations=AnnotationsConfig(format="labelme", labels={"scratch": "scratch"}, location_mode="sidecar"))
+    cfg_file = tmp_path / "config_bbox.yaml"
     import yaml
-    with open(cfg_file, "w") as f:
-        yaml.dump(cfg.model_dump(mode="json"), f)
-
-    db_path = str(tmp_path / "reject.db")
+    cfg_file.write_text(yaml.safe_dump(cfg.model_dump(mode="json")))
+    db_path = str(tmp_path / "bbox.db")
     scan_dataset(str(cfg_file), db_path=db_path)
-
-    db = Database(db_path)
-    anns = AnnotationRepository(db).list_by_sample("ds_reject:sample_01.png")
-    assert len(anns) == 1
-    assert anns[0].geometry_status == GeometryStatus.INVALID
-
-
-def test_bbox_clip(tmp_path):
-    """13.5: With out_of_bounds='clip', slight out-of-bound coordinates are clipped and marked CLIPPED."""
-    root = tmp_path / "bbox_clip_ds"
-    img_path = root / "sample_01.png"
-    lbl_path = root / "sample_01.json"
-    create_dummy_image(img_path, width=100, height=100)
-
-    with open(lbl_path, "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "shapes": [
-                    {"label": "scratch", "shape_type": "rectangle", "points": [[-2.0, 10.0], [102.0, 50.0]]}
-                ]
-            },
-            f,
-        )
-
-    cfg = DatasetConfig(
-        dataset=DatasetInfo(id="ds_clip"),
-        root=str(root),
-        task=TaskConfig(task_id="task_clip", inspection_target="defect"),
-        annotations=AnnotationsConfig(
-            format="labelme",
-            labels={"scratch": "scratch"},
-            location_mode="sidecar",
-            bbox_policy=BBoxPolicyConfig(out_of_bounds="clip"),
-        ),
-    )
-
-    cfg_file = tmp_path / "config_clip.yaml"
-    import yaml
-    with open(cfg_file, "w") as f:
-        yaml.dump(cfg.model_dump(mode="json"), f)
-
-    db_path = str(tmp_path / "clip.db")
-    scan_dataset(str(cfg_file), db_path=db_path)
-
-    db = Database(db_path)
-    anns = AnnotationRepository(db).list_by_sample("ds_clip:sample_01.png")
-    assert len(anns) == 1
-    assert anns[0].geometry_status == GeometryStatus.CLIPPED
-    assert anns[0].bbox == [0.0, 10.0, 100.0, 50.0]
+    annotation, = AnnotationRepository(Database(db_path)).list_by_sample("ds_bbox:sample_01.png")
+    assert annotation.geometry_status == GeometryStatus.VALID
+    assert annotation.bbox == bbox
+    assert lbl_path.read_text() == original
 
 
 def test_labelme_source_size_scale(tmp_path):

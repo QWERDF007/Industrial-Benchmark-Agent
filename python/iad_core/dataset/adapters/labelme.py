@@ -8,7 +8,7 @@ from typing import List, Optional
 import numpy as np
 from PIL import Image
 
-from iad_core.dataset.adapters.base import DatasetAdapter, RawImage, RawAnnotation
+from iad_core.dataset.adapters.base import AnnotationDocument, DatasetAdapter, RawImage, RawAnnotation
 from iad_core.evidence.masks import MaskImages
 from iad_core.storage.models import AnnotationType
 
@@ -91,10 +91,10 @@ class LabelmeAdapter(DatasetAdapter):
 
     def load_annotations(
         self, image: RawImage, width: int, height: int
-    ) -> List[RawAnnotation]:
+    ) -> AnnotationDocument:
         label_file = self.find_label_file(image)
-        if not label_file or not os.path.exists(label_file):
-            return []
+        if label_file is None:
+            return self.missing_annotations(image)
 
         try:
             with open(label_file, "r", encoding="utf-8") as f:
@@ -110,7 +110,9 @@ class LabelmeAdapter(DatasetAdapter):
         if source_height is not None:
             source_height = int(source_height)
 
-        shapes = data.get("shapes", [])
+        shapes = data['shapes']
+        if not isinstance(shapes, list):
+            raise ValueError('Labelme shapes must be an array')
         annotations: List[RawAnnotation] = []
 
         for shape in shapes:
@@ -137,7 +139,7 @@ class LabelmeAdapter(DatasetAdapter):
             elif shape_type == "rectangle" and len(points) == 2:
                 xs = [float(p[0]) for p in points]
                 ys = [float(p[1]) for p in points]
-                bbox = [round(min(xs), 2), round(min(ys), 2), round(max(xs), 2), round(max(ys), 2)]
+                bbox = [min(xs), min(ys), max(xs), max(ys)]
                 annotations.append(
                     RawAnnotation(
                         annotation_type=AnnotationType.BBOX,
@@ -153,8 +155,8 @@ class LabelmeAdapter(DatasetAdapter):
             elif shape_type == "polygon" and len(points) >= 3:
                 xs = [float(p[0]) for p in points]
                 ys = [float(p[1]) for p in points]
-                bbox = [round(min(xs), 2), round(min(ys), 2), round(max(xs), 2), round(max(ys), 2)]
-                polygon = [[round(float(p[0]), 2), round(float(p[1]), 2)] for p in points]
+                bbox = [min(xs), min(ys), max(xs), max(ys)]
+                polygon = [[float(p[0]), float(p[1])] for p in points]
                 annotations.append(
                     RawAnnotation(
                         annotation_type=AnnotationType.POLYGON,
@@ -171,4 +173,4 @@ class LabelmeAdapter(DatasetAdapter):
             else:
                 raise ValueError(f"Unsupported or invalid Labelme shape: {shape_type}")
 
-        return annotations
+        return AnnotationDocument.from_file(annotations, label_file)

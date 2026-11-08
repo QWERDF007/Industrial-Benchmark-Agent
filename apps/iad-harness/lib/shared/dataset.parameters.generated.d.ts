@@ -26,7 +26,11 @@ export declare const annotationPolicyParameter: {
     readonly additionalProperties: false;
     readonly properties: {
         readonly policy_id: {
-            readonly type: "string";
+            readonly oneOf: readonly [{
+                readonly type: "string";
+            }, {
+                readonly type: "null";
+            }];
             readonly title: "Policy Id";
         };
         readonly annotation_role: {

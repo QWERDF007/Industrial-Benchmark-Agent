@@ -5,10 +5,14 @@ export declare const auditStartParameters: {
         readonly required: true;
     };
     readonly subset_ids: {
-        readonly type: "array";
-        readonly items: {
-            readonly type: "string";
-        };
+        readonly oneOf: readonly [{
+            readonly type: "array";
+            readonly items: {
+                readonly type: "string";
+            };
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Subset Ids";
     };
     readonly submission_id: {
@@ -16,33 +20,53 @@ export declare const auditStartParameters: {
         readonly title: "Submission Id";
     };
     readonly knowledge_version_id: {
-        readonly type: "string";
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Knowledge Version Id";
         readonly required: true;
     };
     readonly knowledge_job_id: {
-        readonly type: "string";
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Knowledge Job Id";
     };
     readonly knowledge_entry_ids: {
-        readonly type: "array";
-        readonly items: {
-            readonly type: "string";
-        };
+        readonly oneOf: readonly [{
+            readonly type: "array";
+            readonly items: {
+                readonly type: "string";
+            };
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Knowledge Entry Ids";
     };
     readonly consistency_job_ids: {
-        readonly type: "array";
-        readonly items: {
-            readonly type: "string";
-        };
+        readonly oneOf: readonly [{
+            readonly type: "array";
+            readonly items: {
+                readonly type: "string";
+            };
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Consistency Job Ids";
     };
     readonly sample_ids: {
-        readonly type: "array";
-        readonly items: {
-            readonly type: "string";
-        };
+        readonly oneOf: readonly [{
+            readonly type: "array";
+            readonly items: {
+                readonly type: "string";
+            };
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Sample Ids";
     };
     readonly filters: {
@@ -109,7 +133,11 @@ export declare const auditStartParameters: {
         readonly default: "exact";
     };
     readonly consistency_profile_id: {
-        readonly type: "string";
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Consistency Profile Id";
     };
     readonly corpus_scope: {

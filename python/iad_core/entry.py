@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from iad_core.storage.database import Database
+from iad_core.workbench.job_models import JobExecutionError
 from iad_core.storage.repositories import (
     AnnotationRepository,
     ImportIssueRepository,
@@ -23,6 +24,14 @@ from iad_core.workbench.query import SampleQuery, WorkbenchQuery
 from iad_core.workbench.review import HumanReview, ReviewSubmission, ReviewHistoryQuery
 from iad_core.workbench.runtime import workbench, close_workbenches
 from iad_core.workbench.analysis_operations import analysis_start, analysis_list, analysis_status, analysis_node, analysis_results, analysis_cancel, analysis_retry, analysis_delete
+from iad_core.consistency.agent_operations import (consistency_agent_start, consistency_agent_snapshot,
+    consistency_agent_anchors, consistency_agent_anchor, consistency_agent_session_created, consistency_agent_retrieve,
+    consistency_agent_submit_empty, consistency_agent_failure, consistency_agent_finish,
+    consistency_agent_context, consistency_agent_observe, consistency_agent_assess, consistency_agent_submit, consistency_agent_configuration,
+    consistency_agent_trace_event, consistency_agent_trace_status, consistency_agent_cancel, consistency_agent_resume,
+    consistency_agent_interrupt, consistency_agent_detail, consistency_agent_results, consistency_agent_report,
+    consistency_agent_export, consistency_agent_gallery, consistency_agent_members, consistency_agent_analysis, consistency_agent_plan, consistency_agent_capacity,
+    consistency_agent_model_call_start, consistency_agent_model_call_end, consistency_agent_diagnostics, consistency_agent_prepare)
 from iad_core.exploration.operations import (direction_exploration_start, direction_exploration_batch_start, direction_exploration_status, direction_exploration_list,
     direction_exploration_cancel, direction_exploration_delete, direction_exploration_retry, direction_exploration_get, direction_exploration_evidence, direction_exploration_remove_direction,
     direction_exploration_presets, direction_exploration_preset_save)
@@ -33,10 +42,10 @@ from iad_core.workbench.model_operations import (model_settings_get, model_setti
 from iad_core.feature.operations import feature_settings_view, feature_settings_save, feature_profile_create, feature_connection_check
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.operations import (consistency_review_context, consistency_review_submit, consistency_correction_verify, image_retrieve, temporary_image_accept,
-    consistency_model_start, consistency_model_status, consistency_model_cancel, consistency_model_retry,
+    consistency_model_status, consistency_model_cancel,
     temporary_image_release, temporary_image_release_owner,consistency_compare,consistency_evidence,
     consistency_evidence_media,consistency_evidence_export,image_index_prepare,consistency_start,consistency_status,
-    consistency_list,consistency_cancel,consistency_delete,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_group_analyze,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context)
+    consistency_list,consistency_cancel,consistency_delete,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context)
 
 DEFAULT_DB_PATH = os.environ.get("IAD_DB_PATH", "data/benchmark.db")
 _output_lock = threading.Lock()
@@ -546,12 +555,26 @@ def model_call_get(args, db_path):
 
 
 OPERATIONS = {handler.__name__: handler for handler in (
+    consistency_agent_start, consistency_agent_snapshot, consistency_agent_anchors, consistency_agent_anchor,
+    consistency_agent_session_created, consistency_agent_retrieve, consistency_agent_submit_empty,
+    consistency_agent_failure, consistency_agent_finish,
+    consistency_agent_context, consistency_agent_observe, consistency_agent_assess, consistency_agent_submit,
+    consistency_agent_configuration,
+    consistency_agent_trace_event, consistency_agent_trace_status,
+    consistency_agent_cancel, consistency_agent_resume,
+    consistency_agent_interrupt,
+    consistency_agent_detail, consistency_agent_results, consistency_agent_report, consistency_agent_export,
+    consistency_agent_gallery, consistency_agent_members, consistency_agent_analysis,
+    consistency_agent_plan, consistency_agent_capacity,
+    consistency_agent_model_call_start, consistency_agent_model_call_end,
+    consistency_agent_diagnostics,
+    consistency_agent_prepare,
     consistency_review_context, consistency_review_submit, consistency_correction_verify,
     analysis_start, analysis_list, analysis_status, analysis_node, analysis_results, analysis_cancel, analysis_retry, analysis_delete,
     image_retrieve, temporary_image_accept, temporary_image_release, temporary_image_release_owner,
     consistency_compare,consistency_evidence,consistency_evidence_media,consistency_evidence_export,
-    image_index_prepare,consistency_start,consistency_status,consistency_list,consistency_cancel,consistency_delete,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_group_analyze,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context,
-    consistency_model_start, consistency_model_status, consistency_model_cancel, consistency_model_retry,
+    image_index_prepare,consistency_start,consistency_status,consistency_list,consistency_cancel,consistency_delete,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context,
+    consistency_model_status, consistency_model_cancel,
     feature_settings_view, feature_settings_save, feature_profile_create, feature_connection_check,
     module_settings_get, module_settings_save, module_settings_validate,
     model_settings_get, model_settings_save, model_settings_view, model_settings_validate, model_environment_get, model_connection_check, model_provider_validate,
@@ -571,6 +594,10 @@ OPERATIONS = {handler.__name__: handler for handler in (
 
 
 QUERY_OPERATIONS = frozenset({
+    'consistency_agent_snapshot', 'consistency_agent_anchors', 'consistency_agent_anchor',
+    'consistency_agent_detail', 'consistency_agent_results', 'consistency_agent_report', 'consistency_agent_export',
+    'consistency_agent_gallery', 'consistency_agent_members', 'consistency_agent_analysis',
+    'consistency_agent_diagnostics',
     'module_settings_get',
     'knowledge_observations', 'knowledge_evidence',
     'knowledge_get', 'knowledge_details', 'knowledge_versions', 'knowledge_presets', 'knowledge_prompt_get', 'knowledge_sources',
@@ -611,11 +638,16 @@ def dispatch_request(req_data: Dict[str, Any], default_db_path: str = DEFAULT_DB
         code = "INVALID_ARGUMENT" if status == 422 else "NOT_FOUND" if status == 404 else "EXECUTION_ERROR"
         if isinstance(error, ConsistencyError):
             code, status = error.code, error.status_code
+        if isinstance(error, JobExecutionError):
+            code, status = error.code or 'EXECUTION_ERROR', 500
         if error.__class__.__name__ == "ToolContractError":
             code, status = "CONTRACT_ERROR", error.status_code
         if status == 500:
             traceback.print_exc(file=sys.stderr)
-        emit({"event": "error", "request_id": req_id, "status": "ERROR", "error": {"code": code, "message": str(error), "details": {"status_code": status}}})
+        details = {'status_code': status}
+        if isinstance(error, JobExecutionError):
+            details.update(source_run_id=error.source_run_id, source_phase=error.source_phase)
+        emit({"event": "error", "request_id": req_id, "status": "ERROR", "error": {"code": code, "message": str(error), "details": details}})
 
 
 def main():

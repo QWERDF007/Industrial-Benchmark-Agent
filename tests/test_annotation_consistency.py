@@ -17,6 +17,7 @@ def box(sample, identity, label, coordinates):
 def side(identity, annotations, **policy):
     return AnnotationSet(sample_id=identity, dataset_id=identity, width=160, height=80,
         quality_status='PASS', quality_source='folder:OK', annotations=annotations,
+        availability={'status': 'VALID_NONEMPTY' if annotations else 'VALID_EMPTY', 'origin': 'FILE', 'source': 'fixture.json'},
         policy=AnnotationPolicy(policy_id='same', annotation_role='REFERENCE',
             annotation_coverage='EXHAUSTIVE', **policy))
 

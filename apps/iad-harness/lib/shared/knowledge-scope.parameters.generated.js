@@ -16,11 +16,25 @@ export const knowledgeScopeParameters = {
         "default": ""
     },
     "seed": {
-        "type": "integer",
+        "oneOf": [
+            {
+                "type": "integer"
+            },
+            {
+                "type": "null"
+            }
+        ],
         "title": "Seed"
     },
     "starting_version_id": {
-        "type": "string",
+        "oneOf": [
+            {
+                "type": "string"
+            },
+            {
+                "type": "null"
+            }
+        ],
         "title": "Starting Version Id"
     }
 };

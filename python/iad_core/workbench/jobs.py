@@ -106,6 +106,7 @@ class JobRunner:
         self.finished = threading.Condition(self.lock)
         self.snapshots=JobSnapshots(db)
         self.threads: dict[str, threading.Thread] = {}
+        self.external: set[str] = set()
         self.pending: dict[str, tuple[JobContext, Callable[[JobContext], None]]] = {}
         self.cancelled: dict[str, threading.Event] = {}
         self.finished_callbacks: dict[str, list[Callable[[], None]]] = {}
@@ -166,7 +167,24 @@ class JobRunner:
                 active = child_id if child[0] in ('PENDING','RUNNING') else payload.get('active_batch_run_id')
                 self.update(owner.run_id, connection=conn, batch_runs=[*ids, child_id], active_batch_run_id=active)
 
-    def start(self, job_type: JobKind, task_id: str, request: dict, execute: Callable[[JobContext], None], message: str,
+    def _check_activity(self, conn: Connection, job_type: JobKind, request: dict, queued: bool = False):
+        if job_type == 'ANALYSIS_WORKFLOW':
+            selected = json.dumps(request.get('dataset_ids', [request['dataset_id']]))
+            if conn.execute("""SELECT 1 FROM job_runs WHERE job_type='ANALYSIS_WORKFLOW'
+                AND status IN ('PENDING','RUNNING')
+                AND json_extract(payload_json,'$.request.analysis_kind') IN ('exploration','knowledge')
+                AND json_extract(payload_json,'$.request.analysis_kind') IS ?
+                AND json_extract(payload_json,'$.request.kind') IS ?
+                AND EXISTS (SELECT 1 FROM json_each(COALESCE(json_extract(payload_json,'$.request.dataset_ids'),
+                    json_array(json_extract(payload_json,'$.request.dataset_id')))) member
+                    WHERE member.value IN (SELECT value FROM json_each(?))) LIMIT 1""",
+                (request.get('analysis_kind'), request.get('kind'), selected)).fetchone():
+                raise ValueError('所选范围已有同类活动作业')
+        elif not queued and job_type != 'MODEL_AUDIT_SAMPLE' and conn.execute("""SELECT 1 FROM job_runs WHERE job_type=? AND status IN ('PENDING','RUNNING')
+            AND COALESCE(json_extract(payload_json,'$.request.dataset_id'),json_extract(payload_json,'$.dataset_id'))=?""", (job_type, request["dataset_id"])).fetchone():
+            raise ValueError("This dataset already has an active job of this type")
+
+    def start(self, job_type: JobKind, task_id: str, request: dict, execute: Callable[[JobContext], None] | None, message: str,
               parent_run_id: Optional[str] = None, root_run_id: Optional[str] = None,
               persist: Optional[Callable[[Connection,str],None]] = None) -> dict:
         if job_type not in self.job_types or not request["sample_ids"]:
@@ -205,21 +223,8 @@ class JobRunner:
                     occupied = previous['request']["sample_ids"] if row["status"] in ("PENDING", "RUNNING") else previous["completed_sample_ids"]
                     if selected.intersection(occupied):
                         raise ValueError("所选样本已在关联作业完成或正在执行，请刷新作业状态")
-            queued = job_type in ('DIRECTION_EXPLORATION','IMAGE_INDEX','DATA_CONSISTENCY')
-            if job_type == 'ANALYSIS_WORKFLOW':
-                selected = json.dumps(request.get('dataset_ids', [request['dataset_id']]))
-                if conn.execute("""SELECT 1 FROM job_runs WHERE job_type='ANALYSIS_WORKFLOW'
-                    AND status IN ('PENDING','RUNNING')
-                    AND json_extract(payload_json,'$.request.analysis_kind') IS ?
-                    AND json_extract(payload_json,'$.request.kind') IS ?
-                    AND EXISTS (SELECT 1 FROM json_each(COALESCE(json_extract(payload_json,'$.request.dataset_ids'),
-                        json_array(json_extract(payload_json,'$.request.dataset_id')))) member
-                        WHERE member.value IN (SELECT value FROM json_each(?))) LIMIT 1""",
-                    (request.get('analysis_kind'), request.get('kind'), selected)).fetchone():
-                    raise ValueError('所选范围已有同类活动作业')
-            elif not queued and job_type != 'MODEL_AUDIT_SAMPLE' and conn.execute("""SELECT 1 FROM job_runs WHERE job_type=? AND status IN ('PENDING','RUNNING')
-                AND COALESCE(json_extract(payload_json,'$.request.dataset_id'),json_extract(payload_json,'$.dataset_id'))=?""", (job_type, request["dataset_id"])).fetchone():
-                raise ValueError("This dataset already has an active job of this type")
+            queued = execute is not None and job_type in ('DIRECTION_EXPLORATION','IMAGE_INDEX','DATA_CONSISTENCY')
+            self._check_activity(conn, job_type, request, queued)
             if queued and job_type!='DIRECTION_EXPLORATION':payload['phase']='WAITING_RESOURCE'
             conn.execute("""INSERT INTO job_runs(job_id,task_id,job_type,status,progress,message,payload_json,started_at)
                 VALUES(?,?,?,?,0,?,?,?)""", (run_id, task_id, job_type, 'PENDING' if queued else 'RUNNING', message,
@@ -229,14 +234,16 @@ class JobRunner:
                 self.attach(owner, run_id, connection=conn)
             cancel = self.cancelled[run_id] = threading.Event()
             context = JobContext(self, run_id, {**request, **payload}, cancel)
-            if queued:
+            if execute is None:
+                self.external.add(run_id)
+            elif queued:
                 self.pending[run_id] = (context, execute)
             else:
                 self.threads[run_id] = threading.Thread(target=self.run, args=(context, execute), daemon=True)
             conn.commit()
             if queued:
                 self._dispatch_pending()
-            else:
+            elif execute is not None:
                 self.threads[run_id].start()
         return self.status(run_id)
 
@@ -271,13 +278,63 @@ class JobRunner:
                          (status, datetime.now(timezone.utc).isoformat(), run_id))
             self.pending.pop(run_id, None)
             self.threads.pop(run_id, None)
+            self.external.discard(run_id)
             self.cancelled.pop(run_id, None)
             self.finished.notify_all()
             callbacks = self.finished_callbacks.pop(run_id, [])
-            if self.closing and not self.threads and not self.pending:
+            if self.closing and not self.threads and not self.pending and not self.external:
                 for worker_lock in self.worker_locks:
                     worker_lock.release()
         return callbacks
+
+    def finish_external(self, run_id: str) -> dict:
+        with self.lock:
+            if run_id not in self.external:
+                raise ValueError('作业不由外部宿主执行')
+            state = self.status(run_id)
+            callbacks = self._finish(run_id, self.terminal_status(state))
+        for callback in callbacks:
+            callback()
+        return self.status(run_id)
+
+    def _interrupt_external(self, run_id: str) -> list[Callable[[], None]]:
+        if run_id not in self.external:
+            return []
+        self.cancelled[run_id].set()
+        state = self.status(run_id)
+        with self.db.connection() as connection:
+            ModelCalls(self.db).interrupt(run_id, connection)
+        return self._finish(run_id, 'COMPLETED' if state['completed'] == state['total_samples'] else 'INTERRUPTED')
+
+    def interrupt_external(self, run_id: str) -> dict:
+        with self.lock:
+            callbacks = self._interrupt_external(run_id)
+        for callback in callbacks:
+            callback()
+        return self.status(run_id)
+
+    def resume_external(self, run_id: str, *, persist: Optional[Callable[[Connection], None]] = None) -> dict:
+        with self.lock, self.db.connection() as conn:
+            if self.closing:
+                raise ValueError('Worker is closing')
+            state = self.status(run_id)
+            if state['status'] in ('PENDING', 'RUNNING', 'COMPLETED') or state['deleted_at']:
+                raise ValueError('当前作业不可继续')
+            conn.execute('BEGIN IMMEDIATE')
+            row = conn.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (run_id,)).fetchone()
+            payload = json.loads(row[0])
+            self._check_activity(conn, state['job_type'], payload['request'])
+            payload.update(failed=0, failed_sample_ids=[], cancel_requested=False,
+                error_history=[*payload.get('error_history', []), *payload['errors']], errors=[])
+            if persist:
+                persist(conn)
+            conn.execute('''UPDATE job_runs SET status='RUNNING',finished_at=NULL,payload_json=?,progress=?,message=?
+                WHERE job_id=?''', (json.dumps(payload, ensure_ascii=False),
+                payload['completed'] / payload['total_samples'], '继续冻结主图审核', run_id))
+            conn.commit()
+            self.external.add(run_id)
+            self.cancelled[run_id] = threading.Event()
+        return self.status(run_id)
 
     def _retry_scope(self, run_id: str, job_types: Sequence[JobKind]) -> tuple[dict, dict, list[str]]:
         parent = self.status(run_id, job_types)
@@ -451,8 +508,9 @@ class JobRunner:
                         payload_json=json_set(payload_json,'$.cancel_requested',json('true')) WHERE job_id=?""", (run_id,))
                 self.cancelled[run_id].set()
                 self.cancel_children(run_id)
-                if status['status'] == 'PENDING':
-                    callbacks = self._finish(run_id, 'CANCELLED')
+                if status['status'] == 'PENDING' or run_id in self.external:
+                    completed = status['completed'] == status['total_samples']
+                    callbacks = self._finish(run_id, 'COMPLETED' if completed else 'CANCELLED')
         for callback in callbacks:
             callback()
         self._dispatch_pending()
@@ -479,6 +537,8 @@ class JobRunner:
             threads = list(self.threads.values())
             for run_id in list(self.pending):
                 callbacks.extend(self._finish(run_id, 'INTERRUPTED'))
+            for run_id in list(self.external):
+                callbacks.extend(self._interrupt_external(run_id))
             for run_id in list(self.cancelled):
                 self.cancel(run_id, self.job_types)
         for callback in callbacks:

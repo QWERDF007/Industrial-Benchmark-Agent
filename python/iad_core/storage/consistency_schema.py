@@ -2,6 +2,46 @@ from sqlite3 import Connection
 
 
 def init_content_index_schema(connection: Connection) -> None:
+    connection.execute('''CREATE TABLE IF NOT EXISTS consistency_anchor_runs (
+        job_id TEXT NOT NULL REFERENCES job_runs(job_id) ON DELETE CASCADE,
+        anchor_id TEXT NOT NULL,ordinal INTEGER NOT NULL CHECK(ordinal>=0),
+        session_id TEXT NOT NULL UNIQUE,session_created INTEGER NOT NULL DEFAULT 0 CHECK(session_created IN(0,1)),
+        state TEXT NOT NULL CHECK(state IN ('PENDING','RUNNING','COMPLETED','FAILED','CANCELLED','INTERRUPTED')),
+        phase TEXT NOT NULL,attempt INTEGER NOT NULL DEFAULT 1 CHECK(attempt>0),
+        trace_state TEXT NOT NULL DEFAULT 'OPEN' CHECK(trace_state IN ('OPEN','PENDING','CLOSED')),
+        trace_error TEXT,candidates_json TEXT CHECK(candidates_json IS NULL OR json_valid(candidates_json)),
+        group_json TEXT CHECK(group_json IS NULL OR json_valid(group_json)),
+        visual_plan_json TEXT CHECK(visual_plan_json IS NULL OR json_valid(visual_plan_json)),
+        result_json TEXT CHECK(result_json IS NULL OR json_valid(result_json)),
+        PRIMARY KEY(job_id,anchor_id),UNIQUE(job_id,ordinal))''')
+    connection.execute('''CREATE TABLE IF NOT EXISTS consistency_candidate_assessments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,candidate_id TEXT NOT NULL,
+        submission_json TEXT NOT NULL CHECK(json_valid(submission_json)),
+        FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE)''')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_candidate_assessments ON consistency_candidate_assessments(job_id,anchor_id,candidate_id,id)')
+    connection.execute('''CREATE TABLE IF NOT EXISTS consistency_anchor_phases (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,
+        attempt INTEGER NOT NULL CHECK(attempt>0),phase TEXT NOT NULL,state TEXT NOT NULL,
+        started_at TEXT NOT NULL DEFAULT(strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+        FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE)''')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_anchor_phases ON consistency_anchor_phases(job_id,anchor_id,id)')
+    connection.execute('''CREATE TRIGGER IF NOT EXISTS consistency_anchor_phase_created
+        AFTER INSERT ON consistency_anchor_runs BEGIN
+        INSERT INTO consistency_anchor_phases(job_id,anchor_id,attempt,phase,state)
+            VALUES(NEW.job_id,NEW.anchor_id,NEW.attempt,NEW.phase,NEW.state);
+        END''')
+    connection.execute('''CREATE TRIGGER IF NOT EXISTS consistency_anchor_phase_changed
+        AFTER UPDATE OF phase,state,attempt ON consistency_anchor_runs
+        WHEN NEW.phase!=OLD.phase OR NEW.state!=OLD.state OR NEW.attempt!=OLD.attempt BEGIN
+        INSERT INTO consistency_anchor_phases(job_id,anchor_id,attempt,phase,state)
+            VALUES(NEW.job_id,NEW.anchor_id,NEW.attempt,NEW.phase,NEW.state);
+        END''')
+    connection.execute('''CREATE TABLE IF NOT EXISTS consistency_visual_requests (
+        job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,request_id TEXT NOT NULL,
+        request_json TEXT NOT NULL CHECK(json_valid(request_json)),
+        observation_json TEXT CHECK(observation_json IS NULL OR json_valid(observation_json)),
+        PRIMARY KEY(job_id,anchor_id,request_id),
+        FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE)''')
     connection.execute('''CREATE TABLE IF NOT EXISTS image_pair_observations (
         sample_id_a TEXT NOT NULL REFERENCES samples(sample_id) ON DELETE CASCADE,
         sample_id_b TEXT NOT NULL REFERENCES samples(sample_id) ON DELETE CASCADE,
@@ -58,6 +98,16 @@ def init_content_index_schema(connection: Connection) -> None:
     connection.execute('''CREATE TABLE IF NOT EXISTS consistency_results (
         evidence_id TEXT PRIMARY KEY,result_id TEXT NOT NULL UNIQUE,
         snapshot_json TEXT NOT NULL CHECK(json_valid(snapshot_json)),snapshot_sha256 TEXT NOT NULL)''')
+    if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='consistency_anchor_evidence'").fetchone() is None:
+        connection.execute('''CREATE TABLE consistency_anchor_evidence (
+            job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,candidate_id TEXT NOT NULL,
+            evidence_id TEXT NOT NULL REFERENCES consistency_results(evidence_id),
+            FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE,
+            PRIMARY KEY(job_id,anchor_id,candidate_id,evidence_id))''')
+        connection.execute('''INSERT INTO consistency_anchor_evidence(job_id,anchor_id,candidate_id,evidence_id)
+            SELECT job_id,anchor_id,json_extract(member.value,'$.image.sample.sample_id'),
+                json_extract(member.value,'$.comparison.evidence_id')
+            FROM consistency_anchor_runs,json_each(group_json,'$.members') member WHERE group_json IS NOT NULL''')
     connection.execute('''CREATE TABLE IF NOT EXISTS consistency_pixel_evidence (
         pixel_key TEXT NOT NULL,sha256 TEXT NOT NULL,byte_count INTEGER NOT NULL CHECK(byte_count>0),
         PRIMARY KEY(pixel_key,sha256))''')

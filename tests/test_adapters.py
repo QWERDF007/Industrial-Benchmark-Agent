@@ -92,7 +92,7 @@ def test_labelme_adapter(tmp_path):
     assert len(images) == 1
 
     raw_img = images[0]
-    anns = adapter.load_annotations(raw_img, width=200, height=200)
+    anns = adapter.load_annotations(raw_img, width=200, height=200).annotations
     assert len(anns) == 2
 
     # Verify rectangle
@@ -136,7 +136,7 @@ def test_yolo_adapter(tmp_path):
     images = list(adapter.scan_images())
     assert len(images) == 1
 
-    anns = adapter.load_annotations(images[0], width=200, height=100)
+    anns = adapter.load_annotations(images[0], width=200, height=100).annotations
     assert len(anns) == 1
     assert anns[0].annotation_type == AnnotationType.BBOX
     assert anns[0].raw_label == "0"
