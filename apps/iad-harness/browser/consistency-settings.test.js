@@ -51,8 +51,10 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     const read = async () => (await (await fetch(base + '/api/iad/settings/modules/consistency')).json()).settings;
     await driver.wait(async () => {const settings = await read();return settings.max_exact_candidates === 3 && settings.max_similar_candidates === 7;}, 5000);
     const select = async (label, text) => new NativeSelect(await driver.findElement(By.css(`select[aria-label="${label}"]`))).selectByVisibleText(text);
-    await select('Agent 模型', 'Planner（Local）');
-    await driver.wait(async () => (await read()).agent_model?.model_id === 'planner', 5000);
+    assert.equal((await driver.findElements(By.css('select[aria-label="Agent 模型"]'))).length, 0);
+    await select('分析模型', 'Vision（Local）');
+    await driver.wait(async () => (await read()).model?.model_id === 'vision', 5000);
+    assert.equal(Object.hasOwn(await read(), 'agent_model'), false);
     await select('检索方式', '完全一致');
     assert.equal((await driver.findElements(By.css('input[aria-label="相似图上限"]'))).length, 0);
     assert.equal((await driver.findElements(By.css('input[aria-label="相似度阈值"]'))).length, 0);

@@ -143,7 +143,7 @@ try {
       ...scenario.visual_limits}}});
   const module = await read('/settings/modules/consistency');
   await post('/settings/modules/consistency', {expected_revision: module.revision, settings: {mode: 'exact',
-    agent_model: {provider_id: 'live-verification', model_id: model.id}, model: {provider_id: 'live-verification', model_id: model.id},
+    model: {provider_id: 'live-verification', model_id: model.id},
     agent_limits: {max_output_tokens: 4096, request_parameters: parameters}, ...scenario.retrieval}});
   const started = await post('/analysis/start', {analysis_kind: 'consistency', submission_id: randomUUID(), dataset_ids: [dataset.dataset_id],
     subjects: {kind: 'samples', sample_ids: subjects.map(name => dataset.dataset_id + ':' + name + '.png')}});

@@ -84,9 +84,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-workspace':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.5)
-      '@deepseek-ai/dsh-compaction-basic':
+      '@deepseek-ai/dsh-compaction':
         specifier: 0.2.0-rc.2
-        version: 0.2.0-rc.2(bb22d1d108c2de221087340f40ef12ab)
+        version: 0.2.0-rc.2(a7454e1ba73786ea5520356efc1cfeeb)
       '@deepseek-ai/dsh-credentials':
         specifier: 0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.5))

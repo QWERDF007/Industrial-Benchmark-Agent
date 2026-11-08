@@ -38,7 +38,6 @@ export function ModuleSettingsSection({module}:{module:BusinessModule}) {
     {loading&&!settings ? <p role="status">正在读取设置…</p> : settings && <div>
       <ModuleModelSetting label="分析模型" choices={choices.filter(choice=>choice.image)} model={settings.model} loading={modelsLoading} onSave={model=>save({model})}/>
       {'mode' in settings && <>
-      <ModuleModelSetting label="Agent 模型" choices={choices} model={settings.agent_model} loading={modelsLoading} onSave={agent_model=>save({agent_model})}/>
       <label className="iad-module-row"><span>检索方式</span><Select aria-label="检索方式" value={settings.mode} onChange={event=>save({mode:event.target.value as 'exact'|'combined'})}>
         <option value="exact">完全一致</option><option value="combined">一致+相似</option>
       </Select></label>

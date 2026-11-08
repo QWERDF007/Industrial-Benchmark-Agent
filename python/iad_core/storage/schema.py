@@ -16,6 +16,9 @@ def initialize_schema(conn: Connection) -> bool:
         module TEXT PRIMARY KEY CHECK(module IN ('exploration','knowledge','consistency','audit')),
         revision INTEGER NOT NULL CHECK(revision>0), settings_json TEXT NOT NULL)''')
 
+    cursor.execute("""UPDATE workbench_module_settings SET settings_json=json_remove(settings_json,'$.agent_model')
+        WHERE module='consistency' AND json_type(settings_json,'$.agent_model') IS NOT NULL""")
+
     cursor.execute('''CREATE TABLE IF NOT EXISTS workbench_model_settings (
         id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL CHECK(revision>0),
         selection_json TEXT NOT NULL)''')

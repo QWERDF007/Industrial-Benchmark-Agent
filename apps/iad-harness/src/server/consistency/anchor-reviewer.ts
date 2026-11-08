@@ -2,7 +2,6 @@ import {randomUUID} from 'node:crypto';
 import {LlmError, MessageId} from '@deepseek-ai/dsh-llm';
 import {defineTool} from '@deepseek-ai/dsh-tools';
 import * as piAi from '@deepseek-ai/dsh-llm-pi-ai';
-import BasicCompactionEngine from '@deepseek-ai/dsh-compaction-basic';
 import type {ConsistencyAnchorRun, TokenBudget} from '../../shared/domain.generated.js';
 import {anchorContextQueryParameters, anchorAssessmentInputParameters, anchorReviewSubmissionParameters, anchorVisualStartParameters} from '../../shared/consistency-agent.parameters.generated.js';
 import type {NativeProviders} from '../models/providers.js';
@@ -58,7 +57,6 @@ export class ConsistencyAnchorReviewer {
             {...identity, body, _model_execution: execution}, signal));
         scope.effect(() => () => budget.close());
         await scope.plugin(piAi, {providers: {[provider]: budget.profile}});
-        await scope.plugin(BasicCompactionEngine, {headroomTokens: profile.max_output_tokens!, maxTokens: profile.max_output_tokens!});
         scope.on('agent/request', async (event, next) => {
           retention.retainPending(event.agent.session);
           return {...await next(),
@@ -66,7 +64,7 @@ export class ConsistencyAnchorReviewer {
             ...(profile.request_parameters.stop !== undefined ? {stop: profile.request_parameters.stop as string[]} : {}),
           };
         });
-        scope.systemPrompt.section({name: 'consistency-anchor-review', order: 100, text: task.snapshot.agent_instruction});
+        scope.systemPrompt.section({name: 'consistency-anchor-review', order: 100, text: task.snapshot.instruction});
         scope.tools.register(defineTool({name: 'anchor_context', description: '读取冻结清单、待评估候选的完整事实及评估回执；传candidate_id复查该候选原始事实。',
           parameters: anchorContextQueryParameters, output: workbenchJsonOutput,
           execute: (query, execution) => this.bridge.execute('consistency_agent_context', {...identity, query}, execution.signal)}));
@@ -85,7 +83,7 @@ export class ConsistencyAnchorReviewer {
               throw error;
             }
           }}));
-        scope.tools.register(defineTool({name: 'anchor_assess', description: '校验并保存一个候选的方向性评估及本场观察引用，返回终稿使用的assessment_id；不会完成主图。',
+        scope.tools.register(defineTool({name: 'anchor_assess', description: '保存一个候选的方向性评估及本场观察引用，返回终稿使用的assessment_id；不会完成主图。',
           parameters: anchorAssessmentInputParameters, output: workbenchJsonOutput,
           execute: async (submission, execution) => {
             const result = await this.bridge.execute('consistency_agent_assess', {...identity, submission}, execution.signal);
@@ -107,9 +105,7 @@ export class ConsistencyAnchorReviewer {
         task.signal.throwIfAborted();
         agent.followup({id: MessageId(randomUUID()), role: 'user', source: {kind: 'iad-consistency', form: 'notice', summary: '审核冻结主图'},
           content: [{type: 'text', text: JSON.stringify({anchor_id: task.anchorId,
-            instruction: task.snapshot.instruction, prompt_version: task.snapshot.prompt_version,
-            ...(task.attempt > 1 ? {continuation: {attempt: task.attempt, contract_source: 'current_tool_schema',
-              instruction: '先用anchor_context读取本场已保存的观察和评估，只处理未完成候选。参数类型以本次提供的工具Schema和字段说明为准；历史工具错误保留为诊断记录，不作为当前参数类型的依据。'}} : {})})}]});
+            attempt: task.attempt})}]});
         await agent.whenIdle();
         if (failure) throw failure;
         const completed = await this.bridge.execute<ConsistencyAnchorRun>('consistency_agent_anchor', identity);

@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Callable, Sequence
 
 from iad_core.consistency.errors import ConsistencyError
-from iad_core.consistency.annotation_applicability import AnnotationApplicability
 from iad_core.consistency.group_models import FrozenAnalysisGroup, VisualWindow
 from iad_core.evidence.images import EvidenceImages, RegionView
 from iad_core.evidence.images import PreparedImage
@@ -85,8 +84,7 @@ class GroupAnalysisInputs:
                         'dataset_format':dataset_format,
                         'scan_ref':source.scan_ref,
                         **({'image_label':original.image_label} if dataset_format == 'folder_classification' else {}),
-                        'original_size':[sample.width,sample.height],'original_quality':sample.quality_status,
-                        'quality_source':sample.quality_source,'policy':source.annotations.policy.model_dump(mode='json'),
+                        'original_size':[sample.width,sample.height],
                         'annotation_coordinates':source.annotations.annotation_coordinates,
                         'annotation_availability':source.annotations.availability.model_dump(mode='json'),
                         'annotations':[annotation.model_dump(mode='json',exclude={'mask_path'}) for annotation in annotations],
@@ -119,13 +117,7 @@ class GroupAnalysisInputs:
                         **({'requested_bbox':list(view.window.bbox),'padding':view.window.padding,'reason':view.window.reason} if view.window else {})})
             contexts.append({'evidence_id':evidence_id,'result_id':saved.result.result_id,
                 'source_states':saved.source_states.model_dump(mode='json'),'sources':source_refs,
-                'verification':saved.result.verification.model_dump(mode='json'),
-                'annotation_observations':{side:observation.model_dump(mode='json') for side,observation in saved.annotation_observations.items()},
-                'annotation_applicability':{side:AnnotationApplicability.compare(
-                    captured_sources.annotations(getattr(saved.sources,side)),
-                    captured_sources.annotations(getattr(saved.sources,'right' if side=='left' else 'left')),
-                    saved.result.verification.relation,saved.parameters.matching).model_dump(mode='json') for side in ('left','right')},
-                'differences':[difference.model_dump(mode='json') for difference in saved.result.annotation.differences]})
+                'verification': {'relation': saved.result.verification.relation}})
         facts = {'anchor': {'sample_id':group.anchor.sample.sample_id,'evidence_id':group.anchor.evidence_id,'side':group.anchor.side},
                 'candidates': {identity:{'evidence_id':member.image.evidence_id,'side':member.image.side,
                     'comparison':member.comparison.model_dump(mode='json') if member.comparison else None}

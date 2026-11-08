@@ -30,7 +30,7 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         content = body['messages'][0]['content']
         media = [json.loads(part['text'].removeprefix('视觉证据：')) for part in content
             if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
-        facts = json.loads(content[0]['text'].split('冻结视觉输入：')[1].split('\n')[0])
+        facts = json.loads(content[1]['text'])['facts']
         assert set(facts['required_media_ids'][config.dataset.id + ':scratch.png']) == {item['evidence_id'] for item in media}
         for part in content:
             if part['type'] == 'image_url':
@@ -65,7 +65,8 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
             {'candidate_id': request['candidate_ids'][0]}, attempt=1)
         verification = focused['observations'][0]['facts']['evidence'][0]['verification']
         assert verification['relation'] == 'EXACT'
-        assert verification['registration']['status'] == 'UNSUPPORTED'
+        assert 'registration' not in verification
+        assert sent[0]['messages'][0]['content'][0]['text'] == checks.snapshot(job_id).instruction
         assert len(sent) == 1
         with pytest.raises(ValueError, match='新的request_id'):
             review.observe(job_id, anchor_id, {**request, 'question': '在原始像素中补充核对标注边界'})
@@ -90,7 +91,7 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
             'limitations': []}
         submission = {'fingerprint': selected.fingerprint, 'draft': draft,
             'observation_ids': {request['candidate_ids'][0]: [observed.observation_id]}}
-        for invalid in ('coverage', 'observation', 'aggregate', 'exact_facts'):
+        for invalid in ('coverage', 'observation', 'aggregate'):
             rejected = deepcopy(submission)
             if invalid == 'coverage':
                 rejected['observation_ids'] = {}
@@ -98,9 +99,6 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
                 rejected['observation_ids'][request['candidate_ids'][0]] = ['another-session-observation']
             elif invalid == 'aggregate':
                 rejected['draft']['overall'].update(verdict='EQUIVALENT', text='一致')
-            else:
-                rejected['draft']['overall'].update(verdict='EQUIVALENT', text='一致')
-                rejected['draft']['assessments'][0].update(verdict='EQUIVALENT', conclusion='一致', categories=[])
             with pytest.raises(ValueError):
                 review.submit(job_id, anchor_id, rejected)
             assert checks.anchor(job_id, anchor_id).result is None
@@ -172,7 +170,7 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
 
 
 @pytest.mark.parametrize('case', ['different_object', 'unregistered_position', 'exact_extra', 'exact_missing'])
-def test_visual_comparability_keeps_physical_changes_distinct_from_exact_annotation_direction(dataset, tmp_path, case):
+def test_image_and_annotation_comparison_does_not_require_external_policy_or_registration(dataset, tmp_path, case):
     import numpy as np
 
     from iad_core.consistency.agent_review import ConsistencyAgentReview
@@ -185,15 +183,15 @@ def test_visual_comparability_keeps_physical_changes_distinct_from_exact_annotat
     database, registry, config = dataset
     root = tmp_path / 'reference'
     root.mkdir()
+    (root / 'reference.json').write_text(json.dumps({'imageWidth': 320, 'imageHeight': 240, 'shapes': []}))
     Image.new('RGB', (320, 240), (0, 0, 200) if case in ('different_object', 'unregistered_position') else 'blue').save(root / 'reference.png')
     if case == 'unregistered_position':
         (root / 'reference.json').write_text(json.dumps({'imageWidth': 320, 'imageHeight': 240,
             'shapes': [{'label': 'dent', 'shape_type': 'rectangle', 'points': [[12, 10], [32, 30]]}]}))
-    config.annotations.annotation_coverage = 'EXHAUSTIVE'
     registry.save(config)
     registry.rescan(config.dataset.id)
     reference_dataset = registry.import_labelme(DatasetImport(format='labelme', name='对侧空标',
-        image_dir=str(root), annotation_dir=str(root), annotation_policy={'annotation_coverage': 'EXHAUSTIVE'}))
+        image_dir=str(root), annotation_dir=str(root)))
     main_id = config.dataset.id + ':dent.png'
     reference_id = reference_dataset.dataset.id + ':reference.png'
     corpus_id = reference_dataset.dataset.id
@@ -249,53 +247,74 @@ def test_visual_comparability_keeps_physical_changes_distinct_from_exact_annotat
             decision = {'fingerprint': candidates.fingerprint, 'observation_ids': [observed.observation_id],
                 'assessment': {'candidate_id': reference_id, 'verdict': 'MATERIAL', 'categories': ['位置差异'],
                     'explanation': '主图框相对参考图向左偏移，局部可见对象相似', 'findings': ['主图框的左边界比参考图向左两像素']}}
-            with pytest.raises(ValueError, match='重复追加原像素局部'):
-                review.assess(job_id, main_id, decision)
-            assert review.assessments(job_id, main_id) == []
-            decision['assessment'].update(verdict='UNCERTAIN', categories=[],
-                explanation='保留两侧标注框位置差异，但缺少可靠坐标对应，不能判定位置冲突')
             saved = review.assess(job_id, main_id, decision)
             result = review.finalize(job_id, main_id, {'fingerprint': candidates.fingerprint,
                 'assessment_ids': [saved.assessment_id]})
-            assert result.overall.verdict == 'UNCERTAIN'
-            assert result.assessments[0].conclusion is None
+            assert result.overall.verdict == 'MATERIAL'
+            assert result.assessments[0].conclusion == '位置差异'
             assert result.assessments[0].findings == ['主图框的左边界比参考图向左两像素']
             assert runtime.jobs.status(job_id)['completed'] == 1
         elif case == 'different_object':
             unsupported = deepcopy(submission)
             unsupported['draft']['overall'].update(verdict='MATERIAL', text='多类别')
             unsupported['draft']['assessments'][0].update(verdict='MATERIAL', conclusion='多类别', categories=['多类别'])
-            with pytest.raises(ValueError, match='可比'):
-                review.submit(job_id, main_id, unsupported)
-            assert review.submit(job_id, main_id, submission).overall.verdict == 'EQUIVALENT'
+            unsupported['draft']['assessments'][0]['explanation'] = '主图有一个标注，参考图有效标注为空，主图相对参考图多标。'
+            assert review.submit(job_id, main_id, unsupported).overall.verdict == 'MATERIAL'
             from iad_core.consistency.agent_results import ConsistencyAgentResults
             results = ConsistencyAgentResults(database)
             detail = results.detail(job_id, main_id)
             assert detail.original_conclusion == '多类别'
-            assert detail.model_conclusion == '无冲突'
+            assert detail.model_conclusion == '多类别'
             report = results.report(job_id)
             assert report.original_conflicts == 1
             assert report.original_categories == {'多类别': 1}
-            assert report.model_categories == {'无冲突': 1}
-            assert report.agreement == {'一致': 0, '不一致': 1}
+            assert report.model_categories == {'多类别': 1}
+            assert report.agreement == {'一致': 1, '不一致': 0}
             gallery = results.gallery(job_id)
             assert gallery.total == 1
             assert gallery.items[0].conflict_categories == ['多类别']
-            assert gallery.items[0].model_state == 'EQUIVALENT'
-            assert gallery.items[0].model_conclusion == '无冲突'
+            assert gallery.items[0].model_state == 'MATERIAL'
+            assert gallery.items[0].model_conclusion == '多类别'
         else:
-            with pytest.raises(ValueError):
-                review.submit(job_id, main_id, submission)
             direction = '少类别' if case == 'exact_missing' else '多类别'
-            opposite = '多类别' if direction == '少类别' else '少类别'
-            draft['overall'].update(verdict='MATERIAL', text=opposite)
-            draft['assessments'][0].update(verdict='MATERIAL', conclusion=opposite, categories=[opposite])
-            with pytest.raises(ValueError):
-                review.submit(job_id, main_id, submission)
-            draft['overall']['text'] = direction
-            draft['assessments'][0].update(conclusion=direction, categories=[direction],
-                explanation='原始像素相同，主图相对参考图的标注数量不同')
+            draft['overall'].update(verdict='MATERIAL', text=direction)
+            draft['assessments'][0].update(verdict='MATERIAL', conclusion=direction, categories=[direction],
+                explanation='主图相对参考图的标注数量不同')
             assert review.submit(job_id, main_id, submission).overall.text == direction
+    finally:
+        client.close()
+        runtime.close()
+
+
+def test_invalid_visual_output_does_not_append_hidden_repair_instructions(dataset):
+    from iad_core.consistency.agent_review import ConsistencyAgentReview
+    from iad_core.workbench.completion import ModelOutputError
+
+    database, _, config = dataset
+    sent = []
+    instruction = '直接比较这两张图的原始标注。'
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': '{}'}}]})
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
+    runtime = WorkbenchRuntime(database)
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        anchor = config.dataset.id + ':dent.png'
+        run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
+            'instruction': instruction, 'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
+        checks.session_created(run, anchor)
+        selected = checks.retrieve(run, anchor)
+        with pytest.raises(ModelOutputError):
+            ConsistencyAgentReview(runtime, client).observe(run, anchor, {'request_id': str(uuid4()),
+                'fingerprint': selected.fingerprint, 'candidate_ids': [selected.candidates[0].sample_id], 'question': instruction})
+        assert len(sent) == 1
+        assert len(sent[0]['messages']) == 1
+        assert sent[0]['messages'][0]['content'][0]['text'] == instruction
     finally:
         client.close()
         runtime.close()

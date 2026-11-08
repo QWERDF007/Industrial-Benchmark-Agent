@@ -63,12 +63,12 @@ test('a native Agent covers thirty paged candidates and resumes without repeatin
     assert.equal(after.assessments.length, 30);
     assert.ok(rejected.every(event => event.data.message.content.some(block => block.type === 'text' && block.text.startsWith('Error:'))));
     assert.ok(rejected.at(-1).data.message.content.some(block => block.type === 'text' && block.text.includes('不属于本场')));
-    assert.ok(wires.slice(foreignCalls).filter(body => body.model === 'vision').every(body =>
-      JSON.parse(body.messages[0].content[0].text.split('冻结视觉输入：')[1].split('\n')[0]).anchor.sample_id === identity.anchor_id));
-    const generated = wires.filter(body => body.model === 'vision' &&
-      JSON.parse(body.messages[0].content[0].text.split('冻结视觉输入：')[1].split('\n')[0]).anchor.sample_id === identity.anchor_id);
+    assert.ok(wires.slice(foreignCalls).filter(body => body.test_role === 'vision').every(body =>
+      JSON.parse(body.messages[0].content[1].text).facts.anchor.sample_id === identity.anchor_id));
+    const generated = wires.filter(body => body.test_role === 'vision' &&
+      JSON.parse(body.messages[0].content[1].text).facts.anchor.sample_id === identity.anchor_id);
     assert.equal(generated.length, after.visual_plan.pages.length);
-    const seen = generated.flatMap(body => Object.keys(JSON.parse(body.messages[0].content[0].text.split('冻结视觉输入：')[1].split('\n')[0]).candidates));
+    const seen = generated.flatMap(body => Object.keys(JSON.parse(body.messages[0].content[1].text).facts.candidates));
     assert.equal(seen.length, 30);
     assert.deepEqual([...new Set(seen)].sort(), expected);
     const status = await bridge.execute('analysis_status', {run_id: started.run_id});

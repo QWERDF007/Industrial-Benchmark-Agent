@@ -112,10 +112,9 @@ def test_original_matching_never_confirms_missing_annotations_from_unprovided_so
 
 
 @pytest.mark.parametrize('case', ['partial', 'unknown', 'not_provided', 'ignored', 'exhaustive', 'main_partial'])
-def test_frozen_comparison_uses_annotation_applicability_without_erasing_raw_counts(dataset, tmp_path, case):
+def test_direct_review_preserves_raw_annotations_without_policy_based_verdict_gates(dataset, tmp_path, case):
     from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
-    from iad_core.consistency.group_analysis_models import GroupAnalysisDraft
     from iad_core.consistency.agent_review import ConsistencyAgentReview
     from iad_core.consistency.annotation_inventory import AnnotationInventory
     from iad_core.workbench.runtime import WorkbenchRuntime
@@ -154,9 +153,8 @@ def test_frozen_comparison_uses_annotation_applicability_without_erasing_raw_cou
         media = [json.loads(item['text'].removeprefix('视觉证据：'))['evidence_id'] for item in content
             if item['type'] == 'text' and item['text'].startswith('视觉证据：')]
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps({
-            'observations': [{'candidate_id': candidate, 'description': '原始像素相同，依据实际覆盖范围核对标注',
-                'phenomena_comparable': True, 'appearance_explains_annotation_difference': False,
-                'media_ids': media, 'limitations': ['覆盖限制来自冻结标注规范']}]
+            'observations': [{'candidate_id': candidate, 'description': '依据原始像素和两侧原始标注进行比较',
+                'media_ids': media, 'limitations': []}]
         })}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
@@ -168,55 +166,25 @@ def test_frozen_comparison_uses_annotation_applicability_without_erasing_raw_cou
         checks.session_created(run, anchor)
         candidates = checks.retrieve(run, anchor)
         evidence = ConsistencyAgentEvidence(runtime)
-        group = evidence.freeze(run, anchor, checkpoint=lambda: None)
-        reference = group.members[0].comparison
-        citation = {'candidate_id': candidate, 'comparison': reference.model_dump(exclude={'anchor_side'})}
-
-        def draft(verdict):
-            return GroupAnalysisDraft.model_validate({'assessments': [{'candidate_id': candidate,
-                'verdict': verdict, 'categories': ['多类别'] if verdict == 'MATERIAL' else [],
-                'conclusion': '多类别' if verdict == 'MATERIAL' else '一致' if verdict == 'EQUIVALENT' else None,
-                'explanation': '比较主图已标区域与候选可比域，并保留标注覆盖限制', 'findings': []}],
-                'overall': {'verdict': verdict, 'text': '多类别' if verdict == 'MATERIAL' else '一致' if verdict == 'EQUIVALENT' else None,
-                    'references': [citation]},
-                'conclusions': [{'text': '标注覆盖与忽略区域限制缺标推断', 'references': [citation]}],
-                'limitations': ['候选可比域的标注覆盖限制']})
-
         review = ConsistencyAgentReview(runtime, client)
         observed = review.observe(run, anchor, {'request_id': 'applicability', 'fingerprint': candidates.fingerprint,
-            'candidate_ids': [candidate], 'question': '核实标注覆盖与共同可比域'})
-
-        def submit(verdict):
-            proposal = draft(verdict)
+            'candidate_ids': [candidate], 'question': '比较两侧原始标注'})
+        for verdict in ('EQUIVALENT', 'MATERIAL'):
             record = review.assess(run, anchor, {'fingerprint': candidates.fingerprint,
-                'assessment': proposal.assessments[0].model_dump(exclude={'conclusion'}),
+                'assessment': {'candidate_id': candidate, 'verdict': verdict,
+                    'categories': ['多类别'] if verdict == 'MATERIAL' else [],
+                    'explanation': '直接比较主图相对候选图的原始标注', 'findings': []},
                 'observation_ids': [observed.observation_id]})
-            return review.finalize(run, anchor, {'fingerprint': candidates.fingerprint,
-                'assessment_ids': [record.assessment_id], 'overall': {'assessment_id': record.assessment_id},
-                'conclusions': [item.text for item in proposal.conclusions], 'limitations': proposal.limitations})
-
-        if case in ('exhaustive', 'main_partial'):
-            with pytest.raises(ValueError):
-                submit('UNCERTAIN')
-            assert submit('MATERIAL').overall.verdict == 'MATERIAL'
-        elif case == 'ignored':
-            with pytest.raises(ValueError, match='适用|忽略|可比域'):
-                submit('MATERIAL')
-            assert submit('EQUIVALENT').overall.verdict == 'EQUIVALENT'
-        else:
-            for verdict in ('MATERIAL', 'EQUIVALENT'):
-                with pytest.raises(ValueError, match='适用|覆盖|未提供'):
-                    submit(verdict)
-            result = submit('UNCERTAIN')
-            assert result.overall.verdict == 'UNCERTAIN'
-            assert result.overall.text is None
-            assert result.assessments[0].conclusion is None
+        result = review.finalize(run, anchor, {'fingerprint': candidates.fingerprint,
+            'assessment_ids': [record.assessment_id]})
+        assert result.overall.verdict == 'MATERIAL'
         raw = AnnotationInventory.compare(AnnotationSet.capture(db, anchor), AnnotationSet.capture(db, candidate))
         assert raw.left == {'dent': 1}
         assert raw.right == {}
         prepared = evidence.prepare(run, anchor, [candidate])
         assert all('annotation_availability' in source for source in prepared.facts['sources'].values())
-        assert requests and all('annotation_applicability' in item for item in prepared.facts['evidence'])
+        assert requests and all('annotation_applicability' not in item for item in prepared.facts['evidence'])
+        assert all('policy' not in source for source in prepared.facts['sources'].values())
     finally:
         client.close()
         runtime.close()

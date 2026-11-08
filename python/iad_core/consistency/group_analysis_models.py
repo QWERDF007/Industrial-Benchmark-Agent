@@ -35,10 +35,9 @@ ConclusionPhrase = Annotated[str, Field(min_length=1, max_length=40,
 class GroupPairDecision(AnalysisModel):
     candidate_id: Identifier
     verdict: ModelAssessmentVerdict = Field(description='当前候选的标注一致性判定：MATERIAL为实质冲突，EQUIVALENT为一致，UNCERTAIN为关键证据缺失')
-    explanation: str = Field(min_length=1,max_length=8000,
-        description='当前图对的分析依据，具体说明差异发生在哪一侧、哪个对象或区域，位置、类别、数量及拆分合并等实际变化，解释判定及主分类；无差异时说明各项对应。不得用基本一致、可能、疑似、待核对等话术替代判断。真实缺失证据须指明缺失内容及其阻断的判断')
+    explanation: str = Field(min_length=1,max_length=8000, description='当前候选的标注比对分析')
     findings: list[str] = Field(default_factory=list,max_length=100,
-        description='自由描述实际发现的问题，不受程序差异分类限制；未发现差异时可为空')
+        description='当前候选的具体发现')
 
 
 class GroupPairAssessment(GroupPairDecision):

@@ -68,9 +68,7 @@ test('native settings preserve General and Models while business settings persis
     const similarLimit=await driver.findElement(By.css('input[aria-label="相似图上限"]'));
     await similarLimit.clear();await similarLimit.sendKeys('7');await similarLimit.sendKeys('\uE004');
     await driver.wait(async()=>{const current=(await api(null,'/settings/modules/consistency')).data.settings;return current.max_exact_candidates===3&&current.max_similar_candidates===7;},5000);
-    const agent=await driver.findElement(By.css('select[aria-label="Agent 模型"]'));
-    await new NativeSelect(agent).selectByVisibleText('First model（First service）');
-    await driver.wait(async()=>(await api(null,'/settings/modules/consistency')).data.settings.agent_model?.model_id==='first-model',5000);
+    assert.equal((await driver.findElements(By.css('select[aria-label="Agent 模型"]'))).length,0);
     const threshold=await driver.findElement(By.css('input[aria-label="相似度阈值"]'));
     await threshold.clear();await threshold.sendKeys('0.97');await threshold.sendKeys('\uE004');
     await driver.wait(async()=>(await api(null,'/settings/modules/consistency')).data.settings.min_similarity===.97,5000);

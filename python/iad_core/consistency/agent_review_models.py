@@ -1,12 +1,11 @@
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
-from pydantic import Field, WithJsonSchema, model_validator
+from pydantic import ConfigDict, Field, WithJsonSchema, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText, VisualEvidence
 from iad_core.consistency.models import CandidateLimit, Digest, Identifier
 from iad_core.consistency.group_analysis_models import GroupAnalysisComparison, GroupAnalysisDraft, GroupAnalysisReference, GroupPairAssessment, GroupPairDecision
 from iad_core.consistency.group_analysis_conclusions import CONCLUSION_CATEGORIES, EQUIVALENT_CONCLUSION
-from iad_core.consistency.group_analysis_contract import GroupAnalysisContract
 from iad_core.consistency.conflict_categories import ConflictCategory
 from iad_core.consistency.group_models import VisualWindow
 
@@ -41,10 +40,10 @@ class AnchorVisualPlan(AnalysisModel):
 
 
 class CandidateVisualObservation(AnalysisModel):
+    model_config = ConfigDict(extra='allow', frozen=True)
+
     candidate_id: Identifier
     description: NonBlankText
-    phenomena_comparable: bool
-    appearance_explains_annotation_difference: bool
     media_ids: list[Identifier] = Field(min_length=1)
     limitations: list[NonBlankText] = Field(default_factory=list)
 
@@ -76,12 +75,16 @@ ModelConflictCategory = Annotated[ConflictCategory, WithJsonSchema({'type': 'str
 
 
 class AnchorAssessmentDecision(GroupPairDecision):
+    verdict: Literal['EQUIVALENT', 'MATERIAL'] = Field(description='当前候选的标注比对结论：MATERIAL表示存在差异，EQUIVALENT表示一致')
     categories: list[ModelConflictCategory] = Field(max_length=1,
-        description='MATERIAL提供唯一主要冲突分类；EQUIVALENT和UNCERTAIN为空数组。其他发现保留在分析中。')
+        description='MATERIAL提供唯一主要冲突分类；EQUIVALENT为空数组。其他发现保留在分析中。')
 
     @model_validator(mode='after')
     def validate_categories(self) -> Self:
-        GroupAnalysisContract.validate_categories(self.verdict, self.categories)
+        if self.verdict == 'MATERIAL' and not self.categories:
+            raise ValueError('MATERIAL必须提供一个主要差异分类')
+        if self.verdict == 'EQUIVALENT' and self.categories:
+            raise ValueError('一致结论的categories必须为空数组')
         return self
 
     def as_assessment(self) -> GroupPairAssessment:

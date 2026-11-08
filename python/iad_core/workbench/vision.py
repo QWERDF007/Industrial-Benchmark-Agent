@@ -43,6 +43,7 @@ class GenerationRequest(Generic[T]):
     body: dict
     images: tuple[PreparedImage, ...]
     output_reserve: int
+    context: dict | None = None
 
 
 MODEL_PROMPT_CONTRACT = 'complete-editable-prompt-v4'
@@ -115,7 +116,7 @@ class VlmClient:
             output_reserve=min(output_reserve, self.profile.max_output_tokens or output_reserve))
 
     def plan(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str,
-             output_reserve: int = 2048, *, correction: Optional[ModelOutputError] = None) -> GenerationRequest[T]:
+             output_reserve: int = 2048, *, context: dict | None = None, correction: Optional[ModelOutputError] = None) -> GenerationRequest[T]:
         if self.profile.capacity_mode is None:
             raise ValueError('模型容量能力未知，请配置LIVE_VLM_CAPACITY_MODE；未发送生成请求')
         if self.profile.max_visual_inputs is not None and len(images) > self.profile.max_visual_inputs:
@@ -124,6 +125,8 @@ class VlmClient:
         rendered='\n'.join(json.dumps(schema,ensure_ascii=False) if line.strip()==RESPONSE_SCHEMA_SLOT else line
             for line in instruction.split('\n'))
         content = [{"type": "text", "text": rendered}]
+        if context is not None:
+            content.append({"type": "text", "text": json.dumps(context, ensure_ascii=False)})
         for image in images:
             if file_sha256(image.path) != image.evidence.sha256:
                 raise ValueError("Visual input content changed")
@@ -151,12 +154,12 @@ class VlmClient:
         body['max_tokens'] = min(available, self.profile.max_output_tokens or available)
         if not self.within_limits(body, images):
             raise ModelCapacityError(f'完整图组请求体超过已配置上限 {self.profile.max_request_bytes} 字节；未拆组，请确认是否减少图像数量')
-        return GenerationRequest(response_type, body, tuple(images), output_reserve)
+        return GenerationRequest(response_type, body, tuple(images), output_reserve, context)
 
     def generate(self, plan: GenerationRequest[T]) -> T:
         for attempt in range(2):
             try:
-                return self._generate(plan)
+                return self.generate_once(plan)
             except ModelOutputError as error:
                 if attempt:
                     raise
@@ -187,9 +190,9 @@ class VlmClient:
                     raise
                 instruction = plan.body['messages'][0]['content'][0]['text']
                 plan = self.plan(plan.response_type, instruction, list(plan.images), plan.body['model'],
-                    plan.output_reserve, correction=error)
+                    plan.output_reserve, context=plan.context, correction=error)
 
-    def _generate(self, plan: GenerationRequest[T]) -> T:
+    def generate_once(self, plan: GenerationRequest[T]) -> T:
         response_type = plan.response_type
         request = self.client.build_request('POST', self.endpoint,
             headers={**self._headers, 'Accept': 'text/event-stream', 'Accept-Encoding': 'identity'},

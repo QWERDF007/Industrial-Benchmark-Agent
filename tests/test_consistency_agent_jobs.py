@@ -54,7 +54,7 @@ def test_check_submission_freezes_the_configuration_once_without_requiring_model
         assert frozen.schema_version == 1 and frozen.settings_revision == 1
         assert frozen.retrieval.mode == 'exact' and frozen.retrieval.min_similarity is None
         assert frozen.retrieval.max_exact_candidates == 3 and frozen.retrieval.max_similar_candidates is None
-        assert frozen.model is None and frozen.agent_model is None
+        assert frozen.model is None and 'agent_model' not in frozen.model_dump()
         assert frozen.instruction == request['instruction']
         assert frozen.scopes.subjects.sample_count == frozen.scopes.corpus.sample_count == 4
         modules.save({'module': 'consistency', 'expected_revision': 1,
@@ -104,7 +104,6 @@ def test_check_uses_the_single_server_configuration_resolved_for_its_submission(
     modules = ModuleSettings(database)
     modules.save({'module': 'consistency', 'expected_revision': 0, 'settings': {
         'mode': 'exact', 'max_exact_candidates': 3,
-        'agent_model': {'provider_id': 'planner', 'model_id': 'plan'},
         'model': {'provider_id': 'vision', 'model_id': 'see'}}})
     runtime = WorkbenchRuntime(database)
     try:
@@ -112,12 +111,11 @@ def test_check_uses_the_single_server_configuration_resolved_for_its_submission(
         configuration = checks.configuration()
         modules.save({'module': 'consistency', 'expected_revision': 1, 'settings': {
             'mode': 'combined', 'max_exact_candidates': 8,
-            'agent_model': {'provider_id': 'other', 'model_id': 'new'}}})
+            'model': {'provider_id': 'other', 'model_id': 'new'}}})
         started = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id]}, configuration=configuration)
         frozen = checks.snapshot(started['run_id'])
         assert frozen.settings_revision == 1
         assert frozen.retrieval.mode == 'exact' and frozen.retrieval.max_exact_candidates == 3
-        assert frozen.agent_model.provider_id == 'planner'
         assert frozen.model.provider_id == 'vision'
     finally:
         runtime.close()

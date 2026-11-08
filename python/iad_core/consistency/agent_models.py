@@ -1,7 +1,7 @@
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.consistency.candidate_selection import AnchorCandidates
@@ -73,20 +73,19 @@ class ConsistencyCheckConfiguration(AnalysisModel):
 
 
 class ConsistencyCheckSnapshot(AnalysisModel):
+    model_config = ConfigDict(extra='allow', frozen=True)
+
     schema_version: Literal[1] = 1
     settings_revision: Count
     retrieval: FrozenCandidatePolicy
     scopes: ConsistencyScopesSnapshot
     model: ModuleModelReference | None
-    agent_model: ModuleModelReference | None
     model_limits: ModelLimits
     roles: ConsistencyModelRoles = Field(default_factory=ConsistencyModelRoles)
     image_encoder: ImageEncoderConfig | None
     policies: dict[str, AnnotationPolicy]
     instruction: NonBlankText
-    agent_instruction: NonBlankText
-    visual_instruction: NonBlankText
-    prompt_version: Identifier = 'consistency-anchor-v4'
+    prompt_version: Identifier = 'consistency-anchor-v5'
     pixel_profile: Literal['raw-decoded-v1'] = 'raw-decoded-v1'
     model_call_logging: Literal['native-v1'] | None = None
     phase_logging: Literal['timeline-v1'] | None = None

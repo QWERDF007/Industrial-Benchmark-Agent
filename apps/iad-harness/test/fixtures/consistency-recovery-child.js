@@ -34,7 +34,7 @@ if (mode === 'commit') {
   try {
     const module = await bridge.execute('module_settings_get', {module: 'consistency'});
     await bridge.execute('module_settings_save', {module: 'consistency', expected_revision: module.revision,
-      settings: {model: null, agent_model: null, max_exact_candidates: 1}});
+      settings: {model: null, max_exact_candidates: 1}});
     await scheduler.resume(runId);await scheduler.whenIdle();
     await scheduler.resume(runId);await scheduler.whenIdle();
     process.send({detail: await bridge.execute('consistency_agent_detail', {run_id: runId, anchor_id: anchorId}),

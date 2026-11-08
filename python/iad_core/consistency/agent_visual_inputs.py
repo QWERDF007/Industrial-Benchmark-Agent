@@ -10,7 +10,6 @@ from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.consistency.agent_review_models import AnchorVisualRequest, AnchorVisualResult, AnchorVisualStart
 from iad_core.consistency.group_analysis_inputs import GroupAnalysisInputs
 from iad_core.evidence.images import PreparedImage
-from iad_core.workbench.prompt_text import RESPONSE_FORMAT_INSTRUCTION
 from iad_core.workbench.vision import GenerationRequest, VlmClient
 
 if TYPE_CHECKING:
@@ -21,6 +20,7 @@ if TYPE_CHECKING:
 class AnchorVisualInput:
     request: AnchorVisualRequest
     prompt: str
+    context: dict
     images: list[PreparedImage]
     response_type: type[AnchorVisualResult]
 
@@ -34,10 +34,10 @@ class AnchorVisualInput:
             if source['sample_id'] in (anchor_id, identity) for entry in source['visual_inputs']}
             for identity in request.candidate_ids}
         prepared.facts['required_media_ids'] = {identity: sorted(identities) for identity, identities in required.items()}
-        prompt = (snapshot.visual_instruction + '\n本场审核要求：' + snapshot.instruction + '\n本次问题：' + request.question
-            + '\n冻结视觉输入：' + json.dumps(prepared.facts, ensure_ascii=False) + '\n' + RESPONSE_FORMAT_INSTRUCTION)
+        prompt = snapshot.instruction
+        context = {'question': request.question, 'facts': prepared.facts}
         captured = AnchorVisualRequest(**request.model_dump(), anchor_id=anchor_id, facts=prepared.facts,
-            media=[image.evidence for image in prepared.images], input_fingerprint=GroupAnalysisInputs.input_fingerprint(prompt, prepared.images))
+            media=[image.evidence for image in prepared.images], input_fingerprint=GroupAnalysisInputs.input_fingerprint(json.dumps({'instruction': prompt, 'context': context}, ensure_ascii=False), prepared.images))
 
         @model_validator(mode='after')
         def validate_observations(result):
@@ -54,7 +54,7 @@ class AnchorVisualInput:
             return result
 
         response_type = type('AnchorVisualResult', (AnchorVisualResult,), {'validate_observations': validate_observations})
-        return cls(captured, prompt, prepared.images, response_type)
+        return cls(captured, prompt, context, prepared.images, response_type)
 
     def plan(self, client: VlmClient) -> GenerationRequest[AnchorVisualResult]:
-        return client.plan(self.response_type, self.prompt, self.images, client.resolve_model())
+        return client.plan(self.response_type, self.prompt, self.images, client.resolve_model(), context=self.context)

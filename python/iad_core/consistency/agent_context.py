@@ -26,9 +26,7 @@ class AnchorAgentContext:
                 'sources': {key: {name: value for name, value in source.items()
                     if name not in {'visual_inputs', 'scan_ref', 'name', 'quality_source', 'issues'}} for key, source in facts['sources'].items()
                     if source['sample_id'] in (facts['anchor']['sample_id'], candidate_id)},
-                'evidence': [{**{key: row[key] for key in ('annotation_observations', 'annotation_applicability')},
-                    'verification': {key: row['verification'][key] for key in ('relation', 'registration')}}
-                    for row in facts['evidence'] if row['evidence_id'] == selected['comparison']['evidence_id']]}}
+                'evidence': [row for row in facts['evidence'] if row['evidence_id'] == selected['comparison']['evidence_id']]}}
 
     @classmethod
     def observed(cls, item: AnchorObservation) -> dict:

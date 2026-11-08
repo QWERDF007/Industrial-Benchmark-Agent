@@ -6,7 +6,6 @@ from iad_core.consistency.agent_models import (AnchorResult, AnchorTraceEvent, C
     ConsistencyAnchorRun, ConsistencyCheckConfiguration, ConsistencyCheckSnapshot, ConsistencyModelRoles,
     ExactCandidatePolicy, NoCandidateResult)
 from iad_core.consistency.candidate_selection import AnchorCandidates
-from iad_core.consistency.agent_prompts import AGENT_REVIEW_INSTRUCTION, VISUAL_OBSERVATION_INSTRUCTION
 from iad_core.consistency.agent_results import ConsistencyAgentResults
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.models import ConsistencyRetrievalSettings, ImageRetrieve
@@ -54,14 +53,13 @@ class ConsistencyAgentJobs:
         registry = DatasetRegistry(self.db)
         snapshot = ConsistencyCheckSnapshot(settings_revision=configured.settings_revision, retrieval=retrieval, scopes=scopes,
             model_call_logging='native-v1', phase_logging='timeline-v1',
-            model=settings.model, agent_model=settings.agent_model,
+            model=settings.model,
             model_limits=configured.model_limits,
             roles=ConsistencyModelRoles.model_validate(roles or {}),
             image_encoder=ImageEncoders(self.db).read().selection if settings.mode == 'combined' else None,
             policies={dataset_id: AnnotationPolicy.model_validate(registry.get(dataset_id).annotations.model_dump(
                 include=set(AnnotationPolicy.model_fields))) for dataset_id in sorted(set(scopes.subjects.dataset_ids + scopes.corpus.dataset_ids))},
-            instruction=submitted.instruction, agent_instruction=AGENT_REVIEW_INSTRUCTION,
-            visual_instruction=VISUAL_OBSERVATION_INSTRUCTION)
+            instruction=submitted.instruction)
         sample_ids = [sample.sample_id for sample in scopes.subjects.samples]
         units = [dict(dataset_id=dataset_id, request=dict(sample_ids=[sample.sample_id for sample in scopes.subjects.samples
             if sample.dataset_id == dataset_id])) for dataset_id in scopes.subjects.dataset_ids]

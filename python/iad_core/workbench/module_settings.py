@@ -20,7 +20,6 @@ class ModuleSettingsValues(AnalysisModel):
 
 
 class ConsistencySettingsValues(ModuleSettingsValues, ConsistencyRetrievalSettings):
-    agent_model: ModuleModelReference | None = None
     agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
 
 

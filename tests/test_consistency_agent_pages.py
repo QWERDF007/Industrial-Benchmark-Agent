@@ -45,7 +45,7 @@ def test_thirty_candidates_are_planned_with_real_media_budgets_and_resume_comple
     def respond(request):
         body = json.loads(request.content)
         content = body['messages'][0]['content']
-        facts = json.loads(content[0]['text'].split('冻结视觉输入：')[1].split('\n')[0])
+        facts = json.loads(content[1]['text'])['facts']
         if request.url.path.endswith('/tokenize'):
             tokenized.append(body)
             return httpx.Response(200, json={'count': 1000 + (1500 * len(facts['candidates']) if budget == 'context' else 0), 'max_model_len': 8192})
@@ -97,7 +97,7 @@ def test_thirty_candidates_are_planned_with_real_media_budgets_and_resume_comple
         from iad_core.consistency.agent_context import AnchorAgentContext
         context = AnchorAgentContext(runtime)
         index = context.read(job_id, anchor_id, {}, attempt=attempt)
-        assert index['observations'] == []
+        assert {item['candidate_id'] for item in index['observations']} == set(observed)
         assert {identity for receipt in index['observation_index'] for identity in receipt['candidate_ids']} == set(observed)
         candidate_id = plan.pages[-1].candidate_ids[-1]
         focused = context.read(job_id, anchor_id, {'candidate_id': candidate_id}, attempt=attempt)

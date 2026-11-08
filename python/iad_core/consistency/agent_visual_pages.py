@@ -4,7 +4,6 @@ from collections import deque
 from typing import TYPE_CHECKING
 
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
-from iad_core.consistency.agent_prompts import VISUAL_PAGE_QUESTION
 from iad_core.consistency.agent_review_models import AnchorVisualPlan, AnchorVisualStart
 from iad_core.consistency.agent_visual_inputs import AnchorVisualInput
 from iad_core.consistency.errors import ConsistencyError
@@ -37,8 +36,8 @@ class AnchorVisualPages:
                 context.checkpoint()
                 identities = pending.popleft()
                 request = AnchorVisualStart(request_id='page-' + hashlib.sha256(json.dumps(
-                    [run_id, anchor_id, anchor.candidates.fingerprint, identities, snapshot.instruction, VISUAL_PAGE_QUESTION], ensure_ascii=False).encode()).hexdigest(),
-                    fingerprint=anchor.candidates.fingerprint, candidate_ids=identities, question=VISUAL_PAGE_QUESTION)
+                    [run_id, anchor_id, anchor.candidates.fingerprint, identities, snapshot.instruction], ensure_ascii=False).encode()).hexdigest(),
+                    fingerprint=anchor.candidates.fingerprint, candidate_ids=identities, question=snapshot.instruction)
                 try:
                     inputs = AnchorVisualInput.prepare(self.runtime, run_id, anchor_id, request, context.checkpoint)
                     with ModelCalls(self.runtime.db).bind(run_id, context.checkpoint, role='vision', request_id=request.request_id):

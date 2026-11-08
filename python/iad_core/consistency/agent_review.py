@@ -9,9 +9,7 @@ from iad_core.consistency.agent_review_models import (AnchorAssessmentInput, Anc
     AnchorReviewSubmission, AnchorVisualResult, AnchorVisualStart, VISUAL_REQUEST_ID_RULE)
 from iad_core.consistency.agent_visual_inputs import AnchorVisualInput
 from iad_core.consistency.agent_visual_pages import AnchorVisualPages
-from iad_core.consistency.conflict_categories import ConflictCategory
 from iad_core.consistency.group_models import FrozenAnalysisGroup
-from iad_core.consistency.group_analysis_contract import GroupAnalysisContract
 from iad_core.consistency.group_analysis_validation import GroupAnalysisValidation
 from iad_core.workbench.calls import ModelCalls
 from iad_core.workbench.jobs import JobContext
@@ -64,7 +62,7 @@ class ConsistencyAgentReview:
         with ModelCalls(self.db).bind(run_id, context.checkpoint, role='vision', request_id=request.request_id):
             plan = inputs.plan(self.client)
             context.checkpoint()
-            result = self.client.generate(plan)
+            result = self.client.generate_once(plan)
         context.checkpoint()
         observed = AnchorObservation(observation_id='observation_' + uuid4().hex, request=inputs.request,
             result=AnchorVisualResult.model_validate(result.model_dump()))
@@ -161,27 +159,11 @@ class ConsistencyAgentReview:
         if not candidates or set(submission.observation_ids) != set(candidates):
             raise ValueError('终稿必须覆盖全部入选候选的视觉观察')
         observed = {item.observation_id: item for item in self.observations(run_id, anchor_id)}
-        comparable = set()
         for identity, references in submission.observation_ids.items():
             if not references or len(references) != len(set(references)) or not set(references) <= observed.keys():
                 raise ValueError('终稿引用的视觉观察不属于本场或尚未完成')
-            findings = []
             for reference in references:
                 observation = observed[reference]
                 if observation.request.fingerprint != submission.fingerprint or identity not in observation.request.candidate_ids:
                     raise ValueError('视觉观察与候选或冻结指纹不匹配')
-                findings.extend(item for item in observation.result.observations if item.candidate_id == identity)
-            if all(item.phenomena_comparable and not item.appearance_explains_annotation_difference for item in findings):
-                comparable.add(identity)
-        GroupAnalysisContract.validate_descriptions(submission.draft)
-        GroupAnalysisValidation(self.db).validate(submission.draft, group, comparable_candidates=comparable)
-        for assessment in submission.draft.assessments:
-            if (assessment.verdict == 'MATERIAL' and candidates[assessment.candidate_id].kind != 'exact'
-                    and assessment.candidate_id not in comparable):
-                raise ValueError('非同图的冲突终稿需要实际视觉观察建立可比现象，实物外观差异不能直接判为标注冲突')
-            if (assessment.categories and ConflictCategory.POSITION in assessment.categories
-                    and candidates[assessment.candidate_id].kind != 'exact'):
-                raise ValueError('当前候选不是同图且没有已建立的可靠配准，不能提交位置差异。'
-                    '视觉观察中认出相同对象或重复追加原像素局部，不会生成可靠坐标变换。'
-                    '保留已经观察到的位置与范围差异；若关键判断依赖缺失的坐标对应，应提交UNCERTAIN、categories为空数组，'
-                    '并说明缺少可靠配准；其他有充分证据支持的冲突仍按实际分类提交。')
+        GroupAnalysisValidation(self.db).validate(submission.draft, group)

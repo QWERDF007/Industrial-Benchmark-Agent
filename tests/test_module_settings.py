@@ -6,7 +6,7 @@ def test_module_settings_persist_separately_and_reject_stale_writes(tmp_path):
     database = str(tmp_path / 'modules.db')
     initial = module_settings_get({'module': 'consistency'}, database)
     assert initial['revision'] == 0
-    assert initial['settings'] == {'model': None, 'agent_model': None, 'mode': 'combined', 'min_similarity': .98,
+    assert initial['settings'] == {'model': None, 'mode': 'combined', 'min_similarity': .98,
         'max_exact_candidates': 5, 'max_similar_candidates': 10,
         'agent_limits': {'context_tokens': None, 'max_output_tokens': None, 'request_parameters': {}, 'generation_timeout_seconds': None}}
     saved = module_settings_save({'module': 'consistency', 'expected_revision': 0,
@@ -49,7 +49,7 @@ def test_saving_one_field_preserves_other_module_settings(tmp_path):
         'settings': {'min_similarity': .98}}, database)
     assert patch['settings'] == {'min_similarity': .98}
     changed = module_settings_save(patch, database)
-    assert changed['settings'] == {'model': {'provider_id': 'vision', 'model_id': 'v2'}, 'agent_model': None,
+    assert changed['settings'] == {'model': {'provider_id': 'vision', 'model_id': 'v2'},
         'mode': 'exact', 'min_similarity': .98, 'max_exact_candidates': 5, 'max_similar_candidates': 10,
         'agent_limits': {'context_tokens': None, 'max_output_tokens': None, 'request_parameters': {}, 'generation_timeout_seconds': None}}
     assert module_settings_get({'module': 'consistency'}, database) == changed
@@ -62,11 +62,10 @@ def test_consistency_roles_and_candidate_limits_persist_without_leaking_into_ret
 
     store = ModuleSettings(Database(str(tmp_path / 'roles.db')))
     saved = store.save({'module': 'consistency', 'expected_revision': 0, 'settings': {
-        'agent_model': {'provider_id': 'agent', 'model_id': 'planner'},
         'model': {'provider_id': 'vision', 'model_id': 'observer'},
         'max_exact_candidates': 3, 'max_similar_candidates': 7, 'min_similarity': .90}})
     assert store.read('consistency') == saved
-    assert saved.settings.agent_model.provider_id == 'agent'
+    assert 'agent_model' not in saved.settings.model_dump()
     assert saved.settings.model.provider_id == 'vision'
     assert saved.settings.max_exact_candidates == 3
     assert saved.settings.max_similar_candidates == 7
@@ -101,7 +100,7 @@ def test_legacy_consistency_settings_preserve_threshold_and_only_supply_missing_
     assert snapshot.settings.min_similarity == .90
     assert snapshot.settings.max_exact_candidates == 5
     assert snapshot.settings.max_similar_candidates == 10
-    assert snapshot.settings.agent_model is None
+    assert 'agent_model' not in snapshot.settings.model_dump()
 def test_agent_generation_limits_are_independent_of_visual_capacity_settings(dataset):
     from iad_core.workbench.model_settings import WorkbenchModels
     from iad_core.workbench.module_settings import ModuleSettings
@@ -128,3 +127,24 @@ def test_agent_generation_limits_are_independent_of_visual_capacity_settings(dat
             modules.save({'module': 'consistency', 'expected_revision': 1, 'settings': {'agent_limits': {'max_visual_inputs': 2}}})
     finally:
         runtime.close()
+
+
+def test_old_model_settings_are_migrated_to_one_selection_without_changing_history(tmp_path):
+    import json
+    from iad_core.storage.database import Database
+    from iad_core.workbench.module_settings import ModuleSettings
+    path = str(tmp_path / 'old-models.db')
+    database = Database(path)
+    with database.connection() as conn:
+        conn.execute("INSERT INTO workbench_module_settings VALUES('consistency',3,?)", (json.dumps({
+            'model': {'provider_id': 'vision', 'model_id': 'observer'},
+            'agent_model': {'provider_id': 'agent', 'model_id': 'planner'}, 'min_similarity': .98}),))
+    Database._schema_revisions.clear()
+    reopened = Database(path)
+    settings = ModuleSettings(reopened).read('consistency')
+    assert settings.revision == 3
+    assert settings.settings.model.model_id == 'observer'
+    assert 'agent_model' not in settings.settings.model_dump()
+    with pytest.raises(ValueError):
+        ModuleSettings(reopened).save({'module': 'consistency', 'expected_revision': 3,
+            'settings': {'agent_model': {'provider_id': 'agent', 'model_id': 'planner'}}})

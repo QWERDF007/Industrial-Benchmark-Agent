@@ -30,8 +30,8 @@ test('two independent schedulers cannot dispatch the same accepted job twice', {
     fixture.release.resolve();await fixture.scheduler.whenIdle();
     const detail = await fixture.bridge.execute('consistency_agent_detail', {run_id: started.run_id, anchor_id: active.anchor_id});
     assert.equal(detail.state, 'COMPLETED');assert.equal(detail.result.reason, 'MODEL_REVIEWED');
-    assert.equal(fixture.wires.filter(body => body.model === 'planner').length, 4);
-    assert.equal(fixture.wires.filter(body => body.model === 'vision').length, 1);
+    assert.equal(fixture.wires.filter(body => body.test_role === 'agent').length, 4);
+    assert.equal(fixture.wires.filter(body => body.test_role === 'vision').length, 1);
     assert.deepEqual(errors, []);assert.deepEqual(fixture.errors, []);
   } finally {
     fixture.release.resolve();await other.dispose();await otherHost.dispose();await fixture.close();
@@ -109,7 +109,7 @@ test('a native output limit remains a technical failure with its actual reason',
     assert.equal(detail.errors[0].code, 'MAX_TOKENS');assert.match(detail.errors[0].message, /4096/);
     const status = await fixture.bridge.execute('analysis_status', {run_id: started.run_id});
     assert.equal(status.model_calls.find(call => call.role === 'agent').finish_reason, 'max-tokens');
-    assert.equal(fixture.wires.filter(body => body.model === 'vision').length, 0);
+    assert.equal(fixture.wires.filter(body => body.test_role === 'vision').length, 0);
   } finally {await fixture.close();}
 });
 
@@ -128,11 +128,11 @@ test('a native private Agent requests real visual media and submits its own anch
     assert.equal(completed.state, 'COMPLETED');
     assert.equal(completed.result.overall.text, '多类别');
     assert.equal(completed.result.reason, 'MODEL_REVIEWED');
-    assert.equal(wires.filter(body => body.model === 'vision').length, 1);
-    assert.equal(wires.filter(body => body.model === 'planner').length, 4);
-    assert.ok(wires.filter(body => body.model === 'planner').every(body => body.temperature === 0.2));
-    assert.ok(wires.find(body => body.model === 'planner').messages.some(message => message.content === snapshot.agent_instruction));
-    assert.ok(wires.find(body => body.model === 'vision').messages[0].content[0].text.startsWith(snapshot.visual_instruction));
+    assert.equal(wires.filter(body => body.test_role === 'vision').length, 1);
+    assert.equal(wires.filter(body => body.test_role === 'agent').length, 4);
+    assert.ok(wires.filter(body => body.test_role === 'agent').every(body => body.temperature === 0.2));
+    assert.ok(wires.find(body => body.test_role === 'agent').messages.some(message => message.content === snapshot.instruction));
+    assert.ok(wires.find(body => body.test_role === 'vision').messages[0].content[0].text === snapshot.instruction);
     const persisted = await host.read(anchor.session_id);
     assert.equal(persisted.events.filter(event => event.type === 'assistant/message').length, 4);
     assert.equal(new Set(persisted.events.filter(event => event.type === 'tool/result').map(event => event.data.message.toolCallId)).size, 4);
@@ -151,7 +151,7 @@ test('a native private Agent requests real visual media and submits its own anch
     assert.ok(agentCalls.every(call => call.elapsed_ms >= 0 && call.finished_at && !call.error));
     const callDetail = await bridge.execute('model_call_get', {run_id: started.run_id, call_id: agentCalls[0].call_id});
     const nativeRequest = JSON.parse(callDetail.request_body);
-    assert.equal(nativeRequest.model, 'planner');
+    assert.equal(nativeRequest.model, 'vision');
     assert.equal(nativeRequest.signal, undefined);
     assert.ok(nativeRequest.messages.some(message => message.role === 'user'));
     assert.equal(JSON.parse(callDetail.response_body).usage.inputTokens, 1000);
@@ -202,7 +202,7 @@ test('a native private Agent requests real visual media and submits its own anch
     release.resolve();
     await lateResponse.promise;
     await bridge.execute('module_settings_save', {module: 'consistency', expected_revision: 1,
-      settings: {agent_model: {provider_id: 'changed', model_id: 'different'}}});
+      settings: {model: {provider_id: 'changed', model_id: 'different'}}});
     const resumed = await scheduler.resume(interrupted.run_id);
     assert.equal(resumed.run_id, interrupted.run_id);
     await scheduler.whenIdle();
@@ -252,12 +252,12 @@ test('a native Agent resumes its frozen media pages without repeating a successf
     assert.deepEqual(after.visual_plan, before.visual_plan);
     assert.equal(after.observations.length, 2);
     assert.equal(after.observations[0].observation_id, before.observations[0].observation_id);
-    const notice = wires.filter(body => body.model === 'planner').at(-1).messages
+    const notice = wires.filter(body => body.test_role === 'agent').at(-1).messages
       .filter(message => message.role === 'user' && typeof message.content === 'string' && message.content.startsWith('{'))
       .map(message => JSON.parse(message.content)).findLast(value => value.anchor_id === datasetId + ':A.png');
-    assert.equal(notice.continuation.attempt, 2);
-    assert.equal(notice.continuation.contract_source, 'current_tool_schema');
-    assert.equal(wires.filter(body => body.model === 'vision').length, 2);
+    assert.equal(notice.attempt, 2);
+    assert.deepEqual(Object.keys(notice).sort(), ['anchor_id', 'attempt']);
+    assert.equal(wires.filter(body => body.test_role === 'vision').length, 2);
     assert.deepEqual(after.result.assessments.map(item => [item.candidate_id, item.conclusion]),
       [[datasetId + ':B.png', '多类别'], [datasetId + ':D.png', '一致']]);
     assert.deepEqual(fixture.errors, []);
@@ -299,8 +299,8 @@ test('visual JSON generation parameters do not constrain the native tool-calling
     const snapshot = await bridge.execute('consistency_agent_snapshot', {run_id: started.run_id});
     assert.equal(snapshot.roles.agent.profile.request_parameters.response_format, undefined);
     assert.equal(snapshot.roles.vision.profile.request_parameters.response_format.type, 'json_object');
-    assert.equal(wires.find(body => body.model === 'vision').response_format.type, 'json_object');
-    assert.equal(wires.filter(body => body.model === 'planner').length, 4);
+    assert.equal(wires.find(body => body.test_role === 'vision').response_format.type, 'json_object');
+    assert.equal(wires.filter(body => body.test_role === 'agent').length, 4);
   } finally {await fixture.close();}
 });
 
@@ -319,7 +319,7 @@ test('a provider rejection is recorded as a failed native request with unknown c
     assert.equal(diagnostics.roles.agent.failed_requests, 1);
     assert.equal(diagnostics.roles.agent.total_tokens, null);
     assert.equal(diagnostics.roles.vision.generation_requests, 0);
-    assert.equal(fixture.wires.filter(body => body.model === 'planner').length, 1);
+    assert.equal(fixture.wires.filter(body => body.test_role === 'agent').length, 1);
     const call = diagnostics.calls.find(call => call.role === 'agent');
     assert.equal(call.source, 'native_llm');
     assert.equal(call.finish_reason, 'error');
@@ -383,8 +383,8 @@ test('combined checks wait for the frozen shared index preparation before native
     assert.equal(preparation.status, 'COMPLETED');
     assert.equal(preparation.completed, 2);
     assert.ok(preparation.children.every(child => child.job_type === 'IMAGE_INDEX' && child.model_calls.length === 0));
-    assert.equal(fixture.wires.filter(body => body.model === 'planner').length, 4);
-    assert.equal(fixture.wires.filter(body => body.model === 'vision').length, 1);
+    assert.equal(fixture.wires.filter(body => body.test_role === 'agent').length, 4);
+    assert.equal(fixture.wires.filter(body => body.test_role === 'vision').length, 1);
   } finally {await fixture.close();}
 });
 
@@ -392,7 +392,7 @@ test('combined zero candidates pass after shared preparation without either revi
   const fixture = await createConsistencyAgentHost({multiCandidate: true, indexMode: 'cached'});
   try {
     await fixture.bridge.execute('module_settings_save', {module: 'consistency', expected_revision: 1,
-      settings: {model: null, agent_model: null}});
+      settings: {model: null}});
     const job = await fixture.scheduler.start({submission_id: randomUUID(), dataset_ids: [fixture.datasetId], mode: 'combined',
       subjects: {kind: 'samples', sample_ids: [fixture.datasetId + ':C.png']}});
     await fixture.scheduler.whenIdle();

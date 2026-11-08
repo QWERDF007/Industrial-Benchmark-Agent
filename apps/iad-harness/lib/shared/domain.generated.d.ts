@@ -2367,11 +2367,11 @@ export type CandidateId1 = string;
  */
 export type Verdict1 = "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
 /**
- * 当前图对的分析依据，具体说明差异发生在哪一侧、哪个对象或区域，位置、类别、数量及拆分合并等实际变化，解释判定及主分类；无差异时说明各项对应。不得用基本一致、可能、疑似、待核对等话术替代判断。真实缺失证据须指明缺失内容及其阻断的判断
+ * 当前候选的标注比对分析
  */
 export type Explanation = string;
 /**
- * 自由描述实际发现的问题，不受程序差异分类限制；未发现差异时可为空
+ * 当前候选的具体发现
  *
  * @maxItems 100
  */
@@ -2499,8 +2499,6 @@ export type NativeProfile = {
 } | null;
 export type Error4 = string | null;
 export type Instruction17 = string;
-export type AgentInstruction = string;
-export type VisualInstruction = string;
 export type PromptVersion = string;
 export type PixelProfile = "raw-decoded-v1";
 export type ModelCallLogging = "native-v1" | null;
@@ -2654,8 +2652,6 @@ export type Media2 = [VisualEvidence, ...VisualEvidence[]];
 export type Observations2 = [CandidateVisualObservation, ...CandidateVisualObservation[]];
 export type CandidateId2 = string;
 export type Description20 = string;
-export type PhenomenaComparable = boolean;
-export type AppearanceExplainsAnnotationDifference = boolean;
 /**
  * @minItems 1
  */
@@ -2669,21 +2665,21 @@ export type Fingerprint5 = string;
 export type ObservationIds1 = [string, ...string[]];
 export type CandidateId4 = string;
 /**
- * 当前候选的标注一致性判定：MATERIAL为实质冲突，EQUIVALENT为一致，UNCERTAIN为关键证据缺失
+ * 当前候选的标注比对结论：MATERIAL表示存在差异，EQUIVALENT表示一致
  */
-export type Verdict3 = "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
+export type Verdict3 = "EQUIVALENT" | "MATERIAL";
 /**
- * 当前图对的分析依据，具体说明差异发生在哪一侧、哪个对象或区域，位置、类别、数量及拆分合并等实际变化，解释判定及主分类；无差异时说明各项对应。不得用基本一致、可能、疑似、待核对等话术替代判断。真实缺失证据须指明缺失内容及其阻断的判断
+ * 当前候选的标注比对分析
  */
 export type Explanation1 = string;
 /**
- * 自由描述实际发现的问题，不受程序差异分类限制；未发现差异时可为空
+ * 当前候选的具体发现
  *
  * @maxItems 100
  */
 export type Findings5 = string[];
 /**
- * MATERIAL提供唯一主要冲突分类；EQUIVALENT和UNCERTAIN为空数组。其他发现保留在分析中。
+ * MATERIAL提供唯一主要冲突分类；EQUIVALENT为空数组。其他发现保留在分析中。
  *
  * @maxItems 1
  */
@@ -6069,7 +6065,6 @@ export interface ConsistencySettingsValues {
     max_exact_candidates: MaxExactCandidates;
     max_similar_candidates: MaxSimilarCandidates;
     model: ModuleModelReference | null;
-    agent_model: ModuleModelReference | null;
     agent_limits: GenerationLimits;
 }
 export interface GenerationLimits {
@@ -6095,7 +6090,6 @@ export interface ConsistencySettingsValues1 {
     max_exact_candidates?: MaxExactCandidates1;
     max_similar_candidates?: MaxSimilarCandidates1;
     model?: ModuleModelReference | null;
-    agent_model?: ModuleModelReference | null;
     agent_limits?: GenerationLimits1;
 }
 export interface GenerationLimits1 {
@@ -6125,18 +6119,16 @@ export interface ConsistencyCheckSnapshot {
     retrieval: Retrieval;
     scopes: ConsistencyScopesSnapshot;
     model: ModuleModelReference | null;
-    agent_model: ModuleModelReference | null;
     model_limits: ModelLimits;
     roles: ConsistencyModelRoles;
     image_encoder: ImageEncoderConfig | null;
     policies: Policies;
     instruction: Instruction17;
-    agent_instruction: AgentInstruction;
-    visual_instruction: VisualInstruction;
     prompt_version: PromptVersion;
     pixel_profile: PixelProfile;
     model_call_logging: ModelCallLogging;
     phase_logging: PhaseLogging;
+    [k: string]: unknown;
 }
 export interface ExactCandidatePolicy {
     mode: Mode11;
@@ -6312,10 +6304,9 @@ export interface AnchorVisualResult {
 export interface CandidateVisualObservation {
     candidate_id: CandidateId2;
     description: Description20;
-    phenomena_comparable: PhenomenaComparable;
-    appearance_explains_annotation_difference: AppearanceExplainsAnnotationDifference;
     media_ids: MediaIds;
     limitations: Limitations19;
+    [k: string]: unknown;
 }
 export interface AnchorContextQuery {
     candidate_id?: CandidateId3;

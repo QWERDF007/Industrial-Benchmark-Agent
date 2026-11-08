@@ -33,19 +33,20 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
       let source = '';
       for await (const chunk of req) source += chunk;
       const body = JSON.parse(source);
+      body.test_role = body.tools?.length ? 'agent' : 'vision';
       if (req.url === '/tokenize') {
         tokenizations.push(body);
-        if (body.model === 'planner') {
+        if (body.test_role === 'agent') {
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(agentTokenize ? await agentTokenize(body) : {count: 1000, max_model_len: 32768}));return;
         }
         const count = maxCandidatesPerPage === undefined ? 1000 : Object.keys(JSON.parse(
-          body.messages[0].content[0].text.split('冻结视觉输入：')[1].split('\n')[0]).candidates).length > maxCandidatesPerPage ? 32700 : 1000;
+          body.messages[0].content[1].text).facts.candidates).length > maxCandidatesPerPage ? 32700 : 1000;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({count, max_model_len: 32768}));
         return;
       }
-      if (body.model === 'planner') {
+      if (body.test_role === 'agent') {
         for (const message of body.messages) {
           if ((message.role === 'user' || message.role === 'tool') && typeof message.content === 'string' && message.content.startsWith('{')) {
             const item = JSON.parse(message.content);
@@ -55,24 +56,24 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
         agentOwners.set(body, activeAnchor);
       }
       wires.push(body);
-      const capacity = body.model === 'planner' && agentTokenize ? await agentTokenize(body) : undefined;
+      const capacity = body.test_role === 'agent' && agentTokenize ? await agentTokenize(body) : undefined;
       if (capacity && capacity.count + (body.max_completion_tokens ?? body.max_tokens) > agentServerContext) {
         res.writeHead(400, {'Content-Type': 'application/json'});
         res.end(JSON.stringify({error: {message: 'actual tokenizer: request exceeds declared context length'}}));
         return;
       }
-      if (body.model === 'planner' && rejectNextPlanner) {
+      if (body.test_role === 'agent' && rejectNextPlanner) {
         rejectNextPlanner = false;
         res.writeHead(401, {'Content-Type': 'application/json'});
         res.end(JSON.stringify({error: {message: 'fixture provider rejected this actual request'}}));
         return;
       }
-      const isHeld = body.model === 'planner' && holdNextPlanner;
+      const isHeld = body.test_role === 'agent' && holdNextPlanner;
       if (isHeld) {holdNextPlanner = false;held.resolve();await release.promise;}
       let delta, finish = 'stop';
-      if (body.model === 'vision') {
+      if (body.test_role === 'vision') {
         const content = body.messages[0].content;
-        const facts = JSON.parse(content[0].text.split('冻结视觉输入：')[1].split('\n')[0]);
+        const facts = JSON.parse(content[1].text).facts;
         const media = content.filter(item => item.type === 'text' && item.text.startsWith('视觉证据：'))
           .map(item => JSON.parse(item.text.slice(5)).evidence_id);
         assert.ok(content.some(item => item.type === 'image_url' && item.image_url.url.startsWith('data:image/png;base64,')));
@@ -82,10 +83,8 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
         }))})};
         if (observationsBeforeHold > 0 && (heldAnchorId === undefined || facts.anchor.sample_id === heldAnchorId)
             && --observationsBeforeHold === 0) holdNextPlanner = true;
-      } else if (body.messages.at(-1)?.role === 'user' && JSON.stringify(body.messages.at(-1).content).includes('You are now acting as a compaction engine')) {
-        delta = {content: '本场继续审核冻结主图。通过anchor_context读取最新候选、已保存评估和未完成观察；复用成功记录，逐候选评估后引用全部最新assessment_ids提交。'};
       } else {
-        assert.equal(body.model, 'planner');
+        assert.equal(body.test_role, 'agent');
         const outputs = body.messages.filter(item => item.role === 'tool' && !item.content.startsWith('Error:')).map(item => JSON.parse(item.content));
         const context = outputs.findLast(item => item.anchor);
         let name, args, observationRequests;
@@ -151,7 +150,7 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
             id: 'call_' + randomUUID(), type: 'function', function: {name, arguments: JSON.stringify(input)}}))};
         } else delta = {content: '主图审核已提交。'};
       }
-      if (body.model === 'planner' && agentFinish === 'length') {
+      if (body.test_role === 'agent' && agentFinish === 'length') {
         delta = {reasoning_content: '本次输出在工具调用前达到预算。'};finish = 'length';
       }
       res.writeHead(200, {'Content-Type': 'text/event-stream'});
@@ -160,8 +159,8 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
         choices: [{index: 0, delta: {role: 'assistant', ...delta}, finish_reason: null}]}) + '\n\n' +
         'data: ' + JSON.stringify({id, object: 'chat.completion.chunk', created: 1, model: body.model,
           choices: [{index: 0, delta: {}, finish_reason: finish}], usage: capacity ? {prompt_tokens: capacity.count, completion_tokens: 100, total_tokens: capacity.count + 100}
-            : body.model === 'planner' && agentUsage === null ? undefined
-            : body.model === 'planner' && agentUsage ? agentUsage : {prompt_tokens: 1000, completion_tokens: 100, total_tokens: 1100}})
+            : body.test_role === 'agent' && agentUsage === null ? undefined
+            : body.test_role === 'agent' && agentUsage ? agentUsage : {prompt_tokens: 1000, completion_tokens: 100, total_tokens: 1100}})
         + '\n\ndata: [DONE]\n\n');
       if (isHeld) lateResponse.resolve();
     } catch (error) {
@@ -196,7 +195,7 @@ if sys.argv[5] != 'none':
     if sys.argv[5] in ('cached','partial'):
         ContentFeatureCache(db).prepare([config.dataset.id+':'+name+'.png' for name in (names if sys.argv[5]=='cached' else ['A'])],selection,
             extractor=MockFeatureExtractor(profile=selection.profile))
-ModuleSettings(db).save({'module':'consistency','expected_revision':0,'settings':{'mode':'exact','agent_model':{'provider_id':'isolated','model_id':'planner'},'agent_limits':{'max_output_tokens':4096,'request_parameters':{'temperature':0.2}},'model':{'provider_id':'isolated','model_id':'vision'}}})
+ModuleSettings(db).save({'module':'consistency','expected_revision':0,'settings':{'mode':'exact','agent_limits':{'max_output_tokens':4096,'request_parameters':{'temperature':0.2}},'model':{'provider_id':'isolated','model_id':'vision'}}})
 WorkbenchModels(db).save({'expected_revision':0,'selection':{'provider_id':'isolated','model_id':'vision','limits':{'capacity_mode':'vllm_tokenize','max_output_tokens':4096,'max_visual_inputs':json.loads(sys.argv[4]),'request_parameters':{'temperature':0.2}}}})
 print(json.dumps({'dataset_id':config.dataset.id}))
 `, root, database, multiCandidate ? 'multi' : 'pair', JSON.stringify(maxVisualInputs ?? null), indexMode ?? 'none', JSON.stringify(candidateCount ?? null)], {cwd: workspace, env: {...process.env, PYTHONPATH: path.join(workspace, 'python')}, encoding: 'utf8'}));
@@ -221,7 +220,7 @@ print(json.dumps({'dataset_id':config.dataset.id}))
     return result;
   }});
   return {root, database, endpoint, datasetId: dataset.dataset_id, bridge, host, scheduler, native, wires, tokenizations, errors, held, release, lateResponse,
-    agentRequests(anchorId) {return wires.filter(body => body.model === 'planner' && agentOwners.get(body) === anchorId);},
+    agentRequests(anchorId) {return wires.filter(body => body.test_role === 'agent' && agentOwners.get(body) === anchorId);},
     holdPlanner() {holdNextPlanner = true;},
     holdPlannerAfterObservation(count = 1, anchorId) {observationsBeforeHold = count;heldAnchorId = anchorId;},
     queueSubmissionFaults(faults) {submissionFaults.push(...faults);},
