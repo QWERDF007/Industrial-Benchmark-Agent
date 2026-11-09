@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.storage.models import sample_uuid
-from iad_core.workbench.calls import ModelCallSummary
+from iad_core.workbench.calls import ModelCallError, ModelCallSummary
 from iad_core.knowledge.instructions import FrozenMiningPrompt
 from iad_core.workbench.model_profile import ModelProfileSnapshot
 from iad_core.exploration.models import FrozenExplorationPrompt, ExplorationStart
@@ -14,16 +14,7 @@ from iad_core.feature.profiles import EmbeddingProfile
 JobStatus = Literal['PENDING', 'RUNNING', 'COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED', 'INTERRUPTED']
 
 
-class JobObservationProgress(AnalysisModel):
-    planned_sources: int = Field(ge=0)
-    observed_sources: int = Field(ge=0)
-    complete_sources: int = Field(ge=0)
-    planned_visuals: int = Field(ge=0)
-    observed_visuals: int = Field(ge=0)
-    published_sources: int = Field(ge=0)
-
-
-JobKind = Literal['ANALYSIS_WORKFLOW', 'DATASET_REPORT', 'MODEL_AUDIT', 'MODEL_AUDIT_SAMPLE', 'KNOWLEDGE', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE', 'KNOWLEDGE_BATCH', 'DIRECTION_EXPLORATION', 'EXPLORATION_BATCH', 'IMAGE_INDEX', 'DATA_CONSISTENCY', 'CONSISTENCY_ANALYSIS', 'CONSISTENCY_MODEL_BATCH']
+JobKind = Literal['ANALYSIS_WORKFLOW', 'MODEL_AUDIT', 'MODEL_AUDIT_SAMPLE', 'KNOWLEDGE', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE', 'KNOWLEDGE_BATCH', 'DIRECTION_EXPLORATION', 'EXPLORATION_BATCH', 'IMAGE_INDEX', 'DATA_CONSISTENCY', 'CONSISTENCY_ANALYSIS', 'CONSISTENCY_MODEL_BATCH']
 
 
 class JobRetry(BaseModel):
@@ -67,6 +58,8 @@ class JobView(AnalysisModel):
     dataset_id: str
     dataset_ids: list[str] = Field(default_factory=list)
     analysis_kind: Optional[Literal['exploration', 'knowledge', 'consistency']] = None
+    analysis_version_id: str | None = None
+    execution_error: ModelCallError | None = None
     dataset_results: list['DatasetAnalysisResult'] = Field(default_factory=list)
     program_batch_id: Optional[str] = None
     total_gallery_groups: Optional[int] = Field(default=None, ge=0)
@@ -76,7 +69,6 @@ class JobView(AnalysisModel):
     root_run_id: str
     parent_run_id: Optional[str] = None
     status: JobStatus
-    observation_progress: Optional[JobObservationProgress] = None
     cancel_requested: bool = False
     sample_ids: list[str]
     completed_sample_ids: list[str]
@@ -108,6 +100,7 @@ class JobView(AnalysisModel):
     exploration_request: Optional[ExplorationStart] = None
     mining_prompt: Optional[FrozenMiningPrompt] = None
     consistency_prompt: Optional[str] = None
+    system_prompt: Optional[str] = None
     consistency_check_version: Literal[1] | None = None
     inspected_regions: Optional[int] = None
     planned_regions: Optional[int] = None

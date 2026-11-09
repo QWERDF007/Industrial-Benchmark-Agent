@@ -9,12 +9,13 @@ import {Context} from '@deepseek-ai/cordis';
 import {LlmRuntime} from '@deepseek-ai/dsh-llm';
 import * as piAi from '@deepseek-ai/dsh-llm-pi-ai';
 import {PythonBridge, findWorkspaceRoot, resolvePythonPath} from '../../lib/server/python-bridge/index.js';
-import {ConsistencySessionHost} from '../../lib/server/consistency/session-host.js';
+import {JobSessionHost} from '../../lib/server/sessions/host.js';
+import {imageSessionPath} from '../../lib/server/sessions/image-path.js';
 import {ConsistencyAnchorReviewer} from '../../lib/server/consistency/anchor-reviewer.js';
 import {ConsistencyCheckScheduler} from '../../lib/server/consistency/scheduler.js';
 import {NativeProviders} from '../../lib/server/models/providers.js';
 
-export async function createConsistencyAgentHost({multiCandidate = false, candidateCount, maxVisualInputs, maxCandidatesPerPage, observeAllPages = false, splitFirstPage = false, agentUsage, agentFinish, agentTokenize, agentServerContext = 32768, indexMode, afterSubmission} = {}) {
+export async function createConsistencyAgentHost({multiCandidate = false, candidateCount, maxVisualInputs, maxCandidatesPerPage, observeAllPages = false, splitFirstPage = false, agentUsage, agentFinish, agentTokenize, agentServerContext = 32768, indexMode, afterSubmission, modelRouting} = {}) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-anchor-agent-'));
   const workspace = findWorkspaceRoot();
   const database = path.join(root, 'checks.db');
@@ -33,7 +34,7 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
       let source = '';
       for await (const chunk of req) source += chunk;
       const body = JSON.parse(source);
-      body.test_role = body.tools?.length ? 'agent' : 'vision';
+      body.test_role = JSON.stringify(body.messages.at(-1)).includes('compaction engine')?'compaction':body.tools?.length?'agent':'vision';
       if (req.url === '/tokenize') {
         tokenizations.push(body);
         if (body.test_role === 'agent') {
@@ -41,15 +42,17 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
           res.end(JSON.stringify(agentTokenize ? await agentTokenize(body) : {count: 1000, max_model_len: 32768}));return;
         }
         const count = maxCandidatesPerPage === undefined ? 1000 : Object.keys(JSON.parse(
-          body.messages[0].content[1].text).facts.candidates).length > maxCandidatesPerPage ? 32700 : 1000;
+          body.messages.find(message=>message.role==='user').content[1].text).facts.candidates).length > maxCandidatesPerPage ? 32700 : 1000;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({count, max_model_len: 32768}));
         return;
       }
       if (body.test_role === 'agent') {
         for (const message of body.messages) {
-          if ((message.role === 'user' || message.role === 'tool') && typeof message.content === 'string' && message.content.startsWith('{')) {
-            const item = JSON.parse(message.content);
+          if(message.role!=='user'&&message.role!=='tool')continue;
+          const text=typeof message.content==='string'?message.content:message.content.find(part=>part.type==='text')?.text;
+          if (text?.startsWith('{')) {
+            const item=JSON.parse(text.split('\n')[0]);
             if (item.anchor_id || item.anchor?.anchor_id) activeAnchor = item.anchor_id || item.anchor.anchor_id;
           }
         }
@@ -71,8 +74,10 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
       const isHeld = body.test_role === 'agent' && holdNextPlanner;
       if (isHeld) {holdNextPlanner = false;held.resolve();await release.promise;}
       let delta, finish = 'stop';
-      if (body.test_role === 'vision') {
-        const content = body.messages[0].content;
+      if(JSON.stringify(body.messages.at(-1)).includes('compaction engine')){
+        delta={content:'Preserve saved observations and assessments. Read anchor_context for current pending candidates and original evidence.'};
+      } else if (body.test_role === 'vision') {
+        const content = body.messages.find(message=>message.role==='user').content;
         const facts = JSON.parse(content[1].text).facts;
         const media = content.filter(item => item.type === 'text' && item.text.startsWith('视觉证据：'))
           .map(item => JSON.parse(item.text.slice(5)).evidence_id);
@@ -85,7 +90,7 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
             && --observationsBeforeHold === 0) holdNextPlanner = true;
       } else {
         assert.equal(body.test_role, 'agent');
-        const outputs = body.messages.filter(item => item.role === 'tool' && !item.content.startsWith('Error:')).map(item => JSON.parse(item.content));
+        const outputs = body.messages.filter(item => item.role === 'tool' && !item.content.startsWith('Error:')).map(item=>JSON.parse(item.content));
         const context = outputs.findLast(item => item.anchor);
         let name, args, observationRequests;
         if (!context) {name = 'anchor_context';args = {};}
@@ -200,8 +205,8 @@ WorkbenchModels(db).save({'expected_revision':0,'selection':{'provider_id':'isol
 print(json.dumps({'dataset_id':config.dataset.id}))
 `, root, database, multiCandidate ? 'multi' : 'pair', JSON.stringify(maxVisualInputs ?? null), indexMode ?? 'none', JSON.stringify(candidateCount ?? null)], {cwd: workspace, env: {...process.env, PYTHONPATH: path.join(workspace, 'python')}, encoding: 'utf8'}));
   const bridge = new PythonBridge({cwd: workspace, dbPath: database});
-  const host = await ConsistencySessionHost.open(path.join(root, 'sessions'),
-    session_id => bridge.execute('consistency_agent_session_location', {session_id}));
+  const host = await JobSessionHost.open(path.join(root, 'sessions'),
+    async session_id => imageSessionPath(path.join(root, 'sessions'), await bridge.execute('consistency_agent_session_location', {session_id})));
   const ctx = new Context();
   new LlmRuntime(ctx);
   const providers = {isolated: {api: 'openai-completions', baseURL: endpoint.replace('/chat/completions', ''),
@@ -215,7 +220,8 @@ print(json.dumps({'dataset_id':config.dataset.id}))
   const reviewer = new ConsistencyAnchorReviewer(bridge, host, native);
   const scheduler = new ConsistencyCheckScheduler(bridge, host, native, task => reviewer.review(task), error => errors.push(error));
   const removeRouting = bridge.useModelRouting({execute: async (operation, args, signal, dispatch) => {
-    const result = await scheduler.execute(operation, args, signal, dispatch);
+    const result = modelRouting?await modelRouting.execute(operation,args,signal,(name,values={},cancellation)=>scheduler.execute(name,values,cancellation,dispatch)):
+      await scheduler.execute(operation, args, signal, dispatch);
     if (operation === 'consistency_agent_submit' && afterSubmission) await afterSubmission(args);
     return result;
   }});

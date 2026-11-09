@@ -43,7 +43,15 @@ export declare const consistencyAgentStartParameters: {
     readonly instruction: {
         readonly type: "string";
         readonly title: "Instruction";
-        readonly default: "逐张比较主图与候选图的图像和原始标注，分析主图相对于当前候选图的标注差异。实例标注比较类别、数量、位置和覆盖范围；图像级标注直接比较两侧图像标签。类别不同为类别不一致；主图比候选图多标为多类别，少标为少类别；标注位置或范围不同为位置差异；主图把候选图的一个对象标成多个实例为拆分，反过来为合并；没有差异为一致。位置与范围差异按原始坐标说明，框宽为x_max-x_min，框高为y_max-y_min，明确主图相对于候选图的方向。给出主要结论，并在分析中说明对应的对象、区域及实际差异。通过工具执行审核时，先读取本场图像和标注，按冻结页观察并逐候选保存评估，最后引用全部评估记录提交结果。收到图像输入时，逐候选返回JSON观察结果，格式为{\"observations\":[{\"candidate_id\":\"候选ID\",\"description\":\"图像与标注的分析\",\"media_ids\":[\"实际图像ID\"],\"limitations\":[]}]}。";
+        readonly default: "逐张比较主图与候选图的图像和原始标注，分析主图相对于当前候选图的标注差异。实例标注比较类别、数量、位置和覆盖范围；图像级标注直接比较两侧图像标签。类别不同为类别不一致；主图比候选图多标为多类别，少标为少类别；标注位置或范围不同为位置差异；主图把候选图的一个对象标成多个实例为拆分，反过来为合并；没有差异为一致。位置与范围差异按原始坐标说明，框宽为x_max-x_min，框高为y_max-y_min，明确主图相对于候选图的方向。给出主要结论，并在分析中说明对应的对象、区域及实际差异。";
+    };
+    readonly system_prompt: {
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
+        readonly title: "System Prompt";
     };
     readonly subjects: {
         readonly oneOf: readonly [{

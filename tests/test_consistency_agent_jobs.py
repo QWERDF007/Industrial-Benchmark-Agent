@@ -47,8 +47,9 @@ def test_check_submission_freezes_the_configuration_once_without_requiring_model
     try:
         checks = ConsistencyAgentJobs(runtime)
         request = {'analysis_kind': 'consistency', 'submission_id': str(uuid4()),
-            'dataset_ids': [config.dataset.id], 'instruction': '核对当前原始标注'}
+            'dataset_ids': [config.dataset.id], 'system_prompt':'使用审核工具逐候选记录。', 'instruction': '核对当前原始标注'}
         started = checks.start(request)
+        assert checks.snapshot(started['run_id']).system_prompt == request['system_prompt']
         assert started['created'] is True
         frozen = checks.snapshot(started['run_id'])
         assert frozen.schema_version == 1 and frozen.settings_revision == 1

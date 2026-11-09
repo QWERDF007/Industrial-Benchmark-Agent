@@ -4,14 +4,15 @@ import {randomUUID} from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createConsistencyAgentHost} from './fixtures/consistency-agent-host.js';
-import {ConsistencySessionHost} from '../lib/server/consistency/session-host.js';
+import {JobSessionHost} from '../lib/server/sessions/host.js';
+import {imageSessionPath} from '../lib/server/sessions/image-path.js';
 import {ConsistencyCheckScheduler} from '../lib/server/consistency/scheduler.js';
 import {ConsistencyAnchorReviewer} from '../lib/server/consistency/anchor-reviewer.js';
 
 test('two independent schedulers cannot dispatch the same accepted job twice', {timeout: 30000}, async () => {
   const fixture = await createConsistencyAgentHost();
-  const otherHost = await ConsistencySessionHost.open(path.join(fixture.root, 'sessions'),
-    session_id => fixture.bridge.execute('consistency_agent_session_location', {session_id}));
+  const otherHost = await JobSessionHost.open(path.join(fixture.root, 'sessions'),
+    async session_id => imageSessionPath(path.join(fixture.root, 'sessions'), await fixture.bridge.execute('consistency_agent_session_location', {session_id})));
   const errors = [];
   const reviewer = new ConsistencyAnchorReviewer(fixture.bridge, otherHost, fixture.native);
   const other = new ConsistencyCheckScheduler(fixture.bridge, otherHost, fixture.native,
@@ -125,14 +126,18 @@ test('a native private Agent requests real visual media and submits its own anch
     const identity = {run_id: started.run_id, anchor_id: anchor.anchor_id};
     const snapshot = await bridge.execute('consistency_agent_snapshot', {run_id: started.run_id});
     const completed = await bridge.execute('consistency_agent_anchor', identity);
-    assert.equal(completed.state, 'COMPLETED');
+    assert.equal(completed.state, 'COMPLETED',JSON.stringify({errors,failures:(await bridge.execute('analysis_status',{run_id:started.run_id})).errors}));
     assert.equal(completed.result.overall.text, '多类别');
     assert.equal(completed.result.reason, 'MODEL_REVIEWED');
     assert.equal(wires.filter(body => body.test_role === 'vision').length, 1);
     assert.equal(wires.filter(body => body.test_role === 'agent').length, 4);
     assert.ok(wires.filter(body => body.test_role === 'agent').every(body => body.temperature === 0.2));
-    assert.ok(wires.find(body => body.test_role === 'agent').messages.some(message => message.content === snapshot.instruction));
-    assert.ok(wires.find(body => body.test_role === 'vision').messages[0].content[0].text === snapshot.instruction);
+    const agentMessages=wires.find(body=>body.test_role==='agent').messages;
+    assert.ok(agentMessages.some(message=>message.role==='system'&&message.content===snapshot.system_prompt));
+    assert.ok(agentMessages.some(message=>message.role==='user'&&JSON.stringify(message.content).includes(snapshot.instruction)));
+    const visionMessages=wires.find(body=>body.test_role==='vision').messages;
+    assert.equal(visionMessages.find(message=>message.role==='system').content[0].text,snapshot.system_prompt);
+    assert.equal(visionMessages.find(message=>message.role==='user').content[0].text,snapshot.instruction);
     const persisted = await host.read(anchor.session_id);
     assert.equal(persisted.events.filter(event => event.type === 'assistant/message').length, 4);
     assert.equal(new Set(persisted.events.filter(event => event.type === 'tool/result').map(event => event.data.message.toolCallId)).size, 4);
@@ -253,8 +258,9 @@ test('a native Agent resumes its frozen media pages without repeating a successf
     assert.equal(after.observations.length, 2);
     assert.equal(after.observations[0].observation_id, before.observations[0].observation_id);
     const notice = wires.filter(body => body.test_role === 'agent').at(-1).messages
-      .filter(message => message.role === 'user' && typeof message.content === 'string' && message.content.startsWith('{'))
-      .map(message => JSON.parse(message.content)).findLast(value => value.anchor_id === datasetId + ':A.png');
+      .filter(message => message.role === 'user')
+      .map(message => typeof message.content==='string'?message.content:message.content.find(part=>part.type==='text').text)
+      .map(text=>JSON.parse(text.split('\n')[0])).findLast(value => value.anchor_id === datasetId + ':A.png');
     assert.equal(notice.attempt, 2);
     assert.deepEqual(Object.keys(notice).sort(), ['anchor_id', 'attempt']);
     assert.equal(wires.filter(body => body.test_role === 'vision').length, 2);

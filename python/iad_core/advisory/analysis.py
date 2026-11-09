@@ -137,6 +137,10 @@ class VisualEvidence(AnalysisModel):
     annotation_sha256: Optional[str] = Field(default=None, pattern="^[a-f0-9]{64}$")
     media_type: Literal["image/png"] = "image/png"
 
+    @property
+    def is_whole_image(self) -> bool:
+        return self.role == 'overview' and self.representation == 'raw' and self.crop_bbox == [0, 0, *self.original_size]
+
     def model_context(self) -> dict:
         return self.model_dump(exclude={'annotation_ids'})
 

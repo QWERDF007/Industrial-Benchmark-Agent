@@ -31,11 +31,12 @@ export function JobDetail({job,stale=false}: {job:JobSnapshot;stale?:boolean}) {
       })}</div>
     </section>
     {(failed||job.errors.length>0)&&<section className="iad-job-status-section" aria-label="失败信息"><h3>失败信息</h3>
+      {job.execution_error && <div className="iad-job-error"><strong>{job.execution_error.type}</strong><p>{job.execution_error.message}</p></div>}
       {job.errors.length?job.errors.map((error,index)=><div className="iad-job-error" key={`${error.sample_id}:${index}`}>
         <strong>{error.code?`错误码：${error.code}`:'失败原因'}</strong><p>{error.message}</p>
         <p>{error.relative_path || error.sample_uuid || error.sample_id}</p>
         {error.source_run_id&&<p>{jobPhases[error.source_phase || ''] || error.source_phase || '未记录阶段'}<code>{error.source_run_id}</code></p>}
-      </div>):<div className="iad-job-error"><p>未记录错误详情</p></div>}
+      </div>):!job.execution_error&&<div className="iad-job-error"><p>未记录错误详情</p></div>}
     </section>}
     {stale&&<p className="iad-job-note" role="status">当前显示最近一次读取的作业状态。</p>}
   </div>;

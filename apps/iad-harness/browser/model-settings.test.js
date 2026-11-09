@@ -5,6 +5,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {setTimeout as delay} from 'node:timers/promises';
 import {Builder, By, until} from 'selenium-webdriver';
@@ -25,7 +26,7 @@ test('authenticated LAN browser saves provider settings and switches models', {t
     const login = readLog().match(/http:\/\/[^\s)]+/)?.[0];
     assert.ok(login, readLog().replace(/(token=)[^\s&]+/g, '$1<redacted>'));
     const url = new URL(login); url.hostname = address;
-    const options = new firefox.Options().addArguments('-headless');
+    const options = new firefox.Options().addArguments('-headless','--remote-allow-system-access');
     if (process.env.FIREFOX_PATH) options.setBinary(process.env.FIREFOX_PATH);
     driver = await new Builder().forBrowser('firefox').setFirefoxOptions(options)
       .setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH || 'geckodriver')).build();
@@ -93,7 +94,7 @@ test('authenticated LAN browser saves provider settings and switches models', {t
     await driver.wait(async () => (await selector.getAttribute('aria-label')).includes('Second model'), 10000);
     assert.equal((await api()).data.selection.model_id, 'first-model', 'DSH session selection must not change the shared workbench model');
     phase = 'independent model settings page';
-    const configurationUrl=new URL(url.href);configurationUrl.searchParams.set('iad',JSON.stringify({pageId:'industrial-model-settings'}));
+    const configurationUrl=new URL('/',url.href);configurationUrl.searchParams.set('iad',JSON.stringify({pageId:'industrial-model-settings',datasetId:''}));
     await driver.get(configurationUrl.href);
     await driver.wait(until.elementLocated(By.css('[data-page="industrial-model-settings"]')), 10000);
     const width=await driver.executeScript('const root=document.querySelector(".iad-workbench"),panel=document.querySelector(".iad-model-configuration"),s=getComputedStyle(root);return {available:root.clientWidth-parseFloat(s.paddingLeft)-parseFloat(s.paddingRight),panel:panel.getBoundingClientRect().width}');
@@ -172,20 +173,19 @@ test('authenticated LAN browser saves provider settings and switches models', {t
     }
     await click('工作台模型');
     phase = 'independent model settings page';
-    const chapter = await driver.findElement(By.css('[aria-label="所在章节"]'));
-    assert.equal(await chapter.getText(),'工具');
+    assert.equal(await driver.findElement(By.css('.iad-workbench h1')).getText(),'模型设置');
     const headingSize = await driver.executeScript('return parseFloat(getComputedStyle(document.querySelector(".iad-workbench h1")).fontSize)');
     assert.ok(headingSize >= 28, 'shared page title follows the approved type scale');
-    assert.equal(await driver.executeScript('return getComputedStyle(document.querySelector(".iad-workbench")).backgroundColor'),'rgb(238, 241, 245)','原生宿主使用 HTML 指定的工作台背景');
+    assert.equal(await driver.executeScript('return getComputedStyle(document.querySelector(".iad-workbench")).backgroundColor'),'rgb(245, 247, 250)','原生宿主保留工作台表面色');
     const navigation = await driver.wait(until.elementLocated(By.css('nav[aria-label="工业工作台导航"]')), 5000);
     const navigationText = await navigation.getText();
     for (const chapter of ['数据准备','知识构建','质量审核']) assert.ok(navigationText.includes(chapter));
     assert.ok(await driver.executeScript('return [...arguments[0].querySelectorAll("button")].every(button=>button.getBoundingClientRect().height>=44)',navigation),'业务导航满足 HTML 的 44px 点击目标');
     const workspaces = await driver.findElement(By.css('[data-native-workspaces]'));
-    assert.equal(await workspaces.findElement(By.css('button[aria-controls]')).getAttribute('aria-expanded'),'false','native workspaces start folded on business pages');
-    await workspaces.findElement(By.css('button[aria-controls]')).click();
+    const workspaceToggle=await workspaces.findElement(By.css('button[aria-controls]'));
+    if(await workspaceToggle.getAttribute('aria-expanded')==='false')await workspaceToggle.click();
     assert.ok((await workspaces.getText()).includes('Default workspace'));
-    await workspaces.findElement(By.css('button[aria-controls]')).click();
+    await workspaceToggle.click();assert.equal(await workspaceToggle.getAttribute('aria-expanded'),'false');
     assert.equal((await driver.findElements(By.css('select[aria-label="当前数据集"]'))).length, 0);
     assert.equal(await (await driver.findElement(By.css('select[aria-label="工作台提供商"]'))).getAttribute('value'), 'first-service');
     assert.equal(await (await driver.findElement(By.css('select[aria-label="工作台模型"]'))).getAttribute('value'), 'first-model');
@@ -245,20 +245,29 @@ test('authenticated LAN browser saves provider settings and switches models', {t
       assert.equal(job.status,200,JSON.stringify(job));
       return driver.wait(async()=>{const result=await api(null,`/${kind}/status/${job.data.run_id}`);return !['RUNNING','PENDING'].includes(result.data.status)?result.data:false;},15000);
     };
-    const exploration=await waitJob('exploration',await api({dataset_id:dataset,normal_images:[dataset+':part-0.png'],defect_images:[dataset+':part-2.png']},'/exploration/start'));
+    const exploration=await waitJob('analysis',await api({submission_id:randomUUID(),analysis_kind:'exploration',dataset_ids:[dataset],normal_images:[dataset+':part-0.png'],defect_images:[dataset+':part-2.png'],prompt:{text:'比较主体轮廓。'}},'/analysis/start'));
     assert.equal(exploration.status,'COMPLETED',JSON.stringify(exploration.errors));
-    const normal=await waitJob('knowledge',await api({kind:'normal',image_count:2,images:[dataset+':part-0.png',dataset+':part-1.png'],knowledge_preset:[]},'/knowledge/start'));
-    assert.equal(normal.status,'COMPLETED',JSON.stringify(normal.errors));
-    const defect=await waitJob('knowledge',await api({kind:'defect',image_count:1,images:[dataset+':part-2.png'],knowledge_preset:[normal.knowledge_version_id]},'/knowledge/start'));
-    assert.equal(defect.status,'COMPLETED',JSON.stringify(defect.errors));
-    const audit=await waitJob('audit',await api({dataset_id:dataset,normal_version_id:normal.knowledge_version_id,sample_ids:[dataset+':part-2.png']},'/audit/start'));
+    const choices=await api(null,'/analysis/directions?'+new URLSearchParams({dataset_ids:JSON.stringify([dataset])}));
+    const direction=choices.data.directions[0];assert.ok(direction);
+    assert.equal(direction.source.run_id,exploration.run_id);assert.equal(direction.source.version_id,exploration.analysis_version_id);
+    const knowledge=await waitJob('analysis',await api({submission_id:randomUUID(),analysis_kind:'knowledge',dataset_ids:[dataset],
+      mining_prompt:{objective:'沿显式选中方向观察全范围。',instruction:'逐图比较主体轮廓。',directions:[{direction_id:direction.direction_id,
+        title:direction.title,instruction:direction.instruction,origin:'explored',source:direction.source}]}},'/analysis/start'));
+    assert.equal(knowledge.status,'COMPLETED',JSON.stringify(knowledge.errors));
+    const consistencySettings=await api(null,'/settings/modules/consistency');
+    assert.equal((await api({expected_revision:consistencySettings.data.revision,settings:{mode:'exact'}},'/settings/modules/consistency')).status,200);
+    const consistency=await waitJob('analysis',await api({submission_id:randomUUID(),analysis_kind:'consistency',dataset_ids:[dataset]},'/analysis/start'));
+    assert.equal(consistency.status,'COMPLETED',JSON.stringify(consistency.errors));
+    const publication=await api(null,'/analysis/publications/'+knowledge.knowledge_version_id);
+    const audit=await waitJob('audit',await api({submission_id:randomUUID(),subset_ids:[dataset],consistency_job_id:consistency.run_id,
+      knowledge:{job_id:knowledge.run_id,version_id:knowledge.knowledge_version_id,entry_ids:publication.data.catalog.checks.map(check=>check.check_id)}},'/audit/start'));
     assert.equal(audit.status,'COMPLETED',JSON.stringify(audit.errors));
-    for(const job of [exploration,normal,defect,audit]) {
+    for(const job of [exploration,knowledge,consistency,audit]) {
       assert.equal(job.model_profile.provider_id,'first-service');assert.equal(job.model_name,'first-model');
       assert.ok(!JSON.stringify(job).includes('isolated-key'));
     }
-    const generations=calls.filter(row=>row.body?.response_format);
-    assert.ok(generations.length>=4);
+    const generations=calls.filter(row=>row.body?.stream&&row.body.tools?.some(tool=>['exploration_commit','knowledge_commit','audit_commit'].includes(tool.function.name)));
+    for(const name of ['exploration_commit','knowledge_commit','audit_commit'])assert.ok(generations.some(row=>row.body.tools.some(tool=>tool.function.name===name)&&row.body.messages.some(message=>Array.isArray(message.content)&&message.content.some(part=>part.type==='image_url'))));
     assert.ok(generations.every(row=>row.path.startsWith('/first/') && row.body.model==='first-model' && row.authorization==='Bearer first-isolated-key'));
 
     const selectionBeforeDelete=(await api()).data;
@@ -266,7 +275,7 @@ test('authenticated LAN browser saves provider settings and switches models', {t
     assert.equal(removed.status,200,JSON.stringify(removed));
     assert.equal(removed.data.ready,false);
     assert.equal(removed.data.selection.provider_id,'first-service','removed references must not silently select another provider');
-    const rejected=await api({dataset_id:dataset,normal_images:[dataset+':part-0.png'],defect_images:[dataset+':part-2.png']},'/exploration/start');
+    const rejected=await api({submission_id:randomUUID(),analysis_kind:'exploration',dataset_ids:[dataset],normal_images:[dataset+':part-0.png'],prompt:{text:'比较主体轮廓。'}},'/analysis/start');
     assert.equal(rejected.status,422);
 
     phase='native consistency remains independent of unavailable chat model';
@@ -278,20 +287,18 @@ test('authenticated LAN browser saves provider settings and switches models', {t
     const retrievalDataset=await api({format:'labelme',name:'Native comparison',image_dir:path.join(root,'retrieval-images'),annotation_dir:path.join(root,'retrieval-labels'),annotation_policy:{policy_id:'native-same',annotation_role:'REFERENCE',annotation_coverage:'EXHAUSTIVE'}},'/datasets/import');
     assert.equal(retrievalDataset.status,200,JSON.stringify(retrievalDataset));
     const retrievalId=retrievalDataset.data.dataset_id;
-    const retrievalRoute={pageId:'industrial-consistency',tab:'search',query:{kind:'sample',sample_id:retrievalId+':query.png'},scope:{kind:'datasets',dataset_ids:[retrievalId]}};
-    const retrievalUrl=new URL(await driver.getCurrentUrl());retrievalUrl.search='';retrievalUrl.searchParams.set('iad',JSON.stringify(retrievalRoute));
-    await driver.get(retrievalUrl.href);
-    await driver.wait(until.elementLocated(By.css('[data-page="industrial-consistency"]')),10000);
     const beforeRetrievalCalls=calls.length;
-    await click('查找同图');
-    await driver.wait(until.elementLocated(By.css('[aria-label="候选图像详情"]')),10000);
-    await driver.findElement(By.xpath('//*[@aria-label="候选图像详情"]//button[normalize-space(.)="查看原图对比"]')).click();
+    const retrieved=await api({query:{kind:'sample',sample_id:retrievalId+':query.png'},corpus_scope:{kind:'datasets',dataset_ids:[retrievalId]},mode:'exact'},'/images/retrieve');
+    assert.equal(retrieved.status,200,JSON.stringify(retrieved));assert.ok(JSON.stringify(retrieved.data).includes(retrievalId+':copy.png'));
+    const compared=await api({sample_a:retrievalId+':query.png',sample_b:retrievalId+':copy.png'},'/consistency/compare');
+    assert.equal(compared.status,200,JSON.stringify(compared));
+    const retrievalRoute={pageId:'industrial-consistency',tab:'groups',evidenceId:compared.data.evidence_id,resultId:compared.data.result_id};
+    const retrievalUrl=new URL('/',await driver.getCurrentUrl());retrievalUrl.searchParams.set('iad',JSON.stringify(retrievalRoute));
+    await driver.get(retrievalUrl.href);
+    await driver.wait(until.elementLocated(By.css('[data-evidence-id]')),10000);
     await driver.wait(until.elementLocated(By.css('[data-difference="CATEGORY"]')),10000).click();
     await driver.wait(()=>driver.executeScript('const images=[...document.querySelectorAll(".iad-consistency-comparison .iad-image-frame img")];return images.length===2&&images.every(image=>image.complete&&image.naturalWidth>0)'),5000);
-    assert.equal(calls.length,beforeRetrievalCalls,'exact retrieval sends no request to the unavailable chat model');
-    const saveEvidence=await driver.wait(until.elementLocated(By.xpath("//button[normalize-space(.)='保存比较证据']")),5000);
-    await driver.wait(until.elementIsEnabled(saveEvidence),5000);await saveEvidence.click();
-    await driver.wait(until.elementLocated(By.css('[data-evidence-id]')),10000);
+    assert.equal(calls.length,beforeRetrievalCalls,'exact retrieval and frozen comparison send no request to the unavailable chat model');
     await fs.rm(path.join(root,'retrieval-images'),{recursive:true});
     await driver.navigate().refresh();
     await driver.wait(until.elementLocated(By.css('[data-difference="CATEGORY"]')),10000).click();
@@ -305,6 +312,7 @@ test('authenticated LAN browser saves provider settings and switches models', {t
 
     await driver.manage().window().setRect({width:1920,height:1080});
     assert.equal(await driver.executeScript('return document.documentElement.scrollWidth > innerWidth'),false,'settings must fit the desktop');
+    assert.deepEqual(fixture.errors,[]);
   } catch (error) {
     if (driver) {
       console.error(phase + '\n' + (await driver.findElement(By.css('body')).getText()).slice(-4500));

@@ -55,8 +55,9 @@ export const imagesStyles = `
 
 .full-overlay {z-index:10010;display:flex;align-items:stretch;justify-content:stretch;padding:0;background:#1c2633}
 .full-dialog {display:flex;flex-direction:column;width:100vw;height:100dvh;min-width:0;min-height:0;background:#202a36}
-.full-toolbar {height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;background:#1c2633;border-bottom:1px solid rgba(255,255,255,.08);padding:0 20px;color:#f4f7fd}
-.full-file{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;color:#f4f7fd !important}
+.full-toolbar {position:relative;height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;background:#1c2633;border-bottom:1px solid rgba(255,255,255,.08);padding:0 20px;color:#f4f7fd}
+.full-toolbar>.iad-image-quality{left:50%;top:50%;transform:translate(-50%,-50%);padding:0;border-radius:0;background:transparent;color:inherit;font-size:13px;font-weight:600}
+.full-file{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:calc(50% - 48px);flex:1;color:#f4f7fd !important}
 .full-stage {flex:1;position:relative;overflow:hidden;min-height:0;background:#202a36;touch-action:none;cursor:grab}
 .full-stage.dragging{cursor:grabbing}
 .full-image-world {position:absolute;left:50%;top:50%;transform-origin:center;user-select:none}

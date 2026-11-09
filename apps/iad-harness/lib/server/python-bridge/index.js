@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
+import { createInterface } from "node:readline";
 import { queryOperations } from "../../shared/execution.generated.js";
 const queryOperationNames = new Set(queryOperations);
 export function findWorkspaceRoot(startDir = process.cwd()) {
@@ -38,7 +39,6 @@ class PythonWorker {
     dbPath;
     worker = null;
     pendingRequests = new Map();
-    stdoutAccum = "";
     stderrAccum = "";
     constructor(config, role) {
         this.role = role;
@@ -63,48 +63,41 @@ class PythonWorker {
             },
             stdio: ["pipe", "pipe", "pipe"],
         });
-        this.stdoutAccum = "";
         this.stderrAccum = "";
-        child.stdout.setEncoding("utf8");
-        child.stdout.on("data", (chunk) => {
-            this.stdoutAccum += chunk;
-            const lines = this.stdoutAccum.split("\n");
-            this.stdoutAccum = lines.pop() || "";
-            for (const line of lines) {
-                const trimmed = line.trim();
-                if (!trimmed)
-                    continue;
-                try {
-                    const parsed = JSON.parse(trimmed);
-                    const reqId = parsed.request_id;
-                    if (!reqId)
-                        continue;
-                    const pending = this.pendingRequests.get(reqId);
-                    if (!pending)
-                        continue;
-                    if (parsed.event === "progress") {
-                        pending.onProgress?.(parsed);
-                    }
-                    else if (parsed.event === "result") {
-                        if (pending.timer)
-                            clearTimeout(pending.timer);
-                        this.pendingRequests.delete(reqId);
-                        pending.resolve(parsed.data !== undefined ? parsed.data : parsed);
-                    }
-                    else if (parsed.event === "error") {
-                        if (pending.timer)
-                            clearTimeout(pending.timer);
-                        this.pendingRequests.delete(reqId);
-                        const errPayload = parsed.error || {};
-                        const err = new Error(errPayload.message || "Python bridge error");
-                        err.code = errPayload.code;
-                        err.details = errPayload.details;
-                        pending.reject(err);
-                    }
+        createInterface({ input: child.stdout, crlfDelay: Infinity }).on("line", (line) => {
+            const trimmed = line.trim();
+            if (!trimmed)
+                return;
+            try {
+                const parsed = JSON.parse(trimmed);
+                const reqId = parsed.request_id;
+                if (!reqId)
+                    return;
+                const pending = this.pendingRequests.get(reqId);
+                if (!pending)
+                    return;
+                if (parsed.event === "progress") {
+                    pending.onProgress?.(parsed);
                 }
-                catch {
-                    // ignore non-json line
+                else if (parsed.event === "result") {
+                    if (pending.timer)
+                        clearTimeout(pending.timer);
+                    this.pendingRequests.delete(reqId);
+                    pending.resolve(parsed.data !== undefined ? parsed.data : parsed);
                 }
+                else if (parsed.event === "error") {
+                    if (pending.timer)
+                        clearTimeout(pending.timer);
+                    this.pendingRequests.delete(reqId);
+                    const errPayload = parsed.error || {};
+                    const err = new Error(errPayload.message || "Python bridge error");
+                    err.code = errPayload.code;
+                    err.details = errPayload.details;
+                    pending.reject(err);
+                }
+            }
+            catch {
+                // ignore non-json line
             }
         });
         child.stderr.setEncoding("utf8");

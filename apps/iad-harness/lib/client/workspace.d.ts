@@ -1,11 +1,10 @@
-import type { AuditStartRequest, ConsistencyResult, Filters, InspectionReference } from "../shared/contracts.js";
+import type { ConsistencyResult, Filters, InspectionReference } from "../shared/contracts.js";
 import { type ImageView, type InspectionSelection, type InspectionTransform, type InspectionView } from "./inspection.js";
 import type { WorkbenchSession } from "./workbench-session.js";
 import { type ConsistencyLocation, type PageId, type WorkbenchLocation } from "../shared/navigation.js";
 import { type KnowledgeStatusFilter } from "../shared/knowledge-presentation.js";
 export { pages, type PageId } from "../shared/navigation.js";
 interface ViewState {
-    auditConsistencyMode: NonNullable<AuditStartRequest["consistency_mode"]>;
     explorationPrompt: import("../shared/domain.generated.js").FrozenExplorationPrompt | null;
     explorationPromptBase: string;
     datasetSettingsTab: "directories" | "basic";
@@ -77,7 +76,6 @@ export declare class Workspace {
     getSnapshot: () => WorkspaceState;
     subscribe: (listener: () => void) => () => void;
     view(page: PageId, datasetId?: string): {
-        auditConsistencyMode: NonNullable<AuditStartRequest["consistency_mode"]>;
         explorationPrompt: import("../shared/domain.generated.js").FrozenExplorationPrompt | null;
         explorationPromptBase: string;
         datasetSettingsTab: "directories" | "basic";

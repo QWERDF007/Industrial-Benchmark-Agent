@@ -23,6 +23,7 @@ class AnchorVisualInput:
     context: dict
     images: list[PreparedImage]
     response_type: type[AnchorVisualResult]
+    system_prompt: str | None
 
     @classmethod
     def prepare(cls, runtime: 'WorkbenchRuntime', run_id: str, anchor_id: str, request: AnchorVisualStart, checkpoint) -> 'AnchorVisualInput':
@@ -37,7 +38,9 @@ class AnchorVisualInput:
         prompt = snapshot.instruction
         context = {'question': request.question, 'facts': prepared.facts}
         captured = AnchorVisualRequest(**request.model_dump(), anchor_id=anchor_id, facts=prepared.facts,
-            media=[image.evidence for image in prepared.images], input_fingerprint=GroupAnalysisInputs.input_fingerprint(json.dumps({'instruction': prompt, 'context': context}, ensure_ascii=False), prepared.images))
+            media=[image.evidence for image in prepared.images], input_fingerprint=GroupAnalysisInputs.input_fingerprint(json.dumps(
+                {'instruction': prompt, 'context': context, **({'system_prompt':snapshot.system_prompt} if snapshot.system_prompt else {})},
+                ensure_ascii=False), prepared.images))
 
         @model_validator(mode='after')
         def validate_observations(result):
@@ -54,7 +57,8 @@ class AnchorVisualInput:
             return result
 
         response_type = type('AnchorVisualResult', (AnchorVisualResult,), {'validate_observations': validate_observations})
-        return cls(captured, prompt, context, prepared.images, response_type)
+        return cls(captured, prompt, context, prepared.images, response_type, snapshot.system_prompt)
 
     def plan(self, client: VlmClient) -> GenerationRequest[AnchorVisualResult]:
-        return client.plan(self.response_type, self.prompt, self.images, client.resolve_model(), context=self.context)
+        return client.plan(self.response_type, self.prompt, self.images, client.resolve_model(), context=self.context,
+            system_prompt=self.system_prompt)

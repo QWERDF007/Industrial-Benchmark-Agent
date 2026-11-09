@@ -9,8 +9,7 @@ class KnowledgeDisplayEvidence:
     def __init__(self, evidence: list[KnowledgeEvidence]):
         self.by_id = {item.image.evidence_id: item for item in evidence}
         self.overviews = {(item.sample_id, item.image.source_sha256): item for item in evidence
-            if item.image.representation == 'raw' and item.image.role != 'roi'
-            and item.image.crop_bbox == [0, 0, *item.image.original_size]}
+            if item.image.is_whole_image}
 
     def images(self, evidence_ids: Iterable[str]) -> list[KnowledgeEvidence]:
         result = {}

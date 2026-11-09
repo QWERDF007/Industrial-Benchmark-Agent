@@ -27,7 +27,7 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
             return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
         body = json.loads(request.content)
         sent.append(body)
-        content = body['messages'][0]['content']
+        content = next(message for message in body['messages'] if message['role']=='user')['content']
         media = [json.loads(part['text'].removeprefix('视觉证据：')) for part in content
             if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
         facts = json.loads(content[1]['text'])['facts']
@@ -66,11 +66,11 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         verification = focused['observations'][0]['facts']['evidence'][0]['verification']
         assert verification['relation'] == 'EXACT'
         assert 'registration' not in verification
-        assert sent[0]['messages'][0]['content'][0]['text'] == checks.snapshot(job_id).instruction
+        assert next(message for message in sent[0]['messages'] if message['role']=='user')['content'][0]['text'] == checks.snapshot(job_id).instruction
         assert len(sent) == 1
         with pytest.raises(ValueError, match='新的request_id'):
             review.observe(job_id, anchor_id, {**request, 'question': '在原始像素中补充核对标注边界'})
-        actual = [json.loads(part['text'].removeprefix('视觉证据：')) for part in sent[0]['messages'][0]['content']
+        actual = [json.loads(part['text'].removeprefix('视觉证据：')) for part in next(message for message in sent[0]['messages'] if message['role']=='user')['content']
             if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
         assert [item.evidence_id for item in observed.request.media] == [item['evidence_id'] for item in actual]
         assert any(item['source'] == 'model' and item['crop_bbox'] == [0, 0, 17, 14] and item['sent_size'] == [17, 14] for item in actual)
@@ -211,7 +211,7 @@ def test_image_and_annotation_comparison_does_not_require_external_policy_or_reg
     def respond(request):
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
-        content = json.loads(request.content)['messages'][0]['content']
+        content = next(message for message in json.loads(request.content)['messages'] if message['role']=='user')['content']
         media = [json.loads(item['text'].removeprefix('视觉证据：'))['evidence_id'] for item in content
             if item['type'] == 'text' and item['text'].startswith('视觉证据：')]
         answer = {'observations': [{'candidate_id': reference_id,
@@ -313,8 +313,8 @@ def test_invalid_visual_output_does_not_append_hidden_repair_instructions(datase
             ConsistencyAgentReview(runtime, client).observe(run, anchor, {'request_id': str(uuid4()),
                 'fingerprint': selected.fingerprint, 'candidate_ids': [selected.candidates[0].sample_id], 'question': instruction})
         assert len(sent) == 1
-        assert len(sent[0]['messages']) == 1
-        assert sent[0]['messages'][0]['content'][0]['text'] == instruction
+        assert [message['role'] for message in sent[0]['messages']] == ['system','user']
+        assert next(message for message in sent[0]['messages'] if message['role']=='user')['content'][0]['text'] == instruction
     finally:
         client.close()
         runtime.close()

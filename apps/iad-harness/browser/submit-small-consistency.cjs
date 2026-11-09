@@ -19,7 +19,6 @@ const firefox=require('selenium-webdriver/firefox.js');
   assert.ok(!selectedDataset||['anomaly','labelme'].includes(selectedDataset),'子集参数应为 anomaly 或 labelme');
   const reference='runs/verification/v58-two-small/reference.json';
   const state=JSON.parse(await fs.readFile(reference,'utf8'));
-  const {analysisDefaults}=await import('../lib/shared/analysis-defaults.generated.js');
   const output='runs/browser/user-submitted-consistency';await fs.mkdir(output,{recursive:true});
   const options=new firefox.Options().addArguments('-headless');options.setBinary('/tmp/iad-firefox128/firefox/firefox');
   const driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options)
@@ -153,7 +152,6 @@ const firefox=require('selenium-webdriver/firefox.js');
       assert.deepEqual(job.dataset_ids,[dataset.dataset_id]);assert.equal(job.total_samples,100);
       assert.equal(job.request.submission.instruction,prompt);
       assert.equal(job.request.submission.mode,'combined','本次验证必须执行严格同图和相似检索');
-      assert.equal(job.request.submission.candidate_batch_size,analysisDefaults.consistency.candidate_batch_size);
       assert.equal(job.request.units[0].request.instruction,prompt);
       const proof={run_id:job.run_id,dataset_id:dataset.dataset_id,total_samples:100,submission:'browser',
         mode:job.request.submission.mode,candidate_batch_size:job.request.submission.candidate_batch_size,

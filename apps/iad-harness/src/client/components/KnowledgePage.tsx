@@ -1,4 +1,5 @@
 import {SectionHeading} from './layout/SectionHeading.js';
+import {AnalysisExportButton} from './AnalysisExportButton.js';
 import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {v4 as uuid} from 'uuid';
 import {PromptDrawer} from './PromptDrawer.js';
@@ -43,6 +44,7 @@ interface UiJobItem {
   at: string;
   durationText: string;
   prompt: string;
+  systemPrompt: string|null;
   knowledgeVersionId: string | null;
 }
 
@@ -118,6 +120,7 @@ export function KnowledgePage({
       count: versions.find(version => version.version_id === job.knowledge_version_id)?.check_count ?? null,
       at: new Date(job.submitted_at).toLocaleString('zh-CN', {hour12:false}), durationText: formatDuration(seconds),
       prompt: job.mining_prompt?.instruction || '',
+      systemPrompt:job.system_prompt||null,
       knowledgeVersionId: job.knowledge_version_id || null};
   });
 
@@ -181,7 +184,8 @@ export function KnowledgePage({
 
   const resultVersions = useMemo(() => {
     if (!selectedJob?.knowledgeVersionId) return [];
-    const ids = new Set([selectedJob.knowledgeVersionId]);
+    const ids = new Set([selectedJob.knowledgeVersionId,
+      ...versions.filter(version=>version.source_run_id===selectedJob.id).map(version=>version.version_id)]);
     let changed = true;
     while (changed) {
       changed = false;
@@ -195,7 +199,7 @@ export function KnowledgePage({
     ? view.version : selectedJob?.knowledgeVersionId;
   const canMaintain = !!selectedVersionId && versionsResource.data?.current_version_id === selectedVersionId;
   const checkQuery = new URLSearchParams({version_id:selectedVersionId || '', page:String(entryPage), page_size:'8', search:knowledgeSearch, review_status:knowledgeStatus});
-  const checksResource = useResource<KnowledgeCheckPage>(selectedJob?.status==='completed'&&selectedVersionId ? `/knowledge/details?${checkQuery}` : null, revision + refreshRevision);
+  const checksResource = useResource<KnowledgeCheckPage>(selectedVersionId ? `/knowledge/details?${checkQuery}` : null, revision + refreshRevision);
   const filteredChecks = checksResource.data?.items || [];
   const maxEntryPages = Math.max(1, Math.ceil((checksResource.data?.total || 0) / 8));
   const currentEntryPage = Math.min(maxEntryPages, Math.max(1, entryPage));
@@ -419,7 +423,8 @@ export function KnowledgePage({
           {/* Lower Panel: 知识条目 */}
           <section className="panel" id="knowledge-panel" aria-labelledby="knowledge-heading">
             <SectionHeading title="知识条目" titleId="knowledge-heading">
-              {selectedJob?.status==='completed'&&versions.find(version=>version.version_id===selectedVersionId)?.check_count ? (
+              {selectedVersionId?.startsWith('analysis_version_')&&<AnalysisExportButton versionId={selectedVersionId}/>}
+              {selectedVersionId&&versions.find(version=>version.version_id===selectedVersionId)?.check_count ? (
                 <div className="filterset" id="knowledge-filterset">
                   <input
                     className="f"
@@ -462,14 +467,14 @@ export function KnowledgePage({
                 </div>
               ) : null}
             </SectionHeading>
-            {selectedJob?.status==='completed'&&resultVersions.length > 1 && <label className="control">结果版本<Select className="f" aria-label="知识结果版本" value={selectedVersionId || ''}
+            {selectedVersionId&&resultVersions.length > 1 && <label className="control">结果版本<Select className="f" aria-label="知识结果版本" value={selectedVersionId || ''}
               onChange={event=>workspace.updateView(pageId,{job:selectedJob!.id,version:event.target.value})}>
               {resultVersions.map(version=><option key={version.version_id} value={version.version_id}>{version.manually_edited ? '维护版本' : '作业冻结版本'} {version.version_id.slice(-8)}</option>)}
             </Select></label>}
             <div className="knowledge-wrap" id="knowledge-body">
               {!selectedJob ? (
                 <p className="iad-result-empty" role="status">当前没有知识条目</p>
-              ) : selectedJob.status!=='completed' ? (
+              ) : !selectedVersionId ? (
                 <p className="iad-result-empty" role="status">当前作业没有已发布结果</p>
               ) : !selectedJob.knowledgeVersionId ? (
                 <p className="iad-result-empty" role="status">当前没有知识条目</p>
@@ -542,7 +547,7 @@ export function KnowledgePage({
 
       {/* Overlays and Drawers */}
       {/* 1. Job Prompt Drawer */}
-      {promptJob && <PromptDrawer title="查看提示词" text={promptJob.prompt || '该历史作业未记录冻结提示词。'} onClose={closePrompt} />}
+      {promptJob && <PromptDrawer title="查看提示词" text={promptJob.prompt || '该历史作业未记录冻结提示词。'} systemText={promptJob.systemPrompt} onClose={closePrompt} />}
 
             {detailItem && <KnowledgeEntryDialog key={`${detailItem.versionId}:${detailItem.checkId}`} {...detailItem}
               onClose={closeDetail} onSaved={()=>{updated();toast('人工核实已保存');}} />}

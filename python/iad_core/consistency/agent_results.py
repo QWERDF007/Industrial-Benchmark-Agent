@@ -1,3 +1,4 @@
+from iad_core.workbench.session_models import ImageSessionLocation
 import json
 from pathlib import PurePosixPath
 from collections import Counter
@@ -10,7 +11,7 @@ from iad_core.consistency.agent_models import ConsistencyAnchorRun, ConsistencyC
 from iad_core.consistency.agent_assessments import AnchorAssessments
 from iad_core.consistency.agent_evidence_records import AnchorEvidenceRecords
 from iad_core.consistency.agent_result_models import (AnchorResultDetail,
-    AnchorResultPage, AnchorResultSummary, ConsistencyCheckReport, AnchorDiagnostics, AnchorPhaseTiming, ModelRoleDiagnostics, ModelRolesDiagnostics, ConsistencySessionLocation)
+    AnchorResultPage, AnchorResultSummary, ConsistencyCheckReport, AnchorDiagnostics, AnchorPhaseTiming, ModelRoleDiagnostics, ModelRolesDiagnostics)
 from iad_core.consistency.agent_review_models import AnchorObservation, AnchorVisualRequest
 from iad_core.consistency.annotation_inventory import AnnotationObservation
 from iad_core.consistency.conflict_categories import ConflictCategory
@@ -30,13 +31,13 @@ class ConsistencyAgentResults:
     def __init__(self, db: Database):
         self.db = db
 
-    def session_location(self, session_id: str) -> ConsistencySessionLocation:
+    def session_location(self, session_id: str) -> ImageSessionLocation:
         with self.db.connection() as connection:
             row = connection.execute('''SELECT a.job_id,a.anchor_id,j.payload_json FROM consistency_anchor_runs a
                 JOIN job_runs j ON j.job_id=a.job_id WHERE a.session_id=?''', (session_id,)).fetchone()
             if row is None:
                 raise LookupError('主图审核会话不存在')
-            return ConsistencySessionLocation(job_id=row['job_id'], submitted_at=json.loads(row['payload_json'])['submitted_at'],
+            return ImageSessionLocation(job_id=row['job_id'], submitted_at=json.loads(row['payload_json'])['submitted_at'],
                 image_name=PurePosixPath(row['anchor_id'].split(':', 1)[1]).name,
                 image_id=sample_uuid(row['anchor_id']))
 

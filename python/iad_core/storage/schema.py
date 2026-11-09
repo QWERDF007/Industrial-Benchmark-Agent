@@ -6,11 +6,15 @@ from iad_core.storage.review_schema import init_review_schema
 from iad_core.storage.job_schema import migrate_audit_jobs
 from iad_core.storage.knowledge_schema import migrate_knowledge_sources, migrate_unified_knowledge
 from iad_core.storage.consistency_schema import init_content_index_schema
+from iad_core.storage.analysis_schema import initialize_analysis_schema
+from iad_core.storage.audit_schema import initialize_audit_schema
 
 
 def initialize_schema(conn: Connection) -> bool:
     conn.execute("BEGIN IMMEDIATE")
     cursor = conn.cursor()
+    initialize_analysis_schema(conn)
+    initialize_audit_schema(conn)
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS workbench_module_settings (
         module TEXT PRIMARY KEY CHECK(module IN ('exploration','knowledge','consistency','audit')),

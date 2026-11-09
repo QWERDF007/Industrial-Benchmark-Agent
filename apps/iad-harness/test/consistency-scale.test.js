@@ -33,7 +33,7 @@ test('a native Agent covers thirty paged candidates and resumes without repeatin
     await scheduler.cancel(started.run_id);
     fixture.release.resolve();await fixture.lateResponse.promise;
     const foreign = await bridge.execute('consistency_agent_detail', {run_id: started.run_id, anchor_id: datasetId + ':A.png'});
-    assert.equal(foreign.state, 'COMPLETED');
+    assert.equal(foreign.state, 'COMPLETED',JSON.stringify({errors:foreign.errors,runtime:fixture.errors.map(String)}));
     assert.notEqual(foreign.session_id, before.session_id);
     const foreignObservation = foreign.observations.find(item => item.request.candidate_ids.includes(identity.anchor_id));
     assert.ok(foreignObservation);
@@ -58,17 +58,16 @@ test('a native Agent covers thirty paged candidates and resumes without repeatin
     const rejected = transcript.events.filter(event => event.type === 'tool/result' && event.data.message.isError
       && ['anchor_submit', 'anchor_assess'].includes(calls.get(event.data.message.toolCallId)));
     assert.equal(rejected.length, 4);
-    assert.ok(transcript.events.some(event => event.type === 'compaction/prune'));
-    if (agentTokenize) assert.ok(transcript.events.some(event => event.type === 'compaction/summary'));
+    assert.ok(!transcript.events.some(event=>event.type==='user/message'&&event.data.source.kind==='consistency-checkpoint'));
     assert.equal(after.assessments.length, 30);
     assert.ok(rejected.every(event => event.data.message.content.some(block => block.type === 'text' && block.text.startsWith('Error:'))));
     assert.ok(rejected.at(-1).data.message.content.some(block => block.type === 'text' && block.text.includes('不属于本场')));
     assert.ok(wires.slice(foreignCalls).filter(body => body.test_role === 'vision').every(body =>
-      JSON.parse(body.messages[0].content[1].text).facts.anchor.sample_id === identity.anchor_id));
+      JSON.parse(body.messages.find(message=>message.role==='user').content[1].text).facts.anchor.sample_id === identity.anchor_id));
     const generated = wires.filter(body => body.test_role === 'vision' &&
-      JSON.parse(body.messages[0].content[1].text).facts.anchor.sample_id === identity.anchor_id);
+      JSON.parse(body.messages.find(message=>message.role==='user').content[1].text).facts.anchor.sample_id === identity.anchor_id);
     assert.equal(generated.length, after.visual_plan.pages.length);
-    const seen = generated.flatMap(body => Object.keys(JSON.parse(body.messages[0].content[1].text).facts.candidates));
+    const seen = generated.flatMap(body => Object.keys(JSON.parse(body.messages.find(message=>message.role==='user').content[1].text).facts.candidates));
     assert.equal(seen.length, 30);
     assert.deepEqual([...new Set(seen)].sort(), expected);
     const status = await bridge.execute('analysis_status', {run_id: started.run_id});

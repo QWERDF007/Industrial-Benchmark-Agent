@@ -2,33 +2,55 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {directionEvidence,ReferencedText} from '../lib/client/direction-evidence.js';
+import {ReferencedText} from '../lib/client/direction-evidence.js';
 import {Pagination} from '../lib/client/components/Pagination.js';
 import {explorationDirections} from '../lib/client/exploration-view.js';
+import {DatasetKnowledge} from '../lib/client/components/DatasetKnowledge.js';
+import {RuleAssessments} from '../lib/client/components/RuleAssessments.js';
 
-test('current direction results exclude removals while retaining frozen provenance', () => {
-  const snapshot={version_id:'version-one',dataset_id:'dataset-one',normal_sources:[],defect_sources:[],evidence:[],
-    directions:['removed','retained'].map(id=>({direction_id:id,title:id,instruction:'比较结构',rationale:'可见差异',
-      limitations:[],evidence_ids:[],applies_to:'both'}))};
-  const current=explorationDirections([snapshot],['removed']);
-  assert.deepEqual(current.map(direction=>direction.id),['retained']);
-  assert.equal(current[0].versionId,'version-one');
-  assert.equal(snapshot.directions.length,2);
+test('sample knowledge panels read the fixed native publication catalog', () => {
+  const knowledge={version_id:'fixed-native-version',coverage:{completed:2,total:4},catalog:{summary:'固定发布总结',
+    checks:[{check_id:'C1',title:'边缘判据',status:'supported',criterion:'比较边缘轮廓',subject:'部件',location:'顶部',allowed_variations:[],limitations:[]}]}};
+  const html=renderToStaticMarkup(React.createElement(DatasetKnowledge,{knowledge}));
+  assert.match(html,/固定发布总结/);assert.match(html,/fixed-native-version/);
+  assert.match(html,/2\/4 张完成，1 项判据/);assert.match(html,/边缘判据/);
+  const assessment=renderToStaticMarkup(React.createElement(RuleAssessments,{knowledge:[knowledge],
+    analysis:{overview:{evidence_id:'overview'},regions:[],auxiliary_evidence:[],reference_evidence:[],
+      check_assessments:[{check_id:'C1',status:'normal',description:'边缘连续',limitations:[],evidence_ids:[]}]},onEvidence(){}}));
+  assert.match(assessment,/边缘判据/);assert.match(assessment,/边缘连续/);
 });
 
-test('direction references to crops and masks locate their original image once', () => {
-  const snapshot = {dataset_id:'dataset',normal_sources:[{sample_id:'dataset:normal.png'}],defect_sources:[],
+test('current direction results exclude removals while retaining frozen provenance', () => {
+  const snapshot={version_id:'version-one',removed_direction_ids:['removed'],evidence:[],catalog:{directions:['removed','retained'].map(id=>({direction_id:id,title:id,instruction:'比较结构',rationale:'可见差异',
+      limitations:[],evidence_ids:[],counter_evidence_ids:[],dataset_ids:['dataset-one'],applies_to:'both'}))}};
+  const current=explorationDirections(snapshot);
+  assert.deepEqual(current.map(direction=>direction.id),['retained']);
+  assert.equal(current[0].versionId,'version-one');
+  assert.deepEqual(explorationDirections(snapshot,'removed').map(direction=>direction.id),['removed','retained']);
+  assert.equal(snapshot.catalog.directions.length,2);
+});
+
+test('native direction citations group key whole images by sample identity independently of support and counter roles', () => {
+  const snapshot = {version_id:'fixed-version',removed_direction_ids:[],
     evidence:[
-      {sample_id:'dataset:normal.png',image:{evidence_id:'img_original',role:'overview',representation:'raw',original_size:[400,600],crop_bbox:[0,0,400,600]}},
-      {sample_id:'dataset:normal.png',image:{evidence_id:'img_crop',role:'roi',representation:'raw',original_size:[400,600],crop_bbox:[10,20,100,120]}},
-      {sample_id:'dataset:normal.png',image:{evidence_id:'img_mask',role:'roi',representation:'annotation_mask',original_size:[400,600],crop_bbox:[10,20,100,120]}},
-    ]};
-  const result=directionEvidence(snapshot,{instruction:'比较边缘',rationale:'img_crop 与 img_mask 的细节',limitations:[],evidence_ids:['img_crop','img_mask']});
-  assert.deepEqual(result.entries.map(item=>item.id),['img_original']);
-  assert.equal(result.references.get('img_crop').id,'img_original');
-  assert.equal(result.references.get('img_mask').label,'良品 N1');
-  assert.equal(result.references.get('normal.png').id,'img_original');
-  assert.equal(snapshot.evidence.length,3,'展示投影不得删改送模证据');
+      ...['original','crop','mask'].map((id,index)=>({evidence_id:'img_'+id,sample_id:'dataset:normal.png',filename:'normal.png',
+        sampling_group:'normal',candidate_role:null,image:{evidence_id:'img_'+id,role:index?'roi':'overview',representation:index===2?'annotation_mask':'raw',
+          original_size:[400,600],crop_bbox:index?[10,20,100,120]:[0,0,400,600],source_sha256:'normal-source'}})),
+      ...['defect','unknown','irrelevant'].map(id=>({evidence_id:'img_'+id,sample_id:'dataset:'+id+'.png',filename:id+'.png',
+        sampling_group:id==='defect'?'abnormal':'unclassified',candidate_role:null,image:{evidence_id:'img_'+id,role:'overview',representation:'raw',
+          original_size:[400,600],crop_bbox:[0,0,400,600],source_sha256:id+'-source'}})),
+    ],catalog:{directions:[{direction_id:'D1',title:'边缘',instruction:'比较边缘',applies_to:'both',dataset_ids:['dataset'],
+      rationale:'img_crop 与 img_mask 的细节，对照 defect.png。',limitations:[],
+      evidence_ids:['img_crop','img_mask','img_defect','img_unknown'],counter_evidence_ids:['img_original']}]}};
+  const before=JSON.stringify(snapshot);
+  const direction=explorationDirections(snapshot)[0];
+  assert.deepEqual(direction.evidences.map(item=>[item.evidenceId,item.kind]),[['img_original','normal'],['img_defect','defect'],['img_unknown','unknown']]);
+  assert.equal(direction.references.get('img_crop').id,'N1');
+  assert.equal(direction.references.get('img_mask').label,'良品 N1');
+  assert.equal(direction.references.get('normal.png').id,'N1');
+  assert.equal(direction.references.get('defect.png').id,'A1');
+  assert.ok(direction.evidences.every(item=>item.url.endsWith(item.evidenceId)));
+  assert.equal(JSON.stringify(snapshot),before,'展示只取条目引用，不追加全部已观察图，也不删改局部和反例');
 });
 
 test('consecutive references to the same original form one citation without altering separate statements', () => {

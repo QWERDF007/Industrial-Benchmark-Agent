@@ -28,6 +28,7 @@ export function useModuleSettings(module) {
         },
         onError: () => client.invalidateQueries({ queryKey: key, exact: true }), });
     return { settings, save: patch => mutation.mutate(patch),
+        saveAsync: patch => mutation.mutateAsync(patch),
         retry: () => mutation.mutate(Object.fromEntries(failed.map(([field, edit]) => [field, edit.value]))),
         loading: resource.isPending, saving: mutations.some(state => state.status === 'pending'),
         saved: mutations.length > 0 && edits.size === 0,

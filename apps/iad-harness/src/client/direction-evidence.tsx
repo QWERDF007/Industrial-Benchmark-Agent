@@ -1,5 +1,5 @@
 import React from 'react';
-import type {ExploredDirection, ExplorationSnapshot} from '../shared/domain.generated.js';
+import type {AnalysisDirection, AnalysisPublicationView} from '../shared/domain.generated.js';
 
 export interface EvidenceReference {
   id: string;
@@ -18,17 +18,15 @@ function referencePattern(aliases: Iterable<string>): RegExp {
   return new RegExp(`(${alternatives.join('|')})`,'g');
 }
 
-export function directionEvidence(snapshot: ExplorationSnapshot, direction: ExploredDirection) {
-  const normals=new Set(snapshot.normal_sources.map(source=>source.sample_id));
-  const defects=new Set(snapshot.defect_sources.map(source=>source.sample_id));
+export function directionEvidence(snapshot: AnalysisPublicationView, direction: AnalysisDirection) {
   const all=snapshot.evidence.map(evidence=>{
-    const title=evidence.sample_id.startsWith(snapshot.dataset_id+':')
-      ? evidence.sample_id.slice(snapshot.dataset_id.length+1):evidence.sample_id;
-    return {id:evidence.image.evidence_id,evidence,title,filename:title.split('/').at(-1)!};
+    return {id:evidence.evidence_id,evidence,title:evidence.filename,filename:evidence.filename.split('/').at(-1)!};
   });
   const originals=new Map(all.filter(item=>item.evidence.image.representation==='raw'
-    && item.evidence.image.role!=='roi').map(item=>[item.evidence.sample_id,item]));
-  const displayed=new Map(all.map(item=>[item.id,originals.get(item.evidence.sample_id)]));
+    && item.evidence.image.role==='overview'
+    && item.evidence.image.crop_bbox.every((value,index)=>value===[0,0,...item.evidence.image.original_size][index]))
+    .map(item=>[JSON.stringify([item.evidence.sample_id,item.evidence.image.source_sha256]),item]));
+  const displayed=new Map(all.map(item=>[item.id,originals.get(JSON.stringify([item.evidence.sample_id,item.evidence.image.source_sha256]))]));
   const owners=new Map<string,Set<string>>();
   for(const item of all){
     for(const alias of [item.id,item.evidence.sample_id,item.title,item.filename]){
@@ -44,7 +42,7 @@ export function directionEvidence(snapshot: ExplorationSnapshot, direction: Expl
     const matches=all.filter(item=>item.id.startsWith(alias));
     if(matches.length===1){const original=displayed.get(matches[0].id);if(original)aliases.set(alias,original.id);}
   }
-  const selected=new Set(direction.evidence_ids.map(id=>displayed.get(id)?.id || id));
+  const selected=new Set([...direction.evidence_ids,...direction.counter_evidence_ids].map(id=>displayed.get(id)?.id || id));
   if(aliases.size){
     for(const token of text.split(referencePattern(aliases.keys()))){
       const id=aliases.get(token);
@@ -56,18 +54,19 @@ export function directionEvidence(snapshot: ExplorationSnapshot, direction: Expl
   const entries=[...selected].map(id=>{
     const item=images.get(id);
     if(!item)return {id,evidence:null,label:'证据缺失',ref:'',kind:'unknown' as const,title:id,filename:id};
-    const kind:'normal'|'defect'|'unknown'=normals.has(item.evidence.sample_id)?'normal':defects.has(item.evidence.sample_id)?'defect':'unknown';
-    const ref={normal:'N',defect:'A',unknown:'E'}[kind]+ ++counters[kind];
-    return {...item,kind,ref,label:`${{normal:'良品',defect:'异常',unknown:'证据'}[kind]} ${ref}`};
+    const kind:'normal'|'defect'|'unknown'=item.evidence.sampling_group==='normal'?'normal':item.evidence.sampling_group==='abnormal'?'defect'
+      :item.evidence.candidate_role||'unknown';
+    const ref={normal:'N',defect:'A',unknown:'U'}[kind]+ ++counters[kind];
+    return {...item,kind,ref,label:`${{normal:'良品',defect:'异常',unknown:'未分类'}[kind]} ${ref}`};
   });
   const byId=new Map(entries.filter(item=>item.evidence).map(item=>[item.id,item]));
   const references=new Map<string,EvidenceReference>();
   for(const [alias,id] of aliases){
     const reference=byId.get(id);
-    if(reference)references.set(alias,reference);
+    if(reference)references.set(alias,{id:reference.ref,label:reference.label});
   }
   for(const item of entries){
-    if(item.evidence){references.set(item.ref,item);references.set(item.label,item);}
+    if(item.evidence){const reference={id:item.ref,label:item.label};references.set(item.ref,reference);references.set(item.label,reference);}
   }
   return {entries,references,counters};
 }

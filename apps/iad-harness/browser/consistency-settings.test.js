@@ -12,7 +12,7 @@ import {Select as NativeSelect} from 'selenium-webdriver/lib/select.js';
 import {PythonBridge} from '../lib/server/python-bridge/index.js';
 import {createIadHttpHandler} from '../lib/server/routes/index.js';
 
-test('consistency settings load their defaults and persist independent candidate limits through mode changes', {timeout: 45000}, async () => {
+for(const module of ['consistency','exploration','knowledge'])test(`${module} settings persist independent module values through the original controls`, {timeout:45000}, async()=>{
   const app = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-consistency-settings-'));
   const bridge = new PythonBridge({cwd: path.resolve(app, '../..'), dbPath: path.join(root, 'test.db')});
@@ -21,7 +21,7 @@ import {QueryClientProvider} from '@tanstack/react-query';import {queryClient} f
 import {ModuleSettingsSection} from './src/client/components/ModuleSettingsSection.tsx';
 import {WorkbenchModelProvider} from './src/client/models.tsx';
 import {workbenchStyles} from './src/client/styles.ts';
-createRoot(document.getElementById('root')).render(<QueryClientProvider client={queryClient}><WorkbenchModelProvider><div className="iad-workbench"><style>{workbenchStyles}</style><ModuleSettingsSection module="consistency"/></div></WorkbenchModelProvider></QueryClientProvider>);`,
+createRoot(document.getElementById('root')).render(<QueryClientProvider client={queryClient}><WorkbenchModelProvider><div className="iad-workbench"><style>{workbenchStyles}</style><ModuleSettingsSection module={${JSON.stringify(module)}}/></div></WorkbenchModelProvider></QueryClientProvider>);`,
     loader: 'tsx', resolveDir: app}, bundle: true, format: 'iife', write: false, target: 'es2022', define: {'process.env.NODE_ENV': '"production"'}});
   const handler = createIadHttpHandler(bridge);
   const server = http.createServer(async (req, res) => {
@@ -42,6 +42,30 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
       .setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH || '/tmp/geckodriver')).build();
     await driver.get(base);
     const field = label => driver.findElement(By.css(`input[aria-label="${label}"]`));
+    if(module!=='consistency') {
+      await driver.manage().window().setRect({width:1920,height:1080});
+      await driver.wait(until.elementLocated(By.css('input[aria-label="良品抽取权重"]')),5000);
+      assert.equal(await(await field('良品抽取权重')).getAttribute('value'),'1');
+      assert.equal(await(await field('异常品抽取权重')).getAttribute('value'),'1');
+      const read=async name=>(await(await fetch(base+'/api/iad/settings/modules/'+name)).json());
+      const normal=await field('良品抽取权重');await normal.clear();await normal.sendKeys('3');await driver.findElement(By.css('h2')).click();
+      await driver.wait(async()=>(await read(module)).settings.sampling_ratio.normal===3,5000);
+      const abnormal=await field('异常品抽取权重');await abnormal.clear();await abnormal.sendKeys('2');await driver.findElement(By.css('h2')).click();
+      await driver.wait(async()=>(await read(module)).settings.sampling_ratio.abnormal===2,5000);
+      const saved=await read(module);
+      assert.deepEqual(saved.settings.sampling_ratio,{normal:3,abnormal:2});
+      const other=await read(module==='exploration'?'knowledge':'exploration');
+      assert.equal(other.revision,0);assert.deepEqual(other.settings.sampling_ratio,{normal:1,abnormal:1});
+      await abnormal.clear();await abnormal.sendKeys('0');await driver.findElement(By.css('h2')).click();
+      await driver.wait(until.elementLocated(By.css('input[aria-label="异常品抽取权重"][aria-invalid="true"]')),5000);
+      assert.deepEqual(await read(module),saved);
+      await driver.navigate().refresh();
+      await driver.wait(until.elementLocated(By.css('input[aria-label="良品抽取权重"]')),5000);
+      assert.equal(await(await field('良品抽取权重')).getAttribute('value'),'3');
+      assert.equal(await(await field('异常品抽取权重')).getAttribute('value'),'2');
+      await fs.writeFile('/tmp/'+module+'-sampling-settings-browser.png',await driver.takeScreenshot(),'base64');
+      return;
+    }
     await driver.wait(until.elementLocated(By.css('input[aria-label="相似度阈值"]')), 5000);
     assert.equal(await (await field('相似度阈值')).getAttribute('value'), '0.98');
     assert.equal(await (await field('完全一致图上限')).getAttribute('value'), '5');

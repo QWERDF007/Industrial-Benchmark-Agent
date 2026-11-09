@@ -4,6 +4,5 @@ export function datasetImageAnnotations(format, sample, annotations) {
     if (format !== 'labelme')
         return {};
     return { annotationLayer: { kind: 'boxes', width: sample.width, height: sample.height,
-            annotations: annotations.filter(annotation => annotation.bbox && annotation.geometry_status !== 'INVALID')
-                .map(({ annotation_id, raw_label, bbox }) => ({ annotation_id, raw_label, bbox })) } };
+            annotations: annotations.filter(annotation => annotation.geometry_status !== 'INVALID' && (annotation.bbox || annotation.polygon)) } };
 }

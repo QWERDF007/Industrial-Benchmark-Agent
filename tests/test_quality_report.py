@@ -1,7 +1,4 @@
-from tests.knowledge_scenarios import selected_group
 from uuid import uuid4
-from pathlib import Path
-import json
 
 from PIL import Image
 
@@ -46,53 +43,38 @@ def test_quality_dimensions_include_rejected_images_and_distinguish_human_verifi
     assert 'accuracy' not in quality
 
 
-def test_model_risks_missing_evidence_and_frozen_versions_remain_separate(dataset, mllm_api):
-    from iad_core.entry import knowledge_get, sample_get
-    from iad_core.workbench.runtime import WorkbenchRuntime
-    from iad_core.workbench.vision import VlmClient
-    db, _, config = dataset
-    client, _, responses = mllm_api
-    normal = knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge']
-    runtime = WorkbenchRuntime(db, VlmClient(http_client=client))
-    target = config.dataset.id + ':dent.png'
-    try:
-        responses['VlmResult'].update(suggested_label='FAIL', confidence=0.99)
-        first = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[target])
-        runtime.audit.wait(first['run_id'], 5)
-        assert runtime.audit.status(first['run_id'])['status'] == 'COMPLETED'
-        original = sample_get({'sample_id': target}, db.db_path)
-        report = report_get({'dataset_id': config.dataset.id}, db.db_path)
-        quality = report['quality']
-        assert quality['audit_coverage']['percent'] == 25
-        assert quality['model']['suspect_samples'] == 1
-        assert quality['model']['finding_count'] == len(original['suggestion']['analysis']['findings'])
-        assert quality['model']['missing_evidence_samples'] == 0
-        assert quality['model']['uncertain_samples'] == 0
-        assert quality['knowledge_versions'] == [{'normal_version_id': normal['version_id'],
-            'defect_version_id': None, 'legacy_profile_id': None, 'sample_count': 1}]
-        assert quality['audit_run_ids'] == [first['run_id']]
-        responses['VlmResult'].update(suggested_label='UNCERTAIN', confidence=0.01,
-            missing_evidence=['反光遮挡，缺少补充角度'], conflicts=['位置判断存在冲突'])
-        second = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[target])
-        runtime.audit.wait(second['run_id'], 5)
-        assert runtime.audit.status(second['run_id'])['status'] == 'COMPLETED'
-        quality = report_get({'dataset_id': config.dataset.id}, db.db_path)['quality']
-        assert quality['audit_coverage']['numerator'] == 1
-        assert quality['audit_coverage']['percent'] == 25
-        assert quality['model']['suspect_samples'] == 0
-        assert quality['model']['missing_evidence_samples'] == 1
-        assert quality['model']['conflict_samples'] == 1
-        assert quality['model']['uncertain_samples'] == 1
-        assert quality['model']['finding_count'] == 0
-        assert quality['audit_run_ids'] == [second['run_id']]
-        assert quality['knowledge_versions'][0]['sample_count'] == 1
-        assert quality['human_verification_coverage']['percent'] == 0
-        assert sample_get({'sample_id': target}, db.db_path)['review_decision'] is None
-    finally:
-        runtime.close()
+def test_model_risks_missing_evidence_and_frozen_versions_remain_separate(native_knowledge_versions, advisory_record):
+    from iad_core.entry import sample_get
+    db, dataset_id, publications = native_knowledge_versions
+    version_id = publications[0].version_id
+    target = dataset_id + ':dent.png'
+    first = advisory_record(db, target, label='FAIL', knowledge_version_id=version_id, finding_count=3)
+    original = sample_get({'sample_id': target}, db.db_path)
+    quality = report_get({'dataset_id': dataset_id}, db.db_path)['quality']
+    assert quality['audit_coverage']['percent'] == 25
+    assert quality['model']['suspect_samples'] == 1
+    assert quality['model']['finding_count'] == len(original['suggestion']['analysis']['findings']) == 3
+    assert quality['model']['missing_evidence_samples'] == 0
+    assert quality['model']['uncertain_samples'] == 0
+    assert quality['knowledge_versions'] == [{'knowledge_version_id': version_id, 'legacy_profile_id': None, 'sample_count': 1}]
+    assert quality['audit_run_ids'] == [first.audit_run_id]
+    second = advisory_record(db, target, label='UNCERTAIN', knowledge_version_id=version_id,
+        missing_evidence=['缺少补充角度'], conflicts=['位置判断存在冲突'])
+    quality = report_get({'dataset_id': dataset_id}, db.db_path)['quality']
+    assert quality['audit_coverage']['numerator'] == 1
+    assert quality['audit_coverage']['percent'] == 25
+    assert quality['model']['suspect_samples'] == 0
+    assert quality['model']['missing_evidence_samples'] == 1
+    assert quality['model']['conflict_samples'] == 1
+    assert quality['model']['uncertain_samples'] == 1
+    assert quality['model']['finding_count'] == 0
+    assert quality['audit_run_ids'] == [second.audit_run_id]
+    assert quality['knowledge_versions'][0]['sample_count'] == 1
+    assert quality['human_verification_coverage']['percent'] == 0
+    assert sample_get({'sample_id': target}, db.db_path)['review_decision'] is None
 
 
-def test_empty_and_intersected_scopes_never_claim_evaluated_quality(dataset, mllm_api):
+def test_empty_and_intersected_scopes_never_claim_evaluated_quality(dataset):
     db, _, config = dataset
     mismatched = report_get({'dataset_id': config.dataset.id, 'task_id': 'unrelated'}, db.db_path)
     assert mismatched['total_samples'] == 0
@@ -119,47 +101,22 @@ def test_human_coverage_uses_latest_submitted_decision(dataset):
         assert quality['technical_usability']['percent'] == 100
 
 
-def test_report_discloses_mixed_frozen_versions_instead_of_current_head(dataset, mllm_api):
-    from iad_core.entry import knowledge_get
-    from iad_core.workbench.runtime import WorkbenchRuntime
-    from iad_core.workbench.vision import VlmClient
-    db, _, config = dataset
-    client, _, responses = mllm_api
-    original = knowledge_get({'dataset_id': config.dataset.id, 'kind': 'normal'}, db.db_path)['knowledge']
-    runtime = WorkbenchRuntime(db, VlmClient(http_client=client))
-    try:
-        first = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[config.dataset.id + ':dent.png'])
-        runtime.audit.wait(first['run_id'], 5)
-        assert runtime.audit.status(first['run_id'])['status'] == 'COMPLETED'
-        with Image.open(Path(config.root) / 'normal2.png') as source:
-            image = source.convert('RGB')
-        image.putpixel((0, 0), (1, 2, 3))
-        image.save(Path(config.root) / 'normal2.png')
-        responses['KnowledgeDraft']['revisions'] = []
-        mining = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, config.dataset.id, kind='normal', images=[config.dataset.id + ':normal.png', config.dataset.id + ':normal2.png']), kind='normal', model_name='test-mllm')
-        runtime.knowledge.wait(mining['run_id'], 5)
-        updated = runtime.knowledge.status(mining['run_id'])
-        assert updated['status'] == 'COMPLETED', updated['errors']
-        assert updated['knowledge_version_id'] != original['version_id']
-        quality = report_get({'dataset_id': config.dataset.id}, db.db_path)['quality']
-        assert quality['knowledge_versions'][0]['normal_version_id'] == original['version_id']
-        second = runtime.audit.start(dataset_id=config.dataset.id, sample_ids=[config.dataset.id + ':scratch.png'])
-        runtime.audit.wait(second['run_id'], 5)
-        assert runtime.audit.status(second['run_id'])['status'] == 'COMPLETED'
-        quality = report_get({'dataset_id': config.dataset.id}, db.db_path)['quality']
-        assert quality['audit_coverage']['percent'] == 50
-        assert {usage['normal_version_id'] for usage in quality['knowledge_versions']} == {
-            original['version_id'], updated['knowledge_version_id']}
-        assert [usage['sample_count'] for usage in quality['knowledge_versions']] == [1, 1]
-        assert set(quality['audit_run_ids']) == {first['run_id'], second['run_id']}
-    finally:
-        runtime.close()
+def test_report_discloses_mixed_frozen_versions_instead_of_current_head(native_knowledge_versions, advisory_record):
+    db, dataset_id, publications = native_knowledge_versions
+    original, updated = (publication.version_id for publication in publications)
+    first = advisory_record(db, dataset_id + ':dent.png', knowledge_version_id=original)
+    quality = report_get({'dataset_id': dataset_id}, db.db_path)['quality']
+    assert quality['knowledge_versions'][0]['knowledge_version_id'] == original
+    second = advisory_record(db, dataset_id + ':scratch.png', knowledge_version_id=updated)
+    quality = report_get({'dataset_id': dataset_id}, db.db_path)['quality']
+    assert quality['audit_coverage']['percent'] == 50
+    assert {usage['knowledge_version_id'] for usage in quality['knowledge_versions']} == {original, updated}
+    assert [usage['sample_count'] for usage in quality['knowledge_versions']] == [1, 1]
+    assert set(quality['audit_run_ids']) == {first.audit_run_id, second.audit_run_id}
 
 
-def test_folder_label_comparison_and_inconsistency_ratio(tmp_path, mllm_api):
+def test_folder_label_comparison_and_inconsistency_ratio(tmp_path, advisory_record):
     from iad_core.entry import dataset_preview, dataset_scan
-    from iad_core.workbench.runtime import WorkbenchRuntime
-    from iad_core.workbench.vision import VlmClient
     root = tmp_path / 'folder_ds'
     for directory in ('good', 'bad', 'unknown'):
         (root / directory).mkdir(parents=True)
@@ -175,26 +132,25 @@ def test_folder_label_comparison_and_inconsistency_ratio(tmp_path, mllm_api):
     before = report_get(scope, db_path)['quality']['label_comparison']
     assert (before['raw_ok'], before['raw_ng'], before['raw_unlabeled'], before['unaudited']) == (2, 1, 1, 4)
     assert before['inconsistency_ratio']['percent'] is None
-    client, _, responses = mllm_api
-    runtime = WorkbenchRuntime(Database(db_path), VlmClient(http_client=client))
-    try:
-        mine = runtime.knowledge.start(request=selected_group(runtime.knowledge.db, dataset_id, kind='normal'), kind='normal', model_name='test-mllm')
-        runtime.knowledge.wait(mine['run_id'], 5)
-        assert runtime.knowledge.status(mine['run_id'])['status'] == 'COMPLETED'
-        for label, paths in [('PASS', ['good/s1', 'bad/s3']), ('FAIL', ['good/s2']), ('UNCERTAIN', ['unknown/s4'])]:
-            responses['VlmResult'].update(suggested_label=label)
-            job = runtime.audit.start(dataset_id=dataset_id, sample_ids=[dataset_id + ':' + path + '.png' for path in paths])
-            runtime.audit.wait(job['run_id'], 5)
-            assert runtime.audit.status(job['run_id'])['status'] == 'COMPLETED'
-        Image.new('RGB', (100, 100), 'blue').save(root / 'good/s1.png')
-        dataset_scan(scope, db_path)
-        lc = report_get(scope, db_path)['quality']['label_comparison']
-        assert (lc['raw_ok'], lc['raw_ng'], lc['raw_unlabeled']) == (2, 1, 1)
-        assert (lc['model_pass'], lc['model_fail'], lc['model_uncertain'], lc['unaudited']) == (2, 1, 1, 0)
-        assert lc['source_changed_count'] == 1
-        assert lc['source_unverified_count'] == 0
-        assert lc['inconsistency_ratio']['denominator'] == 2
-        assert lc['inconsistency_ratio']['numerator'] == 2
-        assert lc['inconsistency_ratio']['percent'] == 100
-    finally:
-        runtime.close()
+    db = Database(db_path)
+    for label, paths in [('PASS', ['good/s1', 'bad/s3']), ('FAIL', ['good/s2']), ('UNCERTAIN', ['unknown/s4'])]:
+        for path in paths:
+            advisory_record(db, dataset_id + ':' + path + '.png', label=label)
+    Image.new('RGB', (100, 100), 'blue').save(root / 'good/s1.png')
+    dataset_scan(scope, db_path)
+    lc = report_get(scope, db_path)['quality']['label_comparison']
+    assert (lc['raw_ok'], lc['raw_ng'], lc['raw_unlabeled']) == (2, 1, 1)
+    assert (lc['model_pass'], lc['model_fail'], lc['model_uncertain'], lc['unaudited']) == (2, 1, 1, 0)
+    assert lc['source_changed_count'] == 1
+    assert lc['source_unverified_count'] == 0
+    assert lc['inconsistency_ratio']['denominator'] == 2
+    assert lc['inconsistency_ratio']['numerator'] == 2
+    assert lc['inconsistency_ratio']['percent'] == 100
+
+
+def test_unstructured_advisory_does_not_claim_complete_evidence(dataset, advisory_record):
+    db, _, config = dataset
+    advisory_record(db, config.dataset.id + ':dent.png', structured=False)
+    model = report_get({'dataset_id': config.dataset.id}, db.db_path)['quality']['model']
+    assert model['unstructured_samples'] == 1
+    assert model['missing_evidence_samples'] == 0

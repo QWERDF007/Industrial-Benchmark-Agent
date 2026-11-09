@@ -6,7 +6,7 @@ from iad_core.dataset.path_safety import validate_sample_image_path
 from iad_core.evidence.images import file_sha256, image_pixel_sha256
 from iad_core.duplicate.repository import load_leakage_relations
 from iad_core.duplicate.index import PixelIndex
-from iad_core.knowledge.models import KnowledgeCheck, KnowledgeEvidence, KnowledgeSource, KnowledgeSupportPolicy
+from iad_core.knowledge.models import EvidenceSupportedCheck, KnowledgeEvidence, KnowledgeSource, KnowledgeSupportPolicy
 from iad_core.split.group import build_split_groups
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import SampleRepository
@@ -58,7 +58,7 @@ class KnowledgeSupport:
         return {sid: mapping[sid] for sid in ids if sid in original_ids or sid == target_sample_id}
 
     @staticmethod
-    def assess(checks: List[KnowledgeCheck], evidence: List[KnowledgeEvidence],
+    def assess(checks: List[EvidenceSupportedCheck], evidence: List[KnowledgeEvidence],
                groups: dict[str, str], policy: KnowledgeSupportPolicy, *, comparison_source_ids: Optional[set[str]] = None):
         owners = {item.image.evidence_id: item.sample_id for item in evidence if item.image.representation == 'raw'}
         for check in checks:

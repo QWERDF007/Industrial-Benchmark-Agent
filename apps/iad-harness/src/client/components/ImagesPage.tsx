@@ -12,6 +12,7 @@ import { AnnotatedImageStage } from "./AnnotatedImageStage.js";
 import { DatasetScopeSelector } from "./DatasetScopeSelector.js";
 import {ThumbnailCard} from "./ThumbnailCard.js";
 import {Pagination} from "./Pagination.js";
+import {datasetImageAnnotations} from '../dataset-image-annotations.js';
 
 import { ClearFilterButton } from "./CommonFilterControls.js";
 
@@ -446,7 +447,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }: ImagesPagePr
           activeSample
             ? {
                 id: activeSample.sample_id,sampleId:activeSample.sample_id,
-                annotationLayer:{kind:'sample',sample:sampleDetail?.sample||activeSample,annotations:sampleDetail?.annotations||[]},
+                ...datasetImageAnnotations(sampleDataset?.format,activeSample,sampleDetail?.annotations||[]),
                 title: activeSample.relative_path,
                 imageUrl: mediaUrl(activeSample, "image"),
                 width: activeSample.width,

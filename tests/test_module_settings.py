@@ -1,6 +1,31 @@
 import pytest
 
 
+def test_sampling_ratios_default_old_settings_and_persist_independently(dataset):
+    from iad_core.workbench.module_settings import ModuleSettings
+    db, _, _ = dataset
+    with db.connection() as connection:
+        connection.execute("INSERT INTO workbench_module_settings VALUES('exploration',4,?)",
+            ('{"batch_size":5,"whole_image_max_side":1024}',))
+    store = ModuleSettings(db)
+    old = store.read('exploration')
+    assert old.settings.model_dump()['sampling_ratio'] == dict(normal=1, abnormal=1)
+    assert old.revision == 4 and old.settings.batch_size == 5 and old.settings.whole_image_max_side == 1024
+    exploration = store.save(dict(module='exploration', expected_revision=4,
+        settings=dict(sampling_ratio=dict(normal=3, abnormal=1))))
+    knowledge = store.save(dict(module='knowledge', expected_revision=0,
+        settings=dict(sampling_ratio=dict(normal=1, abnormal=3))))
+    assert store.read('exploration') == exploration
+    assert store.read('knowledge') == knowledge
+    assert exploration.settings.sampling_ratio.normal == knowledge.settings.sampling_ratio.abnormal == 3
+    for invalid in [{}, {'normal':1}, {'abnormal':1}, {'normal':0,'abnormal':1},
+            {'normal':-1,'abnormal':1}, {'normal':1,'abnormal':1.5}, {'normal':True,'abnormal':1},
+            {'normal':'3','abnormal':1}, None]:
+        with pytest.raises(ValueError):
+            store.save(dict(module='exploration', expected_revision=5, settings=dict(sampling_ratio=invalid)))
+        assert store.read('exploration') == exploration
+
+
 def test_module_settings_persist_separately_and_reject_stale_writes(tmp_path):
     from iad_core.entry import module_settings_get, module_settings_save, model_settings_get
     database = str(tmp_path / 'modules.db')
@@ -13,7 +38,9 @@ def test_module_settings_persist_separately_and_reject_stale_writes(tmp_path):
         'settings': {'model': {'provider_id': 'vision', 'model_id': 'v2'}, 'mode': 'exact', 'min_similarity': .97}}, database)
     assert saved['revision'] == 1
     assert module_settings_get({'module': 'consistency'}, database) == saved
-    assert module_settings_get({'module': 'knowledge'}, database)['settings'] == {'model': None}
+    assert module_settings_get({'module': 'knowledge'}, database)['settings'] == {'model': None,
+        'batch_size': 12, 'sampling_ratio': {'normal':1,'abnormal':1}, 'whole_image_max_side': None,
+        'agent_limits': {'context_tokens': None, 'max_output_tokens': None, 'request_parameters': {}, 'generation_timeout_seconds': None}}
     assert model_settings_get({}, database) == {'revision': 0, 'selection': None}
     with pytest.raises(ValueError, match='配置已变化'):
         module_settings_save({'module': 'consistency', 'expected_revision': 0, 'settings': saved['settings']}, database)

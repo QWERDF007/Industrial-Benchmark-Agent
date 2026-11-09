@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
+import {randomUUID} from 'node:crypto';
 import os from 'node:os';
 import contrast from 'wcag-contrast';
 import {setTimeout as delay} from 'node:timers/promises';
@@ -9,6 +10,7 @@ import {Builder,By,until} from 'selenium-webdriver';
 import firefox from 'selenium-webdriver/firefox.js';
 import {Select as NativeSelect} from 'selenium-webdriver/lib/select.js';
 import {startNativeModelHost} from './native-model-host.js';
+import {resolvePythonPath} from '../lib/server/python-bridge/index.js';
 import {viewport} from './workbench-layout.js';
 
 test('native settings preserve General and Models while business settings persist and route jobs',{timeout:90000},async()=>{
@@ -47,8 +49,8 @@ test('native settings preserve General and Models while business settings persis
     const shared=await api(null,'/models');
     const configured=await api({expected_revision:shared.data.revision,selection:{provider_id:'first-service',model_id:'first-model',limits:{capacity_mode:'vllm_tokenize'}}},'/models');assert.equal(configured.status,200);
     phase='explicit module model required';
-    const unconfigured=await api({dataset_id:'unconfigured-module',normal_images:['n'],defect_images:['d']},'/exploration/start');
-    assert.equal(unconfigured.status,422);assert.match(unconfigured.data.error.message,/方向探索.*分析模型/);
+    const unconfigured=await api({submission_id:randomUUID(),analysis_kind:'exploration',dataset_ids:['unconfigured-module'],normal_images:['n'],defect_images:['d'],prompt:{text:'比较轮廓。'}},'/analysis/start');
+    assert.equal(unconfigured.status,422);assert.match(unconfigured.data.error.message,/分析模型/);
     phase='per-module model persistence';
     for(const [module,label] of Object.entries({exploration:'方向探索',knowledge:'知识挖掘',audit:'模型审计'})){
       await section(label);const selected=await driver.findElement(By.css('select[aria-label="分析模型"]'));
@@ -57,8 +59,17 @@ test('native settings preserve General and Models while business settings persis
       assert.equal((await driver.findElements(By.xpath("//*[@data-module-settings]//button[.='保存设置' or .='恢复默认']"))).length,0,'修改后自动保存');
       await new NativeSelect(selected).selectByVisibleText('Second model（Second service）');
       await driver.wait(async()=>(await api(null,`/settings/modules/${module}`)).data.settings.model?.model_id==='second-model',5000);
-      assert.equal((await driver.findElements(By.css('[data-module-settings] input'))).length,0,'业务分类只配置分析模型');
+      if(module==='audit')assert.ok(await driver.findElement(By.css('input[aria-label="同时审计的主图数"]')).isEnabled());
+      else{
+        const values=[['后续每批图像数',2],['良品抽取权重',3],['异常品抽取权重',1]];
+        if(module==='knowledge')values.splice(0,3,['每批图像数',2],['良品抽取权重',1],['异常品抽取权重',3]);
+        for(const [label,value] of values){const input=await driver.findElement(By.css(`input[aria-label="${label}"]`));await input.clear();await input.sendKeys(String(value),'\uE004');}
+        await driver.wait(async()=>{const current=(await api(null,`/settings/modules/${module}`)).data.settings;
+          return current.batch_size===2&&current.sampling_ratio.normal===(module==='exploration'?3:1)&&current.sampling_ratio.abnormal===(module==='exploration'?1:3);},5000);
+      }
     }
+    assert.deepEqual((await api(null,'/settings/modules/exploration')).data.settings.sampling_ratio,{normal:3,abnormal:1});
+    assert.deepEqual((await api(null,'/settings/modules/knowledge')).data.settings.sampling_ratio,{normal:1,abnormal:3});
     phase='consistency defaults';await section('数据一致性');
     const settings=await api(null,'/settings/modules/consistency');assert.equal(settings.data.settings.min_similarity,.98);
     assert.equal(await driver.findElement(By.css('input[aria-label="完全一致图上限"]')).getAttribute('value'),'5');
@@ -129,10 +140,13 @@ test('native settings preserve General and Models while business settings persis
     phase='real job model routing';
     const imported=await api({format:'labelme',name:'Module settings routing',image_dir:root+'/images',annotation_dir:root+'/labels'},'/datasets/import');assert.equal(imported.status,200);
     const dataset=imported.data.dataset_id;
-    const started=await api({dataset_id:dataset,normal_images:[dataset+':part-0.png'],defect_images:[dataset+':part-2.png']},'/exploration/start');assert.equal(started.status,200,JSON.stringify(started));
-    const job=await driver.wait(async()=>{const result=await api(null,`/exploration/status/${started.data.run_id}`);return !['RUNNING','PENDING'].includes(result.data.status)?result.data:false;},15000);
+    const started=await api({submission_id:randomUUID(),analysis_kind:'exploration',dataset_ids:[dataset],normal_images:[dataset+':part-0.png'],defect_images:[dataset+':part-2.png'],prompt:{text:'比较主体轮廓。'}},'/analysis/start');assert.equal(started.status,200,JSON.stringify(started));
+    const job=await driver.wait(async()=>{const result=await api(null,`/analysis/status/${started.data.run_id}`);return !['RUNNING','PENDING'].includes(result.data.status)?result.data:false;},15000);
     assert.equal(job.status,'COMPLETED',JSON.stringify(job.errors));assert.equal(job.model_profile.model_id,'second-model');assert.equal(job.model_profile.provider_id,'second-service');
-    assert.ok(calls.some(call=>call.path.startsWith('/second/')&&call.body?.model==='second-model'&&call.authorization==='Bearer second-isolated-key'));
+    assert.ok(calls.some(call=>call.path.startsWith('/second/')&&call.body?.stream&&call.body.tools?.some(tool=>tool.function.name==='exploration_commit')&&call.body.model==='second-model'&&call.authorization==='Bearer second-isolated-key'));
+    const explorationSnapshot=JSON.parse(execFileSync(resolvePythonPath(),['-c',
+      "import sqlite3,sys; c=sqlite3.connect('file:'+sys.argv[1]+'?mode=ro',uri=True); print(c.execute('SELECT snapshot_json FROM analysis_workflow_runs WHERE job_id=?',(sys.argv[2],)).fetchone()[0])",root+'/workbench.db',started.data.run_id],{encoding:'utf8'}));
+    assert.deepEqual(explorationSnapshot.plan.sampling_ratio,{normal:3,abnormal:1});
     phase='program retrieval reads module defaults';
     const exact=await api({expected_revision:(await api(null,'/settings/modules/consistency')).data.revision,settings:{mode:'exact',min_similarity:.98}},'/settings/modules/consistency');assert.equal(exact.status,200,JSON.stringify(exact));
     const program=await api({request_id:'module-exact-default',subjects:{kind:'datasets',dataset_ids:[dataset]},corpus_scope:{kind:'datasets',dataset_ids:[dataset]}},'/consistency/start');assert.equal(program.status,200,JSON.stringify(program));
@@ -141,7 +155,7 @@ test('native settings preserve General and Models while business settings persis
     assert.equal(frozen.request.mode,'exact');assert.equal(frozen.request.min_similarity,.98);
     const overridden=await api({expected_revision:exact.data.revision,settings:{model:{provider_id:'second-service',model_id:'second-model'},mode:'exact',min_similarity:.98}},'/settings/modules/consistency');
     assert.equal(overridden.status,200);
-    const analysis=await api({analysis_kind:'consistency',dataset_ids:[dataset]},'/analysis/start');assert.equal(analysis.status,200,JSON.stringify(analysis));
+    const analysis=await api({submission_id:randomUUID(),analysis_kind:'consistency',dataset_ids:[dataset]},'/analysis/start');assert.equal(analysis.status,200,JSON.stringify(analysis));
     const node=await api(null,`/analysis/node/${analysis.data.run_id}`);assert.equal(node.status,200);
     assert.equal(node.data.model_profile.model_id,'second-model');
     assert.equal(node.data.request.consistency_check.retrieval.mode,'exact');
@@ -157,6 +171,7 @@ test('native settings preserve General and Models while business settings persis
     await fs.writeFile('/tmp/iad-v75-business-settings-dark.png',await driver.takeScreenshot(),'base64');
     assert.equal(await driver.executeScript('return getComputedStyle(document.querySelector("[data-shortcut-modal=settings] > nav")).borderRightColor'),'rgb(76, 91, 110)','分割线跟随深色主题');
     const dark=await driver.executeScript("const e=document.querySelector('[data-module-settings] select');return {text:getComputedStyle(e).color,background:getComputedStyle(e).backgroundColor}");
+    assert.deepEqual(fixture.errors,[]);
     const rgb=value=>value.match(/\d+/g).slice(0,3).map(Number);
     assert.ok(contrast.rgb(rgb(dark.text),rgb(dark.background))>=4.5,'深色输入文字对比度达标');
     await click('General');await click('Light');await section('数据一致性');

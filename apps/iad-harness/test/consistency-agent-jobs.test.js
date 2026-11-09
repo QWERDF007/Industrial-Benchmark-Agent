@@ -9,7 +9,8 @@ import {randomUUID} from 'node:crypto';
 import {Context} from '@deepseek-ai/cordis';
 import {PythonBridge, findWorkspaceRoot, resolvePythonPath} from '../lib/server/python-bridge/index.js';
 import {createIadHttpHandler} from '../lib/server/routes/index.js';
-import {ConsistencySessionHost} from '../lib/server/consistency/session-host.js';
+import {JobSessionHost} from '../lib/server/sessions/host.js';
+import {imageSessionPath} from '../lib/server/sessions/image-path.js';
 import {ConsistencyCheckScheduler} from '../lib/server/consistency/scheduler.js';
 import {NativeProviders} from '../lib/server/models/providers.js';
 import {createConsistencyAgentHost} from './fixtures/consistency-agent-host.js';
@@ -34,8 +35,8 @@ ModuleSettings(db).save({'module':'consistency','expected_revision':0,'settings'
 print(json.dumps({'dataset_id':config.dataset.id}))
 `, root, database], {cwd: workspace, env: {...process.env, PYTHONPATH: path.join(workspace, 'python')}, encoding: 'utf8'}));
   const bridge = new PythonBridge({cwd: workspace, dbPath: database});
-  const host = await ConsistencySessionHost.open(path.join(root, 'sessions'),
-    session_id => bridge.execute('consistency_agent_session_location', {session_id}));
+  const host = await JobSessionHost.open(path.join(root, 'sessions'),
+    async session_id => imageSessionPath(path.join(root, 'sessions'), await bridge.execute('consistency_agent_session_location', {session_id})));
   const unexpected = [];
   const errors = [];
   const scheduler = new ConsistencyCheckScheduler(bridge, host, new NativeProviders(() => new Context()),
@@ -125,9 +126,9 @@ print(json.dumps({'dataset_id':config.dataset.id}))
     }
     const writeNotice = host.notice.bind(host);
     let interruptClosing = true;
-    host.notice = async (id, summary, value, recordId) => {
-      const result = await writeNotice(id, summary, value, recordId);
-      if (interruptClosing && value.result?.reason === 'NO_CANDIDATES') {
+    host.notice = async (id, notice) => {
+      const result = await writeNotice(id, notice);
+      if (interruptClosing && notice.value.result?.reason === 'NO_CANDIDATES') {
         interruptClosing = false;
         throw new Error('injected native closing failure after business commit');
       }

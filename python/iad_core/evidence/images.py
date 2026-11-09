@@ -104,7 +104,7 @@ class EvidenceImages:
                 image = (annotation_mask(sample, annotations, box).convert("RGB") if annotation_mode == "annotation_mask"
                          else annotation_overlay(sample, image, annotations, box))
             if max_side is not None:
-                if not 1<=max_side<=OVERVIEW_MAX_SIDE:raise ValueError('Invalid preview size budget')
+                if max_side < 1:raise ValueError('Invalid preview size budget')
                 image.thumbnail((max_side,max_side),Image.Resampling.LANCZOS)
             elif role != "roi" and not full_resolution:
                 image.thumbnail((OVERVIEW_MAX_SIDE, OVERVIEW_MAX_SIDE), Image.Resampling.LANCZOS)

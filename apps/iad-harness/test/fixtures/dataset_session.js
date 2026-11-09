@@ -52,6 +52,17 @@ export async function createDatasetSession({ root, dbPath, endpoint, model, apiK
   new SessionProjectionRegistry(ctx);
   new AgentRegistry(ctx);
   skillTool.apply(ctx);
+  const providers = { "iad-verification": {
+    api: "openai-completions", baseURL: endpoint, apiKeyEnv,
+    retryPolicy: { mode: "normal", maxRetries: 0 },
+    models: [{ id: model, input: ["text", "image"], contextWindow, maxTokens, reasoningEfforts: false }],
+  } };
+  ctx.provide('settings', {configure: () => () => {},
+    describe: () => [{ns:'llm-pi-ai',revision:1,value:{providers}}]});
+  ctx.provide('credentials', {
+    resolve: async ref => process.env[ref] ? {value:process.env[ref]} : undefined,
+    describe: async ref => ({configured:!!process.env[ref],writable:false}),
+  });
   const forks = [];
   let handle;
   const dispose = async () => {
@@ -60,11 +71,7 @@ export async function createDatasetSession({ root, dbPath, endpoint, model, apiK
   };
   try {
     forks.push(await ctx.plugin(LocalFileSystem, { cwd: root }));
-    forks.push(await ctx.plugin(piAi, { providers: { "iad-verification": {
-      api: "openai-completions", baseURL: endpoint, apiKeyEnv,
-      retryPolicy: { mode: "normal", maxRetries: 0 },
-      models: [{ id: model, input: ["text", "image"], contextWindow, maxTokens, reasoningEfforts: false }],
-    } } }));
+    forks.push(await ctx.plugin(piAi, {providers}));
     forks.push(await ctx.plugin(AgentLoop, { agents: [] }));
     forks.push(await ctx.plugin(harness, { dbPath }));
     handle = await ctx.agents.create({ sessionId: SessionId(sessionId || "iad-verification-" + randomUUID()), seed,

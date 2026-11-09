@@ -14,7 +14,8 @@ test('review roles freeze native declarations without credential reads or provid
   const endpoint = `http://127.0.0.1:${server.address().port}/v1`;
   const providers = {isolated: {api: 'openai-completions', baseURL: endpoint, apiKeyEnv: 'ISOLATED_KEY',
     models: [{id: 'planner', input: ['text'], contextWindow: 32768, maxTokens: 4096},
-      {id: 'vision', input: ['text', 'image'], contextWindow: 65536, maxTokens: 8192}]}};
+      {id: 'vision', input: ['text', 'image'], contextWindow: 65536, maxTokens: 8192},
+      {id:'undeclared-output',input:['text','image'],contextWindow:65536}]}};
   const ctx = new Context();
   new LlmRuntime(ctx);
   ctx.provide('settings', {configure: () => () => {}, describe: () => [{ns: 'llm-pi-ai', revision: 1, value: {providers}}]});
@@ -43,6 +44,9 @@ test('review roles freeze native declarations without credential reads or provid
       {...limits, request_parameters: {chat_template_kwargs: {enable_thinking: false}}}, 'agent');
     assert.equal(unsupportedTemplate.profile, null);
     assert.match(unsupportedTemplate.error, /chat-template/);
+    const missingOutput = await native.freeze({provider_id:'isolated',model_id:'undeclared-output'},defaultModelLimits,'agent');
+    assert.equal(missingOutput.profile,null);
+    assert.match(missingOutput.error,/输出上限/);
     providers.isolated.baseURL = 'http://new.example/v1';
     assert.equal(agent.native_profile.baseURL, endpoint);
     assert.equal(agent.profile.endpoint, endpoint + '/chat/completions');

@@ -116,7 +116,8 @@ class VlmClient:
             output_reserve=min(output_reserve, self.profile.max_output_tokens or output_reserve))
 
     def plan(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str,
-             output_reserve: int = 2048, *, context: dict | None = None, correction: Optional[ModelOutputError] = None) -> GenerationRequest[T]:
+             output_reserve: int = 2048, *, context: dict | None = None, correction: Optional[ModelOutputError] = None,
+             system_prompt: str | None = None) -> GenerationRequest[T]:
         if self.profile.capacity_mode is None:
             raise ValueError('模型容量能力未知，请配置LIVE_VLM_CAPACITY_MODE；未发送生成请求')
         if self.profile.max_visual_inputs is not None and len(images) > self.profile.max_visual_inputs:
@@ -134,7 +135,8 @@ class VlmClient:
                 encoded = base64.b64encode(source.read()).decode("ascii")
             content.append({"type": "text", "text": "视觉证据：" + json.dumps(image.model_context(), ensure_ascii=False)})
             content.append({"type": "image_url", "image_url": {"url": "data:image/png;base64," + encoded}})
-        messages = [{"role": "user", "content": content}]
+        messages = ([{"role":"system", "content":[{"type":"text", "text":system_prompt}]}] if system_prompt else [])
+        messages.append({"role": "user", "content": content})
         if correction is not None:
             messages.extend([{"role": "assistant", "content": correction.response},
                 {"role": "user", "content": '请根据以下校验结果修正上一条回答，重新输出完整结果，保持原任务的JSON结构。不要复述校验错误对象，不要只返回修改字段。输出校验结果：' + json.dumps(
@@ -188,9 +190,10 @@ class VlmClient:
                     break
                 if not repairable:
                     raise
-                instruction = plan.body['messages'][0]['content'][0]['text']
+                instruction = next(message for message in plan.body['messages'] if message['role']=='user')['content'][0]['text']
+                system = next((message['content'][0]['text'] for message in plan.body['messages'] if message['role']=='system'), None)
                 plan = self.plan(plan.response_type, instruction, list(plan.images), plan.body['model'],
-                    plan.output_reserve, context=plan.context, correction=error)
+                    plan.output_reserve, context=plan.context, correction=error, system_prompt=system)
 
     def generate_once(self, plan: GenerationRequest[T]) -> T:
         response_type = plan.response_type

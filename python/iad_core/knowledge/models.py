@@ -141,9 +141,12 @@ class KnowledgeDraft(KnowledgeDraftContent):
         return self
 
 
-class KnowledgeCheck(LearnedCheck):
-    recheck_sample_ids: List[str] = Field(default_factory=list)
+class EvidenceSupportedCheck(LearnedCheck):
     support_limitations: List[str] = Field(default_factory=list)
+
+
+class KnowledgeCheck(EvidenceSupportedCheck):
+    recheck_sample_ids: List[str] = Field(default_factory=list)
     conflict_ids: List[str] = Field(default_factory=list)
     check_id: str
     predecessor_check_ids: List[str] = Field(default_factory=list)
@@ -335,6 +338,7 @@ class KnowledgeVersionQuery(AnalysisModel):
 class KnowledgeVersion(AnalysisModel):
     version_id: str
     dataset_id: str
+    source_run_id: str | None = None
     kind: Optional[KnowledgeKind] = None
     parent_version_id: Optional[str]
     normal_version_id: Optional[str] = None
@@ -493,19 +497,6 @@ class KnowledgeCheckPage(AnalysisModel):
     page: int
     page_size: int
     items: List[KnowledgeCheckSummary]
-
-
-class KnowledgeCheckEvidencePage(AnalysisModel):
-    version_id: str
-    dataset_id: str
-    kind: Optional[KnowledgeKind] = None
-    check: KnowledgeCheckSummary
-    support_evidence_ids: List[str]
-    counter_evidence_ids: List[str]
-    total: int
-    page: int
-    page_size: int
-    items: List[KnowledgeEvidence]
 
 
 class KnowledgeEvidencePage(AnalysisModel):

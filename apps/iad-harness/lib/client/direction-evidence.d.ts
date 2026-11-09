@@ -1,10 +1,10 @@
 import React from 'react';
-import type { ExploredDirection, ExplorationSnapshot } from '../shared/domain.generated.js';
+import type { AnalysisDirection, AnalysisPublicationView } from '../shared/domain.generated.js';
 export interface EvidenceReference {
     id: string;
     label: string;
 }
-export declare function directionEvidence(snapshot: ExplorationSnapshot, direction: ExploredDirection): {
+export declare function directionEvidence(snapshot: AnalysisPublicationView, direction: AnalysisDirection): {
     entries: ({
         id: string;
         evidence: null;
@@ -15,7 +15,7 @@ export declare function directionEvidence(snapshot: ExplorationSnapshot, directi
         filename: string;
     } | {
         id: string;
-        evidence: import("../shared/domain.generated.js").KnowledgeEvidence;
+        evidence: import("../shared/domain.generated.js").AnalysisEvidenceView;
         title: string;
         filename: string;
         kind: "defect" | "normal" | "unknown";

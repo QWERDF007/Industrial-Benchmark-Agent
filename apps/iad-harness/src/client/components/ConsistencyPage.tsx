@@ -30,6 +30,7 @@ import { message, request } from '../api.js';
 import { workbenchStyles } from '../styles.js';
 import { ClearFilterButton } from './CommonFilterControls.js';
 import {promptDefaults} from '../../shared/prompt-defaults.generated.js';
+import {AgentPromptEditors} from './AgentPromptEditors.js';
 import {ConsistencyView,type ConflictCardItem} from '../consistency-view.js';
 import {useConsistencyJobs,type ConsistencyJob} from '../useConsistencyJobs.js';
 import {jobStatuses} from '../../shared/job-display.js';
@@ -128,6 +129,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
   const [newCheckBusy, setNewCheckBusy] = useState<boolean>(false);
   const newSubmission=useRef<{key:string;id:string}|null>(null);
   const [newPrompt, setNewPrompt] = useState<string>(DEFAULT_CONSISTENCY_PROMPT);
+  const [systemPrompt,setSystemPrompt]=useState<string>(promptDefaults.system.consistency);
   const [currentConflictId, setCurrentConflictId] = useState<string>('');
   const [activeQueryId, setActiveQueryId] = useState<string>('');
   const [statsModalJobId, setStatsModalJobId] = useState<string>('');
@@ -286,13 +288,13 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
 
   // Start new consistency check
   const handleCreateJob = async () => {
-    if (!modalChildIds.length || !newPrompt.trim() || newCheckBusy) return;
+    if (!modalChildIds.length || !newPrompt.trim() || !systemPrompt.trim() || newCheckBusy) return;
     setNewCheckBusy(true);setError('');
     try {
-      const key=JSON.stringify([modalChildIds,newPrompt]);
+      const key=JSON.stringify([modalChildIds,systemPrompt,newPrompt]);
       if(newSubmission.current?.key!==key)newSubmission.current={key,id:uuid()};
       const started=await request<JobSnapshot>('/analysis/start',{submission_id:newSubmission.current.id,analysis_kind:'consistency',
-        dataset_ids:modalChildIds,instruction:newPrompt.trim()});
+        dataset_ids:modalChildIds,system_prompt:systemPrompt,instruction:newPrompt});
       newSubmission.current=null;
       workspace.updateConsistency({parentId:selectedParentId,datasetIds:[...modalChildIds],batchId:started.root_run_id},true);
       setModal('');
@@ -378,6 +380,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
               data-dc="start-check"
               onClick={() => {
                 setNewPrompt(DEFAULT_CONSISTENCY_PROMPT);
+                setSystemPrompt(promptDefaults.system.consistency);
                 setModalChildIds([...selectedChildIds]);
                           setModal('new');
               }}
@@ -650,15 +653,8 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
               </div>
               <div className="dc-new-field dc-prompt-editor">
                 {(error||polling.error)&&<p role="alert" className="iad-error">{error||polling.error}</p>}
-                <label htmlFor="dc-new-prompt">模型分析提示词</label>
-                <textarea
-                  id="dc-new-prompt"
-                  rows={9}
-                  spellCheck={false}
-                  aria-label="模型分析提示词"
-                  value={newPrompt}
-                  onChange={e => setNewPrompt(e.target.value)}
-                />
+                <AgentPromptEditors id="dc-new-prompt" system={systemPrompt} user={newPrompt}
+                  onSystemChange={setSystemPrompt} onUserChange={setNewPrompt} disabled={newCheckBusy}/>
               </div>
             </div>
             <footer className="dc-dialog-footer">
@@ -676,7 +672,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
                 type="button"
                 variant="primary"
                 data-dc="create-job"
-                disabled={!modalChildIds.length || !newPrompt.trim() || newCheckBusy}
+                disabled={!modalChildIds.length || !newPrompt.trim() || !systemPrompt.trim() || newCheckBusy}
                 onClick={handleCreateJob}
               >
                 {newCheckBusy ? '启动中…' : '开始检查'}
@@ -689,7 +685,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
         queryId={activeQueryId} onSelect={setCurrentConflictId} onClose={()=>setModal('')}
         onReviewed={()=>setRevision(value=>value+1)} />}
 
-      {promptJob && <PromptDrawer title="查看提示词" text={promptJob.analysis.consistency_prompt || '该作业没有保存提示词。'} onClose={()=>setPromptJob(null)} />}
+      {promptJob && <PromptDrawer title="查看提示词" text={promptJob.analysis.consistency_prompt || '该作业没有保存提示词。'} systemText={promptJob.analysis.system_prompt} onClose={()=>setPromptJob(null)} />}
 
       {!!statsModalJobId && <ConsistencyStatisticsDialog items={jobConflicts} onFilter={handleStatClick}
         onClose={()=>setStatsModalJobId('')} />}

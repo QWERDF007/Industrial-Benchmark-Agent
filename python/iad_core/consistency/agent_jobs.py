@@ -8,6 +8,7 @@ from iad_core.consistency.agent_models import (AnchorResult, AnchorTraceEvent, C
 from iad_core.consistency.candidate_selection import AnchorCandidates
 from iad_core.consistency.agent_results import ConsistencyAgentResults
 from iad_core.consistency.errors import ConsistencyError
+from iad_core.consistency.group_analysis_prompts import DEFAULT_CONSISTENCY_SYSTEM_PROMPT
 from iad_core.consistency.models import ConsistencyRetrievalSettings, ImageRetrieve
 from iad_core.consistency.policy import AnnotationPolicy
 from iad_core.consistency.scopes import ConsistencyScopes
@@ -59,7 +60,8 @@ class ConsistencyAgentJobs:
             image_encoder=ImageEncoders(self.db).read().selection if settings.mode == 'combined' else None,
             policies={dataset_id: AnnotationPolicy.model_validate(registry.get(dataset_id).annotations.model_dump(
                 include=set(AnnotationPolicy.model_fields))) for dataset_id in sorted(set(scopes.subjects.dataset_ids + scopes.corpus.dataset_ids))},
-            instruction=submitted.instruction)
+            instruction=submitted.instruction,
+            system_prompt=submitted.system_prompt or DEFAULT_CONSISTENCY_SYSTEM_PROMPT)
         sample_ids = [sample.sample_id for sample in scopes.subjects.samples]
         units = [dict(dataset_id=dataset_id, request=dict(sample_ids=[sample.sample_id for sample in scopes.subjects.samples
             if sample.dataset_id == dataset_id])) for dataset_id in scopes.subjects.dataset_ids]

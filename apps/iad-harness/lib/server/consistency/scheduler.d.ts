@@ -1,6 +1,6 @@
 import type { AnchorCandidates, ConsistencyCheckSnapshot, JobView } from '../../shared/domain.generated.js';
 import type { BridgeDispatch, ModelRouting, PythonBridge } from '../python-bridge/index.js';
-import { ConsistencySessionHost } from './session-host.js';
+import { JobSessionHost } from '../sessions/host.js';
 import type { NativeProviders } from '../models/providers.js';
 export interface AnchorReviewTask {
     runId: string;
@@ -18,7 +18,7 @@ export declare class ConsistencyCheckScheduler implements ModelRouting {
     private readonly review;
     private readonly onError;
     private readonly tasks;
-    constructor(bridge: PythonBridge, host: ConsistencySessionHost, providers: NativeProviders, review: (task: AnchorReviewTask) => Promise<void>, onError: (error: unknown) => void);
+    constructor(bridge: PythonBridge, host: JobSessionHost, providers: NativeProviders, review: (task: AnchorReviewTask) => Promise<void>, onError: (error: unknown) => void);
     execute(operation: string, args: Record<string, any>, signal: AbortSignal | undefined, dispatch: BridgeDispatch): Promise<any>;
     start(request: Record<string, unknown>): Promise<JobView>;
     private launch;

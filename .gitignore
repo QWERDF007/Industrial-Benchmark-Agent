@@ -17,7 +17,7 @@ runs/
 *.log
 data/cache/
 data/evidence/
-data/consistency-sessions/
+data/*-sessions/
 data/iad.db
 data/uploads/
 *.db-shm

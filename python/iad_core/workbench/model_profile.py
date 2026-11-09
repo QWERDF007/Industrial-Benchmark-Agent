@@ -59,3 +59,10 @@ class ModelProfile(ModelLimits):
 class ModelProfileSnapshot(ModelProfile):
     """Immutable job metadata preserves fields from the captured execution schema."""
     model_config = ConfigDict(extra='allow', frozen=True)
+
+
+class FrozenModelRole(AnalysisModel):
+    profile: ModelProfile | None = None
+    input_modalities: list[str] = Field(default_factory=list)
+    native_profile: dict | None = None
+    error: str | None = None

@@ -15,7 +15,7 @@ from iad_core.consistency.policy import AnnotationPolicy
 from iad_core.feature.profiles import ImageEncoderConfig
 from iad_core.workbench.analysis_requests import SelectedDatasets
 from iad_core.workbench.job_models import JobFailure
-from iad_core.workbench.model_profile import ModelLimits, ModelProfile
+from iad_core.workbench.model_profile import FrozenModelRole, ModelLimits
 from iad_core.workbench.module_settings import ConsistencySettingsValues, ModuleModelReference
 
 
@@ -23,6 +23,7 @@ class ConsistencyAgentStart(SelectedDatasets, ConsistencyRetrievalSettings):
     submission_id: UUID = Field(description='本次新建检查的稳定提交ID；重传使用同一ID，主动新建使用新ID')
     analysis_kind: Literal['consistency'] = 'consistency'
     instruction: NonBlankText = DEFAULT_CONSISTENCY_PROMPT
+    system_prompt: NonBlankText | None = None
     subjects: ScopeSelector | None = None
     corpus_scope: CorpusScope | None = None
 
@@ -54,13 +55,6 @@ class CombinedCandidatePolicy(ConsistencyRetrievalSettings):
 FrozenCandidatePolicy = Annotated[ExactCandidatePolicy | CombinedCandidatePolicy, Field(discriminator='mode')]
 
 
-class FrozenModelRole(AnalysisModel):
-    profile: ModelProfile | None = None
-    input_modalities: list[str] = Field(default_factory=list)
-    native_profile: dict | None = None
-    error: str | None = None
-
-
 class ConsistencyModelRoles(AnalysisModel):
     agent: FrozenModelRole = Field(default_factory=FrozenModelRole)
     vision: FrozenModelRole = Field(default_factory=FrozenModelRole)
@@ -85,6 +79,7 @@ class ConsistencyCheckSnapshot(AnalysisModel):
     image_encoder: ImageEncoderConfig | None
     policies: dict[str, AnnotationPolicy]
     instruction: NonBlankText
+    system_prompt: NonBlankText | None = None
     prompt_version: Identifier = 'consistency-anchor-v5'
     pixel_profile: Literal['raw-decoded-v1'] = 'raw-decoded-v1'
     model_call_logging: Literal['native-v1'] | None = None

@@ -12,6 +12,7 @@ import { AnnotatedImageStage } from "./AnnotatedImageStage.js";
 import { DatasetScopeSelector } from "./DatasetScopeSelector.js";
 import { ThumbnailCard } from "./ThumbnailCard.js";
 import { Pagination } from "./Pagination.js";
+import { datasetImageAnnotations } from '../dataset-image-annotations.js';
 import { ClearFilterButton } from "./CommonFilterControls.js";
 export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
     // 1. Group & Hierarchy
@@ -188,7 +189,7 @@ export function ImagesPage({ datasets, groups, onDatasetsChanged }) {
                                                                         : "未判定" }), sampleDetail.suggestion.reason_category ? `（${sampleDetail.suggestion.reason_category}）` : ""] }), _jsx("p", { className: "detail-model-text", children: sampleDetail.suggestion.notes || "无附注。" })] })) : (_jsx("p", { className: "detail-model-text", children: "\u5C1A\u65E0\u6A21\u578B\u89C2\u5BDF\u3002" })) })] })] }))] }) }), _jsx(FullscreenViewer, { open: fullscreen, item: activeSample
                     ? {
                         id: activeSample.sample_id, sampleId: activeSample.sample_id,
-                        annotationLayer: { kind: 'sample', sample: sampleDetail?.sample || activeSample, annotations: sampleDetail?.annotations || [] },
+                        ...datasetImageAnnotations(sampleDataset?.format, activeSample, sampleDetail?.annotations || []),
                         title: activeSample.relative_path,
                         imageUrl: mediaUrl(activeSample, "image"),
                         width: activeSample.width,

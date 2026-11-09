@@ -120,15 +120,16 @@ with ZipFile(root / 'dataset.zip', 'w', ZIP_DEFLATED) as archive:
     assert.ok(messages.some(item => item.role === "assistant" && item.content.some(block => block.type === "text" && block.text.includes("尚未开展"))));
     const names = requests[0].tools.map(tool => tool.function.name);
     assert.ok(names.includes("model_audit_start"));
-    assert.ok(names.includes("knowledge_mine_normal"));
-    for (const name of ["knowledge_mine_normal", "knowledge_mine_defect"]) {
-      const schema = requests[0].tools.find(tool => tool.function.name === name).function.parameters;
-      assert.deepEqual(Object.keys(schema.properties).sort(), ["image_count", "images", "knowledge_preset"]);
-      assert.equal(schema.properties.images.type, "array", "Native tool parsers must see a concrete array type");
-      assert.equal(schema.properties.images.items.type, "string");
-      assert.deepEqual(schema.required.slice().sort(), ["image_count", "images"]);
-      assert.equal(schema.properties.knowledge_preset.type, "array");
-    }
+    assert.ok(names.includes("knowledge_mine"));
+    assert.ok(names.includes("model_audit_report"));
+    assert.ok(!names.includes("knowledge_mine_normal")&&!names.includes("knowledge_mine_defect"));
+    const schema = requests[0].tools.find(tool => tool.function.name === 'knowledge_mine').function.parameters;
+    assert.deepEqual(Object.keys(schema.properties).sort(), ['dataset_ids','mining_prompt','submission_id','system_prompt']);
+    assert.equal(schema.properties.dataset_ids.type,'array');
+    assert.equal(schema.properties.dataset_ids.items.type,'string');
+    assert.deepEqual(schema.required.slice().sort(), ['dataset_ids','mining_prompt','submission_id']);
+    assert.equal(schema.properties.mining_prompt.type,'object');
+    assert.equal(schema.properties.mining_prompt.properties.directions.type,'array');
     assert.ok(!names.includes("review_submit_decision"));
     assert.ok(!names.includes("unrelated_test_tool"), "Agent-scoped policy must filter other registered tools");
     assert.doesNotMatch(requests[0].messages.filter(item => item.role === "system").map(item => item.content).join("\n"), /数据集分析流程|完整流程步骤：/, "Full analysis instructions must be loaded through a skill, never injected into every session");

@@ -44,7 +44,7 @@ def test_thirty_candidates_are_planned_with_real_media_budgets_and_resume_comple
 
     def respond(request):
         body = json.loads(request.content)
-        content = body['messages'][0]['content']
+        content = next(message for message in body['messages'] if message['role']=='user')['content']
         facts = json.loads(content[1]['text'])['facts']
         if request.url.path.endswith('/tokenize'):
             tokenized.append(body)

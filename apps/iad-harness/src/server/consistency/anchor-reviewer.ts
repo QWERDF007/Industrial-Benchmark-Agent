@@ -8,10 +8,9 @@ import type {NativeProviders} from '../models/providers.js';
 import type {PythonBridge} from '../python-bridge/index.js';
 import {workbenchJsonOutput} from '../tool-output.js';
 import type {AnchorReviewTask} from './scheduler.js';
-import {ConsistencySessionHost} from './session-host.js';
-import {ConsistencyAgentCalls} from './model-calls.js';
-import {ConsistencyEvidenceRetention} from './evidence-retention.js';
-import {ConsistencyModelBudget} from './model-budget.js';
+import {JobSessionHost} from '../sessions/host.js';
+import {NativeModelCalls} from '../sessions/model-calls.js';
+import {NativeModelBudget} from '../sessions/model-budget.js';
 
 declare module '@deepseek-ai/dsh-llm' {
   interface MessageSourceMap {
@@ -20,7 +19,7 @@ declare module '@deepseek-ai/dsh-llm' {
 }
 
 export class ConsistencyAnchorReviewer {
-  constructor(private readonly bridge: PythonBridge, private readonly host: ConsistencySessionHost,
+  constructor(private readonly bridge: PythonBridge, private readonly host: JobSessionHost,
     private readonly providers: Pick<NativeProviders, 'credentialsFor' | 'credentials'>) {}
 
   async review(task: AnchorReviewTask): Promise<void> {
@@ -39,12 +38,12 @@ export class ConsistencyAnchorReviewer {
       signal: task.signal,
       agentOptions: {provider, model: profile.model_id, maxTokens: profile.max_output_tokens},
       setup: async scope => {
-        const events = (await this.host.read(task.sessionId)).events;
         const saved = await this.bridge.execute<{observations: {candidate_id: string}[]}>('consistency_agent_context', {...identity, query: {}});
         const pending = new Set(saved.observations.map(item => item.candidate_id));
-        let retention!: ConsistencyEvidenceRetention;
-        await scope.inject(['tokenMeter'], injected => {retention = new ConsistencyEvidenceRetention(injected, events);});
-        new ConsistencyAgentCalls(this.bridge).attach(scope, identity);
+        new NativeModelCalls().attach(scope, {
+          start: async request => {await this.bridge.execute('consistency_agent_model_call_start', {...identity, request});},
+          end: async result => {await this.bridge.execute('consistency_agent_model_call_end', {...identity, result});},
+        });
         scope.on('agent/error', event => {failure = event.error;});
         scope.on('session/event', (_session, event) => {
           if (event.type === 'turn/end' && event.data.reason.kind === 'max-tokens')
@@ -52,19 +51,18 @@ export class ConsistencyAnchorReviewer {
         });
         if (profile.credential_ref) scope.provide('credentials', this.providers.credentials);
         const execution = await this.providers.credentialsFor(profile);
-        const budget = await ConsistencyModelBudget.open(agent.native_profile as piAi.PiAiProviderProfile,
+        const budget = await NativeModelBudget.open(agent.native_profile as piAi.PiAiProviderProfile,
           (body, signal) => this.bridge.execute<TokenBudget>('consistency_agent_capacity',
             {...identity, body, _model_execution: execution}, signal));
         scope.effect(() => () => budget.close());
         await scope.plugin(piAi, {providers: {[provider]: budget.profile}});
         scope.on('agent/request', async (event, next) => {
-          retention.retainPending(event.agent.session);
           return {...await next(),
             ...(profile.request_parameters.temperature !== undefined ? {temperature: profile.request_parameters.temperature as number} : {}),
             ...(profile.request_parameters.stop !== undefined ? {stop: profile.request_parameters.stop as string[]} : {}),
           };
         });
-        scope.systemPrompt.section({name: 'consistency-anchor-review', order: 100, text: task.snapshot.instruction});
+        scope.systemPrompt.section({name: 'consistency-anchor-review', order: 100, text: task.snapshot.system_prompt ?? task.snapshot.instruction});
         scope.tools.register(defineTool({name: 'anchor_context', description: '读取冻结清单、待评估候选的完整事实及评估回执；传candidate_id复查该候选原始事实。',
           parameters: anchorContextQueryParameters, output: workbenchJsonOutput,
           execute: (query, execution) => this.bridge.execute('consistency_agent_context', {...identity, query}, execution.signal)}));
@@ -105,7 +103,8 @@ export class ConsistencyAnchorReviewer {
         task.signal.throwIfAborted();
         agent.followup({id: MessageId(randomUUID()), role: 'user', source: {kind: 'iad-consistency', form: 'notice', summary: '审核冻结主图'},
           content: [{type: 'text', text: JSON.stringify({anchor_id: task.anchorId,
-            attempt: task.attempt})}]});
+            attempt: task.attempt})},
+            ...(task.snapshot.system_prompt ? [{type:'text' as const,text:'\n'+task.snapshot.instruction}] : [])]});
         await agent.whenIdle();
         if (failure) throw failure;
         const completed = await this.bridge.execute<ConsistencyAnchorRun>('consistency_agent_anchor', identity);

@@ -5,7 +5,7 @@ import {message,request} from './api.js';
 
 type Values=ModuleSettingsSnapshot['settings'];
 type Patch=ModuleSettingsEdit['settings'];
-interface ModuleSettingsState {settings:Values|undefined;save(patch:Patch):void;retry():void;loading:boolean;saving:boolean;saved:boolean;error:string}
+interface ModuleSettingsState {settings:Values|undefined;save(patch:Patch):void;saveAsync(patch:Patch):Promise<ModuleSettingsSnapshot>;retry():void;loading:boolean;saving:boolean;saved:boolean;error:string}
 
 export function useModuleSettings(module:BusinessModule):ModuleSettingsState {
   const client=useQueryClient(),key=['iad','module-settings',module] as const,path=`/settings/modules/${module}`;
@@ -33,6 +33,7 @@ export function useModuleSettings(module:BusinessModule):ModuleSettingsState {
     onError:()=>client.invalidateQueries({queryKey:key,exact:true}),
   });
   return {settings,save:patch=>mutation.mutate(patch),
+    saveAsync:patch=>mutation.mutateAsync(patch),
     retry:()=>mutation.mutate(Object.fromEntries(failed.map(([field,edit])=>[field,edit.value]))),
     loading:resource.isPending,saving:mutations.some(state=>state.status==='pending'),
     saved:mutations.length>0&&edits.size===0,

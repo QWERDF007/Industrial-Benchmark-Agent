@@ -18,7 +18,7 @@ import { DATASET_ANALYSIS_SKILL } from "./workbench-tools/skill.js";
 import { createKnowledgeTools } from "./knowledge/index.js";
 import { createExplorationTools, DIRECTION_EXPLORATION_SKILL } from "./exploration/index.js";
 import { createWorkbenchTools } from "./workbench-tools/index.js";
-import * as consistencyRuntime from './consistency/runtime.js';
+import * as workbenchRuntime from './workbench-runtime.js';
 import { NativeImageQueries, createImageTools } from './images/native.js';
 import {createConsistencyTools} from './consistency/index.js';
 import {AUDIT_DATA_CONSISTENCY_SKILL} from './consistency/skill.js';
@@ -48,7 +48,7 @@ export async function apply(ctx: any, config: IADHarnessConfig = {}) {
   ctx.effect(() => () => bridge.destroy());
   ctx.provide?.("iadPythonBridge", bridge);
   ctx.iadPythonBridge = bridge;
-  await ctx.plugin(consistencyRuntime, {bridge});
+  await ctx.plugin(workbenchRuntime, {bridge});
 
   // 2. Initialize shared CoreClient backed by PythonBridge
   coreClient.apply(ctx, { ...config, bridge });

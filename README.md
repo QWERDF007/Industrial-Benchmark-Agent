@@ -55,22 +55,18 @@ GECKODRIVER_PATH=/path/to/geckodriver pnpm --filter @industrial-benchmark/iad-ha
 FIREFOX_PATH=/path/to/firefox GECKODRIVER_PATH=/path/to/geckodriver pnpm --filter @industrial-benchmark/iad-harness verify:host-browser
 ```
 
-真实模型验证入口为 [verify_workbench_live.py](scripts/verify_workbench_live.py)，使用数据库快照，需可访问数据集目录及项目配置的 VLM。命令行验证前需导出模型环境变量；本地配置模板见 [.env.example](.env.example)，启动器自动加载 `.env.local`。模型服务环境变量及实际上下文检查见 [VlmClient](python/iad_core/workbench/vision.py)；现有客户端采用多图、结构化 JSON 输出与含视觉 token 的容量预检；具体服务协议以客户端实现及运行配置为准，不据模型名称推断能力。
+真实模型页面验证见[用户链路验收入口](apps/iad-harness/scripts/verify-analysis-user-chain.js)，需已运行的正式宿主和可访问的数据集目录；模型配置见[模块设置合同](python/iad_core/workbench/module_settings.py)，本地配置模板见[环境配置](.env.example)。
 
 同图标注的真实 DSH 验证见 [verify-consistency-session.js](apps/iad-harness/scripts/verify-consistency-session.js)：提供 `--env-file`、`--image` 和全新 `--output` 目录；`--case missing-instances --verify-corrections` 验证 B/E/F 证据解释及临时标注副本的建议、改源、重扫闭环。构造标签仅用于流程验证，不是工业缺陷真值。
 
 自然语言单图查询、全库检查及原批次恢复见 [verify-consistency-intents.js](apps/iad-harness/scripts/verify-consistency-intents.js)，公开 CLI 验证见 [consistency-intents.test.js](apps/iad-harness/test/consistency-intents.test.js)。
 
-[verify_gold_consistency.py](scripts/verify_gold_consistency.py) 的 `--live-audit` 将实际模型审核接入批次、人审与正式导出验证；模型输入包含指定图片及两张合成对照图，产物保存于全新 `--output-dir`。合成知识仅用于流程对照，不作为工业正常判据验收。
+[Gold、人审与正式导出验证](scripts/verify_gold_consistency.py)使用 `--image` 和全新 `--output-dir`，保留隔离工作库与导出产物；[原生探索、知识及审计页面验收](apps/iad-harness/scripts/verify-analysis-user-chain.js)使用正式宿主。
 
-独立图组验证见 [verify-knowledge-selection.js](apps/iad-harness/scripts/verify-knowledge-selection.js)，连续自然语言会话验证见 [verify-knowledge-scope.js](apps/iad-harness/scripts/verify-knowledge-scope.js)。真实模型验证先配置 [本地环境模板](.env.example) 对应环境变量，再运行相应 Node 脚本并提供新的输出目录；仅创建合成图、隔离库和本地轨迹。公开原生工具与完整流程技能的行为验收见 [knowledge_skills.test.js](apps/iad-harness/test/knowledge_skills.test.js)，会话与侧栏往返见 [knowledge-session.test.js](apps/iad-harness/browser/knowledge-session.test.js)。验证结果不代表工业准确率。
-
-明确请求完整分析的两产品合成图验证见 [verify-knowledge-products.js](apps/iad-harness/scripts/verify-knowledge-products.js)，记录实际挖掘、审计、报告及模型是否发现污染；裸导入边界见 [verify-import-scope.js](apps/iad-harness/scripts/verify-import-scope.js)。
+探索后显式选择方向的会话验收见[exploration-session.test.js](apps/iad-harness/test/exploration-session.test.js)，工具及技能注册见[knowledge_skills.test.js](apps/iad-harness/test/knowledge_skills.test.js)，知识的固定来源版本回溯见[analysis-lineage.test.js](apps/iad-harness/test/analysis-lineage.test.js)。
 
 [verify-dataset-intake.js](apps/iad-harness/scripts/verify-dataset-intake.js) 验证真实 Agent 的自定义角色、仅正常、缺少正常来源及格式歧义处理。运行 `node apps/iad-harness/scripts/verify-dataset-intake.js <输出目录>`；可在末尾指定 `custom`、`normal-only`、`anomaly-only` 或 `ambiguous` 单独运行，模型环境要求同上。
 
 [verify-import-scope.js](apps/iad-harness/scripts/verify-import-scope.js) 使用实际配置的 Agent 模型，在多次全新会话验证裸“导入”请求不会加载完整技能或启动模型作业。先导出模型环境变量，运行 `node apps/iad-harness/scripts/verify-import-scope.js <输出目录> [次数]`；默认三次，`LIVE_AGENT_MODEL` 可显式覆盖项目配置中的 Agent 模型。只使用新合成图、隔离库，任何越范围尝试会被记录并拦截。
 
-跨产品验收运行 `node apps/iad-harness/scripts/verify-knowledge-products.js`，环境变量同上；[生成条件、真实会话与证据检查](apps/iad-harness/scripts/verify-knowledge-products.js)保存在独立验证目录，生成条件不属于模型输入或工业人工真值。
-
-真实模型的工作进程恢复验收使用 [verify_job_recovery_live.py](scripts/verify_job_recovery_live.py)：导出同一模型环境变量后运行 `PYTHONPATH=python python scripts/verify_job_recovery_live.py`，使用合成图与隔离库；仅终止脚本创建的工作进程，不操作主服务。
+原生进程恢复验收见[知识检查点恢复](apps/iad-harness/test/analysis-agent.test.js)、[逐图审计恢复](apps/iad-harness/test/audit-recovery.test.js)，使用隔离库和受控模型协议；真实模型链路见[原页面验收入口](apps/iad-harness/scripts/verify-analysis-user-chain.js)。

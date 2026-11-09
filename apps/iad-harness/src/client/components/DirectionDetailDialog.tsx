@@ -1,6 +1,6 @@
 import {Modal} from './Modal.js';
 import {ThumbnailCard} from "./ThumbnailCard.js";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 
 import { IconButton } from "./IconButton.js";
 import {ReferencedText, type EvidenceReference} from "../direction-evidence.js";
@@ -10,7 +10,7 @@ export interface DirectionEvidenceItem {
   sampleId: string;
   ref: string;
   label: string;
-  kind: "normal" | "defect";
+  kind: "normal" | "defect" | "unknown";
   url: string;
   fullUrl: string;
   filename: string;
@@ -31,14 +31,6 @@ export interface DirectionItem {
 
 export interface DirectionDetailDialogProps {
   direction: DirectionItem;
-  evidence: {
-    normals: DirectionEvidenceItem[];
-    defects: DirectionEvidenceItem[];
-    all: DirectionEvidenceItem[];
-  };
-  highlightRef: string | null;
-  onHighlightRef: (ref: string | null) => void;
-  onChipFocus: (ref: string) => void;
   onOpenFullscreen: (ref: string) => void;
   onClose: () => void;
 }
@@ -49,17 +41,17 @@ export interface DirectionDetailDialogProps {
  */
 export function DirectionDetailDialog({
   direction: dir,
-  evidence,
-  highlightRef,
-  onHighlightRef,
-  onChipFocus,
   onOpenFullscreen,
   onClose,
 }: DirectionDetailDialogProps) {
   const evidenceContainerRef = useRef<HTMLDivElement>(null);
+  const [highlightRef,setHighlightRef]=useState<string|null>(null);
+  const groups=([{kind:'normal',label:'良品'},{kind:'defect',label:'异常'},{kind:'unknown',label:'未分类'}] as const)
+    .map(group=>({...group,items:dir.evidences.filter(item=>item.kind===group.kind)}))
+    .filter(group=>group.kind!=='unknown'||group.items.length);
 
   const handleChipClick = (ref: string) => {
-    onChipFocus(ref);
+    setHighlightRef(ref);
     if (!evidenceContainerRef.current) return;
     const cardEl = evidenceContainerRef.current.querySelector<HTMLElement>(`[data-evidence-card="${ref}"]`);
     if (cardEl && cardEl.parentElement) {
@@ -73,7 +65,7 @@ export function DirectionDetailDialog({
 
   const renderText=(text:string)=><ReferencedText text={text} references={dir.references}
     className="exp-evidence-ref" highlightedId={highlightRef} onReference={handleChipClick}
-    onPreview={(ref,active)=>{if(active)handleChipClick(ref);else onHighlightRef(null);}}/>;
+    onPreview={(ref,active)=>{if(active)handleChipClick(ref);else setHighlightRef(null);}}/>;
 
   return (
     <Modal title={dir.title} className="exp-dialog exp-direction-dialog" id="exp-modal" header={false} onClose={onClose}>
@@ -105,72 +97,24 @@ export function DirectionDetailDialog({
               <div className="exp-direction-evidence-head">
                 <h3>图像证据</h3>
               </div>
-              <div className="exp-direction-evidence-groups">
-                {/* Normal Strip */}
-                <section className="exp-scroll-group" data-evidence-kind="normal">
-                  <div
-                    className="exp-evidence-viewport"
-                    role="group"
-                    tabIndex={0}
-                    aria-label="候选良品图像证据，可在区域内滚轮横向滚动"
-                    onWheel={(e) => {
-                      const motion = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-                      if (motion) e.currentTarget.scrollLeft += motion;
-                    }}
-                  >
-                    {evidence.normals.length ? (
-                      evidence.normals.map((image) => (
-                        <ThumbnailCard
-                          key={image.ref}
-                          type="button"
-                          className={`exp-direction-evidence-card ${highlightRef === image.ref ? "is-related" : ""}`}
-                          data-evidence-card={image.ref}
-                          aria-label={`查看${image.label}大图`}
-                          title={`点击放大 ${image.label}`}
-                          src={image.url} label={image.label} data-highlighted={highlightRef===image.ref}
-                          onMouseEnter={() => onHighlightRef(image.ref)}
-                          onMouseLeave={() => onHighlightRef(null)}
-                          onClick={() => onOpenFullscreen(image.ref)}
-                        />
-                      ))
-                    ) : (
-                      <p className="exp-direction-empty">暂无可用良品证据</p>
-                    )}
+              <div className="exp-direction-evidence-groups" style={{gridTemplateColumns:`repeat(${groups.length},minmax(0,1fr))`}}>
+                {groups.map(group=><section key={group.kind} className="exp-scroll-group" data-evidence-kind={group.kind}>
+                  <div className="exp-evidence-viewport" role="group" tabIndex={0}
+                    aria-label={`${group.label}图像证据，可在区域内滚轮横向滚动`}
+                    onWheel={event=>{
+                      const motion=Math.abs(event.deltaX)>Math.abs(event.deltaY)?event.deltaX:event.deltaY;
+                      if(motion)event.currentTarget.scrollLeft+=motion;
+                    }}>
+                    {group.items.length?group.items.map(image=><ThumbnailCard key={image.ref}
+                      className={`exp-direction-evidence-card ${highlightRef===image.ref?'is-related':''}`}
+                      data-evidence-card={image.ref} data-highlighted={highlightRef===image.ref}
+                      aria-label={`查看${image.label}大图`} title={`点击放大 ${image.label}`}
+                      src={image.url} label={image.label}
+                      onMouseEnter={()=>setHighlightRef(image.ref)} onMouseLeave={()=>setHighlightRef(null)}
+                      onFocus={()=>setHighlightRef(image.ref)} onBlur={()=>setHighlightRef(null)}
+                      onClick={()=>onOpenFullscreen(image.ref)}/>):<p className="exp-direction-empty">暂无可用{group.label}证据</p>}
                   </div>
-                </section>
-
-                {/* Defect Strip */}
-                <section className="exp-scroll-group" data-evidence-kind="defect">
-                  <div
-                    className="exp-evidence-viewport"
-                    role="group"
-                    tabIndex={0}
-                    aria-label="候选异常图像证据，可在区域内滚轮横向滚动"
-                    onWheel={(e) => {
-                      const motion = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-                      if (motion) e.currentTarget.scrollLeft += motion;
-                    }}
-                  >
-                    {evidence.defects.length ? (
-                      evidence.defects.map((image) => (
-                        <ThumbnailCard
-                          key={image.ref}
-                          type="button"
-                          className={`exp-direction-evidence-card ${highlightRef === image.ref ? "is-related" : ""}`}
-                          data-evidence-card={image.ref}
-                          aria-label={`查看${image.label}大图`}
-                          title={`点击放大 ${image.label}`}
-                          src={image.url} label={image.label} data-highlighted={highlightRef===image.ref}
-                          onMouseEnter={() => onHighlightRef(image.ref)}
-                          onMouseLeave={() => onHighlightRef(null)}
-                          onClick={() => onOpenFullscreen(image.ref)}
-                        />
-                      ))
-                    ) : (
-                      <p className="exp-direction-empty">暂无可用异常证据</p>
-                    )}
-                  </div>
-                </section>
+                </section>)}
               </div>
             </section>
           </div>

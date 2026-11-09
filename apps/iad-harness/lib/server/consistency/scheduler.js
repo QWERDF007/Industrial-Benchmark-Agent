@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { consistencySessionPath } from './session-persistence.js';
+import { imageSessionPath } from '../sessions/image-path.js';
 export class ConsistencyCheckScheduler {
     bridge;
     host;
@@ -22,7 +22,7 @@ export class ConsistencyCheckScheduler {
             if (!anchor.session_created)
                 throw new Error('主图会话尚未创建');
             const location = await dispatch('consistency_agent_session_location', { session_id: anchor.session_id }, signal);
-            return { filename: path.basename(consistencySessionPath('', location)), jsonl: await this.host.exportJsonl(anchor.session_id) };
+            return { filename: path.basename(imageSessionPath('', location)), jsonl: await this.host.exportJsonl(anchor.session_id) };
         }
         if (operation === 'analysis_start' && args.request?.analysis_kind === 'consistency')
             return this.start(args.request);
@@ -67,7 +67,7 @@ export class ConsistencyCheckScheduler {
             try {
                 if (!anchor.session_created) {
                     await this.host.create(anchor.session_id);
-                    await this.host.notice(anchor.session_id, '主图审核会话已创建', { job_id: runId, anchor_id: anchor.anchor_id });
+                    await this.host.notice(anchor.session_id, { type: 'iad/consistency', summary: '主图审核会话已创建', value: { job_id: runId, anchor_id: anchor.anchor_id } });
                     await this.bridge.execute('consistency_agent_session_created', identity);
                 }
                 ready.push(anchor);
@@ -98,7 +98,7 @@ export class ConsistencyCheckScheduler {
                 if (preparationError)
                     throw preparationError;
                 const candidates = await this.bridge.execute('consistency_agent_retrieve', identity);
-                await this.host.notice(anchor.session_id, '主图候选检索已完成', { job_id: runId, anchor_id: anchor.anchor_id, retrieval: candidates });
+                await this.host.notice(anchor.session_id, { type: 'iad/consistency', summary: '主图候选检索已完成', value: { job_id: runId, anchor_id: anchor.anchor_id, retrieval: candidates } });
                 if (candidates.candidates.length === 0) {
                     await this.bridge.execute('consistency_agent_submit_empty', identity);
                 }
@@ -143,7 +143,7 @@ export class ConsistencyCheckScheduler {
         const identity = { run_id: runId, anchor_id: anchorId };
         const event = await this.bridge.execute('consistency_agent_trace_event', identity);
         const submissionId = createHash('sha256').update(JSON.stringify([runId, anchorId, event.attempt, event.state, event.result])).digest('hex');
-        await this.host.notice(event.session_id, event.state === 'COMPLETED' ? '主图终稿已提交' : '主图执行失败', event, submissionId);
+        await this.host.notice(event.session_id, { type: 'iad/consistency', summary: event.state === 'COMPLETED' ? '主图终稿已提交' : '主图执行失败', value: event, record_id: submissionId });
         await this.bridge.execute('consistency_agent_trace_status', identity);
     }
     async pendingTrace(runId, anchorId, error) {

@@ -189,7 +189,7 @@ class JobRunner:
               persist: Optional[Callable[[Connection,str],None]] = None) -> dict:
         if job_type not in self.job_types or not request["sample_ids"]:
             raise ValueError("Invalid job type or empty sample scope")
-        run_id = {'ANALYSIS_WORKFLOW': 'analysis_', 'DATASET_REPORT': 'report_', 'MODEL_AUDIT': 'audit_', 'MODEL_AUDIT_SAMPLE': 'audit_image_', 'DIRECTION_EXPLORATION': 'explore_',
+        run_id = {'ANALYSIS_WORKFLOW': 'analysis_', 'MODEL_AUDIT': 'audit_', 'MODEL_AUDIT_SAMPLE': 'audit_image_', 'DIRECTION_EXPLORATION': 'explore_',
             'KNOWLEDGE_BATCH':'knowledge_batch_', 'EXPLORATION_BATCH':'explore_batch_', 'CONSISTENCY_MODEL_BATCH':'consistency_model_',
             'IMAGE_INDEX': 'image_index_', 'DATA_CONSISTENCY': 'consistency_', 'CONSISTENCY_ANALYSIS': 'consistency_analysis_'}.get(job_type, 'knowledge_') + uuid.uuid4().hex
         owner = _active_job.get()
@@ -330,7 +330,7 @@ class JobRunner:
                 persist(conn)
             conn.execute('''UPDATE job_runs SET status='RUNNING',finished_at=NULL,payload_json=?,progress=?,message=?
                 WHERE job_id=?''', (json.dumps(payload, ensure_ascii=False),
-                payload['completed'] / payload['total_samples'], '继续冻结主图审核', run_id))
+                payload['completed'] / payload['total_samples'], '继续执行冻结范围', run_id))
             conn.commit()
             self.external.add(run_id)
             self.cancelled[run_id] = threading.Event()
@@ -476,9 +476,7 @@ class JobRunner:
             return self.snapshots.list(dataset_id, job_types)
 
     def queue_size(self, dataset_id: str, job_type: JobKind) -> int:
-        with self.db.connection() as conn:
-            return conn.execute("""SELECT COUNT(*) FROM job_runs WHERE job_type=? AND status='PENDING'
-                AND json_extract(payload_json,'$.request.dataset_id')=?""", (job_type, dataset_id)).fetchone()[0]
+        return self.snapshots.queue_size(dataset_id,job_type)
 
     def delete(self, run_id: str, job_types: Sequence[JobKind], *, family: bool = False) -> dict:
         with self.lock:

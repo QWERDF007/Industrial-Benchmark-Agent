@@ -193,6 +193,7 @@ export function FullscreenViewer({
           <div className="full-file" id="full-file-name" title={item.title} style={{ color: "#f4f7fd" }}>
             {filename}
           </div>
+          <ImageQualityBadge label={item.qualityLabel} />
           <div className="full-actions">
             {/* 1. 缩小 */}
             <IconButton icon="zoomOut" type="button" id="zoom-out" title="缩小" label="缩小" onClick={() => setZoom(effectiveScale / 1.25)} />
@@ -347,7 +348,6 @@ export function FullscreenViewer({
               </button>
             </>
           )}
-          <ImageQualityBadge label={item.qualityLabel} />
         </div>{context && <aside className="full-context">{context}</aside>}</div>
       </section>
     </div>

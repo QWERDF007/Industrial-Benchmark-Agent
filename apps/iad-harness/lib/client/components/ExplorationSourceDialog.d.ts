@@ -1,7 +1,7 @@
 import React from 'react';
-import type { ExplorationCandidate } from '../exploration-view.js';
+import type { ExplorationCandidate, ExplorationRole } from '../exploration-view.js';
 export declare function ExplorationSourceDialog({ kind, candidates, selected, loading, onChange, onClose }: {
-    kind: ExplorationCandidate['kind'];
+    kind: ExplorationRole;
     candidates: ExplorationCandidate[];
     selected: string[];
     loading: boolean;

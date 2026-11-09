@@ -37,6 +37,26 @@ export function ModuleSettingsSection({module}:{module:BusinessModule}) {
     <style>{moduleSettingsStyles}</style><h2>{businessModules[module]}</h2>
     {loading&&!settings ? <p role="status">正在读取设置…</p> : settings && <div>
       <ModuleModelSetting label="分析模型" choices={choices.filter(choice=>choice.image)} model={settings.model} loading={modelsLoading} onSave={model=>save({model})}/>
+      {'batch_size' in settings && <>
+        <ModuleNumberSetting label={module==='exploration'?'后续每批图像数':'每批图像数'} value={settings.batch_size} min={1} max={module==='knowledge'?200:undefined} step={1}
+          validationMessage={module==='knowledge'?'每批图像数需要为 1～200 的整数':'后续每批图像数需要为正整数'} onSave={batch_size=>save({batch_size})}/>
+      </>}
+      {'sampling_ratio' in settings && <>
+        <ModuleNumberSetting label="良品抽取权重" value={settings.sampling_ratio.normal} min={1} step={1}
+          validationMessage="良品抽取权重需要为正整数" onSave={normal=>save({sampling_ratio:{...settings.sampling_ratio,normal}})}/>
+        <ModuleNumberSetting label="异常品抽取权重" value={settings.sampling_ratio.abnormal} min={1} step={1}
+          validationMessage="异常品抽取权重需要为正整数" onSave={abnormal=>save({sampling_ratio:{...settings.sampling_ratio,abnormal}})}/>
+      </>}
+      {'concurrency' in settings && <ModuleNumberSetting label="同时审计的主图数" value={settings.concurrency} min={1} step={1}
+        validationMessage="同时审计的主图数需要为正整数" onSave={concurrency=>save({concurrency})}/>}
+      {'whole_image_max_side' in settings && <>
+        <label className="iad-module-row"><span>整图输入分辨率</span><Select aria-label="整图输入分辨率" value={settings.whole_image_max_side ?? 0}
+          onChange={event=>save({whole_image_max_side:Number(event.target.value)||null})}>
+          <option value={0}>使用原图</option>
+          {settings.whole_image_max_side && ![512,1024,1280,2048].includes(settings.whole_image_max_side) && <option value={settings.whole_image_max_side}>最长边 {settings.whole_image_max_side}</option>}
+          {[512,1024,1280,2048].map(size=><option key={size} value={size}>最长边 {size}</option>)}
+        </Select></label>
+      </>}
       {'mode' in settings && <>
       <label className="iad-module-row"><span>检索方式</span><Select aria-label="检索方式" value={settings.mode} onChange={event=>save({mode:event.target.value as 'exact'|'combined'})}>
         <option value="exact">完全一致</option><option value="combined">一致+相似</option>

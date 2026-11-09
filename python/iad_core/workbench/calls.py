@@ -64,14 +64,14 @@ class NativeModelCallEnd(AnalysisModel):
     http_status: Optional[int] = None
 
 
-_active: ContextVar[Optional[Tuple['ModelCalls', str, Optional[Callable[[], None]], str, Optional[str], Optional[str]]]] = ContextVar('iad_model_calls', default=None)
+_active: ContextVar[Optional[Tuple['ModelCalls', str, Optional[Callable[[], None]], str, Optional[str], Optional[str], Optional[str]]]] = ContextVar('iad_model_calls', default=None)
 
 
 class ModelCalls:
     def __init__(self, db: Database):
         self.db = db
 
-    def start_native(self, run_id: str, request: NativeModelCallStart, *, sample_id: str, session_id: str,
+    def start_native(self, run_id: str, request: NativeModelCallStart, *, sample_id: str | None, session_id: str,
                      attempt: int) -> None:
         with self.db.connection() as connection:
             payload = json.loads(connection.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (run_id,)).fetchone()[0])
@@ -83,7 +83,7 @@ class ModelCalls:
                 (summary.call_id, run_id, summary.model_dump_json()))
             self.db.call_payloads.write(run_id, summary.call_id, 'request', json.dumps(request.request, ensure_ascii=False).encode())
 
-    def finish_native(self, run_id: str, sample_id: str, result: NativeModelCallEnd) -> None:
+    def finish_native(self, run_id: str, sample_id: str | None, result: NativeModelCallEnd) -> None:
         with self.db.connection() as connection:
             row = connection.execute('SELECT summary_json FROM model_calls WHERE run_id=? AND call_id=?',
                 (run_id, result.call_id)).fetchone()
@@ -102,8 +102,8 @@ class ModelCalls:
 
     @contextmanager
     def bind(self, run_id: str, checkpoint: Optional[Callable[[], None]] = None, *, state_run_id: Optional[str] = None,
-             role: Optional[Literal['agent', 'vision']] = None, request_id: Optional[str] = None):
-        token = _active.set((self, run_id, checkpoint, state_run_id or run_id, role, request_id))
+             role: Optional[Literal['agent', 'vision']] = None, request_id: Optional[str] = None, sample_id: Optional[str] = None):
+        token = _active.set((self, run_id, checkpoint, state_run_id or run_id, role, request_id, sample_id))
         try:
             yield
         finally:
@@ -120,11 +120,11 @@ class ModelCalls:
             finally:
                 response.close()
             return
-        repository, run_id, checkpoint, state_run_id, role, request_id = binding
+        repository, run_id, checkpoint, state_run_id, role, request_id, sample_id = binding
         with repository.db.connection() as conn:
             payload = json.loads(conn.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (state_run_id,)).fetchone()[0])
             summary = ModelCallSummary(call_id='call_' + uuid.uuid4().hex, run_id=run_id, operation=operation,
-                schema_name=schema_name, phase=payload.get('phase'), sample_id=payload.get('current_sample_id'),
+                schema_name=schema_name, phase=payload.get('phase'), sample_id=sample_id if sample_id is not None else payload.get('current_sample_id'),
                 role=role, request_id=request_id,
                 started_at=datetime.now(timezone.utc).isoformat())
             conn.execute('INSERT INTO model_calls(call_id,run_id,summary_json) VALUES(?,?,?)',

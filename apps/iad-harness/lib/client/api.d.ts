@@ -14,6 +14,7 @@ export declare const reviewLabels: Record<Decision, string>;
 export declare const reviewLabel: (decision: string) => string;
 export declare const modelLabels: Record<AuditAnalysis["conclusion"]["suggested_label"], string>;
 export declare const auditEvidenceUrl: (suggestionId: string, image: Pick<VisualEvidence, "evidence_id">) => string;
+export declare const nativeAuditEvidenceUrl: (runId: string, sampleId: string, image: Pick<VisualEvidence, 'evidence_id'>) => string;
 export declare const regionSources: {
     annotation: string;
     model: string;

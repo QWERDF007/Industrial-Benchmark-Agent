@@ -3,7 +3,8 @@ import path from 'node:path';
 import {Context} from '@deepseek-ai/cordis';
 import {createConsistencyAgentHost} from './consistency-agent-host.js';
 import {PythonBridge, findWorkspaceRoot} from '../../lib/server/python-bridge/index.js';
-import {ConsistencySessionHost} from '../../lib/server/consistency/session-host.js';
+import {JobSessionHost} from '../../lib/server/sessions/host.js';
+import {imageSessionPath} from '../../lib/server/sessions/image-path.js';
 import {ConsistencyAnchorReviewer} from '../../lib/server/consistency/anchor-reviewer.js';
 import {ConsistencyCheckScheduler} from '../../lib/server/consistency/scheduler.js';
 import {NativeProviders} from '../../lib/server/models/providers.js';
@@ -24,8 +25,8 @@ if (mode === 'commit') {
   await fixture.scheduler.whenIdle();
 } else if (mode === 'recover') {
   const bridge = new PythonBridge({cwd: findWorkspaceRoot(), dbPath: path.join(root, 'checks.db')});
-  const host = await ConsistencySessionHost.open(path.join(root, 'sessions'),
-    session_id => bridge.execute('consistency_agent_session_location', {session_id}));
+  const host = await JobSessionHost.open(path.join(root, 'sessions'),
+    async session_id => imageSessionPath(path.join(root, 'sessions'), await bridge.execute('consistency_agent_session_location', {session_id})));
   const ctx = new Context();
   const providers = new NativeProviders(() => ctx);
   const reviewer = new ConsistencyAnchorReviewer(bridge, host, providers);

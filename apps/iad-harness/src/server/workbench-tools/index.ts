@@ -1,17 +1,17 @@
 import { annotationPolicyParameter, folderRulesParameter } from "../../shared/dataset.parameters.generated.js";
-import {auditStartParameters} from '../../shared/audit.parameters.generated.js';
+import {auditEvidenceParameters,auditStartParameters} from '../../shared/audit.parameters.generated.js';
 import type { Context } from "@deepseek-ai/cordis";
 import { defineTool, type ToolDefinition } from "@deepseek-ai/dsh-tools";
 import { PythonBridge } from "../python-bridge/index.js";
 import { datasetDiscoveryOutput, workbenchJsonOutput } from "../tool-output.js";
 import { evidenceOutput, readEvidenceAttachment } from "../evidence-attachment.js";
-import { jobRetryParameters, jobStatusParameters, waitForJobStatus } from "../job-status.js";
+import { jobStatusParameters, waitForJobStatus } from "../job-status.js";
 
 export function createWorkbenchTools(bridge: PythonBridge, ctx: Context): ToolDefinition[] {
   return [
     defineTool({
       name: "dataset_list",
-      description: "列出已导入数据集的名称、稳定dataset_id、格式与数量摘要。真实图像引用用knowledge_sources分页查询，完整质量统计用dataset_report读取。",
+      description: "列出已导入数据集的名称、稳定dataset_id、格式与数量摘要。真实图像引用用analysis_sources查询，完整质量统计用dataset_report读取。",
       parameters: {},
       output: datasetDiscoveryOutput,
       execute: (_args, exec) => bridge.execute("dataset_list", {}, exec.signal),
@@ -75,10 +75,10 @@ export function createWorkbenchTools(bridge: PythonBridge, ctx: Context): ToolDe
     }),
     defineTool({
       name: "model_audit_start",
-      description: "用指定的冻结统一知识，结合全图及适用 ROI 进行 MLLM 联合审计和最终综合判断，并保留独立的一致性证据。默认审计所选数据集全部图像，检索库限于该数据集；按用户要求用 sample_ids、filters 或 corpus_scope 限定审计与检索范围。默认 consistency_mode=exact；仅用户明确开启视觉候选时用 combined/visual，只查询已有向量，不隐式建库。模型失败不抹除一致性证据，确定性冲突不交给模型消解。",
+      description: "审计subset_ids中全部登记图像。必须显式指定一个已完成的consistency_job_id；knowledge可空，选用时提供挖掘job_id、version_id和entry_ids。每张主图一个独立原生Session，实际观察整图与全部ROI，可复看本anchor候选及所选知识支持/反例。零知识或无候选也调用审计模型，保留完整图级终稿和当前作业报告。submission_id用于重传去重。",
       parameters: auditStartParameters,
       output: workbenchJsonOutput,
-      execute: (args, exec) => bridge.execute("audit_start", { ...args, origin_session_id: exec.agent?.id || null }, exec.signal),
+      execute: (args, exec) => bridge.execute("audit_start", {request:args}, exec.signal),
     }),
     defineTool({
       name: "model_audit_status",
@@ -97,16 +97,23 @@ export function createWorkbenchTools(bridge: PythonBridge, ctx: Context): ToolDe
     defineTool({
       name: "model_audit_retry",
       description: "重试终态审计作业的失败/未处理样本，复用原冻结知识并核验来源，保留成功建议和原记录；输入变化时拒绝恢复。",
-      parameters: jobRetryParameters,
+      parameters: {run_id:{type:'string',required:true}},
       output: workbenchJsonOutput,
       execute: (args, exec) => bridge.execute("audit_retry", args, exec.signal),
     }),
     defineTool({
       name: "model_audit_sample",
-      description: "读取样本原始标注、最新模型综合建议、finding/真实 evidence_id、所用知识及人工结果；各来源独立，可按引用继续查看证据。",
-      parameters: { sample_id: { type: "string", required: true } },
+      description: "读取指定审计run_id内本张主图的冻结输入、独立终稿、全部findings、所选知识及一致性anchor，返回可复看的真实evidence_id。",
+      parameters: { run_id: {type:'string',required:true}, sample_id: { type: "string", required: true } },
       output: workbenchJsonOutput,
-      execute: (args, exec) => bridge.execute("sample_get", args, exec.signal),
+      execute: (args, exec) => bridge.execute("audit_job_sample", args, exec.signal),
+    }),
+    defineTool({
+      name: "model_audit_report",
+      description: "读取指定审计run_id的本作业报告、审计覆盖、疑点分布和固定知识版本。只汇总该作业的逐图终稿，查看不触发模型调用。",
+      parameters: {run_id:{type:'string',required:true}},
+      output: workbenchJsonOutput,
+      execute: (args, exec) => bridge.execute("audit_job_report", args, exec.signal),
     }),
     defineTool({
       name: "model_audit_context",
@@ -123,17 +130,14 @@ export function createWorkbenchTools(bridge: PythonBridge, ctx: Context): ToolDe
     }),
     defineTool({
       name: "model_audit_evidence",
-      description: "读取指定模型建议真正送模的全图、ROI 或 Mask，返回图像附件用于追问；拒绝不属于该建议的证据。",
-      parameters: {
-        suggestion_id: { type: "string", required: true },
-        evidence_id: { type: "string", required: true },
-      },
+      description: "读取指定审计主图冻结证据并返回真实图像附件。新审计提供run_id、sample_id、evidence_id；历史建议提供suggestion_id、evidence_id，两种引用不可混合。",
+      parameters: auditEvidenceParameters,
       output: evidenceOutput,
       execute: (args, exec) => readEvidenceAttachment(bridge, ctx, "audit_evidence", args, exec.signal),
     }),
     defineTool({
       name: "dataset_report",
-      description: "读取所选数据集的当前质量报告、审计覆盖和人工复核统计，与工作台一致；模型风险和人工真值分开，覆盖率或模型置信度不是准确率。",
+      description: "读取所选数据集的技术可用性、普通模型建议和人工复核统计。原生逐图审计作业的报告用model_audit_report按run_id读取；覆盖率或模型置信度不是准确率。",
       parameters: { dataset_id: { type: "string", required: true } },
       output: workbenchJsonOutput,
       execute: (args, exec) => bridge.execute("report_get", args, exec.signal),

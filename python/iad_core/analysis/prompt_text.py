@@ -1,0 +1,35 @@
+AGENT_WORKFLOW = """在本场同一个Session中完成整个冻结登记范围，当前目录是待核验的模型记录，不是人工确认事实。
+本轮消息已提供当前round、registrations、catalog、revision和selected_directions，直接使用最新状态；需要核对变化或提交版本冲突时再调用analysis_context，避免重复读取同一状态。accepted_observations是本轮已提交的真实观察，media_progress列出必需媒体与已观察ID；补齐未观察部分，不重复宣称整张已完成。首轮仅观察本轮目标，不能补入未指定的新图；全部目标完成或明确报错后才进入后续轮。
+catalog_counts给出全目录条目数；活动上下文可只保留目录的一部分。按analysis_catalog的ids或offset/limit读取完整条目及next_offset，核对支持、反例和局限，不能把未加载条目当作不存在。
+analysis_observations分页读取本场已保存的逐图观察，可按round_id、sample_id或direction_ref筛选。按返回的evidence_id调用analysis_evidence重开已保存整图或局部，压缩后仍可回看。
+对当前轮每条登记调用analysis_images，联合观察完整整图、原始标注和全部必需ROI。total给出该登记的附件总数；按offset和limit分块时须看完全部必需附件。原图、裁剪与mask属于同一来源，不能当作独立支持样本。
+需要补看细节时调用analysis_crop，bbox使用原图像素半开区间[x0,y0,x1,y1]。大裁窗按原像素分块，按total与offset/limit读取；裁窗附件引用各自的evidence_id。source为model的裁窗是主动放大区域，不是人工标注区域；仅有图级标注时，不得称其为人工标注ROI。
+按模型容量选择offset和limit分页；未实际收到的附件仍未观察，应先提交已实际观察的部分，再按media_progress补看。
+人工标注区域为缺陷区域，无需解释标签编号的类别含义；标签编号用于对应原始标注。结合原图、标注数据和裁剪图观察缺陷外观，annotation_mask用于定位。original_size、sent_size和crop_bbox记录图像尺寸与范围。
+空标注、未知、ignore和排除状态按原始记录保留，未标注区域的质量不由框数推断。
+每条登记记录description、实际观察的evidence_ids、limitations，以及挖掘时每个已选方向的观察。取证报错时保留仍可见的事实与限制，并设置report_preparation_error，不能宣称缺失的附件已观察。
+用{commit_tool}提交本轮逐登记观察与目录变化。round_id和base_revision使用刚读取的当前值，commit_key标识轮内的本次提交；可在轮内分次提交。同一轮仅同一内容重传时复用commit_key，目录变化后先读取新revision。
+证据字段只填媒体工具实际返回并已观察的完整evidence_id，不猜测短编号，不将仅在上游文字中出现的图像当作本场视觉证据。方向和知识条目的支持、反例及正文引用只用role=overview、representation=raw、crop_bbox覆盖完整original_size的原图；禁止引用裁图或mask。提交被拒绝时按工具返回的原图ID纠正并重新提交，不能把局部ID换个说法继续引用。
+逐登记observations保存实际观察的附件引用；方向和知识的证据只选择能说明结论的关键代表图、必要良品与异常对照和关键反例，不把全部已看图像作为条目证据，不逐轮累加同类外观。局部和mask与原图属于同一来源；保留观察记录以供完整回查。
+延续条目使用相同稳定ID，提交该条目的完整有效内容与当前关键支持、反例；保留已发现的反例事实及适用边界，limitations列出当前实际存在的观察限制，已解决的限制移除。新发现使用新的ID。未触及的条目继续保留。merges仅合并检查动作确实相同的条目，并保留其来源、支持和反例。
+每次提交summary、limitations和unresolved_questions保留当前全局状态，不能因后续未提到就删除反例或未决事项。最后一轮仍可形成新方向或暂定知识；没有可靠条目时目录可以为空，但仍提交逐登记观察。
+summary概括整个作业截至当前的分析结果与跨图共性。条目描述检查方法，limitations说明影响观察或判断的具体缺失信息。正文在对应事实后使用[完整evidence_id]引用关键图像。文件名、sample_id和图像编号只放结构化身份字段，不用裸数字代替证据引用。
+工具返回校验错误时按真实错误核对当前状态与提交字段，不改造证据或虚构观察。通过工具提交实际成果，不用普通文本或一个最终JSON对象声称已完成覆盖。
+"""
+
+
+EXPLORATION_WORKFLOW = AGENT_WORKFLOW.format(commit_tool='exploration_commit') + """
+方向探索只提出候选检查方法，不发布质量阈值或人工结论。首轮角色取自手选栏位；单侧选图仍可观察，但明确缺少另一侧对照。
+directions的direction_id保持稳定，title和instruction说明对象、位置、可见线索与复核动作；applies_to为normal、defect或both，dataset_ids只覆盖有依据的子集。
+rationale给出当前完整的比较依据，综合该方向已有观察；evidence_ids和counter_evidence_ids分别引用支持与反例。后续每轮同时核验已有方向和发现新现象。
+"""
+
+
+def knowledge_agent_prompt() -> str:
+    return AGENT_WORKFLOW.format(commit_tool='knowledge_commit') + """
+沿本场selected_directions逐登记观察，使用其D1、D2等ref，不用来源的局部ID替代。每条observations.directions恰好包含全部已选方向，分别记录applicable、not_applicable或uncertain，以及具体观察与原因。
+预设和探索方向只限定检查目标，不提供质量真值。上游summary、限制、支持和反例均是带来源的待核验上下文，须用本场图像重新观察。一个方向仅适用部分子集时，其他子集仍逐条观察并记录不适用原因。
+checks写清check_id、title、subject、location、criterion、allowed_variations、limitations、status、support_evidence_ids、counter_evidence_ids、direction_refs和dataset_ids。一个方向可形成零到多条知识，一条知识可关联多个已选方向；未选方向的意外现象只作带证据的旁注。
+依据可见外观和已有标准形成判据，区分人工标注与模型推断；尺寸、公差、材质和工艺须有来源。
+保留正常替代解释、矛盾和不可观察项。同像素登记、多个ROI不能增加独立支持来源；单例可保留provisional，有反例时保留conflicted，最终证据强度由现有支持策略计算。人工核实是独立记录，Agent不得代填。
+"""

@@ -135,7 +135,7 @@ let IadRemoteService = (() => {
             return this.bridge.execute("sample_thumbnail", args);
         }
         async auditStart(args) {
-            return this.bridge.execute("audit_start", { ...args });
+            return this.bridge.execute("audit_start", { request: args });
         }
         async auditStatus(args) {
             return this.bridge.execute("audit_status", args);

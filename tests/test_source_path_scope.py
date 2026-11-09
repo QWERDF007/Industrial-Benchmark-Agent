@@ -6,8 +6,9 @@ from PIL import Image
 
 from iad_core.dataset.path_safety import AuthorizedDatasetPaths, PathSafetyError
 from iad_core.evidence.sources import SampleContent
-from iad_core.knowledge.scopes import KnowledgeScopeOpen, KnowledgeScopes
+from iad_core.evidence.registrations import RegistrationImages
 from iad_core.storage.repositories import SampleRepository
+from iad_core.workbench.analysis_manifest import AnalysisManifests
 
 
 def test_path_authorization_is_frozen_only_for_one_operation(knowledge_dataset, tmp_path, monkeypatch):
@@ -29,21 +30,24 @@ def test_path_authorization_is_frozen_only_for_one_operation(knowledge_dataset, 
     assert AuthorizedDatasetPaths(db.db_path).image(external) == '/etc/hostname'
 
 
-def test_scope_reads_recheck_source_content_after_each_request(knowledge_dataset):
+def test_frozen_registration_preparation_rechecks_source_content_after_each_request(knowledge_dataset):
     db, config = knowledge_dataset
-    scopes = KnowledgeScopes(db)
-    frozen = scopes.open(KnowledgeScopeOpen(dataset_id=config.dataset.id, kind='normal', objective='核验全部来源'))
-    assert frozen.total == frozen.remaining == 6
+    frozen = AnalysisManifests(db).freeze([config.dataset.id])
+    assert len(frozen.records) == 6
+    record = next(record for record in frozen.records if record.sample.sample_id == config.dataset.id + ':part-0.png')
+    images = RegistrationImages(db.db_path)
+    initial = images.prepare(record, None)
+    assert initial.error is None and len(initial.images) == 1
     path = Path(config.root) / 'part-0.png'
     original = path.read_bytes()
     with Image.open(path) as image:
         image.putpixel((1, 1), (255, 0, 0))
         image.save(path)
-    changed = scopes.read(frozen.scope_run_id)
-    assert (changed.stale, changed.remaining) == (1, 5)
+    changed = images.prepare(record, None)
+    assert changed.error == '源图或标注版本与冻结清单不一致'
+    assert changed.images == []
     path.write_bytes(original)
-    restored = scopes.read(frozen.scope_run_id)
-    assert (restored.stale, restored.remaining) == (0, 6)
+    assert images.prepare(record, None) == initial
 
 
 def test_audit_input_batch_matches_individual_sources_and_rechecks_content(knowledge_dataset):
