@@ -9,11 +9,12 @@ export function PromptTextEditor({id,label,value,onChange,disabled=false}: {
   </label>;
 }
 
-export function AgentPromptEditors({id,system,user,onSystemChange,onUserChange,disabled=false}: {
-  id:string;system:string;user:string;onSystemChange(text:string):void;onUserChange(text:string):void;disabled?:boolean;
+export function AgentPromptEditors({id,system,user,onSystemChange,onUserChange,disabled=false,children}: {
+  id:string;system:string;user:string;onSystemChange(text:string):void;onUserChange(text:string):void;disabled?:boolean;children?:React.ReactNode;
 }) {
   return <div className="iad-agent-prompts">
     <PromptTextEditor id={`${id}-system`} label="系统提示词" value={system} onChange={onSystemChange} disabled={disabled}/>
     <PromptTextEditor id={id} label="用户提示词" value={user} onChange={onUserChange} disabled={disabled}/>
+    {children}
   </div>;
 }

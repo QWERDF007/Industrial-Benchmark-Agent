@@ -14,11 +14,11 @@ import {createIadHttpHandler} from '../lib/server/routes/index.js';
 import {fileURLToPath} from 'node:url';
 import {createAuditAgentHost} from './fixtures/audit-agent-host.js';
 
-for(const {withKnowledge,protocol='openai-completions',optionalOutput=false} of [{withKnowledge:false},{withKnowledge:true},{withKnowledge:false,protocol:'openai-responses'},
-  ...['openai-completions','openai-responses'].map(protocol=>({withKnowledge:false,protocol,optionalOutput:true}))])test(`${withKnowledge?'selected weak knowledge and counter evidence':'zero knowledge'} with no consistency candidates audits every image in independent native Sessions${protocol==='openai-responses'?' with Responses reasoning':''}${optionalOutput?' without a configured output limit':''}`, {timeout:60000}, async t=>{
+for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,failReportOnce=false,correctKnowledgeOnce=false} of [{withKnowledge:false,failReportOnce:true},{withKnowledge:false},{withKnowledge:true},{withKnowledge:false,protocol:'openai-responses'},
+  ...['openai-completions','openai-responses'].map(protocol=>({withKnowledge:false,protocol,optionalOutput:true})),{withKnowledge:false,correctKnowledgeOnce:true}])test(`${withKnowledge?'selected weak knowledge and counter evidence':'zero knowledge'} with no consistency candidates audits every image in independent native Sessions${protocol==='openai-responses'?' with Responses reasoning':''}${optionalOutput?' without a configured output limit':''}${failReportOnce?' and a report-only retry':''}${correctKnowledgeOnce?' correcting an invented knowledge ID from tool feedback':''}`, {timeout:process.env.IAD_AUDIT_BROWSER==='1'?120000:60000}, async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-audit-native-'));
   const workspace=findWorkspaceRoot(), database=path.join(root,'audit.db'), wire=[], errors=[];
-  let runtime,bridge,host,ctx,scheduler,server;
+  let runtime,bridge,host,ctx,scheduler,server,reportFailed=false;
   const provider=http.createServer(async(req,res)=>{
     try {
       assert.equal(req.headers.authorization,'Bearer audit-test-key');
@@ -27,7 +27,23 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false} of 
       if(protocol==='openai-responses')assert.equal(body.responses.reasoning.effort,'high');
       if(req.url==='/tokenize'){res.end(JSON.stringify({count:1000,max_model_len:65536}));return;}
       wire.push(body);
-      const parse=value=>{try{return JSON.parse((typeof value==='string'?value:value.find(part=>part.type==='text').text).split('\n')[0]);}catch{return null;}};
+      const parse=value=>{try{return JSON.parse((typeof value==='string'?value:value.find(part=>part.type==='text').text).split(String.fromCharCode(10))[0]);}catch{return null;}};
+      const reportContext=body.messages.filter(message=>message.role==='user').map(message=>parse(message.content)).find(value=>value?.phase==='report');
+      if(reportContext){
+        if(failReportOnce&&!reportFailed){reportFailed=true;res.writeHead(503);res.end(JSON.stringify({error:{message:'报告模型临时不可用'}}));return;}
+        const tools=body.messages.filter(message=>message.role==='tool').map(message=>parse(message.content));
+        const records=tools.find(value=>value?.items);
+        let call;
+        if(!records)call={name:'audit_records',arguments:{page:1,page_size:100}};
+        else if(!tools.some(value=>value?.groups?.length)){
+          const issues=records.items.flatMap(item=>(item.final?.findings||[]).map(finding=>({sample_id:item.sample_id,finding_id:finding.finding_id})));
+          assert.equal(issues.length,3);
+          call={name:'audit_group_issues',arguments:{commit_key:'group',groups:[{group_id:'G1',title:'覆盖范围需复核',description:'保存的图级覆盖疑点。',issue_refs:issues,
+            representatives:[{...issues[0],role:'representative',reason:'可见问题的代表图。'},...(withKnowledge?[{sample_id:records.items.find(item=>item.final.state==='normal').sample_id,role:'counter',reason:'相似形态下覆盖关系不同。'}]:[])],normal_explanations:['需排除成像变化。'],limitations:[]}]}};
+        }else call={name:'audit_report_commit',arguments:{commit_key:'report',scope_analysis:'审计本次冻结范围及原始标注。',issue_analysis:'覆盖问题需要复核。',
+          consistency_analysis:'无候选图像仍已独立观察。',knowledge_analysis:withKnowledge?'所选知识按适用性核对。':'未选知识，依据图像独立审计。',conclusion:'保存的独立疑点需人工复核。',limitations:['不代表人工真值。']}};
+        respondFixtureTools(res,[call],{protocol,model:'native-audit'});return;
+      }
       const context=body.messages.filter(message=>message.role==='user')
         .map(message=>parse(message.content)).find(value=>value?.target);
       if(withKnowledge) {
@@ -43,16 +59,20 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false} of 
       } else assert.equal(context.knowledge,null);
       assert.equal(context.consistency.result.reason,'NO_CANDIDATES');
       assert.ok(!JSON.stringify(context).includes('本场第二张独立疑点'));
-      const pages=body.messages.filter(message=>message.role==='tool').map(message=>parse(message.content));
+      const actual=body.messages.flatMap(message=>Array.isArray(message.content)?message.content:[]).filter(part=>part.type==='image_url');
+      assert.equal(context.target.annotations.length,2);
+      assert.ok(actual.length>=3,'首次请求必须联合发送主图、全部标注10%局部与一致性分析');
+      const pages=body.messages.flatMap(message=>typeof message.content==='string'?[parse(message.content)]:Array.isArray(message.content)?message.content
+        .filter(part=>part.type==='text').map(part=>parse(part.text)):[]).filter(value=>Array.isArray(value?.images));
       assert.ok(pages.every(page=>!page.error));
       let call;
-      if(!pages.length)call={name:'audit_images',arguments:{sample_id:context.sample_id}};
-      else if(withKnowledge&&pages.length===1)call={name:'audit_reference',arguments:{evidence_id:context.knowledge.entries[0].check.counter_evidence_ids[0]}};
+      if(withKnowledge&&pages.length===1)call={name:'audit_reference',arguments:{evidence_id:context.knowledge.entries[0].check[context.sample_id.endsWith(':1.png')?'support_evidence_ids':'counter_evidence_ids'][0]}};
       else if(withKnowledge&&pages.length===2)call={name:'audit_crop',arguments:{sample_id:context.sample_id,bbox:[1,2,11,12]}};
       else {
-        const actual=body.messages.flatMap(message=>Array.isArray(message.content)?message.content:[]).filter(part=>part.type==='image_url');
         const images=pages.flatMap(page=>page.images);
         assert.equal(actual.length,images.length);
+        assert.deepEqual(pages[0].images.map(image=>image.image.sent_size),[[40,30],[9,11],[19,19]]);
+        assert.ok(pages[0].images.every(image=>image.image.representation==='raw'));
         assert.deepEqual(actual.map(part=>createHash('sha256').update(Buffer.from(part.image_url.url.split(',')[1],'base64')).digest('hex')).sort(),
           images.map(image=>image.image.sha256).sort());
         for (const page of pages) {
@@ -60,12 +80,17 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false} of 
           assert.ok(page.images.every(item => !Object.hasOwn(item.image,'evidence_id')&&!Object.hasOwn(item.model_context,'evidence_id')));
         }
         const suspect=context.sample_id.endsWith(':1.png'), ids=[...new Set(pages.map(page=>page.evidence_id))];
-        call={name:'audit_commit',arguments:{commit_key:'final',final:{state:suspect?'suspect':'normal',
+        call={name:'audit_commit',arguments:{commit_key:'final',final:{execution_status:'completed',state:suspect?'suspect':'normal',consistency_review:[],
           analysis:suspect?'本场第二张独立疑点，需核对三处可见现象。':'本场第一张的独立观察。',conclusion:suspect?'三处现象待复核。':'当前可见范围未发现疑点。',
           basis:['已观察本张原图及全部必需局部。'],evidence_ids:ids,
           check_assessments:context.knowledge?context.knowledge.entries.map(entry=>({check_id:entry.check.check_id,status:'unobservable',description:'本图不足以消解该暂定关系。',evidence_ids:ids})):[],limitations:['候选角色不是质量真值。'],
-          findings:suspect?[1,2,3].map(index=>({finding_id:'F'+index,description:'本图现象'+index,location:'主体',check_ids:[],
+          findings:suspect?[1,2,3].map(index=>({finding_id:'F'+index,type:['extra_annotation','category_mismatch','missing_annotation'][index-1],annotation_ids:index<3?[context.target.annotations[index-1].annotation_id]:[],consistency_issue_refs:[],description:'本图现象'+index,location:'主体',check_ids:[],
             evidence_ids:ids,normal_explanation:'需排除成像变化。',limitations:[]})):[]}}};
+      }
+      if(correctKnowledgeOnce&&call.name==='audit_commit'){
+        const feedback=body.messages.filter(message=>message.role==='tool').flatMap(message=>typeof message.content==='string'?[message.content]:message.content.filter(part=>part.type==='text').map(part=>part.text));
+        if(feedback.length)assert.ok(feedback.some(text=>text.includes('check_id=[]')&&text.includes('未选知识时填写[]')),'零知识提交反馈须明确允许的ID及空数组');
+        else call.arguments.final.check_assessments=[{check_id:'annotation_coverage',status:'consistent',description:'普通图像检查应写入分析。',evidence_ids:call.arguments.final.evidence_ids}];
       }
       respondFixtureTools(res,[call],{protocol,model:'native-audit'});
     } catch(error){errors.push(String(error));res.writeHead(500);res.end(JSON.stringify({error:{message:String(error)}}));}
@@ -101,24 +126,34 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false} of 
   const response=await fetch(base+'/audit/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(submission)});
   assert.equal(response.status,200,await response.clone().text());const job=await response.json();await scheduler.whenIdle();
   assert.equal(started.value.run_id,job.run_id);
-  const status=await(await fetch(base+'/audit/status/'+job.run_id)).json();
-  assert.equal(status.status,'COMPLETED',JSON.stringify(status.errors));assert.equal(status.completed,2);assert.equal(status.failed,0);
+  let status=await(await fetch(base+'/audit/status/'+job.run_id)).json();
+  if(failReportOnce){
+    assert.equal(status.status,'PARTIAL');assert.equal(status.completed,2);assert.equal(status.failed,0);
+    const before=(await bridge.execute('audit_agent_samples',{run_id:job.run_id})).samples;
+    await scheduler.resume(job.run_id);await scheduler.whenIdle();
+    assert.deepEqual((await bridge.execute('audit_agent_samples',{run_id:job.run_id})).samples,before);
+    status=await(await fetch(base+'/audit/status/'+job.run_id)).json();
+  }
+  assert.equal(status.status,'COMPLETED',JSON.stringify({errors:status.errors,execution_error:status.execution_error,provider:errors}));assert.equal(status.completed,2);assert.equal(status.failed,0);
   if(optionalOutput)assert.equal((await bridge.execute('audit_agent_snapshot',{run_id:job.run_id})).agent.profile.max_output_tokens,null);
-  assert.equal(wire.length,withKnowledge?8:4);assert.deepEqual(errors,[]);
+  assert.equal(wire.length,(withKnowledge?9:5)+(failReportOnce?1:0)+(correctKnowledgeOnce?2:0));assert.deepEqual(errors,[]);
+  const parseReport=content=>JSON.stringify(content).includes('report');
   for(const body of wire){
     assert.ok(body.messages.some(message=>(message.role==='system'||message.role==='developer')&&message.content.includes('系统自定义：审计工具流程。')));
     assert.ok(!body.messages.some(message=>(message.role==='system'||message.role==='developer')&&message.content.includes('用户自定义：逐图比较边缘。')));
-    assert.ok(body.messages.some(message=>message.role==='user'&&JSON.stringify(message.content).includes('用户自定义：逐图比较边缘。')));
+    assert.ok(body.messages.some(message=>message.role==='user'&&(JSON.stringify(message.content).includes('用户自定义：逐图比较边缘。')||parseReport(message.content))));
   }
   assert.equal(noticeInterrupted,withKnowledge);
   const samples=await(await fetch(base+'/audit/jobs/'+job.run_id+'/samples')).json();
-  assert.deepEqual(samples.distribution,{suspect:1,insufficient:0,normal:1,unprocessed:0});
+  assert.deepEqual(samples.distribution,{suspect:1,normal:1,incomplete:0});
   const {samples:internal}=await bridge.execute('audit_agent_samples',{run_id:job.run_id});
   assert.equal(new Set(internal.map(sample=>sample.session_id)).size,2);
   const nativeCalls=status.model_calls.filter(call=>call.source==='native_llm');
-  assert.equal(nativeCalls.length,withKnowledge?8:4);
-  assert.ok(nativeCalls.every(call=>internal.some(sample=>sample.sample_id===call.sample_id&&sample.session_id===call.session_id)));
-  assert.ok(status.model_calls.filter(call=>call.operation==='tokenize').every(call=>internal.some(sample=>sample.sample_id===call.sample_id)));
+  assert.equal(nativeCalls.length,(withKnowledge?9:5)+(failReportOnce?1:0)+(correctKnowledgeOnce?2:0));
+  const reportSession=await bridge.execute('audit_agent_report_state',{run_id:job.run_id});
+  assert.ok(nativeCalls.every(call=>call.sample_id===null?call.session_id===reportSession.session_id:internal.some(sample=>sample.sample_id===call.sample_id&&sample.session_id===call.session_id)));
+  assert.equal(reportSession.state,'COMPLETED');
+  assert.ok(status.model_calls.filter(call=>call.operation==='tokenize').every(call=>call.sample_id===null||internal.some(sample=>sample.sample_id===call.sample_id)));
   for(const sample of internal){
     const detail=await(await fetch(base+'/audit/jobs/'+job.run_id+'/samples/'+encodeURIComponent(sample.sample_id))).json();
     assert.equal(detail.final.findings.length,sample.sample_id.endsWith(':1.png')?3:0);
@@ -135,7 +170,7 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false} of 
     assert.equal(downloaded,await fs.readFile(filename,'utf8'));
     assert.equal((await host.read(sample.session_id)).events.filter(event=>event.type==='iad/job'&&event.data.value?.kind==='audit-final').length,1);
   }
-  const report=await(await fetch(base+'/audit/jobs/'+job.run_id+'/report')).json();assert.equal(report.suspect_samples,1);
+  const report=await(await fetch(base+'/audit/jobs/'+job.run_id+'/report')).json();assert.equal(report.suspect_samples,1);assert.equal(report.statistics.issue_occurrences,3);assert.equal(report.groups[0].affected_image_count,1);assert.equal(report.key_evidence.length,withKnowledge?2:1);
   const callsBeforeReport=wire.length;
   const reportRead=await ctx.tools.execute({name:'model_audit_report',arguments:{run_id:job.run_id},
     callId:'read-current-audit-report',signal:new AbortController().signal});
@@ -144,13 +179,82 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false} of 
   assert.equal(reportRead.value.audited_samples,2);
   assert.equal(reportRead.value.knowledge_version_id,data.knowledge?.version_id||null);
   assert.equal(wire.length,callsBeforeReport);
-  const html=await(await fetch(base+'/audit/jobs/'+job.run_id+'/export')).text();assert.ok(html.includes('本图现象3'));
+  const html=await(await fetch(base+'/audit/jobs/'+job.run_id+'/export')).text();assert.ok(html.includes('覆盖范围需复核'));
+  assert.ok(!html.includes('本图现象3'),'HTML只保留汇总分析，逐图内容在现有审计详情查看');
   assert.equal(await(await fetch(base+'/audit/jobs/'+job.run_id+'/export')).text(),html);
   const location=await bridge.execute('audit_agent_session_location',{session_id:internal[0].session_id});
   const directory=path.dirname(auditSessionPath(root,location));
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(directory,'summary.json'),'utf8')),report);
   assert.equal(await fs.readFile(path.join(directory,'report.html'),'utf8'),html);
-  if(browser){await browser.verifyAuditPage(base.replace('/api/iad',''),data.consistency_job_id,job.run_id,{withKnowledge,knowledgeVersion:data.knowledge?.version_id});await scheduler.whenIdle();
-    assert.equal(wire.length,withKnowledge?16:8);assert.deepEqual(errors,[]);
+  if(browser){await browser.verifyAuditPage(base.replace('/api/iad',''),data.consistency_job_id,job.run_id,{withKnowledge,knowledgeVersion:data.knowledge?.version_id,reportHtml:html});await scheduler.whenIdle();
+    assert.equal(wire.length,withKnowledge?18:10);assert.deepEqual(errors,[]);
     assert.equal(await(await fetch(base+'/audit/jobs/'+job.run_id+'/export')).text(),html);}
+});
+
+test('oversized joint image input fails without splitting resizing or hidden compaction requests',{timeout:60000},async t=>{
+  const {auditMessages,auditReportTool}=await import('./fixtures/audit-report.js');
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-audit-capacity-')),wire=[],tokenizations=[],errors=[];
+  let runtime;
+  const provider=http.createServer(async(req,res)=>{
+    try {
+      let raw='';for await(const part of req)raw+=part;
+      const body=JSON.parse(raw),hasImages=body.messages?.some(message=>Array.isArray(message.content)&&message.content.some(part=>part.type==='image_url'));
+      if(req.url==='/tokenize'){
+        tokenizations.push(body);res.end(JSON.stringify({count:hasImages?70000:1000,max_model_len:65536}));return;
+      }
+      wire.push(body);
+      const {context,outputs}=auditMessages(body);
+      assert.equal(context?.phase,'report','超限图级请求不得改为摘要或拆批请求');
+      respondFixtureTools(res,[auditReportTool(context,outputs)]);
+    }catch(error){errors.push(String(error));res.writeHead(500);res.end(JSON.stringify({error:{message:String(error)}}));}
+  });
+  await new Promise(resolve=>provider.listen(0,'127.0.0.1',resolve));
+  t.after(async()=>{await runtime?.dispose();provider.closeAllConnections();await new Promise(resolve=>provider.close(resolve));await fs.rm(root,{recursive:true,force:true});});
+  const endpoint=`http://127.0.0.1:${provider.address().port}/v1`;
+  const data=JSON.parse(execFileSync(resolvePythonPath(),[fileURLToPath(new URL('./fixtures/audit_dataset.py',import.meta.url)),root,path.join(root,'audit.db'),'none',endpoint],
+    {cwd:findWorkspaceRoot(),env:{...process.env,PYTHONPATH:path.join(findWorkspaceRoot(),'python')},encoding:'utf8'}));
+  runtime=await createAuditAgentHost(root,endpoint,{onError:error=>errors.push(String(error))});
+  const job=await runtime.scheduler.start({submission_id:randomUUID(),subset_ids:[data.dataset_id],consistency_job_id:data.consistency_job_id});
+  await runtime.scheduler.whenIdle();
+  const status=await runtime.bridge.execute('audit_status',{run_id:job.run_id});
+  assert.equal(status.status,'FAILED');assert.equal(status.completed,0);assert.equal(status.failed,2);
+  assert.ok(status.errors.every(error=>/context|上下文/i.test(error.message)));
+  assert.equal(tokenizations.filter(body=>body.messages.some(message=>Array.isArray(message.content)&&message.content.some(part=>part.type==='image_url'))).length,2);
+  assert.equal(wire.length,2);assert.deepEqual(errors,[]);
+});
+
+test('a startup input validation failure terminates the audit and remains retryable without model requests',{timeout:60000},async t=>{
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-audit-startup-'));
+  const workspace=findWorkspaceRoot(),database=path.join(root,'audit.db');
+  const endpoint='http://127.0.0.1:9/v1';
+  const data=JSON.parse(execFileSync(resolvePythonPath(),[path.join(workspace,'apps/iad-harness/test/fixtures/audit_dataset.py'),root,database,'none',endpoint],
+    {cwd:workspace,env:{...process.env,PYTHONPATH:path.join(workspace,'python')},encoding:'utf8'}));
+  const runtime=await createAuditAgentHost(root,endpoint);t.after(async()=>{await runtime.dispose();await fs.rm(root,{recursive:true,force:true});});
+  const {NativeProviders}=await import('../lib/server/models/providers.js');
+  const configuration=await runtime.bridge.execute('audit_agent_configuration');
+  const agent=await new NativeProviders(()=>runtime.ctx).freeze(configuration.settings.model,configuration.settings.agent_limits,'agent',configuration.settings.reasoning_effort);
+  const job=await runtime.bridge.execute('audit_agent_start',{configuration,agent,request:{submission_id:randomUUID(),subset_ids:[data.dataset_id],consistency_job_id:data.consistency_job_id}});
+  await runtime.bridge.execute('audit_agent_cancel',{run_id:job.run_id});
+  execFileSync(resolvePythonPath(),['-c',`import sqlite3,json,sys
+from iad_core.workbench.job_models import JobFailure
+c=sqlite3.connect(sys.argv[1]);row=c.execute('SELECT sample_id,consistency_json FROM audit_sample_runs WHERE job_id=? ORDER BY ordinal LIMIT 1',(sys.argv[2],)).fetchone()
+value=json.loads(row[1]);value['error_history']=[JobFailure(sample_id=row[0],message='保留的上游错误').model_dump(mode='json')]
+c.execute('UPDATE audit_sample_runs SET consistency_json=? WHERE job_id=? AND sample_id=?',(json.dumps(value),sys.argv[2],row[0]));c.commit()
+`,database,job.run_id],{cwd:workspace,env:{...process.env,PYTHONPATH:path.join(workspace,'python')}});
+  await runtime.scheduler.resume(job.run_id);await runtime.scheduler.whenIdle().catch(()=>{});
+  const status=await runtime.bridge.execute('audit_status',{run_id:job.run_id});
+  assert.equal(status.status,'FAILED','启动输入失败不能使作业永久显示执行中');
+  assert.equal(status.completed,0);assert.equal(status.failed,2);assert.equal(status.model_calls.length,0);
+  assert.match(status.execution_error.message,/sample_uuid/);
+  assert.ok(status.errors.every(error=>error.message.includes('sample_uuid')));
+  execFileSync(resolvePythonPath(),['-c',`import sqlite3,json,sys
+c=sqlite3.connect(sys.argv[1])
+for sample_id,raw in c.execute('SELECT sample_id,consistency_json FROM audit_sample_runs WHERE job_id=?',(sys.argv[2],)).fetchall():
+    value=json.loads(raw)
+    for error in value['error_history']:error.pop('sample_uuid',None)
+    c.execute('UPDATE audit_sample_runs SET consistency_json=? WHERE job_id=? AND sample_id=?',(json.dumps(value),sys.argv[2],sample_id))
+c.commit()
+`,database,job.run_id],{cwd:workspace});
+  assert.equal((await runtime.bridge.execute('audit_agent_resume',{run_id:job.run_id})).status,'RUNNING');
+  assert.ok((await runtime.bridge.execute('audit_agent_samples',{run_id:job.run_id})).samples.every(sample=>sample.state==='PENDING'));
 });

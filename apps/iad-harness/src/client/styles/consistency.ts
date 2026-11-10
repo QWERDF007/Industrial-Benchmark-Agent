@@ -88,7 +88,7 @@ export const consistencyStyles=`
 .dc-group-review-form{display:flex;flex-direction:column;flex:1;min-height:0}
 .dc-compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
 .dc-compare-cell{min-width:0}
-.dc-compare-photo{height:235px;border:1px solid var(--iad-border);border-radius:6px;background:var(--iad-surface-muted);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:zoom-in}
+.dc-compare-photo{height:450px;border:1px solid var(--iad-border);border-radius:6px;background:var(--iad-surface-muted);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:zoom-in}
 .dc-compare-photo img{height:100%;width:100%;object-fit:contain}
 .dc-photo-filename{line-height:20px;margin:7px 2px 0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .dc-decision-controls{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 14px}

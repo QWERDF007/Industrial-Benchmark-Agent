@@ -3,6 +3,6 @@ export const setupStyles = `.iad-setup {max-width:1040px;min-width:0;padding:24p
 .iad-setup-section:first-of-type {padding-top:0;}.iad-setup-section:last-child {border:0;}
 .iad-setup-section>h3 {margin:0 0 var(--iad-space-4);}
 .iad-agent-prompts{display:grid;gap:16px;min-width:0}
-.exp-input textarea.iad-prompt-editor{--iad-prompt-editor-height:400px;box-sizing:border-box;width:100%;height:var(--iad-prompt-editor-height);min-height:var(--iad-prompt-editor-height);max-height:var(--iad-prompt-editor-height);resize:none;overflow:auto}
+.exp-input textarea.iad-prompt-editor{--iad-prompt-editor-height:300px;box-sizing:border-box;width:100%;height:var(--iad-prompt-editor-height);min-height:var(--iad-prompt-editor-height);max-height:var(--iad-prompt-editor-height);resize:none;overflow:auto}
 .iad-setup-section .iad-info-group {background:transparent;padding:0;margin:0;}
 `;

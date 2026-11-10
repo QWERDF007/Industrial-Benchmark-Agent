@@ -220,10 +220,6 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
   box-shadow: 0 0 0 1px #2458d5 !important;
 }
 
-#dc-compare-mask .dc-compare-photo,
-.dc-conflict-dialog .dc-compare-photo {
-  height: 450px !important;
-}
 .detail-preview {
   height: clamp(310px, 46dvh, 500px) !important;
 }

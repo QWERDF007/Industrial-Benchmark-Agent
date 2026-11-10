@@ -1,10 +1,10 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import type {AuditAgentConfiguration,AuditSampleRun,AuditWorkflowSnapshot,ImageSessionLocation,JobView} from '../../shared/domain.generated.js';
+import type {AuditAgentConfiguration,AuditSampleRun,AuditReportSession,AuditWorkflowSnapshot,ImageSessionLocation,JobView} from '../../shared/domain.generated.js';
 import type {BridgeDispatch,ModelRouting,PythonBridge} from '../python-bridge/index.js';
 import type {NativeProviders} from '../models/providers.js';
 import type {JobSessionHost} from '../sessions/host.js';
-import {AuditImageAgent} from './agent.js';
+import {AuditWorkflowAgent} from './agent.js';
 import {auditSessionPath} from './session-path.js';
 import {runConcurrent} from '../jobs/concurrency.js';
 
@@ -18,6 +18,11 @@ export class AuditWorkflowScheduler implements ModelRouting {
     if(operation==='audit_cancel'||operation==='audit_retry') {
       const job=await dispatch('analysis_node',{run_id:args.run_id},signal);
       if(job.request?.audit_workflow_version)return operation==='audit_cancel'?this.cancel(args.run_id):this.resume(args.run_id);
+    }
+    if(operation==='audit_agent_report_session_export'){
+      const report=await this.bridge.execute<AuditReportSession>('audit_agent_report_state',args);
+      if(!report.session_created)throw new Error('报告Session尚未创建');
+      return {filename:'audit-report-'+args.run_id+'.jsonl',jsonl:await this.host.exportJsonl(report.session_id)};
     }
     if(operation==='audit_agent_session_export') {
       const sample=await this.bridge.execute<AuditSampleRun>('audit_agent_sample',args);
@@ -38,7 +43,12 @@ export class AuditWorkflowScheduler implements ModelRouting {
 
   private launch(runId:string):void {
     const controller=new AbortController();
-    const promise=this.run(runId,controller.signal).finally(()=>this.tasks.delete(runId));
+    const promise=this.run(runId,controller.signal).catch(async error=>{
+      if(controller.signal.aborted)return;
+      await this.bridge.execute('audit_agent_finish',{run_id:runId,error:{
+        type:error instanceof Error?error.name:'Error',message:error instanceof Error?error.message:String(error),
+      }});
+    }).finally(()=>this.tasks.delete(runId));
     this.tasks.set(runId,{controller,promise});void promise.catch(this.onError);
   }
 
@@ -46,7 +56,8 @@ export class AuditWorkflowScheduler implements ModelRouting {
     const snapshot=await this.bridge.execute<AuditWorkflowSnapshot>('audit_agent_snapshot',{run_id:runId});
     const {samples}=await this.bridge.execute<{samples:AuditSampleRun[]}>('audit_agent_samples',{run_id:runId});
     const pending=samples.filter(sample=>sample.state!=='COMPLETED');
-    const agent=new AuditImageAgent(this.bridge,this.host,this.providers,this.dataRoot);
+    const agent=new AuditWorkflowAgent(this.bridge,this.host,this.providers,this.dataRoot);
+    if(pending.length)await this.bridge.execute('audit_agent_prepare_inputs',{run_id:runId},signal);
     await runConcurrent(pending,snapshot.settings.concurrency,signal,async sample=>{
       try {
         await agent.run(runId,sample.sample_id,snapshot,signal);
@@ -58,6 +69,13 @@ export class AuditWorkflowScheduler implements ModelRouting {
       }
     });
     if(!signal.aborted) {
+      try {
+        await this.bridge.execute('audit_agent_report_begin',{run_id:runId},signal);
+        await agent.run(runId,null,snapshot,signal);
+      } catch(error) {
+        if(signal.aborted)return;
+        await this.bridge.execute('audit_agent_report_failure',{run_id:runId,message:error instanceof Error?error.message:String(error)});
+      }
       await this.bridge.execute('audit_agent_finish',{run_id:runId});
       await this.writeReport(runId);
     }

@@ -273,7 +273,7 @@ class JobRunner:
             for thread in started:
                 thread.start()
 
-    def _finish(self, run_id: str, status: str):
+    def _finish(self, run_id: str, status: str, persist: Callable[[Connection, str, str], None] | None = None):
         with self.lock, self.db.connection() as conn:
             at = datetime.now(timezone.utc).isoformat()
             payload = json.loads(conn.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (run_id,)).fetchone()[0])
@@ -281,6 +281,8 @@ class JobRunner:
                 conn.execute('UPDATE job_runs SET payload_json=? WHERE job_id=?',
                     (json.dumps(payload, ensure_ascii=False), run_id))
             conn.execute('UPDATE job_runs SET status=?,finished_at=? WHERE job_id=?', (status, at, run_id))
+            if persist is not None:
+                persist(conn,status,at)
             self.pending.pop(run_id, None)
             self.threads.pop(run_id, None)
             self.external.discard(run_id)
@@ -292,12 +294,12 @@ class JobRunner:
                     worker_lock.release()
         return callbacks
 
-    def finish_external(self, run_id: str) -> dict:
+    def finish_external(self, run_id: str, *, persist: Callable[[Connection, str, str], None] | None = None) -> dict:
         with self.lock:
             if run_id not in self.external:
                 raise ValueError('作业不由外部宿主执行')
             state = self.status(run_id)
-            callbacks = self._finish(run_id, self.terminal_status(state))
+            callbacks = self._finish(run_id, self.terminal_status(state),persist=persist)
         for callback in callbacks:
             callback()
         return self.status(run_id)

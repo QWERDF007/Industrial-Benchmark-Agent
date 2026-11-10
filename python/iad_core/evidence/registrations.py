@@ -81,21 +81,21 @@ class RegistrationImages:
             raise ValueError('源图或标注版本与冻结清单不一致')
         return digest
 
-    def crop(self, record: AnalysisRegistration, bbox: list[int]) -> PreparedRegistration:
+    def crop(self, record: AnalysisRegistration, bbox: list[int], *, single_window: bool = False) -> PreparedRegistration:
         sample=record.sample
         digest=self._source_digest(record)
         box=[max(0,bbox[0]),max(0,bbox[1]),min(sample.width,bbox[2]),min(sample.height,bbox[3])]
         if box[0]>=box[2] or box[1]>=box[3]:
             raise ValueError('裁窗与原图没有有效交集')
         images=[]
-        for tile in self.images.tiles(sample,box,0):
+        for tile in [box] if single_window else self.images.tiles(sample,box,0):
             image=self.images.capture(sample,'roi','model',tile,digest,full_resolution=True).with_source(
                 sample,record.dataset_format,record.annotations)
             images.append(RegistrationMedia(sample_id=sample.sample_id,dataset_id=sample.dataset_id,image=image.evidence,
                 path=image.path,model_context=image.model_context(),required=False))
         return PreparedRegistration(sample_id=sample.sample_id,images=images)
 
-    def prepare(self, record: AnalysisRegistration, max_side: int | None) -> PreparedRegistration:
+    def prepare(self, record: AnalysisRegistration, max_side: int | None, *, raw_annotations: bool = False) -> PreparedRegistration:
         sample = record.sample
         result = PreparedRegistration(sample_id=sample.sample_id, images=[])
         prepared = []
@@ -108,9 +108,22 @@ class RegistrationImages:
             if sample.annotation_availability.status == 'UNREADABLE':
                 raise ValueError('原图可读，必需标注文件不可读')
             if record.dataset_format == 'labelme':
-                regions = [region for region in self.images.plan(sample, record.annotations, [])
-                    if any(origin.annotation_id is not None for origin in region.origins)]
+                if raw_annotations:
+                    from iad_core.consistency.annotation_views import annotation_views
+                    regions = annotation_views(sample, record.annotations)
+                    required = {item.annotation_id for item in record.annotations if not item.is_ignored}
+                    if required != {origin.annotation_id for region in regions for origin in region.origins}:
+                        raise ValueError('原始标注无法生成全部必要的10%局部，不能跳过审核')
+                else:
+                    regions = [region for region in self.images.plan(sample, record.annotations, [])
+                        if any(origin.annotation_id is not None for origin in region.origins)]
                 for region in regions:
+                    if raw_annotations:
+                        image = self.images.capture(sample, 'roi', 'annotation', region.crop_bbox, digest, full_resolution=True)
+                        ids = {origin.annotation_id for origin in region.origins}
+                        prepared.append(image.with_source(sample, record.dataset_format,
+                            [annotation for annotation in record.annotations if annotation.annotation_id in ids]))
+                        continue
                     for image in self.images.capture_regions(sample, [region], record.annotations, digest):
                         ids = {origin.annotation_id for origin in image.origins}
                         prepared.append(PreparedImage(image.image, self.images.path(image.image), record.dataset_format,

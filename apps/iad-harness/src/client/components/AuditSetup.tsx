@@ -7,7 +7,7 @@ import {useModuleSettings} from '../useModuleSettings.js';
 import {promptDefaults} from '../../shared/prompt-defaults.generated.js';
 import {useResource} from '../useResource.js';
 import {Button} from './Button.js';
-import {AgentPromptEditors} from './AgentPromptEditors.js';
+import {AgentPromptEditors,PromptTextEditor} from './AgentPromptEditors.js';
 import {Pagination} from './Pagination.js';
 
 function sourceDuration(job: {started_at:string|null;finished_at:string|null}): string {
@@ -29,6 +29,7 @@ export function AuditSetup({datasets, jobs, revision, onStarted, onCancel, onBus
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
   const [systemPrompt,setSystemPrompt]=useState<string>(promptDefaults.system.audit);
   const [userPrompt,setUserPrompt]=useState<string>(promptDefaults.audit);
+  const [reportPrompt,setReportPrompt]=useState<string>(promptDefaults.auditReport);
   const submission=useRef<{identity:string;id:string}>();
   const knowledgeJobs=catalog.data?.knowledge_jobs || [], consistencyJobs=catalog.data?.consistency_jobs || [];
   const chosen=knowledgeJobs.find(item=>item.version_id===versionId);
@@ -37,7 +38,7 @@ export function AuditSetup({datasets, jobs, revision, onStarted, onCancel, onBus
   const reason=catalog.error || (catalog.loading?'正在读取来源作业':!datasets.length?'请选择审计子数据集':
     !selectedConsistency?'请选择一个已完成的一致性作业':!model.settings?.model?model.error || '请先配置模型审计分析模型':
     jobs.some(job=>['PENDING','RUNNING'].includes(job.status))?'当前范围仍有审计作业执行中':
-    !systemPrompt.trim()?'请填写系统提示词':!userPrompt.trim()?'请填写用户提示词':'');
+    !systemPrompt.trim()?'请填写系统提示词':!userPrompt.trim()?'请填写用户提示词':!reportPrompt.trim()?'请填写报告用户提示词':'');
   function selectKnowledge(job:AuditKnowledgeSource) {
     if (job.version_id===versionId) return;
     setVersionId(job.version_id);setEntryIds(new Set());setEntryPage(1);setError('');
@@ -46,7 +47,7 @@ export function AuditSetup({datasets, jobs, revision, onStarted, onCancel, onBus
     if (reason || !selectedConsistency || busy) return;
     const body:Omit<AuditStartRequest,'submission_id'>={subset_ids:[datasets[0].dataset_id,...datasets.slice(1).map(dataset=>dataset.dataset_id)],
       knowledge:chosen&&selectedEntries.length?{job_id:chosen.job_id,version_id:chosen.version_id,entry_ids:selectedEntries.map(item=>item.check_id)}:null,
-      consistency_job_id:selectedConsistency.job_id,system_prompt:systemPrompt,instruction:userPrompt};
+      consistency_job_id:selectedConsistency.job_id,system_prompt:systemPrompt,instruction:userPrompt,report_instruction:reportPrompt};
     const identity=JSON.stringify(body);
     if(submission.current?.identity!==identity)submission.current={identity,id:uuid()};
     setBusy(true);onBusyChange(true);setError('');
@@ -94,7 +95,9 @@ export function AuditSetup({datasets, jobs, revision, onStarted, onCancel, onBus
     </section>
     <section className="audit-panel audit-source-panel"><header className="audit-panel-head"><h2>提示词</h2></header>
       <AgentPromptEditors id="audit-prompt" system={systemPrompt} user={userPrompt}
-        onSystemChange={setSystemPrompt} onUserChange={setUserPrompt} disabled={busy}/>
+        onSystemChange={setSystemPrompt} onUserChange={setUserPrompt} disabled={busy}>
+        <PromptTextEditor id="audit-report-prompt" label="报告用户提示词" value={reportPrompt} onChange={setReportPrompt} disabled={busy}/>
+      </AgentPromptEditors>
     </section>
     <section className="audit-panel audit-source-panel"><header className="audit-panel-head"><h2>确认并启动</h2></header>
       <div className="audit-create-confirm"><dl className="audit-create-facts" id="audit-create-summary" aria-live="polite">

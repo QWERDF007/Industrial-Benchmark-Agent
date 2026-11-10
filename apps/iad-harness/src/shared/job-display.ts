@@ -40,7 +40,7 @@ export const jobPhases: Record<string, string> = {
   PREPARING_SHARED_INDEX: '准备共享图像索引', SHARED_INDEX_READY: '共享索引就绪',
   VERIFYING_CONTENT: '核对图像内容',
   OBSERVING_ANCHOR: '视觉核对', AWAITING_SUBMISSION: '校验主图结论', AGENT_REVIEWING: '主图审核',
-  SUMMARIZING_CONSISTENCY_RESULTS: '汇总结果',
+  SUMMARIZING_CONSISTENCY_RESULTS: '汇总结果', PREPARING_AUDIT_INPUT:'准备审计输入',GENERATING_AUDIT_REPORT:'汇总审计报告',
 };
 
 const workflows = {
@@ -63,10 +63,9 @@ const workflows = {
       'OBSERVING_ANCHOR','AGENT_REVIEWING','AWAITING_SUBMISSION']},
     {title:'汇总结果',phases:['SUMMARIZING_CONSISTENCY_RESULTS','CONSISTENCY_FINISHED','CONSISTENCY_MODEL_BATCHES_FINISHED']}]},
   audit: {title:'模型审计',stages:[
-    {title:'准备样本和知识',phases:['PREPARING_KNOWLEDGE']},
-    {title:'检查数据一致性',phases:['COMPARING']},
-    {title:'执行逐图模型审计',phases:['AUDITING_IMAGES','GLOBAL','REGIONS','SYNTHESIS']},
-    {title:'保存审计与证据',phases:['SAMPLE_COMPLETED']}]},
+    {title:'准备输入',phases:['PREPARING_KNOWLEDGE','PREPARING_AUDIT_INPUT']},
+    {title:'逐图审计',phases:['COMPARING','AUDITING','AUDITING_IMAGES','GLOBAL','REGIONS','SYNTHESIS']},
+    {title:'汇总报告',phases:['GENERATING_AUDIT_REPORT','SAMPLE_COMPLETED','AUDIT_FINISHED']}]},
 };
 
 export function jobWorkflow(job: JobSnapshot, now = Date.now()) {
@@ -86,6 +85,6 @@ export function jobWorkflow(job: JobSnapshot, now = Date.now()) {
     }
     return {...stage,elapsedSeconds:durations.length?durations.reduce((sum,value)=>sum+value,0):null};
   });
-  return {...workflow,stages,index:kind==='consistency'&&job.status==='COMPLETED'
+  return {...workflow,stages,index:['consistency','audit'].includes(kind)&&job.status==='COMPLETED'
     ?stages.length-1:stages.findIndex(stage=>stage.phases.includes(job.phase || ''))};
 }

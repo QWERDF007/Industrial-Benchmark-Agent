@@ -41,8 +41,8 @@ def test_audit_accepts_only_the_current_images_real_delivered_evidence_and_retai
     jobs.session_created(run_id, first.sample_id)
     page = AuditEvidence(jobs).read(run_id, first.sample_id, {'sample_id':first.sample_id})
     ids = [item.image.evidence_id for item in page.images]
-    final = dict(state='suspect', analysis='只属于第一张图的独立分析。', conclusion='三处现象需要核对。', basis=['已查看全部原图与局部。'],
-        evidence_ids=ids, check_assessments=[], findings=[dict(finding_id='F'+str(index), description='待核对现象'+str(index),
+    final = dict(execution_status='completed',state='suspect',consistency_review=[], analysis='只属于第一张图的独立分析。', conclusion='三处现象需要核对。', basis=['已查看全部原图与局部。'],
+        evidence_ids=ids, check_assessments=[], findings=[dict(finding_id='F'+str(index), type='missing_annotation',annotation_ids=[],consistency_issue_refs=[],description='待核对现象'+str(index),
             location='主体', evidence_ids=ids, normal_explanation='可能为成像变化。', limitations=[]) for index in range(3)], limitations=[])
     submission = dict(commit_key='final', final=final)
     commits = AuditCommits(jobs)
@@ -155,7 +155,7 @@ def test_selected_partial_knowledge_preserves_conflicts_review_and_frozen_counte
     assert historical.model_dump(mode='json') == legacy
     assert historical.knowledge.summary == '未选全局摘要哨兵。'
     assert historical.schema_version == 1
-    assert jobs.snapshot(audit['run_id']).schema_version == 2
+    assert jobs.snapshot(audit['run_id']).schema_version == 3
     jobs.cancel(audit['run_id'])
     historical_run = jobs.start(dict(submission_id=str(uuid4()),subset_ids=[dataset_id],
         consistency_job_id=consistency_job_id,knowledge=selection),agent=role)['run_id']
@@ -223,7 +223,7 @@ def test_current_audit_reads_use_the_native_image_and_session_contract(native_au
     run_id = created['run_id']
     first = jobs.samples(run_id)[0]
     page = audit_job_samples({'run_id':run_id}, jobs.db.db_path)
-    assert page['distribution'] == dict(suspect=0, insufficient=0, normal=0, unprocessed=6)
+    assert page['distribution'] == dict(suspect=0, normal=0, incomplete=6)
     assert len(page['items']) == 6
     item = page['items'][0]
     assert item['run_id'] == run_id and item['sample_id'] == first.sample_id

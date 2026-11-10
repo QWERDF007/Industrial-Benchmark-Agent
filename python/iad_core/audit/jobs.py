@@ -9,6 +9,7 @@ from iad_core.audit.models import (AuditAgentConfiguration, AuditAgentStart,
     AuditKnowledge, AuditKnowledgeDirection, AuditKnowledgeScope, AuditKnowledgeSelection,
     AuditSampleRun, AuditSelectedCheck, AuditWorkflowSnapshot)
 from iad_core.consistency.agent_results import ConsistencyAgentResults
+from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.knowledge.check_reviews import KnowledgeCheckReviews
 from iad_core.knowledge.models import KnowledgeEvidence
 from iad_core.workbench.analysis_manifest import AnalysisManifests
@@ -35,6 +36,8 @@ class AuditAgentJobs(AuditState):
         view = AnalysisQueries(self.db).view(selection.version_id)
         checks = view.catalog.checks
         selected = set(selection.entry_ids)
+        if len(selected) != len(selection.entry_ids):
+            raise ValueError('知识条目不能重复选择')
         if selected - {check.check_id for check in checks}:
             raise ValueError('知识条目不属于所选正式版本')
         reviews = KnowledgeCheckReviews(self.db).read(selection.version_id)
@@ -64,31 +67,41 @@ class AuditAgentJobs(AuditState):
         if selected is None or (selected.provider_id, selected.model_id) != (role.profile.provider_id, role.profile.model_id):
             raise ValueError('实际Agent与审计模块模型配置不一致')
         manifest = AnalysisManifests(self.db).freeze(request.subset_ids)
+        if len({record.dataset_format for record in manifest.records}) != 1:
+            raise ValueError('同一审计作业不能混用图像级和矩形标注类型')
         upstream = self.jobs.status(request.consistency_job_id, ('ANALYSIS_WORKFLOW',))
         if upstream['status'] != 'COMPLETED' or upstream['deleted_at']:
             raise ValueError('请选择已完成的一致性作业')
+        source = ConsistencyAgentJobs(self.runtime).snapshot(request.consistency_job_id)
+        frozen = {sample.sample_id:sample for sample in source.scopes.subjects.samples}
+        if any(record.sample.sample_id not in frozen or frozen[record.sample.sample_id].source_fingerprint != record.source_fingerprint
+                or frozen[record.sample.sample_id].quality_status != record.sample.quality_status for record in manifest.records):
+            raise ValueError('所选图像或标注版本与一致性作业冻结范围不一致，请先重新检查一致性')
         results = ConsistencyAgentResults(self.db)
         anchors = [results.detail(request.consistency_job_id, record.sample.sample_id) for record in manifest.records]
         if any(anchor.result is None or anchor.state != 'COMPLETED' for anchor in anchors):
             raise ValueError('一致性作业尚未形成所选主图的终稿')
-        snapshot = AuditWorkflowSnapshot(**configuration.model_dump(), schema_version=2, manifest=manifest, agent=role,
-            instruction=request.instruction, consistency_job_id=request.consistency_job_id,
+        snapshot = AuditWorkflowSnapshot(**configuration.model_dump(), schema_version=3, manifest=manifest, agent=role,
+            instruction=request.instruction, report_instruction=request.report_instruction, consistency_job_id=request.consistency_job_id,
             system_prompt=request.system_prompt or NATIVE_AUDIT_PROMPT,
             knowledge=self.freeze_knowledge(request.knowledge))
 
         def persist(connection, run_id):
             connection.execute('INSERT INTO audit_workflow_runs(job_id,snapshot_json) VALUES(?,?)', (run_id, snapshot.model_dump_json()))
+            connection.execute('INSERT INTO audit_report_runs(job_id,session_id) VALUES(?,?)',
+                (run_id,'audit-report-'+uuid5(NAMESPACE_URL,run_id).hex))
             connection.executemany('''INSERT INTO audit_sample_runs
                 (job_id,sample_id,ordinal,session_id,state,consistency_json) VALUES(?,?,?,?,?,?)''',
                 [(run_id, anchor.anchor_id, index, 'audit-' + uuid5(NAMESPACE_URL, run_id + ':' + anchor.anchor_id).hex,
-                    'PENDING', anchor.model_dump_json()) for index, anchor in enumerate(anchors)])
+                    'PENDING', anchor.model_dump_json(exclude_computed_fields=True)) for index, anchor in enumerate(anchors)])
 
         job = self.jobs.start('MODEL_AUDIT', manifest.records[0].sample.task_id,
-            dict(audit_workflow_version=2, submission=submission, dataset_id=manifest.dataset_ids[0], dataset_ids=manifest.dataset_ids,
+            dict(audit_workflow_version=3, submission=submission, dataset_id=manifest.dataset_ids[0], dataset_ids=manifest.dataset_ids,
                 sample_ids=[record.sample.sample_id for record in manifest.records], instruction=request.instruction,
                 model_name=role.profile.model_id, model_profile=role.profile.model_dump(),
                 knowledge_version_id=snapshot.knowledge.selection.version_id if snapshot.knowledge else None),
             None, '准备逐图原生审计', persist=persist)
+        self.jobs.update(job['run_id'],phase='PREPARING_AUDIT_INPUT',completion_pending=True)
         return {**job, 'created':True}
 
 
@@ -109,10 +122,42 @@ class AuditAgentJobs(AuditState):
             connection.execute("UPDATE audit_sample_runs SET state='FAILED' WHERE job_id=? AND sample_id=?", (run_id,sample_id))
             self.jobs.record(run_id,sample_id,JobExecutionError(message,source_run_id=run_id,source_phase='AUDITING'),connection=connection)
 
+    def finish(self, run_id: str, error: dict[str, str] | None = None):
+        from iad_core.audit.reports import AuditReports
+        if error is not None:
+            state = self.jobs.status(run_id, ('MODEL_AUDIT',))
+            if state['status'] != 'RUNNING':
+                return state
+            remaining = set(state['sample_ids']) - set(state['completed_sample_ids']) - set(state['failed_sample_ids'])
+            with self.jobs.lock, self.db.connection() as connection:
+                connection.execute('BEGIN IMMEDIATE')
+                connection.execute("UPDATE audit_sample_runs SET state='FAILED' WHERE job_id=? AND state IN ('PENDING','RUNNING')",(run_id,))
+                connection.execute("UPDATE audit_report_runs SET state='FAILED',error=? WHERE job_id=? AND state!='COMPLETED'",(error['message'],run_id))
+                values = dict(completion_pending=True,execution_error=error)
+                if remaining:
+                    self.jobs.record(run_id,sorted(remaining),JobExecutionError(error['message'],source_run_id=run_id,
+                        source_phase=state.get('phase')),connection=connection,**values)
+                else:
+                    self.jobs.update(run_id,connection=connection,**values)
+            return self.jobs.finish_external(run_id)
+        reports = AuditReports(self.db)
+        if self.snapshot(run_id).schema_version < 3:
+            result = self.jobs.finish_external(run_id)
+            reports.finalize(run_id)
+            return result
+        self.jobs.update(run_id,completion_pending=reports.session(run_id).state!='COMPLETED')
+        try:
+            return self.jobs.finish_external(run_id,persist=lambda connection,status,at:
+                reports.finalize(run_id,connection=connection,status=status,finished_at=at))
+        except Exception as error:
+            self.jobs.update(run_id,completion_pending=True,execution_error={'type':'AuditReportOutputError','message':str(error)})
+            return self.jobs.finish_external(run_id)
+
     def cancel(self, run_id: str):
         self.snapshot(run_id)
         self.jobs.cancel(run_id,('MODEL_AUDIT',))
         with self.db.connection() as connection:
+            connection.execute("UPDATE audit_report_runs SET state='CANCELLED' WHERE job_id=? AND state!='COMPLETED'",(run_id,))
             connection.execute("UPDATE audit_sample_runs SET state='CANCELLED' WHERE job_id=? AND state IN ('PENDING','RUNNING')", (run_id,))
         return self.jobs.status(run_id)
 
@@ -120,12 +165,21 @@ class AuditAgentJobs(AuditState):
         self.snapshot(run_id)
         self.jobs.interrupt_external(run_id)
         with self.db.connection() as connection:
+            connection.execute("UPDATE audit_report_runs SET state='INTERRUPTED' WHERE job_id=? AND state!='COMPLETED'",(run_id,))
             connection.execute("UPDATE audit_sample_runs SET state='INTERRUPTED' WHERE job_id=? AND state IN ('PENDING','RUNNING')", (run_id,))
         return self.jobs.status(run_id)
 
     def resume(self, run_id: str):
-        self.snapshot(run_id)
+        if self.snapshot(run_id).schema_version < 3:
+            raise ValueError('历史审计保留查看与导出，请新建作业使用当前审核流程')
         def persist(connection):
             connection.execute('UPDATE audit_workflow_runs SET summary_json=NULL,report_html=NULL WHERE job_id=?', (run_id,))
             connection.execute("UPDATE audit_sample_runs SET state='PENDING' WHERE job_id=? AND state!='COMPLETED'", (run_id,))
-        return self.jobs.resume_external(run_id,persist=persist)
+            pending = connection.execute("SELECT COUNT(*) FROM audit_sample_runs WHERE job_id=? AND state!='COMPLETED'",(run_id,)).fetchone()[0]
+            if pending:
+                connection.execute("UPDATE audit_report_runs SET state='PENDING',result_json=NULL,error=NULL,generation=generation+1 WHERE job_id=?",(run_id,))
+            else:
+                connection.execute("UPDATE audit_report_runs SET state='PENDING',error=NULL WHERE job_id=? AND state!='COMPLETED'",(run_id,))
+        self.jobs.resume_external(run_id,persist=persist)
+        self.jobs.update(run_id,completion_pending=True,execution_error=None)
+        return self.jobs.status(run_id)

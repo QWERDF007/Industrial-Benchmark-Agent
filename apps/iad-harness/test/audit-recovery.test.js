@@ -1,3 +1,5 @@
+import {auditMessages,auditReportTool} from './fixtures/audit-report.js';
+import {respondFixtureTools} from './fixtures/analysis-finalization.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -18,17 +20,15 @@ test('killing the audit owner after a committed image preserves its final and re
     try {
       let raw='';for await(const chunk of req)raw+=chunk;const body=JSON.parse(raw);
       if(req.url==='/tokenize'){res.end(JSON.stringify({count:1000,max_model_len:65536}));return;}
-      const parse=text=>{try{return JSON.parse((typeof text==='string'?text:text.find(part=>part.type==='text').text).split('\n')[0]);}catch{return null;}};
-      const context=body.messages.filter(message=>message.role==='user').map(message=>parse(message.content)).find(value=>value?.target);
+      const {context,outputs,pages}=auditMessages(body);
+      if(context?.phase==='report'){wire.push({sample_id:null,body});respondFixtureTools(res,[auditReportTool(context,outputs)]);return;}
       assert.equal(context.knowledge,null);assert.ok(!JSON.stringify(context).includes('首图独立观察'));
       wire.push({sample_id:context.sample_id,body});
-      const pages=body.messages.filter(message=>message.role==='tool').map(message=>parse(message.content));
       let call;
-      if(!pages.length)call={name:'audit_images',arguments:{sample_id:context.sample_id}};
-      else {
+      {
         assert.ok(pages.every(page=>!page.error));
         assert.ok(body.messages.some(message=>Array.isArray(message.content)&&message.content.some(part=>part.type==='image_url')));
-        call={name:'audit_commit',arguments:{commit_key:'final',final:{state:'normal',analysis:context.sample_id.endsWith(':0.png')?'首图独立观察。':'次图独立观察。',
+        call={name:'audit_commit',arguments:{commit_key:'final',final:{execution_status:'completed',state:'normal',consistency_review:[],analysis:context.sample_id.endsWith(':0.png')?'首图独立观察。':'次图独立观察。',
           conclusion:'当前可见范围未发现需复核项。',basis:['已实际观察本图整图及必需局部。'],
           evidence_ids:pages.map(page=>page.evidence_id),check_assessments:[],findings:[],limitations:['零知识仍保留视觉范围限制。']}}};
       }
@@ -49,7 +49,7 @@ test('killing the audit owner after a committed image preserves its final and re
   let output='';child.stdout.on('data',data=>{output+=data;});child.stderr.on('data',data=>{output+=data;});
   const committed=await new Promise((resolve,reject)=>{child.once('message',resolve);child.once('error',reject);
     child.once('exit',(code,signal)=>reject(new Error(`Audit child exited ${code}/${signal}: ${output}`)));});
-  assert.equal(committed.sample.state,'COMPLETED');assert.equal(wire.length,2);
+  assert.equal(committed.sample.state,'COMPLETED');assert.equal(wire.length,1);
   const exited=once(child,'exit');child.kill('SIGKILL');assert.deepEqual(await exited,[null,'SIGKILL']);
   runtime=await createAuditAgentHost(root,endpoint,{onError:error=>errors.push(String(error))});
   const interrupted=await runtime.bridge.execute('audit_status',{run_id:committed.run_id});
@@ -64,7 +64,7 @@ test('killing the audit owner after a committed image preserves its final and re
   const {samples}=await runtime.bridge.execute('audit_agent_samples',{run_id:committed.run_id});
   assert.equal(samples.length,2);assert.equal(new Set(samples.map(item=>item.session_id)).size,2);
   assert.deepEqual(samples.find(item=>item.sample_id===committed.sample.sample_id).result,committed.final);
-  assert.equal(wire.filter(item=>item.sample_id===committed.sample.sample_id).length,2);
+  assert.equal(wire.filter(item=>item.sample_id===committed.sample.sample_id).length,1);
   assert.equal(wire.length,4);assert.deepEqual(errors,[]);
   for(const sample of samples){
     const trace=await runtime.host.read(sample.session_id);

@@ -1,3 +1,5 @@
+import {auditMessages,auditReportTool} from './fixtures/audit-report.js';
+import {respondFixtureTools} from './fixtures/analysis-finalization.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -26,22 +28,24 @@ test('mutual candidates keep marked, omitted and insufficient judgments in two a
       let raw='';for await(const chunk of req)raw+=chunk;const body=JSON.parse(raw);
       if(req.url==='/tokenize'){res.end(JSON.stringify({count:1000,max_model_len:65536}));return;}
       wire.push(body);
-      const parse=text=>{try{return JSON.parse((typeof text==='string'?text:text.find(part=>part.type==='text').text).split('\n')[0]);}catch{return null;}};
-      const context=body.messages.filter(message=>message.role==='user').map(message=>parse(message.content)).find(value=>value?.target);
+      const {context,outputs,pages}=auditMessages(body);
+      if(context?.phase==='report'){respondFixtureTools(res,[auditReportTool(context,outputs)]);return;}
+      if(outputs.some(value=>value?.execution_status==='incomplete')){
+        res.writeHead(200,{'Content-Type':'text/event-stream'});
+        res.end('data: '+JSON.stringify({choices:[{index:0,delta:{role:'assistant',content:'必要观察未完成，已保存线索。'},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n');return;
+      }
       assert.equal(context.consistency.job_id,expectedConsistencyRun);
       assert.equal(context.knowledge,null);assert.equal(context.consistency.result.reason,'MODEL_REVIEWED');
       assert.equal(context.consistency.anchor_id,context.sample_id);
       assert.equal(context.consistency.evidence.length,1);
       assert.equal(Object.hasOwn(context.consistency,'requests'),false);
-      assert.equal(Object.hasOwn(context.consistency,'observations'),false);
+      assert.equal(Object.hasOwn(context.consistency,'observations'),true);
       assert.ok(!JSON.stringify(context).includes('audit-only'));
       const candidate=context.consistency.evidence[0].candidate_id;
       assert.notEqual(candidate,context.sample_id);
-      const pages=body.messages.filter(message=>message.role==='tool').map(message=>parse(message.content));
-      assert.ok(pages.every(page=>page&&!page.error),JSON.stringify(body.messages.filter(message=>message.role==='tool')));
+      assert.ok(pages.length>=1&&pages.every(page=>!page.error));
       let call;
-      if(!pages.length)call={name:'audit_images',arguments:{sample_id:context.sample_id}};
-      else if(pages.length===1)call={name:'audit_images',arguments:{sample_id:candidate}};
+      if(pages.length===1)call={name:'audit_images',arguments:{sample_id:candidate}};
       else {
         assert.equal(pages[0].sample_id,context.sample_id);assert.equal(pages[1].sample_id,candidate);
         const images=pages.flatMap(page=>page.images);
@@ -51,10 +55,11 @@ test('mutual candidates keep marked, omitted and insufficient judgments in two a
         assert.equal(context.target.annotations.length,marked?1:0);
         assert.equal(pages[1].images[0].model_context.annotations.length,marked?0:1);
         const ids=pages.map(page=>page.evidence_id);
-        call={name:'audit_commit',arguments:{commit_key:'final',final:{state:marked?'normal':insufficient?'insufficient':'suspect',
+        call={name:'audit_commit',arguments:{commit_key:'final',final:{execution_status:insufficient&&!marked?'incomplete':'completed',state:marked?'normal':insufficient?null:'suspect',
+          consistency_review:context.consistency.result.issues.map(issue=>({source_issue_id:issue.issue_id,assessment:marked?'unsupported':insufficient?'insufficient':'supported',reason:'已依据本图像素独立核对，不能直接采纳候选标签。',evidence_ids:ids})),
           analysis:marked?'A-audit-only：本图已标出划痕，对照无框不能推翻本图可见标注。':insufficient?'B-insufficient-audit-only：细节不足，保留无法确认的标注范围。':'B-audit-only：本图划痕未标注，对照图提供同像素位置。',
           conclusion:marked?'本图划痕已经标注。':insufficient?'当前局部细节不足以判断标注完整性。':'本图存在划痕漏标疑点。',basis:['原图与同像素候选逐图核对。'],evidence_ids:ids,
-          check_assessments:[],limitations:['对照图不是人工真值。',...(insufficient&&!marked?['当前细节无法消解标注范围的不确定性。']:[])],findings:marked||insufficient?[]:[{finding_id:'missing-scratch',description:'本图划痕没有对应标注。',
+          check_assessments:[],limitations:['对照图不是人工真值。',...(insufficient&&!marked?['当前细节无法消解标注范围的不确定性。']:[])],findings:marked||insufficient?[]:[{finding_id:'missing-scratch',type:'missing_annotation',annotation_ids:[],consistency_issue_refs:context.consistency.result.issues.map(issue=>issue.issue_id),description:'本图划痕没有对应标注。',
             location:'主体中央划痕',check_ids:[],evidence_ids:ids,normal_explanation:'需排除反光导致的外观变化。',limitations:['需要人工复核。']}]}}};
       }
       res.writeHead(200,{'Content-Type':'text/event-stream'});
@@ -101,14 +106,14 @@ for filename in (Path(sys.argv[1])/'images').glob('*.png'):
   const response=await fetch(base+'/audit/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({submission_id:randomUUID(),subset_ids:[upstream.datasetId],consistency_job_id:check.run_id})});
   assert.equal(response.status,200,await response.clone().text());const job=await response.json();await scheduler.whenIdle();
   const status=await(await fetch(base+'/audit/status/'+job.run_id)).json();assert.equal(status.status,'COMPLETED',JSON.stringify(status));
-  const page=await(await fetch(base+'/audit/jobs/'+job.run_id+'/samples')).json();assert.deepEqual(page.distribution,{suspect:1,insufficient:0,normal:1,unprocessed:0});
+  const page=await(await fetch(base+'/audit/jobs/'+job.run_id+'/samples')).json();assert.deepEqual(page.distribution,{suspect:1,normal:1,incomplete:0});
   for(const item of page.items){
     const detail=await(await fetch(base+'/audit/jobs/'+job.run_id+'/samples/'+encodeURIComponent(item.sample_id))).json();
     assert.equal(detail.final.state,item.sample_id.endsWith(':A.png')?'normal':'suspect');
     assert.equal(detail.consistency.job_id,check.run_id);
     assert.equal(new Set(detail.evidence.map(item=>item.sample_id)).size,2);
   }
-  assert.equal(wire.length,6);assert.deepEqual(errors,[]);
+  assert.equal(wire.length,7);assert.deepEqual(errors,[]);
   const html=await(await fetch(base+'/audit/jobs/'+job.run_id+'/export')).text();assert.ok(html.includes('划痕漏标疑点'));
   const firstReport=await(await fetch(base+'/audit/jobs/'+job.run_id+'/report')).json();
   insufficient=true;expectedConsistencyRun=laterCheck.run_id;
@@ -116,23 +121,23 @@ for filename in (Path(sys.argv[1])/'images').glob('*.png'):
     submission_id:randomUUID(),subset_ids:[upstream.datasetId],consistency_job_id:laterCheck.run_id})});
   assert.equal(secondResponse.status,200,await secondResponse.clone().text());const second=await secondResponse.json();await scheduler.whenIdle();
   const secondStatus=await(await fetch(base+'/audit/status/'+second.run_id)).json();
-  assert.equal(secondStatus.status,'COMPLETED');assert.equal(secondStatus.completed,2);assert.equal(secondStatus.failed,0);
+  assert.equal(secondStatus.status,'PARTIAL');assert.equal(secondStatus.completed,1);assert.equal(secondStatus.failed,1);
   const secondPage=await(await fetch(base+'/audit/jobs/'+second.run_id+'/samples')).json();
-  assert.deepEqual(secondPage.distribution,{suspect:0,insufficient:1,normal:1,unprocessed:0});
+  assert.deepEqual(secondPage.distribution,{suspect:0,normal:1,incomplete:1});
   const secondReport=await(await fetch(base+'/audit/jobs/'+second.run_id+'/report')).json();
-  assert.equal(secondReport.audited_samples,2);assert.equal(secondReport.insufficient_samples,1);assert.equal(secondReport.suspect_samples,0);
+  assert.equal(secondReport.audited_samples,1);assert.equal(secondReport.insufficient_samples,1);assert.equal(secondReport.suspect_samples,0);
   const secondHtml=await(await fetch(base+'/audit/jobs/'+second.run_id+'/export')).text();
   assert.ok(secondHtml.includes('当前局部细节不足以判断标注完整性。'));
   assert.ok(secondHtml.includes('当前细节无法消解标注范围的不确定性。'));
   assert.ok(!secondHtml.includes('划痕漏标疑点'));assert.notEqual(secondHtml,html);
   const expected=new Map([[job.run_id,check.run_id],[second.run_id,laterCheck.run_id]]),sessions=new Set();
   for(const body of wire){
-    const context=body.messages.filter(message=>message.role==='user').map(message=>{
-      try{return JSON.parse((typeof message.content==='string'?message.content:message.content.find(part=>part.type==='text').text).split('\n')[0]);}catch{return null;}
-    }).find(value=>value?.target);
-    assert.equal(context.consistency.job_id,expected.get(context.job_id));sessions.add(context.session_id);
+    const {context}=auditMessages(body);
+    sessions.add(context.session_id);
+    if(context.phase==='report')continue;
+    assert.equal(context.consistency.job_id,expected.get(context.job_id));
   }
-  assert.equal(sessions.size,4);
+  assert.equal(sessions.size,6);
   for(const [runId,report,reportHtml] of [[job.run_id,firstReport,html],[second.run_id,secondReport,secondHtml]]){
     const {samples}=await bridge.execute('audit_agent_samples',{run_id:runId});
     for(const sample of samples)assert.equal((await bridge.execute('audit_agent_context',{run_id:runId,sample_id:sample.sample_id})).consistency.job_id,expected.get(runId));
@@ -143,5 +148,5 @@ for filename in (Path(sys.argv[1])/'images').glob('*.png'):
   }
   assert.equal(await(await fetch(base+'/audit/jobs/'+job.run_id+'/export')).text(),html);
   assert.deepEqual(await(await fetch(base+'/audit/jobs/'+job.run_id+'/report')).json(),firstReport);
-  assert.equal(wire.length,12);assert.deepEqual(errors,[]);assert.deepEqual(upstream.errors,[]);
+  assert.equal(wire.length,14);assert.deepEqual(errors,[]);assert.deepEqual(upstream.errors,[]);
 });

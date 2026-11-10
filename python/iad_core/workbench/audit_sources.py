@@ -1,3 +1,4 @@
+import json
 from typing import Literal
 
 from iad_core.advisory.analysis import AnalysisModel
@@ -48,6 +49,8 @@ class AuditSources:
         jobs = {job.run_id: job for dataset_id in sorted(set(dataset_ids))
             for job in families.list(dataset_id, self.JOB_TYPES)}
         knowledge, consistency = [], []
+        with self.db.connection() as connection:
+            required = {row[0] for row in connection.execute('SELECT sample_id FROM samples WHERE dataset_id IN (SELECT value FROM json_each(?))',(json.dumps(dataset_ids),))}
         queries = AnalysisQueries(self.db)
         native_versions = {version.version_id:version for dataset_id in dataset_ids for version in queries.versions(dataset_id,'knowledge')}
         for job in sorted(jobs.values(), key=lambda job: job.submitted_at, reverse=True):
@@ -69,6 +72,10 @@ class AuditSources:
             elif job.status != 'COMPLETED':
                 continue
             elif job.analysis_kind == 'consistency' and request.get('consistency_check') and set(dataset_ids) <= set(job.dataset_ids):
+                with self.db.connection() as connection:
+                    covered = {row[0] for row in connection.execute("SELECT anchor_id FROM consistency_anchor_runs WHERE job_id=? AND state='COMPLETED'",(job.run_id,))}
+                if not required <= covered:
+                    continue
                 count = ConsistencyAgentResults(self.db).report(job.run_id).original_conflicts
                 consistency.append(AuditConsistencySource(**metadata,dataset_ids=job.dataset_ids,conflict_count=count))
         return AuditSourceCatalog(knowledge_jobs=knowledge, consistency_jobs=consistency)

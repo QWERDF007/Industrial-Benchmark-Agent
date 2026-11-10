@@ -109,10 +109,6 @@ export const auditStyles = `#audit-page { --audit-ink:#172338; --audit-border:#d
 #audit-page .audit-analysis-sections>section:last-child{border:0;margin-bottom:0;padding-bottom:0}
 #audit-page .audit-analysis-sections h3{font-weight:700;font-size:15px;margin:0 0 12px}
 #audit-page .audit-analysis-sections p{font-size:13px;line-height:1.85;white-space:pre-wrap;overflow-wrap:anywhere}
-#audit-page .audit-analysis-sections .iad-image-pair{gap:18px;align-items:start;margin:0}
-#audit-page .audit-evidence-item{min-width:0;border:1px solid var(--audit-border);background:var(--iad-surface);border-radius:var(--iad-radius);padding:11px;position:relative}
-#audit-page .audit-evidence-item h4{margin:0 0 10px;font-size:14px;font-weight:700}
-@media(max-width:750px){#audit-page .audit-analysis-sections .iad-image-pair{grid-template-columns:1fr}}
 #audit-page .audit-dialog-foot{border-top:1px solid var(--audit-border);min-height:58px;display:flex;align-items:center;justify-content:flex-end;gap:9px;padding:10px 24px}
 #audit-page .audit-lightbox{position:fixed;inset:0;z-index:350;background:#111b2fe8;display:flex;align-items:center;justify-content:center;padding:60px 75px}
 #audit-page .audit-lightbox[hidden]{display:none!important}

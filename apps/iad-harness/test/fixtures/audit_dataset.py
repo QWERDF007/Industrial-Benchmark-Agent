@@ -25,6 +25,9 @@ images = root / 'images'
 images.mkdir()
 for index in range(2):
     Image.new('RGB', (40,30), 'blue' if index == 0 else 'gray').save(images / (str(index) + '.png'))
+    (images / (str(index) + '.json')).write_text(json.dumps(dict(imagePath=str(index)+'.png',imageWidth=40,imageHeight=30,
+        shapes=[dict(label='scratch',shape_type='rectangle',points=[[4,3],[11,12]]),
+            dict(label='dent',shape_type='rectangle',points=[[20,10],[35,25]])])))
 db = Database(sys.argv[2])
 config = DatasetRegistry(db).import_labelme(DatasetImport(format='labelme', name='真实原图审计',
     image_dir=str(images), annotation_dir=str(images)))
@@ -32,10 +35,18 @@ runtime = WorkbenchRuntime(db)
 try:
     checks = ConsistencyAgentJobs(runtime)
     upstream = checks.start({'submission_id':str(uuid4()), 'dataset_ids':[config.dataset.id], 'mode':'exact'})
-    for anchor in checks.anchors(upstream['run_id']):
+    anchors = checks.anchors(upstream['run_id'])
+    for index, anchor in enumerate(anchors):
         checks.session_created(upstream['run_id'],anchor.anchor_id)
         checks.retrieve(upstream['run_id'],anchor.anchor_id)
-        checks.submit_empty(upstream['run_id'],anchor.anchor_id)
+        if index == 0:
+            checks.fail(upstream['run_id'],anchor.anchor_id,'视觉服务临时不可用')
+        else:
+            checks.submit_empty(upstream['run_id'],anchor.anchor_id)
+    runtime.jobs.finish_external(upstream['run_id'])
+    checks.resume(upstream['run_id'])
+    checks.retrieve(upstream['run_id'],anchors[0].anchor_id)
+    checks.submit_empty(upstream['run_id'],anchors[0].anchor_id,attempt=2)
     runtime.jobs.finish_external(upstream['run_id'])
     settings = ModuleSettings(db)
     model = {'provider_id':'fixture','model_id':'native-audit'}

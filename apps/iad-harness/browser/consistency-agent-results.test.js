@@ -95,9 +95,9 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     phase = 'six category tabs';
     const tabs = () => driver.findElements(By.css('[data-dc="raw-tab"]'));
     assert.deepEqual(await Promise.all((await tabs()).map(tab => tab.findElement(By.css('span:first-child')).then(label => label.getText()))),
-      ['全部图像', '全部冲突', '类别不一致', '多标', '少标', '位置差异', '拆分', '合并']);
+      ['全部图像', '全部冲突', '类别不一致', '多标', '少标', '位置差异', '拆分', '合并', '无候选', '无有效候选']);
     assert.deepEqual(await Promise.all((await tabs()).map(tab => tab.findElement(By.css('.iad-tab-count')).then(count => count.getText()))),
-      ['3', '2', '0', '1', '1', '0', '0', '0']);
+      ['3', '2', '0', '1', '1', '0', '0', '0', '0', '1']);
     phase = 'tab scroll position';
     await driver.manage().window().setRect({width:1440,height:600});
     const beforeTabScroll=await driver.executeScript('const tab=document.querySelector("[data-dc=raw-tab]"),panel=tab.closest(".iad-workbench");panel.scrollTop+=tab.getBoundingClientRect().top-panel.getBoundingClientRect().top;return panel.scrollTop');
@@ -116,6 +116,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     assert.deepEqual(await Promise.all((await driver.findElements(By.css(`[data-dc="job-image"][data-id="${datasetId}:C.png"] .iad-thumbnail-values span`))).map(item=>item.getText())),['无有效候选','']);
     await (await element(`[data-dc="job-image"][data-id="${datasetId}:A.png"]`)).click();
     await element('#dc-compare-mask');
+    assert.deepEqual(await driver.executeScript('return [...document.querySelectorAll("#dc-compare-mask .dc-compare-photo")].map(e=>Math.round(e.getBoundingClientRect().height))'),[450,450]);
     await driver.wait(async()=>(await driver.findElements(By.css('[data-dc="candidate"]'))).length===2,5000);
     assert.equal(await (await element('.dc-fact-panel .dc-verdict-value')).getText(),'多标');
     await (await element('.dc-dialog-head [aria-label="关闭"]')).click();

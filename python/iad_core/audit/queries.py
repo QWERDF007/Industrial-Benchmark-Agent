@@ -16,7 +16,7 @@ class AuditQueries:
     def projection(self, run_id: str) -> list[AuditSampleItem]:
         snapshot = self.state.snapshot(run_id)
         with self.db.connection() as connection:
-            rows = connection.execute('''SELECT a.sample_id,
+            rows = connection.execute('''SELECT a.sample_id,a.state execution_status,
                 COALESCE(json_extract(a.result_json,'$.state'),'unprocessed') audit_state,
                 COALESCE(json_array_length(a.result_json,'$.findings'),0)>0 has_findings,
                 COALESCE(json_extract(a.result_json,'$.state')='insufficient',0) insufficient_evidence,
@@ -27,6 +27,8 @@ class AuditQueries:
                 FROM audit_sample_runs a LEFT JOIN audit_sample_media m ON m.job_id=a.job_id AND m.target_id=a.sample_id
                     AND m.media_key='sample:'||a.sample_id WHERE a.job_id=? ORDER BY a.ordinal''', (run_id,)).fetchall()
         records = {record.sample.sample_id:record for record in snapshot.manifest.records}
+        if snapshot.schema_version >= 3:
+            rows = [{**dict(row),'audit_state':row['audit_state'] if row['execution_status']=='COMPLETED' else 'incomplete'} for row in rows]
         return [AuditSampleItem(run_id=run_id, dataset_id=record.sample.dataset_id,
             filename=record.sample.relative_path, width=record.sample.width, height=record.sample.height,
             **dict(row))
@@ -37,9 +39,21 @@ class AuditQueries:
         counts = Counter(item.audit_state for item in items)
         selected = [item for item in items if (query.status == 'all' or item.audit_state == query.status)
             and query.search.casefold() in item.filename.casefold()]
+        if query.group_id:
+            from iad_core.audit.reports import AuditReports
+            group = next((group for group in AuditReports(self.db).session(query.run_id).groups if group.group_id==query.group_id),None)
+            ids = {ref.sample_id for ref in group.issue_refs} if group else set()
+            selected = [item for item in selected if item.sample_id in ids]
+        if query.issue_type or query.consistency_assessment or query.knowledge_id:
+            from iad_core.audit.reports import AuditReports
+            from iad_core.audit.report_models import AuditRecordQuery
+            ids = {sample.sample_id for sample in AuditReports(self.db).matching(query.run_id,AuditRecordQuery(
+                issue_type=query.issue_type,consistency_assessment=query.consistency_assessment,knowledge_id=query.knowledge_id))}
+            selected = [item for item in selected if item.sample_id in ids]
+        states = ('suspect','normal','incomplete') if self.state.snapshot(query.run_id).schema_version>=3 else ('suspect','insufficient','normal','unprocessed')
         start = (query.page - 1) * query.page_size
         return AuditSamplePage(run_id=query.run_id, total=len(selected), page=query.page, page_size=query.page_size,
-            distribution={state: counts[state] for state in ('suspect','insufficient','normal','unprocessed')},
+            distribution={state: counts[state] for state in states},
             items=selected[start:start + query.page_size])
 
     def sample(self, run_id: str, sample_id: str) -> NativeAuditSampleDetail:
@@ -52,10 +66,16 @@ class AuditQueries:
         visuals = {}
         for row in rows:
             media = PreparedRegistration.model_validate_json(row['media_json'])
-            source = None if row['media_key'].startswith('reference:') else self.state.record(run_id,sample_id,media.sample_id)
+            if row['media_key'].startswith('reference:'):
+                from iad_core.analysis.queries import AnalysisQueries
+                source = AnalysisQueries(self.db).sample_evidence(context.knowledge.selection.version_id,media.sample_id).registration if context.knowledge else None
+            else:
+                source = self.state.record(run_id,sample_id,media.sample_id)
             for image in media.images:
                 visuals[image.image.evidence_id] = AuditMediaView(sample_id=image.sample_id, image=image.image, source=source)
-        return NativeAuditSampleDetail(sample=item, final=sample.result, knowledge=context.knowledge,
+        from iad_core.audit.presentation import AuditNarrative
+        final = AuditNarrative(self.state,run_id).project(sample.result) if sample.result else None
+        return NativeAuditSampleDetail(sample=item, final=final, knowledge=context.knowledge,
             consistency=sample.consistency, evidence=list(visuals.values()),
             errors=[error.message for error in job.errors if error.sample_id == sample_id])
 
@@ -66,12 +86,37 @@ class AuditQueries:
         return {'path': EvidenceImages(self.db.db_path).path(image), 'media_type': image.media_type}
 
     def report(self, run_id: str) -> AuditRunReport:
+        from iad_core.audit.presentation import AuditPresentation
+        return AuditPresentation(self).report(run_id)
+
+    def report_data(self, run_id: str) -> AuditRunReport:
         with self.db.connection() as connection:
             row = connection.execute('SELECT summary_json FROM audit_workflow_runs WHERE job_id=?', (run_id,)).fetchone()
         if row and row[0]:
             return AuditRunReport.model_validate_json(row[0])
         job = JobFamilies(self.db).snapshot(run_id, ('MODEL_AUDIT',))
         items = self.projection(run_id)
+        snapshot = self.state.snapshot(run_id)
+        if snapshot.schema_version >= 3:
+            from iad_core.audit.reports import AuditReports
+            reports = AuditReports(self.db)
+            statistics, session = reports.statistics(run_id), reports.session(run_id)
+            final = session.result
+            representatives = {item.sample_id for group in session.groups for item in group.representatives}
+            return AuditRunReport(run_id=run_id,dataset_id=job.dataset_id,status=job.status,total_samples=statistics.total_images,
+                audited_samples=statistics.completed_images,coverage_percent=round(100*statistics.completion_rate,2) if statistics.completion_rate is not None else None,
+                suspect_samples=statistics.suspect_images,insufficient_samples=statistics.incomplete_images,
+                consistency_pending_samples=sum(item.consistency_pending for item in items),
+                distribution={'suspect':statistics.suspect_images,'normal':statistics.normal_images,'incomplete':statistics.incomplete_images},
+                knowledge_version_id=job.knowledge_version_id,model_name=job.model_name,submitted_at=job.submitted_at,
+                finished_at=job.finished_at,generated_at=datetime.now().astimezone().isoformat(),
+                analysis=final.issue_analysis if final else '',conclusion=final.conclusion if final else '',
+                limitations=final.limitations if final else [session.error] if session.error else [],
+                key_evidence=[item for item in items if item.sample_id in representatives],statistics=statistics,export_ready=False,
+                groups=session.groups,
+                consistency_job_id=snapshot.consistency_job_id,report_state=session.state,report_session_id=session.session_id if session.session_created else None,
+                scope_analysis=final.scope_analysis if final else '',consistency_analysis=final.consistency_analysis if final else '',
+                knowledge_analysis=final.knowledge_analysis if final else '',boundary_analysis=final.boundary_analysis if final else '')
         counts = Counter(item.audit_state for item in items)
         audited = len(items) - counts['unprocessed']
         return AuditRunReport(run_id=run_id, dataset_id=job.dataset_id, status=job.status, total_samples=len(items),
@@ -92,4 +137,5 @@ class AuditQueries:
             row = connection.execute('SELECT report_html FROM audit_workflow_runs WHERE job_id=?', (run_id,)).fetchone()
         if row is None or row[0] is None:
             raise ValueError('本作业报告尚未生成')
-        return {'filename':f'audit-{run_id}.html', 'html':row[0]}
+        from iad_core.workbench.audit_html import AuditHtmlReport
+        return AuditHtmlReport(self).render(run_id)

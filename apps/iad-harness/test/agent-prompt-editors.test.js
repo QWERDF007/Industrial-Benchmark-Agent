@@ -91,7 +91,7 @@ for module in ['exploration','knowledge','consistency']:
     const system=await element('textarea[aria-label="系统提示词"]'),user=await element('textarea[aria-label="用户提示词"]');
     const dimensions=await driver.executeScript('return [...document.querySelectorAll("textarea[aria-label$=提示词],#dc-identity-gate_examples")].map(input=>({label:input.getAttribute("aria-label"),height:input.getBoundingClientRect().height,resize:getComputedStyle(input).resize}))');
     assert.ok(dimensions.length>=2);
-    for(const dimension of dimensions){assert.equal(dimension.height,400,module+': '+dimension.label);assert.equal(dimension.resize,'none');}
+    for(const dimension of dimensions){assert.equal(dimension.height,300,module+': '+dimension.label);assert.equal(dimension.resize,'none');}
     assert.ok((await system.getAttribute('value')).trim());assert.ok((await user.getAttribute('value')).trim());
     assert.doesNotMatch(await system.getAttribute('value'),
       /\b(?:analysis_\w+|anchor_\w+|audit_\w+|exploration_commit|knowledge_commit|offset|limit|commit_key|base_revision|round_id)\b|JSON/,
@@ -115,7 +115,8 @@ for module in ['exploration','knowledge','consistency']:
       await input.click();await driver.actions().keyDown(Key.CONTROL).sendKeys('a').keyUp(Key.CONTROL).perform();await input.sendKeys(text,Key.TAB);
     }
     if(module==='exploration'){
-      await click('button[aria-label="继续添加良品图像"]');await click('.iad-thumbnail-option input');
+      await(await driver.findElement(By.xpath('//button[@role="tab" and starts-with(normalize-space(.),"异常样例")]'))).click();
+      await click('button[aria-label="继续添加异常图像"]');await click('.iad-thumbnail-option input');
       await(await driver.findElement(By.xpath('//button[normalize-space(.)="完成选择"]'))).click();
     } else if(module==='knowledge')await click('#general-directions input[type="checkbox"]');
     else if(module==='audit')await click(`input[aria-label="选择一致性作业 ${data.consistency_job_id}"]`);

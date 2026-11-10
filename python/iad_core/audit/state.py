@@ -1,7 +1,7 @@
 import json
 from pathlib import PurePosixPath
 
-from iad_core.audit.models import AuditAgentContext, AuditConsistencyContext, AuditSampleRun, AuditWorkflowSnapshot
+from iad_core.audit.models import AuditAgentContext, AuditConsistencyContext, AuditSampleRun, AuditWorkflowSnapshot, AuditFinal
 from iad_core.consistency.repository import ConsistencyRepository
 from iad_core.evidence.sources import SampleContent
 from iad_core.workbench.analysis_manifest import AnalysisRegistration
@@ -48,13 +48,13 @@ class AuditState:
         return AuditAgentContext(job_id=run_id, sample_id=sample_id, session_id=sample.session_id,
             target=next(record for record in snapshot.manifest.records if record.sample.sample_id == sample_id),
             consistency=AuditConsistencyContext(**sample.consistency.model_dump(include=set(AuditConsistencyContext.model_fields))),
-            knowledge=snapshot.knowledge)
+            knowledge=snapshot.knowledge,saved_progress=sample.result if isinstance(sample.result,AuditFinal) and sample.result.execution_status!='completed' else None)
 
     def record(self, run_id: str, target_id: str, sample_id: str) -> AnalysisRegistration:
         sample = self.sample(run_id, target_id)
         if sample_id == target_id:
             return next(record for record in self.snapshot(run_id).manifest.records if record.sample.sample_id == sample_id)
-        references = [ref for ref in sample.consistency.evidence if ref.candidate_id == sample_id]
+        references = [ref for ref in [*sample.consistency.evidence,*sample.consistency.captured_evidence] if ref.candidate_id == sample_id]
         if not references:
             raise ValueError('图像不属于本场主图或已选一致性anchor的候选')
         saved = ConsistencyRepository(self.db).get(references[0].evidence_id)
@@ -66,6 +66,12 @@ class AuditState:
             source_fingerprint=SampleContent.describe(source.sample, source.annotations.annotations, source.source_sha256).fingerprint)
 
     def session_location(self, session_id: str) -> ImageSessionLocation:
+        with self.db.connection() as connection:
+            report = connection.execute('SELECT job_id FROM audit_report_runs WHERE session_id=?', (session_id,)).fetchone()
+        if report:
+            with self.db.connection() as connection:
+                row = connection.execute("SELECT json_extract(payload_json,'$.submitted_at') FROM job_runs WHERE job_id=?", (report[0],)).fetchone()
+            return ImageSessionLocation(job_id=report[0],submitted_at=row[0],image_name='report',image_id='report')
         with self.db.connection() as connection:
             row = connection.execute('''SELECT a.job_id,a.sample_id,json_extract(j.payload_json,'$.submitted_at') submitted_at
                 FROM audit_sample_runs a JOIN job_runs j ON j.job_id=a.job_id WHERE a.session_id=?''', (session_id,)).fetchone()

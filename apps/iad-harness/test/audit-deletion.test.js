@@ -1,0 +1,45 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import http from 'node:http';
+import {execFileSync} from 'node:child_process';
+import {randomUUID} from 'node:crypto';
+import {findWorkspaceRoot,resolvePythonPath} from '../lib/server/python-bridge/index.js';
+import {createIadHttpHandler} from '../lib/server/routes/index.js';
+import {NativeProviders} from '../lib/server/models/providers.js';
+import {createAuditAgentHost} from './fixtures/audit-agent-host.js';
+
+test('audit deletion rejects active jobs and hides a stopped job while preserving other jobs and frozen records',{timeout:60000},async t=>{
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-audit-deletion-'));
+  const workspace=findWorkspaceRoot(),database=path.join(root,'audit.db'),endpoint='http://127.0.0.1:9/v1';
+  const data=JSON.parse(execFileSync(resolvePythonPath(),[path.join(workspace,'apps/iad-harness/test/fixtures/audit_dataset.py'),root,database,'none',endpoint],
+    {cwd:workspace,env:{...process.env,PYTHONPATH:path.join(workspace,'python')},encoding:'utf8'}));
+  const runtime=await createAuditAgentHost(root,endpoint);
+  const handler=createIadHttpHandler(runtime.bridge),server=http.createServer((req,res)=>void handler(req,res));
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  t.after(async()=>{await runtime.dispose();await new Promise(resolve=>server.close(resolve));await fs.rm(root,{recursive:true,force:true});});
+  const base=`http://127.0.0.1:${server.address().port}/api/iad`;
+  const configuration=await runtime.bridge.execute('audit_agent_configuration');
+  const agent=await new NativeProviders(()=>runtime.ctx).freeze(configuration.settings.model,configuration.settings.agent_limits,'agent',configuration.settings.reasoning_effort);
+  const start=()=>runtime.bridge.execute('audit_agent_start',{configuration,agent,request:{submission_id:randomUUID(),subset_ids:[data.dataset_id],consistency_job_id:data.consistency_job_id}});
+  const job=await start();
+  const remove=runId=>fetch(base+'/audit/delete/'+runId,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+  const rejected=await remove(job.run_id);
+  assert.equal(rejected.status,422);
+  assert.match((await rejected.json()).error.message,/先取消作业/);
+  await runtime.bridge.execute('audit_agent_cancel',{run_id:job.run_id});
+  const other=await start();
+  const frozen=await runtime.bridge.execute('audit_agent_snapshot',{run_id:job.run_id});
+  const samples=await runtime.bridge.execute('audit_agent_samples',{run_id:job.run_id});
+  const deleted=await remove(job.run_id);
+  assert.equal(deleted.status,200);
+  assert.deepEqual(await deleted.json(),{deleted_run_id:job.run_id});
+  const list=await(await fetch(base+'/audit/jobs?dataset_id='+data.dataset_id)).json();
+  assert.deepEqual(list.jobs.map(item=>item.run_id),[other.run_id]);
+  assert.deepEqual(await runtime.bridge.execute('audit_agent_snapshot',{run_id:job.run_id}),frozen);
+  assert.deepEqual(await runtime.bridge.execute('audit_agent_samples',{run_id:job.run_id}),samples);
+  assert.equal((await(await fetch(base+'/audit/status/'+other.run_id)).json()).status,other.status);
+  await runtime.bridge.execute('audit_agent_cancel',{run_id:other.run_id});
+});

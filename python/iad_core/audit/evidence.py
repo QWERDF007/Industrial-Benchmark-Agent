@@ -17,8 +17,7 @@ class AuditEvidence:
         if row:
             return PreparedRegistration.model_validate_json(row[0])
         record = self.jobs.record(run_id,target_id,sample_id)
-        snapshot = self.jobs.snapshot(run_id)
-        media = self.images.prepare(record, snapshot.settings.whole_image_max_side)
+        media = self.images.prepare(record, None, raw_annotations=True)
         with self.db.connection() as connection:
             connection.execute('INSERT INTO audit_sample_media(job_id,target_id,media_key,sample_id,media_json) VALUES(?,?,?,?,?)',
                 (run_id, target_id, 'sample:'+sample_id, sample_id, media.model_dump_json()))
@@ -40,7 +39,7 @@ class AuditEvidence:
         record = source.registration
         images = []
         for view in source.items:
-            if not view.observed:
+            if not view.observed or not view.image.is_whole_image or view.image.representation != 'raw':
                 continue
             path = EvidenceImages(self.db.db_path).path(view.image)
             prepared = PreparedImage(view.image, path).with_source(record.sample, record.dataset_format, record.annotations)
@@ -59,13 +58,23 @@ class AuditEvidence:
         prepared = self.prepare(run_id,target_id,query.sample_id)
         if prepared.error:
             raise ValueError(prepared.error)
-        media=self.images.crop(record,query.bbox)
+        whole=next(item for item in prepared.images if item.image.is_whole_image)
+        record=record.model_copy(update={'sample':record.sample.model_copy(update={'image_path':whole.path}), 'source_fingerprint':None})
+        media=self.images.crop(record,query.bbox,single_window=True)
         with self.db.connection() as connection:
             connection.executemany('''INSERT INTO audit_sample_media(job_id,target_id,media_key,sample_id,media_json)
                 VALUES(?,?,?,?,?) ON CONFLICT(job_id,target_id,media_key) DO NOTHING''',
                 [(run_id,target_id,'crop:'+item.image.evidence_id,query.sample_id,
                     PreparedRegistration(sample_id=query.sample_id,images=[item]).model_dump_json()) for item in media.images])
         return prepared.page(query.offset, query.limit, images=media.images)
+
+    def observed(self, run_id: str, target_id: str) -> set[str]:
+        with self.db.connection() as connection:
+            return {row[0] for row in connection.execute("""SELECT d.evidence_id FROM audit_media_deliveries d
+                JOIN model_calls c ON c.call_id=d.call_id WHERE d.job_id=? AND d.target_id=?
+                AND json_extract(c.summary_json,'$.finished_at') IS NOT NULL
+                AND json_extract(c.summary_json,'$.finish_reason') NOT IN ('error','aborted')
+                AND json_extract(c.summary_json,'$.error') IS NULL""", (run_id,target_id))}
 
     def delivered(self, run_id: str, target_id: str, call_id: str, evidence_ids: list[str]):
         sample = self.jobs.sample(run_id, target_id)

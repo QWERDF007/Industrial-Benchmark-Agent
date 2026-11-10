@@ -1,24 +1,23 @@
+import {auditAssessmentLabels,auditIssueLabels} from '../../shared/audit.generated.js';
 import {Button} from './Button.js';
 import {ThumbnailCard} from './ThumbnailCard.js';
+import {AnnotatedImageStage} from './AnnotatedImageStage.js';
 import {IconButton} from './IconButton.js';
 import React, {useMemo, useState} from 'react';
 import type {AuditSampleItem, NativeAuditSampleDetail} from '../../shared/domain.generated.js';
 import {useResource} from '../useResource.js';
 import {nativeAuditEvidenceUrl} from '../api.js';
-import {useWorkspace} from '../workspace.js';
 import {Modal} from './Modal.js';
 import {ImageViewer, type ImageSource} from './ImageViewer.js';
 import {datasetImageAnnotations} from '../dataset-image-annotations.js';
 import {auditSampleImage} from './AuditSampleMedia.js';
 
 export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampleItem; taskId: string; onClose(): void}) {
-  const {workspace}=useWorkspace();
   const resource = useResource<NativeAuditSampleDetail>(`/audit/jobs/${encodeURIComponent(sample.run_id)}/samples/${encodeURIComponent(sample.sample_id)}`);
   const [lightbox, setLightbox] = useState<ImageSource | null>(null);
-  const [comparisonIndex, setComparisonIndex] = useState(0);
   const detail = resource.data;
   const pictures = useMemo(() => {
-    return [...(detail?.evidence||[])].sort((left,right)=>Number(right.sample_id===sample.sample_id&&right.image.role==='overview')-Number(left.sample_id===sample.sample_id&&left.image.role==='overview')).map(item=>{
+    return [...(detail?.evidence||[]).filter(item=>item.image.role==='overview'&&item.image.representation==='raw')].sort((left,right)=>Number(right.sample_id===sample.sample_id)-Number(left.sample_id===sample.sample_id)).map(item=>{
       const record=item.source,image=item.image;
       const filename=record?.sample.relative_path||item.sample_id.slice(item.sample_id.indexOf(':')+1);
       const view:ImageSource={src:nativeAuditEvidenceUrl(sample.run_id,sample.sample_id,image),title:filename,
@@ -29,45 +28,47 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
   }, [detail, sample.run_id, sample.sample_id]);
   const mainImage = pictures[0]?.view || {src:auditSampleImage(sample, taskId),
     title:sample.filename, width:sample.width, height:sample.height};
-  const comparison = pictures[comparisonIndex + 1];
   return <><Modal title="图像审计详情" className="audit-dialog" header={false} onClose={onClose}>
     <header className="audit-dialog-head"><h2>图像审计详情</h2><IconButton icon="close" label="关闭图像审计详情" onClick={onClose} /></header>
     <div className="audit-dialog-body audit-analysis-sections">
       {resource.loading && <p role="status">正在读取审计结果…</p>}
       {resource.error && <p role="alert">{resource.error}</p>}
-      <section data-audit-section="analysis"><h3>综合分析</h3>
-        <p>{detail?.final?.analysis || '暂无综合分析。'}</p></section>
-      <section data-audit-section="conclusion"><h3>结论</h3>
-        <p>{detail?.final?.conclusion || '暂无审计结论。'}</p>
+      <div className="dc-compare" data-audit-section="images" style={{gridTemplateColumns:'minmax(0,1fr)'}}>
+        <div className="dc-compare-cell">
+          <div className="dc-compare-photo" role="button" tabIndex={0} aria-label="放大主图" title={mainImage.title}
+            onClick={()=>setLightbox(mainImage)} onKeyDown={event=>{
+              if(event.key==='Enter'||event.key===' '){event.preventDefault();setLightbox(mainImage);}
+            }}>
+            <AnnotatedImageStage src={mainImage.src} alt="主图" width={mainImage.width} height={mainImage.height}
+              annotationLayer={'annotationLayer' in mainImage?mainImage.annotationLayer:undefined} qualityLabel={'qualityLabel' in mainImage?mainImage.qualityLabel:undefined}/>
+          </div>
+        </div>
+      </div>
+      <section className="dc-images-panel" data-audit-section="references" aria-label="参考图">
+        <h3>参考图</h3>
+        <div className="iad-thumbnail-grid" aria-label="参考图像证据">
+          {pictures.slice(1).map((picture,index)=><ThumbnailCard key={picture.evidence.evidence_id} image={picture.view}
+            label={`参考证据 ${index+1}`} title={picture.filename} aria-label={`放大参考证据 ${index+1}`}
+            onClick={()=>setLightbox(picture.view)}/>)}
+        </div>
+      </section>
+      <section className="dc-fact-panel" data-audit-section="conclusion"><h3>判定结论</h3>
+        <p>{detail?.final?.conclusion || ''}</p>
         {!!detail?.errors.length && <p>{detail.errors.join('；')}</p>}
       </section>
-      <section data-audit-section="basis"><h3>判断依据</h3>
-        {detail?.final?detail.final.basis.map((basis,index)=><p key={index}>{basis}</p>): <p>暂无判断依据。</p>}
+      <section className="dc-analysis-panel" data-audit-section="analysis"><h3>模型分析</h3>
+        <p>{detail?.final?.analysis || ''}</p>
+        {detail?.final?detail.final.basis.map((basis,index)=><p key={index}>{basis}</p>): null}
         {!!detail?.final?.findings.length&&<ol>{detail.final.findings.map(finding=><li key={finding.finding_id} data-finding-id={finding.finding_id}>
-          <p>{finding.location}：{finding.description}</p><p>{finding.normal_explanation}</p>
+          <p>{'type' in finding?auditIssueLabels[finding.type]+'：':''}{finding.location}：{finding.description}</p><p>{finding.normal_explanation}</p>
           {!!finding.limitations.length&&<p>{finding.limitations.join('；')}</p>}
         </li>)}</ol>}
-        {detail?.final?.check_assessments.map(check=><p key={check.check_id}>{check.check_id}：{check.description}</p>)}
+        {detail?.final&&'consistency_review' in detail.final&&detail.final.consistency_review.map(review=><p key={review.source_issue_id}>{auditAssessmentLabels[review.assessment]}：{review.reason}</p>)}
+        {detail?.final?.check_assessments.map(check=><p key={check.check_id}>{detail.knowledge?.entries.find(item=>item.check.check_id===check.check_id)?.check.title||'知识条目'}：{check.description}</p>)}
+        {detail?.final&&'observations' in detail.final&&detail.final.observations.map((item,index)=><p key={index}>观察：{item.description}</p>)}
         {!!detail?.final?.limitations.length&&<p>{detail.final.limitations.join('；')}</p>}
-        {detail&&<><details><summary>本图一致性结果</summary><p>{detail.consistency.conclusion}</p>
-          {detail.consistency.result?.reason==='MODEL_REVIEWED'&&<><p>{detail.consistency.result.overall.text}</p>
-            {detail.consistency.result.conclusions.map((item,index)=><p key={index}>{item.text}</p>)}
-            {!!detail.consistency.result.limitations.length&&<p>{detail.consistency.result.limitations.join('；')}</p>}</>}
-          <a href={detail.consistency.result_ref} target="_blank" rel="noreferrer">查看完整一致性记录</a></details>
-          <p>{detail.knowledge&&<button type="button" onClick={()=>{onClose();workspace.openLocation({pageId:'industrial-knowledge',datasetId:sample.dataset_id,
-            version:detail.knowledge!.selection.version_id,job:detail.knowledge!.selection.job_id});}}>查看所选知识版本</button>}
-          {sample.session_id&&<a href={`/api/iad/audit/jobs/${encodeURIComponent(sample.run_id)}/samples/${encodeURIComponent(sample.sample_id)}/session.jsonl`} download>下载本图 Session</a>}</p></>}
       </section>
-      <section data-audit-section="evidence"><h3>图像证据</h3>
-        <div className="iad-image-pair">{[{view:mainImage,filename:pictures[0]?.filename || sample.filename},comparison].filter(Boolean).map((picture,index)=><section className="iad-image-pair-side audit-evidence-item" key={picture!.view.src}>
-          <ThumbnailCard image={picture!.view} label={picture!.filename} variant="evidence" aria-label={index===0?'放大主图':'放大对照图像'} onClick={()=>setLightbox(picture!.view)} />
-        </section>)}</div>
-        {pictures.length>1&&<div className="iad-thumbnail-strip" role="group" aria-label="切换候选图像">
-          {pictures.slice(1).map((picture,index)=><ThumbnailCard key={picture.evidence.evidence_id} image={picture.view}
-            variant="compact" label={picture.filename} title={picture.filename} aria-label={`切换为候选图像 ${picture.filename}`}
-            aria-pressed={comparisonIndex===index} onClick={()=>setComparisonIndex(index)} />)}
-        </div>}
-      </section>
+
     </div><footer className="audit-dialog-foot"><Button onClick={onClose}>关闭</Button></footer>
   </Modal>{lightbox && <ImageViewer image={lightbox} onClose={() => setLightbox(null)} />}</>;
 }

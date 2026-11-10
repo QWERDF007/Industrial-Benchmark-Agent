@@ -8,10 +8,11 @@ import {formatJobTime,jobStatuses} from '../../shared/job-display.js';
 import type {useAuditJobSelection} from '../useAuditJobSelection.js';
 import {ClearFilterButton} from './CommonFilterControls.js';
 import {Pagination} from './Pagination.js';
+import {DeleteAction} from './DeleteAction.js';
 
 
-export function AuditJobs({selection, datasets, onDetails, loading=false}: {
-  selection: ReturnType<typeof useAuditJobSelection>; datasets: Dataset[];loading?:boolean; onDetails(job: JobSnapshot): void;
+export function AuditJobs({selection, datasets, onDetails, onPrompt, onDelete, loading=false}: {
+  selection: ReturnType<typeof useAuditJobSelection>; datasets: Dataset[];loading?:boolean; onDetails(job: JobSnapshot): void;onPrompt(job:JobSnapshot):void;onDelete(job:JobSnapshot):Promise<void>;
 }) {
   return <section className="audit-panel" aria-label="审计作业">
     <SectionHeading title="审计作业" className="audit-job-heading">{selection.hasJobs&&<div className="audit-filters">
@@ -30,7 +31,11 @@ export function AuditJobs({selection, datasets, onDetails, loading=false}: {
       <td title={job.run_id}>{job.run_id}</td><td><JobStatusButton job={job} onClick={()=>onDetails(job)} /></td>
       <td>{(job.dataset_ids.length?job.dataset_ids:[job.dataset_id]).map(id=>datasets.find(dataset=>dataset.dataset_id===id)?.name || id).join('、')}</td>
       <td>{job.completed} / {job.total_samples}</td><td>{formatJobTime(job.submitted_at)}</td>
-      <td className="audit-ops"><JobStatusAction job={job} onClick={()=>onDetails(job)} /><IconButton icon="prompt" type="button" title="查看作业详情" label={`查看作业 ${job.run_id}`} onClick={event => {event.stopPropagation(); selection.select(job.run_id);}} /></td>
+      <td className="audit-ops" onClick={event=>event.stopPropagation()} onKeyDown={event=>event.stopPropagation()}><JobStatusAction job={job} onClick={()=>onDetails(job)} /><IconButton icon="prompt" type="button" title="查看提示词" label={`查看作业提示词 ${job.run_id}`} onClick={event => {event.stopPropagation();onPrompt(job);}} />
+        <DeleteAction title="删除审计作业" name={job.run_id} confirmLabel="删除作业" disabled={job.status==='RUNNING'||job.status==='PENDING'}
+          restoreFocus={()=>document.getElementById(selection.filtered.length>1?'audit-job-search':'audit-new')}
+          onDelete={()=>onDelete(job)} />
+      </td>
     </tr>)}</tbody></table></div>}
     {!selection.filtered.length && <p className="iad-result-empty">{loading?'正在读取审计作业…':selection.state.search || selection.state.status ? '没有符合筛选条件的审计作业。' : '当前没有审计作业'}</p>}
     <Pagination total={selection.filtered.length} page={selection.page} size={8} unit="个作业" hideSinglePage onPage={selection.setPage} />

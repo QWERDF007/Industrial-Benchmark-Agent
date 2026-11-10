@@ -293,6 +293,13 @@ export function createIadHttpHandler(bridge) {
                 });
             if (pathname === "/api/iad/audit/jobs" && method === "GET")
                 return await call("audit_list", query);
+            const auditReportSession = pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/report-session\.jsonl$/);
+            if (auditReportSession && method === 'GET') {
+                const output = await bridge.execute('audit_agent_report_session_export', { run_id: decodeURIComponent(auditReportSession[1]) });
+                res.writeHead(200, { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(output.filename)}`, 'Cache-Control': 'no-store' });
+                res.end(output.jsonl);
+                return;
+            }
             const auditSession = pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/samples\/([^/]+)\/session\.jsonl$/);
             if (auditSession && method === 'GET') {
                 const output = await bridge.execute('audit_agent_session_export', {
@@ -309,6 +316,9 @@ export function createIadHttpHandler(bridge) {
                     run_id: decodeURIComponent(auditMedia[1]), sample_id: decodeURIComponent(auditMedia[2]), evidence_id: decodeURIComponent(auditMedia[3])
                 }), true);
             }
+            const auditPrompts = pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/prompts$/);
+            if (auditPrompts && method === 'GET')
+                return await call('audit_job_prompts', { run_id: decodeURIComponent(auditPrompts[1]) });
             const auditSample = pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/samples\/([^/]+)$/);
             if (auditSample && method === 'GET')
                 return await call('audit_job_sample', {
@@ -330,7 +340,7 @@ export function createIadHttpHandler(bridge) {
             const retryOptions = pathname.match(/^\/api\/iad\/(audit)\/retry\/([^/]+)$/);
             if (retryOptions && method === "GET")
                 return await call(retryOptions[1] + "_retry_options", { run_id: decodeURIComponent(retryOptions[2]) });
-            const audit = pathname.match(/^\/api\/iad\/audit\/(status|cancel|retry)\/([^/]+)$/);
+            const audit = pathname.match(/^\/api\/iad\/audit\/(status|cancel|retry|delete)\/([^/]+)$/);
             if (audit && ((audit[1] === "status" && method === "GET") || (audit[1] !== "status" && method === "POST")))
                 return await call("audit_" + audit[1], { ...body, run_id: decodeURIComponent(audit[2]) });
             if (pathname === '/api/iad/exploration/directions/remove' && method === 'POST')

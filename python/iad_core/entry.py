@@ -323,6 +323,13 @@ def audit_retry_options(args, db_path):
     return workbench(db_path).jobs.retry_options(args['run_id'], ('MODEL_AUDIT',))
 
 
+def audit_delete(args, db_path):
+    from iad_core.workbench.job_families import JobFamilies
+    jobs = workbench(db_path).jobs
+    latest = JobFamilies(jobs.db).snapshot(args['run_id'], ('MODEL_AUDIT',))
+    return jobs.delete(latest.run_id, ('MODEL_AUDIT',), family=True)
+
+
 def audit_list(args, db_path):
     from iad_core.workbench.job_families import JobFamilies
     from iad_core.workbench.job_models import JobView
@@ -474,7 +481,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     review_queue, review_evidence, review_submit_decision, review_history,
     knowledge_review_context, knowledge_review_submit, knowledge_review_queue,
     review_stats, report_get,
-    workbench_initialize, audit_sources, audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_list, audit_job_samples, audit_job_sample, audit_job_report, audit_job_export, audit_evidence, inspection_context, directory_list,
+    workbench_initialize, audit_sources, audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_delete, audit_list, audit_job_samples, audit_job_sample, audit_job_report, audit_job_export, audit_evidence, inspection_context, directory_list,
     knowledge_get, knowledge_versions, knowledge_check_review, knowledge_presets, knowledge_details, knowledge_evidence, knowledge_check_remove, model_call_get,
 )}
 
