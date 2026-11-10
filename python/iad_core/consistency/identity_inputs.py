@@ -1,35 +1,18 @@
 import hashlib
 import json
-from typing import Literal
 
-import cv2
-import numpy as np
-from PIL import Image
-from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.identity_geometry import ImageCorrespondence
+from iad_core.consistency.annotation_views import annotation_views
+from iad_core.consistency.identity_regions import IdentityRegionPair, IdentityRegionSource
 from iad_core.duplicate.verification_models import Registration
-from iad_core.evidence.images import EvidenceImages, normalized_preview
-
-
-class IdentityInputPage(AnalysisModel):
-    scope: Literal['overview', 'local']
-    windows: list[int]
+from iad_core.evidence.images import EvidenceImages
 
 
 class IdentityInputPlan(AnalysisModel):
     geometry: Registration
-    windows: list[tuple[tuple[int, int, int, int], tuple[int, int, int, int]]] = Field(min_length=1)
-    pages: list[IdentityInputPage] | None = None
-
-    @model_validator(mode='after')
-    def validate_pages(self):
-        if self.pages is not None and (sum(page.scope == 'overview' for page in self.pages) != 1
-                or any(len(page.windows) != (1 if page.scope == 'local' else 0) for page in self.pages)
-                or sorted(index for page in self.pages for index in page.windows) != list(range(len(self.windows)))):
-            raise ValueError('冻结验证页必须完整且不重复地覆盖全部局部窗口')
-        return self
+    region_pairs: list[IdentityRegionPair]
 
 
 class IdentityInputs:
@@ -47,32 +30,37 @@ class IdentityInputs:
                 raise ValueError('图像内容验证的冻结来源或提示词发生变化')
             return IdentityInputPlan.model_validate_json(saved['plan_json'])
         geometry = ImageCorrespondence.estimate(*(sample.image_path for sample in samples))
-        images = EvidenceImages(self.db.db_path)
         sizes = [(sample.width, sample.height) for sample in samples]
-        windows = [(tile, geometry.map_bounds(tile, *sizes)) for tile in
-            images.tiles(samples[0], [0, 0, *sizes[0]], 0, max_side=768)]
+        pairs = {}
+        images = EvidenceImages(self.db.db_path)
         for side, source in enumerate(sources):
-            for annotation in source.annotations.annotations:
-                if not annotation.bbox or annotation.is_ignored:
+            if source.annotations.dataset_format != 'labelme':
+                continue
+            source.annotations.require_task('bbox_defect')
+            originals = {item.annotation_id: item for item in source.annotations.annotations}
+            for region in annotation_views(samples[side], source.annotations.annotations):
+                box, mapped = tuple(region.crop_bbox), None
+                if geometry.matrix is not None:
+                    try:
+                        projected = geometry.map_bounds(box, sizes[side], sizes[1 - side], to_main=side == 1)
+                        if projected[0] < projected[2] and projected[1] < projected[3]:
+                            mapped = tuple(projected)
+                    except ValueError:
+                        mapped = None
+                main, candidate = (box, mapped) if side == 0 else (mapped, box)
+                key = (main, candidate)
+                origins = [IdentityRegionSource(side=('main','candidate')[side], annotation_id=origin.annotation_id,
+                    original_bbox=originals[origin.annotation_id].bbox) for origin in region.origins]
+                if key in pairs:
+                    pairs[key].source_annotations.extend(origins)
                     continue
-                for tile in images.tiles(samples[side], annotation.bbox, .2, max_side=768):
-                    mapped = geometry.map_bounds(tile, sizes[side], sizes[1 - side], to_main=side == 1)
-                    windows.append((tile, mapped) if side == 0 else (mapped, tile))
-        residual = geometry.difference
-        if residual is None and sizes[0] == sizes[1]:
-            with Image.open(samples[0].image_path) as left, Image.open(samples[1].image_path) as right:
-                residual = cv2.absdiff(np.asarray(normalized_preview(left).convert('L')),
-                    np.asarray(normalized_preview(right).convert('L')))
-        if residual is not None and np.any(residual):
-            changed = (residual >= max(1., float(np.percentile(residual[residual > 0], 90)))).astype(np.uint8)
-            _, _, regions, _ = cv2.connectedComponentsWithStats(changed)
-            for x, y, width, height, _ in sorted(regions[1:], key=lambda region: int(region[4]), reverse=True)[:8]:
-                for tile in images.tiles(samples[0], [int(x), int(y), int(x + width), int(y + height)], .2,
-                        padding_pixels=16, max_side=768):
-                    windows.append((tile, geometry.map_bounds(tile, *sizes)))
-        windows = list(dict.fromkeys((tuple(main), tuple(candidate)) for main, candidate in windows
-            if main[0] < main[2] and main[1] < main[3] and candidate[0] < candidate[2] and candidate[1] < candidate[3]))
-        plan = IdentityInputPlan(geometry=geometry.facts, windows=windows)
+                identity = 'rp_' + hashlib.sha256(json.dumps([fingerprint, main, candidate]).encode()).hexdigest()
+                pairs[key] = IdentityRegionPair(region_pair_id=identity, source_annotations=origins,
+                    main_window=main, candidate_window=candidate, mapping='registered' if mapped else 'unverified',
+                    limitation=None if mapped else '无法可靠定位另一侧的对应关注区域。',
+                    main_media=images.capture(samples[0], 'roi', 'annotation', list(main), full_resolution=True).evidence if main else None,
+                    candidate_media=images.capture(samples[1], 'roi', 'annotation', list(candidate), full_resolution=True).evidence if candidate else None)
+        plan = IdentityInputPlan(geometry=geometry.facts, region_pairs=list(pairs.values()))
         with self.db.connection() as connection:
             connection.execute('''INSERT INTO consistency_identity_inputs(job_id,anchor_id,candidate_id,fingerprint,plan_json)
                 VALUES(?,?,?,?,?) ON CONFLICT(job_id,anchor_id,candidate_id) DO NOTHING''',
@@ -80,3 +68,28 @@ class IdentityInputs:
             saved = connection.execute('''SELECT plan_json FROM consistency_identity_inputs
                 WHERE job_id=? AND anchor_id=? AND candidate_id=?''', (run_id, anchor_id, candidate_id)).fetchone()
         return IdentityInputPlan.model_validate_json(saved[0])
+
+    def validate_record(self, run_id, anchor_id, record):
+        if record.execution_status != 'completed' or record.relation == 'pixel_identical':
+            return
+        with self.db.connection() as connection:
+            saved = connection.execute('''SELECT plan_json FROM consistency_identity_inputs
+                WHERE job_id=? AND anchor_id=? AND candidate_id=?''', (run_id, anchor_id, record.candidate_id)).fetchone()
+        if saved is None:
+            raise ValueError('候选资格缺少冻结的实际观察输入')
+        plan = IdentityInputPlan.model_validate_json(saved[0])
+        if record.source != 'vision' or record.region_pairs != plan.region_pairs or record.geometry != plan.geometry:
+            raise ValueError('候选区域与冻结的来源、坐标或媒体不一致')
+        if record.required_region_pair_ids != [pair.region_pair_id for pair in plan.region_pairs]:
+            raise ValueError('候选资格遗漏了必需关注区域')
+        if {check.region_pair_id for check in record.region_checks} != {
+                pair.region_pair_id for pair in plan.region_pairs if pair.mapping == 'registered'}:
+            raise ValueError('联合身份验证必须完整保存全部已送达成对局部的观察，整图不同也不能省略')
+        pairs = {pair.region_pair_id: pair for pair in plan.region_pairs}
+        media = {view.evidence_id for view in record.media}
+        for check in record.region_checks:
+            pair = pairs.get(check.region_pair_id)
+            if (pair is None or pair.mapping != 'registered' or pair.main_media is None or pair.candidate_media is None
+                    or check.main_media_id != pair.main_media.evidence_id or check.candidate_media_id != pair.candidate_media.evidence_id
+                    or not {check.main_media_id, check.candidate_media_id} <= media):
+                raise ValueError('区域判断必须引用当前可靠配对的实际双侧媒体')

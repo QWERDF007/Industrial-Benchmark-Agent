@@ -47,9 +47,15 @@ export const consistencyAgentStartParameters = {
     "default": "consistency"
   },
   "instruction": {
-    "type": "string",
-    "title": "Instruction",
-    "default": "执行数据一致性审核。仅以通过同内容验证的候选比较原始标注，保留主图相对于候选图的全部独立差异、实际证据与限制，不裁决哪侧标注正确。"
+    "oneOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "null"
+      }
+    ],
+    "title": "Instruction"
   },
   "system_prompt": {
     "oneOf": [
@@ -61,6 +67,28 @@ export const consistencyAgentStartParameters = {
       }
     ],
     "title": "System Prompt"
+  },
+  "identity_prompts": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "gate_system": {
+        "type": "string",
+        "title": "Gate System",
+        "required": true
+      },
+      "gate_user": {
+        "type": "string",
+        "title": "Gate User",
+        "required": true
+      },
+      "gate_examples": {
+        "type": "string",
+        "title": "Gate Examples",
+        "required": true
+      }
+    },
+    "title": "IdentityPrompts"
   },
   "subjects": {
     "oneOf": [
@@ -333,217 +361,422 @@ export const consistencyCheckReferenceParameters = {
     "required": true
   }
 } as const;
-export const anchorVisualStartParameters = {
-  "request_id": {
-    "type": "string",
-    "description": "request_id标识完整的视觉请求；复用已保存观察须保持原始参数，改变question、candidate_ids或windows时须使用新的request_id。",
-    "title": "Request Id",
-    "required": true
-  },
-  "fingerprint": {
-    "type": "string",
-    "description": "上下文提供的当前冻结清单指纹。",
-    "title": "Fingerprint",
-    "required": true
-  },
-  "candidate_ids": {
-    "type": "array",
-    "items": {
-      "type": "string"
-    },
-    "description": "完整使用上下文中一个冻结页的候选集合，不拆页、不跨页拼接。",
-    "title": "Candidate Ids",
-    "required": true
-  },
-  "question": {
-    "type": "string",
-    "title": "Question",
-    "required": true
-  },
-  "windows": {
-    "type": "array",
-    "items": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "sample_id": {
-          "type": "string",
-          "title": "Sample Id",
-          "required": true
-        },
-        "bbox": {
-          "type": "array",
-          "items": {
-            "type": "integer"
+export const anchorToolParameters = {
+  "anomaly_detection": {
+    "context": {
+      "candidate_id": {
+        "oneOf": [
+          {
+            "type": "string"
           },
-          "description": "原图像素半开窗口[x0,y0,x1,y1)",
-          "title": "Bbox",
-          "required": true
-        },
-        "padding": {
-          "type": "integer",
-          "description": "四侧扩边的像素数，实际窗口裁至原图画布",
-          "title": "Padding",
-          "default": 0
-        },
-        "reason": {
-          "type": "string",
-          "title": "Reason",
-          "required": true
-        }
-      },
-      "title": "VisualWindow"
-    },
-    "title": "Windows"
-  }
-} as const;
-export const anchorContextQueryParameters = {
-  "candidate_id": {
-    "oneOf": [
-      {
-        "type": "string"
-      },
-      {
-        "type": "null"
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Candidate Id"
       }
-    ],
-    "title": "Candidate Id"
-  }
-} as const;
-export const anchorAssessmentInputParameters = {
-  "fingerprint": {
-    "type": "string",
-    "description": "当前冻结清单指纹。",
-    "title": "Fingerprint",
-    "required": true
-  },
-  "observation_ids": {
-    "type": "array",
-    "items": {
-      "type": "string"
     },
-    "description": "本场已保存且实际包含当前候选的视觉观察回执。",
-    "title": "Observation Ids",
-    "required": true
-  },
-  "assessment": {
-    "type": "object",
-    "additionalProperties": false,
-    "properties": {
+    "observe": {
+      "phase": {
+        "type": "string",
+        "enum": [
+          "gate"
+        ],
+        "title": "Phase",
+        "required": true
+      },
+      "request_id": {
+        "type": "string",
+        "title": "Request Id",
+        "required": true
+      },
+      "fingerprint": {
+        "type": "string",
+        "title": "Fingerprint",
+        "required": true
+      },
+      "candidate_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "title": "Candidate Ids",
+        "required": true
+      },
+      "gate_revisions": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {},
+        "title": "Gate Revisions",
+        "required": true
+      }
+    },
+    "assess": {
+      "phase": {
+        "type": "string",
+        "enum": [
+          "gate",
+          "audit"
+        ],
+        "title": "Phase",
+        "required": true
+      },
+      "request_id": {
+        "type": "string",
+        "title": "Request Id",
+        "required": true
+      },
+      "fingerprint": {
+        "type": "string",
+        "title": "Fingerprint",
+        "required": true
+      },
       "candidate_id": {
         "type": "string",
         "title": "Candidate Id",
         "required": true
       },
-      "verdict": {
+      "expected_revision": {
+        "type": "integer",
+        "title": "Expected Revision",
+        "required": true
+      },
+      "action": {
         "type": "string",
         "enum": [
-          "EQUIVALENT",
-          "MATERIAL",
-          "UNCERTAIN"
+          "commit",
+          "recheck"
         ],
-        "description": "MATERIAL存在差异；EQUIVALENT一致；UNCERTAIN为合格候选的标注审核证据不足。",
-        "title": "Verdict",
-        "required": true
+        "title": "Action",
+        "default": "commit"
       },
-      "explanation": {
-        "type": "string",
-        "description": "当前候选的标注比对分析",
-        "title": "Explanation",
-        "required": true
-      },
-      "findings": {
+      "observation_ids": {
         "type": "array",
         "items": {
           "type": "string"
         },
-        "description": "当前候选的具体发现",
-        "title": "Findings"
-      },
-      "issues": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "description": {
-              "type": "string",
-              "title": "Description",
-              "required": true
-            },
-            "media_ids": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "实际观察的两侧原图身份各一次。",
-              "title": "Media Ids",
-              "required": true
-            },
-            "limitations": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "title": "Limitations"
-            },
-            "review_suggestion": {
-              "type": "string",
-              "title": "Review Suggestion",
-              "default": "人工核对两侧原始标注及标注规范。"
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "category_mismatch",
-                "extra_annotation",
-                "missing_annotation",
-                "position_difference",
-                "split",
-                "merge"
-              ],
-              "title": "Type",
-              "required": true
-            },
-            "main_annotation_ids": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "title": "Main Annotation Ids"
-            },
-            "candidate_annotation_ids": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "title": "Candidate Annotation Ids"
-            }
-          },
-          "title": "BboxAnnotationIssue"
-        },
-        "description": "MATERIAL必须保存全部独立矩形问题，关联真实两侧框ID与实际原图身份；拆分合并不重复计数量差异。",
-        "title": "Issues"
+        "title": "Observation Ids"
       }
     },
-    "title": "AnchorAssessmentDecision",
-    "required": true
-  }
-} as const;
-export const anchorReviewSubmissionParameters = {
-  "fingerprint": {
-    "type": "string",
-    "description": "当前冻结清单指纹。",
-    "title": "Fingerprint",
-    "required": true
+    "submit": {
+      "request_id": {
+        "type": "string",
+        "title": "Request Id",
+        "required": true
+      },
+      "fingerprint": {
+        "type": "string",
+        "title": "Fingerprint",
+        "required": true
+      },
+      "assessment_ids": {
+        "type": "array",
+        "items": {
+          "type": "integer"
+        },
+        "title": "Assessment Ids"
+      }
+    }
   },
-  "assessment_ids": {
-    "type": "array",
-    "items": {
-      "type": "integer"
+  "bbox_defect": {
+    "context": {
+      "candidate_id": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Candidate Id"
+      }
     },
-    "description": "恰好包含全部冻结候选的最新评估回执ID，不引用旧版本或其他主图评估。",
-    "title": "Assessment Ids",
-    "required": true
+    "observe": {
+      "phase": {
+        "type": "string",
+        "enum": [
+          "gate",
+          "audit"
+        ],
+        "title": "Phase",
+        "required": true
+      },
+      "request_id": {
+        "type": "string",
+        "title": "Request Id",
+        "required": true
+      },
+      "fingerprint": {
+        "type": "string",
+        "title": "Fingerprint",
+        "required": true
+      },
+      "candidate_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "title": "Candidate Ids",
+        "required": true
+      },
+      "gate_revisions": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {},
+        "title": "Gate Revisions",
+        "required": true
+      },
+      "question": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Question"
+      }
+    },
+    "assess": {
+      "phase": {
+        "type": "string",
+        "enum": [
+          "gate",
+          "audit"
+        ],
+        "title": "Phase",
+        "required": true
+      },
+      "request_id": {
+        "type": "string",
+        "title": "Request Id",
+        "required": true
+      },
+      "fingerprint": {
+        "type": "string",
+        "title": "Fingerprint",
+        "required": true
+      },
+      "candidate_id": {
+        "type": "string",
+        "title": "Candidate Id",
+        "required": true
+      },
+      "expected_revision": {
+        "type": "integer",
+        "title": "Expected Revision",
+        "required": true
+      },
+      "action": {
+        "type": "string",
+        "enum": [
+          "commit",
+          "recheck"
+        ],
+        "title": "Action",
+        "default": "commit"
+      },
+      "observation_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "title": "Observation Ids"
+      },
+      "assessment": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "title": "Candidate Id",
+            "required": true
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "EQUIVALENT",
+              "MATERIAL",
+              "UNCERTAIN"
+            ],
+            "description": "MATERIAL存在差异；EQUIVALENT一致；UNCERTAIN为合格候选的标注审核证据不足。",
+            "title": "Verdict",
+            "required": true
+          },
+          "explanation": {
+            "type": "string",
+            "description": "当前候选的标注比对分析",
+            "title": "Explanation",
+            "required": true
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "当前候选的具体发现",
+            "title": "Findings"
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "独立保存未能确认的部分；已确认差异仍保留在issues，不因局部不确定而丢失。",
+            "title": "Limitations"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "description": {
+                  "type": "string",
+                  "title": "Description",
+                  "required": true
+                },
+                "media_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "实际观察的两侧原图身份各一次。",
+                  "title": "Media Ids",
+                  "required": true
+                },
+                "limitations": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Limitations"
+                },
+                "review_suggestion": {
+                  "type": "string",
+                  "title": "Review Suggestion",
+                  "default": "人工核对两侧原始标注及标注规范。"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "category_mismatch",
+                    "extra_annotation",
+                    "missing_annotation",
+                    "position_difference",
+                    "split",
+                    "merge"
+                  ],
+                  "title": "Type",
+                  "required": true
+                },
+                "main_annotation_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Main Annotation Ids"
+                },
+                "candidate_annotation_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Candidate Annotation Ids"
+                },
+                "region_pair_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "支持本问题的已核实区域对ID；像素一致的程序捷径可为空。",
+                  "title": "Region Pair Ids"
+                },
+                "coverage_effect": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "unchanged",
+                        "material_change",
+                        "unverified"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "位置问题必须确认实际缺陷覆盖存在material_change；不能仅因坐标、中心或尺寸数值不同报告问题。",
+                  "title": "Coverage Effect"
+                },
+                "coverage_reason": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "位置问题说明实际缺陷的漏盖、偏离或范围实质变化，不自行制定像素阈值。",
+                  "title": "Coverage Reason"
+                },
+                "same_main_object_as": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "candidate_id": {
+                        "type": "string",
+                        "title": "Candidate Id",
+                        "required": true
+                      },
+                      "annotation_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "title": "Annotation Ids",
+                        "required": true
+                      }
+                    },
+                    "title": "CandidateObjectReference"
+                  },
+                  "description": "仅用于主图少标：实际共同观察且确认是同一主图对象的其他候选原始框引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。",
+                  "title": "Same Main Object As"
+                }
+              },
+              "title": "BboxAnnotationIssue"
+            },
+            "description": "MATERIAL必须保存全部独立矩形问题，关联真实两侧框ID与实际原图身份；拆分合并不重复计数量差异。",
+            "title": "Issues"
+          }
+        },
+        "title": "AnchorAssessmentDecision",
+        "description": "仅phase=audit提交当前候选的标注审核。phase=gate必须省略或传null，只用observation_ids引用已保存的身份观察，由程序保存资格结论，不提交标注问题。"
+      }
+    },
+    "submit": {
+      "request_id": {
+        "type": "string",
+        "title": "Request Id",
+        "required": true
+      },
+      "fingerprint": {
+        "type": "string",
+        "title": "Fingerprint",
+        "required": true
+      },
+      "assessment_ids": {
+        "type": "array",
+        "items": {
+          "type": "integer"
+        },
+        "title": "Assessment Ids"
+      }
+    }
   }
 } as const;

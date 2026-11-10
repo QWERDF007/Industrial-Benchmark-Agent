@@ -1,4 +1,4 @@
-/* Generated from Python ModelLimits by scripts/generate-contracts.js. */
+/* Generated from Python model settings by scripts/generate-contracts.js. */
 import type { ModelLimits } from "./domain.generated.js";
 export const defaultModelLimits: ModelLimits = {
   "context_tokens": null,
@@ -12,3 +12,9 @@ export const defaultModelLimits: ModelLimits = {
   "write_timeout_seconds": null,
   "pool_timeout_seconds": null
 };
+export const reasoningEffortLabels = {
+  "low": "Low",
+  "medium": "Medium",
+  "high": "High",
+  "xhigh": "XHigh"
+} as const;

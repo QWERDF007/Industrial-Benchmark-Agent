@@ -1,0 +1,101 @@
+diff --git a/dist/api/openai-completions.js b/dist/api/openai-completions.js
+index fc8e89382b75f259eb4f041b522840b0d603c033..752b5f21e2825ea9242360f70e9467dbdc24a36c 100644
+--- a/dist/api/openai-completions.js
++++ b/dist/api/openai-completions.js
+@@ -1083,7 +1083,7 @@ export function convertMessages(model, context, compat, options) {
+                     toolResultMsg.name = toolMsg.toolName;
+                 }
+                 params.push(toolResultMsg);
+-                if (hasImages && model.input.includes("image")) {
++                if (hasImages) {
+                     for (const block of toolMsg.content) {
+                         if (isImageContentBlock(block)) {
+                             imageBlocks.push({
+diff --git a/dist/api/openai-responses-shared.js b/dist/api/openai-responses-shared.js
+index 53597d2c3becdd2c03d4fd265c213a36b403f26b..268198d357175617989e452addd122ae10eecc5c 100644
+--- a/dist/api/openai-responses-shared.js
++++ b/dist/api/openai-responses-shared.js
+@@ -34,14 +34,14 @@ function parseTextSignature(signature) {
+     }
+     return { id: signature };
+ }
+-function convertToolResultOutput(model, content) {
++function convertToolResultOutput(content) {
+     const textResult = content
+         .filter((c) => c.type === "text")
+         .map((c) => c.text)
+         .join("\n");
+     const images = content.filter((c) => c.type === "image");
+     const hasText = textResult.length > 0;
+-    if (images.length === 0 || !model.input.includes("image")) {
++    if (images.length === 0) {
+         return sanitizeSurrogates(hasText ? textResult : images.length > 0 ? "(see attached image)" : "(no tool output)");
+     }
+     const output = [];
+@@ -244,7 +244,7 @@ export function convertResponsesMessages(model, context, allowedToolCallProvider
+         }
+         else if (msg.role === "toolResult") {
+             const [callId] = msg.toolCallId.split("|");
+-            const output = convertToolResultOutput(model, msg.content);
++            const output = convertToolResultOutput(msg.content);
+             if (options?.grammarToolInputProperties?.has(msg.toolName)) {
+                 messages.push({
+                     type: "custom_tool_call_output",
+diff --git a/dist/api/transform-messages.js b/dist/api/transform-messages.js
+index 1e7873e4948eb28051c8157aa89737070b223ad7..c47845ef5f33bdce9425ebcdc650e31aee519cf0 100644
+--- a/dist/api/transform-messages.js
++++ b/dist/api/transform-messages.js
+@@ -1,41 +1,3 @@
+-const NON_VISION_USER_IMAGE_PLACEHOLDER = "(image omitted: model does not support images)";
+-const NON_VISION_TOOL_IMAGE_PLACEHOLDER = "(tool image omitted: model does not support images)";
+-function replaceImagesWithPlaceholder(content, placeholder) {
+-    const result = [];
+-    let previousWasPlaceholder = false;
+-    for (const block of content) {
+-        if (block.type === "image") {
+-            if (!previousWasPlaceholder) {
+-                result.push({ type: "text", text: placeholder });
+-            }
+-            previousWasPlaceholder = true;
+-            continue;
+-        }
+-        result.push(block);
+-        previousWasPlaceholder = block.text === placeholder;
+-    }
+-    return result;
+-}
+-function downgradeUnsupportedImages(messages, model) {
+-    if (model.input.includes("image")) {
+-        return messages;
+-    }
+-    return messages.map((msg) => {
+-        if (msg.role === "user" && Array.isArray(msg.content)) {
+-            return {
+-                ...msg,
+-                content: replaceImagesWithPlaceholder(msg.content, NON_VISION_USER_IMAGE_PLACEHOLDER),
+-            };
+-        }
+-        if (msg.role === "toolResult") {
+-            return {
+-                ...msg,
+-                content: replaceImagesWithPlaceholder(msg.content, NON_VISION_TOOL_IMAGE_PLACEHOLDER),
+-            };
+-        }
+-        return msg;
+-    });
+-}
+ /**
+  * Normalize tool call ID for cross-provider compatibility.
+  * OpenAI Responses API generates IDs that are 450+ chars with special characters like `|`.
+@@ -47,9 +9,8 @@ export function transformMessages(messages, model, normalizeToolCallId) {
+     // Normalize null/undefined content from untyped callers (custom tools, hand-built
+     // histories, old session files) so downstream code can rely on the type contract.
+     const normalizedMessages = messages.map((msg) => (msg.content == null ? { ...msg, content: [] } : msg));
+-    const imageAwareMessages = downgradeUnsupportedImages(normalizedMessages, model);
+-    // First pass: transform messages (unsupported image downgrade, thinking blocks, tool call ID normalization)
+-    const transformed = imageAwareMessages.map((msg) => {
++    // First pass: normalize thinking blocks and tool call IDs.
++    const transformed = normalizedMessages.map((msg) => {
+         // System and user messages pass through unchanged
+         if (msg.role === "system" || msg.role === "user") {
+             return msg;

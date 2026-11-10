@@ -171,6 +171,8 @@ export class Workspace {
                     const consistency = { tab: 'conflicts', scope: { kind: 'all_registered' } };
                     if (consistencyTabs.some(tab => tab.id === route.tab))
                         consistency.tab = route.tab;
+                    if (route.view === 'setup')
+                        consistency.view = 'setup';
                     if (consistencyRouteEnums.facts.includes(route.facts))
                         consistency.facts = route.facts;
                     if (route.scope?.kind === 'datasets' && Array.isArray(route.scope.dataset_ids) && route.scope.dataset_ids.length && route.scope.dataset_ids.every((id) => typeof id === 'string' && id.length))

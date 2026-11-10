@@ -2,6 +2,19 @@ from sqlite3 import Connection
 
 
 def init_content_index_schema(connection: Connection) -> None:
+    connection.execute('''CREATE TABLE IF NOT EXISTS consistency_candidate_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,candidate_id TEXT NOT NULL,
+        phase TEXT NOT NULL CHECK(phase IN ('gate','audit')),revision INTEGER NOT NULL CHECK(revision>0),
+        gate_revision INTEGER NOT NULL CHECK(gate_revision>=0),request_id TEXT NOT NULL,request_sha256 TEXT NOT NULL,
+        record_json TEXT NOT NULL CHECK(json_valid(record_json)),
+        FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE,
+        UNIQUE(job_id,anchor_id,request_id),UNIQUE(job_id,anchor_id,candidate_id,phase,revision))''')
+    connection.execute('''CREATE TABLE IF NOT EXISTS consistency_gate_observations (
+        job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,candidate_id TEXT NOT NULL,gate_revision INTEGER NOT NULL,
+        request_id TEXT NOT NULL,page_index INTEGER NOT NULL,fingerprint TEXT NOT NULL,
+        record_json TEXT NOT NULL CHECK(json_valid(record_json)),
+        FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE,
+        PRIMARY KEY(job_id,anchor_id,candidate_id,gate_revision,request_id,page_index))''')
     connection.execute('''CREATE TABLE IF NOT EXISTS consistency_identity_inputs (
         job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,candidate_id TEXT NOT NULL,
         fingerprint TEXT NOT NULL,plan_json TEXT NOT NULL CHECK(json_valid(plan_json)),
@@ -35,6 +48,8 @@ def init_content_index_schema(connection: Connection) -> None:
         'trace_state': "TEXT NOT NULL DEFAULT 'OPEN' CHECK(trace_state IN ('OPEN','PENDING','CLOSED'))",
         'trace_error': 'TEXT',
         'visual_plan_json': 'TEXT CHECK(visual_plan_json IS NULL OR json_valid(visual_plan_json))',
+        'submission_request_id': 'TEXT',
+        'submission_sha256': 'TEXT',
     }.items():
         if column not in columns:
             connection.execute(f'ALTER TABLE consistency_anchor_runs ADD COLUMN {column} {definition}')

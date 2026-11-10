@@ -3,9 +3,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {By, until} from 'selenium-webdriver';
-import {conflictCategoryLabels} from '../lib/shared/consistency.parameters.generated.js';
+import {conflictCategoryLabels,modelConclusionLabels} from '../lib/shared/consistency.parameters.generated.js';
 
-export async function verifyConsistencyUserResult(driver, {base, runId, output, prefix, downloadDirectory}) {
+export async function verifyConsistencyUserResult(driver, {base, runId, output, prefix, downloadDirectory, expectedConcurrency}) {
   const read = async route => {
     const response = await fetch(base + '/api/iad/' + route);
     assert.equal(response.status, 200);
@@ -16,8 +16,8 @@ export async function verifyConsistencyUserResult(driver, {base, runId, output, 
     read(root + '/config'), read(root + '/anchors?page_size=1000'), read(root + '/gallery?page_size=200'),
     read(root + '/images?page_size=1000'),
   ]);
-  assert.equal(snapshot.review_pipeline, 'identity-v4');
-  assert.equal(snapshot.concurrency, 2);
+  assert.equal(snapshot.review_pipeline, 'identity-v7');
+  assert.equal(snapshot.concurrency, expectedConcurrency);
   assert.equal(anchors.total, 100);
   assert.equal(anchors.items.length, 100);
   assert.equal(new Set(anchors.items.map(item => item.anchor_id)).size, 100);
@@ -31,7 +31,7 @@ export async function verifyConsistencyUserResult(driver, {base, runId, output, 
   const imageCards=await driver.findElements(By.css('[data-dc="job-image"]'));
   for(const card of imageCards){
     const model=await card.findElement(By.css('.iad-thumbnail-values span:last-child')).getText();
-    assert.ok(model==='' || Object.values(conflictCategoryLabels).includes(model));
+    assert.ok(model==='' || Object.values(modelConclusionLabels).includes(model));
   }
   await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',imageCards.at(-1));
   await driver.wait(()=>driver.executeScript('return [...document.querySelectorAll("[data-dc=job-image] img")].every(image=>image.complete&&image.naturalWidth>0)'),20000);
@@ -58,7 +58,7 @@ export async function verifyConsistencyUserResult(driver, {base, runId, output, 
     for(const gate of detail.gates)assert.ok(analysis.includes(gate.reason));
     if(item.summary.reason==='NO_CANDIDATES'){
       assert.equal(item.summary.model_conclusion,null);
-      assert.ok(analysis.includes('未检索到候选，未进行图像身份与内容验证。'));
+      assert.equal(analysis.trim(),'模型分析');
     }
     if(['NO_CANDIDATES','NO_ELIGIBLE_CANDIDATES'].includes(item.summary.reason)){
       assert.equal(await card.findElement(By.css('.iad-thumbnail-values span:last-child')).getText(),'');
@@ -66,7 +66,7 @@ export async function verifyConsistencyUserResult(driver, {base, runId, output, 
     }
     if(item.summary.reason==='NO_ELIGIBLE_CANDIDATES'){
       assert.equal(item.summary.model_conclusion,null);
-      assert.ok(analysis.includes('无有效候选，未进行标注审核。'));
+      assert.ok(!analysis.includes('未进行标注审核'));
     }
     await fs.writeFile(path.join(output,prefix+`-all-image-${index}-comparison.png`),await driver.takeScreenshot(),'base64');
     await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',await dialog.findElement(By.css('.dc-model-panel')));
@@ -78,7 +78,7 @@ export async function verifyConsistencyUserResult(driver, {base, runId, output, 
   await driver.findElement(By.css('[data-dc="raw-tab"][data-id="all"]')).click();
   const modelOptions=await driver.wait(until.elementLocated(By.css('#dc-model-filter')),20000);
   assert.deepEqual(await Promise.all((await modelOptions.findElements(By.css('option'))).map(option=>option.getText())),
-    ['全部判断','类别不一致','多标','少标','位置差异','拆分','合并']);
+    ['全部判断','类别不一致','多标','少标','位置差异','拆分','合并','一致']);
   const totals = {};
   for (const anchor of anchors.items) {
     assert.equal(anchor.state, 'COMPLETED');
@@ -88,6 +88,27 @@ export async function verifyConsistencyUserResult(driver, {base, runId, output, 
     assert.equal(stats.assessed, stats.eligible);
     assert.equal(stats.assessed, stats.consistent + stats.discrepancy + stats.undetermined);
     assert.equal(stats.failed + stats.pending, 0);
+    const detail=await read(root+'/anchors/'+encodeURIComponent(anchor.anchor_id));
+    for(const gate of detail.gates) {
+      assert.ok(['program','vision'].includes(gate.source));
+      const audit=detail.assessments.filter(record=>record.submission.assessment.candidate_id===gate.candidate_id);
+      assert.equal(audit.length,gate.gate_status==='eligible'?1:0);
+      if(gate.source==='vision') {
+        assert.deepEqual(gate.required_region_pair_ids,gate.region_pairs.map(pair=>pair.region_pair_id));
+        const checks=new Map(gate.region_checks.map(check=>[check.region_pair_id,check]));
+        const media=new Set(gate.media.map(image=>image.evidence_id));
+        if(gate.gate_status==='eligible') {
+          assert.equal(checks.size,gate.required_region_pair_ids.length);
+          for(const pair of gate.region_pairs) {
+            const check=checks.get(pair.region_pair_id);assert.ok(check);
+            assert.equal(pair.mapping,'registered');assert.equal(check.visual_relation,'same');
+            assert.equal(check.main_media_id,pair.main_media.evidence_id);
+            assert.equal(check.candidate_media_id,pair.candidate_media.evidence_id);
+            assert.ok(media.has(check.main_media_id)&&media.has(check.candidate_media_id));
+          }
+        }
+      }
+    }
     for (const [key, value] of Object.entries(stats)) totals[key] = (totals[key] || 0) + value;
   }
   const proof = {concurrency: snapshot.concurrency, anchors: anchors.total, all_images:images.total,
@@ -103,7 +124,7 @@ export async function verifyConsistencyUserResult(driver, {base, runId, output, 
     const eligible = new Set(detail.gates.filter(gate => gate.gate_status === 'eligible').map(gate => gate.candidate_id));
     assert.equal(members.total, eligible.size);
     assert.ok(members.items.every(item => eligible.has(item.image.sample.sample_id)));
-    assert.equal(detail.result.schema_version, '4.0');
+    assert.equal(detail.result.schema_version, '7.0');
     assert.equal(candidates.items.length, detail.candidates.candidates.length);
     assert.deepEqual(candidates.items.map(item=>[item.sample_id,item.kind,item.rank]),
       detail.candidates.candidates.map(item=>[item.sample_id,item.kind,item.rank]));
@@ -168,7 +189,7 @@ export async function verifyConsistencyUserResult(driver, {base, runId, output, 
   assert.equal(records.length, 100);
   assert.equal(new Set(records.map(item => item.anchor_id)).size, 100);
   for (const record of records) {
-    assert.equal(record.schema_version, '4.0');
+    assert.equal(record.schema_version, '7.0');
     assert.equal(record.execution_status, 'completed');
     assert.equal(record.candidate_gate_ids.length, record.candidate_stats.retrieved);
     assert.equal(record.candidate_assessment_ids.length, record.candidate_stats.assessed);

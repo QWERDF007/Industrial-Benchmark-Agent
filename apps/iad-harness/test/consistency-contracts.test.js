@@ -7,13 +7,13 @@ import {explorationAgentStartParameters, knowledgeAgentStartParameters, analysis
 import { knowledgeDetailParameters } from '../lib/shared/knowledge-detail.parameters.generated.js';
 import { knowledgeSourceParameters } from '../lib/shared/knowledge-source.parameters.generated.js';
 import {galleryReferenceParameters,consistencyStartParameters, imageRetrieveParameters, imageIndexPrepareParameters,consistencyCompareParameters,consistencyEvidenceParameters,consistencyQueryParameters,consistencyGroupParameters,consistencyGroupMemberParameters} from '../lib/shared/consistency.parameters.generated.js';
-import {anchorContextQueryParameters, anchorAssessmentInputParameters, anchorReviewSubmissionParameters, consistencyAgentStartParameters,consistencyCheckReferenceParameters,consistencyAnchorReferenceParameters,consistencyCheckResultsQueryParameters} from '../lib/shared/consistency-agent.parameters.generated.js';
+import {anchorToolParameters, consistencyAgentStartParameters,consistencyCheckReferenceParameters,consistencyAnchorReferenceParameters,consistencyCheckResultsQueryParameters} from '../lib/shared/consistency-agent.parameters.generated.js';
 
 test('generated parameters register with the installed native SDK', () => {
   for (const parameters of [consistencyAgentStartParameters,consistencyCheckReferenceParameters,consistencyAnchorReferenceParameters,consistencyCheckResultsQueryParameters,galleryReferenceParameters,explorationAgentStartParameters, knowledgeAgentStartParameters, analysisScopeParameters, analysisMediaParameters, explorationCommitParameters, knowledgeCommitParameters,
     explorationPresetParameters, knowledgeDetailParameters,
     knowledgeSourceParameters, consistencyStartParameters, imageRetrieveParameters, imageIndexPrepareParameters,consistencyCompareParameters,consistencyEvidenceParameters,consistencyQueryParameters,consistencyGroupParameters,consistencyGroupMemberParameters,
-    {annotation_policy:annotationPolicyParameter}]) {
+    ...Object.values(anchorToolParameters).flatMap(tools=>Object.values(tools)),{annotation_policy:annotationPolicyParameter}]) {
     assert.doesNotThrow(() => defineTool({name:'schema_registration', description:'Schema registration',
       parameters, output:{schema:{type:'json'},render:()=>[]}, execute:async () => ({})}));
   }
@@ -38,21 +38,35 @@ test('consistency start leaves module defaults to the server',()=>{
 });
 
 test('native decisions exclude derived conclusions and preserve nullable context queries', () => {
-  const input = {fingerprint: 'a'.repeat(64), observation_ids: ['observation-one'], assessment: {
-    candidate_id: 'candidate-one', verdict: 'EQUIVALENT', categories: [],
+  const input = {phase:'audit',request_id:'decision-one',candidate_id:'candidate-one',expected_revision:1,fingerprint: 'a'.repeat(64), observation_ids: ['observation-one'], assessment: {
+    candidate_id: 'candidate-one', verdict: 'EQUIVALENT',
     explanation: '两侧未提供标注，无法确认标注规则和覆盖范围', findings: [],
   }};
-  assert.deepEqual(validateArgs(anchorAssessmentInputParameters, input), []);
+  assert.deepEqual(validateArgs(anchorToolParameters.bbox_defect.assess, input), []);
   const quoted = structuredClone(input);quoted.assessment.conclusion = 'null';
-  assert.notDeepEqual(validateArgs(anchorAssessmentInputParameters, quoted), []);
+  assert.notDeepEqual(validateArgs(anchorToolParameters.bbox_defect.assess, quoted), []);
   const literal = structuredClone(input);literal.assessment.conclusion = null;
-  assert.notDeepEqual(validateArgs(anchorAssessmentInputParameters, literal), []);
+  assert.notDeepEqual(validateArgs(anchorToolParameters.bbox_defect.assess, literal), []);
   const internal = structuredClone(input);internal.assessment.categories = ['对应关系差异'];
-  assert.notDeepEqual(validateArgs(anchorAssessmentInputParameters, internal), []);
+  assert.notDeepEqual(validateArgs(anchorToolParameters.bbox_defect.assess, internal), []);
   const invalid = structuredClone(input);invalid.assessment.candidate_id = null;
-  assert.notDeepEqual(validateArgs(anchorAssessmentInputParameters, invalid), []);
-  assert.deepEqual(validateArgs(anchorReviewSubmissionParameters, {fingerprint: input.fingerprint,
+  assert.notDeepEqual(validateArgs(anchorToolParameters.bbox_defect.assess, invalid), []);
+  assert.deepEqual(validateArgs(anchorToolParameters.bbox_defect.submit, {request_id:'final',fingerprint: input.fingerprint,
     assessment_ids: [1]}), []);
-  assert.deepEqual(validateArgs(anchorContextQueryParameters, {candidate_id: null}), []);
-  assert.deepEqual(validateArgs(anchorContextQueryParameters, {}), []);
+  assert.deepEqual(validateArgs(anchorToolParameters.bbox_defect.context, {candidate_id: null}), []);
+  assert.deepEqual(validateArgs(anchorToolParameters.bbox_defect.context, {}), []);
+});
+
+test('optional structured tool arguments expose their object type to model templates',()=>{
+  const assessment=anchorToolParameters.bbox_defect.assess.assessment;
+  assert.equal(assessment.type,'object');
+  assert.equal(assessment.required,undefined);
+  assert.equal(assessment.oneOf,undefined);
+  const input={phase:'audit',request_id:'audit-one',candidate_id:'candidate-one',expected_revision:1,
+    fingerprint:'a'.repeat(64),observation_ids:['observation-one'],
+    assessment:{candidate_id:'candidate-one',verdict:'EQUIVALENT',explanation:'同一对象标注一致',findings:[]}};
+  assert.deepEqual(validateArgs(anchorToolParameters.bbox_defect.assess,input),[]);
+  assert.notDeepEqual(validateArgs(anchorToolParameters.bbox_defect.assess,{...input,assessment:JSON.stringify(input.assessment)}),[]);
+  const {assessment:unused,...gate}=input;
+  assert.deepEqual(validateArgs(anchorToolParameters.bbox_defect.assess,{...gate,phase:'gate'}),[]);
 });

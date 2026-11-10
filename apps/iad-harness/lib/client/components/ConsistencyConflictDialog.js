@@ -1,6 +1,6 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { conflictCategoryLabels } from '../../shared/consistency.parameters.generated.js';
+import { conflictCategoryLabels, modelConclusionLabels } from '../../shared/consistency.parameters.generated.js';
 import { datasetImageAnnotations } from '../dataset-image-annotations.js';
 import { useDatasetCatalog } from '../useDatasetCatalog.js';
 import { ConsistencyView } from '../consistency-view.js';
@@ -43,8 +43,8 @@ export function ConsistencyConflictDialog({ conflict: currentConflict, items: vi
     const modelResult = groupAnalysis.analysis?.status === 'COMPLETED' ? groupAnalysis.analysis.result : null;
     const candidates = useResource(jobId ?
         `/consistency/checks/${encodeURIComponent(jobId)}/anchors/${encodeURIComponent(currentConflictId)}/candidates` : null);
-    const modelConclusion = ConsistencyView.modelConclusion(modelResult?.overall.text || currentConflict.model.modelType);
-    const displayModelConclusion = modelConclusion ? conflictCategoryLabels[modelConclusion] : '';
+    const modelConclusion = ConsistencyView.modelConclusion(modelResult?.overall.text || currentConflict.model.modelType, modelResult?.overall.verdict);
+    const displayModelConclusion = modelConclusion ? modelConclusionLabels[modelConclusion] : '';
     const groupConclusion = currentConflict.type;
     const displayGroupConclusion = groupConclusion in conflictCategoryLabels
         ? conflictCategoryLabels[groupConclusion] : groupConclusion;
@@ -116,16 +116,16 @@ export function ConsistencyConflictDialog({ conflict: currentConflict, items: vi
                                                             ...candidateAnnotations,
                                                         });
                                                     }
-                                                }, children: selectedMember && _jsx(AnnotatedImageStage, { src: currentCandidate.fullUrl || currentCandidate.thumbUrl, alt: "\u5019\u9009\u56FE", width: currentCandidate.width, height: currentCandidate.height, ...candidateAnnotations }) }), _jsx("div", { className: "dc-photo-filename", title: currentCandidate.filename, children: currentCandidate.filename })] })] }), _jsxs("section", { className: "dc-images-panel", "aria-label": "\u5BF9\u6BD4\u56FE", children: [_jsx("h3", { children: "\u5BF9\u6BD4\u56FE" }), _jsx("div", { className: "iad-thumbnail-strip", "aria-label": "\u5207\u6362\u5BF9\u6BD4\u56FE\u7247", children: conflictMembers.map((member, index) => {
+                                                }, children: selectedMember && _jsx(AnnotatedImageStage, { src: currentCandidate.fullUrl || currentCandidate.thumbUrl, alt: "\u5019\u9009\u56FE", width: currentCandidate.width, height: currentCandidate.height, ...candidateAnnotations }) }), _jsx("div", { className: "dc-photo-filename", title: currentCandidate.filename, children: currentCandidate.filename })] })] }), _jsxs("section", { className: "dc-images-panel", "aria-label": "\u5BF9\u6BD4\u56FE", children: [_jsx("h3", { children: "\u5BF9\u6BD4\u56FE" }), _jsx("div", { className: "iad-thumbnail-grid", "aria-label": "\u5207\u6362\u5BF9\u6BD4\u56FE\u7247", children: conflictMembers.map((member, index) => {
                                             const filename = member.image.sample.relative_path.split('/').pop();
-                                            return _jsx(ThumbnailCard, { src: ConsistencyView.media(member.image, true), variant: "compact", label: filename, "data-dc": "candidate", "data-id": index, "aria-pressed": index === candidateIndex, onClick: () => setCandidateIndex(index) }, member.image.sample.sample_id);
+                                            return _jsx(ThumbnailCard, { src: ConsistencyView.media(member.image, true), variant: "comparison", label: filename, "data-dc": "candidate", "data-id": index, "aria-pressed": index === candidateIndex, onClick: () => setCandidateIndex(index) }, member.image.sample.sample_id);
                                         }) }), membersError && _jsx("p", { role: "alert", className: "iad-error", children: membersError }), compared.error && _jsx("p", { role: "alert", className: "iad-error", children: compared.error })] }), _jsxs("section", { className: "dc-images-panel", "aria-label": "\u5019\u9009\u56FE", children: [_jsx("h3", { children: "\u5019\u9009\u56FE" }), candidates.loading ? _jsx("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u5019\u9009\u56FE\u2026" }) : candidates.error ?
                                         _jsx("p", { role: "alert", className: "iad-error", children: candidates.error }) :
                                         [['exact', '完全一致的图'], ['similar', '相似图']].map(([kind, label]) => {
                                             const previews = candidates.data?.items.filter(item => item.kind === kind) || [];
-                                            return _jsxs("div", { className: "dc-candidate-group", "data-kind": kind, children: [_jsx("h4", { children: label }), previews.length ? _jsx("div", { className: "iad-thumbnail-strip", children: previews.map(candidate => {
+                                            return _jsxs("div", { className: "dc-candidate-group", "data-kind": kind, children: [_jsx("h4", { children: label }), previews.length ? _jsx("div", { className: "iad-thumbnail-grid", children: previews.map(candidate => {
                                                             const image = candidate.image, filename = image.sample.relative_path.split('/').pop();
-                                                            return _jsx(ThumbnailCard, { variant: "compact", label: filename, src: ConsistencyView.media(image, true), "data-dc": "retrieved-candidate", onClick: () => setZoomItem({
+                                                            return _jsx(ThumbnailCard, { variant: "comparison", label: filename, src: ConsistencyView.media(image, true), "data-dc": "retrieved-candidate", onClick: () => setZoomItem({
                                                                     id: candidate.sample_id, title: filename, imageUrl: ConsistencyView.media(image),
                                                                     width: image.sample.width, height: image.sample.height,
                                                                     ...datasetImageAnnotations(candidate.annotations.dataset_format ?? undefined, image.sample, candidate.annotations.annotations),

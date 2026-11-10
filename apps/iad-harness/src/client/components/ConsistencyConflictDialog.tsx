@@ -1,6 +1,6 @@
 import React,{useCallback,useEffect,useMemo,useState} from 'react';
 import type {AnchorCandidatePage,EvidenceBundle,GalleryMember} from '../../shared/domain.generated.js';
-import {conflictCategoryLabels} from '../../shared/consistency.parameters.generated.js';
+import {conflictCategoryLabels,modelConclusionLabels} from '../../shared/consistency.parameters.generated.js';
 import {datasetImageAnnotations} from '../dataset-image-annotations.js';
 import {useDatasetCatalog} from '../useDatasetCatalog.js';
 import {ConsistencyView,type ConsistencyComparisonItem} from '../consistency-view.js';
@@ -47,8 +47,8 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
   const modelResult=groupAnalysis.analysis?.status==='COMPLETED' ? groupAnalysis.analysis.result : null;
   const candidates=useResource<AnchorCandidatePage>(jobId ?
     `/consistency/checks/${encodeURIComponent(jobId)}/anchors/${encodeURIComponent(currentConflictId)}/candidates`:null);
-  const modelConclusion=ConsistencyView.modelConclusion(modelResult?.overall.text || currentConflict.model.modelType);
-  const displayModelConclusion=modelConclusion ? conflictCategoryLabels[modelConclusion] : '';
+  const modelConclusion=ConsistencyView.modelConclusion(modelResult?.overall.text || currentConflict.model.modelType,modelResult?.overall.verdict);
+  const displayModelConclusion=modelConclusion ? modelConclusionLabels[modelConclusion] : '';
   const groupConclusion=currentConflict.type;
   const displayGroupConclusion=groupConclusion in conflictCategoryLabels
     ? conflictCategoryLabels[groupConclusion as keyof typeof conflictCategoryLabels] : groupConclusion;
@@ -195,11 +195,11 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
 
               <section className="dc-images-panel" aria-label="对比图">
                 <h3>对比图</h3>
-                <div className="iad-thumbnail-strip" aria-label="切换对比图片">
+                <div className="iad-thumbnail-grid" aria-label="切换对比图片">
                   {conflictMembers.map((member,index)=>{
                     const filename=member.image.sample.relative_path.split('/').pop()!;
                     return <ThumbnailCard key={member.image.sample.sample_id} src={ConsistencyView.media(member.image,true)}
-                      variant="compact" label={filename} data-dc="candidate" data-id={index}
+                      variant="comparison" label={filename} data-dc="candidate" data-id={index}
                       aria-pressed={index===candidateIndex} onClick={()=>setCandidateIndex(index)}/>;
                   })}
                 </div>
@@ -214,10 +214,10 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                     const previews=candidates.data?.items.filter(item=>item.kind===kind) || [];
                     return <div className="dc-candidate-group" data-kind={kind} key={kind}>
                       <h4>{label}</h4>
-                      {previews.length ? <div className="iad-thumbnail-strip">
+                      {previews.length ? <div className="iad-thumbnail-grid">
                         {previews.map(candidate=>{
                           const image=candidate.image,filename=image.sample.relative_path.split('/').pop()!;
-                          return <ThumbnailCard key={candidate.sample_id} variant="compact" label={filename}
+                          return <ThumbnailCard key={candidate.sample_id} variant="comparison" label={filename}
                             src={ConsistencyView.media(image,true)} data-dc="retrieved-candidate" onClick={()=>setZoomItem({
                               id:candidate.sample_id,title:filename,imageUrl:ConsistencyView.media(image),
                               width:image.sample.width,height:image.sample.height,

@@ -690,6 +690,7 @@ export function ExplorationPage({
         setPresets(values=>[...values,saved]);setSelectedPresetId(saved.id);setOriginalPrompt(saved.text);setModal('');
       }} />}
       {modal === 'source' && <ExplorationSourceDialog kind={sampleTab} candidates={samplePool}
+        datasets={datasets.filter(item=>selectedChildIds.includes(item.dataset_id))}
         selected={sampleTab==='normal'?normalSelected:defectSelected} loading={samplesLoading}
         onChange={sampleTab==='normal'?setNormalSelected:setDefectSelected} onClose={()=>setModal('')} />}
 

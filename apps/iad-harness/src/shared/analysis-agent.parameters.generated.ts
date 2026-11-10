@@ -217,36 +217,29 @@ export const knowledgeAgentStartParameters = {
         "required": true
       },
       "exploration": {
-        "oneOf": [
-          {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "version_id": {
-                "type": "string",
-                "title": "Version Id",
-                "required": true
-              },
-              "summary": {
-                "type": "string",
-                "title": "Summary",
-                "required": true
-              },
-              "limitations": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "title": "Limitations",
-                "required": true
-              }
-            },
-            "title": "MiningExploration"
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "version_id": {
+            "type": "string",
+            "title": "Version Id",
+            "required": true
           },
-          {
-            "type": "null"
+          "summary": {
+            "type": "string",
+            "title": "Summary",
+            "required": true
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "title": "Limitations",
+            "required": true
           }
-        ]
+        },
+        "title": "MiningExploration"
       }
     },
     "title": "SubmittedMiningPrompt",

@@ -4,6 +4,10 @@ export interface PythonBridgeConfig {
     timeoutMs?: number;
     dbPath?: string;
 }
+export interface BridgeExecutionOptions {
+    timeoutMs?: number;
+    onProgress?: (progressEvent: PythonBridgeResponse) => void;
+}
 export interface PythonBridgeResponse<T = any> {
     event: "result" | "error" | "progress";
     request_id: string;
@@ -33,7 +37,7 @@ export declare class PythonBridge {
     get timeoutMs(): number;
     get dbPath(): string | undefined;
     useModelRouting(routing: ModelRouting): () => void;
-    execute<T = any>(operation: string, args?: Record<string, any>, signal?: AbortSignal, onProgress?: (progressEvent: any) => void): Promise<T>;
+    execute<T = any>(operation: string, args?: Record<string, any>, signal?: AbortSignal, options?: BridgeExecutionOptions): Promise<T>;
     destroy(): void;
 }
 //# sourceMappingURL=index.d.ts.map

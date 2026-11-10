@@ -14,6 +14,7 @@ from iad_core.workbench.analysis_sampling import DEFAULT_SAMPLING_RATIO, MixedSa
 
 
 AnalysisModule = Literal['exploration', 'knowledge']
+CandidateRole = Literal['normal', 'defect']
 AnalysisBatchSize = Annotated[int, Field(strict=True, ge=1)]
 
 
@@ -28,7 +29,7 @@ class AnalysisRegistration(AnalysisModel):
 class AnalysisTarget(AnalysisModel):
     dataset_id: str
     sample_id: str
-    candidate_role: Literal['normal', 'defect'] | None = None
+    candidate_role: CandidateRole | None = None
 
 
 class AnalysisRound(AnalysisModel):

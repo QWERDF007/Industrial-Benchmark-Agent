@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type {Context} from '@deepseek-ai/cordis';
-import {WorkbenchModelRouting} from './models/index.js';
+import {ModelCatalogRouting} from './models/index.js';
 import {ModelConfigurationError, NativeProviders} from './models/providers.js';
 import type {ModelRouting, PythonBridge} from './python-bridge/index.js';
 import {ConsistencyAnchorReviewer} from './consistency/anchor-reviewer.js';
@@ -42,7 +42,7 @@ export async function apply(ctx: Context, {bridge}: {bridge: PythonBridge}) {
   let models: ModelRouting | undefined;
   ctx.inject(['llm', 'settings', 'credentials'], scope => {
     modelContext = scope;
-    const routing = new WorkbenchModelRouting(scope);
+    const routing = new ModelCatalogRouting(scope);
     scope.effect(() => {
       models = routing;
       return () => {models = undefined;modelContext = undefined;};

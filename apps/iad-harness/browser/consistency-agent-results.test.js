@@ -87,7 +87,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     assert.equal((await driver.findElements(By.css(`[data-dc="open-conflict"][data-id="${datasetId}:C.png"]`))).length, 0);
     phase = 'complete model categories';
     assert.deepEqual(await Promise.all((await driver.findElements(By.css('#dc-model-filter option'))).map(option=>option.getText())),
-      ['全部判断','类别不一致','多标','少标','位置差异','拆分','合并']);
+      ['全部判断','类别不一致','多标','少标','位置差异','拆分','合并','一致']);
     await new NativeSelect(await element('#dc-model-filter')).selectByValue('合并');
     await driver.wait(async()=>(await cards()).length===0,5000);
     await new NativeSelect(await element('#dc-model-filter')).selectByValue('all');
@@ -129,7 +129,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     assert.equal((await driver.findElements(By.css('.dc-model-panel h4'))).length,0);
     assert.match(identityText,/实际原图颜色不同。/);
     assert.match(identityText,/内容不同/);
-    assert.match(identityText,/无有效候选，未进行标注审核。/);
+    assert.doesNotMatch(identityText,/未进行标注审核|暂无已保存|尚无已保存/);
     assert.doesNotMatch(identityText,/暂无已保存的整组分析/);
     assert.deepEqual(await Promise.all((await driver.findElements(By.css('[data-dc="identity-analysis"] .dc-analysis-sources'))).map(item=>item.getText())),
       ['A.png：内容不同','B.png：内容不同','D.png：内容不同']);

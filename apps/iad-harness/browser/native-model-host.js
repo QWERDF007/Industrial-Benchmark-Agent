@@ -1,3 +1,4 @@
+import {finalizeFixtureCatalog,respondFixtureTools} from '../test/fixtures/analysis-finalization.js';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -22,14 +23,18 @@ export async function startNativeModelHost({bundlePath = path.join(workspace, 'a
       const context=index<0?null:parse(body.messages[index].content);
       const pages=body.messages.slice(index+1).filter(message=>message.role==='tool').map(message=>parse(message.content));
       let tools;
+      if(context?.phase==='finalize'){
+        const module=body.tools.some(tool=>tool.function.name==='exploration_finalize')?'exploration':'knowledge';
+        respondFixtureTools(res,finalizeFixtureCatalog(context,pages,module),{model});return;
+      }
       if(context?.round){
         const module=body.tools.some(tool=>tool.function.name==='exploration_commit')?'exploration':'knowledge';
         if(!pages.length)tools=context.round.targets.map(target=>({name:'analysis_images',arguments:{sample_id:target.sample_id}}));
         else{
           const observations=pages.map(page=>({sample_id:page.sample_id,dataset_id:page.images[0].dataset_id,
-            description:'观察原图及全部必需标注局部。',evidence_ids:page.images.map(item=>item.image.evidence_id),
+            description:'观察原图及全部必需标注局部。',evidence_ids:[page.evidence_id],
             directions:context.selected_directions.map(direction=>({direction_ref:direction.ref,status:'applicable',reason:'当前主体轮廓可见。'}))}));
-          const ids=pages.flatMap(page=>page.images.filter(item=>item.image.role==='overview'&&item.image.representation==='raw').map(item=>item.image.evidence_id));
+          const ids=pages.filter(page=>page.images.some(item=>item.image.role==='overview'&&item.image.representation==='raw')).map(page=>page.evidence_id);
           const dataset_ids=[...new Set(observations.map(item=>item.dataset_id))];
           const changes=module==='exploration'?{directions:[{direction_id:'contour',title:'主体轮廓',instruction:'复看主体轮廓连续性。',applies_to:'both',
             rationale:'当前已观察范围的原图轮廓。',evidence_ids:ids,counter_evidence_ids:[],dataset_ids,limitations:[]}]}:
@@ -41,9 +46,9 @@ export async function startNativeModelHost({bundlePath = path.join(workspace, 'a
       }else if(context?.target){
         tools=!pages.length?[{name:'audit_images',arguments:{sample_id:context.sample_id}}]:[{name:'audit_commit',arguments:{commit_key:'final',final:{
           state:'normal',analysis:'本张原图与原始标注已逐项观察。',conclusion:'当前可见范围未发现标注疑点。',basis:['本张整图及必需局部。'],
-          evidence_ids:pages.flatMap(page=>page.images.map(item=>item.image.evidence_id)),limitations:[],findings:[],
+          evidence_ids:pages.map(page=>page.evidence_id),limitations:[],findings:[],
           check_assessments:(context.knowledge?.entries||[]).map(entry=>({check_id:entry.check.check_id,status:'consistent',description:'当前主体可观察。',
-            evidence_ids:pages.flatMap(page=>page.images.map(item=>item.image.evidence_id))}))}}}];
+            evidence_ids:pages.map(page=>page.evidence_id)}))}}}];
       }
       const delta=tools?{role:'assistant',tool_calls:tools.map((tool,index)=>({index,id:randomUUID(),type:'function',function:{name:tool.name,arguments:JSON.stringify(tool.arguments)}}))}:
         {role:'assistant',content:'普通会话已保存'};

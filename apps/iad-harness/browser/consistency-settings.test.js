@@ -1,3 +1,4 @@
+import {selectModuleModel} from './module-model-select.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -19,15 +20,15 @@ for(const module of ['consistency','exploration','knowledge'])test(`${module} se
   const bundle = await build({stdin: {contents: `import React from 'react';import {createRoot} from 'react-dom/client';
 import {QueryClientProvider} from '@tanstack/react-query';import {queryClient} from './src/client/query-client.ts';
 import {ModuleSettingsSection} from './src/client/components/ModuleSettingsSection.tsx';
-import {WorkbenchModelProvider} from './src/client/models.tsx';
+
 import {workbenchStyles} from './src/client/styles.ts';
-createRoot(document.getElementById('root')).render(<QueryClientProvider client={queryClient}><WorkbenchModelProvider><div className="iad-workbench"><style>{workbenchStyles}</style><ModuleSettingsSection module={${JSON.stringify(module)}}/></div></WorkbenchModelProvider></QueryClientProvider>);`,
+createRoot(document.getElementById('root')).render(<QueryClientProvider client={queryClient}><div className="iad-workbench"><style>{workbenchStyles}</style><ModuleSettingsSection module={${JSON.stringify(module)}}/></div></QueryClientProvider>);`,
     loader: 'tsx', resolveDir: app}, bundle: true, format: 'iife', write: false, target: 'es2022', define: {'process.env.NODE_ENV': '"production"'}});
   const handler = createIadHttpHandler(bridge);
   const server = http.createServer(async (req, res) => {
     if (req.url === '/browser.js') {res.setHeader('Content-Type', 'application/javascript');res.end(bundle.outputFiles[0].contents);return;}
     if (req.url === '/') {res.setHeader('Content-Type', 'text/html;charset=utf-8');res.end('<meta charset="utf-8"><div id="root"></div><script src="/browser.js"></script>');return;}
-    if (req.url === '/api/iad/models') {res.setHeader('Content-Type', 'application/json');res.end(JSON.stringify({providers: [{provider_id: 'local', name: 'Local', models: [
+    if (req.url === '/api/iad/models/providers') {res.setHeader('Content-Type', 'application/json');res.end(JSON.stringify({providers: [{provider_id: 'local', name: 'Local', models: [
       {model_id: 'vision', name: 'Vision', input_modalities: ['text', 'image']}, {model_id: 'planner', name: 'Planner', input_modalities: ['text']},
     ]}]}));return;}
     await handler(req, res);
@@ -84,7 +85,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await driver.wait(async () => {const settings = await read();return settings.max_exact_candidates === 3 && settings.max_similar_candidates === 7;}, 5000);
     const select = async (label, text) => new NativeSelect(await driver.findElement(By.css(`select[aria-label="${label}"]`))).selectByVisibleText(text);
     assert.equal((await driver.findElements(By.css('select[aria-label="Agent 模型"]'))).length, 0);
-    await select('分析模型', 'Vision（Local）');
+    await selectModuleModel(driver,'Vision（Local）');
     await driver.wait(async () => (await read()).model?.model_id === 'vision', 5000);
     assert.equal(Object.hasOwn(await read(), 'agent_model'), false);
     await select('检索方式', '完全一致');

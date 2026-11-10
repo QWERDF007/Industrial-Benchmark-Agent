@@ -17,6 +17,7 @@ type RouteValue<T extends {kind?:string}> = T extends unknown ? {[K in keyof T]:
 type RouteFields<T> = {[K in keyof T]:Exclude<T[K],null>};
 export type ConsistencyLocation = RouteFields<Omit<import('./domain.generated.js').ConsistencyReturnLocation,'pageId'|'scope'|'query'|'returnPage'>> & {
   pageId:'industrial-consistency';
+  view?:'setup';
   scope?: RouteValue<import('./domain.generated.js').CorpusScope>;
   query?: RouteValue<import('./domain.generated.js').SampleImageQuery>;
   returnPage?: DatasetPageId;

@@ -1,7 +1,7 @@
-import type { AnalysisPublicationView, AnalysisTarget } from '../shared/domain.generated.js';
+import type { AnalysisPublicationView, AnalysisSource, AnalysisTarget } from '../shared/domain.generated.js';
 import type { DirectionItem } from './components/DirectionDetailDialog.js';
 export type ExplorationRole = NonNullable<AnalysisTarget['candidate_role']>;
-export interface ExplorationCandidate {
+export interface ExplorationCandidate extends Pick<AnalysisSource, 'candidate_role' | 'annotation_categories'> {
     id: string;
     filename: string;
     url: string;

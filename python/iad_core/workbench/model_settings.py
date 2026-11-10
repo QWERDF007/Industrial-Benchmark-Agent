@@ -1,26 +1,9 @@
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import AnyHttpUrl, Field, SecretStr, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
-from iad_core.storage.database import Database
-from iad_core.workbench.model_profile import ModelLimits, ModelProfile
-
-
-class WorkbenchModelSelection(AnalysisModel):
-    provider_id: NonBlankText
-    model_id: NonBlankText
-    limits: ModelLimits = Field(default_factory=ModelLimits)
-
-
-class WorkbenchModelSettings(AnalysisModel):
-    revision: int = Field(ge=0)
-    selection: Optional[WorkbenchModelSelection] = None
-
-
-class WorkbenchModelEdit(AnalysisModel):
-    expected_revision: int = Field(ge=0)
-    selection: WorkbenchModelSelection
+from iad_core.workbench.model_profile import ModelProfile, ReasoningEffort
 
 
 class ProviderModel(AnalysisModel):
@@ -29,6 +12,7 @@ class ProviderModel(AnalysisModel):
     input_modalities: Optional[list[str]] = None
     context_tokens: Optional[int] = Field(default=None, gt=0)
     max_output_tokens: Optional[int] = Field(default=None, gt=0)
+    reasoning_efforts: list[ReasoningEffort] = Field(default_factory=list)
 
 
 class WorkbenchProvider(AnalysisModel):
@@ -44,10 +28,8 @@ class WorkbenchProvider(AnalysisModel):
     credential_writable: bool = False
 
 
-class WorkbenchModelView(WorkbenchModelSettings):
+class ModelCatalog(AnalysisModel):
     providers: list[WorkbenchProvider] = Field(default_factory=list)
-    ready: bool = False
-    error: Optional[str] = None
     provider_revision: Optional[int] = None
 
 
@@ -80,34 +62,3 @@ class ProviderDiscovery(AnalysisModel):
 class ModelExecution(AnalysisModel):
     profile: ModelProfile
     api_key: Optional[SecretStr] = None
-
-
-class ModelConnection(AnalysisModel):
-    model_id: NonBlankText
-    capacity_mode: Literal['vllm_tokenize']
-    context_tokens: int = Field(gt=0)
-    image_verified: Literal[False] = False
-
-
-class WorkbenchModels:
-    def __init__(self, db: Database):
-        self.db = db
-
-    def read(self) -> WorkbenchModelSettings:
-        with self.db.connection() as conn:
-            row = conn.execute('SELECT revision,selection_json FROM workbench_model_settings WHERE id=1').fetchone()
-        return WorkbenchModelSettings(revision=row['revision'],
-            selection=WorkbenchModelSelection.model_validate_json(row['selection_json'])) if row else WorkbenchModelSettings(revision=0)
-
-    def save(self, edit: WorkbenchModelEdit) -> WorkbenchModelSettings:
-        edit = WorkbenchModelEdit.model_validate(edit)
-        with self.db.connection() as conn:
-            conn.execute('BEGIN IMMEDIATE')
-            row = conn.execute('SELECT revision FROM workbench_model_settings WHERE id=1').fetchone()
-            revision = row['revision'] if row else 0
-            if revision != edit.expected_revision:
-                raise ValueError('工作台模型配置已变化，请刷新后再保存')
-            conn.execute('''INSERT INTO workbench_model_settings(id,revision,selection_json) VALUES(1,?,?)
-                ON CONFLICT(id) DO UPDATE SET revision=excluded.revision,selection_json=excluded.selection_json''',
-                (revision + 1, edit.selection.model_dump_json()))
-        return WorkbenchModelSettings(revision=revision + 1, selection=edit.selection)

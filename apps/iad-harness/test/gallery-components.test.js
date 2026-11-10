@@ -7,6 +7,24 @@ import {Pagination} from '../lib/client/components/Pagination.js';
 import {explorationDirections} from '../lib/client/exploration-view.js';
 import {DatasetKnowledge} from '../lib/client/components/DatasetKnowledge.js';
 import {RuleAssessments} from '../lib/client/components/RuleAssessments.js';
+import {ConsistencyView} from '../lib/client/consistency-view.js';
+import {ConsistencyResultCard} from '../lib/client/components/ConsistencyResultCard.js';
+
+test('consistency cards show 一致 only after an equivalent annotation review', () => {
+  const items=['MODEL_REVIEWED','NO_CANDIDATES','NO_ELIGIBLE_CANDIDATES'].map(reason=>({
+    sample:{sample_id:`dataset:${reason}.png`,task_id:'dataset'},image:null,
+    summary:{program_conclusion:'位置差异',model_conclusion:'无冲突',verdict:'EQUIVALENT',reason},
+  }));
+  const cards=ConsistencyView.imageCards('job',items);
+  const render=item=>renderToStaticMarkup(React.createElement(ConsistencyResultCard,{item,action:'job-image',onOpen(){}}));
+  assert.equal(cards[0].model.modelType,'EQUIVALENT');
+  assert.match(render(cards[0]),/title="模型结论：一致"/);
+  for(const card of cards.slice(1)) {
+    assert.equal(card.model.modelType,'');
+    assert.match(render(card),/title="模型结论："/);
+    assert.doesNotMatch(render(card),/模型结论：一致/);
+  }
+});
 
 test('sample knowledge panels read the fixed native publication catalog', () => {
   const knowledge={version_id:'fixed-native-version',coverage:{completed:2,total:4},catalog:{summary:'固定发布总结',

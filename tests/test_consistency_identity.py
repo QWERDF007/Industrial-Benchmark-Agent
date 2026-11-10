@@ -16,8 +16,8 @@ from iad_core.workbench.vision import VlmClient
 def identity_response(context, relation, reason):
     finding = {'relation': relation, 'reason': reason, 'main_description': '主图真实局部细节。',
         'candidate_description': '候选真实局部细节。'}
-    return {'overview': finding if context['scope'] == 'overview' else None,
-        'windows': [{'window_index': window['window_index'], **finding}
+    return {'overview': finding if context['scope'] == 'joint' else None,
+        'windows': [{**{key:window[key] for key in ('window_index','region_pair_id','main_media_id','candidate_media_id')}, **finding}
             for window in context['windows']],
         'media_ids': context['required_image_ids'], 'limitations': []}
 
@@ -42,6 +42,19 @@ def similar_job(dataset, tmp_path, request):
                 SampleRepository(database).get(config.dataset.id + ':' + name + '.png').image_path)
         from iad_core.dataset.registry import DatasetRegistry
         DatasetRegistry(database).rescan(config.dataset.id)
+    if case in ('original_resolution', 'no_annotations'):
+        from iad_core.storage.repositories import SampleRepository
+        from iad_core.dataset.registry import DatasetRegistry
+        from PIL import ImageDraw
+        for index, name in enumerate(('normal', 'normal2', 'dent', 'scratch')):
+            sample = SampleRepository(database).get(config.dataset.id + ':' + name + '.png')
+            image = Image.new('RGB', (1600, 1200), '#707070')
+            ImageDraw.Draw(image).rectangle((1200+index*20, 800, 1210+index*20, 810), fill='red')
+            image.save(sample.image_path)
+            shapes = ([{'shape_type':'rectangle', 'label':'defect', 'points':[[100,100],[200,200]]}]
+                if case == 'original_resolution' and name in ('dent', 'scratch') else [])
+            (tmp_path/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':1600,'imageHeight':1200,'shapes':shapes}))
+        DatasetRegistry(database).rescan(config.dataset.id)
     encoder = configure_test_encoder(database, tmp_path)
     for name in ('normal', 'normal2', 'dent', 'scratch'):
         group = PixelIndex(database).get(config.dataset.id + ':' + name + '.png').content_group_id
@@ -51,7 +64,7 @@ def similar_job(dataset, tmp_path, request):
             dim=encoder.profile.dim, dtype=encoder.profile.storage_dtype, embedding_blob=vector.tobytes()))
     runtime = WorkbenchRuntime(database)
     checks = ConsistencyAgentJobs(runtime)
-    anchor = config.dataset.id + ':' + ('dent' if case == 'registered' else case) + '.png'
+    anchor = config.dataset.id + ':' + ('dent' if case in ('registered','original_resolution','no_annotations') else case) + '.png'
     run_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'combined',
         'min_similarity': 0.9, 'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
     checks.session_created(run_id, anchor)
@@ -62,8 +75,44 @@ def similar_job(dataset, tmp_path, request):
         runtime.close()
 
 
+@pytest.mark.parametrize('similar_job', ['original_resolution','no_annotations'], indirect=True)
+def test_identity_sends_originals_and_only_ten_percent_annotation_crops(similar_job):
+    import base64
+    import io
+
+    runtime, checks, run_id, anchor = similar_job
+    observed = []
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count':1000,'max_model_len':32768})
+        content = json.loads(request.content)['messages'][-1]['content']
+        context = json.loads(content[1]['text'])
+        sizes = [Image.open(io.BytesIO(base64.b64decode(item['image_url']['url'].split(',')[1]))).size
+            for item in content if item['type']=='image_url']
+        observed.append((context, sizes))
+        return httpx.Response(200, json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(
+            identity_response(context,'unverified','逐页记录实际可见内容，不推断身份。'))}}]})
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
+    try:
+        state = ConsistencyAgentReview(runtime, client).verify(run_id, anchor)
+    finally:
+        client.close()
+    assert state.completed
+    assert len(observed)==3
+    for context,sizes in observed:
+        assert context['scope']=='joint'
+        assert sizes[:2]==[(1600,1200),(1600,1200)]
+        assert context['windows']==[]
+        expected = sum(region[side+'_media_id'] is not None for region in context['unmapped_regions'] for side in ('main','candidate'))
+        assert sizes[2:]==[(120,120)]*expected
+        assert bool(expected)==any(context['annotations'].values())
+
+
+
 @pytest.mark.parametrize('relation', ['content_different', 'unverified'])
-def test_nonidentical_candidates_are_verified_without_annotation_or_path_leakage(similar_job, relation):
+def test_nonidentical_candidates_use_annotations_without_quality_labels_or_paths(similar_job, relation):
     runtime, checks, run_id, anchor = similar_job
     generated = []
 
@@ -74,7 +123,7 @@ def test_nonidentical_candidates_are_verified_without_annotation_or_path_leakage
         generated.append(body)
         text = '\n'.join(part.get('text', '') for message in body['messages'] for part in message['content'])
         assert ':dent.png' not in text and ':normal.png' not in text
-        assert 'annotations' not in text and 'quality_status' not in text and 'image_label' not in text
+        assert 'quality_status' not in text and 'image_label' not in text
         context = json.loads(body['messages'][-1]['content'][1]['text'])
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(identity_response(context, relation,
                 '局部内容不同。' if relation == 'content_different' else '关键细节不能确认。'))}}]})
@@ -87,9 +136,9 @@ def test_nonidentical_candidates_are_verified_without_annotation_or_path_leakage
     assert state.completed
     assert len(generated) >= 2
     if relation == 'unverified':
-        contexts = [json.loads(body['messages'][-1]['content'][1]['text']) for body in generated]
-        assert any(window['main_window'] == [6, 6, 34, 34] or window['candidate_window'] == [6, 6, 34, 34]
-            for context in contexts for window in context['windows'])
+        assert any(pair.main_window == (8,8,32,32) or pair.candidate_window == (8,8,32,32)
+            for gate in state.gates for pair in gate.region_pairs)
+        assert all(pair.mapping == 'unverified' for gate in state.gates if gate.source == 'vision' for pair in gate.region_pairs)
     assert sum(gate.gate_status == 'eligible' for gate in state.gates) == 1
     assert sum(gate.relation == relation for gate in state.gates) == 2
     assert len(state.eligible_ids) == 1
@@ -121,7 +170,7 @@ def test_completed_unverified_candidates_pass_without_annotation_assessments(sim
         assert state.completed and not state.eligible_ids
         result = review.finish_rules(run_id, anchor)
         assert result.result == 'passed'
-        assert result.pass_reason == 'no_eligible_candidate'
+        assert result.pass_reason == 'no_valid_candidate'
         assert result.candidate_stats.unverified == 3
         assert result.assessments == []
         from iad_core.consistency.agent_results import ConsistencyAgentResults
@@ -238,22 +287,13 @@ def test_identity_rejects_one_different_local_window_despite_matching_overview(s
             return httpx.Response(200, json={'count': 1200, 'max_model_len': 32768})
         body = json.loads(request.content)
         context = json.loads(body['messages'][-1]['content'][1]['text'])
-        if context['scope'] == 'overview':
-            return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(
-                identity_response(context, 'transformed_same_content', '整图轮廓对应。'))}}]})
-        assert len(context['windows']) == 1
-        assert all(json.loads(part['text'].removeprefix('图像视图：'))['role'] == 'roi'
-            for part in body['messages'][-1]['content']
-            if part['type'] == 'text' and part['text'].startswith('图像视图：'))
+        assert context['scope']=='joint' and context['windows']
         sent.append(context)
-        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps({
-            'overview': None,
-            'windows': [{'window_index': window['window_index'],
-                'relation': 'content_different' if window['main_window'] == [6, 6, 34, 34] else 'transformed_same_content',
-                'main_description': '主图对应区域没有黑点。', 'candidate_description': '候选局部新增黑点。',
-                'reason': '局部新增黑点。' if window['main_window'] == [6, 6, 34, 34] else '局部纹理对应。'}
-                for index, window in enumerate(context['windows'])],
-            'media_ids': context['required_image_ids'], 'limitations': []})}}]})
+        answer=identity_response(context,'transformed_same_content','整图轮廓和局部纹理对应。')
+        for finding,window in zip(answer['windows'],context['windows']):
+            if window['main_window']==[8,8,32,32]:
+                finding.update(relation='content_different',reason='局部新增黑点。')
+        return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(answer)}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
     try:
@@ -266,7 +306,7 @@ def test_identity_rejects_one_different_local_window_despite_matching_overview(s
 
 
 @pytest.mark.parametrize('similar_job', ['registered'], indirect=True)
-def test_identity_capacity_pages_resume_without_repeating_completed_generations(similar_job):
+def test_identity_capacity_refuses_partial_groups_without_model_generation(similar_job):
     runtime, checks, run_id, anchor = similar_job
     sent = []
 
@@ -281,19 +321,12 @@ def test_identity_capacity_pages_resume_without_repeating_completed_generations(
             identity_response(context, 'transformed_same_content', '本页原始局部逐项对应。'))}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
-    client.profile = client.profile.model_copy(update={'max_visual_inputs': 4})
+    client.profile = client.profile.model_copy(update={'max_visual_inputs': 3})
     try:
-        for _ in range(40):
-            before = len(sent)
-            state = ConsistencyAgentReview(runtime, client).verify(run_id, anchor, step=True)
-            assert len(sent) <= before + 1
-            if state.completed:
-                break
-        assert state.completed and len(state.eligible_ids) == 3
-        assert len(sent) > 3
-        before = len(sent)
-        assert ConsistencyAgentReview(runtime, client).verify(run_id, anchor) == state
-        assert len(sent) == before
+        from iad_core.workbench.vision import ModelCapacityError
+        with pytest.raises(ModelCapacityError,match='完整图组'):
+            ConsistencyAgentReview(runtime,client).verify(run_id,anchor)
+        assert sent==[]
     finally:
         client.close()
 
@@ -312,7 +345,7 @@ def test_identity_cannot_qualify_when_model_omits_a_local_window(similar_job):
             if message['role'] == 'user' and isinstance(message['content'], list))
         context = json.loads(message['content'][1]['text'])
         decision = identity_response(context, 'transformed_same_content', '外观相似。')
-        if context['scope'] == 'local':
+        if context['scope'] == 'joint':
             decision['windows'] = decision['windows'][:-1]
             generated.append(decision)
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(decision)}}]})
@@ -327,7 +360,7 @@ def test_identity_cannot_qualify_when_model_omits_a_local_window(similar_job):
         client.close()
 
 
-def test_tiny_identity_regions_are_magnified_and_delivered_as_adjacent_pairs(similar_job):
+def test_tiny_identity_regions_keep_original_pixels_and_are_delivered_as_adjacent_pairs(similar_job):
     import base64
     import io
     runtime, checks, run_id, anchor = similar_job
@@ -346,10 +379,10 @@ def test_tiny_identity_regions_are_magnified_and_delivered_as_adjacent_pairs(sim
                 if 'window_index' in group:
                     metadata = json.loads(content[index + 1]['text'].removeprefix('图像视图：'))
                     image = Image.open(io.BytesIO(base64.b64decode(content[index + 2]['image_url']['url'].split(',', 1)[1])))
-                    assert min(image.size) >= 224
+                    assert image.size == (24,24)
                     assert metadata['sent_size'] == list(image.size)
         paired = [(group['window_index'], group['side']) for group in groups if 'window_index' in group]
-        assert paired == [(window['window_index'], side) for window in context['windows'] for side in ('main', 'candidate')]
+        assert paired == [(window['window_index'], side) for window in sorted([*context['windows'],*context['unmapped_regions']],key=lambda item:item['window_index']) for side in ('main', 'candidate') if window[side+'_media_id'] is not None]
         compared.append(paired)
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(
             identity_response(context, 'unverified', '逐对核对真实细节，无法确认。'))}}]})

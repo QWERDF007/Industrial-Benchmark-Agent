@@ -2,12 +2,12 @@ import type { Context } from '@deepseek-ai/cordis';
 import { credentialRef } from '@deepseek-ai/dsh-credentials';
 import type {} from '@deepseek-ai/dsh-settings';
 import {assertUsableApiKey} from '@deepseek-ai/dsh-llm';
-import type { FrozenModelRole, GenerationLimits, ModelExecution, ModelLimits, ModelProfile, ModuleModelReference, ProviderEdit, ProviderDiscovery, ProviderReference, ProviderModel, WorkbenchModelSettings, WorkbenchProvider } from '../../shared/domain.generated.js';
-import {defaultModelLimits} from '../../shared/model-settings.generated.js';
+import type { FrozenModelRole, GenerationLimits, ModelExecution, ModelLimits, ModelProfile, ModuleModelReference, ProviderEdit, ProviderDiscovery, ProviderReference, ProviderModel, WorkbenchProvider } from '../../shared/domain.generated.js';
+import {defaultModelLimits,reasoningEffortLabels} from '../../shared/model-settings.generated.js';
 
 export class ModelConfigurationError extends Error {readonly statusCode = 422;}
 
-type Selection = NonNullable<WorkbenchModelSettings['selection']>;
+type Selection = ModuleModelReference & {limits: ModelLimits};
 const object = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value)
   ? value as Record<string, unknown> : {};
 const apiEndpoint = (value: string) => {
@@ -33,6 +33,10 @@ export class NativeProviders {
 
   revision() {return this.namespace().revision;}
 
+  async validateReference(reference: ModuleModelReference): Promise<void> {
+    await this.configuration({...reference, limits: defaultModelLimits}, 'vision', false);
+  }
+
   private source(providerId: string) {
     const entry = this.ctx.llm.listConfigurableProviders().find(row => row.provider === providerId);
     if (!entry) throw new ModelConfigurationError('该提供商未暴露可用的视觉服务配置，请在提供商设置中配置');
@@ -45,7 +49,7 @@ export class NativeProviders {
     if (!Object.keys(profile).length) throw new ModelConfigurationError('提供商尚未配置');
     const api = typeof profile.api === 'string' ? profile.api : null;
     const endpoint = typeof profile.baseURL === 'string' ? profile.baseURL : null;
-    const error = api !== 'openai-completions' ? '当前视觉作业仅支持 OpenAI Chat Completions 协议'
+    const error = !['openai-completions','openai-responses'].includes(api || '') ? '当前视觉作业仅支持 OpenAI Chat Completions 或 Responses 协议'
       : !endpoint ? '请在提供商设置中填写服务地址'
       : Object.keys(object(profile.headers)).length ? '当前视觉作业尚不支持提供商自定义请求头' : null;
     return {entry, namespace, profile, api, endpoint, error};
@@ -64,12 +68,15 @@ export class NativeProviders {
         const ref = typeof source.profile.apiKeyEnv === 'string' && source.profile.apiKeyEnv ? credentialRef(source.profile.apiKeyEnv) : null;
         const credential = ref ? await this.ctx.credentials.describe(ref) : null;
         row.credential_configured = credential?.configured ?? false; row.credential_writable = credential?.writable ?? true;
-        row.models = (await this.ctx.llm.listModels(provider.id)).map(model => {
+        row.models = await Promise.all((await this.ctx.llm.listModels(provider.id)).map(async model => {
           const configured = Array.isArray(source.profile.models) ? object(source.profile.models.find(item => object(item).id === model.id)) : {};
+          const metadata=await this.ctx.llm.resolveModelInfo(provider.id,model.id);
           return {model_id: model.id, name: model.name, input_modalities: model.inputModalities ? [...model.inputModalities] : null,
             context_tokens: typeof configured.contextWindow === 'number' ? configured.contextWindow : null,
-            max_output_tokens: typeof configured.maxTokens === 'number' ? configured.maxTokens : null};
-        });
+            max_output_tokens: typeof configured.maxTokens === 'number' ? configured.maxTokens : null,
+            reasoning_efforts:source.api==='openai-responses'?Object.keys(reasoningEffortLabels).filter(effort=>
+              metadata.reasoning?.efforts.some(option=>option.id===effort)) as NonNullable<ModelProfile['reasoning_effort']>[]:[]};
+        }));
       } catch (error) {row.error = error instanceof Error ? error.message : String(error);}
       return row;
     }));
@@ -84,16 +91,17 @@ export class NativeProviders {
     const listed = models.find(model => model.id === selection.model_id);
     if (!listed) throw new ModelConfigurationError('所选模型已移除，请重新选择');
     const metadata = await this.ctx.llm.resolveModelInfo(selection.provider_id, selection.model_id, signal);
-    if (!metadata.inputModalities?.includes(role === 'vision' ? 'image' : 'text'))
-      throw new ModelConfigurationError(role === 'vision' ? '所选模型未声明图像输入能力，请核实提供商的模型配置' : 'Agent 模型未声明文本输入能力');
-    if (requireCapacity && selection.limits.capacity_mode !== 'vllm_tokenize') throw new ModelConfigurationError('请在高级设置中选择已确认的容量预检协议');
-    const endpoint = base + '/chat/completions';
+    const api = source.api as ModelProfile['api'];
+    if (requireCapacity && api === 'openai-completions' && selection.limits.capacity_mode !== 'vllm_tokenize')
+      throw new ModelConfigurationError('请在高级设置中选择已确认的容量预检协议');
+    const endpoint = base + (api === 'openai-responses' ? '/responses' : '/chat/completions');
     const cap = (configured: number | null, declared?: number) => declared && declared > 0
       ? Math.min(configured ?? declared, declared) : configured;
     const declared = Array.isArray(source.profile.models)
       ? object(source.profile.models.find(item => object(item).id === selection.model_id))
       : object(object(source.profile.modelOverrides)[selection.model_id]);
-    const profile: ModelProfile = {...selection.limits, endpoint, api: 'openai-completions',
+    const profile: ModelProfile = {...selection.limits, endpoint, api,reasoning_effort:null,
+      capacity_mode: api === 'openai-responses' ? 'provider_managed' : selection.limits.capacity_mode,
       provider_id: selection.provider_id, provider_name: source.entry.displayName, model_id: selection.model_id,
       credential_ref: typeof source.profile.apiKeyEnv === 'string' && source.profile.apiKeyEnv ? source.profile.apiKeyEnv : null,
       context_tokens: cap(selection.limits.context_tokens, typeof declared.contextWindow === 'number' ? declared.contextWindow : metadata.context?.contextWindow),
@@ -101,7 +109,8 @@ export class NativeProviders {
     return {profile, source, metadata, declared};
   }
 
-  async freeze(reference: ModuleModelReference | null, limits: GenerationLimits | ModelLimits, role: 'agent' | 'vision'): Promise<FrozenModelRole> {
+  async freeze(reference: ModuleModelReference | null, limits: GenerationLimits | ModelLimits, role: 'agent' | 'vision',
+    reasoningEffort:ModelProfile['reasoning_effort']=null): Promise<FrozenModelRole> {
     if (!reference) return {profile: null, input_modalities: [], native_profile: null, error: null};
     try {
       const {profile, source, metadata, declared} = await this.configuration({...reference, limits: {...defaultModelLimits, ...limits}}, role, role === 'vision');
@@ -110,6 +119,15 @@ export class NativeProviders {
       const model = {...declared, id: reference.model_id, contextWindow: profile.context_tokens,
         maxTokens: profile.max_output_tokens, input: metadata.inputModalities};
       const native: Record<string, unknown> = {...source.profile, models: [model]};
+      if(reasoningEffort!==null) {
+        if(profile.api!=='openai-responses'||!metadata.reasoning?.efforts.some(option=>option.id===reasoningEffort))
+          throw new ModelConfigurationError('所选模型未声明支持该推理强度，请重新选择');
+        const wire=object(declared.reasoningEfforts)[reasoningEffort]??reasoningEffort;
+        if(typeof wire!=='string'||!Object.hasOwn(reasoningEffortLabels,wire))
+          throw new ModelConfigurationError('模型推理强度映射不属于 Responses 支持的强度');
+        profile.reasoning_effort=wire as NonNullable<ModelProfile['reasoning_effort']>;
+        native.reasoning=reasoningEffort;
+      }
       delete native.modelOverrides;
       if (profile.generation_timeout_seconds !== null) native.timeoutMs = profile.generation_timeout_seconds * 1000;
       if (role === 'agent') {
@@ -124,27 +142,10 @@ export class NativeProviders {
             compat: {...object(declared.compat), chatTemplateKwargs: parameters.chat_template_kwargs}}];
         }
       }
-      return {profile, input_modalities: [...metadata.inputModalities!], native_profile: native, error: null};
+      return {profile, input_modalities: [...(metadata.inputModalities??[])], native_profile: native, error: null};
     } catch (error) {
       return {profile: null, input_modalities: [], native_profile: null, error: error instanceof Error ? error.message : String(error)};
     }
-  }
-
-  async resolve(selection: Selection, purpose: 'inspect' | 'start' | 'probe', signal?: AbortSignal): Promise<ModelExecution> {
-    const {profile, source} = await this.configuration(selection, 'vision', purpose !== 'probe', signal);
-    let key: string | null = null;
-    if (profile.credential_ref) {
-      const ref = credentialRef(profile.credential_ref);
-      if (purpose !== 'inspect') {
-        const credential = await this.ctx.credentials.resolve(ref);
-        if (!credential) throw new ModelConfigurationError('所选提供商缺少凭据，请在提供商设置中配置');
-        key = credential.value;
-      } else if (!(await this.ctx.credentials.describe(ref)).configured) throw new ModelConfigurationError('所选提供商缺少凭据，请在提供商设置中配置');
-    }
-    if (JSON.stringify(this.source(selection.provider_id).profile) !== JSON.stringify(source.profile))
-      throw new ModelConfigurationError('提供商配置在读取期间发生变化，请刷新后再操作');
-    signal?.throwIfAborted();
-    return {profile, api_key: key};
   }
 
   async save(edit: ProviderEdit, apiKey?: string | null): Promise<void> {
@@ -157,9 +158,12 @@ export class NativeProviders {
     const key = apiKey ? assertUsableApiKey(apiKey, 'iad-harness', reference) : undefined;
     if (key && !(await this.ctx.credentials.describe(credentialRef(reference))).writable)
       throw new ModelConfigurationError('该凭据由只读来源提供，不能在页面覆盖');
-    const profile = {displayName: edit.name, api: 'openai-completions', baseURL: endpoint,
-      models: edit.models.map(model => ({id: model.model_id, name: model.name || model.model_id, input: model.input_modalities || [],
-        ...(model.context_tokens ? {contextWindow: model.context_tokens} : {}), ...(model.max_output_tokens ? {maxTokens: model.max_output_tokens} : {})})),
+    const profile = {displayName: edit.name, api: previous.api || 'openai-completions', baseURL: endpoint,
+      models: edit.models.map(model => {
+        const {contextWindow,maxTokens,...metadata}=Array.isArray(previous.models)?object(previous.models.find(item=>object(item).id===model.model_id)):{};
+        return {...metadata,id: model.model_id, name: model.name || model.model_id, input: model.input_modalities || [],
+          ...(model.context_tokens ? {contextWindow: model.context_tokens} : {}), ...(model.max_output_tokens ? {maxTokens: model.max_output_tokens} : {})};
+      }),
       ...(key && !previous.apiKeyEnv ? {apiKeyEnv: reference} : {})};
     if (this.editing.has(id)) throw new ModelConfigurationError('提供商正在更新，请等待保存完成');
     this.editing.add(id);
@@ -193,7 +197,7 @@ export class NativeProviders {
     const models = await this.ctx.llm.discoverModels(namespace.ns, {baseURL: apiEndpoint(request.endpoint), api: 'openai-completions', ...(key ? {apiKey: key} : {})}, signal);
     return models.map(model => ({model_id: model.id, name: model.name || model.id,
       input_modalities: model.inputModalities ? [...model.inputModalities] : null,
-      context_tokens: model.contextWindow ?? null, max_output_tokens: model.maxTokens ?? null}));
+      context_tokens: model.contextWindow ?? null, max_output_tokens: model.maxTokens ?? null,reasoning_efforts:[]}));
   }
 
   async credentialsFor(profile: ModelProfile): Promise<ModelExecution> {

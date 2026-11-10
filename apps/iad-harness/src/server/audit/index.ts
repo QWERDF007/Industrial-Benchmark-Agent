@@ -33,77 +33,6 @@ function formatToolResultText(val: any): string {
   return parts.join("\n");
 }
 
-async function checkImageCapability(
-  ctx: any,
-  exec: any
-): Promise<{ capable: boolean; reason?: string }> {
-  if (exec?.signal?.aborted) {
-    return {
-      capable: false,
-      reason: "Execution request cancelled",
-    };
-  }
-
-  if (!ctx.attachments || typeof ctx.attachments.saveImage !== "function") {
-    return {
-      capable: false,
-      reason: "Attachment storage service is not available in current runtime context",
-    };
-  }
-
-  const session = exec?.session ?? exec?.agent?.session;
-  const sessionModalities =
-    session?.model?.inputModalities ??
-    session?.inputModalities ??
-    exec?.agent?.options?.inputModalities;
-
-  if (sessionModalities && Array.isArray(sessionModalities)) {
-    if (!sessionModalities.includes("image")) {
-      return {
-        capable: false,
-        reason: `Model or session declares inputModalities without 'image': [${sessionModalities.join(", ")}]`,
-      };
-    }
-    return { capable: true };
-  }
-
-  const routed = session?.requestHeader?.()?.config;
-  const provider = routed?.provider ?? exec?.agent?.options?.provider;
-  const model = routed?.model ?? exec?.agent?.options?.model;
-
-  if (!provider || !model) {
-    return {
-      capable: false,
-      reason: "Unknown model route: provider or model is not specified in current execution context",
-    };
-  }
-
-  const llm = typeof ctx.get === "function" ? ctx.get("llm") : ctx.llm;
-  if (!llm || typeof llm.resolveModelInfo !== "function") {
-    return {
-      capable: false,
-      reason: "LLM service or resolveModelInfo is unavailable to verify image capability",
-    };
-  }
-
-  try {
-    const active = await llm.resolveModelInfo(provider, model, exec?.signal);
-    if (!active || !Array.isArray(active.inputModalities) || !active.inputModalities.includes("image")) {
-      const declared = active?.inputModalities ? `[${active.inputModalities.join(", ")}]` : "undefined";
-      return {
-        capable: false,
-        reason: `Model '${model}' does not declare image input capability (inputModalities: ${declared})`,
-      };
-    }
-    return { capable: true };
-  } catch (err: any) {
-    return {
-      capable: false,
-      reason: `Failed to resolve model image capability for '${provider}/${model}': ${err?.message || err}`,
-    };
-  }
-}
-
 
 export function createAuditTools(ctx: any): ToolDefinition[] {
   const client = getClient(ctx);
@@ -233,20 +162,6 @@ export function createAuditTools(ctx: any): ToolDefinition[] {
       },
     },
     async execute(args, exec) {
-      // Capability gate check (V2-08, Spec V2-03)
-      const capCheck = await checkImageCapability(ctx, exec);
-      if (!capCheck.capable) {
-        return {
-          status: "NOT_READY",
-          summary: `Image observation refused: ${capCheck.reason}`,
-          warnings: [
-            `环境无附件存储服务或模型不支持图像输入：拒绝生成视觉观察 (${capCheck.reason})`,
-          ],
-          metrics: { task_id: args.task_id, sample_id: args.sample_id, reason: capCheck.reason },
-          mutation: "NONE",
-        };
-      }
-
       const res = await client.call("sample_view", args, exec.signal);
       if (res?.status === "OK" && res?.metrics?.image_endpoint) {
         try {
@@ -311,20 +226,6 @@ export function createAuditTools(ctx: any): ToolDefinition[] {
       },
     },
     async execute(args, exec) {
-      // Capability gate check (V2-08, Spec V2-03)
-      const capCheck = await checkImageCapability(ctx, exec);
-      if (!capCheck.capable) {
-        return {
-          status: "NOT_READY",
-          summary: `Region observation refused: ${capCheck.reason}`,
-          warnings: [
-            `环境无附件存储服务或模型不支持图像输入：拒绝生成视觉观察 (${capCheck.reason})`,
-          ],
-          metrics: { task_id: args.task_id, sample_id: args.sample_id, reason: capCheck.reason },
-          mutation: "NONE",
-        };
-      }
-
       const res = await client.call("region_view", args, exec.signal);
       if (res?.status === "OK" && res?.metrics?.image_endpoint) {
         try {
@@ -393,20 +294,6 @@ export function createAuditTools(ctx: any): ToolDefinition[] {
       },
     },
     async execute(args, exec) {
-      // Capability gate check (V2-08, Spec V2-03)
-      const capCheck = await checkImageCapability(ctx, exec);
-      if (!capCheck.capable) {
-        return {
-          status: "NOT_READY",
-          summary: `Comparison observation refused: ${capCheck.reason}`,
-          warnings: [
-            `环境无附件存储服务或模型不支持图像输入：拒绝生成视觉观察 (${capCheck.reason})`,
-          ],
-          metrics: { task_id: args.task_id, sample_ids: args.sample_ids, reason: capCheck.reason },
-          mutation: "NONE",
-        };
-      }
-
       const res = await client.call("samples_compare", args, exec.signal);
       if (res.status === "OK" && Array.isArray(res.metrics?.samples)) {
         const attachments = [];

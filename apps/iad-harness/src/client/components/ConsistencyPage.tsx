@@ -1,24 +1,21 @@
 import {SectionHeading} from './layout/SectionHeading.js';
 import {PromptDrawer} from './PromptDrawer.js';
-import {conflictCategoryDefaults,conflictCategoryLabels} from '../../shared/consistency.parameters.generated.js';
+import {conflictCategoryDefaults,conflictCategoryLabels,modelConclusionLabels} from '../../shared/consistency.parameters.generated.js';
 import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
-import {v4 as uuid} from 'uuid';
 import {ConsistencyStatisticsDialog,type ConsistencyStatisticAction} from './ConsistencyStatisticsDialog.js';
 import {ConsistencyConflictDialog} from './ConsistencyConflictDialog.js';
 import {ConsistencyImages} from './ConsistencyImages.js';
 import {ConsistencyGallery} from './ConsistencyGallery.js';
-import {MultiSelect, Select} from './Select.js';
-import {Modal} from './Modal.js';
+import {ConsistencyFilters} from './ConsistencyFilters.js';
 import {JobStatusDrawer, JobStatusButton, JobStatusAction} from './JobStatusDrawer.js';
 import {JobListPanel} from './JobListPanel.js';
 import {TabBar} from './layout/TabBar.js';
 import {Button} from './Button.js';
 import {ConsistencyResultCard} from './ConsistencyResultCard.js';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   ConsistencyBatchSummary,
-  DatasetCatalog,
-  JobSnapshot
+  DatasetCatalog
 } from '../../shared/contracts.js';
 import { buildHierarchyGroups, getDatasetGroupId } from '../dataset-hierarchy.js';
 import { IconButton } from './IconButton.js';
@@ -29,10 +26,11 @@ import { Pagination, IBA_JOBS_PAGE_SIZE } from './Pagination.js';
 import { useWorkspace } from '../workspace.js';
 import { message, request } from '../api.js';
 import { workbenchStyles } from '../styles.js';
-import { ClearFilterButton } from './CommonFilterControls.js';
-import {promptDefaults} from '../../shared/prompt-defaults.generated.js';
-import {AgentPromptEditors} from './AgentPromptEditors.js';
-import {ConsistencyView,type ConflictCardItem} from '../consistency-view.js';
+import {consistencyTaskCategories} from '../../shared/prompt-defaults.generated.js';
+import {ConsistencyCheckCreate} from './ConsistencyCheckCreate.js';
+import {identityPromptFields} from '../consistency-prompts.js';
+import {usePagePosition} from '../usePagePosition.js';
+import {ConsistencyView,type ConflictCardItem,type ConsistencyFilterValues} from '../consistency-view.js';
 import {useConsistencyJobs,type ConsistencyJob} from '../useConsistencyJobs.js';
 import {formatJobTime,jobStatuses} from '../../shared/job-display.js';
 import {useDatasetCatalog} from '../useDatasetCatalog.js';
@@ -64,8 +62,6 @@ const dcJobElapsed = (j: Pick<ConsistencyBatchSummary,'duration_seconds'>) => {
   const r = Math.round(sec % 60);
   return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
 };
-
-export const DEFAULT_CONSISTENCY_PROMPT = promptDefaults.consistency;
 
 export function ConsistencyPage() {
   const { state,workspace } = useWorkspace();
@@ -118,19 +114,14 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
   const [jobConflicts, setJobConflicts] = useState<ConflictCardItem[]>([]);
   const [conflictsLoading, setConflictsLoading] = useState(false);
   const [kind, setKind] = useState<string>('all');
-  const [modelFilter, setModelFilter] = useState<string>('all');
-  const [agreement, setAgreement] = useState<string>('all');
+  const [modelFilter, setModelFilter] = useState<ConsistencyFilterValues['model']>('all');
+  const [agreement, setAgreement] = useState<ConsistencyFilterValues['agreement']>('all');
   const [search, setSearch] = useState<string>('');
   const [page, setPage] = useState<number>(1);
-  const [reviewFilter, setReviewFilter] = useState<string>('all');
+  const [reviewFilter, setReviewFilter] = useState<ConsistencyFilterValues['review']>('all');
 
-  // Modals state
-  const [modal, setModal] = useState<'' | 'new' | 'compare'>('');
-  const [modalChildIds, setModalChildIds] = useState<string[]>([]);
-  const [newCheckBusy, setNewCheckBusy] = useState<boolean>(false);
-  const newSubmission=useRef<{key:string;id:string}|null>(null);
-  const [newPrompt, setNewPrompt] = useState<string>(DEFAULT_CONSISTENCY_PROMPT);
-  const [systemPrompt,setSystemPrompt]=useState<string>(promptDefaults.system.consistency);
+  const createOpen=state.consistency.view==='setup';
+  const [modal,setModal]=useState<''|'compare'>('');
   const [currentConflictId, setCurrentConflictId] = useState<string>('');
   const [statsModalJobId, setStatsModalJobId] = useState<string>('');
   const [promptJob,setPromptJob]=useState<ConsistencyJob|null>(null);
@@ -212,27 +203,10 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
     return()=>controller.abort();
   },[selectedJob?.batch_id,selectedJob?.status,revision]);
 
-  // Visible conflicts filtered by kind, modelFilter, agreement, search, reviewFilter
-  const visibleConflicts = useMemo(() => {
-    let list = [...jobConflicts];
-    if (kind !== 'all') {
-      list = list.filter(c => c.types.some(type=>type===kind));
-    }
-    if (modelFilter !== 'all') {
-      list = list.filter(c => c.model.modelType === modelFilter);
-    }
-    if (agreement !== 'all') {
-      list = list.filter(c => c.agreement === agreement);
-    }
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(c => c.filename.toLowerCase().includes(q));
-    }
-    if (reviewFilter !== 'all') {
-      list = list.filter(c => c.review === reviewFilter);
-    }
-    return list;
-  }, [jobConflicts, kind, modelFilter, agreement, search, reviewFilter]);
+  const visibleConflicts = useMemo(() => ConsistencyView.filter(jobConflicts,
+    {search,model:modelFilter,agreement,review:reviewFilter})
+    .filter(item=>kind==='all' || item.types.some(type=>type===kind)),
+    [jobConflicts,kind,modelFilter,agreement,search,reviewFilter]);
 
   const totalPages = Math.max(1, Math.ceil(visibleConflicts.length / 18));
   const currentPage = Math.min(totalPages, Math.max(1, page));
@@ -286,32 +260,6 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
     setRevision(v => v + 1);
   }, [polling.refresh]);
 
-  // Start new consistency check
-  const handleCreateJob = async () => {
-    if (!modalChildIds.length || !newPrompt.trim() || !systemPrompt.trim() || newCheckBusy) return;
-    setNewCheckBusy(true);setError('');
-    try {
-      const key=JSON.stringify([modalChildIds,systemPrompt,newPrompt]);
-      if(newSubmission.current?.key!==key)newSubmission.current={key,id:uuid()};
-      const started=await request<JobSnapshot>('/analysis/start',{submission_id:newSubmission.current.id,analysis_kind:'consistency',
-        dataset_ids:modalChildIds,system_prompt:systemPrompt,instruction:newPrompt});
-      newSubmission.current=null;
-      workspace.updateConsistency({parentId:selectedParentId,datasetIds:[...modalChildIds],batchId:started.root_run_id},true);
-      setModal('');
-      setSearch('');
-      setJobPage(1);
-      setKind('all');
-      setModelFilter('all');
-      setAgreement('all');
-      setPage(1);
-      setRevision(v => v + 1);
-    } catch (err) {
-      setError(message(err));
-    } finally {
-      setNewCheckBusy(false);
-    }
-  };
-
   const currentConflict = useMemo(
     () => jobConflicts.find(c => c.id === currentConflictId) || null,
     [jobConflicts, currentConflictId]
@@ -322,15 +270,23 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
     setRevision(value => value + 1);
   }
 
-  const modelTypes=Object.entries(conflictCategoryLabels).map(([value,label])=>({value,label}));
+  const taskType=selectedJob?.analysis.consistency_task_type;
+  const modelTypes=Object.entries(modelConclusionLabels)
+    .filter(([value])=>value==='EQUIVALENT' || !taskType || consistencyTaskCategories[taskType].some(category=>category===value))
+    .map(([value,label])=>({value,label}));
 
   const conflictTabs = useMemo(() => {
-    const defaults = new Set<string>(datasets.filter(dataset=>selectedJob?.dataset_ids.includes(dataset.dataset_id))
+    const defaults = new Set<string>(taskType?consistencyTaskCategories[taskType]:datasets.filter(dataset=>selectedJob?.dataset_ids.includes(dataset.dataset_id))
       .flatMap(dataset=>conflictCategoryDefaults[dataset.format]));
     return [...(selectedJob?.analysis.consistency_check_version===1?[{value:'images',label:'全部图像'}]:[]),
       {value: 'all', label: '全部冲突'}, ...Object.entries(conflictCategoryLabels)
       .filter(([value])=>defaults.has(value)).map(([value,label])=>({value,label}))];
-  }, [datasets,selectedJob?.dataset_ids,selectedJob?.analysis.consistency_check_version]);
+  }, [datasets,taskType,selectedJob?.dataset_ids,selectedJob?.analysis.consistency_check_version]);
+
+  useEffect(()=>{
+    if(!conflictTabs.some(tab=>tab.value===kind))setKind('all');
+    if(modelFilter!=='all'&&!modelTypes.some(option=>option.value===modelFilter))setModelFilter('all');
+  },[conflictTabs,taskType,kind,modelFilter]);
 
   const handleStatClick = useCallback(
     (action: ConsistencyStatisticAction, id: string) => {
@@ -342,14 +298,14 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
         setPage(1);
         setStatsModalJobId('');
       } else if (action === 'stat-model') {
-        setModelFilter(id);
+        setModelFilter(ConsistencyView.modelConclusion(id)||'all');
         setKind('all');
         setAgreement('all');
         setReviewFilter('all');
         setPage(1);
         setStatsModalJobId('');
       } else if (action === 'stat-agreement') {
-        setAgreement(id);
+        setAgreement(id==='same'?'same':'different');
         setKind('all');
         setModelFilter('all');
         setReviewFilter('all');
@@ -365,11 +321,19 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
   );
 
 
+  const surface=usePagePosition(createOpen?'consistency:create':`consistency:results:${selectedParentId}:${selectedJobId}`,createOpen||!conflictsLoading);
+
   return (
-    <div className="iad-workbench iad-business-page iad-consistency" data-page="industrial-consistency">
+    <div ref={surface} className="iad-workbench iad-business-page iad-consistency" data-page="industrial-consistency">
       <style>{workbenchStyles}</style>
 
-      <div className="dc-root">
+      {createOpen?<ConsistencyCheckCreate datasets={datasets} groups={groups} parentId={selectedParentId} datasetIds={selectedChildIds}
+        onCancel={()=>workspace.updateConsistency({view:undefined})}
+        onStarted={(job,parentId,datasetIds)=>{
+          workspace.updateConsistency({view:undefined,parentId,datasetIds,batchId:job.root_run_id},true);
+          setSearch('');setJobPage(1);setKind('all');setModelFilter('all');setAgreement('all');setPage(1);
+          setRevision(value=>value+1);polling.refresh();
+        }}/>:<div className="dc-root">
         <WorkbenchHeader pageId="industrial-consistency" className="heading dc-page-heading">
           <div className="dc-heading-actions">
             <Button
@@ -377,10 +341,8 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
               variant="primary"
               data-dc="start-check"
               onClick={() => {
-                setNewPrompt(DEFAULT_CONSISTENCY_PROMPT);
-                setSystemPrompt(promptDefaults.system.consistency);
-                setModalChildIds([...selectedChildIds]);
-                          setModal('new');
+                workspace.rememberPagePosition('consistency:create',0);
+                workspace.updateConsistency({view:'setup'});
               }}
             >
               新建检查
@@ -502,6 +464,8 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
             <p className="iad-result-empty" role="status">当前没有结果</p>
           ) : (
             <>
+              <ConsistencyFilters value={{search,model:modelFilter,agreement,review:reviewFilter}} modelTypes={modelTypes}
+                onChange={value=>{setSearch(value.search);setModelFilter(value.model);setAgreement(value.agreement);setReviewFilter(value.review);setPage(1);}}/>
               {/* Conflict Type Tabs */}
               <TabBar label="原始标注冲突类型" value={kind} onChange={value => {setKind(value); setPage(1);}}
                 items={conflictTabs.map(tab => ({id: tab.value, label: <><span>{tab.label}</span><span className="iad-tab-count">{
@@ -510,100 +474,11 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
 
               <div className="dc-result-panel" role="tabpanel" aria-label={conflictTabs.find(tab=>tab.value===kind)?.label}>
               {kind==='images' ? <ConsistencyImages key={selectedJob.analysis.run_id} jobId={selectedJob.analysis.run_id}
+                filters={{search,model:modelFilter,agreement,review:reviewFilter}} running={['PENDING','RUNNING'].includes(selectedJob.status)}
                 revision={`${revision}:${selectedJob.status}`} onReviewed={()=>setRevision(value=>value+1)}/> : !['COMPLETED','PARTIAL'].includes(selectedJob.status) ? (
                   <p className="iad-result-empty" role="status">当前作业没有已发布结果</p>
                 ) : conflictsLoading ? <p className="iad-result-empty" role="status">正在读取结果…</p>
                 : !jobConflicts.length ? <p className="iad-result-empty" role="status">当前没有结果</p> : <>
-
-              {/* 文件名搜索、模型判断、结论一致性与人工复核 */}
-              <div className="dc-refined-filterbar" role="group" aria-label="冲突筛选">
-                {/* Filename search input: 38px height, placeholder '搜索文件名' */}
-                <label className="dc-filter-field dc-search-field">
-                  文件名搜索
-                  <input
-                    type="search"
-                    id="dc-filename-search"
-                    aria-label="文件名搜索"
-                    placeholder="搜索文件名"
-                    autoComplete="off"
-                    style={{ height: '38px', minHeight: '38px', maxHeight: '38px', boxSizing: 'border-box' }}
-                    value={search}
-                    onChange={e => {
-                      setSearch(e.target.value);
-                      setPage(1);
-                    }}
-                  />
-                </label>
-
-                <label className="dc-filter-field">
-                  模型判断
-                  <Select
-                    id="dc-model-filter"
-                    aria-label="模型判断"
-                    value={modelFilter}
-                    onChange={e => {
-                      setModelFilter(e.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="all">全部判断</option>
-                    {modelTypes.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                </label>
-
-                <label className="dc-filter-field">
-                  结论一致性
-                  <Select
-                    id="dc-agreement"
-                    aria-label="原结论与模型判定一致性"
-                    value={agreement}
-                    onChange={e => {
-                      setAgreement(e.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="all">全部</option>
-                    <option value="same">一致</option>
-                    <option value="different">不一致</option>
-                  </Select>
-                </label>
-
-                <label className="dc-filter-field dc-review-field">
-                  人工复核
-                  <Select
-                    id="dc-review-filter"
-                    aria-label="人工复核"
-                    value={reviewFilter}
-                    onChange={e => {
-                      setReviewFilter(e.target.value);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="all">全部状态</option>
-                    <option value="pending">待复核</option>
-                    <option value="confirmed">确认冲突</option>
-                    <option value="rejected">排除冲突</option>
-                  </Select>
-                </label>
-
-                <ClearFilterButton
-                  data-dc="clear-conflict-filters"
-                  ariaLabel="清除筛选条件"
-                  title="清除筛选条件"
-                  disabled={!search && modelFilter === "all" && agreement === "all" && reviewFilter === "all"}
-                  onClick={() => {
-                    setSearch("");
-                    setModelFilter("all");
-                    setAgreement("all");
-                    setReviewFilter("all");
-                    setPage(1);
-                  }}
-                />
-              </div>
 
               {/* Grid of conflict cards */}
               {paginatedConflicts.length ? (
@@ -624,63 +499,15 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
           )}
           </div>
         </section>
-      </div>
-
-      {/* New Consistency Check Modal */}
-      {modal === 'new' && (
-        <Modal title="新建一致性检查" size="form" id="dc-new-mask" className="dc-dialog dc-new-dialog" onClose={()=>setModal('')} header={false}>
-            <header className="dc-dialog-head">
-              <h2 id="dc-new-title">新建一致性检查</h2>
-              <IconButton icon="close" type="button" title="关闭" label="关闭" onClick={() => {
-                  setModal('');
-                            }} />
-            </header>
-            <div className="dc-dialog-body dc-new-body">
-              <div className="dc-new-field">
-                <span>数据集</span>
-                <div className="dc-new-parent">{currentParent?.name || '—'}</div>
-              </div>
-              <div className="dc-new-field">
-                <span>子数据集</span>
-                <MultiSelect id="dc-new-child-trigger" menuId="dc-new-child-options" label="子数据集"
-                  options={currentChildDatasets.map(item=>({value:item.dataset_id,label:item.name}))} selected={modalChildIds}
-                  onToggle={id=>setModalChildIds(previous=>previous.includes(id)?previous.filter(value=>value!==id):[...previous,id])} disabled={newCheckBusy} />
-              </div>
-              <div className="dc-new-field dc-prompt-editor">
-                {(error||polling.error)&&<p role="alert" className="iad-error">{error||polling.error}</p>}
-                <AgentPromptEditors id="dc-new-prompt" system={systemPrompt} user={newPrompt}
-                  onSystemChange={setSystemPrompt} onUserChange={setNewPrompt} disabled={newCheckBusy}/>
-              </div>
-            </div>
-            <footer className="dc-dialog-footer">
-              <Button
-                type="button"
-
-                data-dc="close-new"
-                onClick={() => {
-                  setModal('');
-                            }}
-              >
-                取消
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                data-dc="create-job"
-                disabled={!modalChildIds.length || !newPrompt.trim() || !systemPrompt.trim() || newCheckBusy}
-                onClick={handleCreateJob}
-              >
-                {newCheckBusy ? '启动中…' : '开始检查'}
-              </Button>
-            </footer>
-        </Modal>
-      )}
+      </div>}
 
       {modal==='compare' && currentConflict && <ConsistencyConflictDialog key={`${currentConflict.checkId}:${currentConflict.id}`} conflict={currentConflict} items={visibleConflicts}
         onSelect={setCurrentConflictId} onClose={()=>setModal('')}
         onReviewed={()=>setRevision(value=>value+1)} />}
 
-      {promptJob && <PromptDrawer title="查看提示词" text={promptJob.analysis.consistency_prompt || '该作业没有保存提示词。'} systemText={promptJob.analysis.system_prompt} onClose={()=>setPromptJob(null)} />}
+      {promptJob && <PromptDrawer title="查看提示词" text={promptJob.analysis.consistency_prompt || '该作业没有保存提示词。'} systemText={promptJob.analysis.system_prompt}
+        additionalSections={promptJob.analysis.consistency_identity_prompts?identityPromptFields.map(({name,label})=>({
+          title:label,text:promptJob.analysis.consistency_identity_prompts![name]})):[]} onClose={()=>setPromptJob(null)} />}
 
       {!!statsModalJobId && <ConsistencyStatisticsDialog items={jobConflicts} onFilter={handleStatClick}
         onClose={()=>setStatsModalJobId('')} />}

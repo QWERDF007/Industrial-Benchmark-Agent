@@ -38,8 +38,9 @@ test('review roles freeze native declarations without credential reads or provid
     assert.equal(vision.profile.credential_ref, 'ISOLATED_KEY');
     assert.equal(vision.profile.context_tokens, 65536);
     const invalid = await native.freeze({provider_id: 'isolated', model_id: 'planner'}, limits, 'vision');
-    assert.equal(invalid.profile, null);
-    assert.match(invalid.error, /图像输入/);
+    assert.equal(invalid.error, null);
+    assert.equal(invalid.profile.model_id,'planner');
+    assert.deepEqual(invalid.input_modalities,['text']);
     const unsupportedTemplate = await native.freeze({provider_id: 'isolated', model_id: 'planner'},
       {...limits, request_parameters: {chat_template_kwargs: {enable_thinking: false}}}, 'agent');
     assert.equal(unsupportedTemplate.profile, null);
@@ -92,4 +93,33 @@ test('frozen Agent template arguments override model defaults on the actual SDK 
     assert.equal(wire.max_completion_tokens, 128);
     assert.equal(wire.messages[0].role, 'system');
   } finally {await frozen?.dispose();await original.dispose();await new Promise(resolve => server.close(resolve));}
+});
+
+test('Responses providers remain selectable and freeze their native image and Agent protocol',async()=>{
+  const providers={pinai:{api:'openai-responses',baseURL:'https://provider.invalid/v1',apiKeyEnv:'PINAI_TEST_KEY',
+    models:[{id:'gpt-6.1-sol',input:['text','image'],contextWindow:262144,maxTokens:32768,reasoningEfforts:{high:'high'}}]}};
+  const ctx=new Context();new LlmRuntime(ctx);
+  ctx.provide('settings',{configure:()=>()=>{},describe:()=>[{ns:'llm-pi-ai',revision:1,value:{providers}}]});
+  ctx.provide('credentials',{describe:async()=>({configured:true,writable:true})});
+  const fork=await ctx.plugin(piAi,{providers});
+  try {
+    const native=new NativeProviders(()=>ctx);
+    const catalog=await native.catalog();
+    assert.equal(catalog[0].error,null);
+    assert.deepEqual(catalog[0].models[0].reasoning_efforts,['high']);
+    const limits={...defaultModelLimits,max_output_tokens:4096};
+    for(const kind of ['agent','vision']) {
+      const role=await native.freeze({provider_id:'pinai',model_id:'gpt-6.1-sol'},limits,kind,'high');
+      assert.equal(role.error,null);
+      assert.equal(role.profile.api,'openai-responses');
+      assert.equal(role.profile.endpoint,'https://provider.invalid/v1/responses');
+      assert.equal(role.profile.capacity_mode,'provider_managed');
+      assert.equal(role.native_profile.api,'openai-responses');
+      assert.equal(role.native_profile.reasoning,'high');
+      assert.equal(role.profile.reasoning_effort,'high');
+      assert.deepEqual(role.input_modalities,['text','image']);
+    }
+    const invalid=await native.freeze({provider_id:'pinai',model_id:'gpt-6.1-sol'},limits,'vision','xhigh');
+    assert.equal(invalid.profile,null);assert.match(invalid.error,/推理强度/);
+  } finally {await fork.dispose();}
 });

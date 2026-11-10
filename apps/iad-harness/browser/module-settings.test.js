@@ -1,3 +1,4 @@
+import {selectModuleModel} from './module-model-select.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -35,7 +36,7 @@ test('native settings preserve General and Models while business settings persis
         if(rows.length&&await rows[0].isDisplayed())await rows[0].click();return false;
       },15000);
     };
-    const section=async label=>{await click(label);await driver.wait(until.elementLocated(By.css('[data-module-settings]')),10000);await driver.wait(until.elementLocated(By.css('select[aria-label="分析模型"]')),10000);};
+    const section=async label=>{await click(label);await driver.wait(until.elementLocated(By.css('[data-module-settings]')),10000);await driver.wait(until.elementLocated(By.css('button[aria-label="分析模型"]')),10000);};
     phase='single settings entrance';
     assert.equal((await driver.findElements(By.css('button[aria-label="模型设置"]'))).length,0,'侧栏只保留原生设置入口');
     assert.equal((await driver.findElements(By.css('button[aria-label="Settings"]'))).length,1);
@@ -43,21 +44,23 @@ test('native settings preserve General and Models while business settings persis
     const divider=await driver.executeScript('const s=getComputedStyle(document.querySelector("[data-shortcut-modal=settings] > nav"));return {width:s.borderRightWidth,style:s.borderRightStyle}');
     assert.deepEqual(divider,{width:'1px',style:'solid'},'设置分类与内容区之间显示分割线');
     await driver.wait(until.elementLocated(By.xpath("//*[@data-shortcut-modal='settings']//button[normalize-space(.)='Light']")),5000);
+    const catalog=await api(null,'/models/providers');assert.equal(catalog.status,200);
+    assert.ok(catalog.data.providers.some(provider=>provider.provider_id==='first-service'));
     await click('Models');await driver.wait(until.elementLocated(By.css('button[aria-label^="Edit First service"]')),10000);
     assert.equal((await driver.findElements(By.css('[data-module-settings]'))).length,0);
     for(const label of ['方向探索','知识挖掘','数据一致性','模型审计'])assert.equal((await driver.findElements(By.xpath(`//*[@data-shortcut-modal='settings']//button[normalize-space(.)='${label}']`))).length,1);
     const shared=await api(null,'/models');
-    const configured=await api({expected_revision:shared.data.revision,selection:{provider_id:'first-service',model_id:'first-model',limits:{capacity_mode:'vllm_tokenize'}}},'/models');assert.equal(configured.status,200);
+    assert.equal(shared.status,404,'旧公共默认模型入口已删除');
     phase='explicit module model required';
     const unconfigured=await api({submission_id:randomUUID(),analysis_kind:'exploration',dataset_ids:['unconfigured-module'],normal_images:['n'],defect_images:['d'],prompt:{text:'比较轮廓。'}},'/analysis/start');
     assert.equal(unconfigured.status,422);assert.match(unconfigured.data.error.message,/分析模型/);
     phase='per-module model persistence';
     for(const [module,label] of Object.entries({exploration:'方向探索',knowledge:'知识挖掘',audit:'模型审计'})){
-      await section(label);const selected=await driver.findElement(By.css('select[aria-label="分析模型"]'));
-      assert.equal(await selected.getAttribute('value'),'');
+      await section(label);const selected=await driver.findElement(By.css('button[aria-label="分析模型"]'));
+      assert.equal(await selected.getText(),'请选择具体模型');
       assert.equal((await selected.findElements(By.xpath(".//option[.='使用工作台模型']"))).length,0,'业务设置只选择具体模型');
       assert.equal((await driver.findElements(By.xpath("//*[@data-module-settings]//button[.='保存设置' or .='恢复默认']"))).length,0,'修改后自动保存');
-      await new NativeSelect(selected).selectByVisibleText('Second model（Second service）');
+      await selectModuleModel(driver,'Second model（Second service）');
       await driver.wait(async()=>(await api(null,`/settings/modules/${module}`)).data.settings.model?.model_id==='second-model',5000);
       if(module==='audit')assert.ok(await driver.findElement(By.css('input[aria-label="同时审计的主图数"]')).isEnabled());
       else{
@@ -94,11 +97,11 @@ test('native settings preserve General and Models while business settings persis
     await fs.writeFile('/tmp/iad-v75-business-settings.png',await driver.takeScreenshot(),'base64');
     await driver.navigate().refresh();await open();await section('数据一致性');
     await driver.wait(async()=>await driver.findElement(By.css('select[aria-label="检索方式"]')).getAttribute('value')==='exact',5000);
-    assert.equal((await api(null,'/models')).data.selection.model_id,'first-model','模块配置不改变工作台模型');
+    assert.equal((await api(null,'/models')).status,404,'旧公共默认模型入口不再可用');
     assert.equal((await api(null,'/settings/modules/knowledge')).data.settings.model.model_id,'second-model');
     phase='rapid autosave survives section changes';
     await driver.executeScript(`window.originalModuleFetch=window.fetch;window.fetch=async(...args)=>{const response=await window.originalModuleFetch(...args);if(String(args[0]).includes('/settings/modules/')&&args[1]?.method==='POST')await new Promise(resolve=>setTimeout(resolve,500));return response;};`);
-    await new NativeSelect(await driver.findElement(By.css('select[aria-label="分析模型"]'))).selectByVisibleText('Second model（Second service）');
+    await selectModuleModel(driver,'Second model（Second service）');
     await new NativeSelect(await driver.findElement(By.css('select[aria-label="检索方式"]'))).selectByVisibleText('一致+相似');
     const rapidThreshold=await driver.wait(until.elementLocated(By.css('input[aria-label="相似度阈值"]')),5000);
     await rapidThreshold.clear();await rapidThreshold.sendKeys('0.96');await rapidThreshold.sendKeys('\uE004');
@@ -134,7 +137,7 @@ test('native settings preserve General and Models while business settings persis
     await driver.wait(until.elementLocated(By.xpath("//*[@data-module-settings]//*[@role='alert'][contains(.,'配置已变化')]")),5000);
     await click('重试保存');
     await driver.wait(async()=>{const value=(await api(null,'/settings/modules/consistency')).data.settings;return value.min_similarity===.99&&value.model?.model_id==='first-model'&&value.mode==='combined';},5000);
-    const appearance=await driver.executeScript(`const root=document.querySelector('[data-module-settings]'),row=root.querySelector('.iad-module-row'),control=root.querySelector('select');return {title:getComputedStyle(root.querySelector('h2')).fontSize,row:row.getBoundingClientRect().height,radius:getComputedStyle(control).borderRadius,width:control.getBoundingClientRect().width};`);
+    const appearance=await driver.executeScript(`const root=document.querySelector('[data-module-settings]'),row=root.querySelector('.iad-module-row'),control=root.querySelector('button[aria-label="分析模型"]');return {title:getComputedStyle(root.querySelector('h2')).fontSize,row:row.getBoundingClientRect().height,radius:getComputedStyle(control).borderRadius,width:control.getBoundingClientRect().width};`);
     assert.equal(appearance.title,'14px');assert.equal(appearance.row,74);assert.equal(appearance.radius,'8px');assert.equal(appearance.width,240);
     await fs.writeFile('/tmp/iad-v75-business-settings.png',await driver.takeScreenshot(),'base64');
     phase='real job model routing';
@@ -142,7 +145,7 @@ test('native settings preserve General and Models while business settings persis
     const dataset=imported.data.dataset_id;
     const started=await api({submission_id:randomUUID(),analysis_kind:'exploration',dataset_ids:[dataset],normal_images:[dataset+':part-0.png'],defect_images:[dataset+':part-2.png'],prompt:{text:'比较主体轮廓。'}},'/analysis/start');assert.equal(started.status,200,JSON.stringify(started));
     const job=await driver.wait(async()=>{const result=await api(null,`/analysis/status/${started.data.run_id}`);return !['RUNNING','PENDING'].includes(result.data.status)?result.data:false;},15000);
-    assert.equal(job.status,'COMPLETED',JSON.stringify(job.errors));assert.equal(job.model_profile.model_id,'second-model');assert.equal(job.model_profile.provider_id,'second-service');
+    assert.equal(job.status,'COMPLETED',JSON.stringify({errors:job.errors,execution_error:job.execution_error,message:job.message}));assert.equal(job.model_profile.model_id,'second-model');assert.equal(job.model_profile.provider_id,'second-service');
     assert.ok(calls.some(call=>call.path.startsWith('/second/')&&call.body?.stream&&call.body.tools?.some(tool=>tool.function.name==='exploration_commit')&&call.body.model==='second-model'&&call.authorization==='Bearer second-isolated-key'));
     const explorationSnapshot=JSON.parse(execFileSync(resolvePythonPath(),['-c',
       "import sqlite3,sys; c=sqlite3.connect('file:'+sys.argv[1]+'?mode=ro',uri=True); print(c.execute('SELECT snapshot_json FROM analysis_workflow_runs WHERE job_id=?',(sys.argv[2],)).fetchone()[0])",root+'/workbench.db',started.data.run_id],{encoding:'utf8'}));

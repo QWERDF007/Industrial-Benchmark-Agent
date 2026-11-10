@@ -1,5 +1,6 @@
 import hashlib
 import json
+import math
 from contextlib import nullcontext
 from typing import Literal
 
@@ -10,13 +11,15 @@ from scipy.optimize import linear_sum_assignment
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.annotation_models import AnnotationComparison, AnnotationDifference, AnnotationMatchingConfig, InstanceMatch
 from iad_core.consistency.geometry import bbox_iou, union_region
+from iad_core.consistency.errors import ConsistencyError
+from iad_core.consistency.task_types import ConsistencyTaskType, TASK_TYPES_BY_FORMAT
 from iad_core.consistency.comparison_domain import ComparisonDomain
 from iad_core.consistency.models import Identifier, Relation
 from iad_core.consistency.policy import AnnotationPolicy
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.duplicate.index import PixelIndex
 from iad_core.storage.database import Database
-from iad_core.storage.models import Annotation, AnnotationAvailability, QualityStatus
+from iad_core.storage.models import Annotation, AnnotationAvailability, GeometryStatus, QualityStatus
 from iad_core.consistency.annotation_inventory import AnnotationInventory
 from iad_core.consistency.conflict_categories import ConflictCategory
 from iad_core.storage.repositories import AnnotationRepository, SampleRepository
@@ -41,6 +44,39 @@ class AnnotationSet(AnalysisModel):
         return (self.availability.status in ('VALID_EMPTY', 'VALID_NONEMPTY')
             and self.policy.annotation_coverage == 'EXHAUSTIVE')
 
+    def resolve_geometry(self) -> 'AnnotationSet':
+        annotations = []
+        for annotation in self.annotations:
+            if annotation.annotation_type == 'bbox' and annotation.geometry_status in ('VALID', 'INVALID'):
+                box = annotation.bbox
+                valid = (box is not None and len(box) == 4 and all(math.isfinite(value) for value in box)
+                    and box[0] < box[2] and box[1] < box[3]
+                    and all(value is None or value == size for value, size in (
+                        (annotation.source_width, self.width), (annotation.source_height, self.height))))
+                annotation = annotation.model_copy(update={'geometry_status':GeometryStatus.VALID if valid else GeometryStatus.INVALID})
+            annotations.append(annotation)
+        return self.model_copy(update={'annotations':annotations})
+
+    def require_task(self, task_type: ConsistencyTaskType) -> None:
+        if self.errors:
+            raise ConsistencyError('ANNOTATION_UNREADABLE', '原始标注无法读取：' + self.sample_id + '；' + '；'.join(self.errors))
+        if TASK_TYPES_BY_FORMAT.get(self.dataset_format) != task_type:
+            raise ConsistencyError('ANNOTATION_UNREADABLE', '标注格式与作业冻结的任务类型不一致：' + self.sample_id)
+        if task_type == 'anomaly_detection':
+            if self.quality_status not in ('PASS', 'FAIL') or self.annotations:
+                raise ConsistencyError('ANNOTATION_UNREADABLE', '图像级审核需要导入时确认的正常／异常分类：' + self.sample_id)
+            return
+        for annotation in self.annotations:
+            box = annotation.bbox
+            if (annotation.annotation_type != 'bbox' or annotation.geometry_status != 'VALID'
+                    or not annotation.raw_label.strip() or box is None
+                    or max(0, box[0]) >= min(self.width, box[2])
+                    or max(0, box[1]) >= min(self.height, box[3])):
+                raise ConsistencyError('ANNOTATION_UNREADABLE',
+                    '矩形标注无法审核：' + annotation.annotation_id
+                    + '；需要非空类别、有效原始矩形及图内可见区域。'
+                    + f'原始坐标={box}，图像尺寸={self.width}×{self.height}。')
+
     @classmethod
     def capture(cls, db: Database, sample_id: str, connection=None) -> 'AnnotationSet':
         with nullcontext(connection) if connection is not None else db.connection() as connection:
@@ -62,7 +98,7 @@ class AnnotationSet(AnalysisModel):
             annotations=annotations, errors=errors, availability=sample.annotation_availability,
             dataset_format=config.dataset.format,
             policy=AnnotationPolicy(**policy.model_dump(include=set(AnnotationPolicy.model_fields))),
-            annotation_coordinates=pixel.descriptor.annotation_coordinates if pixel else 'UNKNOWN')
+            annotation_coordinates=pixel.descriptor.annotation_coordinates if pixel else 'UNKNOWN').resolve_geometry()
 
 class AnnotationMatcher:
     def __init__(self, config: AnnotationMatchingConfig | None = None):

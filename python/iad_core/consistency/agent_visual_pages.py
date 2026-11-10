@@ -31,7 +31,9 @@ class AnchorVisualPages:
             self.checks.phase(run_id, anchor_id, 'PLANNING_VISUAL_PAGES')
             snapshot = self.checks.snapshot(run_id)
             from iad_core.consistency.identity import CandidateIdentity
-            identities = CandidateIdentity(self.runtime).read(run_id, anchor_id).eligible_ids
+            identity = CandidateIdentity(self.runtime).read(run_id, anchor_id)
+            identities = identity.eligible_ids
+            revisions = {gate.candidate_id: gate.revision for gate in identity.gates if gate.candidate_id in identities}
             if not identities:
                 raise ValueError('没有合格候选，不需要标注观察分页')
             pending = deque([identities])
@@ -40,8 +42,9 @@ class AnchorVisualPages:
                 context.checkpoint()
                 identities = pending.popleft()
                 request = AnchorVisualStart(request_id='page-' + hashlib.sha256(json.dumps(
-                    [run_id, anchor_id, anchor.candidates.fingerprint, identities, snapshot.instruction], ensure_ascii=False).encode()).hexdigest(),
-                    fingerprint=anchor.candidates.fingerprint, candidate_ids=identities, question=snapshot.instruction)
+                    [run_id, anchor_id, anchor.candidates.fingerprint, identities, revisions, snapshot.instruction], ensure_ascii=False).encode()).hexdigest(),
+                    fingerprint=anchor.candidates.fingerprint, candidate_ids=identities, question=snapshot.instruction,
+                    gate_revisions={identity: revisions[identity] for identity in identities})
                 try:
                     inputs = AnchorVisualInput.prepare(self.runtime, run_id, anchor_id, request, context.checkpoint)
                     with ModelCalls(self.runtime.db).bind(run_id, context.checkpoint, role='vision',

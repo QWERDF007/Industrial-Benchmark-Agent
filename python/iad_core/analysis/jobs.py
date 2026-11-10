@@ -33,8 +33,8 @@ class AnalysisAgentJobs:
         if configured.module != selected.analysis_kind:
             raise ValueError('模块配置不属于当前作业')
         role = FrozenModelRole.model_validate(agent)
-        if role.error or not role.profile or not role.native_profile or 'image' not in role.input_modalities:
-            raise ValueError('分析模型不可用：' + (role.error or '需要原生工具调用和图像输入能力'))
+        if role.error or not role.profile or not role.native_profile:
+            raise ValueError('分析模型不可用：' + (role.error or '需要可用的原生Agent配置'))
         if not configured.settings.model or (role.profile.provider_id, role.profile.model_id) != (
                 configured.settings.model.provider_id, configured.settings.model.model_id):
             raise ValueError('实际Agent与本次模块模型配置不一致')

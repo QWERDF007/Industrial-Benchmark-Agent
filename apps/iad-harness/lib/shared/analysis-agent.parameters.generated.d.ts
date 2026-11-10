@@ -193,33 +193,29 @@ export declare const knowledgeAgentStartParameters: {
                 readonly required: true;
             };
             readonly exploration: {
-                readonly oneOf: readonly [{
-                    readonly type: "object";
-                    readonly additionalProperties: false;
-                    readonly properties: {
-                        readonly version_id: {
-                            readonly type: "string";
-                            readonly title: "Version Id";
-                            readonly required: true;
-                        };
-                        readonly summary: {
-                            readonly type: "string";
-                            readonly title: "Summary";
-                            readonly required: true;
-                        };
-                        readonly limitations: {
-                            readonly type: "array";
-                            readonly items: {
-                                readonly type: "string";
-                            };
-                            readonly title: "Limitations";
-                            readonly required: true;
-                        };
+                readonly type: "object";
+                readonly additionalProperties: false;
+                readonly properties: {
+                    readonly version_id: {
+                        readonly type: "string";
+                        readonly title: "Version Id";
+                        readonly required: true;
                     };
-                    readonly title: "MiningExploration";
-                }, {
-                    readonly type: "null";
-                }];
+                    readonly summary: {
+                        readonly type: "string";
+                        readonly title: "Summary";
+                        readonly required: true;
+                    };
+                    readonly limitations: {
+                        readonly type: "array";
+                        readonly items: {
+                            readonly type: "string";
+                        };
+                        readonly title: "Limitations";
+                        readonly required: true;
+                    };
+                };
+                readonly title: "MiningExploration";
             };
         };
         readonly title: "SubmittedMiningPrompt";

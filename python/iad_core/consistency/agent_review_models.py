@@ -12,7 +12,7 @@ from iad_core.consistency.annotation_issues import ISSUE_CATEGORIES, BboxAnnotat
 
 VISUAL_REQUEST_ID_RULE = (
     'request_id标识完整的视觉请求；复用已保存观察须保持原始参数，'
-    '改变question、candidate_ids或windows时须使用新的request_id。'
+    '改变question或candidate_ids时须使用新的request_id。'
 )
 
 
@@ -21,7 +21,8 @@ class AnchorVisualStart(AnalysisModel):
     fingerprint: Digest = Field(description='上下文提供的当前冻结清单指纹。')
     candidate_ids: list[Identifier] = Field(min_length=1, description='完整使用上下文中一个冻结页的候选集合，不拆页、不跨页拼接。')
     question: NonBlankText
-    windows: list[VisualWindow] = Field(default_factory=list)
+    windows: list[VisualWindow] = Field(default_factory=list, exclude=True)
+    gate_revisions: dict[str, int] = Field(default_factory=dict)
 
 
 class AnchorContextQuery(AnalysisModel):
@@ -39,6 +40,12 @@ class AnchorVisualPlan(AnalysisModel):
     pages: list[AnchorVisualStart] = Field(min_length=1)
 
 
+class GateDispute(AnalysisModel):
+    reason: NonBlankText
+    region_pair_ids: list[Identifier] = Field(default_factory=list,
+        description='本次实际观察到内容矛盾的真实配对区域ID；仅原图证据时为空。')
+
+
 class CandidateVisualObservation(AnalysisModel):
     model_config = ConfigDict(extra='allow', frozen=True)
 
@@ -47,6 +54,8 @@ class CandidateVisualObservation(AnalysisModel):
     media_ids: list[Identifier] = Field(min_length=1,
         description='主图与当前候选的两个原图evidence_id；原始标注和全部裁剪视图随原图分组，不单独引用裁图。')
     limitations: list[NonBlankText] = Field(default_factory=list)
+    gate_dispute: GateDispute | None = Field(default=None,
+        description='发现两侧实际内容不同或资格依据不足时报告争议；不能继续提交标注差异。')
 
 
 class AnchorVisualResult(AnalysisModel):
@@ -67,6 +76,7 @@ class AnchorObservation(AnalysisModel):
 
 
 class AnchorDraftSubmission(AnalysisModel):
+    request_id: Identifier | None = None
     fingerprint: Digest
     draft: GroupAnalysisDraft
     observation_ids: dict[Identifier, list[Identifier]]
@@ -108,6 +118,7 @@ class AnchorAssessmentInput(AnchorAssessmentEvidence):
 class AnchorAssessmentSubmission(AnchorAssessmentEvidence):
     assessment: GroupPairAssessment
     comparison: GroupAnalysisComparison
+    gate_revision: int = Field(default=0, ge=0)
 
     @property
     def reference(self) -> GroupAnalysisReference:
@@ -120,5 +131,6 @@ class AnchorAssessmentRecord(AnalysisModel):
 
 
 class AnchorReviewSubmission(AnalysisModel):
+    request_id: Identifier | None = None
     fingerprint: Digest = Field(description='当前冻结清单指纹。')
-    assessment_ids: list[CandidateLimit] = Field(min_length=1, description='恰好包含全部冻结候选的最新评估回执ID，不引用旧版本或其他主图评估。')
+    assessment_ids: list[CandidateLimit] = Field(description='恰好包含当前有效候选的最新评估回执；零有效候选时为空。')

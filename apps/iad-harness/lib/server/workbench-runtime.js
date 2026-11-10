@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { WorkbenchModelRouting } from './models/index.js';
+import { ModelCatalogRouting } from './models/index.js';
 import { ModelConfigurationError, NativeProviders } from './models/providers.js';
 import { ConsistencyAnchorReviewer } from './consistency/anchor-reviewer.js';
 import { ConsistencyCheckScheduler } from './consistency/scheduler.js';
@@ -32,7 +32,7 @@ export async function apply(ctx, { bridge }) {
     let models;
     ctx.inject(['llm', 'settings', 'credentials'], scope => {
         modelContext = scope;
-        const routing = new WorkbenchModelRouting(scope);
+        const routing = new ModelCatalogRouting(scope);
         scope.effect(() => {
             models = routing;
             return () => { models = undefined; modelContext = undefined; };

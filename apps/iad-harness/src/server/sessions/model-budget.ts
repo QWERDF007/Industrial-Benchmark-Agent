@@ -6,10 +6,11 @@ import type {PiAiProviderProfile} from '@deepseek-ai/dsh-llm-pi-ai';
 import type {TokenBudget} from '../../shared/domain.generated.js';
 
 export class NativeModelBudget {
-  private constructor(readonly profile: PiAiProviderProfile, private readonly server: http.Server) {}
+  private constructor(readonly profile: PiAiProviderProfile, private readonly server?: http.Server) {}
 
   static async open(profile: PiAiProviderProfile,
     measure: (body: Record<string, unknown>, signal: AbortSignal) => Promise<TokenBudget>): Promise<NativeModelBudget> {
+    if (profile.api === 'openai-responses') return new NativeModelBudget(profile);
     if (profile.api !== 'openai-completions' || !profile.baseURL)
       throw new Error('Agent 实际上下文计量需要 OpenAI Chat Completions 与 /tokenize 协议');
     const target = new URL(profile.baseURL);
@@ -46,6 +47,8 @@ export class NativeModelBudget {
   }
 
   async close(): Promise<void> {
-    await new Promise<void>((resolve, reject) => this.server.close(error => error ? reject(error) : resolve()));
+    const server=this.server;
+    if (!server) return;
+    await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
   }
 }

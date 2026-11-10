@@ -11,7 +11,6 @@ from iad_core.evidence.images import normalized_preview
 class ImageCorrespondence:
     matrix: np.ndarray | None
     facts: Registration
-    difference: np.ndarray | None = None
 
     @classmethod
     def estimate(cls, main_path: str, candidate_path: str) -> 'ImageCorrespondence':
@@ -48,20 +47,23 @@ class ImageCorrespondence:
         valid = cv2.warpPerspective(np.ones(b.shape, np.uint8), matrix, (a.shape[1], a.shape[0]), flags=cv2.INTER_NEAREST)
         residual = cv2.absdiff(a, aligned)
         residual[valid == 0] = 0
+        points = candidate * np.diag(scales[1])[:2]
+        projected = cv2.perspectiveTransform(points.reshape(1,-1,2),matrix)[0]
+        errors = np.linalg.norm(projected-main*np.diag(scales[0])[:2],axis=1)[inliers.ravel().astype(bool)]
         return cls(matrix, Registration(**{'status': 'registered', 'candidate_to_main': matrix.tolist(),
             'matches': len(good), 'inliers': int(inliers.sum()), 'main_visible_fraction': float(np.mean(valid != 0)),
             'mean_absolute_residual': float(residual[valid != 0].mean()) if valid.any() else None,
-            'reason': '配准与残差仅是视觉线索，不证明真实缺陷相同。'}), residual)
+            'reprojection_error_px': float(np.quantile(errors,.95)),
+            'reason': '配准与残差仅是视觉线索，不证明真实缺陷相同。'}))
 
     def map_bounds(self, box, source_size, target_size, *, to_main=False):
         if self.matrix is None:
-            x1, y1, x2, y2 = box
-            points = np.float64([[x1, y1], [x2, y2]]) * np.asarray(target_size) / np.asarray(source_size)
+            raise ValueError('没有可信几何映射，不能生成对侧局部')
         else:
             points = self.project(box, to_main=to_main)
         low, high = np.floor(points.min(axis=0)).astype(int), np.ceil(points.max(axis=0)).astype(int)
-        low = np.maximum(low - 8, 0)
-        high = np.minimum(high + 8, target_size)
+        low = np.maximum(low, 0)
+        high = np.minimum(high, target_size)
         return [int(low[0]), int(low[1]), int(high[0]), int(high[1])]
 
     def project(self, box, *, to_main=True):

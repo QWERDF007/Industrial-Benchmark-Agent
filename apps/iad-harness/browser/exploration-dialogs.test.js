@@ -23,12 +23,12 @@ test('exploration uses shared modal selection, preset form and deletion with rea
  const bundle=await build({stdin:{contents:`
  import React from 'react';import {createRoot} from 'react-dom/client';
  import {ExplorationPage} from './src/client/components/ExplorationPage.tsx';
- import {WorkbenchModelProvider} from './src/client/models.tsx';
- import {Workspace,WorkspaceContext} from './src/client/workspace.tsx';
+
+ import {QueryClientProvider} from '@tanstack/react-query';import {queryClient} from './src/client/query-client.ts';import {Workspace,WorkspaceContext} from './src/client/workspace.tsx';
  import {workbenchStyles} from './src/client/styles.ts';
  const workspace=new Workspace(null),style=document.createElement('style');style.textContent=workbenchStyles;document.head.append(style);
  function App(){const [dataset,setDataset]=React.useState(null);React.useEffect(()=>{fetch('/api/iad/datasets').then(r=>r.json()).then(data=>setDataset(data.datasets[0]));},[]);
- return <WorkspaceContext.Provider value={workspace}><WorkbenchModelProvider><main className="iad-workbench">{dataset&&<ExplorationPage dataset={dataset} refreshRevision={0}/>}</main></WorkbenchModelProvider></WorkspaceContext.Provider>}
+ return <QueryClientProvider client={queryClient}><WorkspaceContext.Provider value={workspace}><main className="iad-workbench">{dataset&&<ExplorationPage dataset={dataset} refreshRevision={0}/>}</main></WorkspaceContext.Provider></QueryClientProvider>}
  createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolveDir:app},bundle:true,format:'iife',write:false,target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
  let failPreset=false,modelCalls=0,releaseModel;
  const modelGate=new Promise(resolve=>releaseModel=resolve);let holdModel=false;

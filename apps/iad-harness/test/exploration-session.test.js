@@ -94,7 +94,6 @@ test('DSH conversation explores the full scope and mines a fixed direction acros
   dataset=await bridge.execute('dataset_import',{format:'labelme',name:'会话探索',image_dir:path.join(root,'images'),annotation_dir:path.join(root,'labels')});
   execFileSync(resolvePythonPath(),['-c',"from pathlib import Path;from PIL import Image;import sys;p=Path(sys.argv[1]);p.mkdir();Image.new('RGB',(32,24),'green').save(p/'flat.png')",path.join(root,'other')]);
   otherDataset=await bridge.execute('dataset_import',{format:'labelme',name:'无孔平面',image_dir:path.join(root,'other'),annotation_dir:path.join(root,'other')});
-  await bridge.execute('model_settings_save',{expected_revision:0,selection:{provider_id:'iad-verification',model_id:'native-conversation',limits:{capacity_mode:'vllm_tokenize'}}});
   for(const module of ['exploration','knowledge'])await bridge.execute('module_settings_save',{module,expected_revision:0,
     settings:{model:{provider_id:'iad-verification',model_id:'native-conversation'},batch_size:2,agent_limits:{max_output_tokens:4096}}});
   session.ctx.on('tools/result',(execution,result)=>trace.push({name:execution.name,result}));

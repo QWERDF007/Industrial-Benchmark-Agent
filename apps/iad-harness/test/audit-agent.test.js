@@ -1,3 +1,5 @@
+import {chatRequest} from './fixtures/responses.js';
+import {respondFixtureTools} from './fixtures/analysis-finalization.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -12,7 +14,7 @@ import {createIadHttpHandler} from '../lib/server/routes/index.js';
 import {fileURLToPath} from 'node:url';
 import {createAuditAgentHost} from './fixtures/audit-agent-host.js';
 
-for(const withKnowledge of [false,true])test(`${withKnowledge?'selected weak knowledge and counter evidence':'zero knowledge'} with no consistency candidates audits every image in independent native Sessions`, {timeout:60000}, async t=>{
+for(const {withKnowledge,protocol='openai-completions'} of [{withKnowledge:false},{withKnowledge:true},{withKnowledge:false,protocol:'openai-responses'}])test(`${withKnowledge?'selected weak knowledge and counter evidence':'zero knowledge'} with no consistency candidates audits every image in independent native Sessions${protocol==='openai-responses'?' with Responses reasoning':''}`, {timeout:60000}, async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-audit-native-'));
   const workspace=findWorkspaceRoot(), database=path.join(root,'audit.db'), wire=[], errors=[];
   let runtime,bridge,host,ctx,scheduler,server;
@@ -20,7 +22,8 @@ for(const withKnowledge of [false,true])test(`${withKnowledge?'selected weak kno
     try {
       assert.equal(req.headers.authorization,'Bearer audit-test-key');
       let text='';for await(const chunk of req)text+=chunk;
-      const body=JSON.parse(text);
+      const body=chatRequest(JSON.parse(text));
+      if(protocol==='openai-responses')assert.equal(body.responses.reasoning.effort,'high');
       if(req.url==='/tokenize'){res.end(JSON.stringify({count:1000,max_model_len:65536}));return;}
       wire.push(body);
       const parse=value=>{try{return JSON.parse((typeof value==='string'?value:value.find(part=>part.type==='text').text).split('\n')[0]);}catch{return null;}};
@@ -63,10 +66,7 @@ for(const withKnowledge of [false,true])test(`${withKnowledge?'selected weak kno
           findings:suspect?[1,2,3].map(index=>({finding_id:'F'+index,description:'本图现象'+index,location:'主体',check_ids:[],
             evidence_ids:ids,normal_explanation:'需排除成像变化。',limitations:[]})):[]}}};
       }
-      res.writeHead(200,{'Content-Type':'text/event-stream'});
-      res.write('data: '+JSON.stringify({id:'audit-fixture',choices:[{index:0,delta:{role:'assistant',tool_calls:[{index:0,id:randomUUID(),type:'function',function:{name:call.name,arguments:JSON.stringify(call.arguments)}}]},finish_reason:null}]})+'\n\n');
-      res.write('data: '+JSON.stringify({id:'audit-fixture',choices:[{index:0,delta:{},finish_reason:'tool_calls'}],usage:{prompt_tokens:500,completion_tokens:200,total_tokens:700}})+'\n\n');
-      res.end('data: [DONE]\n\n');
+      respondFixtureTools(res,[call],{protocol,model:'native-audit'});
     } catch(error){errors.push(String(error));res.writeHead(500);res.end(JSON.stringify({error:{message:String(error)}}));}
   });
   await new Promise(resolve=>provider.listen(0,'127.0.0.1',resolve));
@@ -75,8 +75,9 @@ for(const withKnowledge of [false,true])test(`${withKnowledge?'selected weak kno
   const data=JSON.parse(execFileSync(resolvePythonPath(),[fileURLToPath(new URL('./fixtures/audit_dataset.py',import.meta.url)),
     root,database,withKnowledge?'knowledge':'none',`http://127.0.0.1:${provider.address().port}/v1`],
     {cwd:workspace,env:{...process.env,PYTHONPATH:path.join(workspace,'python')},encoding:'utf8'}));
-  runtime=await createAuditAgentHost(root,`http://127.0.0.1:${provider.address().port}/v1`,{onError:error=>errors.push(String(error))});
+  runtime=await createAuditAgentHost(root,`http://127.0.0.1:${provider.address().port}/v1`,{protocol,onError:error=>errors.push(String(error))});
   ({bridge,host,ctx,scheduler}=runtime);
+  if(protocol==='openai-responses')await bridge.execute('module_settings_save',{module:'audit',expected_revision:1,settings:{reasoning_effort:'high'}});
   const notice=host.notice.bind(host);let noticeInterrupted=false;
   host.notice=async(id,record)=>{
     if(withKnowledge&&record.value?.kind==='audit-final'&&!noticeInterrupted){noticeInterrupted=true;throw new Error('interrupted after the image final committed');}
@@ -92,7 +93,7 @@ for(const withKnowledge of [false,true])test(`${withKnowledge?'selected weak kno
   });await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base=`http://127.0.0.1:${server.address().port}/api/iad`;
   const {promptDefaults}=await import('../lib/shared/prompt-defaults.generated.js');
-  const submission={submission_id:randomUUID(),subset_ids:[data.dataset_id],consistency_job_id:data.consistency_job_id,knowledge:data.knowledge,
+  const submission={submission_id:randomUUID(),subset_ids:[data.dataset_id],consistency_job_id:data.consistency_job_id,...(data.knowledge?{knowledge:data.knowledge}:{}),
     system_prompt:promptDefaults.system.audit+'\n系统自定义：审计工具流程。',instruction:'用户自定义：逐图比较边缘。'};
   const started=await ctx.tools.execute({name:'model_audit_start',arguments:submission,callId:'native-audit-start',signal:new AbortController().signal});
   assert.equal(started.isError,false,JSON.stringify(started));
@@ -103,8 +104,8 @@ for(const withKnowledge of [false,true])test(`${withKnowledge?'selected weak kno
   assert.equal(status.status,'COMPLETED',JSON.stringify(status.errors));assert.equal(status.completed,2);assert.equal(status.failed,0);
   assert.equal(wire.length,withKnowledge?8:4);assert.deepEqual(errors,[]);
   for(const body of wire){
-    assert.ok(body.messages.some(message=>message.role==='system'&&message.content.includes('系统自定义：审计工具流程。')));
-    assert.ok(!body.messages.some(message=>message.role==='system'&&message.content.includes('用户自定义：逐图比较边缘。')));
+    assert.ok(body.messages.some(message=>(message.role==='system'||message.role==='developer')&&message.content.includes('系统自定义：审计工具流程。')));
+    assert.ok(!body.messages.some(message=>(message.role==='system'||message.role==='developer')&&message.content.includes('用户自定义：逐图比较边缘。')));
     assert.ok(body.messages.some(message=>message.role==='user'&&JSON.stringify(message.content).includes('用户自定义：逐图比较边缘。')));
   }
   assert.equal(noticeInterrupted,withKnowledge);

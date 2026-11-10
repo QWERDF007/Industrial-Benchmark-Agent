@@ -14,14 +14,14 @@ class IdentityOutcome:
         stats = self.statistics(assessments)
         result, reason = 'passed', None
         if not stats.eligible:
-            reason = 'no_retrieved_candidate' if stats.retrieved == 0 else 'no_eligible_candidate'
+            reason = 'no_valid_candidate'
         elif stats.discrepancy:
             result = 'discrepancy'
         elif stats.undetermined:
             result = 'needs_review'
         else:
             reason = 'all_eligible_consistent'
-        return dict(schema_version='4.0', execution_status='completed', result=result, pass_reason=reason,
+        return dict(schema_version='7.0', execution_status='completed', result=result, pass_reason=reason,
             candidate_stats=stats, candidate_gate_ids=[gate.gate_id for gate in self.state.gates])
 
     def statistics(self, assessments):
@@ -31,4 +31,4 @@ class IdentityOutcome:
             rejected=gate_counts['rejected'], unverified=gate_counts['unverified'], assessed=len(assessments),
             consistent=review_counts['EQUIVALENT'], discrepancy=review_counts['MATERIAL'], undetermined=review_counts['UNCERTAIN'],
             failed=sum(gate.execution_status == 'failed' for gate in self.state.gates),
-            pending=self.state.retrieved - len(self.state.gates))
+            pending=self.state.retrieved - len(self.state.gates) + sum(gate.execution_status == 'pending' for gate in self.state.gates))

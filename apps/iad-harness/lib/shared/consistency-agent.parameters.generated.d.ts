@@ -41,9 +41,12 @@ export declare const consistencyAgentStartParameters: {
         readonly default: "consistency";
     };
     readonly instruction: {
-        readonly type: "string";
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Instruction";
-        readonly default: "执行数据一致性审核。仅以通过同内容验证的候选比较原始标注，保留主图相对于候选图的全部独立差异、实际证据与限制，不裁决哪侧标注正确。";
     };
     readonly system_prompt: {
         readonly oneOf: readonly [{
@@ -52,6 +55,28 @@ export declare const consistencyAgentStartParameters: {
             readonly type: "null";
         }];
         readonly title: "System Prompt";
+    };
+    readonly identity_prompts: {
+        readonly type: "object";
+        readonly additionalProperties: false;
+        readonly properties: {
+            readonly gate_system: {
+                readonly type: "string";
+                readonly title: "Gate System";
+                readonly required: true;
+            };
+            readonly gate_user: {
+                readonly type: "string";
+                readonly title: "Gate User";
+                readonly required: true;
+            };
+            readonly gate_examples: {
+                readonly type: "string";
+                readonly title: "Gate Examples";
+                readonly required: true;
+            };
+        };
+        readonly title: "IdentityPrompts";
     };
     readonly subjects: {
         readonly oneOf: readonly [{
@@ -266,204 +291,376 @@ export declare const consistencyCheckReferenceParameters: {
         readonly required: true;
     };
 };
-export declare const anchorVisualStartParameters: {
-    readonly request_id: {
-        readonly type: "string";
-        readonly description: "request_id标识完整的视觉请求；复用已保存观察须保持原始参数，改变question、candidate_ids或windows时须使用新的request_id。";
-        readonly title: "Request Id";
-        readonly required: true;
-    };
-    readonly fingerprint: {
-        readonly type: "string";
-        readonly description: "上下文提供的当前冻结清单指纹。";
-        readonly title: "Fingerprint";
-        readonly required: true;
-    };
-    readonly candidate_ids: {
-        readonly type: "array";
-        readonly items: {
-            readonly type: "string";
-        };
-        readonly description: "完整使用上下文中一个冻结页的候选集合，不拆页、不跨页拼接。";
-        readonly title: "Candidate Ids";
-        readonly required: true;
-    };
-    readonly question: {
-        readonly type: "string";
-        readonly title: "Question";
-        readonly required: true;
-    };
-    readonly windows: {
-        readonly type: "array";
-        readonly items: {
-            readonly type: "object";
-            readonly additionalProperties: false;
-            readonly properties: {
-                readonly sample_id: {
+export declare const anchorToolParameters: {
+    readonly anomaly_detection: {
+        readonly context: {
+            readonly candidate_id: {
+                readonly oneOf: readonly [{
                     readonly type: "string";
-                    readonly title: "Sample Id";
-                    readonly required: true;
-                };
-                readonly bbox: {
-                    readonly type: "array";
-                    readonly items: {
-                        readonly type: "integer";
-                    };
-                    readonly description: "原图像素半开窗口[x0,y0,x1,y1)";
-                    readonly title: "Bbox";
-                    readonly required: true;
-                };
-                readonly padding: {
-                    readonly type: "integer";
-                    readonly description: "四侧扩边的像素数，实际窗口裁至原图画布";
-                    readonly title: "Padding";
-                    readonly default: 0;
-                };
-                readonly reason: {
-                    readonly type: "string";
-                    readonly title: "Reason";
-                    readonly required: true;
-                };
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Candidate Id";
             };
-            readonly title: "VisualWindow";
         };
-        readonly title: "Windows";
-    };
-};
-export declare const anchorContextQueryParameters: {
-    readonly candidate_id: {
-        readonly oneOf: readonly [{
-            readonly type: "string";
-        }, {
-            readonly type: "null";
-        }];
-        readonly title: "Candidate Id";
-    };
-};
-export declare const anchorAssessmentInputParameters: {
-    readonly fingerprint: {
-        readonly type: "string";
-        readonly description: "当前冻结清单指纹。";
-        readonly title: "Fingerprint";
-        readonly required: true;
-    };
-    readonly observation_ids: {
-        readonly type: "array";
-        readonly items: {
-            readonly type: "string";
+        readonly observe: {
+            readonly phase: {
+                readonly type: "string";
+                readonly enum: readonly ["gate"];
+                readonly title: "Phase";
+                readonly required: true;
+            };
+            readonly request_id: {
+                readonly type: "string";
+                readonly title: "Request Id";
+                readonly required: true;
+            };
+            readonly fingerprint: {
+                readonly type: "string";
+                readonly title: "Fingerprint";
+                readonly required: true;
+            };
+            readonly candidate_ids: {
+                readonly type: "array";
+                readonly items: {
+                    readonly type: "string";
+                };
+                readonly title: "Candidate Ids";
+                readonly required: true;
+            };
+            readonly gate_revisions: {
+                readonly type: "object";
+                readonly additionalProperties: true;
+                readonly properties: {};
+                readonly title: "Gate Revisions";
+                readonly required: true;
+            };
         };
-        readonly description: "本场已保存且实际包含当前候选的视觉观察回执。";
-        readonly title: "Observation Ids";
-        readonly required: true;
-    };
-    readonly assessment: {
-        readonly type: "object";
-        readonly additionalProperties: false;
-        readonly properties: {
+        readonly assess: {
+            readonly phase: {
+                readonly type: "string";
+                readonly enum: readonly ["gate", "audit"];
+                readonly title: "Phase";
+                readonly required: true;
+            };
+            readonly request_id: {
+                readonly type: "string";
+                readonly title: "Request Id";
+                readonly required: true;
+            };
+            readonly fingerprint: {
+                readonly type: "string";
+                readonly title: "Fingerprint";
+                readonly required: true;
+            };
             readonly candidate_id: {
                 readonly type: "string";
                 readonly title: "Candidate Id";
                 readonly required: true;
             };
-            readonly verdict: {
-                readonly type: "string";
-                readonly enum: readonly ["EQUIVALENT", "MATERIAL", "UNCERTAIN"];
-                readonly description: "MATERIAL存在差异；EQUIVALENT一致；UNCERTAIN为合格候选的标注审核证据不足。";
-                readonly title: "Verdict";
+            readonly expected_revision: {
+                readonly type: "integer";
+                readonly title: "Expected Revision";
                 readonly required: true;
             };
-            readonly explanation: {
+            readonly action: {
                 readonly type: "string";
-                readonly description: "当前候选的标注比对分析";
-                readonly title: "Explanation";
-                readonly required: true;
+                readonly enum: readonly ["commit", "recheck"];
+                readonly title: "Action";
+                readonly default: "commit";
             };
-            readonly findings: {
+            readonly observation_ids: {
                 readonly type: "array";
                 readonly items: {
                     readonly type: "string";
                 };
-                readonly description: "当前候选的具体发现";
-                readonly title: "Findings";
+                readonly title: "Observation Ids";
             };
-            readonly issues: {
+        };
+        readonly submit: {
+            readonly request_id: {
+                readonly type: "string";
+                readonly title: "Request Id";
+                readonly required: true;
+            };
+            readonly fingerprint: {
+                readonly type: "string";
+                readonly title: "Fingerprint";
+                readonly required: true;
+            };
+            readonly assessment_ids: {
                 readonly type: "array";
                 readonly items: {
-                    readonly type: "object";
-                    readonly additionalProperties: false;
-                    readonly properties: {
-                        readonly description: {
-                            readonly type: "string";
-                            readonly title: "Description";
-                            readonly required: true;
-                        };
-                        readonly media_ids: {
-                            readonly type: "array";
-                            readonly items: {
-                                readonly type: "string";
-                            };
-                            readonly description: "实际观察的两侧原图身份各一次。";
-                            readonly title: "Media Ids";
-                            readonly required: true;
-                        };
-                        readonly limitations: {
-                            readonly type: "array";
-                            readonly items: {
-                                readonly type: "string";
-                            };
-                            readonly title: "Limitations";
-                        };
-                        readonly review_suggestion: {
-                            readonly type: "string";
-                            readonly title: "Review Suggestion";
-                            readonly default: "人工核对两侧原始标注及标注规范。";
-                        };
-                        readonly type: {
-                            readonly type: "string";
-                            readonly enum: readonly ["category_mismatch", "extra_annotation", "missing_annotation", "position_difference", "split", "merge"];
-                            readonly title: "Type";
-                            readonly required: true;
-                        };
-                        readonly main_annotation_ids: {
-                            readonly type: "array";
-                            readonly items: {
-                                readonly type: "string";
-                            };
-                            readonly title: "Main Annotation Ids";
-                        };
-                        readonly candidate_annotation_ids: {
-                            readonly type: "array";
-                            readonly items: {
-                                readonly type: "string";
-                            };
-                            readonly title: "Candidate Annotation Ids";
-                        };
-                    };
-                    readonly title: "BboxAnnotationIssue";
+                    readonly type: "integer";
                 };
-                readonly description: "MATERIAL必须保存全部独立矩形问题，关联真实两侧框ID与实际原图身份；拆分合并不重复计数量差异。";
-                readonly title: "Issues";
+                readonly title: "Assessment Ids";
             };
         };
-        readonly title: "AnchorAssessmentDecision";
-        readonly required: true;
     };
-};
-export declare const anchorReviewSubmissionParameters: {
-    readonly fingerprint: {
-        readonly type: "string";
-        readonly description: "当前冻结清单指纹。";
-        readonly title: "Fingerprint";
-        readonly required: true;
-    };
-    readonly assessment_ids: {
-        readonly type: "array";
-        readonly items: {
-            readonly type: "integer";
+    readonly bbox_defect: {
+        readonly context: {
+            readonly candidate_id: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Candidate Id";
+            };
         };
-        readonly description: "恰好包含全部冻结候选的最新评估回执ID，不引用旧版本或其他主图评估。";
-        readonly title: "Assessment Ids";
-        readonly required: true;
+        readonly observe: {
+            readonly phase: {
+                readonly type: "string";
+                readonly enum: readonly ["gate", "audit"];
+                readonly title: "Phase";
+                readonly required: true;
+            };
+            readonly request_id: {
+                readonly type: "string";
+                readonly title: "Request Id";
+                readonly required: true;
+            };
+            readonly fingerprint: {
+                readonly type: "string";
+                readonly title: "Fingerprint";
+                readonly required: true;
+            };
+            readonly candidate_ids: {
+                readonly type: "array";
+                readonly items: {
+                    readonly type: "string";
+                };
+                readonly title: "Candidate Ids";
+                readonly required: true;
+            };
+            readonly gate_revisions: {
+                readonly type: "object";
+                readonly additionalProperties: true;
+                readonly properties: {};
+                readonly title: "Gate Revisions";
+                readonly required: true;
+            };
+            readonly question: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Question";
+            };
+        };
+        readonly assess: {
+            readonly phase: {
+                readonly type: "string";
+                readonly enum: readonly ["gate", "audit"];
+                readonly title: "Phase";
+                readonly required: true;
+            };
+            readonly request_id: {
+                readonly type: "string";
+                readonly title: "Request Id";
+                readonly required: true;
+            };
+            readonly fingerprint: {
+                readonly type: "string";
+                readonly title: "Fingerprint";
+                readonly required: true;
+            };
+            readonly candidate_id: {
+                readonly type: "string";
+                readonly title: "Candidate Id";
+                readonly required: true;
+            };
+            readonly expected_revision: {
+                readonly type: "integer";
+                readonly title: "Expected Revision";
+                readonly required: true;
+            };
+            readonly action: {
+                readonly type: "string";
+                readonly enum: readonly ["commit", "recheck"];
+                readonly title: "Action";
+                readonly default: "commit";
+            };
+            readonly observation_ids: {
+                readonly type: "array";
+                readonly items: {
+                    readonly type: "string";
+                };
+                readonly title: "Observation Ids";
+            };
+            readonly assessment: {
+                readonly type: "object";
+                readonly additionalProperties: false;
+                readonly properties: {
+                    readonly candidate_id: {
+                        readonly type: "string";
+                        readonly title: "Candidate Id";
+                        readonly required: true;
+                    };
+                    readonly verdict: {
+                        readonly type: "string";
+                        readonly enum: readonly ["EQUIVALENT", "MATERIAL", "UNCERTAIN"];
+                        readonly description: "MATERIAL存在差异；EQUIVALENT一致；UNCERTAIN为合格候选的标注审核证据不足。";
+                        readonly title: "Verdict";
+                        readonly required: true;
+                    };
+                    readonly explanation: {
+                        readonly type: "string";
+                        readonly description: "当前候选的标注比对分析";
+                        readonly title: "Explanation";
+                        readonly required: true;
+                    };
+                    readonly findings: {
+                        readonly type: "array";
+                        readonly items: {
+                            readonly type: "string";
+                        };
+                        readonly description: "当前候选的具体发现";
+                        readonly title: "Findings";
+                    };
+                    readonly limitations: {
+                        readonly type: "array";
+                        readonly items: {
+                            readonly type: "string";
+                        };
+                        readonly description: "独立保存未能确认的部分；已确认差异仍保留在issues，不因局部不确定而丢失。";
+                        readonly title: "Limitations";
+                    };
+                    readonly issues: {
+                        readonly type: "array";
+                        readonly items: {
+                            readonly type: "object";
+                            readonly additionalProperties: false;
+                            readonly properties: {
+                                readonly description: {
+                                    readonly type: "string";
+                                    readonly title: "Description";
+                                    readonly required: true;
+                                };
+                                readonly media_ids: {
+                                    readonly type: "array";
+                                    readonly items: {
+                                        readonly type: "string";
+                                    };
+                                    readonly description: "实际观察的两侧原图身份各一次。";
+                                    readonly title: "Media Ids";
+                                    readonly required: true;
+                                };
+                                readonly limitations: {
+                                    readonly type: "array";
+                                    readonly items: {
+                                        readonly type: "string";
+                                    };
+                                    readonly title: "Limitations";
+                                };
+                                readonly review_suggestion: {
+                                    readonly type: "string";
+                                    readonly title: "Review Suggestion";
+                                    readonly default: "人工核对两侧原始标注及标注规范。";
+                                };
+                                readonly type: {
+                                    readonly type: "string";
+                                    readonly enum: readonly ["category_mismatch", "extra_annotation", "missing_annotation", "position_difference", "split", "merge"];
+                                    readonly title: "Type";
+                                    readonly required: true;
+                                };
+                                readonly main_annotation_ids: {
+                                    readonly type: "array";
+                                    readonly items: {
+                                        readonly type: "string";
+                                    };
+                                    readonly title: "Main Annotation Ids";
+                                };
+                                readonly candidate_annotation_ids: {
+                                    readonly type: "array";
+                                    readonly items: {
+                                        readonly type: "string";
+                                    };
+                                    readonly title: "Candidate Annotation Ids";
+                                };
+                                readonly region_pair_ids: {
+                                    readonly type: "array";
+                                    readonly items: {
+                                        readonly type: "string";
+                                    };
+                                    readonly description: "支持本问题的已核实区域对ID；像素一致的程序捷径可为空。";
+                                    readonly title: "Region Pair Ids";
+                                };
+                                readonly coverage_effect: {
+                                    readonly oneOf: readonly [{
+                                        readonly type: "string";
+                                        readonly enum: readonly ["unchanged", "material_change", "unverified"];
+                                    }, {
+                                        readonly type: "null";
+                                    }];
+                                    readonly description: "位置问题必须确认实际缺陷覆盖存在material_change；不能仅因坐标、中心或尺寸数值不同报告问题。";
+                                    readonly title: "Coverage Effect";
+                                };
+                                readonly coverage_reason: {
+                                    readonly oneOf: readonly [{
+                                        readonly type: "string";
+                                    }, {
+                                        readonly type: "null";
+                                    }];
+                                    readonly description: "位置问题说明实际缺陷的漏盖、偏离或范围实质变化，不自行制定像素阈值。";
+                                    readonly title: "Coverage Reason";
+                                };
+                                readonly same_main_object_as: {
+                                    readonly type: "array";
+                                    readonly items: {
+                                        readonly type: "object";
+                                        readonly additionalProperties: false;
+                                        readonly properties: {
+                                            readonly candidate_id: {
+                                                readonly type: "string";
+                                                readonly title: "Candidate Id";
+                                                readonly required: true;
+                                            };
+                                            readonly annotation_ids: {
+                                                readonly type: "array";
+                                                readonly items: {
+                                                    readonly type: "string";
+                                                };
+                                                readonly title: "Annotation Ids";
+                                                readonly required: true;
+                                            };
+                                        };
+                                        readonly title: "CandidateObjectReference";
+                                    };
+                                    readonly description: "仅用于主图少标：实际共同观察且确认是同一主图对象的其他候选原始框引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。";
+                                    readonly title: "Same Main Object As";
+                                };
+                            };
+                            readonly title: "BboxAnnotationIssue";
+                        };
+                        readonly description: "MATERIAL必须保存全部独立矩形问题，关联真实两侧框ID与实际原图身份；拆分合并不重复计数量差异。";
+                        readonly title: "Issues";
+                    };
+                };
+                readonly title: "AnchorAssessmentDecision";
+                readonly description: "仅phase=audit提交当前候选的标注审核。phase=gate必须省略或传null，只用observation_ids引用已保存的身份观察，由程序保存资格结论，不提交标注问题。";
+            };
+        };
+        readonly submit: {
+            readonly request_id: {
+                readonly type: "string";
+                readonly title: "Request Id";
+                readonly required: true;
+            };
+            readonly fingerprint: {
+                readonly type: "string";
+                readonly title: "Fingerprint";
+                readonly required: true;
+            };
+            readonly assessment_ids: {
+                readonly type: "array";
+                readonly items: {
+                    readonly type: "integer";
+                };
+                readonly title: "Assessment Ids";
+            };
+        };
     };
 };
 //# sourceMappingURL=consistency-agent.parameters.generated.d.ts.map

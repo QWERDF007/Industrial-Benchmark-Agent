@@ -39,6 +39,8 @@ class GroupPairDecision(AnalysisModel):
     explanation: str = Field(min_length=1,max_length=8000, description='当前候选的标注比对分析')
     findings: list[str] = Field(default_factory=list,max_length=100,
         description='当前候选的具体发现')
+    limitations: list[str] = Field(default_factory=list, max_length=100,
+        description='独立保存未能确认的部分；已确认差异仍保留在issues，不因局部不确定而丢失。')
     issues: list[AnnotationIssue] = Field(default_factory=list, description='全部独立问题；框ID来自冻结事实，引用实际送达的两侧原图。拆分合并不重复计同组数量差异。')
 
 

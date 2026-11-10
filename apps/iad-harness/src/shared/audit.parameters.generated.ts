@@ -229,36 +229,29 @@ export const auditStartParameters = {
     "required": true
   },
   "knowledge": {
-    "oneOf": [
-      {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "job_id": {
-            "type": "string",
-            "title": "Job Id",
-            "required": true
-          },
-          "version_id": {
-            "type": "string",
-            "title": "Version Id",
-            "required": true
-          },
-          "entry_ids": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "title": "Entry Ids",
-            "required": true
-          }
-        },
-        "title": "AuditKnowledgeSelection"
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "job_id": {
+        "type": "string",
+        "title": "Job Id",
+        "required": true
       },
-      {
-        "type": "null"
+      "version_id": {
+        "type": "string",
+        "title": "Version Id",
+        "required": true
+      },
+      "entry_ids": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "title": "Entry Ids",
+        "required": true
       }
-    ]
+    },
+    "title": "AuditKnowledgeSelection"
   },
   "instruction": {
     "type": "string",

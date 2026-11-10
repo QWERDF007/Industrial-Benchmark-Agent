@@ -26,7 +26,6 @@ try {
     const checked=await post('/images/settings/check',{});
     assert.equal(checked.profile_id,profile.profile_id);assert.equal(checked.dim,profile.dim);
     assert.ok(Math.abs(checked.norm-1)<.001);
-    const chat=await bridge.execute('model_settings_get',{});assert.equal(chat.selection,null);
     results.push({...checked,chat_selection:null});console.log(JSON.stringify(checked));
   }
   await fs.writeFile(outputPath,JSON.stringify({device,results},null,2)+'\n');

@@ -13,6 +13,11 @@ export interface PythonBridgeConfig {
   dbPath?: string;
 }
 
+export interface BridgeExecutionOptions {
+  timeoutMs?: number;
+  onProgress?: (progressEvent: PythonBridgeResponse) => void;
+}
+
 export interface PythonBridgeResponse<T = any> {
   event: "result" | "error" | "progress";
   request_id: string;
@@ -169,7 +174,7 @@ class PythonWorker {
   }
 
   async execute<T = any>(operation: string, argumentsPayload: Record<string, any> = {}, signal?: AbortSignal,
-                         onProgress?: (progressEvent: any) => void): Promise<T> {
+                         options: BridgeExecutionOptions = {}): Promise<T> {
     const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const worker = this.ensureWorker();
 
@@ -194,11 +199,12 @@ class PythonWorker {
         signal.addEventListener("abort", onAbort);
       }
 
-      if (this.timeoutMs > 0) {
+      const timeoutMs = options.timeoutMs ?? this.timeoutMs;
+      if (timeoutMs > 0) {
         timer = setTimeout(() => {
           cleanup();
-          reject(new Error(`Operation '${operation}' timed out after ${this.timeoutMs}ms.`));
-        }, this.timeoutMs);
+          reject(new Error(`Operation '${operation}' timed out after ${timeoutMs}ms.`));
+        }, timeoutMs);
       }
 
       this.pendingRequests.set(requestId, {
@@ -210,7 +216,7 @@ class PythonWorker {
           cleanup();
           reject(err);
         },
-        onProgress,
+        onProgress: options.onProgress,
         timer,
         operation,
       });
@@ -259,15 +265,15 @@ export class PythonBridge {
   get dbPath() { return this.workbench.dbPath; }
 
   useModelRouting(routing: ModelRouting): () => void {
-    if (this.modelRouting) throw new Error('工作台模型解析入口已注册');
+    if (this.modelRouting) throw new Error('模型目录路由入口已注册');
     this.modelRouting = routing;
     return () => { if (this.modelRouting === routing) this.modelRouting = undefined; };
   }
 
   execute<T = any>(operation: string, args: Record<string, any> = {}, signal?: AbortSignal,
-                   onProgress?: (progressEvent: any) => void): Promise<T> {
+                   options: BridgeExecutionOptions = {}): Promise<T> {
     const dispatch: BridgeDispatch = (name, values = {}, cancellation) =>
-      (queryOperationNames.has(name) ? this.queries : this.workbench).execute<T>(name, values, cancellation, onProgress);
+      (queryOperationNames.has(name) ? this.queries : this.workbench).execute<T>(name, values, cancellation, options);
     return this.modelRouting ? this.modelRouting.execute(operation, args, signal, dispatch) : dispatch(operation, args, signal);
   }
 

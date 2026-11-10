@@ -8,15 +8,12 @@ from iad_core.consistency.agent_models import (AnchorResult, AnchorTraceEvent, C
 from iad_core.consistency.candidate_selection import AnchorCandidates
 from iad_core.consistency.agent_results import ConsistencyAgentResults
 from iad_core.consistency.errors import ConsistencyError
-from iad_core.consistency.group_analysis_prompts import DEFAULT_CONSISTENCY_SYSTEM_PROMPT
 from iad_core.consistency.models import ConsistencyRetrievalSettings, ImageRetrieve
 from iad_core.consistency.policy import AnnotationPolicy
 from iad_core.consistency.scopes import ConsistencyScopes
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.feature.profiles import ImageEncoders
 from iad_core.workbench.analysis_job_views import AnalysisJobViews
-from iad_core.workbench.model_profile import ModelLimits
-from iad_core.workbench.model_settings import WorkbenchModels
 from iad_core.workbench.module_settings import ConsistencySettingsValues, ModuleSettings
 from iad_core.workbench.job_models import JobExecutionError
 
@@ -31,9 +28,7 @@ class ConsistencyAgentJobs:
 
     def configuration(self) -> ConsistencyCheckConfiguration:
         configured = ModuleSettings(self.db).read('consistency')
-        models = WorkbenchModels(self.db).read()
-        return ConsistencyCheckConfiguration(settings_revision=configured.revision, settings=configured.settings,
-            model_limits=models.selection.limits if models.selection else ModelLimits())
+        return ConsistencyCheckConfiguration(settings_revision=configured.revision, settings=configured.settings)
 
     def start(self, request: dict, *, roles: dict | None = None,
               configuration: dict | ConsistencyCheckConfiguration | None = None) -> dict:
@@ -52,47 +47,29 @@ class ConsistencyAgentJobs:
         if not scopes.subjects.samples:
             raise ValueError('未选择可检查的图片')
         registry = DatasetRegistry(self.db)
-        from iad_core.consistency.identity_prompts import identity_prompt_defaults, BBOX_SYSTEM, ANOMALY_SYSTEM, IDENTITY_PROMPT_VERSION
-        prompts = identity_prompt_defaults()
-        dataset_format = registry.get(scopes.subjects.dataset_ids[0]).dataset.format
-        from iad_core.consistency.annotations import AnnotationSet
-        import math
-        with self.db.connection() as connection:
-            connection.execute('BEGIN')
-            for sample_id in sorted({sample.sample_id for sample in [*scopes.subjects.samples, *scopes.corpus.samples]}):
-                source = AnnotationSet.capture(self.db, sample_id, connection)
-                if source.dataset_format != dataset_format:
-                    raise ValueError('主图与候选库应使用相同的已登记标注格式')
-                if source.errors:
-                    raise ValueError('原始标注无法读取：' + sample_id)
-                if dataset_format == 'folder_classification':
-                    if source.quality_status not in ('PASS', 'FAIL') or source.annotations:
-                        raise ValueError('图像级审核需要导入时确认的正常／异常分类：' + sample_id)
-                else:
-                    for annotation in source.annotations:
-                        box = annotation.bbox
-                        if (annotation.annotation_type != 'bbox' or annotation.geometry_status != 'VALID'
-                                or not annotation.raw_label.strip() or box is None or len(box) != 4
-                                or not all(math.isfinite(value) for value in box)
-                                or not (box[0] < box[2] and box[1] < box[3])
-                                or max(0, box[0]) >= min(source.width, box[2])
-                                or max(0, box[1]) >= min(source.height, box[3])):
-                            raise ValueError('矩形审核需要有效的原始矩形及类别：' + annotation.annotation_id)
-        annotation_system = ANOMALY_SYSTEM if dataset_format == 'folder_classification' else BBOX_SYSTEM
+        from iad_core.consistency.identity_prompts import identity_prompt_defaults, task_prompt_defaults, IDENTITY_PROMPT_VERSION
+        from iad_core.consistency.task_types import TASK_TYPES_BY_FORMAT
+        dataset_ids = sorted(set(scopes.subjects.dataset_ids + scopes.corpus.dataset_ids))
+        formats = {dataset_id: registry.get(dataset_id).dataset.format for dataset_id in dataset_ids}
+        if len(set(formats.values())) != 1:
+            raise ValueError('主图与候选库应使用相同的已登记标注格式')
+        task_type = TASK_TYPES_BY_FORMAT[next(iter(formats.values()))]
+        prompts = task_prompt_defaults(task_type)
         snapshot = ConsistencyCheckSnapshot(settings_revision=configured.settings_revision, retrieval=retrieval, scopes=scopes,
             concurrency=settings.concurrency,
             model_call_logging='native-v1', phase_logging='timeline-v1',
             model=settings.model,
-            model_limits=configured.model_limits,
+            model_limits=settings.vision_limits,
+            position_tolerance=settings.position_tolerance,
             roles=ConsistencyModelRoles.model_validate(roles or {}),
             image_encoder=ImageEncoders(self.db).read().selection if settings.mode == 'combined' else None,
-            dataset_formats={dataset_id: registry.get(dataset_id).dataset.format
-                for dataset_id in sorted(set(scopes.subjects.dataset_ids + scopes.corpus.dataset_ids))},
+            dataset_formats=formats,
             policies={dataset_id: AnnotationPolicy.model_validate(registry.get(dataset_id).annotations.model_dump(
-                include=set(AnnotationPolicy.model_fields))) for dataset_id in sorted(set(scopes.subjects.dataset_ids + scopes.corpus.dataset_ids))},
-            instruction=submitted.instruction,
-            system_prompt=(submitted.system_prompt if submitted.system_prompt and submitted.system_prompt != DEFAULT_CONSISTENCY_SYSTEM_PROMPT
-                else annotation_system), review_pipeline='identity-v4', prompts=prompts,
+                include=set(AnnotationPolicy.model_fields))) for dataset_id in dataset_ids},
+            instruction=submitted.instruction or prompts['user'],
+            system_prompt=submitted.system_prompt or prompts['system'],
+            review_pipeline='identity-v7', task_type=task_type,
+            prompts=submitted.identity_prompts.model_dump() if submitted.identity_prompts is not None else identity_prompt_defaults(),
             prompt_version=IDENTITY_PROMPT_VERSION)
         sample_ids = [sample.sample_id for sample in scopes.subjects.samples]
         units = [dict(dataset_id=dataset_id, request=dict(sample_ids=[sample.sample_id for sample in scopes.subjects.samples
@@ -125,6 +102,10 @@ class ConsistencyAgentJobs:
         return self.results.anchor(run_id, anchor_id)
 
     def attempt(self, run_id: str, anchor_id: str, attempt: int) -> ConsistencyAnchorRun:
+        from iad_core.consistency.identity_prompts import IDENTITY_PROMPT_VERSION
+        snapshot = self.snapshot(run_id)
+        if snapshot.review_pipeline != 'identity-v7' or snapshot.prompt_version != IDENTITY_PROMPT_VERSION:
+            raise ValueError('历史一致性作业只读保留，请新建检查')
         anchor = self.anchor(run_id, anchor_id)
         if anchor.attempt != attempt:
             raise ValueError('过期的主图审核 attempt')
@@ -141,7 +122,7 @@ class ConsistencyAgentJobs:
     def resume(self, run_id: str) -> dict:
         from iad_core.consistency.identity_prompts import IDENTITY_PROMPT_VERSION
         snapshot = self.snapshot(run_id)
-        if snapshot.review_pipeline != 'identity-v4' or snapshot.prompt_version != IDENTITY_PROMPT_VERSION:
+        if snapshot.review_pipeline != 'identity-v7' or snapshot.prompt_version != IDENTITY_PROMPT_VERSION:
             raise ValueError('历史一致性作业只读保留，请新建检查以执行图像内容验证')
 
         def persist(connection: Connection):
@@ -207,19 +188,31 @@ class ConsistencyAgentJobs:
             raise ValueError('规则通过要求成功冻结的零候选清单')
         return self.complete(run_id, anchor_id, NoCandidateResult(), attempt=attempt)
 
-    def complete(self, run_id: str, anchor_id: str, result: AnchorResult, *, attempt: int) -> AnchorResult:
+    def complete(self, run_id: str, anchor_id: str, result: AnchorResult, *, attempt: int,
+                 request_id: str | None = None, request_payload: dict | None = None) -> AnchorResult:
         with self.jobs.lock:
-            if self.snapshot(run_id).review_pipeline == 'identity-v4':
+            import hashlib
+            import json
+            request_sha256 = hashlib.sha256(json.dumps(request_payload, sort_keys=True, ensure_ascii=False).encode()).hexdigest() if request_id else None
+            with self.db.connection() as connection:
+                saved_request = connection.execute('SELECT submission_request_id,submission_sha256 FROM consistency_anchor_runs WHERE job_id=? AND anchor_id=?',
+                    (run_id, anchor_id)).fetchone()
+            if request_id and saved_request['submission_request_id'] == request_id and saved_request['submission_sha256'] != request_sha256:
+                raise ValueError('终稿请求ID已用于不同内容')
+            if self.snapshot(run_id).review_pipeline == 'identity-v7':
                 from iad_core.consistency.identity import CandidateIdentity
                 from iad_core.consistency.identity_outcome import IdentityOutcome
                 from iad_core.consistency.annotation_evaluation import AnnotationEvaluation
                 from iad_core.consistency.agent_assessments import AnchorAssessments
+                from iad_core.consistency.candidate_records import CandidateRecords
                 with self.db.connection() as connection:
                     records = AnchorAssessments.list(connection, run_id, anchor_id)
+                    active_records = [record.record_id for record in CandidateRecords.history(connection, run_id, anchor_id) if record.active]
                 if {item.candidate_id: item for item in result.assessments} != {
                         record.submission.assessment.candidate_id: record.submission.assessment for record in records}:
                     raise ValueError('终稿必须来自已保存的最新候选评估，不能绕过评估写入')
                 result = result.model_copy(update={**IdentityOutcome(CandidateIdentity(self.runtime).read(run_id, anchor_id)).assemble(result.assessments),
+                    'task_type': self.snapshot(run_id).task_type, 'candidate_record_ids': active_records,
                     'issues': AnnotationEvaluation.aggregate(records)})
 
             anchor = self.attempt(run_id, anchor_id, attempt)
@@ -229,8 +222,13 @@ class ConsistencyAgentJobs:
                 return anchor.result
 
             def persist(connection: Connection):
-                changed = connection.execute('''UPDATE consistency_anchor_runs SET state='COMPLETED',phase='SUBMITTED',result_json=?
-                    WHERE job_id=? AND anchor_id=? AND attempt=? AND state IN ('RUNNING')''', (result.model_dump_json(), run_id, anchor_id, attempt))
+                if self.snapshot(run_id).review_pipeline == 'identity-v7':
+                    latest = [record.record_id for record in CandidateRecords.history(connection, run_id, anchor_id) if record.active]
+                    if latest != result.candidate_record_ids:
+                        raise ValueError('提交期间候选版本已变化，请重新读取当前评估')
+                changed = connection.execute('''UPDATE consistency_anchor_runs SET state='COMPLETED',phase='SUBMITTED',result_json=?,
+                    submission_request_id=?,submission_sha256=? WHERE job_id=? AND anchor_id=? AND attempt=? AND state IN ('RUNNING')''',
+                    (result.model_dump_json(), request_id, request_sha256, run_id, anchor_id, attempt))
                 if not changed.rowcount:
                     raise ValueError('过期的主图审核 attempt')
 

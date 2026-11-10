@@ -38,7 +38,9 @@ class CurrentSource:
         if self.sample is None:return 'MISSING'
         if not Path(self.sample.image_path).is_file():return 'MISSING'
         if frozen.scan_ref is not None and (self.published is None or self.published.scan_ref!=frozen.scan_ref):return 'CHANGED'
-        if self.sample!=frozen.sample or self.annotations!=frozen.annotations or (include_review and self.review!=frozen.review):return 'CHANGED'
+        annotations=self.annotations.resolve_geometry() if self.annotations else None
+        if (self.sample!=frozen.sample or annotations!=frozen.annotations.resolve_geometry()
+                or (include_review and self.review!=frozen.review)):return 'CHANGED'
         if not self._observed:
             self._observed=True
             try:

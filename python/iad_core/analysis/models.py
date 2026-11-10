@@ -8,7 +8,7 @@ from iad_core.exploration.models import DirectionContent, FrozenExplorationPromp
 from iad_core.knowledge.instructions import MiningDirection
 from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningDirectionSource, SubmittedMiningPrompt
 from iad_core.knowledge.models import KnowledgeSupportAssessment, KnowledgeSupportPolicy, LearnedCheck, KnowledgeCheckRemoval, KnowledgeCheckReview, KnowledgeCheckSummary, KnowledgeEvidence
-from iad_core.workbench.analysis_manifest import AnalysisManifest, AnalysisModule, AnalysisPlan, AnalysisRegistration, AnalysisRound
+from iad_core.workbench.analysis_manifest import AnalysisManifest, AnalysisModule, AnalysisPlan, AnalysisRegistration, AnalysisRound, CandidateRole
 from iad_core.workbench.analysis_requests import SelectedDatasets
 from iad_core.workbench.analysis_sampling import SamplingGroup
 from iad_core.workbench.model_profile import FrozenModelRole
@@ -389,7 +389,7 @@ class AnalysisEvidenceView(AnalysisModel):
     sample_id: str
     dataset_id: str
     filename: str
-    candidate_role: Literal['normal', 'defect'] | None
+    candidate_role: CandidateRole | None
     sampling_group: SamplingGroup
     image: VisualEvidence
     observed: bool
@@ -412,6 +412,8 @@ class AnalysisSource(AnalysisModel):
     sample_id: str
     dataset_id: str
     relative_path: str
+    candidate_role: CandidateRole | None
+    annotation_categories: list[str]
 
 
 class AnalysisSourceCatalog(AnalysisModel):

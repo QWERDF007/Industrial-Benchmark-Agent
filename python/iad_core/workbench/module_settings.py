@@ -4,8 +4,9 @@ from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.consistency.models import ConsistencyRetrievalSettings
+from iad_core.consistency.position import PositionTolerancePolicy
 from iad_core.storage.database import Database
-from iad_core.workbench.model_profile import GenerationLimits
+from iad_core.workbench.model_profile import GenerationLimits, ModelLimits, ReasoningEffort
 from iad_core.workbench.analysis_sampling import DEFAULT_SAMPLING_RATIO, SamplingRatio
 
 BusinessModule = Literal['exploration', 'knowledge', 'consistency', 'audit']
@@ -19,6 +20,7 @@ class ModuleModelReference(AnalysisModel):
 
 class ModuleSettingsValues(AnalysisModel):
     model: ModuleModelReference | None = None
+    reasoning_effort: ReasoningEffort | None = None
 
 
 class ExplorationSettingsValues(ModuleSettingsValues):
@@ -41,6 +43,8 @@ class AuditSettingsValues(ModuleSettingsValues):
 class ConsistencySettingsValues(ModuleSettingsValues, ConsistencyRetrievalSettings):
     concurrency: JobConcurrency = 1
     agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
+    vision_limits: ModelLimits = Field(default_factory=lambda: ModelLimits(capacity_mode='vllm_tokenize'))
+    position_tolerance: PositionTolerancePolicy = Field(default_factory=PositionTolerancePolicy)
 
 
 class ModuleSettingsPayload(AnalysisModel):

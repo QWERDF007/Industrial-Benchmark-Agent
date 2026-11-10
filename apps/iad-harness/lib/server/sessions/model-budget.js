@@ -10,6 +10,8 @@ export class NativeModelBudget {
         this.server = server;
     }
     static async open(profile, measure) {
+        if (profile.api === 'openai-responses')
+            return new NativeModelBudget(profile);
         if (profile.api !== 'openai-completions' || !profile.baseURL)
             throw new Error('Agent 实际上下文计量需要 OpenAI Chat Completions 与 /tokenize 协议');
         const target = new URL(profile.baseURL);
@@ -51,6 +53,9 @@ export class NativeModelBudget {
         return new NativeModelBudget({ ...profile, baseURL: target.toString() }, server);
     }
     async close() {
-        await new Promise((resolve, reject) => this.server.close(error => error ? reject(error) : resolve()));
+        const server = this.server;
+        if (!server)
+            return;
+        await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
     }
 }

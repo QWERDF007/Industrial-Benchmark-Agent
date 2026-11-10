@@ -1,5 +1,5 @@
 diff --git a/lib/index.js b/lib/index.js
-index 0c74b3ab2b556f4b0e656a304e1242ffceb8c288..da15b2ba2768554ab4efdbea9595f3f10587f42c 100644
+index 0c74b3ab2b556f4b0e656a304e1242ffceb8c288..8cee302c6c4aecb9323a98cbf4251d18904cbb59 100644
 --- a/lib/index.js
 +++ b/lib/index.js
 @@ -1226,12 +1226,23 @@ async function prepareRequestImages(messages, attachments, budget, signal) {
@@ -27,3 +27,11 @@ index 0c74b3ab2b556f4b0e656a304e1242ffceb8c288..da15b2ba2768554ab4efdbea9595f3f1
  	}));
  }
  /**
+@@ -1856,7 +1867,6 @@ var PiAiAdapter = class extends LlmAdapter {
+ 			const watchdog = __addDisposableResource(env_1, idleWatchdog(upstream, streamIdleTimeoutMs, "LLM_STREAM_IDLE_TIMEOUT"), false);
+ 			try {
+ 				const containsImage = options.messages.some((message) => contentHasImage(message.content));
+-				if (containsImage && !model.input.includes("image")) throw new LlmError(`pi-ai model "${model.id}" does not support image input`, "UNSUPPORTED_CONTENT");
+ 				const attachments = containsImage ? this.config.resolveAttachments?.() : void 0;
+ 				if (containsImage && attachments === void 0) throw new LlmError("pi-ai image input requires the durable attachment service", "UNSUPPORTED_CONTENT");
+ 				const onReplayDegrade = (reason) => {

@@ -222,7 +222,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
 
 #dc-compare-mask .dc-compare-photo,
 .dc-conflict-dialog .dc-compare-photo {
-  height: clamp(210px, 28dvh, 270px) !important;
+  height: 450px !important;
 }
 .detail-preview {
   height: clamp(310px, 46dvh, 500px) !important;
@@ -230,7 +230,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
 
 /* ==========================================================================
    Tier 2: Medium Form & Analytics Dialogs (960px max-width, auto-height)
-   New Consistency Check, Stats Modal, Exploration Prompts, Add/Edit Dataset, Knowledge Create
+   Stats Modal, Exploration Prompts, Add/Edit Dataset, Knowledge Create
    ========================================================================== */
 #knowledge-page .kb-v45 #create-overlay > .modal,
 dialog.iad-detail-dialog.iad-dialog-form {
@@ -247,7 +247,6 @@ dialog.iad-detail-dialog.iad-dialog-form {
 }
 
 #knowledge-page .kb-v45 #create-overlay > .modal > .modalcontent,
-dialog.dc-new-dialog .dc-new-body,
 .dc-stats-dialog .dc-stats-body {
   padding: 22px 26px 24px !important;
   overflow-y: auto !important;

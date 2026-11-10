@@ -22,11 +22,11 @@ test('V72 empty panes hide unusable filters and empty table headers across analy
   const bundle=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';
     import {ExplorationPage} from './src/client/components/ExplorationPage.tsx';import {KnowledgePage} from './src/client/components/KnowledgePage.tsx';
     import {ConsistencyPage} from './src/client/components/ConsistencyPage.tsx';import {AuditPage} from './src/client/components/AuditPage.tsx';
-    import {Workspace,WorkspaceContext} from './src/client/workspace.tsx';import {WorkbenchModelProvider} from './src/client/models.tsx';import {workbenchStyles} from './src/client/styles.ts';
+    import {QueryClientProvider} from '@tanstack/react-query';import {queryClient} from './src/client/query-client.ts';import {Workspace,WorkspaceContext} from './src/client/workspace.tsx';import {workbenchStyles} from './src/client/styles.ts';
     const workspace=new Workspace(null);function App(){const [page,setPage]=React.useState('audit'),dataset=${JSON.stringify(dataset)};
       const props={dataset,datasets:[dataset],groups:[],refreshRevision:0,onDatasetsChanged:()=>{}};
-      return <WorkspaceContext.Provider value={workspace}><WorkbenchModelProvider><style>{workbenchStyles}</style><nav>{['audit','exploration','knowledge','consistency'].map(id=><button key={id} id={id} onClick={()=>setPage(id)}>{id}</button>)}</nav>
-      <main className="iad-workbench" data-page={'industrial-'+page}>{page==='audit'?<AuditPage {...props}/>:page==='exploration'?<ExplorationPage {...props}/>:page==='knowledge'?<KnowledgePage {...props}/>:<ConsistencyPage {...props}/>}</main></WorkbenchModelProvider></WorkspaceContext.Provider>}
+      return <QueryClientProvider client={queryClient}><WorkspaceContext.Provider value={workspace}><style>{workbenchStyles}</style><nav>{['audit','exploration','knowledge','consistency'].map(id=><button key={id} id={id} onClick={()=>setPage(id)}>{id}</button>)}</nav>
+      <main className="iad-workbench" data-page={'industrial-'+page}>{page==='audit'?<AuditPage {...props}/>:page==='exploration'?<ExplorationPage {...props}/>:page==='knowledge'?<KnowledgePage {...props}/>:<ConsistencyPage {...props}/>}</main></WorkspaceContext.Provider></QueryClientProvider>}
     createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolveDir:app},bundle:true,format:'iife',write:false,target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
   const handler=createIadHttpHandler(bridge);
   const server=http.createServer((req,res)=>{if(req.url==='/app.js'){res.setHeader('Content-Type','application/javascript');res.end(bundle.outputFiles[0].contents);return;}

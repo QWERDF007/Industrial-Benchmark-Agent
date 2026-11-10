@@ -10,6 +10,7 @@ from typing import Any, Dict
 
 from iad_core.storage.database import Database
 from iad_core.workbench.job_models import JobExecutionError
+from iad_core.workbench.completion import ModelOutputError
 from iad_core.storage.repositories import (
     AnnotationRepository,
     ImportIssueRepository,
@@ -33,15 +34,14 @@ from iad_core.consistency.agent_operations import (consistency_agent_start, cons
     consistency_agent_export, consistency_agent_gallery, consistency_agent_images, consistency_agent_members, consistency_agent_candidates,
     consistency_agent_review, consistency_agent_review_submit, consistency_agent_analysis, consistency_agent_plan, consistency_agent_capacity,
     consistency_agent_model_call_start, consistency_agent_model_call_end, consistency_agent_diagnostics, consistency_agent_prepare,
-    consistency_agent_session_location)
+    consistency_agent_session_location, consistency_agent_media)
 from iad_core.exploration.operations import (direction_exploration_evidence, direction_exploration_remove_direction,
     direction_exploration_presets, direction_exploration_preset_save)
 
 from iad_core.workbench.module_settings import module_settings_get, module_settings_save, module_settings_validate
 from iad_core.analysis.operations import ANALYSIS_AGENT_OPERATIONS
 from iad_core.audit.operations import AUDIT_AGENT_OPERATIONS
-from iad_core.workbench.model_operations import (model_settings_get, model_settings_save, model_settings_view,
-    model_settings_validate, model_environment_get, model_connection_check, model_provider_validate)
+from iad_core.workbench.model_operations import model_provider_validate
 from iad_core.feature.operations import feature_settings_view, feature_settings_save, feature_profile_create, feature_connection_check
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.operations import (consistency_review_context, consistency_review_submit, consistency_correction_verify, image_retrieve, temporary_image_accept,
@@ -456,6 +456,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     consistency_agent_diagnostics,
     consistency_agent_prepare,
     consistency_agent_session_location,
+    consistency_agent_media,
     consistency_review_context, consistency_review_submit, consistency_correction_verify,
     analysis_start, analysis_list, analysis_status, analysis_node, analysis_results, analysis_cancel, analysis_retry, analysis_delete,
     image_retrieve, temporary_image_accept, temporary_image_release, temporary_image_release_owner,
@@ -464,7 +465,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     consistency_model_status, consistency_model_cancel,
     feature_settings_view, feature_settings_save, feature_profile_create, feature_connection_check,
     module_settings_get, module_settings_save, module_settings_validate,
-    model_settings_get, model_settings_save, model_settings_view, model_settings_validate, model_environment_get, model_connection_check, model_provider_validate,
+    model_provider_validate,
     direction_exploration_presets, direction_exploration_preset_save,
     direction_exploration_evidence, direction_exploration_remove_direction,
     tool_call, dataset_list, dataset_get, dataset_import, dataset_preview, dataset_archive_inspect, dataset_update, dataset_scan, dataset_delete,
@@ -490,6 +491,7 @@ QUERY_OPERATIONS = frozenset({
     'consistency_agent_gallery', 'consistency_agent_images', 'consistency_agent_members', 'consistency_agent_candidates', 'consistency_agent_review', 'consistency_agent_analysis',
     'consistency_agent_diagnostics',
     'consistency_agent_session_location',
+    'consistency_agent_media',
     'module_settings_get',
     'knowledge_evidence',
     'knowledge_get', 'knowledge_details', 'knowledge_versions', 'knowledge_presets', 'direction_exploration_evidence', 'direction_exploration_presets',
@@ -530,6 +532,8 @@ def dispatch_request(req_data: Dict[str, Any], default_db_path: str = DEFAULT_DB
             code, status = error.code, error.status_code
         if isinstance(error, JobExecutionError):
             code, status = error.code or 'EXECUTION_ERROR', 500
+        if isinstance(error, ModelOutputError):
+            code, status = 'EXECUTION_ERROR', 500
         if error.__class__.__name__ == "ToolContractError":
             code, status = "CONTRACT_ERROR", error.status_code
         if status == 500:

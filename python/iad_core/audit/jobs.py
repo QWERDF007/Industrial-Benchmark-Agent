@@ -58,8 +58,8 @@ class AuditAgentJobs(AuditState):
             return {**existing, 'created':False}
         configuration = AuditAgentConfiguration.model_validate(configuration) if configuration is not None else self.configuration()
         role = FrozenModelRole.model_validate(agent)
-        if role.error or not role.profile or not role.native_profile or 'image' not in role.input_modalities:
-            raise ValueError('审计需要可用的原生图像分析模型')
+        if role.error or not role.profile or not role.native_profile:
+            raise ValueError('审计需要可用的原生Agent配置')
         selected = configuration.settings.model
         if selected is None or (selected.provider_id, selected.model_id) != (role.profile.provider_id, role.profile.model_id):
             raise ValueError('实际Agent与审计模块模型配置不一致')

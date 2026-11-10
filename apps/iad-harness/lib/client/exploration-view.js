@@ -2,7 +2,8 @@ import { mediaUrl, request } from './api.js';
 import { directionEvidence } from './direction-evidence.js';
 export async function explorationCandidates(datasetIds, signal) {
     const sources = await request(`/analysis/sources?${new URLSearchParams({ dataset_ids: JSON.stringify(datasetIds) })}`, undefined, undefined, signal);
-    return sources.items.map(item => ({ id: item.sample_id, filename: item.relative_path, datasetId: item.dataset_id,
+    return sources.items.map(item => ({ id: item.sample_id, filename: item.relative_path.replace(/^.*[\\/]/, ''), datasetId: item.dataset_id,
+        candidate_role: item.candidate_role, annotation_categories: item.annotation_categories,
         url: mediaUrl({ task_id: item.dataset_id, sample_id: item.sample_id }, 'thumbnail') }));
 }
 export function explorationDirections(publication, referencedDirectionId) {

@@ -65,8 +65,7 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         selected = checks.retrieve(job_id, anchor_id)
         review = ConsistencyAgentReview(runtime, client)
         request = {'request_id': str(uuid4()), 'fingerprint': selected.fingerprint,
-            'candidate_ids': [config.dataset.id + ':scratch.png'], 'question': '核实原始像素与类别差异',
-            'windows': [{'sample_id': config.dataset.id + ':scratch.png', 'bbox': [2, 3, 12, 9], 'padding': 5, 'reason': '原像素补证'}]}
+            'candidate_ids': [config.dataset.id + ':scratch.png'], 'question': '核实原始像素与类别差异'}
         observed = review.observe(job_id, anchor_id, request)
         assert observed.request.request_id == request['request_id']
         assert observed.request.anchor_id == anchor_id
@@ -84,7 +83,8 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         actual = [json.loads(part['text'].removeprefix('图像视图：')) for part in next(message for message in sent[0]['messages'] if message['role']=='user')['content']
             if part['type'] == 'text' and part['text'].startswith('图像视图：')]
         assert [item.sha256 for item in observed.request.media] == [item['sha256'] for item in actual]
-        assert any(item['source'] == 'model' and item['crop_bbox'] == [0, 0, 17, 14] and item['sent_size'] == [17, 14] for item in actual)
+        assert any(item['source'] == 'annotation' and item['crop_bbox'] == [8, 8, 32, 32] and item['sent_size'] == [24, 24] for item in actual)
+        assert all(item['representation'] == 'raw' for item in actual)
         assert observed.result.observations[0].phenomena_comparable
         assert review.observe(job_id, anchor_id, request) == observed
         assert len(sent) == 1
@@ -245,8 +245,8 @@ def test_image_and_annotation_comparison_does_not_require_external_policy_or_reg
                 'reason': '真实内容不同。' if case == 'different_object' else '关键局部不能确认。',
                 'main_description': '主图实际表面状态。', 'candidate_description': '候选实际表面状态。'}
             context = json.loads(content[1]['text'])
-            answer = {'overview': finding if context['scope'] == 'overview' else None,
-                'windows': [{'window_index': window['window_index'], **finding} for window in context['windows']],
+            answer = {'overview': finding if context['scope'] == 'joint' else None,
+                'windows': [{**{key:window[key] for key in ('window_index','region_pair_id','main_media_id','candidate_media_id')}, **finding} for window in context['windows']],
                 'media_ids': media, 'limitations': []}
         else:
             answer = {'observations': [{'candidate_id': reference_id,
@@ -272,7 +272,7 @@ def test_image_and_annotation_comparison_does_not_require_external_policy_or_reg
         if case in ('different_object', 'unregistered_position'):
             assert not state.eligible_ids
             result = review.finish_rules(job_id, main_id)
-            assert result.pass_reason == 'no_eligible_candidate'
+            assert result.pass_reason == 'no_valid_candidate'
             assert result.candidate_stats.assessed == 0
             with pytest.raises(ValueError, match='未通过'):
                 review.observe(job_id, main_id, {'request_id': str(uuid4()), 'fingerprint': candidates.fingerprint,
@@ -330,6 +330,9 @@ def test_invalid_visual_output_does_not_append_hidden_repair_instructions(datase
         assert len(sent) == 1
         assert [message['role'] for message in sent[0]['messages']] == ['system','user']
         assert next(message for message in sent[0]['messages'] if message['role']=='user')['content'][0]['text'] == instruction
+        context = json.loads(sent[0]['messages'][-1]['content'][1]['text'])
+        assert 'review_rules' not in context
+        assert 'question' not in context
     finally:
         client.close()
         runtime.close()

@@ -10,6 +10,15 @@ export declare const conflictCategoryLabels: {
     readonly 拆分: "拆分";
     readonly 合并: "合并";
 };
+export declare const modelConclusionLabels: {
+    readonly 类别不一致: "类别不一致";
+    readonly 多类别: "多标";
+    readonly 少类别: "少标";
+    readonly 位置差异: "位置差异";
+    readonly 拆分: "拆分";
+    readonly 合并: "合并";
+    readonly EQUIVALENT: "一致";
+};
 export declare const conflictCategories: readonly ["类别不一致", "位置差异", "多类别", "少类别", "拆分", "合并", "对应关系差异"];
 export declare const modelAssessmentLabels: {
     readonly NOT_ANALYZED: "未分析";
@@ -887,277 +896,269 @@ export declare const consistencyContextParameters: {
         readonly title: "Difference Ids";
     };
     readonly return_location: {
-        readonly oneOf: readonly [{
-            readonly type: "object";
-            readonly additionalProperties: false;
-            readonly properties: {
-                readonly pageId: {
+        readonly type: "object";
+        readonly additionalProperties: false;
+        readonly properties: {
+            readonly pageId: {
+                readonly type: "string";
+                readonly enum: readonly ["industrial-consistency"];
+                readonly title: "Pageid";
+                readonly default: "industrial-consistency";
+            };
+            readonly tab: {
+                readonly oneOf: readonly [{
                     readonly type: "string";
-                    readonly enum: readonly ["industrial-consistency"];
-                    readonly title: "Pageid";
-                    readonly default: "industrial-consistency";
-                };
-                readonly tab: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                        readonly enum: readonly ["conflicts", "search", "groups", "jobs"];
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Tab";
-                };
-                readonly scope: {
-                    readonly oneOf: readonly [{
-                        readonly oneOf: readonly [{
-                            readonly type: "object";
-                            readonly additionalProperties: false;
-                            readonly properties: {
-                                readonly kind: {
-                                    readonly type: "string";
-                                    readonly enum: readonly ["all_registered"];
-                                    readonly title: "Kind";
-                                    readonly default: "all_registered";
-                                };
-                            };
-                            readonly title: "AllRegisteredScope";
-                        }, {
-                            readonly type: "object";
-                            readonly additionalProperties: false;
-                            readonly properties: {
-                                readonly kind: {
-                                    readonly type: "string";
-                                    readonly enum: readonly ["datasets"];
-                                    readonly title: "Kind";
-                                    readonly default: "datasets";
-                                };
-                                readonly dataset_ids: {
-                                    readonly type: "array";
-                                    readonly items: {
-                                        readonly type: "string";
-                                    };
-                                    readonly title: "Dataset Ids";
-                                    readonly required: true;
-                                };
-                            };
-                            readonly title: "DatasetScope";
-                        }];
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Scope";
-                };
-                readonly parentId: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Parentid";
-                };
-                readonly datasetIds: {
-                    readonly oneOf: readonly [{
-                        readonly type: "array";
-                        readonly items: {
-                            readonly type: "string";
-                        };
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Datasetids";
-                };
-                readonly query: {
+                    readonly enum: readonly ["conflicts", "search", "groups", "jobs"];
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Tab";
+            };
+            readonly scope: {
+                readonly oneOf: readonly [{
                     readonly oneOf: readonly [{
                         readonly type: "object";
                         readonly additionalProperties: false;
                         readonly properties: {
                             readonly kind: {
                                 readonly type: "string";
-                                readonly enum: readonly ["sample"];
+                                readonly enum: readonly ["all_registered"];
                                 readonly title: "Kind";
-                                readonly default: "sample";
+                                readonly default: "all_registered";
                             };
-                            readonly sample_id: {
+                        };
+                        readonly title: "AllRegisteredScope";
+                    }, {
+                        readonly type: "object";
+                        readonly additionalProperties: false;
+                        readonly properties: {
+                            readonly kind: {
                                 readonly type: "string";
-                                readonly title: "Sample Id";
+                                readonly enum: readonly ["datasets"];
+                                readonly title: "Kind";
+                                readonly default: "datasets";
+                            };
+                            readonly dataset_ids: {
+                                readonly type: "array";
+                                readonly items: {
+                                    readonly type: "string";
+                                };
+                                readonly title: "Dataset Ids";
                                 readonly required: true;
                             };
                         };
-                        readonly title: "SampleImageQuery";
-                    }, {
-                        readonly type: "null";
+                        readonly title: "DatasetScope";
                     }];
-                };
-                readonly batchId: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Batchid";
-                };
-                readonly resultId: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Resultid";
-                };
-                readonly evidenceId: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Evidenceid";
-                };
-                readonly facts: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                        readonly enum: readonly ["CURRENT", "HISTORICAL", "UNKNOWN"];
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Facts";
-                };
-                readonly groupId: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Groupid";
-                };
-                readonly memberId: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Memberid";
-                };
-                readonly differenceId: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Differenceid";
-                };
-                readonly returnPage: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Returnpage";
-                };
-                readonly sessionId: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Sessionid";
-                };
-                readonly queryId: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Queryid";
-                };
-                readonly gallerySearch: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Gallerysearch";
-                };
-                readonly galleryOrder: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                        readonly enum: readonly ["recent", "members"];
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Galleryorder";
-                };
-                readonly differenceFilter: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                        readonly enum: readonly ["all", "category", "geometry", "presence", "instances", "multiple"];
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Differencefilter";
-                };
-                readonly modelFilter: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                        readonly enum: readonly ["all", "NOT_ANALYZED", "RUNNING", "FAILED", "EQUIVALENT", "MATERIAL", "UNCERTAIN"];
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Modelfilter";
-                };
-                readonly galleryPage: {
-                    readonly oneOf: readonly [{
-                        readonly type: "integer";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Gallerypage";
-                };
-                readonly detailTab: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                        readonly enum: readonly ["summary", "evidence", "review"];
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Detailtab";
-                };
-                readonly subjectId: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Subjectid";
-                };
-                readonly reviewFilter: {
-                    readonly oneOf: readonly [{
-                        readonly type: "string";
-                        readonly enum: readonly ["OPEN", "NEEDS_CONTEXT", "RESOLVED"];
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Reviewfilter";
-                };
-                readonly groupPage: {
-                    readonly oneOf: readonly [{
-                        readonly type: "integer";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Grouppage";
-                };
-                readonly memberPage: {
-                    readonly oneOf: readonly [{
-                        readonly type: "integer";
-                    }, {
-                        readonly type: "null";
-                    }];
-                    readonly title: "Memberpage";
-                };
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Scope";
             };
-            readonly title: "ConsistencyReturnLocation";
-        }, {
-            readonly type: "null";
-        }];
+            readonly parentId: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Parentid";
+            };
+            readonly datasetIds: {
+                readonly oneOf: readonly [{
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "string";
+                    };
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Datasetids";
+            };
+            readonly query: {
+                readonly type: "object";
+                readonly additionalProperties: false;
+                readonly properties: {
+                    readonly kind: {
+                        readonly type: "string";
+                        readonly enum: readonly ["sample"];
+                        readonly title: "Kind";
+                        readonly default: "sample";
+                    };
+                    readonly sample_id: {
+                        readonly type: "string";
+                        readonly title: "Sample Id";
+                        readonly required: true;
+                    };
+                };
+                readonly title: "SampleImageQuery";
+            };
+            readonly batchId: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Batchid";
+            };
+            readonly resultId: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Resultid";
+            };
+            readonly evidenceId: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Evidenceid";
+            };
+            readonly facts: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                    readonly enum: readonly ["CURRENT", "HISTORICAL", "UNKNOWN"];
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Facts";
+            };
+            readonly groupId: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Groupid";
+            };
+            readonly memberId: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Memberid";
+            };
+            readonly differenceId: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Differenceid";
+            };
+            readonly returnPage: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Returnpage";
+            };
+            readonly sessionId: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Sessionid";
+            };
+            readonly queryId: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Queryid";
+            };
+            readonly gallerySearch: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Gallerysearch";
+            };
+            readonly galleryOrder: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                    readonly enum: readonly ["recent", "members"];
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Galleryorder";
+            };
+            readonly differenceFilter: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                    readonly enum: readonly ["all", "category", "geometry", "presence", "instances", "multiple"];
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Differencefilter";
+            };
+            readonly modelFilter: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                    readonly enum: readonly ["all", "NOT_ANALYZED", "RUNNING", "FAILED", "EQUIVALENT", "MATERIAL", "UNCERTAIN"];
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Modelfilter";
+            };
+            readonly galleryPage: {
+                readonly oneOf: readonly [{
+                    readonly type: "integer";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Gallerypage";
+            };
+            readonly detailTab: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                    readonly enum: readonly ["summary", "evidence", "review"];
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Detailtab";
+            };
+            readonly subjectId: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Subjectid";
+            };
+            readonly reviewFilter: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                    readonly enum: readonly ["OPEN", "NEEDS_CONTEXT", "RESOLVED"];
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Reviewfilter";
+            };
+            readonly groupPage: {
+                readonly oneOf: readonly [{
+                    readonly type: "integer";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Grouppage";
+            };
+            readonly memberPage: {
+                readonly oneOf: readonly [{
+                    readonly type: "integer";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Memberpage";
+            };
+        };
+        readonly title: "ConsistencyReturnLocation";
     };
     readonly cursor: {
         readonly oneOf: readonly [{

@@ -107,21 +107,20 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     assert.deepEqual(workspaceLayout,{titleSize:'24px',background:'rgb(255, 255, 255)',borderWidth:'1px',headerHeight:70,headerPadding:'20px',singlePageControls:0},
       'V65检查作业标题和表格共用白色面板，单页不显示分页');
     await click('新建检查');
-    const newCheck=await element('#dc-new-mask');
-    const formLayout=await driver.executeScript('const r=arguments[0].getBoundingClientRect();return {width:r.width,height:r.height,footerBottom:arguments[0].querySelector("footer").getBoundingClientRect().bottom,bottom:r.bottom}',newCheck);
-    assert.equal(formLayout.width,960,'新建检查使用V65表单宽度');
-    assert.ok(formLayout.height<700,JSON.stringify(formLayout));
-    assert.ok(Math.abs(formLayout.footerBottom-formLayout.bottom)<=2,'表单底部不能留下详情弹窗的空白区域');
-    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    const newCheck=await element('#dc-create-page');
+    assert.equal((await driver.findElements(By.css('dialog[aria-label="新建一致性检查"]'))).length,0);
+    const formLayout=await driver.executeScript('return [...arguments[0].querySelectorAll("textarea")].map(e=>e.getBoundingClientRect().height)',newCheck);
+    assert.deepEqual(formLayout,[400,400,400,400,400]);
+    await(await element('[data-dc="close-new"]')).click();
     await driver.executeScript(`const frame=document.createElement('iframe');frame.id='responsive-workbench';frame.src=arguments[0];
       frame.style.cssText='position:fixed;inset:0;width:375px;height:812px;border:0;z-index:10000';document.body.append(frame);`,start);
     await driver.switchTo().frame(await element('#responsive-workbench'));
     await (await element('[data-dc="start-check"]')).click();
-    const narrowForm=await driver.executeScript('const e=arguments[0],r=e.getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,width:innerWidth,height:innerHeight,overflow:e.scrollWidth-e.clientWidth}',await element('#dc-new-mask'));
+    const narrowForm=await driver.executeScript('const e=arguments[0],r=e.getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,width:innerWidth,height:innerHeight,overflow:e.scrollWidth-e.clientWidth}',await element('#dc-create-page'));
     assert.equal(narrowForm.width,375,'使用实际375px内容视口');
-    assert.ok(narrowForm.left>=0&&narrowForm.right<=narrowForm.width&&narrowForm.bottom<=narrowForm.height,JSON.stringify(narrowForm));
+    assert.ok(narrowForm.left>=0&&narrowForm.right<=narrowForm.width&&narrowForm.bottom>narrowForm.height,JSON.stringify(narrowForm));
     assert.ok(narrowForm.overflow<=1,JSON.stringify(narrowForm));
-    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    await(await element('[data-dc="close-new"]')).click();
     await driver.switchTo().defaultContent();
     await driver.executeScript('document.getElementById("responsive-workbench").remove()');
     assert.ok(!programReads.includes('/api/iad/consistency/runs'),'列表只读取当前范围作业引用的程序批次，不重算全局历史批次');
@@ -288,8 +287,8 @@ with sqlite3.connect(sys.argv[1]) as c:c.execute('UPDATE job_runs SET status=?,p
     await click('关闭');await click('新建检查');
     await bridge.execute('dataset_delete',{dataset_id:dataset.dataset_id});
     await click('开始检查');
-    await driver.wait(async()=>(await driver.findElements(By.css('#dc-new-mask [role="alert"]'))).length>0,10000);
-    assert.ok(await driver.findElement(By.id('dc-new-mask')).isDisplayed());
+    await driver.wait(async()=>(await driver.findElements(By.css('dialog[aria-label="创建检查失败"] [role="alert"]'))).length>0,10000);
+    assert.ok(await driver.findElement(By.id('dc-create-page')).isDisplayed());
     assert.equal((await bridge.execute('consistency_list',{})).items.length,0,'创建失败不得留下假作业');
     await driver.actions().sendKeys(Key.ESCAPE).perform();
     execFileSync(bridge.pythonPath,['-c',`import sys

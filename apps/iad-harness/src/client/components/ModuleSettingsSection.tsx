@@ -1,42 +1,33 @@
 import React from 'react';
-import type {ModuleModelReference} from '../../shared/domain.generated.js';
+import type {ModelProfile} from '../../shared/domain.generated.js';
+import {reasoningEffortLabels} from '../../shared/model-settings.generated.js';
 import {businessModules,type BusinessModule} from '../../shared/business-modules.js';
 import {useModuleSettings} from '../useModuleSettings.js';
-import {useWorkbenchModel} from '../models.js';
+import {useModelProviders} from '../models.js';
 import {Select} from './Select.js';
+import {ModuleModelSelect} from './ModuleModelSelect.js';
 import {Button} from './Button.js';
 import {ModuleNumberSetting} from './ModuleNumberSetting.js';
 import {moduleSettingsStyles} from '../styles/module-settings.js';
 
-interface ModelChoice {model: ModuleModelReference; label: string; image: boolean}
-
-function ModuleModelSetting({label, choices, model, loading, onSave}: {
-  label: string; choices: ModelChoice[]; model: ModuleModelReference | null; loading: boolean;
-  onSave(model: ModuleModelReference): void;
-}) {
-  const selection = model ? JSON.stringify(model) : '';
-  const unavailable = !!selection && !choices.some(choice => JSON.stringify(choice.model) === selection);
-  return <div><label className="iad-module-row"><span>{label}</span>
-    <Select aria-label={label} disabled={loading || !choices.length} value={selection} onChange={event => {
-      const selected = choices.find(choice => JSON.stringify(choice.model) === event.target.value);
-      if (selected) onSave(selected.model);
-    }}>
-      <option value="" disabled>{loading ? '正在读取模型…' : choices.length ? '请选择具体模型' : '暂无可选模型'}</option>
-      {unavailable && <option value={selection} disabled>所选模型不可用</option>}
-      {choices.map(choice => <option key={JSON.stringify(choice.model)} value={JSON.stringify(choice.model)}>{choice.label}</option>)}
-    </Select>
-  </label>{unavailable && !loading && <p role="alert">{label}已不可用，请重新选择</p>}</div>;
-}
-
 export function ModuleSettingsSection({module}:{module:BusinessModule}) {
   const {settings,save,retry,loading,saving,saved,error}=useModuleSettings(module);
-  const {view,loading:modelsLoading,error:modelError}=useWorkbenchModel();
-  const choices=(view?.providers||[]).filter(provider=>!provider.error).flatMap(provider=>provider.models
-    .map(model=>({model:{provider_id:provider.provider_id,model_id:model.model_id},label:`${model.name}（${provider.name}）`,image:!!model.input_modalities?.includes('image')})));
+  const {providers,loading:modelsLoading,error:modelError}=useModelProviders();
+  const efforts=providers.find(provider=>provider.provider_id===settings?.model?.provider_id)?.models
+    .find(model=>model.model_id===settings?.model?.model_id)?.reasoning_efforts||[];
   return <section className="iad-module-settings" aria-label={`${businessModules[module]}设置`} data-module-settings={module}>
     <style>{moduleSettingsStyles}</style><h2>{businessModules[module]}</h2>
     {loading&&!settings ? <p role="status">正在读取设置…</p> : settings && <div>
-      <ModuleModelSetting label="分析模型" choices={choices.filter(choice=>choice.image)} model={settings.model} loading={modelsLoading} onSave={model=>save({model})}/>
+      <div className="iad-module-row"><span>分析模型</span><ModuleModelSelect providers={providers} model={settings.model} loading={modelsLoading}
+        onChange={model=>save({model,reasoning_effort:null})}/></div>
+      {'reasoning_effort' in settings&&<label className="iad-module-row"><span>推理强度</span>
+        <Select aria-label="推理强度" disabled={modelsLoading||!efforts.length} value={settings.reasoning_effort||''}
+          onChange={event=>save({reasoning_effort:(event.target.value||null) as ModelProfile['reasoning_effort']})}>
+          <option value="">Default</option>
+          {settings.reasoning_effort&&!efforts.includes(settings.reasoning_effort)&&<option value={settings.reasoning_effort} disabled>所选强度不可用</option>}
+          {efforts.map(effort=><option key={effort} value={effort}>{reasoningEffortLabels[effort]}</option>)}
+        </Select>
+      </label>}
       {'batch_size' in settings && <>
         <ModuleNumberSetting label={module==='exploration'?'后续每批图像数':'每批图像数'} value={settings.batch_size} min={1} max={module==='knowledge'?200:undefined} step={1}
           validationMessage={module==='knowledge'?'每批图像数需要为 1～200 的整数':'后续每批图像数需要为正整数'} onSave={batch_size=>save({batch_size})}/>

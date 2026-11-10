@@ -86,7 +86,14 @@ class JobSnapshots:
             if 'consistency_check' in request:
                 check = request['consistency_check']
                 values['system_prompt'] = check.get('system_prompt')
+                if check.get('prompts'):
+                    from iad_core.consistency.identity_prompts import IdentityPrompts
+                    values['consistency_identity_prompts'] = {name: check['prompts'][name] for name in IdentityPrompts.model_fields}
                 values['consistency_check_version'] = check['schema_version']
+                from iad_core.consistency.task_types import TASK_TYPES_BY_FORMAT
+                formats = set(check.get('dataset_formats', {}).values())
+                values['consistency_task_type'] = check.get('task_type') or (
+                    TASK_TYPES_BY_FORMAT[next(iter(formats))] if len(formats) == 1 else None)
                 profile = check['roles']['vision']['profile']
                 values['model_profile'] = profile
                 model = profile if profile is not None else check['model']

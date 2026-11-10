@@ -9,26 +9,6 @@ from iad_core.workbench.review import HumanReview, ReviewSubmission
 from iad_core.workbench.runtime import WorkbenchRuntime
 
 
-def test_zero_area_annotation_is_rejected_at_job_creation(dataset, tmp_path):
-    from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
-    from iad_core.consistency.errors import ConsistencyError
-    from iad_core.consistency.agent_results import ConsistencyAgentResults
-
-    database, registry, config = dataset
-    (tmp_path / 'labels/dent.json').write_text(json.dumps({'shapes': [
-        {'label': 'dent', 'shape_type': 'rectangle', 'points': [[10, 10], [10, 20]]}]}))
-    registry.rescan(config.dataset.id)
-    runtime = WorkbenchRuntime(database)
-    try:
-        checks = ConsistencyAgentJobs(runtime)
-        anchor = config.dataset.id + ':dent.png'
-        with pytest.raises(ValueError, match='矩形审核'):
-            checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
-                'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})
-    finally:
-        runtime.close()
-
-
 @pytest.mark.parametrize('shape_type,points', [
     ('rectangle', [[-5, 10], [330, 30]]),
     ('polygon', [[-5, 10], [330, 10], [330, 30], [-5, 30]]),
@@ -36,6 +16,7 @@ def test_zero_area_annotation_is_rejected_at_job_creation(dataset, tmp_path):
 def test_rectangle_review_keeps_source_coordinates_and_rejects_other_shapes(dataset, tmp_path, shape_type, points):
     from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
     from iad_core.storage.repositories import AnnotationRepository
+    from iad_core.consistency.errors import ConsistencyError
 
     database, registry, config = dataset
     label = tmp_path / 'labels/dent.json'
@@ -53,8 +34,14 @@ def test_rectangle_review_keeps_source_coordinates_and_rejects_other_shapes(data
         request = {'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
             'subjects': {'kind': 'samples', 'sample_ids': [anchor]}}
         if shape_type == 'polygon':
-            with pytest.raises(ValueError, match='矩形审核'):
-                checks.start(request)
+            run = checks.start(request)['run_id']
+            checks.session_created(run, anchor)
+            checks.retrieve(run, anchor)
+            from iad_core.consistency.agent_review import ConsistencyAgentReview
+            review = ConsistencyAgentReview(runtime)
+            assert review.verify(run, anchor).completed
+            with pytest.raises(ConsistencyError, match='矩形标注'):
+                review.finish_rules(run, anchor)
         else:
             from iad_core.consistency.agent_review import ConsistencyAgentReview
             run = checks.start(request)['run_id']
@@ -65,7 +52,7 @@ def test_rectangle_review_keeps_source_coordinates_and_rejects_other_shapes(data
             source = next(value for value in prepared.facts['sources'].values() if value['sample_id'] == anchor)
             assert source['annotations'][0]['bbox'] == [-5, 10, 330, 30]
             crops = [view for view in source['visual_inputs'] if view['window_source'] == 'annotation']
-            assert crops[0]['crop_bbox'] == [0, 6, 320, 34]
+            assert crops[0]['crop_bbox'] == [0, 8, 320, 32]
         assert AnnotationRepository(database).list_by_sample(anchor) == [annotation]
         assert label.read_text() == original
     finally:
@@ -90,9 +77,15 @@ def test_mask_annotations_cannot_enter_rectangle_review(defect_dataset):
     runtime = WorkbenchRuntime(database)
     try:
         checks = ConsistencyAgentJobs(runtime)
-        with pytest.raises(ValueError, match='矩形审核'):
-            checks.start({'submission_id': str(uuid4()), 'dataset_ids': [row['dataset_id']], 'mode': 'exact',
-                'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})
+        run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [row['dataset_id']], 'mode': 'exact',
+            'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
+        checks.session_created(run, anchor)
+        checks.retrieve(run, anchor)
+        from iad_core.consistency.agent_review import ConsistencyAgentReview
+        review = ConsistencyAgentReview(runtime)
+        assert review.verify(run, anchor).completed
+        with pytest.raises(ConsistencyError, match='矩形标注'):
+            review.finish_rules(run, anchor)
     finally:
         runtime.close()
 
@@ -113,8 +106,11 @@ def test_annotation_matching_capacity_remains_a_resource_error(dataset, tmp_path
             'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
         checks.session_created(run, anchor)
         checks.retrieve(run, anchor)
+        from iad_core.consistency.agent_review import ConsistencyAgentReview
+        review = ConsistencyAgentReview(runtime)
+        assert review.verify(run, anchor).completed
         with pytest.raises(ConsistencyError, match='instance count exceeds matching budget') as failure:
-            ConsistencyAgentEvidence(runtime).freeze(run, anchor, checkpoint=lambda: None)
+            review.finish_rules(run, anchor)
         assert failure.value.code == 'RESOURCE_LIMIT'
         assert checks.anchor(run, anchor).result is None
     finally:
@@ -228,10 +224,10 @@ def test_agent_evidence_uses_original_sources_without_historical_review_judgment
         assert len(mapped) == 1
         assert mapped[0]['window_from'] == anchor_id
         assert mapped[0]['annotation_origins'] == []
-        assert mapped[0]['crop_bbox'] == [6, 6, 34, 34]
+        assert mapped[0]['crop_bbox'] == [8, 8, 32, 32]
         image = next(item for item in prepared.images if item.evidence.evidence_id == mapped[0]['evidence_id'])
         with Image.open(image.path) as pixels:
-            assert pixels.size == (28, 28)
+            assert pixels.size == (24, 24)
             assert pixels.convert('RGB').getextrema() == ((0, 0), (0, 0), (255, 255))
         next_page = ConsistencyAgentEvidence(runtime).prepare(job['run_id'], anchor_id, [config.dataset.id + ':scratch.png'])
         assert {item['sample_id'] for item in next_page.facts['sources'].values()} == {anchor_id, config.dataset.id + ':scratch.png'}
@@ -239,43 +235,30 @@ def test_agent_evidence_uses_original_sources_without_historical_review_judgment
         runtime.close()
 
 
-def test_visual_windows_capture_original_pixels_with_clipped_padding_only_from_the_current_page(dataset):
-    from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
-    from iad_core.consistency.group_models import VisualWindow
+def test_agent_rejects_extra_windows_before_sending_visual_requests(dataset):
+    from iad_core.consistency.agent_review import ConsistencyAgentReview
+    from iad_core.workbench.vision import VlmClient
+    import httpx
 
     database, _, config = dataset
     runtime = WorkbenchRuntime(database)
+    sent = []
+    def respond(request):
+        sent.append(request)
+        raise AssertionError('额外窗口不能发送模型请求')
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
     try:
         checks = ConsistencyAgentJobs(runtime)
-        anchor_id, candidate_id = [config.dataset.id + ':' + name + '.png' for name in ('dent', 'scratch')]
-        job_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
-            'subjects': {'kind': 'samples', 'sample_ids': [anchor_id]}})['run_id']
-        checks.session_created(job_id, anchor_id)
-        checks.retrieve(job_id, anchor_id)
-        window = VisualWindow(sample_id=candidate_id, bbox=(2, 3, 12, 9), padding=5, reason='确认无叠加局部的原始像素')
-        service = ConsistencyAgentEvidence(runtime)
-        from iad_core.consistency.agent_review import ConsistencyAgentReview
-        ConsistencyAgentReview(runtime).verify(job_id, anchor_id)
-        prepared = service.prepare(job_id, anchor_id, [candidate_id], windows=[window])
-        source = next(item for item in prepared.facts['sources'].values() if item['sample_id'] == candidate_id)
-        captured = [item for item in source['visual_inputs'] if item.get('window_source') == 'visual_window']
-        assert len(captured) == 1
-        assert captured[0]['requested_bbox'] == [2, 3, 12, 9]
-        assert captured[0]['padding'] == 5
-        assert captured[0]['crop_bbox'] == [0, 0, 17, 14]
-        assert captured[0]['annotation_origins'] == []
-        image = next(item for item in prepared.images if item.evidence.evidence_id == captured[0]['evidence_id'])
-        assert image.evidence.representation == 'raw' and image.evidence.source == 'model'
-        with Image.open(image.path) as pixels:
-            assert pixels.size == (17, 14)
-            assert pixels.convert('RGB').getextrema() == ((0, 0), (0, 0), (255, 255))
-        with pytest.raises(ValueError, match='本页'):
-            service.prepare(job_id, anchor_id, [candidate_id], windows=[window.model_copy(update={'sample_id': config.dataset.id + ':normal.png'})])
-        clipped = service.prepare(job_id, anchor_id, [candidate_id],
-            windows=[window.model_copy(update={'bbox': (310, 230, 330, 245)})])
-        source = next(item for item in clipped.facts['sources'].values() if item['sample_id'] == candidate_id)
-        captured = [item for item in source['visual_inputs'] if item['window_source'] == 'visual_window']
-        assert captured[0]['requested_bbox'] == [310, 230, 330, 245]
-        assert captured[0]['crop_bbox'] == [305, 225, 320, 240]
+        anchor, candidate = [config.dataset.id + ':' + name + '.png' for name in ('dent','scratch')]
+        job = checks.start({'submission_id':str(uuid4()),'dataset_ids':[config.dataset.id],'mode':'exact',
+            'subjects':{'kind':'samples','sample_ids':[anchor]}})['run_id']
+        checks.session_created(job, anchor)
+        selected = checks.retrieve(job, anchor)
+        with pytest.raises(ValueError, match='不支持额外观察窗口'):
+            ConsistencyAgentReview(runtime, client).observe(job, anchor, {'request_id':'extra-window',
+                'fingerprint':selected.fingerprint,'candidate_ids':[candidate],'question':'核对标注。',
+                'windows':[{'sample_id':candidate,'bbox':[2,3,12,9],'padding':5,'reason':'额外窗口'}]})
+        assert sent == []
     finally:
+        client.close()
         runtime.close()

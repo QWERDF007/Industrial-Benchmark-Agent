@@ -1,18 +1,20 @@
-import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { useState } from 'react';
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import React, { useState } from 'react';
 import { Button } from './Button.js';
 import { Modal } from './Modal.js';
 import { IconButton } from './IconButton.js';
 import { copyText } from '../clipboard.js';
-export function PromptDrawer({ title, text, systemText, onClose }) {
+export function PromptDrawer({ title, text, systemText, additionalSections = [], onClose }) {
     const [notice, setNotice] = useState('');
+    const sections = [...(systemText ? [{ title: '系统提示词', text: systemText }] : []),
+        { title: systemText ? '用户提示词' : '', text }, ...additionalSections];
     return _jsxs(Modal, { title: title, className: "iad-drawer iad-prompt-drawer", header: false, onClose: onClose, children: [_jsxs("header", { className: "iad-dialog-header", children: [_jsx("h2", { children: title }), _jsx(Button, { onClick: async () => {
                             try {
-                                await copyText(systemText ? `系统提示词\n${systemText}\n\n用户提示词\n${text}` : text);
+                                await copyText(sections.map(section => (section.title ? section.title + '\n' : '') + section.text).join('\n\n'));
                                 setNotice('已复制');
                             }
                             catch {
                                 setNotice('复制失败');
                             }
-                        }, children: "\u590D\u5236\u63D0\u793A\u8BCD" }), _jsx(IconButton, { icon: "close", label: `关闭${title}抽屉`, onClick: onClose })] }), _jsxs("div", { className: "iad-dialog-body", children: [notice && _jsx("p", { role: "status", children: notice }), systemText && _jsxs(_Fragment, { children: [_jsx("h3", { children: "\u7CFB\u7EDF\u63D0\u793A\u8BCD" }), _jsx("pre", { className: "iad-prompt-text", children: systemText }), _jsx("h3", { children: "\u7528\u6237\u63D0\u793A\u8BCD" })] }), _jsx("pre", { className: "iad-prompt-text", children: text })] })] });
+                        }, children: "\u590D\u5236\u63D0\u793A\u8BCD" }), _jsx(IconButton, { icon: "close", label: `关闭${title}抽屉`, onClick: onClose })] }), _jsxs("div", { className: "iad-dialog-body", children: [notice && _jsx("p", { role: "status", children: notice }), sections.map(section => _jsxs(React.Fragment, { children: [section.title && _jsx("h3", { children: section.title }), _jsx("pre", { className: "iad-prompt-text", children: section.text })] }, section.title))] })] });
 }

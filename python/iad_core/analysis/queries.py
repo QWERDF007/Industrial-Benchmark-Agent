@@ -114,9 +114,26 @@ class AnalysisQueries:
 
     def sources(self, dataset_ids: list[str]) -> AnalysisSourceCatalog:
         with self.db.connection() as connection:
-            rows = connection.execute('''SELECT sample_id,dataset_id,relative_path FROM samples
-                WHERE dataset_id IN (SELECT value FROM json_each(?)) ORDER BY dataset_id,relative_path,sample_id''', (json.dumps(dataset_ids),)).fetchall()
-        return AnalysisSourceCatalog(items=[AnalysisSource.model_validate(dict(row)) for row in rows])
+            rows = connection.execute('''SELECT s.sample_id,s.dataset_id,s.relative_path,s.quality_status,
+                json_extract(d.config_json,'$.dataset.format') AS format,
+                json_extract(s.annotation_availability_json,'$.status') AS annotation_status,
+                count(a.annotation_id) AS annotation_count,
+                json_group_array(DISTINCT a.raw_label) FILTER (WHERE a.annotation_id IS NOT NULL) AS categories
+                FROM samples s JOIN datasets d ON d.dataset_id=s.dataset_id
+                LEFT JOIN annotations a ON a.sample_id=s.sample_id
+                WHERE s.dataset_id IN (SELECT value FROM json_each(?))
+                GROUP BY s.sample_id ORDER BY s.dataset_id,s.relative_path,s.sample_id''', (json.dumps(dataset_ids),)).fetchall()
+        items = []
+        for row in rows:
+            if row['format'] == 'folder_classification':
+                role = {'PASS':'normal', 'FAIL':'defect'}.get(row['quality_status'])
+            else:
+                role = ('normal' if row['annotation_status'] == 'VALID_EMPTY' and not row['annotation_count']
+                    else 'defect' if row['annotation_status'] == 'VALID_NONEMPTY' and row['annotation_count'] else None)
+            items.append(AnalysisSource(sample_id=row['sample_id'], dataset_id=row['dataset_id'],
+                relative_path=row['relative_path'], candidate_role=role,
+                annotation_categories=sorted(category for category in json.loads(row['categories']) if category.strip())))
+        return AnalysisSourceCatalog(items=items)
 
     def remove_direction(self, request):
         view = self.view(request.version_id)

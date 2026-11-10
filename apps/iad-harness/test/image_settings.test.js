@@ -36,7 +36,6 @@ test('image settings use independent persisted profiles and structured encoder e
     assert.equal(saved.status,200,await saved.clone().text());
     assert.deepEqual((await saved.json()).selection,selection);
     assert.deepEqual((await bridge.execute('feature_settings_view',{})).selection,selection);
-    assert.equal((await bridge.execute('model_settings_get',{})).selection,null);
     const failed=await post('/images/settings/check',{});
     assert.equal(failed.status,409);
     assert.equal((await failed.json()).error.code,'ENCODER_UNAVAILABLE');

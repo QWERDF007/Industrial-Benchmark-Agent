@@ -20,6 +20,15 @@ export const conflictCategoryLabels = {
   "拆分": "拆分",
   "合并": "合并"
 } as const;
+export const modelConclusionLabels = {
+  "类别不一致": "类别不一致",
+  "多类别": "多标",
+  "少类别": "少标",
+  "位置差异": "位置差异",
+  "拆分": "拆分",
+  "合并": "合并",
+  "EQUIVALENT": "一致"
+} as const;
 export const conflictCategories = [
   "类别不一致",
   "位置差异",
@@ -1171,112 +1180,37 @@ export const consistencyContextParameters = {
     "title": "Difference Ids"
   },
   "return_location": {
-    "oneOf": [
-      {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "pageId": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "pageId": {
+        "type": "string",
+        "enum": [
+          "industrial-consistency"
+        ],
+        "title": "Pageid",
+        "default": "industrial-consistency"
+      },
+      "tab": {
+        "oneOf": [
+          {
             "type": "string",
             "enum": [
-              "industrial-consistency"
-            ],
-            "title": "Pageid",
-            "default": "industrial-consistency"
+              "conflicts",
+              "search",
+              "groups",
+              "jobs"
+            ]
           },
-          "tab": {
-            "oneOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "conflicts",
-                  "search",
-                  "groups",
-                  "jobs"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tab"
-          },
-          "scope": {
-            "oneOf": [
-              {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "enum": [
-                          "all_registered"
-                        ],
-                        "title": "Kind",
-                        "default": "all_registered"
-                      }
-                    },
-                    "title": "AllRegisteredScope"
-                  },
-                  {
-                    "type": "object",
-                    "additionalProperties": false,
-                    "properties": {
-                      "kind": {
-                        "type": "string",
-                        "enum": [
-                          "datasets"
-                        ],
-                        "title": "Kind",
-                        "default": "datasets"
-                      },
-                      "dataset_ids": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        },
-                        "title": "Dataset Ids",
-                        "required": true
-                      }
-                    },
-                    "title": "DatasetScope"
-                  }
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Scope"
-          },
-          "parentId": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parentid"
-          },
-          "datasetIds": {
-            "oneOf": [
-              {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Datasetids"
-          },
-          "query": {
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Tab"
+      },
+      "scope": {
+        "oneOf": [
+          {
             "oneOf": [
               {
                 "type": "object",
@@ -1285,287 +1219,348 @@ export const consistencyContextParameters = {
                   "kind": {
                     "type": "string",
                     "enum": [
-                      "sample"
+                      "all_registered"
                     ],
                     "title": "Kind",
-                    "default": "sample"
-                  },
-                  "sample_id": {
+                    "default": "all_registered"
+                  }
+                },
+                "title": "AllRegisteredScope"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "kind": {
                     "type": "string",
-                    "title": "Sample Id",
+                    "enum": [
+                      "datasets"
+                    ],
+                    "title": "Kind",
+                    "default": "datasets"
+                  },
+                  "dataset_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "title": "Dataset Ids",
                     "required": true
                   }
                 },
-                "title": "SampleImageQuery"
-              },
-              {
-                "type": "null"
+                "title": "DatasetScope"
               }
             ]
           },
-          "batchId": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Batchid"
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Scope"
+      },
+      "parentId": {
+        "oneOf": [
+          {
+            "type": "string"
           },
-          "resultId": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resultid"
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Parentid"
+      },
+      "datasetIds": {
+        "oneOf": [
+          {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
-          "evidenceId": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Datasetids"
+      },
+      "query": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "sample"
             ],
-            "title": "Evidenceid"
+            "title": "Kind",
+            "default": "sample"
           },
-          "facts": {
-            "oneOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "CURRENT",
-                  "HISTORICAL",
-                  "UNKNOWN"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Facts"
-          },
-          "groupId": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Groupid"
-          },
-          "memberId": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Memberid"
-          },
-          "differenceId": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Differenceid"
-          },
-          "returnPage": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Returnpage"
-          },
-          "sessionId": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sessionid"
-          },
-          "queryId": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Queryid"
-          },
-          "gallerySearch": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Gallerysearch"
-          },
-          "galleryOrder": {
-            "oneOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "recent",
-                  "members"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Galleryorder"
-          },
-          "differenceFilter": {
-            "oneOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "all",
-                  "category",
-                  "geometry",
-                  "presence",
-                  "instances",
-                  "multiple"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Differencefilter"
-          },
-          "modelFilter": {
-            "oneOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "all",
-                  "NOT_ANALYZED",
-                  "RUNNING",
-                  "FAILED",
-                  "EQUIVALENT",
-                  "MATERIAL",
-                  "UNCERTAIN"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Modelfilter"
-          },
-          "galleryPage": {
-            "oneOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Gallerypage"
-          },
-          "detailTab": {
-            "oneOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "summary",
-                  "evidence",
-                  "review"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Detailtab"
-          },
-          "subjectId": {
-            "oneOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Subjectid"
-          },
-          "reviewFilter": {
-            "oneOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "OPEN",
-                  "NEEDS_CONTEXT",
-                  "RESOLVED"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reviewfilter"
-          },
-          "groupPage": {
-            "oneOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Grouppage"
-          },
-          "memberPage": {
-            "oneOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Memberpage"
+          "sample_id": {
+            "type": "string",
+            "title": "Sample Id",
+            "required": true
           }
         },
-        "title": "ConsistencyReturnLocation"
+        "title": "SampleImageQuery"
       },
-      {
-        "type": "null"
+      "batchId": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Batchid"
+      },
+      "resultId": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Resultid"
+      },
+      "evidenceId": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Evidenceid"
+      },
+      "facts": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "CURRENT",
+              "HISTORICAL",
+              "UNKNOWN"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Facts"
+      },
+      "groupId": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Groupid"
+      },
+      "memberId": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Memberid"
+      },
+      "differenceId": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Differenceid"
+      },
+      "returnPage": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Returnpage"
+      },
+      "sessionId": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Sessionid"
+      },
+      "queryId": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Queryid"
+      },
+      "gallerySearch": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Gallerysearch"
+      },
+      "galleryOrder": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "recent",
+              "members"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Galleryorder"
+      },
+      "differenceFilter": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "all",
+              "category",
+              "geometry",
+              "presence",
+              "instances",
+              "multiple"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Differencefilter"
+      },
+      "modelFilter": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "all",
+              "NOT_ANALYZED",
+              "RUNNING",
+              "FAILED",
+              "EQUIVALENT",
+              "MATERIAL",
+              "UNCERTAIN"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Modelfilter"
+      },
+      "galleryPage": {
+        "oneOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Gallerypage"
+      },
+      "detailTab": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "summary",
+              "evidence",
+              "review"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Detailtab"
+      },
+      "subjectId": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Subjectid"
+      },
+      "reviewFilter": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "OPEN",
+              "NEEDS_CONTEXT",
+              "RESOLVED"
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Reviewfilter"
+      },
+      "groupPage": {
+        "oneOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Grouppage"
+      },
+      "memberPage": {
+        "oneOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Memberpage"
       }
-    ]
+    },
+    "title": "ConsistencyReturnLocation"
   },
   "cursor": {
     "oneOf": [

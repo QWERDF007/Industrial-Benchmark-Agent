@@ -46,8 +46,8 @@ export class ConsistencyCheckScheduler implements ModelRouting {
   async start(request: Record<string, unknown>): Promise<JobView> {
     const configuration = await this.bridge.execute<ConsistencyCheckConfiguration>('consistency_agent_configuration');
     const roles = {
-      agent: await this.providers.freeze(configuration.settings.model, configuration.settings.agent_limits, 'agent'),
-      vision: await this.providers.freeze(configuration.settings.model, configuration.model_limits, 'vision'),
+      agent: await this.providers.freeze(configuration.settings.model, configuration.settings.agent_limits, 'agent',configuration.settings.reasoning_effort),
+      vision: await this.providers.freeze(configuration.settings.model, configuration.settings.vision_limits, 'vision',configuration.settings.reasoning_effort),
     };
     const {created, ...job} = await this.bridge.execute<JobView & {created: boolean}>('consistency_agent_start', {request, configuration, roles});
     if (created && ['PENDING', 'RUNNING'].includes(job.status)) {

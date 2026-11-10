@@ -96,13 +96,6 @@ export const consistencyStyles = `
 .dc-decision-controls input{height:16px;width:16px;accent-color:var(--iad-primary)}
 .dc-note{width:100%;height:58px;min-height:58px;padding:10px;border:1px solid var(--iad-control-border);border-radius:5px;resize:vertical;color:var(--iad-text);background:var(--iad-surface)}
 .dc-dialog-footer{display:flex;gap:8px;justify-content:flex-end;flex:none}
-.dc-new-body{padding:22px 26px 24px;display:grid;gap:20px}
-.dc-new-field{display:grid;gap:9px;font-size:13px;font-weight:600}
-.dc-new-parent{min-height:38px;display:flex;align-items:center;padding:0 12px;background:var(--iad-surface-muted);border:1px solid var(--iad-border);border-radius:5px;font-weight:400}
-.dc-prompt-editor{display:flex;flex-direction:column;gap:8px}
-.dc-prompt-editor label{font-weight:600}
-#dc-new-prompt{box-sizing:border-box;width:100%;min-height:180px;height:205px;resize:vertical;border:1px solid var(--iad-control-border);border-radius:5px;padding:12px 13px;font:inherit;font-weight:400;line-height:1.75;color:var(--iad-text);background:var(--iad-surface);white-space:pre-wrap}
-#dc-new-prompt:focus-visible{outline:2px solid var(--iad-primary);outline-offset:1px}
 @media(max-width:1000px){.dc-compare{grid-template-columns:1fr}}
 @media(max-width:650px){.dc-scope{display:grid}.dc-dialog-head-actions{gap:4px}}
 
@@ -261,6 +254,7 @@ export const consistencyStyles = `
   margin-top: 16px !important;
   padding-top: 16px !important;
 }
+.dc-images-panel .iad-thumbnail-card>.iad-thumbnail-caption{display:none}
 .dc-images-panel h3,
 .dc-fact-panel h3,
 .dc-model-panel h3,

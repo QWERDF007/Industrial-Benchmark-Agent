@@ -1,11 +1,11 @@
-import type {AnalysisPublicationView, AnalysisSourceCatalog, AnalysisTarget} from '../shared/domain.generated.js';
+import type {AnalysisPublicationView, AnalysisSource, AnalysisSourceCatalog, AnalysisTarget} from '../shared/domain.generated.js';
 import type {DirectionEvidenceItem, DirectionItem} from './components/DirectionDetailDialog.js';
 import {mediaUrl, request} from './api.js';
 import {directionEvidence} from './direction-evidence.js';
 
 export type ExplorationRole = NonNullable<AnalysisTarget['candidate_role']>;
 
-export interface ExplorationCandidate {
+export interface ExplorationCandidate extends Pick<AnalysisSource,'candidate_role'|'annotation_categories'> {
   id: string;
   filename: string;
   url: string;
@@ -14,7 +14,8 @@ export interface ExplorationCandidate {
 
 export async function explorationCandidates(datasetIds: string[], signal?: AbortSignal): Promise<ExplorationCandidate[]> {
   const sources = await request<AnalysisSourceCatalog>(`/analysis/sources?${new URLSearchParams({dataset_ids:JSON.stringify(datasetIds)})}`,undefined,undefined,signal);
-  return sources.items.map(item=>({id:item.sample_id,filename:item.relative_path,datasetId:item.dataset_id,
+  return sources.items.map(item=>({id:item.sample_id,filename:item.relative_path.replace(/^.*[\\/]/,''),datasetId:item.dataset_id,
+    candidate_role:item.candidate_role,annotation_categories:item.annotation_categories,
     url:mediaUrl({task_id:item.dataset_id,sample_id:item.sample_id},'thumbnail')}));
 }
 

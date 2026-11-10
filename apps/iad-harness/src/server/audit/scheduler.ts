@@ -30,7 +30,7 @@ export class AuditWorkflowScheduler implements ModelRouting {
 
   async start(request:Record<string,unknown>):Promise<JobView> {
     const configuration=await this.bridge.execute<AuditAgentConfiguration>('audit_agent_configuration');
-    const agent=await this.providers.freeze(configuration.settings.model,configuration.settings.agent_limits,'agent');
+    const agent=await this.providers.freeze(configuration.settings.model,configuration.settings.agent_limits,'agent',configuration.settings.reasoning_effort);
     const {created,...job}=await this.bridge.execute<JobView&{created:boolean}>('audit_agent_start',{request,configuration,agent});
     if(created&&['PENDING','RUNNING'].includes(job.status))this.launch(job.run_id);
     return job;

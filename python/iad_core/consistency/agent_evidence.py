@@ -1,12 +1,12 @@
 import hashlib
-from typing import Callable, Sequence, TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING
 
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.consistency.agent_evidence_records import AnchorEvidenceRecords
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.evidence_models import ConsistencyCompare, FrozenEvidence
 from iad_core.consistency.group_analysis_inputs import GroupAnalysisInputs, PreparedGroupInput
-from iad_core.consistency.group_models import FrozenAnalysisGroup, GalleryComparison, GalleryImage, GalleryMember, VisualWindow
+from iad_core.consistency.group_models import FrozenAnalysisGroup, GalleryComparison, GalleryImage, GalleryMember
 
 if TYPE_CHECKING:
     from iad_core.workbench.runtime import WorkbenchRuntime
@@ -33,15 +33,12 @@ class ConsistencyAgentEvidence:
             checkpoint()
             record = captured.get(candidate.sample_id)
             evidence = self.runtime.consistency_service.evidence(record.evidence_id) if record is not None else None
-            if evidence is None or self._failure(evidence) is not None:
+            if evidence is None:
                 comparison = self.runtime.consistency_service.compare(ConsistencyCompare(
                     sample_a=anchor_id, sample_b=candidate.sample_id), checkpoint=checkpoint, frozen_scopes=snapshot.scopes)
                 with self.db.connection() as connection:
                     AnchorEvidenceRecords.capture(connection, run_id, anchor_id, candidate.sample_id, comparison)
                 evidence = self.runtime.consistency_service.evidence(comparison.evidence_id)
-            error = self._failure(evidence)
-            if error is not None:
-                raise error
             if main is None:
                 main = GalleryImage(sample=evidence.sources.left.sample, evidence_id=evidence.result.evidence_id,
                     side='left', available=True)
@@ -57,7 +54,7 @@ class ConsistencyAgentEvidence:
         return group
 
     @staticmethod
-    def _failure(evidence: FrozenEvidence) -> ConsistencyError | None:
+    def annotation_failure(evidence: FrozenEvidence) -> ConsistencyError | None:
         for source in (evidence.sources.left, evidence.sources.right):
             if source.annotations.errors or source.issues:
                 return ConsistencyError('ANNOTATION_UNREADABLE', '; '.join([*source.annotations.errors, *source.issues]))
@@ -70,7 +67,7 @@ class ConsistencyAgentEvidence:
         return None
 
     def prepare(self, run_id: str, anchor_id: str, candidate_ids: list[str], *,
-                checkpoint: Callable[[], None] = lambda: None, windows: Sequence[VisualWindow] = ()) -> PreparedGroupInput:
+                checkpoint: Callable[[], None] = lambda: None) -> PreparedGroupInput:
         from iad_core.consistency.identity import CandidateIdentity
         group = CandidateIdentity(self.runtime).review_group(run_id, anchor_id)
         members = {member.image.sample_id: member for member in group.members}
@@ -79,4 +76,4 @@ class ConsistencyAgentEvidence:
         selected_members = [members[identity] for identity in candidate_ids]
         selected = group.model_copy(update={'members': selected_members,
             'anchor': group.anchor.model_copy(update={'evidence_id': selected_members[0].image.evidence_id})})
-        return GroupAnalysisInputs(self.runtime).prepare(selected, checkpoint, windows=windows)
+        return GroupAnalysisInputs(self.runtime).prepare(selected, checkpoint)

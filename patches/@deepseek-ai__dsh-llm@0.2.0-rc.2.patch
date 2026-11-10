@@ -1,0 +1,12 @@
+diff --git a/lib/index.js b/lib/index.js
+index 4fa1c6c278dcca13fa91d6d3e3f6aa350febcfe7..3c08299e05d173ca090b8a3ab57ac9244955d4bf 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -2308,7 +2308,6 @@ let LlmRuntime = (() => {
+ 				};
+ 				let projectedMessages = resolvedOptions.messages;
+ 				if (projectedMessages.some((message) => contentHasFile(message.content))) projectedMessages = projectFilesToText(projectedMessages, (ref) => this.fileReadPath(ref));
+-				if (modelInfo.inputModalities !== void 0 && !modelInfo.inputModalities.includes("image") && projectedMessages.some((message) => contentHasImage(message.content))) projectedMessages = projectImagesForTextModel(projectedMessages);
+ 				const projectedTools = projectToolUpdates(projectedMessages, resolvedOptions.tools, modelInfo.toolUpdate, resolvedOptions.toolHistory);
+ 				projectedMessages = projectedTools.messages;
+ 				let projectedOptions = resolvedOptions;

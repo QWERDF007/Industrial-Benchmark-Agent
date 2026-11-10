@@ -10,3 +10,9 @@ export const defaultModelLimits = {
     "write_timeout_seconds": null,
     "pool_timeout_seconds": null
 };
+export const reasoningEffortLabels = {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "xhigh": "XHigh"
+};

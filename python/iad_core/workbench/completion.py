@@ -9,6 +9,23 @@ from httpx_sse import EventSource
 from iad_core.advisory.output_validation import REPAIRABLE_OUTPUT
 
 
+def raise_for_model_status(response: httpx.Response) -> None:
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as error:
+        response.read()
+        try:
+            body = response.json()
+        except (ValueError, UnicodeError):
+            body = None
+        detail = body.get('error') if isinstance(body, dict) else None
+        message = detail.get('message') if isinstance(detail, dict) else None
+        if isinstance(message, str) and message.strip():
+            raise httpx.HTTPStatusError(f'{error}\n模型服务返回：{message.strip()}',
+                request=error.request, response=error.response) from error
+        raise
+
+
 class ModelOutputError(ValueError):
     def __init__(self, message: str, issues: list[dict], response: str):
         super().__init__(message)
@@ -26,6 +43,7 @@ class CompletionResponse:
             response.read()
             return cls(response.json(), True)
         content, metadata, reason, done = [], {}, None, False
+        response_body = None
         decoder, json_closed = json.JSONDecoder(), False
         for event in EventSource(response).iter_sse():
             if event.data == '[DONE]':
@@ -34,6 +52,12 @@ class CompletionResponse:
             if not event.data:
                 continue
             chunk = event.json()
+            if chunk.get('type', '').startswith('response.'):
+                if isinstance(chunk.get('response'), dict):
+                    response_body = chunk['response']
+                if chunk['type'] in ('response.completed','response.incomplete','response.failed'):
+                    return cls(response_body, True)
+                continue
             if chunk.get('error'):
                 raise ValueError(f"模型流返回错误：{chunk['error']}")
             metadata.update({key: chunk[key] for key in ('id', 'model', 'usage') if chunk.get(key) is not None})
@@ -59,6 +83,8 @@ class CompletionResponse:
                                 json_closed = True
                 if choice.get('finish_reason') is not None:
                     reason = choice['finish_reason']
+        if response_body is not None:
+            return cls(response_body, False)
         body = {**metadata, 'choices': [{'finish_reason': reason, 'message': {'content': ''.join(content)}}]}
         return cls(body, done and reason is not None)
 

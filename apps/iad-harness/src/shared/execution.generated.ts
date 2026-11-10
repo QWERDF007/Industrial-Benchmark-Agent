@@ -35,6 +35,7 @@ export const queryOperations = [
   "consistency_agent_export",
   "consistency_agent_gallery",
   "consistency_agent_images",
+  "consistency_agent_media",
   "consistency_agent_members",
   "consistency_agent_report",
   "consistency_agent_results",

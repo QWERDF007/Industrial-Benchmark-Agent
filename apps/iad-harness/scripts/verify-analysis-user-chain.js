@@ -101,7 +101,7 @@ const download=async(button,route,extension)=>{
   return {path:saved,bytes:actual.length,sha256:createHash('sha256').update(actual).digest('hex')};
 };
 try {
-  await driver.get(base);await element(`button[aria-label="${page.name}"]`);await viewport(driver,1920,1080);
+  await driver.get(process.env.IAD_BROWSER_BOOTSTRAP_URL||base);await element(`button[aria-label="${page.name}"]`);await viewport(driver,1920,1080);
   await click(await element(`button[aria-label="${page.name}"]`));
   const parent=await element(page.parent);
   await click(await parent.findElement(By.css(`option[value="${source.group_id}"]`)));
@@ -217,7 +217,7 @@ try {
     }
     if(stage==='consistency' && job.status==='COMPLETED') {
       proof.consistency = await verifyConsistencyUserResult(driver, {base, runId: job.run_id, output, prefix,
-        downloadDirectory: downloadAttempt});
+        downloadDirectory: downloadAttempt, expectedConcurrency:receipt.configuration.settings.concurrency});
     }
     if(stage==='audit') {
       if(job.completed>0) {

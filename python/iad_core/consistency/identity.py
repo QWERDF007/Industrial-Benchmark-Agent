@@ -1,8 +1,8 @@
-import hashlib
 from typing import TYPE_CHECKING
 
 from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+from iad_core.consistency.candidate_records import CandidateRecords
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.identity_models import AnchorIdentityState, CandidateIdentityRecord
 from iad_core.consistency.identity_repository import CandidateIdentityRecords
@@ -26,65 +26,103 @@ class CandidateIdentity:
         with self.db.connection() as connection:
             return CandidateIdentityRecords.read(connection, run_id, anchor_id, anchor.candidates)
 
-    def verify(self, run_id: str, anchor_id: str, *, attempt: int = 1, step: bool = False) -> AnchorIdentityState:
+    def prepare(self, run_id: str, anchor_id: str, *, attempt: int = 1):
         self.checks.attempt(run_id, anchor_id, attempt)
-        from iad_core.consistency.identity_prompts import IDENTITY_PROMPT_VERSION
-        if self.checks.snapshot(run_id).prompt_version != IDENTITY_PROMPT_VERSION:
-            raise ValueError('历史内容验证合同只读保留，请新建检查')
-        current = self.read(run_id, anchor_id)
-        if current.completed:
-            return current
+        state = self.read(run_id, anchor_id)
+        if state.completed:
+            return state
         context = JobContext(self.runtime.jobs, run_id, self.runtime.jobs.status(run_id), self.runtime.jobs.cancelled[run_id])
-        context.checkpoint()
         group = ConsistencyAgentEvidence(self.runtime).freeze(run_id, anchor_id, checkpoint=context.checkpoint)
-        self.checks.phase(run_id, anchor_id, 'OBSERVING_ANCHOR')
-        completed = {gate.candidate_id for gate in current.gates if gate.execution_status == 'completed'}
         retained = RetainedImages(self.db)
+        current = {gate.candidate_id: gate for gate in state.gates}
         for member in group.members:
             context.checkpoint()
-            identity = member.image.sample_id
-            if identity in completed:
+            candidate_id = member.image.sample_id
+            if candidate_id in current and current[candidate_id].execution_status == 'completed':
                 continue
-            evidence = self.runtime.consistency_service.evidence(member.comparison.evidence_id)
-            left, right = evidence.sources.left, evidence.sources.right
-            base = dict(gate_id='gate_' + hashlib.sha256(
-                (run_id + '\n' + anchor_id + '\n' + identity + '\n' + current.fingerprint).encode()).hexdigest(),
-                candidate_id=identity, fingerprint=current.fingerprint)
-            try:
-                compared = PixelContent.read(retained.path(left.image)).compare(PixelContent.read(retained.path(right.image)))
-                if compared.exact_equal is True:
-                    media = [EvidenceImages(self.db.db_path).capture(source.sample.model_copy(update={
-                        'image_path': retained.path(source.image)}), 'overview', 'coverage', max_side=1280).evidence
-                        for source in (left, right)]
-                    result = dict(relation='pixel_identical', reason='两侧解码像素、尺寸与通道语义完全一致。', media=media)
-                else:
-                    if compared.exact_equal is None:
-                        raise ConsistencyError('SOURCE_UNAVAILABLE', '无法完整读取候选原始像素。')
-                    if self.client is None:
-                        raise ValueError('非完全一致的候选需要冻结的视觉模型。')
-                    from iad_core.consistency.identity_inspection import IdentityInspection
-                    result = IdentityInspection(self.runtime, self.client).inspect(run_id, anchor_id, identity,
-                        (left, right), context.checkpoint, prompts=self.checks.snapshot(run_id).prompts, step=step)
-                    if result is None:
-                        return self.read(run_id, anchor_id)
-                record = CandidateIdentityRecord(**base, execution_status='completed', **result)
-            except Exception as error:
-                context.checkpoint()
-                with self.db.connection() as connection:
-                    connection.execute('''INSERT INTO consistency_candidate_identity(job_id,anchor_id,candidate_id,record_json)
-                        VALUES(?,?,?,?) ON CONFLICT(job_id,anchor_id,candidate_id) DO UPDATE SET record_json=excluded.record_json''',
-                        (run_id, anchor_id, identity, CandidateIdentityRecord(**base, execution_status='failed', relation=None,
-                            reason='候选内容验证执行失败。', error_code=getattr(error, 'code', type(error).__name__)).model_dump_json(exclude={'gate_status'})))
-                raise
-            with self.runtime.jobs.lock:
-                live = self.checks.attempt(run_id, anchor_id, attempt)
-                if live.state != 'RUNNING':
-                    raise ValueError('主图已停止，不能保存候选资格')
-                with self.db.connection() as connection:
-                    connection.execute('''INSERT INTO consistency_candidate_identity(job_id,anchor_id,candidate_id,record_json)
-                        VALUES(?,?,?,?) ON CONFLICT(job_id,anchor_id,candidate_id) DO UPDATE SET record_json=excluded.record_json''',
-                        (run_id, anchor_id, identity, record.model_dump_json(exclude={'gate_status'})))
-            if step and compared.exact_equal is not True:
+            saved = self.runtime.consistency_service.evidence(member.comparison.evidence_id)
+            sources = (saved.sources.left, saved.sources.right)
+            compared = PixelContent.read(retained.path(sources[0].image)).compare(PixelContent.read(retained.path(sources[1].image)))
+            if compared.exact_equal is None:
+                raise ConsistencyError('SOURCE_UNAVAILABLE', '无法完整读取候选原始像素。')
+            if compared.exact_equal:
+                media = [EvidenceImages(self.db.db_path).capture(source.sample.model_copy(update={
+                    'image_path': retained.path(source.image)}), 'overview', 'coverage', full_resolution=True).evidence for source in sources]
+                revision = current[candidate_id].revision if candidate_id in current else 0
+                self.commit(run_id, anchor_id, CandidateIdentityRecord(gate_id='pending', candidate_id=candidate_id,
+                    fingerprint=state.fingerprint, execution_status='completed', relation='pixel_identical',
+                    reason='两侧解码像素、尺寸与通道语义完全一致。', media=media, source='program'),
+                    expected_revision=revision, request_id='pixel-' + candidate_id, attempt=attempt)
+        return self.read(run_id, anchor_id)
+
+    def observe(self, run_id, anchor_id, candidate_id, *, expected_revision, request_id, attempt=1):
+        self.checks.attempt(run_id, anchor_id, attempt)
+        state = self.read(run_id, anchor_id)
+        gate = next((item for item in state.gates if item.candidate_id == candidate_id), None)
+        if (gate.revision if gate else 0) != expected_revision:
+            raise ValueError('候选资格版本已变化')
+        if self.client is None:
+            raise ValueError('非完全一致的候选需要冻结的视觉模型。')
+        context = JobContext(self.runtime.jobs, run_id, self.runtime.jobs.status(run_id), self.runtime.jobs.cancelled[run_id])
+        group = ConsistencyAgentEvidence(self.runtime).freeze(run_id, anchor_id, checkpoint=context.checkpoint)
+        member = next((item for item in group.members if item.image.sample_id == candidate_id), None)
+        if member is None:
+            raise ValueError('候选不属于当前冻结清单')
+        evidence = self.runtime.consistency_service.evidence(member.comparison.evidence_id)
+        self.checks.phase(run_id, anchor_id, 'VERIFYING_CONTENT')
+        from iad_core.consistency.identity_inspection import IdentityInspection
+        try:
+            result = IdentityInspection(self.runtime, self.client).inspect(run_id, anchor_id, candidate_id,
+                (evidence.sources.left, evidence.sources.right), context.checkpoint,
+                prompts=self.checks.snapshot(run_id).prompts, revision=expected_revision, request_id=request_id)
+        except Exception as error:
+            current = self.checks.anchor(run_id, anchor_id)
+            latest = next((gate.revision for gate in self.read(run_id, anchor_id).gates if gate.candidate_id == candidate_id), 0)
+            if current.state == 'RUNNING' and current.attempt == attempt and latest == expected_revision:
+                self.commit(run_id, anchor_id, CandidateIdentityRecord(gate_id='pending', candidate_id=candidate_id,
+                    fingerprint=state.fingerprint, execution_status='failed', relation=None,
+                    reason=str(error) or '候选内容验证执行失败。', error_code=getattr(error, 'code', type(error).__name__)),
+                    expected_revision=expected_revision, request_id=request_id + '-failed', attempt=attempt)
+            raise
+        return CandidateIdentityRecord(gate_id='pending', candidate_id=candidate_id, fingerprint=state.fingerprint,
+            execution_status='completed', revision=expected_revision, **result)
+
+    def commit(self, run_id, anchor_id, record, *, expected_revision, request_id, attempt=1):
+        from iad_core.consistency.identity_inputs import IdentityInputs
+        record = CandidateIdentityRecord.model_validate(record.model_dump())
+        IdentityInputs(self.db).validate_record(run_id, anchor_id, record)
+        with self.runtime.jobs.lock, self.db.connection() as connection:
+            self.checks.attempt(run_id, anchor_id, attempt)
+            saved = CandidateRecords.append(connection, run_id, anchor_id, record.candidate_id,
+                'gate', expected_revision, request_id, record)
+            return CandidateIdentityRecord.model_validate_json(saved['record_json']).model_copy(update={'revision': saved['revision']})
+
+    def recheck(self, run_id, anchor_id, candidate_id, *, expected_revision, request_id, attempt=1):
+        state = self.read(run_id, anchor_id)
+        record = CandidateIdentityRecord(gate_id='pending', candidate_id=candidate_id, fingerprint=state.fingerprint,
+            execution_status='pending', relation=None, reason='审核中发现身份疑点，重新核对实际图像内容。')
+        with self.runtime.jobs.lock, self.db.connection() as connection:
+            self.checks.attempt(run_id, anchor_id, attempt)
+            previous = next((gate for gate in state.gates if gate.candidate_id == candidate_id), None)
+            if previous is not None and previous.relation == 'pixel_identical':
+                raise ValueError('不能撤销由冻结像素直接证明的同内容资格')
+            saved = CandidateRecords.append(connection, run_id, anchor_id, candidate_id, 'gate', expected_revision, request_id, record)
+        return CandidateIdentityRecord.model_validate_json(saved['record_json']).model_copy(update={'revision': saved['revision']})
+
+    def verify(self, run_id: str, anchor_id: str, *, attempt: int = 1, step: bool = False) -> AnchorIdentityState:
+        state = self.prepare(run_id, anchor_id, attempt=attempt)
+        current = {gate.candidate_id: gate for gate in state.gates}
+        anchor = self.checks.anchor(run_id, anchor_id)
+        for candidate in anchor.candidates.candidates:
+            gate = current.get(candidate.sample_id)
+            if gate is not None and gate.execution_status == 'completed':
+                continue
+            revision = gate.revision if gate else 0
+            request_id = 'verify-' + candidate.sample_id + '-' + str(revision)
+            result = self.observe(run_id, anchor_id, candidate.sample_id, expected_revision=revision,
+                request_id=request_id, attempt=attempt)
+            self.commit(run_id, anchor_id, result, expected_revision=revision, request_id=request_id, attempt=attempt)
+            if step:
                 return self.read(run_id, anchor_id)
         return self.read(run_id, anchor_id)
 
@@ -93,4 +131,15 @@ class CandidateIdentity:
         if not state.completed:
             raise ValueError('必须先完成全部候选的图像身份与内容验证')
         group = ConsistencyAgentEvidence(self.runtime).freeze(run_id, anchor_id, checkpoint=lambda: None)
-        return group.model_copy(update={'members': [member for member in group.members if member.image.sample_id in state.eligible_ids]})
+        selected = group.model_copy(update={'members': [member for member in group.members if member.image.sample_id in state.eligible_ids]})
+        task_type = self.checks.snapshot(run_id).task_type
+        for member in selected.members:
+            from iad_core.consistency.identity_inputs import IdentityInputs
+            IdentityInputs(self.db).validate_record(run_id, anchor_id,
+                next(gate for gate in state.gates if gate.candidate_id == member.image.sample_id))
+            evidence = self.runtime.consistency_service.evidence(member.comparison.evidence_id)
+            for source in (evidence.sources.left, evidence.sources.right):
+                source.annotations.require_task(task_type)
+            if error := ConsistencyAgentEvidence.annotation_failure(evidence):
+                raise error
+        return selected

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
+import {sendResponses} from './responses.js';
 
 // Controlled providers declare repeated visual facts and one representative per entry.
 export function finalizeFixtureCatalog(context,outputs,module) {
@@ -36,7 +37,10 @@ export function finalizeFixtureCatalog(context,outputs,module) {
     arguments:arguments_,complete:page.items.length===context.pending_entry_ids.length}}];
 }
 
-export function respondFixtureTools(response,calls) {
+export function respondFixtureTools(response,calls,{protocol='openai-completions',model='native-image'}={}) {
+  if(protocol==='openai-responses')return sendResponses(response,model,{tool_calls:calls.map(call=>({
+    id:randomUUID(),type:'function',function:{name:call.name,arguments:JSON.stringify(call.arguments)}}))},
+    {input_tokens:500,output_tokens:200,total_tokens:700});
   response.writeHead(200,{'Content-Type':'text/event-stream'});
   response.write('data: '+JSON.stringify({choices:[{index:0,delta:{role:'assistant',tool_calls:calls.map((call,index)=>({
     index,id:randomUUID(),type:'function',function:{name:call.name,arguments:JSON.stringify(call.arguments)}}))},finish_reason:null}]})+'\n\n');

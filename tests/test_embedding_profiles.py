@@ -134,8 +134,8 @@ def test_image_configuration_is_separate_from_chat_and_uses_optimistic_revision(
     saved=settings.save(ImageEncoderEdit(expected_revision=0,selection=config))
     assert saved.revision==1 and saved.selection.profile==profile
     assert ImageEncoders(Database(db.db_path)).read()==saved
-    from iad_core.workbench.model_settings import WorkbenchModels
-    assert WorkbenchModels(db).read().selection is None
+    from iad_core.workbench.module_settings import ModuleSettings
+    assert ModuleSettings(db).read('consistency').settings.model is None
     with pytest.raises(ValueError,match='配置已变化'):
         settings.save(ImageEncoderEdit(expected_revision=0,selection=config))
     with pytest.raises(ValidationError):

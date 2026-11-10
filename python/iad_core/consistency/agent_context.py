@@ -50,7 +50,8 @@ class AnchorAgentContext:
         return {'anchor': anchor.model_dump(mode='json', include={'anchor_id', 'session_id', 'attempt', 'state', 'visual_plan'}),
             'fingerprint': anchor.candidates.fingerprint,
             'identity': {**identity.model_dump(mode='json', exclude={'gates'}),
-                'gates': [gate.model_dump(mode='json', include={'gate_id', 'candidate_id', 'relation', 'gate_status', 'geometry'})
+                'gates': [gate.model_dump(mode='json', include={'gate_id', 'candidate_id', 'relation', 'gate_status', 'geometry',
+                    'required_region_pair_ids','region_pairs','region_checks'})
                     for gate in identity.gates if gate.candidate_id in identity.eligible_ids]},
             'candidate_ids': identity.eligible_ids,
             'observation_index': [self.receipt(item) for item in observations],

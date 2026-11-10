@@ -1,14 +1,9 @@
-import React from 'react';
-import type { WorkbenchModelView } from '../shared/domain.generated.js';
-export declare function WorkbenchModelProvider({ children }: {
-    children: React.ReactNode;
-}): React.JSX.Element;
-export declare function useWorkbenchModel(): {
-    view: WorkbenchModelView | null;
+import type { ModelCatalog } from '../shared/domain.generated.js';
+export declare function useModelProviders(): {
+    view: ModelCatalog | null;
+    providers: import("../shared/domain.generated.js").Providers;
     loading: boolean;
     error: string;
-    refresh(): Promise<void>;
-    ready: boolean;
+    refresh: () => Promise<void>;
 };
-export declare function WorkbenchModelStatus(): React.JSX.Element;
 //# sourceMappingURL=models.d.ts.map

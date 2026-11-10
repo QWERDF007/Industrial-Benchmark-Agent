@@ -69,6 +69,10 @@ def consistency_agent_detail(args, db_path):
     return ConsistencyAgentResults(Database(db_path)).detail(args['run_id'], args['anchor_id']).model_dump(mode='json')
 
 
+def consistency_agent_media(args, db_path):
+    return ConsistencyAgentResults(Database(db_path)).media(args['run_id'], args['anchor_id'], args['media_id'])
+
+
 def consistency_agent_diagnostics(args, db_path):
     return ConsistencyAgentResults(Database(db_path)).diagnostics(args['run_id'], args['anchor_id']).model_dump(mode='json')
 
@@ -159,8 +163,11 @@ def consistency_agent_finish(args, db_path):
 
 
 def consistency_agent_context(args, db_path):
-    from iad_core.consistency.agent_context import AnchorAgentContext
-    return AnchorAgentContext(workbench(db_path)).read(args['run_id'], args['anchor_id'], args.get('query', {}), attempt=args.get('attempt', 1))
+    from iad_core.consistency.workflow import ConsistencyWorkflow
+    if args.get('_model_execution'):
+        with _visual_review(args, db_path) as review:
+            return ConsistencyWorkflow(review.runtime, review.client).context(args['run_id'], args['anchor_id'], args.get('query', {}), attempt=args.get('attempt', 1))
+    return ConsistencyWorkflow(workbench(db_path)).context(args['run_id'], args['anchor_id'], args.get('query', {}), attempt=args.get('attempt', 1))
 
 
 @contextmanager
@@ -186,10 +193,9 @@ def consistency_agent_plan(args, db_path):
 
 
 def consistency_agent_verify(args, db_path):
+    from iad_core.consistency.workflow import ConsistencyWorkflow
     with _visual_review(args, db_path) as review:
-        state = review.verify(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1), step=True)
-        result = review.finish_rules(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1)) if state.completed else None
-        return {'identity': state.model_dump(mode='json'), 'completed': result is not None}
+        return ConsistencyWorkflow(review.runtime, review.client).prepare(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1))
 
 
 def consistency_agent_capacity(args, db_path):
@@ -215,19 +221,16 @@ def consistency_agent_capacity(args, db_path):
 
 
 def consistency_agent_observe(args, db_path):
-    from iad_core.consistency.agent_context import AnchorAgentContext
+    from iad_core.consistency.workflow import ConsistencyWorkflow
     with _visual_review(args, db_path) as review:
-        return AnchorAgentContext.observed(review.observe(args['run_id'], args['anchor_id'], args['request'], attempt=args.get('attempt', 1)))
+        return ConsistencyWorkflow(review.runtime, review.client).observe(args['run_id'], args['anchor_id'], args['request'], attempt=args.get('attempt', 1))
 
 
 def consistency_agent_assess(args, db_path):
-    from iad_core.consistency.agent_context import AnchorAgentContext
-    from iad_core.consistency.agent_review import ConsistencyAgentReview
-    return AnchorAgentContext.assessment(ConsistencyAgentReview(workbench(db_path)).assess(
-        args['run_id'], args['anchor_id'], args['submission'], attempt=args.get('attempt', 1)))
+    from iad_core.consistency.workflow import ConsistencyWorkflow
+    return ConsistencyWorkflow(workbench(db_path)).assess(args['run_id'], args['anchor_id'], args['submission'], attempt=args.get('attempt', 1))
 
 
 def consistency_agent_submit(args, db_path):
-    from iad_core.consistency.agent_review import ConsistencyAgentReview
-    return ConsistencyAgentReview(workbench(db_path)).finalize(
-        args['run_id'], args['anchor_id'], args['submission'], attempt=args.get('attempt', 1)).model_dump(mode='json')
+    from iad_core.consistency.workflow import ConsistencyWorkflow
+    return ConsistencyWorkflow(workbench(db_path)).submit(args['run_id'], args['anchor_id'], args['submission'], attempt=args.get('attempt', 1))

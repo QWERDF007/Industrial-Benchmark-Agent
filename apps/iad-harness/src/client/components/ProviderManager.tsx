@@ -5,12 +5,12 @@ import React, {useState} from 'react';
 import {v4 as uuid} from 'uuid';
 import type {ProviderEdit, ProviderModel, WorkbenchProvider} from '../../shared/domain.generated.js';
 import {message, request} from '../api.js';
-import {useWorkbenchModel} from '../models.js';
+import {useModelProviders} from '../models.js';
 import {Modal} from './Modal.js';
 import {DeleteAction} from './DeleteAction.js';
 
 export function ProviderManager() {
-  const {view, refresh} = useWorkbenchModel();
+  const {view, refresh} = useModelProviders();
   const [editing, setEditing] = useState<{provider?: WorkbenchProvider; revision: number} | null>(null);
   const [notice, setNotice] = useState('');
   return <>

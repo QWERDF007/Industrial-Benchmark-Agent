@@ -57,6 +57,12 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         const data = await bridge.execute(operation, args);
         sendJson(res, 200, data);
       };
+      const anchorMedia = pathname.match(/^\/api\/iad\/consistency\/checks\/([^/]+)\/anchors\/([^/]+)\/media\/([^/]+)$/);
+      if(anchorMedia && method==='GET') {
+        const media=await bridge.execute<{path:string;media_type:string}>('consistency_agent_media',{
+          run_id:decodeURIComponent(anchorMedia[1]),anchor_id:decodeURIComponent(anchorMedia[2]),media_id:decodeURIComponent(anchorMedia[3])});
+        return await sendMedia(res,media,true);
+      }
       const anchorResult = pathname.match(/^\/api\/iad\/consistency\/checks\/([^/]+)\/anchors\/([^/]+)(?:\/(session\.jsonl|members|candidates|review|analysis|diagnostics))?$/);
       if (anchorResult && method === 'GET') {
         const run_id = decodeURIComponent(anchorResult[1]), anchor_id = decodeURIComponent(anchorResult[2]);
@@ -153,9 +159,7 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       const moduleSettings = pathname.match(/^\/api\/iad\/settings\/modules\/([^/]+)$/);
       if(moduleSettings && method==='GET')return await call('module_settings_get',{module:moduleSettings[1]});
       if(moduleSettings && method==='POST')return await call('module_settings_save',{...body,module:moduleSettings[1]});
-      if (pathname === "/api/iad/models" && method === "GET") return await call("model_settings_view");
-      if (pathname === "/api/iad/models" && method === "POST") return await call("model_settings_save", body);
-      if (pathname === "/api/iad/models/check" && method === "POST") return await call("model_connection_check", body);
+      if (pathname === '/api/iad/models/providers' && method === 'GET') return await call('model_provider_list');
       if (pathname === "/api/iad/models/providers" && method === "POST") return await call("model_provider_save", body);
       if (pathname === "/api/iad/models/providers/discover" && method === "POST") return await call("model_provider_models", body);
       const provider = pathname.match(/^\/api\/iad\/models\/providers\/([^/]+)$/);

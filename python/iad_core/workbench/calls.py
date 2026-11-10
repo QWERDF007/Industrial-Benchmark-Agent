@@ -159,6 +159,8 @@ class ModelCalls:
                     summary.response_id = body.get('id') if isinstance(body.get('id'), str) else None
                     summary.response_model = body.get('model') if isinstance(body.get('model'), str) else None
                     summary.usage = body.get('usage') if isinstance(body.get('usage'), dict) else None
+                    if body.get('object') == 'response' and isinstance(body.get('status'), str):
+                        summary.finish_reason = body['status']
                     choices = body.get('choices')
                     if isinstance(choices, list) and choices and isinstance(choices[0], dict):
                         reason = choices[0].get('finish_reason')

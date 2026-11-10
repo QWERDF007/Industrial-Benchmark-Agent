@@ -216,33 +216,29 @@ export declare const auditStartParameters: {
         readonly required: true;
     };
     readonly knowledge: {
-        readonly oneOf: readonly [{
-            readonly type: "object";
-            readonly additionalProperties: false;
-            readonly properties: {
-                readonly job_id: {
-                    readonly type: "string";
-                    readonly title: "Job Id";
-                    readonly required: true;
-                };
-                readonly version_id: {
-                    readonly type: "string";
-                    readonly title: "Version Id";
-                    readonly required: true;
-                };
-                readonly entry_ids: {
-                    readonly type: "array";
-                    readonly items: {
-                        readonly type: "string";
-                    };
-                    readonly title: "Entry Ids";
-                    readonly required: true;
-                };
+        readonly type: "object";
+        readonly additionalProperties: false;
+        readonly properties: {
+            readonly job_id: {
+                readonly type: "string";
+                readonly title: "Job Id";
+                readonly required: true;
             };
-            readonly title: "AuditKnowledgeSelection";
-        }, {
-            readonly type: "null";
-        }];
+            readonly version_id: {
+                readonly type: "string";
+                readonly title: "Version Id";
+                readonly required: true;
+            };
+            readonly entry_ids: {
+                readonly type: "array";
+                readonly items: {
+                    readonly type: "string";
+                };
+                readonly title: "Entry Ids";
+                readonly required: true;
+            };
+        };
+        readonly title: "AuditKnowledgeSelection";
     };
     readonly instruction: {
         readonly type: "string";

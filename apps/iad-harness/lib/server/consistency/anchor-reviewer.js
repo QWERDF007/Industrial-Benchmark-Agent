@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { LlmError, MessageId } from '@deepseek-ai/dsh-llm';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import * as piAi from '@deepseek-ai/dsh-llm-pi-ai';
-import { anchorContextQueryParameters, anchorAssessmentInputParameters, anchorReviewSubmissionParameters, anchorVisualStartParameters } from '../../shared/consistency-agent.parameters.generated.js';
+import { anchorToolParameters } from '../../shared/consistency-agent.parameters.generated.js';
 import { workbenchJsonOutput } from '../tool-output.js';
 import { NativeModelCalls } from '../sessions/model-calls.js';
 import { NativeModelBudget } from '../sessions/model-budget.js';
@@ -19,34 +19,31 @@ export class ConsistencyAnchorReviewer {
         const { agent, vision } = task.snapshot.roles;
         if (agent.error || !agent.profile || !agent.native_profile)
             throw new Error('Agent 模型角色不可用：' + (agent.error || '未配置'));
-        if (vision.error || !vision.profile || !vision.input_modalities.includes('image'))
-            throw new Error('视觉模型角色不可用：' + (vision.error || '未配置图像输入能力'));
+        if (vision.error || !vision.profile)
+            throw new Error('视觉模型角色不可用：' + (vision.error || '未配置'));
         const profile = agent.profile;
         if (!profile.model_id || !profile.context_tokens || !profile.max_output_tokens)
             throw new Error('Agent 模型角色缺少已声明的模型、上下文或输出容量');
         const provider = 'consistency-' + task.sessionId;
         const identity = { run_id: task.runId, anchor_id: task.anchorId, attempt: task.attempt };
-        while (true) {
-            task.signal.throwIfAborted();
-            const verified = await this.bridge.execute('consistency_agent_verify', { ...identity, _model_execution: await this.providers.credentialsFor(vision.profile) }, task.signal);
-            if (verified.completed)
-                return;
-            if (verified.identity.completed)
-                break;
-        }
-        await this.bridge.execute('consistency_agent_plan', { ...identity, _model_execution: await this.providers.credentialsFor(vision.profile) }, task.signal);
+        task.signal.throwIfAborted();
+        const prepared = await this.bridge.execute('consistency_agent_verify', { ...identity, _model_execution: await this.providers.credentialsFor(vision.profile) }, task.signal, { timeoutMs: 0 });
+        if (prepared.completed)
+            return;
+        const taskType = task.snapshot.task_type;
+        if (!taskType)
+            throw new Error('历史作业只读保留，请新建检查');
+        const parameters = anchorToolParameters[taskType];
         let failure;
         await this.host.withAgent(task.sessionId, {
             signal: task.signal,
             agentOptions: { provider, model: profile.model_id, maxTokens: profile.max_output_tokens },
-            setup: async (scope) => {
-                const saved = await this.bridge.execute('consistency_agent_context', { ...identity, query: {} });
-                const pending = new Set(saved.observations.map(item => item.candidate_id));
+            setup: async (scope, currentAgent) => {
                 new NativeModelCalls().attach(scope, {
                     start: async (request) => { await this.bridge.execute('consistency_agent_model_call_start', { ...identity, request }); },
                     end: async (result) => { await this.bridge.execute('consistency_agent_model_call_end', { ...identity, result }); },
                 });
-                scope.on('agent/error', event => { failure = event.error; });
+                scope.on('agent/error', event => { failure ??= event.error; });
                 scope.on('session/event', (_session, event) => {
                     if (event.type === 'turn/end' && event.data.reason.kind === 'max-tokens')
                         failure = new LlmError(`Agent 达到冻结的输出上限 ${profile.max_output_tokens} tokens，未提交主图终稿`, 'MAX_TOKENS');
@@ -64,38 +61,34 @@ export class ConsistencyAnchorReviewer {
                     };
                 });
                 scope.systemPrompt.section({ name: 'consistency-anchor-review', order: 100, text: task.snapshot.system_prompt ?? task.snapshot.instruction });
-                scope.tools.register(defineTool({ name: 'anchor_context', description: '开始审核或恢复上下文时读取冻结清单、指纹、视觉分页计划及当前观察和评估回执；传candidate_id复查该候选完整原始事实。按返回的冻结页观察，保存每个候选评估，再提交全部最新评估回执。',
-                    parameters: anchorContextQueryParameters, output: workbenchJsonOutput,
-                    execute: (query, execution) => this.bridge.execute('consistency_agent_context', { ...identity, query }, execution.signal) }));
-                scope.tools.register(defineTool({ name: 'anchor_observe', description: '按上下文给出的完整冻结页发送主图和候选的原图、原始标注与全部局部，保存并返回observation_id及各候选完整视觉观察、事实和原图引用，可直接据此评估。先评估当前已观察页的全部候选才能读取下一页；当前页可补看原像素。',
-                    parameters: anchorVisualStartParameters, output: workbenchJsonOutput,
-                    execute: async (request, execution) => {
-                        if (pending.size && request.candidate_ids.some(id => !pending.has(id)))
-                            throw new Error('先完成已观察页的候选评估，再观察下一页；可继续为当前页补充原像素证据。');
-                        const reserved = request.candidate_ids.filter(id => !pending.has(id));
-                        for (const id of request.candidate_ids)
-                            pending.add(id);
-                        try {
-                            const model = await this.providers.credentialsFor(vision.profile);
-                            return await this.bridge.execute('consistency_agent_observe', { ...identity, request, _model_execution: model }, execution.signal);
+                const dispatch = async (operation, args, execution) => {
+                    try {
+                        return await this.bridge.execute(operation, { ...identity, ...args }, execution.signal, operation === 'consistency_agent_context' || operation === 'consistency_agent_observe' ? { timeoutMs: 0 } : {});
+                    }
+                    catch (error) {
+                        const code = error.code;
+                        if (code !== 'INVALID_ARGUMENT' && code !== 'CONTRACT_ERROR') {
+                            failure = error;
+                            currentAgent.cancel({ kind: 'parent' });
                         }
-                        catch (error) {
-                            for (const id of reserved)
-                                pending.delete(id);
-                            throw error;
-                        }
-                    } }));
-                scope.tools.register(defineTool({ name: 'anchor_assess', description: '仅保存已通过内容验证的候选标注审核，引用本场实际观察。MATERIAL必须在issues中保留全部独立问题、真实两侧框ID和实际原图ID，不能只给主要分类或自由文本；返回终稿使用的assessment_id。',
-                    parameters: anchorAssessmentInputParameters, output: workbenchJsonOutput,
+                        throw error;
+                    }
+                };
+                scope.tools.register(defineTool({ name: 'anchor_context', description: '读取当前阶段、冻结图像身份及资格版本。先完成全部候选的资格处置，再审核合格候选；恢复时以当前记录为准。',
+                    parameters: parameters.context, output: workbenchJsonOutput,
+                    execute: async (query, execution) => dispatch('consistency_agent_context', { query,
+                        _model_execution: await this.providers.credentialsFor(vision.profile) }, execution) }));
+                scope.tools.register(defineTool({ name: 'anchor_observe', description: '观察当前阶段的真实图像。gate每次一张候选，由工具完成必要局部观察；audit按上下文提供的完整观察组读取。引用当前资格版本，不自行扩大图像范围。',
+                    parameters: parameters.observe, output: workbenchJsonOutput,
+                    execute: async (request, execution) => dispatch('consistency_agent_observe', { request,
+                        _model_execution: await this.providers.credentialsFor(vision.profile) }, execution) }));
+                scope.tools.register(defineTool({ name: 'anchor_assess', description: '保存当前候选记录。gate引用实际身份观察，发现身份疑点时用recheck申请重新核验；audit只保存当前合格版本的专用审核。assessment直接传JSON对象，不能字符串化；未使用的可选字段省略。稳定request_id用于重试。',
+                    parameters: parameters.assess, output: workbenchJsonOutput,
+                    execute: (submission, execution) => dispatch('consistency_agent_assess', { submission }, execution) }));
+                scope.tools.register(defineTool({ name: 'anchor_submit', description: '全部资格完成后提交当前有效候选的最新assessment_ids；零有效候选时为空。程序校验完整性、归并证据并形成当前主图唯一终稿。',
+                    parameters: parameters.submit, output: workbenchJsonOutput,
                     execute: async (submission, execution) => {
-                        const result = await this.bridge.execute('consistency_agent_assess', { ...identity, submission }, execution.signal);
-                        pending.delete(submission.assessment.candidate_id);
-                        return result;
-                    } }));
-                scope.tools.register(defineTool({ name: 'anchor_submit', description: '提交全部最新assessment_ids；服务端从已保存评估派生主结论和分析，保留视觉限制，原子完成本主图。',
-                    parameters: anchorReviewSubmissionParameters, output: workbenchJsonOutput,
-                    execute: async (submission, execution) => {
-                        const result = await this.bridge.execute('consistency_agent_submit', { ...identity, submission }, execution.signal);
+                        const result = await dispatch('consistency_agent_submit', { submission }, execution);
                         execution.concludeTurn();
                         return result;
                     } }));
@@ -106,7 +99,7 @@ export class ConsistencyAnchorReviewer {
             try {
                 task.signal.throwIfAborted();
                 agent.followup({ id: MessageId(randomUUID()), role: 'user', source: { kind: 'iad-consistency', form: 'notice', summary: '审核冻结主图' },
-                    content: [{ type: 'text', text: JSON.stringify({ anchor_id: task.anchorId,
+                    content: [{ type: 'text', text: JSON.stringify({ anchor_id: prepared.main_image_id,
                                 attempt: task.attempt }) },
                         ...(task.snapshot.system_prompt ? [{ type: 'text', text: '\n' + task.snapshot.instruction }] : [])] });
                 await agent.whenIdle();

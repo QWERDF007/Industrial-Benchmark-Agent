@@ -129,7 +129,7 @@ class PythonWorker {
         }
         this.pendingRequests.clear();
     }
-    async execute(operation, argumentsPayload = {}, signal, onProgress) {
+    async execute(operation, argumentsPayload = {}, signal, options = {}) {
         const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const worker = this.ensureWorker();
         return new Promise((resolve, reject) => {
@@ -151,11 +151,12 @@ class PythonWorker {
                 }
                 signal.addEventListener("abort", onAbort);
             }
-            if (this.timeoutMs > 0) {
+            const timeoutMs = options.timeoutMs ?? this.timeoutMs;
+            if (timeoutMs > 0) {
                 timer = setTimeout(() => {
                     cleanup();
-                    reject(new Error(`Operation '${operation}' timed out after ${this.timeoutMs}ms.`));
-                }, this.timeoutMs);
+                    reject(new Error(`Operation '${operation}' timed out after ${timeoutMs}ms.`));
+                }, timeoutMs);
             }
             this.pendingRequests.set(requestId, {
                 resolve: (val) => {
@@ -166,7 +167,7 @@ class PythonWorker {
                     cleanup();
                     reject(err);
                 },
-                onProgress,
+                onProgress: options.onProgress,
                 timer,
                 operation,
             });
@@ -210,13 +211,13 @@ export class PythonBridge {
     get dbPath() { return this.workbench.dbPath; }
     useModelRouting(routing) {
         if (this.modelRouting)
-            throw new Error('工作台模型解析入口已注册');
+            throw new Error('模型目录路由入口已注册');
         this.modelRouting = routing;
         return () => { if (this.modelRouting === routing)
             this.modelRouting = undefined; };
     }
-    execute(operation, args = {}, signal, onProgress) {
-        const dispatch = (name, values = {}, cancellation) => (queryOperationNames.has(name) ? this.queries : this.workbench).execute(name, values, cancellation, onProgress);
+    execute(operation, args = {}, signal, options = {}) {
+        const dispatch = (name, values = {}, cancellation) => (queryOperationNames.has(name) ? this.queries : this.workbench).execute(name, values, cancellation, options);
         return this.modelRouting ? this.modelRouting.execute(operation, args, signal, dispatch) : dispatch(operation, args, signal);
     }
     destroy() {

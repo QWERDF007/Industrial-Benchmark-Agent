@@ -1,5 +1,6 @@
 import test from 'node:test';
 import {finalizeFixtureCatalog,respondFixtureTools} from './fixtures/analysis-finalization.js';
+import {chatRequest} from './fixtures/responses.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -23,8 +24,9 @@ import {createKnowledgeTools} from '../lib/server/knowledge/index.js';
 import {toolPresentation} from '../lib/shared/tool-presentation.js';
 
 for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'knowledge', capacityStop:true},
-  {module:'exploration',emptyCatalog:true}, {module:'exploration',initialFailure:true}]) test(`one native ${scenario.module} Agent ${scenario.initialFailure ? 'retains a first-call failure before any observation' : 'observes all 19 registrations in its own Session' + (scenario.emptyCatalog ? ' and publishes an empty catalog' : scenario.capacityStop ? ' after a 12/19 capacity failure and resume' : ' and retains a last-round discovery')}`, {timeout: process.env.IAD_ANALYSIS_BROWSER ? 120000 : 60000}, async t => {
-  const {module, capacityStop, emptyCatalog, initialFailure} = scenario;
+  {module:'exploration',emptyCatalog:true}, {module:'exploration',initialFailure:true},
+  {module:'exploration',protocol:'openai-responses'}, {module:'knowledge',protocol:'openai-responses'}]) test(`one native ${scenario.module} Agent ${scenario.initialFailure ? 'retains a first-call failure before any observation' : 'observes all 19 registrations in its own Session' + (scenario.emptyCatalog ? ' and publishes an empty catalog' : scenario.capacityStop ? ' after a 12/19 capacity failure and resume' : ' and retains a last-round discovery')}${scenario.protocol?' with Responses reasoning':''}`, {timeout: process.env.IAD_ANALYSIS_BROWSER ? 120000 : 60000}, async t => {
+  const {module, capacityStop, emptyCatalog, initialFailure,protocol='openai-completions'} = scenario;
   const expectedCounts=module==='exploration'?[[8,2],[2,2],[2,2],[0,1]]:[[2,2],[2,2],[2,2],[3,1],[3,0]];
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-analysis-agent-'));
   const workspace = findWorkspaceRoot(), database = path.join(root, 'analysis.db');
@@ -35,9 +37,10 @@ for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'k
     try {
       assert.equal(req.headers.authorization, 'Bearer analysis-test-key');
       let text = '';for await (const chunk of req) text += chunk;
-      const body = JSON.parse(text);
+      const body = chatRequest(JSON.parse(text));
+      if(protocol==='openai-responses')assert.equal(body.responses.reasoning.effort,'high');
       if (req.url === '/tokenize') {res.end(JSON.stringify({count: blockCapacity && wire.length >= 6 ? 70000 : 1000, max_model_len: 65536}));return;}
-      const instruction = body.messages.filter(message => message.role === 'system').map(message => message.content).join('\n');
+      const instruction = body.messages.filter(message => message.role === 'system'||message.role==='developer').map(message => message.content).join('\n');
       assert.equal(instruction,data.system_prompt[module]+'\n系统自定义：按工具提交。');
       assert.doesNotMatch(instruction,/\b(?:analysis_\w+|exploration_commit|knowledge_commit)\b/);
       const tools=body.tools.map(tool=>tool.function.name);
@@ -62,7 +65,7 @@ for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'k
       if(context.phase==='finalize'){
         finalizationCalls++;
         const outputs=body.messages.slice(contextIndex+1).filter(message=>message.role==='tool').map(message=>parse(message.content));
-        respondFixtureTools(res,finalizeFixtureCatalog(context,outputs,module));return;
+        respondFixtureTools(res,finalizeFixtureCatalog(context,outputs,module),{protocol});return;
       }
       const [normal,abnormal]=expectedCounts[context.round.round_id-1];
       assert.deepEqual(context.round.sampling_counts,{normal,abnormal,unclassified:0});
@@ -136,13 +139,7 @@ for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'k
           direction_refs:['D1'], dataset_ids:context.catalog.checks[0].dataset_ids});
 
       }
-      const delta = {role: 'assistant', tool_calls: calls.map((call, index) => ({index, id: randomUUID(), type: 'function',
-        function: {name: call.name, arguments: JSON.stringify(call.arguments)}}))};
-      res.writeHead(200, {'Content-Type': 'text/event-stream'});
-      res.write('data: ' + JSON.stringify({id: 'analysis-fixture', choices: [{index: 0, delta, finish_reason: null}]}) + '\n\n');
-      res.write('data: ' + JSON.stringify({id: 'analysis-fixture', choices: [{index: 0, delta: {}, finish_reason: 'tool_calls'}],
-        usage: {prompt_tokens: 500, completion_tokens: 200, total_tokens: 700}}) + '\n\n');
-      res.end('data: [DONE]\n\n');
+      respondFixtureTools(res,calls,{protocol});
     } catch (error) {errors.push(String(error));res.writeHead(500);res.end(JSON.stringify({error: {message: String(error)}}));}
   });
   await new Promise(resolve => provider.listen(0, '127.0.0.1', resolve));
@@ -177,13 +174,15 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
         'instruction':'用户自定义：比较边缘。'}}))
 `, root, database], {cwd: workspace, env: {...process.env, PYTHONPATH: path.join(workspace, 'python')}, encoding: 'utf8'}));
   const bridge = new PythonBridge({cwd: workspace, dbPath: database});
+  if(protocol==='openai-responses')await bridge.execute('module_settings_save',{module,expected_revision:1,settings:{reasoning_effort:'high'}});
   const host = await JobSessionHost.open(path.join(root, module + '-sessions'), async session_id =>
     analysisSessionPath(root, await bridge.execute('analysis_agent_session_location', {session_id})));
   const ctx = new Context();new LlmRuntime(ctx);
   new SystemPrompt(ctx, {});
   new ToolRuntime(ctx);
-  const providers = {fixture: {api: 'openai-completions', baseURL: endpoint, apiKeyEnv: 'ANALYSIS_TEST_KEY',
-    models: [{id: 'native-image', input: ['text', 'image'], contextWindow: 65536, maxTokens: 4096}]}};
+  const providers = {fixture: {api: protocol, baseURL: endpoint, apiKeyEnv: 'ANALYSIS_TEST_KEY',
+    models: [{id: 'native-image', input: protocol==='openai-responses'?['text']:['text','image'], contextWindow: 65536, maxTokens: 4096,
+      ...(protocol==='openai-responses'?{reasoningEfforts:{high:'high'}}:{})}]}};
   ctx.provide('settings', {configure: () => () => {}, describe: () => [{ns: 'llm-pi-ai', revision: 1, value: {providers}}]});
   ctx.provide('credentials', {resolve: async () => ({value: 'analysis-test-key'})});
   const plugin = await ctx.plugin(piAi, {providers});

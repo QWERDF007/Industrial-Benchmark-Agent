@@ -149,6 +149,7 @@ export class Workspace {
         if (route.pageId === 'industrial-consistency') {
           const consistency: WorkspaceState['consistency']={tab:'conflicts',scope:{kind:'all_registered'}};
           if(consistencyTabs.some(tab=>tab.id===route.tab))consistency.tab=route.tab;
+          if(route.view==='setup')consistency.view='setup';
           if(consistencyRouteEnums.facts.includes(route.facts))consistency.facts=route.facts;
           if(route.scope?.kind==='datasets' && Array.isArray(route.scope.dataset_ids) && route.scope.dataset_ids.length && route.scope.dataset_ids.every((id:unknown)=>typeof id==='string' && id.length)) consistency.scope=route.scope;
           if(route.query?.kind==='sample' && typeof route.query.sample_id==='string' && route.query.sample_id)consistency.query=route.query;

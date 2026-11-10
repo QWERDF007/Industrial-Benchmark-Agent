@@ -35,6 +35,7 @@ class Registration(AnalysisModel):
     inliers: int | None = Field(default=None, ge=0)
     main_visible_fraction: float | None = Field(default=None, ge=0, le=1)
     mean_absolute_residual: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    reprojection_error_px: float | None = Field(default=None, ge=0, allow_inf_nan=False)
 
     @model_validator(mode='after')
     def validate_mapping(self):

@@ -10,6 +10,8 @@ from iad_core.knowledge.instructions import FrozenMiningPrompt
 from iad_core.workbench.model_profile import ModelProfileSnapshot
 from iad_core.exploration.models import FrozenExplorationPrompt, ExplorationStart
 from iad_core.feature.profiles import EmbeddingProfile
+from iad_core.consistency.task_types import ConsistencyTaskType
+from iad_core.consistency.identity_prompts import IdentityPrompts
 
 JobStatus = Literal['PENDING', 'RUNNING', 'COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED', 'INTERRUPTED']
 
@@ -108,8 +110,10 @@ class JobView(AnalysisModel):
     exploration_request: Optional[ExplorationStart] = None
     mining_prompt: Optional[FrozenMiningPrompt] = None
     consistency_prompt: Optional[str] = None
+    consistency_identity_prompts: IdentityPrompts | None = None
     system_prompt: Optional[str] = None
     consistency_check_version: Literal[1] | None = None
+    consistency_task_type: ConsistencyTaskType | None = None
     inspected_regions: Optional[int] = None
     planned_regions: Optional[int] = None
     completed_batches: Optional[int] = None

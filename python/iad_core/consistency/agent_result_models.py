@@ -13,6 +13,7 @@ from iad_core.consistency.review_models import ReviewDisposition
 from iad_core.workbench.job_models import JobFailure, JobStatus
 from iad_core.workbench.calls import ModelCallSummary
 from iad_core.consistency.identity_models import IdentityResultFields, CandidateIdentityRecord
+from iad_core.consistency.candidate_records import CandidatePhaseRecord
 
 
 DiagnosticRecording = Literal['COMPLETE', 'UNAVAILABLE']
@@ -77,6 +78,7 @@ class AnchorEvidenceReference(AnalysisModel):
 
 
 class AnchorResultDetail(AnchorResultSummary):
+    candidate_records: list[CandidatePhaseRecord] = Field(default_factory=list)
     gates: list[CandidateIdentityRecord] = Field(default_factory=list)
     captured_evidence: list[AnchorEvidenceReference] = Field(default_factory=list)
     session_created: bool
@@ -121,7 +123,9 @@ class ModelRoleDiagnostics(AnalysisModel):
                 output, total = usage.get('outputTokens'), usage.get('totalTokens')
                 input_count = total - output if total is not None and output is not None else None
             else:
-                input_count, output, total = [usage.get(key) for key in ('prompt_tokens', 'completion_tokens', 'total_tokens')]
+                input_count = usage.get('input_tokens', usage.get('prompt_tokens'))
+                output = usage.get('output_tokens', usage.get('completion_tokens'))
+                total = usage.get('total_tokens')
             tokens.append((input_count, output, total))
         totals = [sum(values) if complete and all(value is not None for value in values) else None
             for values in zip(*tokens)] if tokens else ([0, 0, 0] if complete else [None, None, None])

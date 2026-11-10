@@ -35,7 +35,7 @@ export class AnalysisWorkflowScheduler {
     }
     async start(request) {
         const configuration = await this.bridge.execute('analysis_agent_configuration', { module: request.analysis_kind });
-        const agent = await this.providers.freeze(configuration.settings.model, configuration.settings.agent_limits, 'agent');
+        const agent = await this.providers.freeze(configuration.settings.model, configuration.settings.agent_limits, 'agent', configuration.settings.reasoning_effort);
         const { created, ...job } = await this.bridge.execute('analysis_agent_start', { request, configuration, agent });
         if (created && ['PENDING', 'RUNNING'].includes(job.status))
             this.launch(job.run_id, configuration.module);

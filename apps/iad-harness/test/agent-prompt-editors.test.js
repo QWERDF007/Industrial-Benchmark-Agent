@@ -89,6 +89,9 @@ for module in ['exploration','knowledge','consistency']:
     await driver.get(`http://127.0.0.1:${server.address().port}/page?module=${module}`);
     await click({exploration:'#exp-new',knowledge:'#create-btn',consistency:'button[data-dc="start-check"]',audit:'button[title="新建审计"]'}[module]);
     const system=await element('textarea[aria-label="系统提示词"]'),user=await element('textarea[aria-label="用户提示词"]');
+    const dimensions=await driver.executeScript('return [...document.querySelectorAll("textarea[aria-label$=提示词],#dc-identity-gate_examples")].map(input=>({label:input.getAttribute("aria-label"),height:input.getBoundingClientRect().height,resize:getComputedStyle(input).resize}))');
+    assert.ok(dimensions.length>=2);
+    for(const dimension of dimensions){assert.equal(dimension.height,400,module+': '+dimension.label);assert.equal(dimension.resize,'none');}
     assert.ok((await system.getAttribute('value')).trim());assert.ok((await user.getAttribute('value')).trim());
     assert.doesNotMatch(await system.getAttribute('value'),
       /\b(?:analysis_\w+|anchor_\w+|audit_\w+|exploration_commit|knowledge_commit|offset|limit|commit_key|base_revision|round_id)\b|JSON/,

@@ -12,7 +12,7 @@ import {auditSessionPath} from '../../lib/server/audit/session-path.js';
 import {createWorkbenchTools} from '../../lib/server/workbench-tools/index.js';
 import {NativeMediaAttachments} from '../../lib/server/sessions/media.js';
 
-export async function createAuditAgentHost(root,endpoint,{onCommit,onError=()=>{}}={}) {
+export async function createAuditAgentHost(root,endpoint,{onCommit,onError=()=>{},protocol='openai-completions'}={}) {
   const bridge=new PythonBridge({cwd:findWorkspaceRoot(),dbPath:path.join(root,'audit.db')});
   await bridge.execute('workbench_initialize');
   if(onCommit){
@@ -27,8 +27,8 @@ export async function createAuditAgentHost(root,endpoint,{onCommit,onError=()=>{
     auditSessionPath(root,await bridge.execute('audit_agent_session_location',{session_id})));
   const ctx=new Context();new LlmRuntime(ctx);new SystemPrompt(ctx,{});new ToolRuntime(ctx);
   new NativeMediaAttachments(ctx,path.join(root,'public-evidence'));
-  const providers={fixture:{api:'openai-completions',baseURL:endpoint,apiKeyEnv:'AUDIT_TEST_KEY',
-    models:[{id:'native-audit',input:['text','image'],contextWindow:65536,maxTokens:4096}]}};
+  const providers={fixture:{api:protocol,baseURL:endpoint,apiKeyEnv:'AUDIT_TEST_KEY',
+    models:[{id:'native-audit',input:protocol==='openai-responses'?['text']:['text','image'],contextWindow:65536,maxTokens:4096,...(protocol==='openai-responses'?{reasoningEfforts:{high:'high'}}:{})}]}};
   ctx.provide('settings',{configure:()=>()=>{},describe:()=>[{ns:'llm-pi-ai',revision:1,value:{providers}}]});
   ctx.provide('credentials',{resolve:async()=>({value:'audit-test-key'})});
   const plugin=await ctx.plugin(piAi,{providers});

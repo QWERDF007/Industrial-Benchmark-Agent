@@ -5,14 +5,15 @@ from dataclasses import dataclass
 from typing import Generic, List, Optional, Type, TypeVar
 
 import httpx
+from openai.lib._pydantic import to_strict_json_schema
 from pydantic import BaseModel, Field, ValidationError, computed_field
 from iad_core.evidence.images import PreparedImage, PreparedImageBundle, file_sha256
 from iad_core.advisory.output_validation import REPAIRABLE_OUTPUT
 from iad_core.workbench.calls import ModelCalls
-from iad_core.workbench.completion import CompletionResponse, ModelOutputError
+from iad_core.workbench.completion import CompletionResponse, ModelOutputError, raise_for_model_status
 from iad_core.workbench.prompt_text import RESPONSE_FORMAT_INSTRUCTION, RESPONSE_SCHEMA_SLOT
 from iad_core.workbench.model_profile import ModelProfile
-from iad_core.workbench.model_settings import ModelConnection
+from iad_core.workbench.responses import ResponsesProtocol
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -45,6 +46,7 @@ class GenerationRequest(Generic[T]):
     output_reserve: int
     instruction: str
     context: dict | None = None
+    system_prompt: str | None = None
 
 
 GENERATION_PARAMETERS = {"temperature": 0.1}
@@ -54,7 +56,9 @@ class VlmClient:
     def __init__(self, http_client: Optional[httpx.Client] = None, *, profile: Optional[ModelProfile] = None,
                  api_key: Optional[str] = None):
         endpoint = profile.endpoint if profile else os.environ.get("LIVE_VLM_ENDPOINT", "http://127.0.0.1:8000/v1")
-        self.endpoint = endpoint if endpoint.endswith("/chat/completions") else endpoint.rstrip("/") + "/chat/completions"
+        suffix = '/responses' if profile and profile.api == 'openai-responses' else '/chat/completions'
+        self.endpoint = endpoint if endpoint.endswith(suffix) else endpoint.rstrip('/') + suffix
+        self.base_url = self.endpoint.removesuffix(suffix)
         self.profile = profile.model_copy(update={'endpoint': self.endpoint}) if profile else ModelProfile.configured(self.endpoint)
         self._api_key = api_key if profile is not None else os.environ.get('LIVE_VLM_KEY')
         self.client = http_client or httpx.Client(timeout=httpx.Timeout(self.profile.generation_timeout_seconds,
@@ -73,8 +77,8 @@ class VlmClient:
         value = model_name or os.environ.get('LIVE_VLM_MODEL')
         if value and value.strip():
             return value.strip()
-        response = self.client.get(self.endpoint.removesuffix('/chat/completions') + '/models', headers=self._headers)
-        response.raise_for_status()
+        response = self.client.get(self.base_url + '/models', headers=self._headers)
+        raise_for_model_status(response)
         models = {item['id'] for item in response.json()['data'] if isinstance(item.get('id'), str) and item['id'].strip()}
         if len(models) != 1:
             raise ValueError('模型服务未提供唯一模型，请设置LIVE_VLM_MODEL或宿主有效模型配置')
@@ -83,21 +87,6 @@ class VlmClient:
     def within_limits(self, body: dict, images: List[PreparedImage]) -> bool:
         return (self.profile.max_visual_inputs is None or len(images) <= self.profile.max_visual_inputs) and (self.profile.max_request_bytes is None or
             len(json.dumps(body, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode()) <= self.profile.max_request_bytes)
-
-    def check_connection(self) -> dict:
-        model = self.resolve_model()
-        timeout = httpx.Timeout(20, connect=self.profile.connect_timeout_seconds if self.profile.connect_timeout_seconds is not None else 10)
-        response = self.client.get(self.endpoint.removesuffix('/chat/completions') + '/models', headers=self._headers, timeout=timeout)
-        response.raise_for_status()
-        if model not in {item.get('id') for item in response.json()['data']}:
-            raise ValueError('服务模型目录中没有所选模型，请刷新提供商模型列表')
-        root = self.endpoint.removesuffix('/chat/completions').removesuffix('/v1')
-        response = self.client.post(root + '/tokenize', headers=self._headers, timeout=timeout,
-            json={'model': model, 'messages': [{'role': 'user', 'content': '模型容量接口检查'}]})
-        response.raise_for_status()
-        capacity = TokenCapacity.model_validate(response.json())
-        return ModelConnection(model_id=model, capacity_mode='vllm_tokenize', context_tokens=capacity.max_model_len).model_dump()
-
 
     @property
     def _headers(self) -> dict[str, str]:
@@ -109,7 +98,7 @@ class VlmClient:
             json={key: body[key] for key in ('model', 'messages', 'tools', 'tool_choice',
                 'parallel_tool_calls', 'chat_template_kwargs') if key in body})
         with ModelCalls.exchange(self.client, request, 'tokenize', schema_name) as response:
-            response.raise_for_status()
+            raise_for_model_status(response)
             capacity = TokenCapacity.model_validate(response.json())
         return TokenBudget(input_tokens=capacity.count,
             context_tokens=min(capacity.max_model_len, self.profile.context_tokens or capacity.max_model_len),
@@ -123,13 +112,13 @@ class VlmClient:
         visual_inputs = [view for image in images for view in (image.images if isinstance(image, PreparedImageBundle) else (image,))]
         if self.profile.max_visual_inputs is not None and len(visual_inputs) > self.profile.max_visual_inputs:
             raise ModelCapacityError(f'完整图组含 {len(visual_inputs)} 个视觉输入，超过已配置上限 {self.profile.max_visual_inputs}；未拆组，请确认是否减少图像数量')
-        schema = response_type.model_json_schema()
+        schema = to_strict_json_schema(response_type) if self.profile.api == 'openai-responses' else response_type.model_json_schema()
         rendered='\n'.join(json.dumps(schema,ensure_ascii=False) if line.strip()==RESPONSE_SCHEMA_SLOT else line
             for line in instruction.split('\n'))
         content = [{"type": "text", "text": rendered}]
         if context is not None:
             content.append({"type": "text", "text": json.dumps(context, ensure_ascii=False)})
-        if (self.profile.request_parameters.get('response_format', {}).get('type') == 'json_object'
+        if (self.profile.api != 'openai-responses'
                 and not any(line.strip() == RESPONSE_SCHEMA_SLOT for line in instruction.split('\n'))):
             content.append({'type': 'text', 'text': RESPONSE_FORMAT_INSTRUCTION.replace(
                 RESPONSE_SCHEMA_SLOT, json.dumps(schema, ensure_ascii=False))})
@@ -152,7 +141,9 @@ class VlmClient:
             messages.extend([{"role": "assistant", "content": correction.response},
                 {"role": "user", "content": '请根据以下校验结果修正上一条回答，重新输出完整结果，保持原任务的JSON结构。不要复述校验错误对象，不要只返回修改字段。输出校验结果：' + json.dumps(
                     {'schema_validation_errors': correction.issues}, ensure_ascii=False)}])
-        body = {
+        body = ResponsesProtocol.request(model_name, messages,
+            {'name':response_type.__name__,'strict':True,'schema':schema}, self.profile.request_parameters,
+            self.profile.reasoning_effort) if self.profile.api == 'openai-responses' else {
             "model": model_name, "messages": messages,
             "response_format": {"type": "json_schema", "json_schema": {"name": response_type.__name__, "strict": True, "schema": schema}},
             "stream": True, "stream_options": {"include_usage": True},
@@ -160,14 +151,19 @@ class VlmClient:
         }
         if not self.within_limits(body, visual_inputs):
             raise ModelCapacityError(f'完整图组请求体超过已配置上限 {self.profile.max_request_bytes} 字节；未拆组，请确认是否减少图像数量')
-        budget = self.token_budget(body, output_reserve, response_type.__name__)
-        if not budget.fits:
-            raise ModelCapacityError(f'完整图组输入 {budget.input_tokens} token，上下文上限 {budget.context_tokens}，输出至少预留 {budget.output_reserve}；未拆组，请确认是否减少图像数量')
-        available = budget.context_tokens - budget.input_tokens
-        body['max_tokens'] = min(available, self.profile.max_output_tokens or available)
+        if self.profile.capacity_mode == 'provider_managed':
+            if self.profile.api != 'openai-responses' or not self.profile.context_tokens or not self.profile.max_output_tokens:
+                raise ValueError('Responses 需要冻结的上下文及输出上限')
+            body['max_output_tokens'] = min(self.profile.context_tokens, self.profile.max_output_tokens)
+        else:
+            budget = self.token_budget(body, output_reserve, response_type.__name__)
+            if not budget.fits:
+                raise ModelCapacityError(f'完整图组输入 {budget.input_tokens} token，上下文上限 {budget.context_tokens}，输出至少预留 {budget.output_reserve}；未拆组，请确认是否减少图像数量')
+            available = budget.context_tokens - budget.input_tokens
+            body['max_tokens'] = min(available, self.profile.max_output_tokens or available)
         if not self.within_limits(body, visual_inputs):
             raise ModelCapacityError(f'完整图组请求体超过已配置上限 {self.profile.max_request_bytes} 字节；未拆组，请确认是否减少图像数量')
-        return GenerationRequest(response_type, body, tuple(images), output_reserve, instruction, context)
+        return GenerationRequest(response_type, body, tuple(images), output_reserve, instruction, context, system_prompt)
 
     def generate(self, plan: GenerationRequest[T]) -> T:
         for attempt in range(2):
@@ -182,7 +178,7 @@ class VlmClient:
                 for issue in error.issues:
                     if issue.get('ctx',{}).get(REPAIRABLE_OUTPUT):
                         continue
-                    if issue['type'] in {'missing','model_type','list_type','dict_type','too_short','too_long','extra_forbidden',
+                    if issue['type'] in {'json_invalid','missing','model_type','list_type','dict_type','too_short','too_long','extra_forbidden',
                                          'greater_than','greater_than_equal','less_than','less_than_equal'}:
                         continue
                     if issue['type'] == 'literal_error' and any(field in issue['loc'] for field in
@@ -201,9 +197,8 @@ class VlmClient:
                     break
                 if not repairable:
                     raise
-                system = next((message['content'][0]['text'] for message in plan.body['messages'] if message['role']=='system'), None)
                 plan = self.plan(plan.response_type, plan.instruction, list(plan.images), plan.body['model'],
-                    plan.output_reserve, context=plan.context, correction=error, system_prompt=system)
+                    plan.output_reserve, context=plan.context, correction=error, system_prompt=plan.system_prompt)
 
     def generate_once(self, plan: GenerationRequest[T]) -> T:
         response_type = plan.response_type
@@ -211,16 +206,21 @@ class VlmClient:
             headers={**self._headers, 'Accept': 'text/event-stream', 'Accept-Encoding': 'identity'},
             json=plan.body)
         with ModelCalls.exchange(self.client, request, 'generate', response_type.__name__, stream=True) as response:
-            response.raise_for_status()
+            raise_for_model_status(response)
             completion = CompletionResponse.read(response, validate_json_object=True)
             if not completion.complete:
                 raise ValueError('模型流未完整结束，分析结果未发布')
-            choice = completion.body["choices"][0]
-            if choice.get("finish_reason") == "length":
-                raise ValueError(f"MLLM {response_type.__name__} 输出达到 token 上限（本次输出预算 {plan.body['max_tokens']}），分析未完整返回")
-            text = choice["message"].get("content")
-            if not isinstance(text, str) or not text.strip():
-                raise ValueError(f"VLM returned no final answer (finish_reason={choice.get('finish_reason')})")
+            if self.profile.api == 'openai-responses':
+                text = ResponsesProtocol.text(completion.body)
+                finish_reason = completion.body.get('status')
+            else:
+                choice = completion.body['choices'][0]
+                finish_reason = choice.get('finish_reason')
+                if finish_reason == 'length':
+                    raise ValueError(f"MLLM {response_type.__name__} 输出达到 token 上限（本次输出预算 {plan.body['max_tokens']}），分析未完整返回")
+                text = choice['message'].get('content')
+                if not isinstance(text, str) or not text.strip():
+                    raise ValueError(f'VLM returned no final answer (finish_reason={finish_reason})')
             text = text.strip()
             if text.startswith("```") and text.endswith("```"):
                 text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
@@ -233,7 +233,7 @@ class VlmClient:
                 syntax = [issue.get('ctx', {}).get('error', issue['msg']) for issue in validation_issues if issue['type'] == 'json_invalid']
                 if syntax:
                     issues += '；JSON语法无效：' + '; '.join(syntax)
-                raise ModelOutputError(f"MLLM {response_type.__name__} 输出格式错误 (finish_reason={choice.get('finish_reason')}): {issues}", validation_issues, text) from error
+                raise ModelOutputError(f"MLLM {response_type.__name__} 输出格式错误 (finish_reason={finish_reason}): {issues}", validation_issues, text) from error
 
     def close(self):
         self.client.close()

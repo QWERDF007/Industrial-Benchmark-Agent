@@ -1,11 +1,10 @@
 import type { Context } from '@deepseek-ai/cordis';
+import type { ModelCatalog } from '../../shared/domain.generated.js';
 import type { BridgeDispatch, ModelRouting } from '../python-bridge/index.js';
-export declare class WorkbenchModelRouting implements ModelRouting {
+export declare class ModelCatalogRouting implements ModelRouting {
     private readonly providers;
-    private initialization?;
     constructor(ctx: Context);
-    private settings;
-    private view;
+    catalog(): Promise<ModelCatalog>;
     execute(operation: string, args: Record<string, any>, signal: AbortSignal | undefined, dispatch: BridgeDispatch): Promise<any>;
 }
 //# sourceMappingURL=index.d.ts.map
