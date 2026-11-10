@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {finalizeFixtureCatalog} from './fixtures/analysis-finalization.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -44,6 +45,7 @@ test('DSH conversation explores the full scope and mines a fixed direction acros
         const contextIndex=body.messages.findLastIndex(message=>message.role==='user'&&parse(message.content)?.job_id);
         const context=parse(body.messages[contextIndex].content);
         const pages=body.messages.slice(contextIndex+1).filter(message=>message.role==='tool').map(message=>parse(message.content));
+        if(context.phase==='finalize'){respond(res,finalizeFixtureCatalog(context,pages,module));return;}
         if(!pages.length){respond(res,context.round.targets.map(target=>({name:'analysis_images',arguments:{sample_id:target.sample_id}})));return;}
         const images=pages.flatMap(page=>page.images),actual=body.messages.flatMap(message=>Array.isArray(message.content)?message.content:[]).filter(part=>part.type==='image_url');
         const retained=body.messages.filter(message=>message.role==='tool').map(message=>parse(message.content)).filter(value=>Array.isArray(value?.images)).flatMap(page=>page.images);

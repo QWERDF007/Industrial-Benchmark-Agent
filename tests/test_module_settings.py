@@ -32,7 +32,7 @@ def test_module_settings_persist_separately_and_reject_stale_writes(tmp_path):
     initial = module_settings_get({'module': 'consistency'}, database)
     assert initial['revision'] == 0
     assert initial['settings'] == {'model': None, 'mode': 'combined', 'min_similarity': .98,
-        'max_exact_candidates': 5, 'max_similar_candidates': 10,
+        'max_exact_candidates': 5, 'max_similar_candidates': 10, 'concurrency': 1,
         'agent_limits': {'context_tokens': None, 'max_output_tokens': None, 'request_parameters': {}, 'generation_timeout_seconds': None}}
     saved = module_settings_save({'module': 'consistency', 'expected_revision': 0,
         'settings': {'model': {'provider_id': 'vision', 'model_id': 'v2'}, 'mode': 'exact', 'min_similarity': .97}}, database)
@@ -77,7 +77,7 @@ def test_saving_one_field_preserves_other_module_settings(tmp_path):
     assert patch['settings'] == {'min_similarity': .98}
     changed = module_settings_save(patch, database)
     assert changed['settings'] == {'model': {'provider_id': 'vision', 'model_id': 'v2'},
-        'mode': 'exact', 'min_similarity': .98, 'max_exact_candidates': 5, 'max_similar_candidates': 10,
+        'mode': 'exact', 'min_similarity': .98, 'max_exact_candidates': 5, 'max_similar_candidates': 10, 'concurrency': 1,
         'agent_limits': {'context_tokens': None, 'max_output_tokens': None, 'request_parameters': {}, 'generation_timeout_seconds': None}}
     assert module_settings_get({'module': 'consistency'}, database) == changed
 

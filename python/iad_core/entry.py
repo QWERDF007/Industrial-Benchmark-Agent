@@ -27,10 +27,11 @@ from iad_core.workbench.analysis_operations import analysis_start, analysis_list
 from iad_core.consistency.agent_operations import (consistency_agent_start, consistency_agent_snapshot,
     consistency_agent_anchors, consistency_agent_anchor, consistency_agent_session_created, consistency_agent_retrieve,
     consistency_agent_submit_empty, consistency_agent_failure, consistency_agent_finish,
-    consistency_agent_context, consistency_agent_observe, consistency_agent_assess, consistency_agent_submit, consistency_agent_configuration,
+    consistency_agent_context, consistency_agent_observe, consistency_agent_assess, consistency_agent_submit, consistency_agent_configuration, consistency_agent_verify,
     consistency_agent_trace_event, consistency_agent_trace_status, consistency_agent_cancel, consistency_agent_resume,
     consistency_agent_interrupt, consistency_agent_detail, consistency_agent_results, consistency_agent_report,
-    consistency_agent_export, consistency_agent_gallery, consistency_agent_members, consistency_agent_analysis, consistency_agent_plan, consistency_agent_capacity,
+    consistency_agent_export, consistency_agent_gallery, consistency_agent_images, consistency_agent_members, consistency_agent_candidates,
+    consistency_agent_review, consistency_agent_review_submit, consistency_agent_analysis, consistency_agent_plan, consistency_agent_capacity,
     consistency_agent_model_call_start, consistency_agent_model_call_end, consistency_agent_diagnostics, consistency_agent_prepare,
     consistency_agent_session_location)
 from iad_core.exploration.operations import (direction_exploration_evidence, direction_exploration_remove_direction,
@@ -387,9 +388,9 @@ def knowledge_get(args, db_path):
 
 def knowledge_presets(args, db_path):
     from iad_core.knowledge.instructions import default_directions, DEFAULT_OBJECTIVE
-    from iad_core.analysis.prompt_text import knowledge_agent_prompt
+    from iad_core.analysis.prompt_text import DEFAULT_KNOWLEDGE_USER_PROMPT
     return {'directions': [direction.model_dump() for direction in default_directions()],
-        'objective': DEFAULT_OBJECTIVE, 'instruction': knowledge_agent_prompt()}
+        'objective': DEFAULT_OBJECTIVE, 'instruction': DEFAULT_KNOWLEDGE_USER_PROMPT}
 
 
 def knowledge_details(args, db_path):
@@ -443,12 +444,13 @@ OPERATIONS = {handler.__name__: handler for handler in (
     consistency_agent_session_created, consistency_agent_retrieve, consistency_agent_submit_empty,
     consistency_agent_failure, consistency_agent_finish,
     consistency_agent_context, consistency_agent_observe, consistency_agent_assess, consistency_agent_submit,
-    consistency_agent_configuration,
+    consistency_agent_configuration, consistency_agent_verify,
     consistency_agent_trace_event, consistency_agent_trace_status,
     consistency_agent_cancel, consistency_agent_resume,
     consistency_agent_interrupt,
     consistency_agent_detail, consistency_agent_results, consistency_agent_report, consistency_agent_export,
-    consistency_agent_gallery, consistency_agent_members, consistency_agent_analysis,
+    consistency_agent_gallery, consistency_agent_images, consistency_agent_members, consistency_agent_candidates,
+    consistency_agent_review, consistency_agent_review_submit, consistency_agent_analysis,
     consistency_agent_plan, consistency_agent_capacity,
     consistency_agent_model_call_start, consistency_agent_model_call_end,
     consistency_agent_diagnostics,
@@ -482,9 +484,10 @@ OPERATIONS.update({operation.__name__: operation for operation in AUDIT_AGENT_OP
 QUERY_OPERATIONS = frozenset({
     'audit_agent_snapshot','audit_agent_samples','audit_agent_sample','audit_agent_context','audit_agent_session_location', 'audit_evidence',
     'analysis_publication', 'analysis_sample_evidence', 'analysis_observations', 'analysis_direction_choices', 'analysis_sources', 'analysis_agent_catalog', 'analysis_agent_history',
+    'analysis_agent_arguments', 'analysis_agent_claims',
     'consistency_agent_snapshot', 'consistency_agent_anchors', 'consistency_agent_anchor',
     'consistency_agent_detail', 'consistency_agent_results', 'consistency_agent_report', 'consistency_agent_export',
-    'consistency_agent_gallery', 'consistency_agent_members', 'consistency_agent_analysis',
+    'consistency_agent_gallery', 'consistency_agent_images', 'consistency_agent_members', 'consistency_agent_candidates', 'consistency_agent_review', 'consistency_agent_analysis',
     'consistency_agent_diagnostics',
     'consistency_agent_session_location',
     'module_settings_get',

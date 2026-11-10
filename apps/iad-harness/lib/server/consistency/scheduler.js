@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { imageSessionPath } from '../sessions/image-path.js';
+import { runConcurrent } from '../jobs/concurrency.js';
 export class ConsistencyCheckScheduler {
     bridge;
     host;
@@ -90,9 +91,7 @@ export class ConsistencyCheckScheduler {
                 preparationError = error;
             }
         }
-        for (const anchor of ready) {
-            if (signal.aborted)
-                break;
+        await runConcurrent(ready, snapshot.concurrency, signal, async (anchor) => {
             const identity = { run_id: runId, anchor_id: anchor.anchor_id, attempt: anchor.attempt };
             try {
                 if (preparationError)
@@ -113,7 +112,7 @@ export class ConsistencyCheckScheduler {
             catch (error) {
                 await this.failure(identity, error, signal);
             }
-        }
+        });
         const node = await this.bridge.execute('analysis_node', { run_id: runId });
         if (node.status === 'RUNNING')
             await this.bridge.execute('consistency_agent_finish', { run_id: runId });

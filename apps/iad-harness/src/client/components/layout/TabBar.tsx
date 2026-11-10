@@ -15,7 +15,7 @@ export function TabBar<T extends string>({label, items, value, onChange, classNa
     const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1
       : event.key === 'ArrowRight' ? (index + 1) % items.length : event.key === 'ArrowLeft' ? (index + items.length - 1) % items.length : null;
     if (next === null) return;
-    event.preventDefault(); onChange(items[next].id); buttons.current.get(items[next].id)?.focus();
+    event.preventDefault(); onChange(items[next].id); buttons.current.get(items[next].id)?.focus({preventScroll:true});
   }
   return <div className={`iad-tabs ${className}`.trim()} role="tablist" aria-label={label}>
     {items.map((item, index) => <button {...item.buttonProps} key={item.id} type="button" role="tab" aria-selected={value === item.id}

@@ -4,7 +4,8 @@ import type { ContentBlock } from '@deepseek-ai/dsh-llm';
 import type { InferValue } from '@deepseek-ai/dsh-tools';
 import type { RegistrationMediaPage } from '../../shared/domain.generated.js';
 export type NativeMediaPage = Omit<RegistrationMediaPage, 'images'> & {
-    images: (Omit<RegistrationMediaPage['images'][number], 'path'> & {
+    images: (Omit<RegistrationMediaPage['images'][number], 'path' | 'image'> & {
+        image: Omit<RegistrationMediaPage['images'][number]['image'], 'evidence_id'>;
         attachment: ImageAttachmentRef;
     })[];
 };

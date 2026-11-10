@@ -6,15 +6,15 @@ export const imagesStyles = `
 .crumb{color:#8190a6;font-size:11px;margin:0 0 2px}
 .heading-side{font-size:12px;color:#8190a6}
 
-.dataset-panel{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .field{display:flex;flex-direction:column;gap:5px;min-width:0}
 .field>label,.filter-item>label{font-size:12px;color:#586a84}
 .dataset-panel .parent{width:265px}
 .dataset-panel .child{width:410px}
 .dataset-panel select{width:100%;height:38px}
 
-.filter-bar{background:var(--surface,#fff);border:1px solid var(--border,#dbe2eb);border-radius:7px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
-.filter-item{display:flex;flex-direction:column;gap:5px;min-width:0}
+.filter-bar{background:var(--surface,#fff);border:1px solid var(--border,#dbe2eb);border-radius:7px;min-height:96px;padding:16px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:var(--iad-layout-gap)}
+.filter-item{display:flex;flex-direction:column;gap:var(--iad-layout-label-gap);min-width:0}
+.filter-item>label{line-height:var(--iad-layout-label-height)}
 .filter-item input,.filter-item select{height:38px}
 .filter-search{flex:1 1 240px;min-width:180px}
 .filter-search input{width:100%}
@@ -121,13 +121,6 @@ export const imagesStyles = `
 #reset{margin-left:0;align-self:flex-end}
 #refresh{align-self:flex-end}
 
-.iad-workbench[data-page="industrial-images"] .dataset-panel {
-  margin-bottom: 8px !important;
-}
-.iad-workbench[data-page="industrial-images"] .filter-bar {
-  margin-bottom: 8px !important;
-  padding: 7px 12px !important;
-}
 .iad-workbench[data-page="industrial-images"] .grid {
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
   gap: 10px 12px !important;

@@ -39,14 +39,15 @@ def test_support_and_counter_evidence_have_independent_filtered_pages(native_kno
     db, _, publications = native_knowledge_versions
     version_id = publications[0].version_id
     before = entry.knowledge_get({'version_id':version_id},db.db_path)
-    query = dict(version_id=version_id,check_id='C1',page_size=2)
+    query = dict(version_id=version_id,check_id='C1',page_size=1)
     support = entry.knowledge_details(dict(query,evidence_role='support'),db.db_path)
     counter = entry.knowledge_details(dict(query,evidence_role='counter'),db.db_path)
     second = entry.knowledge_details(dict(query,evidence_role='support',page=2),db.db_path)
-    assert (support['total'],len(support['items']),len(second['items'])) == (3,2,1)
+    assert (support['total'],len(support['items']),len(second['items'])) == (2,1,1)
+    assert support['check']['support_count'] == len(support['support_evidence_ids']) == 3
     assert counter['total'] == len(counter['items']) == 1
     assert set(item['sample_id'] for item in support['items']).isdisjoint(item['sample_id'] for item in counter['items'])
-    assert len({item['sample_id'] for item in [*support['items'],*second['items'],*counter['items']]}) == 4
+    assert len({item['sample_id'] for item in [*support['items'],*second['items'],*counter['items']]}) == 3
     assert entry.knowledge_details(dict(query,evidence_role='counter'),db.db_path) == counter
     assert entry.knowledge_get({'version_id':version_id},db.db_path) == before
 
@@ -96,3 +97,49 @@ def test_knowledge_read_requires_one_native_run_or_fixed_version(native_knowledg
             {'run_id':first.job_id,'version_id':second.version_id}):
         with pytest.raises(ValueError,match='作业run_id或发布version_id之一'):
             entry.knowledge_get(arguments,db.db_path)
+
+
+@pytest.mark.parametrize('observed_claim',[3],indirect=True)
+def test_selected_images_preserve_human_review_until_the_claim_changes(observed_claim):
+    from iad_core.analysis.commits import AnalysisCommits
+    from iad_core.analysis.publications import AnalysisPublications
+    from iad_core.analysis.queries import AnalysisQueries
+    from iad_core.knowledge.check_reviews import KnowledgeCheckReviews
+    from iad_core.knowledge.models import KnowledgeCheckReviewSubmission, KnowledgeDetailQuery
+    jobs, run_id, submission, whole_ids = observed_claim
+    publications, reviews = AnalysisPublications(jobs.db), KnowledgeCheckReviews(jobs.db)
+    first_id = jobs.cancel(run_id)['analysis_version_id']
+    first = publications.get(first_id)
+    confirmed = reviews.submit(KnowledgeCheckReviewSubmission(version_id=first_id,check_id='edge',
+        expected_revision=0,submission_id=uuid4(),status='confirmed',note='主体外缘可复核。'))
+    jobs.resume(run_id)
+    context = jobs.context(run_id)
+    check = submission['checks'][0]
+    AnalysisCommits(jobs).accept(run_id,{**submission,'commit_key':'key-only','base_revision':context.revision,
+        'round_id':context.round.round_id,'observations':[],'checks':[{**check,'key_evidence':[
+            dict(evidence_id=whole_ids[0],role='support',reason='用于复核同一主体外缘。')]}]})
+    second_id = jobs.cancel(run_id)['analysis_version_id']
+    second = publications.get(second_id)
+    detail = AnalysisQueries(jobs.db).details(KnowledgeDetailQuery(version_id=second_id,check_id='edge'))
+    assert detail.check.review.status == 'confirmed'
+    assert detail.check.review.note == confirmed.note
+    assert detail.check.review.revision == 0
+    assert second.catalog.checks[0].independent_source_count == 3
+    assert second.parent_version_id == first_id
+    replacement = reviews.submit(KnowledgeCheckReviewSubmission(version_id=second_id,check_id='edge',
+        expected_revision=0,submission_id=uuid4(),status='rejected',note='需要进一步核对。'))
+    assert replacement.revision == 1
+    assert reviews.read(first_id)['edge'] == confirmed
+    jobs.resume(run_id)
+    context = jobs.context(run_id)
+    AnalysisCommits(jobs).accept(run_id,{**submission,'commit_key':'claim-changed','base_revision':context.revision,
+        'round_id':context.round.round_id,'observations':[],'checks':[{**check,'criterion':'仅沿上侧外缘复核轮廓的连续关系。',
+            'change_reason':'目标缩小到可辨的上侧外缘。'}],
+        'arguments':[dict(entry_id='edge',evidence_id=eid,role='support',reason='上侧外缘可辨，仍支持修订后的主张。')
+            for eid in whole_ids]})
+    third_id = jobs.cancel(run_id)['analysis_version_id']
+    changed = AnalysisQueries(jobs.db).details(KnowledgeDetailQuery(version_id=third_id,check_id='edge'))
+    assert changed.check.review.status == 'pending'
+    assert reviews.read(second_id)['edge'] == replacement
+    assert publications.get(first_id) == first
+    assert publications.get(second_id) == second

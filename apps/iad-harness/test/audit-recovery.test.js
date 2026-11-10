@@ -30,7 +30,7 @@ test('killing the audit owner after a committed image preserves its final and re
         assert.ok(body.messages.some(message=>Array.isArray(message.content)&&message.content.some(part=>part.type==='image_url')));
         call={name:'audit_commit',arguments:{commit_key:'final',final:{state:'normal',analysis:context.sample_id.endsWith(':0.png')?'首图独立观察。':'次图独立观察。',
           conclusion:'当前可见范围未发现需复核项。',basis:['已实际观察本图整图及必需局部。'],
-          evidence_ids:pages.flatMap(page=>page.images.map(item=>item.image.evidence_id)),check_assessments:[],findings:[],limitations:['零知识仍保留视觉范围限制。']}}};
+          evidence_ids:pages.map(page=>page.evidence_id),check_assessments:[],findings:[],limitations:['零知识仍保留视觉范围限制。']}}};
       }
       res.writeHead(200,{'Content-Type':'text/event-stream'});
       res.write('data: '+JSON.stringify({choices:[{index:0,delta:{role:'assistant',tool_calls:[{index:0,id:randomUUID(),type:'function',function:{name:call.name,arguments:JSON.stringify(call.arguments)}}]},finish_reason:null}]})+'\n\n');

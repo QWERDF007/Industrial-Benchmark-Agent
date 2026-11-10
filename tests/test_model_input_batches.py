@@ -120,6 +120,45 @@ def test_json_object_mode_preserves_visible_schema_and_validates_the_result(vali
             with pytest.raises(ModelOutputError,match='missing'):client.generate(plan)
 
 
+@pytest.mark.parametrize('explicit_schema', [False, True])
+def test_json_object_mode_delivers_the_output_contract_outside_editable_prompts(explicit_schema):
+    from iad_core.consistency.agent_review_models import AnchorVisualResult
+    from iad_core.workbench.model_profile import ModelProfile
+
+    system = '你是标注一致性审核员，只依据实际图像和原始标注判断。'
+    instruction = '比较主图与候选的标注。'
+    if explicit_schema:
+        instruction += '\n{{response_schema}}'
+    captured = []
+    schema = json.dumps(AnchorVisualResult.model_json_schema(), ensure_ascii=False)
+
+    def respond(request):
+        body = json.loads(request.content)
+        captured.append(body)
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 100, 'max_model_len': 65536})
+        user = next(message for message in body['messages'] if message['role'] == 'user')
+        assert user['content'][0]['text'] == instruction.replace('{{response_schema}}', schema)
+        assert sum(schema in part.get('text', '') for part in user['content']) == 1
+        if len(captured) == 2:
+            return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': '{}'}}]})
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps({
+            'observations': [{'candidate_id': 'candidate', 'description': '两侧标注不同',
+                'media_ids': ['anchor-original', 'candidate-original'], 'limitations': []}]})}}]})
+
+    profile = ModelProfile(endpoint='http://model/v1', capacity_mode='vllm_tokenize',
+        request_parameters={'response_format': {'type': 'json_object'}})
+    with httpx.Client(transport=httpx.MockTransport(respond)) as http:
+        client = VlmClient(http_client=http, profile=profile)
+        plan = client.plan(AnchorVisualResult, instruction, [], 'fixture-model', system_prompt=system)
+        assert client.generate(plan).observations[0].media_ids == ['anchor-original', 'candidate-original']
+    assert captured[0]['messages'] == captured[1]['messages'], '容量检查须包含实际发送的输出合同'
+    assert len(captured) == 4
+    assert captured[2]['messages'] == captured[3]['messages']
+    assert captured[0]['messages'][1] == captured[2]['messages'][1], '修正重试不重复添加输出合同'
+    assert captured[1]['messages'][0] == {'role': 'system', 'content': [{'type': 'text', 'text': system}]}
+
+
 def test_correction_counts_the_complete_conversation_before_generating():
     from iad_core.workbench.model_profile import ModelProfile
     from iad_core.workbench.vision import ModelCapacityError

@@ -39,7 +39,8 @@ class AuditCommits:
             if observed - delivered:
                 raise ValueError('终稿引用没有本场已完成请求的实发证据')
             main = PreparedRegistration.model_validate_json(saved_main[0]) if saved_main else None
-            if main is None or not main.images or not {item.image.evidence_id for item in main.images if item.required}.issubset(observed):
+            if (main is None or not main.images or main.evidence_id not in observed
+                    or not {item.image.evidence_id for item in main.images if item.required}.issubset(delivered)):
                 raise ValueError('须观察本场主图整图及全部必需ROI的实发证据')
             selected = {entry.check.check_id for entry in snapshot.knowledge.entries} if snapshot.knowledge else set()
             assessed = [item.check_id for item in final.check_assessments]

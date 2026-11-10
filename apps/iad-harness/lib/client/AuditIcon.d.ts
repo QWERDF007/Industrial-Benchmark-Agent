@@ -42,6 +42,7 @@ export declare function PlusIcon({ size }: {
 export declare function EyeIcon({ size }: {
     size?: number;
 }): React.JSX.Element;
+export declare function ClockIcon(): React.JSX.Element;
 export declare function DocumentSearchIcon({ size }: {
     size?: number;
 }): React.JSX.Element;

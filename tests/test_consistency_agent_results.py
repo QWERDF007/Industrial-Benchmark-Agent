@@ -53,8 +53,13 @@ def test_business_results_export_every_frozen_anchor_in_order_with_real_terminal
         assert indexed[identities[2]]['state'] == 'CANCELLED'
         assert indexed[identities[2]]['verdict'] is None
         detail = results.detail(job_id, identities[0])
-        assert all(detail.model_dump(mode='json')[key] == value for key, value in indexed[identities[0]].items())
+        exported_outcome = detail.outcome.model_dump(mode='json')
+        assert indexed[identities[0]]['schema_version'] == '4.0'
+        assert all(indexed[identities[0]][key] == value for key, value in exported_outcome.items())
+        assert indexed[identities[1]]['execution_status'] == 'failed'
+        assert indexed[identities[1]]['result'] == indexed[identities[2]]['result'] == 'incomplete'
         assert detail.result.reason == 'NO_CANDIDATES'
+        assert detail.result.conclusion == '通过（无候选）'
         assert detail.observations == [] and detail.evidence == []
         zero = results.diagnostics(job_id, identities[0])
         assert zero.roles.agent.requests == zero.roles.vision.requests == 0
@@ -72,5 +77,16 @@ def test_business_results_export_every_frozen_anchor_in_order_with_real_terminal
         assert report.verdicts == {'MATERIAL': 0, 'EQUIVALENT': 1, 'UNCERTAIN': 0}
         assert report.no_candidates == 1
         assert report.states['FAILED'] == report.states['CANCELLED'] == 1
+        images = results.images(job_id)
+        assert images.total == 3
+        indexed_images = {item.summary.anchor_id: item for item in images.items}
+        assert indexed_images[identities[0]].summary.reason == 'NO_CANDIDATES'
+        assert indexed_images[identities[0]].summary.program_conclusion == '无候选'
+        assert detail.program_conclusion == '无候选'
+        assert detail.model_conclusion is None
+        assert indexed_images[identities[0]].image is None
+        assert indexed_images[identities[1]].summary.state == 'FAILED'
+        assert indexed_images[identities[1]].summary.program_conclusion == '未完成'
+        assert indexed_images[identities[2]].summary.state == 'CANCELLED'
     finally:
         runtime.close()

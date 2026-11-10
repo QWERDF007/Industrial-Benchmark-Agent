@@ -1,10 +1,51 @@
 from uuid import uuid4
 
+import pytest
+
 from iad_core.analysis.commits import AnalysisCommits
 from iad_core.analysis.evidence import AnalysisEvidence
 from iad_core.analysis.publications import AnalysisPublications
 from iad_core.workbench.calls import ModelCalls, NativeModelCallEnd, NativeModelCallStart
 from iad_core.workbench.module_settings import ModuleSettings
+
+
+@pytest.mark.parametrize('module',['exploration','knowledge'])
+@pytest.mark.parametrize('failure_count',[1,4])
+def test_source_errors_without_visual_observations_do_not_publish_a_version(agent_jobs, module, failure_count):
+    from pathlib import Path
+    from iad_core.analysis.finalization import AnalysisFinalizations
+    from iad_core.analysis.queries import AnalysisQueries
+    from iad_core.knowledge.instructions import default_directions
+    jobs, dataset_id, role = agent_jobs
+    if module == 'knowledge':
+        ModuleSettings(jobs.db).save(dict(module='knowledge',expected_revision=0,
+            settings=dict(model=dict(provider_id='swift-30003',model_id='fixture'),batch_size=1)))
+    request = dict(submission_id=str(uuid4()),analysis_kind=module,dataset_ids=[dataset_id])
+    request.update(dict(normal_images=[dataset_id+':normal.png'],prompt=dict(text='查看真实原图。')) if module == 'exploration'
+        else dict(mining_prompt=dict(objective='查看真实原图。',instruction='查看真实原图并如实记录取证错误。',
+            directions=[default_directions()[0].model_dump(mode='json')])))
+    run_id = jobs.start(request,agent=role)['run_id']
+    for record in jobs.snapshot(run_id).manifest.records:
+        Path(record.sample.image_path).unlink()
+    for index in range(failure_count):
+        context = jobs.context(run_id)
+        page = AnalysisEvidence(jobs).read(run_id,dict(sample_id=context.round.targets[0].sample_id))
+        assert page.error and page.images == []
+        AnalysisCommits(jobs).accept(run_id,dict(commit_key='source-error-'+str(index),base_revision=context.revision,
+            round_id=context.round.round_id,observations=[dict(dataset_id=dataset_id,sample_id=page.sample_id,
+                description='原始图像文件不可读，未形成视觉观察。',evidence_ids=[],report_preparation_error=True)],
+            **{'directions' if module == 'exploration' else 'checks':[]},
+            summary='图像文件不可读。',limitations=['没有可见图像依据。'],unresolved_questions=[]))
+    if failure_count == 4:
+        with pytest.raises(ValueError,match='有效视觉观察'):
+            AnalysisFinalizations(jobs).context(run_id)
+        assert jobs.jobs.finish_external(run_id)['status'] == 'FAILED'
+    else:
+        assert jobs.cancel(run_id)['status'] == 'CANCELLED'
+    assert AnalysisPublications(jobs.db).publish(run_id) is None
+    assert AnalysisQueries(jobs.db).versions(dataset_id,module) == []
+    assert jobs.jobs.status(run_id)['failed'] == failure_count
+    assert jobs.jobs.status(run_id)['completed'] == 0
 
 
 def test_published_evidence_exposes_frozen_quality_groups_for_automatic_rounds(agent_jobs):
@@ -97,13 +138,23 @@ def test_merge_preserves_counterexamples_and_partial_publication_can_seed_mining
     commits.accept(run_id, first)
     assert {item.direction_id for item in jobs.state(run_id).catalog.directions} == {'D1','D2','D3'}
     commits.accept(run_id, {**first, 'commit_key':'revise', 'base_revision':1, 'round_id':2,
+        'arguments':[
+            dict(entry_id='D1',evidence_id=whole_ids[0],role='support',reason='完整边缘提供复核动作的依据。'),
+            dict(entry_id='D1',evidence_id=whole_ids[1],role='counter',reason='局部轮廓差异仍影响比较解释。')],
         'observations':[], 'directions':[{**first['directions'][0], 'counter_evidence_ids':[],
+            'change_reason':'补充已观察的轮廓差异及缺失视角。',
             'rationale':'两张图的轮廓差异已形成当前比较依据。', 'limitations':['仍缺少背面视角。']}]})
     revised = jobs.state(run_id).catalog.directions[0]
     assert revised.rationale == '两张图的轮廓差异已形成当前比较依据。'
     assert revised.limitations == ['仍缺少背面视角。']
     commits.accept(run_id, dict(commit_key='merge', base_revision=2, round_id=2, observations=[], directions=[],
-        merges=[dict(target_id='D1', source_ids=['D2'])], summary='同一检查动作合并，保留全部反例。', limitations=[], unresolved_questions=['需要更多独立来源。']))
+        arguments=[dict(entry_id='D1',evidence_id=whole_ids[0],role='support',reason='合并范围内完整边缘仍提供比较依据。'),
+            dict(entry_id='D1',evidence_id=whole_ids[1],role='counter',reason='缺少背面视角时仍需保留轮廓差异反例。')],
+        merges=[dict(target_id='D1', source_ids=['D2'],reason='两方向沿相同外缘核对，保留全部正反论据。')], summary='同一检查动作合并，保留全部反例。', limitations=[], unresolved_questions=['需要更多独立来源。']))
+    from iad_core.analysis.queries import AnalysisQueries
+    arguments = AnalysisQueries(jobs.db).arguments(run_id, dict(entry_id='D1'))
+    assert arguments.total == 4
+    assert {item.origin_entry_id for item in arguments.items if item.role == 'support'} == {'D1', 'D2'}
     status = jobs.cancel(run_id)
     publications = AnalysisPublications(jobs.db)
     publication = publications.get(status['analysis_version_id'])

@@ -1,3 +1,9 @@
+const jobTimeFormat = new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
+});
+export function formatJobTime(value) {
+    return jobTimeFormat.format(new Date(value));
+}
 export const jobStatuses = {
     PENDING: "等待执行", RUNNING: "执行中", COMPLETED: "已完成", PARTIAL: "部分成功",
     FAILED: "失败", CANCELLED: "已取消", INTERRUPTED: "已中断",
@@ -9,6 +15,7 @@ export const jobPhases = {
     SYNTHESIS: "全图与 ROI 联合分析", SAMPLE_COMPLETED: "图像审计完成",
     AUDITING_IMAGES: "正在审计图像",
     ANALYZING_SELECTED_DATASETS: "分析所选子集",
+    ANALYZING_SCOPE: '逐登记观察', FINALIZING_SCOPE: '全局定稿', ANALYSIS_PUBLISHED: '成果已发布',
     COMPARING_SELECTED_DATASETS: "检查所选范围",
     ANALYZING_CONFLICT_GROUPS: "分析冲突图组",
     LEARNING_KNOWLEDGE: "归纳知识", VERIFYING_KNOWLEDGE: "核验疑点", LEARNING_NORMAL: "归纳良品知识", LEARNING_DEFECT: "归纳不良品知识",
@@ -32,15 +39,15 @@ const workflows = {
     exploration: { title: '方向探索', stages: [
             { title: '准备图像', phases: ['PREPARING_EXPLORATION'] },
             { title: '容量检查', phases: ['CHECKING_CAPACITY'] },
-            { title: '模型联合分析', phases: ['ANALYZING_SELECTED_DATASETS', 'EXPLORING_BATCHES', 'EXPLORING_DIRECTIONS'] },
-            { title: '校验并发布方向', phases: ['PUBLISHING_DIRECTIONS', 'DIRECTIONS_PUBLISHED'] }
+            { title: '模型联合分析', phases: ['ANALYZING_SCOPE', 'ANALYZING_SELECTED_DATASETS', 'EXPLORING_BATCHES', 'EXPLORING_DIRECTIONS'] },
+            { title: '校验并发布方向', phases: ['FINALIZING_SCOPE', 'ANALYSIS_PUBLISHED', 'PUBLISHING_DIRECTIONS', 'DIRECTIONS_PUBLISHED'] }
         ] },
     knowledge: { title: '知识挖掘', stages: [
             { title: '准备数据范围', phases: ['PREPARING_KNOWLEDGE'] },
             { title: '读取与整理图像', phases: ['GLOBAL', 'REGIONS'] },
-            { title: '模型挖掘知识', phases: ['ANALYZING_SELECTED_DATASETS', 'MINING_BATCHES', 'LEARNING_KNOWLEDGE', 'LEARNING_NORMAL', 'LEARNING_DEFECT', 'COMPARING_KNOWLEDGE'] },
-            { title: '校验与整理证据', phases: ['VERIFYING_KNOWLEDGE', 'VERIFYING_NORMAL', 'VERIFYING_DEFECT', 'LINKING_KNOWLEDGE_DISCOVERY', 'RECHECKING_CRITERIA'] },
-            { title: '发布知识版本', phases: ['KNOWLEDGE_PUBLISHED', 'KNOWLEDGE_REUSED'] }
+            { title: '模型挖掘知识', phases: ['ANALYZING_SCOPE', 'ANALYZING_SELECTED_DATASETS', 'MINING_BATCHES', 'LEARNING_KNOWLEDGE', 'LEARNING_NORMAL', 'LEARNING_DEFECT', 'COMPARING_KNOWLEDGE'] },
+            { title: '校验与整理证据', phases: ['FINALIZING_SCOPE', 'VERIFYING_KNOWLEDGE', 'VERIFYING_NORMAL', 'VERIFYING_DEFECT', 'LINKING_KNOWLEDGE_DISCOVERY', 'RECHECKING_CRITERIA'] },
+            { title: '发布知识版本', phases: ['ANALYSIS_PUBLISHED', 'KNOWLEDGE_PUBLISHED', 'KNOWLEDGE_REUSED'] }
         ] },
     consistency: { title: '数据一致性', stages: [
             { title: '准备输入及索引', phases: ['ENCODING', 'INDEXING', 'CREATING_ANCHOR_SESSIONS', 'PREPARING_SHARED_INDEX', 'SHARED_INDEX_READY'] },
@@ -55,9 +62,24 @@ const workflows = {
             { title: '保存审计与证据', phases: ['SAMPLE_COMPLETED'] }
         ] },
 };
-export function jobWorkflow(job) {
+export function jobWorkflow(job, now = Date.now()) {
     const kind = job.analysis_kind || (['MODEL_AUDIT', 'MODEL_AUDIT_SAMPLE'].includes(job.job_type) ? 'audit'
         : ['DIRECTION_EXPLORATION', 'EXPLORATION_BATCH'].includes(job.job_type) ? 'exploration' : 'knowledge');
     const workflow = workflows[kind];
-    return { ...workflow, index: workflow.stages.findIndex(stage => stage.phases.includes(job.phase || '')) };
+    const timings = job.phase_timings || [];
+    const stages = workflow.stages.map(stage => {
+        const durations = timings.flatMap((timing, index) => {
+            if (!stage.phases.includes(timing.phase))
+                return [];
+            const end = timing.finished_at ? Date.parse(timing.finished_at) : job.status === 'RUNNING' && index === timings.length - 1 ? now : null;
+            return end === null ? [] : [Math.max(0, (end - Date.parse(timing.started_at)) / 1000)];
+        });
+        if (!timings.length && stage.phases.includes(job.phase || '') && job.phase_started_at) {
+            const end = job.finished_at ? Date.parse(job.finished_at) : job.status === 'RUNNING' ? now : null;
+            if (end !== null)
+                durations.push(Math.max(0, (end - Date.parse(job.phase_started_at)) / 1000));
+        }
+        return { ...stage, elapsedSeconds: durations.length ? durations.reduce((sum, value) => sum + value, 0) : null };
+    });
+    return { ...workflow, stages, index: stages.findIndex(stage => stage.phases.includes(job.phase || '')) };
 }

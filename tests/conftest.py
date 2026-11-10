@@ -174,9 +174,13 @@ def native_knowledge_versions(agent_jobs):
             finished_at='2026-11-09T12:00:01Z',elapsed_ms=1000,finish_reason='tool-calls'))
         support = [page.images[0].image.evidence_id for page in pages[:3]]
         counter = [pages[-1].images[0].image.evidence_id]
+        named = {page.sample_id.split(':',1)[1]:page.images[0].image.evidence_id for page in pages}
         check = dict(check_id='C1',title='孔位关系',subject='主体',location='边缘',criterion='可见连续外轮廓。',
             allowed_variations=[],limitations=['当前视角。'],status='conflicted',support_evidence_ids=support,
-            counter_evidence_ids=counter,direction_refs=['D1'],dataset_ids=[dataset_id])
+            counter_evidence_ids=counter,direction_refs=['D1'],dataset_ids=[dataset_id],
+            key_evidence=[dict(evidence_id=named['normal.png'],role='support',reason='展示主体轮廓。'),
+                dict(evidence_id=named['normal2.png'],role='support',reason='展示另一亮度下的轮廓。'),
+                dict(evidence_id=counter[0],role='counter',reason='展示反例位置。')])
         AnalysisCommits(jobs).accept(run_id,dict(commit_key='observed',base_revision=0,round_id=1,
             observations=[dict(sample_id=page.sample_id,dataset_id=dataset_id,description='本登记可见边缘。',
                 evidence_ids=[item.image.evidence_id for item in page.images],
@@ -212,3 +216,46 @@ def native_audit(knowledge_dataset):
         yield AuditAgentJobs(runtime), config.dataset.id, upstream['run_id'], role
     finally:
         runtime.close()
+
+
+@pytest.fixture
+def observed_claim(agent_jobs, request):
+    from iad_core.analysis.commits import AnalysisCommits
+    from iad_core.analysis.evidence import AnalysisEvidence
+    from iad_core.knowledge.instructions import default_directions
+    from iad_core.workbench.calls import ModelCalls, NativeModelCallStart, NativeModelCallEnd
+    from iad_core.workbench.module_settings import ModuleSettings
+    from uuid import uuid4
+    jobs, dataset_id, role = agent_jobs
+    ModuleSettings(jobs.db).save(dict(module='knowledge', expected_revision=0,
+        settings=dict(model=dict(provider_id='swift-30003', model_id='fixture'), batch_size=1)))
+    started = jobs.start(dict(submission_id=str(uuid4()), analysis_kind='knowledge', dataset_ids=[dataset_id],
+        mining_prompt=dict(objective='核对主体边界。', instruction='逐登记核对相同主张。',
+            directions=[default_directions()[0].model_dump(mode='json')])), agent=role)
+    run_id = started['run_id']
+    evidence, commits = AnalysisEvidence(jobs), AnalysisCommits(jobs)
+    whole_ids = []
+    case = getattr(request, 'param', 4)
+    for index in range(4 if case == 'empty' else case):
+        context = jobs.context(run_id)
+        target = context.round.targets[0]
+        page = evidence.read(run_id, dict(sample_id=target.sample_id))
+        ids = [image.image.evidence_id for image in page.images]
+        whole_ids.append(next(image.image.evidence_id for image in page.images if image.image.is_whole_image))
+        call = NativeModelCallStart(call_id='call_'+uuid4().hex, started_at='2026-11-09T12:00:00Z',
+            request={'fixture':'actual full image and required annotations'})
+        ModelCalls(jobs.db).start_native(run_id, call, sample_id=None, session_id=context.session_id, attempt=1)
+        evidence.delivered(run_id, call.call_id, ids)
+        ModelCalls(jobs.db).finish_native(run_id, None, NativeModelCallEnd(call_id=call.call_id,
+            finished_at='2026-11-09T12:00:01Z', elapsed_ms=1000, finish_reason='tool-calls'))
+        check = dict(check_id='edge', title='主体边界连续性', subject='主体', location='外缘',
+            criterion='主体外缘可辨时，沿外缘复核轮廓是否连续。', allowed_variations=[], limitations=[],
+            status='supported', support_evidence_ids=list(whole_ids), counter_evidence_ids=[],
+            direction_refs=['D1'], dataset_ids=[dataset_id])
+        submission = dict(commit_key='observed-'+str(index), base_revision=context.revision,
+            round_id=context.round.round_id, summary='主体边界可沿原图复核。', limitations=[], unresolved_questions=[],
+            observations=[dict(sample_id=page.sample_id, dataset_id=dataset_id, description='主体外缘在原图中可辨。',
+                evidence_ids=ids, directions=[dict(direction_ref='D1', status='applicable', reason='主体外缘可见。')])],
+            checks=[] if case == 'empty' else [check])
+        commits.accept(run_id, submission)
+    return jobs, run_id, submission, whole_ids

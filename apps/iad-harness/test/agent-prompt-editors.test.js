@@ -90,6 +90,9 @@ for module in ['exploration','knowledge','consistency']:
     await click({exploration:'#exp-new',knowledge:'#create-btn',consistency:'button[data-dc="start-check"]',audit:'button[title="新建审计"]'}[module]);
     const system=await element('textarea[aria-label="系统提示词"]'),user=await element('textarea[aria-label="用户提示词"]');
     assert.ok((await system.getAttribute('value')).trim());assert.ok((await user.getAttribute('value')).trim());
+    assert.doesNotMatch(await system.getAttribute('value'),
+      /\b(?:analysis_\w+|anchor_\w+|audit_\w+|exploration_commit|knowledge_commit|offset|limit|commit_key|base_revision|round_id)\b|JSON/,
+      module+'的系统提示词只定义角色、判断原则和禁止事项，工具协议由注册合同提供');
     assert.equal(await system.isEnabled(),true);assert.equal(await user.isEnabled(),true);
     if(module==='exploration'){
       const start=await driver.findElement(By.xpath('//button[normalize-space(.)="启动联合探索"]'));

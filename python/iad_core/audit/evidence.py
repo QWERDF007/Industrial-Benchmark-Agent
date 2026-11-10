@@ -1,6 +1,7 @@
 import json
 
-from iad_core.evidence.images import EvidenceImages
+from iad_core.analysis.queries import AnalysisQueries
+from iad_core.evidence.images import EvidenceImages, PreparedImage
 from iad_core.evidence.registrations import (EvidenceReferenceQuery, PreparedRegistration, RegistrationImages, RegistrationMedia, RegistrationMediaPage, RegistrationMediaQuery, RegistrationCropQuery)
 
 
@@ -26,9 +27,7 @@ class AuditEvidence:
     def read(self, run_id: str, target_id: str, query: dict | RegistrationMediaQuery) -> RegistrationMediaPage:
         query = RegistrationMediaQuery.model_validate(query)
         media = self.prepare(run_id, target_id, query.sample_id)
-        end = None if query.limit is None else query.offset + query.limit
-        return RegistrationMediaPage(sample_id=query.sample_id, total=len(media.images), offset=query.offset,
-            images=media.images[query.offset:end], error=media.error)
+        return media.page(query.offset, query.limit)
 
     def reference(self, run_id: str, target_id: str, evidence_id: str) -> RegistrationMediaPage:
         evidence_id = EvidenceReferenceQuery(evidence_id=evidence_id).evidence_id
@@ -37,15 +36,22 @@ class AuditEvidence:
         reference = next((item for item in snapshot.knowledge.evidence if item.image.evidence_id == evidence_id), None) if snapshot.knowledge else None
         if reference is None:
             raise ValueError('图像证据不属于本场已选知识')
-        image = reference.image
-        item = RegistrationMedia(sample_id=reference.sample_id, dataset_id=reference.sample_id.split(':',1)[0],
-            image=image, path=EvidenceImages(self.db.db_path).path(image), model_context=image.model_context(), required=False)
-        media = PreparedRegistration(sample_id=item.sample_id, images=[item])
+        source = AnalysisQueries(self.db).sample_evidence(snapshot.knowledge.selection.version_id, reference.sample_id)
+        record = source.registration
+        images = []
+        for view in source.items:
+            if not view.observed:
+                continue
+            path = EvidenceImages(self.db.db_path).path(view.image)
+            prepared = PreparedImage(view.image, path).with_source(record.sample, record.dataset_format, record.annotations)
+            images.append(RegistrationMedia(sample_id=reference.sample_id, dataset_id=record.sample.dataset_id,
+                image=view.image, path=path, model_context=prepared.model_context(), required=False))
+        media = PreparedRegistration(sample_id=reference.sample_id, images=images)
         with self.db.connection() as connection:
             connection.execute('''INSERT INTO audit_sample_media(job_id,target_id,media_key,sample_id,media_json)
                 VALUES(?,?,?,?,?) ON CONFLICT(job_id,target_id,media_key) DO NOTHING''',
-                (run_id,target_id,'reference:'+evidence_id,item.sample_id,media.model_dump_json()))
-        return RegistrationMediaPage(sample_id=item.sample_id,total=1,offset=0,images=[item],error=None)
+                (run_id,target_id,'reference:'+evidence_id,media.sample_id,media.model_dump_json()))
+        return media.page()
 
     def crop(self, run_id: str, target_id: str, query: dict) -> RegistrationMediaPage:
         query = RegistrationCropQuery.model_validate(query)
@@ -59,9 +65,7 @@ class AuditEvidence:
                 VALUES(?,?,?,?,?) ON CONFLICT(job_id,target_id,media_key) DO NOTHING''',
                 [(run_id,target_id,'crop:'+item.image.evidence_id,query.sample_id,
                     PreparedRegistration(sample_id=query.sample_id,images=[item]).model_dump_json()) for item in media.images])
-        end=None if query.limit is None else query.offset+query.limit
-        return RegistrationMediaPage(sample_id=query.sample_id,total=len(media.images),offset=query.offset,
-            images=media.images[query.offset:end],error=None)
+        return prepared.page(query.offset, query.limit, images=media.images)
 
     def delivered(self, run_id: str, target_id: str, call_id: str, evidence_ids: list[str]):
         sample = self.jobs.sample(run_id, target_id)

@@ -12,6 +12,14 @@ export const conflictCategoryDefaults = {
         "类别不一致"
     ]
 };
+export const conflictCategoryLabels = {
+    "类别不一致": "类别不一致",
+    "多类别": "多标",
+    "少类别": "少标",
+    "位置差异": "位置差异",
+    "拆分": "拆分",
+    "合并": "合并"
+};
 export const conflictCategories = [
     "类别不一致",
     "位置差异",

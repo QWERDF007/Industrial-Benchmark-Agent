@@ -27,9 +27,7 @@ class AnalysisEvidence:
     def read(self, run_id: str, query: dict | RegistrationMediaQuery) -> RegistrationMediaPage:
         query = RegistrationMediaQuery.model_validate(query)
         prepared = self.prepare(run_id, query.sample_id)
-        end = None if query.limit is None else query.offset + query.limit
-        return RegistrationMediaPage(sample_id=query.sample_id, total=len(prepared.images), offset=query.offset,
-            images=prepared.images[query.offset:end], error=prepared.error)
+        return prepared.page(query.offset, query.limit)
 
     def reference(self, run_id: str, query: dict | EvidenceReferenceQuery) -> RegistrationMediaPage:
         query = EvidenceReferenceQuery.model_validate(query)
@@ -40,8 +38,10 @@ class AnalysisEvidence:
         if row is None:
             raise LookupError('证据不属于本场已保存媒体')
         prepared = PreparedRegistration.model_validate_json(row[0])
+        if query.evidence_id == prepared.evidence_id:
+            return prepared.page()
         image = next(item for item in prepared.images if item.image.evidence_id == query.evidence_id)
-        return RegistrationMediaPage(sample_id=prepared.sample_id,total=1,offset=0,images=[image],error=prepared.error)
+        return prepared.page(images=[image])
 
     def delivered(self, run_id: str, call_id: str, evidence_ids: list[str]):
         with self.db.connection() as connection:
@@ -76,6 +76,4 @@ class AnalysisEvidence:
             prepared.images.extend(item for item in cropped.images if item.image.evidence_id not in available)
             connection.execute('UPDATE analysis_sample_media SET media_json=? WHERE job_id=? AND sample_id=?',
                 (prepared.model_dump_json(),run_id,query.sample_id))
-        end=None if query.limit is None else query.offset+query.limit
-        return RegistrationMediaPage(sample_id=query.sample_id,total=len(cropped.images),offset=query.offset,
-            images=cropped.images[query.offset:end],error=None)
+        return prepared.page(query.offset, query.limit, images=cropped.images)

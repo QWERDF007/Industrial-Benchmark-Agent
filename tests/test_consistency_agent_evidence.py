@@ -9,7 +9,7 @@ from iad_core.workbench.review import HumanReview, ReviewSubmission
 from iad_core.workbench.runtime import WorkbenchRuntime
 
 
-def test_zero_area_annotation_is_an_execution_error_before_model_review(dataset, tmp_path):
+def test_zero_area_annotation_is_rejected_at_job_creation(dataset, tmp_path):
     from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
     from iad_core.consistency.errors import ConsistencyError
     from iad_core.consistency.agent_results import ConsistencyAgentResults
@@ -22,22 +22,9 @@ def test_zero_area_annotation_is_an_execution_error_before_model_review(dataset,
     try:
         checks = ConsistencyAgentJobs(runtime)
         anchor = config.dataset.id + ':dent.png'
-        run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
-            'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
-        checks.session_created(run, anchor)
-        checks.retrieve(run, anchor)
-        with pytest.raises(ConsistencyError, match='Imported annotation geometry is invalid') as failure:
-            ConsistencyAgentEvidence(runtime).freeze(run, anchor, checkpoint=lambda: None)
-        assert failure.value.code == 'ANNOTATION_UNREADABLE'
-        assert checks.anchor(run, anchor).result is None
-        detail = ConsistencyAgentResults(database).detail(run, anchor)
-        assert len(detail.evidence) == 1
-        retained = runtime.consistency_service.evidence(detail.evidence[0].evidence_id)
-        assert retained.sources.left.sample.sample_id == anchor
-        assert retained.result.annotation.invalid_left == 1
-        assert detail.evidence[0].detail_ref.endswith(detail.evidence[0].evidence_id)
-        from iad_core.workbench.analysis_job_views import AnalysisJobViews
-        assert AnalysisJobViews(database).view(run)['model_calls'] == []
+        with pytest.raises(ValueError, match='矩形审核'):
+            checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
+                'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})
     finally:
         runtime.close()
 
@@ -46,7 +33,7 @@ def test_zero_area_annotation_is_an_execution_error_before_model_review(dataset,
     ('rectangle', [[-5, 10], [330, 30]]),
     ('polygon', [[-5, 10], [330, 10], [330, 30], [-5, 30]]),
 ])
-def test_out_of_frame_annotations_keep_original_coordinates_and_clip_only_visual_crops(dataset, tmp_path, shape_type, points):
+def test_rectangle_review_keeps_source_coordinates_and_rejects_other_shapes(dataset, tmp_path, shape_type, points):
     from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
     from iad_core.storage.repositories import AnnotationRepository
 
@@ -63,29 +50,29 @@ def test_out_of_frame_annotations_keep_original_coordinates_and_clip_only_visual
     runtime = WorkbenchRuntime(database)
     try:
         checks = ConsistencyAgentJobs(runtime)
-        run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
-            'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
-        checks.session_created(run, anchor)
-        candidates = checks.retrieve(run, anchor)
-        prepared = ConsistencyAgentEvidence(runtime).prepare(run, anchor, [candidates.candidates[0].sample_id])
-        source = next(value for value in prepared.facts['sources'].values() if value['sample_id'] == anchor)
-        assert source['annotations'][0]['bbox'] == [-5, 10, 330, 30]
+        request = {'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
+            'subjects': {'kind': 'samples', 'sample_ids': [anchor]}}
         if shape_type == 'polygon':
-            assert source['annotations'][0]['polygon'] == points
-        crops = [item for item in source['visual_inputs'] if item['window_source'] == 'annotation']
-        assert len(crops) == 1
-        assert crops[0]['crop_bbox'] == [0, 6, 320, 34]
-        image = next(item for item in prepared.images if item.evidence.evidence_id == crops[0]['evidence_id'])
-        with Image.open(image.path) as pixels:
-            assert pixels.size == (320, 28)
-            assert pixels.getpixel((0, 0)) == (0, 0, 255)
+            with pytest.raises(ValueError, match='矩形审核'):
+                checks.start(request)
+        else:
+            from iad_core.consistency.agent_review import ConsistencyAgentReview
+            run = checks.start(request)['run_id']
+            checks.session_created(run, anchor)
+            candidates = checks.retrieve(run, anchor)
+            ConsistencyAgentReview(runtime).verify(run, anchor)
+            prepared = ConsistencyAgentEvidence(runtime).prepare(run, anchor, [candidates.candidates[0].sample_id])
+            source = next(value for value in prepared.facts['sources'].values() if value['sample_id'] == anchor)
+            assert source['annotations'][0]['bbox'] == [-5, 10, 330, 30]
+            crops = [view for view in source['visual_inputs'] if view['window_source'] == 'annotation']
+            assert crops[0]['crop_bbox'] == [0, 6, 320, 34]
         assert AnnotationRepository(database).list_by_sample(anchor) == [annotation]
         assert label.read_text() == original
     finally:
         runtime.close()
 
 
-def test_mask_with_matching_hash_but_wrong_canvas_is_an_execution_error(defect_dataset):
+def test_mask_annotations_cannot_enter_rectangle_review(defect_dataset):
     from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
     from iad_core.consistency.errors import ConsistencyError
     from iad_core.dataset.registry import DatasetRegistry
@@ -103,14 +90,9 @@ def test_mask_with_matching_hash_but_wrong_canvas_is_an_execution_error(defect_d
     runtime = WorkbenchRuntime(database)
     try:
         checks = ConsistencyAgentJobs(runtime)
-        run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [row['dataset_id']], 'mode': 'exact',
-            'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
-        checks.session_created(run, anchor)
-        checks.retrieve(run, anchor)
-        with pytest.raises(ConsistencyError, match='Mask pixels do not match the sample dimensions') as failure:
-            ConsistencyAgentEvidence(runtime).freeze(run, anchor, checkpoint=lambda: None)
-        assert failure.value.code == 'ANNOTATION_UNREADABLE'
-        assert checks.anchor(run, anchor).result is None
+        with pytest.raises(ValueError, match='矩形审核'):
+            checks.start({'submission_id': str(uuid4()), 'dataset_ids': [row['dataset_id']], 'mode': 'exact',
+                'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})
     finally:
         runtime.close()
 
@@ -166,7 +148,7 @@ def test_resume_reuses_captured_candidate_when_its_original_file_is_unavailable(
         checks.fail(run, anchor, str(failure.value), failure.value.code)
         runtime.jobs.finish_external(run)
         before = ConsistencyAgentResults(database).detail(run, anchor)
-        assert [item.candidate_id for item in before.evidence] == [config.dataset.id + ':A.png']
+        assert [item.candidate_id for item in before.captured_evidence] == [config.dataset.id + ':A.png']
         assert before.result is None
         image.write_bytes(original)
         (tmp_path / 'images/A.png').unlink()
@@ -175,56 +157,14 @@ def test_resume_reuses_captured_candidate_when_its_original_file_is_unavailable(
         assert len(group.members) == 3
         after = ConsistencyAgentResults(database).detail(run, anchor)
         assert after.session_id == before.session_id and after.attempt == 2
-        assert len(after.evidence) == 3 and after.evidence[0] == before.evidence[0]
+        assert len(after.captured_evidence) == 3 and after.captured_evidence[0] == before.captured_evidence[0]
+        from iad_core.consistency.agent_review import ConsistencyAgentReview
+        ConsistencyAgentReview(runtime).verify(run, anchor, attempt=checks.anchor(run, anchor).attempt)
         prepared = evidence.prepare(run, anchor, [config.dataset.id + ':A.png'])
         assert prepared.images
         for item in prepared.images:
             with Image.open(item.path) as pixels:
                 assert pixels.width > 0
-    finally:
-        runtime.close()
-
-
-def test_resume_recaptures_restored_mask_and_keeps_failed_evidence(defect_dataset):
-    from pathlib import Path
-    from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
-    from iad_core.consistency.agent_results import ConsistencyAgentResults
-    from iad_core.consistency.errors import ConsistencyError
-    from iad_core.dataset.registry import DatasetRegistry
-    from iad_core.storage.repositories import AnnotationRepository
-
-    database, row, _, images = defect_dataset
-    anchor = row['dataset_id'] + ':part-3.png'
-    shutil.copyfile(images / 'part-3.png', images / 'part-2.png')
-    DatasetRegistry(database).rescan(row['dataset_id'])
-    mask = Path(AnnotationRepository(database).list_by_sample(anchor)[0].mask_path)
-    original = mask.read_bytes()
-    mask.unlink()
-    runtime = WorkbenchRuntime(database)
-    try:
-        checks = ConsistencyAgentJobs(runtime)
-        run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [row['dataset_id']], 'mode': 'exact',
-            'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
-        checks.session_created(run, anchor)
-        checks.retrieve(run, anchor)
-        evidence = ConsistencyAgentEvidence(runtime)
-        with pytest.raises(ConsistencyError) as failure:
-            evidence.freeze(run, anchor, checkpoint=lambda: None)
-        checks.fail(run, anchor, str(failure.value), failure.value.code)
-        runtime.jobs.finish_external(run)
-        before = ConsistencyAgentResults(database).detail(run, anchor)
-        assert len(before.evidence) == 1
-        mask.write_bytes(original)
-        checks.resume(run)
-        group = evidence.freeze(run, anchor, checkpoint=lambda: None)
-        after = ConsistencyAgentResults(database).detail(run, anchor)
-        assert len(after.evidence) == 2
-        assert after.evidence[0] == before.evidence[0]
-        assert after.evidence[1].evidence_id != before.evidence[0].evidence_id
-        assert group.members[0].comparison.evidence_id == after.evidence[1].evidence_id
-        assert runtime.consistency_service.evidence(before.evidence[0].evidence_id).sources.left.issues
-        assert runtime.consistency_service.evidence(after.evidence[1].evidence_id).sources.left.issues == []
-        assert after.result is None and after.attempt == 2
     finally:
         runtime.close()
 
@@ -245,7 +185,7 @@ def test_existing_frozen_group_keeps_its_evidence_references_after_database_upgr
         checks.retrieve(run, anchor)
         group = ConsistencyAgentEvidence(runtime).freeze(run, anchor, checkpoint=lambda: None)
         before = ConsistencyAgentResults(database).detail(run, anchor)
-        assert len(before.evidence) == len(group.members) == 1
+        assert len(before.captured_evidence) == len(group.members) == 1
         with database.connection() as connection:
             connection.execute('DROP TABLE consistency_anchor_evidence')
         for path in (tmp_path / 'images').iterdir():
@@ -274,6 +214,8 @@ def test_agent_evidence_uses_original_sources_without_historical_review_judgment
             'subjects': {'kind': 'samples', 'sample_ids': [anchor_id]}})
         checks.session_created(job['run_id'], anchor_id)
         checks.retrieve(job['run_id'], anchor_id)
+        from iad_core.consistency.agent_review import ConsistencyAgentReview
+        ConsistencyAgentReview(runtime).verify(job['run_id'], anchor_id)
         prepared = ConsistencyAgentEvidence(runtime).prepare(job['run_id'], anchor_id, [candidate_id])
         assert set(prepared.facts['candidates']) == {candidate_id}
         assert {item['sample_id'] for item in prepared.facts['sources'].values()} == {anchor_id, candidate_id}
@@ -312,6 +254,8 @@ def test_visual_windows_capture_original_pixels_with_clipped_padding_only_from_t
         checks.retrieve(job_id, anchor_id)
         window = VisualWindow(sample_id=candidate_id, bbox=(2, 3, 12, 9), padding=5, reason='确认无叠加局部的原始像素')
         service = ConsistencyAgentEvidence(runtime)
+        from iad_core.consistency.agent_review import ConsistencyAgentReview
+        ConsistencyAgentReview(runtime).verify(job_id, anchor_id)
         prepared = service.prepare(job_id, anchor_id, [candidate_id], windows=[window])
         source = next(item for item in prepared.facts['sources'].values() if item['sample_id'] == candidate_id)
         captured = [item for item in source['visual_inputs'] if item.get('window_source') == 'visual_window']

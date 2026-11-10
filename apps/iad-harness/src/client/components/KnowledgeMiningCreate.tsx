@@ -17,8 +17,8 @@ import {KnowledgeConfirmation, type KnowledgeConfirmationState} from './Knowledg
 
 interface PresetItem {id:string;directionId:string;name:string;text:string;origin:MiningDirection['origin'];source:MiningDirection['source']}
 
-export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParentId, selectedChildId, onClose, onStarted}: {
-  dataset: Dataset; datasets: Dataset[]; groups: DatasetGroup[]; selectedParentId:string;selectedChildId:string;
+export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParentId, selectedChildIds, onClose, onStarted}: {
+  dataset: Dataset; datasets: Dataset[]; groups: DatasetGroup[]; selectedParentId:string;selectedChildIds:string[];
   onClose():void; onStarted(jobs:JobSnapshot[]):void;
 }) {
   const parentGroups = groups.filter(group=>group.group_id !== 'single');
@@ -30,7 +30,7 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
   const submission = useRef<string|null>(null);
   const [confirmState, setConfirmState] = useState<KnowledgeConfirmationState | null>(null);
   const [setupDataset, setSetupDataset] = useState<string>(selectedParentId);
-  const [setupSubsets, setSetupSubsets] = useState<Set<string>>(new Set([selectedChildId]));
+  const [setupSubsets, setSetupSubsets] = useState<Set<string>>(new Set(selectedChildIds));
   const [setupGeneral, setSetupGeneral] = useState<Set<string>>(new Set());
   const [setupExplored, setSetupExplored] = useState<Set<string>>(new Set());
   const [setupEdits, setSetupEdits] = useState<Record<string, { name: string; text: string }>>({});
@@ -107,8 +107,7 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
     dirs: PresetItem[]
   ) => {
     return [
-      "挖掘目标：",
-      promptDefaults.knowledgeObjective,
+      promptDefaults.knowledgeInstruction,
       `数据集：${datasetName}`,
       `子数据集：${subsetsNames.join("、")}`,
       "来源范围：所选子数据集的全部登记图像。",

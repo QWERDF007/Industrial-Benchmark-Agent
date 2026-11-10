@@ -4,11 +4,15 @@ from uuid import UUID
 from pydantic import Field, RootModel
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText, VisualEvidence
-from iad_core.analysis.models import AnalysisKnowledgeCheck, FrozenAnalysisDirection
-from iad_core.consistency.agent_result_models import AnchorResultDetail
+from iad_core.analysis.models import AnalysisCoverageSummary, AnalysisKnowledgeCheck, FrozenAnalysisDirection
+from iad_core.consistency.agent_result_models import AnchorEvidenceReference, AnchorResultDetail, AnchorResultSummary
+from iad_core.consistency.agent_models import AnchorResult
+from iad_core.consistency.agent_review_models import AnchorAssessmentRecord
 from iad_core.knowledge.models import KnowledgeCheck, KnowledgeCheckReview, KnowledgeEvidence
+from iad_core.knowledge.instructions import MiningDirectionSource
 from iad_core.workbench.analysis_manifest import AnalysisManifest, AnalysisRegistration
 from iad_core.workbench.job_models import JobStatus
+from iad_core.workbench.calls import ModelCallError
 from iad_core.workbench.model_profile import FrozenModelRole
 from iad_core.workbench.module_settings import AuditSettingsValues
 from iad_core.audit.prompt_text import DEFAULT_AUDIT_USER_PROMPT
@@ -35,7 +39,7 @@ class AuditSelectedCheck(AnalysisModel):
     review: KnowledgeCheckReview
 
 
-class AuditKnowledge(AnalysisModel):
+class LegacyAuditKnowledge(AnalysisModel):
     selection: AuditKnowledgeSelection
     summary: str
     limitations: list[str]
@@ -45,19 +49,46 @@ class AuditKnowledge(AnalysisModel):
     evidence: list[KnowledgeEvidence]
 
 
+class AuditKnowledgeScope(AnalysisModel):
+    dataset_ids: list[str]
+    revision: int
+    execution_status: str
+    execution_error: ModelCallError | None
+    coverage: AnalysisCoverageSummary
+    finalization_complete: bool | None
+
+
+class AuditKnowledgeDirection(AnalysisModel):
+    ref: str
+    source: MiningDirectionSource
+    title: NonBlankText
+    instruction: NonBlankText
+
+
+class AuditKnowledge(AnalysisModel):
+    selection: AuditKnowledgeSelection
+    source_scope: AuditKnowledgeScope
+    directions: list[AuditKnowledgeDirection]
+    entries: list[AuditSelectedCheck]
+    evidence: list[KnowledgeEvidence]
+
+
+FrozenAuditKnowledge = AuditKnowledge | LegacyAuditKnowledge
+
+
 class AuditAgentConfiguration(AnalysisModel):
     settings_revision: int
     settings: AuditSettingsValues
 
 
 class AuditWorkflowSnapshot(AuditAgentConfiguration):
-    schema_version: Literal[1] = 1
+    schema_version: Literal[1, 2] = 1
     manifest: AnalysisManifest
     agent: FrozenModelRole
     instruction: NonBlankText
     system_prompt: NonBlankText | None = None
     consistency_job_id: str
-    knowledge: AuditKnowledge | None
+    knowledge: FrozenAuditKnowledge | None
 
 
 class AuditFinding(AnalysisModel):
@@ -78,13 +109,15 @@ class AuditCheckAssessment(AnalysisModel):
 
 
 class AuditFinal(AnalysisModel):
-    state: Literal['normal', 'suspect', 'insufficient']
+    state: Literal['normal', 'suspect', 'insufficient'] = Field(
+        description='normal表示现有标注与可见图像相符，包括已正确标注的缺陷；suspect表示可见标注问题需复核；insufficient表示证据不足以判断标注是否正确。')
     analysis: NonBlankText
     conclusion: NonBlankText
     basis: list[str]
-    evidence_ids: list[str] = Field(min_length=1)
-    check_assessments: list[AuditCheckAssessment]
-    findings: list[AuditFinding]
+    evidence_ids: list[str] = Field(min_length=1,
+        description='本场实际打开并观察的完整原图ID，原始标注及全部局部视图属于该原图，不单独引用裁图或掩膜。')
+    check_assessments: list[AuditCheckAssessment] = Field(description='恰好覆盖全部已选check_id，各有观察原因；未选择知识时为空数组。')
+    findings: list[AuditFinding] = Field(description='本图全部需要复核的标注问题，无疑点时为空数组，不按数量截断。')
     limitations: list[str]
 
 
@@ -99,17 +132,23 @@ class AuditSampleRun(AnalysisModel):
     result: AuditFinal | None = None
 
 
+class AuditConsistencyContext(AnchorResultSummary):
+    result: AnchorResult | None
+    evidence: list[AnchorEvidenceReference]
+    assessments: list[AnchorAssessmentRecord]
+
+
 class AuditAgentContext(AnalysisModel):
     job_id: str
     sample_id: str
     session_id: str
     target: AnalysisRegistration
-    consistency: AnchorResultDetail
-    knowledge: AuditKnowledge | None
+    consistency: AuditConsistencyContext
+    knowledge: FrozenAuditKnowledge | None
 
 
 class AuditCommit(AnalysisModel):
-    commit_key: NonBlankText
+    commit_key: NonBlankText = Field(description='本次图级终稿的幂等键，仅同内容重传复用。')
     final: AuditFinal
 
 
@@ -122,7 +161,7 @@ class AuditMediaView(AnalysisModel):
 class NativeAuditSampleDetail(AnalysisModel):
     sample: AuditSampleItem
     final: AuditFinal | None
-    knowledge: AuditKnowledge | None
+    knowledge: FrozenAuditKnowledge | None
     consistency: AnchorResultDetail
     evidence: list[AuditMediaView]
     errors: list[str]

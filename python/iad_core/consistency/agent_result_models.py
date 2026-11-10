@@ -4,17 +4,34 @@ from pydantic import AwareDatetime, Field, FiniteFloat, computed_field
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.agent_models import AnchorResult, AnchorState
 from iad_core.consistency.agent_review_models import AnchorAssessmentRecord, AnchorObservation, AnchorVisualPlan, AnchorVisualRequest
-from iad_core.consistency.candidate_selection import AnchorCandidates
+from iad_core.consistency.candidate_selection import AnchorCandidates, SelectedCandidate
+from iad_core.consistency.annotations import AnnotationSet
+from iad_core.consistency.group_models import GalleryImage
 from iad_core.consistency.conflict_categories import ConflictCategory
-from iad_core.consistency.models import CandidateLimit, Count, Identifier, ModelAssessmentVerdict, ReviewMode, SimilarityThreshold
+from iad_core.consistency.models import CandidateLimit, Count, FrozenSample, Identifier, ModelAssessmentVerdict, ReviewMode, SimilarityThreshold
+from iad_core.consistency.review_models import ReviewDisposition
 from iad_core.workbench.job_models import JobFailure, JobStatus
 from iad_core.workbench.calls import ModelCallSummary
+from iad_core.consistency.identity_models import IdentityResultFields, CandidateIdentityRecord
 
 
 DiagnosticRecording = Literal['COMPLETE', 'UNAVAILABLE']
 
 
+class AnchorCandidatePreview(SelectedCandidate):
+    image: GalleryImage
+    annotations: AnnotationSet
+
+
+class AnchorCandidatePage(AnalysisModel):
+    job_id: Identifier
+    anchor_id: Identifier
+    items: list[AnchorCandidatePreview]
+
+
 class AnchorResultSummary(AnalysisModel):
+    outcome: IdentityResultFields | None = None
+    dataset_format: Literal['labelme', 'folder_classification'] | None = None
     schema_version: Literal[1] = 1
     job_id: Identifier
     anchor_id: Identifier
@@ -34,8 +51,22 @@ class AnchorResultSummary(AnalysisModel):
     conclusion: str | None
     original_categories: list[ConflictCategory]
     original_conclusion: ConflictCategory | None
+    program_conclusion: str
     model_conclusion: ConflictCategory | Literal['无冲突'] | None
     result_ref: Identifier
+
+
+class AnchorImageItem(AnalysisModel):
+    sample: FrozenSample
+    summary: AnchorResultSummary
+    image: GalleryImage | None
+    review_state: ReviewDisposition
+
+
+class AnchorImagePage(AnalysisModel):
+    job_id: Identifier
+    total: Count
+    items: list[AnchorImageItem]
 
 
 class AnchorEvidenceReference(AnalysisModel):
@@ -46,6 +77,8 @@ class AnchorEvidenceReference(AnalysisModel):
 
 
 class AnchorResultDetail(AnchorResultSummary):
+    gates: list[CandidateIdentityRecord] = Field(default_factory=list)
+    captured_evidence: list[AnchorEvidenceReference] = Field(default_factory=list)
     session_created: bool
     trace_state: Literal['OPEN', 'PENDING', 'CLOSED']
     trace_error: str | None

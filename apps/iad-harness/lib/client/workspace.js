@@ -5,7 +5,7 @@ import { pages, consistencyTabs } from "../shared/navigation.js";
 import { knowledgeStatuses } from "../shared/knowledge-presentation.js";
 import { consistencyRouteEnums } from "../shared/consistency.parameters.generated.js";
 export { pages } from "../shared/navigation.js";
-const defaultView = (page) => ({ explorationPrompt: null, explorationPromptBase: "", datasetSettingsTab: "directories", checkId: "", explorationVersion: "", explorationNormalCount: "10", explorationDefectCount: "10", explorationNormalImages: [], explorationDefectImages: [], explorationObjective: "", miningSourceMode: "uncovered", scopeRunId: "", scopeSessionId: "", miningContinuous: false, conflictId: "", miningCount: "10", miningImages: [], miningPreset: "", miningSearch: "", miningPage: 1, filters: { ...(page === "industrial-review" ? initialReviewFilters : initialFilters) }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", historySampleId: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
+const defaultView = (page) => ({ datasetIds: null, explorationPrompt: null, explorationPromptBase: "", datasetSettingsTab: "directories", checkId: "", explorationVersion: "", explorationNormalCount: "10", explorationDefectCount: "10", explorationNormalImages: [], explorationDefectImages: [], explorationObjective: "", miningSourceMode: "uncovered", scopeRunId: "", scopeSessionId: "", miningContinuous: false, conflictId: "", miningCount: "10", miningImages: [], miningPreset: "", miningSearch: "", miningPage: 1, filters: { ...(page === "industrial-review" ? initialReviewFilters : initialFilters) }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", historySampleId: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export class Workspace {
     conversation;
@@ -215,7 +215,7 @@ export class Workspace {
                         view.knowledgeStatus = route.knowledgeStatus;
                     if (Number.isInteger(route.miningPage) && route.miningPage > 0)
                         view.miningPage = route.miningPage;
-                    for (const key of ["miningImages", "explorationNormalImages", "explorationDefectImages"])
+                    for (const key of ["datasetIds", "miningImages", "explorationNormalImages", "explorationDefectImages"])
                         if (Array.isArray(route[key]) && route[key].every((id) => typeof id === "string"))
                             view[key] = route[key];
                     view.inspection = restoreInspection(route.inspection, route.datasetId, view.selected);

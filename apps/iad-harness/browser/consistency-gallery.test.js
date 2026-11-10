@@ -160,11 +160,11 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',stats),true,'统计关闭后焦点回到操作按钮');
     const cards=()=>driver.findElements(By.css('[data-dc="open-conflict"]'));
     assert.deepEqual(await Promise.all((await driver.findElements(By.css('[role="tablist"][aria-label="原始标注冲突类型"] [role="tab"]>span:first-child'))).map(tab=>tab.getText())),
-      ['全部冲突','类别不一致','位置差异','多类别','少类别','拆分','合并']);
+      ['全部冲突','类别不一致','多标','少标','位置差异','拆分','合并']);
     await driver.wait(async()=>(await cards()).length===expectedGallery.total,10000);
     assert.equal(reviewContextReads,0,'图库首次渲染不能逐卡片读取完整图像复核上下文');
     for(const card of await cards())assert.match(await card.getAttribute('aria-label'),/模型结论：类别不一致/);
-    const cardLayout=await driver.executeScript(`const card=document.querySelector('[data-dc="open-conflict"]'),image=card.querySelector('img'),values=card.querySelector('[aria-label="原始结论与模型结论"]');
+    const cardLayout=await driver.executeScript(`const card=document.querySelector('[data-dc="open-conflict"]'),image=card.querySelector('img'),values=card.querySelector('[aria-label="程序结论与模型结论"]');
       return {imageHeight:Math.round(image.getBoundingClientRect().height),values:values?[...values.children].map(e=>({text:e.textContent,y:e.getBoundingClientRect().top,align:getComputedStyle(e).textAlign})):[]};`);
     assert.equal(cardLayout.imageHeight,140,'V65冲突卡片保留140px图像区');
     assert.equal(cardLayout.values.length,2,'同时展示原始结论与真实模型结论');

@@ -53,9 +53,12 @@ def test_previous_round_pixels_reopen_by_evidence_id_without_changing_coverage(o
     Path(source).unlink()
     for image in (first[0], first[-1]):
         page = evidence.reference(run_id, {'evidence_id': image.image.evidence_id})
-        assert page.total == 1
-        assert page.images == [image]
-        assert Path(page.images[0].path).read_bytes() == saved_pixels[image.image.evidence_id]
+        expected = first if image.image.is_whole_image else [image]
+        assert page.total == len(expected)
+        assert page.images == expected
+        assert page.evidence_id == first[0].image.evidence_id
+        for item in page.images:
+            assert Path(item.path).read_bytes() == saved_pixels[item.image.evidence_id]
     assert first[-1].image.sent_size == [6, 7]
     assert AnalysisCoverageReader(jobs.db).read(run_id) == before
     dataset_id, role = agent_jobs[1:]

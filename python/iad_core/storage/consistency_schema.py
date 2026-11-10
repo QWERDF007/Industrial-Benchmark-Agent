@@ -2,6 +2,21 @@ from sqlite3 import Connection
 
 
 def init_content_index_schema(connection: Connection) -> None:
+    connection.execute('''CREATE TABLE IF NOT EXISTS consistency_identity_inputs (
+        job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,candidate_id TEXT NOT NULL,
+        fingerprint TEXT NOT NULL,plan_json TEXT NOT NULL CHECK(json_valid(plan_json)),
+        FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE,
+        PRIMARY KEY(job_id,anchor_id,candidate_id))''')
+    connection.execute('''CREATE TABLE IF NOT EXISTS consistency_identity_views (
+        job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,candidate_id TEXT NOT NULL,page_index INTEGER NOT NULL,
+        fingerprint TEXT NOT NULL,record_json TEXT NOT NULL CHECK(json_valid(record_json)),
+        FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE,
+        PRIMARY KEY(job_id,anchor_id,candidate_id,page_index))''')
+    connection.execute('''CREATE TABLE IF NOT EXISTS consistency_candidate_identity (
+        job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,candidate_id TEXT NOT NULL,
+        record_json TEXT NOT NULL CHECK(json_valid(record_json)),
+        FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE,
+        PRIMARY KEY(job_id,anchor_id,candidate_id))''')
     connection.execute('''CREATE TABLE IF NOT EXISTS consistency_anchor_runs (
         job_id TEXT NOT NULL REFERENCES job_runs(job_id) ON DELETE CASCADE,
         anchor_id TEXT NOT NULL,ordinal INTEGER NOT NULL CHECK(ordinal>=0),
@@ -28,6 +43,13 @@ def init_content_index_schema(connection: Connection) -> None:
         submission_json TEXT NOT NULL CHECK(json_valid(submission_json)),
         FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE)''')
     connection.execute('CREATE INDEX IF NOT EXISTS idx_candidate_assessments ON consistency_candidate_assessments(job_id,anchor_id,candidate_id,id)')
+    connection.execute('''CREATE TABLE IF NOT EXISTS consistency_group_decisions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,decision_id TEXT NOT NULL UNIQUE,client_request_id TEXT NOT NULL UNIQUE,
+        job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,result_fingerprint TEXT NOT NULL,
+        action TEXT NOT NULL CHECK(action IN ('CONFIRM_DIFFERENCE','REJECT_DIFFERENCE','NEEDS_CONTEXT')),
+        request_sha256 TEXT NOT NULL,record_json TEXT NOT NULL CHECK(json_valid(record_json)),
+        FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE)''')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_group_decisions ON consistency_group_decisions(job_id,anchor_id,result_fingerprint,id)')
     connection.execute('''CREATE TABLE IF NOT EXISTS consistency_anchor_phases (
         id INTEGER PRIMARY KEY AUTOINCREMENT,job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,
         attempt INTEGER NOT NULL CHECK(attempt>0),phase TEXT NOT NULL,state TEXT NOT NULL,

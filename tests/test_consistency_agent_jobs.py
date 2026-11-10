@@ -6,6 +6,31 @@ from iad_core.workbench.module_settings import ModuleSettings
 from iad_core.workbench.runtime import WorkbenchRuntime
 
 
+def test_check_freezes_validated_concurrency_independently_of_later_settings(dataset):
+    from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+
+    database, _, config = dataset
+    modules = ModuleSettings(database)
+    assert modules.read('consistency').settings.concurrency == 1
+    configured = modules.save({'module': 'consistency', 'expected_revision': 0,
+        'settings': {'concurrency': 3}})
+    for invalid in [0, -1, True, 1.5, '2']:
+        with pytest.raises(ValueError):
+            modules.save({'module': 'consistency', 'expected_revision': 1,
+                'settings': {'concurrency': invalid}})
+    assert modules.read('consistency') == configured
+    runtime = WorkbenchRuntime(database)
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        started = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id]})
+        assert checks.snapshot(started['run_id']).concurrency == 3
+        modules.save({'module': 'consistency', 'expected_revision': 1, 'settings': {'concurrency': 2}})
+        assert checks.snapshot(started['run_id']).concurrency == 3
+        assert modules.read('audit').settings.concurrency == 1
+    finally:
+        runtime.close()
+
+
 def test_check_requires_a_stable_submission_id(dataset):
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 

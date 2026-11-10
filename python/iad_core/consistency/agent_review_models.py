@@ -1,13 +1,13 @@
-from typing import Annotated, Literal, Self
+from typing import Literal, Self
 
-from pydantic import ConfigDict, Field, WithJsonSchema, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText, VisualEvidence
 from iad_core.consistency.models import CandidateLimit, Digest, Identifier
 from iad_core.consistency.group_analysis_models import GroupAnalysisComparison, GroupAnalysisDraft, GroupAnalysisReference, GroupPairAssessment, GroupPairDecision
-from iad_core.consistency.group_analysis_conclusions import CONCLUSION_CATEGORIES, EQUIVALENT_CONCLUSION
-from iad_core.consistency.conflict_categories import ConflictCategory
+from iad_core.consistency.group_analysis_conclusions import EQUIVALENT_CONCLUSION
 from iad_core.consistency.group_models import VisualWindow
+from iad_core.consistency.annotation_issues import ISSUE_CATEGORIES, BboxAnnotationIssue
 
 
 VISUAL_REQUEST_ID_RULE = (
@@ -18,8 +18,8 @@ VISUAL_REQUEST_ID_RULE = (
 
 class AnchorVisualStart(AnalysisModel):
     request_id: Identifier = Field(description=VISUAL_REQUEST_ID_RULE)
-    fingerprint: Digest
-    candidate_ids: list[Identifier] = Field(min_length=1)
+    fingerprint: Digest = Field(description='上下文提供的当前冻结清单指纹。')
+    candidate_ids: list[Identifier] = Field(min_length=1, description='完整使用上下文中一个冻结页的候选集合，不拆页、不跨页拼接。')
     question: NonBlankText
     windows: list[VisualWindow] = Field(default_factory=list)
 
@@ -44,12 +44,13 @@ class CandidateVisualObservation(AnalysisModel):
 
     candidate_id: Identifier
     description: NonBlankText
-    media_ids: list[Identifier] = Field(min_length=1)
+    media_ids: list[Identifier] = Field(min_length=1,
+        description='主图与当前候选的两个原图evidence_id；原始标注和全部裁剪视图随原图分组，不单独引用裁图。')
     limitations: list[NonBlankText] = Field(default_factory=list)
 
 
 class AnchorVisualResult(AnalysisModel):
-    observations: list[CandidateVisualObservation] = Field(min_length=1)
+    observations: list[CandidateVisualObservation] = Field(min_length=1, description='恰好覆盖本次输入的全部候选，每个candidate_id一次。')
 
 
 class AnchorVisualRequest(AnchorVisualStart):
@@ -71,38 +72,37 @@ class AnchorDraftSubmission(AnalysisModel):
     observation_ids: dict[Identifier, list[Identifier]]
 
 
-ModelConflictCategory = Annotated[ConflictCategory, WithJsonSchema({'type': 'string', 'enum': list(CONCLUSION_CATEGORIES)})]
-
-
 class AnchorAssessmentDecision(GroupPairDecision):
-    verdict: Literal['EQUIVALENT', 'MATERIAL'] = Field(description='当前候选的标注比对结论：MATERIAL表示存在差异，EQUIVALENT表示一致')
-    categories: list[ModelConflictCategory] = Field(max_length=1,
-        description='MATERIAL提供唯一主要冲突分类；EQUIVALENT为空数组。其他发现保留在分析中。')
+    issues: list[BboxAnnotationIssue] = Field(default_factory=list,
+        description='MATERIAL必须保存全部独立矩形问题，关联真实两侧框ID与实际原图身份；拆分合并不重复计数量差异。')
+    verdict: Literal['EQUIVALENT', 'MATERIAL', 'UNCERTAIN'] = Field(description='MATERIAL存在差异；EQUIVALENT一致；UNCERTAIN为合格候选的标注审核证据不足。')
 
     @model_validator(mode='after')
-    def validate_categories(self) -> Self:
-        if self.verdict == 'MATERIAL' and not self.categories:
-            raise ValueError('MATERIAL必须提供一个主要差异分类')
-        if self.verdict == 'EQUIVALENT' and self.categories:
-            raise ValueError('一致结论的categories必须为空数组')
+    def validate_issues(self) -> Self:
+        if self.verdict == 'MATERIAL' and not self.issues:
+            raise ValueError('MATERIAL必须提供全部独立问题及真实框和原图引用')
+        if self.verdict != 'MATERIAL' and self.issues:
+            raise ValueError('一致或证据不足不能包含已确认差异')
         return self
 
     def as_assessment(self) -> GroupPairAssessment:
+        categories = [ISSUE_CATEGORIES[self.issues[0].type]] if self.issues else []
         conclusion = None
         if self.verdict == 'EQUIVALENT':
             conclusion = EQUIVALENT_CONCLUSION
         elif self.verdict == 'MATERIAL':
-            conclusion = self.categories[0].value
-        return GroupPairAssessment(**self.model_dump(), conclusion=conclusion)
+            conclusion = categories[0].value
+        return GroupPairAssessment(**self.model_dump(), categories=categories, conclusion=conclusion)
 
 
 class AnchorAssessmentEvidence(AnalysisModel):
-    fingerprint: Digest
-    observation_ids: list[Identifier] = Field(min_length=1)
+    fingerprint: Digest = Field(description='当前冻结清单指纹。')
+    observation_ids: list[Identifier] = Field(description='本场实际保存且包含当前候选的视觉观察回执ID。程序完成的图像级标签比较为空。')
 
 
 class AnchorAssessmentInput(AnchorAssessmentEvidence):
-    assessment: AnchorAssessmentDecision = Field(description='提交候选判定及主要冲突分类，结论文本由服务端依据该判定编码')
+    observation_ids: list[Identifier] = Field(min_length=1, description='本场已保存且实际包含当前候选的视觉观察回执。')
+    assessment: AnchorAssessmentDecision = Field(description='提交候选判定和全部独立问题，展示分类及结论由服务端派生')
 
 
 class AnchorAssessmentSubmission(AnchorAssessmentEvidence):
@@ -120,5 +120,5 @@ class AnchorAssessmentRecord(AnalysisModel):
 
 
 class AnchorReviewSubmission(AnalysisModel):
-    fingerprint: Digest
-    assessment_ids: list[CandidateLimit] = Field(min_length=1)
+    fingerprint: Digest = Field(description='当前冻结清单指纹。')
+    assessment_ids: list[CandidateLimit] = Field(min_length=1, description='恰好包含全部冻结候选的最新评估回执ID，不引用旧版本或其他主图评估。')

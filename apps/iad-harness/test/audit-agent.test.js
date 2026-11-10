@@ -30,7 +30,12 @@ for(const withKnowledge of [false,true])test(`${withKnowledge?'selected weak kno
         assert.deepEqual(context.knowledge.entries.map(entry=>[entry.check.check_id,entry.check.status,entry.review.status]),
           [['C1','conflicted','rejected'],['C2','provisional','pending']]);
         assert.ok(context.knowledge.selection.version_id.startsWith('analysis_version_'));
-        assert.deepEqual(context.knowledge.unresolved_questions,['需更多独立来源。']);
+        assert.ok(!JSON.stringify(context.knowledge).includes('未选'));
+        assert.equal(context.knowledge.source_scope.coverage.completed,2);
+        assert.equal(context.knowledge.source_scope.finalization_complete,false);
+        assert.deepEqual(context.knowledge.directions.map(direction=>direction.ref),['D1']);
+        assert.ok(!('summary' in context.knowledge));
+        assert.ok(!('source_summary' in context.knowledge.directions[0]));
       } else assert.equal(context.knowledge,null);
       assert.equal(context.consistency.result.reason,'NO_CANDIDATES');
       assert.ok(!JSON.stringify(context).includes('本场第二张独立疑点'));
@@ -46,7 +51,11 @@ for(const withKnowledge of [false,true])test(`${withKnowledge?'selected weak kno
         assert.equal(actual.length,images.length);
         assert.deepEqual(actual.map(part=>createHash('sha256').update(Buffer.from(part.image_url.url.split(',')[1],'base64')).digest('hex')).sort(),
           images.map(image=>image.image.sha256).sort());
-        const suspect=context.sample_id.endsWith(':1.png'), ids=images.map(image=>image.image.evidence_id);
+        for (const page of pages) {
+          assert.ok(page.evidence_id, 'the original image owns the media bundle reference');
+          assert.ok(page.images.every(item => !Object.hasOwn(item.image,'evidence_id')&&!Object.hasOwn(item.model_context,'evidence_id')));
+        }
+        const suspect=context.sample_id.endsWith(':1.png'), ids=[...new Set(pages.map(page=>page.evidence_id))];
         call={name:'audit_commit',arguments:{commit_key:'final',final:{state:suspect?'suspect':'normal',
           analysis:suspect?'本场第二张独立疑点，需核对三处可见现象。':'本场第一张的独立观察。',conclusion:suspect?'三处现象待复核。':'当前可见范围未发现疑点。',
           basis:['已观察本张原图及全部必需局部。'],evidence_ids:ids,

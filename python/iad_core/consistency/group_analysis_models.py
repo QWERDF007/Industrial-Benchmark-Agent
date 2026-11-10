@@ -8,6 +8,7 @@ from iad_core.consistency.models import Identifier, ModelAssessmentVerdict
 from iad_core.workbench.job_models import JobStatus
 from iad_core.consistency.conflict_categories import ConflictCategory
 from iad_core.consistency.group_analysis_conclusions import CONCLUSION_CHOICES
+from iad_core.consistency.annotation_issues import AnnotationIssue
 
 
 
@@ -38,6 +39,7 @@ class GroupPairDecision(AnalysisModel):
     explanation: str = Field(min_length=1,max_length=8000, description='当前候选的标注比对分析')
     findings: list[str] = Field(default_factory=list,max_length=100,
         description='当前候选的具体发现')
+    issues: list[AnnotationIssue] = Field(default_factory=list, description='全部独立问题；框ID来自冻结事实，引用实际送达的两侧原图。拆分合并不重复计同组数量差异。')
 
 
 class GroupPairAssessment(GroupPairDecision):

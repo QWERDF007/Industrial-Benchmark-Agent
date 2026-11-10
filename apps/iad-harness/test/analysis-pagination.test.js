@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {finalizeFixtureCatalog,respondFixtureTools} from './fixtures/analysis-finalization.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -16,7 +17,7 @@ for(const scenario of [{},{exploration:true},{recovery:true},{catalogPaging:true
   const module=exploration?'exploration':'knowledge',catalogField=exploration?'directions':'checks',supportField=exploration?'evidence_ids':'support_evidence_ids';
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-analysis-pages-'));
   const workspace=findWorkspaceRoot(),database=path.join(root,'pages.db'),errors=[],wire=[],admissions=[],summaries=[],proposals=[];
-  let runtime,server,child;
+  let runtime,server,child,finalizationCalls=0;
   const parse=value=>{try{return JSON.parse((typeof value==='string'?value:value.find(part=>part.type==='text').text).split('\n')[0]);}catch{return null;}};
   const provider=http.createServer(async(req,res)=>{
     try {
@@ -32,7 +33,13 @@ for(const scenario of [{},{exploration:true},{recovery:true},{catalogPaging:true
       }
       wire.push(body);
       const contextIndex=body.messages.findLastIndex(message=>message.role==='user'&&parse(message.content)?.job_id);
-      const context=parse(body.messages[contextIndex].content),progress=context.media_progress[0];
+      const context=parse(body.messages[contextIndex].content);
+      if(context.phase==='finalize'){
+        finalizationCalls++;
+        const outputs=body.messages.slice(contextIndex+1).filter(message=>message.role==='tool').map(message=>parse(message.content));
+        respondFixtureTools(res,finalizeFixtureCatalog(context,outputs,module));return;
+      }
+      const progress=context.media_progress[0];
       assert.equal(context.round.round_id,1);
       assert.equal(context.round.targets.length,1);
       if(context.revision>0){
@@ -52,13 +59,13 @@ for(const scenario of [{},{exploration:true},{recovery:true},{catalogPaging:true
       if(catalogPaging&&context.revision>0&&!catalogPage)call={name:'analysis_catalog',arguments:{section:'checks',ids:['C35'],limit:1}};
       else if(!pages.length){
         if(catalogPage){assert.equal(catalogPage.items[0].check_id,'C35');assert.equal(catalogPage.items[0].counter_evidence_ids.length,1);assert.equal(catalogPage.revision,context.revision);}
-        call={name:'analysis_images',arguments:{sample_id:context.round.targets[0].sample_id,offset:progress.observed_evidence_ids.length,limit:5}};
+        call={name:'analysis_images',arguments:{sample_id:context.round.targets[0].sample_id,offset:progress.delivered_offsets.length,limit:5}};
       }
       else {
         const page=pages[0];assert.ok(!page.error);assert.equal(page.total,61);
         assert.deepEqual(actual.slice(-page.images.length).map(part=>createHash('sha256').update(Buffer.from(part.image_url.url.split(',')[1],'base64')).digest('hex')),
           page.images.map(item=>item.image.sha256));
-        const ids=page.images.map(item=>item.image.evidence_id);
+        const ids=[page.evidence_id];
         const existing=context.catalog[catalogField][0];
         const entry={title:'边缘关系',limitations:['单一来源。'],counter_evidence_ids:existing?[]:[ids[0]],dataset_ids:[page.images[0].dataset_id],
           [supportField]:existing?existing[supportField]:[ids[0]],...(exploration
@@ -70,9 +77,9 @@ for(const scenario of [{},{exploration:true},{recovery:true},{catalogPaging:true
           [catalogField]:[entry],summary:'累积本张全部局部观察。',limitations:['尚需独立来源。'],unresolved_questions:['局部边缘仍需核对。']}};
         if(catalogPaging&&context.revision===0)call.arguments.checks=Array.from({length:40},(_,index)=>({...call.arguments.checks[0],check_id:'C'+(index+1),title:'边缘关系'+(index+1)}));
         if(page.offset+page.images.length===page.total)call.arguments[catalogField].push({...entry,
-          title:'末页局部新现象',counter_evidence_ids:[],...(exploration
-            ?{direction_id:'last-roi-discovery',instruction:'复看末页首次见到的边缘变化。'}
-            :{check_id:'last-roi-discovery',criterion:'末页首次见到的边缘变化需要独立来源核验。',status:'provisional'})});
+          title:'局部边缘现象',counter_evidence_ids:[],...(exploration
+            ?{direction_id:'last-roi-discovery',instruction:'复看原始像素中的局部边缘变化。'}
+            :{check_id:'last-roi-discovery',criterion:'局部边缘变化需要独立来源核验。',status:'provisional'})});
       }
       if(call.name===module+'_commit')proposals.push({revision:context.revision,counter_evidence_ids:call.arguments[catalogField][0].counter_evidence_ids});
       res.writeHead(200,{'Content-Type':'text/event-stream'});
@@ -109,7 +116,7 @@ print(json.dumps(dict(dataset_id=dataset.dataset.id,mining_prompt=dict(objective
     let output='';child.stdout.on('data',data=>{output+=data;});child.stderr.on('data',data=>{output+=data;});
     committed=await new Promise((resolve,reject)=>{child.once('message',resolve);child.once('error',reject);
       child.once('exit',(code,signal)=>reject(new Error(`Recovery child exited ${code}/${signal}: ${output}`)));});
-    assert.equal(committed.receipt.revision,1);assert.equal(committed.observed,5);assert.equal(committed.native_commit_calls,1);
+    assert.equal(committed.receipt.revision,1);assert.equal(committed.observed,1);assert.equal(committed.delivered_views,5);assert.equal(committed.native_commit_calls,1);
     const exited=once(child,'exit');child.kill('SIGKILL');assert.deepEqual(await exited,[null,'SIGKILL']);
   }
   runtime=await createAnalysisAgentHost(root,endpoint,{onError:error=>errors.push(String(error))});
@@ -135,7 +142,8 @@ print(json.dumps(dict(dataset_id=dataset.dataset.id,mining_prompt=dict(objective
   assert.equal(status.status,'COMPLETED',JSON.stringify({errors,execution_error:status.execution_error}));assert.equal(status.completed,1);
   const publication=await bridge.execute('analysis_agent_publication',{version_id:status.analysis_version_id});
   assert.equal(publication.coverage.observed_visuals,61);assert.equal(publication.coverage.prepared_visuals,61);
-  const generations=catalogPaging?publication.revision*3-1:26;
+  const generations=(catalogPaging?proposals.length*3-1:26)+finalizationCalls;
+  assert.equal(publication.finalization.complete,true);
   assert.equal(publication.catalog[catalogField][0].counter_evidence_ids.length,1);assert.deepEqual(errors,[]);assert.equal(wire.length,generations);
 
   const context=await bridge.execute('analysis_agent_context',{run_id:job.run_id});const session=await host.read(context.session_id);
@@ -154,7 +162,7 @@ print(json.dumps(dict(dataset_id=dataset.dataset.id,mining_prompt=dict(objective
 import sys,json,zipfile,hashlib
 with zipfile.ZipFile(sys.argv[1]) as archive:
     names=set(archive.namelist())
-    assert {'manifest.json','coverage.json',sys.argv[3],'evidence.jsonl','rounds.jsonl','session/events.jsonl'} <= names
+    assert {'manifest.json','coverage.json',sys.argv[3],'evidence.jsonl','rounds.jsonl','finalization.jsonl','session/events.jsonl'} <= names
     manifest=json.loads(archive.read('manifest.json'));coverage=json.loads(archive.read('coverage.json'))
     assert 'agent' not in manifest['snapshot'] and 'api_key' not in str(manifest).lower()
     assert coverage['completed']==1 and coverage['observed_visuals']==61
@@ -162,8 +170,12 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
     assert len(evidence)==61 and all(item['model_calls'] for item in evidence)
     assert all(hashlib.sha256(archive.read(item['media_path'])).hexdigest()==item['image']['sha256'] for item in evidence)
     rounds=[json.loads(line) for line in archive.read('rounds.jsonl').splitlines()]
-    assert len(rounds)==int(sys.argv[2]) and all(item['round_id']==1 for item in rounds)
-    assert [item['revision'] for item in rounds]==list(range(1,int(sys.argv[2])+1))
+    assert len(rounds)==13 and all(item['round_id']==1 for item in rounds)
+    assert [item['revision'] for item in rounds]==list(range(1,len(rounds)+1))
+    finalizations=[json.loads(line) for line in archive.read('finalization.jsonl').decode().splitlines()]
+    assert finalizations[-1]['receipt']['complete']
+    assert all(not item['receipt']['complete'] for item in finalizations[:-1])
+    assert [item['revision'] for item in rounds+finalizations]==list(range(1,int(sys.argv[2])+1))
     assert all(item['session_id']==manifest['session_id'] for item in rounds)
     print(json.dumps({'version_id':manifest['version_id'],'session_sha256':hashlib.sha256(archive.read('session/events.jsonl')).hexdigest()}))
 `,archivePath,String(publication.revision),exploration?'directions.json':'knowledge.json'],{encoding:'utf8'}));

@@ -52,16 +52,48 @@ class ConsistencyAgentJobs:
         if not scopes.subjects.samples:
             raise ValueError('未选择可检查的图片')
         registry = DatasetRegistry(self.db)
+        from iad_core.consistency.identity_prompts import identity_prompt_defaults, BBOX_SYSTEM, ANOMALY_SYSTEM, IDENTITY_PROMPT_VERSION
+        prompts = identity_prompt_defaults()
+        dataset_format = registry.get(scopes.subjects.dataset_ids[0]).dataset.format
+        from iad_core.consistency.annotations import AnnotationSet
+        import math
+        with self.db.connection() as connection:
+            connection.execute('BEGIN')
+            for sample_id in sorted({sample.sample_id for sample in [*scopes.subjects.samples, *scopes.corpus.samples]}):
+                source = AnnotationSet.capture(self.db, sample_id, connection)
+                if source.dataset_format != dataset_format:
+                    raise ValueError('主图与候选库应使用相同的已登记标注格式')
+                if source.errors:
+                    raise ValueError('原始标注无法读取：' + sample_id)
+                if dataset_format == 'folder_classification':
+                    if source.quality_status not in ('PASS', 'FAIL') or source.annotations:
+                        raise ValueError('图像级审核需要导入时确认的正常／异常分类：' + sample_id)
+                else:
+                    for annotation in source.annotations:
+                        box = annotation.bbox
+                        if (annotation.annotation_type != 'bbox' or annotation.geometry_status != 'VALID'
+                                or not annotation.raw_label.strip() or box is None or len(box) != 4
+                                or not all(math.isfinite(value) for value in box)
+                                or not (box[0] < box[2] and box[1] < box[3])
+                                or max(0, box[0]) >= min(source.width, box[2])
+                                or max(0, box[1]) >= min(source.height, box[3])):
+                            raise ValueError('矩形审核需要有效的原始矩形及类别：' + annotation.annotation_id)
+        annotation_system = ANOMALY_SYSTEM if dataset_format == 'folder_classification' else BBOX_SYSTEM
         snapshot = ConsistencyCheckSnapshot(settings_revision=configured.settings_revision, retrieval=retrieval, scopes=scopes,
+            concurrency=settings.concurrency,
             model_call_logging='native-v1', phase_logging='timeline-v1',
             model=settings.model,
             model_limits=configured.model_limits,
             roles=ConsistencyModelRoles.model_validate(roles or {}),
             image_encoder=ImageEncoders(self.db).read().selection if settings.mode == 'combined' else None,
+            dataset_formats={dataset_id: registry.get(dataset_id).dataset.format
+                for dataset_id in sorted(set(scopes.subjects.dataset_ids + scopes.corpus.dataset_ids))},
             policies={dataset_id: AnnotationPolicy.model_validate(registry.get(dataset_id).annotations.model_dump(
                 include=set(AnnotationPolicy.model_fields))) for dataset_id in sorted(set(scopes.subjects.dataset_ids + scopes.corpus.dataset_ids))},
             instruction=submitted.instruction,
-            system_prompt=submitted.system_prompt or DEFAULT_CONSISTENCY_SYSTEM_PROMPT)
+            system_prompt=(submitted.system_prompt if submitted.system_prompt and submitted.system_prompt != DEFAULT_CONSISTENCY_SYSTEM_PROMPT
+                else annotation_system), review_pipeline='identity-v4', prompts=prompts,
+            prompt_version=IDENTITY_PROMPT_VERSION)
         sample_ids = [sample.sample_id for sample in scopes.subjects.samples]
         units = [dict(dataset_id=dataset_id, request=dict(sample_ids=[sample.sample_id for sample in scopes.subjects.samples
             if sample.dataset_id == dataset_id])) for dataset_id in scopes.subjects.dataset_ids]
@@ -107,7 +139,10 @@ class ConsistencyAgentJobs:
         return AnalysisJobViews(self.db).view(run_id)
 
     def resume(self, run_id: str) -> dict:
-        self.snapshot(run_id)
+        from iad_core.consistency.identity_prompts import IDENTITY_PROMPT_VERSION
+        snapshot = self.snapshot(run_id)
+        if snapshot.review_pipeline != 'identity-v4' or snapshot.prompt_version != IDENTITY_PROMPT_VERSION:
+            raise ValueError('历史一致性作业只读保留，请新建检查以执行图像内容验证')
 
         def persist(connection: Connection):
             connection.execute("""UPDATE consistency_anchor_runs SET attempt=attempt+1,
@@ -174,6 +209,19 @@ class ConsistencyAgentJobs:
 
     def complete(self, run_id: str, anchor_id: str, result: AnchorResult, *, attempt: int) -> AnchorResult:
         with self.jobs.lock:
+            if self.snapshot(run_id).review_pipeline == 'identity-v4':
+                from iad_core.consistency.identity import CandidateIdentity
+                from iad_core.consistency.identity_outcome import IdentityOutcome
+                from iad_core.consistency.annotation_evaluation import AnnotationEvaluation
+                from iad_core.consistency.agent_assessments import AnchorAssessments
+                with self.db.connection() as connection:
+                    records = AnchorAssessments.list(connection, run_id, anchor_id)
+                if {item.candidate_id: item for item in result.assessments} != {
+                        record.submission.assessment.candidate_id: record.submission.assessment for record in records}:
+                    raise ValueError('终稿必须来自已保存的最新候选评估，不能绕过评估写入')
+                result = result.model_copy(update={**IdentityOutcome(CandidateIdentity(self.runtime).read(run_id, anchor_id)).assemble(result.assessments),
+                    'issues': AnnotationEvaluation.aggregate(records)})
+
             anchor = self.attempt(run_id, anchor_id, attempt)
             if anchor.result is not None:
                 if anchor.result != result:
@@ -182,7 +230,7 @@ class ConsistencyAgentJobs:
 
             def persist(connection: Connection):
                 changed = connection.execute('''UPDATE consistency_anchor_runs SET state='COMPLETED',phase='SUBMITTED',result_json=?
-                    WHERE job_id=? AND anchor_id=? AND attempt=?''', (result.model_dump_json(), run_id, anchor_id, attempt))
+                    WHERE job_id=? AND anchor_id=? AND attempt=? AND state IN ('RUNNING')''', (result.model_dump_json(), run_id, anchor_id, attempt))
                 if not changed.rowcount:
                     raise ValueError('过期的主图审核 attempt')
 

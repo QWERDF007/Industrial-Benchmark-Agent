@@ -73,7 +73,7 @@ export class AuditImageAgent {
                     parameters: auditCropParameters, output: nativeMediaOutput, execute: async (query, execution) => attachments.prepare(await this.bridge.execute('audit_agent_crop', { ...identity, query }, execution.signal), execution.signal) }));
                 scope.tools.register(defineTool({ name: 'audit_reference', description: '按真实evidence_id打开已选知识的冻结支持或反例，不读取未选择知识或全库图片。',
                     parameters: evidenceReferenceParameters, output: nativeMediaOutput, execute: async (args, execution) => attachments.prepare(await this.bridge.execute('audit_agent_reference', { ...identity, ...args }, execution.signal), execution.signal) }));
-                scope.tools.register(defineTool({ name: 'audit_commit', description: '原子提交本图图级状态、分析、结论、全部疑点及实际观察证据；逐项记录全部已选知识。不写预测框、建议标签或人工核实。',
+                scope.tools.register(defineTool({ name: 'audit_commit', description: '原子提交本图终稿，含图级状态、分析、结论、全部疑点及本场实际观察的完整原图引用；逐项覆盖全部已选知识。程序核对主图整图及全部必需局部实际送达；不能用上游文字或未读取引用替代观察。成功返回已保存终稿并结束本图；校验失败未保存，按错误修正重提。',
                     parameters: auditCommitParameters, output: workbenchJsonOutput, execute: async (submission, execution) => {
                         const result = await this.bridge.execute('audit_agent_commit', { ...identity, submission }, execution.signal);
                         execution.concludeTurn();

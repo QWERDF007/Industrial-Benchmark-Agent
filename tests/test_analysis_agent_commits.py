@@ -7,6 +7,68 @@ from iad_core.analysis.evidence import AnalysisEvidence
 from iad_core.workbench.calls import ModelCalls, NativeModelCallEnd, NativeModelCallStart
 
 
+@pytest.mark.parametrize('module', ['exploration', 'knowledge'])
+def test_partial_publication_uses_global_draft_text_and_rejected_text_does_not_save_observations(agent_jobs, module):
+    from iad_core.analysis.publications import AnalysisPublications
+    from iad_core.analysis.queries import AnalysisQueries
+    from iad_core.knowledge.instructions import default_directions
+    from iad_core.workbench.module_settings import ModuleSettings
+
+    jobs, dataset_id, role = agent_jobs
+    request = dict(submission_id=str(uuid4()), analysis_kind=module, dataset_ids=[dataset_id])
+    if module == 'exploration':
+        request.update(normal_images=[dataset_id + ':normal.png'], prompt={'text':'核对主体边缘。'})
+    else:
+        ModuleSettings(jobs.db).save(dict(module='knowledge', expected_revision=0,
+            settings=dict(model=dict(provider_id='swift-30003', model_id='fixture'), batch_size=1)))
+        request['mining_prompt'] = dict(objective='核对主体边缘。', instruction='保留可复核依据。',
+            directions=[default_directions()[0].model_dump(mode='json')])
+    run_id = jobs.start(request, agent=role)['run_id']
+    context = jobs.context(run_id)
+    evidence = AnalysisEvidence(jobs)
+    page = evidence.read(run_id, dict(sample_id=context.round.targets[0].sample_id))
+    ids = [item.image.evidence_id for item in page.images]
+    whole = next(item.image.evidence_id for item in page.images if item.image.is_whole_image)
+    calls = ModelCalls(jobs.db)
+    call = NativeModelCallStart(call_id='call_' + uuid4().hex, started_at='2026-11-09T12:00:00Z',
+        request={'fixture':'partial global draft'})
+    calls.start_native(run_id, call, sample_id=None, session_id=context.session_id, attempt=1)
+    evidence.delivered(run_id, call.call_id, ids)
+    calls.finish_native(run_id, None, NativeModelCallEnd(call_id=call.call_id,
+        finished_at='2026-11-09T12:00:01Z', elapsed_ms=1000, finish_reason='tool-calls'))
+    entry = dict(title='主体边缘连续关系', dataset_ids=[dataset_id], counter_evidence_ids=[], limitations=[])
+    if module == 'exploration':
+        entry.update(direction_id='edge', applies_to='both', instruction='外缘可辨时沿轮廓复核连续关系。',
+            rationale='完整主体外缘可作为核对参照。', evidence_ids=[whole])
+    else:
+        entry.update(check_id='edge', subject='主体', location='外缘', criterion='外缘可辨时沿轮廓复核连续关系。',
+            allowed_variations=[], status='provisional', support_evidence_ids=[whole], direction_refs=['D1'])
+    field = 'directions' if module == 'exploration' else 'checks'
+    submission = dict(commit_key='partial', base_revision=0, round_id=1,
+        observations=[dict(dataset_id=dataset_id, sample_id=page.sample_id, description='本轮原图外缘可辨。',
+            evidence_ids=ids, directions=[dict(direction_ref=d.ref, status='applicable', reason='外缘可辨。')
+                for d in context.selected_directions])],
+        summary='主体外缘可沿可辨轮廓复核，其他视图尚待观察。', limitations=[], unresolved_questions=[],
+        **{field:[entry]})
+    commits, queries = AnalysisCommits(jobs), AnalysisQueries(jobs.db)
+    for update in [dict(summary='本批4张已核对，目录三条方向均更新。'),
+            {field:[{**entry, 'title':'本轮新增主体外缘'}]}]:
+        with pytest.raises(ValueError, match='发现顺序'):
+            commits.accept(run_id, {**submission, **update})
+        assert jobs.state(run_id).revision == 0
+        assert queries.observation_history(run_id, {}).total == 0
+        assert jobs.jobs.status(run_id)['completed'] == 0
+    receipt = commits.accept(run_id, submission)
+    assert commits.accept(run_id, submission) == receipt
+    cancelled = jobs.cancel(run_id)
+    published = AnalysisPublications(jobs.db).get(cancelled['analysis_version_id'])
+    assert published.coverage.completed == 1 and published.coverage.unprocessed == 3
+    assert published.catalog.summary == submission['summary']
+    assert published.finalization.complete is False
+    assert getattr(published.catalog, field)[0].title == entry['title']
+    assert queries.observation_history(run_id, {}).items[0].description == '本轮原图外缘可辨。'
+
+
 @pytest.mark.parametrize('migrate_existing', [False, True])
 def test_commit_keys_are_scoped_to_the_round_and_saved_receipts_survive_schema_update(agent_jobs, migrate_existing):
     from iad_core.storage.analysis_schema import initialize_analysis_schema
@@ -84,7 +146,7 @@ def test_only_delivered_and_observed_media_counts_toward_coverage_and_commit_ret
     assert jobs.context(run_id).revision == 0
     call = NativeModelCallStart(call_id='call_' + uuid4().hex, started_at='2026-11-09T12:00:00Z', request={'fixture': 'actual attachment request'})
     ModelCalls(jobs.db).start_native(run_id, call, sample_id=None, session_id=jobs.state(run_id).session_id, attempt=1)
-    evidence.delivered(run_id, call.call_id, ids)
+    evidence.delivered(run_id, call.call_id, ids[:1])
     ModelCalls(jobs.db).finish_native(run_id, None, NativeModelCallEnd(call_id=call.call_id,
         finished_at='2026-11-09T12:00:01Z', elapsed_ms=1000, finish_reason='tool-calls'))
     receipt = commits.accept(run_id, submission)
@@ -102,8 +164,12 @@ def test_only_delivered_and_observed_media_counts_toward_coverage_and_commit_ret
         commits.accept(run_id, {**submission, 'summary': '不同内容。'})
     with pytest.raises(ValueError, match='目录版本'):
         commits.accept(run_id, {**submission, 'commit_key': 'stale'})
-    complete = commits.accept(run_id, {**submission, 'commit_key': 'round-1-b', 'base_revision': 1,
-        'observations': [{**submission['observations'][0], 'evidence_ids': ids[1:]}]})
+    crop_call = NativeModelCallStart(call_id='call_' + uuid4().hex, started_at='2026-11-09T12:01:00Z', request={'fixture': 'remaining views'})
+    ModelCalls(jobs.db).start_native(run_id, crop_call, sample_id=None, session_id=jobs.state(run_id).session_id, attempt=1)
+    evidence.delivered(run_id, crop_call.call_id, ids[1:])
+    ModelCalls(jobs.db).finish_native(run_id, None, NativeModelCallEnd(call_id=crop_call.call_id,
+        finished_at='2026-11-09T12:01:01Z', elapsed_ms=1000, finish_reason='tool-calls'))
+    complete = commits.accept(run_id, {**submission, 'commit_key': 'round-1-b', 'base_revision': 1})
     assert complete.completed_delta == 1
     assert complete.round_complete is True
     assert jobs.jobs.status(run_id)['completed'] == 1
@@ -281,9 +347,12 @@ def test_key_support_reselection_keeps_observations_and_counterexamples(agent_jo
     commits=AnalysisCommits(jobs);commits.accept(run_id,submission)
     context=jobs.context(run_id)
     commits.accept(run_id,{**submission,'commit_key':'key','base_revision':context.revision,'round_id':context.round.round_id,'observations':[],
-        field:[{**item,support_field:[whole[1]],'counter_evidence_ids':[]}]})
+        field:[{**item,support_field:[whole[1]],'counter_evidence_ids':[], 'key_evidence':[
+            dict(evidence_id=whole[1],role='support',reason='边缘可见，展示复核动作。'),
+            dict(evidence_id=whole[0],role='counter',reason='保留影响解释的边界差别。')]}]})
     selected=getattr(jobs.context(run_id).catalog,field)[0]
-    assert getattr(selected,support_field)==[whole[1]]
+    assert getattr(selected,support_field)==whole
+    assert [key.evidence_id for key in selected.key_evidence]==[whole[1],whole[0]]
     assert selected.counter_evidence_ids==[whole[0]]
     context=jobs.context(run_id)
     receipt=commits.accept(run_id,{**submission,'commit_key':'observations-only','base_revision':context.revision,
@@ -324,15 +393,37 @@ def test_existing_crop_counterexample_requires_explicit_whole_image_correction(a
     commits=AnalysisCommits(jobs);commits.accept(run_id,submission)
     # Seed a persisted crop counterexample with complete original observations.
     catalog=jobs.context(run_id).catalog.model_dump(mode='json');catalog[field][0]['counter_evidence_ids']=[crop]
+    catalog[field][0][support]=[crop]
+    text_field='rationale' if module=='exploration' else 'criterion'
+    catalog[field][0][text_field]='边缘可见['+crop+']。'
     with jobs.db.connection() as connection:
+        connection.execute('DELETE FROM analysis_claim_revisions WHERE job_id=?',(run_id,))
         connection.execute('UPDATE analysis_workflow_runs SET catalog_json=? WHERE job_id=?',(json.dumps(catalog),run_id))
     context=jobs.context(run_id)
     update={**submission,'commit_key':'correct-counter','base_revision':context.revision,'round_id':context.round.round_id,'observations':[],field:[]}
     with pytest.raises(ValueError,match='完整原图') as error:commits.accept(run_id,update)
     assert crop in str(error.value) and whole in str(error.value)
     assert jobs.context(run_id).revision==context.revision
-    update[field]=[item]
+    update['citation_corrections']=[dict(entry_id='D1' if module=='exploration' else 'C1',evidence_id=crop,whole_image_id=crop)]
+    with pytest.raises(ValueError,match='完整原图'):commits.accept(run_id,update)
+    assert jobs.context(run_id).revision==context.revision
+    update['citation_corrections']=[dict(entry_id='D1' if module=='exploration' else 'C1',evidence_id=crop,whole_image_id=whole)]
+    target=next(target for target in context.round.targets if target.sample_id not in context.completed_sample_ids)
+    next_page=evidence.read(run_id,{'sample_id':target.sample_id})
+    next_ids=[item.image.evidence_id for item in next_page.images]
+    next_call=NativeModelCallStart(call_id='call_'+uuid4().hex,started_at='2026-11-09T12:01:00Z',request={'fixture':'next registration'})
+    ModelCalls(jobs.db).start_native(run_id,next_call,sample_id=None,session_id=context.session_id,attempt=1)
+    evidence.delivered(run_id,next_call.call_id,next_ids)
+    ModelCalls(jobs.db).finish_native(run_id,None,NativeModelCallEnd(call_id=next_call.call_id,finished_at='2026-11-09T12:01:01Z',elapsed_ms=1000,finish_reason='tool-calls'))
+    update['observations']=[dict(sample_id=target.sample_id,dataset_id=dataset_id,description='新登记的完整实际观察。',evidence_ids=next_ids,
+        directions=[dict(direction_ref='D1',status='applicable',reason='主体可见。')] if module=='knowledge' else [])]
     commits.accept(run_id,update)
-    assert getattr(jobs.context(run_id).catalog,field)[0].counter_evidence_ids==[whole]
+    corrected=getattr(jobs.context(run_id).catalog,field)[0]
+    assert corrected.counter_evidence_ids==[whole]
+    assert getattr(corrected,support)==[whole]
+    assert getattr(corrected,text_field)=='边缘可见['+whole+']。'
+    assert corrected.title=='边缘反例'
+    assert commits.accept(run_id,update).revision==context.revision+1
+    assert jobs.jobs.status(run_id)['completed']==2
     from iad_core.analysis.coverage import AnalysisCoverageReader
     assert AnalysisCoverageReader(jobs.db).observations(run_id)[0].evidence_ids==ids

@@ -6,7 +6,7 @@ from iad_core.dataset.path_safety import validate_sample_image_path
 from iad_core.evidence.images import file_sha256, image_pixel_sha256
 from iad_core.duplicate.repository import load_leakage_relations
 from iad_core.duplicate.index import PixelIndex
-from iad_core.knowledge.models import EvidenceSupportedCheck, KnowledgeEvidence, KnowledgeSource, KnowledgeSupportPolicy
+from iad_core.knowledge.models import KnowledgeEvidence, KnowledgeSource, KnowledgeStatus, KnowledgeSupportAssessment, KnowledgeSupportPolicy
 from iad_core.split.group import build_split_groups
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import SampleRepository
@@ -58,22 +58,22 @@ class KnowledgeSupport:
         return {sid: mapping[sid] for sid in ids if sid in original_ids or sid == target_sample_id}
 
     @staticmethod
-    def assess(checks: List[EvidenceSupportedCheck], evidence: List[KnowledgeEvidence],
-               groups: dict[str, str], policy: KnowledgeSupportPolicy, *, comparison_source_ids: Optional[set[str]] = None):
+    def assess(support_evidence_ids: list[str], counter_evidence_ids: list[str], suggested_status: KnowledgeStatus,
+               evidence: List[KnowledgeEvidence], groups: dict[str, str], policy: KnowledgeSupportPolicy) -> KnowledgeSupportAssessment:
         owners = {item.image.evidence_id: item.sample_id for item in evidence if item.image.representation == 'raw'}
-        for check in checks:
-            check.support_limitations = []
-            if check.status != 'supported':
-                continue
-            supports = {groups[owners[eid]] for eid in check.support_evidence_ids
-                        if eid in owners and owners[eid] in groups}
-            contradictions = [eid for eid in check.counter_evidence_ids if owners.get(eid) not in (comparison_source_ids or set())]
-            if contradictions:
-                check.status = 'conflicted'
-                check.support_limitations = ['存在尚未消解的反对证据']
-            elif policy.min_source_groups is None:
-                check.status = 'provisional'
-                check.support_limitations = ['未配置独立来源支持策略']
+        supports = {groups[owners[eid]] for eid in support_evidence_ids if eid in owners and owners[eid] in groups}
+        status, limitations = suggested_status, []
+        if counter_evidence_ids:
+            status, limitations = 'conflicted', ['存在尚未消解的反对证据']
+        elif not support_evidence_ids:
+            status, limitations = 'provisional', ['当前主张没有有效支持论据']
+        elif suggested_status == 'supported':
+            if policy.min_source_groups is None:
+                status, limitations = 'provisional', ['未配置独立来源支持策略']
             elif len(supports) < policy.min_source_groups:
-                check.status = 'provisional'
-                check.support_limitations = ['独立来源支持未达配置策略']
+                status, limitations = 'provisional', ['独立来源支持未达配置策略']
+        reason = '；'.join(limitations) or (
+            f'完整有效支持来自{len(supports)}个独立图像来源组，达到冻结策略{policy.min_source_groups}，无未解决有效反例'
+            if status == 'supported' else f'模型建议{suggested_status}，宿主保留该状态；完整有效支持为{len(supports)}个独立图像来源组')
+        return KnowledgeSupportAssessment(status=status,suggested_status=suggested_status,independent_source_count=len(supports),
+            support_limitations=limitations,assessment_reason=reason)

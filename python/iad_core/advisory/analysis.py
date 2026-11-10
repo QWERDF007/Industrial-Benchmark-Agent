@@ -123,8 +123,7 @@ class JointAnalysis(VlmResult):
             for assessment in self.check_assessments for region in assessment.inspection_regions]]
 
 
-class VisualEvidence(AnalysisModel):
-    evidence_id: str
+class VisualView(AnalysisModel):
     role: Literal["normal", "overview", "roi"]
     source: Literal["reference", "global", "annotation", "model", "coverage"]
     original_size: List[int]
@@ -143,6 +142,10 @@ class VisualEvidence(AnalysisModel):
 
     def model_context(self) -> dict:
         return self.model_dump(exclude={'annotation_ids'})
+
+
+class VisualEvidence(VisualView):
+    evidence_id: str
 
 
 class Coverage(AnalysisModel):

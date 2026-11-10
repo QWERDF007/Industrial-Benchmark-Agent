@@ -30,7 +30,11 @@ class AnchorVisualPages:
         if plan is None:
             self.checks.phase(run_id, anchor_id, 'PLANNING_VISUAL_PAGES')
             snapshot = self.checks.snapshot(run_id)
-            pending = deque([[item.sample_id for item in anchor.candidates.candidates]])
+            from iad_core.consistency.identity import CandidateIdentity
+            identities = CandidateIdentity(self.runtime).read(run_id, anchor_id).eligible_ids
+            if not identities:
+                raise ValueError('没有合格候选，不需要标注观察分页')
+            pending = deque([identities])
             pages = []
             while pending:
                 context.checkpoint()
@@ -40,7 +44,8 @@ class AnchorVisualPages:
                     fingerprint=anchor.candidates.fingerprint, candidate_ids=identities, question=snapshot.instruction)
                 try:
                     inputs = AnchorVisualInput.prepare(self.runtime, run_id, anchor_id, request, context.checkpoint)
-                    with ModelCalls(self.runtime.db).bind(run_id, context.checkpoint, role='vision', request_id=request.request_id):
+                    with ModelCalls(self.runtime.db).bind(run_id, context.checkpoint, role='vision',
+                            request_id=request.request_id, sample_id=anchor_id):
                         inputs.plan(self.client)
                 except (ConsistencyError, ModelCapacityError) as error:
                     if isinstance(error, ConsistencyError) and error.code != 'RESOURCE_LIMIT':

@@ -60,14 +60,18 @@ export function createIadHttpHandler(bridge) {
                 const data = await bridge.execute(operation, args);
                 sendJson(res, 200, data);
             };
-            const anchorResult = pathname.match(/^\/api\/iad\/consistency\/checks\/([^/]+)\/anchors\/([^/]+)(?:\/(session\.jsonl|members|analysis|diagnostics))?$/);
+            const anchorResult = pathname.match(/^\/api\/iad\/consistency\/checks\/([^/]+)\/anchors\/([^/]+)(?:\/(session\.jsonl|members|candidates|review|analysis|diagnostics))?$/);
             if (anchorResult && method === 'GET') {
                 const run_id = decodeURIComponent(anchorResult[1]), anchor_id = decodeURIComponent(anchorResult[2]);
                 if (anchorResult[3] === 'session.jsonl')
                     return await consistency.session(res, run_id, anchor_id);
                 return await call('consistency_agent_' + (anchorResult[3] || 'detail'), { run_id, anchor_id });
             }
-            const check = pathname.match(/^\/api\/iad\/consistency\/checks\/([^/]+)\/(config|anchors|report|gallery|export\.jsonl)$/);
+            if (anchorResult?.[3] === 'review' && method === 'POST') {
+                return await call('consistency_agent_review_submit', { run_id: decodeURIComponent(anchorResult[1]),
+                    anchor_id: decodeURIComponent(anchorResult[2]), request: body });
+            }
+            const check = pathname.match(/^\/api\/iad\/consistency\/checks\/([^/]+)\/(config|anchors|report|gallery|images|export\.jsonl)$/);
             if (check && method === 'GET') {
                 const run_id = decodeURIComponent(check[1]);
                 if (check[2] === 'export.jsonl')

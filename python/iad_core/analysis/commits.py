@@ -30,6 +30,8 @@ class AnalysisCommits:
             job = connection.execute('SELECT status,payload_json FROM job_runs WHERE job_id=?', (run_id,)).fetchone()
             if job['status'] != 'RUNNING':
                 raise InterruptedError('作业已停止，不能提交迟到的观察')
+            if connection.execute('SELECT 1 FROM analysis_finalizations WHERE job_id=?',(run_id,)).fetchone():
+                raise ValueError('已进入全局定稿，请使用本模块的定稿工具')
             payload = json.loads(job['payload_json'])
             state = connection.execute('SELECT revision,catalog_json FROM analysis_workflow_runs WHERE job_id=?', (run_id,)).fetchone()
             if state['revision'] != submission.base_revision:
@@ -77,10 +79,10 @@ class AnalysisCommits:
                         raise ValueError('每条登记需记录本场全部已选方向的适用性与观察')
                 covered.setdefault(sid, set()).update(observation.evidence_ids)
                 observed.update(observation.evidence_ids)
-            catalog = AnalysisCatalogs().apply(snapshot, AnalysisCatalog.model_validate_json(state['catalog_json']), submission, media, observed)
             affected = list(dict.fromkeys(observation.sample_id for observation in submission.observations))
             successes = [sid for sid in affected if not media[sid].error
-                and {image.image.evidence_id for image in media[sid].images if image.required}.issubset(covered[sid])]
+                and media[sid].evidence_id in covered[sid]
+                and {image.image.evidence_id for image in media[sid].images if image.required}.issubset(delivered)]
             failures = [sid for sid in affected if sid in failure_reports]
             revision = state['revision'] + 1
             ids = ['observation_' + uuid5(NAMESPACE_URL, json.dumps([run_id, current.round_id, submission.commit_key, index])).hex
@@ -93,6 +95,8 @@ class AnalysisCommits:
             connection.executemany('''INSERT INTO analysis_sample_observations(job_id,observation_id,sample_id,round_id,revision,observation_json)
                 VALUES(?,?,?,?,?,?)''', [(run_id, oid, item.sample_id, current.round_id, revision, item.model_dump_json())
                 for oid, item in zip(ids, submission.observations)])
+            catalog = AnalysisCatalogs().apply(snapshot, AnalysisCatalog.model_validate_json(state['catalog_json']),
+                submission, media, observed, connection=connection, run_id=run_id, revision=revision)
             connection.execute('UPDATE analysis_workflow_runs SET revision=?,catalog_json=? WHERE job_id=?',
                 (revision, catalog.model_dump_json(), run_id))
             if successes:

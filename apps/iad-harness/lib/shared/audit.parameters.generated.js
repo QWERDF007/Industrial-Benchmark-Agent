@@ -21,6 +21,7 @@ export const auditEvidenceParameters = {
 export const auditCommitParameters = {
     "commit_key": {
         "type": "string",
+        "description": "本次图级终稿的幂等键，仅同内容重传复用。",
         "title": "Commit Key",
         "required": true
     },
@@ -35,6 +36,7 @@ export const auditCommitParameters = {
                     "suspect",
                     "insufficient"
                 ],
+                "description": "normal表示现有标注与可见图像相符，包括已正确标注的缺陷；suspect表示可见标注问题需复核；insufficient表示证据不足以判断标注是否正确。",
                 "title": "State",
                 "required": true
             },
@@ -61,6 +63,7 @@ export const auditCommitParameters = {
                 "items": {
                     "type": "string"
                 },
+                "description": "本场实际打开并观察的完整原图ID，原始标注及全部局部视图属于该原图，不单独引用裁图或掩膜。",
                 "title": "Evidence Ids",
                 "required": true
             },
@@ -102,6 +105,7 @@ export const auditCommitParameters = {
                     },
                     "title": "AuditCheckAssessment"
                 },
+                "description": "恰好覆盖全部已选check_id，各有观察原因；未选择知识时为空数组。",
                 "title": "Check Assessments",
                 "required": true
             },
@@ -157,6 +161,7 @@ export const auditCommitParameters = {
                     },
                     "title": "AuditFinding"
                 },
+                "description": "本图全部需要复核的标注问题，无疑点时为空数组，不按数量截断。",
                 "title": "Findings",
                 "required": true
             },

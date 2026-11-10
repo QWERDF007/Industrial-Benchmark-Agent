@@ -88,6 +88,7 @@ class GroupAnalysisInputs:
                         'annotation_coordinates':source.annotations.annotation_coordinates,
                         'annotation_availability':source.annotations.availability.model_dump(mode='json'),
                         'annotations':[annotation.model_dump(mode='json',exclude={'mask_path'}) for annotation in annotations],
+                        'category_mapping': source.annotations.policy.category_mapping,
                         'issues':source.issues,'visual_inputs':[]}
                 visual_inputs = sources[source_key]['visual_inputs']
                 other = getattr(saved.sources, 'right' if side == 'left' else 'left')
@@ -102,7 +103,7 @@ class GroupAnalysisInputs:
                 for view in prepared:
                     checkpoint()
                     image = view.image.with_source(sample, dataset_format, annotations)
-                    identity = (image.evidence.representation,image.evidence.sha256)
+                    identity = (sample.sample_id,image.evidence.representation,image.evidence.sha256,tuple(image.evidence.crop_bbox))
                     if identity not in seen:
                         byte_count += Path(image.path).stat().st_size
                         if byte_count>self.MAX_PREPARED_BYTES:

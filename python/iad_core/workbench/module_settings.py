@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
 
@@ -9,6 +9,7 @@ from iad_core.workbench.model_profile import GenerationLimits
 from iad_core.workbench.analysis_sampling import DEFAULT_SAMPLING_RATIO, SamplingRatio
 
 BusinessModule = Literal['exploration', 'knowledge', 'consistency', 'audit']
+JobConcurrency = Annotated[int, Field(ge=1, strict=True)]
 
 
 class ModuleModelReference(AnalysisModel):
@@ -33,11 +34,12 @@ class KnowledgeSettingsValues(ExplorationSettingsValues):
 
 class AuditSettingsValues(ModuleSettingsValues):
     whole_image_max_side: int | None = Field(default=None, ge=1, strict=True)
-    concurrency: int = Field(default=1, ge=1, strict=True)
+    concurrency: JobConcurrency = 1
     agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
 
 
 class ConsistencySettingsValues(ModuleSettingsValues, ConsistencyRetrievalSettings):
+    concurrency: JobConcurrency = 1
     agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
 
 

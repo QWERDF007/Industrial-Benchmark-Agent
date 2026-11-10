@@ -108,4 +108,4 @@ def default_directions() -> list[MiningDirection]:
             revision=hashlib.sha256((preset.name + '\n' + preset.text).encode()).hexdigest()))
         for preset in PromptFiles(directory).list()]
 
-DEFAULT_OBJECTIVE = '联合比较所选范围的真实图像，发现可观察规律、允许变化、异常候选及适用边界，保留支持、反对和证据不足。'
+DEFAULT_OBJECTIVE = '沿用户选择的方向逐登记核对可复用的条件性视觉判据，保留有效支持、反例和实际限制。'

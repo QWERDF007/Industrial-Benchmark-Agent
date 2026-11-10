@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {finalizeFixtureCatalog,respondFixtureTools} from './fixtures/analysis-finalization.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -10,10 +11,10 @@ import {findWorkspaceRoot,resolvePythonPath} from '../lib/server/python-bridge/i
 import {createIadHttpHandler} from '../lib/server/routes/index.js';
 import {createAnalysisAgentHost} from './fixtures/analysis-agent-host.js';
 
-for(const module of ['exploration','knowledge'])test(`native ${module} preserves every registered source state and publishes actual preparation failures`,{timeout:60000},async t=>{
+for(const module of ['exploration','knowledge'])for(const unreadable of [false,true])test(`native ${module} ${unreadable?'retains unreadable sources without publishing a visual result':'preserves every registered source state and publishes actual preparation failures'}`,{timeout:60000},async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-analysis-source-states-'));
   const errors=[],wire=[];
-  let runtime,server;
+  let runtime,server,finalizationCalls=0;
   const previousPolicy=process.env.IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES;
   process.env.IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES='2';
   const provider=http.createServer(async(req,res)=>{
@@ -26,6 +27,10 @@ for(const module of ['exploration','knowledge'])test(`native ${module} preserves
       const context=parse(body.messages[contextIndex].content);
       const pages=body.messages.slice(contextIndex+1).filter(message=>message.role==='tool').map(message=>parse(message.content));
       let calls;
+      if(context.phase==='finalize'){
+        finalizationCalls++;
+        respondFixtureTools(res,finalizeFixtureCatalog(context,pages,module));return;
+      }
       if(!pages.length)calls=context.round.targets.map(target=>({name:'analysis_images',arguments:{sample_id:target.sample_id}}));
       else{
         assert.ok(pages.every(page=>Array.isArray(page.images)),JSON.stringify(pages));
@@ -35,10 +40,10 @@ for(const module of ['exploration','knowledge'])test(`native ${module} preserves
           images.map(item=>item.image.sha256).sort());
         const observations=pages.map(page=>({sample_id:page.sample_id,dataset_id:context.registrations.find(record=>record.sample.sample_id===page.sample_id).sample.dataset_id,
           description:page.error?'保留可见范围与实际取证错误。':'观察当前原图和原始标注状态。',
-          evidence_ids:page.images.map(item=>item.image.evidence_id),report_preparation_error:!!page.error,
+          evidence_ids:page.evidence_id?[page.evidence_id]:[],report_preparation_error:!!page.error,
           limitations:page.error?[page.error]:[],directions:context.selected_directions.map(direction=>({direction_ref:direction.ref,
             status:page.error?'uncertain':'applicable',reason:page.error?'取证受限。':'当前原图可见。'}))}));
-        const support=images.filter(item=>/:(copy-a|copy-b)\.png$/.test(item.sample_id)).map(item=>item.image.evidence_id);
+        const support=pages.filter(item=>item.evidence_id&&/:(copy-a|copy-b)\.png$/.test(item.sample_id)).map(item=>item.evidence_id);
         const existing=context.catalog.checks[0];
         const checks=module==='knowledge'&&(support.length||existing)?[{check_id:'visible-surface',title:'可见表面',subject:'主体',location:'全图',
           criterion:'复看当前可见表面。',allowed_variations:[],limitations:['同像素登记不增加独立支持。'],status:'supported',
@@ -81,15 +86,31 @@ db=Database(str(root/'pages.db'));registry=DatasetRegistry(db)
 config=registry.import_labelme(DatasetImport(format='labelme',name='登记状态',image_dir=str(images),annotation_dir=str(labels),unannotated_is_normal=False))
 with db.connection() as connection:connection.execute('UPDATE samples SET is_excluded=1 WHERE sample_id=?',(config.dataset.id+':excluded.png',))
 (images/'bad-image.png').write_bytes(b'corrupted registered image')
+if sys.argv[2]=='all-bad':
+ for image in images.glob('*.png'):image.write_bytes(b'corrupted registered image')
 for module in ['exploration','knowledge']:ModuleSettings(db).save(dict(module=module,expected_revision=0,settings=dict(model=dict(provider_id='fixture',model_id='native-image'),batch_size=3)))
 print(json.dumps(dict(dataset_id=config.dataset.id,sample_ids=[config.dataset.id+':'+name+'.png' for name in names],direction=default_directions()[0].model_dump(mode='json'))))
-`,root],{cwd:findWorkspaceRoot(),env:{...process.env,PYTHONPATH:path.join(findWorkspaceRoot(),'python')},encoding:'utf8'}));
+`,root,unreadable?'all-bad':'mixed'],{cwd:findWorkspaceRoot(),env:{...process.env,PYTHONPATH:path.join(findWorkspaceRoot(),'python')},encoding:'utf8'}));
   runtime=await createAnalysisAgentHost(root,`http://127.0.0.1:${provider.address().port}/v1`,{onError:error=>errors.push(String(error))});
   const job=await runtime.scheduler.start({submission_id:randomUUID(),analysis_kind:module,dataset_ids:[data.dataset_id],
     ...(module==='exploration'?{normal_images:data.sample_ids,prompt:{text:'观察全部手选登记并保留取证错误。'}}:
       {mining_prompt:{objective:'观察全部登记。',instruction:'保留标注状态，ignore不作为质量依据。',directions:[data.direction]}})});
   await runtime.scheduler.whenIdle();
   const status=await runtime.bridge.execute('analysis_status',{run_id:job.run_id});
+  if(unreadable){
+    assert.equal(status.status,'FAILED',JSON.stringify({status,errors}));
+    assert.deepEqual([status.completed,status.failed,status.unprocessed],[0,8,0]);
+    assert.equal(status.analysis_version_id,null);
+    assert.match(status.execution_error.message,/有效视觉观察/);
+    const snapshot=await runtime.bridge.execute('analysis_agent_snapshot',{run_id:job.run_id});
+    const history=await runtime.bridge.execute('analysis_agent_history',{run_id:job.run_id,query:{page_size:50}});
+    assert.equal(history.total,8);
+    assert.ok(history.items.every(item=>item.report_preparation_error&&item.evidence_ids.length===0));
+    assert.equal(finalizationCalls,0);
+    assert.equal(wire.length,snapshot.plan.rounds.length*2,'零视觉材料不调用定稿模型');
+    assert.deepEqual(errors,[]);
+    return;
+  }
   assert.equal(status.status,'PARTIAL',JSON.stringify({status,errors}));assert.deepEqual([status.completed,status.failed,status.unprocessed],[6,2,0],JSON.stringify({error:status.execution_error,errors}));
   const snapshot=await runtime.bridge.execute('analysis_agent_snapshot',{run_id:job.run_id});assert.equal(snapshot.manifest.records.length,8);
   if(module==='exploration')assert.equal(snapshot.plan.rounds.length,1,'all eight manual picks stay in the first round despite batch size three');
@@ -110,7 +131,7 @@ print(json.dumps(dict(dataset_id=config.dataset.id,sample_ids=[config.dataset.id
     assert.equal(publication.catalog.checks[0].independent_source_count,1);assert.equal(publication.catalog.checks[0].status,'provisional');
     assert.ok(history.items.every(item=>item.directions.length===1));
   }
-  assert.deepEqual(errors,[]);assert.equal(wire.length,snapshot.plan.rounds.length*2);
+  assert.deepEqual(errors,[]);assert.equal(wire.length,snapshot.plan.rounds.length*2+finalizationCalls);assert.equal(publication.finalization.complete,true);
   const api=createIadHttpHandler(runtime.bridge);server=http.createServer(api);await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base=`http://127.0.0.1:${server.address().port}/api/iad`;
   const callsBefore=status.model_calls.map(call=>call.call_id);

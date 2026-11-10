@@ -82,8 +82,8 @@ def analysis_agent_capacity(args, db_path):
 
 def analysis_agent_finish(args, db_path):
     runtime = workbench(db_path)
-    AnalysisAgentJobs(runtime).snapshot(args['run_id'])
-    if args.get('error'):
+    snapshot = AnalysisAgentJobs(runtime).snapshot(args['run_id'])
+    if args.get('error') and (snapshot.schema_version == 1 or runtime.jobs.status(args['run_id'])['completion_pending']):
         runtime.jobs.update(args['run_id'], execution_error=args['error'])
     runtime.jobs.finish_external(args['run_id'])
     AnalysisPublications(runtime.db).publish(args['run_id'])
@@ -139,8 +139,30 @@ def analysis_agent_history(args, db_path):
     return AnalysisQueries(Database(db_path)).observation_history(args['run_id'],args['query']).model_dump(mode='json')
 
 
+def analysis_agent_arguments(args, db_path):
+    return AnalysisQueries(Database(db_path)).arguments(args['run_id'],args['query']).model_dump(mode='json')
+
+
+def analysis_agent_claims(args, db_path):
+    from iad_core.analysis.argument_models import AnalysisEntryQuery
+    query = AnalysisEntryQuery.model_validate(args['query'])
+    return AnalysisQueries(Database(db_path)).claim_history(args['run_id'], **query.model_dump()).model_dump(mode='json')
+
+
+def analysis_agent_finalization_context(args, db_path):
+    from iad_core.analysis.finalization import AnalysisFinalizations
+    return AnalysisFinalizations(AnalysisAgentJobs(workbench(db_path))).context(args['run_id']).model_dump(mode='json')
+
+
+def analysis_agent_finalize(args, db_path):
+    from iad_core.analysis.finalization import AnalysisFinalizations
+    return AnalysisFinalizations(AnalysisAgentJobs(workbench(db_path))).accept(args['run_id'],args['submission']).model_dump(mode='json')
+
+
 ANALYSIS_AGENT_OPERATIONS = (analysis_agent_configuration, analysis_agent_start, analysis_agent_snapshot,
     analysis_agent_context, analysis_agent_session_location, analysis_agent_session_created, analysis_agent_media, analysis_agent_crop, analysis_agent_reference,
     analysis_agent_commit, analysis_agent_model_call_start, analysis_agent_model_call_end, analysis_agent_capacity,
     analysis_agent_finish, analysis_agent_publication, analysis_agent_cancel, analysis_agent_resume, analysis_agent_interrupt,
-    analysis_publication, analysis_direction_choices, analysis_sources, analysis_agent_artifacts, analysis_agent_catalog, analysis_agent_history, analysis_sample_evidence, analysis_observations)
+    analysis_publication, analysis_direction_choices, analysis_sources, analysis_agent_artifacts, analysis_agent_catalog, analysis_agent_history,
+    analysis_agent_arguments, analysis_agent_claims, analysis_agent_finalization_context, analysis_agent_finalize,
+    analysis_sample_evidence, analysis_observations)

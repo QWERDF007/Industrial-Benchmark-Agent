@@ -27,6 +27,16 @@ class PreparedRegistration(AnalysisModel):
     pixel_sha256: str | None = None
     error: str | None = None
 
+    @property
+    def evidence_id(self) -> str | None:
+        return next((item.image.evidence_id for item in self.images if item.image.is_whole_image), None)
+
+    def page(self, offset: int = 0, limit: int | None = None, *, images: list[RegistrationMedia] | None = None) -> 'RegistrationMediaPage':
+        selected = self.images if images is None else images
+        end = None if limit is None else offset + limit
+        return RegistrationMediaPage(sample_id=self.sample_id, evidence_id=self.evidence_id,
+            total=len(selected), offset=offset, images=selected[offset:end], error=self.error)
+
 
 class RegistrationMediaQuery(AnalysisModel):
     sample_id: NonBlankText
@@ -50,6 +60,7 @@ class RegistrationCropQuery(RegistrationMediaQuery):
 
 class RegistrationMediaPage(AnalysisModel):
     sample_id: str
+    evidence_id: str | None = None
     total: int
     offset: int
     images: list[RegistrationMedia]

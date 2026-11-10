@@ -5,11 +5,13 @@ from iad_core.entry import direction_exploration_presets, direction_exploration_
 
 def test_builtin_user_prompts_exclude_tool_workflow_and_annotation_color_boilerplate(tmp_path, monkeypatch):
     from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningPromptConfiguration
+    from iad_core.entry import knowledge_presets
 
     monkeypatch.delenv('IAD_EXPLORATION_PRESETS_DIR', raising=False)
     presets = direction_exploration_presets({}, str(tmp_path / 'workbench.db'))['presets']
     mining = FrozenMiningPrompt.capture(MiningPromptConfiguration(objective='比较边缘', directions=[]))
-    for text in [*(preset['text'] for preset in presets), mining.instruction]:
+    default_user = knowledge_presets({}, str(tmp_path / 'workbench.db'))['instruction']
+    for text in [*(preset['text'] for preset in presets), mining.instruction, default_user]:
         assert 'analysis_images' not in text
         assert '标注框颜色' not in text
         assert '标注颜色也不是采集信息' not in text

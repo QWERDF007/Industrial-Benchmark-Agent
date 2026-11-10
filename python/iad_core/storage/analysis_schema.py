@@ -44,9 +44,35 @@ def initialize_analysis_schema(connection: Connection):
         connection.execute('ALTER TABLE analysis_workflow_commits_next RENAME TO analysis_workflow_commits')
         connection.execute('ALTER TABLE analysis_sample_observations_next RENAME TO analysis_sample_observations')
     connection.execute('CREATE INDEX IF NOT EXISTS idx_analysis_observations_sample ON analysis_sample_observations(job_id,sample_id)')
+    connection.execute('''CREATE TABLE IF NOT EXISTS analysis_claim_revisions (
+        job_id TEXT NOT NULL REFERENCES analysis_workflow_runs(job_id) ON DELETE CASCADE,
+        entry_id TEXT NOT NULL, claim_revision INTEGER NOT NULL, revision INTEGER NOT NULL,
+        reason TEXT, content_json TEXT NOT NULL,
+        PRIMARY KEY(job_id,entry_id,claim_revision))''')
+    connection.execute('''CREATE TABLE IF NOT EXISTS analysis_claim_arguments (
+        job_id TEXT NOT NULL, entry_id TEXT NOT NULL, evidence_id TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('support','counter','context','allowed_variation')),
+        revision INTEGER NOT NULL, claim_revision INTEGER NOT NULL, observation_id TEXT NOT NULL,
+        locator_id TEXT, state TEXT NOT NULL CHECK(state IN ('active','resolved','out_of_scope')),
+        reason TEXT, origin_entry_id TEXT NOT NULL,
+        PRIMARY KEY(job_id,entry_id,evidence_id,role,revision),
+        FOREIGN KEY(job_id,entry_id,claim_revision)
+            REFERENCES analysis_claim_revisions(job_id,entry_id,claim_revision) ON DELETE CASCADE,
+        FOREIGN KEY(job_id,observation_id)
+            REFERENCES analysis_sample_observations(job_id,observation_id) ON DELETE CASCADE)''')
     connection.execute('''CREATE TABLE IF NOT EXISTS analysis_publications (
         version_id TEXT PRIMARY KEY, job_id TEXT NOT NULL REFERENCES analysis_workflow_runs(job_id) ON DELETE CASCADE,
         revision INTEGER NOT NULL, execution_status TEXT NOT NULL, publication_json TEXT NOT NULL)''')
+    connection.execute('''CREATE TABLE IF NOT EXISTS analysis_finalizations (
+        job_id TEXT PRIMARY KEY REFERENCES analysis_workflow_runs(job_id) ON DELETE CASCADE,
+        base_revision INTEGER NOT NULL, reviewed_json TEXT NOT NULL,
+        direction_reviews_json TEXT NOT NULL, complete INTEGER NOT NULL DEFAULT 0,
+        version_id TEXT REFERENCES analysis_publications(version_id))''')
+    connection.execute('''CREATE TABLE IF NOT EXISTS analysis_finalization_commits (
+        job_id TEXT NOT NULL REFERENCES analysis_finalizations(job_id) ON DELETE CASCADE,
+        commit_key TEXT NOT NULL, revision INTEGER NOT NULL,
+        submission_json TEXT NOT NULL, receipt_json TEXT NOT NULL,
+        PRIMARY KEY(job_id,commit_key), UNIQUE(job_id,revision))''')
     connection.execute('''CREATE UNIQUE INDEX IF NOT EXISTS idx_analysis_terminal_publication
         ON analysis_publications(job_id,revision,execution_status)
         WHERE json_type(publication_json,'$.manual_edit') IS NULL OR json_type(publication_json,'$.manual_edit')='null' ''')

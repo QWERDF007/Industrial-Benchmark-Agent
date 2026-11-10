@@ -56,7 +56,7 @@ class AuditQueries:
             for image in media.images:
                 visuals[image.image.evidence_id] = AuditMediaView(sample_id=image.sample_id, image=image.image, source=source)
         return NativeAuditSampleDetail(sample=item, final=sample.result, knowledge=context.knowledge,
-            consistency=context.consistency, evidence=list(visuals.values()),
+            consistency=sample.consistency, evidence=list(visuals.values()),
             errors=[error.message for error in job.errors if error.sample_id == sample_id])
 
     def evidence(self, run_id: str, sample_id: str, evidence_id: str) -> dict:

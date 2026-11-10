@@ -15,7 +15,7 @@ import {ConsistencyAnchorReviewer} from '../../lib/server/consistency/anchor-rev
 import {ConsistencyCheckScheduler} from '../../lib/server/consistency/scheduler.js';
 import {NativeProviders} from '../../lib/server/models/providers.js';
 
-export async function createConsistencyAgentHost({multiCandidate = false, candidateCount, maxVisualInputs, maxCandidatesPerPage, observeAllPages = false, splitFirstPage = false, agentUsage, agentFinish, agentTokenize, agentServerContext = 32768, indexMode, afterSubmission, modelRouting} = {}) {
+export async function createConsistencyAgentHost({multiCandidate = false, withSimilarCandidate = false, candidateCount, maxVisualInputs, maxCandidatesPerPage, observeAllPages = false, splitFirstPage = false, agentUsage, agentFinish, agentTokenize, agentServerContext = 32768, indexMode, afterSubmission, modelRouting, onGeneration} = {}) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-anchor-agent-'));
   const workspace = findWorkspaceRoot();
   const database = path.join(root, 'checks.db');
@@ -59,6 +59,7 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
         agentOwners.set(body, activeAnchor);
       }
       wires.push(body);
+      if (onGeneration) await onGeneration(body);
       const capacity = body.test_role === 'agent' && agentTokenize ? await agentTokenize(body) : undefined;
       if (capacity && capacity.count + (body.max_completion_tokens ?? body.max_tokens) > agentServerContext) {
         res.writeHead(400, {'Content-Type': 'application/json'});
@@ -76,15 +77,26 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
       let delta, finish = 'stop';
       if(JSON.stringify(body.messages.at(-1)).includes('compaction engine')){
         delta={content:'Preserve saved observations and assessments. Read anchor_context for current pending candidates and original evidence.'};
+      } else if (body.test_role === 'vision' && !JSON.parse(body.messages.find(message=>message.role==='user').content[1].text).facts) {
+        const context=JSON.parse(body.messages.find(message=>message.role==='user').content[1].text);
+        const finding={relation:'content_different',reason:'实际原图颜色不同。',
+          main_description:'当前图像的主体颜色。',candidate_description:'候选图像的主体颜色不同。'};
+        delta={content:JSON.stringify({overview:context.scope==='overview'?finding:null,
+          windows:context.windows.map(window=>({window_index:window.window_index,...finding})),
+          media_ids:context.required_image_ids,limitations:[]})};
       } else if (body.test_role === 'vision') {
         const content = body.messages.find(message=>message.role==='user').content;
         const facts = JSON.parse(content[1].text).facts;
-        const media = content.filter(item => item.type === 'text' && item.text.startsWith('视觉证据：'))
-          .map(item => JSON.parse(item.text.slice(5)).evidence_id);
+        const groups = content.filter(item => item.type === 'text' && item.text.startsWith('原图资料：'))
+          .map(item => JSON.parse(item.text.slice(5)));
+        assert.equal(groups.length, Object.keys(facts.candidates).length + 1);
+        assert.ok(content.filter(item => item.type === 'text' && item.text.startsWith('图像视图：'))
+          .every(item => !Object.hasOwn(JSON.parse(item.text.slice(5)), 'evidence_id')));
         assert.ok(content.some(item => item.type === 'image_url' && item.image_url.url.startsWith('data:image/png;base64,')));
         delta = {content: JSON.stringify({observations: Object.keys(facts.candidates).map(candidate_id => ({
           candidate_id, description: '依据实际原图与原始标注核对两侧可比现象、类别与数量',
-          phenomena_comparable: true, appearance_explains_annotation_difference: false, media_ids: media, limitations: [],
+          phenomena_comparable: true, appearance_explains_annotation_difference: false,
+          media_ids: groups.filter(group => [facts.anchor.sample_id, candidate_id].includes(group.sample_id)).map(group => group.evidence_id), limitations: [],
         }))})};
         if (observationsBeforeHold > 0 && (heldAnchorId === undefined || facts.anchor.sample_id === heldAnchorId)
             && --observationsBeforeHold === 0) holdNextPlanner = true;
@@ -115,8 +127,15 @@ export async function createConsistencyAgentHost({multiCandidate = false, candid
             const conclusion = count > 0 ? '多类别' : count < 0 ? '少类别' : '一致';
             return {fingerprint: context.fingerprint,
               observation_ids: [record.observation_id], assessment: {candidate_id, verdict: count ? 'MATERIAL' : 'EQUIVALENT',
-                categories: count ? [conclusion] : [], explanation: `原始标注中，主图有${main.annotations.length}个标注，参考图有${other.annotations.length}个标注`,
-                findings: count ? [conclusion] : []}};
+                explanation: `原始标注中，主图有${main.annotations.length}个标注，参考图有${other.annotations.length}个标注`,
+                findings: count ? [conclusion] : [], issues: count ? [{
+                  type: count > 0 ? 'extra_annotation' : 'missing_annotation',
+                  main_annotation_ids: count > 0 ? main.annotations.map(item => item.annotation_id) : [],
+                  candidate_annotation_ids: count < 0 ? other.annotations.map(item => item.annotation_id) : [],
+                  media_ids: record.result.observations[0].media_ids,
+                  description: '两侧同内容对象的登记标注数量不同。',
+                  review_suggestion: '人工复核原始标注。', limitations: [],
+                }] : []}};
           };
           if (pendingRead) {name = 'anchor_context';args = {candidate_id: pendingRead};}
           else if (pendingAssessment) {name = 'anchor_assess';args = candidateSubmission(pendingAssessment);}
@@ -189,7 +208,7 @@ count=json.loads(sys.argv[6])
 if count is not None: names=['A',*[f'R{index:02d}' for index in range(count)]]
 for name in names:
     Image.new('RGB',(40,40),'green' if name=='C' else 'blue').save(images/(name+'.png'))
-    shapes=[{'label':'scratch','shape_type':'rectangle','points':[[10,10],[20,20]]}] if name in ('A','D') else []
+    shapes=[{'label':'scratch','shape_type':'rectangle','points':[[10,10],[20,20]]}] if name in ('A','D') or name=='C' and sys.argv[7]=='true' else []
     (labels/(name+'.json')).write_text(json.dumps({'imageWidth':40,'imageHeight':40,'shapes':shapes}))
 db=Database(sys.argv[2])
 config=DatasetRegistry(db).import_labelme(DatasetImport(format='labelme',name='私有双角色审核',image_dir=str(images),annotation_dir=str(labels),annotation_policy={'annotation_coverage':'EXHAUSTIVE'}))
@@ -200,10 +219,20 @@ if sys.argv[5] != 'none':
     if sys.argv[5] in ('cached','partial'):
         ContentFeatureCache(db).prepare([config.dataset.id+':'+name+'.png' for name in (names if sys.argv[5]=='cached' else ['A'])],selection,
             extractor=MockFeatureExtractor(profile=selection.profile))
-ModuleSettings(db).save({'module':'consistency','expected_revision':0,'settings':{'mode':'exact','agent_limits':{'max_output_tokens':4096,'request_parameters':{'temperature':0.2}},'model':{'provider_id':'isolated','model_id':'vision'}}})
+if sys.argv[7]=='true':
+    import numpy as np
+    from iad_core.duplicate.index import PixelIndex
+    from iad_core.storage.features import FeatureRepository
+    from iad_core.storage.models import FeatureRecord
+    for name in names:
+        vector=np.zeros(selection.profile.dim,dtype=selection.profile.storage_dtype);vector[0]=1
+        FeatureRepository(db).upsert(FeatureRecord(content_group_id=PixelIndex(db).get(config.dataset.id+':'+name+'.png').content_group_id,
+            profile_id=selection.profile.profile_id,dim=selection.profile.dim,dtype=selection.profile.storage_dtype,embedding_blob=vector.tobytes()))
+retrieval={'mode':'combined','min_similarity':0.9} if sys.argv[7]=='true' else {'mode':'exact'}
+ModuleSettings(db).save({'module':'consistency','expected_revision':0,'settings':{**retrieval,'agent_limits':{'max_output_tokens':4096,'request_parameters':{'temperature':0.2}},'model':{'provider_id':'isolated','model_id':'vision'}}})
 WorkbenchModels(db).save({'expected_revision':0,'selection':{'provider_id':'isolated','model_id':'vision','limits':{'capacity_mode':'vllm_tokenize','max_output_tokens':4096,'max_visual_inputs':json.loads(sys.argv[4]),'request_parameters':{'temperature':0.2}}}})
 print(json.dumps({'dataset_id':config.dataset.id}))
-`, root, database, multiCandidate ? 'multi' : 'pair', JSON.stringify(maxVisualInputs ?? null), indexMode ?? 'none', JSON.stringify(candidateCount ?? null)], {cwd: workspace, env: {...process.env, PYTHONPATH: path.join(workspace, 'python')}, encoding: 'utf8'}));
+`, root, database, multiCandidate ? 'multi' : 'pair', JSON.stringify(maxVisualInputs ?? null), indexMode ?? (withSimilarCandidate?'cached':'none'), JSON.stringify(candidateCount ?? null), JSON.stringify(withSimilarCandidate)], {cwd: workspace, env: {...process.env, PYTHONPATH: path.join(workspace, 'python')}, encoding: 'utf8'}));
   const bridge = new PythonBridge({cwd: workspace, dbPath: database});
   const host = await JobSessionHost.open(path.join(root, 'sessions'),
     async session_id => imageSessionPath(path.join(root, 'sessions'), await bridge.execute('consistency_agent_session_location', {session_id})));

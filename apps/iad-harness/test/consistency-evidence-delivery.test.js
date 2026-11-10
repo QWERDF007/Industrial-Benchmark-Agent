@@ -55,16 +55,18 @@ test('a frozen page cannot reuse its request id for half its candidates and reco
 });
 
 
-test('one selected model uses the exact visible prompt for every Agent and visual request', {timeout: 30000}, async () => {
+test('one selected model preserves separate editable system and user prompts for Agent and visual requests', {timeout: 30000}, async () => {
   const fixture = await createConsistencyAgentHost();
   try {
     const instruction = '直接比较主图相对参考图的标注。\n自定义要求：类别、数量与位置均如实说明。';
+    const system_prompt = '你是标注一致性审核员，只依据本场实际图像与原始标注判断。';
     const anchorId = fixture.datasetId + ':A.png';
     const job = await fixture.scheduler.start({submission_id: randomUUID(), dataset_ids: [fixture.datasetId],
-      mode: 'exact', instruction, subjects: {kind: 'samples', sample_ids: [anchorId]}});
+      mode: 'exact', instruction, system_prompt, subjects: {kind: 'samples', sample_ids: [anchorId]}});
     await fixture.scheduler.whenIdle();
     const snapshot = await fixture.bridge.execute('consistency_agent_snapshot', {run_id: job.run_id});
     assert.equal(snapshot.instruction, instruction);
+    assert.equal(snapshot.system_prompt, system_prompt);
     assert.equal(Object.hasOwn(snapshot, 'agent_instruction'), false);
     assert.equal(Object.hasOwn(snapshot, 'visual_instruction'), false);
     assert.equal(Object.hasOwn(snapshot, 'agent_model'), false);
@@ -72,10 +74,13 @@ test('one selected model uses the exact visible prompt for every Agent and visua
     for (const wire of fixture.wires) {
       assert.equal(wire.model, snapshot.model.model_id);
       if (wire.test_role === 'agent') {
-        assert.deepEqual(wire.messages.filter(message => message.role === 'system').map(message => message.content), [instruction]);
+        assert.deepEqual(wire.messages.filter(message => message.role === 'system').map(message => message.content), [system_prompt]);
+        assert.ok(wire.messages.some(message => message.role === 'user' && message.content.endsWith(instruction)));
       } else {
-        assert.equal(wire.messages[0].content[0].text, instruction);
-        const facts = JSON.parse(wire.messages[0].content[1].text).facts;
+        assert.deepEqual(wire.messages[0], {role: 'system', content: [{type: 'text', text: system_prompt}]});
+        const user = wire.messages.find(message => message.role === 'user');
+        assert.equal(user.content[0].text, instruction);
+        const facts = JSON.parse(user.content[1].text).facts;
         for (const source of Object.values(facts.sources)) assert.equal(Object.hasOwn(source, 'policy'), false);
         for (const evidence of facts.evidence) {
           assert.equal(Object.hasOwn(evidence, 'annotation_applicability'), false);

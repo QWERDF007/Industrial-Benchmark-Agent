@@ -45,9 +45,14 @@ class AnchorAgentContext:
         assessments = self.review.assessments(run_id, anchor_id)
         observations = self.review.observations(run_id, anchor_id)
         assessed = {item.submission.assessment.candidate_id for item in assessments}
+        from iad_core.consistency.identity import CandidateIdentity
+        identity = CandidateIdentity(self.checks.runtime).read(run_id, anchor_id)
         return {'anchor': anchor.model_dump(mode='json', include={'anchor_id', 'session_id', 'attempt', 'state', 'visual_plan'}),
             'fingerprint': anchor.candidates.fingerprint,
-            'candidate_ids': [item.sample_id for item in anchor.candidates.candidates],
+            'identity': {**identity.model_dump(mode='json', exclude={'gates'}),
+                'gates': [gate.model_dump(mode='json', include={'gate_id', 'candidate_id', 'relation', 'gate_status', 'geometry'})
+                    for gate in identity.gates if gate.candidate_id in identity.eligible_ids]},
+            'candidate_ids': identity.eligible_ids,
             'observation_index': [self.receipt(item) for item in observations],
             'observations': [self.observation(item, identity) for item in observations for identity in item.request.candidate_ids
                 if identity == requested or requested is None and identity not in assessed],

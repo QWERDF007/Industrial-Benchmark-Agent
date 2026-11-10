@@ -19,7 +19,7 @@ import type { Dataset, JobSnapshot } from "../../shared/contracts.js";
 import { mediaUrl, message, request } from "../api.js";
 import {useJobs} from "../useJobs.js";
 import {useDatasetCatalog} from '../useDatasetCatalog.js';
-import {jobStatuses} from "../../shared/job-display.js";
+import {formatJobTime,jobStatuses} from "../../shared/job-display.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 import {PlusIcon} from "../AuditIcon.js";
 import { IconButton } from "./IconButton.js";
@@ -290,7 +290,7 @@ export function ExplorationPage({
     }
     const allItems: FullscreenViewerItem[] = currentEvidence.map((item) => ({
       id: item.ref,sampleId:item.sampleId,
-      title: `${item.label} ${item.filename}`,
+      title: item.filename,
       imageUrl: item.fullUrl,
     }));
     const index = currentEvidence.findIndex((item) => item.ref === clickedRef);
@@ -465,7 +465,7 @@ export function ExplorationPage({
         /* Unified Workspace Layout */
         <div className="exp-unified-layout">
           {/* Upper Panel: 探索作业 */}
-          <JobListPanel title="探索作业" className={`exp-job-list ${jobPages > 1 ? 'iba-job-multipage' : ''}`} actions={jobs.length>0&&
+          <JobListPanel title="探索作业" className="exp-job-list" actions={jobs.length>0&&
               <div className="exp-job-list-actions">
                 <label className="exp-input exp-filter-control" aria-label="搜索作业">
                   <input
@@ -511,8 +511,8 @@ export function ExplorationPage({
 
             {filteredJobs.length ? (
               <>
-                <div className="exp-job-table-wrap" role="region" aria-label="探索作业列表" tabIndex={0}>
-                  <table className="exp-job-table">
+                <div className="exp-job-table-wrap iad-job-table-scroll" role="region" aria-label="探索作业列表" tabIndex={0}>
+                  <table className="exp-job-table iad-job-table-grid">
                     <thead>
                       <tr>
                         <th>作业 ID</th>
@@ -544,7 +544,7 @@ export function ExplorationPage({
                           </td>
                           <td><JobStatusButton job={j} onClick={()=>setStatusJobId(j.root_run_id)} /></td>
                           <td><div className="exp-job-dataset" title={datasetNames}><span className="exp-job-dataset-name">{datasetNames}</span></div></td>
-                          <td className="exp-job-time">{new Date(j.submitted_at).toLocaleString('zh-CN',{hour12:false})}</td>
+                          <td className="exp-job-time">{formatJobTime(j.submitted_at)}</td>
                           <td className="exp-job-duration">
                             {j.status === "PENDING" ? "—" : expElapsed(elapsed)}
                           </td>

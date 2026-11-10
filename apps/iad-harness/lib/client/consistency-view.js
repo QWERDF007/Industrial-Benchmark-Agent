@@ -1,6 +1,9 @@
-import { conflictCategories, modelAssessmentLabels } from '../shared/consistency.parameters.generated.js';
-import { request } from './api.js';
+import { conflictCategories, conflictCategoryLabels } from '../shared/consistency.parameters.generated.js';
+import { mediaUrl, request } from './api.js';
 export class ConsistencyView {
+    static modelConclusion(value) {
+        return value && Object.hasOwn(conflictCategoryLabels, value) ? value : '';
+    }
     static media(image, thumbnail = false) {
         return `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-original${thumbnail ? '?max_side=480' : ''}`;
     }
@@ -15,7 +18,7 @@ export class ConsistencyView {
             if (items.length >= result.total)
                 break;
         }
-        return { queryId, items: this.cards(items) };
+        return { queryId, items: this.cards(items, { query_id: queryId }) };
     }
     static async loadCheck(runId, signal) {
         const items = [];
@@ -25,18 +28,31 @@ export class ConsistencyView {
             if (items.length >= result.total)
                 break;
         }
-        return { queryId: runId, items: this.cards(items, runId) };
+        return { queryId: runId, items: this.cards(items, { job_id: runId }) };
     }
-    static cards(items, checkId) {
+    static cards(items, source) {
+        const checkId = 'job_id' in source ? source.job_id : undefined;
         return items.map(item => ({ id: item.group_id, checkId,
+            reference: 'job_id' in source ? { job_id: source.job_id, anchor_id: item.group_id } : { query_id: source.query_id, kind: 'conflicts', group_id: item.group_id, facts_state: item.facts_state },
+            image: item.anchor, candidateCount: item.candidate_count,
             types: checkId ? item.conflict_categories : conflictCategories.filter(category => item.conflict_categories.includes(category) || item.model_categories.includes(category)),
             type: item.annotation_conclusion,
             filename: item.anchor.sample.relative_path.split('/').pop(), url: this.media(item.anchor, true), fullUrl: this.media(item.anchor),
             sourceWidth: item.anchor.sample.width, sourceHeight: item.anchor.sample.height, memberCount: item.member_count, review: item.review_state,
             model: { status: item.model_state === 'MATERIAL' ? 'conflict' : item.model_state === 'EQUIVALENT' ? 'no_conflict' : 'unknown',
-                modelType: item.model_conclusion || modelAssessmentLabels[item.model_state] }, rawItem: item,
+                modelType: this.modelConclusion(item.model_conclusion) }, rawItem: item,
             agreement: item.model_state === 'EQUIVALENT' ? 'different' : item.model_state === 'MATERIAL' && item.model_conclusion ?
                 item.conflict_categories[0] === item.model_conclusion ? 'same' : 'different' : null }));
+    }
+    static imageCards(runId, items) {
+        return items.map(({ sample, summary, image }) => ({ id: sample.sample_id, type: summary.program_conclusion,
+            filename: (image?.sample.relative_path || sample.sample_id.slice(sample.sample_id.indexOf(':') + 1)).split('/').pop(),
+            url: image ? this.media(image, true) : mediaUrl(sample, 'thumbnail'), fullUrl: image ? this.media(image) : mediaUrl(sample),
+            sourceWidth: image?.sample.width, sourceHeight: image?.sample.height, image: image ?? undefined,
+            candidateCount: summary.outcome?.candidate_stats?.eligible ?? ((summary.selected_exact ?? 0) + (summary.selected_similar ?? 0)),
+            reference: { job_id: runId, anchor_id: sample.sample_id },
+            model: { status: summary.reason === 'MODEL_REVIEWED' && summary.verdict === 'MATERIAL' ? 'conflict' : summary.reason === 'MODEL_REVIEWED' && summary.verdict === 'EQUIVALENT' ? 'no_conflict' : 'unknown',
+                modelType: this.modelConclusion(summary.model_conclusion) }, }));
     }
     static async members(reference, signal) {
         if ('job_id' in reference) {

@@ -47,8 +47,8 @@ export function ModuleSettingsSection({module}:{module:BusinessModule}) {
         <ModuleNumberSetting label="异常品抽取权重" value={settings.sampling_ratio.abnormal} min={1} step={1}
           validationMessage="异常品抽取权重需要为正整数" onSave={abnormal=>save({sampling_ratio:{...settings.sampling_ratio,abnormal}})}/>
       </>}
-      {'concurrency' in settings && <ModuleNumberSetting label="同时审计的主图数" value={settings.concurrency} min={1} step={1}
-        validationMessage="同时审计的主图数需要为正整数" onSave={concurrency=>save({concurrency})}/>}
+      {'concurrency' in settings && <ModuleNumberSetting label={module==='consistency'?'同时检查的主图数':'同时审计的主图数'} value={settings.concurrency} min={1} step={1}
+        validationMessage="并发数量需要为正整数" onSave={concurrency=>save({concurrency})}/>}
       {'whole_image_max_side' in settings && <>
         <label className="iad-module-row"><span>整图输入分辨率</span><Select aria-label="整图输入分辨率" value={settings.whole_image_max_side ?? 0}
           onChange={event=>save({whole_image_max_side:Number(event.target.value)||null})}>

@@ -32,11 +32,13 @@ test('mutual candidates keep marked, omitted and insufficient judgments in two a
       assert.equal(context.knowledge,null);assert.equal(context.consistency.result.reason,'MODEL_REVIEWED');
       assert.equal(context.consistency.anchor_id,context.sample_id);
       assert.equal(context.consistency.evidence.length,1);
+      assert.equal(Object.hasOwn(context.consistency,'requests'),false);
+      assert.equal(Object.hasOwn(context.consistency,'observations'),false);
       assert.ok(!JSON.stringify(context).includes('audit-only'));
       const candidate=context.consistency.evidence[0].candidate_id;
       assert.notEqual(candidate,context.sample_id);
       const pages=body.messages.filter(message=>message.role==='tool').map(message=>parse(message.content));
-      assert.ok(pages.every(page=>!page.error),JSON.stringify(pages));
+      assert.ok(pages.every(page=>page&&!page.error),JSON.stringify(body.messages.filter(message=>message.role==='tool')));
       let call;
       if(!pages.length)call={name:'audit_images',arguments:{sample_id:context.sample_id}};
       else if(pages.length===1)call={name:'audit_images',arguments:{sample_id:candidate}};
@@ -48,7 +50,7 @@ test('mutual candidates keep marked, omitted and insufficient judgments in two a
         const marked=context.sample_id.endsWith(':A.png');
         assert.equal(context.target.annotations.length,marked?1:0);
         assert.equal(pages[1].images[0].model_context.annotations.length,marked?0:1);
-        const ids=images.map(item=>item.image.evidence_id);
+        const ids=pages.map(page=>page.evidence_id);
         call={name:'audit_commit',arguments:{commit_key:'final',final:{state:marked?'normal':insufficient?'insufficient':'suspect',
           analysis:marked?'A-audit-only：本图已标出划痕，对照无框不能推翻本图可见标注。':insufficient?'B-insufficient-audit-only：细节不足，保留无法确认的标注范围。':'B-audit-only：本图划痕未标注，对照图提供同像素位置。',
           conclusion:marked?'本图划痕已经标注。':insufficient?'当前局部细节不足以判断标注完整性。':'本图存在划痕漏标疑点。',basis:['原图与同像素候选逐图核对。'],evidence_ids:ids,

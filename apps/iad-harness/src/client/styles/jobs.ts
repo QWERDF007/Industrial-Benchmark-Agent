@@ -1,5 +1,5 @@
 export const jobsStyles = `
-.iad-job-list{min-width:0;overflow:hidden;padding:0;background:var(--iad-surface);border:1px solid var(--iad-panel-border);border-radius:6px;margin-bottom:20px;font-size:var(--iad-font-size)}
+.iad-job-list{min-width:0;overflow:hidden;padding:0;background:var(--iad-surface);border:1px solid var(--iad-panel-border);border-radius:6px;margin-bottom:var(--iad-layout-gap);font-size:var(--iad-font-size)}
 .iad-job-list>nav.iad-pagination{margin:0;padding:11px 18px;border-top:1px solid var(--iad-border)}
 .iad-job-panel{min-width:0}.iad-job-panel>h2{margin-top:26px}
 .iad-job-drawer-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:22px 24px 28px;color:var(--iad-text);font-size:var(--iad-font-size)}
@@ -13,7 +13,8 @@ export const jobsStyles = `
 .iad-job-status-section{padding-top:20px;margin-top:18px;border-top:1px solid var(--iad-border)}
 .iad-job-status-section h3{font-size:14px;font-weight:650;margin:0 0 14px}
 .iad-job-stage-list{display:flex;flex-direction:column;gap:0;position:relative}
-.iad-job-stage{display:grid;grid-template-columns:26px 1fr;gap:10px;min-height:48px;position:relative;color:var(--iad-muted)}
+.iad-job-stage{display:grid;grid-template-columns:26px minmax(0,1fr) auto;column-gap:10px;min-height:48px;position:relative;color:var(--iad-muted)}
+.iad-job-stage-time{font-variant-numeric:tabular-nums;white-space:nowrap;padding-top:3px;text-align:right}
 .iad-job-stage:not(:last-child)::before{content:'';position:absolute;left:11px;top:25px;bottom:1px;width:1px;background:var(--iad-border)}
 .iad-job-dot{display:grid;place-items:center;box-sizing:border-box;width:24px;height:24px;border-radius:50%;border:1px solid #ced8e3;background:var(--iad-surface);font-size:12px;color:#63758d;z-index:1}
 .iad-job-stage[data-state=done] .iad-job-dot{background:#f2f5f9;border-color:#9baabd;color:var(--iad-text)}

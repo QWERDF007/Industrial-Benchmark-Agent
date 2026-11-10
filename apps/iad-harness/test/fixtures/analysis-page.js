@@ -42,7 +42,8 @@ export async function verifyAnalysisRoiPage(base) {
     const version=await(await element('button[aria-label="导出当前作业成果"]')).getAttribute('data-version-id');
     const publication=await(await fetch(base+'/api/iad/analysis/publications/'+version)).json();
     const lastRoi=publication.evidence.filter(item=>item.image.role==='roi'&&item.image.representation==='raw').at(-1);
-    await(await element('button[aria-label="放大支持证据 1"]')).click();
+    await(await element('button[role="tab"][id$="counter"]')).click();
+    await(await element('button[aria-label="放大反对证据 1"]')).click();
     await element('#full-overlay');
     await driver.wait(async()=>!!await(await element('button[aria-label="下一张图像"]')).isDisplayed(),10000);
     for(let index=0;index<59;index++)await driver.actions().sendKeys(Key.ARROW_RIGHT).perform();
@@ -73,7 +74,7 @@ export async function verifyAnalysisPage(base, module, {partialVersionId,emptyCa
       assert.equal((await driver.findElements(By.css('button[aria-label="导出当前作业成果"]'))).length,0);
       await fs.mkdir(output,{recursive:true});await fs.writeFile(path.join(output,module+'-initial-failure.png'),await driver.takeScreenshot(),'base64');return;
     }
-    const title = emptyCatalog ? '本次没有形成可用的候选方向。' : module === 'exploration' ? '末轮边缘检查' : '末轮表面关系';
+    const title = emptyCatalog ? '本次没有形成可用的候选方向。' : module === 'exploration' ? '边缘检查' : '表面关系';
     await driver.wait(() => driver.executeScript('return document.body.textContent.includes(arguments[0])', title), 10000,
       'the original result page displays the native publication');
     const version=await(await element('button[aria-label="导出当前作业成果"]')).getAttribute('data-version-id');
@@ -85,7 +86,7 @@ export async function verifyAnalysisPage(base, module, {partialVersionId,emptyCa
     await fs.writeFile(path.join(output, module + (emptyCatalog?'-empty':'') + '-results.png'), await driver.takeScreenshot(), 'base64');
     if(emptyCatalog){assert.equal((await driver.findElements(By.css('button[aria-label^="查看方向 "]'))).length,0);return;}
     if (module === 'exploration') await click('查看方向');
-    else await click('查看知识条目 末轮表面关系');
+    else await click('查看知识条目 表面关系');
     await driver.wait(() => driver.executeScript('const images=[...document.querySelectorAll("dialog[open] img")];return images.length>0&&images.every(i=>i.complete&&[32,6].includes(i.naturalWidth))'), 10000,
       'evidence in the existing dialog resolves to the prepared native pixels');
     await fs.writeFile(path.join(output, module + '-evidence.png'), await driver.takeScreenshot(), 'base64');
@@ -94,7 +95,7 @@ export async function verifyAnalysisPage(base, module, {partialVersionId,emptyCa
       await (await element('#review-note')).sendKeys('实际页面核实的原生知识条目。');
       await (await element('#save-review')).click();
       await driver.wait(() => driver.executeScript('return !document.querySelector(".knowledge-entry-dialog")'), 10000);
-      await click('查看知识条目 末轮表面关系');
+      await click('查看知识条目 表面关系');
       await driver.wait(async () => (await element('input[name="knowledge-review"][value="confirmed"]')).isSelected(), 10000);
       assert.equal(await (await element('#review-note')).getAttribute('value'), '实际页面核实的原生知识条目。');
       if (partialVersionId) {
@@ -102,12 +103,12 @@ export async function verifyAnalysisPage(base, module, {partialVersionId,emptyCa
         const versions = await element('select[aria-label="知识结果版本"]');
         await (await versions.findElement(By.css(`option[value="${partialVersionId}"]`))).click();
         await driver.wait(() => driver.executeScript('return document.querySelectorAll(".knowledge-row").length===3'), 10000);
-        assert.ok(!(await driver.findElement(By.css('#knowledge-body')).getText()).includes('末轮表面关系'),
+        assert.ok(!(await driver.findElement(By.css('#knowledge-body')).getText()).includes('表面关系'),
           'the selected partial version keeps its three checks after the job resumes');
         await fs.writeFile(path.join(output, 'knowledge-partial-version.png'), await driver.takeScreenshot(), 'base64');
       } else {
         await click('关闭知识详情');
-        await click('删除知识条目 末轮表面关系');
+        await click('删除知识条目 表面关系');
         await(await element('dialog[aria-label="移除知识条目"] #confirm-accept')).click();
         await driver.wait(()=>driver.executeScript('return document.querySelectorAll(".knowledge-row").length===0&&document.body.textContent.includes("已生成维护版本")'),10000);
         const versions=await element('select[aria-label="知识结果版本"]');
@@ -121,8 +122,8 @@ export async function verifyAnalysisPage(base, module, {partialVersionId,emptyCa
         assert.equal(edition.coverage.completed,19);
         await fs.writeFile(path.join(output,'knowledge-maintenance.png'),await driver.takeScreenshot(),'base64');
         await(await versions.findElement(By.css(`option[value="${version}"]`))).click();
-        await driver.wait(()=>driver.executeScript('return document.body.textContent.includes("末轮表面关系")'),10000);
-        await click('查看知识条目 末轮表面关系');
+        await driver.wait(()=>driver.executeScript('return document.body.textContent.includes("表面关系")'),10000);
+        await click('查看知识条目 表面关系');
         await driver.wait(async()=>(await element('input[name="knowledge-review"][value="confirmed"]')).isSelected(),10000);
       }
     } else {

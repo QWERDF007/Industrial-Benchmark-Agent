@@ -21,6 +21,7 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
 
     database, _, config = dataset
     sent = []
+    response_ids = None
 
     def respond(request):
         if request.url.path.endswith('/tokenize'):
@@ -28,10 +29,19 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         body = json.loads(request.content)
         sent.append(body)
         content = next(message for message in body['messages'] if message['role']=='user')['content']
-        media = [json.loads(part['text'].removeprefix('视觉证据：')) for part in content
-            if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
+        groups = [json.loads(part['text'].removeprefix('原图资料：')) for part in content
+            if part['type'] == 'text' and part['text'].startswith('原图资料：')]
+        media = [json.loads(part['text'].removeprefix('图像视图：')) for part in content
+            if part['type'] == 'text' and part['text'].startswith('图像视图：')]
         facts = json.loads(content[1]['text'])['facts']
-        assert set(facts['required_media_ids'][config.dataset.id + ':scratch.png']) == {item['evidence_id'] for item in media}
+        expected_ids = {group['evidence_id'] for group in groups}
+        assert len(expected_ids) == 2
+        assert {group['sample_id'] for group in groups} == {config.dataset.id + ':dent.png', config.dataset.id + ':scratch.png'}
+        assert all('annotations' in group for group in groups)
+        assert all('evidence_id' not in item for item in media)
+        assert media and any(item['role'] == 'roi' for item in media)
+        assert set(facts['required_image_ids'][config.dataset.id + ':scratch.png']) == expected_ids
+        assert all('evidence_id' not in view for source in facts['sources'].values() for view in source['visual_inputs'])
         for part in content:
             if part['type'] == 'image_url':
                 with Image.open(io.BytesIO(base64.b64decode(part['image_url']['url'].split(',')[1]))) as pixels:
@@ -39,7 +49,8 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         answer = {'observations': [{'candidate_id': config.dataset.id + ':scratch.png',
             'description': '两侧原始像素相同，主图和参考图的类别名称不同',
             'phenomena_comparable': True, 'appearance_explains_annotation_difference': False,
-            'media_ids': [item['evidence_id'] for item in media], 'limitations': ['仅核对标注一致性，不裁决哪侧标注正确']}]}
+            'media_ids': sorted(expected_ids) if response_ids is None else response_ids,
+            'limitations': ['仅核对标注一致性，不裁决哪侧标注正确']}]}
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop',
             'message': {'content': json.dumps(answer)}}]})
 
@@ -70,9 +81,9 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         assert len(sent) == 1
         with pytest.raises(ValueError, match='新的request_id'):
             review.observe(job_id, anchor_id, {**request, 'question': '在原始像素中补充核对标注边界'})
-        actual = [json.loads(part['text'].removeprefix('视觉证据：')) for part in next(message for message in sent[0]['messages'] if message['role']=='user')['content']
-            if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
-        assert [item.evidence_id for item in observed.request.media] == [item['evidence_id'] for item in actual]
+        actual = [json.loads(part['text'].removeprefix('图像视图：')) for part in next(message for message in sent[0]['messages'] if message['role']=='user')['content']
+            if part['type'] == 'text' and part['text'].startswith('图像视图：')]
+        assert [item.sha256 for item in observed.request.media] == [item['sha256'] for item in actual]
         assert any(item['source'] == 'model' and item['crop_bbox'] == [0, 0, 17, 14] and item['sent_size'] == [17, 14] for item in actual)
         assert observed.result.observations[0].phenomena_comparable
         assert review.observe(job_id, anchor_id, request) == observed
@@ -80,6 +91,14 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         calls = ModelCalls(database).list(job_id)
         assert [call.operation for call in calls] == ['tokenize', 'generate']
         assert all(call.role == 'vision' and call.request_id == request['request_id'] for call in calls)
+        from iad_core.workbench.completion import ModelOutputError
+        roots = observed.result.observations[0].media_ids
+        crop_id = next(image.evidence_id for image in observed.request.media if image.role == 'roi')
+        for response_ids in ([roots[0]], [roots[0], crop_id], [*roots, 'foreign-image'], [*roots, roots[0]]):
+            with pytest.raises(ModelOutputError, match='visual_image_references'):
+                review.observe(job_id, anchor_id, {**request, 'request_id': str(uuid4())})
+            assert review.observations(job_id, anchor_id) == [observed]
+        response_ids = None
         assert checks.anchor(job_id, anchor_id).result is None
         reference = {'candidate_id': request['candidate_ids'][0], 'comparison': {
             key: observed.request.facts['candidates'][request['candidate_ids'][0]]['comparison'][key]
@@ -89,6 +108,11 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
             'findings': ['原始标注类别不一致']}], 'overall': {'verdict': 'MATERIAL', 'text': '类别不一致',
             'references': [reference]}, 'conclusions': [{'text': '同像素图的标注类别不一致', 'references': [reference]}],
             'limitations': []}
+        frozen = runtime.consistency_service.evidence(reference['comparison']['evidence_id'])
+        draft['assessments'][0]['issues'] = [{'type': 'category_mismatch',
+            'main_annotation_ids': [frozen.sources.left.annotations.annotations[0].annotation_id],
+            'candidate_annotation_ids': [frozen.sources.right.annotations.annotations[0].annotation_id],
+            'description': '同一对象的原始类别不同。', 'media_ids': observed.result.observations[0].media_ids}]
         submission = {'fingerprint': selected.fingerprint, 'draft': draft,
             'observation_ids': {request['candidate_ids'][0]: [observed.observation_id]}}
         for invalid in ('coverage', 'observation', 'aggregate'):
@@ -104,11 +128,11 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
             assert checks.anchor(job_id, anchor_id).result is None
             assert runtime.jobs.status(job_id)['completed'] == 0
         submitted = {'fingerprint': selected.fingerprint,
-            'assessment': {key: value for key, value in draft['assessments'][0].items() if key != 'conclusion'},
+            'assessment': {key: value for key, value in draft['assessments'][0].items() if key not in ('conclusion', 'categories')},
             'observation_ids': [observed.observation_id]}
         with pytest.raises(ValidationError) as invalid_decision:
             review.assess(job_id, anchor_id, {**submitted,
-                'assessment': {**submitted['assessment'], 'categories': []}})
+                'assessment': {**submitted['assessment'], 'issues': []}})
         problems = invalid_decision.value.errors(include_context=False, include_url=False)
         assert len(problems) == 1
         assert problems[0]['loc'] == ('assessment',)
@@ -149,7 +173,8 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         detail = results.detail(job_id, anchor_id)
         assert detail.original_conclusion == detail.model_conclusion == '类别不一致'
         assert detail.observations == [observed]
-        assert detail.requests == [observed.request]
+        assert detail.requests[0] == observed.request
+        assert len(detail.requests) == 5
         assert detail.evidence[0].candidate_id == request['candidate_ids'][0]
         assert detail.evidence[0].evidence_id == reference['comparison']['evidence_id']
         assert detail.result == result
@@ -212,13 +237,23 @@ def test_image_and_annotation_comparison_does_not_require_external_policy_or_reg
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
         content = next(message for message in json.loads(request.content)['messages'] if message['role']=='user')['content']
-        media = [json.loads(item['text'].removeprefix('视觉证据：'))['evidence_id'] for item in content
-            if item['type'] == 'text' and item['text'].startswith('视觉证据：')]
-        answer = {'observations': [{'candidate_id': reference_id,
-            'description': '局部对象可比，框的位置不同，但没有可靠配准' if case == 'unregistered_position' else '两侧表面实际状态不同',
-            'phenomena_comparable': case == 'unregistered_position',
-            'appearance_explains_annotation_difference': case != 'unregistered_position',
-            'media_ids': media, 'limitations': []}]}
+        media = [json.loads(item['text'].removeprefix('原图资料：'))['evidence_id'] for item in content
+            if item['type'] == 'text' and item['text'].startswith('原图资料：')]
+        media = list(dict.fromkeys(media))
+        if case in ('different_object', 'unregistered_position'):
+            finding = {'relation': 'content_different' if case == 'different_object' else 'unverified',
+                'reason': '真实内容不同。' if case == 'different_object' else '关键局部不能确认。',
+                'main_description': '主图实际表面状态。', 'candidate_description': '候选实际表面状态。'}
+            context = json.loads(content[1]['text'])
+            answer = {'overview': finding if context['scope'] == 'overview' else None,
+                'windows': [{'window_index': window['window_index'], **finding} for window in context['windows']],
+                'media_ids': media, 'limitations': []}
+        else:
+            answer = {'observations': [{'candidate_id': reference_id,
+                'description': '局部对象可比，框的位置不同，但没有可靠配准' if case == 'unregistered_position' else '两侧表面实际状态不同',
+                'phenomena_comparable': case == 'unregistered_position',
+                'appearance_explains_annotation_difference': case != 'unregistered_position',
+                'media_ids': media, 'limitations': []}]}
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
@@ -233,54 +268,34 @@ def test_image_and_annotation_comparison_does_not_require_external_policy_or_reg
         candidates = checks.retrieve(job_id, main_id)
         assert [item.sample_id for item in candidates.candidates] == [reference_id]
         review = ConsistencyAgentReview(runtime, client)
-        observed = review.observe(job_id, main_id, {'request_id': str(uuid4()), 'fingerprint': candidates.fingerprint,
-            'candidate_ids': [reference_id], 'question': '核实物体实际状态是否解释标注差异'})
-        comparison = observed.request.facts['candidates'][reference_id]['comparison']
-        reference = {'candidate_id': reference_id, 'comparison': {key: comparison[key] for key in ('result_id', 'evidence_id')}}
-        draft = {'assessments': [{'candidate_id': reference_id, 'verdict': 'EQUIVALENT', 'conclusion': '一致',
-            'categories': [], 'explanation': '标注差异由实物实际表面状态解释', 'findings': []}],
-            'overall': {'verdict': 'EQUIVALENT', 'text': '一致', 'references': [reference]},
-            'conclusions': [{'text': '实物状态不同，各侧标注与各自可见现象相符', 'references': [reference]}], 'limitations': []}
-        submission = {'fingerprint': candidates.fingerprint, 'draft': draft,
-            'observation_ids': {reference_id: [observed.observation_id]}}
-        if case == 'unregistered_position':
-            decision = {'fingerprint': candidates.fingerprint, 'observation_ids': [observed.observation_id],
-                'assessment': {'candidate_id': reference_id, 'verdict': 'MATERIAL', 'categories': ['位置差异'],
-                    'explanation': '主图框相对参考图向左偏移，局部可见对象相似', 'findings': ['主图框的左边界比参考图向左两像素']}}
-            saved = review.assess(job_id, main_id, decision)
-            result = review.finalize(job_id, main_id, {'fingerprint': candidates.fingerprint,
-                'assessment_ids': [saved.assessment_id]})
-            assert result.overall.verdict == 'MATERIAL'
-            assert result.assessments[0].conclusion == '位置差异'
-            assert result.assessments[0].findings == ['主图框的左边界比参考图向左两像素']
-            assert runtime.jobs.status(job_id)['completed'] == 1
-        elif case == 'different_object':
-            unsupported = deepcopy(submission)
-            unsupported['draft']['overall'].update(verdict='MATERIAL', text='多类别')
-            unsupported['draft']['assessments'][0].update(verdict='MATERIAL', conclusion='多类别', categories=['多类别'])
-            unsupported['draft']['assessments'][0]['explanation'] = '主图有一个标注，参考图有效标注为空，主图相对参考图多标。'
-            assert review.submit(job_id, main_id, unsupported).overall.verdict == 'MATERIAL'
+        state = review.verify(job_id, main_id)
+        if case in ('different_object', 'unregistered_position'):
+            assert not state.eligible_ids
+            result = review.finish_rules(job_id, main_id)
+            assert result.pass_reason == 'no_eligible_candidate'
+            assert result.candidate_stats.assessed == 0
+            with pytest.raises(ValueError, match='未通过'):
+                review.observe(job_id, main_id, {'request_id': str(uuid4()), 'fingerprint': candidates.fingerprint,
+                    'candidate_ids': [reference_id], 'question': '不能审核已跳过的候选。'})
             from iad_core.consistency.agent_results import ConsistencyAgentResults
             results = ConsistencyAgentResults(database)
-            detail = results.detail(job_id, main_id)
-            assert detail.original_conclusion == '多类别'
-            assert detail.model_conclusion == '多类别'
-            report = results.report(job_id)
-            assert report.original_conflicts == 1
-            assert report.original_categories == {'多类别': 1}
-            assert report.model_categories == {'多类别': 1}
-            assert report.agreement == {'一致': 1, '不一致': 0}
-            gallery = results.gallery(job_id)
-            assert gallery.total == 1
-            assert gallery.items[0].conflict_categories == ['多类别']
-            assert gallery.items[0].model_state == 'MATERIAL'
-            assert gallery.items[0].model_conclusion == '多类别'
-        else:
-            direction = '少类别' if case == 'exact_missing' else '多类别'
-            draft['overall'].update(verdict='MATERIAL', text=direction)
-            draft['assessments'][0].update(verdict='MATERIAL', conclusion=direction, categories=[direction],
-                explanation='主图相对参考图的标注数量不同')
-            assert review.submit(job_id, main_id, submission).overall.text == direction
+            assert results.gallery(job_id).total == 0
+            assert results.members(job_id, main_id).items == []
+            return
+        observed = review.observe(job_id, main_id, {'request_id': str(uuid4()), 'fingerprint': candidates.fingerprint,
+            'candidate_ids': [reference_id], 'question': '核对同内容对象的标注数量。'})
+        frozen = runtime.consistency_service.evidence(observed.request.facts['candidates'][reference_id]['comparison']['evidence_id'])
+        direction = 'missing_annotation' if case == 'exact_missing' else 'extra_annotation'
+        saved = review.assess(job_id, main_id, {'fingerprint': candidates.fingerprint,
+            'observation_ids': [observed.observation_id], 'assessment': {'candidate_id': reference_id,
+                'verdict': 'MATERIAL', 'explanation': '主图相对于候选的同内容对象标注数量不同。', 'issues': [{
+                    'type': direction,
+                    'main_annotation_ids': [item.annotation_id for item in frozen.sources.left.annotations.annotations],
+                    'candidate_annotation_ids': [item.annotation_id for item in frozen.sources.right.annotations.annotations],
+                    'description': '同一可见对象只在一侧有框。', 'media_ids': observed.result.observations[0].media_ids}]}})
+        result = review.finalize(job_id, main_id, {'fingerprint': candidates.fingerprint, 'assessment_ids': [saved.assessment_id]})
+        assert result.result == 'discrepancy'
+        assert result.issues[0].type == direction
     finally:
         client.close()
         runtime.close()

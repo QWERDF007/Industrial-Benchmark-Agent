@@ -20,7 +20,7 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
   const pictures = useMemo(() => {
     return [...(detail?.evidence||[])].sort((left,right)=>Number(right.sample_id===sample.sample_id&&right.image.role==='overview')-Number(left.sample_id===sample.sample_id&&left.image.role==='overview')).map(item=>{
       const record=item.source,image=item.image;
-      const filename=record?.sample.relative_path||item.sample_id;
+      const filename=record?.sample.relative_path||item.sample_id.slice(item.sample_id.indexOf(':')+1);
       const view:ImageSource={src:nativeAuditEvidenceUrl(sample.run_id,sample.sample_id,image),title:filename,
         width:image.original_size[0],height:image.original_size[1],sampleId:item.sample_id,evidence:image,
         ...(record?datasetImageAnnotations(record.dataset_format,record.sample,record.annotations):{})};
@@ -28,7 +28,7 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
     });
   }, [detail, sample.run_id, sample.sample_id]);
   const mainImage = pictures[0]?.view || {src:auditSampleImage(sample, taskId),
-    title:'审计主图', width:sample.width, height:sample.height};
+    title:sample.filename, width:sample.width, height:sample.height};
   const comparison = pictures[comparisonIndex + 1];
   return <><Modal title="图像审计详情" className="audit-dialog" header={false} onClose={onClose}>
     <header className="audit-dialog-head"><h2>图像审计详情</h2><IconButton icon="close" label="关闭图像审计详情" onClick={onClose} /></header>

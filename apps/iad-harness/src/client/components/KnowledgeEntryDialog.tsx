@@ -29,7 +29,7 @@ export function KnowledgeEntryDialog({versionId, checkId, onClose, onSaved}: {
   },[reviewRevision]);
   const open=(item:KnowledgeEvidence)=>setImage({id:item.image.evidence_id,
     src:`/api/iad/knowledge/evidence/${encodeURIComponent(versionId)}/${encodeURIComponent(item.image.evidence_id)}`,
-    title:detail?.check.title || '知识证据',width:item.image.sent_size[0],height:item.image.sent_size[1],sampleId:item.sample_id,evidence:item.image});
+    title:item.sample_id.slice(item.sample_id.indexOf(':')+1),width:item.image.sent_size[0],height:item.image.sent_size[1],sampleId:item.sample_id,evidence:item.image});
   return <><Modal title="知识条目详情" className="detail-modal knowledge-entry-dialog v46-app" header={false} onClose={()=>{if(!saving)onClose();}}>
     <header className="modalheader"><h2 id="kb-detail-title">{detail?.check.title || '正在读取知识条目'}</h2>
       <IconButton icon="close" type="button" id="close-detail" label="关闭知识详情" disabled={saving} onClick={onClose} /></header>

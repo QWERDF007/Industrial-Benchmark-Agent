@@ -4,6 +4,9 @@ import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {v4 as uuid} from 'uuid';
 import {PromptDrawer} from './PromptDrawer.js';
 import {Select} from './Select.js';
+import {DatasetScopeSelector} from './DatasetScopeSelector.js';
+import {useQueries} from '@tanstack/react-query';
+import {queryClient} from '../query-client.js';
 import {Button} from './Button.js';
 import {IconButton} from "./IconButton.js";
 import {Pagination} from "./Pagination.js";
@@ -17,7 +20,7 @@ import { useWorkspace } from "../workspace.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 
 import type { KnowledgeCheckPage, KnowledgeCheckReview, KnowledgeVersion, KnowledgeVersionCatalog } from "../../shared/domain.generated.js";
-import {jobStatuses} from '../../shared/job-display.js';
+import {formatJobTime,jobStatuses} from '../../shared/job-display.js';
 import {JobStatusDrawer, JobStatusButton, JobStatusAction} from './JobStatusDrawer.js';
 import {KnowledgeEntryDialog} from "./KnowledgeEntryDialog.js";
 import {KnowledgeMiningCreate} from "./KnowledgeMiningCreate.js";
@@ -36,7 +39,6 @@ interface KnowledgeItemData {
 interface UiJobItem {
   id: string;
   name: string;
-  subset: string;
   status: "completed" | "running" | "interrupted" | "failed";
   statusLabel: string;
   statusBadgeClass: string;
@@ -69,16 +71,24 @@ export function KnowledgePage({
   const datasets=catalog.data?.datasets || [dataset], groups=catalog.data?.groups || [];
 
   // Hierarchy
-  const initialParentId = getDatasetGroupId(dataset);
-  const [selectedParentId, setSelectedParentId] = useState<string>(() => initialParentId);
-  const [selectedChildId, setSelectedChildId] = useState<string>(() => dataset.dataset_id);
+  const selectedParentId = getDatasetGroupId(dataset);
+  const selectedChildIds = view.datasetIds ?? [dataset.dataset_id];
+  const scopeKey = JSON.stringify(selectedChildIds);
 
   // Jobs & Knowledge hooks
   const [revision, setRevision] = useState(0);
   const updated = useCallback(() => setRevision(v => v + 1), []);
-  const polling = useJobs("knowledge", selectedChildId, updated, view.job);
-  const versionsResource = useResource<KnowledgeVersionCatalog>(`/knowledge/versions?${new URLSearchParams({dataset_id: selectedChildId})}`, revision + refreshRevision);
-  const versions = versionsResource.data?.versions || [];
+  const polling = useJobs("knowledge", selectedChildIds, updated, view.job);
+  const versionResources = useQueries({queries:selectedChildIds.map(dataset_id=>{
+    const path=`/knowledge/versions?${new URLSearchParams({dataset_id})}`;
+    return {queryKey:['iad','resource',path],queryFn:()=>request<KnowledgeVersionCatalog>(path)};
+  })},queryClient);
+  const versions = [...new Map(versionResources.flatMap(result=>result.data?.versions || []).map(version=>[version.version_id,version])).values()];
+  const versionError = versionResources.find(result=>result.error)?.error;
+  useEffect(()=>{
+    for(const dataset_id of JSON.parse(scopeKey) as string[])
+      void queryClient.invalidateQueries({queryKey:['iad','resource',`/knowledge/versions?${new URLSearchParams({dataset_id})}`],exact:true});
+  },[scopeKey,revision,refreshRevision]);
   const loadError=catalog.error;
 
   // Local job list & selection
@@ -104,21 +114,15 @@ export function KnowledgePage({
   const toast = useCallback((msg: string) => setToastMsg(msg), []);
   useEffect(()=>{if(!toastMsg)return;const timer=setTimeout(()=>setToastMsg(""),2800);return()=>clearTimeout(timer);},[toastMsg]);
 
-  // Sync datasets and hierarchy
-  useEffect(() => {
-    setSelectedParentId(getDatasetGroupId(dataset));
-    setSelectedChildId(dataset.dataset_id);
-  }, [dataset.dataset_id]);
-
   const jobList: UiJobItem[] = polling.jobs.map(job => {
     const status = job.status === 'COMPLETED' ? 'completed' : ['RUNNING', 'PENDING'].includes(job.status) ? 'running'
       : ['INTERRUPTED', 'CANCELLED'].includes(job.status) ? 'interrupted' : 'failed';
     const seconds = job.finished_at && job.started_at ? Math.max(0, Math.round((Date.parse(job.finished_at) - Date.parse(job.started_at)) / 1000)) : null;
     return {id: job.run_id, name: job.mining_prompt?.configuration.objective.split('\n')[0] || `知识挖掘 ${job.run_id.slice(-6)}`,
-      subset: job.dataset_ids.includes(selectedChildId) ? selectedChildId : job.dataset_id, status, statusLabel: jobStatuses[job.status],
+      status, statusLabel: jobStatuses[job.status],
       statusBadgeClass: {completed:'green',running:'blue',interrupted:'gray',failed:'red'}[status],
       count: versions.find(version => version.version_id === job.knowledge_version_id)?.check_count ?? null,
-      at: new Date(job.submitted_at).toLocaleString('zh-CN', {hour12:false}), durationText: formatDuration(seconds),
+      at: formatJobTime(job.submitted_at), durationText: formatDuration(seconds),
       prompt: job.mining_prompt?.instruction || '',
       systemPrompt:job.system_prompt||null,
       knowledgeVersionId: job.knowledge_version_id || null};
@@ -131,17 +135,14 @@ export function KnowledgePage({
   }, [datasets, groups, selectedParentId]);
 
   const handleParentChange = (parentId: string) => {
-    setSelectedParentId(parentId);
     const children = datasets.filter(d => getDatasetGroupId(d) === parentId);
-    if (children.length > 0) {
-      setSelectedChildId(children[0].dataset_id);
-      workspace.selectDataset(children[0].dataset_id);
-    }
+    if (children.length) workspace.openLocation({pageId,datasetId:children[0].dataset_id,
+      datasetIds:children.map(child=>child.dataset_id),job:'',version:'',tab:'results'});
   };
 
-  const handleChildChange = (childId: string) => {
-    setSelectedChildId(childId);
-    workspace.selectDataset(childId);
+  const handleChildToggle = (childId: string) => {
+    const next=selectedChildIds.includes(childId)?selectedChildIds.filter(id=>id!==childId):[...selectedChildIds,childId];
+    workspace.openLocation({pageId,datasetId:next[0] || dataset.dataset_id,datasetIds:next,job:'',version:'',tab:'results'});
   };
 
   const handleRefresh = () => {
@@ -150,16 +151,14 @@ export function KnowledgePage({
     toast("已刷新当前数据");
   };
 
-  // Filter jobs by current dataset/subset, search and status
-  const scopedJobs = jobList.filter(job => job.subset === selectedChildId);
-
+  // Filter jobs in the selected scope.
   const filteredJobs = useMemo(() => {
-    return scopedJobs.filter(j => {
+    return jobList.filter(j => {
       const matchSearch = !jobSearch.trim() || j.name.toLowerCase().includes(jobSearch.toLowerCase());
       const matchStatus = jobStatus === "all" || j.status === jobStatus;
       return matchSearch && matchStatus;
     });
-  }, [scopedJobs, jobSearch, jobStatus]);
+  }, [jobList, jobSearch, jobStatus]);
 
   // Job pagination (8 per page SSOT)
   const jobsPerPage = 8;
@@ -197,7 +196,7 @@ export function KnowledgePage({
   }, [versions, selectedJob?.knowledgeVersionId]);
   const selectedVersionId = view.job === selectedJob?.id && resultVersions.some(version => version.version_id === view.version)
     ? view.version : selectedJob?.knowledgeVersionId;
-  const canMaintain = !!selectedVersionId && versionsResource.data?.current_version_id === selectedVersionId;
+  const canMaintain = !!selectedVersionId && versionResources.some(result=>result.data?.current_version_id === selectedVersionId);
   const checkQuery = new URLSearchParams({version_id:selectedVersionId || '', page:String(entryPage), page_size:'8', search:knowledgeSearch, review_status:knowledgeStatus});
   const checksResource = useResource<KnowledgeCheckPage>(selectedVersionId ? `/knowledge/details?${checkQuery}` : null, revision + refreshRevision);
   const filteredChecks = checksResource.data?.items || [];
@@ -206,7 +205,7 @@ export function KnowledgePage({
   useEffect(() => {if (entryPage > maxEntryPages && !checksResource.loading) setEntryPage(maxEntryPages);}, [entryPage, maxEntryPages, checksResource.loading]);
   const pagedChecks: KnowledgeItemData[] = filteredChecks.map(check => ({id:check.check_id, name:check.title,
     summary:check.criterion, supportCount:check.support_count, counterCount:check.counter_count, review:check.review}));
-  useEffect(() => {setDetailItem(null);}, [selectedChildId, selectedJob?.id]);
+  useEffect(() => {setDetailItem(null);}, [scopeKey, selectedJob?.id]);
   useEffect(() => {setEntryPage(1);}, [selectedJob?.id, selectedVersionId]);
 
   // Prompt drawer handlers
@@ -257,50 +256,16 @@ export function KnowledgePage({
           {!createOpen && <>
           <WorkbenchHeader pageId="industrial-knowledge" className="topline">
             <div className="actions">
-              <Button variant="primary" id="create-btn" onClick={openCreate}>
+              <Button variant="primary" id="create-btn" disabled={!selectedChildIds.length} onClick={openCreate}>
                 ＋ 新建挖掘
               </Button>
             </div>
           </WorkbenchHeader>
 
           {/* Context Scope Selector */}
-          <section className="context" aria-label="选择数据范围">
-            <div className="control">
-              <label className="label" htmlFor="dataset">
-                数据集
-              </label>
-              <Select
-                id="dataset"
-                className="f wide select"
-                aria-label="当前数据集"
-                value={selectedParentId}
-                onChange={e => handleParentChange(e.target.value)}
-              >
-                {parentGroups.map(g => (
-                  <option key={g.group_id} value={g.group_id}>
-                    {g.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="control">
-              <label className="label" htmlFor="subset">
-                子数据集
-              </label>
-              <Select
-                id="subset"
-                className="f wide select"
-                aria-label="子数据集"
-                value={selectedChildId}
-                onChange={e => handleChildChange(e.target.value)}
-              >
-                {currentChildDatasets.map(d => (
-                  <option key={d.dataset_id} value={d.dataset_id}>
-                    {d.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
+          <DatasetScopeSelector className="context" groups={parentGroups} selectedGroupId={selectedParentId}
+            onGroupChange={handleParentChange} childDatasets={currentChildDatasets} selectedChildIds={selectedChildIds}
+            onChildToggle={handleChildToggle} groupId="dataset" childId="subset" childMenuId="subset-menu">
             <div className="kb-context-actions">
               <RefreshIconButton
                 id="kb-refresh"
@@ -310,12 +275,12 @@ export function KnowledgePage({
               />
             </div>
             <div className="context-info" id="dataset-info"></div>
-          </section>
+          </DatasetScopeSelector>
 
           {/* Upper Panel: 挖掘作业 */}
           <section className="panel" aria-labelledby="jobs-heading">
             <SectionHeading title="挖掘作业" titleId="jobs-heading">
-              {scopedJobs.length>0&&<div className="filterset" id="jobs-filterset">
+              {jobList.length>0&&<div className="filterset" id="jobs-filterset">
                 <input
                   className="f"
                   id="job-search"
@@ -356,9 +321,9 @@ export function KnowledgePage({
                 />
               </div>}
             </SectionHeading>
-            <div className="tableframe" id="jobs-table-frame" style={{ minHeight: maxJobPages > 1 ? "465px" : "" }}>
+            <div className="tableframe iad-job-table-scroll" id="jobs-table-frame">
               {filteredJobs.length > 0 ? (
-                <table className="jobs-table" id="jobs-table">
+                <table className="jobs-table iad-job-table-grid" id="jobs-table">
                   <thead>
                     <tr>
                       <th style={{ width: "36%" }}>作业名称</th>
@@ -413,7 +378,7 @@ export function KnowledgePage({
                 </table>
               ) : (
                 <div id="jobs-empty" className="tableempty">
-                  {scopedJobs.length ? "没有符合筛选条件的挖掘作业。" : polling.loading?"正在读取挖掘作业…":"当前没有挖掘作业"}
+                  {jobList.length ? "没有符合筛选条件的挖掘作业。" : polling.loading?"正在读取挖掘作业…":"当前没有挖掘作业"}
                 </div>
               )}
             </div>
@@ -532,14 +497,14 @@ export function KnowledgePage({
             </div>
           </section>
 
-          {(loadError || polling.error || versionsResource.error) && <p role="alert">{loadError || polling.error || versionsResource.error}</p>}
+          {(loadError || polling.error || versionError) && <p role="alert">{loadError || polling.error || (versionError?message(versionError):'')}</p>}
           </>}
 
-            {createOpen && <KnowledgeMiningCreate key={selectedChildId} dataset={dataset} datasets={datasets} groups={parentGroups}
-              selectedParentId={selectedParentId} selectedChildId={selectedChildId}
+            {createOpen && <KnowledgeMiningCreate key={scopeKey} dataset={dataset} datasets={datasets} groups={parentGroups}
+              selectedParentId={selectedParentId} selectedChildIds={selectedChildIds}
               onClose={()=>workspace.updateView(pageId,{tab:'results'})} onStarted={jobs=>{
                 const first=jobs[0];
-                if(first) {workspace.openLocation({pageId,datasetId:first.dataset_id,job:first.run_id,version:'',tab:'results'}); setSelectedJobId(first.run_id);}
+                if(first) {workspace.openLocation({pageId,datasetId:first.dataset_id,datasetIds:first.dataset_ids,job:first.run_id,version:'',tab:'results'}); setSelectedJobId(first.run_id);}
                 polling.refresh(); updated(); toast('挖掘作业已启动');
               }} />}
         </div>

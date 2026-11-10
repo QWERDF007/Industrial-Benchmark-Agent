@@ -1,7 +1,7 @@
 import json
 from pathlib import PurePosixPath
 
-from iad_core.audit.models import AuditAgentContext, AuditSampleRun, AuditWorkflowSnapshot
+from iad_core.audit.models import AuditAgentContext, AuditConsistencyContext, AuditSampleRun, AuditWorkflowSnapshot
 from iad_core.consistency.repository import ConsistencyRepository
 from iad_core.evidence.sources import SampleContent
 from iad_core.workbench.analysis_manifest import AnalysisRegistration
@@ -47,7 +47,8 @@ class AuditState:
         snapshot, sample = self.snapshot(run_id), self.sample(run_id, sample_id)
         return AuditAgentContext(job_id=run_id, sample_id=sample_id, session_id=sample.session_id,
             target=next(record for record in snapshot.manifest.records if record.sample.sample_id == sample_id),
-            consistency=sample.consistency, knowledge=snapshot.knowledge)
+            consistency=AuditConsistencyContext(**sample.consistency.model_dump(include=set(AuditConsistencyContext.model_fields))),
+            knowledge=snapshot.knowledge)
 
     def record(self, run_id: str, target_id: str, sample_id: str) -> AnalysisRegistration:
         sample = self.sample(run_id, target_id)

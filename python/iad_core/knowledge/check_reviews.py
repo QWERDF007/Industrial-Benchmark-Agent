@@ -1,7 +1,13 @@
+from contextlib import nullcontext
 from datetime import datetime, timezone
+from sqlite3 import Connection
+from typing import TYPE_CHECKING
 
 from iad_core.knowledge.models import KnowledgeCheckReview, KnowledgeCheckReviewSubmission
 from iad_core.storage.database import Database
+
+if TYPE_CHECKING:
+    from iad_core.analysis.models import AnalysisPublication
 
 
 class KnowledgeCheckReviews:
@@ -10,14 +16,22 @@ class KnowledgeCheckReviews:
     def __init__(self, db: Database):
         self.db = db
 
-    def read(self, version_id: str) -> dict[str, KnowledgeCheckReview]:
+    def read(self, version_id: str, *, connection: Connection | None = None) -> dict[str, KnowledgeCheckReview]:
         from iad_core.analysis.publications import AnalysisPublications
         inherited = AnalysisPublications(self.db).get(version_id).inherited_reviews
-        with self.db.connection() as conn:
+        with nullcontext(connection) if connection is not None else self.db.connection() as conn:
             rows = conn.execute('''SELECT check_id,review_json FROM analysis_knowledge_check_reviews r
                 WHERE version_id=? AND revision=(SELECT MAX(revision) FROM analysis_knowledge_check_reviews
                     WHERE version_id=r.version_id AND check_id=r.check_id)''', (version_id,)).fetchall()
         return {**inherited, **{row['check_id']: KnowledgeCheckReview.model_validate_json(row['review_json']) for row in rows}}
+
+    def inherit(self, parent: 'AnalysisPublication', revision: int, check_ids: set[str], *,
+                connection: Connection) -> dict[str, KnowledgeCheckReview]:
+        changed = {row[0] for row in connection.execute('''SELECT DISTINCT entry_id FROM analysis_claim_revisions
+            WHERE job_id=? AND revision>? AND revision<=?''', (parent.job_id,parent.revision,revision))}
+        retained = check_ids & {check.check_id for check in parent.catalog.checks} - changed
+        return {identity:review.model_copy(update={'revision':0})
+            for identity,review in self.read(parent.version_id,connection=connection).items() if identity in retained}
 
     def submit(self, request: KnowledgeCheckReviewSubmission) -> KnowledgeCheckReview:
         from iad_core.analysis.publications import AnalysisPublications

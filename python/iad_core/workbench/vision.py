@@ -6,11 +6,11 @@ from typing import Generic, List, Optional, Type, TypeVar
 
 import httpx
 from pydantic import BaseModel, Field, ValidationError, computed_field
-from iad_core.evidence.images import PreparedImage, file_sha256
+from iad_core.evidence.images import PreparedImage, PreparedImageBundle, file_sha256
 from iad_core.advisory.output_validation import REPAIRABLE_OUTPUT
 from iad_core.workbench.calls import ModelCalls
 from iad_core.workbench.completion import CompletionResponse, ModelOutputError
-from iad_core.workbench.prompt_text import RESPONSE_SCHEMA_SLOT
+from iad_core.workbench.prompt_text import RESPONSE_FORMAT_INSTRUCTION, RESPONSE_SCHEMA_SLOT
 from iad_core.workbench.model_profile import ModelProfile
 from iad_core.workbench.model_settings import ModelConnection
 
@@ -41,12 +41,12 @@ class TokenBudget(BaseModel):
 class GenerationRequest(Generic[T]):
     response_type: Type[T]
     body: dict
-    images: tuple[PreparedImage, ...]
+    images: tuple[PreparedImage | PreparedImageBundle, ...]
     output_reserve: int
+    instruction: str
     context: dict | None = None
 
 
-MODEL_PROMPT_CONTRACT = 'complete-editable-prompt-v4'
 GENERATION_PARAMETERS = {"temperature": 0.1}
 
 
@@ -115,26 +115,37 @@ class VlmClient:
             context_tokens=min(capacity.max_model_len, self.profile.context_tokens or capacity.max_model_len),
             output_reserve=min(output_reserve, self.profile.max_output_tokens or output_reserve))
 
-    def plan(self, response_type: Type[T], instruction: str, images: List[PreparedImage], model_name: str,
+    def plan(self, response_type: Type[T], instruction: str, images: List[PreparedImage | PreparedImageBundle], model_name: str,
              output_reserve: int = 2048, *, context: dict | None = None, correction: Optional[ModelOutputError] = None,
              system_prompt: str | None = None) -> GenerationRequest[T]:
         if self.profile.capacity_mode is None:
             raise ValueError('模型容量能力未知，请配置LIVE_VLM_CAPACITY_MODE；未发送生成请求')
-        if self.profile.max_visual_inputs is not None and len(images) > self.profile.max_visual_inputs:
-            raise ModelCapacityError(f'完整图组含 {len(images)} 个视觉输入，超过已配置上限 {self.profile.max_visual_inputs}；未拆组，请确认是否减少图像数量')
+        visual_inputs = [view for image in images for view in (image.images if isinstance(image, PreparedImageBundle) else (image,))]
+        if self.profile.max_visual_inputs is not None and len(visual_inputs) > self.profile.max_visual_inputs:
+            raise ModelCapacityError(f'完整图组含 {len(visual_inputs)} 个视觉输入，超过已配置上限 {self.profile.max_visual_inputs}；未拆组，请确认是否减少图像数量')
         schema = response_type.model_json_schema()
         rendered='\n'.join(json.dumps(schema,ensure_ascii=False) if line.strip()==RESPONSE_SCHEMA_SLOT else line
             for line in instruction.split('\n'))
         content = [{"type": "text", "text": rendered}]
         if context is not None:
             content.append({"type": "text", "text": json.dumps(context, ensure_ascii=False)})
+        if (self.profile.request_parameters.get('response_format', {}).get('type') == 'json_object'
+                and not any(line.strip() == RESPONSE_SCHEMA_SLOT for line in instruction.split('\n'))):
+            content.append({'type': 'text', 'text': RESPONSE_FORMAT_INSTRUCTION.replace(
+                RESPONSE_SCHEMA_SLOT, json.dumps(schema, ensure_ascii=False))})
         for image in images:
-            if file_sha256(image.path) != image.evidence.sha256:
-                raise ValueError("Visual input content changed")
-            with open(image.path, "rb") as source:
-                encoded = base64.b64encode(source.read()).decode("ascii")
-            content.append({"type": "text", "text": "视觉证据：" + json.dumps(image.model_context(), ensure_ascii=False)})
-            content.append({"type": "image_url", "image_url": {"url": "data:image/png;base64," + encoded}})
+            bundle = isinstance(image, PreparedImageBundle)
+            if bundle:
+                content.append({'type': 'text', 'text': '原图资料：' + json.dumps(
+                    {**image.context, 'evidence_id': image.evidence_id}, ensure_ascii=False)})
+            for view in image.images if bundle else (image,):
+                if file_sha256(view.path) != view.evidence.sha256:
+                    raise ValueError("Visual input content changed")
+                with open(view.path, "rb") as source:
+                    encoded = base64.b64encode(source.read()).decode("ascii")
+                metadata = view.evidence.model_dump(exclude={'evidence_id', 'annotation_ids'}) if bundle else view.model_context()
+                content.append({"type": "text", "text": ('图像视图：' if bundle else '视觉证据：') + json.dumps(metadata, ensure_ascii=False)})
+                content.append({"type": "image_url", "image_url": {"url": "data:image/png;base64," + encoded}})
         messages = ([{"role":"system", "content":[{"type":"text", "text":system_prompt}]}] if system_prompt else [])
         messages.append({"role": "user", "content": content})
         if correction is not None:
@@ -147,16 +158,16 @@ class VlmClient:
             "stream": True, "stream_options": {"include_usage": True},
             **GENERATION_PARAMETERS, **self.profile.request_parameters,
         }
-        if not self.within_limits(body, images):
+        if not self.within_limits(body, visual_inputs):
             raise ModelCapacityError(f'完整图组请求体超过已配置上限 {self.profile.max_request_bytes} 字节；未拆组，请确认是否减少图像数量')
         budget = self.token_budget(body, output_reserve, response_type.__name__)
         if not budget.fits:
             raise ModelCapacityError(f'完整图组输入 {budget.input_tokens} token，上下文上限 {budget.context_tokens}，输出至少预留 {budget.output_reserve}；未拆组，请确认是否减少图像数量')
         available = budget.context_tokens - budget.input_tokens
         body['max_tokens'] = min(available, self.profile.max_output_tokens or available)
-        if not self.within_limits(body, images):
+        if not self.within_limits(body, visual_inputs):
             raise ModelCapacityError(f'完整图组请求体超过已配置上限 {self.profile.max_request_bytes} 字节；未拆组，请确认是否减少图像数量')
-        return GenerationRequest(response_type, body, tuple(images), output_reserve, context)
+        return GenerationRequest(response_type, body, tuple(images), output_reserve, instruction, context)
 
     def generate(self, plan: GenerationRequest[T]) -> T:
         for attempt in range(2):
@@ -165,7 +176,7 @@ class VlmClient:
             except ModelOutputError as error:
                 if attempt:
                     raise
-                known = {image.evidence.evidence_id for image in plan.images}
+                known = {image.evidence_id if isinstance(image, PreparedImageBundle) else image.evidence.evidence_id for image in plan.images}
                 repairable = True
                 parsed = None
                 for issue in error.issues:
@@ -190,9 +201,8 @@ class VlmClient:
                     break
                 if not repairable:
                     raise
-                instruction = next(message for message in plan.body['messages'] if message['role']=='user')['content'][0]['text']
                 system = next((message['content'][0]['text'] for message in plan.body['messages'] if message['role']=='system'), None)
-                plan = self.plan(plan.response_type, instruction, list(plan.images), plan.body['model'],
+                plan = self.plan(plan.response_type, plan.instruction, list(plan.images), plan.body['model'],
                     plan.output_reserve, context=plan.context, correction=error, system_prompt=system)
 
     def generate_once(self, plan: GenerationRequest[T]) -> T:

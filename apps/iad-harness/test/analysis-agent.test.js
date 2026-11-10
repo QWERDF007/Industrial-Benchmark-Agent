@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {finalizeFixtureCatalog,respondFixtureTools} from './fixtures/analysis-finalization.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
@@ -21,16 +22,15 @@ import {createExplorationTools} from '../lib/server/exploration/index.js';
 import {createKnowledgeTools} from '../lib/server/knowledge/index.js';
 import {toolPresentation} from '../lib/shared/tool-presentation.js';
 
-for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'exploration',rejectCrop:true}, {module:'knowledge',rejectCrop:true}, {module:'knowledge', capacityStop:true},
-  {module:'exploration',emptyCatalog:true}, {module:'exploration',initialFailure:true}]) test(`one native ${scenario.module} Agent ${scenario.initialFailure ? 'retains a first-call failure before any observation' : scenario.rejectCrop ? 'rejects crop citations and accepts corrected whole-image references' : 'observes all 19 registrations in its own Session' + (scenario.emptyCatalog ? ' and publishes an empty catalog' : scenario.capacityStop ? ' after a 12/19 capacity failure and resume' : ' and retains a last-round discovery')}`, {timeout: process.env.IAD_ANALYSIS_BROWSER ? 120000 : 60000}, async t => {
-  const {module, capacityStop, emptyCatalog, initialFailure, rejectCrop} = scenario;
+for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'knowledge', capacityStop:true},
+  {module:'exploration',emptyCatalog:true}, {module:'exploration',initialFailure:true}]) test(`one native ${scenario.module} Agent ${scenario.initialFailure ? 'retains a first-call failure before any observation' : 'observes all 19 registrations in its own Session' + (scenario.emptyCatalog ? ' and publishes an empty catalog' : scenario.capacityStop ? ' after a 12/19 capacity failure and resume' : ' and retains a last-round discovery')}`, {timeout: process.env.IAD_ANALYSIS_BROWSER ? 120000 : 60000}, async t => {
+  const {module, capacityStop, emptyCatalog, initialFailure} = scenario;
   const expectedCounts=module==='exploration'?[[8,2],[2,2],[2,2],[0,1]]:[[2,2],[2,2],[2,2],[3,1],[3,0]];
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-analysis-agent-'));
   const workspace = findWorkspaceRoot(), database = path.join(root, 'analysis.db');
   const wire = [], errors = [];
-  let firstRoundMedia, reopenedHistory;
+  let firstRoundMedia, reopenedHistory, finalizationCalls=0;
   let blockCapacity = capacityStop;
-  let cropRejected=false,corrections=0;
   const provider = http.createServer(async (req, res) => {
     try {
       assert.equal(req.headers.authorization, 'Bearer analysis-test-key');
@@ -38,9 +38,11 @@ for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'e
       const body = JSON.parse(text);
       if (req.url === '/tokenize') {res.end(JSON.stringify({count: blockCapacity && wire.length >= 6 ? 70000 : 1000, max_model_len: 65536}));return;}
       const instruction = body.messages.filter(message => message.role === 'system').map(message => message.content).join('\n');
-      assert.ok(instruction.includes('analysis_images'));
-      assert.ok(instruction.includes(module === 'exploration' ? 'exploration_commit' : 'knowledge_commit'));
-      assert.ok(instruction.includes('人工标注区域为缺陷区域'));
+      assert.equal(instruction,data.system_prompt[module]+'\n系统自定义：按工具提交。');
+      assert.doesNotMatch(instruction,/\b(?:analysis_\w+|exploration_commit|knowledge_commit)\b/);
+      const tools=body.tools.map(tool=>tool.function.name);
+      assert.ok(tools.includes('analysis_images'));
+      assert.ok(tools.includes(module === 'exploration' ? 'exploration_commit' : 'knowledge_commit'));
       assert.ok(!instruction.includes('{{response_schema}}'), 'visible defaults use the native tool protocol');
       assert.ok(instruction.includes('系统自定义：按工具提交。'));
       assert.ok(!instruction.includes('用户自定义：比较边缘。'));
@@ -57,6 +59,11 @@ for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'e
       const states=body.messages.filter(message=>message.role==='user').map(message=>parse(message.content))
         .filter(value=>(value)?.job_id===context.job_id);
       assert.deepEqual(states.at(-1),context,'使用最近注入的当前轮次状态');
+      if(context.phase==='finalize'){
+        finalizationCalls++;
+        const outputs=body.messages.slice(contextIndex+1).filter(message=>message.role==='tool').map(message=>parse(message.content));
+        respondFixtureTools(res,finalizeFixtureCatalog(context,outputs,module));return;
+      }
       const [normal,abnormal]=expectedCounts[context.round.round_id-1];
       assert.deepEqual(context.round.sampling_counts,{normal,abnormal,unclassified:0});
       assert.equal(context.registrations.filter(record=>record.sampling_group==='normal').length,normal);
@@ -67,18 +74,20 @@ for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'e
         assert.equal(checkpoint.revision, context.revision);
         assert.ok(checkpoint.catalog.checks.find(check => check.check_id === 'seed-1').counter_evidence_ids.length > 0,
           'counterexamples survive successive structured checkpoints');
-        assert.deepEqual(checkpoint.catalog.unresolved_questions, ['首轮线索仍待核验。']);
+        assert.deepEqual(checkpoint.catalog.unresolved_questions, ['独立来源线索仍待核验。']);
         assert.equal(checkpoint.round.round_id, context.round.round_id);
       }
       const toolMessages=body.messages.slice(contextIndex+1).filter(message=>message.role==='tool');
-      const rejected=toolMessages.filter(message=>JSON.stringify(message.content).includes('非完整原图'));
-      if(rejected.length){assert.ok(rejectCrop&&cropRejected);assert.match(JSON.stringify(rejected),/observations/);corrections++;}
-      const outputs = toolMessages.filter(message=>!rejected.includes(message)).map(message => parse(message.content));
+      const outputs = toolMessages.map(message => parse(message.content));
       assert.ok(outputs.every(item => item && !item.error), JSON.stringify(body.messages.filter(message => message.role === 'tool').map(message => message.content.slice(0, 240))));
       const pages = outputs.filter(item=>Array.isArray(item.images));
       const history = outputs.find(item=>Array.isArray(item.items));
       const actual = body.messages.flatMap(message => Array.isArray(message.content) ? message.content : []).filter(part => part.type === 'image_url');
       const allPages=body.messages.filter(message=>message.role==='tool').map(message=>parse(message.content)).filter(value=>Array.isArray(value?.images));
+      for (const page of allPages) {
+        assert.ok(page.evidence_id, 'the original image owns the media bundle reference');
+        assert.ok(page.images.every(item => !Object.hasOwn(item.image,'evidence_id')&&!Object.hasOwn(item.model_context,'evidence_id')));
+      }
       assert.equal(actual.length,allPages.flatMap(page=>page.images).length,'未触发官方压缩时保留历史图片');
       let calls;
       if (!outputs.length) calls = [...context.round.targets.map(target => ({name: 'analysis_images', arguments: {sample_id: target.sample_id}})),
@@ -102,16 +111,16 @@ for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'e
         const mediaBySample=new Map();
         for(const page of pages.filter(page=>context.round.targets.some(target=>target.sample_id===page.sample_id))){const images=mediaBySample.get(page.sample_id)||[];images.push(...page.images);mediaBySample.set(page.sample_id,images);}
         const observations = [...mediaBySample].map(([sample_id,images]) => ({sample_id, dataset_id: images[0].dataset_id,
-          description: '已实际观察本登记原图与完整局部。', evidence_ids: images.map(item => item.image.evidence_id),
+          description: '已实际观察本登记原图与完整局部。', evidence_ids: [pages.find(page=>page.sample_id===sample_id).evidence_id],
           directions: context.selected_directions.map(direction => ({direction_ref: direction.ref, status: 'applicable', reason: '本图主体可见。'}))}));
-        const wholeBySample=new Map([...mediaBySample].map(([sid,images])=>[sid,images.filter(item=>item.image.role==='overview').map(item=>item.image.evidence_id)]));
+        const wholeBySample=new Map([...mediaBySample].map(([sid])=>[sid,[pages.find(page=>page.sample_id===sid).evidence_id]]));
         const last = context.round.round_id === (module === 'exploration' ? 4 : 5);
         calls = [{name: module === 'exploration' ? 'exploration_commit' : 'knowledge_commit', arguments: {commit_key: 'round-complete',
           round_id: context.round.round_id, base_revision: context.revision, observations,
-          ...(module === 'exploration' ? {directions: last && !emptyCatalog ? [{direction_id: 'edge', title: '末轮边缘检查', instruction: '沿原图边缘回看轮廓连续性。',
-            applies_to: 'both', rationale: '来自末轮真实登记。', evidence_ids: wholeBySample.get(observations[0].sample_id),
+          ...(module === 'exploration' ? {directions: last && !emptyCatalog ? [{direction_id: 'edge', title: '边缘检查', instruction: '沿原图边缘回看轮廓连续性。',
+            applies_to: 'both', rationale: '原图边缘提供可直接复核的依据。', evidence_ids: wholeBySample.get(observations[0].sample_id),
             dataset_ids: [observations[0].dataset_id], limitations: ['当前只有一例。']}] : []} :
-            {checks: last ? [{check_id: 'K1', title: '末轮表面关系', subject: '主体', location: '全图', criterion: '主体呈灰色。',
+            {checks: last ? [{check_id: 'K1', title: '表面关系', subject: '主体', location: '全图', criterion: '主体呈灰色。',
               allowed_variations: [], limitations: ['当前观察不能确定质量真值。'], status: 'supported',
               support_evidence_ids: wholeBySample.get(observations[0].sample_id), counter_evidence_ids: [],
               direction_refs: ['D1'], dataset_ids: [observations[0].dataset_id]}] : capacityStop && context.round.round_id <= 3 ? [{
@@ -119,19 +128,13 @@ for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'e
                 criterion:'需要独立来源核验可见外观关系。', allowed_variations:[], limitations:['当前线索待核验。'], status:'provisional',
                 support_evidence_ids:wholeBySample.get(observations[0].sample_id), counter_evidence_ids:wholeBySample.get(observations[1].sample_id),
                 direction_refs:['D1'], dataset_ids:[observations[0].dataset_id]}] : []}),
-          summary: '保留本场全部观察。', limitations: [], unresolved_questions: capacityStop ? ['首轮线索仍待核验。'] : []}}];
+          summary: '保留本场全部观察。', limitations: [], unresolved_questions: capacityStop ? ['独立来源线索仍待核验。'] : []}}];
         if (capacityStop && context.round.round_id === 2) calls[0].arguments.checks.push({
           check_id:'seed-1', title:'待核验关系1', subject:'主体', location:'全图', criterion:'需要独立来源核验可见外观关系。',
-          allowed_variations:[], limitations:[], status:'provisional',
+          allowed_variations:[], limitations:context.catalog.checks[0].limitations, status:'provisional',
           support_evidence_ids:context.catalog.checks[0].support_evidence_ids, counter_evidence_ids:[],
           direction_refs:['D1'], dataset_ids:context.catalog.checks[0].dataset_ids});
-        if(rejectCrop&&last&&!cropRejected){
-          const crop=[...mediaBySample.values()].flat().find(item=>item.image.source==='model'&&item.image.role==='roi');
-          assert.ok(crop);
-          if(module==='exploration')calls[0].arguments.directions[0].evidence_ids=[crop.image.evidence_id];
-          else calls[0].arguments.checks[0].counter_evidence_ids=[crop.image.evidence_id];
-          cropRejected=true;
-        }
+
       }
       const delta = {role: 'assistant', tool_calls: calls.map((call, index) => ({index, id: randomUUID(), type: 'function',
         function: {name: call.name, arguments: JSON.stringify(call.arguments)}}))};
@@ -251,7 +254,7 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
     let partialArchive,partialArchivePath;
     if (capacityStop) {
       assert.equal(status.status, 'PARTIAL',JSON.stringify({execution:status.execution_error,provider:errors}));
-      assert.deepEqual([status.completed,status.failed,status.unprocessed], [12,0,7]);
+      assert.deepEqual([status.completed,status.failed,status.unprocessed], [12,0,7],JSON.stringify({execution:status.execution_error,provider:errors}));
       assert.match(status.execution_error.message, /context|上下文/i);
       const partial = await bridge.execute('analysis_agent_publication', {version_id:status.analysis_version_id});
       partialVersionId = partial.version_id;
@@ -343,15 +346,14 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
     const context = await bridge.execute('analysis_agent_context', {run_id: job.run_id});
     assert.equal(context.round, null);
     const rounds = module === 'exploration' ? 4 : 5;
-    assert.equal(context.revision, rounds);
+    assert.ok(context.revision > rounds);assert.equal(publication.finalization.complete,true);
     if (module === 'exploration') assert.deepEqual(context.catalog.directions.map(direction=>direction.direction_id),emptyCatalog?[]:['edge']);
     else {
       const check = context.catalog.checks.find(item => item.check_id === 'K1');
       assert.equal(check.independent_source_count, 1);
       assert.equal(check.status, 'provisional');
     }
-    assert.equal(wire.length, rounds * 2 + (capacityStop ? 1 : 0) + (rejectCrop ? 1 : 0));
-    if(rejectCrop)assert.equal(corrections,1,'工具拒绝裁图后，模型实际收到错误并重新提交完整原图');
+    assert.equal(wire.length, rounds * 2 + (capacityStop ? 1 : 0) + finalizationCalls);
     if(capacityStop)assert.equal(reopenedHistory.length,2);
     assert.deepEqual(errors, []);
     const location = await bridge.execute('analysis_agent_session_location', {session_id: context.session_id});
@@ -361,9 +363,10 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
     assert.equal(sessionResponse.status, 200, await sessionResponse.clone().text());
     assert.equal(await sessionResponse.text(), await host.exportJsonl(context.session_id));
     const session = await host.read(context.session_id);
-    assert.equal(new Set(session.events.filter(event => event.type === 'user/message' && event.data.source.kind==='user').map(event=>event.data.id)).size, rounds + (capacityStop ? 1 : 0));
+    const finalizationTurns=session.events.filter(event=>event.type==='tool/call'&&event.data.name===module+'_finalize').length;
+    assert.equal(new Set(session.events.filter(event => event.type === 'user/message' && event.data.source.kind==='user').map(event=>event.data.id)).size, rounds + (capacityStop ? 1 : 0) + finalizationTurns);
     assert.ok(!session.events.some(event=>event.type==='user/message'&&event.data.source.kind==='analysis-checkpoint'));
-    assert.equal(status.model_calls.filter(call => call.source === 'native_llm'&&!call.error).length, rounds * 2 + (capacityStop ? 1 : 0) + (rejectCrop ? 1 : 0));
+    assert.equal(status.model_calls.filter(call => call.source === 'native_llm'&&!call.error).length, rounds * 2 + (capacityStop ? 1 : 0) + finalizationCalls);
     assert.equal(status.model_calls.some(call=>call.source==='native_llm'&&!!call.error),!!capacityStop);
     assert.equal(status.model_calls.filter(call => call.source === 'native_llm').every(call => call.session_id === context.session_id), true);
     if (browser) await browser.verifyAnalysisPage(base.replace('/api/iad', ''), module, {partialVersionId,emptyCatalog});

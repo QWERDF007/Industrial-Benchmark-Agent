@@ -33,12 +33,18 @@ class AnalysisExports:
                 FROM analysis_workflow_runs r JOIN job_runs j ON j.job_id=r.job_id WHERE r.job_id=?''', (publication.job_id,)).fetchone()
             snapshot = AnalysisWorkflowSnapshot.model_validate_json(row['snapshot_json'])
             inherited = connection.execute('SELECT session_event_count FROM analysis_publication_exports WHERE version_id=?',
-                (publication.parent_version_id,)).fetchone() if publication.parent_version_id else None
+                (publication.parent_version_id,)).fetchone() if publication.manual_edit is not None else None
             connection.execute('INSERT INTO analysis_publication_exports(version_id,session_event_count) VALUES(?,?) ON CONFLICT DO NOTHING',
                 (version_id,inherited[0] if inherited else len(lines)-1))
             event_count = connection.execute('SELECT session_event_count FROM analysis_publication_exports WHERE version_id=?',(version_id,)).fetchone()[0]
             commits = connection.execute('''SELECT round_id,revision,submission_json,receipt_json FROM analysis_workflow_commits
                 WHERE job_id=? AND revision<=? ORDER BY revision''',(publication.job_id,publication.revision)).fetchall()
+            finalizations = connection.execute('''SELECT revision,submission_json,receipt_json FROM analysis_finalization_commits
+                WHERE job_id=? AND revision<=? ORDER BY revision''',(publication.job_id,publication.revision)).fetchall()
+            arguments = connection.execute('''SELECT * FROM analysis_claim_arguments
+                WHERE job_id=? AND revision<=? ORDER BY revision,rowid''', (publication.job_id, publication.revision)).fetchall()
+            claims = connection.execute('''SELECT * FROM analysis_claim_revisions
+                WHERE job_id=? AND revision<=? ORDER BY revision,rowid''', (publication.job_id, publication.revision)).fetchall()
             calls = {item['call_id']:json.loads(item['summary_json']) for item in connection.execute(
                 'SELECT call_id,summary_json FROM model_calls WHERE run_id=?',(publication.job_id,))}
             deliveries = connection.execute('SELECT evidence_id,call_id FROM analysis_media_deliveries WHERE job_id=? ORDER BY rowid',(publication.job_id,)).fetchall()
@@ -53,6 +59,12 @@ class AnalysisExports:
         rounds = [dict(run_id=publication.job_id,session_id=row['session_id'],round_id=item['round_id'],revision=item['revision'],
             submission=json.loads(item['submission_json']),receipt=json.loads(item['receipt_json'])) for item in commits]
         texts['rounds.jsonl'] = ''.join(json.dumps(item,ensure_ascii=False)+'\n' for item in rounds)
+        texts['finalization.jsonl'] = ''.join(json.dumps(dict(run_id=publication.job_id,session_id=row['session_id'],
+            phase='finalize',revision=item['revision'],submission=json.loads(item['submission_json']),
+            receipt=json.loads(item['receipt_json'])),ensure_ascii=False)+'\n' for item in finalizations)
+        texts['arguments.jsonl'] = ''.join(json.dumps(dict(item),ensure_ascii=False)+'\n' for item in arguments)
+        texts['claims.jsonl'] = ''.join(json.dumps({**{name:item[name] for name in item.keys() if name != 'content_json'},
+            'content':json.loads(item['content_json'])},ensure_ascii=False)+'\n' for item in claims)
         delivered = defaultdict(list)
         frozen = set(publication.model_call_ids or [])
         for item in deliveries:
@@ -66,12 +78,13 @@ class AnalysisExports:
         assets, evidence = {}, []
         for record in publication.coverage.records:
             source = records[record.sample_id]
-            for image in record.media:
+            for index,image in enumerate(record.media):
                 media_path = 'media/'+image.sha256+'.png'
                 assets[media_path] = images.path(image)
                 evidence.append(dict(evidence_id=image.evidence_id,sample_id=record.sample_id,dataset_id=record.dataset_id,
                     filename=source.sample.relative_path,candidate_role=roles[record.sample_id],image=image.model_dump(mode='json'),
-                    observed=image.evidence_id in record.observed_evidence_ids,media_path=media_path,
+                    observed=image.evidence_id in record.observed_evidence_ids
+                        or bool(record.observed_evidence_ids) and index in record.delivered_offsets,media_path=media_path,
                     model_calls=delivered[image.evidence_id] if publication.model_call_ids is not None else None))
         texts['evidence.jsonl'] = ''.join(json.dumps(item,ensure_ascii=False)+'\n' for item in evidence)
         target.mkdir(parents=True,exist_ok=True)

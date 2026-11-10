@@ -2,6 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { AuditImageAgent } from './agent.js';
 import { auditSessionPath } from './session-path.js';
+import { runConcurrent } from '../jobs/concurrency.js';
 export class AuditWorkflowScheduler {
     bridge;
     providers;
@@ -51,25 +52,19 @@ export class AuditWorkflowScheduler {
         const snapshot = await this.bridge.execute('audit_agent_snapshot', { run_id: runId });
         const { samples } = await this.bridge.execute('audit_agent_samples', { run_id: runId });
         const pending = samples.filter(sample => sample.state !== 'COMPLETED');
-        let cursor = 0;
         const agent = new AuditImageAgent(this.bridge, this.host, this.providers, this.dataRoot);
-        await Promise.all(Array.from({ length: Math.min(snapshot.settings.concurrency, pending.length) }, async () => {
-            while (!signal.aborted) {
-                const sample = pending[cursor++];
-                if (!sample)
-                    break;
-                try {
-                    await agent.run(runId, sample.sample_id, snapshot, signal);
-                    const final = await this.bridge.execute('audit_agent_sample', { run_id: runId, sample_id: sample.sample_id });
-                    await this.projectFinal(final);
-                }
-                catch (error) {
-                    if (signal.aborted)
-                        return;
-                    await this.bridge.execute('audit_agent_failure', { run_id: runId, sample_id: sample.sample_id, message: error instanceof Error ? error.message : String(error) });
-                }
+        await runConcurrent(pending, snapshot.settings.concurrency, signal, async (sample) => {
+            try {
+                await agent.run(runId, sample.sample_id, snapshot, signal);
+                const final = await this.bridge.execute('audit_agent_sample', { run_id: runId, sample_id: sample.sample_id });
+                await this.projectFinal(final);
             }
-        }));
+            catch (error) {
+                if (signal.aborted)
+                    return;
+                await this.bridge.execute('audit_agent_failure', { run_id: runId, sample_id: sample.sample_id, message: error instanceof Error ? error.message : String(error) });
+            }
+        });
         if (!signal.aborted) {
             await this.bridge.execute('audit_agent_finish', { run_id: runId });
             await this.writeReport(runId);

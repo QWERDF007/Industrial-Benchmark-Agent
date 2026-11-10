@@ -62,6 +62,9 @@ export function PlusIcon({ size = 16 }) {
 export function EyeIcon({ size = 18 }) {
     return (_jsxs("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", children: [_jsx("path", { d: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" }), _jsx("circle", { cx: "12", cy: "12", r: "3" })] }));
 }
+export function ClockIcon() {
+    return _jsx("svg", { "aria-hidden": "true", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", strokeLinecap: "round", strokeLinejoin: "round", children: _jsx("path", { d: "M12 8v4l3 2M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9Z" }) });
+}
 export function DocumentSearchIcon({ size = 17 }) {
     return (_jsxs("svg", { "aria-hidden": "true", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.75", strokeLinecap: "round", strokeLinejoin: "round", children: [_jsx("path", { d: "M13 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10l-7-7Z" }), _jsx("path", { d: "M13 3v7h7" }), _jsx("circle", { cx: "11", cy: "15", r: "2.3" }), _jsx("path", { d: "m12.8 16.8 2.3 2.3" })] }));
 }

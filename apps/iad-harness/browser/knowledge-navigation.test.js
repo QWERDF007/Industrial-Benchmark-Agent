@@ -72,8 +72,14 @@ print(json.dumps(dict(datasets=datasets)));runtime.close()
   const element=css=>driver.wait(until.elementLocated(By.css(css)),10000);
   const click=async css=>{const target=await element(css);await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',target);await target.click();};
   const navigate=async label=>(await driver.wait(until.elementLocated(By.xpath(`//nav[@aria-label="主导航"]/button[normalize-space(.)="${label}"]`)),10000)).click();
+  const selectSubset=async dataset=>{
+    await click('#subset');
+    const options=await driver.findElements(By.css('#subset-menu input'));
+    for(const option of options)if(await option.isSelected()!==((await option.getAttribute('value'))===dataset.dataset_id))await option.click();
+    await click('#subset');
+  };
   const selected=async dataset=>{
-    await driver.wait(async()=>await(await element(`#subset`)).getAttribute('value')===dataset.dataset_id,10000);
+    await driver.wait(async()=>await(await element(`#subset-menu input[value="${dataset.dataset_id}"]`)).isSelected(),10000);
     const row=await element(`tr[data-pick-job="${dataset.run_id}"]`);await driver.wait(async()=>await row.getAttribute('aria-selected')==='true',10000);
     assert.ok(!(await driver.findElement(By.css('body')).getText()).includes('所选作业不属于当前数据集'));
   };
@@ -81,24 +87,31 @@ print(json.dumps(dict(datasets=datasets)));runtime.close()
     await driver.get(`http://127.0.0.1:${server.address().port}/`);
     await navigate('知识挖掘');
     await element('#knowledge-page');const[first,second]=data.datasets;
-    await click(`#subset option[value="${first.dataset_id}"]`);await click(`tr[data-pick-job="${first.run_id}"] td`);await selected(first);
+    await selectSubset(first);await click(`tr[data-pick-job="${first.run_id}"] td`);await selected(first);
     await click(`button[data-job-prompt="${first.run_id}"]`);
     const text=await(await element('.iad-prompt-drawer')).getText();
     assert.ok(text.includes(first.name+'的冻结系统正文。')&&text.includes(first.name+'的冻结用户正文。'));
     await click('button[aria-label="关闭查看提示词抽屉"]');
-    await click(`#subset option[value="${second.dataset_id}"]`);await click(`tr[data-pick-job="${second.run_id}"] td`);await selected(second);
+    await selectSubset(second);await click(`tr[data-pick-job="${second.run_id}"] td`);await selected(second);
     await driver.navigate().refresh();await selected(second);
     let location=JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad'));
     assert.equal(location.datasetId,second.dataset_id);assert.equal(location.job,second.run_id);
-    await driver.navigate().back();await driver.navigate().back();await selected(first);
+    await driver.navigate().back();await driver.navigate().back();await driver.navigate().back();await selected(first);
     location=JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad'));
     assert.equal(location.datasetId,first.dataset_id);assert.equal(location.job,first.run_id);
-    await driver.navigate().forward();await driver.navigate().forward();await selected(second);
+    await driver.navigate().forward();await driver.navigate().forward();await driver.navigate().forward();await selected(second);
     await navigate('图像浏览');await element('[data-page="industrial-images"]');
     await navigate('知识挖掘');await selected(second);
     await click('#create-btn');await element('#kb-setup-page');await driver.navigate().refresh();await element('#kb-setup-page');
     assert.equal(await(await element('#prompt-text-system')).isEnabled(),true);assert.equal(await(await element('#prompt-text')).isEnabled(),true);
     await click('#kb-setup-back');await selected(second);
+    await click('#subset');await click(`#subset-menu input[value="${first.dataset_id}"]`);await click('#subset');
+    await element(`tr[data-pick-job="${first.run_id}"]`);await element(`tr[data-pick-job="${second.run_id}"]`);
+    await driver.navigate().refresh();
+    for(const dataset of data.datasets)assert.equal(await(await element(`#subset-menu input[value="${dataset.dataset_id}"]`)).isSelected(),true);
+    await click('#create-btn');await element('#kb-setup-page');
+    for(const dataset of data.datasets)assert.equal(await(await element(`#kb-setup-child-menu input[value="${dataset.dataset_id}"]`)).isSelected(),true,'新建表单保留所选全部子数据集');
+    await click('#kb-setup-back');
     assert.deepEqual(writes,[],'navigation, history and refresh must not create jobs or save prompts');
     for(const [index,dataset] of data.datasets.entries()){
       const jobs=await bridge.execute('analysis_list',{dataset_id:dataset.dataset_id,analysis_kind:'knowledge'});

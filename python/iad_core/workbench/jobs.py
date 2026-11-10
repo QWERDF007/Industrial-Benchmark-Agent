@@ -15,6 +15,7 @@ from filelock import FileLock, Timeout
 from iad_core.storage.database import Database
 from iad_core.workbench.calls import ModelCalls
 from iad_core.workbench.job_snapshots import JobSnapshots
+from iad_core.workbench.job_phase_clock import JobPhaseClock
 from iad_core.workbench.job_models import JobKind, JobRetryOptions, JobSnapshot, RetrySample, JobExecutionError
 
 
@@ -126,7 +127,7 @@ class JobRunner:
                 WHERE job_type IN ({placeholders}) AND status IN ('PENDING','RUNNING')""", self.job_types).fetchall()
             for row in rows:
                 payload = json.loads(row['payload_json'])
-                finished = payload.get('completed', 0) + payload.get('failed', 0) == payload.get('total_samples', -1)
+                finished = payload.get('completed', 0) + payload.get('failed', 0) == payload.get('total_samples', -1) and not payload.get('completion_pending', False)
                 status = self.terminal_status(payload, interrupted=not finished)
                 conn.execute('UPDATE job_runs SET status=?,message=?,finished_at=? WHERE job_id=?',
                     (status, 'Worker stopped before completion' if not finished else status,
@@ -136,7 +137,7 @@ class JobRunner:
     @staticmethod
     def terminal_status(payload: dict, cancelled: bool = False, interrupted: bool = False) -> str:
         return ('INTERRUPTED' if interrupted else 'CANCELLED' if cancelled else 'FAILED' if not payload['completed']
-                else 'PARTIAL' if payload['failed'] or payload['completed'] < payload['total_samples'] else 'COMPLETED')
+                else 'PARTIAL' if payload['failed'] or payload['completed'] < payload['total_samples'] or payload.get('completion_pending', False) else 'COMPLETED')
 
     def submitted(self, job_type: JobKind, submission: dict) -> Optional[dict]:
         with self.db.connection() as conn:
@@ -274,8 +275,12 @@ class JobRunner:
 
     def _finish(self, run_id: str, status: str):
         with self.lock, self.db.connection() as conn:
-            conn.execute('UPDATE job_runs SET status=?,finished_at=? WHERE job_id=?',
-                         (status, datetime.now(timezone.utc).isoformat(), run_id))
+            at = datetime.now(timezone.utc).isoformat()
+            payload = json.loads(conn.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (run_id,)).fetchone()[0])
+            if JobPhaseClock.close(payload, at):
+                conn.execute('UPDATE job_runs SET payload_json=? WHERE job_id=?',
+                    (json.dumps(payload, ensure_ascii=False), run_id))
+            conn.execute('UPDATE job_runs SET status=?,finished_at=? WHERE job_id=?', (status, at, run_id))
             self.pending.pop(run_id, None)
             self.threads.pop(run_id, None)
             self.external.discard(run_id)
@@ -304,7 +309,7 @@ class JobRunner:
         state = self.status(run_id)
         with self.db.connection() as connection:
             ModelCalls(self.db).interrupt(run_id, connection)
-        return self._finish(run_id, 'COMPLETED' if state['completed'] == state['total_samples'] else 'INTERRUPTED')
+        return self._finish(run_id, 'COMPLETED' if state['completed'] == state['total_samples'] and not state['completion_pending'] else 'INTERRUPTED')
 
     def interrupt_external(self, run_id: str) -> dict:
         with self.lock:
@@ -326,6 +331,8 @@ class JobRunner:
             self._check_activity(conn, state['job_type'], payload['request'])
             payload.update(failed=0, failed_sample_ids=[], cancel_requested=False,
                 error_history=[*payload.get('error_history', []), *payload['errors']], errors=[])
+            if payload.get('phase'):
+                JobPhaseClock.enter(payload, payload['phase'], datetime.now(timezone.utc).isoformat(), resume=True)
             if persist:
                 persist(conn)
             conn.execute('''UPDATE job_runs SET status='RUNNING',finished_at=NULL,payload_json=?,progress=?,message=?
@@ -425,8 +432,8 @@ class JobRunner:
             if row is None:
                 raise InterruptedError('作业已停止')
             previous = json.loads(row[0])
-            if values.get('phase') and values['phase'] != previous.get('phase'):
-                values['phase_started_at'] = datetime.now(timezone.utc).isoformat()
+            if values.get('phase'):
+                JobPhaseClock.enter(previous, values['phase'], datetime.now(timezone.utc).isoformat())
             payload = {**previous, **values}
             completed, failed, total = payload["completed"], payload["failed"], payload["total_samples"]
             message = values.get("phase") or f"完成 {completed}，失败 {failed} / {total}"
@@ -507,7 +514,7 @@ class JobRunner:
                 self.cancelled[run_id].set()
                 self.cancel_children(run_id)
                 if status['status'] == 'PENDING' or run_id in self.external:
-                    completed = status['completed'] == status['total_samples']
+                    completed = status['completed'] == status['total_samples'] and not status['completion_pending']
                     callbacks = self._finish(run_id, 'COMPLETED' if completed else 'CANCELLED')
         for callback in callbacks:
             callback()

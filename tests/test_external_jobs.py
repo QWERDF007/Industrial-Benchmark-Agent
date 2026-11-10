@@ -64,3 +64,54 @@ def test_resuming_an_external_job_keeps_its_identity_and_completed_samples(datas
         assert runner.finish_external(job['run_id'])['completed'] == 2
     finally:
         runner.close()
+
+
+def test_phase_times_follow_real_transitions_and_exclude_stopped_time(dataset, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    import iad_core.workbench.jobs as jobs
+
+    database, _, config = dataset
+    start = datetime(2026, 11, 9, 12, tzinfo=timezone.utc)
+    elapsed = 0
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return start + timedelta(seconds=elapsed)
+
+    monkeypatch.setattr(jobs, 'datetime', Clock)
+    runner = JobRunner(database, ('ANALYSIS_WORKFLOW',))
+    try:
+        sid = config.dataset.id + ':dent.png'
+        job = runner.start('ANALYSIS_WORKFLOW', config.task.task_id,
+            {'dataset_id': config.dataset.id, 'sample_ids': [sid]}, None, '等待宿主执行')
+        run = job['run_id']
+        assert runner.status(run)['phase_timings'] == []
+        runner.update(run, phase='PREPARING_EXPLORATION')
+        elapsed = 3.25
+        runner.update(run, phase='ANALYZING_SCOPE')
+        elapsed = 4
+        runner.update(run, phase='ANALYZING_SCOPE', prepared_sources=1)
+        active = runner.status(run)['phase_timings']
+        assert len(active) == 2
+        assert active[1]['started_at'] == (start + timedelta(seconds=3.25)).isoformat()
+        assert active[1]['finished_at'] is None
+        elapsed = 6
+        runner.interrupt_external(run)
+        elapsed = 100
+        runner.resume_external(run)
+        elapsed = 102
+        runner.update(run, phase='FINALIZING_SCOPE')
+        elapsed = 104
+        runner.record(run, sid)
+        finished = runner.finish_external(run)
+        intervals = finished['phase_timings']
+        assert [item['phase'] for item in intervals] == [
+            'PREPARING_EXPLORATION', 'ANALYZING_SCOPE', 'ANALYZING_SCOPE', 'FINALIZING_SCOPE']
+        assert [(datetime.fromisoformat(item['started_at']) - start).total_seconds() for item in intervals] == [0, 3.25, 100, 102]
+        assert [(datetime.fromisoformat(item['finished_at']) - datetime.fromisoformat(item['started_at'])).total_seconds()
+            for item in intervals] == [3.25, 2.75, 2, 2]
+        elapsed = 200
+        assert runner.status(run)['phase_timings'] == intervals
+    finally:
+        runner.close()

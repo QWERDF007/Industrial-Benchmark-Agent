@@ -32,6 +32,13 @@ export class ConsistencyAnchorReviewer {
       throw new Error('Agent 模型角色缺少已声明的模型、上下文或输出容量');
     const provider = 'consistency-' + task.sessionId;
     const identity = {run_id: task.runId, anchor_id: task.anchorId, attempt: task.attempt};
+    while (true) {
+      task.signal.throwIfAborted();
+      const verified = await this.bridge.execute<{identity: {completed: boolean}; completed: boolean}>('consistency_agent_verify',
+        {...identity, _model_execution: await this.providers.credentialsFor(vision.profile)}, task.signal);
+      if (verified.completed) return;
+      if (verified.identity.completed) break;
+    }
     await this.bridge.execute('consistency_agent_plan', {...identity, _model_execution: await this.providers.credentialsFor(vision.profile)}, task.signal);
     let failure: unknown;
     await this.host.withAgent(task.sessionId, {
@@ -63,10 +70,10 @@ export class ConsistencyAnchorReviewer {
           };
         });
         scope.systemPrompt.section({name: 'consistency-anchor-review', order: 100, text: task.snapshot.system_prompt ?? task.snapshot.instruction});
-        scope.tools.register(defineTool({name: 'anchor_context', description: '读取冻结清单、待评估候选的完整事实及评估回执；传candidate_id复查该候选原始事实。',
+        scope.tools.register(defineTool({name: 'anchor_context', description: '开始审核或恢复上下文时读取冻结清单、指纹、视觉分页计划及当前观察和评估回执；传candidate_id复查该候选完整原始事实。按返回的冻结页观察，保存每个候选评估，再提交全部最新评估回执。',
           parameters: anchorContextQueryParameters, output: workbenchJsonOutput,
           execute: (query, execution) => this.bridge.execute('consistency_agent_context', {...identity, query}, execution.signal)}));
-        scope.tools.register(defineTool({name: 'anchor_observe', description: '按冻结页发送主图和候选的实际原图与局部，保存并返回各候选完整视觉观察、原始标注和证据，可直接据此评估。',
+        scope.tools.register(defineTool({name: 'anchor_observe', description: '按上下文给出的完整冻结页发送主图和候选的原图、原始标注与全部局部，保存并返回observation_id及各候选完整视觉观察、事实和原图引用，可直接据此评估。先评估当前已观察页的全部候选才能读取下一页；当前页可补看原像素。',
           parameters: anchorVisualStartParameters, output: workbenchJsonOutput,
           execute: async (request, execution) => {
             if (pending.size && request.candidate_ids.some(id => !pending.has(id)))
@@ -81,7 +88,7 @@ export class ConsistencyAnchorReviewer {
               throw error;
             }
           }}));
-        scope.tools.register(defineTool({name: 'anchor_assess', description: '保存一个候选的方向性评估及本场观察引用，返回终稿使用的assessment_id；不会完成主图。',
+        scope.tools.register(defineTool({name: 'anchor_assess', description: '仅保存已通过内容验证的候选标注审核，引用本场实际观察。MATERIAL必须在issues中保留全部独立问题、真实两侧框ID和实际原图ID，不能只给主要分类或自由文本；返回终稿使用的assessment_id。',
           parameters: anchorAssessmentInputParameters, output: workbenchJsonOutput,
           execute: async (submission, execution) => {
             const result = await this.bridge.execute('consistency_agent_assess', {...identity, submission}, execution.signal);

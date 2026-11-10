@@ -6,6 +6,7 @@ import type {BridgeDispatch, ModelRouting, PythonBridge} from '../python-bridge/
 import {JobSessionHost} from '../sessions/host.js';
 import {imageSessionPath} from '../sessions/image-path.js';
 import type {NativeProviders} from '../models/providers.js';
+import {runConcurrent} from '../jobs/concurrency.js';
 
 export interface AnchorReviewTask {
   runId: string;
@@ -96,8 +97,7 @@ export class ConsistencyCheckScheduler implements ModelRouting {
       }
       catch (error) {preparationError = error;}
     }
-    for (const anchor of ready) {
-      if (signal.aborted) break;
+    await runConcurrent(ready, snapshot.concurrency, signal, async anchor => {
       const identity = {run_id: runId, anchor_id: anchor.anchor_id, attempt: anchor.attempt};
       try {
         if (preparationError) throw preparationError;
@@ -114,7 +114,7 @@ export class ConsistencyCheckScheduler implements ModelRouting {
       } catch (error) {
         await this.failure(identity, error, signal);
       }
-    }
+    });
     const node = await this.bridge.execute<JobSnapshot>('analysis_node', {run_id: runId});
     if (node.status === 'RUNNING') await this.bridge.execute('consistency_agent_finish', {run_id: runId});
   }

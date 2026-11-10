@@ -5,6 +5,7 @@ import { type ConsistencyLocation, type PageId, type WorkbenchLocation } from ".
 import { type KnowledgeStatusFilter } from "../shared/knowledge-presentation.js";
 export { pages, type PageId } from "../shared/navigation.js";
 interface ViewState {
+    datasetIds: string[] | null;
     explorationPrompt: import("../shared/domain.generated.js").FrozenExplorationPrompt | null;
     explorationPromptBase: string;
     datasetSettingsTab: "directories" | "basic";
@@ -76,6 +77,7 @@ export declare class Workspace {
     getSnapshot: () => WorkspaceState;
     subscribe: (listener: () => void) => () => void;
     view(page: PageId, datasetId?: string): {
+        datasetIds: string[] | null;
         explorationPrompt: import("../shared/domain.generated.js").FrozenExplorationPrompt | null;
         explorationPromptBase: string;
         datasetSettingsTab: "directories" | "basic";

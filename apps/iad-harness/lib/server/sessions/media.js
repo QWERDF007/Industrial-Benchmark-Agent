@@ -5,7 +5,8 @@ export const nativeMediaOutput = {
     schema: { type: 'json' },
     render(_args, value) {
         const page = value;
-        return [{ type: 'text', text: JSON.stringify(page) }, ...page.images.map(image => ({ type: 'image', attachment: image.attachment }))];
+        const images = page.images.map(({ attachment, ...image }) => image);
+        return [{ type: 'text', text: JSON.stringify({ ...page, images }) }, ...page.images.map(image => ({ type: 'image', attachment: image.attachment }))];
     },
 };
 export class NativeMediaAttachments {
@@ -18,6 +19,8 @@ export class NativeMediaAttachments {
             normalizedImageMaxDimension: Number.MAX_SAFE_INTEGER, normalizedImageMaxBytes: Number.MAX_SAFE_INTEGER });
     }
     async prepare(page, signal) {
+        if (page.images.length && !page.evidence_id)
+            throw new Error('图像资料缺少原图引用');
         const images = [];
         for (const { path: filename, ...image } of page.images) {
             const data = await fs.readFile(filename, { signal });
@@ -26,7 +29,9 @@ export class NativeMediaAttachments {
             const attachment = await this.scope.attachments.saveImage({ data, mediaType: image.image.media_type, name: image.image.evidence_id + '.png' });
             if (attachment.width !== image.image.sent_size[0] || attachment.height !== image.image.sent_size[1])
                 throw new Error('附件存储改变了本场设定的图像尺寸');
-            images.push({ ...image, attachment });
+            const { evidence_id: pixelKey, ...view } = image.image;
+            const { evidence_id: contextKey, ...model_context } = image.model_context;
+            images.push({ ...image, image: view, model_context, attachment });
         }
         return { ...page, images };
     }

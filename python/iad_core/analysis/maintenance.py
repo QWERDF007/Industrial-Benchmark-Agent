@@ -34,12 +34,11 @@ class AnalysisMaintenance:
                 if head != version_id:
                     raise ValueError('知识版本已变化，请读取当前版本后再维护')
                 checks = [check for check in parent.catalog.checks if check.check_id != request.check_id]
-                retained = {check.check_id for check in checks}
                 publication = parent.model_copy(deep=True,update=dict(version_id=target_id,parent_version_id=version_id,
                     manual_edit=request,created_at=datetime.now(timezone.utc).isoformat(),
                     catalog=parent.catalog.model_copy(deep=True,update=dict(checks=checks,summary='')),
-                    inherited_reviews={identity:review.model_copy(update={'revision':0})
-                        for identity,review in KnowledgeCheckReviews(self.db).read(version_id).items() if identity in retained}))
+                    inherited_reviews=KnowledgeCheckReviews(self.db).inherit(parent,parent.revision,
+                        {check.check_id for check in checks},connection=connection)))
                 connection.execute('INSERT INTO analysis_publications(version_id,job_id,revision,execution_status,publication_json) VALUES(?,?,?,?,?)',
                     (target_id,publication.job_id,publication.revision,publication.execution_status,publication.model_dump_json()))
         dataset_id = publication.coverage.records[0].dataset_id

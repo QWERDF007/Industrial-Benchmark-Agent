@@ -1,5 +1,5 @@
 import React from 'react';
-import { CloseIcon, DeleteIcon, RefreshIcon, ClearFilterIcon, EditIcon, CopyIcon, PlusIcon, ChevronIcon, DocumentIcon, DocumentSearchIcon, MineIcon, StatsIcon, EyeIcon, EyeOffIcon, ZoomInIcon, ZoomOutIcon, FitIcon, ExpandIcon } from '../AuditIcon.js';
+import { CloseIcon, DeleteIcon, RefreshIcon, ClearFilterIcon, EditIcon, CopyIcon, PlusIcon, ChevronIcon, DocumentIcon, DocumentSearchIcon, ClockIcon, MineIcon, StatsIcon, EyeIcon, EyeOffIcon, ZoomInIcon, ZoomOutIcon, FitIcon, ExpandIcon } from '../AuditIcon.js';
 declare const icons: {
     close: typeof CloseIcon;
     delete: typeof DeleteIcon;
@@ -11,6 +11,7 @@ declare const icons: {
     chevron: typeof ChevronIcon;
     prompt: typeof DocumentIcon;
     details: typeof DocumentSearchIcon;
+    clock: typeof ClockIcon;
     mine: typeof MineIcon;
     stats: typeof StatsIcon;
     annotations: typeof EyeIcon;

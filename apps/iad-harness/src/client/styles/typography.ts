@@ -69,7 +69,7 @@ export const typographyStyles = `
 }
 
 /* Search and select field containers: 220px fixed width */
-:is(.filter-bar .filter-item, .dc-refined-filterbar .dc-filter-field, .dc-refined-filterbar .dc-search-field, .exp-job-list-actions .exp-filter-control, .kb-v45 .filterset > .f, .iad-manager-search-wrap #search, #search.search, .iad-dataset-page-wrap #search) {
+:is(.filter-bar .filter-item, .dc-refined-filterbar .dc-filter-field, .dc-refined-filterbar .dc-search-field, .iad-manager-search-wrap #search, #search.search, .iad-dataset-page-wrap #search) {
   flex: 0 0 var(--iba-field-width) !important;
   width: var(--iba-field-width) !important;
   min-width: 0 !important;
@@ -80,15 +80,11 @@ export const typographyStyles = `
 /* Controls inside fixed-width fields fill their owner; direct flex controls retain their declared width. */
 :is(.filter-bar .filter-item input, .filter-bar .filter-item select,
     .dc-results-section .dc-refined-filterbar input, .dc-results-section .dc-refined-filterbar select,
-    .exp-job-list-actions input, .exp-job-list-actions select,
     .iad-dataset-page-wrap #search) {width:100% !important;}
 
 /* All search inputs & select elements */
 :is(.filter-bar .filter-item input, .filter-bar .filter-item select,
     .dc-results-section .dc-refined-filterbar input, .dc-results-section .dc-refined-filterbar select,
-    .exp-job-list-actions .exp-filter-control input, .exp-job-list-actions .exp-filter-control select,
-    .exp-job-list-actions input, .exp-job-list-actions select,
-    .kb-v45 .filterset > .f,
     .iad-dataset-page-wrap #search) {
   display: block !important;
   height: var(--iba-field-height) !important;

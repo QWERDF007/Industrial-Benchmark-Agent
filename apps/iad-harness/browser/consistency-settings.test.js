@@ -71,6 +71,14 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     assert.equal(await (await field('完全一致图上限')).getAttribute('value'), '5');
     assert.equal(await (await field('相似图上限')).getAttribute('value'), '10');
     const change = async (label, value) => {const input = await field(label);await input.clear();await input.sendKeys(value);await driver.findElement(By.css('h2')).click();};
+    assert.equal(await (await field('同时检查的主图数')).getAttribute('value'), '1');
+    await change('同时检查的主图数', '3');
+    await driver.wait(async () => (await (await fetch(base + '/api/iad/settings/modules/consistency')).json()).settings.concurrency === 3, 5000);
+    await change('同时检查的主图数', '0');
+    await driver.wait(until.elementLocated(By.css('input[aria-label="同时检查的主图数"][aria-invalid="true"]')), 5000);
+    assert.equal((await (await fetch(base + '/api/iad/settings/modules/consistency')).json()).settings.concurrency, 3);
+    await change('同时检查的主图数', '2');
+    await driver.wait(async () => (await (await fetch(base + '/api/iad/settings/modules/consistency')).json()).settings.concurrency === 2, 5000);
     await change('完全一致图上限', '3');await change('相似图上限', '7');
     const read = async () => (await (await fetch(base + '/api/iad/settings/modules/consistency')).json()).settings;
     await driver.wait(async () => {const settings = await read();return settings.max_exact_candidates === 3 && settings.max_similar_candidates === 7;}, 5000);
@@ -85,6 +93,7 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
     await driver.wait(async () => (await read()).mode === 'exact', 5000);
     await driver.navigate().refresh();
     await driver.wait(until.elementLocated(By.css('input[aria-label="完全一致图上限"]')), 5000);
+    assert.equal(await (await field('同时检查的主图数')).getAttribute('value'), '2');
     assert.equal(await (await field('完全一致图上限')).getAttribute('value'), '3');
     await select('检索方式', '一致+相似');
     await driver.wait(until.elementLocated(By.css('input[aria-label="相似图上限"]')), 5000);

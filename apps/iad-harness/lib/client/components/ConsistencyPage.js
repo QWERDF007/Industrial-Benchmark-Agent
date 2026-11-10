@@ -1,11 +1,12 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { SectionHeading } from './layout/SectionHeading.js';
 import { PromptDrawer } from './PromptDrawer.js';
-import { conflictCategories, conflictCategoryDefaults } from '../../shared/consistency.parameters.generated.js';
+import { conflictCategoryDefaults, conflictCategoryLabels } from '../../shared/consistency.parameters.generated.js';
 import { WorkbenchHeader } from './layout/WorkbenchHeader.js';
 import { v4 as uuid } from 'uuid';
 import { ConsistencyStatisticsDialog } from './ConsistencyStatisticsDialog.js';
 import { ConsistencyConflictDialog } from './ConsistencyConflictDialog.js';
+import { ConsistencyImages } from './ConsistencyImages.js';
 import { ConsistencyGallery } from './ConsistencyGallery.js';
 import { MultiSelect, Select } from './Select.js';
 import { Modal } from './Modal.js';
@@ -13,7 +14,7 @@ import { JobStatusDrawer, JobStatusButton, JobStatusAction } from './JobStatusDr
 import { JobListPanel } from './JobListPanel.js';
 import { TabBar } from './layout/TabBar.js';
 import { Button } from './Button.js';
-import { ThumbnailCard } from "./ThumbnailCard.js";
+import { ConsistencyResultCard } from './ConsistencyResultCard.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { buildHierarchyGroups, getDatasetGroupId } from '../dataset-hierarchy.js';
 import { IconButton } from './IconButton.js';
@@ -29,7 +30,7 @@ import { promptDefaults } from '../../shared/prompt-defaults.generated.js';
 import { AgentPromptEditors } from './AgentPromptEditors.js';
 import { ConsistencyView } from '../consistency-view.js';
 import { useConsistencyJobs } from '../useConsistencyJobs.js';
-import { jobStatuses } from '../../shared/job-display.js';
+import { formatJobTime, jobStatuses } from '../../shared/job-display.js';
 import { useDatasetCatalog } from '../useDatasetCatalog.js';
 function dcJobBadge(status) {
     const s = (status || '').toUpperCase();
@@ -106,7 +107,6 @@ function ConsistencyIntegratedWorkspace({ datasets, groups }) {
     const [newPrompt, setNewPrompt] = useState(DEFAULT_CONSISTENCY_PROMPT);
     const [systemPrompt, setSystemPrompt] = useState(promptDefaults.system.consistency);
     const [currentConflictId, setCurrentConflictId] = useState('');
-    const [activeQueryId, setActiveQueryId] = useState('');
     const [statsModalJobId, setStatsModalJobId] = useState('');
     const [promptJob, setPromptJob] = useState(null);
     // Derive hierarchy groups
@@ -162,7 +162,6 @@ function ConsistencyIntegratedWorkspace({ datasets, groups }) {
     useEffect(() => {
         const controller = new AbortController();
         setJobConflicts([]);
-        setActiveQueryId('');
         setError('');
         if (!selectedJob || !['COMPLETED', 'PARTIAL'].includes(selectedJob.status))
             return;
@@ -172,10 +171,8 @@ function ConsistencyIntegratedWorkspace({ datasets, groups }) {
         const load = selectedJob.analysis.consistency_check_version === 1 ? ConsistencyView.loadCheck(selectedJob.analysis.run_id, controller.signal)
             : ConsistencyView.load(selectedJob.batch_id, controller.signal);
         load
-            .then(value => { if (!controller.signal.aborted) {
-            setJobConflicts(value.items);
-            setActiveQueryId(value.queryId);
-        } })
+            .then(value => { if (!controller.signal.aborted)
+            setJobConflicts(value.items); })
             .catch(error => { if (!controller.signal.aborted)
             setError(message(error)); })
             .finally(() => { if (!controller.signal.aborted)
@@ -283,16 +280,14 @@ function ConsistencyIntegratedWorkspace({ datasets, groups }) {
         await request(`/analysis/delete/${encodeURIComponent(job.analysis.run_id)}`, {});
         setRevision(value => value + 1);
     }
-    const availableTypes = useMemo(() => {
-        const formats = datasets.filter(dataset => selectedJob?.dataset_ids.includes(dataset.dataset_id)).map(dataset => dataset.format);
-        const defaults = new Set(formats.flatMap(format => conflictCategoryDefaults[format]));
-        return conflictCategories.filter(type => defaults.has(type) || jobConflicts.some(item => item.types.includes(type)));
-    }, [datasets, selectedJob?.batch_id, jobConflicts]);
-    const modelTypes = useMemo(() => [...new Set(jobConflicts.map(item => item.model.modelType))], [jobConflicts]);
-    // Raw conflict tabs
+    const modelTypes = Object.entries(conflictCategoryLabels).map(([value, label]) => ({ value, label }));
     const conflictTabs = useMemo(() => {
-        return [{ value: 'all', label: '全部冲突' }, ...availableTypes.map(t => ({ value: t, label: t }))];
-    }, [availableTypes]);
+        const defaults = new Set(datasets.filter(dataset => selectedJob?.dataset_ids.includes(dataset.dataset_id))
+            .flatMap(dataset => conflictCategoryDefaults[dataset.format]));
+        return [...(selectedJob?.analysis.consistency_check_version === 1 ? [{ value: 'images', label: '全部图像' }] : []),
+            { value: 'all', label: '全部冲突' }, ...Object.entries(conflictCategoryLabels)
+                .filter(([value]) => defaults.has(value)).map(([value, label]) => ({ value, label }))];
+    }, [datasets, selectedJob?.dataset_ids, selectedJob?.analysis.consistency_check_version]);
     const handleStatClick = useCallback((action, id) => {
         if (action === 'stat-category') {
             setKind(id);
@@ -329,12 +324,12 @@ function ConsistencyIntegratedWorkspace({ datasets, groups }) {
                                     setSystemPrompt(promptDefaults.system.consistency);
                                     setModalChildIds([...selectedChildIds]);
                                     setModal('new');
-                                }, children: "\u65B0\u5EFA\u68C0\u67E5" }) }) }), (error || polling.error) && _jsx("p", { role: "alert", className: "iad-error", children: error || polling.error }), _jsx(DatasetScopeSelector, { className: "dc-scope", groups: hierarchyGroups, selectedGroupId: selectedParentId, onGroupChange: handleParentChange, childDatasets: currentChildDatasets, selectedChildIds: selectedChildIds, onChildToggle: handleChildToggle, groupId: "dc-parent", childId: "dc-child-trigger", childMenuId: "dc-child-options", children: _jsx(IconButton, { icon: "refresh", type: "button", title: "\u5237\u65B0\u68C0\u67E5\u4F5C\u4E1A", label: "\u5237\u65B0\u68C0\u67E5\u4F5C\u4E1A", onClick: handleRefresh }) }), _jsx(JobListPanel, { title: "\u68C0\u67E5\u4F5C\u4E1A", className: `dc-section dc-jobs-section ${jobPages > 1 ? 'iba-job-multipage' : ''}`, children: availableJobs.length ? (_jsxs(_Fragment, { children: [_jsx("div", { className: "dc-table-panel", children: _jsxs("table", { className: "dc-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u4F5C\u4E1A" }), _jsx("th", { children: "\u72B6\u6001" }), _jsx("th", { children: "\u68C0\u67E5\u8303\u56F4" }), _jsx("th", { children: "\u51B2\u7A81\u603B\u6570" }), _jsx("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }), _jsx("th", { children: "\u8017\u65F6" }), _jsx("th", { className: "dc-operations", children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { children: shownJobs.map(j => {
+                                }, children: "\u65B0\u5EFA\u68C0\u67E5" }) }) }), (error || polling.error) && _jsx("p", { role: "alert", className: "iad-error", children: error || polling.error }), _jsx(DatasetScopeSelector, { className: "dc-scope", groups: hierarchyGroups, selectedGroupId: selectedParentId, onGroupChange: handleParentChange, childDatasets: currentChildDatasets, selectedChildIds: selectedChildIds, onChildToggle: handleChildToggle, groupId: "dc-parent", childId: "dc-child-trigger", childMenuId: "dc-child-options", children: _jsx(IconButton, { icon: "refresh", type: "button", title: "\u5237\u65B0\u68C0\u67E5\u4F5C\u4E1A", label: "\u5237\u65B0\u68C0\u67E5\u4F5C\u4E1A", onClick: handleRefresh }) }), _jsx(JobListPanel, { title: "\u68C0\u67E5\u4F5C\u4E1A", className: "dc-section dc-jobs-section", children: availableJobs.length ? (_jsxs(_Fragment, { children: [_jsx("div", { className: "dc-table-panel iad-job-table-scroll", children: _jsxs("table", { className: "dc-table iad-job-table-grid", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u4F5C\u4E1A" }), _jsx("th", { children: "\u72B6\u6001" }), _jsx("th", { children: "\u68C0\u67E5\u8303\u56F4" }), _jsx("th", { children: "\u51B2\u7A81\u603B\u6570" }), _jsx("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }), _jsx("th", { children: "\u8017\u65F6" }), _jsx("th", { className: "dc-operations", children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { children: shownJobs.map(j => {
                                                     const isSelected = j.analysis.root_run_id === selectedJob?.analysis.root_run_id;
                                                     const childNames = j.dataset_ids
                                                         .map(id => datasets.find(d => d.dataset_id === id)?.name || id)
                                                         .join('、');
-                                                    const timeStr = j.created_at ? j.created_at.slice(0, 16).replace('T', ' ') : '—';
+                                                    const timeStr = j.created_at ? formatJobTime(j.created_at) : '—';
                                                     const hasConflicts = (j.status === 'COMPLETED' || j.status === 'PARTIAL') &&
                                                         typeof j.conflict_count === 'number' &&
                                                         j.conflict_count > 0;
@@ -347,27 +342,28 @@ function ConsistencyIntegratedWorkspace({ datasets, groups }) {
                                                                             setSelectedJobId(j.analysis.root_run_id);
                                                                             setStatsModalJobId(j.analysis.root_run_id);
                                                                         } }), _jsx(DeleteAction, { title: "\u5220\u9664\u68C0\u67E5\u4F5C\u4E1A", name: j.batch_id, onDelete: () => handleDeleteJob(j), restoreFocus: () => document.getElementById('dc-parent') })] })] }, j.analysis.root_run_id));
-                                                }) })] }) }), _jsx(Pagination, { total: availableJobs.length, page: currentJobPage, onPage: handleJobPageChange, label: "\u68C0\u67E5\u4F5C\u4E1A", size: IBA_JOBS_PAGE_SIZE, hideSinglePage: true })] })) : (_jsx("div", { className: "dc-empty", children: polling.loading ? '正在读取检查作业…' : '当前没有检查作业' })) }), _jsxs("section", { className: "dc-section dc-results-section", children: [_jsx(SectionHeading, { title: "\u6807\u6CE8\u51B2\u7A81" }), _jsx("div", { className: "dc-results-body", children: !selectedJob ? (_jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" })) : !['COMPLETED', 'PARTIAL'].includes(selectedJob.status) ? (_jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u4F5C\u4E1A\u6CA1\u6709\u5DF2\u53D1\u5E03\u7ED3\u679C" })) : conflictsLoading ? (_jsx("p", { className: "iad-result-empty", role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u7ED3\u679C\u2026" })) : !jobConflicts.length ? (_jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" })) : (_jsxs(_Fragment, { children: [_jsx(TabBar, { label: "\u539F\u59CB\u6807\u6CE8\u51B2\u7A81\u7C7B\u578B", value: kind, onChange: value => { setKind(value); setPage(1); }, items: conflictTabs.map(tab => ({ id: tab.value, label: _jsxs(_Fragment, { children: [_jsx("span", { children: tab.label }), _jsx("span", { className: "iad-tab-count", children: tab.value === 'all' ? jobConflicts.length : jobConflicts.filter(conflict => conflict.types.some(type => type === tab.value)).length })] }), buttonProps: { 'data-dc': 'raw-tab', 'data-id': tab.value } })) }), _jsxs("div", { className: "dc-refined-filterbar", role: "group", "aria-label": "\u51B2\u7A81\u7B5B\u9009", children: [_jsxs("label", { className: "dc-filter-field dc-search-field", children: ["\u6587\u4EF6\u540D\u641C\u7D22", _jsx("input", { type: "search", id: "dc-filename-search", "aria-label": "\u6587\u4EF6\u540D\u641C\u7D22", placeholder: "\u641C\u7D22\u6587\u4EF6\u540D", autoComplete: "off", style: { height: '38px', minHeight: '38px', maxHeight: '38px', boxSizing: 'border-box' }, value: search, onChange: e => {
-                                                                setSearch(e.target.value);
-                                                                setPage(1);
-                                                            } })] }), _jsxs("label", { className: "dc-filter-field", children: ["\u6A21\u578B\u5224\u65AD", _jsxs(Select, { id: "dc-model-filter", "aria-label": "\u6A21\u578B\u5224\u65AD", value: modelFilter, onChange: e => {
-                                                                setModelFilter(e.target.value);
-                                                                setPage(1);
-                                                            }, children: [_jsx("option", { value: "all", children: "\u5168\u90E8\u5224\u65AD" }), modelTypes.map(name => (_jsx("option", { value: name, children: name }, name)))] })] }), _jsxs("label", { className: "dc-filter-field", children: ["\u7ED3\u8BBA\u4E00\u81F4\u6027", _jsxs(Select, { id: "dc-agreement", "aria-label": "\u539F\u7ED3\u8BBA\u4E0E\u6A21\u578B\u5224\u5B9A\u4E00\u81F4\u6027", value: agreement, onChange: e => {
-                                                                setAgreement(e.target.value);
-                                                                setPage(1);
-                                                            }, children: [_jsx("option", { value: "all", children: "\u5168\u90E8" }), _jsx("option", { value: "same", children: "\u4E00\u81F4" }), _jsx("option", { value: "different", children: "\u4E0D\u4E00\u81F4" })] })] }), _jsxs("label", { className: "dc-filter-field dc-review-field", children: ["\u4EBA\u5DE5\u590D\u6838", _jsxs(Select, { id: "dc-review-filter", "aria-label": "\u4EBA\u5DE5\u590D\u6838", value: reviewFilter, onChange: e => {
-                                                                setReviewFilter(e.target.value);
-                                                                setPage(1);
-                                                            }, children: [_jsx("option", { value: "all", children: "\u5168\u90E8\u72B6\u6001" }), _jsx("option", { value: "pending", children: "\u5F85\u590D\u6838" }), _jsx("option", { value: "confirmed", children: "\u786E\u8BA4\u51B2\u7A81" }), _jsx("option", { value: "rejected", children: "\u6392\u9664\u51B2\u7A81" })] })] }), _jsx(ClearFilterButton, { "data-dc": "clear-conflict-filters", ariaLabel: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6", title: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6", disabled: !search && modelFilter === "all" && agreement === "all" && reviewFilter === "all", onClick: () => {
-                                                        setSearch("");
-                                                        setModelFilter("all");
-                                                        setAgreement("all");
-                                                        setReviewFilter("all");
-                                                        setPage(1);
-                                                    } })] }), paginatedConflicts.length ? (_jsx("div", { className: "iad-thumbnail-grid dc-conflict-grid", children: paginatedConflicts.map(c => (_jsx(ThumbnailCard, { src: c.url, variant: "comparison", label: c.filename, "data-dc": "open-conflict", "data-id": c.id, "aria-label": `${c.filename}，原始结论：${c.type}；模型结论：${c.model.modelType}`, onClick: () => { setCurrentConflictId(c.id); setModal('compare'); }, children: _jsxs("span", { className: "iad-thumbnail-values", "aria-label": "\u539F\u59CB\u7ED3\u8BBA\u4E0E\u6A21\u578B\u7ED3\u8BBA", children: [_jsx("span", { title: `原始结论：${c.type}`, children: c.type }), _jsx("span", { title: `模型结论：${c.model.modelType}`, children: c.model.modelType })] }) }, c.id))) })) : (_jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u7B5B\u9009\u6761\u4EF6\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u51B2\u7A81\u56FE\u7EC4\u3002" })), _jsx(Pagination, { total: visibleConflicts.length, page: currentPage, size: 18, unit: "\u7EC4", onPage: setPage })] })) })] })] }), modal === 'new' && (_jsxs(Modal, { title: "\u65B0\u5EFA\u4E00\u81F4\u6027\u68C0\u67E5", size: "form", id: "dc-new-mask", className: "dc-dialog dc-new-dialog", onClose: () => setModal(''), header: false, children: [_jsxs("header", { className: "dc-dialog-head", children: [_jsx("h2", { id: "dc-new-title", children: "\u65B0\u5EFA\u4E00\u81F4\u6027\u68C0\u67E5" }), _jsx(IconButton, { icon: "close", type: "button", title: "\u5173\u95ED", label: "\u5173\u95ED", onClick: () => {
+                                                }) })] }) }), _jsx(Pagination, { total: availableJobs.length, page: currentJobPage, onPage: handleJobPageChange, label: "\u68C0\u67E5\u4F5C\u4E1A", size: IBA_JOBS_PAGE_SIZE, hideSinglePage: true })] })) : (_jsx("div", { className: "dc-empty", children: polling.loading ? '正在读取检查作业…' : '当前没有检查作业' })) }), _jsxs("section", { className: "dc-section dc-results-section", children: [_jsx(SectionHeading, { title: "\u6807\u6CE8\u51B2\u7A81" }), _jsx("div", { className: "dc-results-body", children: !selectedJob ? (_jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" })) : (_jsxs(_Fragment, { children: [_jsx(TabBar, { label: "\u539F\u59CB\u6807\u6CE8\u51B2\u7A81\u7C7B\u578B", value: kind, onChange: value => { setKind(value); setPage(1); }, items: conflictTabs.map(tab => ({ id: tab.value, label: _jsxs(_Fragment, { children: [_jsx("span", { children: tab.label }), _jsx("span", { className: "iad-tab-count", children: tab.value === 'images' ? selectedJob.analysis.total_samples : tab.value === 'all' ? jobConflicts.length : jobConflicts.filter(conflict => conflict.types.some(type => type === tab.value)).length })] }), buttonProps: { 'data-dc': 'raw-tab', 'data-id': tab.value } })) }), _jsx("div", { className: "dc-result-panel", role: "tabpanel", "aria-label": conflictTabs.find(tab => tab.value === kind)?.label, children: kind === 'images' ? _jsx(ConsistencyImages, { jobId: selectedJob.analysis.run_id, revision: `${revision}:${selectedJob.status}`, onReviewed: () => setRevision(value => value + 1) }, selectedJob.analysis.run_id) : !['COMPLETED', 'PARTIAL'].includes(selectedJob.status) ? (_jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u4F5C\u4E1A\u6CA1\u6709\u5DF2\u53D1\u5E03\u7ED3\u679C" })) : conflictsLoading ? _jsx("p", { className: "iad-result-empty", role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u7ED3\u679C\u2026" })
+                                                : !jobConflicts.length ? _jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" }) : _jsxs(_Fragment, { children: [_jsxs("div", { className: "dc-refined-filterbar", role: "group", "aria-label": "\u51B2\u7A81\u7B5B\u9009", children: [_jsxs("label", { className: "dc-filter-field dc-search-field", children: ["\u6587\u4EF6\u540D\u641C\u7D22", _jsx("input", { type: "search", id: "dc-filename-search", "aria-label": "\u6587\u4EF6\u540D\u641C\u7D22", placeholder: "\u641C\u7D22\u6587\u4EF6\u540D", autoComplete: "off", style: { height: '38px', minHeight: '38px', maxHeight: '38px', boxSizing: 'border-box' }, value: search, onChange: e => {
+                                                                                setSearch(e.target.value);
+                                                                                setPage(1);
+                                                                            } })] }), _jsxs("label", { className: "dc-filter-field", children: ["\u6A21\u578B\u5224\u65AD", _jsxs(Select, { id: "dc-model-filter", "aria-label": "\u6A21\u578B\u5224\u65AD", value: modelFilter, onChange: e => {
+                                                                                setModelFilter(e.target.value);
+                                                                                setPage(1);
+                                                                            }, children: [_jsx("option", { value: "all", children: "\u5168\u90E8\u5224\u65AD" }), modelTypes.map(option => (_jsx("option", { value: option.value, children: option.label }, option.value)))] })] }), _jsxs("label", { className: "dc-filter-field", children: ["\u7ED3\u8BBA\u4E00\u81F4\u6027", _jsxs(Select, { id: "dc-agreement", "aria-label": "\u539F\u7ED3\u8BBA\u4E0E\u6A21\u578B\u5224\u5B9A\u4E00\u81F4\u6027", value: agreement, onChange: e => {
+                                                                                setAgreement(e.target.value);
+                                                                                setPage(1);
+                                                                            }, children: [_jsx("option", { value: "all", children: "\u5168\u90E8" }), _jsx("option", { value: "same", children: "\u4E00\u81F4" }), _jsx("option", { value: "different", children: "\u4E0D\u4E00\u81F4" })] })] }), _jsxs("label", { className: "dc-filter-field dc-review-field", children: ["\u4EBA\u5DE5\u590D\u6838", _jsxs(Select, { id: "dc-review-filter", "aria-label": "\u4EBA\u5DE5\u590D\u6838", value: reviewFilter, onChange: e => {
+                                                                                setReviewFilter(e.target.value);
+                                                                                setPage(1);
+                                                                            }, children: [_jsx("option", { value: "all", children: "\u5168\u90E8\u72B6\u6001" }), _jsx("option", { value: "pending", children: "\u5F85\u590D\u6838" }), _jsx("option", { value: "confirmed", children: "\u786E\u8BA4\u51B2\u7A81" }), _jsx("option", { value: "rejected", children: "\u6392\u9664\u51B2\u7A81" })] })] }), _jsx(ClearFilterButton, { "data-dc": "clear-conflict-filters", ariaLabel: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6", title: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6", disabled: !search && modelFilter === "all" && agreement === "all" && reviewFilter === "all", onClick: () => {
+                                                                        setSearch("");
+                                                                        setModelFilter("all");
+                                                                        setAgreement("all");
+                                                                        setReviewFilter("all");
+                                                                        setPage(1);
+                                                                    } })] }), paginatedConflicts.length ? (_jsx("div", { className: "iad-thumbnail-grid dc-conflict-grid", children: paginatedConflicts.map(c => (_jsx(ConsistencyResultCard, { item: c, action: "open-conflict", onOpen: () => { setCurrentConflictId(c.id); setModal('compare'); } }, c.id))) })) : (_jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u7B5B\u9009\u6761\u4EF6\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u51B2\u7A81\u56FE\u7EC4\u3002" })), _jsx(Pagination, { total: visibleConflicts.length, page: currentPage, size: 18, unit: "\u7EC4", onPage: setPage })] }) })] })) })] })] }), modal === 'new' && (_jsxs(Modal, { title: "\u65B0\u5EFA\u4E00\u81F4\u6027\u68C0\u67E5", size: "form", id: "dc-new-mask", className: "dc-dialog dc-new-dialog", onClose: () => setModal(''), header: false, children: [_jsxs("header", { className: "dc-dialog-head", children: [_jsx("h2", { id: "dc-new-title", children: "\u65B0\u5EFA\u4E00\u81F4\u6027\u68C0\u67E5" }), _jsx(IconButton, { icon: "close", type: "button", title: "\u5173\u95ED", label: "\u5173\u95ED", onClick: () => {
                                     setModal('');
                                 } })] }), _jsxs("div", { className: "dc-dialog-body dc-new-body", children: [_jsxs("div", { className: "dc-new-field", children: [_jsx("span", { children: "\u6570\u636E\u96C6" }), _jsx("div", { className: "dc-new-parent", children: currentParent?.name || '—' })] }), _jsxs("div", { className: "dc-new-field", children: [_jsx("span", { children: "\u5B50\u6570\u636E\u96C6" }), _jsx(MultiSelect, { id: "dc-new-child-trigger", menuId: "dc-new-child-options", label: "\u5B50\u6570\u636E\u96C6", options: currentChildDatasets.map(item => ({ value: item.dataset_id, label: item.name })), selected: modalChildIds, onToggle: id => setModalChildIds(previous => previous.includes(id) ? previous.filter(value => value !== id) : [...previous, id]), disabled: newCheckBusy })] }), _jsxs("div", { className: "dc-new-field dc-prompt-editor", children: [(error || polling.error) && _jsx("p", { role: "alert", className: "iad-error", children: error || polling.error }), _jsx(AgentPromptEditors, { id: "dc-new-prompt", system: systemPrompt, user: newPrompt, onSystemChange: setSystemPrompt, onUserChange: setNewPrompt, disabled: newCheckBusy })] })] }), _jsxs("footer", { className: "dc-dialog-footer", children: [_jsx(Button, { type: "button", "data-dc": "close-new", onClick: () => {
                                     setModal('');
-                                }, children: "\u53D6\u6D88" }), _jsx(Button, { type: "button", variant: "primary", "data-dc": "create-job", disabled: !modalChildIds.length || !newPrompt.trim() || !systemPrompt.trim() || newCheckBusy, onClick: handleCreateJob, children: newCheckBusy ? '启动中…' : '开始检查' })] })] })), modal === 'compare' && currentConflict && _jsx(ConsistencyConflictDialog, { conflict: currentConflict, items: visibleConflicts, queryId: activeQueryId, onSelect: setCurrentConflictId, onClose: () => setModal(''), onReviewed: () => setRevision(value => value + 1) }), promptJob && _jsx(PromptDrawer, { title: "\u67E5\u770B\u63D0\u793A\u8BCD", text: promptJob.analysis.consistency_prompt || '该作业没有保存提示词。', systemText: promptJob.analysis.system_prompt, onClose: () => setPromptJob(null) }), !!statsModalJobId && _jsx(ConsistencyStatisticsDialog, { items: jobConflicts, onFilter: handleStatClick, onClose: () => setStatsModalJobId('') }), statusJobId && batches.some(job => job.analysis.root_run_id === statusJobId) && _jsx(JobStatusDrawer, { job: batches.find(job => job.analysis.root_run_id === statusJobId).analysis, onClose: () => setStatusJobId('') })] }));
+                                }, children: "\u53D6\u6D88" }), _jsx(Button, { type: "button", variant: "primary", "data-dc": "create-job", disabled: !modalChildIds.length || !newPrompt.trim() || !systemPrompt.trim() || newCheckBusy, onClick: handleCreateJob, children: newCheckBusy ? '启动中…' : '开始检查' })] })] })), modal === 'compare' && currentConflict && _jsx(ConsistencyConflictDialog, { conflict: currentConflict, items: visibleConflicts, onSelect: setCurrentConflictId, onClose: () => setModal(''), onReviewed: () => setRevision(value => value + 1) }, `${currentConflict.checkId}:${currentConflict.id}`), promptJob && _jsx(PromptDrawer, { title: "\u67E5\u770B\u63D0\u793A\u8BCD", text: promptJob.analysis.consistency_prompt || '该作业没有保存提示词。', systemText: promptJob.analysis.system_prompt, onClose: () => setPromptJob(null) }), !!statsModalJobId && _jsx(ConsistencyStatisticsDialog, { items: jobConflicts, onFilter: handleStatClick, onClose: () => setStatsModalJobId('') }), statusJobId && batches.some(job => job.analysis.root_run_id === statusJobId) && _jsx(JobStatusDrawer, { job: batches.find(job => job.analysis.root_run_id === statusJobId).analysis, onClose: () => setStatusJobId('') })] }));
 }

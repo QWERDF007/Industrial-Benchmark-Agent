@@ -28,8 +28,19 @@ class RegionPixelStatistics(AnalysisModel):
 
 
 class Registration(AnalysisModel):
-    status: Literal['UNSUPPORTED'] = 'UNSUPPORTED'
+    status: Literal['UNSUPPORTED', 'registered', 'unregistered'] = 'UNSUPPORTED'
     reason: str = 'Local feature registration is not enabled; thumbnail translation is not an original-coordinate transform'
+    candidate_to_main: tuple[tuple[FiniteFloat, FiniteFloat, FiniteFloat], tuple[FiniteFloat, FiniteFloat, FiniteFloat], tuple[FiniteFloat, FiniteFloat, FiniteFloat]] | None = None
+    matches: int | None = Field(default=None, ge=0)
+    inliers: int | None = Field(default=None, ge=0)
+    main_visible_fraction: float | None = Field(default=None, ge=0, le=1)
+    mean_absolute_residual: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+
+    @model_validator(mode='after')
+    def validate_mapping(self):
+        if (self.status == 'registered') != (self.candidate_to_main is not None):
+            raise ValueError('可信配准必须提供候选到主图的原始坐标映射，未配准不能包含映射')
+        return self
 
 
 class NearComparisonConfig(AnalysisModel):

@@ -44,12 +44,14 @@ class JobFamilies:
         total = root['total_samples']
         status = latest['status']
         if status not in ('PENDING', 'RUNNING', 'CANCELLED', 'INTERRUPTED'):
-            status = 'COMPLETED' if len(completed)==total else 'PARTIAL' if completed else 'FAILED'
+            from iad_core.workbench.jobs import JobRunner
+            status = JobRunner.terminal_status({**latest, 'completed':len(completed), 'failed':len(failed), 'total_samples':total})
         return JobSnapshot.model_validate(dict(latest, request=root['request'], sample_ids=root['sample_ids'], total_samples=total,
             completed=len(completed), completed_sample_ids=sorted(completed), failed=len(failed),
             failed_sample_ids=sorted(failed), errors=list(errors.values()), unprocessed=total-len(completed)-len(failed),
             progress=len(completed)/total, dataset_results=list(results.values()),
             submitted_at=root['submitted_at'], started_at=root['started_at'], status=status,
+            phase_timings=[timing for attempt in attempts for timing in attempt['phase_timings']],
             batch_runs=list(dict.fromkeys(rid for attempt in attempts for rid in attempt['batch_runs'])),
             model_calls=[call for attempt in attempts for call in attempt['model_calls']]))
 

@@ -13,7 +13,7 @@ import { message, request } from '../api.js';
 import { useModuleSettings } from '../useModuleSettings.js';
 import { getDatasetGroupId } from '../dataset-hierarchy.js';
 import { KnowledgeConfirmation } from './KnowledgeConfirmation.js';
-export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParentId, selectedChildId, onClose, onStarted }) {
+export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParentId, selectedChildIds, onClose, onStarted }) {
     const parentGroups = groups.filter(group => group.group_id !== 'single');
     const configuration = useModuleSettings('knowledge');
     const configuredBatch = configuration.settings && 'batch_size' in configuration.settings ? configuration.settings.batch_size : undefined;
@@ -24,7 +24,7 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
     const submission = useRef(null);
     const [confirmState, setConfirmState] = useState(null);
     const [setupDataset, setSetupDataset] = useState(selectedParentId);
-    const [setupSubsets, setSetupSubsets] = useState(new Set([selectedChildId]));
+    const [setupSubsets, setSetupSubsets] = useState(new Set(selectedChildIds));
     const [setupGeneral, setSetupGeneral] = useState(new Set());
     const [setupExplored, setSetupExplored] = useState(new Set());
     const [setupEdits, setSetupEdits] = useState({});
@@ -100,8 +100,7 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
     }, [setupGeneral, setupExplored, kbExploredDirs, presetDirections, getDirInfo]);
     const generatePromptText = useCallback((datasetName, subsetsNames, dirs) => {
         return [
-            "挖掘目标：",
-            promptDefaults.knowledgeObjective,
+            promptDefaults.knowledgeInstruction,
             `数据集：${datasetName}`,
             `子数据集：${subsetsNames.join("、")}`,
             "来源范围：所选子数据集的全部登记图像。",

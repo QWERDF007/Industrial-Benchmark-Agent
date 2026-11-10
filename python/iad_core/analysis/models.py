@@ -3,17 +3,20 @@ from uuid import UUID
 
 from pydantic import Field, RootModel, model_validator
 
-from iad_core.advisory.analysis import AnalysisModel, NonBlankText, VisualEvidence
+from iad_core.advisory.analysis import AnalysisModel, NonBlankText, VisualEvidence, VisualView
 from iad_core.exploration.models import DirectionContent, FrozenExplorationPrompt
 from iad_core.knowledge.instructions import MiningDirection
 from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningDirectionSource, SubmittedMiningPrompt
-from iad_core.knowledge.models import EvidenceSupportedCheck, KnowledgeSupportPolicy, LearnedCheck, KnowledgeCheckRemoval, KnowledgeCheckReview, KnowledgeCheckSummary, KnowledgeEvidence
+from iad_core.knowledge.models import KnowledgeSupportAssessment, KnowledgeSupportPolicy, LearnedCheck, KnowledgeCheckRemoval, KnowledgeCheckReview, KnowledgeCheckSummary, KnowledgeEvidence
 from iad_core.workbench.analysis_manifest import AnalysisManifest, AnalysisModule, AnalysisPlan, AnalysisRegistration, AnalysisRound
 from iad_core.workbench.analysis_requests import SelectedDatasets
 from iad_core.workbench.analysis_sampling import SamplingGroup
 from iad_core.workbench.model_profile import FrozenModelRole
 from iad_core.workbench.module_settings import ExplorationSettingsValues, KnowledgeSettingsValues
 from iad_core.workbench.calls import ModelCallError
+from iad_core.analysis.argument_models import AnalysisArgumentEdit, AnalysisEntrySelection, ArgumentRole
+from iad_core.analysis.finalization_state import AnalysisFinalizationProgress
+from iad_core.analysis.prompt_text import DIRECTION_OBSERVATION_WORKFLOW
 
 
 class ExplorationAgentStart(SelectedDatasets):
@@ -87,19 +90,20 @@ class KnowledgeCheckEvidencePage(AnalysisModel):
 
 
 class AnalysisWorkflowSnapshot(AnalysisAgentConfiguration):
-    schema_version: Literal[1] = 1
+    schema_version: Literal[1, 2] = 1
     manifest: AnalysisManifest
     plan: AnalysisPlan
     agent: FrozenModelRole
     instruction: NonBlankText
     system_prompt: NonBlankText | None = None
+    finalization_instruction: NonBlankText | None = None
     exploration_prompt: FrozenExplorationPrompt | None = None
     mining_prompt: FrozenMiningPrompt | None = None
     selected_directions: list[FrozenAnalysisDirection] = Field(default_factory=list)
     support_policy: KnowledgeSupportPolicy
 
 
-class ProposedAnalysisDirection(DirectionContent):
+class ProposedAnalysisDirection(DirectionContent, AnalysisEntrySelection):
     direction_id: NonBlankText
     dataset_ids: list[str] = Field(min_length=1)
     counter_evidence_ids: list[str] = Field(default_factory=list)
@@ -109,15 +113,31 @@ class AnalysisDirection(ProposedAnalysisDirection):
     predecessor_direction_ids: list[str] = Field(default_factory=list)
 
 
-class ProposedAnalysisCheck(LearnedCheck):
+class ProposedAnalysisCheck(LearnedCheck, AnalysisEntrySelection):
     check_id: NonBlankText
-    direction_refs: list[str] = Field(min_length=1)
-    dataset_ids: list[str] = Field(min_length=1)
+    direction_refs: list[str] = Field(min_length=1, description='只引用当前selected_directions中的完整ref。')
+    dataset_ids: list[str] = Field(min_length=1, description='仅列当前条目实际有证据的子数据集。')
 
 
-class AnalysisKnowledgeCheck(ProposedAnalysisCheck, EvidenceSupportedCheck):
-    independent_source_count: int = Field(ge=0)
+class AnalysisKnowledgeCheck(ProposedAnalysisCheck, KnowledgeSupportAssessment):
     predecessor_check_ids: list[str] = Field(default_factory=list)
+
+
+class AnalysisClaimRevision(AnalysisModel):
+    claim_revision: int
+    revision: int
+    reason: str | None
+    content: ProposedAnalysisDirection | ProposedAnalysisCheck
+
+
+class AnalysisClaimHistory(AnalysisModel):
+    job_id: str
+    entry_id: str
+    revision: int
+    total: int
+    offset: int
+    next_offset: int | None
+    items: list[AnalysisClaimRevision]
 
 
 class AnalysisCatalog(AnalysisModel):
@@ -126,6 +146,10 @@ class AnalysisCatalog(AnalysisModel):
     checks: list[AnalysisKnowledgeCheck] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
     unresolved_questions: list[str] = Field(default_factory=list)
+
+    @property
+    def entry_ids(self) -> list[str]:
+        return [item.direction_id for item in self.directions] + [item.check_id for item in self.checks]
 
 
 class AnalysisCatalogCounts(AnalysisModel):
@@ -166,18 +190,18 @@ class AnalysisSessionLocation(AnalysisModel):
 
 class AnalysisDirectionObservation(AnalysisModel):
     direction_ref: NonBlankText
-    status: Literal['applicable', 'not_applicable', 'uncertain']
+    status: Literal['applicable', 'not_applicable', 'uncertain'] = Field(description=DIRECTION_OBSERVATION_WORKFLOW)
     reason: NonBlankText
 
 
 class AnalysisSampleObservation(AnalysisModel):
     dataset_id: NonBlankText
     sample_id: NonBlankText
-    description: NonBlankText
-    evidence_ids: list[str]
+    description: NonBlankText = Field(description='仅描述这张图实际观察的事实；局部定位使用原图坐标。')
+    evidence_ids: list[str] = Field(description='实际送达且已观察的完整原图evidence_id；原图关联其原始标注及全部局部视图，不单独引用裁图或掩膜。')
     directions: list[AnalysisDirectionObservation] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
-    report_preparation_error: bool = False
+    report_preparation_error: bool = Field(default=False, description='仅在已有实际取证错误回执时设为true；能读取原图时仍保留可见事实。')
 
 
 class AnalysisObservationRecord(AnalysisSampleObservation):
@@ -187,11 +211,19 @@ class AnalysisObservationRecord(AnalysisSampleObservation):
 
 
 class AnalysisObservationQuery(AnalysisModel):
+    entry_id: NonBlankText | None = None
+    evidence_role: ArgumentRole | None = None
     sample_id: NonBlankText | None = None
     direction_ref: NonBlankText | None = None
     round_id: int | None = Field(default=None,ge=1,strict=True)
     page: int = Field(default=1,ge=1)
     page_size: int = Field(default=10,ge=1,le=50)
+
+    @model_validator(mode='after')
+    def role_requires_claim(self):
+        if self.evidence_role is not None and self.entry_id is None:
+            raise ValueError('按论据角色查询需指定稳定entry_id')
+        return self
 
 
 class AnalysisObservationPage(AnalysisModel):
@@ -215,22 +247,39 @@ class AnalysisObservationHistoryPage(AnalysisModel):
 class AnalysisCatalogMerge(AnalysisModel):
     target_id: NonBlankText
     source_ids: list[str] = Field(min_length=1)
+    reason: NonBlankText
 
 
-class AnalysisCommit(AnalysisModel):
-    commit_key: NonBlankText
-    base_revision: int = Field(ge=0, strict=True)
-    round_id: int = Field(ge=1, strict=True)
+class AnalysisCitationCorrection(AnalysisModel):
+    entry_id: NonBlankText
+    evidence_id: NonBlankText
+    whole_image_id: NonBlankText
+
+
+class AnalysisCatalogUpdate(AnalysisModel):
+    commit_key: NonBlankText = Field(description='本次提交的幂等键；仅相同内容重传复用，修改内容须更换。')
+    base_revision: int = Field(ge=0, strict=True,
+        description='观察阶段取最新上下文或提交回执的revision；定稿阶段始终取定稿上下文锁定的base_revision。')
+    summary: str = Field(description='截至本次提交的整个作业摘要，不写轮次或本批新增。')
+    limitations: list[str] = Field(description='整个作业仍有效的实际限制。')
+    unresolved_questions: list[str] = Field(description='整个作业仍待核对的问题。')
+    merges: list[AnalysisCatalogMerge] = Field(default_factory=list)
+    arguments: list[AnalysisArgumentEdit] = Field(default_factory=list,
+        description='明确关联条目主张与本场实际观察；新增、解释或移出适用范围都附理由。未提交的历史关系继续保留。')
+    citation_corrections: list[AnalysisCitationCorrection] = Field(default_factory=list,
+        description='按校验回执显式纠正目录引用，只填条目ID、旧证据ID和同来源完整原图ID；同步更新该条目支持、反例及正文，不重写未变的条目内容。')
+
+
+class AnalysisCommit(AnalysisCatalogUpdate):
+    round_id: int = Field(ge=1, strict=True, description='当前上下文给出的轮次，不能自行推进。')
     observations: list[AnalysisSampleObservation] = Field(
         description='本次新增或补充的实际逐图观察，可分次提交；无需重复输出已保存的观察。')
-    summary: str
-    limitations: list[str]
-    unresolved_questions: list[str]
-    merges: list[AnalysisCatalogMerge] = Field(default_factory=list)
 
 
 CATALOG_EDITS_DESCRIPTION = ('JSON数组，不是包含JSON的字符串。只提交新增或修改的完整条目，'
-    '未变条目由服务端保留，无目录变化时传[]。条目仅引用关键代表原图，不累加全部已看图像。')
+    '未变条目由服务端保留，无目录变化时传[]。支持和反例是完整论据，遗漏不撤销；'
+    'arguments说明每项作用，key_evidence另选最多4张展示原图。'
+    '正文图像引用写成[工具返回的完整原图evidence_id]，不缩写，不引用裁图。')
 
 
 class ExplorationCommit(AnalysisCommit):
@@ -251,21 +300,37 @@ class AnalysisCommitReceipt(AnalysisModel):
     round_complete: bool
 
 
-class AnalysisRecordCoverage(AnalysisModel):
+class AnalysisSourceProgress(AnalysisModel):
     dataset_id: str
     sample_id: str
     state: Literal['completed', 'failed', 'unprocessed']
+    observed_evidence_ids: list[str]
+    delivered_offsets: list[int] = Field(default_factory=list)
+    source_error: str | None
+
+
+class AnalysisMediaProgress(AnalysisSourceProgress):
+    evidence_id: str | None
+    required_media: list[VisualView]
+    supplemental_media: list[VisualView]
+
+
+class AnalysisRecordCoverage(AnalysisSourceProgress):
     required_media: list[VisualEvidence]
     supplemental_media: list[VisualEvidence] = Field(default_factory=list)
-    observed_evidence_ids: list[str]
-    source_error: str | None
 
     @property
     def media(self) -> list[VisualEvidence]:
         return [*self.required_media,*self.supplemental_media]
 
+    def model_context(self) -> AnalysisMediaProgress:
+        original = next((image.evidence_id for image in self.media if image.is_whole_image), None)
+        return AnalysisMediaProgress(**self.model_dump(include=set(AnalysisSourceProgress.model_fields)), evidence_id=original,
+            required_media=[VisualView(**image.model_dump(exclude={'evidence_id'})) for image in self.required_media],
+            supplemental_media=[VisualView(**image.model_dump(exclude={'evidence_id'})) for image in self.supplemental_media])
 
-class AnalysisCoverage(AnalysisModel):
+
+class AnalysisCoverageSummary(AnalysisModel):
     total: int
     completed: int
     failed: int
@@ -273,6 +338,9 @@ class AnalysisCoverage(AnalysisModel):
     prepared_visuals: int
     observed_visuals: int
     whole_images_observed: int
+
+
+class AnalysisCoverage(AnalysisCoverageSummary):
     records: list[AnalysisRecordCoverage]
 
 
@@ -283,7 +351,7 @@ class AnalysisAgentContext(AnalysisWorkflowState):
     completed_sample_ids: list[str]
     failed_sample_ids: list[str]
     accepted_observations: list[AnalysisObservationRecord]
-    media_progress: list[AnalysisRecordCoverage]
+    media_progress: list[AnalysisMediaProgress]
     catalog_counts: AnalysisCatalogCounts
 
 
@@ -297,11 +365,23 @@ class AnalysisPublication(AnalysisModel):
     created_at: str
     catalog: AnalysisCatalog
     coverage: AnalysisCoverage
+    finalization: AnalysisFinalizationProgress | None = None
     model_call_ids: list[str] | None = None
     session_id: str | None = None
     parent_version_id: str | None = None
     manual_edit: KnowledgeCheckRemoval | None = None
     inherited_reviews: dict[str, KnowledgeCheckReview] = Field(default_factory=dict)
+
+    def display_evidence_ids(self, entry: AnalysisDirection | AnalysisKnowledgeCheck,
+                             evidence_role: Literal['support', 'counter'] | None = None) -> list[str]:
+        if entry.key_evidence is not None:
+            return [item.evidence_id for item in entry.key_evidence
+                if evidence_role is None or ('counter' if item.role == 'counter' else 'support') == evidence_role]
+        if self.finalization is not None:
+            return []
+        support_ids = entry.evidence_ids if isinstance(entry, AnalysisDirection) else entry.support_evidence_ids
+        return (support_ids if evidence_role == 'support' else entry.counter_evidence_ids
+            if evidence_role == 'counter' else [*support_ids, *entry.counter_evidence_ids])
 
 
 class AnalysisEvidenceView(AnalysisModel):

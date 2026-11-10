@@ -1,21 +1,16 @@
 from uuid import uuid4
 import json
 import httpx
-import numpy as np
 import pytest
 from PIL import Image
 
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.consistency.agent_review import ConsistencyAgentReview
 from iad_core.dataset.registry import DatasetImport, DatasetRegistry
-from iad_core.duplicate.index import PixelIndex
 from iad_core.storage.database import Database
-from iad_core.storage.features import FeatureRepository
-from iad_core.storage.models import FeatureRecord
 from iad_core.workbench.model_profile import ModelProfile
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
-from tests.feature_fixtures import configure_test_encoder
 
 
 @pytest.mark.parametrize('budget', ['images', 'context', 'bytes'])
@@ -24,19 +19,11 @@ def test_thirty_candidates_are_planned_with_real_media_budgets_and_resume_comple
     images.mkdir()
     for index in range(31):
         name = 'anchor' if index == 0 else f'candidate-{index:02}'
-        Image.new('RGB', (32, 32), (index, 30, 180)).save(images / (name + '.png'))
+        Image.new('RGB', (32, 32), (0, 30, 180)).save(images / (name + '.png'))
         (images / (name + '.json')).write_text(json.dumps({'imageWidth': 32, 'imageHeight': 32, 'shapes': []}))
     database = Database(str(tmp_path / 'pages.db'))
     config = DatasetRegistry(database).import_labelme(DatasetImport(format='labelme', name='真实媒体分页',
         image_dir=str(images), annotation_dir=str(images)))
-    encoder = configure_test_encoder(database, tmp_path)
-    features = FeatureRepository(database)
-    for image in sorted(images.glob('*.png')):
-        group = PixelIndex(database).get(config.dataset.id + ':' + image.name).content_group_id
-        vector = np.zeros(encoder.profile.dim, dtype=encoder.profile.storage_dtype)
-        vector[0] = 1
-        features.upsert(FeatureRecord(content_group_id=group, profile_id=encoder.profile.profile_id,
-            dim=encoder.profile.dim, dtype=encoder.profile.storage_dtype, embedding_blob=vector.tobytes()))
     generated, tokenized = [], []
     profile = ModelProfile(endpoint='http://fixture/v1/chat/completions', model_id='vision', capacity_mode='vllm_tokenize',
         context_tokens=8192, max_output_tokens=2048, max_visual_inputs=3 if budget == 'images' else None,
@@ -50,15 +37,16 @@ def test_thirty_candidates_are_planned_with_real_media_budgets_and_resume_comple
             tokenized.append(body)
             return httpx.Response(200, json={'count': 1000 + (1500 * len(facts['candidates']) if budget == 'context' else 0), 'max_model_len': 8192})
         generated.append(body)
-        media = [json.loads(item['text'].removeprefix('视觉证据：'))['evidence_id'] for item in content
-            if item['type'] == 'text' and item['text'].startswith('视觉证据：')]
+        groups = [json.loads(item['text'].removeprefix('原图资料：')) for item in content
+            if item['type'] == 'text' and item['text'].startswith('原图资料：')]
         assert all(item['image_url']['url'].startswith('data:image/png;base64,') for item in content if item['type'] == 'image_url')
         if profile.max_visual_inputs:
             assert sum(item['type'] == 'image_url' for item in content) <= profile.max_visual_inputs
         if profile.max_request_bytes:
             assert len(request.content) <= profile.max_request_bytes
         answer = {'observations': [{'candidate_id': identity, 'description': '两侧均为有效空标注，图像已实际读取',
-            'phenomena_comparable': True, 'appearance_explains_annotation_difference': False, 'media_ids': media, 'limitations': []}
+            'phenomena_comparable': True, 'appearance_explains_annotation_difference': False,
+            'media_ids': [group['evidence_id'] for group in groups if group['sample_id'] in (facts['anchor']['sample_id'], identity)], 'limitations': []}
             for identity in facts['candidates']]}
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}]})
 
@@ -67,7 +55,7 @@ def test_thirty_candidates_are_planned_with_real_media_budgets_and_resume_comple
     try:
         checks = ConsistencyAgentJobs(runtime)
         anchor_id = config.dataset.id + (':candidate-12.png' if budget == 'context' else ':anchor.png')
-        job_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'combined', 'max_similar_candidates': 30,
+        job_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact', 'max_exact_candidates': 30,
             'subjects': {'kind': 'samples', 'sample_ids': [anchor_id]}})['run_id']
         checks.session_created(job_id, anchor_id)
         selected = checks.retrieve(job_id, anchor_id)
@@ -120,8 +108,12 @@ def test_thirty_candidates_are_planned_with_real_media_budgets_and_resume_comple
             'explanation': '双方原图可见且均为有效空标注', 'findings': []} for identity in observed],
             'overall': {'verdict': 'EQUIVALENT', 'text': '一致', 'references': references},
             'conclusions': [{'text': '全部入选候选均已实际核对', 'references': references}], 'limitations': []}
-        result = review.submit(job_id, anchor_id, {'fingerprint': plan.fingerprint, 'draft': draft,
-            'observation_ids': {identity: [item.observation_id] for identity, item in observed.items()}}, attempt=attempt)
+        records = [review.assess(job_id, anchor_id, {'fingerprint': plan.fingerprint,
+            'assessment': {key: value for key, value in assessment.items() if key not in ('conclusion', 'categories')},
+            'observation_ids': [observed[assessment['candidate_id']].observation_id]}, attempt=attempt)
+            for assessment in draft['assessments']]
+        result = review.finalize(job_id, anchor_id, {'fingerprint': plan.fingerprint,
+            'assessment_ids': [record.assessment_id for record in records]}, attempt=attempt)
         assert result.overall.verdict == 'EQUIVALENT'
         assert runtime.jobs.finish_external(job_id)['completed'] == 1
     finally:

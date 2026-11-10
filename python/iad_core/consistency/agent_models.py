@@ -8,6 +8,7 @@ from iad_core.consistency.candidate_selection import AnchorCandidates
 from iad_core.consistency.group_analysis_prompts import DEFAULT_CONSISTENCY_PROMPT
 from iad_core.consistency.group_analysis_models import GroupAnalysisDraft, GroupPairAssessment
 from iad_core.consistency.agent_review_models import AnchorVisualPlan
+from iad_core.consistency.identity_models import IdentityResultFields
 from iad_core.consistency.conflict_categories import ConflictCategory
 from iad_core.consistency.models import (CandidateLimit, ConsistencyRetrievalSettings, Digest,
     ConsistencyScopesSnapshot, CorpusScope, Count, Identifier, ScopeSelector)
@@ -16,7 +17,7 @@ from iad_core.feature.profiles import ImageEncoderConfig
 from iad_core.workbench.analysis_requests import SelectedDatasets
 from iad_core.workbench.job_models import JobFailure
 from iad_core.workbench.model_profile import FrozenModelRole, ModelLimits
-from iad_core.workbench.module_settings import ConsistencySettingsValues, ModuleModelReference
+from iad_core.workbench.module_settings import ConsistencySettingsValues, JobConcurrency, ModuleModelReference
 
 
 class ConsistencyAgentStart(SelectedDatasets, ConsistencyRetrievalSettings):
@@ -71,6 +72,7 @@ class ConsistencyCheckSnapshot(AnalysisModel):
 
     schema_version: Literal[1] = 1
     settings_revision: Count
+    concurrency: JobConcurrency = 1
     retrieval: FrozenCandidatePolicy
     scopes: ConsistencyScopesSnapshot
     model: ModuleModelReference | None
@@ -80,14 +82,17 @@ class ConsistencyCheckSnapshot(AnalysisModel):
     policies: dict[str, AnnotationPolicy]
     instruction: NonBlankText
     system_prompt: NonBlankText | None = None
-    prompt_version: Identifier = 'consistency-anchor-v5'
+    prompt_version: Identifier = 'consistency-anchor-v6'
     pixel_profile: Literal['raw-decoded-v1'] = 'raw-decoded-v1'
     model_call_logging: Literal['native-v1'] | None = None
     phase_logging: Literal['timeline-v1'] | None = None
+    review_pipeline: Literal['identity-v4'] | None = None
+    prompts: dict[str, NonBlankText] = Field(default_factory=dict)
+    dataset_formats: dict[str, Literal['labelme', 'folder_classification']] = Field(default_factory=dict)
 
 
-class NoCandidateResult(AnalysisModel):
-    schema_version: Literal[1] = 1
+class NoCandidateResult(IdentityResultFields):
+    schema_version: Literal[1, '4.0'] = 1
     verdict: Literal['EQUIVALENT'] = 'EQUIVALENT'
     reason: Literal['NO_CANDIDATES'] = 'NO_CANDIDATES'
     conclusion: Literal['通过（无候选）'] = '通过（无候选）'
@@ -95,14 +100,20 @@ class NoCandidateResult(AnalysisModel):
     assessments: list[GroupPairAssessment] = Field(default_factory=list, max_length=0)
 
 
-class ModelReviewedResult(GroupAnalysisDraft):
-    schema_version: Literal[1] = 1
+class NoEligibleResult(NoCandidateResult):
+    schema_version: Literal['4.0'] = '4.0'
+    reason: Literal['NO_ELIGIBLE_CANDIDATES'] = 'NO_ELIGIBLE_CANDIDATES'
+    conclusion: Literal['通过（无有效候选）'] = '通过（无有效候选）'
+
+
+class ModelReviewedResult(GroupAnalysisDraft, IdentityResultFields):
+    schema_version: Literal[1, '4.0'] = 1
     reason: Literal['MODEL_REVIEWED'] = 'MODEL_REVIEWED'
     fingerprint: Digest
     observation_ids: dict[Identifier, list[Identifier]]
 
 
-AnchorResult = Annotated[NoCandidateResult | ModelReviewedResult, Field(discriminator='reason')]
+AnchorResult = Annotated[NoCandidateResult | NoEligibleResult | ModelReviewedResult, Field(discriminator='reason')]
 AnchorState = Literal['PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED', 'INTERRUPTED']
 
 

@@ -60,18 +60,30 @@ def observe(run_id,title,check=False):
  AnalysisEvidence(jobs).delivered(run_id,cid,[i.image.evidence_id for i in page.images]);calls.finish_native(run_id,None,NativeModelCallEnd(call_id=cid,finished_at='2026-11-09T12:00:01Z',elapsed_ms=1000,finish_reason='tool-calls'))
  observation=dict(sample_id=page.sample_id,dataset_id=dataset_id,description='本登记可见边缘。',evidence_ids=[i.image.evidence_id for i in page.images])
  change=dict(direction_id='assembly',title=title,instruction=title+'的冻结原文。',applies_to='both',rationale='依据本图边缘['+observation['evidence_ids'][0]+']。',evidence_ids=[observation['evidence_ids'][0]],counter_evidence_ids=[],dataset_ids=[dataset_id],limitations=['标签18含义未知','ROI仅21x17'])
+ change['key_evidence']=[dict(evidence_id=observation['evidence_ids'][0],role='support',reason='原图展示可辨边缘和局部定位。')]
+ arguments=[]
+ if not check and context.catalog.directions:
+  change['change_reason']='另一视图补充边缘核对动作，原视图仍在适用范围内。'
+  arguments=[dict(entry_id='assembly',evidence_id=item.evidence_id,observation_id=item.observation_id,role=item.role,state='active',reason='原图外缘仍可辨，继续支持同一核对动作。') for item in AnalysisQueries(db).arguments(run_id,dict(entry_id='assembly',state='active')).items]
  if check:
   observation['directions']=[dict(direction_ref=d.ref,status='applicable',reason='边缘可见。') for d in context.selected_directions]
   change=dict(check_id='C1',title='来源可追溯判据',subject='主体',location='边缘',criterion='核对边缘。',allowed_variations=[],limitations=[],status='provisional',support_evidence_ids=observation['evidence_ids'],counter_evidence_ids=[],direction_refs=[d.ref for d in context.selected_directions],dataset_ids=[dataset_id])
- return AnalysisCommits(jobs).accept(run_id,dict(commit_key=str(uuid4()),base_revision=context.revision,round_id=context.round.round_id,observations=[observation],summary=title if check else '旧来源摘要：本轮仅有局部发现。',limitations=[],unresolved_questions=[],**({'checks':[change]} if check else {'directions':[change]})))
+ return AnalysisCommits(jobs).accept(run_id,dict(commit_key=str(uuid4()),base_revision=context.revision,round_id=context.round.round_id,observations=[observation],arguments=arguments,summary=title if check else '主体边缘在已观察视图内可辨，其他视图待补。',limitations=[],unresolved_questions=[],**({'checks':[change]} if check else {'directions':[change]})))
+def seed_historical_summary(version_id):
+ with db.connection() as connection:
+  historical=json.loads(connection.execute('SELECT publication_json FROM analysis_publications WHERE version_id=?',(version_id,)).fetchone()[0])
+  historical['catalog']['summary']='旧来源摘要：本轮仅有局部发现。'
+  connection.execute('UPDATE analysis_publications SET publication_json=? WHERE version_id=?',(json.dumps(historical,ensure_ascii=False),version_id))
 source=jobs.start(dict(submission_id=str(uuid4()),analysis_kind='exploration',dataset_ids=[dataset_id],normal_images=[dataset_id+':0.png'],prompt={'text':'原探索正文。'}),agent=role)
 observe(source['run_id'],'首版探索方向');source_version=jobs.cancel(source['run_id'])['analysis_version_id']
+seed_historical_summary(source_version)
 preset=default_directions()[0].model_copy(update={'title':'本场预设动作','instruction':'本场编辑后的预设动作。'}).model_dump(mode='json')
 mining=jobs.start(dict(submission_id=str(uuid4()),analysis_kind='knowledge',dataset_ids=[dataset_id],mining_prompt=dict(objective='沿两项冻结来源检查。',instruction='本场挖掘正文。',directions=[dict(direction_id='assembly',origin='explored',title='本场探索动作',instruction='本场编辑后的探索动作。',source=dict(origin='explored',run_id=source['run_id'],version_id=source_version,direction_id='assembly')),preset])),agent=role)
 while jobs.context(mining['run_id']).round:observe(mining['run_id'],'知识本场观察',check=True)
 jobs.jobs.finish_external(mining['run_id']);knowledge_version=AnalysisPublications(db).publish(mining['run_id']).version_id
 AnalysisQueries(db).remove_direction(DirectionRemoval(dataset_id=dataset_id,version_id=source_version,direction_id='assembly'))
 jobs.resume(source['run_id']);observe(source['run_id'],'后续探索方向');jobs.jobs.finish_external(source['run_id']);latest_version=AnalysisPublications(db).publish(source['run_id']).version_id
+seed_historical_summary(latest_version)
 for i in range(9):
  other=jobs.start(dict(submission_id=str(uuid4()),analysis_kind='exploration',dataset_ids=[dataset_id],normal_images=[dataset_id+':0.png'],prompt={'text':'其他探索正文。'}),agent=role);jobs.cancel(other['run_id'])
 presets=root/'presets';presets.mkdir();(presets/'assembly.txt').write_text('当前目录的新预设\\n当前目录的新指令。')

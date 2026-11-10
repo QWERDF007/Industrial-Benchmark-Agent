@@ -2,8 +2,11 @@ import json
 
 from iad_core.analysis.models import (AnalysisEvidenceView, AnalysisPublicationView,
     AnalysisSource, AnalysisSourceCatalog, AnalysisWorkflowSnapshot, PublishedDirectionCatalog, PublishedDirectionChoice,
-    KnowledgeCheckEvidencePage, AnalysisCatalog, AnalysisCatalogQuery, AnalysisCatalogPage, AnalysisSampleEvidence, AnalysisObservationQuery, AnalysisObservationPage, AnalysisObservationHistoryPage)
+    KnowledgeCheckEvidencePage, AnalysisCatalog, AnalysisCatalogQuery, AnalysisCatalogPage, AnalysisSampleEvidence, AnalysisObservationQuery, AnalysisObservationPage, AnalysisObservationHistoryPage,
+    AnalysisClaimHistory, AnalysisClaimRevision)
 from iad_core.analysis.coverage import AnalysisCoverageReader
+from iad_core.analysis.arguments import AnalysisArguments
+from iad_core.analysis.argument_models import AnalysisArgumentPage, AnalysisArgumentQuery, AnalysisEntryQuery
 from iad_core.analysis.publications import AnalysisPublications
 from iad_core.evidence.images import EvidenceImages
 from iad_core.knowledge.check_reviews import KnowledgeCheckReviews
@@ -17,6 +20,27 @@ class AnalysisQueries:
     def __init__(self, db):
         self.db = db
         self.publications = AnalysisPublications(db)
+
+    def arguments(self, run_id: str, query: dict | AnalysisArgumentQuery) -> AnalysisArgumentPage:
+        with self.db.connection() as connection:
+            return AnalysisArguments().query(connection, run_id, AnalysisArgumentQuery.model_validate(query))
+
+    def claim_history(self, run_id: str, entry_id: str, *, revision: int | None = None,
+                      offset: int = 0, limit: int = 20) -> AnalysisClaimHistory:
+        query = AnalysisEntryQuery(entry_id=entry_id, revision=revision, offset=offset, limit=limit)
+        with self.db.connection() as connection:
+            state = connection.execute('SELECT revision FROM analysis_workflow_runs WHERE job_id=?', (run_id,)).fetchone()
+            if state is None:
+                raise LookupError('原生分析作业不存在')
+            revision = state['revision'] if query.revision is None else query.revision
+            if revision > state['revision']:
+                raise ValueError('主张查询版本超出已保存目录')
+            rows = connection.execute('''SELECT claim_revision,revision,reason,content_json FROM analysis_claim_revisions
+                WHERE job_id=? AND entry_id=? AND revision<=? ORDER BY claim_revision''', (run_id, entry_id, revision)).fetchall()
+        end = query.offset + query.limit
+        return AnalysisClaimHistory(job_id=run_id, entry_id=entry_id, revision=revision, total=len(rows), offset=query.offset,
+            next_offset=end if end < len(rows) else None, items=[AnalysisClaimRevision(claim_revision=row['claim_revision'],
+                revision=row['revision'], reason=row['reason'], content=json.loads(row['content_json'])) for row in rows[query.offset:end]])
 
     def view(self, version_id: str) -> AnalysisPublicationView:
         publication = self.publications.get(version_id)
@@ -32,9 +56,10 @@ class AnalysisQueries:
             evidence=[AnalysisEvidenceView(evidence_id=image.evidence_id, sample_id=record.sample_id,
                 dataset_id=record.dataset_id, filename=records[record.sample_id].sample.relative_path,
                 candidate_role=roles[record.sample_id], sampling_group=records[record.sample_id].sampling_group or 'unclassified',
-                image=image, observed=image.evidence_id in observed)
-                for record in publication.coverage.records for image in record.media
-                if image.evidence_id in observed or record.sample_id in observed_samples and image.role == 'overview'])
+                image=image, observed=image.evidence_id in observed or index in record.delivered_offsets)
+                for record in publication.coverage.records for index,image in enumerate(record.media)
+                if image.evidence_id in observed or record.sample_id in observed_samples
+                    and (index in record.delivered_offsets or image.role == 'overview')])
 
     def catalog(self, run_id: str, query: dict | AnalysisCatalogQuery) -> AnalysisCatalogPage:
         query = AnalysisCatalogQuery.model_validate(query)
@@ -167,8 +192,7 @@ class AnalysisQueries:
             check = next((check for check in view.catalog.checks if check.check_id == query.check_id), None)
             if check is None:
                 raise LookupError('发布版本没有所选知识条目')
-            ids = check.support_evidence_ids if query.evidence_role == 'support' else check.counter_evidence_ids if query.evidence_role == 'counter' else [*check.support_evidence_ids, *check.counter_evidence_ids]
-            selected = projection.images(ids)
+            selected = projection.images(view.display_evidence_ids(check, query.evidence_role))
             return KnowledgeCheckEvidencePage(**common, check=summaries[check.check_id],
                 directions=[direction for direction in view.selected_directions if direction.ref in check.direction_refs], support_evidence_ids=check.support_evidence_ids,
                 counter_evidence_ids=check.counter_evidence_ids, total=len(selected), items=selected[start:start + query.page_size])

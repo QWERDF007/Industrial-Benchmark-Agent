@@ -4,8 +4,10 @@ from uuid import NAMESPACE_URL, uuid5
 
 from iad_core.analysis.publications import AnalysisPublications
 from iad_core.analysis.queries import AnalysisQueries
+from iad_core.analysis.models import AnalysisCoverageSummary
 from iad_core.audit.models import (AuditAgentConfiguration, AuditAgentStart,
-    AuditKnowledge, AuditSampleRun, AuditSelectedCheck, AuditWorkflowSnapshot)
+    AuditKnowledge, AuditKnowledgeDirection, AuditKnowledgeScope, AuditKnowledgeSelection,
+    AuditSampleRun, AuditSelectedCheck, AuditWorkflowSnapshot)
 from iad_core.consistency.agent_results import ConsistencyAgentResults
 from iad_core.knowledge.check_reviews import KnowledgeCheckReviews
 from iad_core.knowledge.models import KnowledgeEvidence
@@ -24,25 +26,30 @@ class AuditAgentJobs(AuditState):
         settings = ModuleSettings(self.db).read('audit')
         return AuditAgentConfiguration(settings_revision=settings.revision, settings=settings.settings)
 
-    def freeze_knowledge(self, selection) -> AuditKnowledge | None:
+    def freeze_knowledge(self, selection: AuditKnowledgeSelection | None) -> AuditKnowledge | None:
         if selection is None or not selection.entry_ids:
             return None
         publication = AnalysisPublications(self.db).get(selection.version_id)
         if publication.job_id != selection.job_id or publication.module != 'knowledge':
             raise ValueError('知识版本不属于所选挖掘作业')
         view = AnalysisQueries(self.db).view(selection.version_id)
-        summary, limitations, checks = view.catalog.summary, view.catalog.limitations, view.catalog.checks
-        evidence = [KnowledgeEvidence(sample_id=item.sample_id, image=item.image) for item in view.evidence]
-        directions = view.selected_directions
-        unresolved = view.catalog.unresolved_questions
+        checks = view.catalog.checks
         selected = set(selection.entry_ids)
         if selected - {check.check_id for check in checks}:
             raise ValueError('知识条目不属于所选正式版本')
         reviews = KnowledgeCheckReviews(self.db).read(selection.version_id)
         entries = [AuditSelectedCheck(check=check, review=reviews.get(check.check_id, {})) for check in checks if check.check_id in selected]
-        ids = {eid for entry in entries for eid in [*entry.check.support_evidence_ids, *entry.check.counter_evidence_ids]}
-        return AuditKnowledge(selection=selection, summary=summary, limitations=limitations, directions=directions,
-            unresolved_questions=unresolved, entries=entries, evidence=[item for item in evidence if item.image.evidence_id in ids])
+        direction_refs = {ref for entry in entries for ref in entry.check.direction_refs}
+        directions = [AuditKnowledgeDirection(**direction.model_dump(include=set(AuditKnowledgeDirection.model_fields)))
+            for direction in view.selected_directions if direction.ref in direction_refs]
+        ids = dict.fromkeys(eid for entry in entries for eid in view.display_evidence_ids(entry.check))
+        evidence = {item.evidence_id: KnowledgeEvidence(sample_id=item.sample_id, image=item.image) for item in view.evidence}
+        scope = AuditKnowledgeScope(dataset_ids=list(dict.fromkeys(record.dataset_id for record in view.coverage.records)),
+            revision=view.revision, execution_status=view.execution_status, execution_error=view.execution_error,
+            coverage=AnalysisCoverageSummary(**view.coverage.model_dump(include=set(AnalysisCoverageSummary.model_fields))),
+            finalization_complete=view.finalization.complete if view.finalization is not None else None)
+        return AuditKnowledge(selection=selection, source_scope=scope, directions=directions,
+            entries=entries, evidence=[evidence[eid] for eid in ids])
 
     def start(self, request: dict, *, agent: dict, configuration=None) -> dict:
         request = AuditAgentStart.model_validate(request)
@@ -64,7 +71,7 @@ class AuditAgentJobs(AuditState):
         anchors = [results.detail(request.consistency_job_id, record.sample.sample_id) for record in manifest.records]
         if any(anchor.result is None or anchor.state != 'COMPLETED' for anchor in anchors):
             raise ValueError('一致性作业尚未形成所选主图的终稿')
-        snapshot = AuditWorkflowSnapshot(**configuration.model_dump(), manifest=manifest, agent=role,
+        snapshot = AuditWorkflowSnapshot(**configuration.model_dump(), schema_version=2, manifest=manifest, agent=role,
             instruction=request.instruction, consistency_job_id=request.consistency_job_id,
             system_prompt=request.system_prompt or NATIVE_AUDIT_PROMPT,
             knowledge=self.freeze_knowledge(request.knowledge))
@@ -77,7 +84,7 @@ class AuditAgentJobs(AuditState):
                     'PENDING', anchor.model_dump_json()) for index, anchor in enumerate(anchors)])
 
         job = self.jobs.start('MODEL_AUDIT', manifest.records[0].sample.task_id,
-            dict(audit_workflow_version=1, submission=submission, dataset_id=manifest.dataset_ids[0], dataset_ids=manifest.dataset_ids,
+            dict(audit_workflow_version=2, submission=submission, dataset_id=manifest.dataset_ids[0], dataset_ids=manifest.dataset_ids,
                 sample_ids=[record.sample.sample_id for record in manifest.records], instruction=request.instruction,
                 model_name=role.profile.model_id, model_profile=role.profile.model_dump(),
                 knowledge_version_id=snapshot.knowledge.selection.version_id if snapshot.knowledge else None),

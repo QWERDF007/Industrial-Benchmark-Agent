@@ -60,7 +60,7 @@ print(json.dumps(dict(datasets=datasets,groups=[group])))
     const style=document.createElement('style');style.textContent=workbenchStyles;document.head.append(style);
     createRoot(document.getElementById('root')).render(<WorkbenchProviders workspace={workspace}>
       <div className="iad-workbench"><KnowledgeMiningCreate dataset={dataset} datasets={data.datasets} groups={data.groups}
-        selectedParentId={dataset.group_id} selectedChildId={dataset.dataset_id} onClose={()=>{}} onStarted={()=>{}}/></div>
+        selectedParentId={dataset.group_id} selectedChildIds={[dataset.dataset_id]} onClose={()=>{}} onStarted={()=>{}}/></div>
     </WorkbenchProviders>);
   `,loader:'tsx',resolveDir:app},bundle:true,format:'iife',write:false,target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
   const api=createIadHttpHandler(bridge),reads=[],writes=[];

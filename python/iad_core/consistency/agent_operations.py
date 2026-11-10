@@ -4,6 +4,7 @@ from contextlib import contextmanager
 
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.consistency.agent_results import ConsistencyAgentResults
+from iad_core.consistency.group_review import ConsistencyGroupReview
 from iad_core.storage.database import Database
 from iad_core.workbench.analysis_job_views import AnalysisJobViews
 from iad_core.workbench.runtime import workbench
@@ -86,8 +87,25 @@ def consistency_agent_gallery(args, db_path):
         page_size=int(args.get('page_size', 200))).model_dump(mode='json')
 
 
+def consistency_agent_images(args, db_path):
+    return ConsistencyAgentResults(Database(db_path)).images(args['run_id'], page=int(args.get('page', 1)),
+        page_size=int(args.get('page_size', 18))).model_dump(mode='json')
+
+
 def consistency_agent_members(args, db_path):
     return ConsistencyAgentResults(Database(db_path)).members(args['run_id'], args['anchor_id']).model_dump(mode='json')
+
+
+def consistency_agent_candidates(args, db_path):
+    return ConsistencyAgentResults(Database(db_path)).candidates(args['run_id'], args['anchor_id']).model_dump(mode='json')
+
+
+def consistency_agent_review(args, db_path):
+    return ConsistencyGroupReview(Database(db_path)).context(args['run_id'], args['anchor_id']).model_dump(mode='json')
+
+
+def consistency_agent_review_submit(args, db_path):
+    return ConsistencyGroupReview(Database(db_path)).submit(args['run_id'], args['anchor_id'], args['request']).model_dump(mode='json')
 
 
 def consistency_agent_analysis(args, db_path):
@@ -167,6 +185,13 @@ def consistency_agent_plan(args, db_path):
         return review.plan(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1)).model_dump(mode='json')
 
 
+def consistency_agent_verify(args, db_path):
+    with _visual_review(args, db_path) as review:
+        state = review.verify(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1), step=True)
+        result = review.finish_rules(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1)) if state.completed else None
+        return {'identity': state.model_dump(mode='json'), 'completed': result is not None}
+
+
 def consistency_agent_capacity(args, db_path):
     from iad_core.workbench.calls import ModelCalls
     from iad_core.workbench.model_settings import ModelExecution
@@ -182,7 +207,7 @@ def consistency_agent_capacity(args, db_path):
         raise ValueError('Agent 容量计量模型与冻结角色不一致')
     client = VlmClient(profile=execution.profile, api_key=execution.api_key.get_secret_value() if execution.api_key else None)
     try:
-        with ModelCalls(runtime.db).bind(args['run_id'], role='agent'):
+        with ModelCalls(runtime.db).bind(args['run_id'], role='agent', sample_id=args['anchor_id']):
             return client.token_budget(args['body'], execution.profile.max_output_tokens,
                 'ConsistencyAgent').model_dump(mode='json')
     finally:

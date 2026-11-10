@@ -52,6 +52,12 @@ class JobRetryOptions(AnalysisModel):
     samples: list[RetrySample]
 
 
+class JobPhaseTiming(AnalysisModel):
+    phase: str
+    started_at: str
+    finished_at: str | None = None
+
+
 class JobView(AnalysisModel):
     run_id: str
     task_id: str
@@ -70,6 +76,7 @@ class JobView(AnalysisModel):
     parent_run_id: Optional[str] = None
     status: JobStatus
     cancel_requested: bool = False
+    completion_pending: bool = False
     sample_ids: list[str]
     completed_sample_ids: list[str]
     failed_sample_ids: list[str]
@@ -89,6 +96,7 @@ class JobView(AnalysisModel):
     current_sample: Optional[JobSample] = None
     phase: Optional[str] = None
     phase_started_at: Optional[str] = None
+    phase_timings: list[JobPhaseTiming] = Field(default_factory=list)
     prepared_sources: int = Field(default=0, ge=0)
     queue_position: Optional[int] = Field(default=None, ge=1)
     normal_version_id: Optional[str] = None

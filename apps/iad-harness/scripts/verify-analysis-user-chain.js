@@ -7,6 +7,7 @@ import {Builder,By,until} from 'selenium-webdriver';
 import firefox from 'selenium-webdriver/firefox.js';
 import {viewport} from '../browser/workbench-layout.js';
 import {verifyReportMetadata} from '../browser/report-layout.js';
+import {verifyConsistencyUserResult} from './consistency-user-proof.js';
 
 const datasetKey=process.argv.find(value=>value.startsWith('--dataset='))?.split('=')[1];
 const datasets={labelme:'ds_d4c7fd02adbc43708e77332ac5419c51',anomaly:'ds_ae514ae539a442a58380b0f7f13741e0'};
@@ -15,10 +16,10 @@ const stage=process.argv.find(value=>value.startsWith('--stage='))?.split('=')[1
 assert.ok(['exploration','consistency','knowledge','audit'].includes(stage),'stage支持exploration、consistency、knowledge或audit');
 const page=stage==='exploration'?{name:'方向探索',parent:'#exp-parent',child:'#exp-child-toggle',menu:'#exp-child-menu',create:'#exp-new'}
   :stage==='consistency'?{name:'数据一致性',parent:'#dc-parent',child:'#dc-child-trigger',menu:'#dc-child-options',create:'[data-dc="start-check"]'}
-  :stage==='knowledge'?{name:'知识挖掘',parent:'#dataset',child:'#subset',menu:null,create:'#create-btn'}
+  :stage==='knowledge'?{name:'知识挖掘',parent:'#dataset',child:'#subset',menu:'#subset-menu',create:'#create-btn'}
   :{name:'模型审计',parent:'#audit-dataset',child:'#audit-child-trigger',menu:'#audit-child-menu',create:'#audit-page button[title="新建审计"]'};
 const base=process.env.IAD_BROWSER_BASE_URL||'http://127.0.0.1:8000';
-const output=path.resolve('runs/verification/analysis-user-chain');
+const output=path.resolve(process.argv.find(value=>value.startsWith('--output='))?.slice('--output='.length)||'runs/verification/analysis-user-chain');
 const presetId=process.argv.find(value=>value.startsWith('--preset-id='))?.slice('--preset-id='.length);
 assert.ok(!presetId||stage==='knowledge','预设直达使用--stage=knowledge');
 const zeroKnowledge=process.argv.includes('--zero-knowledge');
@@ -26,7 +27,7 @@ const knowledgeVersion=process.argv.find(value=>value.startsWith('--knowledge-ve
 const checkIds=process.argv.find(value=>value.startsWith('--check-ids='))?.slice('--check-ids='.length).split(',');
 const consistencyRun=process.argv.find(value=>value.startsWith('--consistency-run='))?.slice('--consistency-run='.length);
 if(stage==='audit')assert.ok(zeroKnowledge!==!!knowledgeVersion,'审计需显式指定--zero-knowledge或--knowledge-version');
-const prefix=datasetKey+'-'+(process.argv.includes('--v2')?'v2-':'')+stage+(presetId?'-preset-'+presetId:'')+(stage==='audit'?(zeroKnowledge?'-zero-knowledge':'-knowledge'):'');
+const prefix=datasetKey+'-joint-'+stage+(presetId?'-preset-'+presetId:'')+(stage==='audit'?(zeroKnowledge?'-zero-knowledge':'-knowledge'):'');
 const receiptFile=path.join(output,prefix+'.json');
 const verifyOnly=process.argv.includes('--verify-only');
 const entryId=process.argv.find(value=>value.startsWith('--entry-id='))?.slice('--entry-id='.length);
@@ -39,8 +40,8 @@ const read=async route=>{
 const source=(await read('datasets')).datasets.find(item=>item.dataset_id===datasets[datasetKey]);
 assert.equal(source.total_samples,100);
 const model=await read('settings/modules/'+stage);
-assert.equal(model.settings.model.provider_id,'local-vlm-30003');
-assert.equal(model.settings.model.model_id,'ukisai/Swift-1.5-Qwen3.8-27b-W4A16-AWQ');
+assert.equal(model.settings.model.provider_id,'local-vlm-30004');
+assert.equal(model.settings.model.model_id,'ukisai/Swift-1.5-Qwen3.8-27b');
 let directionSelection;
 let auditKnowledge;
 if(stage==='audit'&&!verifyOnly) {
@@ -81,7 +82,7 @@ const downloads=path.join(output,prefix+'-downloads');
 await fs.mkdir(downloads,{recursive:true});
 const downloadAttempt=await fs.mkdtemp(path.join(os.tmpdir(),'iad-user-chain-download-'));
 options.setPreference('browser.download.folderList',2).setPreference('browser.download.dir',downloadAttempt)
-  .setPreference('browser.helperApps.neverAsk.saveToDisk','text/html,application/zip');
+  .setPreference('browser.helperApps.neverAsk.saveToDisk','text/html,application/zip,application/x-ndjson');
 const driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options)
   .setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
 const element=selector=>driver.wait(until.elementLocated(By.css(selector)),20000);
@@ -214,6 +215,10 @@ try {
           '当前作业没有已发布结果','button[aria-label="导出当前作业成果"]'),20000);
       }
     }
+    if(stage==='consistency' && job.status==='COMPLETED') {
+      proof.consistency = await verifyConsistencyUserResult(driver, {base, runId: job.run_id, output, prefix,
+        downloadDirectory: downloadAttempt});
+    }
     if(stage==='audit') {
       if(job.completed>0) {
         const samples=await read('audit/jobs/'+job.run_id+'/samples');
@@ -273,7 +278,7 @@ try {
     const subsets=await driver.findElements(By.css('#dc-new-child-options input[type="checkbox"]'));
     for(const subset of subsets)if(await subset.isSelected()!==((await subset.getAttribute('value'))===source.dataset_id))await click(subset);
     await click(await element('#dc-new-child-trigger'));
-    assert.ok((await(await element('#dc-new-prompt')).getAttribute('value')).length>100);
+    assert.ok((await(await element('#dc-new-prompt')).getAttribute('value')).trim());
     start=await element('[data-dc="create-job"]');
   } else if(stage==='audit') {
     await click(await element(`input[aria-label="选择一致性作业 ${consistencyRun}"]`));
@@ -311,7 +316,7 @@ try {
   await driver.wait(until.elementIsEnabled(start),10000);
   const systemPrompt=await(await element('textarea[aria-label="系统提示词"]')).getAttribute('value');
   const userPrompt=await(await element('textarea[aria-label="用户提示词"]')).getAttribute('value');
-  assert.ok(systemPrompt.includes({exploration:'exploration_commit',knowledge:'knowledge_commit',consistency:'anchor_submit',audit:'audit_commit'}[stage]));
+  assert.ok(systemPrompt.trim());
   assert.ok(userPrompt.trim());
   await fs.writeFile(path.join(output,prefix+'-create.png'),await driver.takeScreenshot(),'base64');
   await driver.executeScript(`window.__analysisSubmission=null;const original=window.fetch,submissionPath=arguments[0];

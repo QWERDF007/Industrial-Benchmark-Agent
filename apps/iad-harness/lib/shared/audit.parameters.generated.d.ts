@@ -20,6 +20,7 @@ export declare const auditEvidenceParameters: {
 export declare const auditCommitParameters: {
     readonly commit_key: {
         readonly type: "string";
+        readonly description: "本次图级终稿的幂等键，仅同内容重传复用。";
         readonly title: "Commit Key";
         readonly required: true;
     };
@@ -30,6 +31,7 @@ export declare const auditCommitParameters: {
             readonly state: {
                 readonly type: "string";
                 readonly enum: readonly ["normal", "suspect", "insufficient"];
+                readonly description: "normal表示现有标注与可见图像相符，包括已正确标注的缺陷；suspect表示可见标注问题需复核；insufficient表示证据不足以判断标注是否正确。";
                 readonly title: "State";
                 readonly required: true;
             };
@@ -56,6 +58,7 @@ export declare const auditCommitParameters: {
                 readonly items: {
                     readonly type: "string";
                 };
+                readonly description: "本场实际打开并观察的完整原图ID，原始标注及全部局部视图属于该原图，不单独引用裁图或掩膜。";
                 readonly title: "Evidence Ids";
                 readonly required: true;
             };
@@ -92,6 +95,7 @@ export declare const auditCommitParameters: {
                     };
                     readonly title: "AuditCheckAssessment";
                 };
+                readonly description: "恰好覆盖全部已选check_id，各有观察原因；未选择知识时为空数组。";
                 readonly title: "Check Assessments";
                 readonly required: true;
             };
@@ -147,6 +151,7 @@ export declare const auditCommitParameters: {
                     };
                     readonly title: "AuditFinding";
                 };
+                readonly description: "本图全部需要复核的标注问题，无疑点时为空数组，不按数量截断。";
                 readonly title: "Findings";
                 readonly required: true;
             };

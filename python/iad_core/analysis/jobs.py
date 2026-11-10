@@ -4,7 +4,7 @@ from iad_core.analysis.models import (AnalysisAgentConfiguration, AnalysisAgentC
     AnalysisCatalog, AnalysisSessionLocation, AnalysisWorkflowSnapshot, AnalysisWorkflowState, ExplorationAgentStart)
 from iad_core.analysis.directions import AnalysisDirections
 from iad_core.analysis.coverage import AnalysisCoverageReader
-from iad_core.analysis.prompt_text import EXPLORATION_WORKFLOW, knowledge_agent_prompt
+from iad_core.analysis.prompt_text import EXPLORATION_WORKFLOW, knowledge_agent_prompt, FINALIZATION_WORKFLOW
 from iad_core.knowledge.instructions import FrozenMiningPrompt
 from iad_core.knowledge.support import KnowledgeSupport
 from iad_core.workbench.analysis_job_views import AnalysisJobViews
@@ -46,11 +46,11 @@ class AnalysisAgentJobs:
         prompt = selected.prompt if exploration else None
         mining = None if exploration else FrozenMiningPrompt.capture(selected.mining_prompt)
         directions = [] if exploration else AnalysisDirections(self.db).freeze(selected.mining_prompt)
-        snapshot = AnalysisWorkflowSnapshot(**configured.model_dump(), manifest=manifest, plan=plan,
-            agent=role, instruction=prompt.text if prompt else mining.instruction, exploration_prompt=prompt, mining_prompt=mining,
+        snapshot = AnalysisWorkflowSnapshot(**configured.model_dump(), schema_version=2, manifest=manifest, plan=plan,
+            agent=role, instruction=prompt.text if prompt else mining.instruction, finalization_instruction=FINALIZATION_WORKFLOW, exploration_prompt=prompt, mining_prompt=mining,
             system_prompt=selected.system_prompt or (EXPLORATION_WORKFLOW if exploration else knowledge_agent_prompt()),
             support_policy=KnowledgeSupport.configured(), selected_directions=directions)
-        payload = dict(submission=submission, analysis_workflow_version=1, analysis_kind=selected.analysis_kind,
+        payload = dict(submission=submission, analysis_workflow_version=2, analysis_kind=selected.analysis_kind,
             dataset_id=manifest.records[0].sample.dataset_id, dataset_ids=manifest.dataset_ids,
             sample_ids=[record.sample.sample_id for record in manifest.records])
         created = False
@@ -60,6 +60,7 @@ class AnalysisAgentJobs:
             session_id = selected.analysis_kind + '-' + uuid5(NAMESPACE_URL, run_id).hex
             connection.execute('''INSERT INTO analysis_workflow_runs(job_id,session_id,snapshot_json,catalog_json)
                 VALUES(?,?,?,?)''', (run_id, session_id, snapshot.model_dump_json(), AnalysisCatalog().model_dump_json()))
+            self.jobs.update(run_id, connection=connection, completion_pending=True)
             created = True
 
         job = self.jobs.start('ANALYSIS_WORKFLOW', manifest.records[0].sample.task_id, payload,
@@ -94,7 +95,7 @@ class AnalysisAgentJobs:
                 targets], selected_directions=snapshot.selected_directions,
             completed_sample_ids=job['completed_sample_ids'], failed_sample_ids=job['failed_sample_ids'],
             accepted_observations=coverage.observations(run_id,current.round_id) if current else [],
-            media_progress=[record for record in coverage.read(run_id).records if record.sample_id in targets],
+            media_progress=[record.model_context() for record in coverage.read(run_id).records if record.sample_id in targets],
             catalog_counts=dict(directions=len(state.catalog.directions),checks=len(state.catalog.checks)))
 
     def session_location(self, session_id: str) -> AnalysisSessionLocation:

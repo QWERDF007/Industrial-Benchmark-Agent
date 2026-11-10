@@ -49,7 +49,7 @@ export const consistencyAgentStartParameters = {
   "instruction": {
     "type": "string",
     "title": "Instruction",
-    "default": "逐张比较主图与候选图的图像和原始标注，分析主图相对于当前候选图的标注差异。实例标注比较类别、数量、位置和覆盖范围；图像级标注直接比较两侧图像标签。类别不同为类别不一致；主图比候选图多标为多类别，少标为少类别；标注位置或范围不同为位置差异；主图把候选图的一个对象标成多个实例为拆分，反过来为合并；没有差异为一致。位置与范围差异按原始坐标说明，框宽为x_max-x_min，框高为y_max-y_min，明确主图相对于候选图的方向。给出主要结论，并在分析中说明对应的对象、区域及实际差异。"
+    "default": "执行数据一致性审核。仅以通过同内容验证的候选比较原始标注，保留主图相对于候选图的全部独立差异、实际证据与限制，不裁决哪侧标注正确。"
   },
   "system_prompt": {
     "oneOf": [
@@ -342,6 +342,7 @@ export const anchorVisualStartParameters = {
   },
   "fingerprint": {
     "type": "string",
+    "description": "上下文提供的当前冻结清单指纹。",
     "title": "Fingerprint",
     "required": true
   },
@@ -350,6 +351,7 @@ export const anchorVisualStartParameters = {
     "items": {
       "type": "string"
     },
+    "description": "完整使用上下文中一个冻结页的候选集合，不拆页、不跨页拼接。",
     "title": "Candidate Ids",
     "required": true
   },
@@ -411,6 +413,7 @@ export const anchorContextQueryParameters = {
 export const anchorAssessmentInputParameters = {
   "fingerprint": {
     "type": "string",
+    "description": "当前冻结清单指纹。",
     "title": "Fingerprint",
     "required": true
   },
@@ -419,6 +422,7 @@ export const anchorAssessmentInputParameters = {
     "items": {
       "type": "string"
     },
+    "description": "本场已保存且实际包含当前候选的视觉观察回执。",
     "title": "Observation Ids",
     "required": true
   },
@@ -435,9 +439,10 @@ export const anchorAssessmentInputParameters = {
         "type": "string",
         "enum": [
           "EQUIVALENT",
-          "MATERIAL"
+          "MATERIAL",
+          "UNCERTAIN"
         ],
-        "description": "当前候选的标注比对结论：MATERIAL表示存在差异，EQUIVALENT表示一致",
+        "description": "MATERIAL存在差异；EQUIVALENT一致；UNCERTAIN为合格候选的标注审核证据不足。",
         "title": "Verdict",
         "required": true
       },
@@ -455,22 +460,70 @@ export const anchorAssessmentInputParameters = {
         "description": "当前候选的具体发现",
         "title": "Findings"
       },
-      "categories": {
+      "issues": {
         "type": "array",
         "items": {
-          "type": "string",
-          "enum": [
-            "类别不一致",
-            "位置差异",
-            "多类别",
-            "少类别",
-            "拆分",
-            "合并"
-          ]
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "type": "string",
+              "title": "Description",
+              "required": true
+            },
+            "media_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "实际观察的两侧原图身份各一次。",
+              "title": "Media Ids",
+              "required": true
+            },
+            "limitations": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "title": "Limitations"
+            },
+            "review_suggestion": {
+              "type": "string",
+              "title": "Review Suggestion",
+              "default": "人工核对两侧原始标注及标注规范。"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "category_mismatch",
+                "extra_annotation",
+                "missing_annotation",
+                "position_difference",
+                "split",
+                "merge"
+              ],
+              "title": "Type",
+              "required": true
+            },
+            "main_annotation_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "title": "Main Annotation Ids"
+            },
+            "candidate_annotation_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "title": "Candidate Annotation Ids"
+            }
+          },
+          "title": "BboxAnnotationIssue"
         },
-        "description": "MATERIAL提供唯一主要冲突分类；EQUIVALENT为空数组。其他发现保留在分析中。",
-        "title": "Categories",
-        "required": true
+        "description": "MATERIAL必须保存全部独立矩形问题，关联真实两侧框ID与实际原图身份；拆分合并不重复计数量差异。",
+        "title": "Issues"
       }
     },
     "title": "AnchorAssessmentDecision",
@@ -480,6 +533,7 @@ export const anchorAssessmentInputParameters = {
 export const anchorReviewSubmissionParameters = {
   "fingerprint": {
     "type": "string",
+    "description": "当前冻结清单指纹。",
     "title": "Fingerprint",
     "required": true
   },
@@ -488,6 +542,7 @@ export const anchorReviewSubmissionParameters = {
     "items": {
       "type": "integer"
     },
+    "description": "恰好包含全部冻结候选的最新评估回执ID，不引用旧版本或其他主图评估。",
     "title": "Assessment Ids",
     "required": true
   }
